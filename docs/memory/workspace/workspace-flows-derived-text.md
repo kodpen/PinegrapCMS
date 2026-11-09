@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-derived-text
-description: Text rules of a flow's derived value box (flows-next B3): replace, extract a number or an e-mail address, capitals, small letters, tidy spaces, cut to N, split and take part N; the third input c
+description: Text rules of a flow's derived value box (PR #7411): replace, extract a number or an e-mail address, capitals, small letters, tidy spaces, cut to N, split and take part N; the third input c
 ---
 
 ## Which rules?

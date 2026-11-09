@@ -1,6 +1,6 @@
 ---
 name: workspace-ai-call-timeout
-description: How long one Pinegrap AI model call may take (500 s, PG_AI_CALL_TIMEOUT 20-600), why it is no longer 55 s, what still cuts a call off
+description: How long one Pinegrap AI model call may take (500 s, PG_AI_CALL_TIMEOUT 20-600), why it is no longer 55 s, what still cuts a call off, the levers to measure before changing limits
 ---
 
 ## How long may a call take?
@@ -16,6 +16,11 @@ description: How long one Pinegrap AI model call may take (500 s, PG_AI_CALL_TIM
 
 ## What does a model server error do?
 - A tool call the server could not read (HTTP 400 "does not match the expected peg-native format") is `format` in `ws_ai_response_problem()`: the request is answered in words (`ws_ai_final()`), no draft card. Other errors hold requests 15 or 60 s (`ws_ai_hold()`), three failed tries give the request up.
+
+## What could make Pinegrap AI slow, and what is measured first?
+- Owner (2026-10-24, after long tests ran inefficiently): measure first, change limits after. Not the key.
+- The levers: nobody picks the model (`ws_ai_model()` keeps the first one GET /models lists); `WS_AI_MAX_STEPS` 8; past `WS_AI_BUDGET` 20 s the next call waits for an open screen or the hourly job; `max_tokens` 3000; 20-30 channel messages of context (`ws_ai_channel_context()`, fewer on a retry); the size of `ws_ai_tools()` and `ws_ai_system_prompt()`.
+- What to measure in `ws_ai_requests` (agent `ai`): `ai_steps`, `ai_attempts`, `claimed_at` to `answered_at`, `error`, the size of `ai_state`; tokens are not kept.
 
 ## Tests
 - tests/workspace_ai_call_timeout_test.php.

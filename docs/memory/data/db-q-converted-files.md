@@ -16,4 +16,4 @@ description: Content files converted to db_q() (get_page_content, content, seo, 
 - Values are passed `(string)` where the old SQL quoted them and `(int)` where it wrote a bare number, so the SQL text sent stays the same. A value that arrived already escaped (`escape()`, `e()`, `mysqli_real_escape_string()`) goes in unwrapped, or it would be escaped twice.
 - `router.php` runs before `functions.php` is loaded, so `db_q()` does not exist there; it keeps its raw queries, as `get_file.php` keeps its own db copies.
 
-Related: docs/memory/data/db-q-placeholder-helper.md, docs/memory/plans/refactor-candidates.md
+Related: docs/memory/data/db-q-placeholder-helper.md

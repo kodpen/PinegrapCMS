@@ -20,4 +20,4 @@ description: Installer, designer actions, TinyMCE pickers (#2647), Flows INSERTs
 ## What guards it?
 - `tests/db_q_tail_test.php`: per file the least number of `db_q()` calls and the most raw `mysqli_query()` calls, no escaped value in a `db_q()` SQL or a raw query, no `db_q()` call in `includes/authentication.php`, the installer's first `db_q()` after `functions.php` is loaded, one value per `?`, and the bound text of the region INSERT, the administrator check, the picker INSERT and a Flows run INSERT. `tests/workspace_flow_runs_test.php` checks the run INSERT keeps its `status = 'live'` guard.
 
-Related: docs/memory/data/db-q-converted-files.md (conversion rules), docs/memory/plans/refactor-candidates.md
+Related: docs/memory/data/db-q-converted-files.md (conversion rules)

@@ -345,6 +345,10 @@ function _parasut_extract_error($result)
  * order row returned nothing, so contacts created from those orders carried no
  * identity number at all and could never be billed by e-invoice.
  *
+ * A Turkish buyer's number is read as its digits
+ * (parasut_order_identity_number()): Paraşüt answers a filter on a spaced or
+ * TR-prefixed number with an empty list, the "not registered" answer.
+ *
  * @param array $order  Order row
  * @return string  Empty when not configured or not filled in
  */
@@ -361,10 +365,63 @@ function _parasut_order_identity($order)
         if ($contact_id <= 0) {
             return '';
         }
-        return trim((string) db_value("SELECT tax_number FROM contacts WHERE id = '" . escape($contact_id) . "' LIMIT 1"));
+        $value = (string) db_value("SELECT tax_number FROM contacts WHERE id = '" . escape($contact_id) . "' LIMIT 1");
+    } else {
+        $value = (string) ($order[$field] ?? '');
     }
 
-    return trim((string) ($order[$field] ?? ''));
+    // The country is read by the ERP's accounts code.
+    _parasut_order_invoice_load();
+
+    return parasut_order_identity_number($value, erp_account_country((string) ($order['billing_country'] ?? '')));
+}
+
+/**
+ * The buyer's VKN/TCKN as it goes to Paraşüt. A Turkish buyer's number is
+ * its digits only, as the ERP's lookup reads it: spaces, dashes, dots and a
+ * TR prefix typed at checkout are dropped. A buyer abroad keeps the number
+ * as typed (trimmed): a foreign VAT id is not a VKN.
+ *
+ * @param string $value    The number as stored
+ * @param string $country  The billing country (erp_account_country())
+ * @return string
+ */
+function parasut_order_identity_number($value, $country)
+{
+    $value = trim((string) $value);
+
+    if (strtoupper(trim((string) $country)) !== 'TR') {
+        return $value;
+    }
+
+    return (string) preg_replace('/\D/', '', $value);
+}
+
+/**
+ * Why a Turkish buyer's VKN/TCKN cannot be invoiced under: it is not ten
+ * digits (VKN) or eleven (TCKN) passing the tax authority's check digits
+ * (erp_edoc_tax_number_valid()). Paraşüt answers a lookup on such a number
+ * with an empty list, the same answer as "not registered", so the order
+ * would get an e-Archive where an e-Invoice may be due. An empty number, the
+ * final consumer's 11111111111 and a buyer abroad are not refused. Needs the
+ * ERP's e-document registry (_parasut_order_invoice_load()).
+ *
+ * @param string $identity  parasut_order_identity_number()
+ * @param string $country   The billing country (erp_account_country())
+ * @return string  Empty when the number can be used, otherwise the refusal
+ */
+function parasut_order_identity_refusal($identity, $country)
+{
+    $identity = (string) $identity;
+
+    if (($identity === '') || (strtoupper(trim((string) $country)) !== 'TR') || erp_edoc_tax_number_valid($identity, true)) {
+        return '';
+    }
+
+    return lang(array(
+        'string' => 'The buyer\'s VKN/TCKN ({var:1}) is not a 10-digit VKN or an 11-digit TCKN with matching check digits; it is probably mistyped. Correct it and try again. No invoice was created.',
+        'vars' => array($identity),
+    ));
 }
 
 /**
@@ -3872,7 +3929,14 @@ function _parasut_create_invoice_claimed($order_id, &$notices)
     // Which document this has to be is settled before anything is created: a
     // sales invoice raised here and then found to need the other kind cannot be
     // taken back.
-    $kind_result = _parasut_resolve_edoc_kind(_parasut_order_identity($order), $token);
+    // A malformed number would read as "not registered" and get an e-Archive.
+    $identity = _parasut_order_identity($order);
+    $identity_refusal = parasut_order_identity_refusal($identity, erp_account_country((string) ($order['billing_country'] ?? '')));
+    if ($identity_refusal !== '') {
+        return ['success' => false, 'parasut_invoice_id' => null, 'error' => $identity_refusal];
+    }
+
+    $kind_result = _parasut_resolve_edoc_kind($identity, $token);
     if (!$kind_result['success']) {
         return ['success' => false, 'parasut_invoice_id' => null, 'error' => $kind_result['error']];
     }

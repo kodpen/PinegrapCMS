@@ -11,7 +11,7 @@ description: The flow draft card (D8b #3032, V7a #3393, K3 #6630): a still pictu
 - `.ws-drafts` is one `minmax(0, 1fr)` column (#6668): with `auto`, a drawing wider than the card widened the card and the whole channel.
 
 ## How does a card open? (K3, #6630)
-- A click or Enter on the picture (`flowCardOpen()`): `flowEmbedKit()` loads `CFG.flow_scripts` (`pg_graph_canvas.min.js`, then `workspace_flow.min.js`, from `ws_screen_config()`; none on the Flows screen) and panel action `ws_flow_embed_config` once a page; panel action `ws_flow_draft_view` (`ws_flow_draft_card_view_read()`) is read on every open. `PGWsFlow.embed(stage, { graph, mark, tries, config, people, onSelect, onClose })` replaces the picture; destroy puts it back.
+- A click or Enter on the picture (`flowCardOpen()`): `flowEmbedKit()` loads `CFG.flow_scripts` (`pg_graph_canvas.min.js`, then `workspace_flow.min.js`, from `ws_screen_config()`; none on the Flows screen) and panel action `ws_flow_embed_config` once a page; panel action `ws_flow_draft_view` (`ws_flow_draft_card_view_read()`) is read on every open. `PGWsFlow.embed(stage, { graph, mark, tries, config, people, channels, departments, onSelect, onClose })` replaces the picture; destroy puts it back. No `channels`: a post box read "No channel chosen".
 - `.ws-fd-stage.is-open` is 20rem, `is-large` 40rem (on a phone `min(40rem, 75vh)`); `.ws-fd-stage .pgc-stage` is 100% high (the Flows screen's 60vh phone rule would push the zoom buttons out of the pane). The bar above: Larger/Smaller (fits again), Close (focus back on the picture). No stored preference.
 - One card open at a time (`self.flowOpen`): opening another destroys the first. A card drawn anew (a message changed in a sync) whose change is open opens again with the view read anew. On the Flows screen `embed()` returns null and the card keeps its picture.
 - The strip below (`flowCardBox()`): name, kind when the name is not the kind's, outbound and try from the picture's node, New / Changed, "Open on the canvas" (`?flow=&box=`), "Try this box" (`ws_flow_box_try`) for `can_try`.
@@ -23,4 +23,4 @@ description: The flow draft card (D8b #3032, V7a #3393, K3 #6630): a still pictu
 - No (owner, 2026-11-02, #4967): the canvas is the one place a flow is changed. "Edit here" (V7b, #3493) was removed (#6495) with its actions `ws_flow_draft_box` / `ws_flow_draft_box_save`, `ws_flow_draft_box_*()` and `flowBoxForm()`.
 
 ## Tests
-- tests/workspace_flow_draft_test.php (`test_ws_flow_card_*`). K3 was tried in headless Chromium (desktop 1280 × 900 and Pixel 7) on a stand-in channel page: open, pick, try, Larger, Close, Enter; pinch was not driven there (the canvas harness covers it).
+- tests/workspace_flow_draft_test.php (`test_ws_flow_card_*`). K3 tried in headless Chromium (desktop and Pixel 7): open, pick, try, Larger, Close, Enter.

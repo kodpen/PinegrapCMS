@@ -101,9 +101,6 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     $translate = array(
         'No data available in table' => lang('No data available in table'),
         'Query failed.' => lang('Query failed.'),
-        'Reset' => lang('Reset'),
-        'Column Visiblity' => lang('Column Visiblity'),
-        'Column Reorder and Column Visiblity reset?' => lang('Column Reorder and Column Visiblity reset?'),
         'Hold, move and reposition' => lang('Hold, move and reposition'),
         'Pin' => lang('Pin'),
         'Remove' => lang('Remove'),
@@ -265,7 +262,9 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'The change could not be saved. Check the connection and try again.' => lang('The change could not be saved. Check the connection and try again.'),
     );
 
+    // First in <head>, before any script an old browser might stop on.
     return '
+    ' . pg_old_browser_notice() . '
     <script type="text/javascript">
         var path = "' . escape_javascript(PATH) . '",
             software_directory = "' . escape_javascript(SOFTWARE_DIRECTORY) . '",
@@ -287,13 +286,10 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     <style>@layer colors, config, root, reboot, layout, content, forms, components, vendor, custom, helpers, utilities;</style>
     <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/bootstrap-6/css/bootstrap.min.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/lib/bootstrap-6/css/bootstrap.min.css') . '"/>
     <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css') . '") layer(vendor);</style>
-    <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/DataTables/datatables.min.css") layer(vendor);</style>
     <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/fonts/material-icons/material-icons.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/fonts/material-icons/material-icons.css') . '") layer(vendor);</style>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery.min.js"></script>
     <script type="module" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_bs6_bridge.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_bs6_bridge.js') . '"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_ui.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_ui.js') . '"></script>
-    <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/DataTables/datatables.min.js"></script>
-    <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery_datatables_checkbox.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/lazy.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/multiselect-checkbox/jquery-multiselect-checkbox.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/jquery.inputmask.min.js"></script>
@@ -305,6 +301,116 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     <style>' . pg_style_tag_css(CUSTOM_CSS) . '</style>';
 
 
+}
+
+/**
+ * A classic script for <head> that asks a browser too old for Bootstrap 6
+ * to be updated. It tests CSS.supports() for light-dark(), :has() and
+ * relative oklch() colours, which Bootstrap 6 and the panel stylesheet rely
+ * on and which fail below Chrome/Edge 123, Firefox 128 and Safari 17.5; a
+ * browser without CSS.supports() counts as old. Only then is a small bar
+ * put at the bottom of the window, which its close button removes for the
+ * rest of the browser session (sessionStorage). Nothing blocks the page,
+ * nothing is fetched, and a page inside a frame shows no bar of its own.
+ *
+ * The script is ES5 so that the browsers it is for can run it. The bar has
+ * its own fixed colours: the theme's colours are light-dark() values, which
+ * such a browser cannot read. The texts go in as text nodes, written as JSON
+ * with < > & ' " escaped, so no translation can close the script element.
+ *
+ * @param string $text  the notice, translated
+ * @param string $close the close button's name, translated
+ * @return string HTML: one <script> element, '' when a text is not UTF-8
+ */
+function pg_old_browser_notice_script($text, $close)
+{
+    $texts = json_encode(
+        array('text' => (string) $text, 'close' => (string) $close),
+        JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+    if (!is_string($texts)) {
+        return '';
+    }
+
+    $script = <<<'PGOLDBROWSER'
+<script>
+(function () {
+    var texts = PG_OLD_BROWSER_TEXTS;
+    var supported = false;
+    try {
+        supported = !!(window.CSS && CSS.supports &&
+            CSS.supports('color', 'light-dark(#000, #fff)') &&
+            CSS.supports('selector(:has(*))') &&
+            CSS.supports('color', 'oklch(from red l c h)'));
+    } catch (e) {
+        supported = false;
+    }
+    if (supported || (window.self !== window.top)) {
+        return;
+    }
+    try {
+        if (window.sessionStorage && (sessionStorage.getItem('pg-old-browser-notice') === '1')) {
+            return;
+        }
+    } catch (e) {
+    }
+    function show() {
+        if (!document.body || document.getElementById('pg-old-browser-notice')) {
+            return;
+        }
+        var bar = document.createElement('div');
+        var message = document.createElement('span');
+        var button = document.createElement('button');
+        bar.id = 'pg-old-browser-notice';
+        bar.setAttribute('role', 'status');
+        bar.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:2147483000;max-width:40rem;margin:0 auto;'
+            + 'display:flex;align-items:center;padding:6px 6px 6px 14px;border:1px solid #c99a00;border-radius:8px;'
+            + 'background:#fff3cd;color:#3d2e00;box-shadow:0 4px 16px rgba(0,0,0,.25);'
+            + 'font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;';
+        message.style.cssText = 'flex:1 1 auto;';
+        message.appendChild(document.createTextNode(texts.text));
+        button.type = 'button';
+        button.setAttribute('aria-label', texts.close);
+        button.title = texts.close;
+        button.style.cssText = 'flex:0 0 auto;margin-left:8px;min-width:32px;min-height:32px;padding:0 8px;border:0;'
+            + 'border-radius:6px;background:transparent;color:inherit;font:inherit;font-size:20px;line-height:1;cursor:pointer;';
+        button.appendChild(document.createTextNode(String.fromCharCode(215)));
+        button.onclick = function () {
+            try {
+                sessionStorage.setItem('pg-old-browser-notice', '1');
+            } catch (e) {
+            }
+            if (bar.parentNode) {
+                bar.parentNode.removeChild(bar);
+            }
+        };
+        bar.appendChild(message);
+        bar.appendChild(button);
+        document.body.appendChild(bar);
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', show);
+    } else {
+        show();
+    }
+})();
+</script>
+PGOLDBROWSER;
+
+    return str_replace('PG_OLD_BROWSER_TEXTS', $texts, $script);
+}
+
+/**
+ * The old browser notice as the panel head (output_control_panel_header_includes())
+ * and the standalone screens that load Bootstrap 6 without it print it.
+ *
+ * @return string HTML
+ */
+function pg_old_browser_notice()
+{
+    return pg_old_browser_notice_script(
+        lang('Your browser is out of date, so parts of this page may not look or work right. Please update your browser.'),
+        lang('Close'));
 }
 
 /**
@@ -400,8 +506,7 @@ function pg_logo_markup($id_suffix = '')
  * covered until the document is ready and the curtain fades out in 100 ms.
  * A screen still building after that (the visual editor) sets
  * window.pgPreloaderHold and calls window.pgPreloaderDone() once painted;
- * only that curtain shows the mark in the middle. A list screen (table.chart)
- * is held the same way without the mark until DataTables has drawn its table.
+ * only that curtain shows the mark in the middle.
  *
  * Leaving: no curtain. The old page stays visible; once a navigation has
  * been under way for 150 ms a thin bar runs across the top and the pointer
@@ -472,26 +577,14 @@ function pg_preloader_markup()
             host.classList.add('is-done');
         }
 
-        // A list screen prints its table.chart hidden and shows it only
-        // once DataTables has drawn it (backend.src.js), so its curtain
-        // waits for that pgPreloaderDone() instead of lifting over an empty
-        // card. Read on DOM ready: the table is not parsed yet up here. No
-        // is-hold: an everyday list never draws the mark.
-        function arrived() {
-            if (document.querySelector('table.chart') && window.jQuery && jQuery.fn && jQuery.fn.DataTable) {
-                return;
-            }
-            hide();
-        }
-
         window.pgPreloaderDone = hide;
 
         if (window.pgPreloaderHold) {
             host.classList.add('is-hold');
         } else if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', arrived);
+            document.addEventListener('DOMContentLoaded', hide);
         } else {
-            arrived();
+            hide();
         }
         timer = setTimeout(hide, 9000);
 
@@ -653,6 +746,9 @@ function pg_panel_no_store_screens()
         'view_short_links.php',
         'view_folders.php',
         'view_cart_quotes.php',
+        'settings_security.php',
+        'settings_commerce.php',
+        'view_not_found_log.php',
     );
 }
 
@@ -2128,7 +2224,7 @@ function pg_css_bundles()
 // Cloudflare's Email Address Obfuscation rewrites every address in an HTML
 // response into "[email protected]" and a script that decodes it in the
 // browser. On the software's own screens that breaks what the script does
-// not reach (table cells drawn again by DataTables, title attributes, text
+// not reach (table cells drawn again by script, title attributes, text
 // copied into inputs) and shows staff the placeholder instead of the
 // address. Cloudflare leaves alone what sits between these two comments, so
 // the panel chrome wraps the whole body in them. Pages built in the
@@ -7177,29 +7273,45 @@ function pg_asset_path($url)
         $path = substr($path, strlen(PATH));
     }
 
-    $path = ltrim($path, '/');
+    $path = pg_asset_decoded_path(ltrim($path, '/'));
 
-    if ($path === '' || strpos($path, '..') !== false) {
+    if ($path === '') {
         return '';
     }
 
-    $path = rawurldecode($path);
-
     // Uploaded files first: that is where a designer's own assets live.
-    $candidate = FILE_DIRECTORY_PATH . '/' . $path;
-
-    if (is_file($candidate)) {
-        return $candidate;
-    }
-
     // Then the web root, for software assets and anything dropped in by hand.
-    $candidate = dirname(PG_FUNCTIONS_DIR) . '/' . $path;
+    // A file a link leads out of its root to is not one of ours.
+    foreach (array(FILE_DIRECTORY_PATH, dirname(PG_FUNCTIONS_DIR)) as $root) {
+        $candidate = $root . '/' . $path;
+        $real = is_file($candidate) ? realpath($candidate) : false;
+        $real_root = realpath($root);
 
-    if (is_file($candidate)) {
-        return $candidate;
+        if ($real !== false && $real_root !== false && strpos($real, rtrim($real_root, '/\\') . DIRECTORY_SEPARATOR) === 0) {
+            return $candidate;
+        }
     }
 
     return '';
+}
+
+/**
+ * The path part of a local asset address, decoded, or '' when it is empty
+ * or could leave its root: a "..", a backslash or a NUL byte, written plain
+ * or percent-encoded. Decoded before the check, so "%2e%2e/" is caught.
+ *
+ * @param string $path the address without the install path and leading slash
+ * @return string
+ */
+function pg_asset_decoded_path($path)
+{
+    $path = rawurldecode((string) $path);
+
+    if ($path === '' || strpos($path, '..') !== false || strpbrk($path, "\\\0") !== false) {
+        return '';
+    }
+
+    return $path;
 }
 
 /**
@@ -7367,11 +7479,18 @@ function pg_js_bundles()
             'assets/js/workspace_task_approval.js',
             'assets/js/workspace_approvals.js',
             'assets/js/workspace_acks.js',
+            'assets/js/workspace_canvas_picture.js',
             'assets/js/workspace_mail.js',
             'assets/js/workspace_status.js',
             'assets/js/workspace_voice.js',
             'assets/js/workspace_customer.js',
             'assets/js/workspace_flow_flag.js',
+            'assets/js/workspace_note_groups.js',
+            'assets/js/workspace_note_tabs.js',
+            'assets/js/workspace_note_group_shares.js',
+            'assets/js/workspace_note_lock.js',
+            'assets/js/workspace_memory.js',
+            'assets/js/workspace_channel_agents.js',
             'assets/js/workspace_replies.js',
             'assets/js/workspace.js',
         ),
@@ -7427,8 +7546,17 @@ function pg_js_bundles()
         // The explorer's tree in the File Manager and Catalog Manager panels.
         'assets/js/explorer_side.min.js'           => array('assets/js/explorer_side.js'),
         // The visual designer. Loaded without defer, before the inline
-        // script that starts it and the scripts that extend it.
-        'assets/js/style_designer.min.js'          => array('assets/js/pg_google_fonts.js', 'assets/js/style_designer.src.js'),
+        // script that starts it and the scripts that extend it. Its block
+        // family files come after the core, whose registration call they use.
+        'assets/js/style_designer.min.js'          => array_merge(array('assets/js/pg_google_fonts.js'), pg_designer_js_sources()),
+        // The designer's parts not needed to open a page (pg_designer_parts()),
+        // each run by the editor the first time it is asked for.
+        'assets/js/style_designer_ai.min.js'       => array('assets/js/designer_ai.js'),
+        'assets/js/style_designer_import.min.js'   => array('assets/js/style_designer_import.js'),
+        'assets/js/style_designer_code.min.js'     => array('assets/js/style_designer_code.js'),
+        'assets/js/style_designer_theme.min.js'    => array('assets/js/style_designer_theme.js'),
+        'assets/js/style_designer_fonts.min.js'    => array('assets/js/style_designer_fonts.js'),
+        'assets/js/style_designer_interactions.min.js' => array('assets/js/style_designer_interactions.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -7437,6 +7565,108 @@ function pg_js_bundles()
         // The Visitors overview (visitors.php): its period bar and charts.
         'assets/js/pg_visitors.min.js'            => array('assets/js/pg_visitors.src.js'),
     );
+}
+
+/**
+ * The visual designer's own sources, in the order they run: the core
+ * (assets/js/style_designer.src.js), then every block family file
+ * (assets/js/style_designer_blocks_<family>.js) sorted by name. A family file
+ * registers its palette group, blocks, builders and block rules with
+ * StyleDesigner.registerBlockFamily(), so adding one edits neither the core
+ * nor this list. The readers of the core's _sdT() keys and block rules
+ * (pg_designer_i18n_keys(), _pg_designer_block_css_source(),
+ * tools/check_lang.php) read the same list.
+ *
+ * @return array paths under the software directory
+ */
+function pg_designer_js_sources()
+{
+    $families = glob(PG_FUNCTIONS_DIR . '/assets/js/style_designer_blocks_*.js');
+    $out = array();
+    foreach (is_array($families) ? $families : array() as $path) {
+        $name = basename($path);
+        if (preg_match('/^style_designer_blocks_[a-z0-9_]+\.js$/', $name)) {
+            $out[] = 'assets/js/' . $name;
+        }
+    }
+    sort($out, SORT_STRING);
+    return array_merge(array('assets/js/style_designer.src.js'), $out);
+}
+
+/**
+ * The visual designer's parts not needed to open a page, by name: each is a
+ * bundle of pg_js_bundles() kept out of style_designer.min.js. The designer
+ * screen hands the addresses of the parts the operator may use to the editor
+ * (sdDesign.parts, pg_designer_part_urls()); the editor runs a part's files
+ * the first time something asks for it (_sdPartLoad()).
+ *
+ * @return array part name => bundle under the software directory
+ */
+function pg_designer_parts()
+{
+    return array(
+        // The assistant panel (designer_ai.js), designers with the assistant on.
+        'ai' => 'assets/js/style_designer_ai.min.js',
+        // The HTML / ZIP import and the paste-a-page reply opened as tabs.
+        'import' => 'assets/js/style_designer_import.min.js',
+        // The code view's runtime: switching it on, its document and
+        // selection, the file tabs and the search in all tabs.
+        'code'   => 'assets/js/style_designer_code.min.js',
+        // The Themes tab of the assets panel: the Bootstrap variable rows,
+        // their cascade rules and "save these colours as a theme".
+        'theme'  => 'assets/js/style_designer_theme.min.js',
+        // The Google Fonts browser: the catalogue's list, the preview and
+        // the weights of a font added to the design.
+        'fonts'  => 'assets/js/style_designer_fonts.min.js',
+        // The Interactions section's rows of the properties panel: the
+        // effect, trigger and timing fields and the Play button.
+        'interactions' => 'assets/js/style_designer_interactions.min.js',
+    );
+}
+
+/**
+ * Every source of the visual designer: the bundled ones
+ * (pg_designer_js_sources()), then the sources of its parts
+ * (pg_designer_parts()). The readers of the editor's _sdT() keys read this
+ * list, so a key only a part uses still reaches the editor's map.
+ *
+ * @return array paths under the software directory
+ */
+function pg_designer_js_all_sources()
+{
+    $out = pg_designer_js_sources();
+    $bundles = pg_js_bundles();
+
+    foreach (pg_designer_parts() as $bundle) {
+        foreach (isset($bundles[$bundle]) ? $bundles[$bundle] : array() as $source) {
+            if (!in_array($source, $out, true)) {
+                $out[] = $source;
+            }
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The file addresses of the designer parts named, in load order, for
+ * sdDesign.parts. An unknown name is left out.
+ *
+ * @param array $names part names of pg_designer_parts()
+ * @return array part name => list of addresses
+ */
+function pg_designer_part_urls($names)
+{
+    $parts = pg_designer_parts();
+    $out = array();
+
+    foreach ($names as $name) {
+        if (isset($parts[$name])) {
+            $out[$name] = pg_js_bundle_urls($parts[$name]);
+        }
+    }
+
+    return $out;
 }
 
 /**

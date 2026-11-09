@@ -15,6 +15,7 @@ module: vendor_api
 
 ## Where does a call go?
 - `pg_vendor_api_base()`: `https://api.kodpen.com/v1`, or `PG_VENDOR_API_URL` (`data/config.php`, a test server): https, host, optional port and path, ending in `/v1`, no user, query or blank. Any other value gives '' and no call, never production. `pg_vendor_api_url($path)` appends the path.
+- P8's docker try: `PG_VENDOR_API_URL` is the docker `api.base_url` (the https layer's origin), its CA given through `CURL_CA_BUNDLE`.
 
 ## What does every call carry?
 - `pg_vendor_api_request($method, $url, $options)`: `pg_curl_run()` with `pg_vendor_api_options()`: no redirect, connect 4 s, total 8 s (`timeout`; the package passes 120), body cap 64 KB (`cap`), `X-Pinegrap-Site`, `X-Pinegrap-Env`. A JSON call (default) sends `Accept: application/json, application/problem+json`, a `body` `Content-Type: application/json`; `json` false (signature, package) drops the Accept line; `sink` writes the body to a file; `site_required` (the licence check) calls nothing when the site name cannot go out.

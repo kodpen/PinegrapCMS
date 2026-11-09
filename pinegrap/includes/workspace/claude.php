@@ -133,6 +133,15 @@ function ws_claude_config($fresh = false)
             'hold_until'  => (int) ($row['ws_claude_hold_until'] ?? 0),
             'error'       => (string) ($row['ws_claude_error'] ?? ''),
         );
+
+        // The routine is Claude's push door in the agent registry once the
+        // upgrade made it (11.0.172); config's columns are read only before.
+        $agent = function_exists('ws_agent_claude_row') ? ws_agent_claude_row() : null;
+
+        if ($agent) {
+            $config['routine_url'] = (string) $agent['door_url'];
+            $config['token_set'] = (strpos((string) ($agent['door_secret_sealed'] ?? ''), ':') !== false);
+        }
     }
 
     return $config;
@@ -146,15 +155,9 @@ function ws_claude_config($fresh = false)
  */
 function ws_claude_token()
 {
-    $stored = (string) db_value("SELECT ws_claude_token FROM config LIMIT 1");
+    $agent = function_exists('ws_agent_claude_row') ? ws_agent_claude_row() : null;
 
-    if (($stored === '') || (strpos($stored, ':') === false) || !function_exists('decode_ssl_keys') || !defined('ENCRYPTION_KEY')) {
-        return '';
-    }
-
-    list($cipher, $iv) = explode(':', $stored, 2);
-
-    return (string) decode_ssl_keys($cipher, $iv);
+    return ws_agent_unseal($agent ? $agent['door_secret_sealed'] : db_value("SELECT ws_claude_token FROM config LIMIT 1"));
 }
 
 /**
@@ -1162,6 +1165,11 @@ function ws_claude_request_state($viewer, $row, $session = false)
         return ws_mcp_agent_request_state($row, $viewer);
     }
 
+    // A registry agent's request names the agent (agent_shown.php).
+    if (function_exists('ws_agent_request_parse') && ws_agent_request_parse((string) ($row['agent'] ?? ''))) {
+        return ws_agent_request_state($row);
+    }
+
     $status = (string) $row['status'];
     $hold = ws_claude_config()['hold_until'];
 
@@ -1602,6 +1610,50 @@ function ws_claude_note_version($sent, $site = null)
 }
 
 /**
+ * The version of the instructions this site serves the routine: the first
+ * eight hex digits of a hash of their text, so it changes whenever the text
+ * does (an update, a new address) and needs no number raised by hand. The
+ * text names it in the claim step; a claim that does not send it back was
+ * made by a run that has not read these instructions
+ * (ws_claude_instructions_state()).
+ *
+ * @param string|null $base the Site API, this site's when left out
+ * @return string
+ */
+function ws_claude_instructions_version($base = null)
+{
+    static $versions = array();
+
+    $base = ($base !== null) ? (string) $base : ws_claude_api_base();
+
+    if (!isset($versions[$base])) {
+        $versions[$base] = substr(sha1(ws_claude_routine_text($base, '')), 0, 8);
+    }
+
+    return $versions[$base];
+}
+
+/**
+ * Where the instructions version a claim sends stands against the site's:
+ * none (nothing sent: a run on a prompt that never read the site's
+ * instructions), other (read before the site's text changed) or current.
+ *
+ * @param mixed  $sent    what the claim sent, null when nothing
+ * @param string $current ws_claude_instructions_version()
+ * @return string none | other | current
+ */
+function ws_claude_instructions_state($sent, $current)
+{
+    $sent = is_scalar($sent) ? strtolower(trim((string) $sent)) : '';
+
+    if ($sent === '') {
+        return 'none';
+    }
+
+    return hash_equals((string) $current, $sent) ? 'current' : 'other';
+}
+
+/**
  * The routine's instructions, with this site's address in it: what the
  * routine reads from GET /workspace/claude/instructions after the short
  * prompt pasted on claude.ai signed it in.
@@ -1612,6 +1664,21 @@ function ws_claude_note_version($sent, $site = null)
 function ws_claude_routine_prompt($base = null)
 {
     $base = ($base !== null) ? (string) $base : ws_claude_api_base();
+
+    return ws_claude_routine_text($base, ws_claude_instructions_version($base));
+}
+
+/**
+ * The text of the routine's instructions with the version the claim step
+ * sends back: empty while the version itself is worked out from the text.
+ *
+ * @param string $base         the Site API
+ * @param string $instructions ws_claude_instructions_version()
+ * @return string
+ */
+function ws_claude_routine_text($base, $instructions)
+{
+    $base = (string) $base;
     $version = WS_CLAUDE_BOOTSTRAP_VERSION;
 
     // The rules every prompt ends with (includes/fn/ai_prompts.php), before
@@ -1636,8 +1703,11 @@ Work through the queue:
 1. GET /workspace/claude/requests?version={$version} - the requests waiting for you,
    oldest first.
 2. For each request, in that order:
-   a. POST /workspace/claude/requests/{id}/claim. A 409 answer means another run has
-      it: skip it.
+   a. POST /workspace/claude/requests/{id}/claim with {"instructions": "{$instructions}"},
+      the version of these instructions. A 409 answer means another run has it: skip
+      it. A 409 instructions_outdated answer means these instructions changed since
+      you read them: read them again from the Site API, follow the new text and
+      start the queue again.
    b. GET /workspace/claude/requests/{id}/brief - its "text" is what the site tells
       its own assistant about the request: who asked, now, the note, the task or
       the channel it came from (a discussion with the message it talks over, the
@@ -1860,6 +1930,10 @@ Work through the queue:
       Assistant card shows its first three lines.
    d. When you cannot do a request, POST /workspace/claude/requests/{id}/fail with
       {"reason": "..."} saying why, in the language of the request.
+   e. When a request in a channel or a discussion needs no answer - it only thanks
+      or agrees, or a discussion's latest line asks nothing of you - close it with
+      POST /workspace/claude/requests/{id}/answer and {"no_answer": true} alone:
+      nothing is written. Never close a question this way.
 3. When the list is empty, read it once more: requests may have come in while you
    worked. Stop when it is still empty.
 
@@ -1943,6 +2017,11 @@ function ws_claude_js_strings()
         'change_dismiss'        => lang('Set aside'),
         'change_applied'        => ws_js_template('Applied by {var:1} · {var:2}', 2),
         'change_dismissed'      => ws_js_template('Set aside by {var:1}', 1),
+        'change_applied_agent'  => ws_js_template('Applied at once by {var:1} · {var:2}', 2),
+        'change_undo'           => lang('Undo'),
+        'change_undo_ask'       => lang('Put the record back as it was before this change?'),
+        'change_undone'         => ws_js_template('Undone by {var:1} · {var:2}', 2),
+        'change_undo_done'      => lang('The change was undone.'),
         'change_stale'          => lang('The record changed after Claude proposed this, so it was not applied. Ask Claude again.'),
         'proposal_change_stale' => ws_js_template('The record changed after {var:1} proposed this, so it was not applied. Ask {var:1} again.', 1),
         'change_failed'         => ws_js_template('Could not be applied: {var:1}', 1),
@@ -2018,22 +2097,34 @@ function ws_claude_settings_post($viewer, $action, $liveform, $user)
     $sets = array(
         "ws_claude_enabled = '" . ($enabled ? 1 : 0) . "'",
         "ws_claude_app_id = '" . $app_id . "'",
-        "ws_claude_routine_url = '" . e($url) . "'",
         "ws_claude_error = ''",
         "ws_claude_hold_until = 0",
     );
 
     // The token is written, never shown: left empty, the stored one stays.
+    $sealed = null;
+
     if ($token !== '') {
-        if (!function_exists('encrypt_string_with_iv') || !defined('ENCRYPTION_KEY') || (ENCRYPTION_KEY === '')) {
+        $sealed = ws_agent_seal($token);
+
+        if ($sealed === '') {
             $liveform->add_error(lang('The token cannot be stored: encryption is not available on this site.'));
             return;
         }
-
-        list($cipher, $iv) = encrypt_string_with_iv($token);
-        $sets[] = "ws_claude_token = '" . e($cipher . ':' . $iv) . "'";
     } elseif (!empty($_POST['claude_token_clear'])) {
-        $sets[] = "ws_claude_token = NULL";
+        $sealed = '';
+    }
+
+    // The routine is Claude's door in the agent registry; before the upgrade
+    // made the registry it stays in config.
+    if (ws_agents_ready()) {
+        ws_agent_claude_save($url, $sealed);
+    } else {
+        $sets[] = "ws_claude_routine_url = '" . e($url) . "'";
+
+        if ($sealed !== null) {
+            $sets[] = ($sealed === '') ? "ws_claude_token = NULL" : "ws_claude_token = '" . e($sealed) . "'";
+        }
     }
 
     if (ws_claude_summary_ready() && isset($_POST['claude_summary_hour'])) {
@@ -2491,6 +2582,8 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null)
                                 <button type="submit" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Try the connection')) . '</button>
                                 <div class="form-text">' . h(lang('Starts the routine once; it counts as one of today\'s runs.')) . '</div>
                             </form>' : '') . '
+                            <div class="small mb-5"><span class="fg-secondary">' . h(lang('Version of the instructions the site gives the routine')) . ':</span> <span class="font-monospace">' . h(ws_claude_instructions_version()) . '</span>
+                                <div class="form-text">' . h(lang('It changes with every update that changes them. A run takes a request only with the version it read at its start.')) . '</div></div>
                             <div class="small fw-semibold mb-1">' . h(lang('The latest requests')) . '</div>
                             <ul class="list-unstyled ws-claude-recent">' . $recent . '</ul>
                         </div>

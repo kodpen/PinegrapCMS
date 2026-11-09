@@ -145,7 +145,7 @@ if ($_POST) {
 
 		if (is_array($account) && ($account['user_id'] === 0)) {
 
-			$check = pg_connect_access_token($account['id'], array(), true);
+			$check = pg_connect_check($account);
 
 			if ($check['ok']) {
 
@@ -249,6 +249,11 @@ foreach ($providers as $provider_key => $provider) {
 
 	$provider_draft = (is_array($draft) && ($draft['provider'] === $provider_key)) ? $draft : null;
 
+	// What connecting asks for: the base account, or for a provider that is
+	// only of use to one feature (GitHub: channel links) that feature's
+	// permission, so the account is not connected without it.
+	$connect_purpose = !empty($provider['connect_purpose']) ? (string) $provider['connect_purpose'] : 'account';
+
 	if ($ready) {
 		$app_badge = '<span class="badge theme-success fw-normal">' . h(lang('Ready')) . '</span>';
 	} elseif (is_array($app) && !$app['enabled']) {
@@ -300,7 +305,7 @@ foreach ($providers as $provider_key => $provider) {
 				<div class="d-flex flex-wrap gap-3 mt-3 ms-7 ps-3">
 					' . (($account['status'] === 'reauth')
 						? '<button type="button" class="btn btn-sm btn-solid theme-primary connections-connect"
-							data-provider="' . h($provider_key) . '" data-connection="' . $account['id'] . '"' . ($ready ? '' : ' disabled') . '>
+							data-provider="' . h($provider_key) . '" data-purpose="' . h($connect_purpose) . '" data-connection="' . $account['id'] . '"' . ($ready ? '' : ' disabled') . '>
 							<i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Connect again')) . '</button>'
 						: '<button type="button" class="btn btn-sm btn-outline theme-secondary connections-action"
 							data-action="check" data-id="' . $account['id'] . '">
@@ -439,7 +444,7 @@ foreach ($providers as $provider_key => $provider) {
 						? '<ul class="list-group list-group-flush mb-5">' . $account_rows . '</ul>'
 						: '<p class="small fg-secondary">' . h(lang(array('string' => 'No {var:1} account is connected.', 'vars' => $provider['label']))) . '</p>') . '
 					<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 connections-connect"
-						data-provider="' . h($provider_key) . '" data-connection="0"' . (($ready && $can_seal) ? '' : ' disabled') . '>
+						data-provider="' . h($provider_key) . '" data-purpose="' . h($connect_purpose) . '" data-connection="0"' . (($ready && $can_seal) ? '' : ' disabled') . '>
 						<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $provider['label']))) . '</button>
 					' . (($hint === '') ? '' : '<div class="form-text">' . h($hint) . '</div>') . '
 					<details class="mt-7"' . (($ready && !is_array($provider_draft)) ? '' : ' open') . '>
@@ -539,6 +544,7 @@ echo pg_page_shell(array(
 		if (connect) {
 			var form = document.getElementById("connections_connect_form");
 			form.elements.provider.value = connect.dataset.provider;
+			form.elements.purpose.value = connect.dataset.purpose || "account";
 			form.elements.connection_id.value = connect.dataset.connection;
 			form.submit();
 			return;

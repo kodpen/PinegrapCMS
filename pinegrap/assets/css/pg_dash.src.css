@@ -59,6 +59,19 @@
     --pgd-chart-area: rgba(99, 102, 241, .18);
     --pgd-chart-hot: #ef4444;
     --pgd-track: rgba(15, 23, 42, .08);
+    --pgd-pick: rgba(6, 182, 212, .14);
+    --pgd-pick-line: rgba(8, 145, 178, .5);
+    --pgd-edit-bg: rgba(6, 182, 212, .06);
+    --pgd-edit-line: rgba(8, 145, 178, .25);
+    --pgd-edit-dash: rgba(8, 145, 178, .45);
+    --pgd-check: #0891b2;
+    --pgd-tag-new: #a21caf;
+    --pgd-live: #10b981;
+    --pgd-tag-new-line: rgba(192, 38, 211, .4);
+    --pgd-coupon-line: rgba(217, 119, 6, .5);
+    --pgd-note: #713f12;
+    --pgd-amber: #d97706;
+    --pgd-map-top: #a21caf;
   }
 
   html[data-bs-theme="dark"] .pg-dash,
@@ -98,6 +111,19 @@
     --pgd-chart-area: rgba(99, 102, 241, .45);
     --pgd-chart-hot: #f87171;
     --pgd-track: rgba(148, 163, 184, .12);
+    --pgd-pick: rgba(34, 211, 238, .18);
+    --pgd-pick-line: rgba(34, 211, 238, .5);
+    --pgd-edit-bg: rgba(34, 211, 238, .07);
+    --pgd-edit-line: rgba(34, 211, 238, .25);
+    --pgd-edit-dash: rgba(34, 211, 238, .38);
+    --pgd-check: #22d3ee;
+    --pgd-tag-new: #f0abfc;
+    --pgd-live: #34d399;
+    --pgd-tag-new-line: rgba(217, 70, 239, .4);
+    --pgd-coupon-line: rgba(251, 191, 36, .45);
+    --pgd-note: #fef3c7;
+    --pgd-amber: #f59e0b;
+    --pgd-map-top: #f0abfc;
   }
 
   /* The drawings' button: 40 px, an 11 px corner, a quiet border; the main one
@@ -1058,27 +1084,67 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
   }
 
+  /* ── Look: backdrop ───────────────────────────────────────────────────
+     The drawings' washes behind the new dashboard, over the old
+     dashboard's rules for #content[data-panel-backdrop] in backend.src.css,
+     which keep drawing the old one. Dark is drawn; light keeps the same
+     hues faint on the white page. None is the page's own colour. */
+
+  #content.pg-dash[data-panel-backdrop="mesh"] {
+    background-image:
+      radial-gradient(900px 500px at 8% -5%, rgba(6, 182, 212, .09), transparent 60%),
+      radial-gradient(800px 520px at 100% 0%, rgba(192, 38, 211, .06), transparent 60%),
+      radial-gradient(900px 700px at 60% 110%, rgba(79, 70, 229, .06), transparent 60%);
+  }
+
+  #content.pg-dash[data-panel-backdrop="dusk"] {
+    background-image: linear-gradient(180deg, rgba(79, 70, 229, .1) 0%, rgba(79, 70, 229, .03) 38%, transparent 100%);
+  }
+
+  #content.pg-dash[data-panel-backdrop="ember"] {
+    background-image:
+      radial-gradient(900px 620px at 92% 105%, rgba(249, 115, 22, .1), transparent 60%),
+      radial-gradient(700px 520px at 0% 100%, rgba(244, 63, 94, .06), transparent 60%);
+  }
+
+  html[data-bs-theme="dark"] #content.pg-dash[data-panel-backdrop="mesh"] {
+    background-image:
+      radial-gradient(900px 500px at 8% -5%, rgba(34, 211, 238, .13), transparent 60%),
+      radial-gradient(800px 520px at 100% 0%, rgba(217, 70, 239, .1), transparent 60%),
+      radial-gradient(900px 700px at 60% 110%, rgba(99, 102, 241, .1), transparent 60%);
+  }
+
+  html[data-bs-theme="dark"] #content.pg-dash[data-panel-backdrop="dusk"] {
+    background-image: linear-gradient(180deg, #1b1440 0%, #0d1024 38%, #070b12 100%);
+  }
+
+  html[data-bs-theme="dark"] #content.pg-dash[data-panel-backdrop="ember"] {
+    background-image:
+      radial-gradient(900px 620px at 92% 105%, rgba(249, 115, 22, .16), transparent 60%),
+      radial-gradient(700px 520px at 0% 100%, rgba(244, 63, 94, .1), transparent 60%);
+  }
+
   /* ── Look: density and lights ─────────────────────────────────────────
-     Compact narrows padding and gaps. Lights off drops shadows, blur and
-     the gauge's glow, and holds its twinkle as an off-screen dial is held:
+     Compact narrows the cards' padding and the grid's gaps; the top row
+     keeps its own, as drawn. Lights off drops the backdrop, shadows, blur
+     and the gauge's glow, and holds its twinkle as an off-screen dial is held:
      smoother on a weak device. */
 
   .pg-dash-compact .pg-dash-card {
     padding: .75rem .875rem;
   }
 
-  .pg-dash-compact .pg-dash-top,
   .pg-dash-compact .pg-dash-grid {
     gap: .75rem;
-  }
-
-  .pg-dash-compact .pg-dash-top {
-    margin-bottom: .75rem;
   }
 
   .pg-dash-calm .pg-dash-card {
     box-shadow: none;
     backdrop-filter: none;
+  }
+
+  #content.pg-dash.pg-dash-calm[data-panel-backdrop] {
+    background-image: none;
   }
 
   .pg-dash-calm .pg-health-cells > rect,
@@ -1587,30 +1653,93 @@
     border-top: 2px dotted var(--pgd-muted);
   }
 
+  /* Online engagement as drawn: the number in a 60 px green glow, its words
+     beside it, the minutes as green bars (the last five brightest), each
+     page with a live dot. */
   .pg-dash-live {
     display: flex;
     align-items: center;
-    gap: .5rem;
-  }
-
-  .pg-dash-live-dot {
-    width: .625rem;
-    height: .625rem;
-    border-radius: 50%;
-    background: var(--pg-success);
+    gap: .875rem;
   }
 
   .pg-dash-live-figure {
+    display: inline-flex;
+    flex: 0 0 3.75rem;
+    align-items: center;
+    justify-content: center;
+    width: 3.75rem;
+    height: 3.75rem;
+    border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--pgd-live) 32%, transparent), transparent 70%);
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--pgd-good);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pg-dash-live-words {
+    min-width: 0;
+  }
+
+  .pg-dash-live-label {
     margin: 0;
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: var(--pg-fg-emphasis);
+    font-size: .875rem;
+    color: var(--pgd-fg);
   }
 
   .pg-dash-live-note {
     margin: 0;
-    font-size: .875rem;
-    color: var(--pg-fg-2);
+    font-size: .75rem;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-live-bars .pg-dash-bars {
+    fill: color-mix(in srgb, var(--pgd-live) 45%, transparent);
+  }
+
+  .pg-dash-live-bars .pg-dash-bars rect:nth-last-of-type(-n+5) {
+    fill: var(--pgd-live);
+  }
+
+  .pg-dash-live-pages {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-live-page {
+    display: flex;
+    align-items: center;
+    gap: .625rem;
+    padding: .5rem 0;
+    font-size: .8125rem;
+  }
+
+  .pg-dash-live-page + .pg-dash-live-page {
+    border-top: 1px solid var(--pgd-line);
+  }
+
+  .pg-dash-live-page::before {
+    content: "";
+    flex: 0 0 .5rem;
+    height: .5rem;
+    border-radius: 50%;
+    background: var(--pgd-live);
+  }
+
+  .pg-dash-live-path {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--pgd-fg);
+  }
+
+  .pg-dash-live-count {
+    flex: 0 0 auto;
+    color: var(--pgd-muted);
+    font-variant-numeric: tabular-nums;
   }
 
   @media (forced-colors: active) {
@@ -2066,30 +2195,49 @@
     display: none;
   }
 
-  /* A .card: Bootstrap sets the column direction, under which the text
-     block's 18rem basis became its height. */
+  /* The edit bar: a cyan band with the pencil chip, the title over its
+     hint, the preset segment and the drawn buttons, Save with the main
+     gradient. A .card: Bootstrap sets the column direction, under which
+     the text block's basis became its height. */
   .pg-dash-bar {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
-    gap: 1rem 1.5rem;
+    gap: .75rem;
     margin-bottom: 1.5rem;
-    padding: 1rem 1.5rem;
-    border-radius: var(--pg-radius-lg);
-    border-color: color-mix(in srgb, var(--pg-primary) 40%, transparent);
+    padding: .625rem 1.5rem;
+    border: 1px solid var(--pgd-edit-line);
+    border-radius: 1.125rem;
+    background: var(--pgd-edit-bg);
+    color: var(--pgd-fg);
+    box-shadow: none;
+  }
+
+  .pg-dash-bar-icon {
+    display: inline-flex;
+    flex: 0 0 1.75rem;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: .5625rem;
+    background: var(--pgd-new-bg);
+    color: var(--pgd-accent);
+    font-size: 1rem;
   }
 
   .pg-dash-bar-text {
-    flex: 1 1 18rem;
+    flex: 1 1 14rem;
     min-width: 0;
   }
 
   .pg-dash-bar-title {
     margin: 0;
-    font-size: 1rem;
+    font-size: .875rem;
     font-weight: 700;
-    color: var(--pg-fg-emphasis);
+    line-height: 1.4;
+    color: var(--pgd-strong);
   }
 
   .pg-dash-bar-title:focus {
@@ -2097,9 +2245,10 @@
   }
 
   .pg-dash-bar-hint {
-    margin: .125rem 0 0;
-    font-size: .875rem;
-    color: var(--pg-fg-2);
+    margin: 0;
+    font-size: .75rem;
+    line-height: 1.5;
+    color: var(--pgd-muted);
   }
 
   .pg-dash-bar-presets,
@@ -2107,77 +2256,197 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: .5rem;
+    gap: .75rem;
   }
 
-  .pg-dash-bar-label,
-  .pg-dash-settings-label {
-    font-size: .8125rem;
-    color: var(--pg-fg-2);
+  .pg-dash-bar-label {
+    font-size: .75rem;
+    color: var(--pgd-muted);
   }
 
-  .pg-dash-segment {
+  /* The drawings' segment: one quiet frame with a 10 px corner, 34 px
+     options split by hairlines, the pressed one tinted cyan. */
+  .pg-dash .pg-dash-segment {
+    display: inline-flex;
     flex-wrap: wrap;
+    max-width: 100%;
+    overflow: hidden;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .625rem;
+    background: var(--pgd-fill);
   }
 
-  .pg-dash-segment > [aria-pressed="true"] {
-    background: color-mix(in srgb, var(--pg-primary) 18%, transparent);
-    color: var(--pg-fg-emphasis);
+  .pg-dash .pg-dash-segment > .btn {
+    flex: 0 0 auto;
+    height: 2.125rem;
+    margin: 0;
+    padding: 0 .6875rem;
+    border: 0;
+    border-inline-end: 1px solid var(--pgd-line);
+    border-radius: 0;
+    background: transparent;
+    color: var(--pgd-soft);
+    font-size: .75rem;
+    font-weight: 400;
+    line-height: 2.125rem;
+    box-shadow: none;
+  }
+
+  .pg-dash .pg-dash-segment > .btn:last-child {
+    border-inline-end: 0;
+  }
+
+  .pg-dash .pg-dash-segment > .btn:hover {
+    background: var(--pgd-fill);
+    color: var(--pgd-strong);
+  }
+
+  .pg-dash .pg-dash-segment > .btn[aria-pressed="true"] {
+    background: var(--pgd-pick);
+    color: var(--pgd-strong);
     font-weight: 600;
   }
 
+  .pg-dash .pg-dash-segment > .btn:focus-visible {
+    position: relative;
+    z-index: 1;
+    outline: 2px solid var(--pg-primary-ink);
+    outline-offset: -2px;
+  }
+
+  /* A card in edit mode: a dashed cyan frame, the body dimmed. */
   .pg-dash-editing .pg-dash-cardbox {
-    outline: 1px dashed color-mix(in srgb, var(--pg-primary) 60%, transparent);
-    outline-offset: 4px;
+    outline: 2px dashed var(--pgd-edit-dash);
+    outline-offset: 3px;
   }
 
   .pg-dash-editing .pg-dash-card-body {
     opacity: .55;
   }
 
-  .pg-dash-tools,
-  .pg-dash-settings {
+  /* The tool row: a cyan-tinted strip, the width segment, 34 px square
+     buttons, remove at the far end in a soft red. */
+  .pg-dash-tools {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: .5rem;
+    gap: .375rem;
+    margin: 0;
     padding: .5rem;
-    border: var(--pg-border-width) solid var(--pg-border-color);
-    border-radius: var(--pg-radius-lg);
+    border: 1px solid var(--pgd-edit-line);
+    border-radius: .75rem;
+    background: var(--pgd-edit-bg);
   }
 
-  .pg-dash-tool-remove {
+  .pg-dash .pg-dash-tools > .btn,
+  .pg-dash .pg-dash-settings-done,
+  .pg-dash .pg-dash-status-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.125rem;
+    height: 2.125rem;
+    padding: 0 .625rem;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .5625rem;
+    background: var(--pgd-fill);
+    color: var(--pgd-soft);
+    font-size: .8125rem;
+    font-weight: 400;
+    box-shadow: none;
+  }
+
+  .pg-dash .pg-dash-tools > .btn {
+    padding: 0;
+  }
+
+  .pg-dash .pg-dash-tools > .btn:hover:not(:disabled),
+  .pg-dash .pg-dash-settings-done:hover,
+  .pg-dash .pg-dash-status-toggle:hover {
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-strong);
+  }
+
+  .pg-dash .pg-dash-tools > .btn:disabled {
+    opacity: .35;
+  }
+
+  .pg-dash .pg-dash-tools > .pg-dash-tool-remove {
     margin-inline-start: auto;
+    color: var(--pgd-bad);
   }
 
+  .pg-dash .pg-dash-tools > .pg-dash-tool-remove:hover {
+    border-color: var(--pgd-bad-line);
+    color: var(--pgd-bad);
+  }
+
+  /* Card settings: a field-coloured box, kickers over segments, the badge
+     check, Done at the end. */
   .pg-dash-settings {
+    display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    padding: .75rem 1rem;
+    align-items: stretch;
+    gap: 0;
+    margin: 0;
+    padding: .75rem .875rem;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .75rem;
+    background: var(--pgd-field);
   }
 
   .pg-dash-settings-row {
     display: flex;
     flex-direction: column;
-    gap: .25rem;
+    align-items: flex-start;
+    gap: .375rem;
+    margin-bottom: .875rem;
   }
 
   .pg-dash-settings-label {
+    display: block;
+    font-size: .6875rem;
     font-weight: 600;
-    letter-spacing: .06em;
+    letter-spacing: .08em;
     text-transform: uppercase;
+    color: var(--pgd-muted);
   }
 
   .pg-dash-settings-done {
     align-self: flex-end;
   }
 
+  /* The drawings' check: 36 px rows, a 16 px box in cyan, 13 px text. */
+  .pg-dash .pg-dash-check {
+    display: flex;
+    align-items: center;
+    gap: .625rem;
+    min-height: 2.25rem;
+    margin: 0;
+    padding: 0;
+    font-size: .8125rem;
+    color: var(--pgd-fg);
+  }
+
+  .pg-dash .pg-dash-check > input {
+    flex: 0 0 auto;
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    accent-color: var(--pgd-check);
+  }
+
+  .pg-dash .pg-dash-check > label {
+    margin: 0;
+    cursor: pointer;
+  }
+
   .pg-dash-dragging {
-    opacity: .45;
+    opacity: .4;
   }
 
   .pg-dash-editing .pg-dash-cardbox.pg-dash-drop {
-    outline: 2px solid var(--pg-primary-ink);
+    outline: 2px solid var(--pgd-new-dot);
   }
 
   /* A shortcut in edit mode: the drawn button with its remove cross. */
@@ -2217,12 +2486,41 @@
     color: var(--pgd-accent);
   }
 
-  .pg-dash-tile-edit select {
-    margin: .25rem 0 .375rem;
+  .pg-dash .pg-dash-tile-edit select {
+    width: 100%;
+    height: 2.125rem;
+    margin: .25rem 0;
+    padding-block: 0;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .6875rem;
+    background-color: var(--pgd-field);
+    color: var(--pgd-fg);
+    font-size: .8125rem;
   }
 
+  /* System Status hidden in edit mode: one dashed line with Show. */
   .pg-dash-status[data-off] {
-    opacity: .55;
+    align-self: start;
+    min-height: 0;
+    border-style: dashed;
+  }
+
+  .pg-dash-status[data-off] > :not(.pg-dash-status-head),
+  .pg-dash-status[data-off] .pg-dash-status-head > :not(.pg-dash-status-toggle):not(.pg-dash-status-off) {
+    display: none;
+  }
+
+  .pg-dash-editing .pg-dash-status-details {
+    display: none;
+  }
+
+  .pg-dash-status-off {
+    font-size: .8125rem;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-status:not([data-off]) .pg-dash-status-off {
+    display: none;
   }
 
   .pg-dash-saved {
@@ -2247,9 +2545,61 @@
     }
   }
 
+  /* While the dashboard is edited the switch is off limits (pg_dash_edit.js
+     disables it): leaving the page then would drop the unsaved layout. */
+  .pg-dash-switch .switch:has(input:disabled) {
+    opacity: .7;
+    border-color: var(--pgd-line-2);
+    background: var(--pgd-fill);
+    --bs-switch-indicator-bg: var(--pgd-muted);
+  }
+
+  /* ── Phone (picture 20) ───────────────────────────────────────────────
+     Under a 38rem dashboard: Edit dashboard starts its own line at the
+     left; the edit bar is a band across the screen with a rule under it,
+     as wide as #content (its 1rem padding taken back), so Reset, Cancel
+     and Save stay on one row; a card's remove button opens the tool row's
+     second line instead of standing alone at its end. */
+  @container pgdash (max-width: 37.99rem) {
+    .pg-dash-switch-end {
+      margin-inline-start: 0;
+    }
+
+    .pg-dash > .pg-dash-bar {
+      margin: -.25rem -1rem 1rem;
+      padding: .75rem 1.5rem;
+      border-width: 0 0 1px;
+      border-radius: 0;
+    }
+
+    .pg-dash .pg-dash-tools > .pg-dash-tool-remove {
+      margin-inline-start: 0;
+    }
+  }
+
+  @supports not (container-type: inline-size) {
+    @media (max-width: 639.98px) {
+      .pg-dash-switch-end {
+        margin-inline-start: 0;
+      }
+
+      .pg-dash > .pg-dash-bar {
+        margin: -.25rem -1rem 1rem;
+        padding: .75rem 1.5rem;
+        border-width: 0 0 1px;
+        border-radius: 0;
+      }
+
+      .pg-dash .pg-dash-tools > .pg-dash-tool-remove {
+        margin-inline-start: 0;
+      }
+    }
+  }
+
   @media (forced-colors: active) {
     .pg-dash-editing .pg-dash-cardbox { outline-color: CanvasText; }
-    .pg-dash-segment > [aria-pressed="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+    .pg-dash .pg-dash-segment { border-color: CanvasText; }
+    .pg-dash .pg-dash-segment > [aria-pressed="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
   }
 
 
@@ -2525,6 +2875,17 @@
     color: var(--pg-fg-emphasis);
   }
 
+  /* A file's type box: images cyan, PDFs red, as drawn. */
+  .pg-dash-item-tag:is([data-type="jpg"], [data-type="jpeg"], [data-type="png"], [data-type="gif"], [data-type="webp"], [data-type="svg"]) {
+    background: color-mix(in srgb, var(--pgd-chart-1) 16%, transparent);
+    color: var(--pgd-accent);
+  }
+
+  .pg-dash-item-tag[data-type="pdf"] {
+    background: var(--pgd-bad-bg);
+    color: var(--pgd-bad);
+  }
+
   /* File management: the storage ring and its legend. */
   .pg-dash-storage {
     display: flex;
@@ -2536,8 +2897,8 @@
   .pg-dash-ring {
     position: relative;
     flex: none;
-    width: 6.5rem;
-    height: 6.5rem;
+    width: 5.5rem;
+    height: 5.5rem;
   }
 
   .pg-dash-ring-svg {
@@ -2548,18 +2909,21 @@
 
   .pg-dash-ring-svg circle {
     fill: none;
-    stroke-width: 3.5;
+    stroke-width: 3;
   }
 
-  .pg-dash-ring-track { stroke: var(--pg-tint); }
+  /* The drawings' parts: images cyan, documents violet, the rest yellow,
+     the free space a faint track. */
+  .pg-dash-ring-track { stroke: var(--pgd-track); }
   .pg-dash-ring-part[data-part="image"],
-  .pg-dash-storage-key[data-part="image"] { --pg-dash-part: var(--pg-info); }
+  .pg-dash-storage-key[data-part="image"] { --pg-dash-part: var(--pgd-chart-1); }
   .pg-dash-ring-part[data-part="document"],
-  .pg-dash-storage-key[data-part="document"] { --pg-dash-part: var(--pg-accent); }
+  .pg-dash-storage-key[data-part="document"] { --pg-dash-part: color-mix(in srgb, var(--pgd-chart-2), var(--pgd-chart-3)); }
   .pg-dash-ring-part[data-part="other"],
-  .pg-dash-storage-key[data-part="other"] { --pg-dash-part: var(--pg-warning); }
+  .pg-dash-storage-key[data-part="other"] { --pg-dash-part: var(--pgd-warn); }
   .pg-dash-ring-part[data-part="free"],
-  .pg-dash-storage-key[data-part="free"] { --pg-dash-part: var(--pg-fg-3); }
+  .pg-dash-storage-key[data-part="free"] { --pg-dash-part: var(--pgd-track); }
+  .pg-dash-storage-key[data-part="free"] { --pg-dash-part: var(--pgd-muted); }
   .pg-dash-ring-part { stroke: var(--pg-dash-part); }
 
   .pg-dash-ring-middle {
@@ -2618,7 +2982,7 @@
   .pg-dash-stack {
     display: flex;
     gap: 2px;
-    height: .5rem;
+    height: .75rem;
     overflow: hidden;
     border-radius: 999px;
   }
@@ -2628,14 +2992,15 @@
     background: var(--pg-dash-part);
   }
 
+  /* The drawings' sources: indigo, cyan, pink, the rest grey. */
   .pg-dash-stack-part[data-part="0"],
-  .pg-dash-stack-key[data-part="0"] { --pg-dash-part: var(--pg-accent); }
+  .pg-dash-stack-key[data-part="0"] { --pg-dash-part: color-mix(in srgb, var(--pgd-chart-2) 60%, #fff); }
   .pg-dash-stack-part[data-part="1"],
-  .pg-dash-stack-key[data-part="1"] { --pg-dash-part: var(--pg-info); }
+  .pg-dash-stack-key[data-part="1"] { --pg-dash-part: var(--pgd-chart-1); }
   .pg-dash-stack-part[data-part="2"],
-  .pg-dash-stack-key[data-part="2"] { --pg-dash-part: var(--pg-warning); }
+  .pg-dash-stack-key[data-part="2"] { --pg-dash-part: color-mix(in srgb, var(--pgd-chart-3) 55%, #fff); }
   .pg-dash-stack-part[data-part="3"],
-  .pg-dash-stack-key[data-part="3"] { --pg-dash-part: var(--pg-fg-3); }
+  .pg-dash-stack-key[data-part="3"] { --pg-dash-part: var(--pgd-muted); }
 
   .pg-dash-stack-keys {
     flex-direction: row;
@@ -3086,34 +3451,98 @@
     min-width: 0;
   }
 
-  .pg-dash-side {
+  /* The panel wears the look's card face (pg-dash-card); its parts stand
+     22 px apart, each headed by a 15 px title. */
+  .pg-dash .pg-dash-side {
     flex: 0 1 23rem;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1.375rem;
     min-width: 0;
     margin-bottom: 3rem;
-    padding: 1.25rem;
-    border-radius: var(--pg-radius-lg);
   }
 
   .pg-dash-side-title {
-    margin: 0 0 .625rem;
-    font-size: 1rem;
+    margin: 0 0 .25rem;
+    font-size: .9375rem;
     font-weight: 700;
-    color: var(--pg-fg-emphasis);
+    color: var(--pgd-fg);
   }
 
   .pg-dash-side-part {
     display: flex;
     flex-direction: column;
-    gap: .5rem;
+    gap: .625rem;
+  }
+
+  .pg-dash-side-part > .pg-dash-settings-row {
+    margin-bottom: .25rem;
+  }
+
+  .pg-dash-side-part > .pg-dash-settings-label {
+    margin-top: .375rem;
+  }
+
+  .pg-dash-side .pg-dash-segment {
+    align-self: flex-start;
   }
 
   .pg-dash-side-hint {
-    margin: .25rem 0 0;
+    margin: 0;
+    font-size: .75rem;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-side-part > .pg-dash-check {
+    min-height: 2rem;
+    margin-block: -.25rem;
+  }
+
+  /* The drawings' field: 40 px, an 11 px corner, the field colour. */
+  .pg-dash .pg-dash-field {
+    height: 2.5rem;
+    padding-inline: .75rem;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .6875rem;
+    background-color: var(--pgd-field);
+    color: var(--pgd-fg);
     font-size: .8125rem;
-    color: var(--pg-fg-2);
+  }
+
+  .pg-dash .pg-dash-field::placeholder {
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash .pg-dash-field:focus {
+    border-color: var(--pgd-accent-line);
+  }
+
+  /* The drawings' small button: 34 px, a 9 px corner. */
+  .pg-dash .pg-dash-btn-sm,
+  .pg-dash .pg-dash-gal-act {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.125rem;
+    padding: .25rem .625rem;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .5625rem;
+    background: var(--pgd-fill);
+    color: var(--pgd-fg);
+    font-size: .8125rem;
+    font-weight: 400;
+    box-shadow: none;
+  }
+
+  .pg-dash .pg-dash-btn-sm:hover,
+  .pg-dash .pg-dash-gal-act:hover {
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-strong);
+  }
+
+  .pg-dash .pg-dash-gal-act.theme-primary {
+    border-color: var(--pgd-pick-line);
+    color: var(--pgd-new);
   }
 
   .pg-dash-saved[hidden] {
@@ -3133,24 +3562,29 @@
     gap: .375rem;
   }
 
+  /* A category pill: 30 px, round, the pressed one cyan. */
   .pg-dash-pill {
-    padding: .25rem .75rem;
-    border: var(--pg-border-width) solid var(--pg-border-color);
+    display: inline-flex;
+    align-items: center;
+    height: 1.875rem;
+    padding: 0 .625rem;
+    border: 1px solid var(--pgd-line-2);
     border-radius: 999px;
-    background: transparent;
-    color: var(--pg-fg-body);
-    font-size: .8125rem;
+    background: var(--pgd-fill);
+    color: var(--pgd-soft);
+    font-size: .75rem;
+    white-space: nowrap;
   }
 
   .pg-dash-pill:hover {
-    background: var(--pg-tint-hover);
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-strong);
   }
 
   .pg-dash-pill[aria-pressed="true"] {
-    border-color: color-mix(in srgb, var(--pg-primary) 60%, transparent);
-    background: color-mix(in srgb, var(--pg-primary) 18%, transparent);
-    color: var(--pg-fg-emphasis);
-    font-weight: 600;
+    border-color: var(--pgd-pick-line);
+    background: var(--pgd-pick);
+    color: var(--pgd-strong);
   }
 
   .pg-dash-pill:focus-visible,
@@ -3161,25 +3595,27 @@
 
   .pg-dash-gal-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(9.125rem, 1fr));
     gap: .625rem;
     max-height: 45rem;
     overflow: auto;
     padding: .125rem .25rem .125rem 0;
   }
 
+  /* A gallery entry: a 14 px tile, cyan framed while on the dashboard. */
   .pg-dash-gal-item {
     display: flex;
     flex-direction: column;
     gap: .375rem;
     min-width: 0;
     padding: .5rem;
-    border: var(--pg-border-width) solid var(--pg-border-color);
-    border-radius: var(--pg-radius-lg);
+    border: 1px solid var(--pgd-tile-line);
+    border-radius: .875rem;
+    background: var(--pgd-tile);
   }
 
   .pg-dash-gal-item[data-on="1"] {
-    border-color: color-mix(in srgb, var(--pg-primary) 55%, transparent);
+    border-color: var(--pgd-pick-line);
   }
 
   .pg-dash-gal-head {
@@ -3191,19 +3627,20 @@
 
   .pg-dash-gal-title {
     font-size: .8125rem;
+    font-weight: 700;
     line-height: 1.3;
-    color: var(--pg-fg-emphasis);
+    color: var(--pgd-fg);
   }
 
   .pg-dash-gal-desc {
     flex: 1 1 auto;
     font-size: .75rem;
     line-height: 1.4;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
-  .pg-dash-gal-act {
-    justify-content: center;
+  .pg-dash .pg-dash-gal-act {
+    margin-top: .25rem;
     white-space: normal;
     text-wrap: balance;
   }
@@ -3211,46 +3648,48 @@
   .pg-dash-gal-none {
     grid-column: 1 / -1;
     margin: .5rem 0;
-    font-size: .875rem;
-    color: var(--pg-fg-2);
+    font-size: .8125rem;
+    color: var(--pgd-muted);
   }
 
+  /* NEW in fuchsia, RECOMMENDED in cyan: 10 px heavy capitals. */
   .pg-dash-tag {
-    padding: 0 .375rem;
-    border: var(--pg-border-width) solid;
-    border-radius: var(--pg-radius-sm);
+    padding: 0 .3125rem;
+    border: 1px solid;
+    border-radius: .375rem;
     font-size: .625rem;
-    font-weight: 700;
+    font-weight: 800;
     letter-spacing: .06em;
+    line-height: 1.5;
     text-transform: uppercase;
   }
 
   .pg-dash-tag-new {
-    border-color: color-mix(in srgb, var(--pg-accent) 55%, transparent);
-    color: var(--pg-fg-emphasis);
-    background: color-mix(in srgb, var(--pg-accent) 14%, transparent);
+    border-color: var(--pgd-tag-new-line);
+    color: var(--pgd-tag-new);
   }
 
   .pg-dash-tag-rec {
-    border-color: color-mix(in srgb, var(--pg-info) 55%, transparent);
-    color: var(--pg-fg-emphasis);
-    background: color-mix(in srgb, var(--pg-info) 14%, transparent);
+    border-color: var(--pgd-new-line);
+    color: var(--pgd-new);
   }
 
-  /* Sketches: a few shapes drawn in the theme's colours. */
+  /* Sketches: a few shapes in the drawings' colours on a 74 px field
+     with a 10 px corner. */
   .pg-dash-sketch {
-    --pg-sk: color-mix(in srgb, var(--pg-primary) 55%, transparent);
-    --pg-sk-dim: color-mix(in srgb, var(--pg-fg-2) 22%, transparent);
+    --pg-sk: color-mix(in srgb, var(--pgd-chart-1) 60%, transparent);
+    --pg-sk-dim: color-mix(in srgb, var(--pgd-muted) 28%, transparent);
     position: relative;
     display: flex;
     align-items: flex-end;
     justify-content: center;
     gap: .25rem;
-    height: 4.25rem;
+    height: 4.625rem;
     padding: .5rem;
     overflow: hidden;
-    border-radius: var(--pg-radius);
-    background: color-mix(in srgb, var(--pg-fg-2) 8%, transparent);
+    border: 1px solid var(--pgd-tile-line);
+    border-radius: .625rem;
+    background: var(--pgd-field);
   }
 
   .pg-dash-sketch > span {
@@ -3265,6 +3704,24 @@
     background: var(--pg-sk);
   }
 
+  .pg-dash-sketch[data-sketch="funnel"] > span:nth-child(2),
+  .pg-dash-sketch[data-sketch="bars"] > span:nth-child(2) {
+    background: color-mix(in srgb, var(--pgd-chart-2) 60%, transparent);
+  }
+
+  .pg-dash-sketch[data-sketch="funnel"] > span:nth-child(n+3),
+  .pg-dash-sketch[data-sketch="bars"] > span:nth-child(n+3) {
+    background: color-mix(in srgb, var(--pgd-chart-3) 60%, transparent);
+  }
+
+  .pg-dash-sketch[data-sketch="live"] > span:not(.pg-dash-sk-pulse) {
+    background: color-mix(in srgb, var(--pgd-live) 50%, transparent);
+  }
+
+  .pg-dash-sketch[data-sketch="chat"] .pg-dash-sk-mine {
+    background: var(--pgd-main);
+  }
+
   .pg-dash-sketch[data-sketch="live"] .pg-dash-sk-pulse {
     position: absolute;
     top: .5rem;
@@ -3272,7 +3729,8 @@
     width: .75rem;
     height: .75rem;
     border-radius: 50%;
-    background: var(--pg-success);
+    background: var(--pgd-live);
+    box-shadow: 0 0 0 4px var(--pgd-good-bg);
   }
 
   .pg-dash-sketch[data-sketch="line"] svg {
@@ -3281,12 +3739,12 @@
   }
 
   .pg-dash-sketch[data-sketch="line"] polygon {
-    fill: color-mix(in srgb, var(--pg-primary) 25%, transparent);
+    fill: var(--pgd-chart-area);
   }
 
   .pg-dash-sketch[data-sketch="line"] polyline {
     fill: none;
-    stroke: var(--pg-primary-ink);
+    stroke: var(--pgd-chart-1);
     stroke-width: 2;
   }
 
@@ -3325,11 +3783,12 @@
   }
 
   .pg-dash-sketch[data-sketch="note"] {
-    background: color-mix(in srgb, var(--pg-warning) 12%, transparent);
+    border-color: var(--pgd-warn-line);
+    background: var(--pgd-warn-bg);
   }
 
   .pg-dash-sketch[data-sketch="note"] .pg-dash-sk-line {
-    background: color-mix(in srgb, var(--pg-warning) 45%, transparent);
+    background: var(--pgd-warn-line);
   }
 
   .pg-dash-sk-bubble {
@@ -3358,7 +3817,7 @@
     width: 2.25rem;
     height: 2.25rem;
     border-radius: 50%;
-    background: conic-gradient(var(--pg-primary-ink) var(--pg-sk-p, 70%), var(--pg-sk-dim) 0);
+    background: conic-gradient(var(--pgd-chart-1), var(--pgd-chart-2) var(--pg-sk-p, 70%), var(--pg-sk-dim) 0);
     -webkit-mask: radial-gradient(circle, transparent 52%, #000 54%);
     mask: radial-gradient(circle, transparent 52%, #000 54%);
   }
@@ -3375,7 +3834,7 @@
     width: 4.5rem;
     height: 4.5rem;
     margin-bottom: -2.25rem;
-    background: conic-gradient(from 270deg, var(--pg-success) 0 54deg, var(--pg-sk-dim) 54deg 180deg, transparent 180deg);
+    background: conic-gradient(from 270deg, var(--pgd-live) 0 54deg, var(--pg-sk-dim) 54deg 180deg, transparent 180deg);
   }
 
   .pg-dash-sketch[data-sketch="flow"] > span {
@@ -3386,7 +3845,7 @@
   }
 
   .pg-dash-sketch[data-sketch="flow"] > .pg-dash-sk-on {
-    border-color: var(--pg-success);
+    border-color: var(--pgd-live);
   }
 
   .pg-dash-sketch[data-sketch="boxes"],
@@ -3420,7 +3879,7 @@
   }
 
   .pg-dash-sketch[data-sketch="cells"] > .pg-dash-sk-on {
-    background: var(--pg-primary-ink);
+    background: var(--pgd-chart-1);
   }
 
   .pg-dash-sk-land {
@@ -3806,9 +4265,21 @@
   .pg-dash-pin-choice-note { margin-inline-start: auto; }
 
   /* My notes: one plain box. */
+  /* My notes: a pale amber note, as drawn. */
   .pg-dash-notes {
     min-height: 8rem;
+    padding: .75rem .875rem;
+    border: 1px solid color-mix(in srgb, var(--pgd-warn) 30%, transparent);
+    border-radius: .75rem;
+    background: color-mix(in srgb, var(--pgd-warn) 6%, var(--pgd-field));
+    font-size: .8125rem;
+    line-height: 1.7;
+    color: var(--pgd-note);
     resize: vertical;
+  }
+
+  .pg-dash-notes:focus {
+    border-color: var(--pgd-accent-line);
   }
 
   .pg-dash-personal-hint { margin: .25rem 0 0; }
@@ -3821,20 +4292,39 @@
     margin-bottom: .75rem;
   }
 
-  .pg-dash-perf .pg-dash-goal-ring {
-    width: 4.5rem;
-    height: 4.5rem;
+  /* The ring drawn as a half gauge: the upper half of a 132 px dial, green
+     into cyan as far as the share, the figure at its foot. */
+  .pg-dash .pg-dash-perf .pg-dash-goal-ring {
+    --pg-dash-ring-from: var(--pgd-live);
+    --pg-dash-ring-to: var(--pgd-chart-1);
+    width: 8.25rem;
+    height: 4.375rem;
     margin-bottom: 0;
+    overflow: hidden;
+  }
+
+  .pg-dash-perf .pg-dash-goal-ring-dial {
+    inset: 0 0 auto;
+    height: 8.25rem;
+    background: conic-gradient(from 270deg, var(--pg-dash-ring-from) 0%, var(--pg-dash-ring-to) calc(var(--pg-dash-ring-share, 0%) / 2), var(--pg-dash-ring-track) calc(var(--pg-dash-ring-share, 0%) / 2) 50%, transparent 50%);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - .8125rem), #000 calc(100% - .75rem));
+    mask: radial-gradient(farthest-side, transparent calc(100% - .8125rem), #000 calc(100% - .75rem));
+  }
+
+  .pg-dash-perf .pg-dash-goal-ring-value {
+    align-items: flex-end;
+    font-size: 1.25rem;
   }
 
   .pg-dash-perf-grade {
-    font-weight: 700;
-    color: var(--pg-fg-emphasis);
+    font-size: .875rem;
+    font-weight: 600;
+    color: var(--pgd-strong);
   }
 
-  .pg-dash-perf-grade[data-tone="good"] { color: var(--pg-success-fg-emphasis); }
-  .pg-dash-perf-grade[data-tone="warn"] { color: var(--pg-warning-fg-emphasis); }
-  .pg-dash-perf-grade[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
+  .pg-dash-perf-grade[data-tone="good"] { color: var(--pgd-good); }
+  .pg-dash-perf-grade[data-tone="warn"] { color: var(--pgd-warn); }
+  .pg-dash-perf-grade[data-tone="bad"] { color: var(--pgd-bad); }
 
   @media (forced-colors: active) {
     .pg-dash-goal-ring-dial {
@@ -3849,16 +4339,25 @@
      (assets/js/pg_dash_cards_shop.js). A tone is always written out in the
      text beside its colour. */
 
+  /* The big figure in the name gradient, its line at the far end of the
+     same row. */
   .pg-dash-shop-head {
-    margin-bottom: .75rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .25rem .75rem;
   }
 
   .pg-dash-shop-figure {
     margin: 0;
-    font-size: 1.75rem;
-    font-weight: 700;
-    line-height: 1.1;
-    color: var(--pg-fg-emphasis);
+    font-size: 1.625rem;
+    font-weight: 800;
+    line-height: 1.15;
+    background: var(--pgd-name);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
     font-variant-numeric: tabular-nums;
   }
 
@@ -3867,28 +4366,34 @@
     display: flex;
     flex-wrap: wrap;
     gap: .25rem .75rem;
-    margin: .25rem 0 0;
-    font-size: .8125rem;
-    color: var(--pg-fg-2);
+    margin: 0;
+    font-size: .75rem;
+    color: var(--pgd-muted);
   }
 
-  .pg-dash-shop-note {
-    margin: 0 0 .5rem;
-  }
+  .pg-dash-shop-change[data-tone="good"] { color: var(--pgd-good); }
+  .pg-dash-shop-change[data-tone="bad"] { color: var(--pgd-bad); }
 
-  .pg-dash-shop-change[data-tone="good"] { color: var(--pg-success-fg-emphasis); }
-  .pg-dash-shop-change[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
-
-  .pg-dash-shop-days {
-    margin-bottom: .75rem;
-  }
-
-  .pg-dash-shop-days .pg-dash-bars rect {
-    opacity: .45;
+  /* The week's revenue: amber bars, today's in a gold gradient, the day
+     names under them. */
+  .pg-dash-shop-days .pg-dash-bars {
+    height: 4.375rem;
+    fill: color-mix(in srgb, var(--pgd-amber) 45%, var(--pgd-card));
   }
 
   .pg-dash-shop-days .pg-dash-bars rect.is-today {
-    opacity: 1;
+    fill: var(--pgd-warn);
+  }
+
+  .pg-dash-shop-daynames {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    margin: .25rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: .625rem;
+    text-align: center;
+    color: var(--pgd-muted);
   }
 
   .pg-dash-shop-list {
@@ -3900,19 +4405,19 @@
   }
 
   .pg-dash-shop-item + .pg-dash-shop-item {
-    border-top: var(--pg-border-width) solid var(--pg-border-color);
+    border-top: 1px solid var(--pgd-line);
   }
 
   .pg-dash-shop-link {
     display: flex;
     align-items: center;
     gap: .75rem;
-    padding: .5rem .125rem;
+    padding: .625rem 0;
     color: inherit;
     text-decoration: none;
   }
 
-  .pg-dash-shop-link:hover .pg-dash-shop-name {
+  a.pg-dash-shop-link:hover .pg-dash-shop-name {
     text-decoration: underline;
   }
 
@@ -3925,10 +4430,10 @@
 
   .pg-dash-shop-name {
     overflow: hidden;
-    font-weight: 600;
+    font-size: .8125rem;
     white-space: nowrap;
     text-overflow: ellipsis;
-    color: var(--pg-fg-emphasis);
+    color: var(--pgd-fg);
   }
 
   .pg-dash-shop-meta {
@@ -3936,8 +4441,12 @@
     font-size: .75rem;
     white-space: nowrap;
     text-overflow: ellipsis;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
+
+  .pg-dash-shop-meta[data-tone="good"] { color: var(--pgd-good); }
+  .pg-dash-shop-meta[data-tone="warn"] { color: var(--pgd-warn); }
+  .pg-dash-shop-meta[data-tone="bad"] { color: var(--pgd-bad); }
 
   .pg-dash-shop-end {
     display: flex;
@@ -3949,54 +4458,203 @@
   }
 
   .pg-dash-shop-value {
-    font-weight: 600;
+    font-size: .8125rem;
+    color: var(--pgd-soft);
     font-variant-numeric: tabular-nums;
   }
 
   .pg-dash-shop-tag {
     padding: 0 .375rem;
+    border: 1px solid var(--pgd-line);
     border-radius: 999px;
     font-size: .6875rem;
-    background: var(--pg-tint);
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-shop-tag[data-tone="good"] {
-    background: var(--pg-success-bg-subtle);
-    color: var(--pg-success-fg-emphasis);
+    border-color: var(--pgd-good-line);
+    background: var(--pgd-good-bg);
+    color: var(--pgd-good);
   }
 
   .pg-dash-shop-tag[data-tone="warn"] {
-    background: var(--pg-warning-bg-subtle);
-    color: var(--pg-warning-fg-emphasis);
+    border-color: var(--pgd-warn-line);
+    background: var(--pgd-warn-bg);
+    color: var(--pgd-warn);
   }
 
   .pg-dash-shop-tag[data-tone="bad"] {
-    background: var(--pg-danger-bg-subtle);
-    color: var(--pg-danger-fg-emphasis);
+    border-color: var(--pgd-bad-line);
+    background: var(--pgd-bad-bg);
+    color: var(--pgd-bad);
   }
 
+  /* Offers as coupons: a dashed amber frame, the figure in its own amber
+     box, the code in a spaced monospaced face over its note. */
+  .pg-dash-coupons {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-coupon {
+    display: flex;
+    align-items: stretch;
+    margin: 0 0 .5rem;
+    overflow: hidden;
+    border: 1.5px dashed var(--pgd-coupon-line);
+    border-radius: .75rem;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .pg-dash-coupon:hover .pg-dash-coupon-code {
+    text-decoration: underline;
+  }
+
+  .pg-dash-coupon-off {
+    display: flex;
+    flex: 0 0 4rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0 .25rem;
+    border-right: 1.5px dashed var(--pgd-coupon-line);
+    background: var(--pgd-warn-bg);
+    color: var(--pgd-warn);
+    font-size: 1rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pg-dash-coupon-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: .5rem .75rem;
+  }
+
+  .pg-dash-coupon-code {
+    display: block;
+    overflow: hidden;
+    font-family: var(--pg-font-mono);
+    font-size: .8125rem;
+    letter-spacing: .06em;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--pgd-fg);
+  }
+
+  .pg-dash-coupon-meta {
+    display: block;
+    font-size: .75rem;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-coupon-meta > span + span::before {
+    content: " · ";
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-coupon-days[data-tone="warn"] { color: var(--pgd-warn); }
+  .pg-dash-coupon-days[data-tone="bad"] { color: var(--pgd-bad); }
+
+  /* Exchange rates: a currency per ruled line, the code, its name, the
+     week's line (amber when the lira lost, cyan when it gained), the rate
+     over its toned change. */
+  .pg-dash-fx {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-fx-row {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .75rem 0;
+  }
+
+  .pg-dash-fx-row + .pg-dash-fx-row {
+    border-top: 1px solid var(--pgd-line);
+  }
+
+  .pg-dash-fx-code {
+    flex: 0 0 2.5rem;
+    font-size: .8125rem;
+    font-weight: 800;
+    color: var(--pgd-fg);
+    text-decoration: none;
+  }
+
+  a.pg-dash-fx-code:hover {
+    text-decoration: underline;
+  }
+
+  .pg-dash-fx-name {
+    flex: 1 1 3.75rem;
+    min-width: 0;
+    overflow: hidden;
+    font-size: .75rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-fx-end {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .pg-dash-fx-rate {
+    font-size: .875rem;
+    font-weight: 800;
+    color: var(--pgd-strong);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pg-dash-fx-change {
+    font-size: .6875rem;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-fx-change[data-tone="up"]::before { content: "\25B2\00A0"; }
+  .pg-dash-fx-change[data-tone="down"]::before { content: "\25BC\00A0"; }
+  .pg-dash-fx-change[data-tone="up"] { color: var(--pgd-warn); }
+  .pg-dash-fx-change[data-tone="down"] { color: var(--pgd-accent); }
+
   .pg-dash-spark {
+    flex: 0 0 4.375rem;
     width: 4.375rem;
-    height: 1.25rem;
+    height: 1.375rem;
   }
 
   .pg-dash-spark path {
     fill: none;
-    stroke: var(--pg-dash-cat);
-    stroke-width: 1.5;
+    stroke: var(--pgd-chart-2);
+    stroke-width: 1.8;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+
+  .pg-dash-spark[data-tone="up"] path { stroke: var(--pgd-warn); }
+  .pg-dash-spark[data-tone="down"] path { stroke: var(--pgd-chart-1); }
+
+  /* The sales map in the drawings' fuchsia steps; its rows' bars too. */
+  .pg-dash-map {
+    --pg-dash-map-hue: var(--pgd-chart-3);
   }
 
   .pg-dash-map svg {
     display: block;
     width: 100%;
     height: auto;
-    max-height: 12rem;
+    max-height: 22rem;
   }
 
   .pg-dash-map path {
-    fill: var(--pg-tint);
-    stroke: var(--pg-card-bg);
+    fill: var(--pgd-track);
+    stroke: var(--pgd-card);
     stroke-width: 1;
   }
 
@@ -4013,10 +4671,10 @@
     pointer-events: none;
   }
 
-  .pg-dash-map [data-step="1"] { fill: color-mix(in srgb, var(--pg-dash-cat) 25%, var(--pg-card-bg)); }
-  .pg-dash-map [data-step="2"] { fill: color-mix(in srgb, var(--pg-dash-cat) 45%, var(--pg-card-bg)); }
-  .pg-dash-map [data-step="3"] { fill: color-mix(in srgb, var(--pg-dash-cat) 70%, var(--pg-card-bg)); }
-  .pg-dash-map [data-step="4"] { fill: var(--pg-dash-cat); }
+  .pg-dash-map [data-step="1"] { fill: color-mix(in srgb, var(--pg-dash-map-hue) 30%, var(--pgd-card)); }
+  .pg-dash-map [data-step="2"] { fill: color-mix(in srgb, var(--pg-dash-map-hue) 45%, var(--pgd-card)); }
+  .pg-dash-map [data-step="3"] { fill: color-mix(in srgb, var(--pg-dash-map-hue) 70%, var(--pgd-card)); }
+  .pg-dash-map [data-step="4"] { fill: var(--pgd-map-top); }
 
   .pg-dash-map-legend {
     display: flex;
@@ -4024,7 +4682,7 @@
     gap: .25rem;
     margin: .375rem 0 .75rem;
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-map-step {
@@ -4033,10 +4691,16 @@
     border-radius: 2px;
   }
 
-  .pg-dash-map-step[data-step="1"] { background: color-mix(in srgb, var(--pg-dash-cat) 25%, var(--pg-card-bg)); }
-  .pg-dash-map-step[data-step="2"] { background: color-mix(in srgb, var(--pg-dash-cat) 45%, var(--pg-card-bg)); }
-  .pg-dash-map-step[data-step="3"] { background: color-mix(in srgb, var(--pg-dash-cat) 70%, var(--pg-card-bg)); }
-  .pg-dash-map-step[data-step="4"] { background: var(--pg-dash-cat); }
+  .pg-dash-map-step[data-step="1"] { background: color-mix(in srgb, var(--pg-dash-map-hue) 30%, var(--pgd-card)); }
+  .pg-dash-map-step[data-step="2"] { background: color-mix(in srgb, var(--pg-dash-map-hue) 45%, var(--pgd-card)); }
+  .pg-dash-map-step[data-step="3"] { background: color-mix(in srgb, var(--pg-dash-map-hue) 70%, var(--pgd-card)); }
+  .pg-dash-map-step[data-step="4"] { background: var(--pgd-map-top); }
+
+  .pg-dash-cardbox[data-card="salesmap"] .pg-dash-row {
+    --pg-dash-row-from: color-mix(in srgb, var(--pgd-chart-3) 70%, var(--pgd-card));
+    --pg-dash-row-to: var(--pgd-map-top);
+    grid-template-columns: minmax(0, 6.25rem) minmax(2.5rem, 1fr) minmax(3rem, auto);
+  }
 
   /* Visitor map (pg_dash_cards_visitors.js): a bubble per place over the
      plain provinces; the hovered or focused one is outlined. */
@@ -4081,7 +4745,7 @@
     margin: 0;
     font-size: .8125rem;
     font-weight: 400;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-ops-count {
@@ -4091,8 +4755,8 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .pg-dash-ops-count[data-tone="warn"] { color: var(--pg-warning-fg-emphasis); }
-  .pg-dash-ops-count[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
+  .pg-dash-ops-count[data-tone="warn"] { color: var(--pgd-warn); }
+  .pg-dash-ops-count[data-tone="bad"] { color: var(--pgd-bad); }
 
   .pg-dash-ops-sub,
   .pg-dash-ops-empty {
@@ -4103,6 +4767,23 @@
 
   .pg-dash-ops-empty {
     margin-top: .5rem;
+  }
+
+  /* A lane's rows: plain 13 px lines, each ruled above, the first too. */
+  .pg-dash-ops-lane .pg-dash-shop-list {
+    margin-top: .375rem;
+  }
+
+  .pg-dash-ops-lane .pg-dash-shop-item {
+    border-top: 1px solid var(--pgd-line);
+  }
+
+  .pg-dash-ops-lane .pg-dash-shop-link {
+    padding: .375rem 0;
+  }
+
+  .pg-dash-ops-lane .pg-dash-shop-name {
+    white-space: normal;
   }
 
   @media (forced-colors: active) {

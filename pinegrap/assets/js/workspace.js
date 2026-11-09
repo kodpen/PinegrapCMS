@@ -209,6 +209,7 @@
         row_get: ['M1.5 2h9v8.5h-9z', 'M1.5 5.5h9M5 5.5v5', 'M10 12.25a2 2 0 1 0 4 0a2 2 0 1 0 -4 0', 'M13.5 13.75l1.25 1.25'],
         record_get: ['M2.5 1.5h7l2.5 2.5v4.5', 'M2.5 1.5v13h6', 'M4.5 5.5h5M4.5 8h3', 'M10 12.25a2 2 0 1 0 4 0a2 2 0 1 0 -4 0', 'M13.5 13.75l1.25 1.25'],
         ai: ['M6 2l1.25 3.25L10.5 6.5L7.25 7.75L6 11L4.75 7.75L1.5 6.5l3.25-1.25z', 'M12 9l.75 1.75l1.75.75l-1.75.75L12 14l-.75-1.75L9.5 11.5l1.75-.75z'],
+        agent: ['M3.5 5.5h9v7.5h-9z', 'M8 2.5v3', 'M6 9v.5M10 9v.5', 'M6.5 11.25h3'],
         approval: ['M8 1.5l5.5 2v4c0 3.5-2.5 6-5.5 7c-3-1-5.5-3.5-5.5-7v-4z', 'M5.5 8l1.75 1.75l3.5-3.5'],
         condition: ['M8 14.5V9L3.5 4.5M8 9l4.5-4.5', 'M3 7.5V4h3.5M13 7.5V4H9.5'],
         delay: ['M4 1.75h8M4 14.25h8', 'M5 1.75c0 3 6 3.5 6 6.25s-6 3.25-6 6.25M11 1.75c0 3-6 3.5-6 6.25s6 3.25 6 6.25'],
@@ -488,6 +489,12 @@
                 error.field = json ? json.field : '';
                 error.code = (json && json.code) ? json.code : '';
                 error.stale = !!(json && json.stale);
+                // The notes lock's refusals: the note behind it, the shares
+                // a lock takes back, the pause left, the lock's state.
+                error.note = (json && json.note) ? json.note : null;
+                error.shares = (json && json.shares) ? json.shares : 0;
+                error.wait = (json && json.wait) ? json.wait : 0;
+                error.lock = (json && json.lock) ? json.lock : null;
                 throw error;
             }
 
@@ -1444,6 +1451,42 @@
             first.focus({ preventScroll: true });
         }
     }
+
+    // A file drawn as itself in a note (ws_note_media_html()): a picture
+    // opens the viewer with the note's other pictures beside it, a PDF's
+    // card the file preview. Without the panel's script they stay links.
+    document.addEventListener('click', function (event) {
+        // Only a picture and a PDF have a view here; any other file follows
+        // its link.
+        var link = event.target.closest ? event.target.closest('a[data-ws-media="image"], a[data-ws-media="pdf"]') : null;
+
+        if (!link || event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0 || link.closest('[contenteditable="true"]')) {
+            return;
+        }
+
+        event.preventDefault();
+
+        var name = link.getAttribute('data-ws-media-name') || '';
+
+        if (link.getAttribute('data-ws-media') === 'pdf') {
+            previewFile({ url: link.href, name: name, kind: 'pdf' });
+            return;
+        }
+
+        var scope = link.closest('.ws-msg-body, .ws-body, .dialog-body') || document;
+        var images = [];
+        var start = 0;
+
+        scope.querySelectorAll('a[data-ws-media="image"]').forEach(function (other) {
+            if (other === link) {
+                start = images.length;
+            }
+
+            images.push({ src: other.href, alt: other.getAttribute('data-ws-media-name') || '', caption: other.getAttribute('data-ws-media-name') || '' });
+        });
+
+        viewImages(images, start);
+    });
 
     document.addEventListener('click', function (event) {
         if (ctxNode && !ctxNode.contains(event.target) && (Date.now() - ctxOpenedAt > 350)) {
@@ -3408,6 +3451,64 @@
         return bar;
     }
 
+    // Where a list of people or records opens at the caret (placePicker()):
+    // under the caret's line, or over it when only that side has room or
+    // that side has more, its height cut to the room there (6rem at least,
+    // then over the line); its left edge at the caret, moved left as far as
+    // its right edge needs. It keeps to the field's column when that is
+    // 15rem wide or more (a drawer, a page beside the main menu, whose fixed
+    // rail would cover it), narrowed to it, else to the window; 8px from
+    // the edges of the view (pickerView()). Rects are in the window's
+    // coordinates; the answer is in whole pixels.
+    function pickerPlace(caret, field, view, size) {
+        var edge = 8;
+        var gap = 6;
+        var left = view.left + edge;
+        var right = view.right - edge;
+        var top = view.top + edge;
+        var bottom = view.bottom - edge;
+        var width = Math.max(0, Math.min(size.width, right - left));
+        var columnLeft = Math.max(left, field.left);
+        var columnRight = Math.min(right, field.right);
+
+        if (columnRight - columnLeft >= Math.min(width, 240)) {
+            left = columnLeft;
+            right = columnRight;
+            width = Math.min(width, right - left);
+        }
+
+        var below = bottom - (caret.bottom + gap);
+        var above = (caret.top - gap) - top;
+        var up = (size.height > below) && (above > below);
+        var height = Math.min(Math.max(Math.min(size.height, 96), Math.min(size.height, up ? above : below)), Math.max(0, bottom - top));
+        var y = up ? caret.top - gap - height : caret.bottom + gap;
+
+        return {
+            left: Math.round(Math.max(left, Math.min(caret.left, right - width))),
+            top: Math.round(Math.max(top, Math.min(y, bottom - height))),
+            width: Math.round(width),
+            height: Math.floor(height),
+            up: up
+        };
+    }
+
+    // The part of the window a list may cover: the visual viewport (an
+    // on-screen keyboard shrinks that one only), under the panel's fixed
+    // top bar.
+    function pickerView() {
+        var visual = window.visualViewport;
+        var view = visual
+            ? { left: visual.offsetLeft, top: visual.offsetTop, right: visual.offsetLeft + visual.width, bottom: visual.offsetTop + visual.height }
+            : { left: 0, top: 0, right: document.documentElement.clientWidth || window.innerWidth, bottom: document.documentElement.clientHeight || window.innerHeight };
+        var bar = document.querySelector('.software-navbar');
+
+        if (bar) {
+            view.top = Math.max(view.top, bar.getBoundingClientRect().bottom);
+        }
+
+        return view;
+    }
+
     // A text box outside the channel composer that still picks people with
     // @ and records with # (a task's notes): the composer's picker, lent to
     // it. Slash commands stay in the channel.
@@ -3424,7 +3525,7 @@
             }
         };
 
-        ['pickerCheck', 'recordQuery', 'openPicker', 'drawPicker', 'pickerKey', 'pick', 'closePicker', 'tokens', 'insertTrigger', 'beforeCaret'].forEach(function (name) {
+        ['pickerCheck', 'recordQuery', 'openPicker', 'drawPicker', 'fitPicker', 'pickerKey', 'pick', 'closePicker', 'tokens', 'insertTrigger', 'beforeCaret'].forEach(function (name) {
             field[name] = app[name];
         });
 
@@ -3694,6 +3795,7 @@
             slashInserts: options.slashInserts,
             removeLabel: options.removeLabel,
             headings: !!options.headings,
+            media: options.media,
             pasteFiles: options.pasteFiles,
             onInput: function () {
                 field.pickerCheck();
@@ -3717,6 +3819,8 @@
             picker: null,
             composerWrap: wrap,
             noCommands: true,
+            // The @ and # lists open at the caret (placePicker()).
+            caretPicker: true,
             autosize: function () {},
             value: function () {
                 return editor.markup();
@@ -3758,7 +3862,7 @@
             }
         };
 
-        ['pickerCheck', 'recordQuery', 'openPicker', 'drawPicker', 'placePicker', 'pickerKey', 'pick', 'closePicker', 'tokens', 'insertTrigger', 'beforeCaret', 'insertPulled'].forEach(function (name) {
+        ['pickerCheck', 'recordQuery', 'openPicker', 'drawPicker', 'placePicker', 'fitPicker', 'pickerKey', 'pick', 'closePicker', 'tokens', 'insertTrigger', 'beforeCaret', 'insertPulled'].forEach(function (name) {
             field[name] = app[name];
         });
 
@@ -5506,6 +5610,28 @@
                 window.PGWsTemplates.suggest(picked, { name: name, kind: kind, department: dept, colors: colors });
             });
             body.insertBefore(template.node, body.firstChild);
+        }
+
+        // The channel's memory (assets/js/workspace_memory.js): a channel
+        // with an agent shows it as a tab, any other opens it from here.
+        if (channel && channel.memory && !channel.memory.tab && window.PGWsMemory && app.channel && (app.channel.id === channel.id)) {
+            var memoryRow = el('div', 'mb-5');
+            var memoryOpen = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('mem_open'), 'bi-journal-bookmark');
+            memoryOpen.addEventListener('click', function () {
+                hideOffcanvas(node, function () {
+                    app.tab = 'memory';
+                    app.drawCenter();
+                });
+            });
+            memoryRow.appendChild(memoryOpen);
+            memoryRow.appendChild(el('div', 'form-text', t('mem_help')));
+            body.appendChild(memoryRow);
+        }
+
+        // The channel's agents and what wakes each here
+        // (assets/js/workspace_channel_agents.js); it saves on its own.
+        if (channel && window.PGWsChannelAgents) {
+            window.PGWsChannelAgents.mount(body, channel);
         }
 
         var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', channel ? t('save') : t('create_channel'), 'bi-check2');
@@ -8653,6 +8779,12 @@
                 tabList.push(['board', t('tab_board')]);
             }
 
+            // The Memory tab: in a channel with an agent, or opened from the
+            // channel settings (workspace_memory.js).
+            if (window.PGWsMemory && channel.memory && (channel.memory.tab || (self.tab === 'memory'))) {
+                tabList.push(['memory', t('tab_memory')]);
+            }
+
             var paneId = nextId('ws-pane-');
 
             // Tab semantics in full: the chosen tab is selected and the only
@@ -8774,6 +8906,8 @@
                 self.drawFiles();
             } else if (self.tab === 'tasks') {
                 self.drawTasks();
+            } else if ((self.tab === 'memory') && window.PGWsMemory && channel.memory) {
+                window.PGWsMemory.mount(pane, channel);
             } else if ((self.tab === 'board') && self.hasBoard(channel)) {
                 window.PGWsChannelBoard.mount(pane, channel, {
                     openMessage: function (messageId) { self.open(channel.id, messageId); },
@@ -9899,6 +10033,9 @@
                 body.textContent = t('message_deleted');
             } else if (message.note_card) {
                 body.appendChild(self.noteCardNode(message.note_card));
+            } else if (message.note_group_card && window.PGWsNoteGroupShares && window.PGWsKit) {
+                // A group of notes shared here (workspace_note_group_shares.js).
+                body.appendChild(window.PGWsNoteGroupShares.card(window.PGWsKit, message.note_group_card, openNoteView));
             } else if (message.scheduled) {
                 // A scheduled action written here: its card, as it is now.
                 body.appendChild(scheduledCard(message.scheduled, function (fresh) {
@@ -10515,6 +10652,49 @@
                     event.preventDefault();
                     self.showImage(file.url);
                 });
+
+                // An agent's canvas still blank: this browser draws its
+                // picture (assets/js/workspace_canvas_picture.js).
+                if (file.canvas_pending && window.PGWsCanvasPicture) {
+                    window.PGWsCanvasPicture.mount(message, img, link, featureHelpers());
+                }
+
+                // A person's canvas an agent edited: who did, and Undo for
+                // whoever may edit the message (ws_canvas_undo()).
+                if (file.canvas_edit) {
+                    var edited = el('div');
+                    var mark = el('div', 'small fg-secondary d-flex align-items-center gap-2 mt-1');
+
+                    edited.appendChild(link);
+                    mark.appendChild(icon('bi-robot'));
+                    mark.appendChild(el('span', '', t('canvas_edited_by', file.canvas_edit.handle)));
+
+                    if (file.canvas_edit.can_undo) {
+                        var undo = button('btn btn-sm btn-text theme-secondary py-0', t('canvas_undo'), 'bi-arrow-counterclockwise');
+
+                        undo.addEventListener('click', function () {
+                            ask(t('canvas_undo_ask'), t('canvas_undo')).then(function (yes) {
+                                if (!yes) {
+                                    return;
+                                }
+
+                                undo.disabled = true;
+                                api('ws_canvas_undo', { message_id: message.id, version: file.canvas_edit.version }).then(function (data) {
+                                    toast(t('canvas_undone'));
+                                    self.replaceMessage(data.message);
+                                }).catch(function (error) {
+                                    undo.disabled = false;
+                                    fail(error);
+                                });
+                            });
+                        });
+                        mark.appendChild(undo);
+                    }
+
+                    edited.appendChild(mark);
+
+                    return edited;
+                }
 
                 return link;
             }
@@ -11382,24 +11562,7 @@
             var self = this;
 
             if (!self.flowKit) {
-                var scripts = window.PGWsFlow ? [] : (CFG.flow_scripts || []);
-                var loaded = scripts.reduce(function (before, src) {
-                    return before.then(function () {
-                        return new Promise(function (resolve, reject) {
-                            var node = document.createElement('script');
-
-                            node.src = src;
-                            node.async = false;
-                            node.onload = resolve;
-                            node.onerror = function () {
-                                reject(new Error(t('error_generic')));
-                            };
-                            document.head.appendChild(node);
-                        });
-                    });
-                }, Promise.resolve());
-
-                self.flowKit = Promise.all([loaded, api('ws_flow_embed_config', {})]).then(function (done) {
+                self.flowKit = Promise.all([flowScripts(), api('ws_flow_embed_config', {})]).then(function (done) {
                     if (!window.PGWsFlow || !window.PGWsFlow.embed) {
                         throw new Error(t('error_generic'));
                     }
@@ -11484,6 +11647,8 @@
                     tries: view.tries,
                     config: done[0],
                     people: (BOOT && BOOT.people) || [],
+                    channels: (BOOT && BOOT.channels) || [],
+                    departments: (BOOT && BOOT.departments) || [],
                     onSelect: function (node) {
                         self.flowCardBox(detail, node, byId[node ? node.id : ''], view);
                     },
@@ -11559,7 +11724,8 @@
 
             if (view.flow_id) {
                 var link = el('a', '', t('fd_box_open'));
-                link.href = CFG.urls.flows + '?flow=' + view.flow_id + '&box=' + encodeURIComponent(node.id);
+                link.href = flowScreenAddress(view.flow_id, { box: node.id });
+                flowLinkOpens(link, view.flow_id, { box: node.id });
                 tools.appendChild(link);
             }
 
@@ -12004,11 +12170,12 @@
                     account.appendChild(off);
                     card.appendChild(account);
                 } else if (change.status === 'applied') {
-                    var done = el('div', 'ws-draft-done', t(change.action === 'draft' ? (change.flow_id ? 'sa_draft_flowed' : 'sa_draft_saved') : 'change_applied', change.decided_by, change.decided) + ' ');
+                    var done = el('div', 'ws-draft-done', (change.by_agent ? t('change_applied_agent', change.proposer, change.decided) : t(change.action === 'draft' ? (change.flow_id ? 'sa_draft_flowed' : 'sa_draft_saved') : 'change_applied', change.decided_by, change.decided)) + ' ');
 
                     if (change.flow_id) {
                         var flow = el('a', '', t('sa_draft_flow_see'));
-                        flow.href = CFG.urls.flows + '?flow=' + change.flow_id;
+                        flow.href = flowScreenAddress(change.flow_id);
+                        flowLinkOpens(flow, change.flow_id);
                         done.appendChild(flow);
                     } else if (change.decision_id) {
                         var see = el('a', '', t(change.action === 'draft' ? 'sa_draft_see' : 'change_see_decision'));
@@ -12021,6 +12188,34 @@
                     }
 
                     card.appendChild(done);
+
+                    // Applied at once within the agent's tier: a member who
+                    // may change the record puts it back for 7 days.
+                    if (change.can_undo) {
+                        var undo = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5 mt-2', t('change_undo'), 'bi-arrow-counterclockwise');
+
+                        undo.addEventListener('click', function () {
+                            ask(t('change_undo_ask'), t('change_undo'), true).then(function (yes) {
+                                if (!yes) {
+                                    return;
+                                }
+
+                                undo.disabled = true;
+
+                                api('ws_agent_change_undo', { change_id: change.id }).then(function () {
+                                    toast(t('change_undo_done'), 'success');
+                                    self.sync();
+                                }).catch(function (error) {
+                                    undo.disabled = false;
+                                    fail(error);
+                                });
+                            });
+                        });
+
+                        card.appendChild(undo);
+                    }
+                } else if (change.status === 'undone') {
+                    card.appendChild(el('div', 'ws-draft-done', t('change_undone', change.undone_by, change.undone)));
                 } else if (change.status === 'dismissed') {
                     card.appendChild(el('div', 'ws-draft-done', t('change_dismissed', change.decided_by)));
                 } else if (change.status === 'stale') {
@@ -12459,6 +12654,10 @@
                 var message = el('textarea', 'form-control form-control-sm');
                 var rows = {};
                 var said = el('div', 'small mb-3');
+                // Under each part, its box's dry run when it would not run.
+                var notes = { when: el('div', 'small fg-emphasis-warning mt-2 d-none'), post: el('div', 'small fg-emphasis-warning mt-2 d-none') };
+                var touched = { when: false, post: false };
+                var tries = {};
 
                 said.setAttribute('aria-live', 'polite');
                 name.maxLength = 160;
@@ -12497,8 +12696,10 @@
                 rows.every = when.appendChild(formRow(t('sf_every'), every));
                 rows.days = when.appendChild(formRow(t('sf_days'), days));
                 rows.until = when.appendChild(formRow(t('sf_until'), until, t('sf_until_help')));
+                when.appendChild(notes.when);
                 post.appendChild(el('legend', 'h6', data.graph.nodes[1].name));
                 post.appendChild(formRow(t('sf_message'), message, t('sf_message_help', self.channel.name)));
+                post.appendChild(notes.post);
                 body.appendChild(when);
                 body.appendChild(post);
                 body.appendChild(said);
@@ -12514,12 +12715,32 @@
                 repeat.addEventListener('change', shown);
                 shown();
 
+                // The date picker offers no end before the first day.
+                function earliest() {
+                    until.min = date.value || '';
+                }
+
+                date.addEventListener('change', earliest);
+                earliest();
+
+                function noted() {
+                    var lines = scheduledFlowNotes(tries, touched);
+
+                    Object.keys(notes).forEach(function (part) {
+                        notes[part].textContent = lines[part];
+                        notes[part].classList.toggle('d-none', lines[part] === '');
+                    });
+                }
+
                 // The sketch on the Flows canvas itself, read-only
                 // (PGWsFlow.embed()), drawn anew with each answer; a box
                 // picked brings its settings forward. Where the canvas cannot
                 // be loaded, or the Flows screen holds it, the card's still
                 // picture stands in.
                 function draw(answer) {
+                    tries = (answer.view && answer.view.tries) || {};
+                    noted();
+
                     self.flowEmbedKit().then(function (config) {
                         if (!node.open) {
                             return;
@@ -12534,6 +12755,8 @@
                             tries: answer.view.tries,
                             config: config,
                             people: (BOOT && BOOT.people) || [],
+                            channels: (BOOT && BOOT.channels) || [],
+                            departments: (BOOT && BOOT.departments) || [],
                             onSelect: function (picked) {
                                 if (!picked) {
                                     return;
@@ -12613,6 +12836,8 @@
                             return;
                         }
 
+                        touched.when = touched.when || when.contains(event.target);
+                        touched.post = touched.post || post.contains(event.target);
                         clearTimeout(wait);
                         wait = setTimeout(sketchAgain, 600);
                     });
@@ -12627,6 +12852,12 @@
                     control.disabled = true;
                     clear(said);
 
+                    if (publish) {
+                        touched.when = true;
+                        touched.post = true;
+                        noted();
+                    }
+
                     api('ws_flow_scheduled_new', Object.assign(filled(), {
                         flow_id: saved.flow_id,
                         draft_rev: saved.draft_rev,
@@ -12637,8 +12868,12 @@
                         saved.flow_id = result.flow_id;
                         saved.draft_rev = result.draft_rev;
 
+                        // The canvas over the channel once this window
+                        // has gone (a drawer the layer would sit under).
                         if (!publish) {
-                            flowOpened(result);
+                            flowOpened(result, null, function (next) {
+                                hideOffcanvas(node, next);
+                            });
                             return;
                         }
 
@@ -12685,7 +12920,7 @@
                     key: key,
                     label: t('fl_run_card', card.flow_name),
                     open: card.can_open ? function (run) {
-                        window.location.href = CFG.urls.flows + '?flow=' + run.flow_id + '&run=' + run.id;
+                        flowGo(run.flow_id, { run: run.id });
                     } : null,
                     stop: stop
                 }));
@@ -13779,6 +14014,13 @@
                     // tasks in this channel and leaves its card in it.
                     (CFG.flows && CFG.flows.nav && !self.isThread && !self.era && ((self.channel.kind === 'public') || (self.channel.kind === 'private')))
                         ? { icon: 'bi-play-circle', label: t('fl_here_start'), action: function () { self.flowStarter(); } } : null,
+                    // A new flow whose home is this channel, designed in the
+                    // layer over it: staff who build flows (CFG.flows.scheduled,
+                    // ws_flows_scheduled()), the home a channel they read.
+                    (CFG.flows && CFG.flows.nav && CFG.flows.scheduled && !self.isThread && !self.era && ((self.channel.kind === 'public') || (self.channel.kind === 'private')))
+                        ? { icon: 'bi-diagram-3', label: t('fl_new'), action: function () {
+                            flowLayer(0, { home: self.channel.id, opener: insert });
+                        } } : null,
                     // A scheduled job is a flow with a time start: a new one
                     // posting here, filled in its mini window.
                     (CFG.scheduled && !self.isThread) ? { icon: 'bi-alarm', label: t('sa_flow_new'), action: function () {
@@ -16360,7 +16602,16 @@
 
                 picker.appendChild(types);
 
-                // The row scrolls sideways; keep the chosen kind in view.
+                // The row scrolls sideways, inside the list's width; a mouse
+                // wheel turns it as well, there being nothing to scroll down.
+                types.addEventListener('wheel', function (event) {
+                    if (!event.deltaX && event.deltaY && (types.scrollWidth > types.clientWidth)) {
+                        event.preventDefault();
+                        types.scrollLeft += event.deltaY * ((event.deltaMode === 1) ? 16 : 1);
+                    }
+                }, { passive: false });
+
+                // Keep the chosen kind in view.
                 var active = types.querySelector('.active');
 
                 if (active) {
@@ -16379,6 +16630,8 @@
 
                 if (self.notesMode || self.caretPicker) {
                     self.placePicker();
+                } else {
+                    self.fitPicker();
                 }
 
                 return;
@@ -16435,11 +16688,16 @@
 
             if (self.notesMode || self.caretPicker) {
                 self.placePicker();
+            } else {
+                self.fitPicker();
             }
         },
 
-        // In a long writing box (a note) the picker opens at the caret, not at
-        // the box's edge.
+        // In a formatted box (a note, the channel summary, a task's
+        // description and notes, the drawers' texts) the list opens at the
+        // caret, not at the box's edge, and stays inside the field's column
+        // and the window (pickerPlace()). Every edge is set here: a rule of
+        // the box (.ws-note-compose) stretches its list from side to side.
         placePicker: function () {
             var picker = this.picker;
             var selection = window.getSelection();
@@ -16448,25 +16706,60 @@
                 return;
             }
 
-            var rect = selection.getRangeAt(0).getBoundingClientRect();
+            var range = selection.getRangeAt(0);
+            var field = this.input.getBoundingClientRect();
+            var caret = this.input.contains(range.startContainer) ? range.getBoundingClientRect() : null;
 
-            if (!rect || (!rect.width && !rect.height && !rect.left && !rect.top)) {
-                rect = this.input.getBoundingClientRect();
+            if (!caret || (!caret.width && !caret.height && !caret.left && !caret.top)) {
+                caret = field;
             }
 
+            // Measured at the stylesheet's size (.ws-picker-caret), from the
+            // corner of what it is fixed to: the window, or a box that moves,
+            // as a drawer does while it slides in.
+            picker.classList.add('ws-picker-caret');
             picker.style.position = 'fixed';
+            picker.style.left = '0px';
+            picker.style.top = '0px';
+            picker.style.right = 'auto';
             picker.style.bottom = 'auto';
+            picker.style.width = '';
+            picker.style.maxHeight = '';
 
-            var width = picker.offsetWidth;
-            var height = picker.offsetHeight;
-            var top = rect.bottom + 6;
+            var origin = picker.getBoundingClientRect();
+            var place = pickerPlace(caret, field, pickerView(), { width: origin.width, height: origin.height });
 
-            if (top + height > window.innerHeight - 8) {
-                top = Math.max(8, rect.top - height - 6);
+            picker.style.left = (place.left - origin.left) + 'px';
+            picker.style.top = (place.top - origin.top) + 'px';
+            picker.style.width = place.width + 'px';
+
+            // Cut only when the room is shorter than the list: a cap at its
+            // own height, rounded down, gives the rows a scrollbar for a
+            // pixel.
+            picker.style.maxHeight = (place.height < Math.floor(origin.height)) ? place.height + 'px' : '';
+        },
+
+        // A list over or under its box (the channel's writing box, a note
+        // box without the formatted editor) keeps its place; it only gets no
+        // taller than the window leaves it on that side, so neither the
+        // panel's top bar nor the window's edge cuts it.
+        fitPicker: function () {
+            var picker = this.picker;
+
+            if (!picker || !this.composerWrap) {
+                return;
             }
 
-            picker.style.top = top + 'px';
-            picker.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)) + 'px';
+            picker.style.maxHeight = '';
+
+            var box = picker.getBoundingClientRect();
+            var wrap = this.composerWrap.getBoundingClientRect();
+            var view = pickerView();
+            var room = Math.floor((box.top < wrap.top) ? box.bottom - view.top - 8 : view.bottom - 8 - box.top);
+
+            if (room < Math.floor(box.height)) {
+                picker.style.maxHeight = Math.max(96, room) + 'px';
+            }
         },
 
         pickerKey: function (event) {
@@ -16904,7 +17197,6 @@
                     var area = null;
 
                     if (rich) {
-                        rich.caretPicker = true;
                         rich.set(channel.summary || '', channel.summary_labels || {});
                         wrap.appendChild(rich.input);
                         wrap.appendChild(rich.tools(true));
@@ -18195,7 +18487,7 @@
             var edit = button('btn btn-sm btn-text theme-secondary', t('edit'), 'bi-pencil');
             edit.addEventListener('click', function () {
                 if (item.flow) {
-                    window.location.href = 'workspace_flows.php?flow=' + encodeURIComponent(item.flow.id);
+                    flowGo(item.flow.id, { opener: edit });
                     return;
                 }
 
@@ -18367,9 +18659,31 @@
         return start;
     }
 
-    function flowOpened(result, stay) {
+    // The sentence under each part of the Scheduled flow window: its box's
+    // dry run when the box would not run, once the person has changed that
+    // part or tried to publish, so the empty message of a window just
+    // opened is not flagged.
+    function scheduledFlowNotes(tries, touched) {
+        var line = function (id, part) {
+            var tried = (tries || {})[id];
+
+            return (touched && touched[part] && tried && tried.failed) ? String(tried.said || '') : '';
+        };
+
+        return { when: line('start', 'when'), post: line('post', 'post') };
+    }
+
+    // A flow just made or converted opened on the canvas (flowGo()); what
+    // it left behind is told first. stay: called when the person stays
+    // where they are; leave(next): called before the canvas opens, next()
+    // once the page is ready for it (a drawer gone).
+    function flowOpened(result, stay, leave) {
         var go = function () {
-            window.location.href = CFG.urls.flows + '?flow=' + result.flow_id;
+            if (leave) {
+                leave(function () { flowGo(result.flow_id); });
+            } else {
+                flowGo(result.flow_id);
+            }
         };
 
         if (!result.left || !result.left.length) {
@@ -18409,7 +18723,8 @@
 
         api('ws_flow_scheduled_edit', { id: id }).then(function (result) {
             if (result.flow_id) {
-                window.location.href = CFG.urls.flows + '?flow=' + result.flow_id;
+                free();
+                flowGo(result.flow_id, { opener: trigger });
                 return;
             }
 
@@ -21744,7 +22059,7 @@
         }
 
         var query = params();
-        var lists = { mine: [], shared: [] };
+        var lists = { mine: [], shared: [], groups: [], sharedGroups: [] };
         var current = null;     // the note open, with its text
         var field = null;       // the writing box of the open note
         var voiceRow = null;    // where a recording made in the note runs
@@ -21874,6 +22189,11 @@
             bar.appendChild(importNotes);
         }
 
+        // The notes lock: Lock and its menu (workspace_note_lock.js).
+        if (lockCtx()) {
+            bar.appendChild(window.PGWsNoteLock.button(lockCtx()));
+        }
+
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
         var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
@@ -21902,6 +22222,11 @@
 
             if (mine) {
                 items.push({ icon: note.pinned ? 'bi-pin-angle-fill' : 'bi-pin-angle', label: note.pinned ? t('notes_unpin') : t('notes_pin'), action: function () { pin(note); } });
+
+                if (lockCtx()) {
+                    items = items.concat(window.PGWsNoteLock.noteItems(lockCtx(), note));
+                }
+
                 items.push('-');
                 items.push({ icon: 'bi-person-plus', label: t('notes_share_people'), action: function () { sharePeople(note); } });
                 items.push({ icon: 'bi-hash', label: t('notes_share_channel'), action: function () { shareChannel(note); } });
@@ -21909,6 +22234,12 @@
             }
 
             items.push({ icon: 'bi-link-45deg', label: t('notes_copy_link'), action: function () { copyText(absoluteUrl(CFG.urls.notes + '?note=' + note.id)); } });
+
+            var groups = groupsCtx();
+
+            if (groups) {
+                items = items.concat(window.PGWsNoteGroups.menuItems(groups, note));
+            }
 
             // The note as a file for another app, or as a page to print
             // (workspace_notes_export.php).
@@ -21951,88 +22282,271 @@
             }
 
             notes.forEach(function (note) {
-                // What is new is new until the note is opened; the open one
-                // is being read.
-                var open = current && current.id === note.id;
-                var unread = !open && !!note.unread;
-                var item = el('div', 'ws-nb-item' + (open ? ' active' : '') + (unread ? ' ws-nb-item-unread' : ''));
-
-                var top = el('div', 'ws-nb-item-head');
-                top.appendChild(icon(note.access === 'owner' ? (note.source ? 'bi-chat-square-quote' : 'bi-journal-text') : 'bi-people'));
-                top.appendChild(el('span', 'ws-nb-item-name', note.name));
-
-                if (unread) {
-                    var dot = el('span', 'ws-nb-item-dot');
-                    dot.title = t('notes_news');
-                    dot.setAttribute('aria-label', t('notes_news'));
-                    top.appendChild(dot);
-                }
-
-                if (note.pinned) {
-                    var pinMark = icon('bi-pin-angle-fill', 'ws-nb-item-pin');
-                    pinMark.title = t('notes_pinned');
-                    top.appendChild(pinMark);
-                }
-
-
-                var more = menuButton(button('ws-nb-item-more', '', 'bi-three-dots', t('more')));
-                more.addEventListener('click', function (event) {
-                    var box = more.getBoundingClientRect();
-
-                    event.stopPropagation();
-                    ctxMenu(box.left, box.bottom + 4, noteMenu(note));
-                });
-                top.appendChild(more);
-                item.appendChild(top);
-
-                if (note.excerpt && note.excerpt !== note.name) {
-                    item.appendChild(el('div', 'ws-nb-item-excerpt', note.excerpt));
-                }
-
-                // The time sits on the line under the title, so a narrow list
-                // column leaves the whole head row to the note's name.
-                var meta = el('div', 'ws-nb-item-meta');
-                meta.appendChild(el('span', 'ws-nb-item-time', note.updated));
-
-                if ((note['with'] || []).length || (note['in'] || []).length || note.access !== 'owner') {
-                    meta.appendChild(noteFaces(note, 4));
-                }
-
-                if (note.access !== 'owner' && note.owner) {
-                    meta.appendChild(el('span', 'text-truncate', t('notes_owner', note.owner.name)));
-                } else if (note.source && note.source.channel) {
-                    meta.appendChild(el('span', 'text-truncate', '#' + note.source.channel.name));
-                }
-
-                // Claude: still on a line asked in it, or its answer waiting
-                // to be written in when the note is opened.
-                if (note.claude_state === 'answered' || note.claude_state === 'waiting') {
-                    var claudeTag = el('span', 'ws-nb-item-claude ws-nb-item-claude-' + note.claude_state);
-                    claudeTag.appendChild(icon('bi-stars'));
-                    claudeTag.appendChild(document.createTextNode(' ' + t(note.claude_state === 'answered' ? 'notes_claude_answered' : 'notes_claude_working')));
-                    meta.appendChild(claudeTag);
-                }
-
-                item.appendChild(meta);
-
-                function openThis() {
-                    if (!current || current.id !== note.id) {
-                        openNote(note.id);
-                    }
-                }
-
-                item.addEventListener('click', openThis);
-                pressKeys(item, openThis);
-                onContext(item, function () { return noteMenu(note); });
-
-                section.appendChild(item);
+                section.appendChild(drawItem(note));
             });
 
             return section;
         }
 
+        // One note's row in a list or in a group's folder
+        // (workspace_note_groups.js).
+        function drawItem(note) {
+            // What is new is new until the note is opened; the open one
+            // is being read.
+            var open = current && current.id === note.id;
+            var unread = !open && !!note.unread;
+            var item = el('div', 'ws-nb-item' + (open ? ' active' : '') + (unread ? ' ws-nb-item-unread' : ''));
+
+            var top = el('div', 'ws-nb-item-head');
+            top.appendChild(icon(note.access === 'owner' ? (note.source ? 'bi-chat-square-quote' : 'bi-journal-text') : 'bi-people'));
+            top.appendChild(el('span', 'ws-nb-item-name', note.name));
+
+            if (unread) {
+                var dot = el('span', 'ws-nb-item-dot');
+                dot.title = t('notes_news');
+                dot.setAttribute('aria-label', t('notes_news'));
+                top.appendChild(dot);
+            }
+
+            if (note.pinned) {
+                var pinMark = icon('bi-pin-angle-fill', 'ws-nb-item-pin');
+                pinMark.title = t('notes_pinned');
+                top.appendChild(pinMark);
+            }
+
+            var lockMark = lockCtx() ? window.PGWsNoteLock.mark(window.PGWsKit, note) : null;
+
+            if (lockMark) {
+                top.appendChild(lockMark);
+            }
+
+
+            var more = menuButton(button('ws-nb-item-more', '', 'bi-three-dots', t('more')));
+            more.addEventListener('click', function (event) {
+                var box = more.getBoundingClientRect();
+
+                event.stopPropagation();
+                ctxMenu(box.left, box.bottom + 4, noteMenu(note));
+            });
+            top.appendChild(more);
+            item.appendChild(top);
+
+            if (note.excerpt && note.excerpt !== note.name) {
+                item.appendChild(el('div', 'ws-nb-item-excerpt', note.excerpt));
+            }
+
+            // The time sits on the line under the title, so a narrow list
+            // column leaves the whole head row to the note's name.
+            var meta = el('div', 'ws-nb-item-meta');
+            meta.appendChild(el('span', 'ws-nb-item-time', note.updated));
+
+            if ((note['with'] || []).length || (note['in'] || []).length || note.access !== 'owner') {
+                meta.appendChild(noteFaces(note, 4));
+            }
+
+            if (note.access !== 'owner' && note.owner) {
+                meta.appendChild(el('span', 'text-truncate', t('notes_owner', note.owner.name)));
+            } else if (note.source && note.source.channel) {
+                meta.appendChild(el('span', 'text-truncate', '#' + note.source.channel.name));
+            }
+
+            // Claude: still on a line asked in it, or its answer waiting
+            // to be written in when the note is opened.
+            if (note.claude_state === 'answered' || note.claude_state === 'waiting') {
+                var claudeTag = el('span', 'ws-nb-item-claude ws-nb-item-claude-' + note.claude_state);
+                claudeTag.appendChild(icon('bi-stars'));
+                claudeTag.appendChild(document.createTextNode(' ' + t(note.claude_state === 'answered' ? 'notes_claude_answered' : 'notes_claude_working')));
+                meta.appendChild(claudeTag);
+            }
+
+            item.appendChild(meta);
+
+            function openThis() {
+                if (!current || current.id !== note.id) {
+                    openNote(note.id);
+                }
+            }
+
+            item.addEventListener('click', openThis);
+            pressKeys(item, openThis);
+            onContext(item, function () { return noteMenu(note); });
+
+            return item;
+        }
+
+        // What workspace_note_groups.js draws the folders with; null while
+        // groups are not installed or the script is missing.
+        function groupsCtx() {
+            if (!CFG.notes_groups || !window.PGWsNoteGroups || !window.PGWsKit) {
+                return null;
+            }
+
+            var inShared = {};
+
+            lists.sharedGroups.forEach(function (group) { inShared[group.id] = true; });
+
+            return {
+                kit: window.PGWsKit,
+                groups: lists.groups,
+                sharedGroups: lists.sharedGroups,
+                notes: lists.mine.concat(lists.shared),
+                // An own note put in a group shared with the person is drawn
+                // in that group's folder under Shared with me.
+                mine: lists.mine.filter(function (note) { return !inShared[Number(note.group_id || 0)]; }),
+                search: search,
+                people: ((BOOT && BOOT.people) || []).map(function (member) { return member.id; }),
+                channels: BOOT ? (BOOT.channels || []) : [],
+                // Share the group in an own group's menu
+                // (workspace_note_group_shares.js).
+                groupMenuExtra: function (group) {
+                    var extra = window.PGWsNoteGroupShares ? window.PGWsNoteGroupShares.menuItems(groupsCtx(), group) : [];
+
+                    return lockCtx() ? window.PGWsNoteLock.groupItems(lockCtx(), group).concat(extra) : extra;
+                },
+                // A locked group's folder while the lock is closed: the way
+                // to open it (workspace_note_lock.js).
+                lockedBody: lockCtx() ? function () { return lockListButton(); } : null,
+                title: t('notes_mine'),
+                emptyText: search ? t('notes_empty_search') : t('notes_empty'),
+                drawItem: drawItem,
+                ctxMenu: ctxMenu,
+                colorPicker: colorPicker,
+                setGroups: function (groups) {
+                    lists.groups = groups;
+                    drawList();
+                },
+                reload: loadList
+            };
+        }
+
+        // What workspace_note_lock.js works with; null while the lock is
+        // not installed or the script is missing.
+        function lockCtx() {
+            if (!CFG.notes_lock || !window.PGWsNoteLock || !window.PGWsKit) {
+                return null;
+            }
+
+            return {
+                kit: window.PGWsKit,
+                ctxMenu: ctxMenu,
+                current: function () { return current; },
+                reload: loadList,
+                // A right PIN: the note asked for opens, or the list shows
+                // the locked groups' notes.
+                opened: function (noteId) {
+                    if (noteId) {
+                        openNote(noteId, true);
+                    } else {
+                        loadList();
+                    }
+                },
+                // Lock now or the time ran out: what is typed is saved first
+                // by lockNow's caller; the list loses its locked notes and an
+                // open note behind the lock gives way to the pane.
+                closed: function () {
+                    loadList().then(function () {
+                        if (current && current.id && window.PGWsNoteLock.behind(current)) {
+                            drawLockPane(current.id, current.name || current.title);
+                        }
+                    });
+                },
+                save: function () { return save(); }
+            };
+        }
+
+        // A note behind the closed lock: the lock pane in its place, under
+        // its group's tabs (workspace_note_lock.js).
+        function drawLockPane(noteId, title) {
+            var known = lists.mine.concat(lists.shared).filter(function (note) { return note.id === noteId; })[0] || {};
+
+            clearTimeout(saveTimer);
+            dirty = false;
+            field = null;
+            current = { id: noteId, name: title || known.name || '', title: title || known.name || '', access: 'locked', lockedPane: true, locked: !!known.locked, lock_group: !!known.lock_group, lock_closed: true, group_id: known.group_id || 0, group_sort: known.group_sort || 0, 'with': [], 'in': [] };
+            remember(noteId);
+            root.classList.add('ws-nb-open');
+            clear(pane);
+            pane.appendChild(lockBack());
+            pane.appendChild(window.PGWsNoteLock.pane(lockCtx(), noteId, current.name));
+            drawList();
+        }
+
+        // Back to the list over the lock pane, on a phone (as a note's head).
+        function lockBack() {
+            var back = button('btn btn-sm btn-text theme-secondary lg:d-none mb-3', t('notes_back'), 'bi-arrow-left');
+
+            back.addEventListener('click', function () {
+                current = null;
+                field = null;
+                remember(0);
+                drawList();
+                placeholder();
+            });
+
+            return back;
+        }
+
+        // The button in a closed locked group's folder: the lock pane for
+        // the list.
+        function lockListButton() {
+            var open = button('btn btn-sm btn-text theme-secondary ws-nb-lock-list', t('nlock_unlock_list'), 'bi-unlock');
+
+            open.addEventListener('click', function () {
+                save().then(function () {
+                    current = null;
+                    field = null;
+                    remember(0);
+                    root.classList.add('ws-nb-open');
+                    clear(pane);
+                    pane.appendChild(lockBack());
+                    pane.appendChild(window.PGWsNoteLock.pane(lockCtx(), 0, ''));
+                    drawList();
+                });
+            });
+
+            return open;
+        }
+
+        // The open note's group as tabs over it (workspace_note_tabs.js);
+        // drawn again with the list, so a rename or a move shows at once.
+        function drawTabs() {
+            var card = pane.querySelector('.ws-nb-card');
+            var old = card ? card.querySelector('.ws-nb-tabs') : null;
+            var tabs = null;
+
+            if (!card || !current || !groupsCtx() || !window.PGWsNoteTabs) {
+                if (old) {
+                    old.remove();
+                }
+
+                return;
+            }
+
+            tabs = window.PGWsNoteTabs.draw({
+                kit: window.PGWsKit,
+                note: current,
+                notes: lists.mine.concat(lists.shared),
+                groups: lists.groups.concat(lists.sharedGroups),
+                search: search,
+                panel: card,
+                share: window.PGWsNoteGroupShares ? function (group) { window.PGWsNoteGroupShares.share(groupsCtx(), group); } : null,
+                open: function (noteId) { openNote(noteId); },
+                newNote: function () { startNew(); },
+                reload: loadList
+            });
+
+            if (old && tabs) {
+                card.replaceChild(tabs, old);
+            } else if (old) {
+                old.remove();
+            } else if (tabs) {
+                card.insertBefore(tabs, card.firstChild);
+            }
+        }
+
         function drawList() {
             clear(list);
+            drawTabs();
 
             if (!lists.mine.length && !lists.shared.length && !search) {
                 var intro = el('div', 'ws-nb-intro');
@@ -22041,14 +22555,24 @@
                 list.appendChild(intro);
             }
 
-            list.appendChild(drawSection(t('notes_mine'), lists.mine, search ? t('notes_empty_search') : t('notes_empty')));
-            list.appendChild(drawSection(t('notes_shared'), lists.shared, search ? t('notes_empty_search') : t('notes_empty_shared')));
+            var groups = groupsCtx();
+
+            list.appendChild(groups ? window.PGWsNoteGroups.mine(groups) : drawSection(t('notes_mine'), lists.mine, search ? t('notes_empty_search') : t('notes_empty')));
+            if (groups && window.PGWsNoteGroupShares) {
+                // Groups shared with the person as folders, then the notes
+                // shared one by one (workspace_note_group_shares.js).
+                list.appendChild(window.PGWsNoteGroupShares.section(groups, window.PGWsNoteGroups.sharedLoose(groups, lists.shared), t('notes_shared'), search ? t('notes_empty_search') : t('notes_empty_shared')));
+            } else {
+                list.appendChild(drawSection(t('notes_shared'), groups ? window.PGWsNoteGroups.sharedLoose(groups, lists.shared) : lists.shared, search ? t('notes_empty_search') : t('notes_empty_shared')));
+            }
         }
 
         function loadList() {
             return api('ws_notes', { search: search }).then(function (data) {
                 lists.mine = data.mine || [];
                 lists.shared = data.shared || [];
+                lists.groups = data.groups || [];
+                lists.sharedGroups = data.shared_groups || [];
 
                 if (data.menu) {
                     menuPinned = !!data.menu.pinned;
@@ -22151,6 +22675,12 @@
 
                 if (wasNew) {
                     lists.mine.unshift(data.note);
+
+                    if (note.newGroup && groupsCtx()) {
+                        note.group_id = note.newGroup;
+                        data.note.group_id = note.newGroup;
+                        window.PGWsNoteGroups.placeNew(groupsCtx(), note.id, note.newGroup);
+                    }
                 } else {
                     listed(data.note);
                 }
@@ -22178,6 +22708,10 @@
 
                 if (error.field === 'conflict') {
                     conflict(error.message);
+                } else if (error.code === 'note_locked' && lockCtx() && note === current) {
+                    // The lock closed meanwhile: what was not saved stays
+                    // unsaved, and the pane asks for the PIN.
+                    drawLockPane(note.id, note.name || note.title);
                 } else {
                     fail(error);
                 }
@@ -22261,7 +22795,7 @@
             clearTimeout(pollTimer);
             pollTimer = setTimeout(poll, claudeWaiting ? 5000 : 15000);
 
-            if (!current || !current.id || dirty || saving || document.hidden) {
+            if (!current || !current.id || current.lockedPane || dirty || saving || document.hidden) {
                 return;
             }
 
@@ -22288,7 +22822,11 @@
                 }
 
                 claudeCheck(fresh.claude || []);
-            }).catch(function () {});
+            }).catch(function (error) {
+                if (error.code === 'note_locked' && lockCtx() && note === current) {
+                    drawLockPane(note.id, note.name || note.title);
+                }
+            });
         }
 
         // ── Claude in the note ──
@@ -24164,7 +24702,7 @@
         }
 
         // Files dropped on the note or picked: kept for those who may read it,
-        // and linked where the caret was.
+        // and put where the caret was, on a line of their own (insertFile()).
         function attach(files) {
             // Taken now: the list empties as soon as the picker is reset or
             // the drop is over, before the note has been saved.
@@ -24195,7 +24733,7 @@
 
                     request.done.then(function (data) {
                         card.remove();
-                        field.rich.insertLink(data.file.name, data.file.url);
+                        field.rich.insertFile(data.file.name, data.file.url);
                     }).catch(function (error) {
                         card.remove();
 
@@ -24210,8 +24748,8 @@
         }
 
         // A canvas drawn in the image editor, kept as the note's own file
-        // with its document (workspace_file_save.php?note=) and linked where
-        // the caret was.
+        // with its document (workspace_file_save.php?note=) and put where the
+        // caret was, on a line of its own.
         function drawCanvas() {
             if (!current || !editable() || !field) {
                 return;
@@ -24234,13 +24772,73 @@
                         save: { mode: 'url', url: CFG.urls.file_save + '?note=' + note.id, label: t('canvas_to_note') }
                     }).then(function (result) {
                         if (current && (current.id === note.id) && field && result && result.file) {
-                            field.rich.insertLink(result.file.name, result.file.url);
+                            field.rich.insertFile(result.file.name, result.file.url);
                         }
                     });
                 }, function () {
                     toast(t('file_editor_missing'), 'danger');
                 });
             }).catch(fail);
+        }
+
+        // The canvas document a picture of the note's own folder was drawn
+        // from, or null (workspace_file_save.php?note=&file=); asked once a
+        // file, as a card is drawn again on every change.
+        var canvasDocs = {};
+
+        function noteCanvasDoc(noteId, name) {
+            var key = noteId + '/' + name;
+
+            if (!canvasDocs[key]) {
+                canvasDocs[key] = fetch(CFG.urls.file_save + '?note=' + encodeURIComponent(noteId) + '&file=' + encodeURIComponent(name), {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                    body: JSON.stringify({ token: CFG.token, action: 'canvas' })
+                }).then(function (res) {
+                    return res.json();
+                }).then(function (data) {
+                    return (data && (data.status === 'success') && data.doc && data.doc.artboard) ? data.doc : null;
+                }).catch(function () {
+                    delete canvasDocs[key];
+                    return null;
+                });
+            }
+
+            return canvasDocs[key];
+        }
+
+        // Edit the picture on a canvas of the note: the editor opens with
+        // its layers, and the canvas drawn again is a new file of the note
+        // linked in the old one's place; the old file stays in the note's
+        // folder, linked from its earlier version.
+        function editNoteCanvas(media) {
+            if (!current || !current.id || !editable() || !field) {
+                return;
+            }
+
+            var note = current;
+
+            Promise.all([loadImageEditor(), noteCanvasDoc(note.id, media.name)]).then(function (loaded) {
+                var doc = loaded[1];
+
+                if (!doc) {
+                    return;
+                }
+
+                return window.pgImageEditor.open({
+                    blank: doc.artboard,
+                    doc: doc,
+                    fileName: media.label,
+                    save: { mode: 'url', url: CFG.urls.file_save + '?note=' + note.id + '&file=' + encodeURIComponent(media.name), label: t('file_edit_put') }
+                }).then(function (result) {
+                    if (current && (current.id === note.id) && field && result && result.file) {
+                        field.rich.replaceFile(media.url, result.file.name, result.file.url);
+                    }
+                });
+            }).catch(function () {
+                toast(t('file_editor_missing'), 'danger');
+            });
         }
 
         // A recording made in the note: kept as the note's own file like a
@@ -24270,7 +24868,9 @@
         }
 
         // The recordings a note links to: a Markdown link whose words are a
-        // recorder's file name (voice-…), once each, in their order.
+        // recorder's file name (voice-…), once each, in their order. One on a
+        // line of its own has its player there (the writing box's media card,
+        // the read view's sound player) and is left out.
         function voiceLinks(text) {
             var found = [];
             var seen = {};
@@ -24283,8 +24883,19 @@
                 return found;
             }
 
+            var inline = {};
+            var mediaLine = window.PGWsEditor && window.PGWsEditor.mediaLine;
+
+            String(text || '').split(/\r\n|\r|\n/).forEach(function (line) {
+                var media = mediaLine ? mediaLine(line, CFG.urls.files) : null;
+
+                if (media) {
+                    inline[media.url] = true;
+                }
+            });
+
             while ((match = pattern.exec(String(text || ''))) !== null) {
-                if (window.PGWsVoice.isVoice(match[1]) && !seen[match[2]]) {
+                if (window.PGWsVoice.isVoice(match[1]) && !seen[match[2]] && !inline[match[2]]) {
                     seen[match[2]] = true;
                     found.push({ name: match[1], url: match[2], kind: 'audio' });
                 }
@@ -24459,10 +25070,12 @@
 
             var body = el('div', 'card-body ws-nb-body');
 
+            card.id = 'ws-nb-note-card';
             card.appendChild(headNode);
             card.appendChild(infoNode);
             card.appendChild(body);
             pane.appendChild(card);
+            drawTabs();
             field = null;
             voiceRow = null;
             voiceList = el('div', 'ws-nb-voices d-flex flex-column gap-2 mt-4 d-none');
@@ -24491,6 +25104,35 @@
                 removeLabel: t('block_remove_note'),
                 // Headings and rules, which a note draws and a message does not.
                 headings: true,
+                // A file of this site on a line of its own is a card showing
+                // it (a recording with its player), which opens the image
+                // viewer or the file preview.
+                media: {
+                    open: function (media) {
+                        if (media.kind === 'image') {
+                            viewImages([{ src: media.url, alt: media.label, caption: media.label }], 0);
+                        } else if (media.kind === 'pdf' || media.kind === 'video') {
+                            previewFile({ url: media.url, name: media.label, kind: media.kind });
+                        } else {
+                            window.open(media.url, '_blank', 'noopener');
+                        }
+                    },
+                    player: function (media) {
+                        return (window.PGWsVoice && window.PGWsVoice.isVoice(media.label))
+                            ? window.PGWsVoice.player({ name: media.label, url: media.url, kind: 'audio' }, featureHelpers(), {})
+                            : null;
+                    },
+                    // A canvas of the note opens again with its layers.
+                    action: function (media) {
+                        if (media.kind !== 'image' || !current || !current.id || !editable()) {
+                            return null;
+                        }
+
+                        return noteCanvasDoc(current.id, media.name).then(function (doc) {
+                            return doc ? { icon: 'bi-pencil', label: t('file_edit_image'), run: function () { editNoteCanvas(media); } } : null;
+                        });
+                    }
+                },
                 // A picture pasted into the note is attached, as a dropped one.
                 pasteFiles: function (files) { attach(files); },
                 onKeydown: function (event) {
@@ -24584,12 +25226,24 @@
                 drawList();
                 drawNote();
                 poll();
-            }).catch(fail);
+            }).catch(function (error) {
+                // Behind the closed notes lock: the pane asks for the PIN.
+                if (error.code === 'note_locked' && lockCtx()) {
+                    drawLockPane(noteId, (error.note && error.note.name) || '');
+                    return;
+                }
+
+                fail(error);
+            });
         }
 
         function startNew() {
+            // A new note goes into the group of the note open, if any (a
+            // new note not saved yet: the group it was started in).
+            var inGroup = current ? Number((current.id ? current.group_id : current.newGroup) || 0) : 0;
+
             save().then(function () {
-                current = { id: 0, title: '', body: '', access: 'owner', pinned: false, source: null, 'with': [], 'in': [], owner: null, updated_by: null };
+                current = { id: 0, title: '', body: '', access: 'owner', pinned: false, source: null, 'with': [], 'in': [], owner: null, updated_by: null, newGroup: inGroup };
                 dirty = false;
                 remember(0);
                 drawList();
@@ -24911,11 +25565,21 @@
 
         placeholder();
 
+        // The person's lock, then its time-out (workspace_note_lock.js).
+        if (lockCtx()) {
+            window.PGWsNoteLock.load(lockCtx()).then(function () {
+                window.PGWsNoteLock.watch(lockCtx());
+            }).catch(function () {});
+        }
+
         loadList().then(function () {
             var wanted = parseInt(query.note || 0, 10) || 0;
+            var wantedGroup = parseInt(query.group || 0, 10) || 0;
 
             if (wanted) {
                 openNote(wanted);
+            } else if (wantedGroup && groupsCtx() && window.PGWsNoteGroupShares) {
+                window.PGWsNoteGroupShares.openGroup(groupsCtx(), wantedGroup, openNote);
             } else if (query['new']) {
                 startNew();
             }
@@ -24994,6 +25658,278 @@
         return arrow;
     }
 
+    // ── The Flows editor over a channel ───────────────────────────────
+
+    // The canvas's two scripts (pg_graph_canvas.js, workspace_flow.js),
+    // fetched once a page in their order; the Flows screen prints them.
+    var flowScriptsLoad = null;
+
+    function flowScripts() {
+        if (!flowScriptsLoad) {
+            flowScriptsLoad = (window.PGWsFlow ? [] : (CFG.flow_scripts || [])).reduce(function (before, src) {
+                return before.then(function () {
+                    return new Promise(function (resolve, reject) {
+                        var node = document.createElement('script');
+
+                        node.src = src;
+                        node.async = false;
+                        node.onload = resolve;
+                        node.onerror = function () {
+                            reject(new Error(t('error_generic')));
+                        };
+                        document.head.appendChild(node);
+                    });
+                });
+            }, Promise.resolve());
+            flowScriptsLoad.catch(function () {
+                flowScriptsLoad = null;
+            });
+        }
+
+        return flowScriptsLoad;
+    }
+
+    // What the whole editor reads (ws_flow_editor_config): the Flows
+    // screen's config and texts, once a page.
+    var flowEditorLoad = null;
+
+    function flowEditorConfig() {
+        if (!flowEditorLoad) {
+            flowEditorLoad = api('ws_flow_editor_config', {});
+            flowEditorLoad.catch(function () {
+                flowEditorLoad = null;
+            });
+        }
+
+        return flowEditorLoad;
+    }
+
+    // The layer open (flowLayer()): { layer, title, link, body, opener,
+    // instance, inerted, closing }, null when none.
+    var flowLayerOpen = null;
+
+    // The Flows screen's address for a flow, its box or its run.
+    function flowScreenAddress(flowId, options) {
+        options = options || {};
+
+        return CFG.urls.flows + '?flow=' + encodeURIComponent(flowId)
+            + (options.box ? '&box=' + encodeURIComponent(options.box) : '')
+            + (options.run ? '&run=' + encodeURIComponent(options.run) : '');
+    }
+
+    // A flow opened from one of the ways in (a card, a window, an action's
+    // Edit): in the layer over the page, so the chat stays; on the Flows
+    // screen itself by its address, as the layer would replace the screen's
+    // own editor. options as flowLayer()'s.
+    function flowGo(flowId, options) {
+        if (CFG.mode === 'flows') {
+            window.location.href = flowScreenAddress(flowId, options);
+            return;
+        }
+
+        flowLayer(flowId, options);
+    }
+
+    // A link to a flow on the Flows screen that opens the layer instead on
+    // a plain click; a new tab or window still follows its address.
+    function flowLinkOpens(link, flowId, options) {
+        link.addEventListener('click', function (event) {
+            if ((CFG.mode === 'flows') || event.defaultPrevented || (event.button !== 0)
+                || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
+                return;
+            }
+
+            event.preventDefault();
+            flowLayer(flowId, Object.assign({ opener: link }, options || {}));
+        });
+    }
+
+    // The whole Flows editor in a full-screen layer over the page (a
+    // channel), mounted in it (PGWsFlow.mount() with single), so a flow is
+    // designed without leaving the chat, which stays as it was beneath. Its
+    // bar: the flow's name, "Open on the Flows screen", Close. The page
+    // beneath is inert while it is open (its keys, its composer), the focus
+    // moves in and goes back to the opener; Escape closes it unless a box,
+    // a field or a dialog of the editor holds it. Closing saves first and,
+    // when changes stay unsaved, asks as leaving the page does. options:
+    // box, run (opened with the flow), opener (the control the focus goes
+    // back to, else the one focused now), home (with flowId 0: a new flow
+    // made with this channel as its home, the ways to start one first, as
+    // New flow on the Flows screen). One at a time: while one is open it
+    // stays.
+    function flowLayer(flowId, options) {
+        options = options || {};
+
+        var home = parseInt(options.home, 10) || 0;
+
+        flowId = parseInt(flowId, 10) || 0;
+
+        if (flowLayerOpen || !((flowId > 0) || (home > 0))) {
+            return;
+        }
+
+        var open = {
+            opener: options.opener || document.activeElement,
+            layer: el('div', 'ws-flow-layer'),
+            title: el('h2', 'ws-flow-layer-title', t('fl_nav')),
+            link: el('a', 'btn btn-sm btn-text theme-secondary'),
+            body: el('div', 'ws-flow-layer-body'),
+            instance: null,
+            inerted: [],
+            closing: false
+        };
+        var bar = el('div', 'ws-flow-layer-bar');
+        var close = button('btn btn-sm btn-outline theme-secondary', t('close'), 'bi-x-lg');
+
+        open.layer.setAttribute('role', 'dialog');
+        open.layer.setAttribute('aria-modal', 'true');
+        open.layer.setAttribute('aria-labelledby', 'ws-flow-layer-title');
+        open.title.id = 'ws-flow-layer-title';
+        open.link.href = flowId ? flowScreenAddress(flowId, options) : CFG.urls.flows;
+        open.link.appendChild(icon('bi-box-arrow-up-right'));
+        open.link.appendChild(document.createTextNode(' ' + t('fl_layer_screen')));
+        close.setAttribute('data-ws-flow-layer-close', '');
+        close.addEventListener('click', function () {
+            flowLayerClose();
+        });
+        bar.appendChild(open.title);
+        bar.appendChild(open.link);
+        bar.appendChild(close);
+        open.body.appendChild(el('div', 'ws-empty', t('loading')));
+        open.layer.appendChild(bar);
+        open.layer.appendChild(open.body);
+
+        // Escape is the editor's first: a box selected lets go, a field or
+        // a dialog keeps it; then it closes the layer.
+        open.layer.addEventListener('keydown', function (event) {
+            var target = event.target;
+
+            if ((event.key !== 'Escape') || event.defaultPrevented || askUp || document.querySelector('dialog[open]')
+                || (target && target.closest && target.closest('input, textarea, select, [contenteditable="true"], [role="menu"], [role="listbox"]'))) {
+                return;
+            }
+
+            event.preventDefault();
+            flowLayerClose();
+        });
+
+        // The page beneath: its controls, keys and composer idle. Dialogs,
+        // toasts and menus opened over the editor are not part of it.
+        Array.prototype.forEach.call(document.body.children, function (node) {
+            if ((node.tagName !== 'DIALOG') && (node.tagName !== 'SCRIPT') && (node !== toastRoot) && !node.inert) {
+                node.inert = true;
+                open.inerted.push(node);
+            }
+        });
+
+        document.body.appendChild(open.layer);
+        document.documentElement.classList.add('ws-flow-layer-on');
+        flowLayerOpen = open;
+        close.focus({ preventScroll: true });
+
+        Promise.all([flowScripts(), flowEditorConfig()]).then(function (done) {
+            var config = done[1] || {};
+
+            if (flowLayerOpen !== open) {
+                return;
+            }
+
+            if (!window.PGWsFlow || !window.PGWsFlow.mount) {
+                throw new Error(t('error_generic'));
+            }
+
+            // The Flows screen's config (a superset of the page's flows
+            // part) and the texts the page may lack.
+            CFG.flows = config.flows || CFG.flows;
+            Object.keys(config.strings || {}).forEach(function (key) {
+                if (!Object.prototype.hasOwnProperty.call(S, key)) {
+                    S[key] = config.strings[key];
+                }
+            });
+
+            clear(open.body);
+            open.instance = window.PGWsFlow.mount(open.body, BOOT || {}, {
+                flow: flowId,
+                box: options.box || '',
+                run: parseInt(options.run, 10) || 0,
+                home: flowId ? 0 : home,
+                single: true,
+                onShow: function (flow) {
+                    open.title.textContent = flow.name || t('fl_nav');
+
+                    // A new flow, once made, is the one the bar's link opens.
+                    if (!flowId) {
+                        open.link.href = flowScreenAddress(flow.id);
+                    }
+                },
+                onClose: function () {
+                    flowLayerEnd(open);
+                }
+            });
+
+            if (!open.instance) {
+                throw new Error(t('error_generic'));
+            }
+        }).catch(function (error) {
+            if (flowLayerOpen === open) {
+                fail(error);
+                flowLayerEnd(open);
+            }
+        });
+    }
+
+    // Close: what is unsaved is saved first; changes that stay unsaved (a
+    // failed save, a newer draft) are left only when the person says so.
+    function flowLayerClose() {
+        var open = flowLayerOpen;
+
+        if (!open || open.closing) {
+            return Promise.resolve(false);
+        }
+
+        open.closing = true;
+
+        return (open.instance ? open.instance.flush() : Promise.resolve(true)).then(function (saved) {
+            return saved ? true : ask(t('fl_leave_ask'), t('fl_leave'), true);
+        }).then(function (go) {
+            open.closing = false;
+
+            if (go) {
+                flowLayerEnd(open);
+            }
+
+            return !!go;
+        });
+    }
+
+    // The layer taken away: the editor destroyed, the page live again, the
+    // focus back on the opener.
+    function flowLayerEnd(open) {
+        if (flowLayerOpen !== open) {
+            return;
+        }
+
+        flowLayerOpen = null;
+
+        if (open.instance) {
+            open.instance.destroy();
+            open.instance = null;
+        }
+
+        open.inerted.forEach(function (node) {
+            node.inert = false;
+        });
+        document.documentElement.classList.remove('ws-flow-layer-on');
+
+        if (open.layer.parentNode) {
+            open.layer.parentNode.removeChild(open.layer);
+        }
+
+        if (open.opener && open.opener.focus && document.body.contains(open.opener)) {
+            open.opener.focus({ preventScroll: true });
+        }
+    }
+
     // What the screens kept in files of their own lean on here
     // (workspace_palette.js, workspace_board_channel.js, workspace_flow.js):
     // the small helpers, the dialogs and menus, the people picker the note
@@ -25028,6 +25964,8 @@
             scheduledList: scheduledList,
             priorityFilter: priorityFilter,
             directMessage: directMessage,
+            // The whole Flows editor over the page (flowLayer()).
+            flowLayer: flowLayer,
             openTask: function (taskId, defaults, onSaved) {
                 taskDrawer.open(taskId, defaults, onSaved);
             },
@@ -25073,6 +26011,14 @@
         if (CFG.mode !== 'record') {
             window.addEventListener('keydown', function (event) {
                 if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || (String(event.key).toLowerCase() !== 'k') || !window.PGWsPalette) {
+                    return;
+                }
+
+                // The Flows editor over the page keeps the search closed:
+                // the key does nothing there.
+                if (flowLayerOpen) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
                     return;
                 }
 

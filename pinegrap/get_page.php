@@ -2070,8 +2070,8 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 					$result = db_q($query, array((string) $page_id)) or output_error(lang('Query failed.'));
 					$row = mysqli_fetch_assoc($result);
 					$product_group['id'] = $row['product_group_id'];
-					// if the current product group still has not been found, then get the top-level product group
-					if ($product_group['id'] == '')
+					// catalog_pages.product_group_id is 0 when no group was chosen: use the top-level product group
+					if ((int) $product_group['id'] === 0)
 					{
 						$query = "SELECT id FROM product_groups WHERE parent_id = '0'";
 						$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));

@@ -37,9 +37,13 @@ function test_workspace_view_back_flow_views_use_the_arrow()
 {
 	$source = workspace_view_back_source('workspace_flow.js');
 
-	foreach (array('fl_tpl_back', 'sa_canvas_back', 'fl_list_back') as $key) {
-		pg_assert_contains("K.viewBack(t('" . $key . "')", $source, $key . ' runs through the arrow');
+	// viewBack() hands the arrow to K.viewBack() except in a single-flow
+	// editor (a layer over a channel), which leaves the page's arrow alone.
+	foreach (array('fl_tpl_back', 'sa_canvas_back') as $key) {
+		pg_assert_contains("viewBack(t('" . $key . "')", $source, $key . ' runs through the arrow');
 	}
+	pg_assert_contains("K.viewBack(t('fl_list_back')", $source, 'fl_list_back runs through the arrow');
+	pg_assert_contains('K.viewBack(label, onBack, refocusKey);', $source, 'viewBack() hands over to the page\'s arrow');
 	pg_assert_false(strpos($source, "theme-secondary', t('fl_tpl_back')") !== false, 'no gallery back button');
 	pg_assert_false(strpos($source, "theme-secondary', t('sa_canvas_back')") !== false, 'no canvas back button');
 	pg_assert_false(strpos($source, 'function flowsButton') !== false, 'no "Flows ›" button');

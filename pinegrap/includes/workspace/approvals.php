@@ -986,10 +986,13 @@ function ws_approval_settle($approval, $outcome, $actor_id = 0)
 
     if ($channel && ($body !== '')) {
         // Written in the asker's name: the decision answers their request.
+        // A request an agent made is answered in the agent's name, so the
+        // outcome never reads as a decision of the person it acts for.
         $asker = ws_viewer((array) pg_load_user_row((int) $approval['created_by']));
+        $app_id = ws_message_app_id($approval['message_id']);
 
         if ($asker['member'] && ws_can_post_channel($asker, $channel)) {
-            $sent = ws_message_send($asker, $channel, $body, array('kind' => 'decision', 'parent_id' => (int) $approval['message_id']));
+            $sent = ws_message_send($asker, $channel, $body, array('kind' => 'decision', 'parent_id' => (int) $approval['message_id'], 'app_id' => $app_id));
             $result_id = $sent['ok'] ? (int) $sent['message_id'] : 0;
 
             // Nobody edits it; staff alone may delete it or take its mark off.

@@ -98,7 +98,6 @@ $lead_key = key($releases);
 foreach ($releases as $key => $r) {
     if ($r['featured'] && $r['format'] === 'single') { $lead_key = $key; break; }
 }
-$lead = $releases[$lead_key];
 
 // ── Home ────────────────────────────────────────────────────────────────
 
@@ -109,27 +108,13 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('New music, tour dates and news from the band, with the way onto the mailing list.'),
     'tree'             => $page(array(
-        // The way in, on a dark band: the newest release, the two ways on
-        // and a photo of the band on stage.
-        $el('section', 'pmu-hero py-5 bg-body text-body overflow-hidden', lang('Hero'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para($lead['note'], 'pmu-eyebrow text-uppercase fw-semibold text-primary mb-3'),
-                        $heading('h1', $lead['title'], 'pmu-display display-2 mb-3'),
-                        $para($lead['summary'], 'lead mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2 mb-4', lang('Buttons'), array(
-                            $link(lang('Listen now'), '{{page:discography}}', 'btn btn-primary btn-lg rounded-pill px-4'),
-                            $link(lang('Tour Dates'), '{{page:tour}}', 'btn btn-outline-light btn-lg rounded-pill px-4'),
-                        )),
-                        $listen_links('d-flex flex-wrap gap-3'),
-                    ), '', '5'),
-                    $col(array(
-                        $framed($photo('hero', 1400, 1050), lang('The band on stage under purple lights'), '4x3', false),
-                    ), '', '7'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        ), array('_attrs' => array($attr('data-bs-theme', 'dark')))),
+        // The way in, on a dark band: the newest release as a record, its
+        // sleeve and disc, the two ways on and its track listing (Music:
+        // Release Hero); everything comes in on load.
+        $release_hero($lead_key, 'mu-home-release', 'h1', 'pmu-hero py-5 bg-body text-body', array(
+            $link(lang('Listen now'), '{{page:discography}}', 'btn btn-primary btn-lg rounded-pill px-4'),
+            $link(lang('Tour Dates'), '{{page:tour}}', 'btn btn-outline-light btn-lg rounded-pill px-4'),
+        ), 'dark'),
 
         // The next shows, read from the Shows collection from today on.
         $el('section', 'py-5', lang('Next Shows'), array(
@@ -150,14 +135,14 @@ $public_pages[] = array(
         $el('section', 'py-5', lang('Videos'), array(
             $container(array(
                 $section_header(lang('On screen'), lang('Videos'), lang('All Videos'), '{{page:videos}}'),
-                $row($video_cols, '4'),
+                $rise($row($video_cols, '4'), 120),
             )),
         )),
 
         $el('section', 'py-5 bg-body-tertiary', lang('Press Quotes'), array(
             $container(array(
                 $section_header(lang('Press'), lang('What the press says'), lang('Press Kit'), '{{page:press}}'),
-                $row($press_cols, '4'),
+                $rise($row($press_cols, '4'), 120),
             )),
         ), $searchable('mu-home-press', lang('reviews, critics, magazine, press'))),
 

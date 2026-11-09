@@ -177,6 +177,47 @@ function test_sms_number_variants()
 	pg_assert_same(array(), pg_iys_number_variants('4915112345678'));
 }
 
+// A Turkish mobile kept as 0090 0532…: read as the number, so looked up too.
+function test_sms_number_variants_double_zero_trunk()
+{
+	pg_assert_same('905321234567', pg_sms_number('0090 0532 123 45 67'));
+	pg_assert_true(in_array('009005321234567', pg_sms_number_variants('905321234567'), true));
+}
+
+// Every character pg_sms_number() drops is one the SQL lookup drops too, so a
+// number stored with a no-break space, a tab or a line break is found.
+function test_sms_number_separators_match_the_reader()
+{
+	$separators = pg_sms_number_separators();
+	$missing = array();
+
+	for ($code_point = 0; $code_point < 0x10000; $code_point++) {
+		if ($code_point >= 0xD800 && $code_point < 0xE000) {
+			continue;
+		}
+
+		$char = pg_sms_utf8_char($code_point);
+
+		if (preg_match('/^[\s\x{00A0}().\/-]$/u', $char) && !in_array($char, $separators, true)) {
+			$missing[] = sprintf('U+%04X', $code_point);
+		}
+	}
+
+	pg_assert_same(array(), $missing);
+
+	$sql = pg_sms_number_sql('contacts.mobile_phone');
+
+	foreach (array("0532\u{00A0}123\u{00A0}45\u{00A0}67", "0532\t123 45 67", "0532 123\r\n45 67", "0532\u{202F}123-45-67") as $stored) {
+		pg_assert_same('905321234567', pg_sms_number($stored));
+		pg_assert_true(in_array(str_replace($separators, '', $stored), pg_sms_number_variants('905321234567'), true), $stored);
+	}
+
+	foreach ($separators as $separator) {
+		pg_assert_contains(", '" . $separator . "', '')", $sql);
+		pg_assert_true(strpos($separator, "'") === false && strpos($separator, '\\') === false);
+	}
+}
+
 // The card: trimmed values, a MERSİS number of 16 digits, the built-in label
 // sent back unchanged stored empty.
 function test_sms_marketing_settings_decide()

@@ -337,7 +337,7 @@ if ($booking_candidates) {
     $output_booking_staff .= '
                     <div class="pg-f-md">
                         <label for="booking_staff_add" class="form-label">' . lang('Add a staff member') . '</label>
-                        <select name="booking_staff_add" id="booking_staff_add" class="form-control">' . $options . '</select>
+                        <select name="booking_staff_add" id="booking_staff_add" class="form-control" data-pg-combobox>' . $options . '</select>
                         <div class="form-text">' . lang('Saving adds the panel user with every service that can be booked and Monday to Friday, 09:00 to 17:00; change them after.') . '</div>
                     </div>';
 

@@ -5,7 +5,7 @@ description: Short link names (2026.11.0): the name and address rules, a pasted 
 
 ## What can a name be?
 - `pg_short_link_name_problem()`: letters of any language, numbers, `. _ - / [ ] ~ ( ) + , ! = @ *`; at most 191 characters (100 before 11.0.12), at most 9 stars, not stars and slashes alone, no `.` or `..` part.
-- `pg_short_link_name_from_address()`: a pasted full address keeps its path (decoded, base path cut), then `pg_short_link_path_name()`: spaces to `_`, runs of `/` to one, no `/` at the ends. Classic screens, the File Manager (`pg_short_link_name_read()`: the same error text), the API and the CSV import use both.
+- `pg_short_link_name_from_address()`: a pasted full address keeps its path (decoded, base path cut, also after leading spaces or a tab: #7720), then `pg_short_link_path_name()`: spaces to `_`, runs of `/` to one, no `/` at the ends. Classic screens, the File Manager (`pg_short_link_name_read()`: the same error text), the API and the CSV import use both.
 
 ## How does a request find its link?
 - `router.php` looks the decoded path up as it came, then, when it differs, in the stored form (`pg_short_link_path_name()`, the router loads the module with `router_short_link_module()`): `/blog/post/`, `/Old%20Page`, `//post` reach `blog/post`, `Old_Page`, `post`.

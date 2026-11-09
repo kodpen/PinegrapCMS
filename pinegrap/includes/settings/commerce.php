@@ -643,7 +643,7 @@ $pg_settings_cards[] = '
                                                                                         </div>
                                                                                         <div class="pg-f-lg" id="ecommerce_first_data_global_gateway_pem_file_name_row" style="' . $ecommerce_first_data_global_gateway_pem_file_name_row_style . '">
                                                                                             <label class="form-label" for="ecommerce_first_data_global_gateway_pem_file_name">'. lang('PEM File') . '</label>
-                                                                                            <select class="form-control" name="ecommerce_first_data_global_gateway_pem_file_name" id="ecommerce_first_data_global_gateway_pem_file_name"><option value="">-' . lang('None') . '-</option>' . $ecommerce_first_data_global_gateway_pem_file_name_options . '</select>
+                                                                                            <select class="form-control" name="ecommerce_first_data_global_gateway_pem_file_name" id="ecommerce_first_data_global_gateway_pem_file_name" data-pg-combobox><option value="">-' . lang('None') . '-</option>' . $ecommerce_first_data_global_gateway_pem_file_name_options . '</select>
                                                                                         </div>
                                                                                     
                                                                                         <div class="pg-f-lg" id="ecommerce_paypal_payflow_pro_partner_row" style="' . $ecommerce_paypal_payflow_pro_partner_row_style . '">

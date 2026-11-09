@@ -11,7 +11,7 @@ module: bundles
 - Before the step `pg_bundles_ready()` is false: all answer empty.
 
 ## How are stock and price derived?
-- `pg_bundle_stock()`: least `floor(stock / quantity)` over tracked components, negative = none; no tracked component = untracked; no contents = tracked with 0 (cannot sell). Back order only while every tracked component takes it.
+- `pg_bundle_stock()`: least `floor(stock / quantity)` over tracked components, negative = none; no tracked component = untracked; no contents = tracked with 0 (cannot sell). Back order: [[product-bundles-backorder]].
 - `pg_bundle_price()`: 'fixed' keeps `products.price`; 'sum' = `round(sum(price × qty) × (10000 − bp) / 10000)`.
 - `pg_bundle_refresh($id)` writes what changed: stock through `pg_product_stock_changed(..., 'bundle')`, price with `pg_price_history_record()` and the marketplace queue.
 

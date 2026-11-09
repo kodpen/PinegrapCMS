@@ -42,6 +42,9 @@ if (validate_contact_access($user, $id) == false) {
 }
 
 if (!$_POST) {
+    // Notices queued for this screen (an affiliate approval leads here).
+    $liveform_edit_contact = new liveform('edit_contact');
+
     $output_orders_button = '';
     $output_bar_links = '';
     $output_bar_overflow = '';
@@ -284,6 +287,7 @@ if (!$_POST) {
     ) . '
 <main id="content" class="container-fluid">
                 ' . $output_orders_button . '
+                ' . $liveform_edit_contact->output_notices() . '
                 <form name="form" action="edit_contact.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
@@ -347,6 +351,8 @@ if (!$_POST) {
     </script>
 </main>' .
         output_footer();
+
+    $liveform_edit_contact->remove_form();
 
 } else {
     validate_token_field();

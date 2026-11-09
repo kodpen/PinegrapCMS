@@ -540,8 +540,18 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
         // relative date) comes back as it is.
         if ($filters !== null) $data = pg_sw_fill_value($data, $mods);
 
-        // A submitted value that starts a link's or a form's address must not
-        // carry a scheme that runs script when the address is followed.
+        // A player whose field is empty prints no address at all: the
+        // browser asks for nothing and pg-hide-if-empty sees it empty.
+        if ($data === '') {
+            $dropped = pg_sw_drop_media_address($template, $whole_string);
+            if ($dropped !== $template) {
+                $template = $dropped;
+                continue;
+            }
+        }
+
+        // A submitted value that starts a link's, a form's or a player's
+        // address must not carry a scheme that runs script or embeds data.
         if (pg_sw_token_starts_address($template, $whole_string) && pg_sw_address_runs_script($data)) {
             $data = '#';
         }
@@ -557,13 +567,26 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
     return $template;
 }
 
-// Whether the first $token in $template opens an href, action or formaction
-// value: the address then starts with what the field holds.
+// Whether the first $token in $template opens an href, action, formaction,
+// src or poster value: the address then starts with what the field holds.
 function pg_sw_token_starts_address($template, $token)
 {
     $at = strpos($template, $token);
     if ($at === false) return false;
-    return (bool)preg_match('/\b(?:href|action|formaction)\s*=\s*["\']?$/i', substr($template, max(0, $at - 40), min(40, $at)));
+    return (bool)preg_match('/\b(?:href|action|formaction|src|poster)\s*=\s*["\']?$/i', substr($template, max(0, $at - 40), min(40, $at)));
+}
+
+// $template without the attribute the first $token fills, when $token is the
+// whole src or poster value of an audio, video or source tag; else
+// $template unchanged. Attribute values are escaped, so the tag holds no '>'.
+function pg_sw_drop_media_address($template, $token)
+{
+    $at = strpos($template, $token);
+    if ($at === false || substr($template, $at + strlen($token), 1) !== '"') return $template;
+    $open = strrpos(substr($template, 0, $at), '<');
+    if ($open === false) return $template;
+    if (!preg_match('/^<(?:audio|video|source)\b[^>]*(\s(?:src|poster)=")$/i', substr($template, $open, $at - $open), $m)) return $template;
+    return substr($template, 0, $at - strlen($m[1])) . substr($template, $at + strlen($token) + 1);
 }
 
 // Whether an address escaped for HTML ($html) opens with a scheme that runs
@@ -612,8 +635,8 @@ function pg_sw_default_date_format($type)
 // a record that left a field blank shows no bare label and no empty box. A
 // "label: value" row (the form starters mark each field row so) is judged by
 // its pg-field-value element; an element without one by everything inside
-// it. Text counts as content, and so do a picture with an address, a video,
-// a frame, a link and a form control. Marked elements inside marked elements
+// it. Text counts as content, and so do a picture or a player with an
+// address, a frame, a link and a form control. Marked elements inside marked elements
 // go first, so a box whose rows all left goes with them. Any element can
 // carry the class; the designer keeps one by taking the class off.
 // With $mark (the finish pass's cut point, widgets_finish.php) only the
@@ -653,7 +676,9 @@ function pg_sw_hide_empty_fields($html, $mark = null, $wait = false)
         if ($close === null) continue;
         $inner = substr($html, $start + strlen($open), $close[0] - $start - strlen($open));
         if ($mark !== '' && strpos($inner, $mark) === false) continue;
-        if (pg_sw_has_content(pg_sw_field_value($inner))) continue;
+        // A player is judged with its own address, which its opening tag holds.
+        $judged = pg_sw_is_player_tag($tag) ? $open . $inner . '</' . $tag . '>' : pg_sw_field_value($inner);
+        if (pg_sw_has_content($judged)) continue;
         if ($wait && strpos($open . $inner, 'data-pg-bind=') !== false) {
             $html = substr($html, 0, $start) . pg_sw_empty_wait_tag($open) . substr($html, $start + strlen($open));
             continue;
@@ -670,6 +695,13 @@ function pg_sw_empty_wait_tag($open)
 {
     $end = (substr($open, -2) === '/>') ? -2 : -1;
     return rtrim(substr($open, 0, $end)) . ' hidden data-pg-empty-wait' . substr($open, $end);
+}
+
+// The elements whose address sits in their opening tag and whose inside is
+// only words for a browser that cannot play them.
+function pg_sw_is_player_tag($tag)
+{
+    return in_array(strtolower((string)$tag), array('audio', 'video'), true);
 }
 
 // The elements that have no closing tag.
@@ -698,8 +730,8 @@ function pg_sw_closing_tag($html, $tag, $from)
 }
 
 // What a marked element's value is: the inside of its pg-field-value
-// element (the element itself when it has no closing tag, a picture), or
-// the whole of $inner when it has none.
+// element (the element itself when it has no closing tag, a picture, or is
+// a player), or the whole of $inner when it has none.
 function pg_sw_field_value($inner)
 {
     if (!preg_match('#<([a-z][a-z0-9]*)\b[^>]*\bclass="[^"]*\bpg-field-value\b[^"]*"[^>]*>#i', $inner, $m, PREG_OFFSET_CAPTURE)) {
@@ -708,12 +740,15 @@ function pg_sw_field_value($inner)
     if (pg_sw_is_void_tag($m[1][0])) return $m[0][0];
     $from  = $m[0][1] + strlen($m[0][0]);
     $close = pg_sw_closing_tag($inner, strtolower($m[1][0]), $from);
+    // A player is its whole element: its address is in its opening tag.
+    if (pg_sw_is_player_tag($m[1][0])) return ($close === null) ? substr($inner, $m[0][1]) : substr($inner, $m[0][1], $close[1] - $m[0][1]);
     return ($close === null) ? substr($inner, $from) : substr($inner, $from, $close[0] - $from);
 }
 
 // Does this markup show anything: words (spaces and &nbsp; are not), a
 // picture with an address (a file field left empty comes out as
-// <img src="">), a video, a frame, a drawing, a link or a form control?
+// <img src="">), a player with an address of its own or of a <source>, a
+// frame, a drawing, a link or a form control?
 // The value a condition reads (its carrier, widgets_finish.php) is not shown
 // and does not count. A list inside a record (its span, widgets_lists.php)
 // counts: its rows are drawn by the finish pass, which judges the element
@@ -721,11 +756,25 @@ function pg_sw_field_value($inner)
 function pg_sw_has_content($html)
 {
     if (strpos((string)$html, '<!--pg-list:' . pg_sw_marker_nonce() . ':') !== false) return true;
-    $html = pg_sw_finish_strip_carriers((string)$html);
+    $html = pg_sw_media_without_fallback(pg_sw_finish_strip_carriers((string)$html));
     $text = str_replace("\xC2\xA0", ' ', html_entity_decode(strip_tags((string)$html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
     if (trim($text) !== '') return true;
-    if (preg_match('#<(video|audio|iframe|object|embed|svg|canvas|a|input|select|textarea|button)\b#i', (string)$html)) return true;
-    return (bool)preg_match('#<img\b[^>]*\bsrc="[^"]+"#i', (string)$html);
+    if (preg_match('#<(iframe|object|embed|svg|canvas|a|input|select|textarea|button)\b#i', (string)$html)) return true;
+    // A picture, a player or a player's source counts with an address.
+    return (bool)preg_match('#<(?:img|video|audio|source)\b[^>]*\bsrc="[^"]+"#i', (string)$html);
+}
+
+// $html with the words inside each audio and video element dropped: a
+// browser that plays the element never shows them, so a player is judged by
+// its address and its <source> tags alone, which stay.
+function pg_sw_media_without_fallback($html)
+{
+    $html = (string)$html;
+    if (stripos($html, '<audio') === false && stripos($html, '<video') === false) return $html;
+    return preg_replace_callback('#(<(audio|video)\b[^>]*>)(.*?)(</\2\s*>)#is', function ($m) {
+        preg_match_all('#<source\b[^>]*>#i', $m[3], $sources);
+        return $m[1] . implode('', $sources[0]) . $m[4];
+    }, $html);
 }
 
 // Can the element a widget prints its records into hold nothing but its
@@ -800,9 +849,11 @@ function pg_sw_uniquify_row_ids($html, $widget_id, $row_id)
     if (!is_string($html) || $html === '') return $html;
 
     $suffix = '_pgw' . (int)$widget_id . 'r' . (int)$row_id;
+    // id and for only after whitespace: data-id, data-product-id and
+    // data-for carry bound values and keep them.
     $moves  = array(
-        '/\bid="([^"]+)"/'                => 'id="$1',
-        '/\bfor="([^"]+)"/'               => 'for="$1',
+        '/(?<=\s)id="([^"]+)"/'           => 'id="$1',
+        '/(?<=\s)for="([^"]+)"/'          => 'for="$1',
         '/data-bs-target="#([^"]+)"/'     => 'data-bs-target="#$1',
         '/aria-controls="([^"]+)"/'       => 'aria-controls="$1',
         '/aria-labelledby="([^"]+)"/'     => 'aria-labelledby="$1',
@@ -1847,6 +1898,48 @@ function pg_sw_form_list_one_per_submitter_sql($cfg)
                     AND newer_form.id > forms.id))";
 }
 
+/**
+ * The ORDER BY part (and join) of a form_list sorted by one form field. A
+ * check box, or a pick list that allows several values, keeps one form_data
+ * row per chosen value, so a join would list the record once per value:
+ * those sort by their values joined in a subquery, as the classic list view
+ * does (get_form_list_view.php). A collection's number field sorts as a
+ * number, empty ones last. Pure.
+ *
+ * @param string     $alias      the form_data alias (sort_data, sort_data2)
+ * @param int        $field_id
+ * @param string     $type       form_fields.type
+ * @param int|string $multiple   form_fields.multiple
+ * @param string     $collection_kind form_fields.collection_kind
+ * @param string     $direction  ASC or DESC
+ * @return array array('sql' => ORDER BY part, 'join' => '' or a LEFT JOIN)
+ */
+function pg_sw_form_list_field_order($alias, $field_id, $type, $multiple, $collection_kind, $direction)
+{
+    $alias     = preg_replace('/[^a-z0-9_]/i', '', (string)$alias);
+    $field_id  = (int)$field_id;
+    $direction = (strtoupper((string)$direction) === 'ASC') ? 'ASC' : 'DESC';
+    $type      = (string)$type;
+
+    if ($type === 'check box' || ($type === 'pick list' && (int)$multiple === 1)) {
+        return array(
+            'sql'  => "(SELECT GROUP_CONCAT($alias.data ORDER BY $alias.id ASC SEPARATOR ', ') FROM form_data $alias"
+                    . " WHERE ($alias.form_id = forms.id) AND ($alias.form_field_id = '$field_id')) $direction",
+            'join' => '',
+        );
+    }
+
+    $join = "LEFT JOIN form_data $alias
+                   ON $alias.form_id = forms.id
+                  AND $alias.form_field_id = '$field_id'";
+
+    if (pg_coll_field_kind((string)$collection_kind, $type) === 'number') {
+        return array('sql' => pg_coll_number_order_sql($alias, $direction), 'join' => $join);
+    }
+
+    return array('sql' => "$alias.data $direction", 'join' => $join);
+}
+
 function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widget_id, $cfg = array())
 {
     $custom_form_page_id = (int)$custom_form_page_id;
@@ -1882,7 +1975,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
 
     // Placeholder text for the search input. Empty config falls back to the translated "Search...".
     $search_label = (isset($cfg['search_label']) && is_string($cfg['search_label']) && $cfg['search_label'] !== '')
-                        ? substr($cfg['search_label'], 0, 100)
+                        ? mb_substr($cfg['search_label'], 0, 100, 'UTF-8')
                         : (string)lang('Search...');
 
     $empty_message  = (isset($cfg['empty_message']) && is_string($cfg['empty_message'])) ? $cfg['empty_message'] : '';
@@ -1908,7 +2001,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // The parameters the URL filters read; none in an e-mail or a preview.
     $request      = pg_sw_filter_request();
     $search_query = ($search_enabled && isset($_GET[$query_param]) && is_scalar($_GET[$query_param])) ? trim((string)$_GET[$query_param]) : '';
-    if (strlen($search_query) > 100) $search_query = substr($search_query, 0, 100);
+    if (mb_strlen($search_query, 'UTF-8') > 100) $search_query = mb_substr($search_query, 0, 100, 'UTF-8');
 
     // Decode + split the widget tree into static + loop-template halves.
     $tree_decoded = json_decode($tree_json, true);
@@ -1977,7 +2070,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         );
         if ($counter !== null) return ($counter === '') ? null : array('sql' => $counter, 'join' => '');
         $row = db_item(
-            "SELECT id, type" . (pg_coll_ready() ? ", collection_kind" : ", '' AS collection_kind") . "
+            "SELECT id, type, multiple" . (pg_coll_ready() ? ", collection_kind" : ", '' AS collection_kind") . "
              FROM form_fields
              WHERE page_id = '" . e($custom_form_page_id) . "'
                AND name = '" . e($field) . "'
@@ -1985,14 +2078,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         );
         $fid = $row ? (int)$row['id'] : 0;
         if ($fid <= 0) return null;
-        $join = "LEFT JOIN form_data $alias
-                   ON $alias.form_id = forms.id
-                  AND $alias.form_field_id = '$fid'";
-        // A collection's number field sorts as a number, empty ones last.
-        if (pg_coll_field_kind($row['collection_kind'], (string)$row['type']) === 'number') {
-            return array('sql' => pg_coll_number_order_sql($alias, $direction), 'join' => $join);
-        }
-        return array('sql' => "$alias.data $direction", 'join' => $join);
+        return pg_sw_form_list_field_order($alias, $fid, (string)$row['type'], $row['multiple'], (string)$row['collection_kind'], $direction);
     };
 
     $order_join   = '';
@@ -3718,17 +3804,21 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
              LEFT JOIN files       ON form_data.file_id       = files.id
              WHERE form_data.form_id = '" . (int)$form_row['id'] . "'"
         );
-        // The rows of the lists inside the record, drawn by the finish pass.
-        pg_sw_list_publish('form_record', $data_rows, array('translate' => !empty($cfg['translate_records'])));
+        // The rows of the lists inside the record, drawn by the finish pass;
+        // the record is this page's own words ('own').
+        pg_sw_list_publish('form_record', $data_rows, array('translate' => !empty($cfg['translate_records']), 'own' => true));
 
         $indexed = pg_sw_index_form_data($data_rows);
         $custom  = isset($indexed[(int)$form_row['id']]) ? $indexed[(int)$form_row['id']] : array();
         $custom_source = $custom;
 
         // The record's texts in the page's language, when the widget includes
-        // its records in the translation (includes/fn/translate.php).
+        // its records in the translation (includes/fn/translate.php). They
+        // are this page's own words: it stays out of the search engines
+        // until they are translated and reviewed, while a list's records
+        // never keep a page out.
         if (!empty($cfg['translate_records'])) {
-            $custom = pg_tr_record_fields($custom);
+            $custom = pg_tr_record_fields($custom, true);
         }
         $by_record = array((int)$form_row['id'] => $custom);
         pg_coll_ref_fill($refs, $by_record, array((int)$form_row['id'] => $custom_source));
@@ -4813,10 +4903,14 @@ function pg_member_widget_published($type)
     foreach ($rows as $r) {
         $wid = (int)$r['id'];
         if ($wid <= 0) continue;
+        // The page's tree with its style's as the fallback: a page whose
+        // tree still lives on its style has an empty page_tree_json. LEFT
+        // JOIN keeps a page with its own tree whose style row is gone.
         $hit = db_value(
             "SELECT page.page_id FROM page
-             WHERE (page.page_tree_json LIKE '%\"sharedId\":" . $wid . ",%'
-                 OR page.page_tree_json LIKE '%\"sharedId\":" . $wid . "}%')" . $binned . "
+             LEFT JOIN style ON style.style_id = page.page_style
+             WHERE (" . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $wid . ",%'
+                 OR " . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $wid . "}%')" . $binned . "
              LIMIT 1");
         if ($hit) { $cache[$type] = true; break; }
     }
@@ -6522,13 +6616,17 @@ function _pg_sw_search_collect_one($query, $cfg, $advanced = null)
                    AND page.page_id NOT IN ($not_featured)$binned";
 
     // Classic pages: occurrences in the regions of the page's own collection.
+    // A page whose content moved into its designer tree keeps its region
+    // rows but never draws them (pg_page_region_read_sql()), as the legacy
+    // search results page leaves them out.
     $region_rows = db_items(
         "SELECT page.page_id, page.page_style, page.page_folder, pregion.collection, pregion.pregion_content
          FROM pregion INNER JOIN page ON page.page_id = pregion.pregion_page
          LEFT JOIN folder ON page.page_folder = folder.folder_id
          WHERE page.page_search = '1' AND folder.folder_archived = '0'
            AND page.page_id NOT IN ($not_featured)$binned
-           AND pregion.pregion_content LIKE $like");
+           AND pregion.pregion_content LIKE $like
+           AND " . pg_page_region_read_sql('pregion.pregion_page'));
     $collections = array();
     foreach ((array)$region_rows as $r) {
         $pid = (int)$r['page_id'];
@@ -8026,7 +8124,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // ── Cancellation policy resolution ─────────────────────────────────
     // Three gates control whether the cancel UI surfaces on this order:
     //   1. Site setting: ECOMMERCE_ORDER_CANCEL_ALLOWED must be true
-    //   2. Order status: must not already be cancelled
+    //   2. Order status: must not already be cancelled, and must be one
+    //      process_order_cancellation() may cancel (a basket, incomplete,
+    //      is refused through pg_order_status_move()).
     //   3. (optional) Pre-shipment: when ECOMMERCE_ORDER_CANCEL_UNTIL_SHIPPED
     //      is true (default), a recorded tracking code locks it.
     // Designer wires the cancel button under `eo_visible_if='can_cancel'`
@@ -8034,7 +8134,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // instead of being rendered then disabled.
     $_ov_cancel_allowed = defined('ECOMMERCE_ORDER_CANCEL_ALLOWED') && ECOMMERCE_ORDER_CANCEL_ALLOWED === true;
     $_ov_already_cancelled = ($order['status'] === 'cancelled');
-    $_ov_can_cancel = $_ov_cancel_allowed && !$_ov_already_cancelled;
+    $_ov_can_cancel = $_ov_cancel_allowed && !$_ov_already_cancelled
+        && pg_order_status_move($order['status'], 'cancelled') !== 'refuse';
     // This widget is the CUSTOMER's view, so the guard always applies here.
     // Must stay in lockstep with process_order_cancellation()'s guard — the
     // shared _order_has_shipped() helper is what keeps the button's visibility
@@ -9420,7 +9521,7 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
                 $reserve_form = '<form action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/reserve_calendar_event.php') . '" method="post" class="d-inline">'
                     . get_token_field()
                     . '<input type="hidden" name="send_to" value="' . h(get_request_uri()) . '">'
-                    . '<input type="hidden" name="page_id" value="' . (int)_pg_sw_current_page_id() . '">'
+                    . '<input type="hidden" name="page_id" value="' . (int)pg_sw_drawn_page_id() . '">'
                     . '<input type="hidden" name="calendar_event_id" value="' . (int)$event_id . '">'
                     . '<input type="hidden" name="recurrence_number" value="' . (int)$recurrence . '">'
                     . '<input type="hidden" name="require_cookies" value="true">'

@@ -55,3 +55,28 @@ function test_offer_gift_refusal_is_forgotten()
 
 	$_SESSION = $saved;
 }
+
+// Recipient-scope offers: one recipient that still qualifies keeps the
+// refusal, whatever the other recipients answer; only when the offer
+// qualifies for no recipient is it forgotten.
+function test_offer_gift_refusal_survives_a_recipient_that_does_not_qualify()
+{
+	$saved = isset($_SESSION) ? $_SESSION : null;
+	$_SESSION = array('ecommerce' => array('order_id' => '41'));
+
+	pg_offer_gift_refuse(41, 7, 9);
+	// Recipient A qualifies, recipient B does not.
+	pg_offer_gift_refusal_settle(7, 9, array(true, false));
+	pg_assert_true(pg_offer_gift_refused(7, 9), 'A still qualifies: refusal kept');
+	pg_offer_gift_refusal_settle(7, 9, array(false, true));
+	pg_assert_true(pg_offer_gift_refused(7, 9), 'order of recipients does not matter');
+
+	pg_offer_gift_refusal_settle(7, 9, array(false, false));
+	pg_assert_false(pg_offer_gift_refused(7, 9), 'no recipient qualifies: forgotten');
+
+	pg_offer_gift_refuse(41, 7, 9);
+	pg_offer_gift_refusal_settle(7, 9, array());
+	pg_assert_false(pg_offer_gift_refused(7, 9), 'no recipient at all: forgotten');
+
+	$_SESSION = $saved;
+}

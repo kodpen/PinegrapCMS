@@ -22,8 +22,8 @@
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
- * @copyright   2017–2026 Kodpen
- * @license     https://opensource.org/licenses/mit-license.html MIT License
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 
 (function (X) {
@@ -1026,9 +1026,10 @@
         if (b.pic && h && b.picEl && b.picEl.contains(e.target)) {
             this.drag = { kind: 'picture', h: h, start: box, doc: M.clone(this.doc) };
         } else {
-            // An erased or redacted area takes the press only inside its
-            // outline: in an erased background's hole the picture is hit.
-            hit = M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k, M.areaHit);
+            // A redacted area takes the press only inside its outline; an
+            // erased or adjusted area is the picture's own, so a press in a
+            // see-through hole takes the picture with it.
+            hit = M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k, function (l, q) { return !M.pictureArea(l) && M.areaHit(l, q); });
 
             if (hit || (p[0] < box.x) || (p[1] < box.y) || (p[0] > box.x + box.w) || (p[1] > box.y + box.h)) {
                 b.pic = false;
@@ -1039,7 +1040,9 @@
                 this.selectPicture(true);
             }
 
-            this.drag = { kind: 'picture', h: null, at: p, start: box, doc: M.clone(this.doc) };
+            // A click on the picture outside the selected area deselects it
+            // as anywhere else (endDrag()).
+            this.drag = { kind: 'picture', h: null, at: p, start: box, doc: M.clone(this.doc), click: this.pressClick(e) };
         }
 
         e.preventDefault();
@@ -1062,6 +1065,7 @@
             return moveDrag.call(this, e);
         }
 
+        this.dragAway(e);
         p = this.toDoc(e.clientX, e.clientY);
 
         if (d.h) {

@@ -122,3 +122,34 @@ function test_dashboard_v2_figure_box_keeps_line_breaks()
 {
 	pg_assert_true((bool) preg_match('/  \.pg-dash-tip \{[^}]*white-space: pre-line;/', pg_test_dashboard_v2_look_css()));
 }
+
+// Edit mode as drawn: the side panel wears the look's card face, its option
+// segments keep their own width instead of stretching across the panel, and
+// a hidden System Status shrinks to one line beside the greeting.
+function test_dashboard_v2_edit_panel_look()
+{
+	$css = pg_test_dashboard_v2_look_css();
+	$panel = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_dash_panel.js');
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_dash_edit.js');
+
+	pg_assert_contains('el("aside", "card pg-dash-card pg-dash-side")', $panel, 'the panel is a dashboard card');
+	pg_assert_true(preg_match('/\.pg-dash-side \.pg-dash-segment \{[^}]*align-self: flex-start;/', $css) === 1, 'panel segments are not stretched');
+	pg_assert_true(preg_match('/\.pg-dash-status\[data-off\] \{[^}]*align-self: start;/', $css) === 1, 'a hidden status is one line');
+	pg_assert_contains('S.status_hidden', $edit, 'the hidden status says so');
+	pg_assert_contains('"pg-dash-btn pg-dash-btn-main", S.save', $edit, 'Save is the drawn main button');
+}
+
+// The new dashboard draws the drawings' backdrops on its own root, so the
+// old dashboard's washes stay as they are; lights off drops the backdrop with
+// the shadows, and compact narrows the grid but not the top row.
+function test_dashboard_v2_backdrops_and_lights()
+{
+	$css = pg_test_dashboard_v2_look_css();
+
+	foreach (array('mesh', 'dusk', 'ember') as $name) {
+		pg_assert_contains('html[data-bs-theme="dark"] #content.pg-dash[data-panel-backdrop="' . $name . '"]', $css, $name . ' has a dark drawing');
+	}
+	pg_assert_contains('linear-gradient(180deg, #1b1440 0%, #0d1024 38%, #070b12 100%)', $css, 'dusk is the drawn vertical wash');
+	pg_assert_true(preg_match('/#content\.pg-dash\.pg-dash-calm\[data-panel-backdrop\] \{[^}]*background-image: none;/', $css) === 1, 'lights off drops the backdrop');
+	pg_assert_false((bool) preg_match('/\.pg-dash-compact \.pg-dash-top\b/', $css), 'compact keeps the top row\'s gaps');
+}

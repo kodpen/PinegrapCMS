@@ -34,13 +34,19 @@ function bs6_so_test_texts($source)
 }
 
 // style_designer.js's top-level members (four-space declarations inside
-// the module) as array(name => array('marked' => bool, 'body' => string)).
+// the module, and inside the code part cut out of it) as array(name => array('marked' => bool, 'body' => string)).
 function bs6_so_test_members()
 {
-	$lines = explode("\n", (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/style_designer.src.js'));
+	$lines = explode("\n", (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/style_designer.src.js')
+		. "\n" . (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/style_designer_code.js'));
 	$starts = array();
 
 	foreach ($lines as $i => $line) {
+		// A part's alias of a core member (`var x = K.x;`) is not a member.
+		if (preg_match('/^    var [\w$]+ = K\./', $line)) {
+			continue;
+		}
+
 		if (preg_match('/^    (?:async\s+)?function\s+([\w$]+)|^    (?:var|const|let)\s+([\w$]+)\s*=/', $line, $m)) {
 			$starts[] = array($i, $m[1] !== '' ? $m[1] : $m[2]);
 		}

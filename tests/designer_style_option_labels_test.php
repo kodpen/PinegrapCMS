@@ -321,7 +321,7 @@ function test_designer_style_option_labels_typography()
 // go through _sdT(); the stored values stay the CSS keywords.
 function test_designer_style_option_labels_theme_rows()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_theme.js');
 	pg_assert_contains("{ name: '--bs-success',   label: _sdT('Success'),", $source);
 	pg_assert_same(2, substr_count($source, "opts: ['none','underline','overline','line-through'], optLabels: _sdThemeDecorationLabels(),"));
 	pg_assert_contains("esc(v.optLabels && v.optLabels[o] ? v.optLabels[o] : o)", $source);

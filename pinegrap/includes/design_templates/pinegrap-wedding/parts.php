@@ -781,18 +781,28 @@ $wedding_card = function ($sample_key = 'selin-emre') use ($el, $para, $span, $l
     ), '6', '4');
 };
 
-// A stage of the planning timeline: the time left, the stage's name and
-// what to do, on a line down the page.
-$timeline_stage = function ($n) use ($el, $heading, $para, $span, $icon, $check_list, $timeline) {
+// A stage of the planning timeline as a card of the Wedding: Planning
+// Checklist block: its icon and the time left, the stage's name and the
+// tasks to tick off then.
+$timeline_stage = function ($n) use ($el, $heading, $span, $icon, $timeline) {
     $t = $timeline[$n];
-    return $el('li', 'd-flex gap-3 pb-4', lang('Timeline Stage'), array(
-        $el('span', 'd-inline-flex align-items-center justify-content-center flex-shrink-0 rounded-circle bg-primary text-white p-2 lh-1 align-self-start', lang('Icon Box'), array(
-            $icon($t['icon'], 'fs-5'),
-        )),
-        $el('div', 'flex-grow-1 border-start border-2 ps-3', lang('Stage Body'), array(
-            $span($t['when'], 'pwd-eyebrow d-block small text-uppercase fw-semibold text-primary mb-1', lang('When')),
-            $heading('h3', $t['title'], 'pwd-display h5 mb-2'),
-            $check_list($t['tasks'], 'list-unstyled small text-body-secondary mb-0'),
+    $tasks = array();
+    foreach ($t['tasks'] as $task) {
+        $tasks[] = $el('li', 'd-flex gap-2 mb-2', lang('Task'), array(
+            $icon('bi-check2-square', 'text-primary flex-shrink-0'),
+            $span($task, '', lang('Text')),
+        ));
+    }
+    return $el('li', 'col', lang('Timeline Stage'), array(
+        $el('div', 'h-100 p-4 rounded-4 border bg-body', lang('Stage Card'), array(
+            $el('div', 'd-flex align-items-center gap-3 mb-3', lang('Stage Head'), array(
+                $el('span', 'd-inline-flex align-items-center justify-content-center flex-shrink-0 rounded-circle bg-primary-subtle text-primary-emphasis p-2 lh-1', lang('Icon Box'), array(
+                    $icon($t['icon'], 'fs-5'),
+                )),
+                $span($t['when'], 'pwd-eyebrow small text-uppercase fw-semibold text-primary', lang('When')),
+            )),
+            $heading('h3', $t['title'], 'pwd-display h5 mb-3'),
+            $el('ul', 'list-unstyled small mb-0', lang('Tasks'), $tasks),
         )),
     ));
 };

@@ -5,12 +5,12 @@ module: carrier_labels
 ---
 
 ## What is a label driver?
-- A file `includes/shipping/<key>.php` listed in `pg_label_builtin_drivers()` (each in `carrier-label-<key>.md`: geliver, basitkargo, shippo, sendcloud, aras, kargonomi) or an add-on file registered with `pg_label_driver_register()` (absolute path, a taken key refused). Contract, registry, answers, settings: `includes/fn/carrier_labels.php`.
+- A file `includes/shipping/<key>.php` listed in `pg_label_builtin_drivers()` (each in `carrier-label-<key>.md`: geliver, basitkargo, shippo, sendcloud, aras, kargonomi; rules and drivers still to come: `carrier-label-roadmap.md`) or an add-on file registered with `pg_label_driver_register()` (absolute path, a taken key refused). Contract, registry, answers, settings: `includes/fn/carrier_labels.php`.
 - Required `_info()`: `carriers` (kept only when a `pg_shipping_carriers()` key) and `formats` (`pdf`, `zpl`, `svg`). Optional `_fields()` (the payment field shape, `pg_payment_fields_normalize()`, switches dropped) and operations `test`, `create`, `label`, `cancel`, `track`, `pickup` (`pg_label_operations()`); `pg_label_can()` asks first.
 - The account is the last argument of every operation (`pg_label_account()`: stored values, secrets unsealed, defaults). A driver never reads the database, request or session and never writes orders or parcels.
 
 ## What does a caller get back?
-- Always `pg_label_call($key, $op, $args)`: pads/cuts args, catches `Throwable` (an `\Error` is a plain failure, an exception `unclear`), then masks every secret value of the account (4+ characters) as `****` in `error`, `log` and `raw`, so a service echoing the request cannot put a key into a notice or the log.
+- Always `pg_label_call($key, $op, $args)`: pads/cuts args, catches `Throwable` (an `\Error` a plain failure, an exception `unclear`), then masks every secret value of the account (4+ characters) as `****` in `error`, `log` and `raw`, so a service echoing the request cannot put a key into a notice or the log.
 - `pg_label_answer()` keeps only its keys (reference, tracking_number, carrier, tracking_url, status, status_at, label, label_format, barcode, account, log, raw, unclear): a service's own fields (fee, COD amount) are dropped there.
 - A success becomes an unclear failure when create() has no `reference` or no tracking number of a parcel's shape (5–40 of `[A-Za-z0-9 -]`), label() has no document of its format (PDF starts `%PDF-`, ZPL holds `^XA`, SVG passes `pg_label_svg_valid()`), track() no `pg_shipment_statuses()` value.
 
@@ -27,5 +27,5 @@ module: carrier_labels
 - `pg_label_settings_decide()` (pure): only posted drivers; empty secret keeps; select outside options keeps; required only while on; no row while off with defaults.
 
 ## How was it verified?
-- `tests/carrier_labels_test.php` with a test driver in the file (contract, answers, masking, row options, decide). The card was not opened on a sandbox; since #3096 it draws the Geliver driver.
+- `tests/carrier_labels_test.php` with a test driver in the file (contract, answers, masking, row options, decide). Not opened on a sandbox; since #3096 the card draws Geliver.
 - Each `tests/carrier_label_<key>_test.php` calls `pg_label_load('<key>')` at its top: a test run alone found no `pg_label_<key>_transport()` (#4356).

@@ -757,6 +757,11 @@ function ws_screen_config($viewer, $mode, $extra = array())
         $strings = array_merge($strings, ws_notes_js_strings());
     }
 
+    // The notes lock on the My Notes screen (note_lock_screen.php).
+    if (function_exists('ws_note_lock_js_strings')) {
+        $strings = array_merge($strings, ws_note_lock_js_strings());
+    }
+
     if (function_exists('ws_file_edit_js_strings')) {
         $strings = array_merge($strings, ws_file_edit_js_strings());
     }
@@ -798,7 +803,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
 
     // The search box of every screen (palette.php) and a channel's board
     // (channel_board.php).
-    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings());
+    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings());
     // The time spent on tasks and the tasks they wait for
     // (assets/js/workspace_task_time.js, workspace_task_links.js).
     $strings = array_merge($strings, ws_task_time_js_strings(), ws_task_links_js_strings());
@@ -856,6 +861,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
             'notes_export' => $base . 'workspace_notes_export.php',
             'notes_import' => $base . 'workspace_notes_import.php',
             'file_save' => $base . 'workspace_file_save.php',
+            // Where the site serves its files: a note line linking only to
+            // one is drawn as the file (note_media.php, workspace_editor.js).
+            'files'     => URL_SCHEME . HOSTNAME_SETTING . PATH,
             'settings'  => $base . 'workspace_settings.php',
             // Where a From OneNote Connect button posts (connect.php).
             'connect'   => $base . 'connect.php',
@@ -869,6 +877,11 @@ function ws_screen_config($viewer, $mode, $extra = array())
         // the Flows screen prints them (ws_screen_scripts()).
         'flow_scripts' => array_merge(pg_js_bundle_urls('assets/js/pg_graph_canvas.min.js'), pg_js_bundle_urls('assets/js/workspace_flow.min.js')),
         'notes'        => function_exists('ws_notes_ready') && ws_notes_ready(),
+        // Note groups as folders in My Notes (note_groups.php,
+        // workspace_note_groups.js).
+        'notes_groups' => function_exists('ws_note_groups_ready') && ws_note_groups_ready(),
+        // The notes lock on My Notes (note_lock.php, workspace_note_lock.js).
+        'notes_lock'   => function_exists('ws_note_lock_ready') && ws_note_lock_ready(),
         // What one import of notes may send (workspace_notes_import.php): its
         // size, how many files the server takes in one request and the kinds
         // of file it reads; and how many notes a person keeps.

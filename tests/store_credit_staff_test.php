@@ -105,3 +105,18 @@ function test_store_credit_staff_gift_card_info()
 	pg_assert_contains("pg_list_status_word(lang('Store credit'))", $list, 'the list marks credit under the code');
 	pg_assert_contains("'<span hidden>' . h(\$gift_card['code']) . '</span>'", $list, 'the search finds the code without dashes');
 }
+
+/**
+ * The currencies table keeps a symbol as HTML (&#8378;): the card's balance
+ * and amounts show the character once, and a symbol typed as markup shows
+ * as text.
+ */
+function test_store_credit_staff_money_shows_the_symbol_once()
+{
+	pg_assert_same('₺' . pg_format_number(0, 2), pg_credit_staff_money(0, '&#8378;'), 'the lira sign, not &#8378;');
+	pg_assert_same('₺' . pg_format_number(500, 2), pg_credit_staff_money(50000, '&#8378;'), 'minor units');
+	pg_assert_same('€' . pg_format_number(12.5, 2), pg_credit_staff_money('1250', '&euro;'), 'a named entity');
+	pg_assert_same('$' . pg_format_number(12.5, 2), pg_credit_staff_money(1250, '$'), 'a plain symbol');
+	pg_assert_same('&lt;b&gt;TL&lt;/b&gt;' . pg_format_number(1, 2), pg_credit_staff_money(100, '<b>TL</b>'), 'markup shows as text');
+	pg_assert_same('&lt;i&gt;' . pg_format_number(1, 2), pg_credit_staff_money(100, '&lt;i&gt;'), 'an escaped tag stays text');
+}

@@ -123,20 +123,40 @@
         more(body, data.url, config);
     };
 
+    // The number on the site in a glowing round, its words beside it; the
+    // minutes as green bars, the latest brightest; the pages each with a
+    // live dot and its count.
     pgDash.renderers.engagement = function (body, data, card, config) {
         var el = pgDash.el;
 
         var head = el("div", "pg-dash-live");
-        head.appendChild(el("span", "pg-dash-live-dot"));
-        head.appendChild(el("p", "pg-dash-live-figure", data.headline));
+        var round = el("span", "pg-dash-live-figure", data.figure);
+        round.setAttribute("aria-hidden", "true");
+        head.appendChild(round);
+        var words = el("div", "pg-dash-live-words");
+        var label = el("p", "pg-dash-live-label", data.label || data.headline);
+        label.setAttribute("aria-hidden", "true");
+        words.appendChild(label);
+        words.appendChild(el("p", "visually-hidden", data.headline));
+        words.appendChild(el("p", "pg-dash-live-note", data.note));
+        head.appendChild(words);
         body.appendChild(head);
-        body.appendChild(el("p", "pg-dash-live-note", data.note));
 
-        var chart = el("figure", "pg-dash-chart");
+        var chart = el("figure", "pg-dash-chart pg-dash-live-bars");
         chart.appendChild(pgDash.bars(data.bars, data.bars_label, data.tips));
         body.appendChild(chart);
 
-        body.appendChild(pgDash.rows(data.rows_title, data.rows));
+        if ((data.rows || []).length) {
+            body.appendChild(el("h3", "pg-dash-rows-title", data.rows_title));
+            var list = el("ul", "pg-dash-live-pages");
+            data.rows.forEach(function (row) {
+                var item = el("li", "pg-dash-live-page");
+                item.appendChild(el("span", "pg-dash-live-path", row.text));
+                item.appendChild(el("span", "pg-dash-live-count", row.note));
+                list.appendChild(item);
+            });
+            body.appendChild(list);
+        }
         more(body, data.url, config);
     };
 

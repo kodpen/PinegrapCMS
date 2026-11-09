@@ -40,6 +40,13 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// How many times create() reads a shipment again, 2 seconds apart, while its
+// offers are still being collected: a test shipment's offer has been seen
+// to take about 18 seconds.
+if (!defined('PG_LABEL_GELIVER_OFFER_READS')) {
+    define('PG_LABEL_GELIVER_OFFER_READS', 15);
+}
+
 function pg_label_geliver_info()
 {
     return array(
@@ -350,7 +357,9 @@ function pg_label_geliver_shipment_body($shipment, $account)
 
 /**
  * The offer to accept: the service's own when one is asked for, else the
- * cheapest.
+ * cheapest: Geliver's "cheapest", else the lowest priced offer of the list
+ * (Geliver leaves "cheapest" empty on some answers, a test shipment's only
+ * offer among them). An offer of the list without a price is never taken.
  *
  * @param array  $offers  the shipment's offers
  * @param string $service a service code, '' for the cheapest
@@ -370,17 +379,57 @@ function pg_label_geliver_offer($offers, $service)
         return null;
     }
 
-    return (isset($offers['cheapest']['id']) && is_string($offers['cheapest']['id']) && ($offers['cheapest']['id'] !== '')) ? $offers['cheapest'] : null;
+    if (isset($offers['cheapest']['id']) && is_string($offers['cheapest']['id']) && ($offers['cheapest']['id'] !== '')) {
+        return $offers['cheapest'];
+    }
+
+    $cheapest = null;
+    $lowest = 0.0;
+
+    foreach ($list as $offer) {
+        if (!is_array($offer) || !isset($offer['id']) || !is_string($offer['id']) || ($offer['id'] === '')) {
+            continue;
+        }
+
+        // totalAmount is the price with VAT; amount the one without.
+        $price = null;
+
+        foreach (array('totalAmount', 'amount') as $name) {
+            if (($price === null) && isset($offer[$name]) && is_numeric($offer[$name])) {
+                $price = (float) $offer[$name];
+            }
+        }
+
+        if (($price !== null) && (($cheapest === null) || ($price < $lowest))) {
+            $cheapest = $offer;
+            $lowest = $price;
+        }
+    }
+
+    return $cheapest;
 }
 
 /**
- * Whether Geliver has collected every offer it asked for.
+ * Whether Geliver has collected every offer it asked for: the percentage is
+ * 100, or every offer requested is completed (the percentage has been seen
+ * to stay at 99 with the only offer requested already in).
  *
  * @return bool
  */
 function pg_label_geliver_offers_complete($offers)
 {
-    return is_array($offers) && isset($offers['percentageCompleted']) && ((float) $offers['percentageCompleted'] >= 100);
+    if (!is_array($offers)) {
+        return false;
+    }
+
+    if (isset($offers['percentageCompleted']) && is_numeric($offers['percentageCompleted']) && ((float) $offers['percentageCompleted'] >= 100)) {
+        return true;
+    }
+
+    $requested = (isset($offers['totalOffersRequested']) && is_numeric($offers['totalOffersRequested'])) ? (int) $offers['totalOffersRequested'] : 0;
+    $completed = (isset($offers['totalOffersCompleted']) && is_numeric($offers['totalOffersCompleted'])) ? (int) $offers['totalOffersCompleted'] : 0;
+
+    return ($requested > 0) && ($completed >= $requested);
 }
 
 /**
@@ -556,8 +605,15 @@ function pg_label_geliver_create($shipment, $account)
 
     // Offers arrive one by one; the shipment is read again while some are
     // still being collected.
-    for ($round = 0; ($round < 5) && !pg_label_geliver_offers_complete($offers) && (($offer === null) || ($service === '')); $round++) {
+    for ($round = 0; ($round < PG_LABEL_GELIVER_OFFER_READS) && !pg_label_geliver_offers_complete($offers) && (($offer === null) || ($service === '')); $round++) {
         if (pg_label_geliver_transport() === null) {
+            // The wait is counted against the time limit on Windows; each
+            // read gets its own share of it, so a bulk run of several
+            // labels is not cut off while it waits.
+            if (function_exists('set_time_limit')) {
+                @set_time_limit(60);
+            }
+
             sleep(2);
         }
 

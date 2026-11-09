@@ -150,12 +150,20 @@ $class_pages[] = array(
     'tree'             => $request_page(lang('Book a Class'),
         lang('Choose a class, a day and a time from the timetable. The front desk confirms your place within a few hours; your first class is free.'),
         'class_booking_form',
-        $request_aside(array(
+        array_merge($request_aside(array(
             lang('Your request opens its own page, and an account for you if you have none.'),
             lang('The front desk confirms your place there within a few hours, or offers another time if the class is full.'),
             lang('Come ten minutes early and tell the coach if anything hurts.'),
             lang('Cannot come? Write to us on the request\'s page so the place goes to someone else.'),
-        ), lang('See the whole timetable'), '{{page:timetable}}')),
+        ), lang('See the whole timetable'), '{{page:timetable}}'), array(
+            // One to one instead of a group: the personal training page books
+            // a coach at a free time.
+            $el('div', 'p-4 rounded-3 border mt-4', lang('Personal Training'), array(
+                $heading('h2', lang('Rather train one to one?'), 'pgy-display h5 mb-2'),
+                $para(lang('Book a personal training session with a coach at one of the free times.'), 'small text-body-secondary mb-3'),
+                $link(lang('Book a session'), '{{page:book_online}}', 'btn btn-sm btn-outline-primary px-3'),
+            )),
+        ))),
 );
 
 // One class booking request: the request, its status and the messages.

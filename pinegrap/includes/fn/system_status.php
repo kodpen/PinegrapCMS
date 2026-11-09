@@ -3164,26 +3164,24 @@ function get_system_status_checks()
 
     $auto_backup_off = (defined('SOFTWARE_AUTO_BACKUP') && (SOFTWARE_AUTO_BACKUP == false));
 
-    if ($backup_newest < 1) {
-        $backup_icon = 'bi-hdd-network-fill';
+    // The age is judged by pg_backup_age_state(), the rule the operations
+    // alert follows too: none at all is red and costs the whole weight; more
+    // than a month old is yellow and costs half; anything newer is green and
+    // costs nothing, so a weekly schedule a few days on is not a warning.
+    $backup_age_state = pg_backup_age_state($backup_newest, time());
+    $backup_icon = 'bi-hdd-network-fill';
+
+    if ($backup_age_state === 'fail') {
         $backup_color = 'fg-danger';
         $backup_value = lang('Never');
         $backup_message = 'No backup has ever been taken of this site.';
         $score -= $weights['backup'];
     } else {
-        $backup_age = time() - $backup_newest;
         $backup_value = get_relative_time(array('timestamp' => $backup_newest, 'format' => 'plain_text'));
-        $backup_icon = 'bi-hdd-network-fill';
 
-        // Two days covers a daily schedule that missed one run; a week means
-        // the schedule itself has stopped.
-        if ($backup_age > 604800) {
-            $backup_color = 'fg-danger';
-            $backup_message = 'The most recent backup is more than a week old.';
-            $score -= $weights['backup'];
-        } elseif ($backup_age > 172800) {
+        if ($backup_age_state === 'warn') {
             $backup_color = 'fg-warning';
-            $backup_message = 'The most recent backup is more than two days old.';
+            $backup_message = 'The most recent backup is more than a month old.';
             $score -= $weights['backup'] * 0.5;
         } else {
             $backup_color = 'fg-success';
@@ -3193,9 +3191,9 @@ function get_system_status_checks()
 
     // A switched-off schedule is not a stale backup. Scoring it as one would
     // train the operator who turned it off deliberately to ignore the number,
-    // so it costs half and reads grey rather than red.
-    if ($auto_backup_off && ($backup_color == 'fg-danger')) {
-        $score += $weights['backup'] * 0.5;
+    // so a missing or month-old backup then costs half and reads grey.
+    if ($auto_backup_off && ($backup_age_state !== 'pass')) {
+        $score += ($backup_age_state === 'fail') ? $weights['backup'] * 0.5 : 0;
         $backup_color = 'fg-secondary';
         $backup_message = 'Automatic backup is turned off.';
     }
@@ -3242,15 +3240,20 @@ function get_system_status_checks()
 
     // ⬆️ Software update
     //
-    // SOFTWARE_UPDATE_AVAILABLE is set in init.php from the periodic check; the
-    // timestamp says how much that answer is worth. A check from two months ago
-    // saying "up to date" is not information.
-    $update_available = (defined('SOFTWARE_UPDATE_AVAILABLE') && SOFTWARE_UPDATE_AVAILABLE);
-    $update_checked = defined('LAST_SOFTWARE_UPDATE_CHECK_TIMESTAMP')
-        ? (int) LAST_SOFTWARE_UPDATE_CHECK_TIMESTAMP
-        : 0;
+    // SOFTWARE_UPDATE_AVAILABLE is set in init.php from the periodic check.
+    // Green only from a recent check that got an answer: the stamp in config
+    // is written before the request, so a failed check, an old one or checks
+    // turned off say nothing about whether an update waits, and are scored
+    // like a site never checked (pg_update_check_state()).
+    $update_state = pg_update_check_state(
+        (defined('SOFTWARE_UPDATE_AVAILABLE') && SOFTWARE_UPDATE_AVAILABLE),
+        !(defined('SOFTWARE_UPDATE_CHECK') && (SOFTWARE_UPDATE_CHECK != true)),
+        defined('LAST_SOFTWARE_UPDATE_CHECK_TIMESTAMP') ? (int) LAST_SOFTWARE_UPDATE_CHECK_TIMESTAMP : 0,
+        pg_update_check_last_answer(),
+        time()
+    );
 
-    if ($update_available) {
+    if ($update_state === 'available') {
         $output .= $makeIcon(
             'bi-arrow-up-circle-fill',
             'fg-warning',
@@ -3260,13 +3263,43 @@ function get_system_status_checks()
             'software_update.php'
         );
         $score -= $weights['update'] * 0.5;
-    } elseif ($update_checked < 1) {
+    } elseif ($update_state === 'off') {
+        $output .= $makeIcon(
+            'bi-arrow-up-circle',
+            'fg-warning',
+            'Software Update',
+            'Update checks are turned off in data/config.php (SOFTWARE_UPDATE_CHECK), so it is not known whether an update is waiting.',
+            lang('Checks off'),
+            'software_update.php'
+        );
+        $score -= $weights['update'] * 0.5;
+    } elseif ($update_state === 'never') {
         $output .= $makeIcon(
             'bi-arrow-up-circle',
             'fg-warning',
             'Software Update',
             'The software has never been checked for updates, so it is not known whether one is waiting.',
             lang('Not checked'),
+            'software_update.php'
+        );
+        $score -= $weights['update'] * 0.5;
+    } elseif ($update_state === 'failed') {
+        $output .= $makeIcon(
+            'bi-arrow-up-circle',
+            'fg-warning',
+            'Software Update',
+            'The last update check got no answer from the update server, so it is not known whether an update is waiting. The Site Log has the reason.',
+            lang('Check failed'),
+            'software_update.php'
+        );
+        $score -= $weights['update'] * 0.5;
+    } elseif ($update_state === 'stale') {
+        $output .= $makeIcon(
+            'bi-arrow-up-circle',
+            'fg-warning',
+            'Software Update',
+            'The last answer of the update server is more than a week old, so it is not known whether an update is waiting.',
+            lang('Not checked recently'),
             'software_update.php'
         );
         $score -= $weights['update'] * 0.5;

@@ -9,7 +9,9 @@
  * donation, gift card or recurring product).
  *
  * The bundle's inventory, inventory_quantity, out_of_stock and backorder are
- * a cache of what its components allow (pg_bundle_stock()), so every reader
+ * a cache of what its components allow (pg_bundle_stock()); the merchant's
+ * own back order choice is kept apart in bundle_backorder, so the cached
+ * backorder can go up again (pg_bundle_backorder()). Every reader
  * of products.inventory_quantity keeps working unchanged. With
  * bundle_pricing = 'sum' its price is the components' sum less
  * bundle_discount_bp basis points (pg_bundle_price()). The cache is
@@ -41,6 +43,34 @@ define('PG_BUNDLE_MAX_QUANTITY', 9999);
 function pg_bundles_ready()
 {
     return pg_schema_has('product_bundle_items') && pg_schema_has('products', 'bundle');
+}
+
+/**
+ * Whether products.bundle_backorder is in place (2026.11.0, 11.0.176).
+ *
+ * @return bool
+ */
+function pg_bundle_backorder_ready()
+{
+    return pg_schema_has('products', 'bundle_backorder');
+}
+
+/**
+ * The backorder a bundle's cache takes: the merchant's own choice, only while
+ * every tracked component takes back orders. The choice is bundle_backorder;
+ * a row read before the upgrade added it has only the cached backorder,
+ * which then stands for the choice.
+ *
+ * @param array $bundle            products row with backorder, and bundle_backorder when it exists
+ * @param bool  $backorder_allowed pg_bundle_stock()['backorder_allowed']
+ * @return int 0 or 1
+ */
+function pg_bundle_backorder($bundle, $backorder_allowed)
+{
+    $column = array_key_exists('bundle_backorder', $bundle) ? 'bundle_backorder' : 'backorder';
+    $choice = isset($bundle[$column]) && ((string) $bundle[$column] === '1');
+
+    return ($choice && $backorder_allowed) ? 1 : 0;
 }
 
 /**
@@ -382,7 +412,8 @@ function pg_bundle_refresh($bundle_id)
     }
 
     $bundle = db_item(
-        "SELECT price, inventory, inventory_quantity, out_of_stock, backorder, bundle, bundle_pricing, bundle_discount_bp
+        "SELECT price, inventory, inventory_quantity, out_of_stock, backorder, bundle, bundle_pricing, bundle_discount_bp"
+            . (pg_bundle_backorder_ready() ? ', bundle_backorder' : '') . "
         FROM products
         WHERE id = '" . $bundle_id . "'
         LIMIT 1");
@@ -394,7 +425,7 @@ function pg_bundle_refresh($bundle_id)
     $components = pg_bundle_items($bundle_id);
     $stock = pg_bundle_stock($components);
     $price = pg_bundle_price($bundle['bundle_pricing'], $bundle['price'], $components, $bundle['bundle_discount_bp']);
-    $backorder = (!empty($bundle['backorder']) && $stock['backorder_allowed']) ? 1 : 0;
+    $backorder = pg_bundle_backorder($bundle, $stock['backorder_allowed']);
 
     $stock_changed = ((int) $bundle['inventory'] !== $stock['inventory'])
         || ((int) $bundle['inventory_quantity'] !== $stock['inventory_quantity']);

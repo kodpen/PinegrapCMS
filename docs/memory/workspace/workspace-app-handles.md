@@ -11,7 +11,7 @@ description: How an application tag <@app:N> is drawn (Claude's link @Claude, Pi
 ## How is the handle made?
 - `ws_app_handle($name, $app_id, $taken)`: Turkish and common accented letters folded, lower case, any other run of characters one dash, starts with a letter, cut to 32, no dash or underscore at either end: the shape `ws_mcp_alias_shape_problem()` accepts.
 - Never one of `ws_mcp_reserved_aliases()` (so an app named "Claude" that is not linked reads "@app-N") nor an MCP server's alias (`$taken`, read only when such an app is drawn). Otherwise, or when the name gives fewer than 2 characters, `app-<id>`.
-- Two applications with one name share a handle: the token says which one; uniqueness and a person's user name wait for the registry (plans/workspace-agent-handles.md step 2, open question 3).
+- Two applications with one name share a handle: the token says which one; uniqueness and a person's user name wait for the registry (plans/agent-channel.md, step A3).
 
 ## What do a deleted and a former application read as?
 - No row: "@app-N", meta "Deleted record", `known` false, `gone` true, like any tag whose record is gone.

@@ -320,11 +320,14 @@ function test_designer_theme_light_selector_call_sites()
 	pg_assert_contains("var upgraded = _themeUpgradeLightSelector(cssFiles[ui].content || '');", $load, 'the old light block is split on load');
 	pg_assert_contains('cssFiles[ui].content = upgraded; changedCss = true;', $load, 'the split content is kept and saved');
 
-	$write = strpos($source, 'function _writeThemeVar(');
-	$write_end = ($write !== false) ? strpos($source, 'function _findThemeVarMeta(', $write) : false;
+	// The writer is in the theme part (style_designer_theme.js); it reaches
+	// the core's helpers through the host of the assets panel.
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_theme.js');
+	$write = strpos($part, 'function _writeThemeVar(');
+	$write_end = ($write !== false) ? strpos($part, 'function _findThemeVarMeta(', $write) : false;
 	pg_assert_true(($write !== false) && ($write_end !== false), 'the designer has the theme variable writer');
-	$body = preg_replace('~//[^\n]*~', '', substr($source, $write, $write_end - $write));
-	pg_assert_contains("var content = _themeUpgradeLightSelector(entry.content || '');", $body, 'the old light block is split on write');
+	$body = preg_replace('~//[^\n]*~', '', substr($part, $write, $write_end - $write));
+	pg_assert_contains('var content = _themeUpgradeLightSelector(H.userStyles());', $body, 'the old light block is split on write');
 	pg_assert_contains('var kind = _themeBlockFor(mode, varName);', $body);
 	pg_assert_contains("if (kind !== 'dark') content = _themeSetDecl(content, (kind === 'light') ? 'shared' : 'light', varName, '');", $body, 'the value leaves the other light block');
 	pg_assert_contains('content = _themeSetDecl(content, kind, varName, value);', $body, 'the value goes to its own block');

@@ -117,7 +117,7 @@ function test_api_customers_every_route_applies_the_group_rule()
 		);
 	}
 
-	pg_assert_same(15, $found, 'list, get, wishlist, consents, subscriptions and their three moves, credit with its issue and void, create, update and both deletes');
+	pg_assert_same(16, $found, 'list, get, wishlist, consents, subscriptions and their three moves, credit with its issue and void, allow mail, create, update and both deletes');
 
 	pg_assert_contains('api_customer_owner_filter(', api_customers_test_function_source('api_customer_reachable_or_fail'), 'the record loader');
 	pg_assert_contains('api_customer_create_group(', api_customers_test_function_source('api_customer_create_group_or_fail'), 'the create\'s group');
@@ -130,3 +130,51 @@ function test_api_customers_member_write_cannot_pull_a_contact_into_reach()
 {
 	pg_assert_contains('api_customer_owner_filter(', api_customers_test_function_source('api_contact_group_contacts_or_fail'), 'the member write');
 }
+
+// The suppressed badge as a Customer field: the screens' condition on the
+// contact's address, and false on a site before the mail_bounces table.
+function test_api_customers_email_suppressed_field()
+{
+	pg_assert_same('0', api_customer_suppressed_sql(false), 'before the table');
+	pg_assert_same(pg_mail_bounce_suppressed_sql('contacts.email_address'), api_customer_suppressed_sql(true), 'the badge\'s condition');
+	pg_assert_contains('AS email_suppressed', api_customer_select(), 'every Customer read selects it');
+
+	$row = array(
+		'id' => '4', 'member_id' => null, 'first_name' => null, 'last_name' => null, 'email_address' => 'a@example.com',
+		'company' => null, 'mobile_phone' => null, 'business_phone' => null, 'home_phone' => null,
+		'business_address_1' => null, 'business_city' => null, 'business_state' => null, 'business_zip_code' => null,
+		'business_country' => null, 'lead_source' => null,
+	);
+
+	pg_assert_same(true, api_customer_present($row + array('email_suppressed' => '1'))['email_suppressed'], 'suppressed');
+	pg_assert_same(false, api_customer_present($row + array('email_suppressed' => '0'))['email_suppressed'], 'not suppressed');
+	pg_assert_same('boolean', api_customer_schema()['email_suppressed'], 'declared');
+}
+
+// Allow again lifts only a standing block, through the contact card's call,
+// with every check above the rehearsal's stop.
+function test_api_customers_allow_mail()
+{
+	pg_assert_same('', api_customer_allow_mail_refusal(array('email_address' => 'a@example.com', 'email_suppressed' => '1')), 'a suppressed address');
+	pg_assert_same('email_not_suppressed', api_customer_allow_mail_refusal(array('email_address' => 'a@example.com', 'email_suppressed' => '0')), 'nothing to lift');
+	pg_assert_same('email_not_suppressed', api_customer_allow_mail_refusal(array('email_address' => ' ', 'email_suppressed' => '1')), 'no address');
+
+	$source = api_customers_test_function_source('api_customers_allow_mail');
+	$stop = strpos($source, 'api_dry_run_stop(');
+
+	pg_assert_true($stop !== false, 'rehearsable');
+	pg_assert_true($stop > strpos($source, 'api_customer_allow_mail_refusal('), 'the refusal runs before the stop');
+	pg_assert_true($stop < strpos($source, 'pg_mail_bounce_allow_contact('), 'the screen\'s call after it');
+
+	$found = false;
+
+	foreach (api_schema() as $route) {
+		if ($route['id'] === 'customers.allow_mail') {
+			$found = true;
+			pg_assert_same(array('POST', '/customers/{id}/allow-mail', 'customers:write', true), array($route['method'], $route['path'], $route['scope'], $route['dry_run']), 'the route');
+		}
+	}
+
+	pg_assert_true($found, 'declared');
+}
+

@@ -262,8 +262,8 @@ if (pg_schema_has('config_text')) {
         . $a11y_statement_field('enforcement', lang('Enforcement Procedure'), lang('The authority a visitor may turn to when the answer does not satisfy them, with its address. Empty: the section is left out.'), 3) . '
                                         <div class="pg-f-sm">
                                             <label class="form-label" for="a11y_statement_date">' . lang('Statement Date') . '</label>
-                                            <input type="date" class="form-control" id="a11y_statement_date" name="a11y_statement_date" value="' . h($a11y_statement['date']) . '"/>
-                                            <div class="form-text">' . h(lang('When the statement was prepared or last reviewed. Empty: today.')) . '</div>
+                                            <input type="date" data-pg-date class="form-control" id="a11y_statement_date" name="a11y_statement_date" value="' . h($a11y_statement['date']) . '" aria-describedby="a11y_statement_date_help"/>' . get_date_picker_format() . pg_fields_script() . '
+                                            <div class="form-text" id="a11y_statement_date_help">' . h(lang('When the statement was prepared or last reviewed. Empty: today.')) . '</div>
                                         </div>
                                     </div>
                                 </div>

@@ -227,3 +227,31 @@ function test_image_editor_puppet_hit_and_rings()
 	pg_assert_same(1, $r['mirroredLeft'], 'a mirrored layer bent out of its box hits where it is drawn');
 	pg_assert_true($r['moved'], 'a pinned path\'s rings follow its pins');
 }
+
+// The arrow keys move a chosen pin by document pixels: as a share of the box,
+// through the layer's turn and mirror; a missing pin gives null.
+function test_image_editor_puppet_nudge()
+{
+	$r = image_editor_puppet_node(
+		'var l = rect([{ rest: [20, 50], at: [0.1, 0.5] }]);' . "\n"
+		. 'var turned = Object.assign(rect([{ rest: [20, 50], at: [0.1, 0.5] }]), { rot: 90 });' . "\n"
+		. 'var mirrored = Object.assign(rect([{ rest: [20, 50], at: [0.1, 0.5] }]), { mirror: true });' . "\n"
+		. 'var round = function (p) { return p ? p.map(function (v) { return Math.round(v * 1e4) / 1e4; }) : p; };' . "\n"
+		. 'console.log(JSON.stringify({ right: M.puppetNudge(l, 0, 10, 0), down: M.puppetNudge(l, 0, 0, 1), turned: round(M.puppetNudge(turned, 0, 10, 0)),' . "\n"
+		. ' mirrored: M.puppetNudge(mirrored, 0, 10, 0), none: M.puppetNudge(l, 3, 1, 0), bare: M.puppetNudge(rect(), 0, 1, 0), rest: l.puppet.pins[0].rest }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(0.15, 0.5), $r['right'], '10 px right on a 200 px box');
+	pg_assert_same(array(0.1, 0.51), $r['down'], '1 px down on a 100 px box');
+	pg_assert_same(array(0.1, 0.4), $r['turned'], 'on a layer turned 90 degrees, right on the page is up in the box');
+	pg_assert_same(array(0.05, 0.5), $r['mirrored'], 'on a mirrored layer, right on the page is left in the box');
+	pg_assert_same(null, $r['none'], 'no such pin');
+	pg_assert_same(null, $r['bare'], 'no pins');
+	pg_assert_same(array(20, 50), $r['rest'], 'the rest stays');
+}
+

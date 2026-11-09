@@ -515,6 +515,19 @@ function pg_offer_gift_refused($offer_id, $offer_action_id, $forget = false)
     return true;
 }
 
+// A recipient-scope offer answers once per recipient, but the refusal is kept
+// per order: it is forgotten only when the offer qualifies for no recipient
+// at all. Forgetting it on the first recipient that does not qualify would
+// drop it while another recipient still qualifies, and the refused gift would
+// come back on the next refresh. $recipient_qualifies holds one bool per
+// recipient checked.
+function pg_offer_gift_refusal_settle($offer_id, $offer_action_id, array $recipient_qualifies)
+{
+    if (!in_array(true, $recipient_qualifies, true)) {
+        pg_offer_gift_refused($offer_id, $offer_action_id, true);
+    }
+}
+
 // Remember that the shopper took an offer's gift out of this order, so the
 // next cart refresh does not put it straight back (pg_offer_gift_refused()).
 function pg_offer_gift_refuse($order_id, $offer_id, $offer_action_id)
@@ -1031,9 +1044,12 @@ function protect_credit_card_number($card_number)
  * Classify a raw `orders.status` value into a lifecycle stage key.
  *
  * The status column is a free-ish enum that has picked up Turkish values over
- * the years, so matching is substring-based in both languages. Order matters:
+ * the years. The values the software writes are matched exactly first; any
+ * other value is matched by substring in both languages. Order matters:
  * 'cancelled' is checked first because a cancelled order may still carry
- * words from an earlier stage in some installs.
+ * words from an earlier stage in some installs, and a negated word
+ * ('incomplete', 'unpaid', 'tamamlanmadı') is checked before the positive
+ * word it contains.
  *
  * @param string $status Raw orders.status
  * @return string        One of: cancelled|complete|shipped|pending|refunded|default
@@ -1042,14 +1058,16 @@ function _pg_order_status_stage($status)
 {
     $s = mb_strtolower(trim((string)$status), 'UTF-8');
     if ($s === '') return 'default';
+    $stored = array('incomplete' => 'pending', 'complete' => 'complete', 'exported' => 'complete', 'cancelled' => 'cancelled', 'canceled' => 'cancelled');
+    if (isset($stored[$s])) return $stored[$s];
     if (strpos($s, 'cancel')   !== false || strpos($s, 'iptal')   !== false) return 'cancelled';
     if (strpos($s, 'refund')   !== false || strpos($s, 'iade')    !== false) return 'refunded';
     if (strpos($s, 'ship')     !== false || strpos($s, 'kargo')   !== false) return 'shipped';
+    if (strpos($s, 'incomplete') !== false || strpos($s, 'unpaid') !== false || strpos($s, 'tamamlanmad') !== false) return 'pending';
     if (strpos($s, 'complete') !== false || strpos($s, 'tamam')   !== false) return 'complete';
     if (strpos($s, 'export')   !== false)                                    return 'complete';
     if (strpos($s, 'paid')     !== false || strpos($s, 'ödend')   !== false) return 'complete';
     if (strpos($s, 'pend')     !== false || strpos($s, 'beklem')  !== false) return 'pending';
-    if (strpos($s, 'incomplete') !== false)                                  return 'pending';
     return 'default';
 }
 
@@ -6383,6 +6401,7 @@ function apply_offers_to_cart()
                             $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $offer['id'], (string) $offer_action['id'])) or output_error(lang('Query failed.'));
                             // if this offer and action have not already been applied to order or offer is allowed to be applied to multiple recipients, then continue to add pending offer
                             if ((mysqli_num_rows($result) == 0) || ($offer['multiple_recipients'] == 1)) {
+                                $recipient_qualifies = array();
                                 // loop through recipients
                                 foreach ($ship_tos as $ship_to) {
                                     // The items that are not shipped share the
@@ -6392,7 +6411,9 @@ function apply_offers_to_cart()
                                         continue;
                                     }
                                     // if offer is valid for this recipient
-                                    if (validate_offer($offer['id'], $ship_to['id']) == true) {
+                                    $qualifies = (validate_offer($offer['id'], $ship_to['id']) == true);
+                                    $recipient_qualifies[] = $qualifies;
+                                    if ($qualifies) {
                                         // check if this offer and action have already been applied to this recipient
                                         $query = "SELECT id
 
@@ -6427,15 +6448,16 @@ function apply_offers_to_cart()
                                             }
                                         }
                                         // else this offer is not valid for this
-                                        // recipient, so a refused gift is
-                                        // forgotten and an upsell is offered
+                                        // recipient, so an upsell is offered
                                     } else {
-                                        pg_offer_gift_refused($offer['id'], $offer_action['id'], true);
                                         if ((isset($upsell_offers[$offer['id']]) == false) && (check_upsell($offer, $ship_to['id']) == true)) {
                                             $upsell_offers[$offer['id']] = $offer;
                                         }
                                     }
                                 }
+                                // A refused gift is forgotten only when no
+                                // recipient qualifies any more.
+                                pg_offer_gift_refusal_settle($offer['id'], $offer_action['id'], $recipient_qualifies);
                             }
                         }
                     }
@@ -8553,6 +8575,21 @@ function pg_money_text($amount, $symbol = null, $suffix = '')
 }
 
 /**
+ * The same as pg_visitor_money(), as plain text: for a value escaped later,
+ * such as a widget token that pg_sw_escape_token_values() escapes. A symbol
+ * stored as an entity (&#8378;) becomes the character, so it shows once.
+ *
+ * @param float|int|string $base_amount  Major units, base currency
+ * @param string|null      $symbol       null = the visitor's currency symbol
+ * @return string
+ */
+function pg_visitor_money_text($base_amount, $symbol = null)
+{
+    $suffix = defined('VISITOR_CURRENCY_CODE_FOR_OUTPUT') ? (string) VISITOR_CURRENCY_CODE_FOR_OUTPUT : '';
+    return pg_money_text(pg_visitor_amount($base_amount), $symbol, $suffix);
+}
+
+/**
  * Read an amount a person typed: 1.234,56, 1,234.56, 1234,5, 1234.50 or
  * 1 234,56 all come out as 1234.56.
  *
@@ -10051,8 +10088,8 @@ function pg_assign_product_barcode($product_id, $barcode = '', $type = '')
  * list for the columns later versions added, each only where the source row,
  * read with SELECT *, has it: the AI write marks the copy keeps
  * (pg_ai_fields_copy()), the VAT exemption code a zero-rated ERP line reads,
- * and a bundle's switch, pricing and discount, without which a copied bundle
- * would sell its cached stock as its own.
+ * and a bundle's switch, pricing, discount and back order choice, without
+ * which a copied bundle would sell its cached stock as its own.
  *
  * @param array $row the source product row
  * @param mixed $ai_fields pg_ai_fields_copy(): false names no ai_fields column
@@ -10084,6 +10121,12 @@ function pg_product_copy_extra_sql($row, $ai_fields)
         $values .= "'" . (empty($row['bundle']) ? 0 : 1) . "', "
             . "'" . (($row['bundle_pricing'] === 'sum') ? 'sum' : 'fixed') . "', "
             . "'" . ((($bp < 0) || ($bp > 10000)) ? 0 : $bp) . "',";
+
+        // The bundle's own back order choice (11.0.176), apart from the cache.
+        if (array_key_exists('bundle_backorder', $row)) {
+            $columns .= 'bundle_backorder,';
+            $values .= "'" . (((string) $row['bundle_backorder'] === '1') ? 1 : 0) . "',";
+        }
     }
 
     return array('columns' => $columns, 'values' => $values);

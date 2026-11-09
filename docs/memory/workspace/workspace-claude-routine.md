@@ -14,7 +14,7 @@ description: "@Claude" in Workspace channels through one site-wide claude.ai rou
 - Claude reads records only as far as the application key allows; it writes records only through approved drafts. No delete endpoint.
 - Private channels are off by default (`ws_channels.claude_access`): their content goes to Anthropic under the admin's account, so the channel owner must turn it on.
 - The admin who owns the application need not be in a channel or a discussion Claude was asked in: it is read and answered through the person who asked while the request is open (docs/memory/workspace/workspace-assistant-reach.md).
-- The routine token is stored encrypted in `config.ws_claude_token`; the settings card never shows it back.
+- The routine's address and sealed token sit in Claude's `ws_agents` row (`agent-registry.md`); the card never shows the token back.
 
 ## What limits come from Anthropic?
 - Daily runs (April 2026, may change): Pro 5, Max 15, Team/Enterprise 25; API triggers count. With usage credits on, extra runs are billed.
@@ -29,4 +29,4 @@ description: "@Claude" in Workspace channels through one site-wide claude.ai rou
 
 ## What was never tested with a real routine?
 - On dev (owner + Claude): two requests in one run, a prompt-injection attempt, the private channel gate, and waiting when the daily allowance runs out (HTTP 429). On 2026-09-23 these were only simulated on localhost.
-- A live Claude Code session as a second connection type is a shelved plan: docs/memory/plans/claude-code-channel.md
+- A live Claude Code session as a second connection type is a door of docs/memory/plans/agent-channel.md (step A8)

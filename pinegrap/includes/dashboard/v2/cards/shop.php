@@ -127,8 +127,11 @@ function pg_dashboard_v2_card_shop($user, $period, $compare)
     $bars = array();
     $bar_labels = array();
 
+    $day_names = array();
+
     for ($i = 0; $i < 7; $i++) {
         $bars[] = round((float) ($sums['d' . $i . '_total'] ?? 0) / 100, 2);
+        $day_names[] = lang(date('D', $windows['d' . $i][0]));
         $bar_labels[] = get_absolute_time(array('timestamp' => $windows['d' . $i][0], 'type' => 'date', 'year' => false, 'format' => 'plain_text', 'timezone_type' => 'site'))
             . ': ' . $money($sums['d' . $i . '_total'] ?? 0);
     }
@@ -141,6 +144,8 @@ function pg_dashboard_v2_card_shop($user, $period, $compare)
             'text'  => (string) $row['name'],
             'value' => (float) $row['revenue'],
             'note'  => pg_format_number($row['qty'], 0) . ' · ' . $money($row['revenue']),
+            'qty'   => lang(array('string' => '{var:1} piece{suffix:1}', 'vars' => pg_format_number($row['qty'], 0), 'suffix' => ($row['qty'] == 1) ? '' : 's')),
+            'money' => $money($row['revenue']),
         );
     }
 
@@ -150,6 +155,7 @@ function pg_dashboard_v2_card_shop($user, $period, $compare)
         'change'     => ($change === null) ? '' : $change['text'],
         'tone'       => ($change === null) ? '' : $change['tone'],
         'bars'       => $bars,
+        'days'       => $day_names,
         'bars_label' => lang('Revenue per day, last 7 days, today last') . ' — ' . implode(', ', $bar_labels),
         'rows_title' => lang('Best Sellers'),
         'rows'       => $rows,

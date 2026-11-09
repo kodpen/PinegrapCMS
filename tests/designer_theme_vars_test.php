@@ -115,7 +115,7 @@ function designer_theme_vars_test_js()
 	$from = strpos($source, 'function _findRuleBlock(');
 	$to = ($from !== false) ? strpos($source, '// Read the current value of a single theme var', $from) : false;
 	$theme = strpos($source, 'function _sdThemeCssFromUserStyles(');
-	$theme_end = ($theme !== false) ? strpos($source, '// Header of the Themes tab', $theme) : false;
+	$theme_end = ($theme !== false) ? strpos($source, "// The Themes tab is the part 'theme'", $theme) : false;
 	pg_assert_true(($from !== false) && ($to !== false) && ($theme !== false) && ($theme_end !== false), 'the designer has the theme helpers');
 
 	if (($from === false) || ($to === false) || ($theme === false) || ($theme_end === false)) {

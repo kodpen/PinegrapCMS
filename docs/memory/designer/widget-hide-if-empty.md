@@ -6,7 +6,7 @@ module: widgets_finish
 
 ## What does the mark do?
 - An element of a widget tree with class `pg-hide-if-empty` is left out of the page when it came out empty, with its frame and its words (`pg_sw_hide_empty_fields()`). Any element can carry it; marked elements inside marked ones go first.
-- It is judged by its first element with class `pg-field-value` (a "label: value" row, a heading over a list), else by everything inside it. Words, a picture with an address, a video, a frame, a drawing, a link and a form control count (`pg_sw_has_content()`); a condition's carrier does not.
+- It is judged by its first element with class `pg-field-value` (a "label: value" row, a heading over a list), else by everything inside it. Words, a picture with an address, a player with an address of its own or of a `source` (its fallback words do not count; a player is judged as its whole element, [[bound-media-src]]), a frame, a drawing, a link and a form control count (`pg_sw_has_content()`); a condition's carrier does not.
 
 ## Where is it judged?
 - Owner (2026-10-27): in every kind, with a switch in the panel; starter templates unchanged (their 465 marks all sit in the kinds that judged it before); a hand-written mark in another kind now really removes the box.

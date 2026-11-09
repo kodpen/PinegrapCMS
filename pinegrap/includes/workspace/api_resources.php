@@ -821,6 +821,9 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         'text'        => $deleted ? '' : ws_plain_text($viewer, $row['body'], $refs),
         'body'        => $deleted ? '' : (string) $row['body'],
         'task_id'     => ((int) $row['task_id'] > 0) ? (int) $row['task_id'] : null,
+        // The message this one answers (Reply in the panel), of the same
+        // channel or discussion.
+        'parent_id'   => ((int) ($row['parent_id'] ?? 0) > 0) ? (int) $row['parent_id'] : null,
         'file'        => $file,
         'deleted'     => $deleted,
         'hidden'      => isset($hidden[(int) $row['id']]),
@@ -853,6 +856,7 @@ function ws_api_message_schema()
         'text'        => 'string',
         'body'        => 'string',
         'task_id'     => 'integer?',
+        'parent_id'   => 'integer?',
         'file'        => 'WorkspaceMessageFile?',
         'deleted'     => 'boolean',
         'hidden'      => 'boolean',
@@ -1136,16 +1140,27 @@ function ws_api_messages_create($params)
         api_fail_validation($checked['error'], 'text');
     }
 
+    // The message it answers, as Reply in the panel: one of this channel or
+    // discussion, not deleted, of the conversation as it is now.
+    $parent_id = (int) ($params['parent_id'] ?? 0);
+    $refused = ws_message_parent_check($channel, $parent_id);
+
+    if ($refused !== '') {
+        api_fail_validation($refused, 'parent_id');
+    }
+
     api_dry_run_stop('created', 'workspace_message', array(
         'channel_id' => (int) $channel['id'],
         'kind'       => $kind,
         'ack'        => $ack,
+        'parent_id'  => ($parent_id > 0) ? $parent_id : null,
         'joins'      => ($app_id === 0) && ($channel['kind'] === 'public') && !ws_channel_membership($channel['id'], $viewer['id']),
     ));
 
     $result = ws_message_send($viewer, $channel, (string) $params['text'], array(
-        'kind'   => $kind,
-        'app_id' => $app_id,
+        'kind'      => $kind,
+        'app_id'    => $app_id,
+        'parent_id' => $parent_id,
     ));
 
     if (!$result['ok']) {
@@ -1265,7 +1280,7 @@ function ws_api_assistants_carry_on($asked, $here = false)
     }
 
     $agent = !empty($asked['agent']) && function_exists('ws_mcp_agent_kick');
-    $ai = !empty($asked['ai']) && function_exists('ws_ai_kick');
+    $ai = (!empty($asked['ai']) || !empty($asked['models'])) && function_exists('ws_ai_kick');
     $where = ws_api_carry_on_where(function_exists('fastcgi_finish_request'), $here);
 
     if ((!$agent && !$ai) || ($where === '')) {
@@ -1712,9 +1727,19 @@ function ws_api_message_preamble($params)
     $name = trim((string) ($app['name'] ?? ''));
     $asker = array('name' => ws_mcp_agent_author($message));
 
+    $place = $parent ? ws_ai_agent_place('thread', (string) $parent['name']) : ws_ai_agent_place('channel', $channel ? (string) $channel['name'] : '');
+
+    // The channel's memory index and decisions after the place; the agent
+    // reads the entries it needs with workspace.memory.get.
+    $memory = $channel ? ws_ai_memory_parts($viewer, $channel) : array();
+
+    if ($memory) {
+        $place .= "\n\n" . $memory[0];
+    }
+
     $text = ws_ai_agent_preamble(
         ws_ai_briefing_head($asker, 'agent', ($name !== '') ? $name : lang('Application')),
-        $parent ? ws_ai_agent_place('thread', (string) $parent['name']) : ws_ai_agent_place('channel', $channel ? (string) $channel['name'] : ''),
+        $place,
         '',
         ws_ai_request_language((string) $message['body'])
     );
@@ -1759,11 +1784,17 @@ function ws_api_messages_update($params)
     $viewer = ws_api_viewer();
     $message = ws_api_message_or_404($viewer, $params['id']);
 
-    ws_api_own_words_only();
+    // An agent's own key changes the agent's own messages (agent_shown.php);
+    // any other caller only the person's.
+    $as_app = function_exists('ws_api_agent_own_app') ? ws_api_agent_own_app() : 0;
+
+    if ($as_app <= 0) {
+        ws_api_own_words_only();
+    }
 
     // The checks ws_message_edit() makes, made first so that a dry run meets
     // the same refusals.
-    $checked = ws_message_edit_check($viewer, $message, (string) $params['text']);
+    $checked = ws_message_edit_check($viewer, $message, (string) $params['text'], $as_app);
 
     if (!$checked['ok']) {
         ws_api_message_refused($checked['error'], 'text');
@@ -1771,7 +1802,7 @@ function ws_api_messages_update($params)
 
     api_dry_run_stop('updated', 'workspace_message', array('id' => (int) $message['id'], 'channel_id' => (int) $message['channel_id']));
 
-    $result = ws_message_edit($viewer, $message, (string) $params['text']);
+    $result = ws_message_edit($viewer, $message, (string) $params['text'], $as_app);
 
     if (!$result['ok']) {
         ws_api_message_refused($result['error'], 'text');
@@ -1786,10 +1817,13 @@ function ws_api_messages_delete($params)
 {
     $viewer = ws_api_viewer();
     $message = ws_api_message_or_404($viewer, $params['id']);
+    $as_app = function_exists('ws_api_agent_own_app') ? ws_api_agent_own_app() : 0;
 
-    ws_api_own_words_only();
+    if ($as_app <= 0) {
+        ws_api_own_words_only();
+    }
 
-    $checked = ws_message_delete_check($viewer, $message);
+    $checked = ws_message_delete_check($viewer, $message, $as_app);
 
     if (!$checked['ok']) {
         ws_api_message_refused($checked['error']);
@@ -1799,8 +1833,8 @@ function ws_api_messages_delete($params)
 
     // Somebody else's message taken out by staff leaves a line in the
     // activity log.
-    $result = ws_api_as_owner(function () use ($viewer, $message) {
-        return ws_message_delete($viewer, $message);
+    $result = ws_api_as_owner(function () use ($viewer, $message, $as_app) {
+        return ws_message_delete($viewer, $message, $as_app);
     });
 
     if (!$result['ok']) {
@@ -2966,10 +3000,10 @@ function ws_api_polls_create($params)
     $viewer = ws_api_viewer();
     $channel = ws_api_channel_or_404($viewer, $params['id']);
 
-    // Asked in the person's own name: an application key and an OAuth
-    // connection write as the application, and a poll asked so could be
-    // neither changed by the person nor closed with its result in their name.
-    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can ask a poll; an application key or an OAuth connection cannot ask it in their name.'));
+    // A team devices session asks in the person's name; an application key
+    // or an OAuth connection asks as the application (an agent asking the
+    // people), and its result is written in the application's name.
+    $app_id = ws_api_writer_app_id();
 
     if (!ws_interact_ready()) {
         api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
@@ -3013,7 +3047,7 @@ function ws_api_polls_create($params)
         'closes_at'  => api_time($checked['closes_at']),
     ));
 
-    $result = ws_poll_create($viewer, $channel, $data);
+    $result = ws_poll_create($viewer, $channel, $data, $app_id);
 
     if (!$result['ok']) {
         api_fail_validation($result['error'], ($result['field'] !== '') ? $result['field'] : null);
@@ -3134,17 +3168,35 @@ function ws_api_polls_update($params)
 }
 
 /**
+ * Whether the calling application (an agent) asked this poll itself.
+ *
+ * @param array $poll
+ * @return bool
+ */
+function ws_api_poll_is_callers($poll)
+{
+    $app_id = ws_api_writer_app_id();
+
+    return ($app_id > 0) && (ws_message_app_id($poll['message_id']) === $app_id);
+}
+
+/**
  * Closes a poll, the way Close the poll on it does: the asker closes their own,
  * whoever runs the channel any. The result goes into the channel - a clear
  * winner as a decision in the asker's name, a tie or a poll nobody voted in
- * as a line of the workspace's. A poll already closed is not an error.
+ * as a line of the workspace's. An application closes the polls it asked.
+ * A poll already closed is not an error.
  */
 function ws_api_polls_close($params)
 {
     $viewer = ws_api_viewer();
     $poll = ws_api_poll_or_404($viewer, $params['id']);
 
-    ws_api_person_only(lang('Only the person, signed in on a device, can close a poll; an application cannot close it for them.'));
+    // An application closes only the polls it asked itself; the person's
+    // polls are closed by the person, on a device.
+    if (!ws_api_poll_is_callers($poll)) {
+        ws_api_person_only(lang('Only the person, signed in on a device, can close a poll; an application cannot close it for them.'));
+    }
 
     // Already closed: nothing to do.
     if ((int) $poll['closed_at'] > 0) {
@@ -4565,8 +4617,9 @@ function ws_api_decision_present($viewer, $row, $refs, $channels, $people, $chan
 
     $marked_by = null;
 
+    // An agent marks as its application: no person behind the mark.
     if ((int) $row['marked_by'] > 0) {
-        $marked_by = array('user_id' => (int) $row['marked_by'], 'name' => (string) ($people[(int) $row['marked_by']]['name'] ?? ''));
+        $marked_by = array('user_id' => ws_mark_by_app($row) ? null : (int) $row['marked_by'], 'name' => ws_mark_by_name($row, $people));
     }
 
     $file = null;
@@ -4602,6 +4655,7 @@ function ws_api_decision_present($viewer, $row, $refs, $channels, $people, $chan
         'sender_kind'   => (string) $row['sender_kind'],
         'sender'        => $sender,
         'marked_by'     => $marked_by,
+        'marked_by_kind' => ((int) $row['marked_by'] > 0) ? (ws_mark_by_app($row) ? 'app' : 'user') : null,
         'locked'        => !empty($row['locked']),
         'claude_change' => $change,
         'file'          => $file,
@@ -4622,7 +4676,8 @@ function ws_api_decision_schema()
         'body'          => 'string',
         'sender_kind'   => 'string',
         'sender'        => 'WorkspaceMessageSender?',
-        'marked_by'     => 'WorkspacePerson?',
+        'marked_by'     => 'WorkspaceMessageSender?',
+        'marked_by_kind' => 'string?',
         'locked'        => 'boolean',
         'claude_change' => 'WorkspaceDecisionChange?',
         'file'          => 'WorkspaceDecisionFile?',
@@ -4708,7 +4763,7 @@ function ws_api_decisions_list($params)
             $people_ids[] = (int) $row['sender_id'];
         }
 
-        if ((int) $row['marked_by'] > 0) {
+        if (((int) $row['marked_by'] > 0) && !ws_mark_by_app($row)) {
             $people_ids[] = (int) $row['marked_by'];
         }
     }
@@ -5704,6 +5759,20 @@ function ws_api_tasks_delegate_stop($params)
  * @param int   $note_id
  * @return array the row, with access
  */
+/**
+ * Stops a write or a versions read of a note behind its reader's notes lock
+ * with 423 note_locked: the API never holds the lock open (note_lock.php).
+ *
+ * @param array $viewer
+ * @param array $note
+ */
+function ws_api_note_locked_stop($viewer, $note)
+{
+    if (function_exists('ws_note_lock_closed') && ws_note_lock_closed($viewer, $note)) {
+        api_fail(423, 'note_locked', lang('This note is locked. Open it with your PIN on the notes screen.'));
+    }
+}
+
 function ws_api_note_or_404($viewer, $note_id)
 {
     $note = ws_note_for($viewer, (int) $note_id, 'view');
@@ -5837,7 +5906,15 @@ function ws_api_note_channel_share_present($share)
  */
 function ws_api_note_present($viewer, $note)
 {
-    $full = array_key_exists('body', $note);
+    // Behind a notes lock (note_lock.php): the title alone, never the text.
+    $locked = !empty($note['lock_closed']);
+    $full = array_key_exists('body', $note) && !$locked;
+
+    // The group the reader keeps the note in (note_groups.php); a listing
+    // adds it to every row of its page in one read.
+    if (!array_key_exists('group_id', $note)) {
+        $note = ws_note_places_add($viewer, array($note))[0];
+    }
 
     return array(
         'id'          => (int) $note['id'],
@@ -5858,6 +5935,8 @@ function ws_api_note_present($viewer, $note)
         'created_at'  => api_time($note['created_at']),
         'updated_at'  => api_time($note['updated_at']),
         'revision'    => isset($note['revision']) ? (int) $note['revision'] : null,
+        'group_id'    => ws_api_note_group_id($note),
+        'locked'      => $locked,
     );
 }
 
@@ -5892,6 +5971,8 @@ function ws_api_note_schema()
         'created_at'  => 'string?',
         'updated_at'  => 'string?',
         'revision'    => 'integer?',
+        'group_id'    => 'integer?',
+        'locked'      => 'boolean',
     );
 }
 
@@ -5920,7 +6001,7 @@ function ws_api_notes_list($params)
 
     $out = array();
 
-    foreach ($page['rows'] as $note) {
+    foreach (ws_note_places_add($viewer, $page['rows']) as $note) {
         $out[] = ws_api_note_present($viewer, $note);
     }
 
@@ -6026,6 +6107,7 @@ function ws_api_notes_delete($params)
     }
 
     $note = ws_api_note_or_404($viewer, $params['id']);
+    ws_api_note_locked_stop($viewer, $note);
 
     // The check the screen's delete makes, made first so that a dry run
     // meets the same refusal.
@@ -6055,6 +6137,7 @@ function ws_api_notes_update($params)
     }
 
     $note = ws_api_note_or_404($viewer, $params['id']);
+    ws_api_note_locked_stop($viewer, $note);
 
     if (!in_array($note['access'], array('owner', 'edit'), true)) {
         api_fail(403, 'forbidden', lang('This note was shared with you to read only.'));

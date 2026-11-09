@@ -3,8 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Pins the panel's window scroll padding: focus and in-page jumps land below
- * the fixed top bar (and the floating DataTables heading) and above a sticky
- * save bar, and the status boxes of the edit screens stick below the bar.
+ * the fixed top bar and above a sticky save bar, and the status boxes of the edit screens stick below the bar.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -44,12 +43,6 @@ function test_html_scroll_padding_clears_the_top_bar()
 {
 	$rule = pg_scroll_padding_rule(pg_scroll_padding_css(), 'html');
 	pg_assert_true($rule !== null && strpos($rule, 'scroll-padding-top: calc(var(--pg-navbar-h) + 0.5rem)') !== false, 'html clears the fixed top bar: ' . var_export($rule, true));
-}
-
-function test_html_scroll_padding_clears_the_floating_list_heading()
-{
-	$rule = pg_scroll_padding_rule(pg_scroll_padding_css(), 'html:has(.dtfh-floatingparent-head)');
-	pg_assert_true($rule !== null && strpos($rule, 'scroll-padding-top: calc(var(--pg-navbar-h) +') !== false, 'the floating heading adds to the top padding');
 }
 
 function test_html_scroll_padding_clears_sticky_bottom_bars()

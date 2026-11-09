@@ -25,7 +25,7 @@ description: Cart widget row types (donation, offer gift, normal), pending offer
 |---|---|---|
 | Recipient | SQL `ORDER BY ship_to_id, id` | `__item_recipient_heading` |
 | Recurring | PHP `usort` (recipient -> today/recurring -> id) | `__item_recurring_heading` |
-- The recurring split cannot be sorted in SQL: `is_recurring` depends on a date comparison (a row with `recurring_start_date == today` still falls under "today's charges", legacy `:1155`).
+- The recurring split cannot be sorted in SQL: `is_recurring` depends on a date comparison. `_pg_cart_row_charged_later()` decides it with `pg_order_line_charged_today()`, the rule `submit_order()` charges with: a recurring row whose start date is today or earlier is a today's charge (on ClearCommerce every recurring row is later). Before (#7602) only a date equal to today counted, so a row whose stored date had passed moved to "Recurring charges" and `^^__cart_today_total^^` left it out while checkout charged it.
 - Recipient band shows under legacy's three conditions: shipping on + multi-recipient mode + `ship_to_id > 0`. `ship_to_id = 0` means "myself": nothing to distinguish, no band.
 
 Related: docs/memory/commerce/cart-widget-payment-plan-and-gates.md

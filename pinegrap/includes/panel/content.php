@@ -68,13 +68,13 @@ function pg_panel_upload_file($request, $action)
     $file_name_without_extension = mb_substr($file_name, 0, mb_strrpos($file_name, '.'));
     $file_extension = mb_substr($file_name, mb_strrpos($file_name, '.') + 1);
 
-    $image_data = $data;
-    $image_data = explode('base64', $image_data);
-    $image_data = str_replace(' ', '+', $image_data);
-    $image_data = str_replace(',', '', $image_data);
-    $image_data = base64_decode(array_pop($image_data));
+    // Text that is not base64 is refused before a name is taken, instead of
+    // being written as a broken file.
+    $image_data = pg_upload_base64_decode($data);
 
-
+    if ($image_data === false) {
+        respond(array('status' => 'error', 'message' => lang('The file could not be read.')));
+    }
 
     // Check if file name is already in use and change it if necessary.
     $file_name = get_unique_name(array(

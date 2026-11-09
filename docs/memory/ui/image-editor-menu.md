@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## What is it, and why?
-- Part `menu` (`pg_image_editor_menu.js`, bundled last; labels `pg_image_editor_strings_menu()`; rules under its line at the end of `pg_image_editor.src.css`). Owner 2026-11-04 (E32 of `plans/image-editor-steps-5.md`, #6840).
+- Part `menu` (`pg_image_editor_menu.js`, bundled last; labels `pg_image_editor_strings_menu()`; rules under its line at the end of `pg_image_editor.src.css`). Owner 2026-11-04 (E32, #6840, `workflow/decisions-made-product-27.md`).
 - Opens on a right click on the stage, a rail item or a scene's card; a finger held 550 ms without moving 10 px; Shift+F10 or the menu key (on the focused rail item or card, else the stage under the selection). Text fields, the panel and the top bar keep the browser's own menu (`menuPlace()` answers null there).
 
 ## Which items show?

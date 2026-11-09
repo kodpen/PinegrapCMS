@@ -1863,18 +1863,62 @@ function waf_verify_bot($ip, $token)
     }
 
     // Forward-confirm: the PTR record itself is controlled by whoever owns
-    // the IP block, so it has to resolve back to the same address.
-    $forward = @gethostbynamel($host);
+    // the IP block, so it has to resolve back to the same address. Both A
+    // and AAAA records: a crawler over IPv6 is confirmed by an AAAA record.
+    // gethostbynamel() knows A records only, so without dns_get_record() an
+    // IPv6 address cannot be confirmed and must not be called spoofed.
+    if (function_exists('dns_get_record')) {
+        $forward = @dns_get_record($host, DNS_A | DNS_AAAA);
+    } elseif (strpos($ip, ':') === false) {
+        $forward = array();
+
+        foreach ((array) @gethostbynamel($host) as $address) {
+            $forward[] = array('type' => 'A', 'ip' => $address);
+        }
+    } else {
+        $forward = array();
+    }
 
     if (!$forward) {
         waf_store_reputation($ip, $token, 'unknown', $host);
         return 'unknown';
     }
 
-    $verdict = in_array($ip, $forward, true) ? 'verified' : 'spoofed';
+    $verdict = waf_forward_confirm_match($ip, $forward) ? 'verified' : 'spoofed';
     waf_store_reputation($ip, $token, $verdict, $host);
 
     return $verdict;
+}
+
+/**
+ * Is the address among the A and AAAA records of a crawler's host name?
+ * Compared packed, so one IPv6 address written two ways still matches.
+ *
+ * @param string      $ip      the visitor's address
+ * @param array|false $records dns_get_record($host, DNS_A | DNS_AAAA)
+ * @return bool
+ */
+function waf_forward_confirm_match($ip, $records)
+{
+    $packed = waf_ip_packed($ip);
+
+    if ($packed === false || !is_array($records)) {
+        return false;
+    }
+
+    foreach ($records as $record) {
+        if (!is_array($record)) {
+            continue;
+        }
+
+        $address = isset($record['ipv6']) ? $record['ipv6'] : (isset($record['ip']) ? $record['ip'] : '');
+
+        if ($address !== '' && waf_ip_packed($address) === $packed) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function waf_store_reputation($ip, $token, $verdict, $host)
@@ -2014,7 +2058,6 @@ function waf_rules()
 function waf_collect_targets()
 {
     $targets = array();
-    $count = 0;
 
     $sources = array(
         'ARGS'   => isset($_GET) ? $_GET : array(),
@@ -2022,7 +2065,11 @@ function waf_collect_targets()
         'COOKIE' => isset($_COOKIE) ? $_COOKIE : array(),
     );
 
+    // Each source has its own WAF_MAX_VALUES: under one shared cap, a query
+    // string padded with junk parameters used it up and the body and the
+    // cookies, where the payload was, were never scanned.
     foreach ($sources as $label => $source) {
+        $count = 0;
         waf_flatten($source, $label, $targets, $count);
     }
 
@@ -2545,20 +2592,39 @@ function waf_rate_exceeded($ip, $scope, $limit, $window_seconds)
  * How long a rate bucket is kept.
  *
  * The buckets are shared: the firewall counts requests in them by the minute,
- * and the sign-in throttle keeps its lockouts there, which an operator may set
- * as high as a month. Deleting everything on the firewall's own hour would
- * quietly release those lockouts early, so retention is whichever of the two
- * is longer.
+ * and the sign-in throttle keeps its failure counts there, over a window of up
+ * to a day, and its lockouts, which an operator may set as high as a month.
+ * Deleting everything on the firewall's own hour would quietly release those
+ * lockouts early and never let a day-long window fill, so retention is
+ * whichever is longest. The settings are read here rather than through
+ * includes/fn/auth.php, which the router stage - the one that usually sweeps -
+ * has not loaded; on a database without the columns waf_setting() gives the
+ * defaults.
  */
 function waf_rate_retention()
 {
-    $retention = 3600;
+    return waf_rate_retention_seconds(
+        waf_setting('login_throttle_lockout', 60),
+        waf_setting('login_throttle_minutes', 15)
+    );
+}
 
-    if (function_exists('pg_login_throttle_ready') && pg_login_throttle_ready()) {
-        $retention = max($retention, ((int) waf_setting('login_throttle_lockout', 60)) * 60);
-    }
-
-    return $retention;
+/**
+ * The shared retention in seconds for the sign-in throttle's lockout and
+ * failure window in minutes, clamped as pg_login_throttle_limits() clamps
+ * them: at least the firewall's hour.
+ *
+ * @param int $lockout_minutes login_throttle_lockout
+ * @param int $window_minutes  login_throttle_minutes
+ * @return int
+ */
+function waf_rate_retention_seconds($lockout_minutes, $window_minutes)
+{
+    return max(
+        3600,
+        max(1, min(43200, (int) $lockout_minutes)) * 60,
+        max(1, min(1440, (int) $window_minutes)) * 60
+    );
 }
 
 /**
@@ -2949,7 +3015,7 @@ function waf_last_category($category = null)
  *
  * The built-in policy is written to LEARN, not to lock down. Inline script
  * and style stay allowed because a CMS page is full of both, and the hosts
- * the software itself loads from (jsDelivr, jQuery, DataTables,
+ * the software itself loads from (jsDelivr, jQuery,
  * Google Fonts, the Cloudflare beacons a proxied site gets injected) are
  * listed, so that what remains - analytics, maps, a payment gateway, a chat
  * widget the SITE added - is a violation. In Report-Only mode that yields
@@ -4507,7 +4573,9 @@ function waf_address_has_staff_sign_in($ip)
  * with the endpoint's secret; a carrier label service's servers post parcel
  * statuses to carrier_webhook.php with a secret key in the address, and a
  * mail sending service's servers post bounce and complaint reports to
- * mail_webhook.php the same way. Fediverse servers post signed activities
+ * mail_webhook.php the same way; GitHub's servers post a linked
+ * repository's events to github_webhook.php signed with the link's secret.
+ * Fediverse servers post signed activities
  * to ap_inbox.php from wherever they run, under their own software's name,
  * counted on the inbox's own allowance (waf_handle_rate_ap_inbox()). The
  * ShipWorks client posts to shipworks.php with a password the sign-in
@@ -4546,7 +4614,7 @@ function waf_is_api_request()
     static $answer = null;
 
     if ($answer === null) {
-        $names = array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'workspace_guest.php', 'payment_callback.php', 'carrier_webhook.php', 'mail_webhook.php', 'ap_inbox.php', 'flow_start.php');
+        $names = array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'workspace_guest.php', 'payment_callback.php', 'carrier_webhook.php', 'mail_webhook.php', 'ap_inbox.php', 'flow_start.php', 'github_webhook.php');
 
         // ShipWorks is spared the counters sized for a sign-in screen only
         // while the sign-in throttle counts its password; with the throttle
@@ -4785,6 +4853,19 @@ function waf_is_excluded()
    ───────────────────────────────────────────────────────────────────────── */
 
 /**
+ * Was this run reached over the web? Not on the command line, and with a
+ * remote address, which a scheduled task invoked by any SAPI does not have.
+ *
+ * @param array  $server $_SERVER
+ * @param string $sapi   PHP_SAPI
+ * @return bool
+ */
+function waf_is_web_request(array $server, $sapi)
+{
+    return ($sapi !== 'cli' && !empty($server['REMOTE_ADDR']));
+}
+
+/**
  * Run the firewall.
  *
  * Called twice per request from two different bootstraps:
@@ -4818,15 +4899,9 @@ function waf_run($stage = 'init')
         // a run every five minutes producing a steady drip of "would block"
         // entries that looked like an attack and buried the real ones.
         //
-        // Two checks because a task can be invoked either by the CLI binary
-        // or by a SAPI that still leaves the request superglobals empty.
-        // The same "was this reached over the web" test guards session
-        // handling in get_file.php.
-        if (PHP_SAPI === 'cli'
-            || php_sapi_name() === 'cli'
-            || empty($_SERVER['REMOTE_ADDR'])
-            || empty($_SERVER['HTTP_HOST'])
-        ) {
+        // The Host header plays no part: an HTTP/1.0 request may leave it
+        // out and the web server still answers it from its default site.
+        if (!waf_is_web_request($_SERVER, PHP_SAPI)) {
             return;
         }
 
@@ -5577,7 +5652,7 @@ function waf_country_staff_signed_in()
  */
 function waf_country_api_scripts()
 {
-    return array('integration.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'payment_callback.php', 'carrier_webhook.php', 'mail_webhook.php', 'ap_inbox.php', 'flow_start.php');
+    return array('integration.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'payment_callback.php', 'carrier_webhook.php', 'mail_webhook.php', 'ap_inbox.php', 'flow_start.php', 'github_webhook.php');
 }
 
 function waf_country_request_exempt()

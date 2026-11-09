@@ -1,6 +1,6 @@
 ---
 name: image-editor-visuals
-description: The image editor prototype the owner approved on 2026-10-31: its screens and source in plans/image-editor/, what each screen shows and which step of plans/image-editor.md builds it
+description: The image editor prototype (owner 2026-10-31): screens and source in plans/image-editor/, what each shows, which step built it; kept for the video plan until V11
 ---
 
 ## Where are they and how are they read?

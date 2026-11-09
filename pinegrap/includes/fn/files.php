@@ -775,6 +775,29 @@ function pg_upload_file_missing($file)
 }
 
 /**
+ * The bytes of a file posted base64, after a "data:...;base64," prefix or
+ * without one. The text is cut at the first "base64," only: base64 itself
+ * can hold the letters "base64", and a cut at the last of them kept only the
+ * tail of the file. A space is read as "+", which a body posted without
+ * encoding turns into one; line breaks are skipped. The decode is strict, so
+ * text that is not base64 is refused rather than stored as broken bytes.
+ *
+ * @param mixed $data the posted text
+ * @return string|false the bytes ('' for an empty body), false when the text
+ *                      is not base64
+ */
+function pg_upload_base64_decode($data)
+{
+    if (!is_string($data)) {
+        return false;
+    }
+
+    $parts = explode('base64,', $data, 2);
+
+    return base64_decode(str_replace(' ', '+', end($parts)), true);
+}
+
+/**
  * The sentence that says a file was stored under another name than the one
  * typed or uploaded (letters an address cannot carry replaced), or '' when
  * the name was kept.

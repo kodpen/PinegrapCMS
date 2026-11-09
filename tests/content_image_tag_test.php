@@ -47,6 +47,23 @@ function test_content_image_tag_renamed()
 	pg_assert_same('<img src="{path}new.png" alt="new.png" title="new.png" width="320" height="240"><img src="{path}other.png" width="5">', $out, 'renamed');
 }
 
+// Only the tag's own width/height attributes and properties take the new
+// size: max-width, border-width, line-height and data-height keep theirs.
+function test_content_image_tag_other_size_properties_kept()
+{
+	$out = pg_update_image_in_content('<img src="{path}a.png" style="max-width: 100%; height: 50px;">', 'a.png', 'a.png', 'pg_test_image_tag_size');
+	pg_assert_same('<img src="{path}a.png" style="max-width: 100%; height: 240px;">', $out, 'max-width is not a width');
+
+	$out = pg_update_image_in_content('<img src="{path}a.png" style="width: 10px; height: 20px; border-width: 1px;">', 'a.png', 'a.png', 'pg_test_image_tag_size');
+	pg_assert_same('<img src="{path}a.png" style="width: 320px; height: 240px; border-width: 1px;">', $out, 'border-width kept');
+
+	$out = pg_update_image_in_content('<img src="{path}a.png" data-height="5" height="9" style="line-height: 3px">', 'a.png', 'a.png', 'pg_test_image_tag_size');
+	pg_assert_same('<img src="{path}a.png" data-height="5" height="240" style="line-height: 3px">', $out, 'data-height and line-height kept');
+
+	$out = pg_update_image_in_content('<img src="{path}a.png" style="width:10px;height:auto">', 'a.png', 'a.png', 'pg_test_image_tag_size');
+	pg_assert_same('<img src="{path}a.png" style="width: 320px;height:auto">', $out, 'a size that is not in px is left alone');
+}
+
 // A size that cannot be read keeps the tag's own dimensions.
 function test_content_image_tag_size_unknown()
 {

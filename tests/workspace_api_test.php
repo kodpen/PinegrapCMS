@@ -168,7 +168,7 @@ function test_ws_api_own_words_routes_are_no_tools()
 	}
 
 	foreach (array('workspace.messages.update', 'workspace.messages.delete', 'workspace.messages.hide', 'workspace.messages.pin',
-		'workspace.messages.pin_close', 'workspace.polls.create', 'workspace.polls.update', 'workspace.scheduled_messages.create',
+		'workspace.messages.pin_close', 'workspace.polls.update', 'workspace.scheduled_messages.create',
 		'workspace.flows.publish', 'workspace.flow_shares.set', 'workspace.flow_shares.delete', 'workspace.flow_shares.delete_post') as $id) {
 		pg_assert_contains($id, $gated);
 	}
@@ -628,7 +628,10 @@ function test_ws_api_flow_runs_writes_are_no_tools()
 		// not offered as a tool, but Claude's routine calls REST with its key.
 		$source = ws_api_test_handler_source($routes[$id]['handler']);
 
-		pg_assert_true(strpos($source, 'if (ws_api_is_assistant())') !== false, $id . ' refuses an assistant');
+		// An application agent of the registry may start a run within the
+		// tier it is allowed in the run's channel (flow_agent_box.php).
+		pg_assert_true((strpos($source, 'if (ws_api_is_assistant())') !== false)
+			|| (($id === 'workspace.flow_runs.start') && (strpos($source, 'if (ws_api_is_assistant() && !$agent)') !== false)), $id . ' refuses an assistant');
 		pg_assert_true(strpos($source, 'if (ws_api_is_assistant())') < strpos($source, 'api_dry_run_stop('), $id . ' refuses it before the rehearsal');
 	}
 
@@ -1594,8 +1597,18 @@ function test_ws_api_poll_create_update_close_routes()
 		pg_assert_same('workspace:write', $routes[$id]['scope'], $id . ' scope');
 		pg_assert_same('WorkspaceMessage', $routes[$id]['returns'], $id . ' answers with the poll\'s message');
 		pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' rehearses');
-		pg_assert_false(pg_mcp_route_is_offered($routes[$id]), $id . ' is no MCP tool');
+		// An agent asks the people with a poll of its own: the question is a
+		// tool; changing and closing stay off MCP.
+		if ($id === 'workspace.polls.create') {
+			pg_assert_true(pg_mcp_route_is_offered($routes[$id]), $id . ' is an MCP tool');
+		} else {
+			pg_assert_false(pg_mcp_route_is_offered($routes[$id]), $id . ' is no MCP tool');
+		}
 	}
+
+	pg_assert_true(strpos(ws_api_test_handler_source('ws_api_polls_create'), 'ws_api_own_words_only(') === false, 'an application asks a poll as itself');
+	pg_assert_true(strpos(ws_api_test_handler_source('ws_api_polls_create'), 'ws_poll_create($viewer, $channel, $data, $app_id)') !== false, 'the poll is the application\'s');
+	pg_assert_true(strpos(ws_api_test_handler_source('ws_api_polls_close'), 'ws_api_poll_is_callers($poll)') !== false, 'an application closes its own poll');
 
 	pg_assert_same(array('PATCH'), $routes['workspace.polls.update']['also_accepts'], 'a change also answers PATCH');
 

@@ -23,6 +23,14 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+/**
+ * Seconds a newest backup may be old before it is reported as a problem: one
+ * month of thirty days. pg_backup_age_state() is the only reader.
+ */
+if (!defined('PG_BACKUP_WARN_AGE')) {
+    define('PG_BACKUP_WARN_AGE', 2592000);
+}
+
 
 /**
  * The directory every backup lives in.
@@ -38,15 +46,24 @@ function pg_backup_directory()
 /**
  * The name of the automatic backup taken at a given time, without extension.
  *
- * Year, month and ISO week: every run in the same week writes the same name
- * and so replaces that week's backup. The archive adds ".zip".
+ * Year, month and ISO week, the year and month taken from the week's
+ * Thursday: every run in the same week writes the same name and so replaces
+ * that week's backup, also when the week crosses a month or a year, and the
+ * year is the ISO year of the week. The calendar date of the run would split
+ * such a week into two names, and the retention would count it twice. The
+ * archive adds ".zip".
  *
  * @param int $time
  * @return string
  */
 function pg_backup_auto_name($time)
 {
-    return 'auto_backup_' . date('Y-m-W', (int) $time);
+    $time = (int) $time;
+
+    // Noon of the Thursday, by calendar day, so a DST change cannot move it.
+    $thursday = mktime(12, 0, 0, (int) date('n', $time), (int) date('j', $time) + 4 - (int) date('N', $time), (int) date('Y', $time));
+
+    return 'auto_backup_' . date('Y-m', $thursday) . '-' . date('W', $time);
 }
 
 
@@ -178,11 +195,13 @@ function pg_backup_is_auto_name($name)
 /**
  * The order an automatic backup name sorts in, oldest first.
  *
- * The name is "Y-m-W" and the week is the ISO week, which disagrees with the
- * calendar year for a few days around New Year: 1 January can be week 53 and
- * 29 December week 1. Plain string order would put "2027-01-53" (1 January)
- * after "2027-01-01" (the week after), so the week is moved to the end of its
- * month's range when it belongs to the neighbouring year.
+ * New names take the year and month from the week's Thursday and sort as
+ * plain strings. Names written before that used the run's calendar date,
+ * which disagrees with the ISO week for a few days around New Year: 1 January
+ * can be week 53 and 29 December week 1. Plain string order would put
+ * "2027-01-53" (1 January) after "2027-01-01" (the week after), so the week
+ * is moved to the end of its month's range when it belongs to the
+ * neighbouring year.
  *
  * @param string $name an automatic backup name, with or without ".zip"
  * @return string a key that compares as a string in time order
@@ -1024,6 +1043,31 @@ function pg_backup_newest($directory = null)
     }
 
     return $found;
+}
+
+
+/**
+ * How the age of the newest backup is judged: 'fail' when there is none,
+ * 'warn' when it is more than a month old (PG_BACKUP_WARN_AGE), 'pass'
+ * otherwise. A weekly schedule that missed a run or two is not a problem worth
+ * a warning; a month without a backup is.
+ *
+ * The System Status tile, the operations alert and through the tile the
+ * dashboard greeting and the API's system status all follow this answer, so
+ * none of them warns about a backup the others call fine. A switched-off
+ * schedule is the caller's business: the tile greys it, the alert skips it.
+ *
+ * @param int $newest unix time of the newest backup (pg_backup_newest()), 0 for none
+ * @param int $now
+ * @return string 'fail', 'warn' or 'pass'
+ */
+function pg_backup_age_state($newest, $now)
+{
+    if ((int) $newest < 1) {
+        return 'fail';
+    }
+
+    return (((int) $now - (int) $newest) > PG_BACKUP_WARN_AGE) ? 'warn' : 'pass';
 }
 
 

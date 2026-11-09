@@ -29,7 +29,8 @@ define('PG_TR_JOB_STALE', 86400);
 
 /**
  * The owners a scope names: 'all' is every owner; 'page:12' is the page, its
- * SEO fields and what it references.
+ * SEO fields and what it references; 'records:14' the records of one custom
+ * form (a record save, pg_tr_records_saved()).
  *
  * @return array of array(owner_type, owner_id); empty for all
  */
@@ -37,6 +38,10 @@ function pg_tr_scope_owners($scope)
 {
     if (preg_match('/^page:(\d+)$/', (string) $scope, $m)) {
         return pg_tr_page_owners((int) $m[1]);
+    }
+
+    if (preg_match('/^records:(\d+)$/', (string) $scope, $m)) {
+        return array(array('form_records', (int) $m[1]));
     }
 
     // A group of the Translations screen: every owner of its types.
@@ -75,6 +80,14 @@ function pg_tr_scope_extract($scope, $deadline = 0, $from = 0)
         $result = pg_tr_extract_group($m[1]);
 
         return array('pages' => 0, 'segments' => $result['segments']);
+    }
+
+    // A form's records, read only while a widget still includes them.
+    if (preg_match('/^records:(\d+)$/', (string) $scope, $m)) {
+        $form_page_id = (int) $m[1];
+        $segments = in_array($form_page_id, pg_tr_record_forms(), true) ? pg_tr_extract_form_records($form_page_id) : 0;
+
+        return array('pages' => 0, 'segments' => $segments);
     }
 
     return pg_tr_extract_all($deadline, $from);

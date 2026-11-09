@@ -597,10 +597,10 @@ function pg_sms_marketing_refusal($answers, $iys)
 }
 
 /**
- * The forms a stored phone number can take once spaces, dashes, brackets,
- * dots and slashes are dropped, all read back by pg_sms_number() as the same
- * number: the national forms of a Turkish mobile, the plus and 00 forms of
- * any number.
+ * The forms a stored phone number can take once pg_sms_number_separators()
+ * are dropped, all read back by pg_sms_number() as the same number: the
+ * national forms of a Turkish mobile (with the trunk zero kept after +90 or
+ * 0090 too), the plus and 00 forms of any number.
  *
  * @param string $digits pg_sms_number()
  * @return string[]
@@ -612,15 +612,61 @@ function pg_sms_number_variants($digits)
     if (preg_match('/^905\d{9}$/', $digits)) {
         $national = substr($digits, 2);
 
-        return array($national, '0' . $national, $digits, '+' . $digits, '00' . $digits, '+900' . $national);
+        return array($national, '0' . $national, $digits, '+' . $digits, '00' . $digits, '+900' . $national, '00900' . $national);
     }
 
     return preg_match('/^[1-9]\d{7,14}$/', $digits) ? array('+' . $digits, '00' . $digits) : array();
 }
 
 /**
- * A phone column in SQL without the separators pg_sms_number_variants()
- * drops, to compare with those variants.
+ * Every character pg_sms_number() drops from a number: the brackets, dots,
+ * slashes and dashes, and each character its /u pattern reads as white
+ * space (PCRE's Unicode \s: ASCII spaces and line breaks, the no-break
+ * spaces, the typographic spaces), as UTF-8.
+ *
+ * @return string[]
+ */
+function pg_sms_number_separators()
+{
+    $code_points = array(
+        0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x20, 0x85, 0xA0, 0x1680, 0x180E,
+        0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006, 0x2007,
+        0x2008, 0x2009, 0x200A, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000,
+    );
+
+    $separators = array('-', '(', ')', '.', '/');
+
+    foreach ($code_points as $code_point) {
+        $separators[] = pg_sms_utf8_char($code_point);
+    }
+
+    return $separators;
+}
+
+/**
+ * One code point (below U+10000) as UTF-8, without mbstring.
+ *
+ * @param int $code_point
+ * @return string
+ */
+function pg_sms_utf8_char($code_point)
+{
+    if ($code_point < 0x80) {
+        return chr($code_point);
+    }
+
+    if ($code_point < 0x800) {
+        return chr(0xC0 | ($code_point >> 6)) . chr(0x80 | ($code_point & 0x3F));
+    }
+
+    return chr(0xE0 | ($code_point >> 12)) . chr(0x80 | (($code_point >> 6) & 0x3F)) . chr(0x80 | ($code_point & 0x3F));
+}
+
+/**
+ * A phone column in SQL without pg_sms_number_separators(), to compare with
+ * pg_sms_number_variants(): a number stored with a no-break space, a tab or
+ * a line break is found like one stored with plain spaces. None of the
+ * separators is a quote or a backslash, so each sits in its literal as is.
  *
  * @param string $column a trusted column name
  * @return string
@@ -629,7 +675,7 @@ function pg_sms_number_sql($column)
 {
     $stripped = $column;
 
-    foreach (array(' ', '-', '(', ')', '.', '/') as $separator) {
+    foreach (pg_sms_number_separators() as $separator) {
         $stripped = "REPLACE(" . $stripped . ", '" . $separator . "', '')";
     }
 

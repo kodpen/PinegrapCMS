@@ -58,7 +58,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/lang_files.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/lang.php');
 // The forwarded-scheme parser and the peer trust check, which the local
-// check_if_request_is_secure() below decides with.
+// check_if_request_is_secure() below decides with, and the request's address
+// the local get_request_uri() reads.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/request_scheme.php');
 pg_software_language_define(isset($router_config_row['software_language']) ? $router_config_row['software_language'] : '');
 
@@ -323,6 +324,30 @@ if ($erp_document === false) {
     }
 }
 
+// A file of a note behind its reader's closed notes lock is not served,
+// whatever the folder allows (includes/workspace/note_lock.php). Only a
+// file in a note's folder loads the workspace; before the notes lock the
+// query fails and nothing changes.
+if ((int) $file['folder_id'] > 0) {
+    $ws_lock_result = @mysqli_query(db::$con, "SELECT n.id FROM ws_notes n
+        WHERE n.folder_id = '" . (int) $file['folder_id'] . "' AND EXISTS (SELECT 1 FROM ws_note_locks l LIMIT 1)
+        LIMIT 1");
+
+    if (($ws_lock_result !== false) && (mysqli_num_rows($ws_lock_result) > 0)) {
+        if (defined('USER_LOGGED_IN') == false) {
+            initialize_user();
+        }
+
+        if (USER_LOGGED_IN == true) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+            if (ws_note_lock_folder_closed((int) $file['folder_id'], (int) USER_ID)) {
+                output_error(get_file_text('Sorry, the file that you requested does not exist. It might have recently been deleted or the address might be incorrect.'), 404);
+            }
+        }
+    }
+}
+
 // A file a team chat message carries opens only for a side of that
 // conversation or a role-0 administrator, whatever its folder allows: staff
 // conversations may carry personal data. Before the chat tables or the
@@ -389,7 +414,10 @@ if (
     ($access_control_type !== 'public')
     && ($access_control_type !== '')
 ) {
-    initialize_user();
+    // The ERP, workspace and chat checks above may have initialized the user.
+    if (defined('USER_LOGGED_IN') == false) {
+        initialize_user();
+    }
 
     // do different things depending on access control type of file
     switch ($access_control_type) {
@@ -797,12 +825,16 @@ if ($file['attachment'] == 1) {
                                 (form_item_view_pages.page_id = '" . $form_list_view['form_item_view_page_id'] . "')
                                 AND (form_item_view_pages.collection = 'a')");
 
-                        // If the layout contains a variable for the attachment field,
-                        // and the visitor has view access to the form item view,
-                        // then continue to check if the visitor should have access to
-                        // view attachment.
+                        // If the item view page still exists (form_item_view_page_id
+                        // is not cleared when the page is deleted, and a missing
+                        // folder would read as public), and the layout contains a
+                        // variable for the attachment field, and the visitor has
+                        // view access to the form item view, then continue to check
+                        // if the visitor should have access to view attachment.
                         if (
-                            ($attachment_field_media || (preg_match('/\^\^' . preg_quote($submitted_form['attachment_field_name'], '/') . '\^\^/i', $form_item_view['layout']) != 0))
+                            is_array($form_item_view)
+                            && ($form_item_view['folder_id'] !== null)
+                            && ($attachment_field_media || (preg_match('/\^\^' . preg_quote($submitted_form['attachment_field_name'], '/') . '\^\^/i', $form_item_view['layout']) != 0))
                             && (check_view_access($form_item_view['folder_id']) == true)
                         ) {
                             // If submitter security is enabled for the form item view,
@@ -1303,11 +1335,15 @@ if ($if_modified_since == $last_modified) {
 } else {
     header('Last-Modified: ' . $last_modified);
 
+    // The name goes into Content-Disposition in quotes: a file stored with a
+    // comma in its name before 2026.4.1 is otherwise read by Chrome as two
+    // values of the header and refused (pg_http_content_disposition()).
+    require_once(dirname(__FILE__) . '/includes/http_range.php');
+
     // if file can be displayed in browser, display file in browser
     if (isset($mimetype[$extension]) && ($mimetype[$extension] != 'application/octet-stream')) {
         header('Content-type: ' . $mimetype[$extension]);
-        // Quoted, with the characters that would end the quote or the header removed.
-        header('Content-disposition: filename="' . preg_replace('/["\\\\\r\n]/', '', $file['download_name']) . '"');
+        header('Content-Disposition: ' . pg_http_content_disposition($file['download_name'], true));
 
         // HTML, XHTML, SVG and XML are documents the browser will execute
         // when they are opened by their own address: an inline <script> in
@@ -1332,7 +1368,7 @@ if ($if_modified_since == $last_modified) {
     // else file cannot be displayed in browser, so force download dialog
     } else {
         header('Content-type: application/octet-stream');
-        header('Content-disposition: attachment; filename="' . preg_replace('/["\\\\\r\n]/', '', $file['download_name']) . '"');
+        header('Content-Disposition: ' . pg_http_content_disposition($file['download_name'], false));
     }
 }
 
@@ -1376,6 +1412,14 @@ if ($workspace_file) {
 // would serve it to visitors the page does not show it to, and keep a record
 // taken back to draft open for a week.
 if ($designed_attachment) {
+    $cache_control_type = 'private';
+}
+
+// A submitted-form or comment attachment was let through by the attachment
+// check above, which a shared cache never runs: a CDN that keeps a public
+// copy (by extension: .pdf, .jpg, .docx) would hand it to the next anonymous
+// request for the same address, whatever the folder's access says.
+if ($file['attachment'] == 1) {
     $cache_control_type = 'private';
 }
 
@@ -1639,6 +1683,15 @@ function log_activity($description, $user)
 // create function to set user information if user is logged in
 function initialize_user()
 {
+    // One request may reach this twice: a workspace channel's file reads the
+    // visitor first, and a folder that is not public asks again. The
+    // constants are set by then. Defining one again is a warning (an error
+    // from PHP 9), and where errors are shown the warnings went out ahead of
+    // the file's bytes, which broke the picture.
+    if (defined('USER_LOGGED_IN')) {
+        return;
+    }
+
     // check if remember me is on
     $query = "SELECT remember_me FROM config";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -1814,28 +1867,8 @@ function initialize_url_constants()
 // create function to get current URL
 function get_request_uri()
 {
-    // the order of the conditionals below is important, because newer versions of IIS supply a REQUEST_URI value,
-    // but the value does not contain the original pretty URL and might also have other problems
-
-    // if HTTP_X_REWRITE_URL is set (i.e. ISAPI_Rewrite is being used on IIS)
-    if (isset($_SERVER['HTTP_X_REWRITE_URL'])) {
-        return $_SERVER['HTTP_X_REWRITE_URL'];
-
-    // else if REQUEST_URI is set (i.e. non IIS web server)
-    } elseif (isset($_SERVER['REQUEST_URI'])) {
-        return $_SERVER['REQUEST_URI'];
-
-    // else no REQUEST_URI or HTTP_X_REWRITE_URL can be found (i.e. IIS web server without ISAPI_Rewrite)
-    } else {
-        // if QUERY_STRING is set then return PHP_SELF and QUERY_STRING
-        if (isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] !== '') {
-            return $_SERVER['PHP_SELF'] . '?' . $_SERVER['QUERY_STRING'];
-
-        // else QUERY_STRING is not set, so return just PHP_SELF
-        } else {
-            return $_SERVER['PHP_SELF'];
-        }
-    }
+    // X-Rewrite-URL counts on IIS only (pg_request_uri_from_server()).
+    return pg_request_uri_from_server($_SERVER);
 }
 
 // Local copy of the helper in includes/fn/core.php. This script is required

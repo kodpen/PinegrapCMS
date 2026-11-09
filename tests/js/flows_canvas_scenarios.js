@@ -1184,5 +1184,136 @@ module.exports = [
             await h.sleep(4000);
             h.same('not read again once it ended', h.store.callsOf('ws_flow_run_get').length, reads);
         }
+    },
+
+    // ── The editor in a layer over another screen ──────────────────────
+
+    {
+        name: 'the layer: the whole editor over the page, the page inert, the address kept; Escape lets a box go, then closes and saves first',
+        run: async (h) => {
+            await h.openList();
+
+            const address = await h.page(() => window.location.search);
+            const LAYER = '.ws-flow-layer';
+
+            await h.page(() => {
+                // A control of the page outside the editor the layer
+                // replaces (a channel's card on a channel page).
+                var opener = document.createElement('button');
+
+                opener.type = 'button';
+                opener.textContent = 'Open';
+                document.getElementById('content').appendChild(opener);
+                opener.setAttribute('data-test-opener', '1');
+                opener.focus();
+                window.PGWsKit.flowLayer(7, { box: 'task_1' });
+            });
+            await h.waitFor('the flow drawn in the layer', () => !!document.querySelector('.ws-flow-layer .pgc-node[data-node="task_1"]'), 8000);
+            await h.sleep(400);
+
+            const opened = await h.page(() => {
+                var layer = document.querySelector('.ws-flow-layer');
+                var box = layer.getBoundingClientRect();
+
+                return {
+                    title: layer.querySelector('.ws-flow-layer-title').textContent,
+                    link: layer.querySelector('.ws-flow-layer-bar a').getAttribute('href'),
+                    full: (box.left === 0) && (box.top === 0) && (box.width === window.innerWidth) && (box.height === window.innerHeight),
+                    inert: document.getElementById('content') ? document.getElementById('content').closest('[inert]') !== null : null,
+                    palette: !!layer.querySelector('.wsf-palette .wsf-palette-stage'),
+                    focus: !!(document.activeElement && layer.contains(document.activeElement)),
+                    selected: !!layer.querySelector('.pgc-node[data-node="task_1"].pgc-selected, .pgc-node[data-node="task_1"][aria-selected="true"]'),
+                    newFlow: !!Array.prototype.filter.call(layer.querySelectorAll('.wsf-bar button'), function (b) { return b.textContent.indexOf(window.PGWsKit.t('fl_new')) !== -1; }).length,
+                    list: !!layer.querySelector('.wsf-flows:not(.d-none)'),
+                    stage: layer.querySelector('.pgc-stage').getBoundingClientRect().height
+                };
+            });
+
+            h.same('named by its flow', opened.title, 'Customer onboarding');
+            h.ok('the Flows screen link names the flow and its box', /\?flow=7&box=task_1$/.test(opened.link), opened.link);
+            h.ok('full screen', opened.full, opened);
+            h.same('the page beneath inert', opened.inert, true);
+            h.ok('the palette and the canvas, no list, no New flow', opened.palette && !opened.list && !opened.newFlow, opened);
+            h.ok('the focus inside', opened.focus, opened);
+            h.ok('the box asked for selected', opened.selected, opened);
+            h.ok('the canvas fills the layer', opened.stage > 400, opened);
+            h.same('the address as it was', await h.page(() => window.location.search), address);
+
+            const saves = h.saves().length;
+
+            await h.page(() => document.querySelector('.ws-flow-layer .pgc-node[data-node="task_1"]').focus());
+            await h.key('ArrowRight');
+            await h.key('Escape');
+            await h.sleep(400);
+            h.ok('Escape lets the box go first, the layer stays', await h.page(() => !!document.querySelector('.ws-flow-layer') && !document.querySelector('.ws-flow-layer .pgc-node.pgc-selected')));
+            await h.key('Escape');
+            await h.waitFor('the layer closes', () => !document.querySelector('.ws-flow-layer'), 4000);
+            h.same('the change saved before it closed', h.saves().length, saves + 1);
+            h.same('saved on flow 7', h.saves()[saves].data.flow_id, 7);
+            h.same('the moved box', nodeIn(h.saves()[saves].data.graph, 'task_1').x, 336);
+
+            const closed = await h.page(() => ({
+                inert: document.querySelectorAll('[inert]').length,
+                focus: !!(document.activeElement && document.activeElement.getAttribute('data-test-opener')),
+                scroll: document.documentElement.classList.contains('ws-flow-layer-on')
+            }));
+
+            h.same('the page live again', closed.inert, 0);
+            h.ok('the focus back on the opener', closed.focus, closed);
+            h.ok('the page scrolls again', !closed.scroll, closed);
+        }
+    },
+
+    {
+        name: 'the layer on a phone: full screen, the outline, nothing scrolls sideways; Close closes it',
+        width: 390,
+        height: 844,
+        touch: true,
+        run: async (h) => {
+            await h.openList();
+            await h.page(() => window.PGWsKit.flowLayer(8));
+            await h.waitFor('the flow drawn in the layer', () => !!document.querySelector('.ws-flow-layer .wsf-outline:not(.d-none)'), 8000);
+            await h.sleep(400);
+
+            const shown = await h.page(() => {
+                var layer = document.querySelector('.ws-flow-layer');
+
+                return { title: layer.querySelector('.ws-flow-layer-title').textContent, width: layer.getBoundingClientRect().width, inner: window.innerWidth, wide: layer.scrollWidth <= layer.clientWidth && document.documentElement.scrollWidth <= window.innerWidth };
+            });
+
+            h.same('named by its flow', shown.title, 'Weekly report');
+            h.same('as wide as the screen', shown.width, shown.inner);
+            h.ok('no sideways scroll', shown.wide, shown);
+            await h.click('[data-ws-flow-layer-close]');
+            await h.waitFor('the layer closes', () => !document.querySelector('.ws-flow-layer'), 4000);
+        }
+    },
+
+    {
+        name: 'the layer on a new flow (Add › New flow in a channel): the ways to start first, the flow made with that home, left blank it is not kept',
+        run: async (h) => {
+            await h.openList();
+            await h.page(() => window.PGWsKit.flowLayer(0, { home: 3 }));
+            await h.waitFor('the ways to start in the layer', () => !!document.querySelector('.ws-flow-layer .wsf-gallery:not(.d-none) .wsf-start-card'), 8000);
+
+            const before = await h.page(() => document.querySelector('.ws-flow-layer-bar a').getAttribute('href'));
+
+            h.ok('the Flows screen link names no flow yet', before.indexOf('?flow=') === -1, before);
+            await h.page(() => document.querySelector('.ws-flow-layer [data-refocus="tpl-empty"]').click());
+            await h.until('created', () => h.store.callsOf('ws_flow_create').length === 1, 3000);
+
+            const made = h.store.callsOf('ws_flow_create')[0].data;
+
+            h.same('made with the channel as its home', Number(made.channel_id), 3);
+            await h.waitFor('the empty canvas in the layer', () => !!document.querySelector('.ws-flow-layer .wsf-palette button'), 4000);
+
+            const id = await h.page(() => (document.querySelector('.ws-flow-layer-bar a').getAttribute('href').match(/\?flow=(\d+)/) || [])[1] || '');
+
+            h.ok('the link names the new flow', id !== '', id);
+            await h.click('[data-ws-flow-layer-close]');
+            await h.waitFor('the layer closes', () => !document.querySelector('.ws-flow-layer'), 4000);
+            await h.until('the blank flow binned', () => h.store.callsOf('ws_flow_bin').length === 1, 3000);
+            h.same('the new one', String(h.store.callsOf('ws_flow_bin')[0].data.flow_id), id);
+        }
     }
 ];

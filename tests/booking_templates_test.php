@@ -25,6 +25,17 @@ function _test_booking_tpl_list()
 		'pinegrap-salon'  => array('appointment', 'book_online'),
 		'pinegrap-clinic' => array('appointment', 'book_online'),
 		'pinegrap-law'    => array('consultation', 'book_online'),
+		'pinegrap-photo'  => array('book', 'book_online'),
+		'pinegrap-wedding' => array('enquiry', 'book_visit'),
+		'pinegrap-gym'    => array('class_booking', 'book_online'),
+		'pinegrap-museum' => array('school_visit', 'book_online'),
+		'pinegrap-restaurant' => array('reserve', 'book_online'),
+		'pinegrap-drivingschool' => array('lesson_request', 'book_online'),
+		'pinegrap-pharmacy' => array('prescription', 'book_online'),
+		'pinegrap-coworking' => array('tour', 'book_online'),
+		'pinegrap-florist' => array('event_enquiry', 'consultation'),
+		'pinegrap-veterinary' => array('appointment', 'book_online'),
+		'pinegrap-brewery' => array('tour_booking', 'book_online'),
 	);
 }
 

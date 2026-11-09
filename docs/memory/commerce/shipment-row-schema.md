@@ -14,7 +14,7 @@ description: The shipment row since 2026.11.0 (11.0.20): carrier, status, date, 
 - Rows with an empty `number` are left (readers already skip `TRIM(number) = ''`); at most one per address can remain.
 
 ## What is backfilled, and what is not?
-- `shipped_at` is filled from `ship_tos.ship_date` for rows with a number, only when that date is not after today, the rule `erp_order_shipment()` uses: `ship_tos.ship_date` is checkout's estimate (`shipping-today.md`), and a future date is not the day a parcel left. Rows whose date is empty or in the future keep 0 for the write path (phase 3 of `plans/shipping-management.md`) to fill. The UPDATE is `WHERE shipped_at = 0`, so a cut-off run continues and a second run changes nothing.
+- `shipped_at` is filled from `ship_tos.ship_date` for rows with a number, only when that date is not after today, the rule `erp_order_shipment()` uses: `ship_tos.ship_date` is checkout's estimate (`shipping-today.md`), and a future date is not the day a parcel left. Rows whose date is empty or in the future keep 0 for the write path (`shipment-write-path.md`) to fill. The UPDATE is `WHERE shipped_at = 0`, so a cut-off run continues and a second run changes nothing.
 - `delivered_at`, `status_at`, `created_at` are not backfilled (the delivery date is an estimate too; the row's own creation moment is unknown). `status` reads `created` on every old row.
 
 ## What writes and reads the new columns?

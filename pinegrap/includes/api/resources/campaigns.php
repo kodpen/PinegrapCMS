@@ -760,6 +760,10 @@ function api_sms_campaign_reference_id($reference) {
 
 function api_campaigns_sms_list($params) {
 
+	// Not one of the modules functions.php loads: My SMS Campaigns and the
+	// general job require it the same way.
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_campaigns.php');
+
 	if (!function_exists('pg_sms_campaigns_ready') || !pg_sms_campaigns_ready()) {
 
 		api_fail(503, 'service_unavailable', lang('The database has not been upgraded yet. Run the software update first.'));

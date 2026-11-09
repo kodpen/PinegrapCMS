@@ -3195,7 +3195,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         'labels'   => array_values($spark_keys),
         'counts'   => array_values($spark_counts),
         'totals'   => array_values($spark_totals),
-        'currency' => BASE_CURRENCY_SYMBOL,
+        // The tooltip draws on the canvas, which shows an entity as it is.
+        'currency' => html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
         'top'      => $top_products,
         'payments' => $payment_split,
         'quantity' => lang('Quantity'),
@@ -3391,7 +3392,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         // the canvases later, so nothing has to be destroyed.
         (function () {
             if (typeof Chart === "undefined") { return; }
-            var data = ' . json_encode($orders_chart_data) . ';
+            var data = ' . json_encode($orders_chart_data, JSON_HEX_TAG | JSON_HEX_AMP) . ';
             // A panel token can read back as light-dark() text a canvas
             // cannot parse, so every colour is resolved through a probe.
             var probe = document.createElement("span");

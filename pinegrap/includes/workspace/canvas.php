@@ -283,5 +283,294 @@ function ws_canvas_js_strings()
         'canvas_send'    => lang('Send the canvas'),
         'canvas_sent'    => lang('The canvas was sent.'),
         'canvas_to_note' => lang('Add to the note'),
+        'canvas_edited_by' => ws_js_template('Edited by @{var:1}', 1),
+        'canvas_undo'      => lang('Undo'),
+        'canvas_undo_ask'  => lang('Put back the canvas as it was before this edit? The edit stays among the versions.'),
+        'canvas_undone'    => lang('The canvas is back as it was.'),
+    );
+}
+
+/**
+ * Whether a canvas version's picture is still to be drawn by a member's
+ * browser: an agent's version (an agent cannot draw) whose document says
+ * picture: pending. A person's save may carry the mark along from the
+ * document it opened, but the browser drew that picture. Pure.
+ *
+ * @param mixed  $doc    decoded as arrays or objects
+ * @param string $source the version row's source
+ * @return bool
+ */
+function ws_canvas_doc_pending($doc, $source)
+{
+    if (is_object($doc)) {
+        $doc = json_decode(json_encode($doc), true);
+    }
+
+    return ((string) $source === 'agent') && is_array($doc) && (($doc['picture'] ?? '') === 'pending');
+}
+
+/**
+ * The address a canvas's picture is shown under in the conversation: the
+ * file's address with its version, so a browser that kept the blank picture
+ * (or an older one) asks again once the picture is drawn. Pure.
+ *
+ * @param string     $url     the file's address
+ * @param array|null $newest  version_no and pending of the newest version, or null
+ * @return string
+ */
+function ws_canvas_picture_url($url, $newest)
+{
+    if (!is_array($newest) || ((int) ($newest['version_no'] ?? 0) <= 0)) {
+        return (string) $url;
+    }
+
+    return $url . ((strpos((string) $url, '?') === false) ? '?' : '&') . 'v=' . (int) $newest['version_no'] . (!empty($newest['pending']) ? 'p' : '');
+}
+
+/**
+ * The newest version of a message's canvas as the conversation needs it:
+ * its number and whether its picture waits for a browser. One query; null
+ * for a picture with no kept document.
+ *
+ * @param int $file_id
+ * @return array|null version_no, pending
+ */
+function ws_canvas_message_state($file_id)
+{
+    if (((int) $file_id <= 0) || !pg_file_versions_ready()) {
+        return null;
+    }
+
+    // An agent's version carries the agent as the document's last member
+    // ("by", api_canvas.php): only that tail is read, never the whole
+    // document. Whether an earlier version is there tells an edit from
+    // the version the agent made the canvas with.
+    $row = db_item("SELECT version_no, source, doc_json <> '' AS has_doc, doc_json LIKE '%\"picture\":\"pending\"%' AS marked,
+            IF(source = 'agent', SUBSTRING(doc_json, LOCATE('\"by\":{', doc_json), 300), '') AS by_part,
+            (SELECT COUNT(*) FROM file_versions AS older WHERE older.file_id = file_versions.file_id AND older.version_no < file_versions.version_no) AS earlier
+        FROM file_versions WHERE file_id = '" . (int) $file_id . "' ORDER BY version_no DESC LIMIT 1");
+
+    if (!$row || empty($row['has_doc'])) {
+        return null;
+    }
+
+    $agent = ((string) $row['source'] === 'agent');
+
+    return array(
+        'version_no' => (int) $row['version_no'],
+        'pending'    => !empty($row['marked']) && $agent,
+        'edited_by'  => ($agent && ((int) $row['earlier'] > 0)) ? ws_canvas_by_handle((string) $row['by_part']) : '',
+    );
+}
+
+/**
+ * The agent's handle from the tail of a version's document that starts at
+ * its "by" member; '' when there is none. Pure.
+ *
+ * @param string $part
+ * @return string
+ */
+function ws_canvas_by_handle($part)
+{
+    if ((strpos((string) $part, '"by":{') !== 0) || !preg_match('/^"by":\{[^{}]*"handle":"([A-Za-z0-9_-]{1,64})"/', (string) $part, $match)) {
+        return '';
+    }
+
+    return $match[1];
+}
+
+/**
+ * The mark a person's canvas carries in the conversation while its newest
+ * version is an agent's edit: the agent's handle, the version it made and
+ * whether this reader may put back the version before (Undo: whoever may
+ * edit the message, ws_canvas_undo()). Null otherwise. Pure.
+ *
+ * @param array|null $state       ws_canvas_message_state()
+ * @param string     $sender_kind the message's sender kind
+ * @param bool       $may_edit    may the reader edit the message
+ * @return array|null handle, version, can_undo
+ */
+function ws_canvas_edit_mark($state, $sender_kind, $may_edit)
+{
+    if (!is_array($state) || ((string) ($state['edited_by'] ?? '') === '') || ((string) $sender_kind !== 'user')) {
+        return null;
+    }
+
+    return array(
+        'handle'   => (string) $state['edited_by'],
+        'version'  => (int) $state['version_no'],
+        'can_undo' => (bool) $may_edit,
+    );
+}
+
+/**
+ * Undo of an agent's edit on a person's canvas: the version before the
+ * agent's becomes the newest one again, as a new version (source restore)
+ * with its document and its pixels, so the agent's edit stays among the
+ * versions. Only for whoever may edit the message (its author, while they
+ * may write in the channel), only while the newest version is still the
+ * agent's edit the screen showed ($version; 409 otherwise), and not when
+ * the version before is itself an agent's picture no browser drew yet.
+ *
+ * @param array $viewer
+ * @param array $message ws_messages row
+ * @param int   $version the version_no of the agent's edit
+ * @return array ok, status (HTTP), error
+ */
+function ws_canvas_undo($viewer, $message, $version)
+{
+    $refuse = function ($error, $status) {
+        return array('ok' => false, 'status' => $status, 'error' => $error);
+    };
+
+    $checked = ws_message_edit_check($viewer, $message, (string) $message['body']);
+
+    if (!$checked['ok'] || ((string) $message['sender_kind'] !== 'user')) {
+        return $refuse($checked['ok'] ? lang('You can only change your own messages.') : $checked['error'], 403);
+    }
+
+    if (!pg_file_versions_ready()) {
+        return $refuse(lang('The database has to be updated first.'), 503);
+    }
+
+    $file_id = (int) $message['file_id'];
+    $stored = ($file_id > 0) ? (string) db_value("SELECT name FROM files WHERE id = '" . $file_id . "'") : '';
+    $newest = ($stored !== '') ? pg_file_versions_newest($file_id) : null;
+
+    if (!$newest || ((string) $newest['source'] !== 'agent') || ((int) $newest['version_no'] !== (int) $version)) {
+        return $refuse(lang('The canvas changed since. Look at it again.'), 409);
+    }
+
+    $before = db_item("SELECT * FROM file_versions WHERE file_id = '" . $file_id . "' AND version_no < '" . (int) $newest['version_no'] . "'
+        ORDER BY version_no DESC LIMIT 1");
+
+    if (!$before || ((string) $before['doc_json'] === '') || !is_file(pg_file_versions_path($before))) {
+        return $refuse(lang('There is no version before this edit.'), 409);
+    }
+
+    if (ws_canvas_doc_pending(json_decode((string) $before['doc_json'], true), $before['source'])) {
+        return $refuse(lang('The version before this edit has no picture yet. Try again in a moment.'), 409);
+    }
+
+    $data = @file_get_contents(pg_file_versions_path($before));
+    // Written in the file directory, as the picture's take writes it.
+    $name = basename($stored);
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
+
+    if (!is_string($data) || !pg_image_editor_put($path, $data)
+        || !pg_file_versions_add($file_id, $path, (string) $before['doc_json'], 'restore', (int) $viewer['id'], (int) $before['redacted'] === 1)) {
+        return $refuse(lang('The file could not be saved.'), 500);
+    }
+
+    pg_file_versions_prune($file_id);
+
+    // Every write goes to the file directory, which the general job takes
+    // as the file's bytes (pg_file_storage_reconcile_run()).
+    db_q("UPDATE files SET size = ?, timestamp = UNIX_TIMESTAMP() WHERE id = ?", array(strlen($data), $file_id));
+
+    if (function_exists('pg_file_cache_forget')) {
+        pg_file_cache_forget($file_id);
+    }
+
+    ws_message_touch((int) $message['id']);
+
+    return array('ok' => true, 'status' => 200, 'error' => '');
+}
+
+/**
+ * The picture a member's browser drew of a pending canvas (action
+ * canvas_picture of workspace_file_save.php), taken once: only while the
+ * newest version is the one drawn ($version), is an agent's and is still
+ * pending, the file still the blank picture of that version, and only from
+ * a member who may write in the channel. The PNG must be the artboard's
+ * size (ws_canvas_picture()). It is written over the message's file in
+ * place (same file, same address) and over the version's copy, and the
+ * version's document loses the mark, so the canvas opens with its layers as
+ * before and the read says drawn. The first browser wins the conditional
+ * UPDATE; any other is answered 409.
+ *
+ * @param array  $viewer
+ * @param array  $message ws_messages row
+ * @param array  $channel
+ * @param int    $version the version_no the browser drew
+ * @param mixed  $picture data: URL of the PNG
+ * @return array ok, status (HTTP), error, url
+ */
+function ws_canvas_picture_take($viewer, $message, $channel, $version, $picture)
+{
+    $refuse = function ($error, $status) {
+        return array('ok' => false, 'status' => $status, 'error' => $error, 'url' => '');
+    };
+
+    if (!ws_can_post_channel($viewer, $channel)) {
+        return $refuse(lang('You cannot post in that channel.'), 403);
+    }
+
+    if (!pg_file_versions_ready()) {
+        return $refuse(lang('The database has to be updated first.'), 503);
+    }
+
+    $file_id = (int) $message['file_id'];
+    $stored = (string) db_value("SELECT name FROM files WHERE id = '" . $file_id . "'");
+    $name = basename($stored);
+    // Written in the file directory; read through the object store's copy
+    // when the file was moved there.
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
+    $newest = ($stored !== '') ? pg_file_versions_newest($file_id) : null;
+    $doc = $newest ? json_decode((string) $newest['doc_json'], true) : null;
+
+    if (!$newest || ((int) $newest['version_no'] !== (int) $version) || !ws_canvas_doc_pending($doc, $newest['source'])
+        || !pg_file_versions_matches_file($newest, pg_file_local_copy($file_id))) {
+        return $refuse(lang('Invalid request.'), 409);
+    }
+
+    $png = ws_canvas_picture(array('doc' => $doc, 'picture' => $picture));
+
+    if ($png['error'] !== '') {
+        return $refuse($png['error'], 422);
+    }
+
+    $object = json_decode((string) $newest['doc_json']);
+    unset($object->picture);
+    $json = ws_canvas_doc_json($object);
+
+    if ($json === '') {
+        return $refuse(lang('Invalid request.'), 422);
+    }
+
+    // The claim: only the browser whose UPDATE finds the pending document
+    // writes the picture.
+    $claimed = db_q("UPDATE file_versions SET doc_json = ?, doc_hash = ?, size = ? WHERE version_id = ? AND doc_hash = ?", array(
+        $json, sha1($json), strlen($png['data']), (int) $newest['version_id'], (string) $newest['doc_hash']));
+
+    if (!$claimed || (mysqli_affected_rows(db::$con) !== 1)) {
+        return $refuse(lang('Invalid request.'), 409);
+    }
+
+    if (!pg_image_editor_put(pg_file_versions_path($newest), $png['data']) || !pg_image_editor_put($path, $png['data'])) {
+        // Pending again, so another browser may try; the blank picture is
+        // put back where it was already written over.
+        db_q("UPDATE file_versions SET doc_json = ?, doc_hash = ?, size = ? WHERE version_id = ?", array(
+            (string) $newest['doc_json'], (string) $newest['doc_hash'], (int) $newest['size'], (int) $newest['version_id']));
+
+        return $refuse(lang('The file could not be saved.'), 500);
+    }
+
+    // Every write goes to the file directory, which the general job takes
+    // as the file's bytes (pg_file_storage_reconcile_run()).
+    db_q("UPDATE files SET size = ?, timestamp = UNIX_TIMESTAMP() WHERE id = ?", array(strlen($png['data']), $file_id));
+
+    if (function_exists('pg_file_cache_forget')) {
+        pg_file_cache_forget($file_id);
+    }
+
+    // The others' conversations fetch the message again with the drawn address.
+    ws_message_touch((int) $message['id']);
+
+    return array(
+        'ok'     => true,
+        'status' => 200,
+        'error'  => '',
+        'url'    => ws_canvas_picture_url(PATH . encode_url_path($stored), array('version_no' => (int) $newest['version_no'], 'pending' => false)),
     );
 }

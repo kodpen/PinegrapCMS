@@ -512,8 +512,7 @@ function pg_submitted_form_list_field_condition($field_id, $value)
 
 /**
  * The search box's columns: the row's text columns, the status through its
- * label. "Complete" is part of "Incomplete", so a word of it finds both, as
- * DataTables' own search did.
+ * label. "Complete" is part of "Incomplete", so a word of it finds both.
  *
  * @return array array('columns', 'labels') for pg_list_search_where()
  */

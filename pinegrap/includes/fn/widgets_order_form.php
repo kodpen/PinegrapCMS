@@ -139,6 +139,27 @@ function pg_of_page_row_changes($row, $cfg)
     return $changes;
 }
 
+/**
+ * The widget's tokens outside its rows, escaped once. The currency symbol is
+ * stored as HTML (&#8378;): it becomes its character before h(), so the
+ * donation box shows it once and a symbol typed as markup shows as text.
+ *
+ * @param string $add_label  the add button's caption
+ * @param string $skip_label the skip button's caption
+ * @param string $symbol     the visitor's currency symbol as stored
+ * @param string $cart_url   the cart page's address
+ * @return array token => HTML
+ */
+function pg_of_tokens($add_label, $skip_label, $symbol, $cart_url)
+{
+    return array(
+        '__add_button_label'  => h((string)$add_label),
+        '__skip_button_label' => h((string)$skip_label),
+        '__currency_symbol'   => h(html_entity_decode((string)$symbol, ENT_QUOTES | ENT_HTML5, 'UTF-8')),
+        '__cart_url'          => h((string)$cart_url),
+    );
+}
+
 // The page's order_form_pages row, made when missing and brought in line
 // with the widget's settings; returned as it now stands.
 function _pg_of_page_settings($page_id, $cfg, $write)
@@ -421,12 +442,7 @@ function _render_system_widget_order_form($tree_json, $widget_id, $cfg = array()
     $rendered = str_replace('<!--pg-loop-slot-->', $rows, trim(_render_tree_node($split['static_tree'], 0, 0)));
     $lf->remove();
 
-    $tokens = array(
-        '__add_button_label'  => h($add_label),
-        '__skip_button_label' => h($skip_label),
-        '__currency_symbol'   => h(defined('VISITOR_CURRENCY_SYMBOL') ? (string)VISITOR_CURRENCY_SYMBOL : ''),
-        '__cart_url'          => h($cart_url),
-    );
+    $tokens = pg_of_tokens($add_label, $skip_label, defined('VISITOR_CURRENCY_SYMBOL') ? (string)VISITOR_CURRENCY_SYMBOL : '', $cart_url);
     $rendered = _pg_member_apply_tokens($rendered, $tokens);
     // The picker's own form follows the widget's: forms cannot nest.
     $currency_form = pg_sw_currency_form_html($widget_id, $currencies, get_request_uri());

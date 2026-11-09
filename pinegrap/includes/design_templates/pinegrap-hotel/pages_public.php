@@ -106,7 +106,7 @@ $public_pages[] = array(
         $el('section', 'py-5 overflow-hidden', lang('Hero'), array(
             $container(array(
                 $row(array(
-                    $col(array(
+                    $fx($col(array(
                         $para($hotel['region'], 'pht-eyebrow text-uppercase fw-semibold text-primary mb-3'),
                         $heading('h1', lang('Wake up to the sea'), 'pht-display display-3 mb-3'),
                         $para($hotel['tagline'] . '.', 'lead text-body-secondary mb-4'),
@@ -115,37 +115,41 @@ $public_pages[] = array(
                             $link(lang('See the rooms and suites'), '{{page:rooms}}', 'btn btn-outline-primary btn-lg rounded-pill px-4'),
                         )),
                         $para(sprintf(lang('Check-in from %1$s, check-out until %2$s'), $hotel['check_in'], $hotel['check_out']), 'small text-body-secondary mt-4 mb-0'),
-                    ), '', '5'),
-                    $col(array(
+                    ), '', '5'), array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 700)),
+                    $fx($col(array(
                         $framed($photo('hero', 1400, 1050), lang('The stone house of the hotel above the bay at sunset'), '4x3', false),
-                    ), '', '7'),
+                    ), '', '7'), array('effect' => 'fade', 'trigger' => 'load', 'duration' => 1000, 'delay' => 200)),
                 ), '4', '', 'g-lg-5 align-items-center'),
             )),
         )),
 
-        $el('section', 'py-4 border-top border-bottom bg-body-tertiary', lang('Figures'), array(
-            $container(array($figure_row())),
-        )),
+        // One suite in depth, its pictures, facts and rate (Hotel: Room
+        // Showcase); the figures band is on the about page.
+        $room_showcase('junior', 'ht-home-room', 'h2', 'py-5 border-top'),
 
         // The featured rooms, read from the Rooms collection.
-        $el('section', 'py-5', lang('Featured Rooms'), array(
+        $el('section', 'py-5 bg-body-tertiary', lang('Featured Rooms'), array(
             $container(array(
                 $section_header(lang('Stay with us'), lang('Rooms and suites over the bay'), lang('All rooms and suites'), '{{page:rooms}}'),
                 $widget('home_rooms'),
             )),
         )),
 
-        $el('section', 'py-5 bg-body-tertiary', lang('Facilities'), array(
+        $el('section', 'py-5', lang('Facilities'), array(
             $container(array(
                 $section_header(lang('At the hotel'), lang('Everything a slow day needs'), lang('About the hotel'), '{{page:about}}'),
-                $row($facility_tiles, '4'),
+                $rise($row($facility_tiles, '4')),
             )),
         ), $searchable('ht-facilities', lang('pool, beach, parking, transfer, facilities, amenities'))),
+
+        // Arrival and departure on one line, the stay between them (Hotel:
+        // Stay Clock).
+        $stay_clock('ht-home-stay'),
 
         $el('section', 'py-5', lang('Special Offers'), array(
             $container(array(
                 $section_header(lang('Good to know'), lang('Special offers'), lang('All offers'), '{{page:offers}}'),
-                $row($offer_cards_row, '4'),
+                $rise($row($offer_cards_row, '4'), 120),
             )),
         )),
 
@@ -520,9 +524,11 @@ $public_pages[] = array(
         $el('section', 'py-5 bg-body-tertiary', lang('Board Plans'), array(
             $container(array(
                 $section_header(lang('With your room'), lang('Room only, breakfast or half board')),
-                $row($plan_cards_row, '4'),
+                $rise($row($plan_cards_row, '4'), 120),
             )),
         ), $searchable('ht-board', lang('breakfast, half board, dinner, meals included'))),
+        // The times of the stay the rates count by (Hotel: Stay Clock).
+        $stay_clock('ht-rates-stay', 'py-5'),
         $el('section', 'py-5', lang('Good to Know'), array(
             $container(array(
                 $row(array(

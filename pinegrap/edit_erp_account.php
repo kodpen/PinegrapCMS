@@ -144,7 +144,7 @@ if (!$_POST) {
 
     // ------------------------------------------------------------ statement
     //
-    // Deliberately not a DataTable: a statement is read down the page in date
+    // Deliberately not a sortable list: a statement is read down the page in date
     // order because each line's balance is the one before it plus this line.
     // Sorting it by any other column turns that column of figures into
     // nonsense, so the ordering is not the reader's to change.

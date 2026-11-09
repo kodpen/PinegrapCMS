@@ -831,19 +831,7 @@ function pg_proto_link_redact_uri($uri)
  */
 function pg_proto_link_request_uri($server)
 {
-    $server = is_array($server) ? $server : array();
-
-    if (isset($server['HTTP_X_REWRITE_URL'])) {
-        return (string) $server['HTTP_X_REWRITE_URL'];
-    }
-
-    if (isset($server['REQUEST_URI'])) {
-        return (string) $server['REQUEST_URI'];
-    }
-
-    $self = isset($server['PHP_SELF']) ? (string) $server['PHP_SELF'] : '';
-
-    return (isset($server['QUERY_STRING']) && ((string) $server['QUERY_STRING'] !== '')) ? $self . '?' . $server['QUERY_STRING'] : $self;
+    return pg_request_uri_from_server(is_array($server) ? $server : array());
 }
 
 /**
@@ -900,6 +888,7 @@ function pg_proto_link_password_html($view)
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <title>' . h(lang('Prototype')) . '</title>
+' . pg_old_browser_notice() . '
 <link rel="stylesheet" href="' . h($software) . '/assets/lib/bootstrap-6/css/bootstrap.min.css?v=' . $version('/assets/lib/bootstrap-6/css/bootstrap.min.css') . '">
 <link rel="stylesheet" href="' . h($software) . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css?v=' . $version('/assets/fonts/bootstrap-icons/bootstrap-icons.min.css') . '">
 <style>

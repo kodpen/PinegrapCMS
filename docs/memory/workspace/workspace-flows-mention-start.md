@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-mention-start
-description: Flow start "when the flow is mentioned in a channel" (flows-next C4, decision B): @ and the flow's name in the box's channel, composer only, one start per person a minute, outputs
+description: Flow start "when the flow is mentioned in a channel" (PR #7466, decision B): @ and the flow's name in the box's channel, composer only, one start per person a minute, outputs
 ---
 
 ## What is it?

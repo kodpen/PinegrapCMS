@@ -301,6 +301,11 @@ function pg_pdf_merge($documents, &$skipped = array())
             }, $text);
         };
 
+        // The document's pages as written, by their old number; they join
+        // /Kids below in the page tree's order (pg_pdf_page_numbers()), not
+        // in the order the objects stand in the file.
+        $written = array();
+
         foreach ($document['objects'] as $number => $body) {
             $dictionary = pg_pdf_dictionary($body);
             $data = substr($body, strlen($dictionary));
@@ -317,10 +322,16 @@ function pg_pdf_merge($documents, &$skipped = array())
 
                 $dictionary = preg_replace('#/Parent\s+\d+\s+\d+\s+R#', '', $dictionary);
                 $dictionary = preg_replace('/^\s*<</', '<< /Parent PG_PDF_PAGES' . $add, $dictionary, 1);
-                $kids[] = $map[$number];
+                $written[$number] = $map[$number];
             }
 
             $bodies[$map[$number]] = $renumber($dictionary) . $data;
+        }
+
+        foreach ($pages as $number) {
+            if (isset($written[$number])) {
+                $kids[] = $written[$number];
+            }
         }
     }
 

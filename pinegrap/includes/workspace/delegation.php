@@ -235,7 +235,25 @@ function ws_assistants()
         }
     }
 
+    // The registry's app and model agents (agent_shown.php), for their
+    // names and pictures; delegate false: no task is handed to one.
+    if (function_exists('ws_agent_assistants')) {
+        $list += ws_agent_assistants();
+    }
+
     return $list;
+}
+
+/**
+ * Can a task be handed to this assistant? A registry agent is asked in its
+ * channels only.
+ *
+ * @param array $assistant a ws_assistants() entry
+ * @return bool
+ */
+function ws_assistant_takes_tasks($assistant)
+{
+    return is_array($assistant) && (($assistant['delegate'] ?? true) !== false);
 }
 
 /**
@@ -422,6 +440,10 @@ function ws_assistant_task_problem($viewer, $key, $task)
 {
     if (!ws_assistant($key)) {
         return lang('Invalid request.');
+    }
+
+    if (!ws_assistant_takes_tasks(ws_assistant($key))) {
+        return lang('An agent is asked in its channels; a task is not handed to it.');
     }
 
     $agent = ws_assistant_agent($key);
@@ -947,6 +969,10 @@ function ws_task_delegation_detail($viewer, $task)
     $assistants = array();
 
     foreach (ws_assistants() as $key => $assistant) {
+        if (!ws_assistant_takes_tasks($assistant)) {
+            continue;
+        }
+
         $server_id = ws_assistant_mcp_id($key);
         $server = ($server_id > 0) ? ws_mcp_server($server_id) : null;
         $connect = null;
@@ -1304,5 +1330,5 @@ function ws_delegation_js_strings()
  */
 function ws_delegation_js_config()
 {
-    return array('ready' => ws_delegation_ready() && !empty(ws_assistants()));
+    return array('ready' => ws_delegation_ready() && !empty(array_filter(ws_assistants(), 'ws_assistant_takes_tasks')));
 }

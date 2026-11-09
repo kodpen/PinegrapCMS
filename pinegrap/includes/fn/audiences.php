@@ -928,6 +928,30 @@ function pg_audience_state_write($group_id, $state)
 }
 
 /**
+ * Start a group's next pass from the first contact: the cursor back to 0
+ * and the state file of a pass under way removed. A pass that stopped at its
+ * budget goes on from its cursor with the ids it changed so far, so after a
+ * change of rules it would leave the contacts below the cursor as the old
+ * rules made them and announce the old pass's changes with the new ones.
+ *
+ * @param int $group_id
+ * @return bool false on a failed query
+ */
+function pg_audience_pass_restart($group_id)
+{
+    $group_id = (int) $group_id;
+
+    if ($group_id <= 0) {
+        return false;
+    }
+
+    $result = db_q("UPDATE contact_groups SET compute_cursor = 0 WHERE id = ?", array($group_id));
+    pg_audience_state_write($group_id, null);
+
+    return (bool) $result;
+}
+
+/**
  * The ids of one SELECT of a single id column, or null on a failed query.
  *
  * @param string $sql

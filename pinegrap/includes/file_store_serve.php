@@ -12,7 +12,9 @@
  * and signs with includes/fn/aws_sign.php and the address builders of
  * includes/fn/object_storage.php, which call nothing beyond each other and
  * PHP. The secret is unsealed with decode_ssl_keys() from
- * includes/authentication.php, which both sides load.
+ * includes/authentication.php, which both sides load, and the
+ * Content-Disposition comes from includes/http_range.php, as get_file.php's
+ * own answer does.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -25,6 +27,7 @@ if (!defined('PG_FUNCTIONS_DIR') && !defined('PG_GET_FILE')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/object_storage.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/http_range.php');
 
 
 /**
@@ -165,11 +168,11 @@ function pg_file_serve_plan($local_exists, $copy, $presigned)
 
 
 /**
- * The Content-Disposition the store is asked to answer with: inline for a
- * type the browser shows, attachment otherwise, the name stripped of quotes,
- * backslashes and line breaks as get_file.php strips it, and the UTF-8 name
- * in filename* (RFC 6266) beside an ASCII fallback. A document type the
- * browser would run (HTML, SVG, XML) is always an attachment. Pure.
+ * The Content-Disposition the store is asked to answer with: the one
+ * get_file.php sends from the disk (pg_http_content_disposition(): inline
+ * for a type the browser shows, attachment otherwise, the name in quotes and
+ * in filename*), except that a document type the browser would run (HTML,
+ * SVG, XML) is always an attachment. Pure.
  *
  * @param string $name
  * @param bool $inline
@@ -188,13 +191,5 @@ function pg_file_serve_disposition($name, $inline)
         $inline = false;
     }
 
-    // One underscore a letter; a name that is not UTF-8 is cut byte by byte.
-    $ascii = preg_replace('/[^\x20-\x7e]/u', '_', $name);
-
-    if (!is_string($ascii)) {
-        $ascii = preg_replace('/[^\x20-\x7e]/', '_', $name);
-    }
-
-    return ($inline ? 'inline' : 'attachment') . '; filename="' . $ascii . '"'
-        . (($ascii !== $name) ? "; filename*=UTF-8''" . rawurlencode($name) : '');
+    return pg_http_content_disposition($name, $inline);
 }

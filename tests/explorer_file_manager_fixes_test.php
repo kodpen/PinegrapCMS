@@ -113,6 +113,10 @@ function test_backup_auto_week()
 {
 	pg_assert_same(array('week' => 44, 'start' => '2026-10-26', 'end' => '2026-11-01'), pg_explorer_backup_auto_week('auto_backup_2026-10-44.zip'));
 	pg_assert_same(array('week' => 1, 'start' => '2025-12-29', 'end' => '2026-01-04'), pg_explorer_backup_auto_week('auto_backup_2026-01-01'));
+	pg_assert_same(array('week' => 53, 'start' => '2026-12-28', 'end' => '2027-01-03'), pg_explorer_backup_auto_week('auto_backup_2026-12-53.zip'));
+	// Names written by the run's calendar year: week 1 in December, week 53 in January.
+	pg_assert_same(array('week' => 1, 'start' => '2025-12-29', 'end' => '2026-01-04'), pg_explorer_backup_auto_week('auto_backup_2025-12-01.zip'));
+	pg_assert_same(array('week' => 53, 'start' => '2026-12-28', 'end' => '2027-01-03'), pg_explorer_backup_auto_week('auto_backup_2027-01-53'));
 	pg_assert_same(null, pg_explorer_backup_auto_week('dev_pinegrap_com_2026-10-27_01-35'));
 	pg_assert_same(null, pg_explorer_backup_auto_week('auto_backup_2026-10-60.zip'));
 

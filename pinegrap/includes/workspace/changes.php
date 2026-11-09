@@ -3099,6 +3099,7 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
     foreach ($rows as $row) {
         $people_ids[] = (int) $row['requested_by'];
         $people_ids[] = (int) $row['decided_by'];
+        $people_ids[] = (int) ($row['undone_by'] ?? 0);
 
         if (!isset($types[$row['record_type']])) {
             continue;
@@ -3366,6 +3367,12 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
         $pending = ($row['status'] === 'pending');
         $record_html = '';
 
+        // Applied at once within the tier the channel allows the agent
+        // (agent_tiers.php): a member who may change the record may undo it.
+        $by_agent = ((string) ($row['applied_by_kind'] ?? 'user') === 'app');
+        $can_undo = $by_agent && !empty($can_post[$place]) && $sees && ws_agent_undo_open($row, time())
+            && (ws_agent_undo_reverse($row, $types) !== null) && ws_change_allowed($viewer, $type, (int) $row['record_id']);
+
         if (((int) $row['record_id'] > 0) && !(($action === 'delete') && ($row['status'] === 'applied'))) {
             if ($types[$type]['tag'] !== '') {
                 $record_html = ws_render_inline('<#' . $types[$type]['tag'] . ':' . (int) $row['record_id'] . '>', $refs);
@@ -3414,6 +3421,10 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
             'no_right'     => $pending && $asker && !$may,
             'can_dismiss'  => $pending && !empty($can_post[$place]) && ($asker || ((int) $viewer['role'] < 3)),
             'proposer'     => $proposer,
+            'by_agent'     => $by_agent,
+            'can_undo'     => $can_undo,
+            'undone_by'    => (string) ($people[(int) ($row['undone_by'] ?? 0)]['name'] ?? ''),
+            'undone'       => ((int) ($row['undone_at'] ?? 0) > 0) ? ws_time_label($row['undone_at']) : '',
         );
     }
 
@@ -3628,9 +3639,12 @@ function ws_change_apply_record_check($viewer, $change)
  *
  * @param array $viewer
  * @param int   $change_id
+ * @param bool  $by_app   applied at once within the tier the channel allows
+ *                        the agent that proposed it (agent_tiers.php): kept
+ *                        as applied by the agent, so a member may undo it
  * @return array ok, error, stale, decision_id
  */
-function ws_change_apply($viewer, $change_id)
+function ws_change_apply($viewer, $change_id, $by_app = false)
 {
     $fail = function ($error, $stale = false) {
         return array('ok' => false, 'error' => $error, 'stale' => $stale, 'decision_id' => 0);
@@ -3785,6 +3799,11 @@ function ws_change_apply($viewer, $change_id)
     if (function_exists('ws_ai_voice')) {
         $body = ws_ai_voice($body, $change);
     }
+
+    if ($by_app) {
+        $body .= ' ' . lang(array('string' => 'Applied at once within the tier this channel allows {var:1}; a member may undo it for 7 days.', 'vars' => ws_change_proposer($change)));
+    }
+
     $sent = ws_message_send($viewer, $channel, mb_substr($body, 0, WS_MESSAGE_MAX), array('kind' => 'decision', 'parent_id' => (int) $change['message_id']));
     $decision_id = $sent['ok'] ? (int) $sent['message_id'] : 0;
 
@@ -3798,7 +3817,7 @@ function ws_change_apply($viewer, $change_id)
     }
 
     db("UPDATE ws_ai_changes SET status = 'applied', error = '', record_id = '" . $record_id . "', decision_message_id = '" . $decision_id . "',
-            decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'
+            decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'" . ($by_app ? ", applied_by_kind = 'app'" : '') . "
         WHERE id = '" . (int) $change['id'] . "'");
 
     ws_message_touch($change['message_id']);

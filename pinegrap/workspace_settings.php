@@ -133,6 +133,7 @@ if ($_POST) {
         'mcp_tool'      => 1,
         'route_match'   => 1,
         'route_channel' => 1,
+        'github_events' => 1,
     ));
 
     foreach ((is_array($_POST['people'] ?? null) ? $_POST['people'] : array()) as $person_id => $row) {
@@ -396,6 +397,14 @@ if ($_POST) {
             $anchor = '#ws-claude';
             break;
 
+        // The agent registry (includes/workspace/agents_settings.php).
+        case 'agent_save':
+        case 'agent_delete':
+        case 'agent_test':
+            ws_agents_settings_post($viewer, $action, $liveform);
+            $anchor = '#ws-agents';
+            break;
+
         // Bulk changes the assistants propose (includes/workspace/bulk.php).
         case 'bulk':
             ws_bulk_settings_post($viewer, $liveform);
@@ -442,6 +451,14 @@ if ($_POST) {
         case 'mcp_connect_me':
         case 'mcp_disconnect_me':
             $anchor = ws_mcp_settings_post($viewer, $action, $liveform);
+            break;
+
+        // GitHub repositories linked to channels
+        // (includes/workspace/github_links.php).
+        case 'github_link_save':
+        case 'github_link_remove':
+            ws_github_links_settings_post($viewer, $action, $liveform);
+            $anchor = '#ws-github';
             break;
     }
 
@@ -852,6 +869,8 @@ pg_page_shell([
 
             ' . ws_claude_settings_card($self_url, $viewer, $assistant_credentials) . '
 
+            ' . ws_agents_settings_card($self_url, $viewer) . '
+
             ' . (function_exists('ws_ai_settings_card') ? ws_ai_settings_card($self_url, $viewer) : '') . '
 
             ' . ws_voice_settings_card($self_url, $viewer) . '
@@ -859,6 +878,8 @@ pg_page_shell([
             ' . ws_mail_settings_card($self_url, $viewer) . '
 
             ' . ws_mcp_settings_card($self_url, $viewer, $liveform) . '
+
+            ' . ws_github_links_settings_card($self_url, $viewer) . '
         </div>
 
         <div class="xl:col-4">

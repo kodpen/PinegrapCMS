@@ -71,6 +71,9 @@ function ws_flow_setting_values()
         'change.action'      => array('update', 'delete'),
         'approval.rule'      => array('any', 'all'),
         'row.what'           => array_keys(ws_flow_row_whats()),
+        // How a row box finds its row: by its id first, as a box saved before the choice meant.
+        'row_set.by'         => ws_step_row_bys(),
+        'row_get.by'         => ws_step_row_bys(),
         // A derived value box's rule: join first, as ws_flow_derived_normalize() keeps an unknown one.
         'value.rule'         => array_values(array_unique(array_merge(array('join'), array_keys(ws_flow_derived_rules())))),
         'value.op'           => ws_flow_derived_operators(),

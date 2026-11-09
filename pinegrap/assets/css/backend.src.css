@@ -792,7 +792,6 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
 
   --bs-body-bg: rgb(var(--pg-body-bg-rgb));
   --bs-card-bg: var(--pg-card-bg);
-  --dt-row-selected-text: unset;
 
   /* Ink printed on every filled accent. The pastel fills below sit between
      0.30 and 0.70 relative luminance, where white text tops out near 2.9:1;
@@ -938,7 +937,6 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --pg-scrollbar-thumb: #939393;
 
   --pg-body-bg-rgb: 255, 255, 255;
-  --dt-row-selected: 0 102 255 / 24%;
   --pg-navbar-bg-rgb: 248, 248, 248;
   --clock-fallback-color: #0891b2;
   --clock-gradient: linear-gradient(100deg, #0891b2 0%, #6366f1 50%, #db2777 100%);
@@ -1004,7 +1002,6 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --pg-scrollbar-thumb: #5e5e5e;
 
   --pg-body-bg-rgb: 16, 17, 20;
-  --dt-row-selected: 41 62 141 / 26%;
   --pg-navbar-bg-rgb: 14, 14, 14;
   --clock-fallback-color: #22d3ee;
   --clock-gradient: linear-gradient(100deg, #22d3ee 0%, #818cf8 50%, #f472b6 100%);
@@ -2290,9 +2287,6 @@ tr.uploaded td {
   min-width: 0;
 }
 
-.dt-container {
-  --bs-gutter-x: 0;
-}
 body:not(.toolbar) .software-content {
   padding: 0rem;
 }
@@ -4372,12 +4366,7 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
   padding: 1rem;
 }
 
-table.chart tr th {
-  white-space: nowrap;
-  padding-right: 1rem;
-}
-a.link-top-row,
-table.chart thead th {
+a.link-top-row {
   color: var(--pg-fg-2);
 }
 
@@ -4943,8 +4932,8 @@ nav.buttons.navigation .btn .bi {
 }
 
 /* Nothing ticked means nothing to do, so the row actions are absent rather than
-   greyed. chart_checkbox_state_change() toggles the .disabled class on them as
-   the select-all box changes, so this follows the selection for free. A
+   greyed. The screen's select-all code toggles the .disabled class on them as
+   the selection changes, so this follows the selection for free. A
    permanent row of dead buttons under every list promises an action the page
    cannot perform, and greyed over table rows they were unreadable besides.
    Scoped to .enable-on-selected: a Save button that is disabled for some other
@@ -5140,11 +5129,6 @@ body.pg-code-field-open {
   margin-top: 0.25rem;
 }
 
-table.chart .text-truncate.overflow-hidden * {
-  text-overflow: ellipsis;
-  overflow: hidden;
-}
-
 /* A long name in a list cell: an inline-block span with .text-truncate,
    so the width holds in an auto-layout table, where max-width on the cell
    itself is ignored. The full text goes in the cell's title. */
@@ -5157,56 +5141,6 @@ table.chart .text-truncate.overflow-hidden * {
    width, so the table's auto layout cannot squeeze it to a sliver. */
 .pg-cell-wrap {
   min-width: 8rem;
-}
-
-table.dataTable.dt-checkboxes-select tbody tr,
-table.dataTable thead th.dt-checkboxes-select-all,
-table.dataTable tbody td.dt-checkboxes-cell {
-  cursor: pointer;
-}
-
-table.dataTable thead th.dt-checkboxes-select-all,
-table.dataTable tbody td.dt-checkboxes-cell {
-  text-align: center;
-}
-
-div.dataTables_wrapper span.select-info,
-div.dataTables_wrapper span.select-item {
-  margin-left: 0.5em;
-}
-
-@media screen and (max-width: 640px) {
-  div.dataTables_wrapper span.select-info,
-  div.dataTables_wrapper span.select-item {
-    margin-left: 0;
-    display: block;
-  }
-}
-
-table.dataTable > tbody > tr:not(.selected) .fakeselectallcheckbox:before {
-  content: "\f28a";
-}
-table.dataTable > tbody > tr.selected .fakeselectallcheckbox:before {
-  content: "\f26b";
-}
-table.dataTable > tbody > tr:not(.selected) .fakeselectallcheckbox {
-  visibility: hidden;
-}
-table.dataTable > tbody > tr:hover .fakeselectallcheckbox {
-  visibility: visible;
-}
-table.table.dataTable.table-striped
-  > tbody
-  > tr:nth-of-type(2n + 1):not(.selected)
-  > .sorting_1 {
-  box-shadow: inset 0 0 0 9999px rgba(var(--dt-row-stripe), 0.07);
-}
-table.table.dataTable > :not(caption) > *:not(.selected) > .sorting_1 {
-  box-shadow: inset 0 0 0 9999px rgba(var(--dt-row-stripe), 0.02);
-}
-table.table.dataTable > tbody > tr.selected > * {
-  color: rgb(255, 255, 255);
-  color: rgb(var(--dt-row-selected-text));
 }
 
 .object-fit,
@@ -5247,11 +5181,7 @@ table.table.dataTable > tbody > tr.selected > * {
   }
 }
 
-.table.dataTable {
-  margin-bottom: 0px !important;
-}
-.table,
-.dataTables_wrapper + .navigation.buttons {
+.table {
   margin-top: 3rem;
   margin-bottom: 2rem;
 }
@@ -5259,21 +5189,6 @@ table.table.dataTable > tbody > tr.selected > * {
 .card .table.pg-find-results {
   margin-top: 0;
   margin-bottom: 0 !important;
-}
-a.dt-button {
-  position: relative;
-}
-.dt-button-collection.fixed.two-column .menu {
-  padding: 1rem;
-  height: 300px;
-  overflow-x: auto;
-}
-
-.dt-button-collection.fixed.two-column
-  .menu
-  .buttons-columnVisibility
-  span {
-  padding-right: 1rem;
 }
 .btn-data-control {
   padding: 0 4px;
@@ -5288,7 +5203,6 @@ a.dt-button {
 .software_warning,
 .dialog,
 .cke_chrome,
-:root[data-bs-theme="dark"] div.menu.dt-button-collection.fixed,
 .dropzone_previews,
 .advanced-filter-bar,
 .input-group-sm > .btn,
@@ -5494,24 +5408,6 @@ table.monthly_calendar .calendar-event .calendar_event_exception a {
   margin-bottom: 0;
 }
 
-table.chart th,
-table.chart td {
-  white-space: nowrap;
-}
-
-table.dataTable td.dataTables_empty,
-table.dataTable th.dataTables_empty {
-  text-align: left;
-}
-
-.dataTables_wrapper .dtable-button-container,
-.dataTables_wrapper .dataTables_length,
-.dataTables_wrapper .dataTables_info,
-.dataTables_wrapper .dataTables_paginate,
-.dataTables_wrapper .dataTables_filter {
-  padding: 1rem;
-}
-
 .advanced_filters .header {
   height: 47px;
 }
@@ -5577,12 +5473,6 @@ html[data-bs-theme="dark"] .cke_inner {
 
 div#software_image_picker_container {
   min-height: 40px;
-}
-
-.dt-paging ul.pagination {
-  justify-content: center;
-  margin-top: 1rem !important;
-  margin-bottom: 1rem !important;
 }
 
 .advanced-visuals:not(.toolbar) .menu.backdrop,
@@ -8938,9 +8828,7 @@ button.no-popover:focus-visible {
    a #fragment, the skip link's #content - was parked at y=0 behind the bar.
    Scroll padding on the root scroller moves that line below the bar.
 
-   Once a list is scrolled, DataTables FixedHeader floats the heading row
-   just under the bar (.dtfh-floatingparent-head), so the line moves below
-   the heading too. At the bottom, the sticky save bar and the marketplace
+   At the bottom, the sticky save bar and the marketplace
    bulk bar cover the control Tab brings in, so the bottom line clears them;
    on a phone the save bar wraps two actions per row and, beside the chat
    bubble, sits --pg-chat-clearance higher (that token lives on the bar, so
@@ -8948,9 +8836,6 @@ button.no-popover:focus-visible {
    inside a :has() is invalid and drops the whole rule. */
 html {
   scroll-padding-top: calc(var(--pg-navbar-h) + 0.5rem);
-}
-html:has(.dtfh-floatingparent-head) {
-  scroll-padding-top: calc(var(--pg-navbar-h) + 3.25rem);
 }
 html:has(nav.buttons.navigation.position-sticky),
 html:has(.position-sticky > nav.buttons.navigation) {
@@ -12754,6 +12639,68 @@ html[data-bs-theme="dark"] .ws-group-icon {
   align-items: center;
   gap: .5rem;
 }
+/* A file of this site on a note line of its own, drawn as the file
+   (includes/workspace/note_media.php): a picture up to 20rem high, players,
+   or a card with the file's icon, name and size. */
+.ws-media {
+  display: block;
+  margin: .4rem 0;
+  max-width: 100%;
+}
+.ws-media-image a {
+  display: inline-block;
+  max-width: 100%;
+  cursor: zoom-in;
+}
+.ws-media-image img {
+  display: block;
+  max-width: 100%;
+  max-height: 20rem;
+  height: auto;
+  border-radius: var(--ws-radius-sm);
+}
+.ws-media-video video {
+  display: block;
+  width: 100%;
+  max-height: 20rem;
+  border-radius: var(--ws-radius-sm);
+  background: #000;
+}
+.ws-media-audio audio {
+  display: block;
+  width: 100%;
+  max-width: 28rem;
+}
+.ws-media-file {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  max-width: 100%;
+  padding: .5rem .75rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: var(--ws-radius-sm);
+  color: inherit;
+  text-decoration: none;
+}
+.ws-media-file:hover {
+  background: var(--pg-bg-1);
+}
+.ws-media-file .bi {
+  font-size: 1.4rem;
+  color: var(--ws-accent);
+}
+.ws-media-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.ws-media-size {
+  flex-shrink: 0;
+  font-size: .8rem;
+  color: var(--pg-fg-2);
+}
 /* A block with a title, and the list of titled blocks to pull in. */
 .ws-block-titled {
   margin: .25rem 0;
@@ -14152,16 +14099,13 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 .ws-note-compose {
   position: relative;
 }
+/* A note box without the formatted editor: its list over the box, as wide
+   as it. A formatted box's list opens at the caret (.ws-picker-caret). */
 .ws-note-compose .ws-picker {
   left: 0;
   right: 0;
   width: auto;
   bottom: calc(100% + .25rem);
-}
-/* The description sits high in the drawer: its picker opens below it. */
-.ws-desc-field .ws-picker {
-  top: calc(100% + .25rem);
-  bottom: auto;
 }
 /* The formatted box in the task drawer (description and notes). */
 .ws-rich.ws-rich-field {
@@ -14964,6 +14908,39 @@ a.ws-chip:hover {
 .ws-rich-block-view > :last-child {
   margin-bottom: 0;
 }
+/* A media card in a note's writing box: the picture or player the server
+   drew is only shown (a click opens the viewer or the preview); a
+   recording's own player is used where it is. */
+.ws-rich-block-view video,
+.ws-rich-block-view audio {
+  pointer-events: none;
+}
+.ws-rich-block-player {
+  display: block;
+  min-width: 0;
+  cursor: auto;
+}
+/* A media card's one action (Edit the picture on a canvas), beside its
+   remove button. */
+.ws-rich-block-action {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: var(--pg-fg-2);
+  padding: .2rem .3rem;
+  border-radius: var(--ws-radius-xs);
+  line-height: 1;
+}
+.ws-rich-block-action:hover {
+  background: var(--pg-bg-2);
+  color: var(--ws-accent);
+}
+.ws-rich-block-shown > .ws-rich-block-action {
+  position: absolute;
+  top: .3rem;
+  right: 2.1rem;
+  background: var(--pg-bg-1);
+}
 /* The panel gives every table in a card a bottom margin (important). */
 .card .ws-table-wrap .table.ws-table,
 .card .ws-calc-block .table.ws-table {
@@ -15324,7 +15301,6 @@ a.ws-chip:hover {
   box-shadow: 0 8px 24px rgba(0, 0, 0, .15);
   overflow: hidden;
 }
-/* One row of kinds that scrolls sideways: there are too many to wrap. */
 /* The "/" list of a note's inserts, under the caret. */
 .ws-picker.ws-slash {
   position: fixed;
@@ -15332,6 +15308,17 @@ a.ws-chip:hover {
   width: 15rem;
   z-index: 1080;
 }
+/* The @ and # list of a formatted box, at the caret: placePicker() in
+   workspace.js measures it at this width, then sets its left, top, width
+   and height so it stays inside the field's column and the window. */
+.ws-picker.ws-picker-caret {
+  position: fixed;
+  right: auto;
+  bottom: auto;
+  width: min(26rem, calc(100vw - 1rem));
+}
+/* One row of kinds that scrolls sideways inside the list's width: there
+   are too many to wrap. */
 .ws-picker-types {
   display: flex;
   flex-wrap: nowrap;
@@ -18958,6 +18945,266 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
 .ws-nb-item-more:focus-visible {
     opacity: 1;
 }
+/* Note groups as folders in My notes (workspace_note_groups.js). */
+.ws-nb-group-add {
+    padding: 0 .4rem;
+    font-size: .75rem;
+    letter-spacing: normal;
+    text-transform: none;
+}
+.ws-nb-group-head {
+    display: flex;
+    align-items: center;
+    gap: .2rem;
+    border-radius: var(--ws-radius-sm);
+}
+.ws-nb-group-head:hover {
+    background: var(--pg-bg-1);
+}
+.ws-nb-group-head:hover .ws-nb-item-more,
+.ws-nb-group-head .ws-nb-item-more:focus-visible {
+    opacity: 1;
+}
+.ws-nb-group-toggle {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: .45rem;
+    min-width: 0;
+    padding: .4rem .5rem;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-weight: 600;
+    text-align: start;
+}
+.ws-nb-group-toggle:focus-visible {
+    outline: 2px solid var(--pg-primary-border-subtle);
+    outline-offset: -2px;
+}
+.ws-nb-group-chevron {
+    flex: none;
+    font-size: .7rem;
+    color: var(--pg-fg-2);
+    transition: transform .15s ease;
+}
+.ws-nb-group.open .ws-nb-group-chevron {
+    transform: rotate(90deg);
+}
+.ws-nb-group-dot {
+    flex: none;
+    width: .6rem;
+    height: .6rem;
+    border-radius: 50%;
+}
+.ws-nb-group-dot-none {
+    border: 1px solid var(--pg-fg-2);
+}
+.ws-nb-group-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ws-nb-group-lock {
+    flex: none;
+    color: var(--pg-fg-2);
+}
+/* The notes lock (workspace_note_lock.js): the pane drawn in place of a
+   locked note, its narrow form, and the button in a closed locked folder. */
+.ws-nb-lock-pane .ws-nb-lock-icon {
+    font-size: 2rem;
+    color: var(--pg-fg-2);
+}
+.ws-nb-lock-pane .ws-nb-lock-form {
+    width: 100%;
+    max-width: 18rem;
+    text-align: start;
+}
+.ws-nb-lock-pin {
+    letter-spacing: .3em;
+}
+.ws-nb-lock-list {
+    align-self: flex-start;
+}
+.ws-nb-group-body {
+    display: none;
+    flex-direction: column;
+    gap: .2rem;
+    margin-inline-start: .9rem;
+    padding-inline-start: .35rem;
+    border-inline-start: 1px solid var(--pg-border-color);
+}
+.ws-nb-group.open .ws-nb-group-body {
+    display: flex;
+}
+@media (prefers-reduced-motion: reduce) {
+    .ws-nb-group-chevron {
+        transition: none;
+    }
+}
+/* Drag and drop in My notes: where a note or a folder would land. */
+.ws-nb-dragging {
+    opacity: .45;
+}
+.ws-nb-drop-into {
+    outline: 2px dashed var(--ws-accent);
+    outline-offset: -2px;
+    border-radius: var(--ws-radius-sm);
+}
+.ws-nb-drop-before {
+    box-shadow: inset 0 2px 0 var(--ws-accent);
+}
+.ws-nb-drop-after {
+    box-shadow: inset 0 -2px 0 var(--ws-accent);
+}
+/* Shared note groups: a folder's owner, a channel's group card
+   (workspace_note_group_shares.js). */
+.ws-nb-group-owner {
+    margin-inline-start: .4rem;
+    font-size: .72rem;
+    font-weight: 400;
+    color: var(--pg-fg-2);
+}
+.ws-nb-group-card-notes {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+    margin: .35rem 0;
+}
+.ws-nb-group-card-note {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    width: 100%;
+    padding: .25rem .4rem;
+    border: 0;
+    border-radius: var(--ws-radius-sm);
+    background: transparent;
+    color: inherit;
+    text-align: start;
+}
+.ws-nb-group-card-note:hover {
+    background: var(--pg-bg-1);
+}
+.ws-nb-group-card-note:focus-visible {
+    outline: 2px solid var(--pg-primary-border-subtle);
+    outline-offset: -2px;
+}
+/* An open note's group as tabs over it (workspace_note_tabs.js). */
+.ws-nb-tabs {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .35rem .6rem 0;
+    border-bottom: 1px solid var(--pg-border-color);
+    font-size: .8125rem;
+}
+.ws-nb-tabs-group {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: .35rem;
+    max-width: 10rem;
+    padding-bottom: .35rem;
+    font-weight: 600;
+}
+.ws-nb-tabs-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ws-nb-tabs-row {
+    display: flex;
+    flex: 1 1 auto;
+    gap: .15rem;
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+}
+.ws-nb-tab {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: .3rem;
+    max-width: 14rem;
+    padding: .35rem .65rem;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--pg-fg-2);
+    white-space: nowrap;
+}
+.ws-nb-tab:hover {
+    color: inherit;
+    background: var(--pg-bg-1);
+}
+.ws-nb-tab.active {
+    border-bottom-color: var(--ws-accent);
+    color: inherit;
+    font-weight: 600;
+}
+.ws-nb-tab:focus-visible,
+.ws-nb-tabs-add:focus-visible {
+    outline: 2px solid var(--pg-primary-border-subtle);
+    outline-offset: -2px;
+}
+.ws-nb-tab-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ws-nb-tab-mark {
+    flex: none;
+    font-size: .7rem;
+    color: var(--pg-fg-2);
+}
+.ws-nb-tab-dragging {
+    opacity: .5;
+}
+.ws-nb-tab-drop-before {
+    box-shadow: inset 2px 0 0 var(--ws-accent);
+}
+.ws-nb-tab-drop-after {
+    box-shadow: inset -2px 0 0 var(--ws-accent);
+}
+[dir="rtl"] .ws-nb-tab-drop-before {
+    box-shadow: inset -2px 0 0 var(--ws-accent);
+}
+[dir="rtl"] .ws-nb-tab-drop-after {
+    box-shadow: inset 2px 0 0 var(--ws-accent);
+}
+.ws-nb-tabs-add {
+    flex: none;
+    margin-bottom: .2rem;
+    padding: .15rem .45rem;
+    border: 0;
+    border-radius: var(--ws-radius-sm);
+    background: transparent;
+    color: var(--pg-fg-2);
+}
+.ws-nb-tabs-add:hover {
+    background: var(--pg-bg-1);
+    color: inherit;
+}
+/* A phone: the group's name gives the row its room. */
+@media (max-width: 575.98px) {
+    .ws-nb-tabs-group {
+        max-width: 5rem;
+    }
+    .ws-nb-tab {
+        max-width: 9rem;
+    }
+}
+/* No hover on a touch screen: the folder's menu button stays visible. */
+@media (pointer: coarse) {
+    .ws-nb-group-head .ws-nb-item-more {
+        opacity: 1;
+    }
+}
 .ws-nb-item-excerpt {
     display: -webkit-box;
     margin-top: .15rem;
@@ -20252,6 +20499,59 @@ button.ws-ack-count:hover {
 }
 .wsf-bar .wsf-save {
   white-space: nowrap;
+}
+/* The whole Flows editor in a full-screen layer over a channel (flowLayer()
+   in workspace.js): its bar, then the editor filling the rest; the page
+   beneath does not scroll while it is open. Native dialogs sit in the top
+   layer above it, menus and toasts on higher z-indexes. */
+html.ws-flow-layer-on,
+html.ws-flow-layer-on body {
+  overflow: hidden;
+}
+.ws-flow-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1035;
+  display: flex;
+  flex-direction: column;
+  background: var(--pg-bg-body);
+}
+.ws-flow-layer-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--ws-space-2);
+  padding: var(--ws-space-2) var(--ws-space-3);
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-flow-layer-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 1rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-flow-layer-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--ws-space-3);
+}
+.ws-flow-layer-body .wsf-app {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 20rem;
+}
+@media (max-width: 767.98px) {
+  .ws-flow-layer-bar { flex-wrap: wrap; }
+  .ws-flow-layer-title { flex-basis: 100%; }
+  .ws-flow-layer-body { padding: var(--ws-space-2); }
+  .ws-flow-layer-body .wsf-app { flex: none; min-height: 0; }
 }
 .wsf-app {
   display: grid;
@@ -22349,22 +22649,6 @@ select.pg-list-table-field option.private {
    beats @layer custom, and 1020 falls below the sidebar and the menu backdrop. */
 .software-navbar.fixed-top {
   z-index: 1030;
-}
-
-/* Unlayered: the DataTables stylesheet gives the column chooser a fixed
-   400px width centred with a -200px margin, which @layer custom cannot
-   override. On a phone that runs off both edges, so it takes the screen
-   width less a gutter, and one column. */
-@media (max-width: 575.98px) {
-  div.dt-button-collection.fixed.two-column {
-    width: calc(100vw - 2rem);
-    left: 1rem;
-    margin-left: 0;
-  }
-
-  div.dt-button-collection.fixed.two-column > :last-child {
-    column-count: 1;
-  }
 }
 
 /* Bootstrap 6 bridge: its theme variables read the panel's palette, its

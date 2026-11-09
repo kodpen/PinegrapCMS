@@ -3,7 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Workspace - the box of a flow that reads one row of a workflow table
- * (kind row_get): the row named by its id or by one value of the run, read
+ * (kind row_get): the row found by its number as the table lists it, by its
+ * id or as the last row, the first two typed or given by one value of the
+ * run (ws_step_row_way()), read
  * with the flow owner's rights as they stand when the box runs. It gives the
  * boxes after it the row's id, whether the row was found (1 or 0) and one
  * value per column of the table, as a row start box gives its cells
@@ -54,16 +56,19 @@ function ws_step_row_get_check($viewer, $config)
         return $refuse(lang('Choose a table you may read.'));
     }
 
+    $by = (string) ($config['by'] ?? 'id');
     $row = (string) ($config['row'] ?? '');
+    $refusal = ws_step_row_refusal($by, $row);
 
-    if (!ws_step_row_names_row($row)) {
-        return $refuse(lang('Name the row by its id or by one value, such as {{trigger.row_id}}.'));
+    if ($refusal !== '') {
+        return $refuse($refusal);
     }
 
     return array('ok' => true, 'error' => '', 'paused' => false, 'action' => array(
         'type'       => 'row_get',
         'table_id'   => (int) $table['id'],
         'table_name' => (string) $table['name'],
+        'by'         => $by,
         'row'        => $row,
     ));
 }
@@ -97,8 +102,9 @@ function ws_step_row_get_data($columns, $cells, $row_id)
 /**
  * Reads the row a box names, with the flow owner's rights checked
  * (ws_step_row_get_check()), its formulas worked out as a read does
- * (ws_wtable_row_out()). The row text is filled in already: one that names
- * no row of the table, or no id at all, reads nothing, and the box is done
+ * (ws_wtable_row_out()). The row is found by the box's way
+ * (ws_step_row_find()), the row text filled in already: one that names no
+ * row of the table, or no number at all, reads nothing, and the box is done
  * with found 0. A table gone meanwhile fails the box.
  *
  * @param array $owner  the flow's owner, checked
@@ -114,9 +120,9 @@ function ws_step_row_get_do($owner, $action)
         return array('ok' => false, 'text' => lang(array('string' => 'The table “{var:1}” is gone.', 'vars' => $name)), 'row_id' => 0, 'data' => array());
     }
 
+    $by = (string) ($action['by'] ?? 'id');
     $columns = ws_wtable_columns((int) $table['id']);
-    $row_id = ws_step_row_id($action['row']);
-    $stored = ($row_id > 0) ? ws_wtable_row((int) $table['id'], $row_id) : null;
+    $stored = ws_step_row_find((int) $table['id'], $by, (string) $action['row']);
     $cells = null;
 
     if ($stored) {
@@ -124,25 +130,43 @@ function ws_step_row_get_do($owner, $action)
         $cells = (array) $presented['cells'];
     }
 
-    $data = ws_step_row_get_data($columns, $cells, $row_id);
+    $data = ws_step_row_get_data($columns, $cells, $stored ? (int) $stored['id'] : 0);
 
     return array(
         'ok'     => true,
         'text'   => ($cells !== null)
-            ? lang(array('string' => 'Read the row {var:1} of the table “{var:2}”.', 'vars' => array($row_id, $name)))
-            : lang(array('string' => 'The table “{var:1}” has no such row: nothing was read.', 'vars' => $name)),
+            ? lang(array('string' => 'Read the row {var:1} of the table “{var:2}”.', 'vars' => array((int) $stored['position'], $name)))
+            : ws_step_row_missing_text($by, (string) $action['row'], $name) . ' ' . lang('Nothing was read.'),
         'row_id' => (int) $data['row_id'],
         'data'   => $data,
     );
 }
 
 /**
- * What a box that reads a row does, in words. Pure but for lang().
+ * What a box that reads a row does, in words: the row it names when typed,
+ * the last row; a row given by a value is known only as the box runs. Pure
+ * but for lang().
  *
  * @param array $action ws_step_row_get_check()
  * @return string
  */
 function ws_step_row_get_text($action)
 {
-    return lang(array('string' => 'Reads a row of the table “{var:1}”.', 'vars' => (string) ($action['table_name'] ?? '')));
+    $table = (string) ($action['table_name'] ?? '');
+    $by = (string) ($action['by'] ?? 'id');
+    $number = ws_step_row_id((string) ($action['row'] ?? ''));
+
+    if ($by === 'last') {
+        return lang(array('string' => 'Reads the last row of the table “{var:1}”.', 'vars' => $table));
+    }
+
+    if (($number > 0) && ($by === 'position')) {
+        return lang(array('string' => 'Reads the row {var:1} of the table “{var:2}”.', 'vars' => array($number, $table)));
+    }
+
+    if ($number > 0) {
+        return lang(array('string' => 'Reads the row with the id {var:1} of the table “{var:2}”.', 'vars' => array($number, $table)));
+    }
+
+    return lang(array('string' => 'Reads a row of the table “{var:1}”.', 'vars' => $table));
 }

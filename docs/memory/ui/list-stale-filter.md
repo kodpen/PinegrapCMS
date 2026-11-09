@@ -15,4 +15,4 @@ description: All Ads, Verified Shipping Addresses and Submitted Forms reset a re
 ## Where is it pinned?
 - `tests/list_stale_filter_test.php`: the helper, the Submitted Forms defaults and a source scan of the two screens.
 
-Related: docs/memory/ui/list-page-state.md
+Related: docs/memory/ui/list-table-driver.md

@@ -48,6 +48,10 @@
  * place of the Workspace (a flow draft's card in a channel): the canvas
  * without its chrome, one at a time (embed()).
  *
+ * window.PGWsFlow.mount(root, boot, options) draws the editor into any
+ * element (one flow alone with options.single, for a layer over a channel)
+ * and gives { destroy(), flush() }; start() is mount() on the address.
+ *
  * assets/js/workspace.js starts it (window.PGWsFlow.start()) with the team
  * it has loaded and lends it its helpers through window.PGWsKit. Every text
  * comes from the #ws-config block (ws_flow_js_strings()); names and texts
@@ -150,6 +154,7 @@
         // A classifying Pinegrap AI box leaves on its named outcomes instead
         // (kindOf(), ws_step_ai_arrow_outcomes()).
         ai: { name: 'fl_kind_ai', group: 'system', into: true, out: ['done', 'failed'] },
+        agent: { name: 'fl_kind_agent', group: 'system', into: true, out: ['done', 'failed'] },
         approval: { name: 'fl_kind_approval', group: 'people', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
         condition: { name: 'fl_kind_condition', group: 'logic', into: true, out: ['yes', 'no'] },
         delay: { name: 'fl_kind_delay', group: 'logic', into: true, out: ['done'] },
@@ -221,6 +226,7 @@
         ['row_get', 'fl_kind_row_get'],
         ['record_get', 'fl_kind_record_get'],
         ['ai', 'fl_kind_ai'],
+        ['agent', 'fl_kind_agent'],
         ['approval', 'fl_kind_approval'],
         ['end', 'fl_add_end'],
         ['constants', 'fl_kind_constants'],
@@ -272,6 +278,9 @@
     var t = null;
     var el = null;
     var uid = 0;
+    // The window and document listeners are added once (bindWindow()) and
+    // do nothing while no editor is mounted.
+    var windowBound = false;
 
     var state = {
         flows: [],
@@ -327,9 +336,12 @@
         // A flow Pinegrap AI just drafted from a sentence (sketchCard()):
         // { flow, notes }, null once hidden or another flow is shown.
         sketch: null,
-        // The Flows screen started on this page (start()); while it runs no
+        // An editor mounted on this page (mount(), start()); while it runs no
         // drawing is embedded elsewhere, as both would share this state.
         screen: false,
+        // The editor mounted: { root, single, onClose, instance }, null when
+        // none. single: one flow in a layer over another screen (mount()).
+        mounted: null,
         // The drawing embedded elsewhere (embed()): its instance, null when
         // none; tries holds each box's dry run by its id ({ said, failed }).
         embed: null,
@@ -579,6 +591,7 @@
             reads: steps.reads || [],
             no_order: !!steps.no_order,
             ai: !!steps.ai,
+            agents: steps.agents || [],
             mcp: steps.mcp || []
         };
     }
@@ -743,6 +756,10 @@
             return aiMeta(node);
         }
 
+        if (node.kind === 'agent') {
+            return agentMeta(node);
+        }
+
         if (node.kind === 'join') {
             var joined = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];
 
@@ -794,30 +811,93 @@
 
     // ── Start ──────────────────────────────────────────────────────────
 
-    function start(root, boot) {
-        K = window.PGWsKit;
+    // The flow, the box and the run an address names (?flow=, ?box=,
+    // ?run=): a draft card's "Open on the canvas", a run's card in a channel.
+    function addressOptions(search) {
+        return {
+            flow: parseInt((/[?&]flow=([0-9]+)/.exec(search || '') || [])[1], 10) || 0,
+            box: (/[?&]box=([a-z0-9_]+)(&|$)/.exec(search || '') || [])[1] || '',
+            run: parseInt((/[?&]run=([0-9]+)/.exec(search || '') || [])[1], 10) || 0
+        };
+    }
 
-        if (!K) {
-            return;
+    // The Flows screen: the editor with its flow list, on what the address
+    // names.
+    function start(root, boot) {
+        return mount(root, boot, addressOptions(window.location.search));
+    }
+
+    // The editor drawn into root, one at a time on a page (a second mount()
+    // destroys the first, and an embedded drawing ends first). options:
+    //   flow     the flow to open (0: the flow list, or with single the ways
+    //            to start a new flow)
+    //   box      a box of it to select
+    //   run      a run of it to show
+    //   single   one flow, in a layer over another screen: no flow list, no
+    //            New flow, the address and the page's back arrow left alone;
+    //            the way back to the list calls onClose
+    //   onClose  called when a single editor would go back to the list (the
+    //            flow deleted, or one that cannot be opened)
+    //   onShow   called with { id, name } each time a flow is shown and as
+    //            its name is changed (the layer's title)
+    //   home     with single and no flow: the channel a new flow is made
+    //            with as its home (Add › Flow in a channel's composer)
+    // Returns { destroy(), flush() }, null without the Workspace kit:
+    // destroy() stops the run's looks and the timers, saves what is unsaved
+    // and empties root, giving the save's promise; flush() saves what is
+    // unsaved and resolves true once nothing is left unsaved (false after
+    // a failed save or against a newer draft).
+    function mount(root, boot, options) {
+        if (!window.PGWsKit || !root) {
+            return null;
+        }
+
+        if (state.mounted) {
+            state.mounted.instance.destroy();
         }
 
         if (state.embed) {
             state.embed.destroy();
         }
 
-        state.screen = true;
-
+        options = options || {};
+        K = window.PGWsKit;
         CFG = K.cfg || {};
         FL = CFG.flows || {};
         BOOT = boot || {};
         t = K.t;
         el = K.el;
 
+        var instance = {
+            destroy: function () {
+                if (!state.mounted || (state.mounted.instance !== instance)) {
+                    return Promise.resolve();
+                }
+
+                return unmount();
+            },
+            flush: function () {
+                if (!state.mounted || (state.mounted.instance !== instance)) {
+                    return Promise.resolve(true);
+                }
+
+                return flush().then(function () {
+                    return !(state.dirty || state.saveError || state.conflict);
+                });
+            }
+        };
+
+        Object.keys(ui).forEach(function (key) {
+            delete ui[key];
+        });
+        mountState();
+        state.screen = true;
+        state.mounted = { root: root, single: !!options.single, onClose: (typeof options.onClose === 'function') ? options.onClose : null, onShow: (typeof options.onShow === 'function') ? options.onShow : null, home: options.single ? (parseInt(options.home, 10) || 0) : 0, instance: instance, ready: !!FL.ready };
         K.clear(root);
 
         if (!FL.ready) {
             root.appendChild(el('div', 'alert theme-warning', t('fl_not_ready')));
-            return;
+            return instance;
         }
 
         state.outline = !!(window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches);
@@ -826,38 +906,196 @@
         bindCanvas();
         bindWindow();
 
-        var asked = parseInt((/[?&]flow=([0-9]+)/.exec(window.location.search) || [])[1], 10) || 0;
-        // A box to open with the flow (a draft card's "Edit on the canvas").
-        var askedBox = (/[?&]box=([a-z0-9_]+)(&|$)/.exec(window.location.search) || [])[1] || '';
-        // A run to open with the flow (a run's card in a channel).
-        var askedRun = parseInt((/[?&]run=([0-9]+)/.exec(window.location.search) || [])[1], 10) || 0;
+        var asked = parseInt(options.flow, 10) || 0;
+        var askedBox = String(options.box || '');
+        var askedRun = parseInt(options.run, 10) || 0;
+
+        // The flow asked for opens with its box or its run; one that cannot
+        // be opened (deleted, out of reach) shows the list instead (a
+        // single editor closes).
+        function openAsked() {
+            open(asked).then(function () {
+                if (askedBox && state.flow && (state.flow.id === asked) && nodeById(askedBox)) {
+                    select({ type: 'node', id: askedBox }, { reveal: true, focus: true });
+                }
+
+                if (askedRun && state.flow && (state.flow.id === asked)) {
+                    openLastRun({ id: askedRun, flow_id: asked });
+                }
+            });
+        }
+
+        if (singleFlow()) {
+            if (asked) {
+                openAsked();
+            } else if (FL.build) {
+                showGallery(null);
+            } else {
+                showNone();
+            }
+
+            return instance;
+        }
 
         K.api('ws_flow_list').then(function (data) {
+            if (!state.mounted || (state.mounted.instance !== instance)) {
+                return;
+            }
+
             state.flows = data.flows || [];
             state.scheduled = data.scheduled || null;
             drawList();
 
             // The flow the address names opens, else the flow list (an old
             // ?view=scheduled address too: the list ends with the scheduled
-            // actions); when the one asked for cannot be opened (deleted,
-            // out of reach), the list shows instead.
+            // actions).
             if (asked) {
-                open(asked).then(function () {
-                    if (askedBox && state.flow && (state.flow.id === asked) && nodeById(askedBox)) {
-                        select({ type: 'node', id: askedBox }, { reveal: true, focus: true });
-                    }
-
-                    if (askedRun && state.flow && (state.flow.id === asked)) {
-                        openLastRun({ id: askedRun, flow_id: asked });
-                    }
-                });
+                openAsked();
             } else {
                 showNone();
             }
         }).catch(function (error) {
+            if (!state.mounted || (state.mounted.instance !== instance)) {
+                return;
+            }
+
             K.fail(error);
             showNone();
         });
+
+        return instance;
+    }
+
+    // What one editor holds of the module's state, as a new one starts
+    // (a single editor may follow the Flows screen's on a page, or another).
+    function mountState() {
+        state.flows = [];
+        state.flow = null;
+        state.graph = null;
+        state.edit = false;
+        state.problems = [];
+        state.warnings = [];
+        state.selected = null;
+        state.view = { x: 40, y: 40, k: 1 };
+        state.binding = null;
+        state.dirty = false;
+        state.history = null;
+        state.saving = null;
+        state.leaveSent = -1;
+        state.saveError = '';
+        state.conflict = '';
+        state.refocus = '';
+        state.listing = false;
+        state.panel = '';
+        state.section = '';
+        state.galleryInto = null;
+        state.scheduled = null;
+        state.runs = { flow: 0, items: [], next: null, loading: false, error: '' };
+        state.run = null;
+        state.stash = null;
+        state.starting = false;
+        state.startToken = null;
+        state.opening = {};
+        state.poll = { timer: 0, delay: POLL_FIRST, busy: 0, note: null };
+        state.share = null;
+        state.marks = null;
+        state.sketch = null;
+        state.tries = null;
+    }
+
+    // The editor taken off the page: the run's looks and the timers stop,
+    // what is unsaved is sent (the promise given), the canvas and the
+    // dialogs it made let go, root is emptied and the page's back arrow
+    // goes. The listeners of the window stay, idle until the next mount().
+    function unmount() {
+        var mounted = state.mounted;
+        var saved;
+
+        stopPoll();
+        window.clearTimeout(state.settleTimer);
+        window.clearTimeout(state.arriving);
+        window.clearTimeout(state.saveTimer);
+        state.settleTimer = 0;
+        state.arriving = 0;
+        state.saveTimer = 0;
+
+        // A blank flow made in a single editor opened for a new one (home),
+        // left as it was made, is not kept, as leaving it on the Flows
+        // screen does not keep it; a flow it was opened on stays.
+        if (mounted.ready && mounted.home) {
+            dropUntouched();
+        }
+
+        saved = mounted.ready ? flush().catch(function () {}) : Promise.resolve();
+
+        if (mounted.ready) {
+            canvas.destroy();
+        }
+
+        [ui.shareModal, ui.templateModal].forEach(function (modal) {
+            if (modal && modal.parentNode) {
+                modal.parentNode.removeChild(modal);
+            }
+        });
+        ui.shareModal = null;
+        ui.templateModal = null;
+        K.clear(mounted.root);
+
+        if (!mounted.single) {
+            K.viewBack(null);
+        }
+
+        state.mounted = null;
+        state.screen = false;
+        state.listing = false;
+
+        return saved;
+    }
+
+    // The flow shown, told to whoever mounted the editor (onShow).
+    function shownFlow(flow) {
+        if (state.mounted && state.mounted.onShow) {
+            state.mounted.onShow({ id: flow.id, name: flow.name });
+        }
+    }
+
+    // A single editor: one flow in a layer over another screen.
+    function singleFlow() {
+        return !!(state.mounted && state.mounted.single);
+    }
+
+    // The page's back arrow (K.viewBack()); a single editor leaves the page's
+    // arrow alone and puts its way back into its own bar.
+    function viewBack(label, onBack, refocusKey) {
+        if (!singleFlow()) {
+            K.viewBack(label, onBack, refocusKey);
+            return;
+        }
+
+        if (!label || !ui.bar) {
+            return;
+        }
+
+        var back = K.button('btn btn-sm btn-text theme-secondary', label, 'bi-arrow-left');
+
+        back.setAttribute('data-refocus', refocusKey || 'back');
+        back.addEventListener('click', onBack);
+        ui.bar.appendChild(back);
+    }
+
+    // The address names the flow open (search: '?flow=<id>', '' for none),
+    // so a reload opens it again; a single editor leaves the page's address
+    // as it is.
+    function setAddress(search) {
+        if (singleFlow()) {
+            return;
+        }
+
+        try {
+            window.history.replaceState(null, '', window.location.pathname + search);
+        } catch (error) {
+            // An address that cannot be changed changes nothing else.
+        }
     }
 
     function layout(root) {
@@ -1402,23 +1640,38 @@
         drawList();
     }
 
+    // The flow list, no flow open; a single editor has no list: it closes
+    // (onClose).
     function showNone() {
+        if (singleFlow()) {
+            if (state.mounted.onClose) {
+                state.mounted.onClose();
+            }
+
+            return;
+        }
+
+        clearScreen();
+        listing(true);
+        drawFlows();
+        refocus();
+    }
+
+    // No flow open, nothing drawn: what the list and the template gallery
+    // start from.
+    function clearScreen() {
         closeSetup();
         endRun();
         state.panel = '';
         state.flow = null;
         state.graph = graphOf(null);
         K.clear(ui.bar);
-        K.viewBack(null);
+        viewBack(null);
         newFlowButton();
 
         // The address no longer names a flow, so a reload does not ask for
         // one that is gone.
-        try {
-            window.history.replaceState(null, '', window.location.pathname);
-        } catch (error) {
-            // An address that cannot be changed changes nothing else.
-        }
+        setAddress('');
 
         state.section = '';
         ui.scheduled.classList.add('d-none');
@@ -1435,9 +1688,6 @@
         ui.empty.classList.remove('d-none');
         ui.stage.classList.remove('d-none');
         ui.outlineBox.classList.add('d-none');
-        listing(true);
-        drawFlows();
-        refocus();
     }
 
     // ── Opening, creating ──────────────────────────────────────────────
@@ -1490,13 +1740,11 @@
                 return;
             }
 
-            // The focus asked for is the gallery's: showNone() would spend
-            // it on the flow list it draws on the way.
             var focus = state.refocus;
 
             window.clearTimeout(state.saveTimer);
             state.refocus = '';
-            showNone();
+            clearScreen();
             listing(false);
             backToList();
             state.refocus = focus;
@@ -1509,7 +1757,7 @@
 
             if (into) {
                 // Opened from a flow: the arrow goes back to that flow.
-                K.viewBack(t('fl_tpl_back'), function () {
+                viewBack(t('fl_tpl_back'), function () {
                     open(into);
                 }, 'tpl-back');
             } else {
@@ -1614,7 +1862,7 @@
             card.setAttribute('aria-busy', 'true');
             say(t('fl_ai_sketch_working'), false);
 
-            K.api('ws_flow_ai_sketch', { sentence: sentence }).then(function (data) {
+            K.api('ws_flow_ai_sketch', Object.assign({ sentence: sentence }, newHome())).then(function (data) {
                 state.sketch = { flow: data.flow.id, notes: data.notes || [] };
                 state.refocus = 'ai-sketch';
                 show(data.flow);
@@ -1958,7 +2206,7 @@
         };
 
         var create = function () {
-            return K.api('ws_flow_create', { name: template.title, graph: graphOf(template.graph) }).then(function (data) {
+            return K.api('ws_flow_create', Object.assign({ name: template.title, graph: graphOf(template.graph) }, newHome())).then(function (data) {
                 state.refocus = 'box-' + template.graph.nodes[0].id;
                 show(data.flow);
                 refocus();
@@ -2303,7 +2551,7 @@
         ui.stage.classList.add('d-none');
         ui.scheduled.classList.remove('d-none');
 
-        K.viewBack(t('sa_canvas_back'), function () {
+        viewBack(t('sa_canvas_back'), function () {
             state.refocus = 'sched-refused flows-search';
             showNone();
         }, 'sa-back');
@@ -2510,11 +2758,8 @@
         ui.app.classList.toggle('wsf-readonly', !state.edit);
         ui.conflictBox.classList.add('d-none');
 
-        try {
-            window.history.replaceState(null, '', window.location.pathname + '?flow=' + flow.id);
-        } catch (error) {
-            // An address that cannot be changed leaves the flow open all the same.
-        }
+        setAddress('?flow=' + flow.id);
+        shownFlow(flow);
 
         listEntry(flow);
         drawBar();
@@ -2523,13 +2768,22 @@
         fit();
     }
 
+    // What a new flow is made with beyond its name and boxes: the home
+    // channel of a single editor opened from a channel (mount()'s home); a
+    // role-3 member's own flow has none (ws_flow_member_flow_refusal()).
+    function newHome() {
+        var home = state.mounted ? state.mounted.home : 0;
+
+        return (home > 0) && !FL.member ? { channel_id: home } : {};
+    }
+
     function createFlow() {
         leaveFlow().then(function (go) {
             if (!go) {
                 return null;
             }
 
-            return K.api('ws_flow_create', { name: t('fl_untitled'), graph: graphOf(null) }).then(function (data) {
+            return K.api('ws_flow_create', Object.assign({ name: t('fl_untitled'), graph: graphOf(null) }, newHome())).then(function (data) {
                 show(data.flow);
 
                 if (ui.name) {
@@ -2544,7 +2798,7 @@
 
     // "New flow", what the screen is for, in the toolbar's first slot.
     function newFlowButton() {
-        if (!FL.build) {
+        if (!FL.build || singleFlow()) {
             return;
         }
 
@@ -2563,9 +2817,12 @@
         ui.bar.appendChild(create);
     }
 
-    // The page's back arrow goes back to the flow list.
+    // The page's back arrow goes back to the flow list; a single editor has
+    // none (the layer around it closes it).
     function backToList() {
-        K.viewBack(t('fl_list_back'), showList, 'flows');
+        if (!singleFlow()) {
+            K.viewBack(t('fl_list_back'), showList, 'flows');
+        }
     }
 
     // A flow that may be run now: live, published, and the person's to edit
@@ -2653,6 +2910,7 @@
             ui.name.addEventListener('input', function () {
                 if (ui.name.value.trim() !== '') {
                     flow.name = ui.name.value.trim();
+                    shownFlow(flow);
                     changed(false);
                 }
             });
@@ -4051,6 +4309,7 @@
                 && ((item[0] !== 'no_order') || stepLists().no_order)
                 && ((item[0] !== 'record_get') || (stepLists().reads.length > 0))
                 && ((item[0] !== 'ai') || stepLists().ai)
+                && ((item[0] !== 'agent') || (stepLists().agents.length > 0))
                 && (((item[0] !== 'row_add') && (item[0] !== 'row_set')) || writable);
         });
     }
@@ -4891,6 +5150,35 @@
         return list;
     }
 
+    // What "Add value" says when it has nothing to offer: the start and the
+    // boxes before this one by name when some are connected before it but
+    // give no value here (a manual start gives none), else that nothing is
+    // connected before it yet.
+    function valuesNone(node) {
+        var maps = arrowMaps();
+        var into = {};
+
+        Object.keys(maps.next).forEach(function (id) {
+            into[id] = [];
+        });
+        Object.keys(maps.next).forEach(function (from) {
+            maps.next[from].forEach(function (to) {
+                into[to].push(from);
+            });
+        });
+
+        var before = boxesBefore(into, node.id);
+        var names = orderedNodes().filter(function (other) {
+            return before[other.id] && (other.id !== node.id);
+        }).map(nameOf);
+
+        if (!names.length) {
+            return t('fl_values_none');
+        }
+
+        return t('fl_values_none_before', names.slice(0, 3).join(', ') + ((names.length > 3) ? ', …' : ''));
+    }
+
     // The values a box may write in: what started the run, then each box
     // before it in arrow order, one that may not have run marked (its
     // values are then empty).
@@ -5578,7 +5866,7 @@
             K.clear(list);
 
             if (!groups.length) {
-                list.appendChild(el('div', 'small fg-secondary', t('fl_values_none')));
+                list.appendChild(el('div', 'small fg-secondary', valuesNone(node)));
             }
 
             groups.forEach(function (group) {
@@ -5840,6 +6128,10 @@
 
         if (node.kind === 'ai') {
             aiFields(box, node);
+        }
+
+        if (node.kind === 'agent') {
+            agentFields(box, node);
         }
 
         if (node.kind === 'condition') {
@@ -7561,8 +7853,8 @@
         return (cells && (typeof cells === 'object') && !Array.isArray(cells)) ? cells : null;
     }
 
-    // Its table, and the row a change or a read names by its number or its
-    // value.
+    // Its table, and the row a change or a read finds: its number, its id
+    // (a value by its name) or the last row.
     function rowWriteMeta(node) {
         var config = node.config;
         var table = rowTable(config);
@@ -7573,9 +7865,25 @@
         }
 
         var name = table ? table.name : '#' + config.table_id;
-        var named = /^\d+$/.test(row) ? null : valueNames(node)[row];
 
-        return (((node.kind === 'row_set') || (node.kind === 'row_get')) && row) ? t('fl_rows_meta', name, named ? named.label : row) : name;
+        if ((node.kind !== 'row_set') && (node.kind !== 'row_get')) {
+            return name;
+        }
+
+        var by = rowWay(config);
+
+        if (by === 'last') {
+            return t('fl_rows_meta_last', name);
+        }
+
+        if (!row) {
+            return name;
+        }
+
+        var named = /^\d+$/.test(row) ? null : valueNames(node)[row];
+        var shown = named ? named.label : row;
+
+        return (by === 'id') ? t('fl_rows_meta_id', name, shown) : t('fl_rows_meta', name, shown);
     }
 
     // Money's decimals, as the table keeps its column (2 unless it says).
@@ -7729,9 +8037,64 @@
         return wrap;
     }
 
+    // The ways a row box finds its row (ws_step_row_bys()) as the list
+    // offers them: its number in the table first, the way of a new box.
+    function rowByOptions() {
+        return [['position', t('fl_rows_by_position')], ['id', t('fl_rows_by_id')], ['last', t('fl_rows_by_last')]];
+    }
+
+    // The way a row box's settings keep (ws_step_row_way()): none or an
+    // unknown one is by its id, as a box saved before the choice meant.
+    function rowWay(config) {
+        return (['id', 'position', 'last'].indexOf(config.by) !== -1) ? config.by : 'id';
+    }
+
+    // How a box that reads or changes a row finds it, then its row: a number
+    // or one value for the first two ways, nothing for the last row. A read
+    // box says what a missing row gives, its found value named as the value
+    // list names it.
+    function rowByField(box, node) {
+        var config = node.config;
+        var by = rowWay(config);
+        var pick = K.select(rowByOptions(), by);
+
+        pick.setAttribute('data-refocus', 'rows-by-' + node.id);
+        pick.addEventListener('change', function () {
+            config.by = pick.value;
+
+            if (config.by === 'last') {
+                config.row = '';
+            } else if ((node.kind === 'row_get') && (config.by === 'position') && !String(config.row || '').trim()) {
+                config.row = '1';
+            }
+
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_rows_by'), pick, (by === 'last') ? t('fl_rows_last_help') : ''));
+
+        if (by === 'last') {
+            return;
+        }
+
+        var help = t((by === 'position') ? 'fl_rows_position_help' : 'fl_rows_id_help');
+
+        if (node.kind === 'row_get') {
+            var found = ((FL.outputs || {}).row_get || []).filter(function (item) { return item.key === 'found'; })[0];
+
+            help += ' ' + t('fl_rows_get_missing_help', found ? found.label : 'found');
+        }
+
+        box.appendChild(valueField(node, t('fl_rows_row'), config.row, 200, function (value) {
+            config.row = value;
+            refreshNode(node);
+        }, false, help));
+    }
+
     // A box that reads a row: a table the person reads (ws_flow_row_tables(),
-    // as ws_step_row_get_check() asks at view) and the row, by its number or
-    // one value. Its cells are offered to the boxes after it (boxValues()).
+    // as ws_step_row_get_check() asks at view) and the row, found by its
+    // number, its id or as the last row. Its cells are offered to the boxes
+    // after it (boxValues()).
     function rowGetFields(box, node) {
         var config = node.config;
         var options = [[0, t('fl_row_table_pick')]].concat(stepLists().tables.map(function (item) { return [item.id, item.name]; }));
@@ -7749,10 +8112,7 @@
             drawSettings();
         });
         box.appendChild(field(t('fl_row_table'), pick, t('fl_rows_read_help')));
-        box.appendChild(valueField(node, t('fl_rows_row'), config.row, 200, function (value) {
-            config.row = value;
-            refreshNode(node);
-        }, false, t('fl_rows_get_row_help')));
+        rowByField(box, node);
     }
 
     // The kind of record a read box reads, as the person may read it
@@ -7927,6 +8287,94 @@
         box.appendChild(field(t('fl_ai_closes'), hours, t('fl_ai_closes_help')));
     }
 
+    // The agent an agent box asks, from the list the server sent.
+    function agentOf(config) {
+        return stepLists().agents.filter(function (item) { return item.id === config.agent_id; })[0] || null;
+    }
+
+    // The agent's handle and the channel it is asked in.
+    function agentMeta(node) {
+        var config = node.config;
+        var agent = agentOf(config);
+        var channel = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];
+
+        if (!config.agent_id) {
+            return t('fl_agent_pick');
+        }
+
+        return (agent ? '@' + agent.handle : '#' + config.agent_id) + (channel ? ' · ' + t('fl_post_meta', channel.name) : '');
+    }
+
+    // An agent box (flow_agent_box.php): the agent, the channel it is asked
+    // in (one where it is allowed and the owner may write), the prompt,
+    // which takes values, and the hours it waits for the answer.
+    function agentFields(box, node) {
+        var config = node.config;
+        var agents = stepLists().agents;
+        var agent = agentOf(config);
+        var options = [[0, t('fl_agent_pick')]].concat(agents.map(function (item) { return [item.id, '@' + item.handle + (item.name ? ' (' + item.name + ')' : '')]; }));
+
+        if (config.agent_id && !agent) {
+            options.push([config.agent_id, '#' + config.agent_id]);
+        }
+
+        var pick = K.select(options, config.agent_id || 0);
+
+        pick.setAttribute('data-refocus', 'agent-pick-' + node.id);
+        pick.disabled = !state.edit;
+        pick.addEventListener('change', function () {
+            var chosen;
+
+            config.agent_id = parseInt(pick.value, 10) || 0;
+            chosen = agentOf(config);
+
+            // A channel the new agent is not allowed in is no choice.
+            if (!chosen || (chosen.channel_ids.indexOf(config.channel_id) < 0)) {
+                config.channel_id = (chosen && (chosen.channel_ids.length === 1)) ? chosen.channel_ids[0] : 0;
+            }
+
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_agent'), pick, t('fl_agent_help')));
+
+        var ids = agent ? agent.channel_ids : [];
+        var places = [[0, t('fl_agent_channel_pick')]].concat((BOOT.channels || []).filter(function (item) {
+            return ids.indexOf(item.id) >= 0;
+        }).map(function (item) { return [item.id, '#' + item.name]; }));
+
+        if (config.channel_id && (ids.indexOf(config.channel_id) < 0)) {
+            places.push([config.channel_id, '#' + config.channel_id]);
+        }
+
+        var where = K.select(places, config.channel_id || 0);
+
+        where.setAttribute('data-refocus', 'agent-channel-' + node.id);
+        where.disabled = !state.edit;
+        where.addEventListener('change', function () {
+            config.channel_id = parseInt(where.value, 10) || 0;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_agent_channel'), where, t('fl_agent_channel_help')));
+        box.appendChild(valueField(node, t('fl_ai_prompt'), config.prompt || '', 4000, function (value) {
+            config.prompt = value;
+            refreshNode(node);
+        }, true, t('fl_agent_prompt_help')));
+
+        var hours = el('input', 'form-control form-control-sm wsf-number');
+
+        hours.type = 'number';
+        hours.min = '1';
+        hours.max = '720';
+        hours.value = String(config.closes_in || 24);
+        hours.disabled = !state.edit;
+        hours.addEventListener('input', function () {
+            config.closes_in = clamp(parseInt(hours.value, 10) || 24, 1, 720);
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_ai_closes'), hours, t('fl_agent_closes_help')));
+    }
+
     // A box that adds or changes a row: its table, the row a change names,
     // then a field per column. Cells the form cannot show (a table not
     // among those the person changes, or a text that is no JSON object)
@@ -7954,10 +8402,7 @@
         box.appendChild(field(t('fl_row_table'), pick, t('fl_rows_table_help')));
 
         if (node.kind === 'row_set') {
-            box.appendChild(valueField(node, t('fl_rows_row'), config.row, 200, function (value) {
-                config.row = value;
-                refreshNode(node);
-            }, false, t('fl_rows_row_help')));
+            rowByField(box, node);
         }
 
         if (!config.table_id) {
@@ -9193,17 +9638,26 @@
 
             config = { table_id: (writable.length === 1) ? writable[0].id : 0, cells: '' };
 
+            // A change names its row by its number in the table, left for
+            // the person to choose: a write never falls on row 1 unasked.
             if (kind === 'row_set') {
+                config.by = 'position';
                 config.row = '';
             }
         } else if (kind === 'row_get') {
             var readable = stepLists().tables;
 
-            config = { table_id: (readable.length === 1) ? readable[0].id : 0, row: '' };
+            // A read starts on the first row, a whole box at once.
+            config = { table_id: (readable.length === 1) ? readable[0].id : 0, by: 'position', row: '1' };
         } else if (kind === 'record_get') {
             config = { record: '', id: '' };
         } else if (kind === 'ai') {
             config = { mode: 'write', prompt: '', text: '', classes: [], closes_in: 24 };
+        } else if (kind === 'agent') {
+            var agents = stepLists().agents;
+            var only = (agents.length === 1) ? agents[0] : null;
+
+            config = { agent_id: only ? only.id : 0, channel_id: (only && (only.channel_ids.length === 1)) ? only.channel_ids[0] : 0, prompt: '', closes_in: 24 };
         }
 
         var node = { id: freeId(kind, state.graph.nodes), kind: kind, label: '', x: place.x, y: place.y, config: config };
@@ -11790,8 +12244,18 @@
     }
 
     function bindWindow() {
+        if (windowBound) {
+            return;
+        }
+
+        windowBound = true;
+
         // Space held on the canvas is the core's (create()).
         document.addEventListener('keydown', function (event) {
+            if (!state.screen) {
+                return;
+            }
+
             if ((event.ctrlKey || event.metaKey) && ((event.key === 's') || (event.key === 'S')) && drafting()) {
                 event.preventDefault();
                 save();
@@ -11809,7 +12273,7 @@
         });
 
         window.addEventListener('blur', function () {
-            if (state.dirty) {
+            if (state.screen && state.dirty) {
                 save();
             }
         });
@@ -11817,6 +12281,10 @@
         // A hidden tab saves what is on its way and stops looking at the run
         // shown; shown again, it looks at once.
         document.addEventListener('visibilitychange', function () {
+            if (!state.screen) {
+                return;
+            }
+
             if (document.visibilityState === 'hidden') {
                 saveOnLeave(false);
                 stopPoll();
@@ -11827,11 +12295,13 @@
         });
 
         window.addEventListener('pagehide', function () {
-            saveOnLeave(true);
+            if (state.screen) {
+                saveOnLeave(true);
+            }
         });
 
         window.addEventListener('beforeunload', function (event) {
-            if (!drafting() || !state.flow) {
+            if (!state.screen || !drafting() || !state.flow) {
                 return;
             }
 
@@ -11870,6 +12340,9 @@
     //             the page's own has no flows
     //   strings   texts beside the page's own
     //   people    the team, for the boxes that name people
+    //   channels  the channels the person reads, for the boxes that name
+    //             one (a post, approval or check-in box)
+    //   departments the departments, for the boxes that assign to one
     //   onSelect  called with the box picked (embedNode()), null for none
     //   onClose   called once the drawing is gone
     // Returns { destroy(), fit(), select(id) }, null when it cannot draw.
@@ -11888,7 +12361,7 @@
         K = kit;
         CFG = K.cfg || {};
         FL = boot.config || CFG.flows || {};
-        BOOT = { people: boot.people || [] };
+        BOOT = { people: boot.people || [], channels: boot.channels || [], departments: boot.departments || [] };
         el = K.el;
         t = embedText(boot.strings);
 
@@ -12105,5 +12578,5 @@
         };
     }
 
-    window.PGWsFlow = { start: start, showAction: showAction, runFlag: runFlag, embed: embed };
+    window.PGWsFlow = { start: start, mount: mount, showAction: showAction, runFlag: runFlag, embed: embed };
 })();

@@ -6,6 +6,7 @@ module: store_credit_staff, store_credit_account
 
 ## Where do staff see a customer's store credit?
 - `edit_user.php`, the Store Credit card (`#store_credit`) under the main form (it is its own form; forms cannot nest): the balance (`pg_credit_balance()`), the last 50 cards bound to the user newest first (`pg_credit_staff_cards()`: kind, reason, amount, balance, last day, Open / Used / Expired by `pg_credit_staff_card_state()`, a link to `edit_gift_card.php`), and the issue form. Drawn only when `pg_credit_ready()`.
+- Money on it: `pg_credit_staff_money()` (`pg_money_text()`, then `h()`); until #8391 it read `&#8378;0,00` (`core/currency-symbol-as-text.md`).
 - Who: the person who may open this user (the screen's role check) and has commerce rights, `pg_credit_staff_allowed()` (role < 3 or `manage_ecommerce`, as the gift card screens). Without them the card is not drawn and a post is refused.
 
 ## How is credit issued?
@@ -25,5 +26,5 @@ module: store_credit_staff, store_credit_account
 - `store-credit-mails.md`: `credit_issued` / `credit_expiring` and the job that closes ended cards.
 
 ## Tests?
-- `tests/store_credit_staff_test.php`: amount, last day (end of the day, today valid, impossible dates), reason, card state, rights.
+- `tests/store_credit_staff_test.php`: amount, last day (end of the day, today valid, impossible dates), reason, card state, rights, money.
 - `tests/store_credit_account_test.php`: uses grouped by card, the card list (state, last day, staff date), when the section shows.

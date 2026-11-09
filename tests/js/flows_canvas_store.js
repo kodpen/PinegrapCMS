@@ -323,6 +323,10 @@ async function createStore(name, check) {
 
         ws_tick: () => ({}),
 
+        // The editor's config on another page: the harness page already
+        // holds the Flows screen's (flows null keeps it), and its texts.
+        ws_flow_editor_config: () => ({ flows: null, strings: {} }),
+
         ws_flow_list: () => ({ flows: [...flows.values()].filter((flow) => !flow.binned).map((flow) => Object.assign(brief(flow), { last_run: lastRun(flow) })) }),
 
         ws_flow_get: (request) => {

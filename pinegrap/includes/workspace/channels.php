@@ -245,6 +245,10 @@ function ws_channel_detail($viewer, $channel)
 
     $brief['tab_counts'] = ws_channel_tab_counts($channel);
 
+    // The channel's memory (channel_memory.php): its own tab where an agent
+    // is in the channel, otherwise reached from the channel settings.
+    $brief['memory'] = ws_memory_ready() ? array('tab' => ws_memory_tab_shown($channel['id'])) : null;
+
     // The newest status update, shown beside the name (status.php).
     $brief['status'] = function_exists('ws_status_channel_state') ? ws_status_channel_state($channel) : null;
 
