@@ -20,7 +20,8 @@
  *   3. When the visitor picks a complete combination → `applyVariant()`:
  *        - Find the matching product from preloaded data (instant).
  *        - Update every [data-pg-bind] element using the bound field map,
- *          as text unless the key holds markup (HTML_FIELDS).
+ *          as text unless the key holds markup (HTML_FIELDS); a text goes
+ *          into the run of words the design's markup wraps (textSlot()).
  *        - Refresh the carousel: rebuild slides + thumbs from new gallery.
  *        - Update product_id hidden input on the wrapping form.
  *        - Dispatch `pg-civ-product-change` on the form (detail.productId),
@@ -123,6 +124,18 @@
         // and stock state of the variant now shown.
         var currentPid = data.default_product_id ? String(data.default_product_id) : '';
         var defaults = (data.default_selection && typeof data.default_selection === 'object') ? data.default_selection : {};
+
+        // The variant the page was drawn with: until the script first
+        // writes a bound element, it shows this variant's value.
+        var drawnProduct = null;
+        data.products.forEach(function (p) {
+            if (String(p.id) === currentPid) drawnProduct = p;
+        });
+        function drawnValue(field) {
+            if (!drawnProduct || !(field in drawnProduct)) return undefined;
+            var v = drawnProduct[field];
+            return (v === null || v === undefined) ? '' : String(v);
+        }
         Object.keys(data.attrs).forEach(function (aid) {
             selection[aid] = defaults[aid] ? String(defaults[aid]) : '';
         });
@@ -267,7 +280,7 @@
                     if (!(field in p)) return;
                     var value = p[field];
                     if (value === null || value === undefined) value = '';
-                    setProp(el, prop, String(value), field);
+                    setProp(el, prop, String(value), field, drawnValue(field));
                 });
             });
 
@@ -519,6 +532,15 @@
                     // whatever the stock; the element bound to it shows the
                     // notice, which is empty while the variant is in stock.
                     p.out_of_stock_message = ('out_of_stock_notice' in p) ? p.out_of_stock_notice : '';
+                    // The price as the page draws it (__price_formatted,
+                    // __price_range): the strike-through block while an
+                    // offer lowers it, else the amount. price_formatted is
+                    // the amount in the answer, for the layouts that read
+                    // it; price_block_html is the block.
+                    if ('price_block_html' in p) {
+                        p.price_formatted = (String(p.has_discount) === '1') ? p.price_block_html : p.price_formatted;
+                        p.price_range = p.price_formatted;
+                    }
                     // Re-apply only the fields the API returned (overrides the
                     // preloaded values with fresh stock + computed fields).
                     var scope = form || document;
@@ -534,7 +556,7 @@
                             if (!(field in p)) return;
                             var v = p[field];
                             if (v === null || v === undefined) v = '';
-                            setProp(el, prop, String(v), field);
+                            setProp(el, prop, String(v), field, drawnValue(field));
                         });
                     });
                     settleEmptyBoxes(scope);
@@ -613,9 +635,10 @@
      * in the get_product answer alike: the operator's rich text
      * (description, details, the stock notice) and the formatted prices
      * (pg_visitor_money() keeps the currency symbol as stored, an entity
-     * such as &#8378;; reference_price is the token's text, escaped for
-     * this). Every other value is plain text, sent raw, and shown as text,
-     * as the server shows its token escaped once
+     * such as &#8378;; an offer's price is the strike-through block of
+     * _pg_format_price_with_discount(); reference_price is the token's
+     * text, escaped for this). Every other value is plain text, sent raw,
+     * and shown as text, as the server shows its token escaped once
      * (pg_sw_escape_token_values()).
      */
     var HTML_FIELDS = {
@@ -623,30 +646,84 @@
         details: 1,
         out_of_stock_message: 1,
         price_formatted: 1,
+        price_range: 1,
+        price_block_html: 1,
         original_price_formatted: 1,
         discount_amount_formatted: 1,
         reference_price: 1
     };
 
+    // A run of words as pg_binding_text_slot() counts one: a text holding
+    // more than the spaces PHP's trim() takes off (an &nbsp; is a space).
+    var WORDS = /[^ \t\n\r\0\x0B]/;
+    // A run's spaces before and after its words (PHP's \s), and its words.
+    var EDGES = /^([ \t\n\r\f\v]*)([\s\S]*?)([ \t\n\r\f\v]*)$/;
+
+    /**
+     * Where a bound text goes in an element that holds markup. A rich text
+     * (a heading, a paragraph, a link) bound to a field keeps the markup
+     * its design wrapped around one run of words, and the server puts the
+     * value in that run's place (pg_binding_text_slot():
+     * <a href="/p">^^name^^</a> keeps its link). The script writes there
+     * too: the one text node holding words inside the element, when it
+     * shows the value the page was drawn with (`drawn`; undefined when the
+     * payload has no such key). The place is kept with the spaces around
+     * it, so a variant whose value is empty leaves it for the next one.
+     * Null when the value takes the whole content: no markup, several runs
+     * of words, or none (a page drawn with the value empty shows no words
+     * to find the place by), or words that are not the value.
+     */
+    function textSlot(el, drawn) {
+        var kept = el.pgCivTextSlot;
+        if (kept && el.contains(kept.node)) return kept;
+        if (!el.children || !el.children.length) return null;
+        var runs = [];
+        (function walk(n) {
+            for (var c = n.firstChild; c; c = c.nextSibling) {
+                if (c.nodeType === 3) {
+                    if (WORDS.test(c.nodeValue.replace(/\u00a0/g, ' '))) runs.push(c);
+                } else if (c.nodeType === 1) {
+                    walk(c);
+                }
+            }
+        })(el);
+        if (runs.length !== 1) return null;
+        var m = EDGES.exec(runs[0].nodeValue);
+        // The page's text holds the value's line breaks as \n: the browser
+        // reads \r\n and \r so.
+        if (drawn !== undefined && m[2] !== EDGES.exec(drawn.replace(/\r\n?/g, '\n'))[2]) return null;
+        el.pgCivTextSlot = { node: runs[0], lead: m[1], trail: m[3] };
+        return el.pgCivTextSlot;
+    }
+
     /**
      * Apply the value of the product key `field` to an element. Handles the
      * prop-name conventions used by the designer's binding system:
      *   text, html → element.textContent, or element.innerHTML for a key
-     *                of HTML_FIELDS
+     *                of HTML_FIELDS; a text binding's text goes into the
+     *                run of words the design's markup wraps (textSlot())
      *   src   → element.src + element.style.backgroundImage (for css backgrounds)
      *   alt   → element.alt
      *   href  → element.href
      *   value → element.value (form inputs)
+     * `drawn` is the key's value on the variant the page was drawn with.
      */
-    function setProp(el, prop, val, field) {
+    function setProp(el, prop, val, field, drawn) {
         switch (prop) {
             case 'text':
             case 'html':
                 // The key decides, not the prop: the server escapes a plain
                 // text token wherever it is bound, so a name holding "<b>"
-                // shows the tag as typed there and here.
+                // shows the tag as typed there and here. Markup around a
+                // key holding markup is not kept: the page cannot tell it
+                // from the value's own.
                 if (Object.prototype.hasOwnProperty.call(HTML_FIELDS, field)) {
                     el.innerHTML = val;
+                    break;
+                }
+                var slot = (prop === 'text') ? textSlot(el, drawn) : null;
+                if (slot) {
+                    slot.node.nodeValue = slot.lead + val + slot.trail;
                 } else {
                     el.textContent = val;
                 }
