@@ -16732,7 +16732,11 @@
             picker.style.left = (place.left - origin.left) + 'px';
             picker.style.top = (place.top - origin.top) + 'px';
             picker.style.width = place.width + 'px';
-            picker.style.maxHeight = place.height + 'px';
+
+            // Cut only when the room is shorter than the list: a cap at its
+            // own height, rounded down, gives the rows a scrollbar for a
+            // pixel.
+            picker.style.maxHeight = (place.height < Math.floor(origin.height)) ? place.height + 'px' : '';
         },
 
         // A list over or under its box (the channel's writing box, a note
@@ -16751,10 +16755,10 @@
             var box = picker.getBoundingClientRect();
             var wrap = this.composerWrap.getBoundingClientRect();
             var view = pickerView();
-            var room = (box.top < wrap.top) ? box.bottom - view.top - 8 : view.bottom - 8 - box.top;
+            var room = Math.floor((box.top < wrap.top) ? box.bottom - view.top - 8 : view.bottom - 8 - box.top);
 
-            if (room < box.height) {
-                picker.style.maxHeight = Math.max(96, Math.floor(room)) + 'px';
+            if (room < Math.floor(box.height)) {
+                picker.style.maxHeight = Math.max(96, room) + 'px';
             }
         },
 

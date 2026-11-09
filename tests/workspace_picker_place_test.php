@@ -216,6 +216,7 @@ function test_workspace_picker_place_wiring()
 	pg_assert_contains("'ws-picker-caret'", $place, 'measured at the caret list\'s size');
 	pg_assert_contains('style.width', $place, 'its width set');
 	pg_assert_contains('style.maxHeight', $place, 'its height cut to the room');
+	pg_assert_contains('Math.floor(origin.height)', $place, 'cut only when the room is shorter than the list');
 	pg_assert_contains("style.right = 'auto'", $place, 'no right edge left to stretch it');
 
 	$view = workspace_picker_place_test_function('pickerView');
