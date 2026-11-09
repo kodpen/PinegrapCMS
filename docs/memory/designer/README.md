@@ -165,6 +165,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-gym.md: Gym template (pinegrap-gym): classes and a timetable, trainers, plans, class booking and join requests, memberships in the shop with a members' area, pgy- look, tests.
 - design-template-hello.md: Hello template 2.6.0: threads and the reply e-mail card on the Comments widget, product reviews, the Favourites page and its shop-only links, Google Reviews beside the testimonials
 - design-template-homeservices.md: Home Services template (pinegrap-homeservices): services and team as collections, visit bookings and estimate requests, service areas, price guide, care plans in the shop, phs- look, tests.
+- design-template-hotel-pages.md: Hotel template 2.0.0: home, rooms and rates on the Hotel blocks: the builders, each page's composition, motion, what left, the test
 - design-template-hotel.md: Hotel template (pinegrap-hotel): rooms as a collection with rates, booking requests and event enquiries followed from the account, gift vouchers in the shop, pht- look, tests.
 - design-template-launch-home.md: Launch template's home and features pages on the Product Launch blocks: builders, sections, motion, the colour picker's swatch classes, what left
 - design-template-launch-pages.md: Launch template's camera, specs and compare pages on the Product Launch blocks: the spec comparison from $spec_groups, the differences-only compare, motion, what was dropped
@@ -191,6 +192,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-pharmacy.md: Pharmacy template (pinegrap-pharmacy): services, health checks, on duty, pharmacists, prescription requests and questions, health products shop, Health Advice by topic, prx- look, tests.
 - design-template-photo-pages.md: Photography Studio template 2.0.0: home, how it works, packages and about on the Photo blocks: the builders, each page's composition, motion, what left, the test
 - design-template-photo.md: Photography Studio template (pinegrap-photo): galleries collection, shoot booking requests, private proofing folders and selections, deposits and vouchers, pph- look, tests.
+- design-template-planetarium.md: Planetarium template (pinegrap-planetarium): dome shows and telescope nights as dated collections, school visit requests, tickets and memberships, planetarium- blocks, ppm- look, tests.
 - design-template-podcast.md: Podcast Network template (pinegrap-podcast): podcasts and episodes as collections, bound player, sponsorship and pitch requests, supporters' membership folder, ppd- look, tests.
 - design-template-portfolio.md: Web Designer Portfolio template (pinegrap-portfolio): case studies as a collection, services with three packages, a project brief followed from the account, pdp- look, tests.
 - design-template-realestate.md: Real Estate Agency template (pinegrap-realestate): listings as a collection, neighbourhoods, agents, viewing and valuation requests followed from the account, pre- look, tests.
@@ -212,6 +214,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-veterinary.md: Veterinary template (pinegrap-veterinary): services, pets, emergencies, vets as a collection, online booking, appointment and health plan requests, plans in the shop, pvt- look, tests.
 - design-template-wedding-pages.md: Wedding template 2.0.0: home, timeline, packages and venue on the Wedding blocks: the builders, each page's composition, motion, what left, the test
 - design-template-wedding.md: Wedding template (pinegrap-wedding): packages, spaces, Real Weddings collection, enquiries from the account, venue visits by the booking widget, deposits and gift cards, pwd- look, tests.
+- design-template-zoo.md: Zoo and Aquarium template (pinegrap-zoo): a home that opens on the day, zoo- blocks, animals and events as collections, visit requests, tickets/memberships/adoptions shop, pzo- look, tests.
 - design-templates-catalog-and-look.md: A design template's own data and looks: catalog and contact groups made on opening, their placeholders, suggested look and palette, highlights, gallery drawing, dark sections, ratio classes.
 - design-templates-file-format.md: Writing a design template file (includes/design_templates/<id>.php): version, keys, placeholders, requires, starter widgets, shared parts, folders, and what opening a template writes before Publish.
 - design-templates-from-design.md: Templates made from a design (2026.4.8): design_template table, custom-<n> ids, same shape as a template file, the pg_dtc_* placeholder export, assets, deleting, the same-request cache trap.
@@ -248,6 +251,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-blocks-launch.md: The launch- block family (Product Launch): seven blocks, their interactions, the CSS colour switch, bento-features reused, the sticky spec head
 - designer-blocks-marina.md: The Marina block family (marina- prefix, its own palette group): the pontoon plan and the arrival by sea, the blocks a marina places instead of adding, its pg-marina-* rules, its test
 - designer-blocks-museum.md: The Museum block family (museum- prefix, own palette group): exhibition hero, look closer, highlights trail; general blocks placed instead; rules, test
+- designer-blocks-music.md: The Music block family (music- prefix, own palette group): release hero, tour dates, press kit; general blocks placed instead; rules, test
 - designer-blocks-news-maintenance-creative.md: Maintenance, news and creative blocks (2026.11.0): palette groups, the family branch and helpers, maintenance blocks without site links, attribute-dropping nodes, block details, the palette test.
 - designer-blocks-pharmacy.md: The Pharmacy block family (pharmacy- prefix): duty panel, reference readings, travel vaccines, medicine schedule; general blocks reused instead; no motion; rule and test
 - designer-blocks-photo.md: The Photo block family (photo- prefix, its own palette group): filmstrip hero, proof contact sheet, behind the shot; the general blocks a photography site places instead; rules and test

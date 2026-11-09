@@ -80,6 +80,7 @@ function pg_dashboard_v2_card_engagement($user, $period, $compare)
 
     return array('status' => 'success', 'data' => array(
         'figure'     => $active,
+        'label'      => lang('On the site now'),
         'headline'   => ($active === 1)
             ? lang('One person on the site now')
             : lang(array('string' => '{var:1} people on the site now', 'vars' => pg_format_number($active, 0))),
