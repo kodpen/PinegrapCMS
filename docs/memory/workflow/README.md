@@ -127,5 +127,6 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - test-coordinator.md: Test coordinator (2026-10-31): starts no workers, tests and opens `bug` issues, which wait for the owner (no worker takes them since 2026-11-06); the merging session closes a fixed one
 - unit-test-database-exit.md: A unit test statement that reaches db() ends the whole tools/test.php run with exit code 0 through output_error(); make it throw with pg_error_throws(true), or keep the tested part free of queries
 - unit-test-runner.md: tools/test.php: what it loads, which errors fail a test, other PHP versions, code behind a database probe, PHP in its own process (Windows quoting, peak memory), JavaScript under Node
+- unit-test-time-limit.md: tools/test.php gives every test the run's own time limit back, because product code sets @set_time_limit(120) and Windows counts it in wall-clock time, which stopped pushes there
 - workflow-lint-and-dependabot.md: The actionlint job (pinned, SHA-256, shellcheck, what its data lacks) and Dependabot for github-actions (read from main, PRs to development, one per major bump)
 - working-mode.md: Working rules (2026-10-25) for every session: why, one open PR, no stacked branches, issues for decisions and bugs, PR size, queue limit, changelog through the PR body, docs-only PRs alone

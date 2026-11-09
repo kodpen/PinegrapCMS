@@ -50,6 +50,11 @@ $tests_directory = $repository . '/tests';
 // The gate every test file checks.
 define('PG_TEST_RUNNER', true);
 
+// The time limit the run started with: none, since the command line ignores
+// php.ini's max_execution_time, unless -d max_execution_time gives one. Every
+// test starts with it again (see the run below).
+define('PG_TEST_TIME_LIMIT', (int) ini_get('max_execution_time'));
+
 // functions.php defines PG_FUNCTIONS_DIR itself and loads every module under
 // includes/fn/. None of them needs a connection, a config file or a $_SERVER
 // key just to be loaded, so nothing is faked here.
@@ -185,6 +190,16 @@ foreach ($files as $file) {
 	echo $file_name . "\n";
 
 	foreach ($tests as $function) {
+
+		// Product code raises its own limit (@set_time_limit(120) before an
+		// image or a file job), and every call restarts PHP's timer. Windows
+		// runs that timer on wall-clock time, Linux on CPU time only, so on
+		// Windows the run died with "Maximum execution time of 120 seconds
+		// exceeded" in whichever test was running two minutes after such a
+		// call. Hosts may disable the function, which PHP 8 then lacks.
+		if (function_exists('set_time_limit')) {
+			@set_time_limit(PG_TEST_TIME_LIMIT);
+		}
 
 		$GLOBALS['pg_test_failures'] = array();
 		$error = null;
