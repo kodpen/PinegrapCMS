@@ -844,6 +844,17 @@ function main() {
     popup.offsetWidth = 300;
     ndBox.instance.open();
     out.store_date.placed = [popup.parentNode === host, popup.style.left, popup.style.top];
+    // In a window 600 high a calendar 300 high fits under a field whose
+    // bottom is at 140; under one at 540 (the last field of a dialog) it
+    // does not, and it opens above the field.
+    md.win.innerHeight = 600;
+    popup.offsetHeight = 300;
+    ndBox.getBoundingClientRect = function () { return { left: 10, top: 100, bottom: 140 }; };
+    ndBox.instance.open();
+    var below = popup.style.top;
+    ndBox.getBoundingClientRect = function () { return { left: 10, top: 500, bottom: 540 }; };
+    ndBox.instance.open();
+    out.store_date.flipped = [below, popup.style.top];
 
     var ndt = mq('ndt'), ndtBox = ndt.nextSibling;
     out.store_datetime = { box: ndtBox.value };
@@ -1507,9 +1518,10 @@ function test_pg_fields_each_field_keeps_its_own_store()
 			'typed' => array('2026-04-03', '2026-04-03'),
 			'set' => array('2026-05-06', '6/5/2026'),
 			'placed' => array(true, '100px', '40px'),
+			'flipped' => array('140px', '200px'),
 		),
 		$r['store_date'],
-		'a native date input is the hidden ISO store of a box in the site order; min and max bound the calendar; text it cannot hold leaves it empty; the popup stays inside the dialog\'s right edge'
+		'a native date input is the hidden ISO store of a box in the site order; min and max bound the calendar; text it cannot hold leaves it empty; the popup stays inside the dialog\'s right edge and opens above a field it does not fit under'
 	);
 	pg_assert_same(
 		array('box' => '26/10/2026 5:05 PM', 'time' => array('2026-10-26T08:00', '2026-10-26 08:00'), 'set' => array('2027-01-02T23:45', '2/1/2027 11:45 PM')),
