@@ -713,8 +713,9 @@ function get_order_preview($properties) {
                     $row_count++;
                 }
 
-                // if there is at least one product in non-recurring folder for this ship to, then output header and product information
-                if ($output_products) {
+                // Output the header, products charged today and shipping row for this ship to;
+                // a ship to whose lines all start later still shows its shipping, which is charged today.
+                if (pg_op_recipient_block_shown(ECOMMERCE_SHIPPING, $ship_to_id, $output_products !== '', $shipping_cost)) {
                     // if shipping is on and this ship to is a real ship to, then add header with ship to label
                     if ((ECOMMERCE_SHIPPING == true) && ($ship_to_id != 0)) {
                         $output_ship_to_name = '';

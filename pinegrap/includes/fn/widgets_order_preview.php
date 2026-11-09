@@ -352,6 +352,25 @@ function pg_op_step_url($key, $query = '')
 }
 
 /**
+ * Whether the classic Order Preview opens a recipient's block (its products
+ * charged today and its shipping row). A real recipient whose lines all
+ * start later still has its shipping charged today, as submit_order.php
+ * sums ship_tos.shipping_cost over every recipient, so its block opens for
+ * that shipping alone; with no cost there is nothing to show.
+ *
+ * @param bool       $shipping_on       ECOMMERCE_SHIPPING
+ * @param int|string $ship_to_id        0 for the lines that ship nowhere
+ * @param bool       $has_today_lines   a line of the recipient is charged today
+ * @param float|int  $shipping_cost     the recipient's shipping cost
+ * @return bool
+ */
+function pg_op_recipient_block_shown($shipping_on, $ship_to_id, $has_today_lines, $shipping_cost)
+{
+    if ($has_today_lines) return true;
+    return $shipping_on && ((int) $ship_to_id !== 0) && ($shipping_cost > 0);
+}
+
+/**
  * The classic page's "Change" button, '' without an address to point at.
  *
  * @param string $url pg_op_step_url()
