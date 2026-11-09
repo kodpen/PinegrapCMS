@@ -255,11 +255,8 @@ function pg_chat_store_upload($original_name, $data, $allow_images, $allow_files
 
     $extension = mb_strtolower(mb_substr($original_name, mb_strrpos($original_name, '.') + 1));
 
-    // Base64 decode (same steps as upload_file).
-    $binary = explode('base64', (string) $data);
-    $binary = str_replace(' ', '+', $binary);
-    $binary = str_replace(',', '', $binary);
-    $binary = base64_decode(array_pop($binary));
+    // The same decode as the panel's upload_file action.
+    $binary = pg_upload_base64_decode($data);
 
     if ($binary === false || strlen($binary) == 0) {
         return array('error' => lang('This file type is not allowed.'));
