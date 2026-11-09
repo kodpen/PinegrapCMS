@@ -921,7 +921,7 @@ function main() {
     var rf = load({ format: 'd/m/yy', fields: [
         ['input', { id: 'pub', type: 'datetime-local', 'data-pg-datetime': '', value: '' }],
         ['input', { id: 'fd', type: 'date', 'data-pg-date': '', value: '', placeholder: 'Value' }],
-        ['input', { id: 'ft', type: 'time', 'data-pg-time': '', value: '', 'aria-label': 'Value' }]
+        ['input', { id: 'ft', type: 'time', 'data-pg-time': '', value: '', 'aria-label': 'Value', 'aria-describedby': 'ft_help' }]
     ] });
     rf.win.pgFields.init();
     var pub = rf.doc.querySelector('#pub'), pubBox = pub.nextSibling, pubHeard = 0;
@@ -943,7 +943,7 @@ function main() {
     var fd = rf.doc.querySelector('#fd'), ft = rf.doc.querySelector('#ft');
     fd.value = '2026-02-03';
     rf.win.pgDatePicker.refresh(fd);
-    out.refresh.named = [fd.nextSibling.value, fd.nextSibling.getAttribute('placeholder'), ft.nextSibling.getAttribute('aria-label')];
+    out.refresh.named = [fd.nextSibling.value, fd.nextSibling.getAttribute('placeholder'), ft.nextSibling.getAttribute('aria-label'), ft.nextSibling.getAttribute('aria-describedby')];
 
 
     return out;
@@ -1580,9 +1580,9 @@ function test_pg_fields_refresh_shows_a_store_a_script_wrote()
 			'emptied' => array('', false, 0),
 			'picked' => array('2026-12-01T18:30', true),
 			'announced' => '5/1/2027 7:00 AM',
-			'named' => array('3/2/2026', 'Value', 'Value'),
+			'named' => array('3/2/2026', 'Value', 'Value', 'ft_help'),
 		),
 		$r['refresh'],
-		'refresh() draws a value and a disabled state a script wrote into an ISO store without firing a change; a pick still writes Y-m-d\TH:i; a store a script writes and announces with a change is shown; the box takes the field\'s placeholder and aria-label'
+		'refresh() draws a value and a disabled state a script wrote into an ISO store without firing a change; a pick still writes Y-m-d\TH:i; a store a script writes and announces with a change is shown; the box takes the field\'s placeholder, aria-label and the help tied to it'
 	);
 }

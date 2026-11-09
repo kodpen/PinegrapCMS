@@ -408,7 +408,7 @@ function pg_credit_staff_panel_html($user_id, $send_to, $now)
                                 </div>
                                 <div class="col-12 md:col-3">
                                     <label for="credit_last_day" class="form-label">' . h(lang('Last day')) . ' <span class="fg-secondary fw-normal">(' . h(lang('optional')) . ')</span></label>
-                                    <input type="date" name="credit_last_day" id="credit_last_day" class="form-control"/>
+                                    <input type="date" data-pg-date name="credit_last_day" id="credit_last_day" class="form-control"/>' . get_date_picker_format() . pg_fields_script() . '
                                 </div>
                                 <div class="col-12 md:col-4">
                                     <label for="credit_reason" class="form-label">' . h(lang('Reason')) . '</label>

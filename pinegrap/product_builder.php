@@ -3507,7 +3507,7 @@ function pg_pb_render_preorder_row($v)
             'panel'   =>
                 '<div class="col-12 sm:col-6 lg:col-4">
                     <label for="preorder_date" class="form-label">' . lang('Ships From') . '</label>
-                    <input type="date" name="preorder_date" id="preorder_date" class="form-control" min="' . h(date('Y-m-d', strtotime($today . ' +1 day'))) . '" value="' . h($running ? $date : '') . '" />
+                    <input type="date" data-pg-date name="preorder_date" id="preorder_date" class="form-control" min="' . h(date('Y-m-d', strtotime($today . ' +1 day'))) . '" value="' . h($running ? $date : '') . '" />' . get_date_picker_format() . pg_fields_script() . '
                 </div>',
         )));
 }

@@ -2219,11 +2219,11 @@ function pg_shipment_label_pickup_dialog($id, $form, $request, $note = '')
                     </div>
                     <div class="col-6 sm:col-4">
                         <label class="form-label" for="' . h($id) . '_from">' . lang('Earliest time') . '</label>
-                        <input type="time" class="form-control" id="' . h($id) . '_from" name="pickup_from" value="09:00"' . $owner . '>
+                        <input type="time" data-pg-time class="form-control" id="' . h($id) . '_from" name="pickup_from" value="09:00"' . $owner . '>
                     </div>
                     <div class="col-6 sm:col-4">
                         <label class="form-label" for="' . h($id) . '_to">' . lang('Latest time') . '</label>
-                        <input type="time" class="form-control" id="' . h($id) . '_to" name="pickup_to" value="17:00"' . $owner . '>
+                        <input type="time" data-pg-time class="form-control" id="' . h($id) . '_to" name="pickup_to" value="17:00"' . $owner . '>
                     </div>
                     <div class="col-12">
                         <div class="form-field">
