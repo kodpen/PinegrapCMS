@@ -1580,6 +1580,15 @@ function api_products_bundle_write($params, $id) {
 
 	}
 
+	// A product turned into a bundle keeps its Backorder setting as the
+	// bundle's own choice; the refresh works the cached backorder out from
+	// it (pg_bundle_backorder()), so the default 0 would switch it off.
+	if ($on && !$was && pg_bundle_backorder_ready()) {
+
+		$set[] = "bundle_backorder = backorder";
+
+	}
+
 	if (array_key_exists('bundle_pricing', $params)) {
 
 		$set[] = "bundle_pricing = '" . (($pricing === 'sum') ? 'sum' : 'fixed') . "'";

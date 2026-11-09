@@ -21,4 +21,5 @@ module: bundles
 
 ## What stays as it was on a running site?
 - A bundle whose cache was already lowered to 0 is filled with 0 and stays 0 until it is saved once: the lost choice cannot be recovered.
-- Other writers of `backorder` (import, API, Workspace) set the cache only: the bundle's next refresh works it out from `bundle_backorder` again.
+- Other writers of `backorder` (import, Workspace) set the cache only: the bundle's next refresh works it out from `bundle_backorder` again.
+- The API never writes `backorder`; a product it turns into a bundle carries `backorder` into `bundle_backorder` (`api_products_bundle_write()`), as the screen's tick does.
