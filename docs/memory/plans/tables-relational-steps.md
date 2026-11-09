@@ -9,7 +9,7 @@ description: Steps 1-8 of plans/tables-relational.md: row choice, conditions and
 - Tests in `tests/workspace_wtable_*_test.php` and `tests/workspace_flow_*_test.php`, red first; texts through `tr_add.php`; `php tools/build_js.php` after workspace_flow.js.
 
 ## Steps
-- 1 (PR #8384): "Read a row" and "Change a row" find their row (`by`): by its number in the table (`position`, the default of a new box, "1"), by its id (`id`, also for a box saved before), or as the last row (`last`).
+- 1 (done, PR #8384): "Read a row" and "Change a row" find their row (`by`): by its number in the table (`position`, the default of a new box, "1"), by its id (`id`, also for a box saved before), or as the last row (`last`).
   - One check in the editor, at publish and at run (a whole number from 1, or one value alone), a message per fault. "Add value" with nothing before it names the start. A template keeps a row number, clears an id.
 
 - 2: a condition engine and a "Read rows of a table" box (`rows_get`), the SQL `SELECT … WHERE … ORDER BY … LIMIT`.
