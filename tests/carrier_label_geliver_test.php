@@ -213,6 +213,86 @@ function test_carrier_label_geliver_create_takes_the_chosen_service_and_waits_fo
 	pg_assert_contains('The Geliver label could not be read: HTTP 500.', implode(' ', $answer['log']));
 }
 
+// The offers of a shipment with no cheapest one named (a test shipment's
+// only offer comes so): $drop list ids are left out.
+function carrier_label_geliver_test_offers_without_cheapest($drop = array())
+{
+	$offers = json_decode(carrier_label_geliver_test_fixture('shipment_offers'), true);
+	$offers['data']['offers']['cheapest'] = null;
+	$offers['data']['offers']['list'] = array_values(array_filter($offers['data']['offers']['list'], function ($offer) use ($drop) {
+		return !in_array($offer['id'], $drop, true);
+	}));
+
+	return json_encode($offers);
+}
+
+// Geliver may leave "cheapest" empty although it made offers; the lowest
+// priced offer of the list is taken then.
+function test_carrier_label_geliver_offer_without_cheapest_takes_the_lowest_of_the_list()
+{
+	$offers = array(
+		'cheapest' => null,
+		'list'     => array(
+			array('id' => 'o-1', 'providerServiceCode' => 'PTT_STANDART', 'totalAmount' => '1.5', 'amount' => '1.25'),
+			array('id' => 'o-2', 'providerServiceCode' => 'ARAS_STANDART', 'totalAmount' => '0.9', 'amount' => '0.75'),
+			array('id' => 'o-3', 'providerServiceCode' => 'MNG_STANDART'),
+			array('id' => '', 'providerServiceCode' => 'SURAT_STANDART', 'totalAmount' => '0.1'),
+		),
+	);
+
+	pg_assert_same('o-2', pg_label_geliver_offer($offers, '')['id']);
+
+	$offers['list'][1]['totalAmount'] = 'x';
+	pg_assert_same('o-2', pg_label_geliver_offer($offers, '')['id'], 'the price without VAT when no total is given');
+
+	unset($offers['list'][1]['amount']);
+	pg_assert_same('o-1',pg_label_geliver_offer($offers, '')['id'], 'an offer without a price is never bought');
+
+	pg_assert_same(null, pg_label_geliver_offer(array('cheapest' => null, 'list' => array(array('id' => 'o-3'))), ''));
+	pg_assert_same('o-9', pg_label_geliver_offer(array('cheapest' => array('id' => 'o-9'), 'list' => $offers['list']), '')['id'], 'Geliver\'s cheapest first');
+}
+
+// The offers of the test shipment that failed on dev: complete after about
+// 18 seconds, one offer, no cheapest named.
+function test_carrier_label_geliver_create_waits_for_late_offers_without_cheapest()
+{
+	carrier_label_geliver_test_stub(array(
+		'POST /shipments'    => array('shipment_offers_pending'),
+		'GET /shipments/4aaaf0b4-d071-4edc-a941-cea2f6a78453' => array_merge(
+			array_fill(0, 8, 'shipment_offers_pending'),
+			array(array(200, carrier_label_geliver_test_offers_without_cheapest(array('1f26245c-db36-4bce-ac57-6f443847ec4f'))))
+		),
+		'POST /transactions' => array('transaction_accepted'),
+	));
+
+	$answer = pg_label_call('geliver', 'create', array(carrier_label_geliver_test_shipment(), carrier_label_geliver_test_account(array('mode' => 'test'))));
+	$sent = $GLOBALS['carrier_label_geliver_test_sent'];
+	carrier_label_geliver_test_done();
+
+	pg_assert_true($answer['success'], $answer['error']);
+	pg_assert_same(11, count($sent) - 1, 'one open, nine reads, the purchase (and the label file)');
+	pg_assert_same(array('offerID' => '16bc98bb-3d1f-4bc1-8acd-14d2422301e6'), $sent[10]['body']);
+}
+
+// Offers that never arrive end the wait after PG_LABEL_GELIVER_OFFER_READS
+// reads and buy nothing.
+function test_carrier_label_geliver_create_stops_waiting_for_offers()
+{
+	carrier_label_geliver_test_stub(array(
+		'POST /shipments' => array('shipment_offers_pending'),
+		'GET /shipments/4aaaf0b4-d071-4edc-a941-cea2f6a78453' => array_fill(0, 40, 'shipment_offers_pending'),
+	));
+
+	$answer = pg_label_call('geliver', 'create', array(carrier_label_geliver_test_shipment(), carrier_label_geliver_test_account()));
+	$sent = carrier_label_geliver_test_sent();
+	carrier_label_geliver_test_done();
+
+	pg_assert_false($answer['success']);
+	pg_assert_false($answer['unclear']);
+	pg_assert_same(1 + PG_LABEL_GELIVER_OFFER_READS, count($sent));
+	pg_assert_false(in_array('POST /transactions', $sent, true));
+}
+
 function test_carrier_label_geliver_create_without_the_chosen_offer_buys_nothing()
 {
 	carrier_label_geliver_test_stub(array('POST /shipments' => array('shipment_offers')));
