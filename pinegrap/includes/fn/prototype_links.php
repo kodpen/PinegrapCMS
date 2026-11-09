@@ -888,6 +888,7 @@ function pg_proto_link_password_html($view)
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <title>' . h(lang('Prototype')) . '</title>
+' . pg_old_browser_notice() . '
 <link rel="stylesheet" href="' . h($software) . '/assets/lib/bootstrap-6/css/bootstrap.min.css?v=' . $version('/assets/lib/bootstrap-6/css/bootstrap.min.css') . '">
 <link rel="stylesheet" href="' . h($software) . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css?v=' . $version('/assets/fonts/bootstrap-icons/bootstrap-icons.min.css') . '">
 <style>

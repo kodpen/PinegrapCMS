@@ -1,6 +1,6 @@
 ---
 name: decisions-made-panel-3
-description: Decisions list, panel part 3: Bootstrap 6 choices of 2026-10-25 that stay: jquery-multiselect-checkbox kept, the liked screens and the visual editor's look, Stepper, Avatar, the password meter
+description: Decisions list, panel part 3: Bootstrap 6 choices of 2026-10-25: jquery-multiselect-checkbox kept, the liked screens, Stepper, Avatar, the password meter, the old browser notice
 ---
 
 ## Where are the rules and the earlier parts?
@@ -14,3 +14,6 @@ description: Decisions list, panel part 3: Bootstrap 6 choices of 2026-10-25 tha
 
 ## Which Bootstrap 6 components did the owner name? (2026-10-25)
 - `edit_offer` and the installer use the Stepper (`ui/step-rail.md`); avatars are the v6 Avatar with theme colours (`ui/panel-avatar.md`); the password meter is strict only while "Require Strong Password" (`config.strong_password`) is on (`ui/password-strength-js.md`). Not to be swapped back for own widgets.
+
+## What does an old browser get in the panel? (owner, 2026-10-25)
+- Old browsers get a non-blocking, session-closable "update your browser" notice in the panel: CSS.supports tests for `light-dark()`, `selector(:has(*))` and `oklch(from …)`; below Chrome/Edge 123, Firefox 128, Safari 17.5. Reason: Bootstrap 6 and the panel stylesheet rely on them, and those browsers draw transparent dialogs and menus, invisible empty fields and wrong toggle states (`ui/bootstrap-6-browsers.md`). The panel keeps working: no blocking screen, no list of supported browsers. Built as `ui/panel-old-browser-notice.md`.
