@@ -2669,6 +2669,7 @@
     "every automatic ban": "tüm otomatik yasaklar",
     "every automatic ban in force": "süresi dolmamış tüm otomatik yasaklar",
     "every block entry covering the address, automatic or manual": "adresi kapsayan tüm engel kayıtları, otomatik ya da elle eklenmiş",
+    "every condition": "her koşul",
     "every minute": "dakikada bir",
     "every order": "her siparişte",
     "every {var:1} hour{suffix:1}": "{var:1} saatte bir",

@@ -96,6 +96,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_run_chain_notice.php')
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_run_cards.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/steps.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_row_get.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_rows_get.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_record_get.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_ai_box.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_agent_box.php');
@@ -114,6 +115,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_versions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_catalogue.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtables.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_rows.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_where.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_shares.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_screen.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_board.php');

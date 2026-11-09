@@ -5,7 +5,8 @@
  * Workspace - the box of a flow that reads one row of a workflow table
  * (kind row_get): the row found by its number as the table lists it, by its
  * id or as the last row, the first two typed or given by one value of the
- * run (ws_step_row_way()), read
+ * run (ws_step_row_way()), or the first row that meets conditions
+ * (ws_step_row_match(), flow_rows_get.php), read
  * with the flow owner's rights as they stand when the box runs. It gives the
  * boxes after it the row's id, whether the row was found (1 or 0) and one
  * value per column of the table, as a row start box gives its cells
@@ -28,12 +29,13 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * Checks a box that reads a row with somebody's rights, the owner as they
  * publish and again each time the box runs: a table they may read
  * (ws_wtable_flow_check() at view) whose owner is in the team (else the box
- * waits for them: paused), and a row named by its id or by one value alone.
- * A row id that names no row is checked as the box runs: it reads no row.
+ * waits for them: paused), and a row named by its id or by one value alone,
+ * or conditions that fit the table's columns (ws_step_where_refusal()). A
+ * row id that names no row is checked as the box runs: it reads no row.
  *
  * @param array $viewer the flow's owner
  * @param array $config ws_step_config_normalize('row_get')
- * @return array ok, error, paused, action (type, table_id, table_name, row)
+ * @return array ok, error, paused, action (type, table_id, table_name, by, row; match and where by match)
  */
 function ws_step_row_get_check($viewer, $config)
 {
@@ -58,19 +60,27 @@ function ws_step_row_get_check($viewer, $config)
 
     $by = (string) ($config['by'] ?? 'id');
     $row = (string) ($config['row'] ?? '');
-    $refusal = ws_step_row_refusal($by, $row);
+    $refusal = ($by === 'match') ? ws_step_where_refusal(ws_wtable_columns((int) $table['id']), $config, true) : ws_step_row_refusal($by, $row);
 
     if ($refusal !== '') {
         return $refuse($refusal);
     }
 
-    return array('ok' => true, 'error' => '', 'paused' => false, 'action' => array(
+    $action = array(
         'type'       => 'row_get',
         'table_id'   => (int) $table['id'],
         'table_name' => (string) $table['name'],
         'by'         => $by,
         'row'        => $row,
-    ));
+    );
+
+    // Only a row found by conditions carries them, so a try lists no empty
+    // conditions for another way.
+    if ($by === 'match') {
+        $action += array('match' => (string) ($config['match'] ?? 'all'), 'where' => (string) ($config['where'] ?? ''));
+    }
+
+    return array('ok' => true, 'error' => '', 'paused' => false, 'action' => $action);
 }
 
 /**
@@ -103,9 +113,10 @@ function ws_step_row_get_data($columns, $cells, $row_id)
  * Reads the row a box names, with the flow owner's rights checked
  * (ws_step_row_get_check()), its formulas worked out as a read does
  * (ws_wtable_row_out()). The row is found by the box's way
- * (ws_step_row_find()), the row text filled in already: one that names no
- * row of the table, or no number at all, reads nothing, and the box is done
- * with found 0. A table gone meanwhile fails the box.
+ * (ws_step_row_find(), or ws_step_row_match() for conditions), the row
+ * text or the conditions filled in already: one that names no row of the
+ * table, or no number at all, reads nothing, and the box is done with
+ * found 0. A table gone meanwhile fails the box.
  *
  * @param array $owner  the flow's owner, checked
  * @param array $action ws_step_row_get_check(), filled
@@ -122,20 +133,21 @@ function ws_step_row_get_do($owner, $action)
 
     $by = (string) ($action['by'] ?? 'id');
     $columns = ws_wtable_columns((int) $table['id']);
-    $stored = ws_step_row_find((int) $table['id'], $by, (string) $action['row']);
-    $cells = null;
 
-    if ($stored) {
-        $presented = ws_wtable_row_present(ws_wtable_row_out($stored, $columns));
-        $cells = (array) $presented['cells'];
+    if ($by === 'match') {
+        $read = ws_step_row_match((int) $table['id'], $columns, $action);
+    } else {
+        $stored = ws_step_row_find((int) $table['id'], $by, (string) $action['row']);
+        $read = $stored ? ws_wtable_row_out($stored, $columns) : null;
     }
 
-    $data = ws_step_row_get_data($columns, $cells, $stored ? (int) $stored['id'] : 0);
+    $cells = $read ? (array) ws_wtable_row_present($read)['cells'] : null;
+    $data = ws_step_row_get_data($columns, $cells, $read ? (int) $read['id'] : 0);
 
     return array(
         'ok'     => true,
         'text'   => ($cells !== null)
-            ? lang(array('string' => 'Read the row {var:1} of the table “{var:2}”.', 'vars' => array((int) $stored['position'], $name)))
+            ? lang(array('string' => 'Read the row {var:1} of the table “{var:2}”.', 'vars' => array((int) $read['position'], $name)))
             : ws_step_row_missing_text($by, (string) $action['row'], $name) . ' ' . lang('Nothing was read.'),
         'row_id' => (int) $data['row_id'],
         'data'   => $data,
@@ -144,8 +156,8 @@ function ws_step_row_get_do($owner, $action)
 
 /**
  * What a box that reads a row does, in words: the row it names when typed,
- * the last row; a row given by a value is known only as the box runs. Pure
- * but for lang().
+ * the last row, the first that meets its conditions; a row given by a
+ * value is known only as the box runs. Pure but for lang().
  *
  * @param array $action ws_step_row_get_check()
  * @return string
@@ -158,6 +170,10 @@ function ws_step_row_get_text($action)
 
     if ($by === 'last') {
         return lang(array('string' => 'Reads the last row of the table “{var:1}”.', 'vars' => $table));
+    }
+
+    if ($by === 'match') {
+        return lang(array('string' => 'Reads the first row of the table “{var:1}” that meets its conditions.', 'vars' => $table));
     }
 
     if (($number > 0) && ($by === 'position')) {

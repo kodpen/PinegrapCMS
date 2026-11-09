@@ -45,6 +45,7 @@
 - workflow-table-shares.md: Workflow table shares (wtable_shares.php, T1c, #2820): owner-only, person view/edit, channel view; wtable_shared bell line; ws_wtable_flow_gate() pauses a gone owner's table
 - workflow-table-starters.md: Starters on the New table card (T6c, #3044): contact pipeline and checklist live in code (ws_wtable_starters()), made through the store's functions with optional sample rows; no store, no schema
 - workflow-tables-api.md: Workflow tables in the external API and MCP (api_wtables.php, T1d1 #2890, T1d2 #2931): routes, which are tools, dry run, errors, rows paging, Claude's reach, shares, workspace.wtable.row.* webhooks
+- workflow-tables-conditions.md: Conditions over workflow table rows (wtable_where.php, PR #8400): comparisons per column type, how each type compares, all or any, sorting with empty cells last, sum/average/smallest/largest
 - workflow-tables-later.md: What workflow tables leave for later (T1-T6 done): a "my tables" strip, table versions, the CRM pipeline; the planned import route, Excel download and bin
 - workflow-tables-numbers.md: How workflow tables read and show amounts and numbers (#3391, PR #3507, import PR #3524): ws_calc_number() for typed figures, site separators in file import and on display, machine form stored
 - workflow-tables-screen.md: The workflow tables screen workspace_wtables.php (T1e, #2966): server-drawn forms over the store, list scopes, rows paged, the row form, column options from the form, shares, nav entry
@@ -200,6 +201,7 @@
 - workspace-flows-row-box.md: The row start box of flows (#3064): a table row added, changed or deleted starts the flow; rule type row, ws_event() in ws_wtable_row_announce(), the table gate, cells as trigger values
 - workspace-flows-row-choice.md: How Read a row (row_get) and Change a row (row_set) find their row (PR #8384): by its number in the table, its id or the last row; what the row field takes; one check; where its values come from
 - workspace-flows-row-get-box.md: The Read a row box of flows (row_get): view reach with the owner's rights, pause, outputs row_id/found/cell_<id>, a missing row done with found 0, non-editors, canvas
+- workspace-flows-rows-get-box.md: The Read rows box of flows (rows_get, PR #8400) and Read a row by match: conditions as JSON, view reach, outputs count/rows/sum_ avg_ min_ max_<id>, the list For each walks, checks, canvas
 - workspace-flows-run-chain-notice.md: One flow_finished inbox line per chain of runs (#3526 step 1, PR #3537, #3371): root from context chain_root or start_key, fold rule, update while unread, sent again, push, failure turn
 - workspace-flows-run-channel.md: The channel a flow run opens its tasks in: the flow's home as the run starts, or the channel_id named on POST /workspace/flows/{id}/runs (decision #2413); ws_flow_run_channel_check(), shared with C2
 - workspace-flows-run-events.md: Webhook events of flow runs (A7, #2406): workspace.flow.run.finished, .failed, .cancelled, .waiting; where each is announced once, the body, words only in public channels, what is never announced

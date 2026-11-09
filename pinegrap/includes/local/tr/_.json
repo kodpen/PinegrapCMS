@@ -1875,6 +1875,7 @@
     "{var:1} {var:2} {var:3}, at {var:4}": "{var:3} {var:1} {var:2}, saat {var:4}",
     "{var:1} {var:3} have been imported, and {var:2} {var:3} have been updated.": "{var:1} {var:3} içe aktarıldı ve {var:2} {var:3} güncellendi.",
     "{var:1} · Workspace ({var:2})": "{var:1} · Çalışma Alanı ({var:2})",
+    "{var:1} · conditions: {var:2}": "{var:1} · koşul: {var:2}",
     "{var:1} · due in {var:2} d": "{var:1} · {var:2} gün içinde",
     "{var:1} · field #{var:2}": "{var:1} · alan #{var:2}",
     "{var:1} · last row": "{var:1} · son satır",

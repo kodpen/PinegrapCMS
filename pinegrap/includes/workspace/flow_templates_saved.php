@@ -89,6 +89,7 @@ function ws_flow_template_setting_keys()
         'row_add'     => array('table_id' => 'table'),
         'row_set'     => array('table_id' => 'table'),
         'row_get'     => array('table_id' => 'table'),
+        'rows_get'    => array('table_id' => 'table'),
     );
 }
 
