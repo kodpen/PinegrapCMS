@@ -119,6 +119,17 @@ function test_api_shipping_method_window_and_partial_update()
 	list($fedex) = api_store_shipping_methods_test_columns(array('realtime_service' => 'fedex_ground'), $row);
 	pg_assert_same('0', $fedex['realtime_rate'], 'FedEx has no live rate, as on the screen');
 
+	list($linked) = api_store_shipping_methods_test_columns(array('realtime_service' => null, 'label_driver' => 'geliver', 'label_service' => 'YURTICI_STANDART', 'realtime_rate' => true), $row);
+	pg_assert_same('geliver', $linked['label_driver'], 'a carrier label service link');
+	pg_assert_same('YURTICI_STANDART', $linked['label_service'], 'with its service');
+	pg_assert_same('1', $linked['realtime_rate'], 'a link keeps the live rate without a legacy service');
+
+	list($unlinked) = api_store_shipping_methods_test_columns(array('label_driver' => null), array_merge($row, array('label_driver' => 'geliver', 'label_service' => 'X')));
+	pg_assert_same('', $unlinked['label_service'], 'the service goes with the link');
+
+	list(, $error) = api_store_shipping_methods_test_columns(array('label_driver' => 'nosuch'), $row);
+	pg_assert_same('label_driver', $error[0], 'an unknown label service is refused');
+
 	list(, $error) = api_store_shipping_methods_test_columns(array('available_from' => mktime(0, 0, 0, 6, 2, 2027), 'available_until' => mktime(0, 0, 0, 6, 1, 2027)), $row);
 	pg_assert_same('available_until', $error[0], 'an end before the start is refused');
 

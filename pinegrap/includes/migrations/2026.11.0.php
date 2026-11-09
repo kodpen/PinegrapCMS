@@ -167,6 +167,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_agent_undo();           // 11.0.174
 	upgrade_2026_11_0_ws_channel_links();        // 11.0.175
 	upgrade_2026_11_0_bundle_backorder();        // 11.0.176
+	upgrade_2026_11_0_shipping_method_label_link(); // 11.0.177
 
 }
 
@@ -5677,5 +5678,36 @@ function upgrade_2026_11_0_bundle_backorder() {
 	}
 
 	install_note('Product bundles: a bundle keeps its own Backorder choice apart from what its components allow, so it takes back orders again once they do. A bundle that lost the choice already takes it back when it is saved once.');
+
+}
+
+// A shipping method linked to a carrier label service (includes/fn/shipping_methods.php).
+//
+// label_driver names the label driver (pg_label_drivers() key) and
+// label_service one of its services, '' for the cheapest quote; Create Label
+// takes that driver while it is ready, and a method with realtime_rate on
+// charges the driver's quote at checkout. shipping_rates is the day cache of
+// live rates: its service was an ENUM of the UPS/USPS/FedEx services, so a
+// row of a label service (label:<driver>:<service>) could not be kept. The
+// ENUM becomes a VARCHAR that holds every old value as it is. MODIFY runs
+// only while the column is not a VARCHAR yet, so a rerun changes nothing.
+function upgrade_2026_11_0_shipping_method_label_link() {
+
+	install_add_column('shipping_methods', 'label_driver', "VARCHAR(32) NOT NULL DEFAULT ''");
+	install_add_column('shipping_methods', 'label_service', "VARCHAR(64) NOT NULL DEFAULT '' AFTER label_driver");
+
+	$service = install_column_info('shipping_rates', 'service');
+
+	if (is_array($service) && (stripos((string) $service['Type'], 'varchar') !== 0)) {
+
+		install_modify_column('shipping_rates', 'service', "VARCHAR(100) NOT NULL DEFAULT ''");
+
+	} elseif (is_array($service)) {
+
+		install_skipped('shipping_rates.service is already a VARCHAR');
+
+	}
+
+	install_note('Shipping methods: a method can be linked to a carrier label service and one of its services, which Create Label then uses. Nothing changes until a method is linked.');
 
 }

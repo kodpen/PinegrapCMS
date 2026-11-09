@@ -9,7 +9,7 @@ description: Steps R1-R5 of plans/shipping-checkout-rates.md: Geliver price list
 - R1 (S) Driver quote, Geliver price list. Done (#8406).
   - `rate` in `pg_label_operations()` (2 arguments); `pg_label_answer()` keeps `quotes`, each checked (service text, whole amount of 0 or more, currency); `pg_label_geliver_rate()` on `GET /priceList?paramType=parcel&length&width&height&weight`; Geliver's service codes in `_info()['services']` (code => name). Files: `includes/fn/carrier_labels.php`, `includes/shipping/geliver.php`, tests, a fixture shaped like the 2026-11-09 answer. No schema.
 
-- R2 (M) Schema and method link. `free`; may run beside R1 (other files).
+- R2 (M) Schema and method link. Done (#8403).
   - A sub-step of `2026.11.0.php`: `install_add_column()` for `shipping_methods.label_driver` and `label_service`, `install_modify_column()` for `shipping_rates.service` VARCHAR(100) NOT NULL DEFAULT ''. The method screen's "Kargo servisi" picker (drivers on and ready; a driver's services, else a text box; the cheapest), the live-rate switch's words, `pg_shipping_method_save()`, the external API's shipping method fields, `carrier` set from the service when the driver maps it. Create Label and bulk create follow the link (`includes/fn/shipment_labels.php`). The `[SCHEME]` item goes in the PR body.
 
 - R3 (M) Live rate at checkout. After R1 and R2.
