@@ -775,8 +775,9 @@ function ws_ai_channel_allowed($channel)
  * May whoever answers a request be asked in this channel? Inside the loop
  * (ws_ai_step()) that is Pinegrap AI, by ws_ai_channel_allowed(), or the
  * model assistant whose request is being answered (ws_model_running()), by
- * its own row in the channel (ws_model_channel_allowed()): Pinegrap AI's
- * switch says nothing about an assistant the channel's people added.
+ * its own row in the channel (ws_model_channel_allowed()): a private channel
+ * nobody opened to Pinegrap AI does not keep out an assistant its people
+ * added, a channel closed to Pinegrap AI on purpose does.
  *
  * @param array $channel
  * @return bool
