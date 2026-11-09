@@ -69,7 +69,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-36.md: Decisions list, product part 36 (2026-11-06 on): one card per submitter in a form list (the Social template's People list)
 - decisions-made-product-37.md: Decisions list, product part 37 (2026-11-07 on): design templates get their own look, sector sections as palette block families first, and every shipped template one polishing round
 - decisions-made-product-38.md: Decisions list, product part 38 (2026-11-09 on): a translated page's index verdict counts only its own words, never list records or products; a record save opens a translation job
-- decisions-made-product-39.md: Decisions list, product part 39 (2026-11-09 on): backup warning only after a month; carrier services at checkout (label once paid, no price no method, desi tariffs later)
+- decisions-made-product-39.md: Decisions list, product part 39 (2026-11-09 on): backup warning only after a month; carrier services at checkout; the 2026-10-19 security audit's items 2-8 (owner 2026-10-28)
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card

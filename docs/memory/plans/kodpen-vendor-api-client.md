@@ -1,10 +1,10 @@
 ---
 name: kodpen-vendor-api-client
-description: Plan (owner 2026-10-25 to 27): 2026.11.0 asks api.kodpen.com/v1 for licences and signed updates behind one switch line, no api2 fallback; steps P1-P8 in -steps, contract in the -design files
+description: Plan (owner 2026-10-25 to 27): 2026.11.0 asks api.kodpen.com/v1 for licences and signed updates behind one switch line, no api2 fallback; steps P1-P8 in -steps, contract in platform/vendor-api-*.md
 ---
 
 ## What is the work, and where does it stand?
-- Today the version check, licence check and widget 14 ask `www.kodpen.com/api2` with a fixed `API` key; the download takes a fixed-name ZIP. `api.kodpen.com/v1` goes live first; 2026.11.0 then ships a client in `includes/fn/vendor_api.php`, turned on by one line. Contract: `-design.md`, `-design-update.md`.
+- Today the version check, licence check and widget 14 ask `www.kodpen.com/api2` with a fixed `API` key; the download takes a fixed-name ZIP. `api.kodpen.com/v1` goes live first; 2026.11.0 then ships a client in `includes/fn/vendor_api.php`, turned on by one line. Contract: `platform/vendor-api-client.md` and its siblings; the open parts in `-design-update.md`.
 
 ## What is decided?
 Source: the vendor plan's section 9 and its owner decisions, numbered as there (Kodpen's private repository).
