@@ -5,7 +5,7 @@ module: xlsx_write
 ---
 
 ## What does it do?
-- The table screen's toolbar has Download as Excel for whoever may view the table (`ws_wtable_for()`, view): `workspace_wtables.php?id=<n>&download=xlsx`, a GET, no token (it changes nothing).
+- Since #8408 the table screen's toolbar has Download as Excel for whoever may view the table (`ws_wtable_for()`, view): `workspace_wtables.php?id=<n>&download=xlsx`, a GET, no token (it changes nothing).
 - One sheet named after the table (`pg_xlsx_sheet_title()`: no `[]*?/\:`, 31 letters), a bold frozen heading row, every row in the table's order (`ws_wtable_rows()`, the 5000-row limit). Before it a table left the Workspace only by copying cells.
 - The file name is the table's name in ASCII (`ws_wtable_export_file_name()`, Turkish letters folded), `table-<id>.xlsx` when nothing is left.
 
