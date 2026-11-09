@@ -10,7 +10,7 @@ Token = address/name; section = server-produced block.
 - Register: sections `captcha`, `password_rules`, `google_signup`, `login_link`; tokens `__site_name`, `__login_url`, `__google_signup_url`, `__password_rules` (HTML), `__opt_in_label`.
 - Membership: same as register minus `captcha`, plus `__member_id_label`. Google is not drawn in `'membership'` mode nor on the Google return (`google_membership_pending`); on that return the password is not `required`.
 - A designer wanting their own look binds `href` to the token instead of using the section.
-- Google: from login only sign-in (`pg_google_signin_url($send_to, 'none')`), from the register widget `'create'`. `pg_google_signup_allowed()` also counts a live page carrying a register/membership widget as an entrance (`pg_member_widget_published`).
+- Google: from login only sign-in (`pg_google_signin_url($send_to, 'none')`), from the register widget `'create'`. `pg_google_signup_allowed()` also counts a live page carrying a register/membership widget as an entrance (`pg_member_widget_published()`, which reads the tree with its style's fallback, `pg_page_tree_sql_expr()`, #7687).
 
 ## Which controls are stored in register / membership widgets?
 - A control is either core or a contacts column. Core names `MEMBER_CORE_FIELDS` (JS) <-> names read by `pg_member_register()` / `pg_member_activate()` — lockstep. Every other control is NOT stored unless linked via Options -> Üyelik Alanı -> Rehber to a `contacts` column.

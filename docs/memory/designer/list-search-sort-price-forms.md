@@ -25,7 +25,7 @@ module: widgets
 - `tests/list_search_controls_test.php` (forms, page links, `/index.php` and `/` keep `page`), `tests/catalog_search_form_binding_test.php`.
 
 ## How does the catalog listing match the search text?
-- The product search (name, descriptions, details, keywords, slug, attribute option labels) and the child group search (name, short description, slug) compare with `LIKE` on `e(pg_list_like_pattern($search_query))`: a typed `%` or `_` is a plain character.
+- The product search (name, descriptions, details, keywords, slug, attribute option labels) and the child group search (name, short description, slug) match through `pg_catalog_listing_search_sql()` (`pg_list_search_where()`'s LIKE on `pg_list_like_pattern()`, I/İ/ı/i folded, values written in with `e()`): a typed `%` or `_` is a plain character (#7607).
 - Before #5155 the pattern was a raw `'%term%'`, so a search for `_` or `%` listed every product (`tests/catalog_search_like_test.php`).
 
 ## How does the catalog listing read the search text?

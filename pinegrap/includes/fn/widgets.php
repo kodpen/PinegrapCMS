@@ -1898,6 +1898,48 @@ function pg_sw_form_list_one_per_submitter_sql($cfg)
                     AND newer_form.id > forms.id))";
 }
 
+/**
+ * The ORDER BY part (and join) of a form_list sorted by one form field. A
+ * check box, or a pick list that allows several values, keeps one form_data
+ * row per chosen value, so a join would list the record once per value:
+ * those sort by their values joined in a subquery, as the classic list view
+ * does (get_form_list_view.php). A collection's number field sorts as a
+ * number, empty ones last. Pure.
+ *
+ * @param string     $alias      the form_data alias (sort_data, sort_data2)
+ * @param int        $field_id
+ * @param string     $type       form_fields.type
+ * @param int|string $multiple   form_fields.multiple
+ * @param string     $collection_kind form_fields.collection_kind
+ * @param string     $direction  ASC or DESC
+ * @return array array('sql' => ORDER BY part, 'join' => '' or a LEFT JOIN)
+ */
+function pg_sw_form_list_field_order($alias, $field_id, $type, $multiple, $collection_kind, $direction)
+{
+    $alias     = preg_replace('/[^a-z0-9_]/i', '', (string)$alias);
+    $field_id  = (int)$field_id;
+    $direction = (strtoupper((string)$direction) === 'ASC') ? 'ASC' : 'DESC';
+    $type      = (string)$type;
+
+    if ($type === 'check box' || ($type === 'pick list' && (int)$multiple === 1)) {
+        return array(
+            'sql'  => "(SELECT GROUP_CONCAT($alias.data ORDER BY $alias.id ASC SEPARATOR ', ') FROM form_data $alias"
+                    . " WHERE ($alias.form_id = forms.id) AND ($alias.form_field_id = '$field_id')) $direction",
+            'join' => '',
+        );
+    }
+
+    $join = "LEFT JOIN form_data $alias
+                   ON $alias.form_id = forms.id
+                  AND $alias.form_field_id = '$field_id'";
+
+    if (pg_coll_field_kind((string)$collection_kind, $type) === 'number') {
+        return array('sql' => pg_coll_number_order_sql($alias, $direction), 'join' => $join);
+    }
+
+    return array('sql' => "$alias.data $direction", 'join' => $join);
+}
+
 function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widget_id, $cfg = array())
 {
     $custom_form_page_id = (int)$custom_form_page_id;
@@ -2028,7 +2070,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         );
         if ($counter !== null) return ($counter === '') ? null : array('sql' => $counter, 'join' => '');
         $row = db_item(
-            "SELECT id, type" . (pg_coll_ready() ? ", collection_kind" : ", '' AS collection_kind") . "
+            "SELECT id, type, multiple" . (pg_coll_ready() ? ", collection_kind" : ", '' AS collection_kind") . "
              FROM form_fields
              WHERE page_id = '" . e($custom_form_page_id) . "'
                AND name = '" . e($field) . "'
@@ -2036,14 +2078,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         );
         $fid = $row ? (int)$row['id'] : 0;
         if ($fid <= 0) return null;
-        $join = "LEFT JOIN form_data $alias
-                   ON $alias.form_id = forms.id
-                  AND $alias.form_field_id = '$fid'";
-        // A collection's number field sorts as a number, empty ones last.
-        if (pg_coll_field_kind($row['collection_kind'], (string)$row['type']) === 'number') {
-            return array('sql' => pg_coll_number_order_sql($alias, $direction), 'join' => $join);
-        }
-        return array('sql' => "$alias.data $direction", 'join' => $join);
+        return pg_sw_form_list_field_order($alias, $fid, (string)$row['type'], $row['multiple'], (string)$row['collection_kind'], $direction);
     };
 
     $order_join   = '';
@@ -4868,10 +4903,13 @@ function pg_member_widget_published($type)
     foreach ($rows as $r) {
         $wid = (int)$r['id'];
         if ($wid <= 0) continue;
+        // The page's tree with its style's as the fallback: a page whose
+        // tree still lives on its style has an empty page_tree_json.
         $hit = db_value(
             "SELECT page.page_id FROM page
-             WHERE (page.page_tree_json LIKE '%\"sharedId\":" . $wid . ",%'
-                 OR page.page_tree_json LIKE '%\"sharedId\":" . $wid . "}%')" . $binned . "
+             INNER JOIN style ON style.style_id = page.page_style
+             WHERE (" . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $wid . ",%'
+                 OR " . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $wid . "}%')" . $binned . "
              LIMIT 1");
         if ($hit) { $cache[$type] = true; break; }
     }
@@ -6577,13 +6615,17 @@ function _pg_sw_search_collect_one($query, $cfg, $advanced = null)
                    AND page.page_id NOT IN ($not_featured)$binned";
 
     // Classic pages: occurrences in the regions of the page's own collection.
+    // A page whose content moved into its designer tree keeps its region
+    // rows but never draws them (pg_page_region_read_sql()), as the legacy
+    // search results page leaves them out.
     $region_rows = db_items(
         "SELECT page.page_id, page.page_style, page.page_folder, pregion.collection, pregion.pregion_content
          FROM pregion INNER JOIN page ON page.page_id = pregion.pregion_page
          LEFT JOIN folder ON page.page_folder = folder.folder_id
          WHERE page.page_search = '1' AND folder.folder_archived = '0'
            AND page.page_id NOT IN ($not_featured)$binned
-           AND pregion.pregion_content LIKE $like");
+           AND pregion.pregion_content LIKE $like
+           AND " . pg_page_region_read_sql('pregion.pregion_page'));
     $collections = array();
     foreach ((array)$region_rows as $r) {
         $pid = (int)$r['page_id'];

@@ -56,3 +56,30 @@ function test_catalog_search_without_connection_charset_is_plain()
 	$condition = pg_catalog_search_condition('name', 'is equal to', 'LAMBASI', '');
 	pg_assert_same('(name = ?)', $condition['sql']);
 }
+
+function test_catalog_listing_search_folds_i_letters_inline()
+{
+	$sql = pg_catalog_listing_search_sql('LAMBASI', array('products.name', 'products.keywords'), 'utf8mb4');
+
+	pg_assert_contains("products.name LIKE '%LAMBASI%'", $sql, 'the plain LIKE stays');
+	pg_assert_contains("REPLACE(REPLACE(CONVERT(products.name USING utf8mb4), 'İ', 'i'), 'ı', 'i') LIKE '%lambasi%'", $sql, 'the column is folded against the folded word');
+	pg_assert_contains("REPLACE(REPLACE(CONVERT(products.keywords USING utf8mb4), 'İ', 'i'), 'ı', 'i') LIKE '%lambasi%'", $sql, 'every column is folded');
+	pg_assert_false(strpos($sql, '?') !== false, 'no placeholder is left for a query run without values');
+}
+
+function test_catalog_listing_search_escapes_the_word()
+{
+	$sql = pg_catalog_listing_search_sql("O'Neil 50%", array('products.name'), '');
+
+	pg_assert_same("(products.name LIKE '%O\\'Neil 50\\\\%%')", $sql, 'quote escaped, percent sign kept literal');
+	pg_assert_same("(products.name LIKE '%a?b%')", pg_catalog_listing_search_sql('a?b', array('products.name'), ''), 'a question mark in the word is not a placeholder');
+}
+
+function test_catalog_listing_widget_uses_the_folded_search()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_catalog.php');
+
+	pg_assert_same(4, substr_count($source, 'pg_catalog_listing_search_sql('), 'the helper, the product columns, the attribute labels and the sub-group cards');
+	pg_assert_false(strpos($source, "LIKE '\$q_like'") !== false, 'no plain LIKE of the listing search is left');
+	pg_assert_false(strpos($source, "LIKE '\$_q'") !== false, 'no plain LIKE of the sub-group search is left');
+}

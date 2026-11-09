@@ -369,6 +369,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - form-list-one-per-submitter.md: The form list's one_per_submitter option: each signed-in submitter's newest record only; used by the Social template's People and staff lists
 - form-list-result-count.md: form_list_view ^^__result_count^^ (records matched, capped at max_results, grouped digits), the flags has_records / no_records, the count strip (empty loop area), canvas and installer preview
 - form-list-search-empty.md: The form list's empty state when a visitor's search matches nothing: "Nothing matched your search", not the configured empty message
+- form-list-sort-multi-value.md: The form_list widget sorted by a check box or a multiple pick list sorts by the values joined in a subquery, so a record is listed once, not once per value (#7689)
 - form-list-url-filters.md: form_list_view filters valued from the page address (author, tag archives): reserved names, value rules, who passes the address, canonical/title/noindex, token, flags, feed
 - form-list-viewer-filter.md: A form list's viewer filter (submitter, editor, watcher, ORed): who counts as which; watchers of the detail page, classic or designed with a record view of the list's form
 - frontend-conventions-layers.md: Palette component vs system widget layers and where each is documented, legacy pages as production and yardstick, no dead code in the widget layer, the invariant principles for system widget work.
