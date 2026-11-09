@@ -15,7 +15,7 @@ description: Steps R1-R5 of plans/shipping-checkout-rates.md: Geliver price list
 - R3 (M) Live rate at checkout. Done (#8426).
   - A first branch in `get_shipping_realtime_rate()`; the six callers select the two columns; the parcel function shared with `pg_shipment_label_shipment()`; the cache, the stale fallback and the 7-day purge; the method not offered without a price; the currency rule. Tests for the pure parts (quote pick, cache key, parcel). The plan's `[NEW]` line goes in this PR body; `commerce/carrier-label-geliver.md`'s checkout-fee line is corrected.
 
-- R4 (M) Automatic label on payment. After R2; not beside R3 (both edit `includes/fn/shipment_labels.php`).
+- R4 (M) Automatic label on payment. In progress.
   - The switch on the Shipping card for every driver that can create; `pg_shipment_label_auto_run()` in `job.php`; `failed` in `pg_shipment_label_states()`, its row on the order screen ("Otomatik etiket oluşturulamadı") and in the API's labels; the run's limits.
 
 - R5 (S) Sendcloud and Shippo quotes. Done (#8420).
