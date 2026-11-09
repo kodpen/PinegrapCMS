@@ -226,7 +226,6 @@
             var area = null;
 
             if (field) {
-                field.caretPicker = true;
                 wrap.appendChild(field.input);
                 wrap.appendChild(field.tools(true));
                 field.set(item ? item.body : '', item ? item.labels : {});

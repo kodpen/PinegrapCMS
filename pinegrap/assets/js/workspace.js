@@ -3451,6 +3451,64 @@
         return bar;
     }
 
+    // Where a list of people or records opens at the caret (placePicker()):
+    // under the caret's line, or over it when only that side has room or
+    // that side has more, its height cut to the room there (6rem at least,
+    // then over the line); its left edge at the caret, moved left as far as
+    // its right edge needs. It keeps to the field's column when that is
+    // 15rem wide or more (a drawer, a page beside the main menu, whose fixed
+    // rail would cover it), narrowed to it, else to the window; 8px from
+    // the edges of the view (pickerView()). Rects are in the window's
+    // coordinates; the answer is in whole pixels.
+    function pickerPlace(caret, field, view, size) {
+        var edge = 8;
+        var gap = 6;
+        var left = view.left + edge;
+        var right = view.right - edge;
+        var top = view.top + edge;
+        var bottom = view.bottom - edge;
+        var width = Math.max(0, Math.min(size.width, right - left));
+        var columnLeft = Math.max(left, field.left);
+        var columnRight = Math.min(right, field.right);
+
+        if (columnRight - columnLeft >= Math.min(width, 240)) {
+            left = columnLeft;
+            right = columnRight;
+            width = Math.min(width, right - left);
+        }
+
+        var below = bottom - (caret.bottom + gap);
+        var above = (caret.top - gap) - top;
+        var up = (size.height > below) && (above > below);
+        var height = Math.min(Math.max(Math.min(size.height, 96), Math.min(size.height, up ? above : below)), Math.max(0, bottom - top));
+        var y = up ? caret.top - gap - height : caret.bottom + gap;
+
+        return {
+            left: Math.round(Math.max(left, Math.min(caret.left, right - width))),
+            top: Math.round(Math.max(top, Math.min(y, bottom - height))),
+            width: Math.round(width),
+            height: Math.floor(height),
+            up: up
+        };
+    }
+
+    // The part of the window a list may cover: the visual viewport (an
+    // on-screen keyboard shrinks that one only), under the panel's fixed
+    // top bar.
+    function pickerView() {
+        var visual = window.visualViewport;
+        var view = visual
+            ? { left: visual.offsetLeft, top: visual.offsetTop, right: visual.offsetLeft + visual.width, bottom: visual.offsetTop + visual.height }
+            : { left: 0, top: 0, right: document.documentElement.clientWidth || window.innerWidth, bottom: document.documentElement.clientHeight || window.innerHeight };
+        var bar = document.querySelector('.software-navbar');
+
+        if (bar) {
+            view.top = Math.max(view.top, bar.getBoundingClientRect().bottom);
+        }
+
+        return view;
+    }
+
     // A text box outside the channel composer that still picks people with
     // @ and records with # (a task's notes): the composer's picker, lent to
     // it. Slash commands stay in the channel.
@@ -3467,7 +3525,7 @@
             }
         };
 
-        ['pickerCheck', 'recordQuery', 'openPicker', 'drawPicker', 'pickerKey', 'pick', 'closePicker', 'tokens', 'insertTrigger', 'beforeCaret'].forEach(function (name) {
+        ['pickerCheck', 'recordQuery', 'openPicker', 'drawPicker', 'fitPicker', 'pickerKey', 'pick', 'closePicker', 'tokens', 'insertTrigger', 'beforeCaret'].forEach(function (name) {
             field[name] = app[name];
         });
 
@@ -3761,6 +3819,8 @@
             picker: null,
             composerWrap: wrap,
             noCommands: true,
+            // The @ and # lists open at the caret (placePicker()).
+            caretPicker: true,
             autosize: function () {},
             value: function () {
                 return editor.markup();
@@ -3802,7 +3862,7 @@
             }
         };
 
-        ['pickerCheck', 'recordQuery', 'openPicker', 'drawPicker', 'placePicker', 'pickerKey', 'pick', 'closePicker', 'tokens', 'insertTrigger', 'beforeCaret', 'insertPulled'].forEach(function (name) {
+        ['pickerCheck', 'recordQuery', 'openPicker', 'drawPicker', 'placePicker', 'fitPicker', 'pickerKey', 'pick', 'closePicker', 'tokens', 'insertTrigger', 'beforeCaret', 'insertPulled'].forEach(function (name) {
             field[name] = app[name];
         });
 
@@ -16542,7 +16602,16 @@
 
                 picker.appendChild(types);
 
-                // The row scrolls sideways; keep the chosen kind in view.
+                // The row scrolls sideways, inside the list's width; a mouse
+                // wheel turns it as well, there being nothing to scroll down.
+                types.addEventListener('wheel', function (event) {
+                    if (!event.deltaX && event.deltaY && (types.scrollWidth > types.clientWidth)) {
+                        event.preventDefault();
+                        types.scrollLeft += event.deltaY * ((event.deltaMode === 1) ? 16 : 1);
+                    }
+                }, { passive: false });
+
+                // Keep the chosen kind in view.
                 var active = types.querySelector('.active');
 
                 if (active) {
@@ -16561,6 +16630,8 @@
 
                 if (self.notesMode || self.caretPicker) {
                     self.placePicker();
+                } else {
+                    self.fitPicker();
                 }
 
                 return;
@@ -16617,11 +16688,16 @@
 
             if (self.notesMode || self.caretPicker) {
                 self.placePicker();
+            } else {
+                self.fitPicker();
             }
         },
 
-        // In a long writing box (a note) the picker opens at the caret, not at
-        // the box's edge.
+        // In a formatted box (a note, the channel summary, a task's
+        // description and notes, the drawers' texts) the list opens at the
+        // caret, not at the box's edge, and stays inside the field's column
+        // and the window (pickerPlace()). Every edge is set here: a rule of
+        // the box (.ws-note-compose) stretches its list from side to side.
         placePicker: function () {
             var picker = this.picker;
             var selection = window.getSelection();
@@ -16630,25 +16706,60 @@
                 return;
             }
 
-            var rect = selection.getRangeAt(0).getBoundingClientRect();
+            var range = selection.getRangeAt(0);
+            var field = this.input.getBoundingClientRect();
+            var caret = this.input.contains(range.startContainer) ? range.getBoundingClientRect() : null;
 
-            if (!rect || (!rect.width && !rect.height && !rect.left && !rect.top)) {
-                rect = this.input.getBoundingClientRect();
+            if (!caret || (!caret.width && !caret.height && !caret.left && !caret.top)) {
+                caret = field;
             }
 
+            // Measured at the stylesheet's size (.ws-picker-caret), from the
+            // corner of what it is fixed to: the window, or a box that moves,
+            // as a drawer does while it slides in.
+            picker.classList.add('ws-picker-caret');
             picker.style.position = 'fixed';
+            picker.style.left = '0px';
+            picker.style.top = '0px';
+            picker.style.right = 'auto';
             picker.style.bottom = 'auto';
+            picker.style.width = '';
+            picker.style.maxHeight = '';
 
-            var width = picker.offsetWidth;
-            var height = picker.offsetHeight;
-            var top = rect.bottom + 6;
+            var origin = picker.getBoundingClientRect();
+            var place = pickerPlace(caret, field, pickerView(), { width: origin.width, height: origin.height });
 
-            if (top + height > window.innerHeight - 8) {
-                top = Math.max(8, rect.top - height - 6);
+            picker.style.left = (place.left - origin.left) + 'px';
+            picker.style.top = (place.top - origin.top) + 'px';
+            picker.style.width = place.width + 'px';
+
+            // Cut only when the room is shorter than the list: a cap at its
+            // own height, rounded down, gives the rows a scrollbar for a
+            // pixel.
+            picker.style.maxHeight = (place.height < Math.floor(origin.height)) ? place.height + 'px' : '';
+        },
+
+        // A list over or under its box (the channel's writing box, a note
+        // box without the formatted editor) keeps its place; it only gets no
+        // taller than the window leaves it on that side, so neither the
+        // panel's top bar nor the window's edge cuts it.
+        fitPicker: function () {
+            var picker = this.picker;
+
+            if (!picker || !this.composerWrap) {
+                return;
             }
 
-            picker.style.top = top + 'px';
-            picker.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)) + 'px';
+            picker.style.maxHeight = '';
+
+            var box = picker.getBoundingClientRect();
+            var wrap = this.composerWrap.getBoundingClientRect();
+            var view = pickerView();
+            var room = Math.floor((box.top < wrap.top) ? box.bottom - view.top - 8 : view.bottom - 8 - box.top);
+
+            if (room < Math.floor(box.height)) {
+                picker.style.maxHeight = Math.max(96, room) + 'px';
+            }
         },
 
         pickerKey: function (event) {
@@ -17086,7 +17197,6 @@
                     var area = null;
 
                     if (rich) {
-                        rich.caretPicker = true;
                         rich.set(channel.summary || '', channel.summary_labels || {});
                         wrap.appendChild(rich.input);
                         wrap.appendChild(rich.tools(true));
