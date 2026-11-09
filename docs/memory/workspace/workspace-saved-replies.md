@@ -26,6 +26,4 @@ description: Saved replies (ws_saved_replies, 11.0.114, #3090): the table, perso
 
 ## How are they put in and managed?
 - The composer's `;` list and the drawer: `workspace-saved-replies-composer.md` (#3114). `ws_saved_replies_for_box()` gives the person's replies, then the team's (`ws_saved_replies_order()`), so on a shared shortcut the person's comes first; a non-member reads none of the team's. The `ws_saved_replies` action also answers `manage_team`; `ws_saved_reply_save` / `ws_saved_reply_delete` take `scope`.
-
-## What is left?
-- The list in the e-mail reply box (`plans/saved-replies-team.md` SR2).
+- The e-mail reply box opens the same `;` list (#8402): `workspace-saved-replies-composer.md`.

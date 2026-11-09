@@ -113,7 +113,7 @@ function carrier_label_shippo_test_shipment()
 function test_carrier_label_shippo_is_a_builtin_driver()
 {
 	pg_assert_true(pg_label_driver('shippo') !== null);
-	pg_assert_same(array('carriers' => array('ups', 'fedex', 'usps', 'dhl', 'deutschepost', 'dpd', 'royalmail'), 'formats' => array('pdf', 'zpl')), pg_label_info('shippo'));
+	pg_assert_same(array('carriers' => array('ups', 'fedex', 'usps', 'dhl', 'deutschepost', 'dpd', 'royalmail'), 'formats' => array('pdf', 'zpl'), 'services' => array()), pg_label_info('shippo'));
 
 	foreach (array('test', 'create', 'label', 'cancel', 'track', 'pickup') as $operation) {
 		pg_assert_true(pg_label_can('shippo', $operation), $operation);

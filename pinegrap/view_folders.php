@@ -10247,11 +10247,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // renaming it: the moment somebody knows what to call a link is the moment
     // they have just said where it points.
 
-    function shortLinkSelectHtml(id, label, list, note) {
+    // source: the address of a server search (file_picker_search.php); the
+    // select is then drawn as a searching combobox by pgFields.init().
+    function shortLinkSelectHtml(id, label, list, note, source) {
+
+        var searching = source
+            ? ' data-pg-combobox data-pg-source="' + esc(source) + '" data-pg-min-length="1"'
+            : '';
 
         var html = '<div class="mb-5">' +
             '<label class="form-label" for="' + id + '">' + esc(label) + '</label>' +
-            '<select class="form-control" id="' + id + '">' +
+            '<select class="form-control" id="' + id + '"' + searching + '>' +
             '<option value="">- ' + esc(L.select_one) + ' -</option>';
 
         (list || []).forEach(function (option) {
@@ -10301,11 +10307,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 break;
 
             case 'file':
-                html = shortLinkSelectHtml('sl_file', L.file, options.file);
+                // Only the link's own file is listed; the rest is searched.
+                html = shortLinkSelectHtml('sl_file', L.file, options.file, '', options.file_source);
                 break;
         }
 
         fields.innerHTML = html;
+
+        if (window.pgFields) { window.pgFields.init(fields); }
 
         // A product group is shown either on a catalog page or on a catalog
         // detail page, never on both, so picking in one list empties the
@@ -10352,7 +10361,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         function set(id, value) {
             var element = document.getElementById(id);
-            if (element) { element.value = value; }
+            if (!element) { return; }
+            // A drawn combobox shows the choice only once it is redrawn.
+            if (element.pgFieldKind && window.pgCombobox) { window.pgCombobox.set(element, value); } else { element.value = value; }
         }
 
         switch (item.destination_type) {
@@ -10570,6 +10581,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             lists.answers = response.answers || [];
             lists.name_max = parseInt(response.name_max, 10) || 255;
             lists.url_max = parseInt(response.url_max, 10) || 255;
+            lists.file_source = response.file_source || '';
 
             if (!response.kept) { shortLinkOptions = lists; }
 
@@ -10602,8 +10614,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 return !listed(shortLinkOptions.product, item.product_id)
                     || !listed(shortLinkOptions.catalog_detail_page, item.page_id);
 
+            // The kept lists never hold a link's file (only the search
+            // brings files), so its window asks for that one file.
             case 'file':
-                return !listed(shortLinkOptions.file, item.file_id);
+                return true;
         }
 
         return false;

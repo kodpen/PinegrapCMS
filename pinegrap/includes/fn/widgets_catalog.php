@@ -5384,6 +5384,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                         ? $base_path . encode_url_path((string)$_vr['product_image'])
                         : '';
                     $_p_rating      = _pg_catalog_rating_values($_vr['product_rating_avg'], $_vr['product_rating_count']);
+                    // Plain text stays raw: pg_civ_variants.js writes a value
+                    // as text unless its key holds markup (HTML_FIELDS there:
+                    // the rich text and the formatted prices), as the tokens
+                    // below escape the same text once.
                     $vproducts[$_pid] = array(
                         'id'              => $_pid,
                         'name'            => (string)$_vr['product_name'],
@@ -5537,7 +5541,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         // the group (pg_price_reference_page()); the variant script swaps
         // reference_price / reference_label with the rest. It writes the
         // payload's prices as HTML (innerHTML), so the token's text is
-        // escaped for it.
+        // escaped for it; the label is written as text.
         $_civ_ref_items = array();
         foreach ($vproducts as $_pid => $_vp) {
             $_civ_ref_items[$_pid] = array('price' => (int)$_vp['price_cents'], 'reduced' => (int)$_vp['price_cents'] < (int)$_vp['original_price_cents']);
@@ -6303,7 +6307,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $_civ_v_base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
                      . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
                      . '/assets/js/';
-        $_civ_v_v   = '10';  // bump on pg_civ_variants.js source changes
+        $_civ_v_v   = '11';  // bump on pg_civ_variants.js source changes
         $_civ_variant_script = pg_civ_variants_script($variant_data)
             . '<script src="' . h($_civ_v_base) . 'pg_civ_variants.js?v=' . $_civ_v_v . '" defer></script>';
     }

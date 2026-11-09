@@ -107,13 +107,16 @@ function pg_explorer_handle_short_link_options($type, $request, $user)
             'catalog_detail_page' => pg_short_link_options_list(get_page_options('', 'catalog detail', 'edit', false, $short_link_keep_page)),
             'product_group' => pg_short_link_options_list(get_product_group_options(0, 0, 0, 0, array(), TRUE, 'array', TRUE, TRUE, FALSE, $short_link_keep_group)),
             'product' => pg_short_link_options_list(get_product_options(true, $short_link_keep_product)),
-            'file' => pg_short_link_options_list(get_file_options(true, $short_link_keep_file))),
-        // The lists hold a binned entry kept for this one link, so the
-        // screen does not keep them for the next window.
+            // Only the link's own file, marked when binned; the field
+            // searches the rest (file_picker_search.php, kind file).
+            'file' => pg_short_link_options_list(pg_file_picker_id_options($short_link_keep_file))),
+        'file_source' => pg_file_picker_source('file'),
+        // The lists hold a binned entry kept for this one link, or this
+        // link's file, so the screen does not keep them for the next window.
         'kept' => (($short_link_keep_product > 0) && pg_catalog_product_binned($short_link_keep_product))
             || (($short_link_keep_group > 0) && pg_catalog_group_binned($short_link_keep_group))
             || (($short_link_keep_page > 0) && pg_recycle_page_binned($short_link_keep_page))
-            || (($short_link_keep_file > 0) && pg_recycle_file_binned($short_link_keep_file)),
+            || ($short_link_keep_file > 0),
         // Once or until a time (2026.4.5, 5.112).
         'modes' => pg_short_link_modes_ready(),
         'durations' => array_map(function ($seconds, $label) {

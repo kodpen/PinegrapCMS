@@ -19,7 +19,8 @@
  *      attach change listeners.
  *   3. When the visitor picks a complete combination → `applyVariant()`:
  *        - Find the matching product from preloaded data (instant).
- *        - Update every [data-pg-bind] element using the bound field map.
+ *        - Update every [data-pg-bind] element using the bound field map,
+ *          as text unless the key holds markup (HTML_FIELDS).
  *        - Refresh the carousel: rebuild slides + thumbs from new gallery.
  *        - Update product_id hidden input on the wrapping form.
  *        - Dispatch `pg-civ-product-change` on the form (detail.productId),
@@ -266,7 +267,7 @@
                     if (!(field in p)) return;
                     var value = p[field];
                     if (value === null || value === undefined) value = '';
-                    setProp(el, prop, String(value));
+                    setProp(el, prop, String(value), field);
                 });
             });
 
@@ -533,7 +534,7 @@
                             if (!(field in p)) return;
                             var v = p[field];
                             if (v === null || v === undefined) v = '';
-                            setProp(el, prop, String(v));
+                            setProp(el, prop, String(v), field);
                         });
                     });
                     settleEmptyBoxes(scope);
@@ -608,28 +609,47 @@
     }
 
     /**
-     * Apply a prop value to an element. Handles the prop-name conventions
-     * used by the designer's binding system:
-     *   text  → element.textContent (when no children) OR innerHTML (heading/paragraph allow inline tags)
-     *   html  → element.innerHTML (designer-html-rendered content)
+     * The keys whose value the server sends as markup, in the payload and
+     * in the get_product answer alike: the operator's rich text
+     * (description, details, the stock notice) and the formatted prices
+     * (pg_visitor_money() keeps the currency symbol as stored, an entity
+     * such as &#8378;; reference_price is the token's text, escaped for
+     * this). Every other value is plain text, sent raw, and shown as text,
+     * as the server shows its token escaped once
+     * (pg_sw_escape_token_values()).
+     */
+    var HTML_FIELDS = {
+        description: 1,
+        details: 1,
+        out_of_stock_message: 1,
+        price_formatted: 1,
+        original_price_formatted: 1,
+        discount_amount_formatted: 1,
+        reference_price: 1
+    };
+
+    /**
+     * Apply the value of the product key `field` to an element. Handles the
+     * prop-name conventions used by the designer's binding system:
+     *   text, html → element.textContent, or element.innerHTML for a key
+     *                of HTML_FIELDS
      *   src   → element.src + element.style.backgroundImage (for css backgrounds)
      *   alt   → element.alt
      *   href  → element.href
      *   value → element.value (form inputs)
      */
-    function setProp(el, prop, val) {
+    function setProp(el, prop, val, field) {
         switch (prop) {
             case 'text':
-                // Heading/paragraph content types support inline HTML — use
-                // innerHTML so embedded <strong> / <em> survive. For plain
-                // span / div we still prefer textContent to avoid XSS via
-                // an unsanitized API response — but the API is internal so
-                // we trust it; consumers that need stricter handling can
-                // wrap their bindings with text nodes only.
-                el.innerHTML = val;
-                break;
             case 'html':
-                el.innerHTML = val;
+                // The key decides, not the prop: the server escapes a plain
+                // text token wherever it is bound, so a name holding "<b>"
+                // shows the tag as typed there and here.
+                if (Object.prototype.hasOwnProperty.call(HTML_FIELDS, field)) {
+                    el.innerHTML = val;
+                } else {
+                    el.textContent = val;
+                }
                 break;
             case 'src':
                 if (el.tagName === 'IMG') {

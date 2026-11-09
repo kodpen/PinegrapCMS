@@ -10,7 +10,7 @@ description: Scheduled actions moved into Flows (owner, 2026-10-24): what was de
 - 3. Any staff edits and runs a moved action, as before.
 - 4. Card, note strip and decision reply stay where they were written.
 - 5. History stays: a flow run writes its outcome to the anchor's `ws_scheduled_runs` row; boxes go at 30 days.
-- 7. The composer insert menu's entry is "Scheduled flow", a mini window with that channel as home (#2394, built in #3066: `workspace-flows-scheduled-ways-in.md`).
+- 7. The composer insert menu's "Scheduled flow" mini window (#2394, #3066) went on 2026-11-09: scheduled work is set up on the flow canvas only (`workflow/decisions-made-product-41.md`, `workspace-scheduling-one-place.md`).
 - 8. No new scheduled action from a note (#2395); converted ones keep their card and post step.
 - The `/workspace/scheduled-actions` API routes were removed before 2026.11.0 (owner, 2026-10-27; #2107).
 

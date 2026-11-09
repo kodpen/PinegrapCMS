@@ -928,6 +928,42 @@ function test_ws_flow_card_view_wiring()
 	}
 }
 
+// The embedded drawing of a draft card names the channels and departments
+// its boxes point at, as the Flows screen does: without the lists every
+// post, approval or check-in box read "No channel chosen".
+function test_ws_flow_card_embed_names_channels()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$flow = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+
+	pg_assert_contains('BOOT = { people: boot.people || [], channels: boot.channels || [], departments: boot.departments || [] };', $flow);
+	pg_assert_same(1, substr_count($js, 'window.PGWsFlow.embed('), 'one embedded drawing, the draft card');
+	pg_assert_same(1, substr_count($js, "channels: (BOOT && BOOT.channels) || [],\n"), 'it passes the channels');
+	pg_assert_same(1, substr_count($js, "departments: (BOOT && BOOT.departments) || [],\n"), 'and the departments');
+	pg_assert_contains("var channel = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];", $flow, 'the post box reads the list given');
+}
+
+// No new box is made of a kind ws_flow_kinds_not_offered() lists: the
+// palette and Pinegrap AI's catalogue leave it out, while the kind itself
+// stays known, so a flow holding such a box keeps it and runs it.
+function test_ws_flow_kinds_not_offered()
+{
+	pg_assert_same(array('start_action'), ws_flow_kinds_not_offered());
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	preg_match('/^    var PALETTE = \[.*?\];$/ms', $source, $palette);
+	pg_assert_true(!empty($palette), 'the palette is declared');
+
+	foreach (ws_flow_kinds_not_offered() as $kind) {
+		pg_assert_false(strpos($palette[0] ?? '', "['" . $kind . "'") !== false, $kind . ' is not in the palette');
+		pg_assert_true(isset(ws_flow_kinds()[$kind]), $kind . ' is still a kind of box');
+		pg_assert_contains($kind . ': { name:', $source, $kind . ' is still drawn and changed on the canvas');
+	}
+
+	pg_assert_contains("['start_flow', 'fl_kind_start_flow']", $palette[0] ?? '', 'another flow is started with Start a flow');
+	pg_assert_contains('!in_array($kind[\'kind\'], ws_flow_kinds_not_offered(), true)', workspace_flow_draft_code('ws_flow_ai_catalogue'), 'Pinegrap AI drafts without it');
+}
+
 // What stops publishing, from the graph's own check: ws_flow_problems() also
 // asks which kinds of record the Workspace knows, which needs the database.
 function workspace_flow_sketch_problems($graph)

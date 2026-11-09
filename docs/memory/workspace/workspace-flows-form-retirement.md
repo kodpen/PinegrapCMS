@@ -14,7 +14,7 @@ description: How the scheduled actions form was retired (R1-R4, done in #2970): 
 - `saRecordPicker()`, `saValueInput()`, `saLabelled()`: the record drawer's quick edit (`quickEditSection()`).
 - `scheduledList()`, `scheduledCard()`, `scheduledGraph()` (read-only), `flowOpened()`, `scheduledTick()`; routes `ws_scheduled_list`, `_get`, `_status`, `_run_now`. Card classes built from a status (`ws-sa-<status>`, `ws-sa-state-*`, `ws-sa-on-*`, `ws-sa-last-*`) stay in the CSS.
 - `ws_scheduled_preview()` (the @ai draft card's words), `ws_scheduled_targets()` (the flow catalogue in flows.php), `ws_scheduled_draft()` (the @ai draft), `ws_scheduled_input()`, `ws_scheduled_save_check()` (the @ai draft's check), `ws_scheduled_form_data()` (conversion, Duplicate, cards).
-- `ws_scheduled_js_config()`: the canvas (`changes`, `records`, `operators`, `counts`, `repeats`, `events` in `ws_flow_js_config()`), the flow templates (`site`, `email`, `metrics`, `recap_ai`, `join`, `events`), and `CFG.scheduled` as the gate of Duplicate and Add › Scheduled flow.
+- `ws_scheduled_js_config()`: the canvas (`changes`, `records`, `operators`, `counts`, `repeats`, `events` in `ws_flow_js_config()`), the flow templates (`site`, `email`, `metrics`, `recap_ai`, `join`, `events`), and `CFG.scheduled` as the gate of Duplicate.
 - Scheduled messages: `scheduledMessageCard()`, `scheduledMessagesList()`, `sm*()`, composer `scheduleSend()`, `drawScheduledBar()`, `editScheduled()` and the `ws_scheduled_message*` routes.
 - `ws_scheduled_convert_due()` stays for rows of a site upgraded late; nothing makes new unconverted rows.
 

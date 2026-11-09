@@ -7,6 +7,7 @@
 - agent-channel-flag.md: Plan (owner 2026-11-08): a channel becomes an agent channel with /agent-channel, a column of its own; its decisions stay apart from the other channels' decisions; one step AC
 - agent-channel-questions.md: Plan (owner 2026-11-08): agents ask people with a checklist in an agent channel, read the ticks over the API, wake on a tick or a person's message; one step AQ
 - agent-channel-steps-2.md: Steps A0-A9 of plans/agent-channel.md: registry, doors, wakes, channel memory, model assistants, risk tiers, the canvas as a tool, further doors (Claude Code plugin, per-person sessions, chat box)
+- agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try, the two decided fixes not built yet, and what else the trial found wrong
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
 - channel-export.md: Plan (owner 2026-11-09): a channel's conversation downloads as Markdown or opens as a print page, with its decisions and file list, for a date range; step CE1
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
@@ -29,7 +30,6 @@
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
-- saved-replies-team.md: Plan (owner 2026-11-09): team saved replies beside the personal ones, a right to manage them, and the reply list in the e-mail reply box; steps SR1-SR2
 - shipping-checkout-rates-steps.md: Steps R1-R5 of plans/shipping-checkout-rates.md: Geliver price list, method link, checkout live rate, label on payment, Sendcloud and Shippo quotes; claim as [plan:shipping-checkout-rates] R<n>
 - shipping-checkout-rates.md: Plan (owner 2026-11-09): a shipping method linked to a carrier label service, its live price at checkout (Geliver, then Sendcloud and Shippo), its label made once the order is paid
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
@@ -48,3 +48,4 @@
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - workspace-app-lines-fold.md: Plan (owner 2026-11-09): a run of one-line messages from one application folds into one row with "+N lines" in a channel; each reader chooses folded, all or hidden; step AL1
 - workspace-menu-layout.md: Plan (owner decision 2026-10-30) for a tidier Workspace list in the main menu: search, places, one Channels section, discussions, Tools tiles; channel screen unchanged
+- workspace-scheduling-one-path.md: Plan (owner 2026-11-09): scheduled work set up only on the flow canvas and listed only in the flow table; Run now and the next run for flows that start at a time; one start-a-flow box

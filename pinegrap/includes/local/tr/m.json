@@ -922,6 +922,7 @@
     "Message is too long. The limit is {var:1} characters.": "Mesaj çok uzun. Sınır {var:1} karakter.",
     "Message seen": "Görüldü",
     "Message stream": "Mesaj akışı",
+    "Message to a channel at a time": "Kanala zamanlı mesaj",
     "Message to the customer": "Müşteriye mesaj",
     "Message tools": "Mesaj araçları",
     "Message when the time was just taken": "Saat az önce alındığında gösterilen mesaj",

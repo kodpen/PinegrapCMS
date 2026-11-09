@@ -6,7 +6,7 @@ description: Steps R1-R5 of plans/shipping-checkout-rates.md: Geliver price list
 ## Which steps are there?
 - S under 400 product lines, M about 1,000. Each step adds its tests and corrects its topic files (`commerce/carrier-label-drivers.md`, `carrier-label-<key>.md`, `shipment-labels.md`).
 
-- R1 (S) Driver quote, Geliver price list. `free`.
+- R1 (S) Driver quote, Geliver price list. Done (#8406).
   - `rate` in `pg_label_operations()` (2 arguments); `pg_label_answer()` keeps `quotes`, each checked (service text, whole amount of 0 or more, currency); `pg_label_geliver_rate()` on `GET /priceList?paramType=parcel&length&width&height&weight`; Geliver's service codes in `_info()['services']` (code => name). Files: `includes/fn/carrier_labels.php`, `includes/shipping/geliver.php`, tests, a fixture shaped like the 2026-11-09 answer. No schema.
 
 - R2 (M) Schema and method link. `free`; may run beside R1 (other files).

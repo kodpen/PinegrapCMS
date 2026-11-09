@@ -4,7 +4,7 @@ description: Add › Start a flow in a channel's composer and the run's card the
 ---
 
 ## What does Add › Start a flow list?
-- The composer's insert menu (not in a discussion thread or an earlier era, only in a public or private channel, `CFG.flows.nav`) opens a drawer: panel action `ws_flow_list` with `runnable_in` = the channel → `ws_flows_runnable_in()` (`includes/workspace/flow_run_cards.php`), sorted by name, each with its `last_run` flag.
+- The composer's insert menu offers it only where it lists a flow (owner, 2026-11-09): `ws_channel_open` answers `flows_here` (`ws_flows_startable_in()`, the same list, only for whoever sees Flows), kept as `self.flowsHere` until the channel is opened again; never in a discussion thread, an earlier era or a channel other than public or private. It opens a drawer: panel action `ws_flow_list` with `runnable_in` = the channel → `ws_flows_runnable_in()` (`includes/workspace/flow_run_cards.php`), sorted by name, each with its `last_run` flag.
 - Listed (`ws_flow_runnable_here()`, pure): live with a published version, start box `manual`, `run` or `edit` access, owner on the staff (`ws_can_schedule()`) who may write in the channel. The channel must pass `ws_flow_run_channel_allowed()` for the reader. No other start kind is started by hand (there is no "run on a record" start).
 
 ## How is it started?
@@ -17,8 +17,8 @@ description: Add › Start a flow in a channel's composer and the run's card the
 
 ## What does the card do?
 - `flowRunCard()` in workspace.js draws `window.PGWsFlowFlag.runFlag()` under the system line: Stop (asks, `ws_flow_run_cancel`) while running and `can_cancel`; "Open the run" goes to `workspace_flows.php?flow=&run=`, which opens that run with the runs list (`openLastRun()`). Focus and an unfolded result survive a redraw.
-- Its Turkish text is "Çalıştırmayı aç", the word the rest of the run UI uses; it read "Koşumu aç" before (#3943). The scheduled-flow window names its boxes through `ws_flow_card_graph()` → `ws_flow_box_names()`, by kind, never "start" / "post" (#4189, #4261).
+- Its Turkish text is "Çalıştırmayı aç", the word the rest of the run UI uses; it read "Koşumu aç" before (#3943).
 - It reads the run again (`ws_flow_run_get`) while running or waiting: every 4 s for a minute, 15 s for ten more, then each minute (`flowRunWait()`); paused while the tab is hidden, stopped when the card leaves the page.
 
 ## Tests
-- tests/workspace_flow_run_cards_test.php (the list rule, the payload, the name, the run fields, the bundle, the flag helpers and the timing under Node). The drawer and card were not run in a browser.
+- tests/workspace_flow_run_cards_test.php (the list rule, offered only with a flow, the payload, the name, the run fields, the bundle, the flag helpers and the timing under Node). The drawer and card were not run in a browser.

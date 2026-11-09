@@ -76,7 +76,7 @@
     var BOX_W = G.BOX_W;
     var BOX_H = G.BOX_H;
     // The label of each kind of template setting (ws_flow_template_setting_types()).
-    var SETTINGS = { channel: 'fl_tpl_set_channel', person: 'fl_tpl_set_person', time: 'fl_tpl_set_time', url: 'fl_tpl_set_url', address: 'fl_tpl_set_address', table: 'fl_tpl_set_table' };
+    var SETTINGS = { channel: 'fl_tpl_set_channel', person: 'fl_tpl_set_person', time: 'fl_tpl_set_time', url: 'fl_tpl_set_url', address: 'fl_tpl_set_address', table: 'fl_tpl_set_table', text: 'fl_tpl_set_text' };
     var SAVE_DELAY = 1500;
     // Browsers refuse a keepalive request body over 64 KiB; the action and
     // the token ride on top of the draft.
@@ -192,7 +192,9 @@
         edit: 'fl_level_edit'
     };
 
-    // What the palette adds.
+    // What the palette adds: every kind but those no new box is made of
+    // (ws_flow_kinds_not_offered(): start_action), which a flow holding one
+    // keeps and changes.
     var PALETTE = [
         ['manual', 'fl_add_manual'],
         ['schedule', 'fl_kind_schedule'],
@@ -216,7 +218,6 @@
         ['task_digest', 'fl_kind_task_digest'],
         ['report', 'fl_kind_report'],
         ['checkin', 'fl_kind_checkin'],
-        ['start_action', 'fl_kind_start_action'],
         ['start_flow', 'fl_kind_start_flow'],
         ['change', 'fl_kind_change'],
         ['lead', 'fl_kind_lead'],
@@ -2367,9 +2368,18 @@
 
         answers[type] = value;
 
+        // A box with no channel yet is offered the flow's home, the channel
+        // a flow opened from a channel lives in.
         if (type === 'channel') {
-            control = channelPick({ channel_id: value || 0 }, t('fl_post_pick'));
+            answers.channel = value || (state.flow && state.flow.channel_id) || 0;
+            control = channelPick({ channel_id: answers.channel }, t('fl_post_pick'));
             control.addEventListener('change', function () { answers.channel = parseInt(control.value, 10) || 0; });
+        } else if (type === 'text') {
+            control = el('textarea', 'form-control form-control-sm');
+            control.rows = 3;
+            control.maxLength = 4000;
+            control.value = value || '';
+            control.addEventListener('input', function () { answers.text = control.value; });
         } else if (type === 'table') {
             // The table's own columns and rows are cleared by the server on
             // a change (ws_flow_template_apply()), as the box form does.

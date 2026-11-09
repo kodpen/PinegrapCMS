@@ -2544,7 +2544,6 @@ function workspace_flows_parity_table()
 			array(array('label sa_all', 'label sa_state_active', 'label sa_state_paused', 'label sa_state_done', 'label sa_state_failed', 'label sa_state_cancelled'), 1, 'Scheduled actions section in Flows: the state chips'),
 			array(array('label sa_in_channel', 'label sa_in_note', 'item.channel', 'item.channel.id', 'item.channel.name', 'item.note', 'item.note.id', 'item.note.name', 'item.message_id'), 1, 'Scheduled actions section in Flows: "in #channel / in note", linked to the card'),
 			array(array('label sm_title', 'label sm_mine_help'), 1, '?view=scheduled keeps the Messages tab (scheduled messages are not moved)'),
-			array(array('label fl_sa_moved'), 1, 'staff\'s Messages tab links to the Scheduled actions section of Flows'),
 		),
 		'card_places' => array(
 			array(array('scheduledCard(item) in load() in scheduledList()'), 1, 'Scheduled actions section in Flows: the list'),

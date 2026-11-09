@@ -103,7 +103,7 @@ function carrier_label_sendcloud_test_shipment($changes = array())
 function test_carrier_label_sendcloud_is_a_builtin_driver()
 {
 	pg_assert_true(pg_label_driver('sendcloud') !== null);
-	pg_assert_same(array('carriers' => array('ups', 'fedex', 'dhl', 'deutschepost', 'dpd', 'royalmail'), 'formats' => array('pdf', 'zpl')), pg_label_info('sendcloud'));
+	pg_assert_same(array('carriers' => array('ups', 'fedex', 'dhl', 'deutschepost', 'dpd', 'royalmail'), 'formats' => array('pdf', 'zpl'), 'services' => array()), pg_label_info('sendcloud'));
 
 	foreach (array('test', 'create', 'label', 'cancel', 'track', 'pickup') as $operation) {
 		pg_assert_true(pg_label_can('sendcloud', $operation), $operation);

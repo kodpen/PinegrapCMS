@@ -17,7 +17,9 @@
  *   pg_label_<key>_info()                      required: carriers (the
  *                                              pg_shipping_carriers() keys the
  *                                              service ships with) and formats
- *                                              (pdf, zpl, svg) of its labels
+ *                                              (pdf, zpl, svg) of its labels;
+ *                                              optional services (the service's
+ *                                              own codes, code => name)
  *   pg_label_<key>_fields()                    the account fields the Shipping
  *                                              card asks for (the field shape of
  *                                              pg_payment_fields_normalize())
@@ -31,6 +33,8 @@
  *                                              cancel a shipment not yet picked up
  *   pg_label_<key>_track($reference, $account) where a shipment is now
  *   pg_label_<key>_pickup($request, $account)  ask the carrier to collect
+ *   pg_label_<key>_rate($shipment, $account)   what the services would charge
+ *                                              for the shipment's parcel: quotes
  *
  * $account is the driver's settings (field => text, secrets included) read by
  * the caller (pg_label_account()); a driver never reads the database, the
@@ -61,6 +65,11 @@
  *   label_format     string  pdf, zpl or svg, '' without a label
  *   barcode          string  the text the label's barcode holds
  *   account          string  test(): the account's name at the service
+ *   quotes           array   rate(): list of service (the service's code),
+ *                            carrier (a pg_shipping_carriers() key or ''),
+ *                            amount (minor units, VAT included, int >= 0),
+ *                            currency (ISO 4217); a quote missing any of
+ *                            them is dropped
  *   log              array   sentences for the activity log, in order
  *   raw              array   the service's answer, for the log only
  *
@@ -99,6 +108,7 @@ function pg_label_operations()
         'cancel' => 2,
         'track'  => 2,
         'pickup' => 2,
+        'rate'   => 2,
     );
 }
 
@@ -312,14 +322,15 @@ function pg_label_load($key)
 
 /**
  * What a driver's info() declared, checked: only carriers the store knows,
- * only known formats, each once.
+ * only known formats, each once; services only with a code of a quote's
+ * shape (pg_label_service_valid()) and a name.
  *
  * @param mixed $declared
- * @return array carriers, formats
+ * @return array carriers, formats, services (code => name)
  */
 function pg_label_info_normalize($declared)
 {
-    $info = array('carriers' => array(), 'formats' => array());
+    $info = array('carriers' => array(), 'formats' => array(), 'services' => array());
 
     if (!is_array($declared)) {
         return $info;
@@ -333,7 +344,77 @@ function pg_label_info_normalize($declared)
         }
     }
 
+    if (isset($declared['services']) && is_array($declared['services'])) {
+        foreach ($declared['services'] as $code => $name) {
+            if (pg_label_service_valid($code) && is_string($name) && (trim($name) !== '')) {
+                $info['services'][$code] = trim($name);
+            }
+        }
+    }
+
     return $info;
+}
+
+/**
+ * Whether a text can be a service code of a quote: 1-60 printable ASCII
+ * characters without spaces, so "label:<driver>:<service>" fits a cache row
+ * of 100 characters.
+ *
+ * @param mixed $service
+ * @return bool
+ */
+function pg_label_service_valid($service)
+{
+    return is_string($service) && (preg_match('/^[\x21-\x7E]{1,60}$/', $service) === 1);
+}
+
+/**
+ * The carrier key of a carrier a service names by key or by name, '' for
+ * one the store does not know.
+ *
+ * @param mixed $carrier
+ * @return string
+ */
+function pg_label_carrier_key($carrier)
+{
+    if (!is_string($carrier) || (trim($carrier) === '')) {
+        return '';
+    }
+
+    $carrier = trim($carrier);
+    $carriers = pg_shipping_carriers();
+
+    return isset($carriers[strtolower($carrier)]) ? strtolower($carrier) : (string) pg_shipping_method_carrier($carrier);
+}
+
+/**
+ * One quote of a rate() answer checked, or null when it cannot be charged:
+ * a service code, a whole amount in minor units of 0 or more, a currency
+ * code. The carrier is kept only when the store knows it.
+ *
+ * @param mixed $quote
+ * @return array|null service, carrier, amount, currency
+ */
+function pg_label_quote_normalize($quote)
+{
+    if (!is_array($quote) || !isset($quote['service'], $quote['amount'], $quote['currency'])) {
+        return null;
+    }
+
+    $service = is_string($quote['service']) ? trim($quote['service']) : '';
+    $currency = is_string($quote['currency']) ? strtoupper(trim($quote['currency'])) : '';
+
+    if (!pg_label_service_valid($service) || !is_int($quote['amount']) || ($quote['amount'] < 0)
+        || (preg_match('/^[A-Z]{3}$/', $currency) !== 1)) {
+        return null;
+    }
+
+    return array(
+        'service'  => $service,
+        'carrier'  => pg_label_carrier_key(isset($quote['carrier']) ? $quote['carrier'] : ''),
+        'amount'   => $quote['amount'],
+        'currency' => $currency,
+    );
 }
 
 /**
@@ -514,6 +595,7 @@ function pg_label_answer($operation, $answer)
         'label_format'    => '',
         'barcode'         => '',
         'account'         => '',
+        'quotes'          => array(),
         'log'             => array(),
         'raw'             => array(),
     );
@@ -549,10 +631,19 @@ function pg_label_answer($operation, $answer)
 
     // A carrier the store knows by key or by name; any other stays unknown,
     // and the shipment row then reads it from the shipping method.
-    if (isset($answer['carrier']) && is_string($answer['carrier']) && (trim($answer['carrier']) !== '')) {
-        $carrier = trim($answer['carrier']);
-        $carriers = pg_shipping_carriers();
-        $shape['carrier'] = isset($carriers[strtolower($carrier)]) ? strtolower($carrier) : (string) pg_shipping_method_carrier($carrier);
+    if (isset($answer['carrier'])) {
+        $shape['carrier'] = pg_label_carrier_key($answer['carrier']);
+    }
+
+    // A quote that cannot be charged as it is is dropped, never repaired.
+    if (isset($answer['quotes']) && is_array($answer['quotes'])) {
+        foreach ($answer['quotes'] as $quote) {
+            $quote = pg_label_quote_normalize($quote);
+
+            if ($quote !== null) {
+                $shape['quotes'][] = $quote;
+            }
+        }
     }
 
     if (isset($answer['tracking_url'])) {
@@ -590,6 +681,14 @@ function pg_label_answer($operation, $answer)
     }
 
     $shape['error'] = '';
+
+    // No price is a plain failure: asking changes nothing at the service.
+    if (($operation === 'rate') && ($shape['quotes'] === array())) {
+        $shape['success'] = false;
+        $shape['error'] = lang('The carrier label service gave no price for this parcel.');
+
+        return $shape;
+    }
 
     $unreadable = (($operation === 'create') && (($shape['reference'] === '') || ($shape['tracking_number'] === '')))
         || (($operation === 'label') && ($shape['label'] === ''))

@@ -2612,6 +2612,7 @@
     "The carrier label service could not be reached.": "Kargo etiket hizmetine ulaşılamadı.",
     "The carrier label service gave an answer that cannot be read. Check the shipment on the service's own screen before trying again.": "Kargo etiket hizmeti okunamayan bir yanıt verdi. Yeniden denemeden önce gönderiyi hizmetin kendi ekranında kontrol edin.",
     "The carrier label service gave no answer.": "Kargo etiket hizmeti yanıt vermedi.",
+    "The carrier label service gave no price for this parcel.": "Kargo etiket servisi bu koli için fiyat vermedi.",
     "The carrier label service refused the request.": "Kargo etiket hizmeti isteği reddetti.",
     "The carrier refused the pickup request.": "Kargo firması kurye talebini reddetti.",
     "The carrier tax number has to be 10 or 11 digits.": "Taşıyıcı vergi numarası 10 ya da 11 haneli olmalıdır.",

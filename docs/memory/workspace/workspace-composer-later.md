@@ -14,8 +14,8 @@ description: Workspace writing-box tools (toolbar, lists, headings, highlight, s
 - Headings in notes only.
 - Enter in the expanded box is a new line, Ctrl+Enter sends.
 - Autoformat on, with an off switch per viewer.
-- Saved replies personal first; team replies are a later slice (schema #3075 keeps `scope`, only the right column is left).
+- Saved replies: personal and team (#8405, `workspace-saved-replies-team.md`); the person's own wins a shared shortcut.
 - Dictation in the box: not now; recordings and transcripts are built (`workspace-voice-recording.md`).
 
 ## What is left for later?
-- Callouts, toggles, mermaid, find/replace in the box; team saved replies. No GIF, no video.
+- Callouts, toggles, mermaid, find/replace in the box. No GIF, no video.
