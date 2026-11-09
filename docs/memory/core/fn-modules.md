@@ -264,7 +264,7 @@ description: Generated from the module field of the memory files: each includes/
 - `widgets_billing_information`: [[billing-information-widget]]
 - `widgets_booking`: [[booking-widget]], [[booking-widget-confirm]]
 - `widgets_cart`: [[cart-tax-estimate]], [[express-order-tax-address]]
-- `widgets_catalog`: [[catalog-item-checkout-options-tab]], [[catalog-listing-subtree-sort]], [[comments-block-product-page]], [[widget-currency-symbol-once]]
+- `widgets_catalog`: [[catalog-item-checkout-options-tab]], [[catalog-listing-subtree-sort]], [[comments-block-product-page]], [[variant-switch-text-values]], [[widget-currency-symbol-once]]
 - `widgets_comments`: [[comments-widget]], [[comments-widget-decisions]], [[comments-widget-email-items]], [[comments-widget-form]], [[comments-widget-pages]], [[comments-widget-replies]], [[comments-widget-watch-staff]]
 - `widgets_comments_recent`: [[comments-widget-recent]], [[comments-widget-recent-reads]]
 - `widgets_conditions`: [[widget-conditions]]
