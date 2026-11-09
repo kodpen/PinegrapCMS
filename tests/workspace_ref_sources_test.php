@@ -162,7 +162,7 @@ function test_ws_ref_table_row_writers()
 
 	pg_assert_contains("ws_ref_source_write('wtable_row', array((int) \$row['id'] => array()))", workspace_ref_sources_test_source('ws_wtable_row_delete'), 'a deleted row\'s links go');
 
-	$delete = workspace_ref_sources_test_source('ws_wtable_delete');
+	$delete = workspace_ref_sources_test_source('ws_wtable_delete_final');
 
 	pg_assert_contains("ws_ref_source_write('wtable_row'", $delete, 'a deleted table\'s rows lose their links');
 	pg_assert_true(strpos($delete, "ws_ref_source_write('wtable_row'") < strpos($delete, "'ws_wtable_rows'"), 'read before the rows go');

@@ -168,6 +168,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_channel_links();        // 11.0.175
 	upgrade_2026_11_0_bundle_backorder();        // 11.0.176
 	upgrade_2026_11_0_shipping_method_label_link(); // 11.0.177
+	upgrade_2026_11_0_ws_wtable_bin();           // 11.0.178
 
 }
 
@@ -5709,5 +5710,59 @@ function upgrade_2026_11_0_shipping_method_label_link() {
 	}
 
 	install_note('Shipping methods: a method can be linked to a carrier label service and one of its services, which Create Label then uses. Nothing changes until a method is linked.');
+
+}
+
+// The bin of workflow tables (includes/workspace/wtable_bin.php).
+//
+// A deleted table keeps its row in ws_wtables with deleted_at set, so its id
+// stays taken and the flows that name it work again after a restore. A
+// deleted row leaves ws_wtable_rows for ws_wtable_row_bin, so the statements
+// that read rows need no filter. links holds the row's ws_refs tags as JSON.
+function upgrade_2026_11_0_ws_wtable_bin() {
+
+	if (!install_table_exists('ws_wtables')) {
+
+		install_skipped('ws_wtables does not exist, skipped');
+
+		return;
+
+	}
+
+	$columns = array(
+		'deleted_at' => "INT UNSIGNED NOT NULL DEFAULT 0",
+		'deleted_by' => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('ws_wtables', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('ws_wtables', $column, $definition);
+
+		}
+
+	}
+
+	install_create_table('ws_wtable_row_bin', "CREATE TABLE ws_wtable_row_bin (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		row_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		table_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		position    INT UNSIGNED NOT NULL DEFAULT 0,
+		cells       MEDIUMTEXT NULL,
+		revision    INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		links       MEDIUMTEXT NULL,
+		deleted_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		deleted_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_table (table_id, deleted_at),
+		KEY idx_deleted (deleted_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a deleted workflow table or row goes to a bin for the Recycle Bin\'s days and can be restored until then.');
 
 }

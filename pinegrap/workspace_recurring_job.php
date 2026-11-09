@@ -106,6 +106,12 @@ if (ws_enabled() && function_exists('ws_threads_purge')) {
     ws_threads_purge();
 }
 
+// Workflow table rows and tables binned longer than the Recycle Bin's
+// days, deleted for good a few at a time (includes/workspace/wtable_bin.php).
+if (ws_enabled() && function_exists('ws_wtable_bin_purge')) {
+    ws_wtable_bin_purge();
+}
+
 // Channel memory entries expired more than 30 days ago
 // (includes/workspace/channel_memory.php).
 if (ws_enabled() && function_exists('ws_memory_sweep')) {

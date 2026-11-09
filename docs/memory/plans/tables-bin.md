@@ -20,7 +20,7 @@ description: Plan (owner 2026-11-09): a deleted workflow table or row is kept in
 - An old database may give a deleted last id to a new row after a restart. A restored row whose id is taken gets a new one, and the screen says its links were not restored.
 
 ## Which steps are there?
-- TB1 (M, schema) The store. The columns and the table of `decisions-made-schema-14.md`. `ws_wtable_row_delete()` and `ws_wtable_delete()` move to the bin, and a final delete stays for the rollbacks and the purge. Restore functions, the purge, the privacy and contact readers, the shares' `deleted` event and a restore event. Tests for the pure parts; the step rerun twice on a dev DB. Memory: `workspace/workflow-tables-bin.md`. Claim as `[plan:tables-bin] TB1 — table and row bin`.
+- TB1 (M, schema) The store. **Done, #8412.** The columns and the table of `decisions-made-schema-14.md`. `ws_wtable_row_delete()` and `ws_wtable_delete()` move to the bin, and a final delete stays for the rollbacks and the purge. Restore functions, the purge, the privacy and contact readers, the shares' `deleted` event and a restore event. Tests for the pure parts; the step rerun twice on a dev DB. Memory: `workspace/workflow-tables-bin.md`. Claim as `[plan:tables-bin] TB1 — table and row bin`.
 
 - TB2 (S, no schema) The screens and the routes. The table's bin and "Deleted tables" on `workspace_wtables.php`; the delete confirmations say how long the bin keeps. API routes list the bin and restore: `workspace.table_rows.restore` is an MCP tool as the row delete is, `workspace.tables.restore` is not; their schemas pass `tools/check_api_schema.php`. After TB1.
 

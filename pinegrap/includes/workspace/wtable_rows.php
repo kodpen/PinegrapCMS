@@ -681,8 +681,12 @@ function ws_wtable_row_delete_check($viewer, $table, $row, $input = array())
 }
 
 /**
- * Delete a row: the rows after it move up one, and the table counts one
- * fewer, only when this request is the one that removed it.
+ * Delete a row: it goes to the table's bin with its links
+ * (ws_wtable_row_bin_put(), wtable_bin.php), the rows after it move up one,
+ * and the table counts one fewer, only when this request is the one that
+ * removed it. The copy is written first, so that a request stopped halfway
+ * never loses the row; a copy whose row this request did not remove is
+ * taken out again.
  *
  * @param array      $viewer
  * @param array|null $table
@@ -705,9 +709,14 @@ function ws_wtable_row_delete($viewer, $table, $row, $input = array())
         $where .= " AND revision = '" . (int) $row['revision'] . "'";
     }
 
+    $stored = ws_wtable_row($table_id, (int) $row['id']);
+    $bin_id = is_array($stored) ? ws_wtable_row_bin_put($stored, (int) $viewer['id']) : 0;
+
     db("DELETE FROM ws_wtable_rows WHERE " . $where);
 
     if ((int) mysqli_affected_rows(db::$con) !== 1) {
+        ws_wtable_row_bin_drop($bin_id);
+
         return is_array(ws_wtable_row($table_id, (int) $row['id']))
             ? ws_wtable_refusal('changed_meanwhile', 'revision', 409)
             : ws_wtable_refusal('not_found', '', 404);

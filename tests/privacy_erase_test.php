@@ -51,6 +51,7 @@ function privacy_erase_test_scope()
 		'cell_ids'         => array(95),
 		'revision_form_ids' => array(40, 96),
 		'wtable_row_ids'   => array(97),
+		'wtable_bin_ids'   => array(98),
 	);
 }
 
@@ -83,7 +84,7 @@ function test_privacy_erase_tables_are_pinned()
 			'chat_messages' => 'delete', 'chat_conversations' => 'delete', 'address_book' => 'delete',
 			'push_subscriptions' => 'delete', 'user_passkeys' => 'delete', 'user_identities' => 'delete',
 			'user_mfa_recovery' => 'delete', 'user_mfa' => 'delete', 'auth_tokens' => 'delete',
-			'opt_in' => 'delete', 'contacts_contact_groups_xref' => 'delete', 'ws_wtable_cells' => 'anonymise', 'orders' => 'anonymise', 'contacts' => 'delete',
+			'opt_in' => 'delete', 'contacts_contact_groups_xref' => 'delete', 'ws_wtable_cells' => 'anonymise', 'ws_wtable_bin_cells' => 'anonymise', 'orders' => 'anonymise', 'contacts' => 'delete',
 			'user' => 'delete',
 		),
 		$actions,
@@ -134,6 +135,7 @@ function test_privacy_erase_tables_are_pinned()
 			'audit_log' => array('label' => ''),
 			'form_data_cells' => array('data' => ''),
 			'ws_wtable_cells' => array('cells' => ''),
+			'ws_wtable_bin_cells' => array('cells' => ''),
 			'bookings' => array('name' => '{name}', 'email' => '{token}', 'phone' => '', 'notes' => '', 'manage_token' => '', 'user_id' => 0),
 	);
 
@@ -199,6 +201,7 @@ function test_privacy_erase_find_columns_are_pinned()
 			'opt_in' => array('contact_id' => 'contact_ids'),
 			'contacts_contact_groups_xref' => array('contact_id' => 'contact_ids'),
 			'ws_wtable_cells' => array('id' => 'wtable_row_ids'),
+			'ws_wtable_bin_cells' => array('id' => 'wtable_bin_ids'),
 			'contacts' => array('id' => 'contact_ids'),
 			'user' => $user,
 	);
