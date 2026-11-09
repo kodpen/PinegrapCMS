@@ -258,6 +258,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-blocks-school.md: The School block family (school- prefix, own palette group): hero with an age finder, age ladder, school year in terms; general blocks placed instead; rules, test
 - designer-blocks-skiresort.md: The Ski Resort block family (skiresort- prefix, its own palette group): the five blocks, what each draws, its pg-ski-* rules, why the pass cards are not a pricing or compare block, its test
 - designer-blocks-sportsclub.md: The Sports Club block family (sportsclub-): match day, fixtures and results, league table, squad by position; what a club places instead; rules; test
+- designer-blocks-travel.md: The Travel block family (travel- prefix, own palette group): day-by-day itinerary, destination guide; general blocks placed instead; rules, test
 - designer-blocks-wedding.md: The Wedding block family (wedding- prefix, its own palette group): invitation hero, real wedding story, planning checklist; the general blocks a wedding site places instead; rules and test
 - designer-blocks-zoo.md: The Zoo block family (zoo- prefix, its own palette group): the four blocks, what each draws, the blocks reused instead, its pg-zoo-* rules, motion and test
 - designer-body-tag-merge.md: Designer <body> tag: class/style/id from Body Settings and the Attributes panel are merged, not dropped; three lockstep code paths; page_tree_code is a snapshot.
