@@ -25,6 +25,7 @@ module: file_picker_search
 - Settings: Site Icon (`site_icon`); Application Icon, Default Share Image, Organization Logo, Fediverse Avatar (`public_image`). `seo.php` and `general.php` print `pg_fields_script()` with the picker cards, never `prep.php` (it runs before every category, and the script prints once per request).
 - Settings › Commerce PEM File: a short list, so a local `data-pg-combobox`; a stored name no pem file carries stays, marked (`pg_stored_file_option()`).
 - Add/Edit Short Link: File (`file`).
+- File Manager short link wizard: File (`file`). `pg_explorer_handle_short_link_options()` sends only the link's own file (`pg_file_picker_id_options()`) and `file_source`; `view_folders.php` draws the select through `pgFields.init()` and sets it with `pgCombobox.set()`. Lists holding a link's file are never kept (`kept`), so a file link's window always asks for its file. Before, it sent every file (`get_file_options()`).
 - Left: `plans/file-picker-search-steps.md`.
 
 Tests: `tests/file_picker_search_test.php`, `tests/settings_public_image_test.php`, `tests/short_link_requests_test.php`.
