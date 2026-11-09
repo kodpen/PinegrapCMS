@@ -35,25 +35,25 @@ function workspace_flow_row_choice_test_source($function)
 function test_workspace_flow_row_choice_ways()
 {
 	pg_assert_same(array('id', 'position', 'last'), ws_step_row_bys());
-	pg_assert_same(ws_step_row_bys(), ws_flow_setting_values()['row_get.by']);
+	pg_assert_same(ws_step_row_get_bys(), ws_flow_setting_values()['row_get.by'], 'a read also finds the first row that meets conditions');
 	pg_assert_same(ws_step_row_bys(), ws_flow_setting_values()['row_set.by']);
 
 	$catalogue = array_column(ws_flow_kind_catalogue(), null, 'kind');
 
-	pg_assert_same(array('table_id', 'by', 'row', 'retry', 'retry_after'), array_column($catalogue['row_get']['settings'], 'key'));
+	pg_assert_same(array('table_id', 'by', 'row', 'match', 'where', 'retry', 'retry_after'), array_column($catalogue['row_get']['settings'], 'key'));
 	pg_assert_same(array('table_id', 'by', 'row', 'cells', 'retry', 'retry_after'), array_column($catalogue['row_set']['settings'], 'key'));
-	pg_assert_same(array('id', 'position', 'last'), array_column($catalogue['row_get']['settings'], 'values', 'key')['by']);
+	pg_assert_same(array('id', 'position', 'last', 'match'), array_column($catalogue['row_get']['settings'], 'values', 'key')['by']);
 }
 
 // The way is kept; none or an unknown one is by its id, as a box saved
 // before the choice meant; the last row names no row.
 function test_workspace_flow_row_choice_config()
 {
-	pg_assert_same(array('table_id' => 12, 'by' => 'position', 'row' => '1'), ws_step_config_normalize('row_get', array('table_id' => '12', 'by' => 'position', 'row' => ' 1 ')));
-	pg_assert_same(array('table_id' => 0, 'by' => 'id', 'row' => ''), ws_step_config_normalize('row_get', array()));
+	pg_assert_same(array('table_id' => 12, 'by' => 'position', 'row' => '1', 'match' => 'all', 'where' => ''), ws_step_config_normalize('row_get', array('table_id' => '12', 'by' => 'position', 'row' => ' 1 ')));
+	pg_assert_same(array('table_id' => 0, 'by' => 'id', 'row' => '', 'match' => 'all', 'where' => ''), ws_step_config_normalize('row_get', array()));
 	pg_assert_same('id', ws_step_config_normalize('row_get', array('by' => 'nearest'))['by']);
 	pg_assert_same('id', ws_step_config_normalize('row_get', array('by' => array('last')))['by']);
-	pg_assert_same(array('table_id' => 0, 'by' => 'last', 'row' => ''), ws_step_config_normalize('row_get', array('by' => 'last', 'row' => '5')));
+	pg_assert_same(array('table_id' => 0, 'by' => 'last', 'row' => '', 'match' => 'all', 'where' => ''), ws_step_config_normalize('row_get', array('by' => 'last', 'row' => '5')));
 	pg_assert_same(array('table_id' => 4, 'by' => 'position', 'row' => '2', 'cells' => '{"5":"x"}'), ws_step_config_normalize('row_set', array('table_id' => 4, 'by' => 'position', 'row' => '2', 'cells' => '{"5":"x"}')));
 	pg_assert_same(array('table_id' => 4, 'by' => 'last', 'row' => '', 'cells' => '{"5":"x"}'), ws_step_config_normalize('row_set', array('table_id' => 4, 'by' => 'last', 'row' => '{{trigger.row_id}}', 'cells' => '{"5":"x"}')));
 	pg_assert_same(array('table_id' => 0, 'cells' => ''), ws_step_config_normalize('row_add', array('by' => 'last', 'row' => '3')), 'a new row is found by no way');

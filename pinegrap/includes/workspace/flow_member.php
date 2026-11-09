@@ -86,7 +86,7 @@ function ws_flow_member_kinds()
         'manual', 'schedule', 'event', 'no_order', 'end',
         'task', 'approval', 'delay', 'condition', 'constants', 'value',
         'post', 'notify', 'task_open', 'report', 'task_digest',
-        'row_add', 'row_set', 'row_get', 'record_get', 'change',
+        'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'change',
     );
 }
 

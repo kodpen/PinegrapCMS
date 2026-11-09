@@ -979,10 +979,11 @@ function ws_flow_template_apply($template, $graph, $values)
 /**
  * A row box's settings without those that belong to its table: the column
  * a row start waits on, the cells a box writes (column ids), the row a box
- * changes or reads given by its id. A row's number in the table fits any
- * table and stays. Pure.
+ * changes or reads given by its id, the conditions and the sort column of
+ * a box that reads. A row's number in the table fits any table and stays.
+ * Pure.
  *
- * @param string $kind   row | row_add | row_set | row_get
+ * @param string $kind   row | row_add | row_set | row_get | rows_get
  * @param array  $config the box's settings
  * @return array
  */
@@ -998,6 +999,14 @@ function ws_flow_template_table_cleared($kind, $config)
 
     if (in_array($kind, array('row_set', 'row_get'), true) && (ws_step_row_way($config)['by'] === 'id') && preg_match('/^\s*\d+\s*$/', (string) ($config['row'] ?? ''))) {
         $config['row'] = '';
+    }
+
+    if (in_array($kind, array('row_get', 'rows_get'), true) && array_key_exists('where', $config)) {
+        $config['where'] = '';
+    }
+
+    if ($kind === 'rows_get') {
+        $config['sort'] = 0;
     }
 
     return $config;

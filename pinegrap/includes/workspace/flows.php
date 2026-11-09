@@ -2491,7 +2491,7 @@ function ws_flow_graph_present($graph, $edit = false)
                 $node['config'] = ws_flow_condition_masked($node['config']);
             }
 
-            if (!$edit && in_array((string) $node['kind'], array('row_add', 'row_set', 'row_get'), true)) {
+            if (!$edit && in_array((string) $node['kind'], array('row_add', 'row_set', 'row_get', 'rows_get'), true)) {
                 $node['config'] = ws_flow_row_box_masked($node['config']);
             }
 
@@ -2512,10 +2512,11 @@ function ws_flow_graph_present($graph, $edit = false)
 /**
  * A table box's settings as a reader who may not change the flow reads
  * them: the table and the columns it writes, never the row it names nor
- * the values, which may be a customer's data, as a change box's. Cells the
- * server cannot read as a JSON object keep nothing. Pure.
+ * the values, which may be a customer's data, as a change box's: a box's
+ * conditions keep their columns and comparisons (ws_step_where_masked()).
+ * Cells the server cannot read as a JSON object keep nothing. Pure.
  *
- * @param array $config ws_step_config_normalize() of row_add, row_set or row_get
+ * @param array $config ws_step_config_normalize() of row_add, row_set, row_get or rows_get
  * @return array
  */
 function ws_flow_row_box_masked($config)
@@ -2524,7 +2525,11 @@ function ws_flow_row_box_masked($config)
         $config['row'] = '';
     }
 
-    // A box that reads a row has no cells to hide.
+    if (array_key_exists('where', $config)) {
+        $config['where'] = ws_step_where_masked((string) $config['where']);
+    }
+
+    // A box that reads a row or rows has no cells to hide.
     if (!array_key_exists('cells', $config)) {
         return $config;
     }
@@ -3132,6 +3137,7 @@ function ws_flow_js_strings()
         'fl_kind_row_add'     => lang('Add a row to a table'),
         'fl_kind_row_set'     => lang('Change a row of a table'),
         'fl_kind_row_get'     => lang('Read a row of a table'),
+        'fl_kind_rows_get'    => lang('Read rows of a table'),
         'fl_rows_read_help'   => lang('The tables the flow\'s owner may read; the box reads with their rights.'),
         'fl_kind_record_get'  => lang('Read a record'),
         'fl_record_kind'      => lang('Kind of record'),
@@ -3180,6 +3186,37 @@ function ws_flow_js_strings()
         'fl_rows_position_help' => lang('The row\'s number as the table lists it: 1 is the first row. A value may give it, such as the item number of a For each box.'),
         'fl_rows_id_help'     => lang('The row\'s id, as a value gives it: the row that started the flow, or one an earlier box added or read.'),
         'fl_rows_last_help'   => lang('The row at the bottom of the table, such as the one added last.'),
+        'fl_rows_by_match'    => lang('The first row that meets conditions'),
+        'fl_rows_match_help'  => lang('The first row, in the table\'s order, that meets the conditions: a lookup, such as the customer whose e-mail a form gave.'),
+        'fl_rows_get_help'    => lang('Reads the rows that meet the conditions: how many they are, the sum, average, smallest and largest value of each number column, and the rows as a list for a For each box.'),
+        'fl_rows_where'       => lang('Conditions on the rows'),
+        'fl_rows_where_none'  => lang('No condition: every row of the table.'),
+        'fl_rows_where_add'   => lang('Add a condition'),
+        'fl_rows_where_remove' => lang('Remove the condition'),
+        'fl_rows_where_column' => lang('Column'),
+        'fl_rows_where_op'    => lang('Comparison'),
+        'fl_rows_where_value' => lang('Value'),
+        'fl_rows_where_match' => lang('Rows meet'),
+        'fl_rows_where_all'   => lang('every condition'),
+        'fl_rows_where_any'   => lang('any of the conditions'),
+        'fl_rows_where_ticked' => lang('Ticked'),
+        'fl_rows_where_unticked' => lang('Not ticked'),
+        'fl_rows_sort'        => lang('Sort by'),
+        'fl_rows_sort_table'  => lang('The table\'s order'),
+        'fl_rows_dir'         => lang('Sort order'),
+        'fl_rows_dir_asc'     => lang('Ascending'),
+        'fl_rows_dir_desc'    => lang('Descending'),
+        'fl_rows_dir_help'    => lang('Ascending is A to Z, the smallest number and the earliest date first; empty cells come last either way. In the table\'s order, descending puts the last row first.'),
+        'fl_rows_limit'       => lang('Rows in the list'),
+        'fl_rows_limit_help'  => lang('1 to 50, the most a For each box goes through. The count and the totals take every row that meets the conditions.'),
+        'fl_rows_sum'         => ws_js_template('Sum of {var:1}', 1),
+        'fl_rows_avg'         => ws_js_template('Average of {var:1}', 1),
+        'fl_rows_min'         => ws_js_template('Smallest {var:1}', 1),
+        'fl_rows_max'         => ws_js_template('Largest {var:1}', 1),
+        'fl_rows_meta_where'  => ws_js_template('{var:1} · conditions: {var:2}', 2),
+        'fl_rows_item_row'    => lang('Row id'),
+        'fl_rows_item_position' => lang('Row number'),
+        'fl_rows_item_help'   => ws_js_template('Fields of each row: {var:1}.', 1),
         'fl_rows_table_help'  => lang('The tables the flow\'s owner may change rows of; the box writes with their rights.'),
         'fl_rows_row'         => lang('Row'),
         'fl_rows_cells'       => lang('Cells'),
@@ -3681,6 +3718,10 @@ function ws_flow_js_config($viewer, $mode)
 
         // The workflow tables a row box may start on, with their columns.
         $steps['tables'] = function_exists('ws_flow_row_tables') ? ws_flow_row_tables($viewer) : array();
+
+        // How a box's conditions compare a column (wtable_where.php): each
+        // comparison's words and the comparisons each column type takes.
+        $steps['where'] = function_exists('ws_wtable_where_operators') ? ws_flow_js_where() : null;
 
         // The kinds of record a read box may read, with the values each gives.
         $steps['reads'] = function_exists('ws_flow_record_get_kinds') ? ws_flow_record_get_kinds($viewer) : array();

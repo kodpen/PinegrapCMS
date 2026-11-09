@@ -73,7 +73,11 @@ function ws_flow_setting_values()
         'row.what'           => array_keys(ws_flow_row_whats()),
         // How a row box finds its row: by its id first, as a box saved before the choice meant.
         'row_set.by'         => ws_step_row_bys(),
-        'row_get.by'         => ws_step_row_bys(),
+        'row_get.by'         => ws_step_row_get_bys(),
+        // How conditions join, all first; how rows are sorted, ascending first.
+        'row_get.match'      => ws_wtable_where_joins(),
+        'rows_get.match'     => ws_wtable_where_joins(),
+        'rows_get.dir'       => ws_wtable_sort_directions(),
         // A derived value box's rule: join first, as ws_flow_derived_normalize() keeps an unknown one.
         'value.rule'         => array_values(array_unique(array_merge(array('join'), array_keys(ws_flow_derived_rules())))),
         'value.op'           => ws_flow_derived_operators(),
