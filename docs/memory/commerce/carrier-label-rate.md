@@ -1,6 +1,6 @@
 ---
 name: carrier-label-rate
-description: Label driver rate() operation (#PR): quotes shape and checks, info services, Geliver's GET /priceList quotes and service codes
+description: Label driver rate() operation (#8406): quotes shape and checks, info services, Geliver's GET /priceList quotes and service codes
 module: carrier_labels
 ---
 

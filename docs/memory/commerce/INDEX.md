@@ -39,7 +39,7 @@
 - carrier-label-drivers.md: Carrier label driver layer (2026.11.0): pg_label_<key>_ contract, pg_label_call() answers, what reaches the shipment row, connect_apps label_<key>, Shipping card and test
 - carrier-label-geliver.md: Geliver label driver (2026.11.0, #3096): two-step flow, offers, barcode as tracking number, PDF only, statuses, webhook in carrier-webhook-geliver.md, what is unverified
 - carrier-label-kargonomi.md: Kargonomi label driver (2026.11.0, #3286), Turkish aggregator, no test mode: draft, prices, confirmation as the charge, carrier number read after it, PDF label, cancel in 36 h, unverified points
-- carrier-label-rate.md: Label driver rate() operation (#PR): quotes shape and checks, info services, Geliver's GET /priceList quotes and service codes
+- carrier-label-rate.md: Label driver rate() operation (#8406): quotes shape and checks, info services, Geliver's GET /priceList quotes and service codes
 - carrier-label-roadmap.md: Carrier label drivers as a whole: the rules every driver keeps (one write path, polling then webhooks, return labels, what stays outside), the order they came in, which wait for documentation
 - carrier-label-sendcloud-customs.md: Sendcloud customs data (2026.11.0, #3474, decided #3408): route opened only by a filled shop block, parcel_items and customs_information of API v3, incoterm through the option, what is unverified
 - carrier-label-sendcloud-returns.md: Sendcloud customer return labels (#3409): Returns API announce from the customer to the sender address, live mode and EU only, r-<return>-<parcel> reference, cancel request
