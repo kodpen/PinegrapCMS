@@ -188,7 +188,7 @@ function test_product_preorder_product_screen()
 
 	$row = product_preorder_test_body($source, 'pg_pb_render_preorder_row');
 	pg_assert_contains('if (!pg_product_preorder_ready())', $row);
-	pg_assert_contains('type="date" name="preorder_date"', $row);
+	pg_assert_contains('type="date" data-pg-date name="preorder_date"', $row, 'the date is on the date-and-time control');
 }
 
 // Every reader takes the columns through the probe-aware select and prints

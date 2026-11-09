@@ -14,7 +14,7 @@ description: pgBindFieldHelp() in backend.src.js ties a panel field's .form-text
 ## What is left alone?
 - Help bound by hand: a field whose `aria-describedby` names a `.form-text`, or a help whose id any `aria-describedby` already names (`#tr_auto_hint`, `#url`, `#ws_hol_to`).
 - A help after a group of controls or a radio (`erp_settings.php` radio pair), a help inside a `label` (`prep.php`), an intro with no control (`edit_key_code.php` heading text).
-- Date and time hook fields (`data-pg-date`, `-datetime`, `-time`, inside `data-pg-date-selects`): the date picker plan owns them.
+- Date and time hook fields (`data-pg-date`, `-datetime`, `-time`, inside `data-pg-date-selects`): their help is tied by hand (`aria-describedby` on the field), and the box the control draws takes it over (`panel-date-field-opt-in.md`).
 - A field with `title` or `data-bs-original-title`: Bootstrap 6's Tooltip `hide()` removes `aria-describedby`, and `_fixTitle()` moves the title into `data-bs-original-title`, so `title` alone is not enough after `pgBindTitlePopovers()`.
 
 ## When does it run?

@@ -1162,8 +1162,9 @@
         box.setAttribute('autocomplete', 'off');
         box.disabled = !!el.disabled;
         // A field named only by its own attributes (a toolbar date) passes
-        // them to the box people use.
-        ['aria-label', 'placeholder', 'title'].forEach(function (name) {
+        // them to the box people use, and so does the help a screen tied to
+        // it: pgBindFieldHelp() leaves date and time hooks alone.
+        ['aria-label', 'aria-describedby', 'placeholder', 'title'].forEach(function (name) {
             if (el.hasAttribute(name)) {
                 box.setAttribute(name, el.getAttribute(name));
             }
