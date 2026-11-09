@@ -1253,7 +1253,7 @@ function ws_api_flow_run_step_schema()
         'threads_in'  => array(array('from' => 'string', 'on' => 'string', 'taken' => 'boolean')),
         'outputs'     => 'object',
         'result'      => 'string',
-        'empty_values' => array(array('node_id' => 'string', 'key' => 'string', 'box' => 'string', 'name' => 'string')),
+        'empty_values' => array(array('node_id' => 'string', 'token' => 'string', 'key' => 'string', 'box' => 'string', 'name' => 'string')),
     );
 }
 

@@ -96,7 +96,8 @@ function ws_flow_step_texts($kind, $action)
  * @param array    $nodes  boxes of the run's graph
  * @param array    $values ws_step_node_values() the box read
  * @param callable $label  (box, field) => the value's name, '' for none
- * @return array[] node_id, key, box, name, said
+ * @return array[] node_id, token (the reference without its fallback),
+ *                 key, box, name, said
  */
 function ws_flow_empty_entries($empty, $nodes, $values, $label)
 {
@@ -111,6 +112,7 @@ function ws_flow_empty_entries($empty, $nodes, $values, $label)
 
         $out[] = array(
             'node_id' => $giver ? (string) $giver['id'] : '',
+            'token'   => ((string) $item['box'] === '') ? '{{trigger.' . $item['key'] . '}}' : '{{node.' . $item['box'] . '.' . $item['key'] . '}}',
             'key'     => (string) $item['key'],
             'box'     => $giver ? ws_flow_box_name($giver) : (string) $item['box'],
             'name'    => ($name !== '') ? $name : (string) $item['key'],
@@ -189,11 +191,12 @@ function ws_flow_text_with_reason($text, $status, $stored, $edit)
 
 /**
  * The empty values of a failed box as the canvas offers them: the box that
- * gave each, the value's key and both names. Pure.
+ * gave each, the reference its texts hold, the value's key and both
+ * names. Pure.
  *
  * @param string $status the box's state
  * @param string $stored ws_flow_run_steps.result
- * @return array[] node_id, key, box, name
+ * @return array[] node_id, token, key, box, name
  */
 function ws_flow_empty_present($status, $stored)
 {
@@ -204,6 +207,7 @@ function ws_flow_empty_present($status, $stored)
     return array_map(function ($entry) {
         return array(
             'node_id' => (string) ($entry['node_id'] ?? ''),
+            'token'   => (string) ($entry['token'] ?? ''),
             'key'     => (string) ($entry['key'] ?? ''),
             'box'     => (string) ($entry['box'] ?? ''),
             'name'    => (string) ($entry['name'] ?? ''),

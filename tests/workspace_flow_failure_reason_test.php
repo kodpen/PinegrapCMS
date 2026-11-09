@@ -74,9 +74,10 @@ function test_workspace_flow_failure_reason_entries()
 	};
 	$entries = ws_flow_empty_entries(array(array('box' => 'row', 'key' => 'cell_7'), array('box' => 'say', 'key' => 'count'), array('box' => 'gone', 'key' => 'text')), $nodes, ws_flow_reason_test_values(), $label);
 
-	pg_assert_same(array('node_id' => 'row', 'key' => 'cell_7', 'box' => 'Read a row', 'name' => 'Message', 'said' => 'The table “Leads” has no row 4. Nothing was read.'), $entries[0]);
-	pg_assert_same(array('node_id' => 'say', 'key' => 'count', 'box' => 'say', 'name' => 'count', 'said' => ''), $entries[1], 'no label: the key; no row read: no sentence');
+	pg_assert_same(array('node_id' => 'row', 'token' => '{{node.row.cell_7}}', 'key' => 'cell_7', 'box' => 'Read a row', 'name' => 'Message', 'said' => 'The table “Leads” has no row 4. Nothing was read.'), $entries[0]);
+	pg_assert_same(array('node_id' => 'say', 'token' => '{{node.say.count}}', 'key' => 'count', 'box' => 'say', 'name' => 'count', 'said' => ''), $entries[1], 'no label: the key; no row read: no sentence');
 	pg_assert_same('', $entries[2]['node_id'], 'a box the flow lacks has no id to open');
+	pg_assert_same(array('start', '{{trigger.name}}'), array_values(array_intersect_key(ws_flow_empty_entries(array(array('box' => '', 'key' => 'name')), $nodes, array(), $label)[0], array('node_id' => 1, 'token' => 1))), 'what started the run: the start box, a trigger reference');
 
 	$found = ws_flow_reason_test_values();
 	$found['row']['found'] = '1';
@@ -98,7 +99,7 @@ function test_workspace_flow_failure_reason_text()
 // or a failure that kept no list, stays as it was.
 function test_workspace_flow_failure_reason_stored()
 {
-	$entries = array(array('node_id' => 'row', 'key' => 'cell_7', 'box' => 'Read a row', 'name' => 'Message', 'said' => 'No row 4.'));
+	$entries = array(array('node_id' => 'row', 'token' => '{{node.row.cell_7}}', 'key' => 'cell_7', 'box' => 'Read a row', 'name' => 'Message', 'said' => 'No row 4.'));
 	$stored = ws_flow_result_pack('Could not write in #genel: The message is empty.', array('empty_values' => $entries));
 	$plain = ws_flow_result_pack('The channel is gone.');
 
@@ -107,7 +108,7 @@ function test_workspace_flow_failure_reason_stored()
 	pg_assert_same('The channel is gone.', ws_flow_text_with_reason('The channel is gone.', 'failed', $plain, true), 'another reason shows nothing new');
 	pg_assert_same('The value “Message” from the box “Read a row” was empty.', ws_flow_text_with_reason('', 'failed', $stored, false));
 
-	pg_assert_same(array(array('node_id' => 'row', 'key' => 'cell_7', 'box' => 'Read a row', 'name' => 'Message')), ws_flow_empty_present('failed', $stored), 'the canvas gets no row sentence');
+	pg_assert_same(array(array('node_id' => 'row', 'token' => '{{node.row.cell_7}}', 'key' => 'cell_7', 'box' => 'Read a row', 'name' => 'Message')), ws_flow_empty_present('failed', $stored), 'the canvas gets no row sentence');
 	pg_assert_same(array(), ws_flow_empty_present('done', $stored));
 	pg_assert_same(array(), ws_flow_empty_present('failed', $plain));
 	pg_assert_same(array(), ws_flow_empty_present('failed', 'not json'));
