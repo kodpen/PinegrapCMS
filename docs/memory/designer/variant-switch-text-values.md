@@ -4,7 +4,7 @@ description: The variant chooser (pg_civ_variants.js) writes a bound value as te
 module: widgets_catalog
 ---
 
-## What went wrong?
+## What did #8399 fix?
 - `setProp()` in `assets/js/pg_civ_variants.js` wrote every `text:` binding with `innerHTML`. The variant payload (`$vproducts` in `_render_system_widget_catalog_item_view()`) and the `get_product` answer (`pg_panel_get_product()`) carry plain text raw (name, short_description, mpn, gtin, brand, weight, custom_field_1–4, reference_label), while the server escapes the same tokens once (`pg_sw_escape_token_values()`).
 - A short description holding markup showed as typed on the page and ran as HTML a moment later: the refresh after the load (the variant shown, when the default selection is complete) and every pick wrote it. The text comes from a role-3 user with manage_ecommerce, a products:write API key or a marketplace import.
 
