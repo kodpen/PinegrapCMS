@@ -274,6 +274,31 @@ function test_carrier_label_geliver_create_waits_for_late_offers_without_cheapes
 	pg_assert_same(array('offerID' => '16bc98bb-3d1f-4bc1-8acd-14d2422301e6'), $sent[10]['body']);
 }
 
+// Geliver has answered 99 percent with the only offer requested already in.
+function test_carrier_label_geliver_offers_complete_by_count()
+{
+	pg_assert_true(pg_label_geliver_offers_complete(array('percentageCompleted' => 100)));
+	pg_assert_true(pg_label_geliver_offers_complete(array('percentageCompleted' => 99, 'totalOffersRequested' => 1, 'totalOffersCompleted' => 1)));
+	pg_assert_false(pg_label_geliver_offers_complete(array('percentageCompleted' => 50, 'totalOffersRequested' => 2, 'totalOffersCompleted' => 1)));
+	pg_assert_false(pg_label_geliver_offers_complete(array('percentageCompleted' => 0, 'totalOffersRequested' => 0, 'totalOffersCompleted' => 0)));
+	pg_assert_false(pg_label_geliver_offers_complete(null));
+
+	$offers = json_decode(carrier_label_geliver_test_offers_without_cheapest(array('1f26245c-db36-4bce-ac57-6f443847ec4f')), true);
+	$offers['data']['offers'] = array_merge($offers['data']['offers'], array('percentageCompleted' => 99, 'totalOffersRequested' => 1, 'totalOffersCompleted' => 1));
+
+	carrier_label_geliver_test_stub(array(
+		'POST /shipments'    => array(array(200, json_encode($offers))),
+		'POST /transactions' => array('transaction_accepted'),
+	));
+
+	$answer = pg_label_call('geliver', 'create', array(carrier_label_geliver_test_shipment(), carrier_label_geliver_test_account(array('mode' => 'test'))));
+	$sent = carrier_label_geliver_test_sent();
+	carrier_label_geliver_test_done();
+
+	pg_assert_true($answer['success'], $answer['error']);
+	pg_assert_same(array('POST /shipments', 'POST /transactions'), array_slice($sent, 0, 2), 'no read again');
+}
+
 // Offers that never arrive end the wait after PG_LABEL_GELIVER_OFFER_READS
 // reads and buy nothing.
 function test_carrier_label_geliver_create_stops_waiting_for_offers()
