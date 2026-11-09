@@ -1176,11 +1176,12 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         // visitor who never presses Update would reach the gateway with a
         // blank schedule. Product defaults, same as the legacy update writes
         // for a row the customer may not edit; the customer's own choice
-        // (cart_action.php) overwrites them.
+        // (cart_action.php) overwrites them. A row the customer may not edit
+        // gets them again once its stored start date has passed, as the
+        // legacy update rewrites them on every update.
         if (is_array($rows)) {
             foreach ($rows as $_ri => $_rr) {
-                if ((int)($_rr['recurring'] ?? 0) !== 1) continue;
-                if ((string)($_rr['recurring_payment_period'] ?? '') !== '') continue;
+                if (!_pg_cart_recurring_needs_defaults($_rr, date('Y-m-d'))) continue;
                 $_def = _pg_cart_recurring_defaults($_rr);
                 db("UPDATE order_items
                     SET recurring_payment_period = '" . e($_def['period']) . "',
@@ -1460,6 +1461,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                     'recurring'                => (int)($r['recurring'] ?? 0),
                     'payment_period'           => (string)($r['payment_period'] ?? ''),
                     'recurring_start_date'     => (string)($r['recurring_start_date'] ?? ''),
+                    'recurring_start_days'     => (int)($r['recurring_start_days'] ?? 0),
                     'recurring_payment_period' => (string)($r['recurring_payment_period'] ?? ''),
                     'recurring_number_of_payments' => (int)($r['recurring_number_of_payments'] ?? 0),
                 );
@@ -1467,20 +1469,17 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         }
     }
     // ── Recurring vs. today's charges ────────────────────────────────────
-    // Legacy rule (get_shopping_cart.php:1155): a row belongs to "Today's
-    // Charges" when the product isn't recurring at all, OR its first payment
-    // falls today. The ClearCommerce carve-out is kept for fidelity even
-    // though Pinegrap ships with Iyzipay — if someone runs that gateway, the
-    // legacy behaviour is what their bookkeeping expects.
+    // A row belongs to "Today's Charges" when submit_order() charges it with
+    // the order (pg_order_line_charged_today()): it is not recurring, or its
+    // first payment falls on or before today. On ClearCommerce every
+    // recurring row is a later charge: that gateway bills them itself.
     $_today_cents     = 0;
     $_recurring_cents = 0;
     $_today_str = date('Y-m-d');
     $_cc_gateway = (defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD == true)
                 && (defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY === 'ClearCommerce');
     foreach ($items as $_i => $_it) {
-        $_start = (string)$_it['recurring_start_date'];
-        $_starts_today = ($_start === '' || $_start === '0000-00-00' || $_start === $_today_str);
-        $_is_rec = !((int)$_it['recurring'] === 0 || ($_starts_today && !$_cc_gateway));
+        $_is_rec = _pg_cart_row_charged_later($_it, $_today_str, $_cc_gateway);
         $items[$_i]['is_recurring'] = $_is_rec ? 1 : 0;
         if ($_is_rec) $_recurring_cents += (int)$_it['line_cents'];
         else          $_today_cents     += (int)$_it['line_cents'];
@@ -3549,6 +3548,50 @@ function _pg_cart_recurring_defaults($row)
         'period'     => $period,
         'payments'   => (int)($row['product_number_of_payments'] ?? 0),
         'start_date' => date('Y-m-d', pg_calendar_days_later(max(0, $days))),
+    );
+}
+
+// ── Recurring schedule: written from the product's defaults? ─────────────
+//
+// A recurring row with no schedule yet gets the product's defaults
+// (_pg_cart_recurring_defaults()). So does a row whose schedule the customer
+// may not edit once its stored start date is before $today: that date was
+// worked out on an earlier day and the first charge cannot fall in the past.
+// The customer's own schedule is left to them (cart_action.php checks it).
+//
+// @param array  $row    Cart row: recurring, recurring_payment_period,
+//                       recurring_start_date,
+//                       recurring_schedule_editable_by_customer
+// @param string $today  Y-m-d
+// @return bool
+function _pg_cart_recurring_needs_defaults($row, $today)
+{
+    if ((int)($row['recurring'] ?? 0) !== 1) return false;
+    if ((string)($row['recurring_payment_period'] ?? '') === '') return true;
+    if ((int)($row['recurring_schedule_editable_by_customer'] ?? 0) === 1) return false;
+    $start = (string)($row['recurring_start_date'] ?? '');
+    return $start !== '' && $start !== '0000-00-00' && $start < (string)$today;
+}
+
+// ── Recurring schedule: a later charge? ─────────────────────────────────
+//
+// Whether a cart row goes to "Recurring Charges" instead of today's: the
+// opposite of pg_order_line_charged_today(), the rule submit_order() charges
+// with, so the cart's today total is what the checkout takes.
+//
+// @param array  $row           Cart row: recurring, recurring_start_date,
+//                              recurring_start_days
+// @param string $today         Y-m-d
+// @param bool   $clearcommerce Cards on with the ClearCommerce gateway
+// @return bool
+function _pg_cart_row_charged_later($row, $today, $clearcommerce)
+{
+    return !pg_order_line_charged_today(
+        (int)($row['recurring'] ?? 0) === 1,
+        (string)($row['recurring_start_date'] ?? ''),
+        (int)($row['recurring_start_days'] ?? 0),
+        $today,
+        $clearcommerce
     );
 }
 
