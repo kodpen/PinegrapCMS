@@ -81,7 +81,7 @@
 - decisions-made-seo.md: Decisions list, SEO part (2026-10-27/28): large image preview, site icon, main-host redirect, per-form structured-data type, author source and share-image field; defaults keep running sites
 - decisions-made-waf.md: Decisions list, firewall part: thresholds stay, concurrent refusal no offence, rate bans off the ladder, global limit before session, no lock release, nothing served to a ban, Claude Code unverified.
 - decisions-made-widgets.md: Decisions list, system widget part: conditions and required controls, translated text, equal old blocks (W16), gallery sources (W5), entity values (W8), 2026-10-27 answers, Photo Gallery folder.
-- decisions-made-workspace-10.md: Decisions list, workspace part 10 (2026-11-09 on): application lines fold; agent activity; table bin, Excel, import; why a flow box failed; team replies; channel export; agent questions in the bell
+- decisions-made-workspace-10.md: Decisions list, workspace part 10 (2026-11-09 on): application lines fold; agent activity; table bin, Excel, import; flow failure reason; team replies; channel export; agent questions; unread requests
 - decisions-made-workspace-2.md: Decisions list, workspace part 2 (2026-10-29 on): the channel menu holds only the channel's own items; creates in a chat go through /oluştur (/create): its rights and kinds; the sales quote stays
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
