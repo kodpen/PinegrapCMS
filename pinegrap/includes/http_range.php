@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Byte ranges (RFC 9110 14): which part of a file a request asks for, and
- * sending that part; and whether a Cache-Control keeps a shared cache from
- * storing an answer (RFC 9111 5.2.2).
+ * sending that part; whether a Cache-Control keeps a shared cache from
+ * storing an answer (RFC 9111 5.2.2); and the Content-Disposition a file is
+ * sent with (RFC 6266).
  *
  * A media player asks for a sound or a video in parts: Safari plays nothing
  * that is not answered 206 Partial Content, and every player winds forward by
@@ -192,4 +193,37 @@ function pg_cache_control_shared_safe($value)
     }
 
     return false;
+}
+
+/**
+ * The Content-Disposition of a file answer (RFC 6266): inline or attachment,
+ * the name in quotes, and the name in UTF-8 (RFC 8187) beside it when it is
+ * not plain ASCII.
+ *
+ * The quotes keep a comma in the name: a header value may be a
+ * comma-separated list, and Chrome reads "filename=a,b.jpg" as two
+ * Content-Disposition values and refuses the answer
+ * (ERR_RESPONSE_HEADERS_MULTIPLE_CONTENT_DISPOSITION), so the picture stays
+ * empty and its address opens an error page. Names have been stored without
+ * a comma since 2026.4.1 (pg_ascii_file_name()); a file stored before keeps
+ * it. A quote, a backslash or a line break is removed, so the name can end
+ * neither the quoted string nor the header.
+ *
+ * @param string $name   the name the browser saves the file under
+ * @param bool   $inline shown in the browser, else downloaded
+ * @return string the header's value, without "Content-Disposition:"
+ */
+function pg_http_content_disposition($name, $inline)
+{
+    $name = preg_replace('/["\\\\\r\n]/', '', (string) $name);
+
+    // One underscore a letter; a name that is not UTF-8 is cut byte by byte.
+    $ascii = preg_replace('/[^\x20-\x7e]/u', '_', $name);
+
+    if (!is_string($ascii)) {
+        $ascii = preg_replace('/[^\x20-\x7e]/', '_', $name);
+    }
+
+    return ($inline ? 'inline' : 'attachment') . '; filename="' . $ascii . '"'
+        . (($ascii !== $name) ? "; filename*=UTF-8''" . rawurlencode($name) : '');
 }
