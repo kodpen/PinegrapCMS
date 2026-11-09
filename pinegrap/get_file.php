@@ -1335,11 +1335,15 @@ if ($if_modified_since == $last_modified) {
 } else {
     header('Last-Modified: ' . $last_modified);
 
+    // The name goes into Content-Disposition in quotes: a file stored with a
+    // comma in its name before 2026.4.1 is otherwise read by Chrome as two
+    // values of the header and refused (pg_http_content_disposition()).
+    require_once(dirname(__FILE__) . '/includes/http_range.php');
+
     // if file can be displayed in browser, display file in browser
     if (isset($mimetype[$extension]) && ($mimetype[$extension] != 'application/octet-stream')) {
         header('Content-type: ' . $mimetype[$extension]);
-        // Quoted, with the characters that would end the quote or the header removed.
-        header('Content-disposition: filename="' . preg_replace('/["\\\\\r\n]/', '', $file['download_name']) . '"');
+        header('Content-Disposition: ' . pg_http_content_disposition($file['download_name'], true));
 
         // HTML, XHTML, SVG and XML are documents the browser will execute
         // when they are opened by their own address: an inline <script> in
@@ -1364,7 +1368,7 @@ if ($if_modified_since == $last_modified) {
     // else file cannot be displayed in browser, so force download dialog
     } else {
         header('Content-type: application/octet-stream');
-        header('Content-disposition: attachment; filename="' . preg_replace('/["\\\\\r\n]/', '', $file['download_name']) . '"');
+        header('Content-Disposition: ' . pg_http_content_disposition($file['download_name'], false));
     }
 }
 
