@@ -1,7 +1,13 @@
 ---
 name: coordinator-no-plans
-description: Design template plans are low priority (2026-11-08): taken only when no other plan step can be given; then a new design template; no bug hunt and no bug issue as work
+description: Design template plans are paused (2026-11-09): no template step and no new template is given out; low priority before that; no bug hunt and no bug issue as work
 ---
+
+## Are the design template plans paused?
+- Yes, for now (owner, 2026-11-09): no step of a `plans/design-template-*` plan (new templates and the polishing round) is given out, and no new design template is started. A free slot with no step of the main list stays empty.
+- `tools/free_work.php` prints the low-priority list as "paused" while `FREE_WORK_LOW_PRIORITY_PAUSED` is true; setting it back to false lists those steps again under the rules below.
+- A template PR already open is finished by its own session and lands as usual; it takes no next template step.
+- Why: coordinators still took template steps first while feature plan steps waited.
 
 ## When does this apply?
 - A worker slot is free and no plan step in `plans/` is free (every step done or held by an open PR, or waiting on a decision). Plans still come first whenever one has a free step.
@@ -16,8 +22,7 @@ description: Design template plans are low priority (2026-11-08): taken only whe
 ## Are bug issues or a bug hunt given out?
 - No, since 2026-11-06. Workers only build the project: a free plan step, else a new design template. No coordinator starts a bug hunt or gives a `bug` issue to a worker, and no worker claims one.
 - The open `bug` issues (the test coordinator's and those of the earlier hunts) wait for the owner (`test-coordinator.md`).
-- Why: the workers' quota goes to building the project. On 2026-11-06 seven new hunts started within five minutes, beside the fixes of the earlier rounds.
-- The hunt and fix PRs already open then were finished by their own sessions and landed as usual; the hunt's plan files (`plans/bug-hunt*.md`) were then deleted.
+- Why: the workers' quota goes to building the project (on 2026-11-06 seven new hunts started within five minutes).
 
 ## When is a new design template started?
 - When a slot is still free and no template plan is open.
