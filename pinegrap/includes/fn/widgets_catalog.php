@@ -705,6 +705,9 @@ function _pg_catalog_rating_values($rating_avg, $rating_count)
  * against its components bought one by one at their own prices, with the
  * currency sign as the discount amount is written, '' when there is none.
  * The saving is read from the price the visitor pays (an offer included).
+ * It is text, escaped with the card's other values: the sign stored as an
+ * entity (&#8378;) is its character, as escaping the entity would show it
+ * as "&#8378;".
  *
  * @param bool   $is_bundle
  * @param array  $contents        the bundle's components (pg_bundle_contents_of())
@@ -718,7 +721,7 @@ function _pg_catalog_bundle_values($is_bundle, $contents, $price_cents, $currenc
 
     return array(
         '__is_bundle'               => $is_bundle ? '1' : '0',
-        '__bundle_saving_formatted' => ($saving > 0) ? pg_visitor_money($saving / 100, $currency_symbol) : '',
+        '__bundle_saving_formatted' => ($saving > 0) ? pg_visitor_money_text($saving / 100, $currency_symbol) : '',
     );
 }
 
@@ -1993,7 +1996,6 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         $price_decimal        = $price_cents / 100;
         $original_price_dec   = $original_price_cents / 100;
         $price_formatted      = pg_visitor_money($price_decimal, $currency_symbol);
-        $original_price_formatted = pg_visitor_money($original_price_dec, $currency_symbol);
         $has_discount         = ($price_cents < $original_price_cents) ? 1 : 0;
         $disc_save_cents      = $original_price_cents - $price_cents;
         $disc_save_pct        = ($original_price_cents > 0 && $disc_save_cents > 0)
@@ -2054,12 +2056,13 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             // CSS rule). The `__price`/`__price_formatted` token is the
             // SOLE price visible in that case. When a discount IS active,
             // both tokens have values → the designer's strike-through +
-            // discounted price both render.
+            // discounted price both render. The two amounts are text,
+            // escaped with the rest of the map below.
             '__original_price'           => $has_discount ? number_format($original_price_dec, 2, '.', '') : '',
-            '__original_price_formatted' => $has_discount ? $original_price_formatted : '',
+            '__original_price_formatted' => $has_discount ? pg_visitor_money_text($original_price_dec, $currency_symbol) : '',
             '__has_discount'             => (string)$has_discount,
             '__discount_amount'          => $disc_save_cents > 0 ? number_format($disc_save_cents / 100, 2, '.', '') : '',
-            '__discount_amount_formatted'=> $disc_save_cents > 0 ? pg_visitor_money($disc_save_cents / 100, $currency_symbol) : '',
+            '__discount_amount_formatted'=> $disc_save_cents > 0 ? pg_visitor_money_text($disc_save_cents / 100, $currency_symbol) : '',
             '__discount_percent'         => $disc_save_pct > 0 ? (string)$disc_save_pct : '',
             // The price before the discount the shop's rule names
             // (Settings › Ecommerce › Reference Price); both empty when
@@ -2767,7 +2770,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                     // designer's "indirim" markup works on group cards too.
                     '__has_discount'             => $_pg_grp_disc ? '1' : '0',
                     '__original_price'           => ($_pg_grp_disc && $_pg_grp_orig > 0) ? number_format($_pg_grp_orig / 100, 2, '.', '') : '',
-                    '__original_price_formatted' => ($_pg_grp_disc && $_pg_grp_orig > 0) ? pg_visitor_money($_pg_grp_orig / 100, $currency_symbol) : '',
+                    '__original_price_formatted' => ($_pg_grp_disc && $_pg_grp_orig > 0) ? pg_visitor_money_text($_pg_grp_orig / 100, $currency_symbol) : '',
                     '__has_variants'      => '1',
                     // Real product count in the subtree (was hard-coded 1/0).
                     '__variant_count'     => $_pg_gp ? (string)(int)$_pg_gp['count'] : '0',
@@ -5532,7 +5535,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         }
         // The price before the discount of every variant, in one read for
         // the group (pg_price_reference_page()); the variant script swaps
-        // reference_price / reference_label with the rest.
+        // reference_price / reference_label with the rest. It writes the
+        // payload's prices as HTML (innerHTML), so the token's text is
+        // escaped for it.
         $_civ_ref_items = array();
         foreach ($vproducts as $_pid => $_vp) {
             $_civ_ref_items[$_pid] = array('price' => (int)$_vp['price_cents'], 'reduced' => (int)$_vp['price_cents'] < (int)$_vp['original_price_cents']);
@@ -5540,7 +5545,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $_civ_references = pg_price_reference_page($_civ_ref_items);
         foreach ($vproducts as $_pid => &$_vp_ref3) {
             $_vp_ref_tokens = pg_price_reference_tokens(isset($_civ_references[$_pid]) ? $_civ_references[$_pid] : null, $currency_symbol);
-            $_vp_ref3['reference_price'] = $_vp_ref_tokens['__reference_price'];
+            $_vp_ref3['reference_price'] = h($_vp_ref_tokens['__reference_price']);
             $_vp_ref3['reference_label'] = $_vp_ref_tokens['__reference_label'];
         }
         unset($_vp_ref3);
@@ -5863,7 +5868,6 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $price_decimal            = $price_cents / 100;
         $original_price_decimal   = $original_price_cents / 100;
         $price_formatted          = pg_visitor_money($price_decimal, $currency_symbol);
-        $original_price_formatted = pg_visitor_money($original_price_decimal, $currency_symbol);
         $has_discount             = ($price_cents < $original_price_cents) ? 1 : 0;
         $discount_save_cents      = $original_price_cents - $price_cents;
         // The variant read above already holds the product shown; a plain
@@ -5932,12 +5936,13 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             // EMPTY when no discount applies → the designer's bound
             // strike-through element auto-hides (via CSS :empty rule).
             // Only when an actual offer is in effect do these tokens
-            // carry the original price for visible strike-through.
+            // carry the original price for visible strike-through. The
+            // amounts are text, escaped with the rest of the map.
             '__original_price'           => $has_discount ? number_format($original_price_decimal, 2, '.', '') : '',
-            '__original_price_formatted' => $has_discount ? $original_price_formatted : '',
+            '__original_price_formatted' => $has_discount ? pg_visitor_money_text($original_price_decimal, $currency_symbol) : '',
             '__has_discount'             => (string)$has_discount,
             '__discount_amount'          => $discount_save_cents > 0 ? number_format($discount_save_cents / 100, 2, '.', '') : '',
-            '__discount_amount_formatted'=> $discount_save_cents > 0 ? pg_visitor_money($discount_save_cents / 100, $currency_symbol) : '',
+            '__discount_amount_formatted'=> $discount_save_cents > 0 ? pg_visitor_money_text($discount_save_cents / 100, $currency_symbol) : '',
             '__discount_percent'         => $discount_save_pct > 0 ? (string)$discount_save_pct : '',
             // The price before the discount the shop's rule names; the
             // variant payload carries the same per variant.

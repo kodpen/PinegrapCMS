@@ -35,6 +35,10 @@ if (PHP_SAPI !== 'cli') {
 define('FREE_WORK_REPO', 'repos/kodpen/pinegrapcms');
 define('FREE_WORK_QUEUE_LIMIT', 25);
 define('FREE_WORK_LINE', 110);
+// While true the low-priority list (the design templates) is not printed:
+// none of its steps is given out and no new template is started. Set back to
+// false to list them again (docs/memory/workflow/coordinator-no-plans.md).
+define('FREE_WORK_LOW_PRIORITY_PAUSED', true);
 
 // The plan a file belongs to: the X of "[plan:X]" in its description (the
 // steps files say "claim as [plan:X] <step>"), else the file name without
@@ -480,8 +484,12 @@ foreach (free_work_gh_lines('issues?state=open&labels=architect&per_page=100', '
 echo "Queue: $queue of " . FREE_WORK_QUEUE_LIMIT . " open PRs (drafts and merge trains not counted); $drafts drafts.\n";
 echo "Free plan steps (not done, no open PR; read the step's \"After\" before giving it out):\n";
 echo ($free ? implode("\n", $free) : '  none') . "\n";
-echo "Low priority (design templates; only when no step above can be given):\n";
-echo ($free_low ? implode("\n", $free_low) : '  none') . "\n";
+if (FREE_WORK_LOW_PRIORITY_PAUSED) {
+	echo "Low priority (design templates): paused; give none out and start no new template.\n";
+} else {
+	echo "Low priority (design templates; only when no step above can be given):\n";
+	echo ($free_low ? implode("\n", $free_low) : '  none') . "\n";
+}
 echo 'Architect issues open: ' . ($architect ? implode(' ', $architect) : 'none') . "\n";
 echo 'Held by an open PR: ' . ($held ? implode(', ', $held) : 'none') . "\n";
 echo 'Shelved plans skipped: ' . ($shelved ? implode(', ', array_keys($shelved)) : 'none') . "\n";

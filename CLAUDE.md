@@ -98,9 +98,9 @@ PR that gives its reason (Fixed rules 6). Details: `workflow/working-mode.md`,
    not `.min.js` bundles or language files). A bigger feature is a plan cut
    into steps of that size.
 6. **On to the next step when it lands**, under the queue limit; at most
-   three steps in a row, then hand over through the plan file and end. A
-   design template plan's step only when `php tools/free_work.php` lists no
-   other free step.
+   three steps in a row, then hand over through the plan file and end.
+   Design template plans are paused: no step of theirs and no new template
+   (`workflow/coordinator-no-plans.md`).
 7. **Shared hot files.** A PR never edits `changelog.txt`: its body names the
    `[NEW]` line or the `[SCHEME]` item. Translation keys only with
    `php tools/tr_add.php`. Generated indexes and `.min.js` bundles: append
@@ -110,8 +110,8 @@ PR that gives its reason (Fixed rules 6). Details: `workflow/working-mode.md`,
    still marked ready. A PR waiting on a decision goes back to draft. Each
    coordinator's workers hold at most 8 of the 25.
    `gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '[.[]|select(.draft|not)|select(.head.ref|startswith("merge-train")|not)]|length'`
-9. **Coordinators.** One per account keeps 8 cloud workers on plan steps,
-   else a new design template; it writes no code, merges nothing, and gives
+9. **Coordinators.** One per account keeps 8 cloud workers on plan steps
+   (design templates paused); it writes no code, merges nothing, and gives
    out no bug hunt or `bug` issue. The test coordinator starts no workers: it
    opens `bug` issues, which wait for the owner. No session reopens closed
    PRs or marks drafts ready in bulk: a draft goes ready only from the
