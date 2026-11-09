@@ -234,7 +234,8 @@ function ws_flow_run_failure($run, $flow)
         'run'  => (int) $run['id'],
         'flow' => $flow ? (string) $flow['name'] : (string) (ws_flow_run_context($run)['flow_name'] ?? ''),
         'box'  => $node ? ws_flow_box_name($node) : (is_array($failed) ? (string) $failed['node_id'] : '?'),
-        'text' => is_array($failed) ? ws_flow_result_text($failed['result']) : '',
+        // The line goes to the flow's owner, who may change it.
+        'text' => is_array($failed) ? ws_flow_text_with_reason(ws_flow_result_text($failed['result']), 'failed', (string) $failed['result'], true) : '',
     );
 }
 

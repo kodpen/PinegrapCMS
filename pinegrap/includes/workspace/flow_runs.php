@@ -51,6 +51,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// The sentences a failed box adds for the values it read empty.
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_failure_reason.php');
+
 /** The most runs of one flow that may be open at once. */
 define('WS_FLOW_MAX_OPEN_RUNS', 500);
 
@@ -1798,7 +1801,7 @@ function ws_flow_run_result_of($run, $steps, $graph)
 
         $lines[] = array(
             'status'      => (string) $step['status'],
-            'text'        => ws_step_result_shown(is_array($node) ? (string) $node['kind'] : '', (string) $step['outcome'], ws_flow_result_text($step['result']), $edit),
+            'text'        => ws_flow_text_with_reason(ws_step_result_shown(is_array($node) ? (string) $node['kind'] : '', (string) $step['outcome'], ws_flow_result_text($step['result']), $edit), (string) $step['status'], (string) $step['result'], $edit),
             'finished_at' => (int) $step['finished_at'],
             'id'          => (int) ($step['id'] ?? 0),
         );

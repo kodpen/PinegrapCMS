@@ -1230,7 +1230,8 @@ function ws_api_flow_run_step_present($step, $graph, $edit = false, $states = nu
         'finished_at' => ws_flow_time($step['finished_at']),
         'threads_in'  => ws_api_flow_step_threads_in($graph, (array) $states, $step['node_id']),
         'outputs'     => (object) ws_api_flow_step_outputs($kind, $step['result'], $edit),
-        'result'      => mb_substr(ws_step_result_shown($kind, (string) $step['outcome'], ws_flow_result_text($step['result']), $edit), 0, WS_API_FLOW_RESULT_CHARS),
+        'result'      => mb_substr(ws_flow_text_with_reason(ws_step_result_shown($kind, (string) $step['outcome'], ws_flow_result_text($step['result']), $edit), (string) $step['status'], (string) $step['result'], $edit), 0, WS_API_FLOW_RESULT_CHARS),
+        'empty_values' => ws_flow_empty_present((string) $step['status'], (string) $step['result']),
     );
 }
 
@@ -1252,6 +1253,7 @@ function ws_api_flow_run_step_schema()
         'threads_in'  => array(array('from' => 'string', 'on' => 'string', 'taken' => 'boolean')),
         'outputs'     => 'object',
         'result'      => 'string',
+        'empty_values' => array(array('node_id' => 'string', 'token' => 'string', 'key' => 'string', 'box' => 'string', 'name' => 'string')),
     );
 }
 

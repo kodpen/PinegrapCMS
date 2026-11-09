@@ -177,6 +177,7 @@
 - workspace-flows-empty-fallback.md: The per-thread "When empty, write" fallback of a Flows value (T6, PR #3729, #2415 2a): token syntax, where it is filled, which references take it, the warning rule, the chip
 - workspace-flows-erp-start-events.md: ERP events a flow can start on (PR #7428): invoices, receipts, incoming e-documents, quote decisions; the new erp.invoice.overdue and erp.edoc.received
 - workspace-flows-event-depth.md: The chain depth a flow run's events carry: ws_event_depth() said by a step box around its work, stamped as _depth by ws_event() and pg_event_record(), read by ws_events_start()
+- workspace-flows-failure-reason.md: Why a flow box failed (FR1, PR #8425): data.empty_values, the added sentence on card, bell and run view, the canvas buttons and the card link to the failed box
 - workspace-flows-for-each-canvas.md: The For each loop on the Flows canvas (D9 canvas, #3422): kinds, arrows, the body frame, the list and collect forms, which values a box inside or outside the loop is offered
 - workspace-flows-for-each-count.md: Repeat N times (For each count mode, FL2) and value boxes inside a loop body: settings, items 1..N, checks, the pure-box loop rule, the reader's pass, a Wait box per round, canvas
 - workspace-flows-for-each.md: Flows For each loop (D9, #3312, #3323, #3422): For each / End boxes, body per item at pass = item, graph check, 50-item cap, End outputs, 16 KB list, size warning

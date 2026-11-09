@@ -919,13 +919,29 @@
         // single editor closes).
         function openAsked() {
             open(asked).then(function () {
-                if (askedBox && state.flow && (state.flow.id === asked) && nodeById(askedBox)) {
-                    select({ type: 'node', id: askedBox }, { reveal: true, focus: true });
+                var box = function () {
+                    if (askedBox && state.flow && (state.flow.id === asked) && nodeById(askedBox)) {
+                        select({ type: 'node', id: askedBox }, { reveal: true, focus: true });
+                    }
+                };
+
+                // With a run, the box is selected in the run shown (a
+                // failed run's card opens on the box it failed at).
+                if (askedRun && state.flow && (state.flow.id === asked)) {
+                    var shown = openLastRun({ id: askedRun, flow_id: asked });
+
+                    if (askedBox && shown) {
+                        shown.then(function () {
+                            if (state.run && (state.run.id === askedRun)) {
+                                box();
+                            }
+                        });
+                    }
+
+                    return;
                 }
 
-                if (askedRun && state.flow && (state.flow.id === asked)) {
-                    openLastRun({ id: askedRun, flow_id: asked });
-                }
+                box();
             });
         }
 
@@ -10950,7 +10966,7 @@
             drawSettings();
         }
 
-        openRun(run.id);
+        return openRun(run.id);
     }
 
     // Stop on a running run's flag: asked first, as Cancel the run is.
@@ -11473,6 +11489,12 @@
             wrap.appendChild(el('p', 'small wsf-run-result', step.result));
         }
 
+        var fixes = emptyFixes(node, step);
+
+        if (fixes) {
+            wrap.appendChild(fixes);
+        }
+
         var reads = runReads(node);
 
         if (reads) {
@@ -11501,6 +11523,76 @@
         }
 
         return wrap;
+    }
+
+    // A box that failed on values its texts read empty (steps[].empty_values,
+    // flow_failure_reason.php): per value, "When empty, write" for whoever
+    // edits the flow, which opens the value's fallback in the draft, and
+    // Open the box, which selects the box that gave it. Null for none.
+    function emptyFixes(node, step) {
+        var list = (step && (step.status === 'failed') && step.empty_values) || [];
+
+        if (!list.length) {
+            return null;
+        }
+
+        var wrap = el('div', 'd-flex flex-column gap-2 mt-3 wsf-run-fixes');
+
+        list.forEach(function (item, index) {
+            var row = el('div', 'd-flex flex-wrap align-items-center gap-2');
+
+            if (list.length > 1) {
+                row.appendChild(el('span', 'small fg-secondary w-100', t('fl_reason_value', item.name, item.box)));
+            }
+
+            if (state.stash && state.stash.edit && item.token) {
+                var fix = K.button('btn btn-sm btn-outline theme-primary', t('fl_reason_fallback'), 'bi-input-cursor-text');
+
+                fix.setAttribute('data-refocus', 'reason-fix-' + index);
+                fix.addEventListener('click', function () { fixEmpty(node, item); });
+                row.appendChild(fix);
+            }
+
+            if (item.node_id && nodeById(item.node_id)) {
+                var open = K.button('btn btn-sm btn-outline theme-secondary', t('fl_reason_open'), 'bi-box-arrow-in-right');
+
+                open.setAttribute('data-refocus', 'reason-open-' + index);
+                open.addEventListener('click', function () {
+                    select({ type: 'node', id: item.node_id }, { reveal: true, focus: true });
+                });
+                row.appendChild(open);
+            }
+
+            wrap.appendChild(row);
+        });
+
+        return wrap;
+    }
+
+    // Back from the run to the draft on the failed box, its "When empty,
+    // write…" asked for the value where its texts read it (askFallback()). A
+    // draft that no longer has the box, or no longer reads the value there,
+    // says so and keeps what it could select.
+    function fixEmpty(node, item) {
+        closeRun('');
+
+        if (!state.edit || !nodeById(node.id)) {
+            K.toast(t('fl_reason_gone'), 'warning');
+            return;
+        }
+
+        select({ type: 'node', id: node.id }, { reveal: true });
+
+        var chip = Array.prototype.filter.call(ui.app.querySelectorAll('.wsf-chip[data-token]'), function (one) {
+            return tokenBare(one.getAttribute('data-token')) === item.token;
+        })[0];
+
+        if (!chip) {
+            K.toast(t('fl_reason_gone'), 'warning');
+            return;
+        }
+
+        chip.click();
     }
 
     // Tries a failed box again or skips it, after asking: a box tried again
@@ -11593,6 +11685,12 @@
 
         if (step && step.result) {
             box.appendChild(el('p', 'small mb-1 wsf-run-result', step.result));
+        }
+
+        var fixes = emptyFixes(node, step);
+
+        if (fixes) {
+            box.appendChild(fixes);
         }
 
         if (step && (step.status === 'waiting') && step.task_id) {
