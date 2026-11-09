@@ -1894,7 +1894,8 @@ if (!defined('PG_UPDATE_CHECK_ANSWER_MARK')) {
  * "current" (up to date) only when the last check got an answer and that
  * answer is at most PG_UPDATE_CHECK_STALE_AGE old. A failed check stamps the
  * attempt without an answer, so an answer older than the attempt is a failed
- * last check. No database access.
+ * last check. Before any answer is recorded, the attempt's age decides alone.
+ * No database access.
  *
  * @param bool $available the stored "update available" flag
  * @param bool $checks_on SOFTWARE_UPDATE_CHECK is not false
@@ -1918,6 +1919,13 @@ function pg_update_check_state($available, $checks_on, $attempted, $answered, $n
 
     if ($attempted < 1) {
         return 'never';
+    }
+
+    // No answer recorded yet: a site that has just been updated to the code
+    // that records answers. Judged by the attempt as before, so the first
+    // days after the update do not read as a failed check.
+    if ($answered < 1) {
+        return (((int) $now - $attempted) > PG_UPDATE_CHECK_STALE_AGE) ? 'stale' : 'current';
     }
 
     if ($answered < $attempted) {

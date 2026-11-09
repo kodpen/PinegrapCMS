@@ -48,7 +48,16 @@ function test_update_check_state_failed_check()
 
 	// The attempt is stamped before the request; an answer is recorded after it.
 	pg_assert_same('failed', pg_update_check_state(false, true, $now - 60, $now - 86400 * 4, $now), 'last attempt newer than the last answer');
-	pg_assert_same('failed', pg_update_check_state(false, true, $now - 60, 0, $now), 'no answer ever recorded');
+}
+
+// Right after an update to the code that records answers, no answer exists
+// yet: the attempt's age decides, never "failed".
+function test_update_check_state_no_answer_recorded_yet()
+{
+	$now = 2000000000;
+
+	pg_assert_same('current', pg_update_check_state(false, true, $now - 86400, 0, $now), 'recent attempt');
+	pg_assert_same('stale', pg_update_check_state(false, true, $now - PG_UPDATE_CHECK_STALE_AGE - 1, 0, $now), 'old attempt');
 }
 
 function test_update_check_state_old_answer()
