@@ -6441,6 +6441,12 @@ function pg_pb_load_product($product_id)
     // carries the column only on a site that has it.
     $compare_at = pg_compare_at_price_value(isset($row['compare_at_price']) ? $row['compare_at_price'] : null);
 
+    // A bundle's Backorder switch shows its own choice, not the cache its
+    // components may have lowered (pg_bundle_backorder()).
+    if (!empty($row['bundle']) && array_key_exists('bundle_backorder', $row)) {
+        $row['backorder'] = $row['bundle_backorder'];
+    }
+
     $row['compare_at_price_enabled'] = is_int($compare_at);
     $row['compare_at_price']         = is_int($compare_at) ? pg_format_input_amount($compare_at / 100) : '';
 
@@ -6630,6 +6636,13 @@ function pg_pb_update_product($product_id)
         $product['bundle_discount_bp'] = pg_bundle_discount_bp_from_input(isset($_POST['bundle_discount']) ? $_POST['bundle_discount'] : '');
 
         if ($product['bundle']) {
+            // The Backorder tick of a bundle is its own choice; the backorder
+            // column is the cache pg_bundle_refresh() below works out from it
+            // and the components, so it can go up again when they allow it.
+            if (pg_bundle_backorder_ready()) {
+                $product['bundle_backorder'] = ($product['backorder'] === '1') ? 1 : 0;
+            }
+
             $stored_stock = db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . e($product_id) . "'");
 
             if ($stored_stock) {

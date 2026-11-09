@@ -120,6 +120,27 @@ function test_bundle_stock_backorder()
 	pg_assert_true(!pg_bundle_stock($one_refuses)['backorder_allowed']);
 }
 
+// The bundle's back order is its own choice while the components allow it,
+// and comes back once they allow it again: the cached backorder going down
+// never overwrites the choice.
+function test_bundle_backorder_follows_the_choice()
+{
+	$stuck = array('backorder' => '0', 'bundle_backorder' => '1');
+
+	pg_assert_same(1, pg_bundle_backorder($stuck, true), 'the choice comes back when the components allow it again');
+	pg_assert_same(0, pg_bundle_backorder($stuck, false));
+	pg_assert_same(0, pg_bundle_backorder(array('backorder' => '1', 'bundle_backorder' => '0'), true), 'no choice, no back order');
+}
+
+// Before the upgrade adds bundle_backorder the stored backorder is the choice.
+function test_bundle_backorder_before_the_upgrade()
+{
+	pg_assert_same(1, pg_bundle_backorder(array('backorder' => '1'), true));
+	pg_assert_same(0, pg_bundle_backorder(array('backorder' => '1'), false));
+	pg_assert_same(0, pg_bundle_backorder(array('backorder' => '0'), true));
+	pg_assert_same(0, pg_bundle_backorder(array(), true));
+}
+
 // A fixed price is the bundle's own; a sum adds the components and takes the
 // discount off, rounded to the nearest minor unit.
 function test_bundle_price()
