@@ -234,7 +234,7 @@ description: Generated from the module field of the memory files: each includes/
 - `theme_list_edit`: [[list-table-quick-edit-themes]]
 - `translate`: [[content-translation-record-save-jobs]], [[error-screen-language-and-status]]
 - `tree_search`: [[tree-search]]
-- `update`: [[ca-store-choice]], [[migration-screen]]
+- `update`: [[ca-store-choice]], [[migration-screen]], [[update-status-tile]]
 - `user_list`: [[user-list-folder-filters]], [[user-screens-names-and-dates]]
 - `user_list_edit`: [[list-table-quick-edit-users]]
 - `user_picker`: [[user-picker-search]]

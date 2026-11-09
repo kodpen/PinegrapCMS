@@ -2457,6 +2457,7 @@
     "Not billable": "Faturalanmaz",
     "Not built yet.": "Henüz oluşturulmadı.",
     "Not checked": "Kontrol edilmedi",
+    "Not checked recently": "Yakın zamanda denetlenmedi",
     "Not checked yet": "Henüz kontrol edilmedi",
     "Not checked yet: the page has not been drawn in {var:1} since its translations last changed. It is checked the next time it is opened in this language.": "Henüz denetlenmedi: çevirileri son değiştiğinden beri sayfa {var:1} dilinde açılmadı. Bu dilde bir sonraki açılışında denetlenir.",
     "Not checked yet: the page has not been opened in this language since its translations last changed": "Henüz denetlenmedi: çevirileri son değiştiğinden beri sayfa bu dilde açılmadı",
