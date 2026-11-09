@@ -42,6 +42,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - audit-trail-stored-values.md: What audit_log leaves out of before/after, how secrets are masked (by name, inside JSON text), how JSON text and long values are stored, what the audit screen must expect
 - audit-trail-workspace.md: How Workspace writes reach audit_log through ws_change_write(): kind to table, recycle vs deletes the helpers write, offers, the job as actor for bulk and scheduled changes
 - audit-trail-writers.md: Which save paths write audit_log rows, how they read the row before and after (pg_audit_fetch, pg_audit_record), which paths are not hooked
+- auto-campaign-group-opt-out.md: A commercial "joined a contact group" campaign profile skips a contact whose opt_in row for that subscription group is 0, as a manual campaign to the group does (#7596)
 - auto-registration-set-password-link.md: Accounts a form auto-registers or an administrator creates (add user, import) get a single-use set password link, not the password; who sees it, what $auto_registration_password holds.
 - build-url-host-parts.md: build_url() keeps the port and user information of the URL it is given unless a hostname property replaces the host.
 - code-comment-rules.md: Mandatory prohibitions for in-code comments: English only, no AI/session/process traces, classic what-and-why style, retroactive conversion.
@@ -60,7 +61,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - contact-holders.md: pg_contact_holders(): the one list of every place a contact id is kept, shared by merge_contacts() and the erasure; what the merge does with each, the ERP refusal, the drift test
 - contact-import-cells.md: Contact importer (import_contacts.php): cells read by pg_import_contact_value() (yes/no, dates, lengths, export guard undone), repeated headings left out, Turkish headings, the screen's hint
 - contact-lead-source.md: contacts.lead_source picked from referral_sources on the add/edit contact screens (#3427, decided #3416 3(a)); old free text kept; the same check on the external API (#4043); writers left as they were
-- contact-merge-columns.md: pg_contact_merge_select(): the one SELECT list both contact merge screens read, so no column of the merged contact is lost (#5325); the optional IYS columns
+- contact-merge-columns.md: pg_contact_merge_select(), the one SELECT list of both merge screens (#5325); the blank-column fill and the group opt-in rule of both merge branches
 - contact-merge-role.md: Who may merge duplicate contacts: a role above user (3) on both merge paths; view_contacts.php checks it itself (#5124)
 - content-translation-html-pieces.md: Translating stored HTML (custom HTML block, product description, form message): how a block is cut into texts so images, form controls, buttons and data-* attributes stay on the translated page
 - content-translation-jobs-duplicates.md: Translation jobs (includes/translate/jobs.php): why translate-on-save opens no second job while one is open, and why a job skips texts translated meanwhile

@@ -128,7 +128,9 @@ if ($approval === null) {
     output_error(lang('The contact for the affiliate could not be found.'));
 }
 
-$liveform = new liveform('view_contact');
+// Queued for Edit Contact, the screen the approval leads to, which prints
+// and removes it.
+$liveform = new liveform('edit_contact');
 
 if ($approval === 'already_approved') {
     $liveform->add_notice(lang('The contact is already an approved affiliate.'));

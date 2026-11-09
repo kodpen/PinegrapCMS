@@ -11,6 +11,7 @@ module: audiences
 - The last page runs to the top of the id range, so rule rows of deleted contacts go too.
 - A pass that ends stamps `computed_at`, puts the cursor back to 0 and announces the whole change once through `pg_announce_contact_group_members()` (`contact_group.members_changed`: Flows, webhooks, campaign-profile triggers react as for a hand edit). A pass that stops at its budget keeps its cursor and the ids changed so far in `data/temp/audience_<id>.json`; the next call goes on from there.
 - Returns null for a group that is not (or stops being) dynamic, before the upgrade, or on a failed query.
+- A save of changed rules or of the kind (`edit_contact_group.php`) calls `pg_audience_pass_restart()`: cursor 0, state file removed, so a pass stopped part-way never goes on with the old rules' ids (#7749).
 
 ## When does it run?
 - The general job (`job.php`) calls `pg_audience_job_run()`: at most `PG_AUDIENCE_TICK_SECONDS` (20) of the tick, capped by `pg_cron_time_left()`. Due groups (`pg_audience_due_sql()`): kind `dynamic` with a pass under way or `computed_at` an hour old (`PG_AUDIENCE_INTERVAL`), passes under way first, then the oldest run. A group that stops at the budget ends the tick's turn; it goes on next tick.
