@@ -1650,6 +1650,12 @@ function pg_list_edit_table($url, $columns)
             }
         }
 
+        // A searching select asks this address for its choices as the
+        // operator types (GET source&q=text answering {results: [{id, text}]}).
+        if (isset($column['source'])) {
+            $entry['source'] = (string) $column['source'];
+        }
+
         // Pairs rather than an object: an object with numeric keys comes
         // back in numeric order, and the order of the choices is the screen's.
         // An option with a class ('option_classes', value => class) carries
@@ -1709,20 +1715,29 @@ function pg_list_edit_cell($columns, $field, $id, $value)
  * @param string $field
  * @param int    $id      the record
  * @param mixed  $value   the stored value the input opens with
+ * @param string|null $text a searching select's stored choice as named
+ *                        (its options are not in the definition)
  * @return array empty when the column is not editable
  */
-function pg_list_edit_cell_attributes($columns, $field, $id, $value)
+function pg_list_edit_cell_attributes($columns, $field, $id, $value, $text = null)
 {
     if (!isset($columns[$field]) || ((int) $id <= 0)) {
         return array();
     }
 
-    return array(
+    $attributes = array(
         'data-pg-edit' => (string) $field,
         'data-pg-edit-id' => (string) (int) $id,
         'data-pg-edit-value' => (string) $value,
-        'tabindex' => '0',
     );
+
+    if ($text !== null) {
+        $attributes['data-pg-edit-text'] = (string) $text;
+    }
+
+    $attributes['tabindex'] = '0';
+
+    return $attributes;
 }
 
 /**
@@ -1741,6 +1756,9 @@ function pg_list_edit_cell_attributes($columns, $field, $id, $value)
  *   select   the value of one of the options, as a string
  *   multiselect  the values of the options named, comma-separated in the
  *            post and in the cell's value, as a list in the options' order
+ *   search   a record id from the column's source, as a string, or '' when
+ *            not required; whether that record may be chosen is the
+ *            screen's own save to decide (the choices are never all known)
  *
  * @param array $column the column's definition
  * @param mixed $raw    the posted value
@@ -1869,6 +1887,17 @@ function pg_list_edit_parse($column, $raw)
             }
 
             return $pass($chosen);
+
+        case 'search':
+            if ($value === '') {
+                return !empty($column['required']) ? $fail(lang(array('string' => '{var:1|c} is required', 'vars' => array($label)))) : $pass('');
+            }
+
+            if ((preg_match('/^[0-9]{1,10}$/', $value) !== 1) || ((int) $value < 1) || ((int) $value > 2147483647)) {
+                return $fail(lang(array('string' => 'Choose one of the values offered for {var:1}.', 'vars' => array($label))));
+            }
+
+            return $pass((string) (int) $value);
     }
 
     return $fail(lang('This column cannot be changed here.'));

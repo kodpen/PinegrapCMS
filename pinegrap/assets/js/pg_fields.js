@@ -533,7 +533,8 @@
         }
         // Bootstrap 6's .collapse clips overflow-y, so a menu placed inside a
         // switch panel would be cut off at the panel's edge: place it fixed.
-        if (el.closest && el.closest('.collapse')) {
+        // A list table's cell sits in a scrolling wrapper, which clips too.
+        if (el.closest && (el.closest('.collapse') || el.closest('.pg-list-table'))) {
             toggle.setAttribute('data-bs-strategy', 'fixed');
         }
         var combobox = withoutInstanceNoise(function () {

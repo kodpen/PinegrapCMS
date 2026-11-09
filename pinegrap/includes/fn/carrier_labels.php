@@ -323,14 +323,15 @@ function pg_label_load($key)
 /**
  * What a driver's info() declared, checked: only carriers the store knows,
  * only known formats, each once; services only with a code of a quote's
- * shape (pg_label_service_valid()) and a name.
+ * shape (pg_label_service_valid()) and a name; rates 'national' for a
+ * service whose prices go by the parcel alone, else 'address'.
  *
  * @param mixed $declared
- * @return array carriers, formats, services (code => name)
+ * @return array carriers, formats, services (code => name), rates
  */
 function pg_label_info_normalize($declared)
 {
-    $info = array('carriers' => array(), 'formats' => array(), 'services' => array());
+    $info = array('carriers' => array(), 'formats' => array(), 'services' => array(), 'rates' => 'address');
 
     if (!is_array($declared)) {
         return $info;
@@ -344,6 +345,10 @@ function pg_label_info_normalize($declared)
         }
     }
 
+    if (isset($declared['rates']) && ($declared['rates'] === 'national')) {
+        $info['rates'] = 'national';
+    }
+
     if (isset($declared['services']) && is_array($declared['services'])) {
         foreach ($declared['services'] as $code => $name) {
             if (pg_label_service_valid($code) && is_string($name) && (trim($name) !== '')) {
@@ -353,6 +358,32 @@ function pg_label_info_normalize($declared)
     }
 
     return $info;
+}
+
+/**
+ * The zone a rate() answer holds for, the zip part of its cache row: '' for
+ * a driver whose prices go by the parcel alone (info rates 'national'), else
+ * the recipient's country and postal code, '<CC>-<ZIP>' (upper-cased, spaces
+ * dropped, at most 40 characters). Pure.
+ *
+ * @param array $info      pg_label_info()
+ * @param mixed $recipient the shipment's recipient (country, zip)
+ * @return string
+ */
+function pg_label_rate_zone($info, $recipient)
+{
+    if (is_array($info) && isset($info['rates']) && ($info['rates'] === 'national')) {
+        return '';
+    }
+
+    $text = function ($name) use ($recipient) {
+        return (is_array($recipient) && isset($recipient[$name]) && is_scalar($recipient[$name])) ? strtoupper(preg_replace('/\s+/', '', (string) $recipient[$name])) : '';
+    };
+
+    $country = $text('country');
+    $zip = preg_replace('/[^A-Z0-9-]/', '', $text('zip'));
+
+    return substr((($country !== '') ? $country : '--') . '-' . $zip, 0, 40);
 }
 
 /**

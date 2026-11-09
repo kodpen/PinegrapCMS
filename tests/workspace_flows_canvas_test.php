@@ -3349,7 +3349,7 @@ function threadsShown() { return true; }
 function open(id) { opened.push(id); state.flow = { id: id, access: 'edit' }; return Promise.resolve(true); }
 function nodeById(id) { return { id: id }; }
 function select(selected) { log.push('select ' + selected.id); }
-function openLastRun(run) { log.push('run ' + run.id); }
+function openLastRun(run) { log.push('run ' + run.id); state.run = { id: run.id }; return Promise.resolve(); }
 function drawList() { log.push('list'); }
 function drawFlows() {}
 function showGallery(into) { log.push('gallery ' + into); }
@@ -3448,7 +3448,7 @@ JS
 	pg_assert_same(array('flow' => 0, 'box' => '', 'run' => 0), $result['noAddress'], 'an empty address names none');
 	pg_assert_same(array('ws_flow_list'), $result['full']['calls'], 'the Flows screen reads its list');
 	pg_assert_same(array(7), $result['full']['opened'], 'start() opens the flow the address names');
-	pg_assert_same(array('bindCanvas', 'list', 'select post_2', 'run 31'), $result['full']['log'], 'then its box and its run');
+	pg_assert_same(array('bindCanvas', 'list', 'run 31', 'select post_2'), $result['full']['log'], 'then its run, and its box in the run shown');
 	pg_assert_true($result['full']['screen'], 'the screen is taken');
 	pg_assert_same(1, $result['full']['embedEnded'], 'an embedded drawing ends first');
 	pg_assert_same(array('destroy', 'flush'), $result['full']['api'], 'mount() gives destroy() and flush()');
@@ -3583,7 +3583,7 @@ function test_workspace_flows_canvas_layer_ways_in()
 	pg_assert_contains('event.ctrlKey || event.metaKey', $link, 'a new tab follows the address');
 	pg_assert_contains('flowGo(result.flow_id)', $opened, 'a made flow opens in the layer');
 	pg_assert_contains('flowGo(result.flow_id, { opener: trigger });', $edit, 'an Edit converted opens in the layer');
-	pg_assert_contains('flowGo(run.flow_id, { run: run.id });', $kit, 'Open the run in the layer');
+	pg_assert_contains("flowGo(run.flow_id, (run.status === 'failed') && card.box ? { run: run.id, box: card.box } : { run: run.id });", $kit, 'Open the run in the layer, a failed one on the box it failed at');
 	pg_assert_contains('flowGo(item.flow.id, { opener: edit });', $kit, 'Edit of a converted action in the layer');
 	pg_assert_contains('flowLinkOpens(link, view.flow_id, { box: node.id });', $kit, 'a draft card\'s box in the layer');
 	pg_assert_contains('flowLinkOpens(flow, change.flow_id);', $kit, 'an applied draft\'s flow in the layer');

@@ -25,9 +25,11 @@ function update_shipping_cost_for_ship_to($ship_to_id) {
         "SELECT
             ship_tos.state,
             ship_tos.zip_code,
+            ship_tos.country,
+            ship_tos.city,
             ship_tos.shipping_method_id,
             shipping_methods.service as shipping_method_service,
-            shipping_methods.realtime_rate as shipping_method_realtime_rate,
+            shipping_methods.realtime_rate as shipping_method_realtime_rate" . pg_shipping_label_rate_select('shipping_methods', 'shipping_method_') . ",
             shipping_methods.base_rate as shipping_method_base_rate,
             shipping_methods.variable_base_rate AS shipping_method_variable_base_rate,
             shipping_methods.base_rate_2 AS shipping_method_base_rate_2,
@@ -57,6 +59,10 @@ function update_shipping_cost_for_ship_to($ship_to_id) {
     $shipping_method_id = $row['shipping_method_id'];
     $shipping_method_service = $row['shipping_method_service'];
     $shipping_method_realtime_rate = $row['shipping_method_realtime_rate'];
+    $shipping_method_label_driver = $row['shipping_method_label_driver'];
+    $shipping_method_label_service = $row['shipping_method_label_service'];
+    $country = $row['country'];
+    $city = $row['city'];
     $shipping_method_base_rate = $row['shipping_method_base_rate'];
     $shipping_method_variable_base_rate = $row['shipping_method_variable_base_rate'];
     $shipping_method_base_rate_2 = $row['shipping_method_base_rate_2'];
@@ -104,8 +110,12 @@ function update_shipping_cost_for_ship_to($ship_to_id) {
         'ship_to_id' => $ship_to_id,
         'service' => $shipping_method_service,
         'realtime_rate' => $shipping_method_realtime_rate,
+        'label_driver' => $shipping_method_label_driver,
+        'label_service' => $shipping_method_label_service,
         'state' => $state,
         'zip_code' => $zip_code,
+        'country' => $country,
+        'city' => $city,
         'items' => $order_items));
 
     // If there was an error getting the realtime rate, then this shipping method is not valid for
@@ -804,9 +814,13 @@ function get_shipping_realtime_rate($properties) {
 
     // Not every caller has a shipping address yet, so these can be missing.
     $properties = $properties + array(
-        'ship_to_id' => '',
-        'state'      => '',
-        'zip_code'   => '');
+        'ship_to_id'    => '',
+        'state'         => '',
+        'zip_code'      => '',
+        'country'       => '',
+        'city'          => '',
+        'label_driver'  => '',
+        'label_service' => '');
 
     $ship_to_id = $properties['ship_to_id'];
     $service = $properties['service'];
@@ -814,10 +828,39 @@ function get_shipping_realtime_rate($properties) {
     $state = $properties['state'];
     $zip_code = trim($properties['zip_code']);
     $items = $properties['items'];
+    $label_driver = (string) $properties['label_driver'];
+
+    // A method linked to a carrier label service charges that service's
+    // quote (includes/fn/shipping_label_rates.php), never the UPS/USPS rate
+    // of its service column.
+    if ($realtime_rate and ($label_driver !== '')) {
+
+        if ($ship_to_id and (!$properties['country'] or !$properties['zip_code'] or !$properties['city'])) {
+
+            $recipient = db_item(
+                "SELECT state, zip_code, country, city
+                FROM ship_tos
+                WHERE id = '" . e($ship_to_id) . "'");
+
+            if ($recipient) {
+                foreach (array('state', 'zip_code', 'country', 'city') as $name) {
+                    if (!$properties[$name]) {
+                        $properties[$name] = (string) $recipient[$name];
+                    }
+                }
+            }
+        }
+
+        if (mt_rand(1, 100) == 1) {
+            pg_shipping_rates_purge(time());
+        }
+
+        return pg_shipping_label_rate($properties);
+    }
 
     // If there is not a real-time rate service selected for this shipping method or real-time rate
     // is disabled for the method, then return a real-time rate of zero.
-    if (!$service or mb_substr($service, 0, 5) == 'fedex' or !$realtime_rate) {
+    if (!$service or mb_substr($service, 0, 5) == 'fedex' or !$realtime_rate or ($label_driver !== '')) {
         return 0;
     }
 
@@ -844,14 +887,12 @@ function get_shipping_realtime_rate($properties) {
     // Prepare timestamp so we only get cached rates that are recent.
     $day_ago_timestamp = time() - 86400;
 
-    // Get a random number between 1 and 100 in order to determine if we should delete old rates
-    // from the db cache table.  There is a 1 in 100 chance that we will delete old rates each time
-    // we calculate real-time rates for a recipient.  Old is considered more than a day old.
-
-    $random_number = rand(1, 100);
-    
-    if ($random_number == 1) {
-        db("DELETE FROM shipping_rates WHERE timestamp < '$day_ago_timestamp'");
+    // There is a 1 in 100 chance that old rates are deleted from the db cache table each time
+    // real-time rates are calculated for a recipient. A rate is charged for a day; the cache
+    // keeps a week, because a carrier label service's rate is charged up to a week old while
+    // the service cannot be reached (pg_shipping_label_rate()).
+    if (mt_rand(1, 100) == 1) {
+        pg_shipping_rates_purge(time());
     }
 
     // Loop through the items in order to prepare package items.  Package items are every single
@@ -1953,7 +1994,7 @@ function get_shipping_methods($properties) {
                 name,
                 description,
                 service,
-                realtime_rate,
+                realtime_rate" . pg_shipping_label_rate_select() . ",
                 base_rate,
                 variable_base_rate,
                 base_rate_2,
@@ -1977,6 +2018,8 @@ function get_shipping_methods($properties) {
         $shipping_method_description = pg_stock_pickup_describe($shipping_method_id, $row['description']);
         $shipping_method_service = $row['service'];
         $shipping_method_realtime_rate = $row['realtime_rate'];
+        $shipping_method_label_driver = $row['label_driver'];
+        $shipping_method_label_service = $row['label_service'];
         $shipping_method_base_rate = $row['base_rate'];
         $shipping_method_variable_base_rate = $row['variable_base_rate'];
         $shipping_method_base_rate_2 = $row['base_rate_2'];
@@ -2030,6 +2073,9 @@ function get_shipping_methods($properties) {
         $realtime_rate = get_shipping_realtime_rate(array(
             'service' => $shipping_method_service,
             'realtime_rate' => $shipping_method_realtime_rate,
+            'label_driver' => $shipping_method_label_driver,
+            'label_service' => $shipping_method_label_service,
+            'country' => $country,
             'state' => $state,
             'zip_code' => $zip_code,
             'items' => $items));

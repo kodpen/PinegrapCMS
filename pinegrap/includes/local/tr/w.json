@@ -1744,6 +1744,7 @@
     "When empty, the ?send_to= on the link is used; failing that the visitor stays on this page and sees the \"your registration is complete\" notice.": "Boşsa bağlantıdaki ?send_to= kullanılır; o da yoksa ziyaretçi bu sayfada kalır ve \"kaydınız tamamlandı\" bildirimini görür.",
     "When empty, the ?send_to= or ?redirect= on the link is used, and failing that the user's home page.": "Boşsa bağlantıdaki ?send_to= ya da ?redirect= kullanılır; o da yoksa kullanıcının ana sayfası.",
     "When empty, the ?send_to= or ?redirect= on the link is used, and failing that the user's home page. Token: ^^__redirect_url^^": "Boşsa bağlantıdaki ?send_to= ya da ?redirect= kullanılır; o da yoksa kullanıcının ana sayfası. Token: ^^__redirect_url^^",
+    "When empty, write": "Boşsa şunu yaz",
     "When empty, writes \"{var:1}\"": "Boşsa \"{var:1}\" yazar",
     "When empty, write…": "Boşsa yaz…",
     "When expanding (empty = no text)": "Genişletirken (boş = yazı yok)",

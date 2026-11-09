@@ -12599,8 +12599,9 @@
                 box.appendChild(window.PGWsFlowFlag.runFlag(card.run, {
                     key: key,
                     label: t('fl_run_card', card.flow_name),
+                    // A failed run opens on the box it failed at.
                     open: card.can_open ? function (run) {
-                        flowGo(run.flow_id, { run: run.id });
+                        flowGo(run.flow_id, (run.status === 'failed') && card.box ? { run: run.id, box: card.box } : { run: run.id });
                     } : null,
                     stop: stop
                 }));
@@ -12620,6 +12621,12 @@
 
             function took(run) {
                 var keep = {};
+                var failed = (run.steps || []).filter(function (step) { return step.status === 'failed'; })[0];
+
+                // The first box that failed, as the server picks it for the card.
+                if (failed) {
+                    card.box = failed.node_id;
+                }
 
                 Object.keys(run).forEach(function (name) {
                     if ((name !== 'steps') && (name !== 'graph')) {
@@ -16053,7 +16060,7 @@
             if (mode === 'reply') {
                 self.picker.setAttribute('aria-label', t('replies_title'));
                 self.drawPicker(window.PGWsReplies.match(window.PGWsReplies.cached(self.channel ? self.channel.id : 0, api) || [], query, 8).map(function (reply) {
-                    return { reply: reply, label: reply.title, meta: ';' + reply.shortcut, detail: window.PGWsReplies.preview(reply, 80), icon: 'bi-chat-square-quote' };
+                    return { reply: reply, label: reply.title, meta: window.PGWsReplies.meta(reply, t), detail: window.PGWsReplies.preview(reply, 80), icon: 'bi-chat-square-quote' };
                 }));
                 return;
             }

@@ -351,13 +351,49 @@ function pg_shipment_label_expires_at($created_at, $delivered_at, $cancelled_at)
 }
 
 /**
- * The create() shipment of an address, from its rows. Weights and sizes are
- * kept in pounds and inches (products.weight, length, width, height) and
+ * The one parcel of a label or a live rate, from its lines. Weights and sizes
+ * are kept in pounds and inches (products.weight, length, width, height) and
  * go to the service in kilograms and centimetres: the weight of every line,
  * the largest length, width and height of a line. A parcel with no weight
  * goes as 1 kg and a missing size as 10 cm, so the service never refuses an
  * empty parcel; the operator corrects it at the service when it matters.
  * Pure.
+ *
+ * @param array $items list of quantity, weight, length, width, height
+ * @return array length, width, height (cm), weight (kg)
+ */
+function pg_shipment_label_parcel($items)
+{
+    $number = function ($source, $name) {
+        return (is_array($source) && isset($source[$name]) && is_scalar($source[$name])) ? (float) trim((string) $source[$name]) : 0.0;
+    };
+
+    $weight = 0.0;
+    $size = array('length' => 0.0, 'width' => 0.0, 'height' => 0.0);
+
+    foreach ((array) $items as $item) {
+        $quantity = max(1, (int) $number($item, 'quantity'));
+        $weight += $number($item, 'weight') * $quantity;
+
+        foreach ($size as $dimension => $largest) {
+            $size[$dimension] = max($largest, $number($item, $dimension));
+        }
+    }
+
+    $parcel = array();
+
+    foreach ($size as $dimension => $inches) {
+        $parcel[$dimension] = ($inches > 0) ? round($inches * 2.54, 2) : 10.0;
+    }
+
+    $parcel['weight'] = ($weight > 0) ? round($weight * 0.45359237, 3) : 1.0;
+
+    return $parcel;
+}
+
+/**
+ * The create() shipment of an address, from its rows; its parcel is
+ * pg_shipment_label_parcel()'s. Pure.
  *
  * @param array $order   order_number, billing_email_address, currency
  * @param array $ship_to the ship_tos row (first_name, last_name, company,
@@ -382,18 +418,11 @@ function pg_shipment_label_shipment($order, $ship_to, $items, $state_code = '', 
         $name = $text($ship_to, 'company');
     }
 
-    $weight = 0.0;
-    $size = array('length' => 0.0, 'width' => 0.0, 'height' => 0.0);
     $lines = array();
     $goods = array();
 
     foreach ((array) $items as $item) {
         $quantity = max(1, (int) $text($item, 'quantity'));
-        $weight += ((float) $text($item, 'weight')) * $quantity;
-
-        foreach ($size as $dimension => $largest) {
-            $size[$dimension] = max($largest, (float) $text($item, $dimension));
-        }
 
         if ($text($item, 'product_name') !== '') {
             $lines[] = array('title' => $text($item, 'product_name'), 'quantity' => $quantity);
@@ -412,14 +441,6 @@ function pg_shipment_label_shipment($order, $ship_to, $items, $state_code = '', 
         );
     }
 
-    $parcel = array();
-
-    foreach ($size as $dimension => $inches) {
-        $parcel[$dimension] = ($inches > 0) ? round($inches * 2.54, 2) : 10.0;
-    }
-
-    $parcel['weight'] = ($weight > 0) ? round($weight * 0.45359237, 3) : 1.0;
-
     return array(
         'order_number' => $text($order, 'order_number'),
         'recipient'    => array(
@@ -436,7 +457,7 @@ function pg_shipment_label_shipment($order, $ship_to, $items, $state_code = '', 
             'zip'        => $text($ship_to, 'zip_code'),
             'country'    => strtoupper($text($ship_to, 'country')),
         ),
-        'parcel'       => $parcel,
+        'parcel'       => pg_shipment_label_parcel($items),
         'items'        => $lines,
         'goods'        => $goods,
         'total'        => (int) $text($ship_to, 'total'),

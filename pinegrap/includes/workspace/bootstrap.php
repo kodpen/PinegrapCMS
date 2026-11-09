@@ -96,6 +96,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_run_chain_notice.php')
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_run_cards.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/steps.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_row_get.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_failure_reason.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_rows_get.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_record_get.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_ai_box.php');

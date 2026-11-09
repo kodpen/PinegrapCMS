@@ -3576,6 +3576,11 @@ function ws_flow_js_strings()
         'fl_step_skip_ask'    => ws_js_template('Skip the box {var:1}? The run goes on as if its branch had not been taken.', 1),
         'fl_step_retried'     => lang('The box will run again.'),
         'fl_step_skipped_by_hand' => lang('The box was skipped.'),
+        // A box that failed on an empty value (flow_failure_reason.php).
+        'fl_reason_fallback'  => lang('When empty, write'),
+        'fl_reason_open'      => lang('Open the box'),
+        'fl_reason_value'     => ws_js_template('“{var:1}” from the box “{var:2}”', 2),
+        'fl_reason_gone'      => lang('The draft no longer reads this value in that box.'),
         // A flow shared with the team (flow_shares.php).
         'fl_level_view'       => lang('Can view'),
         'fl_level_run'        => lang('Can run'),

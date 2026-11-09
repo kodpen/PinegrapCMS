@@ -2959,9 +2959,10 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok(array('kind' => $result['kind'], 'markup' => $result['markup'], 'from' => $result['from'])) : ws_action_error($result['error']);
 
-        // Saved replies (saved_replies.php): the person's own, for the
-        // composer's ; list (filled for the channel written in) and the list
-        // that manages them.
+        // Saved replies (saved_replies.php): the person's own and the team's,
+        // for the composer's ; list (filled for the channel written in) and
+        // the list that manages them. A team reply is written only with the
+        // right to manage them (ws_saved_reply_save_check()).
         case 'ws_saved_replies':
             $channel = null;
 
@@ -2973,13 +2974,18 @@ function ws_handle_action($action, $request)
                 }
             }
 
-            return ws_action_ok(array('items' => ws_saved_replies_for_box($viewer, $channel), 'ready' => ws_saved_replies_ready()));
+            return ws_action_ok(array(
+                'items'       => ws_saved_replies_for_box($viewer, $channel),
+                'ready'       => ws_saved_replies_ready(),
+                'manage_team' => ws_saved_reply_can_manage_team($viewer),
+            ));
 
         case 'ws_saved_reply_save':
             $row = null;
+            $scope = ws_saved_reply_scope($request['scope'] ?? null);
 
             if ((int) ($request['id'] ?? 0) > 0) {
-                $row = ws_saved_reply_find((int) $viewer['id'], (int) $request['id']);
+                $row = ws_saved_reply_find((int) $viewer['id'], (int) $request['id'], $scope);
 
                 if (!$row) {
                     return ws_action_error(lang('That saved reply could not be found.'));
@@ -2992,15 +2998,20 @@ function ws_handle_action($action, $request)
                 $input[$field] = (string) ($request[$field] ?? '');
             }
 
-            $result = ws_saved_reply_save($viewer, $input, $row);
+            $result = ws_saved_reply_save($viewer, $input, $row, $scope);
 
-            return $result['ok'] ? ws_action_ok(array('id' => $result['id'])) : ws_action_error(ws_saved_reply_error_text($result['error']), (string) ($result['field'] ?? ''));
+            return $result['ok'] ? ws_action_ok(array('id' => $result['id'])) : ws_action_error(ws_saved_reply_error_text($result['error'], $scope), (string) ($result['field'] ?? ''));
 
         case 'ws_saved_reply_delete':
-            $row = ws_saved_reply_find((int) $viewer['id'], (int) ($request['id'] ?? 0));
+            $scope = ws_saved_reply_scope($request['scope'] ?? null);
+            $row = ws_saved_reply_find((int) $viewer['id'], (int) ($request['id'] ?? 0), $scope);
 
             if (!$row) {
                 return ws_action_error(lang('That saved reply could not be found.'));
+            }
+
+            if (($scope === WS_SAVED_REPLY_TEAM) && !ws_saved_reply_can_manage_team($viewer)) {
+                return ws_action_error(ws_saved_reply_error_text('not_allowed', $scope));
             }
 
             return ws_saved_reply_delete($viewer, $row) ? ws_action_ok() : ws_action_error(lang('The saved reply could not be deleted.'));

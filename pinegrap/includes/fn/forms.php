@@ -1114,67 +1114,6 @@ function get_state_options()
 }
 
 
-// Files in the Recycle Bin are left out: the bin folder and the folders that
-// went in with a folder sent there. $keep_id is the file the short link being
-// edited already points at: while it is in the bin it stays, marked, under the
-// name it had before the bin parked it, so saving the link does not drop it.
-function get_file_options($design = FALSE, $keep_id = 0)
-{
-    // A posted value can be anything; only a whole id is kept.
-    $keep_id = is_scalar($keep_id) ? (int) $keep_id : 0;
-    $bin_folders = array_flip(pg_recycle_bin_folder_ids());
-    $folders_that_user_has_access_to = array();
-    global $user;
-
-    // if user is a basic user, then get folders that user has access to
-    if ($user['role'] == 3) {
-        $folders_that_user_has_access_to = get_folders_that_user_has_access_to($user['id']);
-    }
-    $sql_design = '';
-    // if design files should not be included, then include filter
-    if ($design == FALSE) {
-        $sql_design = "AND (design = 0)";
-    }
-
-    // get image list
-    $query =
-        "SELECT
-            id,
-            name,
-            folder
-        FROM files
-            WHERE name != ''
-            $sql_design
-            AND (attachment = 0)
-        ORDER BY name";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    $file_options = array();
-    // Setup first option
-    $file_options['-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('File')))) . '-'] = '';
-
-
-
-
-    // loop through each image and create an <option> tag
-    while ($row = mysqli_fetch_assoc($result)) {
-        $file_name = $row['name'];
-        if (isset($bin_folders[(int) $row['folder']])) {
-            if ((int) $row['id'] !== $keep_id) {
-                continue;
-            }
-            require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
-            $original = pg_recycle_parked_original($file_name, $row['id']);
-            $file_name = (($original !== '') ? $original : $file_name) . ' [' . lang('IN RECYCLE BIN') . ']';
-        }
-        // if the user has access to this folder
-        if (check_folder_access_in_array($row['folder'], $folders_that_user_has_access_to) == true) {
-            $file_options[h($file_name)] = $row['id'];
-        }
-    }
-    return $file_options;
-}
-
-
 // outputs the form's <select> list for selecting a recurring payment period
 function select_payment_period($payment_period = '')
 {

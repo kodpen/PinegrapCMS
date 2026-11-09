@@ -2108,6 +2108,18 @@ function ws_step_run($run, $step, $node, $graph, $owner)
 
     $data = ws_step_result_data($kind, $node['config'], $done);
 
+    // A failure keeps the values its texts read empty, so the run names the
+    // box each came from (flow_failure_reason.php).
+    if (empty($done['ok'])) {
+        $empty = ws_flow_empty_values(ws_flow_step_texts($kind, $check['action']), $values);
+
+        if (!empty($empty)) {
+            $data['empty_values'] = ws_flow_empty_entries($empty, (array) ($graph['nodes'] ?? array()), $values, function ($giver, $field) {
+                return function_exists('ws_flow_condition_field_label') ? ws_flow_condition_field_label($giver, $field, ws_flow_kinds()) : '';
+            });
+        }
+    }
+
     // A failure tries again first where the box is set to (its owner's
     // answer to a passing outage); the arrow on failed is taken once the
     // tries are used.

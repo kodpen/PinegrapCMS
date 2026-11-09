@@ -56,7 +56,7 @@
 - decisions-made-product-38.md: Decisions list, product part 38 (2026-11-09 on): a translated page's index verdict counts only its own words, never list records or products; a record save opens a translation job
 - decisions-made-product-39.md: Decisions list, product part 39 (2026-11-09 on): backup warning only after a month; carrier services at checkout; the 2026-10-19 security audit's items 2-8 (owner 2026-10-28)
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
-- decisions-made-product-40.md: Decisions list, product part 40 (2026-11-09 on): the standing feature rules (legacy stays, global audience, no design variables); workflow tables like SQL tables (row choice, totals, links, keys)
+- decisions-made-product-40.md: Decisions list, product part 40 (2026-11-09 on): standing feature rules (legacy stays, global audience, no design variables); workflow tables like SQL tables; a product photo's alt text
 - decisions-made-product-41.md: Decisions list, product part 41 (2026-11-09 on): Workspace scheduling in one place: no Scheduled flow window, one flow list, one start-a-flow box, Start a flow only where a flow can start
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
@@ -68,7 +68,7 @@
 - decisions-made-schema-11.md: Decisions list, schema part 11 (2026-11-05 on): the access_scopes column of api_devices for a narrower scope asked on an OAuth refresh
 - decisions-made-schema-12.md: Decisions list, schema part 12 (2026-11-07 on): note groups, places, shares and PIN locks for Workspace notes (step N0); the agent registry and channel-agent tables (agent channel A3)
 - decisions-made-schema-13.md: Decisions list, schema part 13 (2026-11-08 on): agent channel switch (AC); channel memory and agent mark (A5); A7 undo; GitHub channel links (G2); carrier service on a shipping method (R2)
-- decisions-made-schema-14.md: Decisions list, schema part 14 (2026-11-09 on): a bundle's own back order choice (bundle_backorder); the workflow table bin; the team replies right
+- decisions-made-schema-14.md: Decisions list, schema part 14 (2026-11-09 on): a bundle's own back order choice (bundle_backorder); the workflow table bin; the team replies right; agent token counts and limit
 - decisions-made-schema-2.md: Decisions list, schema part 2, approved on 2026-10-28: e-mail tables, workflow tables, MCP preamble, secret widths, prompt version, discussion follow; rules in part 1, 2026-10-29 on in part 3
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
