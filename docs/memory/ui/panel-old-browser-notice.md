@@ -10,7 +10,7 @@ module: output
 - The button removes the bar and writes `pg-old-browser-notice` = `1` to `sessionStorage`, so the bar stays away until the browser session ends. With storage blocked it closes for that page only.
 - Non-blocking: the page keeps working and nothing is fetched. A page inside a frame (`window.self !== window.top`) shows no bar, so a tab shows one.
 - `pg_old_browser_notice()` passes the one text, `lang('Your browser is out of date, so parts of this page may not look or work right. Please update your browser.')`.
-- Decision: `workflow/decisions-made-panel-3.md`; what old browsers lose: `plans/bootstrap-6-findings.md`.
+- Decision: `workflow/decisions-made-panel-3.md`; what old browsers lose: `bootstrap-6-browsers.md`.
 
 ## Where is it printed?
 - First in `output_control_panel_header_includes()`: every `output_header()` screen, every `output_header_secure()` screen (sign-in, password screens, MFA, device limit, OAuth consent, print views, installer) and `theme_designer.php`.

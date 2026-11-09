@@ -1,6 +1,6 @@
 ---
 name: bootstrap-6-own-widget-swaps
-description: Own panel widgets replaced by Bootstrap 6 components with the same look (step B9k): which ones, the token mapping that keeps the pixels, what is left
+description: Own panel widgets replaced by Bootstrap 6 components with the same look (step B9k): which ones, the token mapping that keeps the pixels, how it was checked
 ---
 
 ## What has been swapped, and how does it look the same?
@@ -18,9 +18,5 @@ description: Own panel widgets replaced by Bootstrap 6 components with the same 
 - Status choice, computed styles (light/dark, rest, hover, focus): unchecked equal; the checked one, a grey pill since the switch (`input.btn-check:checked + .btn` outranked its outline rule), has its outline back. Forced colours: icon rule `.ws-status-choice.btn-check > i`, never `:has(…) *`.
 - The translations filter's current chip carried `.active`, which `.pg-chip` never styled: it now shows as selected.
 
-## What is left of B9k, and why does the rest wait?
-- Focus ring: on the tokens, sizes too since B10 (#4465, `panel-focus-ring.md`).
-- Wait for B11, since no swap keeps the screen as it is:
-  - Guest page toast (`workspace_guest.js`): the page loads Bootstrap's CSS but none of its JavaScript; a Toast would add the whole bundle for one notice.
-  - `.ws-chip` to `.badge-subtle`: equal only by overriding every badge token (min-height, weight, line-height, gap, radius), and chips inside saved message HTML keep needing `.ws-chip`, so nothing is removed.
-  - Role cards (`.pg-role-card`, `user_permissions.php`) to `form-field-card`: v6 shows the radio and puts it inside the card; today the radio is hidden (`btn-check`) and the label is the card.
+## What was kept, and which swaps were left?
+- `bootstrap-6-own-widgets-kept.md`. The focus ring is on the tokens, sizes too since B10 (#4465, `panel-focus-ring.md`).

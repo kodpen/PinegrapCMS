@@ -27,4 +27,4 @@ description: The panel order screen's shipping cards (view_order.php): one card 
 ## What is not done here?
 - The postcode-province note under the address: `order-address-postcode-note.md`.
 - The printed order's card: `print-order-shipping-card.md`.
-- Customer side, mail-merge fields and the API fields are later steps of `plans/shipping-management.md`.
+- Customer side: `guest-shipment-lookup.md`; mail-merge fields: `shipment-mail-fields.md`; API fields: `shipment-api-fields.md`.

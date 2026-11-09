@@ -5,7 +5,7 @@ description: Feature gap research of 2026-10-19 behind the approved plans: compe
 
 # Feature candidates — research note (2026-10-19)
 
-**Status:** research, not decisions. The decisions are in `docs/memory/plans/feature-roadmap-2026-10.md` and the plan files it lists. This note keeps the evidence those plans rest on so it is not searched for twice. Everything below was read on 2026-10-19 from the pages listed under Sources; competitor cells show what the vendor's own page states (✓ stated, ◐ partial or via add-on, — not stated on the pages read).
+**Status:** research, not decisions. The roadmap decided from it on 2026-10-19 has been carried out: its standing rule is in `docs/memory/workflow/decisions-made-product-39.md`, each feature in its memory topic files, the plans still open in `docs/memory/plans/`. This note keeps the evidence those plans rest on so it is not searched for twice. Everything below was read on 2026-10-19 from the pages listed under Sources; competitor cells show what the vendor's own page states (✓ stated, ◐ partial or via add-on, — not stated on the pages read).
 
 ## 1. Method
 

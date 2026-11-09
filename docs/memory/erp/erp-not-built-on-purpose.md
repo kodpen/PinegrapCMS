@@ -16,5 +16,7 @@ These are phase limits, not bugs: do not report them as missing checks or build 
 
 ## What has the Paraşüt driver not seen live yet?
 - Live on a demo company (2026-10-19 to 21): the connection, contacts read and written (account sync), sales invoices and their totals, poll, delete (erp-parasut-driver.md, erp-parasut-accounts.md).
-- Not yet: the conversion to e-Arşiv / e-Fatura, its trackable job, the e-document PDF and the e-Arşiv cancel: the demo company has no e-document integration.
-- No queue worker processes `erp_edoc_queue`, and Paraşüt's API has no webhook: a document's state is read back only when somebody asks (erp-edoc-send-and-cancel.md).
+- Not yet: the conversion to e-Arşiv / e-Fatura, its trackable job, the e-document PDF and the e-Arşiv cancel: the demo company has no e-document integration. Ask Paraşüt support for a test e-Arşiv / e-Fatura integration on it, or use a company that has one.
+- There is no sandbox: the staging host does not take merchant credentials, so tests run live on a demo company, with low-value one-line invoices and the cancel path tried on each. `client_id` / `client_secret` are not self-service: Paraşüt support (destek@parasut.com) issues them, with redirect `urn:ietf:wg:oauth:2.0:oob` unless another is registered with them.
+- Export invoices go as e-Fatura (Paraşüt's documentation), but the driver sends only `SATIS`, `ISTISNA` and `TEVKIFAT` and refuses any other type.
+- No queue worker processes `erp_edoc_queue`, and Paraşüt's API has no webhook: a document's state is read back only when somebody asks (erp-edoc-send-and-cancel.md). The worker's plan: `plans/erp-parasut-open-work.md`.

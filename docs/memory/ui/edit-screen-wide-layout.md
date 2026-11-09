@@ -27,4 +27,8 @@ description: Owner decision for panel edit screens: a wide screen is not spent o
 - `backend.src.css` sets `scroll-padding` on `html` (the panel scrolls the window): top `calc(var(--pg-navbar-h) + .5rem)`; bottom while a sticky `nav.buttons.navigation` or a visible `.mpp-bulk` is on the page, more below 576px and with the chat bubble. Without it Shift+Tab, `#fragment` jumps and the skip link parked the target under the bar.
 - So a jump target the window scrolls to takes at most `scroll-margin-top:1.5rem` (`#pg_pb_sec_`, `software_repair.php` `#rerun`/`#rollback`); 5rem would stack on the padding. `#pgset-`/`#pgsub-` keep 5rem. Each predicate is its own `:has()` (a nested one drops the rule). Pinned by `tests/panel_scroll_padding_test.php`.
 
+## Is any stacked edit screen left?
+- No. The redesign (B11, the last screen booking #7655) redid the add_*/edit_* screens, `includes/forms/` and `includes/templates/`; screens on a layout helper (`pg_*_form_layout()`, `pg_commission_edit_layout()`, `pg_user_form_layout()`) have the wide layout; Order is #7465. The sweep of 2026-11-06 found the rest are lists, reports, dashboards or centred single-purpose screens (`api_docs`, `developer_lock`, `device_pairing`, `erp_cash`, `mail_queue`, `marketplace_products`, `software_repair`, `software_update`, `view_bookings`, `legacy_to_designer`), or liked screens (`workflow/decisions-made-panel-3.md`). A stacked screen found now is a `bug` work item.
+- Tables keep their structure (the owner finds it fine): `table.chart` and DataTables stay; density, header, row actions and empty states may change (`.table-card`).
+
 Related: docs/memory/ui/admin-screen-toolbar.md

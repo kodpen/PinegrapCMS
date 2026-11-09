@@ -15,7 +15,7 @@ description: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n1
 - Payout/settlement reconciliation stays out (ERP roadmap B4).
 
 ## What is done?
-- Done: Trendyol 1 #880, 2 #906, 2b-i #1539, 2b-ii #1761, 3 #932, 4a #1452, 4b #1453, 4c #1493, 5a #1747 #3624, 5b #1772 #1837, 5c #1784, 6 #1667, A #1675, B #1687, common label #3257 #3281 #3594.
+- Trendyol, every slice and the common label (#880 to #3594): decisions in `commerce/trendyol-*.md` and `commerce/marketplace-*.md`; the `[NEW]` changelog line came with #932.
 
 ## What is open? (any session; claim one step at a time)
 - Each step adds what it verified to the `trendyol-*.md` files, and reads `trendyol-api-facts.md` for the call rules first.
@@ -26,9 +26,6 @@ description: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n1
 - Trendyol "Luxe" channel listings: not in 2026.11.0 (#3838); a later item, when a merchant asks and the Luxe API facts are gathered first.
 - Owner: first live call with credentials; whether Kodpen registers as a Trendyol integrator (User-Agent `SelfIntegration` until then).
 - Unverified until a live call (listed in each `trendyol-*.md`): the `barcodes` comma list, whether a rejected listing re-enters approval on a new create, whether `docNeeded` turns false once the document is in.
-
-## Where are the finished steps' decisions?
-- `docs/memory/commerce/trendyol-api-facts.md`, `trendyol-listings.md`, `trendyol-listing-status.md`, `trendyol-stock-price.md`, `trendyol-orders.md`, `marketplace-webhook-receiver.md`, `trendyol-own-carrier-shipping.md`, `marketplace-api-and-events.md`, `marketplace-commission-and-invoice-columns.md`, `trendyol-invoice-link.md`, `trendyol-invoiced-push.md`, `trendyol-listing-update.md`, `trendyol-returns.md`, `trendyol-return-rejection.md`, `trendyol-questions.md`, `trendyol-common-label.md`. The `[NEW]` changelog line came with #932.
 
 ## Where to start?
 - Owner (2026-10-24): no session holds this plan; any free session may take a step. Claim it as CLAUDE.md says (`[plan:marketplace-trendyol-hepsiburada] <step>`), one step per PR, steps of this plan one at a time.

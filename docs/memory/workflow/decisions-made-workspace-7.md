@@ -6,6 +6,9 @@ description: Decisions list, workspace part 7 (2026-11-06 on): the agent channel
 ## Where are the rules and the earlier parts?
 - `decisions-made.md`; its Parts line lists the files. Entries name the plan, the date and the reason. Plan: `plans/agent-channel.md`.
 
+## How is an agent keyed, and what is a channel's memory? (owner, 2026-11-06)
+- A key per agent: each registry row acts with its own application or its own sealed model key, never a shared one (`workspace/agent-registry.md`). A channel's memory is a list of entries (title, text, tags, author, pinned, expiry), not one free text (`workspace/channel-memory.md`).
+
 ## May an agent edit or delete its messages in an agent channel?
 - Owner (2026-11-06): only its own, with an "edited" mark kept on the message; never another member's. Reason: an agent must be able to take a wrong answer back, and the mark keeps the trail.
 

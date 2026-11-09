@@ -5,15 +5,15 @@ description: How shipping works today (checked 2026-10-20): tracking tables and 
 
 ## Where is shipping data kept?
 - Tracking numbers: `shipping_tracking_numbers`, one row per parcel. Since 2026.11.0 (11.0.20) the row has carrier, status, date, source and warning columns and a unique (`ship_to_id`, `number`) key (shipment-row-schema.md), written (shipment-write-path.md) and read through `pg_shipment_view()`; a row without a carrier is still recognised by `pg_shipping_carrier()` (order-view-tracking-link.md).
-- `ship_tos.ship_date` / `delivery_date` are ESTIMATES written at checkout (`submit_order.php`); there is no column for the real dates.
+- `ship_tos.ship_date` / `delivery_date` are ESTIMATES written at checkout (`submit_order.php`).
 - `orders.tracking_code` is a campaign code; `orders.tracking_company` / `orders.notes` are reserved for ERP.
-- Plan: docs/memory/plans/shipping-management.md. Old audit with line numbers: `git show 88e7ac6d:docs/_tespit_2026_10_08/kargo_yonetimi_kesif_raporu.md`
 
 ## Which paths write tracking numbers?
-- `update_order()` (`update_order.php`): the shared path (panel `view_order.php`, `api.php` `update_order`, `includes/workspace/changes.php`). Replaces the list through `includes/fn/shipping.php`, fires `order.shipped`, the automatic invoice (erp/erp-auto-invoice.md), the `order_shipped` auto campaign (only `^^order_number^^`), the `order_review_request` start (product-review-request-email.md) and, once per address, `order.delivered` + `order_delivered` campaigns when a save enters or changes the delivery date to a day that has come.
+- `update_order()` (`update_order.php`): the shared path (panel `view_order.php`, `api.php` `update_order`, `includes/workspace/changes.php`). Replaces the list through `includes/fn/shipping.php`, fires `order.shipped`, the automatic invoice (erp/erp-auto-invoice.md), the `order_shipped` auto campaign (`shipment-mail-fields.md`), the `order_review_request` start (product-review-request-email.md) and, once per address, `order.delivered` + `order_delivered` campaigns when a save enters or changes the delivery date to a day that has come.
 - External API `api_orders_ship()` (`includes/api/resources/orders.php`), through `update_order()` with source `api`.
 - Marketplace `mp_order_apply_tracking()` / `mp_order_mark_dates()` (`includes/api/outbound/orders.php`): same write path, carrier name and link on the row; delivered stage: `order.delivered` once, no e-mail.
 - `shipworks.php` `updateshipment`: write path, source `shipworks` (#3443), no `update_order()`: `order.shipped` per new number only.
+- `get_express_order.php` / `get_order_preview.php` totals and ShipWorks stay unchanged (#3443, #3460).
 
 ## What does "shipped" mean?
 Four meanings live side by side:
@@ -28,9 +28,12 @@ Four meanings live side by side:
 - n11 import: city = district, state = province since #2004, as checkout keeps a Turkish address; older imports are swapped by a 2026.11.0 step (#3836). Trendyol too since #3861 (#3835).
 - `mp_n11_request_collection()` is registered in the n11 connector but nothing calls `request_collection`.
 - `verify_address()` (`shipping.php`) works only for US addresses (USPS Web Tools, whose retirement is unverified); `verified_shipping_addresses` is a manual list and sets no `address_verified`.
-- Guest tracking: guest-shipment-lookup.md; bulk upload: shipping-bulk-import.md; carrier status job: shipment-tracking.md. Profile screens do not offer `order_delivered` yet.
+- Guest tracking: guest-shipment-lookup.md; bulk upload: shipping-bulk-import.md; carrier status job: shipment-tracking.md.
 
 ## What can Turkish validation reuse?
-- `erp_edoc_postcode_valid()` (5 digits), `erp_edoc_isbasi_phone()` (`0XXXXXXXXXX`), `erp_tax_number_check()` (TCKN/VKN) live in the ERP module and load only when it is on; checkout use means moving them to `includes/fn/`.
+- `erp_edoc_postcode_valid()` (5 digits), `erp_edoc_isbasi_phone()` (`0XXXXXXXXXX`), `erp_tax_number_check()` (TCKN/VKN) load only with the ERP module; checkout use means moving them to `includes/fn/`.
 - `states` has 81 Turkish provinces (code = name, not plate number); there is no district data.
 - PTT and international numbers follow UPU S10 (`AA123456789TR`, mod-11 check digit); not in the code.
+
+## What must the owner check by hand?
+- Live carrier tracking URLs, n11 province/district on a live order, the campaign e-mail via real SMTP, `^^tracking_url^^` on existing sites.

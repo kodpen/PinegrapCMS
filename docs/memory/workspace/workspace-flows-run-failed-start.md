@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-run-failed-start
-description: A failed run as a flow start (flows-next B6): workspace.flow.run.failed kept by ws_event(), its payload, who it starts for, never the flow that failed, chain depth
+description: A failed run as a flow start (PR #7410): workspace.flow.run.failed kept by ws_event(), its payload, who it starts for, never the flow that failed, chain depth
 ---
 
 ## Where is a failed run kept for flows?

@@ -5,7 +5,7 @@ description: How wide the new dashboard gets and how many columns its grid takes
 
 ## How wide does the new dashboard get?
 - `main#content.pg-dash` stays full width, so the panel backdrop (`#content[data-panel-backdrop]`, painted on main) fills the screen. Its direct children (switch row, edit bar, top, grid, edit mode's work area) stop at 118rem (1888 px), centred: `.pg-dash > *` in `assets/css/pg_dash.src.css`.
-- Why: on a 2560 px screen three columns made cards of 760 px; five columns kept the narrow cards but stretched the greeting, the pipeline and every wide card across the screen. The prototype (`plans/new-dashboard/prototype`) stops at 1440 px with three columns; four columns of about 454 px keep the drawings' card size on a wide screen (#6359).
+- Why: on a 2560 px screen three columns made cards of 760 px; five columns kept the narrow cards but stretched the greeting, the pipeline and every wide card across the screen. The owner's design stopped at 1440 px with three columns; four columns of about 454 px keep the drawings' card size on a wide screen (#6359).
 
 ## How many columns does the grid take?
 - `.pg-dash` is a query container (`container: pgdash / inline-size`). `@container pgdash` gives 2 columns from 38rem, 3 from 58rem, 4 from 94rem of the dashboard's content width (window minus rail minus #content's 2 × 16 px). With the 60 px "Minik" rail that is a 640, 1000 and 1600 px window, as the old window rules were; the cap starts at a 1980 px window. M spans two only from two columns; L spans the row.

@@ -10,7 +10,7 @@ description: Form time values: validate_time() and prepare_form_data_for_input()
 - Helpers in `includes/fn/forms.php`: `pg_time_24_hour_parts()` (hour, minute, second or null), `pg_form_input_time_parts()` (the parts `prepare_form_data_for_input()` converts).
 
 ## Why was this added?
-- B9c of `plans/bootstrap-6-components.md` puts `<input type="time">` on time fields. Before PR #1698 its `17:00` failed `validate_time()` and `prepare_form_data_for_input()` stored it as `00:00`.
+- The Bootstrap 6 component swaps (B9c) put `<input type="time">` on time fields. Before PR #1698 its `17:00` failed `validate_time()` and `prepare_form_data_for_input()` stored it as `00:00`.
 
 ## How is a time printed?
 - `prepare_form_data_for_output()` prints a `time` value, and the time of a `date and time` value without an explicit format, on the site's clock through `pg_form_output_time()`: `17:05` on a 24-hour site, `5:05 PM` otherwise (as before). Until the 24-hour fix it always printed 12-hour, so mail queue, audit log, campaign, ERP screens and documents, order custom field answers and site receipts showed AM/PM on 24-hour sites. Both forms read back here, and `pg_fields.js` `parseTime()` takes either into the native control.
