@@ -285,6 +285,11 @@ function get_form_list_view($properties) {
 
     $attributes = '';
     $browse_or_search_required = false;
+    // Set before the browse/search block, which a page with both off skips.
+    $browse_enabled = false;
+    $search_query = '';
+    $advanced_filter = false;
+    $number_of_results = 0;
     $browse_expanded = false;
     $browse_active = false;
     $browse_fields = array();
@@ -1270,7 +1275,7 @@ function get_form_list_view($properties) {
 
         // If there is at least one browse filter, then browse is enabled,
         // so prepare feature.
-        if (isset($browse_enabled) && $browse_enabled) {
+        if ($browse_enabled) {
 
             $browse_field_id_options = array();
             $browse_field_id_options[lang('Browse')] = '';
@@ -1884,13 +1889,10 @@ function get_form_list_view($properties) {
 
     // If browse and search are disabled, or show results by default is enabled,
     // or the visitor has browsed or searched, then continue to get results.
-    if (
-        (
-            ($search == 0)
-            && (isset($browse_enabled) && $browse_enabled == false)
-        )
-        || ($show_results_by_default == 1)
-        ||
+    if (pg_form_list_view_shows_results(
+        $search,
+        $browse_enabled,
+        $show_results_by_default,
         (
             ($liveform->get_field_value($pk_browse_field) != '')
             && ($liveform->get_field_value($pk_browse_filter) != '')
@@ -1899,7 +1901,7 @@ function get_form_list_view($properties) {
         || ($liveform->field_in_session($page_id . '_simple_submit') == true)
         || ($advanced_filter == true)
         || ($liveform->field_in_session($page_id . '_advanced_submit') == true)
-    ) {
+    )) {
 
         // get all field names that are in the layout, so that we can determine
         // what needs to be selected from the database
@@ -2073,7 +2075,7 @@ function get_form_list_view($properties) {
         // If browse is enabled and there is an active browse field and an active browse filter,
         // then add a filter for the browse filter.
         if (
-            (isset($browse_enabled) && $browse_enabled == true)
+            ($browse_enabled == true)
             && ($liveform->get_field_value($pk_browse_field) != '')
             && ($liveform->get_field_value($pk_browse_filter) != '')
         ) {
@@ -3462,7 +3464,7 @@ function get_form_list_view($properties) {
         }
 
         if (
-            (isset($browse_enabled) && $browse_enabled)
+            $browse_enabled
             and
             (
                 ($liveform->get($pk_browse_field) != '')
@@ -3497,19 +3499,11 @@ function get_form_list_view($properties) {
     } else {
         $browse_or_search_required = true;
     }
-    $output_browser_enabled = '';
-    if(isset($browse_enabled)){
-        $output_browser_enabled = $browse_enabled;
-    }
-    $output_search_query = '';
-    if(isset($search_query)){
-        $output_search_query = $search_query;
-    }
     $content = render_layout(array(
         'page_id' => $page_id,
         'messages' => $liveform->get_messages(),
         'attributes' => $attributes,
-        'browse' => $output_browser_enabled,
+        'browse' => $browse_enabled,
         'browse_expanded' => $browse_expanded,
         'browse_active' => $browse_active,
         'browse_fields' => $browse_fields,
@@ -3520,7 +3514,7 @@ function get_form_list_view($properties) {
         'search_advanced_content' => $search_advanced_content,
         'search_advanced_expanded' => $search_advanced_expanded,
         'system' => $system,
-        'query' => $output_search_query,
+        'query' => $search_query,
         'browse_or_search_required' => $browse_or_search_required,
         'number_of_forms' => count($forms),
         'total_number_of_forms' => $number_of_results,
