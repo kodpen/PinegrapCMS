@@ -16,7 +16,7 @@ module: collections
 ## How does the renderer draw it?
 - `pg_coll_ref_bindings(&$tree)` (module `includes/fn/collections.php`) turns each binding into `__ref_<n>`, beside the page-link pre-pass. After the records' fields are indexed (and translated), `pg_coll_ref_fill()` reads the references from the values as stored, loads the records every element points at with one query per form (`pg_coll_ref_load()`, cached per request; products and pages one query each, `pg_coll_ref_load_products()` / `_pages()`) and puts the value under `__ref_<n>` in the record's fields.
 - So `pg_sw_apply_tokens()` escapes, formats and filters it once like an own field (rich text filtered, a file field an address). Several references print joined by `, `, in stored order; one pointing at nothing is left out.
-- Printed as stored, even with `translate_records` on: the translation extracts a widget's own records only, so a lookup of another form's text would miss and count against the page under the "reviewed" policy. Open: extract referenced values (C4).
+- Printed as stored, even with `translate_records` on: the translation extracts a widget's own records only, so a lookup of another form's text would miss and, on a record's own page, keep it out under the "reviewed" policy. Open: extract referenced values (C4).
 - A path that does not expand it (another widget kind, a nested shared component): `_apply_bindings()` prints `#` for an href; text is swept empty.
 
 ## What does a product or page print?

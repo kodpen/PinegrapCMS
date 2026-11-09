@@ -266,7 +266,7 @@ function _render_system_widget_tag_cloud_region($tree_json, $widget_id, $cfg = a
         if (is_array($page)) $keywords = pg_tcw_widget_keywords($page['cfg']);
     }
     $rows = is_array($page) ? pg_tcw_rows($keywords, (string)$page['page_name'],
-        defined('FRONTEND_LANGUAGE') ? function ($word) { return pg_tr_text($word, 'text'); } : null) : array();
+        defined('FRONTEND_LANGUAGE') ? function ($word) { return pg_tr_data_text($word, 'text'); } : null) : array();
 
     _eo_apply_visibility_bindings($tree, array('has_tags' => (bool)$rows, 'no_tags' => !$rows));
     _pg_inject_messages_node($tree, 'tag_cloud_region');

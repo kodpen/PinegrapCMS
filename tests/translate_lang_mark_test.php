@@ -75,5 +75,5 @@ function test_translate_lang_mark_user_lang_wins()
 // The drawing rules changed, so the drawn bodies are drawn again once.
 function test_translate_lang_mark_rules_changed()
 {
-	pg_assert_same('2026.11.0-2', pg_tr_render_rules());
+	pg_assert_same('2026.11.0-3', pg_tr_render_rules());
 }

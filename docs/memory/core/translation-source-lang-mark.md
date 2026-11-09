@@ -17,10 +17,11 @@ The document is `lang="en"` on `/en/` (`pg_tr_render_finalize()`), and the forum
 
 ## What is not covered?
 - Database texts swapped in by `pg_tr_render_db_texts()`: no element of their own.
+- A record's fields a list or record view draws untranslated (`pg_tr_record_fields()`): the value goes into the widget's template through `^^field^^` tokens in HTML (`pg_sw_apply_tokens()`), in text or in an attribute, so marking its element needs an HTML pass over the row; left out.
 - The designer preview draws only the source language, so it has no twin.
 
 ## How did running sites pick it up?
-`pg_tr_render_rules()` went to `2026.11.0-2`: the drawn bodies are dropped once and the kept "index" answers stay (`pg_tr_render_rules_check()`).
+`pg_tr_render_rules()` went to `2026.11.0-2` (now `2026.11.0-3`, [[translation-index-verdict]]): the drawn bodies are dropped once and the kept "index" answers stay (`pg_tr_render_rules_check()`).
 
 ## What `<html lang>` does an e-mail body carry?
 - An e-mail drawn from a designed page (`get_page_content(..., $email = true)`) never passes `pg_tr_finalize()`, so it kept the stored `lang="en"` of `generate_style_code_from_tree()` (#4546: Turkish form notifications, auto-replies and the order receipt were `lang="en"`).

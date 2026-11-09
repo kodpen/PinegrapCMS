@@ -68,6 +68,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-35.md: Decisions list, product part 35 (2026-11-05 on): live pictures of templates and designs, the installer's design step and 1440 px width, the ACP Bearer credential, a shopper's MCP consent
 - decisions-made-product-36.md: Decisions list, product part 36 (2026-11-06 on): one card per submitter in a form list (the Social template's People list)
 - decisions-made-product-37.md: Decisions list, product part 37 (2026-11-07 on): design templates get their own look, sector sections as palette block families first, and every shipped template one polishing round
+- decisions-made-product-38.md: Decisions list, product part 38 (2026-11-09 on): a translated page's index verdict counts only its own words, never list records or products; a record save opens a translation job
 - decisions-made-product-39.md: Decisions list, product part 39 (2026-11-09 on): a backup is reported as a problem only when the newest one is more than a month old
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14

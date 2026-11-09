@@ -1117,6 +1117,14 @@ function api_form_submission_update($params) {
 
 	$row = api_form_submission_owned($params['id'], $id);
 
+	// A key with forms:write over this form: the record's texts go to the
+	// languages that translate on save.
+	if (($writes || array_key_exists('complete', $params)) && !empty($row['complete'])) {
+
+		pg_tr_records_saved($row['page_id'], (int)$app['owner']['id']);
+
+	}
+
 	$values = api_form_submission_values(array($id));
 
 	api_ok(api_form_submission_present($row, isset($values[$id]) ? $values[$id] : array()));
@@ -1882,6 +1890,10 @@ function api_form_submission_create($params) {
 			'reference_code' => $created['reference_code'],
 			'contact_id'     => null
 		));
+
+		// A key with forms:write over this form: the record's texts go to
+		// the languages that translate on save.
+		pg_tr_records_saved($id, (int)$app['owner']['id']);
 
 	}
 

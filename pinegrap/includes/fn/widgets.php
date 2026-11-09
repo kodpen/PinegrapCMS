@@ -3769,17 +3769,21 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
              LEFT JOIN files       ON form_data.file_id       = files.id
              WHERE form_data.form_id = '" . (int)$form_row['id'] . "'"
         );
-        // The rows of the lists inside the record, drawn by the finish pass.
-        pg_sw_list_publish('form_record', $data_rows, array('translate' => !empty($cfg['translate_records'])));
+        // The rows of the lists inside the record, drawn by the finish pass;
+        // the record is this page's own words ('own').
+        pg_sw_list_publish('form_record', $data_rows, array('translate' => !empty($cfg['translate_records']), 'own' => true));
 
         $indexed = pg_sw_index_form_data($data_rows);
         $custom  = isset($indexed[(int)$form_row['id']]) ? $indexed[(int)$form_row['id']] : array();
         $custom_source = $custom;
 
         // The record's texts in the page's language, when the widget includes
-        // its records in the translation (includes/fn/translate.php).
+        // its records in the translation (includes/fn/translate.php). They
+        // are this page's own words: it stays out of the search engines
+        // until they are translated and reviewed, while a list's records
+        // never keep a page out.
         if (!empty($cfg['translate_records'])) {
-            $custom = pg_tr_record_fields($custom);
+            $custom = pg_tr_record_fields($custom, true);
         }
         $by_record = array((int)$form_row['id'] => $custom);
         pg_coll_ref_fill($refs, $by_record, array((int)$form_row['id'] => $custom_source));

@@ -540,13 +540,13 @@ function test_widget_lists_publish_and_take()
 	$taken = _widget_lists_in_scope('form_item_view', function ($scope) use ($list) {
 		_render_tree_node($list, 0, 0);
 		pg_sw_list_publish('form_record', array(_widget_lists_data(1, 1, 'section', 'old')));
-		pg_sw_list_publish('form_record', array(_widget_lists_data(4, 7, 'section', 'x', 'check box', array('field_translate' => '0'))), array('translate' => true));
+		pg_sw_list_publish('form_record', array(_widget_lists_data(4, 7, 'section', 'x', 'check box', array('field_translate' => '0'))), array('translate' => true, 'own' => true));
 		return array(pg_sw_list_take($scope), pg_sw_list_take($scope));
 	}, 9003);
 	pg_assert_same(array('form_record' => array(
 		'records' => array(4 => array(array('id' => 7, 'name' => 'section', 'bare' => 'section', 'label' => 'Section', 'type' => 'check box',
 			'data' => 'x', 'file' => '', 'office' => 0, 'wysiwyg' => 0, 'translate' => 0))),
-		'options' => array('translate' => true),
+		'options' => array('translate' => true, 'own' => true),
 	)), $taken[0], 'the last publish replaces the first');
 	pg_assert_same(array(), $taken[1], 'take forgets');
 }

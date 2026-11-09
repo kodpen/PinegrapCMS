@@ -18,7 +18,7 @@ Visitor statistics, page and article views, search engine index flags.
 - Write a noindex page into robots.txt as three anchored lines, never a plain prefix, and never write a private-folder page there (`robots-txt-disallow-rules.md`).
 - Never assume a page renders an HTML document: a new splice or document rule first checks that the output is one (`seo-structure-non-html-output.md`).
 - Give every action link (login, register, reset, subscribe, remove from cart) `rel="nofollow"`, stamped by the server in system widgets (`action-links-rel-nofollow.md`).
-- Offer a translated address in sitemap.xml or hreflang only by `pg_tr_index_decide()`; no kept answer means not offered, and only a reviewed write keeps one (`translation-index-verdict.md`).
+- Offer a translated address in sitemap.xml or hreflang only by `pg_tr_index_decide()`; no kept answer means not offered, only a reviewed write keeps one, and the verdict counts only the page's own words, never a list's records or the catalog (`translation-index-verdict.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -47,7 +47,7 @@ Visitor statistics, page and article views, search engine index flags.
 - sitemap-cache.md: sitemap.xml kept in data/cache/sitemap.txt under config.page_cache_generation with a one-hour lifetime (#2054): what redraws it, what waits for the lifetime, the lock, the wait with no copy, the purge
 - sitemap-listed-pages.md: Which pages sitemap.xml lists bare: the page types (pg_sitemap_page_types()), designed pages whose system widget stands in for an unlisted type, the home page exception, detail pages vs their records
 - translation-head-alternates.md: When a drawn page names its language versions (hreflang links) in its head: own address, none named yet, and not noindex under any language policy
-- translation-index-verdict.md: One rule for a translated page's robots meta, hreflang alternates and sitemap.xml under the "reviewed" policy; no kept answer means not offered; what drops or keeps the answer
+- translation-index-verdict.md: The "reviewed" policy's one rule for a translated page's robots meta, alternates and sitemap.xml: only the page's own words count; no kept answer means not offered; what drops or keeps it
 - visitor-channel-rule.md: The channel of a visit (paid, email, ai, organic, social, referral, direct), the search-engine table of init_tracking() and the ENUM step that appended today's engines
 - visitor-counter-dedup-key.md: Why http_referer is not part of the visitor dedup key in init_tracking(), how the visitor IP is resolved, and the defensive user_agent column probe (2026.2.5).
 - visitor-daily-summary.md: The daily visitor summary written for every day through yesterday: what a day holds, the day order of a run, where the raw rows take over (pg_visitor_rows_from), who reads it
