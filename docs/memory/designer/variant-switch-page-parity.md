@@ -4,7 +4,7 @@ description: A picked variant shows what its page shows - an offer's strike-thro
 module: widgets_catalog
 ---
 
-## What changed?
+## What did #8417 change?
 - Price: the payload's `price_formatted` and `price_range` are `_civ_price_shown()` (`includes/fn/widgets_catalog.php`): the strike-through block of `_pg_format_price_with_discount()` while an offer lowers the price, else the amount. The page's `__price_formatted` and `__price_range` use the same helper. `price_block_html` is the block either way, as `__price_block_html`. Before, a switch showed the plain amount and left `price_range` and `price_block_html` showing the first variant.
 - Alt text: `_civ_image_alt()` gives the payload's `image_alt` and the page's `__image_alt`: the short description (the name the store shows), else the Product ID / SKU (`name`), as the cart's `__item_image_alt`. Before, the page printed the SKU and a switch the short description. Owner decision of 2026-11-10 ([[decisions-made-product-40]]). The catalog cards' `__image_alt` is still the SKU: not changed here.
 - Markup around a bound word: kept on a switch (below).
