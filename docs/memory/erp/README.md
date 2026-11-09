@@ -26,5 +26,5 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 
 ## Files
 
-- `INDEX.md` lists the 156 files of this folder, one line each: search it rather than read it whole, then open only the files that match.
+- `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.
 - `grep -i 'word' docs/memory/erp/INDEX.md`; across every folder: `grep -i 'word' docs/memory/*/INDEX.md`.

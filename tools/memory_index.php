@@ -226,7 +226,7 @@ foreach ($folders as $folder => $entries) {
 		continue;
 	}
 
-	$indexes[$relative] = memory_index_folder($folder, count($entries), $rules);
+	$indexes[$relative] = memory_index_folder($folder, $rules);
 	$indexes["memory/$folder/INDEX.md"] = memory_index_folder_files($folder, $entries);
 }
 
@@ -392,9 +392,10 @@ function memory_index_top($folders, $others) {
 
 /**
  * A folder's README.md: the folder's key rules as written by hand (a heading
- * only when there are some), then how to search its INDEX.md.
+ * only when there are some), then how to search its INDEX.md. It names no
+ * file count, so two branches that each add a file do not both change it.
  */
-function memory_index_folder($folder, $count, $rules) {
+function memory_index_folder($folder, $rules) {
 
 	$lines = array(
 		'# docs/memory/' . $folder . '/',
@@ -418,7 +419,7 @@ function memory_index_folder($folder, $count, $rules) {
 	$lines[] = '';
 	$lines[] = '## Files';
 	$lines[] = '';
-	$lines[] = '- `INDEX.md` lists the ' . $count . ' files of this folder, one line each: search it rather than read it whole, then open only the files that match.';
+	$lines[] = '- `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.';
 	$lines[] = "- `grep -i 'word' docs/memory/" . $folder . "/INDEX.md`; across every folder: `grep -i 'word' docs/memory/*/INDEX.md`.";
 
 	return implode("\n", $lines) . "\n";

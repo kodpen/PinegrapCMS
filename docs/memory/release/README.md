@@ -20,5 +20,5 @@ Versions, migrations and upgrade steps, change log rules, release status.
 
 ## Files
 
-- `INDEX.md` lists the 17 files of this folder, one line each: search it rather than read it whole, then open only the files that match.
+- `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.
 - `grep -i 'word' docs/memory/release/INDEX.md`; across every folder: `grep -i 'word' docs/memory/*/INDEX.md`.

@@ -23,5 +23,5 @@ Visitor statistics, page and article views, search engine index flags.
 
 ## Files
 
-- `INDEX.md` lists the 50 files of this folder, one line each: search it rather than read it whole, then open only the files that match.
+- `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.
 - `grep -i 'word' docs/memory/visitors/INDEX.md`; across every folder: `grep -i 'word' docs/memory/*/INDEX.md`.

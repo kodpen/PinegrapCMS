@@ -26,5 +26,5 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 
 ## Files
 
-- `INDEX.md` lists the 39 files of this folder, one line each: search it rather than read it whole, then open only the files that match.
+- `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.
 - `grep -i 'word' docs/memory/waf/INDEX.md`; across every folder: `grep -i 'word' docs/memory/*/INDEX.md`.

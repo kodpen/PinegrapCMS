@@ -19,5 +19,5 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 
 ## Files
 
-- `INDEX.md` lists the 172 files of this folder, one line each: search it rather than read it whole, then open only the files that match.
+- `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.
 - `grep -i 'word' docs/memory/core/INDEX.md`; across every folder: `grep -i 'word' docs/memory/*/INDEX.md`.

@@ -28,5 +28,5 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 
 ## Files
 
-- `INDEX.md` lists the 197 files of this folder, one line each: search it rather than read it whole, then open only the files that match.
+- `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.
 - `grep -i 'word' docs/memory/platform/INDEX.md`; across every folder: `grep -i 'word' docs/memory/*/INDEX.md`.

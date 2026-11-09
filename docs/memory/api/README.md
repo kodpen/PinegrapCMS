@@ -21,5 +21,5 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 
 ## Files
 
-- `INDEX.md` lists the 94 files of this folder, one line each: search it rather than read it whole, then open only the files that match.
+- `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.
 - `grep -i 'word' docs/memory/api/INDEX.md`; across every folder: `grep -i 'word' docs/memory/*/INDEX.md`.
