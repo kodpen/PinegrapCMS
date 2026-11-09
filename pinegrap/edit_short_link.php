@@ -153,8 +153,7 @@ if (!$_POST) {
                 'keep' => array(
                     'page_id' => $short_link['page_id'],
                     'product_group_id' => $liveform->get_field_value('product_group_id'),
-                    'product_id' => $liveform->get_field_value('product_id'),
-                    'file_id' => $short_link['file_id']))),
+                    'product_id' => $liveform->get_field_value('product_id')))),
             '
                                         <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
                                         <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . (pg_short_link_recycle_ready() ? lang('This short link will be moved to the Recycle Bin.') : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('short link'))))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>'

@@ -62,20 +62,10 @@ foreach (array('Organization' => lang('Organization'), 'Person' => lang('Person'
     $ap_type_options .= '<option value="' . $ap_value . '"' . (($ap_stored['type'] === $ap_value) ? ' selected="selected"' : '') . '>' . h($ap_label) . '</option>';
 }
 
-// The avatar is shown to everyone, so only pictures every visitor may open
-// (settings-public-image-pickers).
-$ap_icon_options = '<option value="">' . lang('(the organization logo)') . '</option>';
-$ap_icon_matched = ($ap_stored['icon'] === '');
-
-foreach ((array) db_items("SELECT name FROM files WHERE (type IN ('" . implode("', '", pg_public_image_file_types()) . "')) AND " . pg_public_image_files_where() . " ORDER BY name ASC") as $ap_file) {
-    $ap_selected = ($ap_file['name'] === $ap_stored['icon']);
-    $ap_icon_matched = $ap_icon_matched || $ap_selected;
-    $ap_icon_options .= '<option value="' . h($ap_file['name']) . '"' . ($ap_selected ? ' selected="selected"' : '') . '>' . h($ap_file['name']) . '</option>';
-}
-
-if (!$ap_icon_matched) {
-    $ap_icon_options .= pg_public_image_stored_option($ap_stored['icon']);
-}
+// The avatar is shown to everyone, so the picker searches only pictures every
+// visitor may open (kind public_image, settings-public-image-pickers) and
+// prints the stored one alone.
+$ap_icon_options = pg_file_picker_public_options($ap_stored['icon'], lang('(the organization logo)'));
 
 $ap_on = $ap_stored['enabled'] && pg_ap_handle_valid($ap_stored['handle']);
 $ap_address = $ap_on ? '@' . $ap_stored['handle'] . '@' . $ap_host : '';
@@ -112,7 +102,7 @@ $pg_settings_cards[] = $ap_card('pgset-fediverse', lang('Fediverse account'), '
                     </div>
                     <div class="pg-f-lg">
                         <label for="ap_icon" class="form-label">' . lang('Avatar') . '</label>
-                        <select name="ap_icon" id="ap_icon" class="form-control">' . $ap_icon_options . '</select>
+                        <select name="ap_icon" id="ap_icon" class="form-control"' . pg_file_picker_attributes('public_image') . '>' . $ap_icon_options . '</select>
                     </div>
                     <div class="col-12">' . ($ap_on ? '
                         <div class="form-text mb-3">' . lang(array('string' => 'Followed as {var:1}.', 'vars' => '<strong>' . h($ap_address) . '</strong>')) . '</div>

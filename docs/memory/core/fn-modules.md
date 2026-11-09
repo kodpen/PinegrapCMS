@@ -89,6 +89,7 @@ description: Generated from the module field of the memory files: each includes/
 - `explorer_side`: [[explorer-menu-tree]]
 - `field_list`: [[list-table-region-lists]]
 - `file_copy_gate`: [[file-copy-chat-attachments]]
+- `file_picker_search`: [[file-picker-search]]
 - `file_storage`: [[file-object-storage]], [[file-object-storage-readers]], [[object-storage-active-types]], [[object-storage-migration]], [[workspace-files-object-storage]]
 - `files`: [[design-files-modify-dialog]], [[design-files-screens]], [[edit-file-header]], [[import-my-site-scans]], [[name-length-refusal]], [[object-storage-unmovable-come-home]], [[settings-public-image-pickers]], [[stored-file-name-upload-rule]], [[theme-screens-names-and-returns]]
 - `form_mails`: [[custom-form-mails]]

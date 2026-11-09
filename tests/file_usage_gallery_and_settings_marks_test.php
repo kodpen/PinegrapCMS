@@ -111,7 +111,10 @@ function test_settings_pickers_use_the_mark()
 
 	foreach (array('$site_icon', '$og_default_image', '$organization_logo', '$app_icon') as $value) {
 		// Through the public picture pickers' own mark, which falls back to
-		// pg_stored_file_option() (includes/fn/files.php).
-		pg_assert_contains('pg_public_image_stored_option(' . $value . ')', $prep, $value);
+		// pg_stored_file_option() (includes/fn/files.php); the pickers print
+		// the stored value alone and search the rest.
+		pg_assert_contains('pg_file_picker_public_options(' . $value . ', ', $prep, $value);
 	}
+
+	pg_assert_contains('pg_public_image_stored_option($value)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/file_picker_search.php'), 'the shared mark');
 }
