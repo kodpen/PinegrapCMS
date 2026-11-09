@@ -11,6 +11,7 @@ description: A comma in a file name: stored as _ since 2026.4.1; a file stored b
 - Not from an upload since 2026.4.1: `prepare_file_name()` runs `pg_ascii_file_name()`, which turns every character outside `A-Z a-z 0-9 . _ - [ ]` into `_` (`a,b.jpg` is stored as `a_b.jpg`). Checked on dev on 2026-11-09 through the File Manager's `explorer_upload` and the product screen's `add_file.php` (`image_profile=product`): both stored `_` and served 200.
 - Before 2026.4.1 only a space, `&`, `+` and `#` were replaced, so a file uploaded then keeps its comma after an upgrade, and the router still finds it by that name.
 - Such files are not renamed: their address works once the name is quoted, and a rename would break every link to them.
+- On a site before 2026.11.0 the file loads again after a rename in the File Manager (stored with `_`) and picking it again wherever it is used: a rename rewrites only its files row, not the products or pages that name it.
 
 ## What sends the header now?
 - `pg_http_content_disposition($name, $inline)` in `includes/http_range.php`, which functions.php and get_file.php both load: `inline` or `attachment`, the name in quotes with `"`, `\`, CR and LF removed, and `filename*=UTF-8''…` (RFC 8187) beside it when the name is not plain ASCII (old names such as `Özet.pdf`).
