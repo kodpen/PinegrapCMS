@@ -116,7 +116,7 @@ function carrier_label_kargonomi_test_places_and_draft()
 function test_carrier_label_kargonomi_is_a_builtin_driver()
 {
 	pg_assert_true(pg_label_driver('kargonomi') !== null);
-	pg_assert_same(array('carriers' => array('surat', 'aras', 'ptt'), 'formats' => array('pdf')), pg_label_info('kargonomi'));
+	pg_assert_same(array('carriers' => array('surat', 'aras', 'ptt'), 'formats' => array('pdf'), 'services' => array()), pg_label_info('kargonomi'));
 
 	foreach (array('test', 'create', 'label', 'cancel', 'track') as $operation) {
 		pg_assert_true(pg_label_can('kargonomi', $operation), $operation);

@@ -22,7 +22,11 @@ if (!defined('PG_TEST_RUNNER')) {
 // A driver with every operation, answering what its arguments ask for.
 function pg_label_pgtestship_info()
 {
-	return array('carriers' => array('aras', 'nowhere', 'yurtici', 7), 'formats' => array('zpl', 'png', 'pdf'));
+	return array(
+		'carriers' => array('aras', 'nowhere', 'yurtici', 7),
+		'formats'  => array('zpl', 'png', 'pdf'),
+		'services' => array('ARAS_STD' => ' Aras Standard ', 'bad code' => 'Spaced', 'NONAME' => '', 7 => 'Numbered'),
+	);
 }
 
 function pg_label_pgtestship_fields()
@@ -47,6 +51,11 @@ function pg_label_pgtestship_test($account)
 function pg_label_pgtestship_create($shipment, $account)
 {
 	return $shipment;
+}
+
+function pg_label_pgtestship_rate($shipment, $account)
+{
+	return array('success' => true, 'quotes' => $shipment);
 }
 
 function pg_label_pgtestship_track($reference, $account)
@@ -121,8 +130,8 @@ function test_carrier_labels_info_keeps_known_carriers_and_formats()
 {
 	carrier_labels_test_register();
 
-	pg_assert_same(array('carriers' => array('yurtici', 'aras'), 'formats' => array('pdf', 'zpl')), pg_label_info('pgtestship'));
-	pg_assert_same(array('carriers' => array(), 'formats' => array()), pg_label_info('nodriver'));
+	pg_assert_same(array('carriers' => array('yurtici', 'aras'), 'formats' => array('pdf', 'zpl'), 'services' => array('ARAS_STD' => 'Aras Standard')), pg_label_info('pgtestship'));
+	pg_assert_same(array('carriers' => array(), 'formats' => array(), 'services' => array()), pg_label_info('nodriver'));
 }
 
 function test_carrier_labels_can_asks_the_functions()
@@ -192,6 +201,47 @@ function test_carrier_labels_answer_refuses_what_cannot_be_trusted()
 
 	$answer = pg_label_answer('test', array('success' => 1));
 	pg_assert_false($answer['success'], 'only true is success');
+}
+
+// A quote is charged at checkout as it stands: one that is not a whole
+// amount of 0 or more with a service and a currency is dropped.
+function test_carrier_labels_answer_keeps_only_quotes_that_can_be_charged()
+{
+	$answer = pg_label_answer('rate', array('success' => true, 'quotes' => array(
+		array('service' => ' YURTICI_STANDART ', 'carrier' => 'Yurtiçi Kargo', 'amount' => 13140, 'currency' => 'try', 'fee' => 5),
+		array('service' => 'FREE', 'amount' => 0, 'currency' => 'EUR'),
+		array('service' => 'DECIMAL', 'amount' => 131.4, 'currency' => 'TRY'),
+		array('service' => 'TEXT', 'amount' => '13140', 'currency' => 'TRY'),
+		array('service' => 'NEGATIVE', 'amount' => -1, 'currency' => 'TRY'),
+		array('service' => 'two words', 'amount' => 100, 'currency' => 'TRY'),
+		array('service' => str_repeat('A', 61), 'amount' => 100, 'currency' => 'TRY'),
+		array('service' => 'NOCURRENCY', 'amount' => 100, 'currency' => 'TL'),
+		array('amount' => 100, 'currency' => 'TRY'),
+		'not a quote',
+	)));
+
+	pg_assert_true($answer['success']);
+	pg_assert_same(array(
+		array('service' => 'YURTICI_STANDART', 'carrier' => 'yurtici', 'amount' => 13140, 'currency' => 'TRY'),
+		array('service' => 'FREE', 'carrier' => '', 'amount' => 0, 'currency' => 'EUR'),
+	), $answer['quotes']);
+}
+
+function test_carrier_labels_rate_without_a_quote_is_a_plain_failure()
+{
+	carrier_labels_test_register();
+
+	pg_assert_true(pg_label_can('pgtestship', 'rate'));
+
+	$answer = pg_label_call('pgtestship', 'rate', array(array(array('service' => 'X', 'amount' => 1.5, 'currency' => 'TRY')), array()));
+	pg_assert_false($answer['success']);
+	pg_assert_false($answer['unclear'], 'asking for a price changes nothing');
+	pg_assert_same(array(), $answer['quotes']);
+	pg_assert_true($answer['error'] !== '');
+
+	$answer = pg_label_call('pgtestship', 'rate', array(array(array('service' => 'X', 'amount' => 150, 'currency' => 'TRY')), array()));
+	pg_assert_true($answer['success']);
+	pg_assert_same(150, $answer['quotes'][0]['amount']);
 }
 
 function test_carrier_labels_call_pads_arguments_and_masks_secrets()
