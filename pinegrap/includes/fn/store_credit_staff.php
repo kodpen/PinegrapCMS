@@ -249,6 +249,21 @@ function pg_credit_staff_kind_label($kind)
 }
 
 /**
+ * An amount of store credit for the staff card, escaped for HTML. The
+ * currencies table keeps the symbol as HTML (&#8378;), so it becomes its
+ * character before h(): the card shows it once, and a symbol typed as
+ * markup shows as text.
+ *
+ * @param int|string $cents   minor units of the base currency
+ * @param string     $symbol  the currency symbol as stored
+ * @return string HTML
+ */
+function pg_credit_staff_money($cents, $symbol)
+{
+    return h(pg_money_text(((int) $cents) / 100, (string) $symbol));
+}
+
+/**
  * Issue or void from the customer's screen. The caller has checked the
  * token, the person's right to open this user and pg_credit_staff_allowed().
  *
@@ -336,7 +351,7 @@ function pg_credit_staff_panel_html($user_id, $send_to, $now)
     }
 
     $money = function ($cents) {
-        return h(pg_format_money((int) $cents / 100, BASE_CURRENCY_SYMBOL));
+        return pg_credit_staff_money($cents, BASE_CURRENCY_SYMBOL);
     };
     $keys = get_token_field()
         . '<input type="hidden" name="id" value="' . (int) $user_id . '"/>'

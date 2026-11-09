@@ -176,7 +176,7 @@ function pg_container_form_cards($liveform, $status_rows = '')
                                             </div>
                                             <div class="d-flex justify-content-between gap-3 py-2">
                                                 <dt class="fw-normal">' . lang('Cost') . '</dt>
-                                                <dd class="mb-0 fw-bold text-end text-break" id="container_summary_cost" data-symbol="' . h(BASE_CURRENCY_SYMBOL) . '"></dd>
+                                                <dd class="mb-0 fw-bold text-end text-break" id="container_summary_cost" data-symbol="' . h(html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8')) . '"></dd>
                                             </div>
                                             ' . $status_rows . '
                                         </dl>
