@@ -66,9 +66,10 @@ function pg_explorer_backup_entry_segments($entry)
 // The week a weekly automatic backup covers, read from its name
 // (pg_backup_auto_name(): auto_backup_<year>-<month>-<ISO week>, ".zip" on
 // the archive): array('week', 'start', 'end') with the Monday and Sunday as
-// Y-m-d, or null for any other name. The year in the name is the calendar
-// year of the run, so a run on 29-31 December in ISO week 1 is read as the
-// first week of that year.
+// Y-m-d, or null for any other name. The year in the name is the ISO year
+// of the week; names written before that carry the run's calendar year, so
+// week 1 in December belongs to the next year and week 52 or 53 in January to
+// the year before.
 function pg_explorer_backup_auto_week($name)
 {
     if (!preg_match('/^auto_backup_(\d{4})-(\d{2})-(\d{2})(\.zip)?$/', (string) $name, $match)) {
@@ -76,7 +77,14 @@ function pg_explorer_backup_auto_week($name)
     }
 
     $year = (int) $match[1];
+    $month = (int) $match[2];
     $week = (int) $match[3];
+
+    if (($month === 12) && ($week === 1)) {
+        $year++;
+    } elseif (($month === 1) && ($week >= 52)) {
+        $year--;
+    }
 
     if (($week < 1) || ($week > 53)) {
         return null;

@@ -86,18 +86,41 @@ function test_backup_prune_list_orders_new_year_weeks_by_time()
 		'auto_backup_2026-12-53.zip',  // 28-31 December 2026
 	);
 
-	pg_assert_same('auto_backup_2027-01-53', pg_backup_auto_name(mktime(12, 0, 0, 1, 2, 2027)), 'week 53 in January');
+	// Names written before the week was named by its Thursday: the sort keeps them in time order.
+	pg_assert_same('auto_backup_2026-12-53', pg_backup_auto_name(mktime(12, 0, 0, 1, 2, 2027)), 'week 53 named by its Thursday');
 	pg_assert_same(
 		array('auto_backup_2027-01-53.zip', 'auto_backup_2026-12-53.zip'),
 		pg_backup_prune_list($names, 2)
 	);
 
 	// 29 December 2025 already belongs to ISO week 1 of 2026.
-	pg_assert_same('auto_backup_2025-12-01', pg_backup_auto_name(mktime(12, 0, 0, 12, 29, 2025)), 'week 1 in December');
+	pg_assert_same('auto_backup_2026-01-01', pg_backup_auto_name(mktime(12, 0, 0, 12, 29, 2025)), 'week 1 named by its Thursday');
 	pg_assert_same(
 		array('auto_backup_2025-12-51.zip'),
 		pg_backup_prune_list(array('auto_backup_2025-12-51.zip', 'auto_backup_2025-12-01.zip', 'auto_backup_2025-12-52.zip'), 2)
 	);
+}
+
+// Every day of one ISO week gives one name, also when the week crosses a
+// month or a year, so a retention of N keeps N real weeks.
+function test_backup_auto_name_is_one_name_per_iso_week()
+{
+	$weeks = array(
+		'auto_backup_2026-12-49' => array(array(2026, 11, 30), array(2026, 12, 1), array(2026, 12, 6)),
+		'auto_backup_2026-01-01' => array(array(2025, 12, 29), array(2025, 12, 31), array(2026, 1, 1), array(2026, 1, 4)),
+		'auto_backup_2026-12-53' => array(array(2026, 12, 28), array(2027, 1, 3)),
+		'auto_backup_2026-10-44' => array(array(2026, 10, 26), array(2026, 11, 1)),
+	);
+
+	foreach ($weeks as $expected => $days) {
+		foreach ($days as $day) {
+			foreach (array(0, 12, 23) as $hour) {
+				pg_assert_same($expected, pg_backup_auto_name(mktime($hour, 30, 0, $day[1], $day[2], $day[0])), implode('-', $day) . ' ' . $hour . ':30');
+			}
+		}
+	}
+
+	pg_assert_same(true, pg_backup_is_auto_name(pg_backup_auto_name(mktime(12, 0, 0, 11, 30, 2026)) . '.zip'), 'shape unchanged');
 }
 
 // The backup destination's own fields become the shared client's settings;
