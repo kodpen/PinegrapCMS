@@ -541,6 +541,112 @@ function ws_wtable_screen_cell_text($column, $value, $people = array())
 }
 
 /**
+ * A cell as the Excel download writes it (pg_xlsx_sheet_rows()): number,
+ * money and formula cells as numbers (money as its figure, the currency
+ * goes to the heading), a date as a date, a checkbox Yes or No, and the
+ * rest as the text the screen shows. Pure.
+ *
+ * @param array       $column
+ * @param mixed       $value
+ * @param array       $people user id => brief (name), for person cells
+ * @param string|null $error  the formula's error code, when it failed
+ * @return int|float|string|array
+ */
+function ws_wtable_export_cell($column, $value, $people = array(), $error = null)
+{
+    $type = (string) ($column['type'] ?? '');
+    $options = (array) ($column['options'] ?? array());
+
+    if ($type === 'checkbox') {
+        return $value ? lang('Yes') : lang('No');
+    }
+
+    if (($type === 'formula') && ($error !== null) && ((string) $error !== '')) {
+        return '#' . strtoupper((string) $error);
+    }
+
+    if (($value === null) || ($value === '')) {
+        return '';
+    }
+
+    switch ($type) {
+        case 'money':
+            if (!is_numeric($value)) {
+                return is_scalar($value) ? (string) $value : '';
+            }
+
+            $figure = ws_wtable_screen_money_text((int) $value, isset($options['decimals']) ? (int) $options['decimals'] : 2);
+
+            return (strpos($figure, '.') === false) ? (int) $figure : (float) $figure;
+
+        case 'number':
+        case 'formula':
+            if (is_int($value) || is_float($value)) {
+                return $value;
+            }
+
+            return is_numeric($value) ? $value + 0 : (is_scalar($value) ? (string) $value : '');
+
+        case 'date':
+            return (is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}(?: \d{2}:\d{2})?$/', $value)) ? array('date' => $value) : (is_scalar($value) ? (string) $value : '');
+    }
+
+    return ws_wtable_screen_cell_text($column, $value, $people);
+}
+
+/**
+ * A table as the Excel download's heading and rows: one heading per column
+ * (a money column's currency after its name), then every row in the
+ * table's order. Pure.
+ *
+ * @param array $columns column id => column (ws_wtable_columns())
+ * @param array $rows    ws_wtable_rows()
+ * @param array $people  user id => brief (name), for person cells
+ * @return array headings (string[]), rows (lists of values)
+ */
+function ws_wtable_export_sheet($columns, $rows, $people = array())
+{
+    $headings = array();
+
+    foreach ($columns as $column) {
+        $currency = (string) ($column['options']['currency'] ?? '');
+        $headings[] = (string) $column['name'] . ((($column['type'] === 'money') && ($currency !== '')) ? ' (' . $currency . ')' : '');
+    }
+
+    $lines = array();
+
+    foreach ($rows as $row) {
+        $line = array();
+        $errors = (array) ($row['formula_errors'] ?? array());
+
+        foreach ($columns as $column_id => $column) {
+            $line[] = ws_wtable_export_cell($column, $row['cells'][$column_id] ?? null, $people, isset($errors[$column_id]) ? (string) $errors[$column_id] : null);
+        }
+
+        $lines[] = $line;
+    }
+
+    return array('headings' => $headings, 'rows' => $lines);
+}
+
+/**
+ * The name a table downloads as: its name in ASCII letters, digits, dots,
+ * dashes and underscores (a header cannot be trusted with more), or
+ * table-<id> when nothing is left. Pure.
+ *
+ * @param string $name
+ * @param int    $table_id
+ * @return string
+ */
+function ws_wtable_export_file_name($name, $table_id)
+{
+    $ascii = strtr((string) $name, array('ç' => 'c', 'Ç' => 'C', 'ğ' => 'g', 'Ğ' => 'G', 'ı' => 'i', 'İ' => 'I', 'ö' => 'o', 'Ö' => 'O', 'ş' => 's', 'Ş' => 'S', 'ü' => 'u', 'Ü' => 'U'));
+    $ascii = trim((string) preg_replace('/[^A-Za-z0-9._-]+/', '_', $ascii), '._-');
+
+    return (($ascii === '') ? 'table-' . (int) $table_id : substr($ascii, 0, 80)) . '.xlsx';
+}
+
+/**
  * A delete button of the tables screen: it posts through the form outside
  * the cards (a form may not sit inside a table row), asking first.
  *
