@@ -870,7 +870,12 @@ function merge_train_settle()
 			merge_train_run(array(PHP_BINARY, $tool), $out);
 			fwrite(STDOUT, $out);
 
-			foreach ($generated[$kind] as $path) {
+			// The generator also rewrites files of its kind that merged
+			// cleanly but now list stale content (a folder's INDEX.md beside
+			// a README that conflicted): they go into the commit too.
+			merge_train_run(array('git', 'status', '--porcelain', '--untracked-files=all'), $status);
+
+			foreach (array_unique(array_merge($generated[$kind], merge_train_generated_changed((string) $status, $kind))) as $path) {
 				merge_train_stage_if_clean($path);
 			}
 		}
@@ -879,13 +884,30 @@ function merge_train_settle()
 	return merge_train_unmerged();
 }
 
-// The generator that writes a path: 'index' (the memory README indexes and
-// the module list, memory_index.php), 'script' (.min.js bundles,
+// The paths of `git status --porcelain` output that $kind's generator
+// writes (merge_train_generated()), renames left out. Pure.
+function merge_train_generated_changed($porcelain, $kind)
+{
+	$paths = array();
+
+	foreach (explode("\n", str_replace("\r", '', $porcelain)) as $line) {
+		$path = trim(substr($line, 3));
+
+		if (($path !== '') && (strpos($path, ' -> ') === false) && (merge_train_generated($path) === $kind)) {
+			$paths[] = $path;
+		}
+	}
+
+	return $paths;
+}
+
+// The generator that writes a path: 'index' (the memory README and INDEX
+// files and the module list, memory_index.php), 'script' (.min.js bundles,
 // build_js.php), 'style' (.min.css stylesheets, build_css.php), or '' for a
 // file written by hand.
 function merge_train_generated($path)
 {
-	if (((strpos($path, 'docs/memory/') === 0) && (basename($path) === 'README.md')) || ($path === MERGE_TRAIN_MODULE_LIST)) {
+	if (((strpos($path, 'docs/memory/') === 0) && in_array(basename($path), array('README.md', 'INDEX.md'), true)) || ($path === MERGE_TRAIN_MODULE_LIST)) {
 		return 'index';
 	}
 

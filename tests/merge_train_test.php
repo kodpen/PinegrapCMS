@@ -68,6 +68,7 @@ function test_merge_train_docs_only()
 function test_merge_train_generated_and_sources()
 {
 	pg_assert_same('index', merge_train_generated('docs/memory/ui/README.md'));
+	pg_assert_same('index', merge_train_generated('docs/memory/ui/INDEX.md'));
 	pg_assert_same('index', merge_train_generated('docs/memory/core/fn-modules.md'));
 	pg_assert_same('script', merge_train_generated('pinegrap/assets/js/pg_image_editor.min.js'));
 	pg_assert_same('style', merge_train_generated('pinegrap/assets/css/pg_image_editor.min.css'));
@@ -416,3 +417,13 @@ function test_merge_train_changelog_apply_without_version()
 	pg_assert_same(false, merge_train_changelog_apply("No versions here.\n", $entry));
 }
 
+// After a generator runs, the files of its kind that merged cleanly but were
+// rewritten are staged as well as the conflicted ones.
+function test_merge_train_generated_changed()
+{
+	$status = "UU docs/memory/ui/README.md\n M docs/memory/ui/INDEX.md\n M pinegrap/changelog.txt\n?? docs/memory/erp/INDEX.md\nR  docs/memory/a.md -> docs/memory/b/README.md\n M pinegrap/assets/js/pg_dash.min.js\n";
+
+	pg_assert_same(array('docs/memory/ui/README.md', 'docs/memory/ui/INDEX.md', 'docs/memory/erp/INDEX.md'), merge_train_generated_changed($status, 'index'));
+	pg_assert_same(array('pinegrap/assets/js/pg_dash.min.js'), merge_train_generated_changed($status, 'script'));
+	pg_assert_same(array(), merge_train_generated_changed('', 'index'));
+}
