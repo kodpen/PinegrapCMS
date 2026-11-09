@@ -1,6 +1,6 @@
 ---
 name: import-my-site-scans
-description: Import My Site keeps each scan under its own id with its folder name; long tags and names are cut before the uniqueness check; missing URL parts read as empty
+description: Import My Site keeps each scan under its own id with its folder name; long names cut before the uniqueness check; missing URL parts read as empty; the backup of an existing file
 module: files
 ---
 
@@ -11,5 +11,8 @@ module: files
 ## How are long names kept unique?
 - The tag is at most `pg_site_import_tag_max_length()` (40) characters (box `maxlength` and server check). Page, style and file names are cut with `pg_import_name_fit()` (a file keeps its extension) before `get_unique_name()`: the 100-character columns cut a longer name silently, the check never matched the cut row, and two imports got the same page name, the second unreachable.
 - Missing `parse_url()` parts, file-only keys (`extension`, `design`), unmatched meta tags and a `<link>` without `rel` read as empty; their PHP warnings were printed into the streamed scan tree.
+
+## How is an existing file backed up on an import with a tag?
+- As the ZIP import does: the backup name is `pg_file_name_add_suffix($name, 'backup')` (within the 100-character column), the disk file is renamed first, and only then the row; a failed rename leaves the old file and row alone and the new file takes a unique name of its own (#7750). Before, the row was renamed first and a failed rename was ignored, so the import wrote over the old file's bytes and its "backup" row named nothing.
 
 Related: docs/memory/platform/import-design-fetch.md

@@ -382,6 +382,17 @@ function test_office_edit_scan()
 	$reader->XML(office_edit_test_sheet('<row r="1"><c><v>1</v></c></row>'));
 	pg_assert_false(pg_office_xlsx_scan($reader, 0, array())['addressed'], 'a cell without an address');
 
+	// A What-If data table keeps its formula on the top left result cell
+	// only; the rest of its range holds cached values.
+	$reader = new XMLReader();
+	$reader->XML(office_edit_test_sheet(
+		'<row r="2"><c r="B2"><f t="dataTable" ref="B2:B4" dt2D="0" dtr="0" r1="A1"/><v>5</v></c></row>'
+		. '<row r="3"><c r="B3"><v>6</v></c></row><row r="4"><c r="B4"><v>7</v></c></row>'));
+	$scan = pg_office_xlsx_scan($reader, 4, array());
+	pg_assert_same(array(array(2, 1, 4, 1)), $scan['arrays'], 'the data table\'s range');
+	pg_assert_same('array', pg_office_xlsx_range_lock(3, 1, $scan, array()), 'a cell inside a data table is locked');
+	pg_assert_same('array', pg_office_xlsx_range_lock(4, 1, $scan, array()), 'its last cell too');
+
 	// A form template: the lock opened for whole columns and rows, whose
 	// empty cells are not in the file (a new cell takes the row's own style
 	// first, else the column's).

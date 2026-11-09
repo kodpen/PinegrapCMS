@@ -49,3 +49,18 @@ function test_file_name_suffix_extension_without_room_cuts_the_whole_name()
 	$name = 'a.' . str_repeat('x', 120);
 	pg_assert_same(100, mb_strlen(pg_file_name_add_suffix($name, 'backup')), 'never longer than the column');
 }
+
+// Import My Site with a tag backs up an existing file as the ZIP import does:
+// the backup name within the column, the disk file renamed first, a failed
+// rename leaving the old file alone and the new one taking a name of its own.
+function test_import_design_backup_renames_the_disk_file_first()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/import_design.php');
+	$rename = strpos($source, "if (!@rename(FILE_DIRECTORY_PATH . '/' . \$name, FILE_DIRECTORY_PATH . '/' . \$backup_name)) {\n                        \$old_file = false;");
+	$update = strpos($source, "SET \n                            name = '\" . e(\$backup_name) . \"',");
+
+	pg_assert_contains("'name' => pg_file_name_add_suffix(\$name, 'backup'),", $source, 'the backup name fits files.name');
+	pg_assert_true($rename !== false, 'a failed rename is not a backup');
+	pg_assert_true(($rename !== false) && ($update !== false) && ($rename < $update), 'the disk file is renamed before the row');
+	pg_assert_false(strpos($source, "'-backup.' . \$old_extension") !== false, 'no hand-made backup name is left');
+}

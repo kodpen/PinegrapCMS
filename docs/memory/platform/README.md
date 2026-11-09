@@ -90,6 +90,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - front-visitor-missing-keys.md: Front-end paths a visitor without a session or page properties reaches must not read session or property keys unguarded: the warning prints before the DOCTYPE where display_errors is on
 - gd-image-destroy.md: Freeing a GD image: pg_image_destroy() calls imagedestroy() only below PHP 8.0, since it does nothing from 8.0 on and PHP 8.5 deprecates it (#1669)
 - gd-webp-read.md: Reading WebP with GD: bundled GD before PHP 8.2 ends the request on an animated or cut-short WebP, imagecreatefromstring() reads WebP from 7.3; pg_image_webp_gd_readable(), pg_image_from_string()
+- get-file-attachment-cache.md: get_file.php sends a submitted-form or comment attachment Cache-Control private in any folder (#7667); a list view whose item view page is gone grants nothing through it (#7668)
 - get-file-byte-ranges.md: Range/206 in get_file.php and the external API from one copy (includes/http_range.php): what is answered 206, 416 or 200, If-Range by Last-Modified, which send paths take no range
 - get-file-user-once.md: get_file.php's initialize_user() returns when the visitor is already read; a private channel's file reached it twice and the PHP warnings broke its picture (#7724)
 - hostname-in-mail-links.md: HOSTNAME (request Host header) for redirects back to the visitor, HOSTNAME_SETTING for links that leave the request (e-mails, documents); the mails that used the request host
@@ -112,7 +113,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - import-design-fetch.md: How the design importer fetches a page (import_design.php): each hop one api_http_request() with opt-in options, the 5-hop walk and the stream fallback kept, what changed with the move
 - import-framework.md: Content import framework (2026.11.0, 11.0.156): imports/import_items tables, reader and writer contract, cursor file, run lock, dry run, mapping rows, report, 30-day undo, import.php
 - import-media.md: Content import pages and media (2026.11.0): page items as draft designer pages, attachments and body pictures fetched into Files, body addresses rewritten, notes in the report
-- import-my-site-scans.md: Import My Site keeps each scan under its own id with its folder name; long tags and names are cut before the uniqueness check; missing URL parts read as empty
+- import-my-site-scans.md: Import My Site keeps each scan under its own id with its folder name; long names cut before the uniqueness check; missing URL parts read as empty; the backup of an existing file
 - import-records.md: Content import record and comment writers (2026.11.0): a post as a record of the mapped form, field kinds, categories and tags, author account, late featured image, comment threads, undo paths
 - import-redirects.md: Content import redirects (2026.11.0): which items keep their old address as a 301 short link, destinations, refusals, report line, CSV download, undo
 - import-screen.md: import.php screen rules: menu entry, picker choices (no Recycle Bin or Workspace, path labels), field rows by type, dry run refusals, discard and 7-day sweep, undo answers
