@@ -68,6 +68,7 @@ function test_merge_train_docs_only()
 function test_merge_train_generated_and_sources()
 {
 	pg_assert_same('index', merge_train_generated('docs/memory/ui/README.md'));
+	pg_assert_same('index', merge_train_generated('docs/memory/ui/INDEX.md'));
 	pg_assert_same('index', merge_train_generated('docs/memory/core/fn-modules.md'));
 	pg_assert_same('script', merge_train_generated('pinegrap/assets/js/pg_image_editor.min.js'));
 	pg_assert_same('style', merge_train_generated('pinegrap/assets/css/pg_image_editor.min.css'));

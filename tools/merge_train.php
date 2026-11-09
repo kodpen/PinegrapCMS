@@ -879,13 +879,13 @@ function merge_train_settle()
 	return merge_train_unmerged();
 }
 
-// The generator that writes a path: 'index' (the memory README indexes and
-// the module list, memory_index.php), 'script' (.min.js bundles,
+// The generator that writes a path: 'index' (the memory README and INDEX
+// files and the module list, memory_index.php), 'script' (.min.js bundles,
 // build_js.php), 'style' (.min.css stylesheets, build_css.php), or '' for a
 // file written by hand.
 function merge_train_generated($path)
 {
-	if (((strpos($path, 'docs/memory/') === 0) && (basename($path) === 'README.md')) || ($path === MERGE_TRAIN_MODULE_LIST)) {
+	if (((strpos($path, 'docs/memory/') === 0) && in_array(basename($path), array('README.md', 'INDEX.md'), true)) || ($path === MERGE_TRAIN_MODULE_LIST)) {
 		return 'index';
 	}
 

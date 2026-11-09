@@ -22,7 +22,7 @@ description: Branch policy (development vs main), who does git work, PR target, 
 - Migration file and `init.php`: append only, in your own section; never rewrite the whole file.
 - A file a draft PR holds (`CLAUDE.md`, Claim work): another PR may add one additive line to a declaration registry in it (`api_error_catalogue()`, route rows in `api_schema()`, the event catalogue) when the holder's hunks do not touch those lines and the architect allowed it on an issue (#3824); its PR body names the holding PR. Anything more waits for the holder.
 - Merge `origin/development` once before the PR goes up, keeping both sides' sections on conflict. After the hand-over only the merging session brings the PR up to date (`session-lifecycle.md`).
-- `docs/memory/README.md` and the folder READMEs are generated: never edit or merge a file list by hand; run `php tools/memory_index.php` after the merge. Only a folder README's key-rules block is hand-written; a conflict inside it is merged by hand (`memory-index-key-rules.md`).
+- `docs/memory/README.md`, the folder READMEs and their `INDEX.md` files are generated: never edit or merge a file list by hand; run `php tools/memory_index.php` after the merge. Only a folder README's key-rules block is hand-written; a conflict inside it is merged by hand (`memory-index-key-rules.md`).
 - The top index's folder lines carry no file count (#1081): two branches adding a file to one folder merged into a count matching neither, and the merged tree failed CI's `--check` on other PRs.
 
 ## Which files belong to the API and which to ERP?

@@ -369,7 +369,7 @@ $worktree = in_array('--worktree', $argv, true);
 $paths = $worktree ? glob('docs/memory/plans/*.md') : free_work_run('git ls-tree --name-only origin/development docs/memory/plans/');
 
 foreach ($paths as $path) {
-	if ((substr($path, -3) === '.md') && (basename($path) !== 'README.md')) {
+	if ((substr($path, -3) === '.md') && !in_array(basename($path), array('README.md', 'INDEX.md'), true)) {
 		$text = $worktree ? (string) file_get_contents($path) : implode("\n", free_work_run('git show ' . escapeshellarg('origin/development:' . $path)));
 		$description = preg_match('/^description:\s*(.*)$/m', $text, $match) ? $match[1] : '';
 		$files[basename($path)] = array(free_work_plan_name($path, $description), $description, $text);

@@ -8,7 +8,10 @@ description: The hand-written key-rules block of each memory folder README, what
 - Added in PR #1052, when `.claude/skills` was folded into memory (`owner-rules.md`, "Where do the area rules live?"). A rule that changes is edited in the block and in its topic file together.
 
 ## What does tools/memory_index.php keep, and what does it regenerate?
-- It keeps the block verbatim (blank lines at its edges trimmed). It regenerates everything else: the heading, the folder description (from `FOLDERS` in the tool), the `## Files` list from each file's frontmatter, and the whole top index `docs/memory/README.md`.
+- It keeps the block verbatim (blank lines at its edges trimmed). It regenerates everything else: the heading, the folder description (from `FOLDERS` in the tool), the README's `## Files` pointer, the folder's `INDEX.md` (one line per file from its frontmatter) and the whole top index `docs/memory/README.md`.
+
+## Why are README and INDEX.md two files?
+- 2026-11-09: the file lists made the ui and designer READMEs about 110 KB (some 30,000 tokens) and commerce and workspace about 70 KB, read whole by every session of that area for its few key rules. README.md now holds the rules (a few KB) and is read whole; `INDEX.md` holds the list and is searched: `grep -i 'word' docs/memory/<folder>/INDEX.md`, or `docs/memory/*/INDEX.md` across folders.
 - A folder whose README does not exist yet gets an empty marker pair; the `## Key rules` heading appears only once the block has text.
 
 ## What does the optional `module:` field do?
@@ -20,7 +23,7 @@ description: The hand-written key-rules block of each memory folder README, what
 - Also, as before: a memory file over 4 KB, missing or invalid frontmatter, `name` not equal to the file name, a file outside a known folder; a `module:` field with a name that is not a file under `pinegrap/includes/fn/`. With `--check` (CI) a README that differs from what the files produce fails too.
 
 ## How is a README conflict settled after a merge?
-- Conflict only in the file list: run `php tools/memory_index.php`; it rewrites the README and the conflict is gone.
+- Conflict in an `INDEX.md` or outside the block: run `php tools/memory_index.php`; it rewrites both files and the conflict is gone.
 - Conflict inside the block: merge the rules by hand, then run the tool.
 - Never resolve a folder README with `--theirs` from a branch whose README has no block, and never delete a README to regenerate it: the tool rebuilds it with an empty block and the folder's rules are lost. Restore the file from git instead, then check each folder README's block is intact. Taking one side's README whole drops the other side's key rule (#1382 lost one this way, restored before merging).
 
