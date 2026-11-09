@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-40
-description: Decisions list, product part 40 (2026-11-09 on): the standing feature rules (legacy stays, global audience, no design variables); workflow tables like SQL tables (row choice, totals, links, keys)
+description: Decisions list, product part 40 (2026-11-09 on): standing feature rules (legacy stays, global audience, no design variables); workflow tables like SQL tables; a product photo's alt text
 ---
 
 ## Where are the rules and the earlier parts?
@@ -19,3 +19,6 @@ description: Decisions list, product part 40 (2026-11-09 on): the standing featu
   - A link to a table the reader does not read shows no value. The cell reads as a row of a table they do not read, and the joined columns coming from that table stay empty. Reason: no data may leak.
   - A column type change is refused while any cell would not convert, and those cells are listed. Reason: no data is lost.
   - Keys: every table gets a stable number that counts up (1, 2, 3, never shifted by a delete). A column may also be made the key, which must be filled in and different on every row.
+
+## What alt text does a product photo get? (2026-11-10)
+- Owner (2026-11-10, asked as a selectable list, answered "Kısa açıklama olsun" and "ürünün adı aslında kısa açıklama"): on the product detail page the photo's alt text is the short description, the name the store shows, else the Product ID / SKU (`name`); on the first paint and after a variant is picked alike. Reason: `name` is the SKU; classic layouts already used the short description (`designer/variant-switch-page-parity.md`).

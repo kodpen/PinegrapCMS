@@ -56,7 +56,7 @@
 - decisions-made-product-38.md: Decisions list, product part 38 (2026-11-09 on): a translated page's index verdict counts only its own words, never list records or products; a record save opens a translation job
 - decisions-made-product-39.md: Decisions list, product part 39 (2026-11-09 on): backup warning only after a month; carrier services at checkout; the 2026-10-19 security audit's items 2-8 (owner 2026-10-28)
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
-- decisions-made-product-40.md: Decisions list, product part 40 (2026-11-09 on): the standing feature rules (legacy stays, global audience, no design variables); workflow tables like SQL tables (row choice, totals, links, keys)
+- decisions-made-product-40.md: Decisions list, product part 40 (2026-11-09 on): standing feature rules (legacy stays, global audience, no design variables); workflow tables like SQL tables; a product photo's alt text
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
