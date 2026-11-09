@@ -164,14 +164,18 @@ function test_short_link_lists_leave_binned_pages_and_files_out_but_keep_the_lin
 
 	pg_assert_contains("get_page_options('', '', 'edit', false, \$short_link_keep_page)", $explorer, 'wizard: pages');
 	pg_assert_contains("get_page_options('', 'catalog detail', 'edit', false, \$short_link_keep_page)", $explorer, 'wizard: catalog detail pages');
-	pg_assert_contains('get_file_options(true, $short_link_keep_file)', $explorer, 'wizard: files');
+	pg_assert_contains('pg_file_picker_id_options($short_link_keep_file)', $explorer, 'wizard: only the link\'s own file, marked when binned; the field searches the rest');
+	pg_assert_contains("'file_source' => pg_file_picker_source('file')", $explorer, 'wizard: the file field searches kind file');
+	pg_assert_false(strpos($explorer, 'get_file_options(') !== false, 'wizard: no longer lists every file');
 	pg_assert_contains('pg_recycle_page_binned($short_link_keep_page)', $explorer, 'wizard: lists kept for a binned page are for one link');
-	pg_assert_contains('pg_recycle_file_binned($short_link_keep_file)', $explorer, 'wizard: lists kept for a binned file are for one link');
+	pg_assert_contains('|| ($short_link_keep_file > 0),', $explorer, 'wizard: lists holding a link\'s file are for one link');
 
 	$screen = short_link_requests_test_source('view_folders.php');
 
 	pg_assert_contains("return !listed(shortLinkOptions.page, item.page_id);", $screen, 'a page link asks again when its page is not on the kept lists');
-	pg_assert_contains("return !listed(shortLinkOptions.file, item.file_id);", $screen, 'a file link asks again when its file is not on the kept lists');
+	pg_assert_contains("case 'file':\n                return true;", $screen, 'a file link always asks for its own file, as the kept lists hold none');
+	pg_assert_contains("shortLinkSelectHtml('sl_file', L.file, options.file, '', options.file_source)", $screen, 'the wizard\'s file field is a searching combobox');
+	pg_assert_contains("if (window.pgFields) { window.pgFields.init(fields); }", $screen, 'the wizard draws its fields through pgFields');
 
 	$form = short_link_requests_test_function_body(short_link_requests_test_source('includes/forms/short_link_form.php'), 'pg_short_link_form_cards');
 
