@@ -943,6 +943,7 @@
     "Only designers can set when a page goes on the site.": "Sayfanın ne zaman yayına alınacağını yalnız tasarımcılar belirleyebilir.",
     "Only designs made with the visual editor can be deleted here.": "Burada yalnız görsel editörle yapılmış tasarımlar silinebilir.",
     "Only designs made with the visual editor can be renamed here.": "Burada yalnız görsel editörle yapılmış tasarımların adı değiştirilebilir.",
+    "Only for Azure OpenAI and a custom address: the chat API's address.": "Yalnız Azure OpenAI ve özel adres için: sohbet API'sinin adresi.",
     "Only for a shape, a pen line or a path": "Yalnızca şekil, kalem çizgisi ya da yol için",
     "Only for a text layer": "Yalnızca metin katmanı için",
     "Only for an address Logo gave you specially. Empty is right: {var:1} for live, {var:2} for test.": "Yalnız Logo size özel bir adres verdiyse doldurun. Boş bırakmak doğrusu: canlıda {var:1}, testte {var:2}.",

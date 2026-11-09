@@ -132,11 +132,19 @@ function test_workspace_agent_save_check()
 	pg_assert_same('wake_every', ws_agent_save_check(array('wake_every' => 1441) + $app, null, array(), array(), array(4))['field']);
 	pg_assert_same('kind', ws_agent_save_check(array('kind' => 'claude') + $app, null, array(), array(), array(4))['field'], 'a second Claude is not made by hand');
 
-	$model = array('kind' => 'model', 'handle' => 'architect', 'name' => 'Architect', 'provider' => 'anthropic', 'model' => 'claude-opus-5-5', 'door_kind' => 'push', 'door_url' => 'https://x.test/');
+	$model = array('kind' => 'model', 'handle' => 'chatgpt', 'name' => 'ChatGPT', 'provider' => 'openai', 'model' => 'gpt-4.1-mini', 'door_kind' => 'push', 'door_url' => 'https://x.test/');
 	$checked = ws_agent_save_check($model, null, array(), array(), array());
 	pg_assert_true($checked['ok'], $checked['error']);
-	pg_assert_same(array('poll', ''), array($checked['values']['door_kind'], $checked['values']['door_url']), 'a model agent is run by the site: no door');
+	pg_assert_same(array('poll', ''), array($checked['values']['door_kind'], $checked['values']['door_url']), 'a provider with a fixed address keeps none: the site is the door');
 	pg_assert_same('model', ws_agent_save_check(array('model' => '') + $model, null, array(), array(), array())['field']);
+	pg_assert_same('provider', ws_agent_save_check(array('provider' => 'nobody') + $model, null, array(), array(), array())['field'], 'only a provider of ws_model_providers()');
+
+	$azure = ws_agent_save_check(array('provider' => 'azure', 'door_url' => 'https://res.openai.azure.com/openai/v1') + $model, null, array(), array(), array());
+	pg_assert_true($azure['ok'], $azure['error']);
+	pg_assert_same('https://res.openai.azure.com/openai/v1', $azure['values']['door_url'], 'Azure keeps the address given');
+	pg_assert_same('door_url', ws_agent_save_check(array('provider' => 'azure', 'door_url' => '') + $model, null, array(), array(), array())['field'], 'Azure needs an address');
+	pg_assert_same('door_url', ws_agent_save_check(array('provider' => 'azure', 'door_url' => 'http://res.example/v1') + $model, null, array(), array(), array())['field'], 'Azure only over https');
+	pg_assert_true(ws_agent_save_check(array('provider' => 'custom', 'door_url' => 'http://localhost:11434/v1') + $model, null, array(), array(), array())['ok'], 'a custom server may be plain http');
 
 	$claude = ws_agent_shape(array('id' => 1, 'kind' => 'claude', 'handle' => 'claude', 'name' => 'Claude', 'status' => 'active', 'door_kind' => 'push', 'door_url' => 'https://api.anthropic.com/v1/claude_code/routines/trig_1/fire'));
 	$kept = ws_agent_save_check(array('kind' => 'app', 'handle' => 'other', 'name' => 'Claude', 'status' => 'paused', 'door_url' => ''), $claude, array('claude'), array(), array());

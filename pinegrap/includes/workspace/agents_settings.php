@@ -28,10 +28,10 @@ function ws_agents_settings_apps()
 }
 
 /**
- * Saves or deletes an agent from the card. Administrators only.
+ * Saves, deletes or tries an agent from the card. Administrators only.
  *
  * @param array    $viewer
- * @param string   $action agent_save | agent_delete
+ * @param string   $action agent_save | agent_delete | agent_test
  * @param liveform $liveform
  */
 function ws_agents_settings_post($viewer, $action, $liveform)
@@ -58,6 +58,16 @@ function ws_agents_settings_post($viewer, $action, $liveform)
         return;
     }
 
+    // Try: one short answer from a model agent's model (model_agents.php).
+    if ($action === 'agent_test') {
+        if ($current && ($current['kind'] === 'model')) {
+            $result = ws_model_agent_test($current['id']);
+            $result['ok'] ? $liveform->add_notice(h($result['message'])) : $liveform->add_error(h($result['message']));
+        }
+
+        return;
+    }
+
     $taken = ws_agent_handles($id);
 
     foreach (ws_mcp_servers() as $server) {
@@ -74,6 +84,11 @@ function ws_agents_settings_post($viewer, $action, $liveform)
 
     foreach (array('kind', 'handle', 'name', 'app_id', 'provider', 'model', 'status', 'door_kind', 'door_url', 'wake_every', 'wake_note') as $field) {
         $input[$field] = $_POST['agent_' . $field] ?? null;
+    }
+
+    // A model agent's address has its own field, apart from a push door's.
+    if ((string) ($current ? $current['kind'] : ($input['kind'] ?? '')) === 'model') {
+        $input['door_url'] = $_POST['agent_base'] ?? '';
     }
 
     $check = ws_agent_save_check($input, $current, $taken, $user_names, array_column(ws_agents_settings_apps(), 'id'));
@@ -100,6 +115,14 @@ function ws_agents_settings_post($viewer, $action, $liveform)
 
     if (($key === false) || ($door === false)) {
         $liveform->add_error(lang('The token cannot be stored: encryption is not available on this site.'));
+        return;
+    }
+
+    $providers = ws_model_providers();
+
+    if (($check['values']['kind'] === 'model') && $providers[$check['values']['provider']]['key']
+        && (($key === '') || (($key === null) && !($current && $current['key_set'])))) {
+        $liveform->add_error(lang('Paste the service\'s API key.'));
         return;
     }
 
@@ -171,8 +194,20 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin)
     }
 
     if ($kind === 'model' || !$agent) {
-        $rows .= $field('provider', lang('Provider'), $input('provider', $value('provider'), ' maxlength="32"'), lang('For an agent that runs on a model.'));
-        $rows .= $field('model', lang('Model'), $input('model', $value('model'), ' maxlength="100"'));
+        $providers = array();
+        $hints = array();
+
+        foreach (ws_model_providers() as $provider_id => $provider) {
+            $providers[$provider_id] = ws_model_provider_name($provider_id);
+            $hints[] = $providers[$provider_id] . ': ' . (($provider_id === 'azure') ? lang('your deployment name') : $provider['model_hint']);
+        }
+
+        $chosen = $agent ? $agent['provider'] : 'openai';
+        $terms = ($agent && ws_model_provider_terms($chosen) !== '') ? lang(ws_model_provider_terms($chosen)) : lang('For an agent that runs on a model.');
+
+        $rows .= $field('provider', lang('Provider'), $select('provider', $providers, $chosen), $terms);
+        $rows .= $field('model', lang('Model'), $input('model', $value('model'), ' maxlength="100"'), implode(' · ', $hints));
+        $rows .= $field('base', lang('Address'), $input('base', ($kind === 'model') ? $value('door_url') : '', ' type="url" maxlength="500" placeholder="https://your-resource.openai.azure.com/openai/v1"'), lang('Only for Azure OpenAI and a custom address: the chat API\'s address.'));
         $rows .= $field('key', lang('Provider key'), $secret('key', $agent && $agent['key_set']));
     }
 
@@ -185,6 +220,9 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin)
     $rows .= $field('wake_every', lang('Wake it every (minutes)'), $input('wake_every', $value('wake_every', '0'), ' type="number" min="0" max="1440"'), lang('0: only when it is called.'));
     $rows .= $field('wake_note', lang('Wake note'), $input('wake_note', $value('wake_note'), ' maxlength="250"'));
 
+    $try = ($agent && ($kind === 'model') && $admin)
+        ? '<button type="submit" name="ws_action" value="agent_test" class="btn btn-sm btn-outline theme-secondary">' . h(lang('Try')) . '</button>'
+        : '';
     $delete = ($agent && !$claude && $admin)
         ? '<button type="submit" name="ws_action" value="agent_delete" class="btn btn-sm btn-text theme-danger" onclick="return confirm(' . h(json_encode(lang('Delete this agent? It leaves every channel it is in.'))) . ');">' . h(lang('Delete')) . '</button>'
         : '';
@@ -195,7 +233,7 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin)
             <input type="hidden" name="agent_id" value="' . $id . '">
             ' . ($claude ? '<p class="small fg-secondary">' . h(lang('Claude\'s routine, its address and token, is set on the Claude card.')) . '</p>' : '') . '
             <div class="row g-5">' . $rows . '</div>
-            ' . ($admin ? '<div class="d-flex gap-3 mt-5"><button type="submit" name="ws_action" value="agent_save" class="btn btn-sm btn-solid theme-primary">' . h(lang('Save')) . '</button>' . $delete . '</div>' : '') . '
+            ' . ($admin ? '<div class="d-flex gap-3 mt-5"><button type="submit" name="ws_action" value="agent_save" class="btn btn-sm btn-solid theme-primary">' . h(lang('Save')) . '</button>' . $try . $delete . '</div>' : '') . '
         </form>';
 }
 

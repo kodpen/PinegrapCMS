@@ -611,7 +611,13 @@ function ws_agent_save_check($input, $current, $taken, $user_names, $app_ids)
     }
 
     if ($values['kind'] === 'model') {
-        if (($values['provider'] === '') || (mb_strlen($values['provider']) > 32) || ($values['model'] === '') || (mb_strlen($values['model']) > 100)) {
+        $providers = function_exists('ws_model_providers') ? ws_model_providers() : array();
+
+        if (!isset($providers[$values['provider']])) {
+            return $fail(lang('Choose the service that answers.'), 'provider');
+        }
+
+        if (($values['model'] === '') || (mb_strlen($values['model']) > 100)) {
             return $fail(lang('A model agent needs its provider and model.'), 'model');
         }
     } else {
@@ -627,8 +633,16 @@ function ws_agent_save_check($input, $current, $taken, $user_names, $app_ids)
         $values['door_kind'] = 'push';
         $values['door_url'] = $current['door_url'];
     } elseif ($values['kind'] === 'model') {
+        // The site is a model agent's door; door_url keeps the chat API's
+        // address where the provider has no fixed one (Azure, a custom server).
+        $problem = ws_model_base_problem($values['provider'], $values['door_url']);
+
+        if ($problem !== '') {
+            return $fail($problem, 'door_url');
+        }
+
         $values['door_kind'] = 'poll';
-        $values['door_url'] = '';
+        $values['door_url'] = ($providers[$values['provider']]['base'] === '') ? $values['door_url'] : '';
     } else {
         $problem = ws_agent_door_problem($values['door_kind'], $values['door_url']);
 
