@@ -89,6 +89,8 @@ function software_update_check($return_details = false)
         }
 
         db("UPDATE config SET software_update_available = '" . ($flag ? 1 : 0) . "'");
+        // The tile of System Status reads the answer, not the attempt stamped above.
+        pg_update_check_answered();
 
         $details['decision'] = $decision;
         $details['available'] = ($decision['outcome'] === 'update');
@@ -187,6 +189,8 @@ function software_update_check($return_details = false)
 
     // update database to remember whether there is a software update available or not
     db("UPDATE config SET software_update_available = '" . $software_update_available . "'");
+    // The tile of System Status reads the answer, not the attempt stamped above.
+    pg_update_check_answered();
 
     // Set value to boolean so we can return it later.
     settype($software_update_available, 'boolean');

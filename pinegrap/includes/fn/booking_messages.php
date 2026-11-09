@@ -190,8 +190,8 @@ function pg_booking_manage_url($id, $end_at)
 
 /**
  * A booking's row with the names its messages need: the service's name and
- * the staff member's (the contact's name, else the username). Null when the
- * tables are not there or the booking is gone.
+ * the staff member's (pg_booking_staff_public_name()). Null when the tables
+ * are not there or the booking is gone.
  *
  * @param int $id
  * @return array|null
@@ -206,7 +206,6 @@ function pg_booking_message_row($id)
         "SELECT
             bookings.*,
             booking_services.name AS service_name,
-            user.user_username AS staff_username,
             contacts.first_name AS staff_first_name,
             contacts.last_name AS staff_last_name
         FROM bookings
@@ -220,9 +219,24 @@ function pg_booking_message_row($id)
         return null;
     }
 
-    $row['staff_name'] = pg_user_display_name($row['staff_first_name'], $row['staff_last_name'], (string) $row['staff_username']);
+    $row['staff_name'] = pg_booking_staff_public_name($row['staff_first_name'], $row['staff_last_name']);
 
     return $row;
+}
+
+/**
+ * The staff member's name a customer sees (pure): the contact's first and
+ * last name, '' when it has none. The row reaches the unauthenticated manage
+ * page, the customer mails and the .ics file, so the panel login name is
+ * never used as a fallback; an empty name is left out by those readers.
+ *
+ * @param mixed $first_name contacts.first_name
+ * @param mixed $last_name  contacts.last_name
+ * @return string
+ */
+function pg_booking_staff_public_name($first_name, $last_name)
+{
+    return pg_contact_display_name($first_name, $last_name);
 }
 
 /**

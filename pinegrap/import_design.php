@@ -724,21 +724,23 @@ if ($action != 'import') {
                 // If an old file was found, then rename it.
                 if ($old_file) {
 
-                    // If there is an extension, then prepare backup name in a certain way.
-                    if (mb_strpos($name, '.') !== false) {
-                        $name_without_extension = mb_substr($name, 0, mb_strrpos($name, '.'));
-                        $old_extension = mb_substr($name, mb_strrpos($name, '.') + 1);
-                        $backup_name = $name_without_extension . '-backup.' . $old_extension;
-
-                    // Otherwise there is not an extension, so prepare backup name differently.
-                    } else {
-                        $backup_name = $name . '-backup';
-                    }
-
-                    // Get a unique version of the backup name.
+                    // "-backup" goes in front of the last extension, within the
+                    // column's 100 characters: a longer name was cut by the
+                    // column while the disk file kept the whole one.
                     $backup_name = get_unique_name(array(
-                        'name' => $backup_name,
+                        'name' => pg_file_name_add_suffix($name, 'backup'),
                         'type' => 'file'));
+
+                    // The disk file first, so the row never names a file that
+                    // is not there. A failed rename leaves the old file as it
+                    // was and the new one takes a name of its own below,
+                    // instead of being written over the old file's bytes.
+                    if (!@rename(FILE_DIRECTORY_PATH . '/' . $name, FILE_DIRECTORY_PATH . '/' . $backup_name)) {
+                        $old_file = false;
+                    }
+                }
+
+                if ($old_file) {
 
                     // Update old file to have backup name in db.
                     db(
@@ -748,9 +750,6 @@ if ($action != 'import') {
                             user = '" . USER_ID . "',
                             timestamp = UNIX_TIMESTAMP()
                         WHERE id = '" . $old_file['id'] . "'");
-
-                    // Update old file to have backup name on file system.
-                    @rename(FILE_DIRECTORY_PATH . '/' . $name, FILE_DIRECTORY_PATH . '/' . $backup_name);
 
                     log_activity(lang(array('string' => 'file was renamed during import my site ({var:1} -> {var:2})', 'vars' => array($name, $backup_name))));
 

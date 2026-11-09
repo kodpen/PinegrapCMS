@@ -304,6 +304,7 @@
     "Update button (for cart quantities)": "Güncelle Düğmesi (sepet adetleri için)",
     "Update button label": "Güncelle düğme etiketi",
     "Update card": "Kartı güncelle",
+    "Update checks are turned off in data/config.php (SOFTWARE_UPDATE_CHECK), so it is not known whether an update is waiting.": "Güncelleme denetimleri data/config.php dosyasında (SOFTWARE_UPDATE_CHECK) kapalı, bu yüzden bir güncellemenin beklenip beklenmediği bilinmiyor.",
     "Update email preferences": "E-posta tercihlerini güncelle",
     "Update email preferences or unsubscribe": "E-posta tercihlerinizi güncelleyin ya da abonelikten çıkın",
     "Update it": "Güncelle",

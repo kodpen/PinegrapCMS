@@ -410,13 +410,26 @@ function pg_label_geliver_offer($offers, $service)
 }
 
 /**
- * Whether Geliver has collected every offer it asked for.
+ * Whether Geliver has collected every offer it asked for: the percentage is
+ * 100, or every offer requested is completed (the percentage has been seen
+ * to stay at 99 with the only offer requested already in).
  *
  * @return bool
  */
 function pg_label_geliver_offers_complete($offers)
 {
-    return is_array($offers) && isset($offers['percentageCompleted']) && ((float) $offers['percentageCompleted'] >= 100);
+    if (!is_array($offers)) {
+        return false;
+    }
+
+    if (isset($offers['percentageCompleted']) && is_numeric($offers['percentageCompleted']) && ((float) $offers['percentageCompleted'] >= 100)) {
+        return true;
+    }
+
+    $requested = (isset($offers['totalOffersRequested']) && is_numeric($offers['totalOffersRequested'])) ? (int) $offers['totalOffersRequested'] : 0;
+    $completed = (isset($offers['totalOffersCompleted']) && is_numeric($offers['totalOffersCompleted'])) ? (int) $offers['totalOffersCompleted'] : 0;
+
+    return ($requested > 0) && ($completed >= $requested);
 }
 
 /**

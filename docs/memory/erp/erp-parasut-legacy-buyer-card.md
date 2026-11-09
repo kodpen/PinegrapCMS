@@ -16,14 +16,14 @@ description: The Paraşüt card the order screen's buttons put an order on: the 
 - The driver's `erp_edoc_parasut_contact_for()` is not called: it opens a missing card with the ERP account's details and logs each call to `erp_edoc_log`.
 
 ## What does a new card carry? (#1408, #1518)
-- `parasut_order_contact_attributes()`: the VKN/TCKN (`_parasut_order_identity()`) in `tax_number`; a person without a billing company or with 11 digits, as the driver. A person's TCKN used to go as an unlisted `tckn`; a card opened so may lack the number, and is then not found.
+- `parasut_order_contact_attributes()`: the VKN/TCKN (`_parasut_order_identity()`; erp-parasut-legacy-buyer-number.md) in `tax_number`; a person without a billing company or with 11 digits, as the driver. A person's TCKN used to go as an unlisted `tckn`; a card opened so may lack the number, and is then not found.
 - A TR address (no billing country: the store's) as the driver maps it (`erp_address_from_checkout()`): street lines in `address`, state field in `city`, city field in `district`, `postal_code`. Abroad: one folded `address`, kept; nothing refused. Cards opened before stay folded (city, district null).
 
 ## Which buyers still get a card per order?
 - No number, the final consumer, a number that fails the check. The ERP's driver takes a final-consumer card only when name, address and e-mail match (#1405); the legacy buttons do not look.
 
 ## How was it checked live? (demo company, 2026-10-24)
-- Branch code, dev orders 438 and 439, `parasut_tc_in_field` custom_field_1 = 10000000146. The number held only an archived card, which the search does not list (200, `total_pages` 0). Order 438's sync opened card A; E-Shipment on order 439 stored card A without opening one (unarchived contacts 14 → 14: the 13 before the run plus card A), then stopped at "no stock-tracked items". Order 438 without a number, then with 11111111111, each opened a card of its own. Cards deleted, dev values restored, demo equal to its baseline.
+- Branch code, dev orders 438 and 439, `parasut_tc_in_field` custom_field_1 = 10000000146. The number held only an archived card, which the search does not list (200, `total_pages` 0). Order 438's sync opened card A; E-Shipment on order 439 stored card A without opening one (unarchived contacts 14 → 14: the 13 before the run plus card A), then stopped at "no stock-tracked items". Order 438 without a number, then with 11111111111, each opened a card of its own. Cards deleted, dev values restored.
 
 ## Tests
 - `tests/parasut_contact_reuse_test.php`: the number rule, reuse, archived and other numbers, another buyer's card under the number, later pages, page cap, 404, a failed search, no number, a refused create, the steps of `parasut_sync_contact()`.

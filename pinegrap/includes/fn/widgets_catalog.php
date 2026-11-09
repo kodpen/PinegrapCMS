@@ -59,6 +59,35 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 //
 // URL parameters (shared with form_list_view):  page_number, query
 
+/**
+ * The catalog listing's search condition over some columns, with the values
+ * written in (the listing's count and page queries and the sub-group cards
+ * are built as text): the word found in any of the columns, with I, İ, ı and
+ * i as one letter (pg_list_search_where(), the rule of the site search and
+ * the panel lists). Pure apart from e(), which adds slashes without a
+ * connection.
+ *
+ * @param string $search_query
+ * @param array  $columns SQL columns, written into the query as they are
+ * @param string $charset pg_list_search_connection_charset(); '' leaves out the fold
+ * @return string '(… OR …)'
+ */
+function pg_catalog_listing_search_sql($search_query, array $columns, $charset)
+{
+    $where = pg_list_search_where(array((string) $search_query), $columns, array(), (string) $charset);
+
+    // The placeholders are the only "?" of the condition: the columns are
+    // trusted names and the values are not in it yet.
+    $pieces = explode('?', $where['sql']);
+    $sql = array_shift($pieces);
+
+    foreach ($pieces as $index => $piece) {
+        $sql .= "'" . e(isset($where['params'][$index]) ? (string) $where['params'][$index] : '') . "'" . $piece;
+    }
+
+    return $sql;
+}
+
 // ============================================================================
 // Recursive helper: build a nested <ul>/<li> tree of product_groups starting
 // at $parent_id. Used by both the new `group_tree` binding section and the
@@ -1538,24 +1567,23 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         // ("yeşil" should find products with Renk=Yeşil attribute). Result
         // was inconsistent search ("kısmen çalışıyor"). Wider field set
         // makes search match visitor expectations across the board.
-        // A % or _ the visitor types is a plain character, not a wildcard.
-        $q_like = e(pg_list_like_pattern($search_query));
+        // A % or _ the visitor types is a plain character, not a wildcard,
+        // and I, İ, ı and i are one letter, as in the site search: a plain
+        // LIKE under utf8mb4_unicode_ci keeps ı apart, so "LAMBASI" missed
+        // "Masa Lambası".
+        $_pg_search_charset = pg_list_search_connection_charset();
         $extra_conditions .= " AND (
-              products.name              LIKE '$q_like'
-           OR products.short_description LIKE '$q_like'
-           OR products.full_description  LIKE '$q_like'
-           OR products.details           LIKE '$q_like'
-           OR products.keywords          LIKE '$q_like'
-           OR products.meta_keywords     LIKE '$q_like'
-           OR products.meta_description  LIKE '$q_like'
-           OR products.address_name      LIKE '$q_like'
+              " . pg_catalog_listing_search_sql($search_query, array(
+                  'products.name', 'products.short_description', 'products.full_description', 'products.details',
+                  'products.keywords', 'products.meta_keywords', 'products.meta_description', 'products.address_name',
+              ), $_pg_search_charset) . "
            OR EXISTS (
                 SELECT 1
                 FROM products_attributes_xref _pas
                 INNER JOIN product_attribute_options _pao
                   ON _pao.id = _pas.option_id
                 WHERE _pas.product_id = products.id
-                  AND _pao.label LIKE '$q_like'
+                  AND " . pg_catalog_listing_search_sql($search_query, array('_pao.label'), $_pg_search_charset) . "
               )
         ) ";
     }
@@ -2566,7 +2594,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         // behind a click and quoted the whole group's price range, not the
         // matching items' — it read as a result that did not match.
         if ($search_active) {
-            $_q = e(pg_list_like_pattern($search_query));
+            $_q_sql = pg_catalog_listing_search_sql($search_query, array('product_groups.name', 'product_groups.short_description', 'product_groups.address_name'), pg_list_search_connection_charset());
             $children = db_items(
                 "SELECT product_groups.id, product_groups.name, product_groups.address_name,
                        product_groups.image_name, product_groups.short_description,
@@ -2576,11 +2604,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                 FROM product_groups
                 WHERE product_groups.parent_id = '" . $_pg_parent_filter . "'
                   AND product_groups.enabled = 1
-                  AND (
-                       product_groups.name              LIKE '$_q'
-                    OR product_groups.short_description LIKE '$_q'
-                    OR product_groups.address_name      LIKE '$_q'
-                  )
+                  AND " . $_q_sql . "
                 ORDER BY product_groups.sort_order ASC, product_groups.name ASC"
             );
         } else {

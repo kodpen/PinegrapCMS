@@ -1873,6 +1873,98 @@ function pg_update_server_version($mode = 'update')
     return $result;
 }
 
+// How long an "up to date" answer of the update server is worth on the
+// Software Update tile of System Status: a week, more than twice the three
+// days between the periodic checks (init.php), so one missed check does not
+// turn the tile, two do.
+if (!defined('PG_UPDATE_CHECK_STALE_AGE')) {
+    define('PG_UPDATE_CHECK_STALE_AGE', 604800);
+}
+
+// The cron_runs row software_update_check() moves when the update server
+// answers. config.last_software_update_check_timestamp is stamped before the
+// request, so it records an attempt, not an answer.
+if (!defined('PG_UPDATE_CHECK_ANSWER_MARK')) {
+    define('PG_UPDATE_CHECK_ANSWER_MARK', 'software_update_check_answered');
+}
+
+/**
+ * What the Software Update tile of System Status may say.
+ *
+ * "current" (up to date) only when the last check got an answer and that
+ * answer is at most PG_UPDATE_CHECK_STALE_AGE old. A failed check stamps the
+ * attempt without an answer, so an answer older than the attempt is a failed
+ * last check. Before any answer is recorded, the attempt's age decides alone.
+ * No database access.
+ *
+ * @param bool $available the stored "update available" flag
+ * @param bool $checks_on SOFTWARE_UPDATE_CHECK is not false
+ * @param int  $attempted last_software_update_check_timestamp, 0 never
+ * @param int  $answered  the last answer (PG_UPDATE_CHECK_ANSWER_MARK), 0 none
+ * @param int  $now
+ * @return string 'available', 'off', 'never', 'failed', 'stale' or 'current'
+ */
+function pg_update_check_state($available, $checks_on, $attempted, $answered, $now)
+{
+    if ($available) {
+        return 'available';
+    }
+
+    if (!$checks_on) {
+        return 'off';
+    }
+
+    $attempted = (int) $attempted;
+    $answered = (int) $answered;
+
+    if ($attempted < 1) {
+        return 'never';
+    }
+
+    // No answer recorded yet: a site that has just been updated to the code
+    // that records answers. Judged by the attempt as before, so the first
+    // days after the update do not read as a failed check.
+    if ($answered < 1) {
+        return (((int) $now - $attempted) > PG_UPDATE_CHECK_STALE_AGE) ? 'stale' : 'current';
+    }
+
+    if ($answered < $attempted) {
+        return 'failed';
+    }
+
+    return (((int) $now - $answered) > PG_UPDATE_CHECK_STALE_AGE) ? 'stale' : 'current';
+}
+
+/**
+ * Record that the update server answered a check (PG_UPDATE_CHECK_ANSWER_MARK).
+ * Silent before the cron_runs table exists.
+ */
+function pg_update_check_answered()
+{
+    if (!pg_schema_has('cron_runs')) {
+        return;
+    }
+
+    db("INSERT INTO cron_runs (job_name, last_run_at)
+        VALUES ('" . PG_UPDATE_CHECK_ANSWER_MARK . "', UNIX_TIMESTAMP())
+        ON DUPLICATE KEY UPDATE last_run_at = VALUES(last_run_at)");
+}
+
+/**
+ * When the update server last answered a check: 0 never, or unknown before
+ * the cron_runs table exists.
+ *
+ * @return int
+ */
+function pg_update_check_last_answer()
+{
+    if (!pg_schema_has('cron_runs')) {
+        return 0;
+    }
+
+    return (int) db_value("SELECT last_run_at FROM cron_runs WHERE job_name = '" . PG_UPDATE_CHECK_ANSWER_MARK . "'");
+}
+
 /**
  * The sentence that tells why an update check has no answer, for the Site
  * Log and the screen: one wording for the scheduled and the manual check.

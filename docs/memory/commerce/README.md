@@ -157,6 +157,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - offer-discounted-units.md: How many units of a cart line an offer discounts (cheapest item: one, gift from a paid line: the action's quantity, product or group: all) and the spread unit price that charges it
 - offer-donation-lines.md: Donation lines and offers: never the cheapest item, never discounted by a product offer, not counted toward "cart quantity", their typed amount kept when offers are taken off the cart (#987, PR #1259)
 - offer-gift-lines.md: An offer's gift line ('add product' result): the price it is charged at (never below zero), which recipient it goes to with one or several recipients, the unshipped group 0
+- offer-gift-refusal.md: How a removed offer gift stays out of the cart, and when the refusal is forgotten in recipient-scope offers (#7664)
 - offer-order-discount-ladder.md: Tiered order discount (ladder) and how the order discount is chosen: rungs, nothing below the first rung, every valid order discount weighed against the final subtotal
 - offer-percent-rounding.md: An offer's percentage as a figure (order discount, product, gift, shipping): the exact product rounded half away from zero, pg_percent_of() / pg_percent_off(), on every PHP version (PR #1367)
 - offer-rule-gift-lines-not-counted.md: An offer's required products, group condition and up-sell count only lines the shopper added (added_by_offer = 0), so a gift cannot keep its own offer alive
@@ -187,6 +188,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-legal-documents.md: Legal documents (pre-information form, distance sales contract): settings, templates, order_documents, kept copy for customer and staff, receipt attachments, panel card
 - order-page-stored-figures.md: Order view (My Account) and receipt page/e-mail show a placed order's own orders.discount, tax and total (pg_order_page_figures), never the session cart's order_discount; what an unplaced order shows
 - order-payment-method-normalization.md: submit_order.php payment_method normalization to the four constants, the Pay With Iyzico ENUM addition (4.48) and the old Turkish layout cause.
+- order-preview-later-recipient-shipping.md: The classic Order Preview shows and counts the shipping of a recipient whose lines all start later, as submit_order.php charges it
 - order-preview-step-links-and-installments.md: Order Preview without earlier checkout step pages in the session (pg_op_step_page_id/url, no Change link) and the Iyzipay installment table shared with Express Order (#4019)
 - order-reference-code-link.md: How the cart, quote and express order pages read the ?r= / ?reference_code= saved-cart link (one string, list = not given), and the order history screens' translated messages.
 - order-refunded-amount-writes.md: How orders.refunded_amount is written: every writer adds to the column (pg_order_refunded_add_expr()), the order screen's refund re-reads the total after the add

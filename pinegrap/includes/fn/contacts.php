@@ -416,6 +416,72 @@ function pg_contact_merge_group_source(array $rows, $group_id)
 }
 
 /**
+ * Whether a merge value is a column's default: empty text, a zero number
+ * (an integer column such as file_id, or a rate stored as "0.00") or an
+ * empty date. Rows come through db_q(), so the numbers are strings. Pure.
+ *
+ * @param mixed $value
+ * @return bool
+ */
+function pg_contact_merge_value_blank($value)
+{
+    if ($value === null) {
+        return true;
+    }
+
+    $value = (string) $value;
+
+    return ($value === '') || ($value === '0000-00-00') || (is_numeric($value) && ((float) $value == 0));
+}
+
+/**
+ * The columns of the contact that stays which a merge fills from the merged
+ * contacts: every column still at its default (pg_contact_merge_value_blank())
+ * takes the first value that is not, in the order the merged contacts are
+ * given (newest first). Both branches of merge_contacts() use it, so a
+ * contact held by a user account keeps the merged contact's phone, tax id or
+ * picture as a merge of two plain contacts does. Pure.
+ *
+ * @param array $keep    the row of the contact that stays (pg_contact_merge_select())
+ * @param array $merged  the rows of the merged contacts, newest first
+ * @param array $exclude columns never written by the fill
+ * @return array column => value, only the columns that change
+ */
+function pg_contact_merge_filled_columns(array $keep, array $merged, array $exclude)
+{
+    $filled = array();
+
+    foreach ($keep as $column => $value) {
+        if (in_array($column, $exclude, true) || !pg_contact_merge_value_blank($value)) {
+            continue;
+        }
+
+        foreach ($merged as $row) {
+            if (array_key_exists($column, $row) && !pg_contact_merge_value_blank($row[$column])) {
+                $filled[$column] = (string) $row[$column];
+                break;
+            }
+        }
+    }
+
+    return $filled;
+}
+
+/**
+ * Whether a contact's opt_in value for a subscription group is an opt-out.
+ * The group rows are read with LEFT JOIN opt_in, so a contact without a row
+ * reads NULL, which means subscribed everywhere else (pg_fs_subscribed(),
+ * the campaign recipients): only an explicit 0 is an opt-out. Pure.
+ *
+ * @param mixed $opt_in
+ * @return bool
+ */
+function pg_contact_merge_group_opted_out($opt_in)
+{
+    return ($opt_in !== null) && ((string) $opt_in === '0');
+}
+
+/**
  * Which of the merge's optional columns this site's contacts table has.
  *
  * @return array  column => bool
@@ -692,18 +758,29 @@ function merge_contacts($contacts, &$refused = 0)
                     // increment the merged contacts counter, this number will be used when outputting a notice to the user
                     $merged_contacts_counter++;
                 }
+                // The child's blank columns take the merged contacts' values
+                // (newest first), as in the branch without an account below:
+                // the merged rows are deleted, so a phone, tax id or picture
+                // only they held would be lost.
+                $child_filled = pg_contact_merge_filled_columns($child, $orphans_to_merge, array('id', 'user_id', 'opt_in', 'timestamp', 'user'));
                 // if the newest orphan is newer than the child then update the timestamp and last modified user
                 if ($orphans_to_merge[0]['timestamp'] > $child['timestamp']) {
                     $child['timestamp'] = $orphans_to_merge[0]['timestamp'];
                     $child['user'] = $orphans_to_merge[0]['user'];
                 }
+                $child_columns_sql = '';
+                foreach (array_keys($child_filled) as $column) {
+                    $child_columns_sql .= $column . " = ?, ";
+                }
                 $audit_before = pg_contact_merge_audit_before($child['id'], array_column($orphans_to_merge, 'id'));
                 // re-point the merged contacts' records before the contacts are deleted
                 pg_contact_holders_move(array_column($orphans_to_merge, 'id'), $child['id']);
-                // update child's contact record with new opt in status, last modified date, and last modified user
+                // update child's contact record with the filled columns, new opt in status, last modified date, and last modified user
                 $query = "UPDATE contacts
 
                     SET
+
+                       $child_columns_sql
 
                        opt_in = ?,
 
@@ -712,7 +789,7 @@ function merge_contacts($contacts, &$refused = 0)
                        user = ?
 
                     WHERE id = ?";
-                $result = db_q($query, array((string) $child['opt_in'], (string) $child['timestamp'], (string) $child['user'], (string) $child['id'])) or output_error(lang('Query failed.'));
+                $result = db_q($query, array_merge(array_values($child_filled), array((string) $child['opt_in'], (string) $child['timestamp'], (string) $child['user'], (string) $child['id']))) or output_error(lang('Query failed.'));
                 $where = '';
                 // if there are orphans to delete then set the where statement to delete them, and then delete them
                 if ($delete_from_contacts_where_statement != '') {
@@ -769,7 +846,7 @@ function merge_contacts($contacts, &$refused = 0)
                             // if this contact group id is the same as the contact group id that we are merging in, then continue
                             if ($contact_group['contact_group_id'] == $contact_group_to_be_merged['contact_group_id']) {
                                 // if the contact group's opt in is set to opt out, then use that value when merging the contact group
-                                if ($contact_group['opt_in'] == '0') {
+                                if (pg_contact_merge_group_opted_out($contact_group['opt_in'])) {
                                     $contact_groups_to_be_merged_opt_in = '0';
                                 }
                                 // add this contact group to the meged contact groups array so that it is not processed
@@ -843,21 +920,17 @@ function merge_contacts($contacts, &$refused = 0)
                 $remaining_orphan = $orphans_to_merge[0];
                 // remove the remaining orphan from the orphans to merge array
                 unset($orphans_to_merge[0]);
-                $remaining_orphans_fields_to_update = array();
-                // get the blank fields from the remaining orphan's contact record
-                foreach ($remaining_orphan as $key => $remaining_orphan_field_value) {
-                    // if the field value is set to the default and if this is not the user id or opt in field, then add the field to the array
-                    if ((($remaining_orphan_field_value == '') || ($remaining_orphan_field_value == '0') || ($remaining_orphan_field_value == '0000-00-00')) && ($key != 'user_id') && ($key != 'opt_in')) {
-                        $remaining_orphans_fields_to_update[$key] = $remaining_orphan_field_value;
-                    }
-                }
+                // The remaining orphan's columns still at their default take
+                // the first value of the other orphans (newest first). An
+                // integer column at 0 counts as blank, so the picture's
+                // file_id is carried as well.
+                $remaining_orphans_fields_to_update = pg_contact_merge_filled_columns($remaining_orphan, array_values($orphans_to_merge), array('id', 'user_id', 'opt_in', 'timestamp'));
                 $contact_groups_to_be_merged = array();
                 $delete_from_contacts_where_statement = '';
                 $delete_from_contacts_values = array();
                 $delete_from_contacts_contact_groups_xref_where_statement = '';
                 $delete_from_contacts_contact_groups_xref_values = array();
                 // loop through orphans to merge to get the remaining orphan's new opt in status,
-                // get data to be merged into the remaining orphan's blank field from the current orphan,
                 // get an array of all contact groups to be merged into the remaining orphan,
                 // build sql where statements to be used to clean up the contacts and contacts contact groups xref tables,
                 // and increment the merged contacts counter
@@ -865,19 +938,6 @@ function merge_contacts($contacts, &$refused = 0)
                     // get the remaining orphans new opt in status
                     if (($remaining_orphan['opt_in'] != 0) && ($orphan_to_merge['opt_in'] == 0)) {
                         $remaining_orphan['opt_in'] = 0;
-                    }
-                    // loop through the remaining orphan's fields to update the blank fields with data from the current orphan
-                    foreach ($remaining_orphans_fields_to_update as $key => $remaining_orphans_field_to_update) {
-                        // if this is the expiration date or if it is the warning expiration date and if it is set to the default, and if the orphan that will be merged has a value, then use that value
-                        if ((($key == 'expiration_date') || ($key == 'warning_expiration_date')) && ($remaining_orphans_field_to_update == '0000-00-00') && ($orphan_to_merge[$key] != '0000-00-00')) {
-                            $remaining_orphans_fields_to_update[$key] = $orphan_to_merge[$key];
-                            // else if this is the affiliate approved or affiliate commission rate and if it is set to the default, and if the orphan that will be merged has a value, then use that value
-                        } elseif ((($key == 'affiliate_approved') || ($key == 'affiliate_commission_rate')) && ($remaining_orphans_field_to_update == '0') && ($orphan_to_merge[$key] != '0')) {
-                            $remaining_orphans_fields_to_update[$key] = $orphan_to_merge[$key];
-                            // else if the remaining field to update is blank, and if the orphan that will be merged has a value, then use that value
-                        } elseif (($remaining_orphans_field_to_update == '') && ($orphan_to_merge[$key] != '')) {
-                            $remaining_orphans_fields_to_update[$key] = $orphan_to_merge[$key];
-                        }
                     }
                     // loop through contact groups to build a list of contact groups to merge into the remaining orphan contact
                     foreach ($contact_groups as $contact_group) {
@@ -905,10 +965,8 @@ function merge_contacts($contacts, &$refused = 0)
                 $sql_columns_values = array();
                 // build an sql update statement that updates the remaining contact's blank fields with data
                 foreach ($remaining_orphans_fields_to_update as $key => $remaining_orphans_field_to_update) {
-                    if ($remaining_orphans_field_to_update != '') {
-                        $sql_columns_to_update .= $key . " = ?, ";
-                        $sql_columns_values[] = (string) $remaining_orphans_field_to_update;
-                    }
+                    $sql_columns_to_update .= $key . " = ?, ";
+                    $sql_columns_values[] = (string) $remaining_orphans_field_to_update;
                 }
                 $audit_before = pg_contact_merge_audit_before($remaining_orphan['id'], array_column($orphans_to_merge, 'id'));
                 // re-point the merged contacts' records before the contacts are deleted
@@ -981,8 +1039,9 @@ function merge_contacts($contacts, &$refused = 0)
                         foreach ($contact_groups_to_be_merged as $contact_group) {
                             // if this contact group id is the same as the contact group id that we are merging in, then continue
                             if ($contact_group['contact_group_id'] == $contact_group_to_be_merged['contact_group_id']) {
-                                // if the contact group's opt in is set to opt out, then use that value when merging the contact group
-                                if ($contact_group['opt_in'] == 0) {
+                                // if the contact group's opt in is set to opt out, then use that value when merging the contact group;
+                                // a contact without an opt_in row for the group (NULL) is subscribed
+                                if (pg_contact_merge_group_opted_out($contact_group['opt_in'])) {
                                     $contact_groups_to_be_merged_opt_in = 0;
                                 }
                                 // add this contact group to the meged contact groups array so that it is not processed again

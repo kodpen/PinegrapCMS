@@ -515,6 +515,19 @@ function pg_offer_gift_refused($offer_id, $offer_action_id, $forget = false)
     return true;
 }
 
+// A recipient-scope offer answers once per recipient, but the refusal is kept
+// per order: it is forgotten only when the offer qualifies for no recipient
+// at all. Forgetting it on the first recipient that does not qualify would
+// drop it while another recipient still qualifies, and the refused gift would
+// come back on the next refresh. $recipient_qualifies holds one bool per
+// recipient checked.
+function pg_offer_gift_refusal_settle($offer_id, $offer_action_id, array $recipient_qualifies)
+{
+    if (!in_array(true, $recipient_qualifies, true)) {
+        pg_offer_gift_refused($offer_id, $offer_action_id, true);
+    }
+}
+
 // Remember that the shopper took an offer's gift out of this order, so the
 // next cart refresh does not put it straight back (pg_offer_gift_refused()).
 function pg_offer_gift_refuse($order_id, $offer_id, $offer_action_id)
@@ -6388,6 +6401,7 @@ function apply_offers_to_cart()
                             $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $offer['id'], (string) $offer_action['id'])) or output_error(lang('Query failed.'));
                             // if this offer and action have not already been applied to order or offer is allowed to be applied to multiple recipients, then continue to add pending offer
                             if ((mysqli_num_rows($result) == 0) || ($offer['multiple_recipients'] == 1)) {
+                                $recipient_qualifies = array();
                                 // loop through recipients
                                 foreach ($ship_tos as $ship_to) {
                                     // The items that are not shipped share the
@@ -6397,7 +6411,9 @@ function apply_offers_to_cart()
                                         continue;
                                     }
                                     // if offer is valid for this recipient
-                                    if (validate_offer($offer['id'], $ship_to['id']) == true) {
+                                    $qualifies = (validate_offer($offer['id'], $ship_to['id']) == true);
+                                    $recipient_qualifies[] = $qualifies;
+                                    if ($qualifies) {
                                         // check if this offer and action have already been applied to this recipient
                                         $query = "SELECT id
 
@@ -6432,15 +6448,16 @@ function apply_offers_to_cart()
                                             }
                                         }
                                         // else this offer is not valid for this
-                                        // recipient, so a refused gift is
-                                        // forgotten and an upsell is offered
+                                        // recipient, so an upsell is offered
                                     } else {
-                                        pg_offer_gift_refused($offer['id'], $offer_action['id'], true);
                                         if ((isset($upsell_offers[$offer['id']]) == false) && (check_upsell($offer, $ship_to['id']) == true)) {
                                             $upsell_offers[$offer['id']] = $offer;
                                         }
                                     }
                                 }
+                                // A refused gift is forgotten only when no
+                                // recipient qualifies any more.
+                                pg_offer_gift_refusal_settle($offer['id'], $offer_action['id'], $recipient_qualifies);
                             }
                         }
                     }

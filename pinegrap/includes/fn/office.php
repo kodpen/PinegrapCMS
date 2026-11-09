@@ -1629,9 +1629,22 @@ function pg_office_docx_blocks(&$state, $container, &$html)
                 $html .= '<table class="office-table">';
 
                 foreach (pg_office_docx_wrapped($child, 'tr') as $row) {
+                    // The limit holds inside a table too, between rows: each
+                    // cell is drawn into a string of its own, which the check
+                    // before each block above never measures.
+                    if ($state['cut'] || (strlen($html) > PG_OFFICE_MAX_HTML)) {
+                        $state['cut'] = true;
+                        break;
+                    }
+
                     $html .= '<tr>';
 
                     foreach (pg_office_docx_wrapped($row, 'tc') as $cell) {
+                        if ($state['cut'] || (strlen($html) > PG_OFFICE_MAX_HTML)) {
+                            $state['cut'] = true;
+                            break;
+                        }
+
                         $span = 1;
 
                         foreach ($cell->getElementsByTagNameNS('*', 'gridSpan') as $grid) {

@@ -71,6 +71,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
 - security-findings-2026-10.md: 2026-10-19 security audit: fixed by that day's PRs and #713; items 2-8 decided by the owner 2026-10-28 (labels, CVV, escape_like, sign-in message, gateway secrets, ERP host, rich text)
 - shipping-carrier-labels.md: Plan (approved 2026-10-19): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
+- shipping-checkout-rates-steps.md: Steps R1-R5 of plans/shipping-checkout-rates.md: Geliver price list, method link, checkout live rate, label on payment, Sendcloud and Shippo quotes; claim as [plan:shipping-checkout-rates] R<n>
+- shipping-checkout-rates.md: Plan (owner 2026-11-09): a shipping method linked to a carrier label service, its live price at checkout (Geliver, then Sendcloud and Shippo), its label made once the order is paid
 - shipping-management.md: Shipping plan (2026-10-08; phases 1-7 and the phase 8 postcode check done): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
 - small-features-2026-11-steps-2.md: Steps SF4-SF8 of plans/small-features-2026-11.md: product questions, pre-order, EU VAT checks, the panel offline page, Slack, Teams and Telegram channels; claim as [plan:small-features-2026-11] SF<n>
 - small-features-2026-11-steps.md: Steps SF1-SF3 of plans/small-features-2026-11.md: address autocomplete, the accessibility statement widget, site search rollup with synonyms; claim as [plan:small-features-2026-11] SF<n>

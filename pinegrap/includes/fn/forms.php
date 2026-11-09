@@ -5798,3 +5798,15 @@ function pg_eaf_limit_log($ip)
         waf_text_log('DENY', (string) $ip, array('status' => 429, 'rule' => 'form-eaf'));
     }
 }
+
+// Whether a form list view page lists its records now. A page with neither
+// search nor a usable browse (a browse field with at least one filter) has
+// nothing for the visitor to do first, so it always lists; otherwise it lists
+// when "Show Results by Default" is on or the visitor has browsed or searched.
+function pg_form_list_view_shows_results($search, $browse_enabled, $show_results_by_default, $visitor_filtered)
+{
+    if ((int) $search === 0 && !$browse_enabled) {
+        return true;
+    }
+    return (int) $show_results_by_default === 1 || (bool) $visitor_filtered;
+}
