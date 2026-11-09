@@ -8,9 +8,11 @@
  * placeholders in the row and are filled from the channel's customer when
  * the reply is put in, so no customer data is kept here.
  *
- * Every row has a scope; this module reads and writes 'personal' rows only,
- * and a person reaches only their own. The rows go with their user
- * (delete_users.php, edit_user.php).
+ * Every row has a scope. A 'personal' row is its person's alone: nobody else
+ * reaches it, administrators included, and it goes with its user
+ * (delete_users.php, edit_user.php). A 'team' row has user_id 0: every
+ * Workspace member reads it, and adding, changing or deleting one takes the
+ * right to manage team replies (ws_rights() 'replies').
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -28,15 +30,67 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 const WS_SAVED_REPLIES_MAX = 200;
 
 /**
+ * How many saved replies the team keeps together.
+ */
+const WS_SAVED_REPLIES_TEAM_MAX = 500;
+
+/**
  * The longest shortcut and title, as their columns hold them.
  */
 const WS_SAVED_REPLY_SHORTCUT_MAX = 32;
 const WS_SAVED_REPLY_TITLE_MAX = 100;
 
 /**
- * The scope this module reads and writes.
+ * The two scopes: a person's own replies and the team's.
  */
 const WS_SAVED_REPLY_PERSONAL = 'personal';
+const WS_SAVED_REPLY_TEAM = 'team';
+
+/**
+ * A scope as sent: 'team' or 'personal' (anything else).
+ *
+ * @param mixed $scope
+ * @return string
+ */
+function ws_saved_reply_scope($scope)
+{
+    return ($scope === WS_SAVED_REPLY_TEAM) ? WS_SAVED_REPLY_TEAM : WS_SAVED_REPLY_PERSONAL;
+}
+
+/**
+ * The user_id a scope's rows carry: the person's for their own, 0 for the
+ * team's.
+ *
+ * @param int    $user_id
+ * @param string $scope
+ * @return int
+ */
+function ws_saved_reply_owner_id($user_id, $scope)
+{
+    return (ws_saved_reply_scope($scope) === WS_SAVED_REPLY_TEAM) ? 0 : (int) $user_id;
+}
+
+/**
+ * How many replies a scope keeps.
+ *
+ * @param string $scope
+ * @return int
+ */
+function ws_saved_reply_limit($scope)
+{
+    return (ws_saved_reply_scope($scope) === WS_SAVED_REPLY_TEAM) ? WS_SAVED_REPLIES_TEAM_MAX : WS_SAVED_REPLIES_MAX;
+}
+
+/**
+ * Whether the viewer may add, change and delete the team's replies.
+ *
+ * @param array $viewer ws_viewer()
+ * @return bool
+ */
+function ws_saved_reply_can_manage_team($viewer)
+{
+    return !empty($viewer['member']) && !empty($viewer['replies']);
+}
 
 /**
  * Whether the table is there: the files land before the upgrade runs.
@@ -146,19 +200,20 @@ function ws_saved_reply_input_check($input, $partial = false)
 }
 
 /**
- * A person's saved replies, by shortcut.
+ * A person's saved replies, or the team's, by shortcut.
  *
- * @param int $user_id
+ * @param int    $user_id the person; for the team, the person reading
+ * @param string $scope
  * @return array[] ws_saved_replies rows
  */
-function ws_saved_replies_rows($user_id)
+function ws_saved_replies_rows($user_id, $scope = WS_SAVED_REPLY_PERSONAL)
 {
     if (((int) $user_id <= 0) || !ws_saved_replies_ready()) {
         return array();
     }
 
     $result = db_q("SELECT id, user_id, scope, shortcut, title, body, created_at, updated_at FROM ws_saved_replies WHERE user_id = ? AND scope = ? ORDER BY shortcut, id",
-        array((int) $user_id, WS_SAVED_REPLY_PERSONAL));
+        array(ws_saved_reply_owner_id($user_id, $scope), ws_saved_reply_scope($scope)));
     $rows = array();
 
     while ($result && ($row = mysqli_fetch_assoc($result))) {
@@ -169,20 +224,22 @@ function ws_saved_replies_rows($user_id)
 }
 
 /**
- * One of a person's saved replies; null for one that is not theirs.
+ * One of a person's saved replies, or one of the team's; null for one that
+ * is not in that scope or is another person's.
  *
- * @param int $user_id
- * @param int $id
+ * @param int    $user_id the person; for the team, the person reading
+ * @param int    $id
+ * @param string $scope
  * @return array|null
  */
-function ws_saved_reply_find($user_id, $id)
+function ws_saved_reply_find($user_id, $id, $scope = WS_SAVED_REPLY_PERSONAL)
 {
     if (((int) $user_id <= 0) || ((int) $id <= 0) || !ws_saved_replies_ready()) {
         return null;
     }
 
     $result = db_q("SELECT id, user_id, scope, shortcut, title, body, created_at, updated_at FROM ws_saved_replies WHERE id = ? AND user_id = ? AND scope = ?",
-        array((int) $id, (int) $user_id, WS_SAVED_REPLY_PERSONAL));
+        array((int) $id, ws_saved_reply_owner_id($user_id, $scope), ws_saved_reply_scope($scope)));
     $row = $result ? mysqli_fetch_assoc($result) : null;
 
     return is_array($row) ? $row : null;
@@ -209,17 +266,26 @@ function ws_saved_reply_holder($rows, $shortcut, $except = 0)
 
 /**
  * The checks of saving a reply, shared by the panel and both API calls (a
- * rehearsal meets the same refusals): the fields, the shortcut free among
- * the person's own replies, and at most WS_SAVED_REPLIES_MAX of them.
+ * rehearsal meets the same refusals): a team reply only with the right, the
+ * fields, the shortcut free within its scope (the person's own replies, or
+ * the team's), and at most ws_saved_reply_limit() of them.
  *
  * @param array      $viewer ws_viewer()
  * @param mixed      $input  shortcut, title, body
  * @param array|null $row    the kept reply being changed, null for a new one
- * @return array ok, sets; or ok false, status (422, 409, 503), error
- *               (also shortcut_taken, limit_reached, not_ready) and field
+ * @param string     $scope  a new reply's scope; a change keeps the row's
+ * @return array ok, sets; or ok false, status (403, 422, 409, 503), error
+ *               (also not_allowed, shortcut_taken, limit_reached, not_ready)
+ *               and field
  */
-function ws_saved_reply_save_check($viewer, $input, $row = null)
+function ws_saved_reply_save_check($viewer, $input, $row = null, $scope = WS_SAVED_REPLY_PERSONAL)
 {
+    $scope = ws_saved_reply_scope(($row !== null) ? $row['scope'] : $scope);
+
+    if (($scope === WS_SAVED_REPLY_TEAM) && !ws_saved_reply_can_manage_team($viewer)) {
+        return array('ok' => false, 'status' => 403, 'error' => 'not_allowed', 'field' => null);
+    }
+
     if (!ws_saved_replies_ready()) {
         return array('ok' => false, 'status' => 503, 'error' => 'not_ready', 'field' => null);
     }
@@ -230,9 +296,25 @@ function ws_saved_reply_save_check($viewer, $input, $row = null)
         return $checked;
     }
 
-    $rows = ws_saved_replies_rows((int) $viewer['id']);
+    return ws_saved_reply_rows_check($checked, ws_saved_replies_rows((int) $viewer['id'], $scope), $row, $scope);
+}
 
-    if (($row === null) && (count($rows) >= WS_SAVED_REPLIES_MAX)) {
+/**
+ * The checks of ws_saved_reply_save_check() against the replies the scope
+ * already keeps: at most ws_saved_reply_limit() of them, and the shortcut
+ * free among them (a team shortcut among the team's, a personal one among
+ * the person's own).
+ *
+ * @param array      $checked ws_saved_reply_input_check(), ok
+ * @param array[]    $rows    the scope's replies (ws_saved_replies_rows())
+ * @param array|null $row     the kept reply being changed, null for a new one
+ * @param string     $scope
+ * @return array $checked, its title filled on a change; or ok false, status
+ *               409, error (shortcut_taken, limit_reached) and field
+ */
+function ws_saved_reply_rows_check($checked, $rows, $row, $scope)
+{
+    if (($row === null) && (count($rows) >= ws_saved_reply_limit($scope))) {
         return array('ok' => false, 'status' => 409, 'error' => 'limit_reached', 'field' => null);
     }
 
@@ -250,16 +332,17 @@ function ws_saved_reply_save_check($viewer, $input, $row = null)
 }
 
 /**
- * Saves a new reply of the person's or a change to one of theirs.
+ * Saves a new reply, the person's or the team's, or a change to one.
  *
  * @param array      $viewer ws_viewer()
  * @param mixed      $input  shortcut, title, body
  * @param array|null $row    the kept reply being changed, null for a new one
+ * @param string     $scope  a new reply's scope; a change keeps the row's
  * @return array ok, id; or what ws_saved_reply_save_check() refused
  */
-function ws_saved_reply_save($viewer, $input, $row = null)
+function ws_saved_reply_save($viewer, $input, $row = null, $scope = WS_SAVED_REPLY_PERSONAL)
 {
-    $checked = ws_saved_reply_save_check($viewer, $input, $row);
+    $checked = ws_saved_reply_save_check($viewer, $input, $row, $scope);
 
     if (!$checked['ok']) {
         return $checked;
@@ -267,11 +350,12 @@ function ws_saved_reply_save($viewer, $input, $row = null)
 
     $sets = $checked['sets'];
     $now = time();
-    $user_id = (int) $viewer['id'];
+    $scope = ws_saved_reply_scope(($row !== null) ? $row['scope'] : $scope);
+    $user_id = ws_saved_reply_owner_id((int) $viewer['id'], $scope);
 
     if ($row === null) {
         $ok = db_q("INSERT INTO ws_saved_replies (user_id, scope, shortcut, title, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            array($user_id, WS_SAVED_REPLY_PERSONAL, $sets['shortcut'], $sets['title'], $sets['body'], $now, $now));
+            array($user_id, $scope, $sets['shortcut'], $sets['title'], $sets['body'], $now, $now));
 
         // The unique key answers a shortcut written meanwhile, or one the
         // collation counts as the same word.
@@ -295,8 +379,9 @@ function ws_saved_reply_save($viewer, $input, $row = null)
     $values[] = $now;
     $values[] = (int) $row['id'];
     $values[] = $user_id;
+    $values[] = $scope;
 
-    if (!db_q("UPDATE ws_saved_replies SET " . implode(', ', $parts) . ", updated_at = ? WHERE id = ? AND user_id = ? AND scope = '" . WS_SAVED_REPLY_PERSONAL . "'", $values)) {
+    if (!db_q("UPDATE ws_saved_replies SET " . implode(', ', $parts) . ", updated_at = ? WHERE id = ? AND user_id = ? AND scope = ?", $values)) {
         return array('ok' => false, 'status' => 409, 'error' => 'shortcut_taken', 'field' => 'shortcut');
     }
 
@@ -304,7 +389,7 @@ function ws_saved_reply_save($viewer, $input, $row = null)
 }
 
 /**
- * Deletes one of the person's replies.
+ * Deletes one of the person's replies, or one of the team's with the right.
  *
  * @param array $viewer ws_viewer()
  * @param array $row    ws_saved_reply_find()
@@ -312,12 +397,14 @@ function ws_saved_reply_save($viewer, $input, $row = null)
  */
 function ws_saved_reply_delete($viewer, $row)
 {
-    if (!ws_saved_replies_ready()) {
+    $scope = ws_saved_reply_scope($row['scope'] ?? null);
+
+    if (!ws_saved_replies_ready() || (($scope === WS_SAVED_REPLY_TEAM) && !ws_saved_reply_can_manage_team($viewer))) {
         return false;
     }
 
     return (bool) db_q("DELETE FROM ws_saved_replies WHERE id = ? AND user_id = ? AND scope = ?",
-        array((int) $row['id'], (int) $viewer['id'], WS_SAVED_REPLY_PERSONAL));
+        array((int) $row['id'], ws_saved_reply_owner_id((int) $viewer['id'], $scope), $scope));
 }
 
 /**
@@ -330,6 +417,7 @@ function ws_saved_reply_present($row)
 {
     return array(
         'id'         => (int) $row['id'],
+        'scope'      => ws_saved_reply_scope($row['scope'] ?? null),
         'shortcut'   => (string) $row['shortcut'],
         'title'      => (string) $row['title'],
         'body'       => (string) $row['body'],
@@ -343,18 +431,23 @@ function ws_saved_reply_present($row)
  * the panel and the API.
  *
  * @param string $error
+ * @param string $scope the reply's scope
  * @return string
  */
-function ws_saved_reply_error_text($error)
+function ws_saved_reply_error_text($error, $scope = WS_SAVED_REPLY_PERSONAL)
 {
+    $team = (ws_saved_reply_scope($scope) === WS_SAVED_REPLY_TEAM);
     $messages = array(
         'shortcut_invalid'  => lang('A shortcut is one word of letters, digits, - and _, at most 32 characters.'),
-        'shortcut_taken'    => lang('Another of your saved replies has this shortcut.'),
+        'shortcut_taken'    => $team ? lang('Another team reply has this shortcut.') : lang('Another of your saved replies has this shortcut.'),
+        'not_allowed'       => lang('Managing team replies takes the right to manage them.'),
         'title_too_long'    => lang('The title is longer than 100 characters.'),
         'body_empty'        => lang('The reply is empty.'),
         'body_too_long'     => lang(array('string' => 'A message can be at most {var:1} characters long.', 'vars' => ws_saved_reply_body_max())),
         'nothing_to_change' => lang('Nothing to change was sent.'),
-        'limit_reached'     => lang(array('string' => 'A person may keep {var:1} saved replies.', 'vars' => WS_SAVED_REPLIES_MAX)),
+        'limit_reached'     => $team
+            ? lang(array('string' => 'The team may keep {var:1} saved replies.', 'vars' => WS_SAVED_REPLIES_TEAM_MAX))
+            : lang(array('string' => 'A person may keep {var:1} saved replies.', 'vars' => WS_SAVED_REPLIES_MAX)),
         'not_ready'         => lang('The database has to be updated first.'),
     );
 
@@ -414,9 +507,25 @@ function ws_saved_reply_values($viewer, $channel)
 }
 
 /**
- * The person's replies for the composer's ; list and the list that manages
- * them: each as kept, its body filled for the channel being written in
- * (text) and the names of the tags it holds (labels), for the writing box.
+ * The person's own replies and the team's in the order the ; list offers
+ * them: the person's first, then the team's, so on a shortcut both hold the
+ * person's reply comes first. Each part keeps its own order (by shortcut).
+ *
+ * @param array[] $personal
+ * @param array[] $team
+ * @return array[]
+ */
+function ws_saved_replies_order($personal, $team)
+{
+    return array_merge(array_values((array) $personal), array_values((array) $team));
+}
+
+/**
+ * The person's replies and the team's, for the composer's ; list and the
+ * list that manages them: each as kept, its body filled for the channel
+ * being written in (text) and the names of the tags it holds (labels), for
+ * the writing box. A member who is no Workspace member reads none of the
+ * team's.
  *
  * @param array      $viewer
  * @param array|null $channel the channel being written in; null fills nothing
@@ -424,7 +533,10 @@ function ws_saved_reply_values($viewer, $channel)
  */
 function ws_saved_replies_for_box($viewer, $channel = null)
 {
-    $rows = ws_saved_replies_rows((int) $viewer['id']);
+    $rows = ws_saved_replies_order(
+        ws_saved_replies_rows((int) $viewer['id']),
+        empty($viewer['member']) ? array() : ws_saved_replies_rows((int) $viewer['id'], WS_SAVED_REPLY_TEAM)
+    );
 
     if (empty($rows)) {
         return array();

@@ -4,8 +4,9 @@
  *
  * Workspace - saved replies in the external API and MCP
  * (includes/workspace/saved_replies.php): the owner of the application lists,
- * reads, writes and deletes their own replies. Nobody else's reply is ever
- * reached: another person's id answers 404 as a missing one does.
+ * reads, writes and deletes their own replies, reads the team's, and writes
+ * the team's with the right to manage them. Nobody else's personal reply is
+ * ever reached: another person's id answers 404 as a missing one does.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -35,11 +36,13 @@ function ws_saved_reply_api_routes()
         array('name' => 'title', 'in' => 'body', 'type' => 'string', 'max_length' => WS_SAVED_REPLY_TITLE_MAX, 'description' => 'What the picker shows; the shortcut when empty.'),
         array('name' => 'body', 'in' => 'body', 'type' => 'string', 'max_length' => ws_saved_reply_body_max(), 'description' => 'The text put into the message, in Markdown. {customer} and {order} are filled from the channel\'s customer when it is put in.'),
     );
-    $errors = ' A refused value answers 422 validation_failed naming the field (shortcut_invalid, title_too_long, body_empty, body_too_long); a shortcut another of the owner\'s replies holds is 409 shortcut_taken.';
+    $errors = ' A refused value answers 422 validation_failed naming the field (shortcut_invalid, title_too_long, body_empty, body_too_long); a shortcut another reply of the same scope holds is 409 shortcut_taken; a team reply written without the right to manage team replies is 403 forbidden.';
+    $scope = array('name' => 'scope', 'type' => 'enum', 'values' => array(WS_SAVED_REPLY_PERSONAL, WS_SAVED_REPLY_TEAM), 'default' => WS_SAVED_REPLY_PERSONAL);
 
     $create_fields = $fields;
     $create_fields[0]['required'] = true;
     $create_fields[2]['required'] = true;
+    $create_fields[] = array_merge($scope, array('in' => 'body', 'description' => 'personal: the owner\'s own reply; team: one every Workspace member picks, which takes the right to manage team replies.'));
 
     return array(
         array(
@@ -50,8 +53,8 @@ function ws_saved_reply_api_routes()
             'handler'     => 'ws_api_saved_replies_list',
             'returns'     => array('list' => 'WorkspaceSavedReply'),
             'summary'     => 'The owner\'s saved replies',
-            'description' => 'The saved replies of the owner of the application, by shortcut: the texts they pick with ; in the composer. A reply is its owner\'s alone; nobody else\'s is listed, administrators\' included. One person keeps at most ' . WS_SAVED_REPLIES_MAX . ', all in one page. body keeps {customer} and {order} as written.',
-            'params'      => array(),
+            'description' => 'The saved replies of the owner of the application, by shortcut: the texts they pick with ; in the composer. A personal reply is its owner\'s alone; nobody else\'s is listed, administrators\' included. scope team lists the team\'s replies, which every Workspace member picks. One person keeps at most ' . WS_SAVED_REPLIES_MAX . ', the team ' . WS_SAVED_REPLIES_TEAM_MAX . ', all in one page. body keeps {customer} and {order} as written.',
+            'params'      => array(array_merge($scope, array('in' => 'query'))),
         ),
 
         array(
@@ -62,7 +65,7 @@ function ws_saved_reply_api_routes()
             'handler'     => 'ws_api_saved_replies_get',
             'returns'     => 'WorkspaceSavedReply',
             'summary'     => 'One saved reply',
-            'description' => 'A saved reply of the owner of the application; anybody else\'s is 404.',
+            'description' => 'A saved reply of the owner of the application, or one of the team\'s; anybody else\'s personal reply is 404.',
             'params'      => array($id),
         ),
 
@@ -76,7 +79,7 @@ function ws_saved_reply_api_routes()
             'status'      => 201,
             'returns'     => 'WorkspaceSavedReply',
             'summary'     => 'Save a reply',
-            'description' => 'Saves a new reply of the owner of the application. A person keeps at most ' . WS_SAVED_REPLIES_MAX . ' (409 limit_reached).' . $errors,
+            'description' => 'Saves a new reply of the owner of the application, or of the team with scope team. A person keeps at most ' . WS_SAVED_REPLIES_MAX . ', the team ' . WS_SAVED_REPLIES_TEAM_MAX . ' (409 limit_reached).' . $errors,
             'params'      => $create_fields,
         ),
 
@@ -90,7 +93,7 @@ function ws_saved_reply_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspaceSavedReply',
             'summary'      => 'Change a saved reply',
-            'description'  => 'Changes only the fields sent on a saved reply of the owner\'s; anybody else\'s is 404. body replaces the whole text. PATCH is accepted beside POST.' . $errors,
+            'description'  => 'Changes only the fields sent on a saved reply of the owner\'s, or of the team\'s with the right to manage them; anybody else\'s personal reply is 404. A reply keeps its scope. body replaces the whole text. PATCH is accepted beside POST.' . $errors,
             'params'       => array_merge(array($id), $fields),
         ),
 
@@ -104,7 +107,7 @@ function ws_saved_reply_api_routes()
             'mcp'         => false,
             'returns'     => array('id' => 'integer', 'deleted' => 'boolean'),
             'summary'     => 'Delete a saved reply',
-            'description' => 'Deletes a saved reply of the owner\'s for good; its shortcut is free again. Anybody else\'s is 404. It cannot be undone, so it is not offered to assistants as a tool. POST /workspace/saved-replies/{id}/delete does the same for servers that refuse DELETE.',
+            'description' => 'Deletes a saved reply of the owner\'s, or of the team\'s with the right to manage them (403 forbidden without), for good; its shortcut is free again. Anybody else\'s personal reply is 404. It cannot be undone, so it is not offered to assistants as a tool. POST /workspace/saved-replies/{id}/delete does the same for servers that refuse DELETE.',
             'params'      => array($id),
         ),
 
@@ -129,6 +132,7 @@ function ws_api_saved_reply_schema()
 {
     return array(
         'id'         => 'integer',
+        'scope'      => 'string',
         'shortcut'   => 'string',
         'title'      => 'string',
         'body'       => 'string',
@@ -146,9 +150,13 @@ function ws_api_saved_reply_refuse($check)
 {
     $error = (string) $check['error'];
     $field = ((string) ($check['field'] ?? '') !== '') ? (string) $check['field'] : null;
-    $message = ws_saved_reply_error_text($error);
+    $message = ws_saved_reply_error_text($error, $check['scope'] ?? WS_SAVED_REPLY_PERSONAL);
 
     switch ((int) $check['status']) {
+        case 403:
+            api_fail(403, 'forbidden', $message);
+            break;
+
         case 503:
             api_fail(503, 'service_unavailable', $message);
             break;
@@ -163,7 +171,8 @@ function ws_api_saved_reply_refuse($check)
 }
 
 /**
- * One of the owner's replies, or 404 (also for anybody else's).
+ * One of the owner's replies or one of the team's, or 404 (also for anybody
+ * else's personal reply).
  *
  * @param array $viewer
  * @param mixed $id
@@ -176,6 +185,10 @@ function ws_api_saved_reply_or_404($viewer, $id)
     }
 
     $row = ws_saved_reply_find((int) $viewer['id'], (int) $id);
+
+    if ($row === null) {
+        $row = ws_saved_reply_find((int) $viewer['id'], (int) $id, WS_SAVED_REPLY_TEAM);
+    }
 
     if ($row === null) {
         api_fail_not_found(lang('Saved reply'));
@@ -206,9 +219,10 @@ function ws_api_saved_reply_input($params)
 function ws_api_saved_replies_list($params)
 {
     $viewer = ws_api_viewer();
-    $out = array_map('ws_saved_reply_present', ws_saved_replies_rows((int) $viewer['id']));
+    $scope = ws_saved_reply_scope($params['scope'] ?? null);
+    $out = array_map('ws_saved_reply_present', ws_saved_replies_rows((int) $viewer['id'], $scope));
 
-    api_ok_list($out, WS_SAVED_REPLIES_MAX, null, count($out));
+    api_ok_list($out, ws_saved_reply_limit($scope), null, count($out));
 }
 
 function ws_api_saved_replies_get($params)
@@ -222,18 +236,19 @@ function ws_api_saved_replies_create($params)
 {
     $viewer = ws_api_viewer();
     $data = ws_api_saved_reply_input($params);
-    $checked = ws_saved_reply_save_check($viewer, $data);
+    $scope = ws_saved_reply_scope($params['scope'] ?? null);
+    $checked = ws_saved_reply_save_check($viewer, $data, null, $scope);
 
     if (!$checked['ok']) {
-        ws_api_saved_reply_refuse($checked);
+        ws_api_saved_reply_refuse(array_merge($checked, array('scope' => $scope)));
     }
 
-    api_dry_run_stop('created', 'workspace_saved_reply', array('shortcut' => $checked['sets']['shortcut']));
+    api_dry_run_stop('created', 'workspace_saved_reply', array('shortcut' => $checked['sets']['shortcut'], 'scope' => $scope));
 
-    $result = ws_saved_reply_save($viewer, $data);
+    $result = ws_saved_reply_save($viewer, $data, null, $scope);
 
     if (!$result['ok']) {
-        ws_api_saved_reply_refuse($result);
+        ws_api_saved_reply_refuse(array_merge($result, array('scope' => $scope)));
     }
 
     api_ok(ws_saved_reply_present(ws_api_saved_reply_or_404($viewer, $result['id'])), 201);
@@ -247,7 +262,7 @@ function ws_api_saved_replies_update($params)
     $checked = ws_saved_reply_save_check($viewer, $data, $row);
 
     if (!$checked['ok']) {
-        ws_api_saved_reply_refuse($checked);
+        ws_api_saved_reply_refuse(array_merge($checked, array('scope' => $row['scope'])));
     }
 
     api_dry_run_stop('updated', 'workspace_saved_reply', array('id' => (int) $row['id'], 'fields' => array_keys($checked['sets'])));
@@ -255,7 +270,7 @@ function ws_api_saved_replies_update($params)
     $result = ws_saved_reply_save($viewer, $data, $row);
 
     if (!$result['ok']) {
-        ws_api_saved_reply_refuse($result);
+        ws_api_saved_reply_refuse(array_merge($result, array('scope' => $row['scope'])));
     }
 
     api_ok(ws_saved_reply_present(ws_api_saved_reply_or_404($viewer, $row['id'])));
@@ -265,6 +280,10 @@ function ws_api_saved_replies_delete($params)
 {
     $viewer = ws_api_viewer();
     $row = ws_api_saved_reply_or_404($viewer, $params['id']);
+
+    if ((ws_saved_reply_scope($row['scope']) === WS_SAVED_REPLY_TEAM) && !ws_saved_reply_can_manage_team($viewer)) {
+        ws_api_saved_reply_refuse(array('status' => 403, 'error' => 'not_allowed', 'scope' => WS_SAVED_REPLY_TEAM));
+    }
 
     api_dry_run_stop('deleted', 'workspace_saved_reply', array('id' => (int) $row['id']));
 

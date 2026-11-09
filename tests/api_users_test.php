@@ -286,7 +286,7 @@ function test_api_users_write_permission_subset()
 	$none = api_user_permissions_offered(array());
 	pg_assert_same(array('manage_contacts', 'manage_emails', 'manage_visitors', 'create_pages', 'delete_pages'), $none, 'every module off');
 
-	$all = api_user_permissions_offered(array('forms' => true, 'calendars' => true, 'ecommerce' => true, 'offline_payment' => true, 'erp' => true, 'erp_readonly' => true, 'workspace' => true));
+	$all = api_user_permissions_offered(array('forms' => true, 'calendars' => true, 'ecommerce' => true, 'offline_payment' => true, 'erp' => true, 'erp_readonly' => true, 'workspace' => true, 'workspace_replies' => true));
 	pg_assert_same(array(), array_values(array_diff(array_keys(api_user_permission_columns()), $all)), 'every right with every module on');
 
 	$fields = api_user_fields_new();

@@ -196,7 +196,30 @@ function pg_user_permission_ws_switches($values = array())
 
 	return pg_user_permission_switch('manage_workspace_assign', '1', $on('manage_workspace_assign'), lang('Assign work to others'), lang('Create tasks for colleagues and hand out a department\'s work.'))
 		. pg_user_permission_switch('manage_workspace_board', '1', $on('manage_workspace_board'), lang('See the team board'), lang('Everyone\'s load, the company plan and the list of conflicts.'))
-		. pg_user_permission_switch('manage_workspace_settings', '1', $on('manage_workspace_settings'), lang('Change workspace settings'), lang('Departments, working hours and capacity.'));
+		. pg_user_permission_switch('manage_workspace_settings', '1', $on('manage_workspace_settings'), lang('Change workspace settings'), lang('Departments, working hours and capacity.'))
+		. (pg_user_permission_ws_replies_column()
+			? pg_user_permission_switch('manage_workspace_replies', '1', $on('manage_workspace_replies'), lang('Manage team replies'), lang('Add, change and delete the saved replies every member picks.'))
+			: '');
+}
+
+// Whether user.manage_workspace_replies is there (step 11.0.177). It has a
+// probe of its own: pg_user_has_ws_columns() answers for the four older
+// columns, and a site between its new files and its upgrade lacks this one.
+function pg_user_permission_ws_replies_column()
+{
+	return function_exists('pg_schema_has') && pg_schema_has('user', 'manage_workspace_replies');
+}
+
+// The workspace right columns that are there, in the order they are posted.
+function pg_user_permission_ws_fields()
+{
+	$fields = array('manage_workspace', 'manage_workspace_assign', 'manage_workspace_board', 'manage_workspace_settings');
+
+	if (pg_user_permission_ws_replies_column()) {
+		$fields[] = 'manage_workspace_replies';
+	}
+
+	return $fields;
 }
 
 // The workspace columns of one account, or zeros where they do not exist yet.
@@ -208,15 +231,16 @@ function pg_user_permission_ws_values($user_id)
 		'manage_workspace_assign'   => 0,
 		'manage_workspace_board'    => 0,
 		'manage_workspace_settings' => 0,
+		'manage_workspace_replies'  => 0,
 	);
 
 	if (function_exists('pg_user_has_ws_columns') && pg_user_has_ws_columns() && ((int) $user_id > 0)) {
-		$row = db_item("SELECT manage_workspace, manage_workspace_assign, manage_workspace_board, manage_workspace_settings
+		$row = db_item("SELECT " . implode(', ', pg_user_permission_ws_fields()) . "
 			FROM user WHERE user_id = '" . (int) $user_id . "'");
 
 		if (is_array($row)) {
-			foreach ($values as $field => $unused) {
-				$values[$field] = (int) $row[$field];
+			foreach ($row as $field => $value) {
+				$values[$field] = (int) $value;
 			}
 		}
 	}
@@ -237,18 +261,18 @@ function pg_user_permission_ws_sql($mode, $post = null)
 		return '';
 	}
 
-	$fields = array('manage_workspace', 'manage_workspace_assign', 'manage_workspace_board', 'manage_workspace_settings');
+	$fields = pg_user_permission_ws_fields();
 	$posted = array();
 
 	foreach ($fields as $field) {
 		$posted[$field] = !empty($post[$field]) ? 1 : 0;
 	}
 
-	// The three rights mean nothing without the gate.
+	// The rights behind the gate mean nothing without it.
 	if ($posted['manage_workspace'] === 0) {
-		$posted['manage_workspace_assign'] = 0;
-		$posted['manage_workspace_board'] = 0;
-		$posted['manage_workspace_settings'] = 0;
+		foreach ($posted as $field => $unused) {
+			$posted[$field] = 0;
+		}
 	}
 
 	if ($mode === 'columns') {

@@ -121,10 +121,11 @@ function test_ws_saved_reply_present()
 		'body' => 'Order {order}', 'created_at' => '0', 'updated_at' => '86400',
 	));
 
-	pg_assert_same(array(7, 'hi', 'Hello', 'Order {order}', null, '1970-01-02T00:00:00Z'),
-		array($out['id'], $out['shortcut'], $out['title'], $out['body'], $out['created_at'], $out['updated_at']));
+	pg_assert_same(array(7, 'personal', 'hi', 'Hello', 'Order {order}', null, '1970-01-02T00:00:00Z'),
+		array($out['id'], $out['scope'], $out['shortcut'], $out['title'], $out['body'], $out['created_at'], $out['updated_at']));
 	pg_assert_same(array_keys(ws_api_saved_reply_schema()), array_keys($out), 'the schema names every field');
-	pg_assert_false(isset($out['user_id']) || isset($out['scope']), 'whose and which scope stay inside');
+	pg_assert_false(isset($out['user_id']), 'whose stays inside');
+	pg_assert_same('team', ws_saved_reply_present(array_merge(array('id' => 1, 'shortcut' => 'a', 'title' => 'a', 'body' => 'b', 'created_at' => 0, 'updated_at' => 0), array('scope' => 'team')))['scope']);
 }
 
 function test_ws_saved_replies_routes()
@@ -164,10 +165,25 @@ function test_ws_saved_replies_routes()
 	$create = array();
 
 	foreach ($routes['workspace.saved_replies.create']['params'] as $param) {
-		$create[$param['name']] = $param['max_length'];
+		if (isset($param['max_length'])) {
+			$create[$param['name']] = $param['max_length'];
+		}
 	}
 
 	pg_assert_same(array('shortcut' => 33, 'title' => 100, 'body' => WS_MESSAGE_MAX), $create);
+
+	// The scope: chosen on a create and on the list, kept by the reply after.
+	foreach (array('workspace.saved_replies.create' => 'body', 'workspace.saved_replies.list' => 'query') as $id => $in) {
+		$scope = null;
+
+		foreach ($routes[$id]['params'] as $param) {
+			if ($param['name'] === 'scope') {
+				$scope = $param;
+			}
+		}
+
+		pg_assert_same(array('enum', $in, array('personal', 'team'), 'personal'), array($scope['type'] ?? null, $scope['in'] ?? null, $scope['values'] ?? null, $scope['default'] ?? null), $id . ' takes scope');
+	}
 }
 
 // Every write runs the store's check, then the rehearsal stops it, then the
@@ -186,11 +202,103 @@ function test_ws_saved_replies_writes_check_before_the_rehearsal()
 	$delete = ws_saved_replies_test_source('ws_api_saved_replies_delete');
 	pg_assert_true(strpos($delete, 'api_dry_run_stop(') < strpos($delete, 'ws_saved_reply_delete('), 'delete: rehearsal before the write');
 
-	foreach (array('ws_saved_replies_rows', 'ws_saved_reply_find') as $name) {
-		pg_assert_contains('user_id = ? AND scope = ?', ws_saved_replies_test_source($name), $name . ' reads the person\'s own personal rows');
+	foreach (array('ws_saved_replies_rows', 'ws_saved_reply_find', 'ws_saved_reply_delete') as $name) {
+		$source = ws_saved_replies_test_source($name);
+		pg_assert_contains('user_id = ? AND scope = ?', $source, $name . ' names whose and which scope');
+		pg_assert_contains('ws_saved_reply_owner_id(', $source, $name . ': a team row is user_id 0, a personal one the person\'s');
 	}
 
 	pg_assert_contains('(int) $viewer[\'id\']', ws_saved_replies_test_source('ws_api_saved_reply_or_404'));
+
+	// A team delete without the right is refused before the rehearsal.
+	pg_assert_true(strpos($delete, 'not_allowed') < strpos($delete, 'api_dry_run_stop('), 'delete: the right before the rehearsal');
+	pg_assert_contains('ws_saved_reply_can_manage_team(', ws_saved_replies_test_source('ws_saved_reply_delete'), 'the store refuses a team delete without the right too');
+}
+
+// A team row has user_id 0; any other scope sent is personal.
+function test_ws_saved_reply_scope_and_owner()
+{
+	pg_assert_same('team', ws_saved_reply_scope('team'));
+	pg_assert_same('personal', ws_saved_reply_scope('Team'), 'only the exact word');
+	pg_assert_same('personal', ws_saved_reply_scope(null));
+	pg_assert_same('personal', ws_saved_reply_scope(array('team')));
+	pg_assert_same(0, ws_saved_reply_owner_id(9, 'team'));
+	pg_assert_same(9, ws_saved_reply_owner_id('9', 'personal'));
+	pg_assert_same(WS_SAVED_REPLIES_MAX, ws_saved_reply_limit('personal'));
+	pg_assert_same(WS_SAVED_REPLIES_TEAM_MAX, ws_saved_reply_limit('team'), 'the team has a limit of its own');
+}
+
+// Roles 0-2 hold the right by role, a role-3 member by the column; nobody
+// without membership.
+function test_ws_saved_reply_team_right()
+{
+	foreach (array(0, 1, 2) as $role) {
+		pg_assert_true(ws_rights_team_replies($role, true, 0), 'role ' . $role . ' by role');
+		pg_assert_false(ws_rights_team_replies($role, false, 1), 'role ' . $role . ' outside the team');
+	}
+
+	pg_assert_false(ws_rights_team_replies(3, true, 0), 'role 3 without the column');
+	pg_assert_false(ws_rights_team_replies(3, true, null), 'role 3 before the upgrade');
+	pg_assert_true(ws_rights_team_replies(3, true, '1'), 'role 3 with the column');
+	pg_assert_false(ws_rights_team_replies(3, false, 1), 'the column without membership');
+
+	pg_assert_true(ws_saved_reply_can_manage_team(array('member' => true, 'replies' => true)));
+	pg_assert_false(ws_saved_reply_can_manage_team(array('member' => true, 'replies' => false)));
+	pg_assert_false(ws_saved_reply_can_manage_team(array('member' => false, 'replies' => true)));
+	pg_assert_false(ws_saved_reply_can_manage_team(array()));
+
+	// A team write without the right is refused before anything is read;
+	// a personal one is not refused for it.
+	$member = array('id' => 4, 'member' => true, 'replies' => false);
+	$refused = ws_saved_reply_save_check($member, array('shortcut' => 'hi', 'body' => 'x'), null, 'team');
+	pg_assert_same(array(false, 403, 'not_allowed'), array($refused['ok'], $refused['status'], $refused['error']));
+
+	$change = ws_saved_reply_save_check($member, array('body' => 'x'), array('id' => 3, 'scope' => 'team', 'shortcut' => 'hi'), 'personal');
+	pg_assert_same('not_allowed', $change['error'], 'a change keeps the row\'s scope, whatever is sent');
+
+	$personal = ws_saved_reply_save_check($member, array('shortcut' => 'hi', 'body' => 'x'));
+	pg_assert_true($personal['error'] !== 'not_allowed', 'a personal reply needs no right');
+
+	pg_assert_contains("'replies'", ws_saved_replies_test_source('ws_rights'), 'ws_rights() carries the right');
+	pg_assert_contains('ws_team_replies_column()', ws_saved_replies_test_source('ws_rights'), 'the column is read behind its own probe');
+}
+
+// A team shortcut is unique among the team's replies; a personal one among
+// the person's; the two lists do not meet.
+function test_ws_saved_reply_rows_check()
+{
+	$checked = ws_saved_reply_input_check(array('shortcut' => 'iade', 'body' => 'x'));
+	$team = array(array('id' => '11', 'scope' => 'team', 'shortcut' => 'iade'));
+
+	$taken = ws_saved_reply_rows_check($checked, $team, null, 'team');
+	pg_assert_same(array(false, 409, 'shortcut_taken', 'shortcut'), array($taken['ok'], $taken['status'], $taken['error'], $taken['field']), 'a team shortcut already taken');
+
+	pg_assert_true(ws_saved_reply_rows_check($checked, array(), null, 'personal')['ok'], 'free among the person\'s own though the team holds it');
+	pg_assert_true(ws_saved_reply_rows_check(ws_saved_reply_input_check(array('body' => 'y'), true), $team, $team[0], 'team')['ok'], 'the reply being changed keeps its shortcut');
+
+	$full = array_fill(0, WS_SAVED_REPLIES_MAX, array('id' => '1', 'shortcut' => 'x'));
+	pg_assert_same('limit_reached', ws_saved_reply_rows_check($checked, $full, null, 'personal')['error'] ?? null, 'a person\'s limit');
+	pg_assert_true(ws_saved_reply_rows_check($checked, $full, null, 'team')['ok'], 'the team\'s limit is its own');
+
+	pg_assert_same(lang('Another team reply has this shortcut.'), ws_saved_reply_error_text('shortcut_taken', 'team'));
+	pg_assert_same(lang('Another of your saved replies has this shortcut.'), ws_saved_reply_error_text('shortcut_taken'));
+}
+
+// The person's own replies come first, so on a shared shortcut theirs wins.
+function test_ws_saved_replies_order_on_a_shared_shortcut()
+{
+	$personal = array(array('id' => 2, 'scope' => 'personal', 'shortcut' => 'iade'));
+	$team = array(
+		array('id' => 5, 'scope' => 'team', 'shortcut' => 'iade'),
+		array('id' => 6, 'scope' => 'team', 'shortcut' => 'kargo'),
+	);
+
+	pg_assert_same(array(2, 5, 6), array_column(ws_saved_replies_order($personal, $team), 'id'));
+	pg_assert_same(array(5, 6), array_column(ws_saved_replies_order(array(), $team), 'id'), 'only the team\'s');
+
+	$box = ws_saved_replies_test_source('ws_saved_replies_for_box');
+	pg_assert_contains('ws_saved_replies_order(', $box);
+	pg_assert_contains("empty(\$viewer['member'])", $box, 'a non-member reads none of the team\'s');
 }
 
 // A new table is listed for a reinstall, and the rows go with their user.
@@ -203,6 +311,15 @@ function test_ws_saved_replies_table_wiring()
 	$migration = file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
 	pg_assert_contains('upgrade_2026_11_0_workspace_saved_replies(); // 11.0.114', $migration);
 	pg_assert_contains('UNIQUE KEY uq_shortcut (user_id, scope, shortcut)', $migration);
+	pg_assert_contains('upgrade_2026_11_0_ws_team_replies();         // 11.0.177', $migration);
+	pg_assert_contains("install_add_column('user', 'manage_workspace_replies', \"TINYINT UNSIGNED NOT NULL DEFAULT 0\")", $migration);
+
+	// The right is drawn and saved with the other Workspace rights, behind
+	// its own probe; the login query never names it.
+	$permissions = file_get_contents(PG_FUNCTIONS_DIR . '/includes/user_permissions.php');
+	pg_assert_contains("pg_user_permission_switch('manage_workspace_replies'", $permissions);
+	pg_assert_contains("\$fields[] = 'manage_workspace_replies';", $permissions);
+	pg_assert_false(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/includes/authentication.php'), 'manage_workspace_replies'), 'not in the sign-in path');
 }
 
 // {customer} and {order} filled from the channel's customer; one with no

@@ -10,6 +10,6 @@ description: Saved replies in the panel (#3114): the composer's ; list (at(), ma
 - The pick goes through `PGWsEditor.insertStored()`: the `;word` deleted and the blocks placed in one `change()`, so one Ctrl+Z brings `;word` back; tags become chips.
 
 ## Where are they managed?
-- The composer's Insert (+) menu, "Saved replies": a drawer listing the person's replies (put into the message, edit, delete with a confirmation) and a form (shortcut, title, text in a rich field with `@`/`#`). Panel actions `ws_saved_reply_save` / `ws_saved_reply_delete` go through the same `ws_saved_reply_save()` checks as the API; `ws_saved_reply_error_text()` is the refusal text both use.
+- The composer's Insert (+) menu, "Saved replies": a drawer with two parts, the person's replies and the Team's (#8405), each listed to put into the message, edit, delete with a confirmation, and a form (shortcut, title, text in a rich field with `@`/`#`). The Team part has no add, edit or delete without the right (`manage_team` of the `ws_saved_replies` answer); the server refuses anyway. In the `;` list a team reply's row reads `;shortcut · Team` (`PGWsReplies.meta()`, the one line in workspace.js that draws it). Panel actions `ws_saved_reply_save` / `ws_saved_reply_delete` go through the same `ws_saved_reply_save()` checks as the API; `ws_saved_reply_error_text()` is the refusal text both use.
 - Tests: `tests/workspace_saved_replies_picker_test.php` (Node: `at()`, `match()`, `preview()`, and the wiring). The list, keys and drawer in a browser were not run (Working mode 4).
 
