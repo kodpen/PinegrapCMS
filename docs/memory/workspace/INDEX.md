@@ -8,6 +8,7 @@
 - agent-canvas-svg.md: Agents draw Workspace canvases from SVG (POST channels/{id}/canvases) and read any canvas (GET messages/{id}/canvas): Import port, blank picture, pending, who may
 - agent-doors.md: The agents' request queue: wake rules make one ws_ai_requests row per agent (app:<id>, model:<id>), the brakes, the push knock and its retry, the agent-requests routes (A4a #8221)
 - agent-flows.md: The flows part of the agent risk tiers (flow_agent_box.php, A7b): the Ask an agent box (kind agent) and runs an application agent starts within its channel tier
+- agent-key-trial.md: The agent's own side tried live on dev (2026-11-10) with an application agent's key: the request list, the brief of a mention and of a wake, claim, answer, no_answer, fail, agent-wake
 - agent-questions.md: How an agent asks the people with a poll or an approval, and why the outcome is written in the agent's name (never as the owner's decision)
 - agent-registry.md: The agent registry (ws_agents) and the channel-agent row (ws_channel_agents): fields, Claude's routine as the first push agent, the membership routes, the depth and hourly brakes
 - agent-risk-tiers.md: Agent risk tiers (agent_tiers.php, A7): the tier of a change, when an application agent's proposal is applied at once, the undo journal in ws_ai_changes (step 11.0.174), who may undo and when

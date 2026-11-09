@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-10
-description: Decisions list, workspace part 10 (2026-11-09 on): application lines fold; agent activity; table bin, Excel, import; why a flow box failed; team replies; channel export; agent questions in the bell
+description: Decisions list, workspace part 10 (2026-11-09 on): application lines fold; agent activity; table bin, Excel, import; flow failure reason; team replies; channel export; agent questions; unread requests
 ---
 
 ## Where are the rules and the earlier parts?
@@ -21,3 +21,6 @@ description: Decisions list, workspace part 10 (2026-11-09 on): application line
 
 ## Is the agent channel tried live? (owner, 2026-11-09)
 - Yes, on dev with the architect's application: registered as `@mimar` with a poll door and added to the agent channel (wake on a mention, tier 1). A mention, a `/wake` and the brief are tried once each, and what happened goes to `workspace/`. A job of its own on the owner's machine (`plans/agent-channel.md`).
+
+## What happens to requests an application agent does not read? (owner, 2026-11-10)
+- A schedule that comes due while an earlier wake of that agent still waits makes no new request (the schedule moves on), and a queued request not claimed within a day is cancelled by the hourly job, as Claude's, Pinegrap AI's and a model assistant's are: under a mention the line says the agent did not take it within a day, a wake closes silently. Why: in the live trial a one-minute schedule made a request at every due time while the earlier ones waited, and a mention said "Waiting" for ever. #8411; not built (`plans/agent-channel-trial.md`).
