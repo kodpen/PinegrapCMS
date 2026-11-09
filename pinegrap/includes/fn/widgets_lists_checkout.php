@@ -172,15 +172,20 @@ function pg_sw_list_checkout_redeem($rows, $discount)
 //   'gift_cards'  pg_sw_list_checkout_gift_cards()
 //   'recipients'  the ship_tos rows the widget read
 //   'items'       the cart's lines (ship_to_id), for the item counts
-//   'fmt'         formats minor units
+//   'fmt'         formats minor units as the widget writes money
+//                 (pg_visitor_money(): the sign as stored, &#8378;)
 //   'remove_base' the remove_gift_card_from_order.php address up to its id
 //   'remove_tail' what follows the id (send_to, token)
 //   'page_url'    maps a page id to its address
-// Raw values: the pass escapes them once.
+// Raw values: the pass escapes them once, so an amount is decoded to text
+// here; the entity escaped would show as "&#8378;30,00".
 function pg_sw_list_checkout_rows($data)
 {
     $get = function ($k) use ($data) { return (isset($data[$k]) && is_array($data[$k])) ? $data[$k] : array(); };
-    $fmt = (isset($data['fmt']) && is_callable($data['fmt'])) ? $data['fmt'] : function ($c) { return (string)$c; };
+    $format = (isset($data['fmt']) && is_callable($data['fmt'])) ? $data['fmt'] : function ($c) { return (string)$c; };
+    $fmt = function ($cents) use ($format) {
+        return html_entity_decode((string)$format($cents), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    };
     $out = array('checkout.offers' => array(0 => array()), 'checkout.suggestions' => array(0 => array()),
                  'checkout.gift_cards' => array(0 => array()), 'checkout.recipients' => array(0 => array()));
 

@@ -139,3 +139,21 @@ function test_order_form_widget_row_html()
 	pg_assert_false(strpos($html, '<input') !== false, 'an unavailable product has no control');
 	pg_assert_contains('<p>Soon</p>', $html, 'its out-of-stock words');
 }
+
+// The widget's tokens are escaped once. The symbol is stored as HTML
+// (&#8378;): it becomes its character first, or the donation box read
+// "&#8378;"; one typed as markup shows as text.
+function test_order_form_widget_tokens()
+{
+	$tokens = pg_of_tokens('Add & continue', 'No "thanks"', '&#8378;', '/cart?a=1&b=2');
+	pg_assert_same(array(
+		'__add_button_label'  => 'Add &amp; continue',
+		'__skip_button_label' => 'No &quot;thanks&quot;',
+		'__currency_symbol'   => '₺',
+		'__cart_url'          => '/cart?a=1&amp;b=2',
+	), $tokens);
+	pg_assert_same('€', pg_of_tokens('', '', '&euro;', '')['__currency_symbol'], 'a named entity');
+	pg_assert_same('$', pg_of_tokens('', '', '$', '')['__currency_symbol'], 'a plain symbol');
+	pg_assert_same('&lt;b&gt;₺&lt;/b&gt;', pg_of_tokens('', '', '<b>&#8378;</b>', '')['__currency_symbol'], 'markup stays text');
+	pg_assert_same('', pg_of_tokens('', '', '', '')['__currency_symbol'], 'no currency');
+}

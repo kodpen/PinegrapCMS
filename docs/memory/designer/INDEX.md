@@ -481,6 +481,7 @@
 - widget-condition-rows.md: Several value conditions on one widget node (W25): show_if_2/_3 beside show_if, the All/Any join, the marker with several tests, translation per row, the twin, the panel rows.
 - widget-conditions.md: Value conditions on system widget nodes (show_if): operators, how a value reads as text or a number, refused tokens, tree checks, fail closed (#1592).
 - widget-copy-for-this-page.md: Designer "Make a copy for this page": when the widget panel offers it, the dialog's choices for unsaved edits, what the copy keeps (field row ids, name), the tab open at the answer, what Save writes.
+- widget-currency-symbol-once.md: System widgets print the stored currency symbol (&#8378;) once: raw in markup, decoded before a token map, list row or h() escapes it (pg_visitor_money_text()); spots fixed, tests
 - widget-default-parts-breadcrumb.md: The catalog breadcrumb default part (W16, #1945): the catalog.crumbs list, its rows and key, the four placements it replaces, the listing's lead part, what changed for running sites
 - widget-default-parts-cart-form.md: The cart's product order form part with controls (W16, #2401): three lists, one control per field kind chosen by condition, row-decided required and limits, controls that come back, the old block
 - widget-default-parts-cart-gift-card.md: The cart's gift card part with controls (W16): the cart.item_gift_cards list, the control bindings the system owns, the required control that comes back, the old token, what is left

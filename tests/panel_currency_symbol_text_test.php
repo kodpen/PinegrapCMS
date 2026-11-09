@@ -3,9 +3,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The currencies table keeps a symbol as HTML for the pages that print it
- * (&#8378;, &euro;). Where the panel escapes it or writes it as text - h(),
- * jQuery .text(), a Chart.js canvas - it is decoded first (pg_money_text(),
- * html_entity_decode()); escaped as stored, a screen reads "&#8378;0,00".
+ * (&#8378;, &euro;). Where the panel or a site widget escapes it or writes
+ * it as text - h(), jQuery .text(), a Chart.js canvas - it is decoded first
+ * (pg_money_text(), html_entity_decode()); escaped as stored, a screen reads
+ * "&#8378;0,00".
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -28,12 +29,13 @@ function panel_currency_symbol_text_code($file)
 }
 
 // h() around money written with a stored symbol, or around the stored
-// symbol itself, escapes its entity a second time.
+// symbol itself - also behind a defined() check - escapes its entity a
+// second time.
 function test_panel_currency_symbol_is_never_escaped_as_stored()
 {
 	$root = PG_FUNCTIONS_DIR;
 	$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
-	$pattern = '/\bh\(\s*(?:(?:pg_format_money|pg_visitor_money|prepare_price_for_output|prepare_amount)\s*\(|(?:\(string\)\s*)?(?:BASE|VISITOR)_CURRENCY_SYMBOL\s*\))/';
+	$pattern = '/\bh\(\s*(?:(?:pg_format_money|pg_visitor_money|prepare_price_for_output|prepare_amount)\s*\(|(?:\(string\)\s*)?(?:BASE|VISITOR)_CURRENCY_SYMBOL\s*\)|defined\(\s*[\'"](?:BASE|VISITOR)_CURRENCY_SYMBOL[\'"]\s*\)\s*\?\s*(?:\(string\)\s*)?(?:BASE|VISITOR)_CURRENCY_SYMBOL\b)/';
 	$scanned = 0;
 	$found = array();
 
