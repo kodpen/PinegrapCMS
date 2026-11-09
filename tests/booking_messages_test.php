@@ -387,3 +387,17 @@ function test_booking_messages_status_event()
 
 	pg_assert_contains('pg_booking_changed($booking_id, $status_event);', (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_booking.php'), 'the agenda calls it');
 }
+
+// The staff name of a booking's customer messages is the contact's name only:
+// the row reaches the unauthenticated manage page, the mails and the .ics, so
+// a staff member without a contact name never shows the panel login name.
+function test_booking_messages_staff_public_name()
+{
+	pg_assert_same('Deniz Kaya', pg_booking_staff_public_name(' Deniz ', 'Kaya'));
+	pg_assert_same('Deniz', pg_booking_staff_public_name('Deniz', null));
+	pg_assert_same('', pg_booking_staff_public_name('', ''));
+	pg_assert_same('', pg_booking_staff_public_name(null, null));
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/booking_messages.php');
+	pg_assert_same(false, strpos($source, 'user_username'), 'the message row reads no login name');
+}
