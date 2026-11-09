@@ -20,4 +20,4 @@ description: How a registry agent shows (A4b2): the line under the message that 
 
 ## What is not done?
 - A discussion following a registry agent (`ws_threads.follow_agent` `app:<id>`): only Claude, Pinegrap AI and MCP agents are followed.
-- Never tried live with a real agent key.
+- Seen live on dev (2026-11-10): the waiting line under the message, the tag as `@mimar` with the robot mark, the @ list's entry (after an MCP alias, before the people). Typed as text `@mimar` wakes too, drawn as plain text. Own-message edits were not tried with a real agent key.
