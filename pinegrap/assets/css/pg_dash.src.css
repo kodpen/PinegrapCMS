@@ -2545,6 +2545,57 @@
     }
   }
 
+  /* While the dashboard is edited the switch is off limits (pg_dash_edit.js
+     disables it): leaving the page then would drop the unsaved layout. */
+  .pg-dash-switch .switch:has(input:disabled) {
+    opacity: .7;
+    border-color: var(--pgd-line-2);
+    background: var(--pgd-fill);
+    --bs-switch-indicator-bg: var(--pgd-muted);
+  }
+
+  /* ── Phone (picture 20) ───────────────────────────────────────────────
+     Under a 38rem dashboard: Edit dashboard starts its own line at the
+     left; the edit bar is a band across the screen with a rule under it,
+     as wide as #content (its 1rem padding taken back), so Reset, Cancel
+     and Save stay on one row; a card's remove button opens the tool row's
+     second line instead of standing alone at its end. */
+  @container pgdash (max-width: 37.99rem) {
+    .pg-dash-switch-end {
+      margin-inline-start: 0;
+    }
+
+    .pg-dash > .pg-dash-bar {
+      margin: -.25rem -1rem 1rem;
+      padding: .75rem 1.5rem;
+      border-width: 0 0 1px;
+      border-radius: 0;
+    }
+
+    .pg-dash .pg-dash-tools > .pg-dash-tool-remove {
+      margin-inline-start: 0;
+    }
+  }
+
+  @supports not (container-type: inline-size) {
+    @media (max-width: 639.98px) {
+      .pg-dash-switch-end {
+        margin-inline-start: 0;
+      }
+
+      .pg-dash > .pg-dash-bar {
+        margin: -.25rem -1rem 1rem;
+        padding: .75rem 1.5rem;
+        border-width: 0 0 1px;
+        border-radius: 0;
+      }
+
+      .pg-dash .pg-dash-tools > .pg-dash-tool-remove {
+        margin-inline-start: 0;
+      }
+    }
+  }
+
   @media (forced-colors: active) {
     .pg-dash-editing .pg-dash-cardbox { outline-color: CanvasText; }
     .pg-dash .pg-dash-segment { border-color: CanvasText; }

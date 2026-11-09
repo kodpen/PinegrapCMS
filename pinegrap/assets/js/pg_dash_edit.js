@@ -244,6 +244,13 @@
         if (node) {
             node.hidden = hidden;
         }
+
+        // The new/old switch would reload the page and drop the unsaved
+        // layout, so it rests while the dashboard is edited.
+        var toggle = document.getElementById("pg_dash_switch");
+        if (toggle) {
+            toggle.disabled = hidden;
+        }
     }
 
     // ── The edit bar ───────────────────────────────────────────────────────
