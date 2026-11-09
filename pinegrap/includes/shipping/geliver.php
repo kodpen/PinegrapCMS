@@ -56,6 +56,8 @@ function pg_label_geliver_info()
         'carriers' => array_values(array_unique(pg_label_geliver_carriers())),
         'formats'  => array('pdf'),
         'services' => pg_label_geliver_services(),
+        // The price list goes by the parcel alone, never the address.
+        'rates'    => 'national',
     );
 }
 
