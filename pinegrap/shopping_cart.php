@@ -1278,7 +1278,7 @@ if ($express_order_name) {
                 // get shipping method information
                 $query = "SELECT
                             service,
-                            realtime_rate,
+                            realtime_rate" . pg_shipping_label_rate_select() . ",
                             base_rate,
                             variable_base_rate,
                             base_rate_2,
@@ -1300,6 +1300,8 @@ if ($express_order_name) {
 
                 $shipping_method_service = $row['service'];
                 $shipping_method_realtime_rate = $row['realtime_rate'];
+                $shipping_method_label_driver = $row['label_driver'];
+                $shipping_method_label_service = $row['label_service'];
                 $shipping_method_base_rate = $row['base_rate'];
                 $shipping_method_variable_base_rate = $row['variable_base_rate'];
                 $shipping_method_base_rate_2 = $row['base_rate_2'];
@@ -1349,6 +1351,9 @@ if ($express_order_name) {
                     'ship_to_id' => $ship_to_id,
                     'service' => $shipping_method_service,
                     'realtime_rate' => $shipping_method_realtime_rate,
+                    'label_driver' => $shipping_method_label_driver,
+                    'label_service' => $shipping_method_label_service,
+                    'country' => $country_code,
                     'state' => $state_code,
                     'zip_code' => $zip_code,
                     'items' => $order_items));

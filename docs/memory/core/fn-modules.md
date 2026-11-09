@@ -187,6 +187,7 @@ description: Generated from the module field of the memory files: each includes/
 - `shipment_lookup`: [[guest-shipment-lookup]]
 - `shipment_tracking`: [[shipment-tracking]]
 - `shipping`: [[address-form-places]], [[address-labels-by-country]], [[address-labels-in-editor]], [[checkout-requested-arrival-date]], [[n11-old-address-order]], [[order-address-postcode-note]], [[tr-district-carriers]], [[tr-district-plate-code]]
+- `shipping_label_rates`: [[shipping-label-checkout-rate]]
 - `shipping_method_list_edit`: [[list-table-quick-edit-shipping-methods]]
 - `shipping_methods`: [[api-store-shipping-method-writes]], [[shipping-method-label-link]]
 - `short_link_list_edit`: [[list-table-quick-edit-short-links]]

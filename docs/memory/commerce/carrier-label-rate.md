@@ -5,7 +5,7 @@ module: carrier_labels
 ---
 
 ## What is rate()?
-- An optional driver operation `pg_label_<key>_rate($shipment, $account)` (2 arguments in `pg_label_operations()`): what the services would charge for the shipment's parcel. Called through `pg_label_call()` like every operation. Step R1 of plan `shipping-checkout-rates`; checkout does not charge it yet (R3).
+- An optional driver operation `pg_label_<key>_rate($shipment, $account)` (2 arguments in `pg_label_operations()`): what the services would charge for the shipment's parcel. Called through `pg_label_call()` like every operation. Step R1 of plan `shipping-checkout-rates`; checkout charges it for a linked method (`shipping-label-checkout-rate.md`).
 - The answer's `quotes`: list of service, carrier, amount, currency.
 
 ## How is a quote checked?

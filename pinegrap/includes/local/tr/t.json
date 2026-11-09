@@ -4525,6 +4525,8 @@
     "The little icon on a browser tab came from no standard: in 1999 a browser started asking every site for favicon.ico, never stopped asking, and it became a convention.": "Sekmedeki minik ikon hiçbir standarttan doğmadı: 1999'da bir tarayıcı her siteden favicon.ico dosyasını istemeye başladı, istemeyi hiç bırakmadı, gelenek oldu.",
     "The live page": "Canlı sayfa",
     "The live recording in full, with the stories that never reached the feed.": "Canlı kaydın tamamı, beslemeye hiç ulaşmayan hikâyelerle birlikte.",
+    "The live shipping rate of {var:1} could not be charged: no quote is in the base currency or in a currency with an exchange rate.": "{var:1} canlı kargo ücreti uygulanamadı: hiçbir teklif ana para biriminde veya kuru tanımlı bir para biriminde değil.",
+    "The live shipping rate of {var:1} could not be read: {var:2}": "{var:1} canlı kargo ücreti okunamadı: {var:2}",
     "The live topics viewed most in the last seven days.": "Son yedi günde en çok görüntülenen yayındaki konular.",
     "The living room of a stone house opening onto its courtyard": "Avlusuna açılan bir taş evin oturma odası",
     "The living room opens onto the courtyard on three sides.": "Oturma odası üç yandan avluya açılır.",
