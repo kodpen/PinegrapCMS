@@ -595,7 +595,7 @@ function get_shipping_method($properties) {
                         name,
                         description,
                         service,
-                        realtime_rate,
+                        realtime_rate" . pg_shipping_label_rate_select() . ",
                         base_rate,
                         variable_base_rate,
                         base_rate_2,
@@ -619,6 +619,8 @@ function get_shipping_method($properties) {
                 $shipping_method_description = pg_stock_pickup_describe($shipping_method_id, $row['description'], true);
                 $shipping_method_service = $row['service'];
                 $shipping_method_realtime_rate = $row['realtime_rate'];
+                $shipping_method_label_driver = $row['label_driver'];
+                $shipping_method_label_service = $row['label_service'];
                 $shipping_method_base_rate = $row['base_rate'];
                 $shipping_method_variable_base_rate = $row['variable_base_rate'];
                 $shipping_method_base_rate_2 = $row['base_rate_2'];
@@ -665,6 +667,9 @@ function get_shipping_method($properties) {
                 $realtime_rate = get_shipping_realtime_rate(array(
                     'service' => $shipping_method_service,
                     'realtime_rate' => $shipping_method_realtime_rate,
+                    'label_driver' => $shipping_method_label_driver,
+                    'label_service' => $shipping_method_label_service,
+                    'country' => $country_code,
                     'state' => $state_code,
                     'zip_code' => $zip_code,
                     'items' => $order_items));
@@ -1300,7 +1305,7 @@ function get_shipping_method($properties) {
                         name,
                         description,
                         service,
-                        realtime_rate,
+                        realtime_rate" . pg_shipping_label_rate_select() . ",
                         base_rate,
                         variable_base_rate,
                         base_rate_2,
@@ -1324,6 +1329,8 @@ function get_shipping_method($properties) {
                 $shipping_method_description = pg_stock_pickup_describe($shipping_method_id, $row['description']);
                 $shipping_method_service = $row['service'];
                 $shipping_method_realtime_rate = $row['realtime_rate'];
+                $shipping_method_label_driver = $row['label_driver'];
+                $shipping_method_label_service = $row['label_service'];
                 $shipping_method_base_rate = $row['base_rate'];
                 $shipping_method_variable_base_rate = $row['variable_base_rate'];
                 $shipping_method_base_rate_2 = $row['base_rate_2'];
@@ -1370,6 +1377,9 @@ function get_shipping_method($properties) {
                 $realtime_rate = get_shipping_realtime_rate(array(
                     'service' => $shipping_method_service,
                     'realtime_rate' => $shipping_method_realtime_rate,
+                    'label_driver' => $shipping_method_label_driver,
+                    'label_service' => $shipping_method_label_service,
+                    'country' => $country_code,
                     'state' => $state_code,
                     'zip_code' => $zip_code,
                     'items' => $items));
