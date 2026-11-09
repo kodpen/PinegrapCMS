@@ -33,7 +33,7 @@ description: Plan (owner 2026-11-09): workflow tables that behave like SQL table
   - its number as the table lists it;
   - its id;
   - the last row.
-  - A row found by a column's value comes with step 2.
+  - Step 2 (PR #8400) adds a fourth way to "Read a row": the first row that meets conditions (`by: match`).
 - A box saved before the choice keeps meaning an id.
 - The session put the values over rows in a "Read rows" box. That box takes conditions, so it gives "the sum where …" as well as the sum of all rows. It also gives the rows as a list for For each. "Read a row" stays one row.
 

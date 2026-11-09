@@ -315,7 +315,7 @@ function test_shipping_method_form_columns()
 			'available_on_monday', 'available_on_monday_cutoff_time', 'available_on_tuesday', 'available_on_tuesday_cutoff_time',
 			'available_on_wednesday', 'available_on_wednesday_cutoff_time', 'available_on_thursday', 'available_on_thursday_cutoff_time',
 			'available_on_friday', 'available_on_friday_cutoff_time', 'available_on_saturday', 'available_on_saturday_cutoff_time',
-			'available_on_sunday', 'available_on_sunday_cutoff_time', 'protected'),
+			'available_on_sunday', 'available_on_sunday_cutoff_time', 'protected', 'label_driver', 'label_service'),
 		array_keys($columns),
 		'every column the screens save');
 

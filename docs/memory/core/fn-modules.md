@@ -188,7 +188,7 @@ description: Generated from the module field of the memory files: each includes/
 - `shipment_tracking`: [[shipment-tracking]]
 - `shipping`: [[address-form-places]], [[address-labels-by-country]], [[address-labels-in-editor]], [[checkout-requested-arrival-date]], [[n11-old-address-order]], [[order-address-postcode-note]], [[tr-district-carriers]], [[tr-district-plate-code]]
 - `shipping_method_list_edit`: [[list-table-quick-edit-shipping-methods]]
-- `shipping_methods`: [[api-store-shipping-method-writes]]
+- `shipping_methods`: [[api-store-shipping-method-writes]], [[shipping-method-label-link]]
 - `short_link_list_edit`: [[list-table-quick-edit-short-links]]
 - `short_link_redirects`: [[helper-fixes-2026-11]], [[short-link-binned-destination]], [[short-link-gone-destination]]
 - `site_datetime`: [[site-datetime-loader]]
@@ -296,6 +296,7 @@ description: Generated from the module field of the memory files: each includes/
 - `widgets_starters`: [[widget-starters]], [[widget-starters-detail]]
 - `widgets_wishlist`: [[wishlist-widget]]
 - `wishlist`: [[wishlist]]
+- `xlsx_write`: [[workflow-tables-export]]
 - `zone_list_edit`: [[list-table-quick-edit-zones]]
 
 ## How does a module get on this list?

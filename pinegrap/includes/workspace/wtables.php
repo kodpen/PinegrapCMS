@@ -846,7 +846,7 @@ function ws_wtables_ready()
 }
 
 /**
- * One table.
+ * One table, never one in the bin (ws_wtable_binned() reads those).
  *
  * @param int $table_id
  * @return array|null
@@ -857,7 +857,7 @@ function ws_wtable($table_id)
         return null;
     }
 
-    $row = db_item("SELECT * FROM ws_wtables WHERE id = '" . (int) $table_id . "'");
+    $row = db_item("SELECT * FROM ws_wtables WHERE id = '" . (int) $table_id . "'" . ws_wtable_live_sql());
 
     return is_array($row) ? $row : null;
 }
@@ -986,7 +986,8 @@ function ws_wtable_columns($table_id)
 }
 
 /**
- * The tables the person owns, the latest changed first.
+ * The tables the person owns, the latest changed first; binned ones are
+ * left out.
  *
  * @param array $viewer
  * @return array[] rows, each with access owner
@@ -998,7 +999,7 @@ function ws_wtables_own($viewer)
     }
 
     $rows = (array) db_items("SELECT id, user_id, name, description, row_count, revision, created_at, updated_at
-        FROM ws_wtables WHERE user_id = '" . (int) $viewer['id'] . "' ORDER BY updated_at DESC, id DESC");
+        FROM ws_wtables WHERE user_id = '" . (int) $viewer['id'] . "'" . ws_wtable_live_sql() . " ORDER BY updated_at DESC, id DESC");
 
     foreach ($rows as $i => $row) {
         $rows[$i]['access'] = 'owner';
@@ -1035,7 +1036,8 @@ function ws_wtable_create_check($viewer, $input)
         return $check;
     }
 
-    $count = (int) db_value("SELECT COUNT(*) FROM ws_wtables WHERE user_id = '" . (int) $viewer['id'] . "'");
+    // A binned table does not count in the limit.
+    $count = (int) db_value("SELECT COUNT(*) FROM ws_wtables WHERE user_id = '" . (int) $viewer['id'] . "'" . ws_wtable_live_sql());
 
     if (!ws_wtable_limit_allows('tables', $count)) {
         return ws_wtable_refusal('too_many_tables', '', 409);
@@ -1141,9 +1143,9 @@ function ws_wtable_delete_check($viewer, $table)
 }
 
 /**
- * Delete a table with its columns, rows, the rows' tags in ws_refs and its
- * shares. The table goes first, so that a request stopped halfway leaves
- * nothing anybody reaches.
+ * Delete a table: it goes to the bin whole (ws_wtable_bin_put()), where its
+ * owner may restore it for the Recycle Bin's days; before the bin's step has
+ * run, it is deleted for good.
  *
  * @param array      $viewer
  * @param array|null $table
@@ -1157,7 +1159,34 @@ function ws_wtable_delete($viewer, $table)
         return $check;
     }
 
-    $id = (int) $table['id'];
+    if (!ws_wtable_bin_ready()) {
+        ws_wtable_delete_final((int) $table['id']);
+
+        return $check;
+    }
+
+    if (!ws_wtable_bin_put($table, (int) $viewer['id'])) {
+        return ws_wtable_refusal('not_found', '', 404);
+    }
+
+    return $check;
+}
+
+/**
+ * Delete a table for good with its columns, rows, binned rows, the rows'
+ * tags in ws_refs and its shares: the purge of the bin, and the rollback of
+ * a table made halfway (an import, a starter). The table goes first, so that
+ * a request stopped halfway leaves nothing anybody reaches.
+ *
+ * @param int $table_id
+ */
+function ws_wtable_delete_final($table_id)
+{
+    $id = (int) $table_id;
+
+    if (!ws_wtables_ready() || ($id <= 0)) {
+        return;
+    }
 
     db("DELETE FROM ws_wtables WHERE id = '" . $id . "'");
 
@@ -1168,7 +1197,9 @@ function ws_wtable_delete($viewer, $table)
         db("DELETE FROM " . $child . " WHERE table_id = '" . $id . "'");
     }
 
-    return $check;
+    if (ws_wtable_bin_ready()) {
+        db("DELETE FROM ws_wtable_row_bin WHERE table_id = '" . $id . "'");
+    }
 }
 
 /* ---------------------------------------------------------------------------

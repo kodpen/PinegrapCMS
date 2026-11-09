@@ -206,6 +206,10 @@ function api_store_shipping_method_present($row, $zone_ids = array(), $excluded_
 		),
 		'realtime_service'  => ((string)$row['service'] !== '') ? (string)$row['service'] : null,
 		'realtime_rate'     => ((int)$row['realtime_rate'] === 1),
+		// The carrier label service Create Label uses and whose quote a live
+		// rate charges; label_service '' takes the cheapest offer.
+		'label_driver'      => (isset($row['label_driver']) && ((string)$row['label_driver'] !== '')) ? (string)$row['label_driver'] : null,
+		'label_service'     => isset($row['label_service']) ? (string)$row['label_service'] : '',
 		'handling_days'     => (int)$row['handle_days'],
 		'handling_on'       => api_store_shipping_method_days($row, 'handle_'),
 		'transit_days'      => (int)$row['base_transit_days'],
@@ -249,6 +253,8 @@ function api_store_shipping_method_schema() {
 		),
 		'realtime_service'  => 'string?',
 		'realtime_rate'     => 'boolean',
+		'label_driver'      => 'string?',
+		'label_service'     => 'string',
 		'handling_days'     => 'integer',
 		'handling_on'       => 'string[]',
 		'transit_days'      => 'integer',
@@ -1047,7 +1053,7 @@ function api_store_shipping_method_new_row() {
 	$row = array(
 		'name' => '', 'description' => '', 'code' => '', 'carrier_title' => '', 'carrier_vkn' => '',
 		'status' => 'enabled', 'start_time' => '1000-01-01 00:00:00', 'end_time' => '9999-12-31 23:59:59',
-		'service' => '', 'realtime_rate' => 0, 'base_rate' => 0, 'variable_base_rate' => 0,
+		'service' => '', 'realtime_rate' => 0, 'label_driver' => '', 'label_service' => '', 'base_rate' => 0, 'variable_base_rate' => 0,
 		'primary_weight_rate' => 0, 'primary_weight_rate_first_item_excluded' => 0,
 		'secondary_weight_rate' => 0, 'secondary_weight_rate_first_item_excluded' => 0,
 		'item_rate' => 0, 'item_rate_first_item_excluded' => 0,
@@ -1128,7 +1134,7 @@ function api_store_shipping_method_columns($row, $params) {
 
 	$columns = array();
 
-	foreach (array('name', 'description', 'code', 'carrier_title', 'carrier_vkn', 'status', 'start_time', 'end_time', 'service', 'realtime_rate', 'base_rate', 'variable_base_rate', 'primary_weight_rate', 'primary_weight_rate_first_item_excluded', 'secondary_weight_rate', 'secondary_weight_rate_first_item_excluded', 'item_rate', 'item_rate_first_item_excluded', 'base_transit_days', 'adjust_transit', 'street_address', 'po_box', 'handle_days', 'end_of_day', 'transit_on_sunday', 'transit_on_saturday', 'protected') as $column) {
+	foreach (array('name', 'description', 'code', 'carrier_title', 'carrier_vkn', 'status', 'start_time', 'end_time', 'service', 'realtime_rate', 'base_rate', 'variable_base_rate', 'primary_weight_rate', 'primary_weight_rate_first_item_excluded', 'secondary_weight_rate', 'secondary_weight_rate_first_item_excluded', 'item_rate', 'item_rate_first_item_excluded', 'base_transit_days', 'adjust_transit', 'street_address', 'po_box', 'handle_days', 'end_of_day', 'transit_on_sunday', 'transit_on_saturday', 'protected', 'label_driver', 'label_service') as $column) {
 
 		$columns[$column] = isset($row[$column]) ? (string)$row[$column] : '';
 
@@ -1287,8 +1293,34 @@ function api_store_shipping_method_columns($row, $params) {
 
 	}
 
+	if (array_key_exists('label_driver', $params)) {
+
+		$driver = trim((string)$params['label_driver']);
+
+		if (($driver !== '') && (pg_label_driver($driver) === null)) {
+
+			return $fail('label_driver', lang('No carrier label service has that key.'));
+
+		}
+
+		$columns['label_driver'] = $driver;
+
+	}
+
+	if (array_key_exists('label_service', $params)) {
+
+		$columns['label_service'] = trim((string)$params['label_service']);
+
+	}
+
+	if ($columns['label_driver'] === '') {
+
+		$columns['label_service'] = '';
+
+	}
+
 	// As on the screen: real-time rates need a service that has them.
-	if (($columns['service'] === '') || (substr($columns['service'], 0, 5) === 'fedex')) {
+	if (!pg_shipping_method_has_realtime_rate($columns['service'], $columns['label_driver'])) {
 
 		$columns['realtime_rate'] = '0';
 

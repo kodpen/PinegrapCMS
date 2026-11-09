@@ -69,6 +69,7 @@ function pg_contact_holders()
         'ws_mail_conversations'        => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'none'),
         'ws_events'                    => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
         'ws_wtable_cells'              => array('table' => 'ws_wtable_rows', 'column' => 'cells', 'merge' => 'cells', 'erase' => 'scope'),
+        'ws_wtable_bin_cells'          => array('table' => 'ws_wtable_row_bin', 'column' => 'cells', 'merge' => 'cells', 'erase' => 'scope'),
         'cart_quotes'                  => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
     );
 }
@@ -131,7 +132,7 @@ function pg_contact_holders_move($merged_ids, $keep_id)
         }
 
         if ($holder['merge'] === 'cells') {
-            pg_contact_holders_move_wtable_cells($merged_ids, $keep_id);
+            pg_contact_holders_move_wtable_cells($merged_ids, $keep_id, $table);
             continue;
         }
 
@@ -197,14 +198,19 @@ function pg_contact_wtable_cells_moved(array $types, array $cells, array $merged
  * closing brace), then decided in PHP; each row is written against the
  * revision it was read at and read again, up to three times, when it changed
  * meanwhile. The bumped revision tells an open screen to reload the row.
+ * The rows in the tables' bins (ws_wtable_row_bin) are re-pointed the same
+ * way, so a restored row links to the contact that stays.
  *
- * @param int[] $merged_ids  the contacts merged away, none of them the one that stays
- * @param int   $keep_id     the contact that stays
+ * @param int[]  $merged_ids  the contacts merged away, none of them the one that stays
+ * @param int    $keep_id     the contact that stays
+ * @param string $table       ws_wtable_rows | ws_wtable_row_bin
  * @return void
  */
-function pg_contact_holders_move_wtable_cells(array $merged_ids, $keep_id)
+function pg_contact_holders_move_wtable_cells(array $merged_ids, $keep_id, $table = 'ws_wtable_rows')
 {
-    if (!pg_schema_has('ws_wtable_columns', 'type')) {
+    $table = ($table === 'ws_wtable_row_bin') ? 'ws_wtable_row_bin' : 'ws_wtable_rows';
+
+    if (!pg_schema_has('ws_wtable_columns', 'type') || !pg_schema_has($table, 'cells')) {
         return;
     }
 
@@ -227,7 +233,7 @@ function pg_contact_holders_move_wtable_cells(array $merged_ids, $keep_id)
             break;
         }
 
-        $sql = "SELECT id, table_id, revision, cells FROM ws_wtable_rows WHERE " . $condition;
+        $sql = "SELECT id, table_id, revision, cells FROM " . $table . " WHERE " . $condition;
         $row_values = $values;
 
         if ($pending !== null) {
@@ -270,7 +276,7 @@ function pg_contact_holders_move_wtable_cells(array $merged_ids, $keep_id)
             }
 
             db_q(
-                "UPDATE ws_wtable_rows SET cells = ?, revision = revision + 1, updated_at = ? WHERE id = ? AND revision = ?",
+                "UPDATE " . $table . " SET cells = ?, revision = revision + 1, updated_at = ? WHERE id = ? AND revision = ?",
                 array($json, (string) time(), (string) $row['id'], (string) $row['revision'])
             ) or output_error(lang('Query failed.'));
 

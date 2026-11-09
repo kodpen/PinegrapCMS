@@ -943,7 +943,7 @@ function ws_wtable_import_create($viewer, $name, $plan, $rows)
         $result = ws_wtable_column_create($viewer, $table, array('name' => $column['name'], 'type' => $type, 'options' => ws_wtable_import_options($type, $values)));
 
         if (!$result['ok']) {
-            ws_wtable_delete($viewer, $table);
+            ws_wtable_delete_final((int) $table['id']);
 
             return array('ok' => false, 'error' => $result['error'], 'table_id' => 0, 'report' => array(), 'column' => (string) $column['name']);
         }

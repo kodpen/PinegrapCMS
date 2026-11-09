@@ -439,6 +439,44 @@ if ($table && (($_GET['board_json'] ?? '') === '1')) {
     exit;
 }
 
+// The table as an Excel workbook: one sheet, the heading row in bold, every
+// row in the table's order (ws_wtable_export_sheet()). Viewing the table is
+// enough, as the screen shows the same cells.
+if ($table && (($_GET['download'] ?? '') === 'xlsx')) {
+    $columns = ws_wtable_columns((int) $table['id']);
+    $rows = ws_wtable_rows((int) $table['id'], $columns);
+    $person_ids = array();
+
+    foreach ($rows as $row) {
+        foreach ($columns as $column_id => $column) {
+            if (($column['type'] === 'person') && !empty($row['cells'][$column_id])) {
+                $person_ids[] = (int) $row['cells'][$column_id];
+            }
+        }
+    }
+
+    $sheet = ws_wtable_export_sheet($columns, $rows, empty($person_ids) ? array() : ws_people(array_unique($person_ids)));
+    $directory = PG_FUNCTIONS_DIR . '/data/temp';
+    $path = (is_dir($directory) || @mkdir($directory, 0755, true)) ? @tempnam($directory, 'wtable_') : false;
+
+    if (($path === false) || !pg_xlsx_write_plain($sheet['headings'], $sheet['rows'], $path, (string) $table['name'])) {
+        if ($path !== false) {
+            @unlink($path);
+        }
+
+        output_error(h(lang('The file could not be written. Check that data/temp is writable.')) . ' <a href="' . h($self_url . '?id=' . (int) $table['id']) . '">' . h(lang('Back')) . '</a>');
+    }
+
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="' . ws_wtable_export_file_name((string) $table['name'], (int) $table['id']) . '"');
+    header('Content-Length: ' . (int) filesize($path));
+    header('X-Content-Type-Options: nosniff');
+    header('Cache-Control: private, no-store');
+    readfile($path);
+    @unlink($path);
+    exit;
+}
+
 $types = ws_wtable_column_types();
 $board_script = '';
 $levels = ws_wtable_share_levels();
@@ -1326,6 +1364,7 @@ if (!$table) {
     <nav id="button_bar" class="pg-toolbar navigation mb-5" aria-label="' . lang('Button Bar') . '">
         ' . $flow_button . '
         ' . (($row_form !== '') ? '<a class="btn btn-sm btn-text theme-primary" href="' . h($table_url) . '#ws-wt-row-form"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New row')) . '</a>' : '') . '
+        <a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . '&download=xlsx') . '" download><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>' . h(lang('Download as Excel')) . '</a>
         ' . ($can_manage ? '<button type="button" class="btn btn-sm btn-text theme-danger ws-wt-action ms-auto" data-action="table_delete" data-confirm="'
             . h(lang(array('string' => 'Delete the table {var:1} with its rows and shares? It cannot be brought back.', 'vars' => $table['name']))) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang('Delete table')) . '</button>' : '') . '
     </nav>' . $flow_window;

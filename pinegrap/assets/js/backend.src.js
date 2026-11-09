@@ -5935,25 +5935,27 @@ $(document).on('change', '[data-pg-add-to-chips]', function () {
     window.pgDatePicker.set(this, '');
 });
 
+// The shipping method form's Service and Carrier Service fields
+// (includes/forms/shipping_method_form.php): the Real-Time Rate switch is
+// shown for a USPS or UPS service or a carrier service link, and the
+// service code box for a carrier service without a service list.
 function init_shipping_method_service() {
     var service = $('#service');
-    service.change(function () {
-        var service_value = service.val();
-        // If a service has been selected and we support real-time rates for that service, then
-        // show real-time rate row.
-        if (
-            service_value &&
-            (service_value.substr(0, 4) == 'usps' || service_value.substr(0, 3) == 'ups')
-        ) {
-            $('#realtime_rate_row').addClass('show');
+    var link = $('#label_link');
+    var update = function () {
+        var service_value = service.val() || '';
+        var option = link.find('option:selected');
+        var linked = !!link.val();
 
-            // Otherwise hide the real-time rate row.
-        } else {
-            $('#realtime_rate_row').removeClass('show');
-        }
-    });
-    // Trigger change event for initial page load.
-    service.trigger('change');
+        $('#realtime_rate_row').toggleClass('show', linked || service_value.substr(0, 4) == 'usps' || service_value.substr(0, 3) == 'ups');
+        $('#label_service_code_row').toggleClass('show', linked && option.attr('data-pg-service-code') == '1');
+    };
+
+    service.change(update);
+    link.change(update);
+
+    // For the initial page load.
+    update();
 }
 
 

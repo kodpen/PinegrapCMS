@@ -47,10 +47,18 @@ function test_privacy_export_wtable_row()
 	$columns = array('1' => array('name' => 'Owner', 'type' => 'person'), '2' => array('name' => 'Note', 'type' => 'text'));
 
 	pg_assert_same(
-		array('record' => 'table_row', 'id' => 5, 'table_id' => 3, 'table' => 'Leads', 'cells' => array('Owner' => 7, '9' => 7), 'created_at' => 100, 'updated_at' => 200),
+		array('record' => 'table_row', 'id' => 5, 'table_id' => 3, 'table' => 'Leads', 'cells' => array('Owner' => 7, '9' => 7), 'created_at' => 100, 'updated_at' => 200, 'deleted_at' => 0),
 		pg_privacy_export_wtable_row($row, 'Leads', $columns),
 		'row'
 	);
+
+	// A row in a table's bin is given by its own id, with when it was
+	// deleted; a row of a binned table by when the table was.
+	$binned = array('id' => 40, 'row_id' => 5, 'deleted_at' => 300) + $row;
+
+	pg_assert_same(5, pg_privacy_export_wtable_row($binned, 'Leads', $columns)['id'], 'the row\'s id, not the bin entry\'s');
+	pg_assert_same(300, pg_privacy_export_wtable_row($binned, 'Leads', $columns)['deleted_at'], 'when the row was deleted');
+	pg_assert_same(400, pg_privacy_export_wtable_row($row, 'Leads', $columns, 400)['deleted_at'], 'when its table was');
 }
 
 // A passkey is exported by what the person sees of it; the credential (its

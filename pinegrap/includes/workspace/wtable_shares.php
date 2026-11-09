@@ -522,7 +522,7 @@ function ws_wtable_share_remove($viewer, $table, $share_id)
  * The tables the person reaches: their own, and those of others shared with
  * them or in a channel they read, the latest changed first, each with its
  * access (ws_wtable_access()). A table whose owner left the team is in
- * nobody's list.
+ * nobody's list, and so is a binned one.
  *
  * @param array  $viewer
  * @param string $scope all | mine | shared
@@ -551,7 +551,7 @@ function ws_wtables_reached($viewer, $scope = 'all')
 
     if (!empty($ids)) {
         $others = (array) db_items("SELECT id, user_id, name, description, row_count, revision, created_at, updated_at FROM ws_wtables
-            WHERE id IN ('" . implode("','", array_keys($ids)) . "') AND user_id <> '" . (int) $viewer['id'] . "'");
+            WHERE id IN ('" . implode("','", array_keys($ids)) . "') AND user_id <> '" . (int) $viewer['id'] . "'" . ws_wtable_live_sql());
 
         foreach ($others as $table) {
             $table['access'] = ws_wtable_access($viewer, $table);
@@ -672,12 +672,12 @@ function ws_wtable_row_flow_payload($table, $row, $actor_id, $changed = array())
 }
 
 /**
- * Announce a row written or deleted, when no import is running
- * (ws_wtable_row_announce_quiet()): to the flows whose row box waits for
- * this table (ws_event(), kept only while one waits), and to the webhooks
- * when the table is shared in a public channel.
+ * Announce a row written, deleted (into the bin) or restored from the bin,
+ * when no import is running (ws_wtable_row_announce_quiet()): to the flows
+ * whose row box waits for this table (ws_event(), kept only while one
+ * waits), and to the webhooks when the table is shared in a public channel.
  *
- * @param string    $what     created | updated | deleted
+ * @param string    $what     created | updated | deleted | restored
  * @param array     $table
  * @param int|array $row      the row id, or the stored row of a deleted one
  * @param int       $actor_id
@@ -726,6 +726,8 @@ function ws_wtable_row_announce($what, $table, $row, $actor_id, $changed = array
     // check that every workspace event names its channel reads it.
     if ($what === 'created') {
         pg_announce('workspace.wtable.row.created', array('channel_id' => $body['channel_id']) + $body);
+    } elseif ($what === 'restored') {
+        pg_announce('workspace.wtable.row.restored', array('channel_id' => $body['channel_id']) + $body);
     } else {
         pg_announce('workspace.wtable.row.updated', array('channel_id' => $body['channel_id']) + $body);
     }
