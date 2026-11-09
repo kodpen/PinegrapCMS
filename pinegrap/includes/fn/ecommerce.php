@@ -8575,6 +8575,21 @@ function pg_money_text($amount, $symbol = null, $suffix = '')
 }
 
 /**
+ * The same as pg_visitor_money(), as plain text: for a value escaped later,
+ * such as a widget token that pg_sw_escape_token_values() escapes. A symbol
+ * stored as an entity (&#8378;) becomes the character, so it shows once.
+ *
+ * @param float|int|string $base_amount  Major units, base currency
+ * @param string|null      $symbol       null = the visitor's currency symbol
+ * @return string
+ */
+function pg_visitor_money_text($base_amount, $symbol = null)
+{
+    $suffix = defined('VISITOR_CURRENCY_CODE_FOR_OUTPUT') ? (string) VISITOR_CURRENCY_CODE_FOR_OUTPUT : '';
+    return pg_money_text(pg_visitor_amount($base_amount), $symbol, $suffix);
+}
+
+/**
  * Read an amount a person typed: 1.234,56, 1,234.56, 1234,5, 1234.50 or
  * 1 234,56 all come out as 1234.56.
  *

@@ -13,6 +13,16 @@ module: widgets_order_form, widgets_catalog, widgets_lists_cart, widgets_lists_c
 
 ## How is a value escaped later written?
 - Money: `pg_visitor_money_text($base_amount, $symbol)` (`includes/fn/ecommerce.php`), the text twin of `pg_visitor_money()`; `pg_money_text()` for an amount already in the shown currency (the entity fields).
-- A list row built from the renderer's money: `html_entity_decode($money, ENT_QUOTES | ENT_HTML5, 'UTF-8')` in the row builder.
-- The symbol alone: decoded, then `h()`.
+- A list row built from the renderer's money: `html_entity_decode($money, ENT_QUOTES | ENT_HTML5, 'UTF-8')` in the row builder (`pg_sw_list_cart_rows()`, `pg_sw_list_checkout_rows()`, `pg_sw_list_product_related_rows()`, the account list's `__order_total`).
+- The symbol alone: decoded, then `h()` (`pg_of_tokens()`).
 - Decoded first, a symbol typed as markup on the currency screen shows as text; it never runs.
+- A text token also going to `pg_civ_variants.js`, which writes its payload with `innerHTML`, is escaped for it: `reference_price` = `h()` of `__reference_price`.
+
+## What did #8393 fix?
+- All read `&#8378;` on a TRY shop. The order form's `__currency_symbol` (the donation box), was `h(VISITOR_CURRENCY_SYMBOL)`.
+- Catalog listing and detail, shown only with an offer, a reference price or a bundle saving: `__original_price_formatted` (product and group cards, detail), `__discount_amount_formatted`, `__reference_price` (`pg_price_reference_tokens()`), `__bundle_saving_formatted` (`_pg_catalog_bundle_values()`).
+- Lists: the cart list's `__item_price` / `__item_total` (cart widget, express order, the mini cart in the cart link) and the express order's `__gift_card_amount` / `__gift_card_balance`.
+
+## What holds it?
+- `tests/widget_currency_symbol_test.php`: `pg_visitor_money_text()`, the catalog tokens (the five map entries pinned to it), the list rows, a mini cart drawn end to end.
+- `tests/order_form_widget_test.php`: `pg_of_tokens()`. `tests/panel_currency_symbol_text_test.php` also refuses `h(defined('…_CURRENCY_SYMBOL') ? …)`.
