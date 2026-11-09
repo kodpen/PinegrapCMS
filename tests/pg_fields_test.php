@@ -855,6 +855,18 @@ function main() {
     ndBox.getBoundingClientRect = function () { return { left: 10, top: 500, bottom: 540 }; };
     ndBox.instance.open();
     out.store_date.flipped = [below, popup.style.top];
+    // On the page itself (no dialog host) the library placed it under the
+    // box in page coordinates; it moves above only when it does not fit
+    // (the store credit's last day at the bottom of Edit User).
+    md.win.pgUI.overlayHost = function () { return null; };
+    md.win.pageYOffset = 1000;
+    popup.style.top = '1140px';
+    ndBox.getBoundingClientRect = function () { return { left: 10, top: 100, bottom: 140 }; };
+    ndBox.instance.open();
+    out.store_date.flipped.push(popup.style.top);
+    ndBox.getBoundingClientRect = function () { return { left: 10, top: 500, bottom: 540 }; };
+    ndBox.instance.open();
+    out.store_date.flipped.push(popup.style.top);
 
     var ndt = mq('ndt'), ndtBox = ndt.nextSibling;
     out.store_datetime = { box: ndtBox.value };
@@ -1518,7 +1530,7 @@ function test_pg_fields_each_field_keeps_its_own_store()
 			'typed' => array('2026-04-03', '2026-04-03'),
 			'set' => array('2026-05-06', '6/5/2026'),
 			'placed' => array(true, '100px', '40px'),
-			'flipped' => array('140px', '200px'),
+			'flipped' => array('140px', '200px', '1140px', '1200px'),
 		),
 		$r['store_date'],
 		'a native date input is the hidden ISO store of a box in the site order; min and max bound the calendar; text it cannot hold leaves it empty; the popup stays inside the dialog\'s right edge and opens above a field it does not fit under'
