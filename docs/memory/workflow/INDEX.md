@@ -67,7 +67,7 @@
 - decisions-made-schema-11.md: Decisions list, schema part 11 (2026-11-05 on): the access_scopes column of api_devices for a narrower scope asked on an OAuth refresh
 - decisions-made-schema-12.md: Decisions list, schema part 12 (2026-11-07 on): note groups, places, shares and PIN locks for Workspace notes (step N0); the agent registry and channel-agent tables (agent channel A3)
 - decisions-made-schema-13.md: Decisions list, schema part 13 (2026-11-08 on): agent channel switch (AC); channel memory and agent mark (A5); A7 undo; GitHub channel links (G2); carrier service on a shipping method (R2)
-- decisions-made-schema-14.md: Decisions list, schema part 14 (2026-11-09 on): a bundle's own back order choice (bundle_backorder)
+- decisions-made-schema-14.md: Decisions list, schema part 14 (2026-11-09 on): a bundle's own back order choice (bundle_backorder); the workflow table bin; the team replies right
 - decisions-made-schema-2.md: Decisions list, schema part 2, approved on 2026-10-28: e-mail tables, workflow tables, MCP preamble, secret widths, prompt version, discussion follow; rules in part 1, 2026-10-29 on in part 3
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
@@ -80,6 +80,7 @@
 - decisions-made-seo.md: Decisions list, SEO part (2026-10-27/28): large image preview, site icon, main-host redirect, per-form structured-data type, author source and share-image field; defaults keep running sites
 - decisions-made-waf.md: Decisions list, firewall part: thresholds stay, concurrent refusal no offence, rate bans off the ladder, global limit before session, no lock release, nothing served to a ban, Claude Code unverified.
 - decisions-made-widgets.md: Decisions list, system widget part: conditions and required controls, translated text, equal old blocks (W16), gallery sources (W5), entity values (W8), 2026-10-27 answers, Photo Gallery folder.
+- decisions-made-workspace-10.md: Decisions list, workspace part 10 (2026-11-09 on): application lines fold; agent activity; table bin, Excel, import; why a flow box failed; team replies; channel export; agent questions in the bell
 - decisions-made-workspace-2.md: Decisions list, workspace part 2 (2026-10-29 on): the channel menu holds only the channel's own items; creates in a chat go through /oluştur (/create): its rights and kinds; the sales quote stays
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
