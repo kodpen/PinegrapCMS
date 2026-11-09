@@ -930,6 +930,15 @@ function pg_contact_group_joined_heard($event, $data)
     }
 }
 
+// Whether a contact put into a group is opted out of that group's e-mail: the
+// group takes e-mail subscriptions and the contact's opt_in row for it says 0.
+// A missing row (NULL) is subscribed, as for a manual campaign to the group
+// (pg_email_campaign_opt_in_condition()). Pure.
+function pg_auto_campaign_group_opted_out($email_subscription, $opt_in)
+{
+    return ((string) $email_subscription === '1') && ($opt_in !== null) && ((string) $opt_in === '0');
+}
+
 // Create function that is used to see if auto email campaigns need to be created after a specific action has occurred
 // and then create them if necessary.
 // Properties:
@@ -991,6 +1000,19 @@ function create_auto_email_campaigns($properties)
     } else if (!$email_address) {
         return;
     }
+    // A contact who joined a subscription group they had unsubscribed from
+    // (the opt_in row survives leaving and rejoining the group) gets no
+    // commercial mail of that group, as a manual campaign to it leaves them out.
+    $group_opted_out = false;
+    if (($action === 'contact_group_joined') && !empty($contact['id'])) {
+        $group = db_item("SELECT
+                contact_groups.email_subscription,
+                opt_in.opt_in
+            FROM contact_groups
+            LEFT JOIN opt_in ON (opt_in.contact_group_id = contact_groups.id) AND (opt_in.contact_id = '" . e($contact['id']) . "')
+            WHERE contact_groups.id = '" . e($action_item_id) . "'");
+        $group_opted_out = is_array($group) && pg_auto_campaign_group_opted_out($group['email_subscription'], $group['opt_in']);
+    }
     // Get all enabled email campaign profiles for this action and action item.
     $email_campaign_profiles = db_items("SELECT
 
@@ -1048,6 +1070,10 @@ function create_auto_email_campaigns($properties)
         // If the purpose is commercial and there is a contact email and the contact is opted-out,
         // then we don't want to send email to recipient, so skip to the next profile.
         if ($email_campaign_profile['purpose'] == 'commercial' and !empty($contact['email_address']) and $contact['opt_in'] != 1) {
+            continue;
+        }
+        // The same for a commercial "joined" mail of a group the contact opted out of.
+        if ($email_campaign_profile['purpose'] == 'commercial' and $group_opted_out) {
             continue;
         }
         $subject = $email_campaign_profile['subject'];
