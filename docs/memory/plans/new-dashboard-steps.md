@@ -11,7 +11,7 @@ description: Steps N1-N14 and the visual pass V of plans/new-dashboard.md: size,
 - Until V, a step keeps its look plain: features first, the look is matched in V.
 
 ## Which steps?
-- Done: N1 #4692, N2 #4766, N3 #4756, N4 #4768, N5 #4856, N6 #4888, N7 #4861, N8 #4865, N9 #4881, N9b #5031, N10a #4973, N10b #4895, N10c #5017, N11a #4994, N11b #5013, N11c #5080, N12a #4981, N12b #5001, N13 #4975, N14 #6145, V0 #5054, V1 #6166, V2 #6263, N10d #6464, V3 #8222, V4 #8241, V5 #8315.
+- Done: N1 #4692, N2 #4766, N3 #4756, N4 #4768, N5 #4856, N6 #4888, N7 #4861, N8 #4865, N9 #4881, N9b #5031, N10a #4973, N10b #4895, N10c #5017, N11a #4994, N11b #5013, N11c #5080, N12a #4981, N12b #5001, N13 #4975, N14 #6145, V0 #5054, V1 #6166, V2 #6263, N10d #6464, V3 #8222, V4 #8241, V5 #8315, V6 #8350.
 
 - V (visual pass, owner 2026-11-01). One step per screen group, M each.
   - V4-V6 are open to any worker, one per claim, in order; each V PR asks the owner through an approval issue (below).
