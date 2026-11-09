@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-row-add-to-cell
-description: Adding to a cell in the change-row flow box (flows-next B5, PR #7408): "+3" in a number or money cell adds to the row read at write time, on its revision
+description: Adding to a cell in the change-row flow box (PR #7408): "+3" in a number or money cell adds to the row read at write time, on its revision
 ---
 
 ## What does it do?

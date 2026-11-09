@@ -18,4 +18,4 @@ description: Claude's claim refuses a run that has not read the site's current i
 ## What do people see?
 - The card's status column: "Version of the instructions the site gives the routine" with the version.
 - The setup guide's routine step: a warning to paste the prompt as it is and add no instructions of one's own.
-- Tests: tests/workspace_claude_bootstrap_test.php (version, state, claim order). No live routine run (A1 of `plans/agent-channel-steps.md`).
+- Tests: tests/workspace_claude_bootstrap_test.php (version, state, claim order). No live routine run (step A1 of `plans/agent-channel.md`, #7970).

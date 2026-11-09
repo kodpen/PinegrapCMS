@@ -3,7 +3,7 @@
  *
  * pgUI: the one place panel code reaches Bootstrap's JavaScript.
  *
- * The panel moves from Bootstrap 5.3 to 6 (docs/memory/plans/bootstrap-6-panel.md).
+ * The panel moved from Bootstrap 5.3 to 6 (docs/memory/ui/bootstrap-6.md).
  * Bootstrap 6 renames Modal, Offcanvas and Dropdown to Dialog, Drawer and Menu,
  * builds the first two on the native <dialog>, renames their events
  * (*.bs.dialog, *.bs.drawer, *.bs.menu), ships as an ES module without the

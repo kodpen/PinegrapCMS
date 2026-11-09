@@ -5,7 +5,7 @@ description: How a one-node edit redraws only that node's element on the designe
 
 ## What does an edit of one node redraw?
 - Only that node's element. The edit path calls `_sdRenderNode(node, render)` or `_sdRenderNode(node, renderCanvas)`; `renderCanvas()` reads the scope once (`_sdCanvasScopeTake()`) before it empties the body and, when allowed, runs `_sdCanvasRedrawNode(node)`: `buildNodeEl()` of the subtree replaces the old wrapper, the rest of the canvas keeps its DOM, scroll position, running animations and videos.
-- The panels are still all redrawn by `render()` (that is step D3).
+- The panels are drawn when shown, after a typing pause (`designer-panels-on-demand.md`, D3).
 - The scope lasts for that one call (cleared in `finally`): a later render is never limited by an earlier edit.
 
 ## Which paths name their node?
@@ -24,4 +24,4 @@ description: How a one-node edit redraws only that node's element on the designe
 ## How is it tested?
 - `tests/designer_incremental_canvas_test.php` runs the section between `// ── Incremental canvas` and `// ── end of incremental canvas` under Node with a DOM stand-in, and checks the wiring in `renderCanvas()`, the panels and `undo()`.
 
-Related: docs/memory/designer/designer-performance.md, docs/memory/plans/designer-performance-and-publish.md
+Related: docs/memory/designer/designer-performance.md

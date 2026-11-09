@@ -4,8 +4,8 @@ description: The panel on Bootstrap 6 (switch #1866, tag bs6-switch): docs and s
 ---
 
 ## Where are the Bootstrap 6 docs?
-- Index of every docs page: https://getbootstrap.com/llms.txt; full text in one file (1.3 MB; grep its `# <Component>` headings): https://getbootstrap.com/llms-full.txt. Both serve the 6.0 docs.
-- `assets/lib/bootstrap-6` holds npm `6.0.0-alpha.1` (`document.txt`: source, sha512, CDN SRI). The docs run ahead of it (`.form-adorn-sm`/`-lg` are documented but missing): check classes and tokens against the dist, not only the docs.
+- Docs index: https://getbootstrap.com/llms.txt; the full text in one file (1.3 MB; grep `# <Component>`): https://getbootstrap.com/llms-full.txt.
+- `assets/lib/bootstrap-6` holds npm `6.0.0-alpha.1` (`document.txt`: source, sha512, CDN SRI). The docs run ahead of it (`.form-adorn-sm`/`-lg` are documented but missing): check classes and tokens against the dist, not only the docs. Browsers, next prerelease: `bootstrap-6-browsers.md`.
 
 ## Which skills are in the repo?
 - `.claude/skills/bootstrap-v5-v6-migration`, `bootstrap-v6-install`, `bootstrap-color-system`, `bootstrap-component`: unchanged copies of twbs/bootstrap `skills/` at 6ae3f86 (MIT notice in `.claude/skills/LICENSE-bootstrap.txt`). Update by copying the upstream folders again; never edit them.

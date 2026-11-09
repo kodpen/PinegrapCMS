@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-erp-start-events
-description: ERP events a flow can start on (flows-next C3): invoices, receipts, incoming e-documents, quote decisions; the new erp.invoice.overdue and erp.edoc.received
+description: ERP events a flow can start on (PR #7428): invoices, receipts, incoming e-documents, quote decisions; the new erp.invoice.overdue and erp.edoc.received
 ---
 
 ## Which ERP events start flows?

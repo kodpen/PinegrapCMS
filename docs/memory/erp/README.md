@@ -40,6 +40,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-api-events-and-testing.md: The ERP event door erp_event() (webhook queue, audit trail, alerts), where writers announce, what a new event needs, and how to test the ERP API on dev without creating keys.
 - erp-api-seam.md: ERP's only door into the external API, includes/erp/api.php: five hooks, load chain, name clashes, schema pairs, paging, scope groups, owner ceiling, error codes, drafts, wire rules.
 - erp-audit-trail.md: ERP audit trail (erp_audit_log, 4.90): its two writers (events and ERP log lines), the calling-file rule, why it is never deleted, what a line carries, who may read it.
+- erp-auto-invoice-edocument.md: An automatic invoice and the e-document: nothing sent until a queue worker exists; internet-sale fields read by the drivers from erp_invoices; ubl.php only reads; POS sales carry none
 - erp-auto-invoice-marketplace.md: Marketplace orders (Trendyol, n11) in the automatic invoice: config.erp_auto_invoice_marketplace (11.0.62, default off), where import and tracking fire it, what stays manual (#3670)
 - erp-auto-invoice.md: An order's invoice issued on its own once it is paid or shipped (config.erp_auto_invoice_on): setting, two filters, triggers, decision, writer, invoicing lock, after-response run, refusal notice
 - erp-awaiting-transfer-orders.md: Awaiting-payment (bank transfer) orders: derived state predicate, pg_order_mark_paid, ERP settlement hook, auto-cancel sweep in job.php, cancel-reason display.
@@ -65,6 +66,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-document-templates-settings.md: Per-document template settings in erp_settings.php (config.erp_<doc>_template, $documents map, preview) and how placeholder references are built from data.
 - erp-edoc-account-autolink.md: Which provider cards ERP › Account sync links to accounts on its own after a read (erp_edoc_accounts_autolink()): active cards only, the shared number rule, what is left to the operator
 - erp-edoc-account-sync.md: Account sync (4.69): the provider's customer and supplier cards beside the ERP accounts in erp_edoc_accounts, the one automatic link, field-by-field alignment, no balance in either direction.
+- erp-edoc-cancel-paths.md: Which cancel or return path an invoice takes (draft, unsent, taxpayer buyer, consumer within or after 8 days), the order cancellation hook, the e-document acceptance list, unverified tax advice
 - erp-edoc-driver-layer.md: ERP e-document driver layer (4.61): registry gate, adding a provider, contract and capabilities, credentials, one active provider, no provider, endpoints never guessed.
 - erp-edoc-incoming-invoices.md: Incoming e-invoices (4.67): reading the provider's list into erp_edoc_inbox, the UBL reader, taking a document in as a purchase draft, what is refused, decisions a read never overwrites.
 - erp-edoc-registry-and-service.md: Shared e-document helpers in edoc/registry.php (settings, session, http, mask, log) and edoc/service.php, owner of the invoice's e-document columns, statuses and list views.
@@ -120,6 +122,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-parasut-accounts.md: Paraşüt's customer and supplier cards in ERP › Account sync (accounts capability): the lists a read pages through, archived and unlisted cards, card shape, writing a card, the linked card on invoices
 - erp-parasut-connect-card.md: The Paraşüt card of the commerce settings: status line, connect steps, secret and password boxes, default product help, what Connect answers, which company it takes
 - erp-parasut-connection.md: How Pinegrap connects to Paraşüt (authorization code or password grant), where the token and secrets live, the token's owner stamp, the Connect endpoint
+- erp-parasut-driver-2.md: Paraşüt driver, part 2: how the conversion picks e-Fatura or e-Arşiv (fresh GİB lookup, the card's alias, the scenario, a failed lookup) and its request layer (token lock, retries, throttle)
 - erp-parasut-driver.md: Paraşüt e-document driver (includes/erp/edoc/parasut.php): requests, buyer card, sales invoice, conversion, poll, PDF, cancel; what the live API showed
 - erp-parasut-final-consumer-card.md: Which Paraşüt card the invoice of a buyer without a TCKN (final consumer, 11111111111) goes on, why a name match is not enough, how many pages of cards are read, and what is still open
 - erp-parasut-invoice-lines.md: How an ERP invoice's lines go to Paraşüt, how Paraşüt takes VAT and withholding (per group, not per line), why some ERP totals are refused or unreachable there; shapes tried live

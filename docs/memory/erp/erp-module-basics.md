@@ -5,7 +5,7 @@ description: ERP module switch and gate areas, the four permission columns, defe
 
 ## Why is ERP code risky?
 - Its errors are silent accounting errors: the same money counted twice, a document number wasted, the VAT worked out differently in two places. Read the files of this folder before changing a flow.
-- The phased build (phases -1 to 9, 2026.4.4–2026.4.10) is finished. Open work: plans/erp-edocument-leftovers.md (e-document drivers, accountant sign-off, manual checks), plans/erp-parasut-driver-design.md, plans/erp-auto-invoice-earchive.md.
+- The phased build (phases -1 to 9, 2026.4.4–2026.4.10) is finished. Open work: plans/erp-edocument-leftovers.md (e-document drivers, accountant sign-off, manual checks), plans/erp-parasut-open-work.md.
 
 ## How is the module switched on and gated?
 - `config.erp_enabled` → `ERP_ENABLED`. Screens are `erp_*.php`, `add_erp_*.php`, `edit_erp_*.php`, `get_erp_*.php`; each gates with `validate_erp_access($user, $area)` (`includes/fn/auth.php`).

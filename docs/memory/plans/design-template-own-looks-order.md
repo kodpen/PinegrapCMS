@@ -1,6 +1,6 @@
 ---
 name: design-template-own-looks-order
-description: Order of the polishing round after Launch: every shipped template's family and pages steps, and where the open template plans (Skiresort, Gallery and the rest) take theirs
+description: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 ---
 
 ## How does a template's polishing go?
@@ -14,24 +14,77 @@ description: Order of the polishing round after Launch: every shipped template's
 3. The shop templates: store, boutique, bookshop.
 4. Templates that already have a family or their own layout: news, magazine (one step each: motion and the family's newer blocks), forum.
 5. Last: hello (the default starter), playground (it then shows each family's blocks).
-- Every shipped template is in this list; Launch is in the main plan.
-- Both steps done: wedding (#8167, #8196), photo (#8232, #8255), school (#8233, #8257), architecture (#8264, #8280), campsite (#8269, #8301), cityhall (#8291, #8308), construction (#8292, #8324), museum (#8306, #8326), hotel (#8325, #8336), music (#8338, #8347).
-- `-1` done: travel #8337, gym #8339, clinic #8346.
+- Every shipped template is in this list or in the status lines below; Launch is in the main plan. A template plan opened after 2026-11-07 starts with its family step ([[design-template-own-look]]) and needs no polishing step.
 
-## Where do the open template plans come?
-- Their files are not edited here (open PRs hold most). In each, the assembly step (look, fonts, rules) adds no new stock band. Their pages are built, so each one's `-1`, `-2` joins the list once its assembly lands, ahead of unclaimed groups: bakery, brewery, carrental, coworking, drivingschool, ferry, filmstudio, florist, homeservices, library (assembly #7982 open), marina, pharmacy, podcast, recruitment, restaurant, sportsclub, theatre, veterinary.
-- Gallery: step 3 (`pages_public.php`, #7992) predates the rule and lands as is; steps 4 and 5 (artists, exhibitions) are its signature pages: when `gallery-1` (its family) has landed they place its blocks, otherwise its `-2` rebuilds them after the assembly.
-- Skiresort: step 2 (`cards.php`, #7986) lands as it is. `skiresort-1` (its family: conditions board, lift status, slope map, pass cards, snow report) done (#8050); steps 3-4 then build home, conditions and slopes on it, and it needs no `-2`.
+## Which templates came from their own plans?
+- Their plans built their pages and have finished, so their `-1` and `-2` come ahead of groups 2 to 5 (their status lines are first). Gallery's signature pages are artists and exhibitions. Skiresort's plan built home, conditions and slopes on its family, so it needs no `-2`.
+
+## Where does each template stand?
+- Travel: `-1` #8337 done.
+
+- Gym: `-1` #8339 done.
+
+- Clinic: `-1` #8346 done.
+
+- Bakery: `-1`, `-2` open.
+
+- Brewery: `-1`, `-2` open.
+
+- Carrental: `-1`, `-2` open.
+
+- Filmstudio: `-1`, `-2` open.
+
+- Florist: `-1`, `-2` open.
+
+- Homeservices: `-1`, `-2` open.
+
+- Library: `-1`, `-2` open.
+
+- Podcast: `-1`, `-2` open.
+
+- Recruitment: `-1`, `-2` open.
+
+- Restaurant: `-1`, `-2` open.
+
+- Theatre: `-1`, `-2` open.
+
+- Veterinary: `-1`, `-2` open.
+
+- Gallery: `-1`, `-2` open.
+
+- Skiresort: `-1` #8050 done; it needs no `-2`.
+
+- Wedding: `-1` #8167, `-2` #8196 done.
+
+- Photo: `-1` #8232, `-2` #8255 done.
+
+- School: `-1` #8233, `-2` #8257 done.
+
+- Architecture: `-1` #8264, `-2` #8280 done.
+
+- Campsite: `-1` #8269, `-2` #8301 done.
+
+- Cityhall: `-1` #8291, `-2` #8308 done.
+
+- Construction: `-1` #8292, `-2` #8324 done.
+
+- Museum: `-1` #8306, `-2` #8326 done.
+
+- Hotel: `-1` #8325, `-2` #8336 done.
+
+- Music: `-1` #8338, `-2` #8347 done.
+
 - Coworking: `-1` #8113, `-2` #8127 done.
-- Drivingschool: `-1` (family, #8117) and `-2` (pages, 1.1.0, #8138) done.
-- Marina: `-1` #8159, `-2` #8185 done.
+
+- Drivingschool: `-1` #8117, `-2` #8138 done.
 
 - Ferry: `-1` #8123, `-2` #8142 done.
 
 - Sportsclub: `-1` #8140, `-2` #8175 done.
 
 - Pharmacy: `-1` #8160, `-2` #8181 done.
-- A template plan opened after 2026-11-07 starts with its family step ([[design-template-own-look]]) and needs no polishing step.
+
+- Marina: `-1` #8159, `-2` #8185 done.
 
 ## Who claims what?
 - Any worker, in the order above, one step per PR; a step whose template still has an open PR on its files waits.

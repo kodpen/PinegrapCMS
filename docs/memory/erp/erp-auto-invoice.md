@@ -22,7 +22,7 @@ description: An order's invoice issued on its own once it is paid or shipped (co
 
 ## What does it write?
 - `erp_auto_invoice_for_order()` runs the order card's own step: `erp_order_flow_state()` must offer `invoice`, then `erp_order_flow_run($id, 'invoice', 0)`. Same gates (the provider's fields on the account the invoice goes to or opens, #1363/#1369; nobody to bill), the waybill tie-back, `created_by = 0`, a log line.
-- The e-document is not sent: there is no `erp_edoc_queue` worker; it stays the order screen's next step.
+- The e-document is not sent; it stays the order screen's next step (`erp-auto-invoice-edocument.md`).
 
 ## What happens when it cannot?
 - A log line and a bell row `action = 'erp_auto_invoice'` (title = reason, `order_total` = order number), once per order and reason (`erp_alert_auto_invoice_refused()`, under the order's lock), for `manage_erp`, linking to `view_order.php?id=N#erp_order_documents`. The reason is in the language of the request that tried.

@@ -4,7 +4,7 @@ description: The vendored SortableJS (assets/lib/sortablejs/, 1.15.7, unmodified
 ---
 
 ## What is it and why is it here?
-- SortableJS 1.15.7 (MIT, npm `sortablejs`, released 2026-02-11), the drag-to-reorder library that replaces jQuery UI `.sortable()` in the panel (decided in #2511, option 2). jQuery UI is leaving the panel with Bootstrap 6 (`plans/bootstrap-6-redesign.md`, B12).
+- SortableJS 1.15.7 (MIT, npm `sortablejs`, released 2026-02-11), the drag-to-reorder library that replaces jQuery UI `.sortable()` in the panel (decided in #2511, option 2). jQuery UI left the panel with Bootstrap 6 (B12, `ui/panel-without-jquery-ui.md`).
 - `assets/lib/sortablejs/Sortable.min.js` is the release file byte for byte (sha256 `bf4241bc…1fcf76`), with its `/*! Sortable 1.15.7 - MIT … */` header; `LICENSE` sits beside it. No local change: an update copies `Sortable.min.js` and `LICENSE` from the npm package and bumps the version in `tests/sortablejs_test.php`.
 - It has no dependency and no PHP side, so the PHP 7.1 base rule does not apply.
 
