@@ -730,7 +730,8 @@ $track_list = function ($sample_key = 'nightbus') use ($el, $heading, $tracks_te
     ));
 };
 
-// A show's row of the tour list: the date, the city and the country, the
+// A show's row of the tour list: the date (pg-music-day, the width the
+// Music: Tour Dates block gives a show's day, so the cities line up), the city and the country, the
 // venue, the doors, the ticket state and the ticket link (the venue's or a
 // ticket service's page, in a new window), and the show's own page. Every
 // value is bound to the Shows form's field of the same name.
@@ -738,7 +739,7 @@ $show_row = function ($sample_key = 'istanbul') use ($el, $span, $link, $icon, $
     $s = $shows[$sample_key];
     $state = $ticket_states[$s['state']];
     return $el('article', 'd-flex flex-column flex-md-row align-items-md-center gap-3 py-3 border-bottom position-relative', lang('Show Row'), array(
-        $el('div', 'pmu-date flex-shrink-0 fw-bold text-primary', lang('Show Date'), array(), array_merge(
+        $el('div', 'pg-music-day pmu-date flex-shrink-0 fw-bold text-primary', lang('Show Date'), array(), array_merge(
             array('text' => $show_on($s['weekday'], $s['weeks'])), $bind('show_date'))),
         $el('div', 'flex-grow-1', lang('Show Place'), array(
             $el('h3', 'pmu-display h5 mb-1', lang('City'), array(
@@ -1279,4 +1280,143 @@ $mu_form_page = function ($title, $lead, $widget_key) use ($staff_page, $page_he
             )),
         )),
     ));
+};
+
+
+// ── The Music blocks ────────────────────────────────────────────────────
+// The home, the discography and the press kit place the Music blocks
+// (release hero, press kit); the tour lists draw a show's day as the tour
+// dates block does. Their pg-music- rules ship in the template's User
+// Styles.
+
+// A node with an interaction (props._fx, played by pg_fx; reduced motion
+// is honoured there).
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+// A list or a row whose items rise in one after another on view.
+$rise = function ($node, $stagger = 80) {
+    $node['props']['_fx'] = array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => $stagger);
+    return $node;
+};
+
+// The Music: Release Hero block: the sample release $key as a record. A
+// pg-music-sleeve with the square cover (pg-music-cover) and, from md up,
+// the disc behind it (pg-music-disc, hidden from screen readers) sliding
+// out; beside it where the release sits in the band's story, its title
+// ($tag: an h1 when the block opens the page), the format and the track
+// count, the summary, $buttons and the listening links. Under them the
+// track listing as an ol.pg-music-tracks: number, title and length as a
+// <time> with its ISO duration, and the credits. On load when the block
+// opens the page, otherwise on view. A search section under $id.
+$release_hero = function ($key, $id, $tag, $class, $buttons, $theme = '')
+    use ($el, $heading, $para, $image, $span, $container, $row, $col, $fx, $attr, $searchable, $photo, $releases, $formats, $listen_links) {
+    $r = $releases[$key];
+    $opens = $tag === 'h1';
+    $trigger = $opens ? 'load' : 'view';
+    $lazy = $opens ? array() : array('_attrs' => array($attr('loading', 'lazy')));
+    $tracks = array();
+    foreach ($r['tracks'] as $n => $t) {
+        list($m, $s) = explode(':', $t[1]);
+        $tracks[] = $el('li', '', $t[0], array(
+            $span((string)($n + 1), '', lang('Number')),
+            $span($t[0], '', lang('Title')),
+            $el('time', '', lang('Length'), array(), array('text' => $t[1], '_attrs' => array($attr('datetime', 'PT' . (int)$m . 'M' . (int)$s . 'S')))),
+        ));
+    }
+    $count = count($r['tracks']);
+    $sleeve = $el('div', 'pg-music-sleeve', lang('Record Sleeve'), array(
+        $fx($el('div', 'pg-music-disc', lang('Disc'), array(), array('_attrs' => array($attr('aria-hidden', 'true')))),
+            array('effect' => 'slide-left', 'trigger' => $trigger, 'duration' => 1200, 'delay' => 300, 'distance' => 120)),
+        $el('div', 'pg-music-cover rounded-2 shadow-lg', lang('Cover'), array(
+            $image($photo('cover-' . $key, 1000, 1000), sprintf(lang('The cover of %s'), $r['title']), '', $lazy),
+        )),
+    ));
+    $extra = $searchable($id, lang('album, single, record, tracks, songs, track listing, listen'));
+    if ($theme !== '') $extra['_attrs'] = array($attr('data-bs-theme', $theme));
+    return $el('section', trim($class . ' overflow-hidden'), lang('Music (Release Hero)'), array(
+        $container(array(
+            $row(array(
+                $fx($col(array($sleeve), '', '6'), array('effect' => 'fade', 'trigger' => $trigger, 'duration' => 900)),
+                $fx($col(array(
+                    $para($r['note'], 'pmu-eyebrow text-uppercase fw-semibold text-primary mb-3'),
+                    $heading($tag, $r['title'], 'pmu-display ' . ($opens ? 'display-2' : 'display-4') . ' mb-2'),
+                    $para($formats[$r['format']]['title'] . ' · ' . sprintf($count === 1 ? lang('%d song') : lang('%d songs'), $count), 'text-body-secondary fw-semibold mb-3'),
+                    $para($r['summary'], 'lead mb-4'),
+                    $el('div', 'd-flex flex-wrap gap-2 mb-4', lang('Buttons'), $buttons),
+                    $listen_links('d-flex flex-wrap gap-3'),
+                ), '', '6'), array('effect' => 'slide-up', 'trigger' => $trigger, 'duration' => 700, 'delay' => 150)),
+            ), '4', '', 'g-lg-5 align-items-center'),
+            $fx($el('div', 'mt-5', lang('Track Listing'), array(
+                $heading($opens ? 'h2' : 'h3', lang('Track Listing'), 'pmu-display h4 mb-3'),
+                $el('ol', 'pg-music-tracks', lang('Tracks List'), $tracks),
+                $para($r['credits'], 'small text-body-secondary mt-3 mb-0'),
+            )), array('effect' => 'fade', 'trigger' => 'view', 'duration' => 800)),
+        )),
+    ), $extra);
+};
+
+// The Music: Press Kit block: the one-sheet for press and promoters (a
+// line about the band and a dl.pg-music-sheet of genre, home town,
+// line-up, label and the latest release, then the ways to book the band
+// and to write to the press office) beside the press photos, each with a
+// link that saves the picture, and the way to the press files below. The
+// one-sheet fades, the photos rise on view. A search section under $id.
+$press_kit = function ($id, $class = 'py-5')
+    use ($el, $heading, $para, $link, $image, $span, $icon, $container, $row, $col, $fx, $rise, $attr, $searchable, $photo, $artist, $releases, $members) {
+    $fact = function ($label, $value) use ($el, $span) {
+        return $el('div', '', $label, array(
+            $el('dt', '', lang('Label'), array(), array('text' => $label)),
+            $el('dd', '', lang('Value'), array(), array('text' => $value)),
+        ));
+    };
+    $line_up = array();
+    foreach ($members as $m) $line_up[] = $m['name'];
+    $shots = array();
+    foreach (array('live' => lang('Live'), 'portrait' => lang('Portrait'), 'studio' => lang('Studio')) as $seed => $caption) {
+        $src = $photo('press-' . $seed, 1800, 1350);
+        $shots[] = $el('figure', 'col mb-0', $caption, array(
+            $el('div', 'ratio ratio-4x3 rounded-3 overflow-hidden bg-body-tertiary mb-2', lang('Picture'), array(
+                $image($photo('press-' . $seed, 900, 675), sprintf(lang('A press photo of the band: %s'), $caption), 'object-fit-cover',
+                    array('_attrs' => array($attr('loading', 'lazy')))),
+            )),
+            $el('figcaption', 'd-flex justify-content-between align-items-center gap-2 small', lang('Photo Caption'), array(
+                $span($caption, 'text-body-secondary', lang('Text')),
+                $link(lang('Download'), $src, 'link-primary fw-semibold', array($attr('download', ''))),
+            )),
+        ));
+    }
+    $sheet = $col(array(
+        $para(lang('For press and promoters'), 'pmu-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+        $heading('h2', lang('The band on one sheet'), 'pmu-display display-6 mb-3'),
+        $para($artist['tagline'] . '.', 'mb-4'),
+        $el('dl', 'pg-music-sheet mb-4', lang('Facts'), array(
+            $fact(lang('Genre'), lang('Indie rock')),
+            $fact(lang('From'), $artist['based']),
+            $fact(lang('Line-up'), implode(', ', $line_up)),
+            $fact(lang('Record Label'), $artist['label']),
+            $fact(lang('Latest Release'), $releases['nightbus']['title']),
+        )),
+        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
+            $link(lang('Book the Band'), '{{page:booking}}', 'btn btn-primary rounded-pill px-4'),
+            $link(lang('Write to the Press Office'), 'mailto:' . $artist['press'], 'btn btn-outline-secondary rounded-pill px-4'),
+        )),
+    ), '', '5');
+    $media = $col(array(
+        $heading('h3', lang('Press Photos'), 'pmu-display h4 mb-3'),
+        $rise($el('div', 'row row-cols-1 row-cols-sm-3 g-3 mb-4', lang('Photos'), $shots), 120),
+        $el('p', 'd-flex align-items-center gap-2 mb-0', lang('Text'), array(
+            $icon('bi-file-earmark-arrow-down', 'fs-5 text-primary flex-shrink-0'),
+            $link(lang('The rider, the stage plot and the logos are under Downloads'), '#mu-press-files', 'fw-semibold link-primary'),
+        )),
+    ), '', '7');
+    return $el('section', $class, lang('Music (Press Kit)'), array(
+        $container(array(
+            $row(array(
+                $fx($sheet, array('effect' => 'fade', 'trigger' => 'view', 'duration' => 800)),
+                $media,
+            ), '4', '', 'g-lg-5'),
+        )),
+    ), $searchable($id, lang('press kit, one-sheet, genre, label, press photos, download')));
 };

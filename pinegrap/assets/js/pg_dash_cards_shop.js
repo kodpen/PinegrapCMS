@@ -29,7 +29,7 @@
         body.appendChild(link);
     }
 
-    // The big figure, the line under it and the change beside it.
+    // The big figure with its line at the far end, the change beside it.
     function headline(data) {
         var el = pgDash.el;
         var box = el("div", "pg-dash-shop-head");
@@ -53,8 +53,10 @@
         var box = el("ul", "pg-dash-shop-list");
         rows.forEach(function (row) {
             var item = el("li", "pg-dash-shop-item");
-            var link = el("a", "pg-dash-shop-link");
-            link.href = row.url;
+            var link = el(row.url ? "a" : "div", "pg-dash-shop-link");
+            if (row.url) {
+                link.href = row.url;
+            }
             var main = el("span", "pg-dash-shop-main");
             main.appendChild(el("span", "pg-dash-shop-name", parts.name(row)));
             var meta = parts.meta(row);
@@ -95,9 +97,27 @@
             bars.lastChild.setAttribute("class", "is-today");
         }
         chart.appendChild(bars);
+        // The day names under the bars; the bars' label names them too.
+        if ((data.days || []).length) {
+            var names = el("ol", "pg-dash-shop-daynames");
+            names.setAttribute("aria-hidden", "true");
+            data.days.forEach(function (name) {
+                names.appendChild(el("li", "", name));
+            });
+            chart.appendChild(names);
+        }
         body.appendChild(chart);
 
-        body.appendChild(pgDash.rows(data.rows_title, data.rows));
+        // Best sellers: the name over the pieces, the money at the end.
+        if ((data.rows || []).length) {
+            body.appendChild(el("h3", "pg-dash-rows-title", data.rows_title));
+            body.appendChild(list(data.rows, {
+                name: function (row) { return row.text; },
+                meta: function (row) { return row.qty || ""; },
+                value: function (row) { return row.money || row.note; },
+                note: function () { return ""; }
+            }));
+        }
         more(body, data.url, config);
     };
 
@@ -213,23 +233,56 @@
         more(body, data.url, config);
     };
 
+    // Orders: the number and the customer, the state and its age under
+    // them in the state's tone, the amount at the end.
     pgDash.renderers.orders = function (body, data, card, config) {
-        body.appendChild(list(data.rows || [], {
-            name: function (row) { return row.text; },
-            meta: function (row) { return row.number + " · " + row.when; },
+        var box = list(data.rows || [], {
+            name: function (row) { return "#" + row.number + " · " + row.text; },
+            meta: function (row) { return row.note ? row.note + " · " + row.when : row.when; },
             value: function (row) { return row.amount; },
-            note: function (row) { return row.note; }
-        }));
+            note: function () { return ""; }
+        });
+        box.classList.add("pg-dash-orders");
+        Array.prototype.forEach.call(box.querySelectorAll(".pg-dash-shop-meta"), function (meta, i) {
+            if (data.rows[i].tone) {
+                meta.setAttribute("data-tone", data.rows[i].tone);
+            }
+        });
+        body.appendChild(box);
         more(body, data.url, config);
     };
 
+    // Coupons: the figure the offer takes off in a dashed box, the code over
+    // its note and the days left, the whole coupon a link to the offer.
     pgDash.renderers.offers = function (body, data, card, config) {
-        body.appendChild(list(data.rows || [], {
-            name: function (row) { return row.code; },
-            meta: function (row) { return row.note; },
-            value: function () { return ""; },
-            note: function (row) { return row.days; }
-        }));
+        var el = pgDash.el;
+        var box = el("ul", "pg-dash-coupons");
+        (data.rows || []).forEach(function (row) {
+            var item = el("li");
+            var link = el("a", "pg-dash-coupon");
+            link.href = row.url;
+            if (row.off) {
+                link.appendChild(el("span", "pg-dash-coupon-off", row.off));
+            }
+            var main = el("span", "pg-dash-coupon-main");
+            main.appendChild(el("span", "pg-dash-coupon-code", row.code));
+            var meta = el("span", "pg-dash-coupon-meta");
+            if (row.note) {
+                meta.appendChild(el("span", "", row.note));
+            }
+            if (row.days) {
+                var days = el("span", "pg-dash-coupon-days", row.days);
+                if (row.tone) {
+                    days.setAttribute("data-tone", row.tone);
+                }
+                meta.appendChild(days);
+            }
+            main.appendChild(meta);
+            link.appendChild(main);
+            item.appendChild(link);
+            box.appendChild(item);
+        });
+        body.appendChild(box);
         more(body, data.url, config);
     };
 
@@ -298,17 +351,38 @@
         return svg;
     }
 
+    // A currency on one line: the code, its name, the week's line in the
+    // change's tone, the rate over the change.
     pgDash.renderers.fx = function (body, data, card, config) {
-        body.appendChild(pgDash.el("p", "pg-dash-shop-note", data.note));
-        body.appendChild(list(data.rows || [], {
-            name: function (row) { return row.code; },
-            meta: function (row) { return row.name; },
-            value: function (row) { return row.rate; },
-            note: function (row) { return row.change; },
-            extra: function (row, end) {
-                end.insertBefore(spark(row.points, data.line_label), end.firstChild);
+        var el = pgDash.el;
+        body.appendChild(el("p", "pg-dash-shop-note", data.note));
+        var box = el("ul", "pg-dash-fx");
+        (data.rows || []).forEach(function (row) {
+            var item = el("li", "pg-dash-fx-row");
+            var code = el(row.url ? "a" : "span", "pg-dash-fx-code", row.code);
+            if (row.url) {
+                code.href = row.url;
             }
-        }));
+            item.appendChild(code);
+            item.appendChild(el("span", "pg-dash-fx-name", row.name));
+            var line = spark(row.points, data.line_label);
+            if (row.tone) {
+                line.setAttribute("data-tone", row.tone);
+            }
+            item.appendChild(line);
+            var end = el("span", "pg-dash-fx-end");
+            end.appendChild(el("span", "pg-dash-fx-rate", row.rate));
+            if (row.change) {
+                var change = el("span", "pg-dash-fx-change", row.change);
+                if (row.tone) {
+                    change.setAttribute("data-tone", row.tone);
+                }
+                end.appendChild(change);
+            }
+            item.appendChild(end);
+            box.appendChild(item);
+        });
+        body.appendChild(box);
         more(body, data.url, config);
     };
 })();

@@ -182,6 +182,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-market.md: Marketplace template (pinegrap-market): makers as a Sellers collection beside the store's catalog, one cart, maker applications and order help followed from the account, pmk- look, tests.
 - design-template-museum-pages.md: Museum template 2.0.0: home, exhibitions and collection on the Museum blocks: the builders, each page's composition, motion, what left, the test
 - design-template-museum.md: Museum template (pinegrap-museum): exhibitions and highlights as collections, event place and school visit requests, tickets and membership in the shop, timed entry, pmz- look, tests.
+- design-template-music-pages.md: Music Artist template 2.0.0: home, discography and press kit on the Music blocks: the builders, each page's composition, motion, what left, the test
 - design-template-music.md: Music Artist template (pinegrap-music): shows and releases as collections, press kit with a public press folder, booking enquiries, merch and gift cards in the shop, pmu- look, tests.
 - design-template-news-layout.md: News template page shapes: the lead grid, most read in the article view, newsletter field order, one tip call, band padding, p titles in the drawer, whole tips, byline links.
 - design-template-news-publishing.md: News template publishing: who may submit, the three-row live rule, scheduling and search, where a draft could leak, search noise, structured data and feeds, author HTML, signed-in tips, e-mails.
@@ -246,7 +247,8 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-blocks-coworking.md: The coworking- block family (Coworking group): the workspace hero, what it reuses instead (spaces, plans, amenities, floors), its pg-cw-* rules, its test
 - designer-blocks-drivingschool.md: The Driving School block family (drivingschool- prefix, its own palette group): the three blocks, the general blocks it reuses instead, its pg-drv-* rules, its test
 - designer-blocks-ferry.md: The Ferry block family (ferry- prefix, its own palette group): departure board, route timetable, crossing strip, fares by vehicle; the general blocks a ferry site places instead; rules and test
-- designer-blocks-general.md: General sections the sector templates share: the existing block that covers each, and the ones added in general family files (hours-seasons, locations-spaces, locations-floors)
+- designer-blocks-general.md: General sections the sector templates share: the existing block that covers each, and the ones added in general family files (hours-seasons, locations-spaces, locations-floors, booking-week)
+- designer-blocks-gym.md: The Gym block family (gym- prefix, own palette group): free pass hero, class finder with an intensity meter; the weekly timetable as a general block; general blocks placed instead; rules, test
 - designer-blocks-hotel.md: The Hotel block family (hotel- prefix, own palette group): room showcase, stay clock; general blocks placed instead; rules, test
 - designer-blocks-launch.md: The launch- block family (Product Launch): seven blocks, their interactions, the CSS colour switch, bento-features reused, the sticky spec head
 - designer-blocks-marina.md: The Marina block family (marina- prefix, its own palette group): the pontoon plan and the arrival by sea, the blocks a marina places instead of adding, its pg-marina-* rules, its test
@@ -259,6 +261,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-blocks-school.md: The School block family (school- prefix, own palette group): hero with an age finder, age ladder, school year in terms; general blocks placed instead; rules, test
 - designer-blocks-skiresort.md: The Ski Resort block family (skiresort- prefix, its own palette group): the five blocks, what each draws, its pg-ski-* rules, why the pass cards are not a pricing or compare block, its test
 - designer-blocks-sportsclub.md: The Sports Club block family (sportsclub-): match day, fixtures and results, league table, squad by position; what a club places instead; rules; test
+- designer-blocks-travel.md: The Travel block family (travel- prefix, own palette group): day-by-day itinerary, destination guide; general blocks placed instead; rules, test
 - designer-blocks-wedding.md: The Wedding block family (wedding- prefix, its own palette group): invitation hero, real wedding story, planning checklist; the general blocks a wedding site places instead; rules and test
 - designer-blocks-zoo.md: The Zoo block family (zoo- prefix, its own palette group): the four blocks, what each draws, the blocks reused instead, its pg-zoo-* rules, motion and test
 - designer-body-tag-merge.md: Designer <body> tag: class/style/id from Body Settings and the Attributes panel are merged, not dropped; three lockstep code paths; page_tree_code is a snapshot.

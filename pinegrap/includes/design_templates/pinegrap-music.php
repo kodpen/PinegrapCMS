@@ -180,7 +180,7 @@ $music_css = implode("\n", array(
 
 return array(
     'name'        => lang('Music Artist'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 91,
     'icon'        => 'bi-music-note-beamed',
@@ -239,10 +239,10 @@ return array(
         'email_footer' => array('name' => lang('Music E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pmu- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the Music blocks' pg-music- rules and its
+    // pmu- rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $music_css),
+        'css'   => pg_design_template_user_styles(array('music-release', 'music-tour', 'music-presskit'), $music_css),
         'fonts' => json_encode($music_fonts),
     ),
 );
