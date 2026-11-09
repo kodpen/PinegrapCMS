@@ -1,6 +1,6 @@
 ---
 name: dashboard-v2-phone-look
-description: The new dashboard on a phone as drawn (picture 20, V6): the edit bar band, Edit dashboard at the left, card tools on two lines, the switch resting in edit mode, the differences kept
+description: The new dashboard on a phone as drawn (picture 20, V6 #8350): the edit bar band, Edit dashboard at the left, card tools on two lines, the switch resting in edit mode, the differences kept
 ---
 
 ## What does the phone layout change?
