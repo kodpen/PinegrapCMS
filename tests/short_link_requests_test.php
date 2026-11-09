@@ -177,13 +177,17 @@ function test_short_link_lists_leave_binned_pages_and_files_out_but_keep_the_lin
 
 	pg_assert_contains("get_page_options('', '', 'edit', FALSE, \$keep['page_id'])", $form, 'classic: pages');
 	pg_assert_contains("get_page_options('', 'catalog', 'edit', FALSE, \$keep['page_id'])", $form, 'classic: catalog pages');
-	pg_assert_contains("get_file_options(true, \$keep['file_id'])", $form, 'classic: files');
-	pg_assert_contains("array('page_id' => 0, 'product_group_id' => array(), 'product_id' => 0, 'file_id' => 0)", $form, 'classic add keeps nothing');
+	pg_assert_contains("pg_file_picker_id_options(\$liveform->get_field_value('file'))", $form, 'classic: the file picker prints its chosen file, marked when binned, and searches the rest');
+	pg_assert_contains("array('page_id' => 0, 'product_group_id' => array(), 'product_id' => 0)", $form, 'classic add keeps nothing');
+
+	$picker = short_link_requests_test_function_body(short_link_requests_test_source('includes/fn/file_picker_search.php'), 'pg_file_picker_id_options');
+
+	pg_assert_contains('in_array((int) $row[\'folder\'], pg_recycle_bin_folder_ids(), true)', $picker, 'classic: a binned file is found by its folder');
+	pg_assert_contains("pg_recycle_parked_original(\$row['name'], \$row['id'])", $picker, 'classic: the binned file is shown under the name it had');
 
 	$edit = short_link_requests_test_source('edit_short_link.php');
 
 	pg_assert_contains("'page_id' => \$short_link['page_id'],", $edit, 'classic edit: pages');
-	pg_assert_contains("'file_id' => \$short_link['file_id']", $edit, 'classic edit: files');
 }
 
 // The classic edit screen deleted the row outright while the File Manager and
