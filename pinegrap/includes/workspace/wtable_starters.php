@@ -128,7 +128,7 @@ function ws_wtable_starter_create($viewer, $key, $name, $description, $samples)
         $result = ws_wtable_column_create($viewer, $table, $column);
 
         if (!$result['ok']) {
-            ws_wtable_delete($viewer, $table);
+            ws_wtable_delete_final((int) $table['id']);
 
             return array('ok' => false, 'error' => $result['error'], 'table_id' => 0);
         }

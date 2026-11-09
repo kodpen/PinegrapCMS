@@ -1149,27 +1149,40 @@ function pg_privacy_export_collect(array $found)
         $workspace[] = _pg_privacy_export_select("SELECT 'approval' AS record, id, approval_id, name, email, sent_at, expires_at, decision, note, decided_at, decided_ip, decided_agent FROM ws_approval_guests WHERE " . _pg_privacy_export_in('email', $emails) . " ORDER BY id", $emails);
     }
 
-    // Workflow table rows with a cell naming the person or their records.
+    // Workflow table rows with a cell naming the person or their records,
+    // those in the tables' bins and in binned tables too: the site still
+    // holds them, and deleted_at says when they were deleted.
     if (pg_schema_has('ws_wtables', 'name')) {
-        $read = pg_privacy_wtable_rows(array(
+        $wtable_scope = array(
             'user_ids'    => $user_ids,
             'contact_ids' => $contact_ids,
             'account_ids' => isset($sections['erp_accounts']) ? _pg_privacy_export_column($sections['erp_accounts']['rows'], 'id') : array(),
-        ), $limit);
+        );
+        $read = pg_privacy_wtable_rows($wtable_scope, $limit);
 
-        $names = array();
+        if (!$read['truncated'] && (!$limit || (count($read['rows']) < $limit))) {
+            $binned = pg_privacy_wtable_rows($wtable_scope, $limit ? ($limit - count($read['rows'])) : 0, array(), 'bin');
+            $read['rows'] = array_merge($read['rows'], $binned['rows']);
+            $read['columns'] = $read['columns'] + $binned['columns'];
+            $read['truncated'] = $binned['truncated'];
+        }
+
+        $tables = array();
         $table_ids = _pg_privacy_export_column($read['rows'], 'table_id');
+        $deleted = pg_schema_has('ws_wtables', 'deleted_at') ? ', deleted_at' : '';
 
         if ($table_ids) {
-            foreach (db_items("SELECT id, name FROM ws_wtables WHERE " . _pg_privacy_export_in('id', $table_ids)) as $table) {
-                $names[(int) $table['id']] = (string) $table['name'];
+            foreach (db_items("SELECT id, name" . $deleted . " FROM ws_wtables WHERE " . _pg_privacy_export_in('id', $table_ids)) as $table) {
+                $tables[(int) $table['id']] = $table;
             }
         }
 
         $table_rows = array();
 
         foreach ($read['rows'] as $row) {
-            $table_rows[] = pg_privacy_export_wtable_row($row, isset($names[$row['table_id']]) ? $names[$row['table_id']] : '', $read['columns'][$row['table_id']]);
+            $table = isset($tables[$row['table_id']]) ? $tables[$row['table_id']] : array();
+            $table_rows[] = pg_privacy_export_wtable_row($row, isset($table['name']) ? (string) $table['name'] : '', $read['columns'][$row['table_id']],
+                isset($table['deleted_at']) ? (int) $table['deleted_at'] : 0);
         }
 
         $workspace[] = array('rows' => $table_rows, 'truncated' => $read['truncated']);
@@ -1214,14 +1227,16 @@ function pg_privacy_export_join(array $parts)
  * A workflow table row as the pack gives it: the cells that name the person
  * under their column names (a deleted column's under its id), and the table
  * it is in. The row's other cells are the table owner's and are left out.
- * Pure.
+ * deleted_at is when the row, or the table it is in, went to the bin; 0 for
+ * neither. Pure.
  *
- * @param array  $row      see pg_privacy_wtable_rows()
- * @param string $table    the table's name
- * @param array  $columns  column id => name, type
+ * @param array  $row               see pg_privacy_wtable_rows()
+ * @param string $table             the table's name
+ * @param array  $columns           column id => name, type
+ * @param int    $table_deleted_at  when the table went to the bin, 0 if not
  * @return array
  */
-function pg_privacy_export_wtable_row(array $row, $table, array $columns)
+function pg_privacy_export_wtable_row(array $row, $table, array $columns, $table_deleted_at = 0)
 {
     $cells = array();
 
@@ -1232,12 +1247,13 @@ function pg_privacy_export_wtable_row(array $row, $table, array $columns)
 
     return array(
         'record'     => 'table_row',
-        'id'         => (int) $row['id'],
+        'id'         => (int) (isset($row['row_id']) ? $row['row_id'] : $row['id']),
         'table_id'   => (int) $row['table_id'],
         'table'      => (string) $table,
         'cells'      => $cells,
         'created_at' => (int) $row['created_at'],
         'updated_at' => (int) $row['updated_at'],
+        'deleted_at' => max((int) (isset($row['deleted_at']) ? $row['deleted_at'] : 0), (int) $table_deleted_at),
     );
 }
 

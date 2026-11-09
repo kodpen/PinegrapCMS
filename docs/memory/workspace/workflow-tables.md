@@ -8,7 +8,7 @@ description: Workflow tables (11.0.110, #2746): the four ws_wtable* tables colum
 - `ws_wtable_columns`: `table_id`, `name`, `type` VARCHAR(16) (one of `ws_wtable_column_types()`), `options` JSON (decimals, currency, choices, kinds, expression), `position`, `created_at`. `idx_table (table_id, position)`.
 - `ws_wtable_rows`: `table_id`, `position`, `cells` MEDIUMTEXT JSON object by column id (money integer minor units), `revision` (409 `changed_meanwhile`), `created_by/at`, `updated_by/at`. `idx_table (table_id, position)`.
 - `ws_wtable_shares`: `ws_flow_shares` column for column: `table_id`, `target_type` user|channel, `target_id`, `level` view|edit (channel: view only), `created_by/at`; `UNIQUE (table_id, target_type, target_id)`, `idx_target`.
-- All InnoDB utf8mb4, no ENUM (a later type or share kind needs no MODIFY), no foreign keys: `ws_wtable_delete()` removes columns, rows and shares.
+- All InnoDB utf8mb4, no ENUM (a later type or share kind needs no MODIFY), no foreign keys: `ws_wtable_delete_final()` removes columns, rows, binned rows and shares.
 
 ## Why JSON cells and not a row per cell?
 - A row write stays one `UPDATE … WHERE revision = ?`; a column delete needs no mass DELETE. Option (c), a row per cell, was refused in #2746.
@@ -22,7 +22,7 @@ description: Workflow tables (11.0.110, #2746): the four ws_wtable* tables colum
 ## How do column changes behave?
 - A column's type is fixed once made (`type_fixed`): written cells belong to it. Name and options may change.
 - A deleted column's cells stay in the rows' JSON until the row's next write (`ws_wtable_cells_merge()` drops columns the table lacks); reads skip them. Column ids are never reused.
-- A table delete is final (no bin yet): the table row goes first, so a request stopped halfway leaves nothing reachable.
+- A table or row delete goes to the bin (`workflow-tables-bin.md`); a final delete takes the table row first, so a request stopped halfway leaves nothing reachable.
 - Results are codes (`not_found` 404, `forbidden` 403, `too_many_*` 409, field errors 422) for the panel and API to word.
 
 ## How do the privacy paths see person and record-link cells?
