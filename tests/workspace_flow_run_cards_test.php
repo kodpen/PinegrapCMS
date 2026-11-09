@@ -82,7 +82,8 @@ function test_workspace_flow_run_cards_payload()
 		'started_at' => '2026-10-29T10:00:00Z', 'finished_at' => null, 'steps' => null, 'graph' => null);
 	$card = ws_flow_run_card_payload($run, 'Daily report', 'run');
 
-	pg_assert_same(array('run', 'flow_id', 'flow_name', 'can_open'), array_keys($card));
+	pg_assert_same(array('run', 'flow_id', 'flow_name', 'can_open', 'box'), array_keys($card));
+	pg_assert_same('', $card['box'], 'a run that has not failed opens on no box');
 	pg_assert_same(3, $card['flow_id']);
 	pg_assert_same('Daily report', $card['flow_name']);
 	pg_assert_true($card['can_open'], 'a reader who runs the flow opens the run');
@@ -90,6 +91,9 @@ function test_workspace_flow_run_cards_payload()
 	pg_assert_same('Waiting for Ada.', $card['run']['result']);
 	pg_assert_true($card['run']['can_cancel']);
 	pg_assert_false(ws_flow_run_card_payload($run, 'Daily report', '')['can_open'], 'a reader by the channel alone sees the flag only');
+
+	$run['status'] = 'failed';
+	pg_assert_same('post', ws_flow_run_card_payload($run, 'Daily report', 'run', 'post')['box'], 'a failed run opens on the box it failed at');
 }
 
 // The flow's name in the system line makes no tag, mark or link.

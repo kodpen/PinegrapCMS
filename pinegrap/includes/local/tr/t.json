@@ -7046,6 +7046,7 @@
     "The value without its sign": "Değerin işaretsiz hâli",
     "The value {var:1} gathers cannot have a “When empty, write” text: remove it, the value is gathered as it is.": "{var:1} kutusunun topladığı değere “Boşsa yaz” metni eklenemez: kaldırın, değer olduğu gibi toplanır.",
     "The value {var:2} of the box {var:1} is not a number.": "{var:1} kutusundaki {var:2} değeri bir sayı değil.",
+    "The value “{var:1}” from the box “{var:2}” was empty.": "“{var:2}” kutusundan gelen “{var:1}” değeri boştu.",
     "The variables below live in User Styles.": "Aşağıdaki değişkenler User Styles içinde durur.",
     "The variant draft could not be made.": "Varyant taslağı oluşturulamadı.",
     "The variant draft has no design to publish.": "Varyant taslağında yayımlanacak bir tasarım yok.",
