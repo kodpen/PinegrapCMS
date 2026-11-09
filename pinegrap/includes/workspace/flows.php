@@ -164,6 +164,19 @@ function ws_flow_kinds()
 }
 
 /**
+ * The kinds of box no new box is made of: the canvas palette
+ * (workspace_flow.js PALETTE) and Pinegrap AI's catalogue leave them out,
+ * while a flow that holds one keeps it, runs it and changes its settings.
+ * A scheduled action is started as its flow, by a start_flow box. Pure.
+ *
+ * @return string[]
+ */
+function ws_flow_kinds_not_offered()
+{
+    return array('start_action');
+}
+
+/**
  * The outcomes an arrow may leave this box on: its kind's
  * (ws_flow_arrow_outcomes()), but for a Pinegrap AI box, whose settings say
  * which (a classifying box's named outcomes, flow_ai_box.php). Pure.
@@ -2791,7 +2804,6 @@ function ws_flow_js_strings()
     return array(
         'fl_nav'              => lang('Flows'),
         'fl_layer_screen'     => lang('Open on the Flows screen'),
-        'fl_sa_moved'         => lang('Your scheduled actions are in Flows.'),
         'fl_toolbar'          => lang('Flow tools'),
         'fl_settings'         => lang('Settings of what is selected'),
         'fl_canvas'           => lang('Canvas'),
@@ -3411,6 +3423,7 @@ function ws_flow_js_strings()
         'fl_tpl_set_url'      => lang('Web address'),
         'fl_tpl_set_address'  => lang('E-mail addresses'),
         'fl_tpl_set_table'    => lang('Table'),
+        'fl_tpl_set_text'     => lang('Message'),
         'fl_tpl_save'         => lang('Save as template'),
         'fl_tpl_save_help'    => lang('The boxes and arrows of the draft are kept, without a webhook\'s address. Everyone who builds flows on this site finds it among the templates.'),
         'fl_tpl_save_do'      => lang('Save template'),

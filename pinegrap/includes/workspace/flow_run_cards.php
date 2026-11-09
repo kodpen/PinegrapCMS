@@ -96,6 +96,26 @@ function ws_flows_runnable_in($viewer, $channel_id)
 }
 
 /**
+ * Has the channel a flow the person may start in it, as Add › Start a flow
+ * lists them? Asked as the channel opens, so the composer offers the entry
+ * only where it has something to start: for whoever the Workspace shows
+ * Flows to, in a public or private channel.
+ *
+ * @param array      $viewer
+ * @param array|null $channel ws_channel()
+ * @return bool
+ */
+function ws_flows_startable_in($viewer, $channel)
+{
+    if (!is_array($channel) || !in_array((string) ($channel['kind'] ?? ''), array('public', 'private'), true)
+        || !function_exists('ws_flows_nav_visible') || !ws_flows_nav_visible($viewer)) {
+        return false;
+    }
+
+    return !empty(ws_flows_runnable_in($viewer, (int) $channel['id']));
+}
+
+/**
  * The line a run started from the composer writes into its channel, tied to
  * the run so the screen draws the run's card under it.
  *

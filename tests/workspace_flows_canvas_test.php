@@ -2885,6 +2885,21 @@ function test_workspace_flows_canvas_start_box_tell_choice()
 	}
 }
 
+// The setup panel asks a message's words in a box of their own, as long as
+// a post box keeps them, and offers the flow's home as the channel of a box
+// that has none yet: a flow opened from a channel posts there.
+function test_workspace_flows_canvas_template_text_and_home()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$strings = ws_flow_js_strings();
+
+	pg_assert_contains("text: 'fl_tpl_set_text'", $script, 'the words have their label');
+	pg_assert_true(isset($strings['fl_tpl_set_text']), 'the label is handed over');
+	pg_assert_contains("} else if (type === 'text') {\n            control = el('textarea', 'form-control form-control-sm');", $script, 'a box for the words');
+	pg_assert_contains('control.maxLength = 4000;', $script, 'as long as a post box keeps');
+	pg_assert_contains('answers.channel = value || (state.flow && state.flow.channel_id) || 0;', $script, 'the home channel offered');
+}
+
 // The setup panel of a saved template asks the table of its row boxes with
 // a picker of the tables the person reaches: only those whose rows they may
 // change once a box adds or changes rows, every table read for a row start.
@@ -3466,10 +3481,9 @@ function test_workspace_flows_canvas_layer_wiring()
 
 /**
  * The ways in to a flow from a Workspace page open the layer, not the Flows
- * screen: the scheduled flow window's canvas button, the draft card's box
- * link, the run card's Open the run, a scheduled action's Edit and the
- * flows made by Duplicate or from a draft; on the Flows screen itself they
- * still go by the address.
+ * screen: the draft card's box link, the run card's Open the run, a
+ * scheduled action's Edit and the flows made by Duplicate or from a draft;
+ * on the Flows screen itself they still go by the address.
  */
 function test_workspace_flows_canvas_layer_ways_in()
 {
@@ -3485,9 +3499,7 @@ function test_workspace_flows_canvas_layer_ways_in()
 	pg_assert_contains('event.preventDefault();', $link, 'a plain click opens the layer');
 	pg_assert_contains('event.ctrlKey || event.metaKey', $link, 'a new tab follows the address');
 	pg_assert_contains('flowGo(result.flow_id)', $opened, 'a made flow opens in the layer');
-	pg_assert_contains('leave(function () { flowGo(result.flow_id); });', $opened, 'after the window it came from is gone');
 	pg_assert_contains('flowGo(result.flow_id, { opener: trigger });', $edit, 'an Edit converted opens in the layer');
-	pg_assert_contains("hideOffcanvas(node, next);", $kit, 'the scheduled flow window closes before the layer opens');
 	pg_assert_contains('flowGo(run.flow_id, { run: run.id });', $kit, 'Open the run in the layer');
 	pg_assert_contains('flowGo(item.flow.id, { opener: edit });', $kit, 'Edit of a converted action in the layer');
 	pg_assert_contains('flowLinkOpens(link, view.flow_id, { box: node.id });', $kit, 'a draft card\'s box in the layer');

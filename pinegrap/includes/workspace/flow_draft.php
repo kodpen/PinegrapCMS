@@ -865,14 +865,14 @@ function ws_flow_card_threads($graph, $nodes)
 
 /**
  * The flow a card's window tries its boxes on (pure): a waiting new flow,
- * or the sketch of Add › Scheduled flow, as a flow of the person's own in
- * memory (owner the asker, a draft holding the graph, edit access), so the
+ * as a flow of the person's own in memory (owner the asker, a draft holding
+ * the graph, edit access), so the
  * try reads with the asker's rights and nothing is written; a waiting patch
  * none, as its flow's owner alone tries boxes (ws_flow_box_try()); an
  * opened draft its flow, only where the person may try it.
  *
  * @param array      $viewer
- * @param string     $state   new (a waiting new flow or a sketch) | patch | opened
+ * @param string     $state   new (a waiting new flow) | patch | opened
  * @param array      $graph   ws_flow_graph_normalize(), for new
  * @param array|null $flow    the flow, for opened (ws_flow_for())
  * @param bool       $can_try for opened (ws_flow_share_manager())
@@ -1283,7 +1283,8 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
 }
 
 /**
- * The catalogue Pinegrap AI drafts from: ws_flow_kind_catalogue() with the
+ * The catalogue Pinegrap AI drafts from: ws_flow_kind_catalogue() without
+ * the kinds no new box is made of (ws_flow_kinds_not_offered()), with the
  * hints of ws_flow_ai_catalogue_hints(), the kinds of record read from the
  * site.
  *
@@ -1292,8 +1293,11 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
 function ws_flow_ai_catalogue()
 {
     $subjects = function_exists('ws_scheduled_record_types') ? array_keys(ws_scheduled_record_types()) : array();
+    $offered = array_values(array_filter(ws_flow_kind_catalogue(), function ($kind) {
+        return !in_array($kind['kind'], ws_flow_kinds_not_offered(), true);
+    }));
 
-    return ws_flow_ai_catalogue_hints(ws_flow_kind_catalogue(), $subjects);
+    return ws_flow_ai_catalogue_hints($offered, $subjects);
 }
 
 /**

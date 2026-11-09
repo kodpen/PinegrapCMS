@@ -26,7 +26,7 @@ description: The Flows canvas look in numbers (owner, 2026-10-27): lines, type c
 - Shown above the flow's last box on the canvas, in the list's last-run column and on the run's card in a channel.
 
 ## Mini window and templates?
-- The AI draft card and Add › Scheduled flow draw the same canvas small (boxes 128 × 60 px): the dry run's result is each box's third line; a picked box is told under the pane with "Open on canvas" and "Try this box"; read-only (#4967).
+- The AI draft card draws the same canvas small (boxes 128 × 60 px): the dry run's result is each box's third line; a picked box is told under the pane with "Open on canvas" and "Try this box"; read-only (#4967).
 - Template placement: boxes appear one by one (420 ms each, 150 ms apart, rising and scaling up from 92 %), arrows grow (200 ms), threads draw (650 ms, 200 ms apart), then the setup panel slides in. With prefers-reduced-motion it is placed at once.
 
 ## Where are the rules behind it?

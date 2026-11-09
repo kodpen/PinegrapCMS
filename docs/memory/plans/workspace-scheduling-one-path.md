@@ -10,6 +10,9 @@ description: Plan (owner 2026-11-09): scheduled work set up only on the flow can
   - the palette held two boxes that start another piece of work.
 - Decisions: `workflow/decisions-made-product-41.md`. The old actions shipped but nobody uses them yet, so their useful functions come into flows and nothing is built for the old rows.
 
+## Which steps are done?
+- Done: step 1 #8394 (`workspace/workspace-scheduling-one-place.md`). Next: step 2.
+
 ## What holds for every step?
 - No schema, no migration step: converted rows, hidden anchors and refused rows keep running as they do (`ws_scheduled_run()`, `ws_scheduled_execute()`).
 - Scheduled messages (composer Send later, /schedule, their list) are not touched.
@@ -21,7 +24,7 @@ description: Plan (owner 2026-11-09): scheduled work set up only on the flow can
   - the `ws_flow_scheduled_new` route and the `ws_scheduled_flow_graph/fill/new/sketch/sketch_view()` functions;
   - the `sa_flow_new` / `sf_*` strings and tests/workspace_scheduled_flow_window_test.php.
   - Kept: `ws_scheduled_flow_home()` (Duplicate), `flowWindowDraw()` and `flowEmbedKit()` (draft cards).
-- The gallery gets the template `channel_message`, "Message to a channel at a time": a time start and a post box, asking for the time and the channel. The setup panel offers the flow's home as the channel when the box has none.
+- The gallery gets the template `channel_message`, "Message to a channel at a time": a time start and a post box, asking for the time, the channel and the words. The setup panel offers the flow's home as the channel when the box has none.
 - The palette drops `start_action`; saved boxes keep their form and run.
 - Add › Start a flow shows only where `ws_channel_open` says `flows_here`.
 - Texts: the tour's Flows step no longer names scheduled actions; the Scheduled messages screen loses its "Your scheduled actions are in Flows." link.
