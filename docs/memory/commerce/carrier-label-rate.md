@@ -1,6 +1,6 @@
 ---
 name: carrier-label-rate
-description: Label driver rate() operation (#8406, Sendcloud and Shippo #R5PR): quotes shape and checks, info services and rates, the rate zone, Geliver, Sendcloud and Shippo quotes
+description: Label driver rate() operation (#8406, Sendcloud and Shippo #8420): quotes shape and checks, info services and rates, the rate zone, Geliver, Sendcloud and Shippo quotes
 module: carrier_labels
 ---
 
