@@ -120,7 +120,7 @@ function ws_wtable_api_routes()
             'mcp'         => false,
             'returns'     => 'WorkspaceTable',
             'summary'     => 'Delete a workflow table',
-            'description' => 'Deletes a table of the owner\'s own for good, with its columns, rows and shares; the answer is the table as it was. Only its owner may (403 for a person it is shared with). It cannot be undone, so it is no MCP tool. POST /workspace/tables/{id}/delete does the same for servers that refuse DELETE.',
+            'description' => 'Deletes a table of the owner\'s own with its columns, rows and shares; the answer is the table as it was. It goes to the bin for the days the site\'s Recycle Bin keeps (30 unless changed), where its owner restores it whole with POST /workspace/deleted-tables/{id}/restore; then it is deleted for good. Only its owner may (403 for a person it is shared with). It takes a whole table out of everybody\'s reach, so it is no MCP tool. POST /workspace/tables/{id}/delete does the same for servers that refuse DELETE.',
             'params'      => array($id),
         ),
 
@@ -135,6 +135,34 @@ function ws_wtable_api_routes()
             'returns'     => 'WorkspaceTable',
             'summary'     => 'Delete a workflow table, addressed as a POST',
             'description' => 'The same as DELETE /workspace/tables/{id}, for clients and servers that cannot send DELETE.',
+            'params'      => array($id),
+        ),
+
+        // The bin of tables (wtable_bin.php): the owner's alone, and like the
+        // delete no MCP tool.
+        array(
+            'id'          => 'workspace.tables.deleted',
+            'method'      => 'GET',
+            'path'        => '/workspace/deleted-tables',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_wtables_deleted',
+            'mcp'         => false,
+            'returns'     => array('list' => 'WorkspaceDeletedTable'),
+            'summary'     => 'Deleted workflow tables',
+            'description' => 'The tables of the owner of the application in the bin, the latest deleted first: deleted_at says when, expires_at when it is deleted for good. Nobody reaches a deleted table, its shares included, until it is restored.',
+        ),
+
+        array(
+            'id'          => 'workspace.tables.restore',
+            'method'      => 'POST',
+            'path'        => '/workspace/deleted-tables/{id}/restore',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_wtables_restore',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceTable',
+            'summary'     => 'Restore a deleted workflow table',
+            'description' => 'Brings a table of the owner\'s own back from the bin whole, with its columns, rows and shares; the answer is the table. A person keeps at most ' . $limits['tables'] . ' tables: a restore past that is refused with 409 too_many_tables.',
             'params'      => array($id),
         ),
 
@@ -277,7 +305,7 @@ function ws_wtable_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceTableRow',
             'summary'     => 'Delete a row of a workflow table',
-            'description' => 'Deletes a row of a table the owner may change; the answer is the row as it was, and the rows after it move up one. With revision, a row changed since is refused with 409 changed_meanwhile. POST /workspace/tables/{id}/rows/{row_id}/delete does the same for servers that refuse DELETE.',
+            'description' => 'Deletes a row of a table the owner may change; the answer is the row as it was, and the rows after it move up one. The row goes to the table\'s bin for the days the site\'s Recycle Bin keeps (30 unless changed): GET /workspace/tables/{id}/deleted-rows lists it and POST /workspace/tables/{id}/deleted-rows/{bin_id}/restore brings it back. With revision, a row changed since is refused with 409 changed_meanwhile. POST /workspace/tables/{id}/rows/{row_id}/delete does the same for servers that refuse DELETE.',
             'params'      => array($id, $row_id, array('name' => 'revision', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'The revision the row was read at: deleted only when it is still the row\'s.')),
         ),
 
@@ -292,6 +320,33 @@ function ws_wtable_api_routes()
             'summary'     => 'Delete a row of a workflow table, addressed as a POST',
             'description' => 'The same as DELETE /workspace/tables/{id}/rows/{row_id}, for clients and servers that cannot send DELETE.',
             'params'      => array($id, $row_id, array('name' => 'revision', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'The revision the row was read at.')),
+        ),
+
+        // The table's bin of rows (wtable_bin.php): whoever may change the
+        // table sees it and restores a row, as they delete one.
+        array(
+            'id'          => 'workspace.table_rows.deleted',
+            'method'      => 'GET',
+            'path'        => '/workspace/tables/{id}/deleted-rows',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_wtable_rows_deleted',
+            'returns'     => array('list' => 'WorkspaceTableBinRow'),
+            'summary'     => 'Deleted rows of a workflow table',
+            'description' => 'The rows of a table the owner may change that are in its bin, the latest deleted first: bin_id names the entry, id the row\'s id when it was deleted, deleted_by and deleted_at who and when, expires_at when it is deleted for good. A table shared with them at view is refused with 403.',
+            'params'      => array($id),
+        ),
+
+        array(
+            'id'          => 'workspace.table_rows.restore',
+            'method'      => 'POST',
+            'path'        => '/workspace/tables/{id}/deleted-rows/{bin_id}/restore',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_wtable_rows_restore',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceTableRow',
+            'summary'     => 'Restore a deleted row of a workflow table',
+            'description' => 'Brings a row back from the table\'s bin at the end of the table, with its cells and its links to site records; the answer is the row. It keeps its id, unless another row was given that id meanwhile: then it has a new one. A full table refuses it with 409 too_many_rows.',
+            'params'      => array($id, array('name' => 'bin_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)),
         ),
 
         // The shares of a table (wtable_shares.php). Sharing widens who reads
@@ -447,6 +502,62 @@ function ws_api_wtable_column_schema()
 function ws_api_wtable_row_present($row)
 {
     return ws_wtable_row_present($row);
+}
+
+/**
+ * A row in a table's bin: the row as it was, with its entry.
+ *
+ * @param array $row ws_wtable_bin_rows()
+ * @return array
+ */
+function ws_api_wtable_bin_row_present($row)
+{
+    return ws_wtable_row_present($row) + array(
+        'bin_id'     => (int) $row['bin_id'],
+        'deleted_by' => (int) $row['deleted_by'],
+        'deleted_at' => api_time($row['deleted_at']),
+        'expires_at' => api_time($row['expires_at']),
+    );
+}
+
+// What ws_api_wtable_bin_row_present() returns.
+function ws_api_wtable_bin_row_schema()
+{
+    return ws_api_wtable_row_schema() + array(
+        'bin_id'     => 'integer',
+        'deleted_by' => 'integer',
+        'deleted_at' => 'string?',
+        'expires_at' => 'string?',
+    );
+}
+
+/**
+ * A table in the bin, as its owner sees it.
+ *
+ * @param array $table ws_wtables_binned()
+ * @return array
+ */
+function ws_api_wtable_deleted_present($table)
+{
+    return array(
+        'id'         => (int) $table['id'],
+        'name'       => (string) $table['name'],
+        'row_count'  => (int) $table['row_count'],
+        'deleted_at' => api_time($table['deleted_at']),
+        'expires_at' => api_time($table['expires_at']),
+    );
+}
+
+// What ws_api_wtable_deleted_present() returns.
+function ws_api_wtable_deleted_schema()
+{
+    return array(
+        'id'         => 'integer',
+        'name'       => 'string',
+        'row_count'  => 'integer',
+        'deleted_at' => 'string?',
+        'expires_at' => 'string?',
+    );
 }
 
 // What ws_api_wtable_row_present() returns.
@@ -786,6 +897,43 @@ function ws_api_wtables_delete($params)
     api_ok($before);
 }
 
+function ws_api_wtables_deleted($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_wtables_ready();
+
+    $rows = array_map('ws_api_wtable_deleted_present', ws_wtables_binned($viewer));
+
+    api_ok_list($rows, count($rows));
+}
+
+function ws_api_wtables_restore($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_wtables_ready();
+
+    $table = ws_wtable_binned((int) $params['id']);
+    $checked = ws_wtable_restore_check($viewer, $table);
+
+    if (!$checked['ok']) {
+        ws_api_wtable_refused($checked, lang('Deleted table'));
+    }
+
+    api_dry_run_stop('restored', 'workspace_table', array('id' => (int) $table['id'], 'rows' => (int) $table['row_count']));
+
+    $result = ws_wtable_restore($viewer, $table);
+
+    if (!$result['ok']) {
+        ws_api_wtable_refused($result, lang('Deleted table'));
+    }
+
+    $table = ws_api_wtable_or_404($viewer, $table['id']);
+
+    api_ok(ws_api_wtable_present($table, ws_wtable_columns((int) $table['id'])));
+}
+
 /* ---------------------------------------------------------------------------
    Columns
    --------------------------------------------------------------------------- */
@@ -1034,6 +1182,37 @@ function ws_api_wtable_rows_delete($params)
     }
 
     api_ok($before);
+}
+
+function ws_api_wtable_rows_deleted($params)
+{
+    $viewer = ws_api_viewer();
+    $table = ws_api_wtable_writable($viewer, $params['id']);
+    $rows = ws_wtable_bin_rows($viewer, $table);
+
+    api_ok_list(array_map('ws_api_wtable_bin_row_present', (array) $rows), count((array) $rows));
+}
+
+function ws_api_wtable_rows_restore($params)
+{
+    $viewer = ws_api_viewer();
+    $table = ws_api_wtable_writable($viewer, $params['id']);
+    $bin = ws_wtable_bin_row((int) $table['id'], (int) $params['bin_id']);
+    $checked = ws_wtable_row_restore_check($viewer, $table, $bin);
+
+    if (!$checked['ok']) {
+        ws_api_wtable_refused($checked, lang('Deleted row'));
+    }
+
+    api_dry_run_stop('restored', 'workspace_table_row', array('bin_id' => (int) $bin['id'], 'id' => (int) $bin['row_id'], 'table_id' => (int) $table['id']));
+
+    $result = ws_wtable_row_restore($viewer, $table, $bin);
+
+    if (!$result['ok']) {
+        ws_api_wtable_refused($result, lang('Deleted row'));
+    }
+
+    api_ok(ws_api_wtable_row_answer(ws_api_wtable_or_404($viewer, $table['id']), $result['row_id']));
 }
 
 /* ---------------------------------------------------------------------------

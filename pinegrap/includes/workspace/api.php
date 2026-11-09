@@ -260,6 +260,8 @@ function ws_openapi_objects()
         'WorkspaceTable'            => 'ws_api_wtable_schema',
         'WorkspaceTableColumn'      => 'ws_api_wtable_column_schema',
         'WorkspaceTableRow'         => 'ws_api_wtable_row_schema',
+        'WorkspaceTableBinRow'      => 'ws_api_wtable_bin_row_schema',
+        'WorkspaceDeletedTable'     => 'ws_api_wtable_deleted_schema',
         'WorkspaceTableShare'       => 'ws_api_wtable_share_schema',
         'WorkspaceMessageMail'      => 'ws_api_message_mail_schema',
         'WorkspaceMailConversation' => 'ws_api_mail_conversation_schema',

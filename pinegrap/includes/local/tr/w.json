@@ -3298,6 +3298,7 @@
     "workspace holiday ({var:1}) was removed": "çalışma alanı tatili ({var:1}) kaldırıldı",
     "workspace table ({var:1}) is no longer shared with {var:2}": "çalışma alanı tablosu ({var:1}) artık {var:2} ile paylaşılmıyor",
     "workspace table ({var:1}) was deleted": "çalışma alanı tablosu ({var:1}) silindi",
+    "workspace table ({var:1}) was restored": "çalışma alanı tablosu ({var:1}) geri getirildi",
     "workspace table ({var:1}) was shared with {var:2}: {var:3}": "çalışma alanı tablosu ({var:1}) {var:2} ile paylaşıldı: {var:3}",
     "workspace table ({var:1}): the share with {var:2} was changed to {var:3}": "çalışma alanı tablosu ({var:1}): {var:2} ile paylaşım {var:3} olarak değiştirildi",
     "workspace task ({var:1}) was created": "çalışma alanı görevi ({var:1}) oluşturuldu",
