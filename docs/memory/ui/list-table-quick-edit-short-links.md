@@ -8,7 +8,8 @@ module: short_link_list_edit
 - Every value `edit_short_link.php` changes (`pg_short_link_quick_edit_columns()`): Name, Destination Type, Page, Destination, Tracking Code and How it answers (only once `redirect_code` exists, `pg_short_link_redirects_ready()`).
 - To make each value one field, the one Destination cell ("page/product?t=code") became Page, Destination and Tracking Code, and the answer badge left the name for its own column.
 - The field a cell carries follows the link's destination type (`pg_short_link_quick_field()`): Page is `page_id` (any page), `group_page_id` (catalog and catalog detail pages) or `product_page_id` (catalog detail pages); Destination is `product_group_id`, `product_id`, `url` (text) or `file_id`; a URL or file link has no Page and no Tracking Code, a page link no Destination.
-- A one-time link (no name) has no field: it is changed in the File Manager. A cell whose stored page, group, product or file is not offered (in the Recycle Bin, outside the user's folders) stays text (`pg_short_link_quick_attributes()`).
+- A one-time link (no name) has no field: it is changed in the File Manager. A cell whose stored page, group or product is not offered (in the Recycle Bin, outside the user's folders) stays text (`pg_short_link_quick_attributes()`).
+- The file cell searches (`search`, kind `file`, #8424): it is a field for any file the link has, named in `data-pg-edit-text` (a binned file under its old name, marked `[IN RECYCLE BIN]`); a file row that is gone leaves it text. Before, it listed every file (`get_file_options(true)`) on each load.
 - Text: Created, Last Modified, Visit. `tests/short_link_list_edit_test.php` fails for a new column that is neither.
 
 ## How is a change checked and written?

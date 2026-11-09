@@ -22,7 +22,7 @@ pages and files by folder: the bin folder or a folder sent into it
 - Lists leave them out: `get_product_options()`,
   `get_product_group_options(..., $include_recycled = FALSE, $keep_ids)`,
   `get_page_options(..., $include_recycled = false, $keep_id)` (default call
-  unchanged for its other callers), `get_file_options($design, $keep_id)`.
+  unchanged for its other callers); files are searched (`ui/file-picker-search.md`).
 - The one a link already points at stays, marked "[IN RECYCLE BIN]" (a page
   or file under its unparked name), so saving keeps it. A page `$keep_id` also stays
   in an archived folder ("[ARCHIVED]") and past the role-3 filter

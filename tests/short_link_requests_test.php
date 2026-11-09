@@ -154,11 +154,7 @@ function test_short_link_lists_leave_binned_pages_and_files_out_but_keep_the_lin
 	pg_assert_contains("\$page_name = pg_page_record_label(\$row['page_id'], \$row, true);", $content, 'the kept page is marked');
 	pg_assert_contains("' [' . lang('IN RECYCLE BIN') . ']'", short_link_requests_test_function_body(short_link_requests_test_source('includes/fn/content.php'), 'pg_page_record_label'), 'with the bin label');
 
-	$files = short_link_requests_test_function_body(short_link_requests_test_source('includes/fn/forms.php'), 'get_file_options');
-
-	pg_assert_contains("function get_file_options(\$design = FALSE, \$keep_id = 0)", $files, 'files');
-	pg_assert_contains("if ((int) \$row['id'] !== \$keep_id) {", $files, 'binned files are left out unless kept');
-	pg_assert_contains('pg_recycle_parked_original($file_name, $row[\'id\'])', $files, 'the kept file is shown under the name it had');
+	pg_assert_false(strpos(short_link_requests_test_source('includes/fn/forms.php'), 'function get_file_options(') !== false, 'files: no list of every file is left; the pickers search (kind file)');
 
 	$explorer = short_link_requests_test_source('includes/explorer/handle_short_links.php');
 

@@ -172,3 +172,36 @@ JS
 	pg_assert_same(array('form-control', 'pg-list-table-field'), $result['plain'], 'an option without a class leaves the select plain');
 	pg_assert_same(array('form-control', 'pg-list-table-field'), $result['none'], 'nothing chosen');
 }
+
+/**
+ * A searching select (type 'search') holds only the empty choice and the
+ * stored one: a value not among its options is added under its name, an
+ * option it has is renamed, and the keyboard reaches its Combobox toggle.
+ */
+function test_list_table_quick_edit_search_choice()
+{
+	$result = list_table_js_test_node(<<<'JS'
+var document = { createElement: function () { return { value: '', textContent: '' }; } };
+var select = { options: [{ value: '', textContent: '' }], value: '', appendChild: function (o) { this.options.push(o); } };
+var names = function () { return select.options.map(function (o) { return o.value + '=' + o.textContent; }); };
+var out = {};
+T.searchChoice(select, '9', 'a.pdf'); out.added = [select.value, names()];
+T.searchChoice(select, '9', 'b.pdf'); out.renamed = names();
+T.searchChoice(select, '12', ''); out.unnamed = [select.value, names()];
+T.searchChoice(select, '', 'x'); out.empty = [select.value, names()];
+var toggle = { tagName: 'BUTTON' };
+out.target = [T.fieldTarget({ pgComboboxToggle: toggle }) === toggle, T.fieldTarget(select) === select];
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('9', array('=', '9=a.pdf')), $result['added'], 'the stored choice under its name');
+	pg_assert_same(array('=', '9=b.pdf'), $result['renamed'], 'a choice the answer names again');
+	pg_assert_same(array('12', array('=', '9=b.pdf', '12=')), $result['unnamed']);
+	pg_assert_same(array('', array('=', '9=b.pdf', '12=')), $result['empty'], 'the empty choice is never renamed');
+	pg_assert_same(array(true, true), $result['target'], 'focus goes to the drawn toggle, else the field');
+}
