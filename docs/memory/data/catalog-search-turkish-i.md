@@ -11,4 +11,5 @@ description: Product and product group search (site search, catalog search) fold
 
 ## Why?
 - `utf8mb4_unicode_ci` folds I with i but keeps ı apart: "LAMBASI" and "lambasi" missed "Masa Lambası", "Işık" found nothing and "IŞIK" found "bisikleti" (issue #4454). Page results had been fixed in the fulltext path (`pg_search_i_variants()`, PR #4359), products had not.
+- The catalog listing widget's own search box (`widgets_catalog.php`: the product columns, the attribute labels and the sub-group cards) matches the same way through `pg_catalog_listing_search_sql()`, which writes the values of `pg_list_search_where()` into its text-built queries with `e()` (#7607).
 - Pinned by `tests/catalog_search_fold_test.php`.
