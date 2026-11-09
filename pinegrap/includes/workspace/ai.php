@@ -404,6 +404,14 @@ function ws_ai_http($method, $path, $payload = null, $timeout = 15)
  */
 function ws_ai_http_error($response)
 {
+    // While a model assistant's request is answered, the calls told here went
+    // to the assistant's own API (ws_ai_http()): the sentence names it.
+    $running = function_exists('ws_model_running') ? ws_model_running() : null;
+
+    if ($running) {
+        return ws_model_http_error($running, $response);
+    }
+
     $http = (int) $response['http'];
 
     if ($http > 0) {
@@ -764,9 +772,31 @@ function ws_ai_channel_allowed($channel)
 }
 
 /**
+ * May whoever answers a request be asked in this channel? Inside the loop
+ * (ws_ai_step()) that is Pinegrap AI, by ws_ai_channel_allowed(), or the
+ * model assistant whose request is being answered (ws_model_running()), by
+ * its own row in the channel (ws_model_channel_allowed()): Pinegrap AI's
+ * switch says nothing about an assistant the channel's people added.
+ *
+ * @param array $channel
+ * @return bool
+ */
+function ws_ai_loop_channel_allowed($channel)
+{
+    $running = function_exists('ws_model_running') ? ws_model_running() : null;
+
+    if ($running) {
+        return ws_model_channel_allowed($running, $channel);
+    }
+
+    return ws_ai_channel_allowed($channel);
+}
+
+/**
  * The channel a request reads: the one it was asked in or, for a run on a
- * task (delegation.php), the task's channel where Pinegrap AI may be asked
- * and the person who asked may read. A request from a note has none.
+ * task (delegation.php), the task's channel where whoever answers may be
+ * asked (ws_ai_loop_channel_allowed()) and the person who asked may read. A
+ * request from a note has none.
  *
  * @param array      $row
  * @param array|null $asker
@@ -783,7 +813,7 @@ function ws_ai_request_channel($row, $asker = null)
         $channel = ($task && ((int) $task['channel_id'] > 0)) ? ws_channel($task['channel_id']) : null;
         $asker = $asker ?: ws_ai_viewer((int) $row['requested_by']);
 
-        return ($channel && $asker && ws_ai_channel_allowed($channel) && ws_can_read_channel($asker, $channel)) ? $channel : null;
+        return ($channel && $asker && ws_ai_loop_channel_allowed($channel) && ws_can_read_channel($asker, $channel)) ? $channel : null;
     }
 
     return ws_channel($row['channel_id']);
@@ -1365,6 +1395,42 @@ function ws_ai_hold_form_hint($row, $gateway_failed)
 }
 
 /**
+ * A failure sentence of the loop about whoever answers the request: Pinegrap
+ * AI in its own wording, or the model assistant whose request is being
+ * answered (ws_model_running()) by its name (ws_model_loop_sentence()).
+ *
+ * @param string $which unreachable | no_model | undone | unfinished | channel
+ * @return string '' for any other
+ */
+function ws_ai_loop_sentence($which)
+{
+    $running = function_exists('ws_model_running') ? ws_model_running() : null;
+
+    if ($running) {
+        return ws_model_loop_sentence($running, $which);
+    }
+
+    switch ((string) $which) {
+        case 'unreachable':
+            return lang('Pinegrap AI could not be reached or took too long to answer.');
+
+        case 'no_model':
+            return lang('Pinegrap AI lists no model to answer with.');
+
+        case 'undone':
+            return lang('Pinegrap AI could not do it');
+
+        case 'unfinished':
+            return lang('Pinegrap AI could not finish the answer.');
+
+        case 'channel':
+            return lang('Pinegrap AI may not be asked in this channel.');
+    }
+
+    return '';
+}
+
+/**
  * One model call for a request, and what it asked for.
  *
  * @param array $row
@@ -1375,7 +1441,7 @@ function ws_ai_step($row)
     $steps = (int) $row['ai_steps'];
 
     if ((int) $row['ai_attempts'] >= WS_AI_MAX_ATTEMPTS) {
-        ws_ai_finish_fail($row, lang('Pinegrap AI could not be reached or took too long to answer.'));
+        ws_ai_finish_fail($row, ws_ai_loop_sentence('unreachable'));
         return 'done';
     }
 
@@ -1400,7 +1466,7 @@ function ws_ai_step($row)
     db("UPDATE ws_ai_requests SET ai_attempts = ai_attempts + 1, sent_at = '" . time() . "' WHERE id = '" . (int) $row['id'] . "'");
 
     if ($model === '') {
-        ws_ai_hold(120, lang('Pinegrap AI lists no model to answer with.'));
+        ws_ai_hold(120, ws_ai_loop_sentence('no_model'));
         ws_ai_hold_form_hint($row, true);
         return 'held';
     }
@@ -1578,7 +1644,7 @@ function ws_ai_step($row)
 
         if ($name === 'fail') {
             $reason = trim(mb_substr(preg_replace('/\s+/u', ' ', (string) ($call['args']['reason'] ?? '')), 0, 250));
-            ws_ai_finish_fail($row, ($reason !== '') ? $reason : lang('Pinegrap AI could not do it'));
+            ws_ai_finish_fail($row, ($reason !== '') ? $reason : ws_ai_loop_sentence('undone'));
             return 'done';
         }
 
@@ -1680,7 +1746,7 @@ function ws_ai_final($row, $state, $model)
     $problem = ws_ai_response_problem($response);
 
     if ($problem === 'format') {
-        ws_ai_finish_fail($row, lang('Pinegrap AI could not finish the answer.'));
+        ws_ai_finish_fail($row, ws_ai_loop_sentence('unfinished'));
         return 'done';
     }
 
@@ -1695,7 +1761,7 @@ function ws_ai_final($row, $state, $model)
     }
 
     if ($text === '') {
-        ws_ai_finish_fail($row, lang('Pinegrap AI could not finish the answer.'));
+        ws_ai_finish_fail($row, ws_ai_loop_sentence('unfinished'));
         return 'done';
     }
 
@@ -2243,13 +2309,14 @@ function ws_ai_finish_fail($row, $reason)
     $reply_id = 0;
     $channel = ((int) ($row['note_id'] ?? 0) > 0) ? null : ws_channel($row['channel_id']);
 
-    // Written the way an answer is (ws_ai_deliver()): through the person who
-    // asked where the owner of the application is not in the room. Without
-    // an application (none chosen, or the chosen one deleted) nothing is
-    // written in the channel: the message would be the asker's own, and the
-    // reason stays on the request only.
+    // Written the way an answer is (ws_ai_deliver()): where whoever answers
+    // may be asked, through the person who asked where the owner of the
+    // application is not in the room. Without an application (none chosen,
+    // or the chosen one deleted) nothing is written in the channel: the
+    // message would be the asker's own, and the reason stays on the request
+    // only.
     $app = ws_ai_app();
-    $writer = ($channel && $app && ws_ai_channel_allowed($channel))
+    $writer = ($channel && $app && ws_ai_loop_channel_allowed($channel))
         ? ws_assistant_writer(ws_ai_owner(), ws_ai_viewer((int) $row['requested_by']), $channel)
         : null;
 
@@ -2446,8 +2513,8 @@ function ws_ai_deliver($row, $text, $proposals)
 
     $channel = ws_channel($row['channel_id']);
 
-    if (!$channel || !ws_ai_channel_allowed($channel)) {
-        ws_ai_finish_fail($row, lang('Pinegrap AI may not be asked in this channel.'));
+    if (!$channel || !ws_ai_loop_channel_allowed($channel)) {
+        ws_ai_finish_fail($row, ws_ai_loop_sentence('channel'));
         return array('ok' => true, 'error' => '');
     }
 
@@ -3566,7 +3633,7 @@ function ws_ai_followed_sentence()
 function ws_ai_briefing($row, $asker, $agent = 'ai')
 {
     $claude = ($agent === 'claude');
-    $allowed = $claude ? 'ws_claude_channel_allowed' : 'ws_ai_channel_allowed';
+    $allowed = $claude ? 'ws_claude_channel_allowed' : 'ws_ai_loop_channel_allowed';
     $more = $claude ? 'GET /workspace/channels/{id}/context reads them' : 'read_channel reads them';
     $message = null;
     $parts = array();
@@ -3678,7 +3745,7 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
         }
 
         if (!$allowed($channel)) {
-            return $fail($claude ? lang('Claude may not be asked in this channel.') : lang('Pinegrap AI may not be asked in this channel.'));
+            return $fail($claude ? lang('Claude may not be asked in this channel.') : ws_ai_loop_sentence('channel'));
         }
 
         $message = ws_message($row['message_id']);

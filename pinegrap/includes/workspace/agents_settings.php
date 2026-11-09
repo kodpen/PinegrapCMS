@@ -277,9 +277,11 @@ function ws_agents_settings_card($self_url, $viewer)
         $list = '<p class="small fg-secondary mb-0">' . h(lang('No agent yet. An agent is called by its handle in the channels it is added to.')) . '</p>';
     }
 
+    // A key of its own: "Agents" is the real-estate template's estate agents,
+    // worded "Danışmanlar" in Turkish.
     return '
         <div class="card mt-7" id="ws-agents">
-            <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-robot me-1" aria-hidden="true"></i>' . h(lang('Agents')) . '</h2></div>
+            <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-robot me-1" aria-hidden="true"></i>' . h(lang('Workspace agents')) . '</h2></div>
             <div class="card-body">
                 <p class="small fg-secondary">' . h(lang('Agents act as members of the channels they are added to, each through its own application and within the tier the channel\'s manager allows.')) . '</p>
                 ' . $list . '

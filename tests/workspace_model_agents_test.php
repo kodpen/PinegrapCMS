@@ -5,8 +5,10 @@
  * Tests for the model assistants (includes/workspace/model_agents.php) that
  * need no database: the providers, the address and headers of a call, the
  * body made fit for each API, the request's agent, the hold, the address
- * check, the config a running assistant sees, and that ai.php reaches the
- * gateway's licence and hold only for Pinegrap AI's own requests.
+ * check, the config a running assistant sees, that ai.php reaches the
+ * gateway's licence and hold only for Pinegrap AI's own requests, that the
+ * loop's failure sentences name the assistant, and that its own row in a
+ * channel decides whether it is asked there.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -155,4 +157,146 @@ function test_workspace_model_ai_hooks()
 	}
 
 	pg_assert_true(strpos(workspace_model_agents_test_source('ws_ai_kick'), 'ws_model_kick(') < strpos(workspace_model_agents_test_source('ws_ai_kick'), "ws_ai_config()['enabled']"), 'the assistants run whether Pinegrap AI is on or not');
+}
+
+// A model assistant as ws_model_running() holds it while its request is
+// answered.
+function workspace_model_agents_test_running()
+{
+	return array('id' => 7, 'kind' => 'model', 'handle' => 'gemini', 'name' => 'Gemini Helper', 'provider' => 'gemini', 'model' => 'gemini-2.5-flash', 'app_id' => 8);
+}
+
+// The loop's failure sentences name whoever answers: Pinegrap AI for its own
+// requests, the model assistant by its name while one runs.
+function test_workspace_model_loop_sentences_name_the_assistant()
+{
+	$which = array('unreachable', 'no_model', 'undone', 'unfinished', 'channel');
+
+	pg_assert_same(null, ws_model_running());
+
+	foreach ($which as $name) {
+		pg_assert_contains('Pinegrap AI', ws_ai_loop_sentence($name), $name . ': Pinegrap AI\'s own request keeps its wording');
+	}
+
+	pg_assert_same(lang('Pinegrap AI could not be reached or took too long to answer.'), ws_ai_loop_sentence('unreachable'));
+	pg_assert_same(lang('Pinegrap AI lists no model to answer with.'), ws_ai_loop_sentence('no_model'));
+	pg_assert_same(lang('Pinegrap AI could not do it'), ws_ai_loop_sentence('undone'));
+	pg_assert_same(lang('Pinegrap AI could not finish the answer.'), ws_ai_loop_sentence('unfinished'));
+	pg_assert_same(lang('Pinegrap AI may not be asked in this channel.'), ws_ai_loop_sentence('channel'));
+	pg_assert_same('', ws_ai_loop_sentence('nothing'), 'an unknown sentence is none');
+
+	ws_model_running(workspace_model_agents_test_running());
+
+	try {
+		foreach ($which as $name) {
+			$said = ws_ai_loop_sentence($name);
+			pg_assert_contains('Gemini Helper', $said, $name . ': the assistant by its name');
+			pg_assert_false(strpos($said, 'Pinegrap AI') !== false, $name . ': never as Pinegrap AI');
+			pg_assert_same(ws_model_loop_sentence(ws_model_running(), $name), $said, $name . ': the assistant\'s own sentence');
+		}
+
+		pg_assert_same(lang(array('string' => '{var:1} could not be reached or took too long to answer.', 'vars' => 'Gemini Helper')), ws_ai_loop_sentence('unreachable'));
+		pg_assert_same(lang(array('string' => '{var:1} could not do it', 'vars' => 'Gemini Helper')), ws_ai_loop_sentence('undone'));
+		pg_assert_same('', ws_ai_loop_sentence('nothing'));
+	} finally {
+		ws_model_running(null);
+	}
+}
+
+// A call that failed at the assistant's own API is told with the assistant's
+// name wherever the loop asks for the sentence (a draft made inside its
+// request through pg_ai_chat(), say), never as Pinegrap AI's.
+function test_workspace_model_http_error_names_the_assistant()
+{
+	$timeout = array('http' => 0, 'json' => null, 'body' => '', 'headers' => '', 'errno' => 28, 'error' => 'Operation timed out');
+	$refused = array('http' => 500, 'json' => array('error' => array('message' => 'overloaded')), 'body' => '', 'headers' => '', 'errno' => 0, 'error' => '');
+
+	pg_assert_same(lang('Pinegrap AI did not answer in time.'), ws_ai_http_error($timeout), 'Pinegrap AI\'s own call');
+
+	ws_model_running(workspace_model_agents_test_running());
+
+	try {
+		pg_assert_same(lang(array('string' => '{var:1} did not answer in time.', 'vars' => 'Gemini Helper')), ws_ai_http_error($timeout), 'a time-out of the assistant\'s API');
+		pg_assert_same(ws_model_http_error(ws_model_running(), $refused), ws_ai_http_error($refused), 'an HTTP error of the assistant\'s API');
+		pg_assert_false(strpos(ws_ai_http_error($refused), 'Pinegrap AI') !== false, 'never as Pinegrap AI');
+	} finally {
+		ws_model_running(null);
+	}
+}
+
+// Where a model assistant may be asked: its own row in the channel decides,
+// as it decides an application agent's answer, so a private channel nobody
+// opened to Pinegrap AI does not keep out an assistant its people added.
+function test_workspace_model_channel_verdict()
+{
+	$row = array('channel_id' => 30, 'agent_id' => 7, 'allowed' => 1);
+	$private = array('id' => 30, 'kind' => 'private', 'ai_access' => 0);
+
+	pg_assert_true(ws_model_channel_verdict($private, false, $row), 'a private channel nobody opened to Pinegrap AI');
+	pg_assert_true(ws_model_channel_verdict(array('ai_access' => 1) + $private, false, $row), 'a private channel opened to Pinegrap AI');
+	pg_assert_true(ws_model_channel_verdict(array('kind' => 'public') + $private, false, $row), 'a public channel');
+
+	pg_assert_false(ws_model_channel_verdict($private, false, null), 'the assistant is not in the channel');
+	pg_assert_false(ws_model_channel_verdict(array('kind' => 'public') + $private, false, null), 'nor in a public one it was not added to');
+	pg_assert_false(ws_model_channel_verdict($private, false, array('allowed' => 0) + $row), 'its row no longer allows it');
+
+	pg_assert_false(ws_model_channel_verdict(array('ai_access' => 2) + $private, false, $row), 'a channel closed to Pinegrap AI on purpose stays closed');
+	pg_assert_false(ws_model_channel_verdict(array('kind' => 'public', 'ai_access' => 2) + $private, false, $row), 'a public one closed on purpose too');
+	pg_assert_false(ws_model_channel_verdict(array('kind' => 'guest') + $private, false, $row), 'never in a guest\'s room');
+	pg_assert_false(ws_model_channel_verdict($private, true, $row), 'never where a guest reads along');
+	pg_assert_false(ws_model_channel_verdict(null, false, $row), 'no channel');
+}
+
+// Inside the loop the channel is asked about whoever answers, at every place
+// that decides whether a request may be answered in it; Pinegrap AI's own
+// switch stays the rule for Pinegrap AI.
+function test_workspace_model_loop_asks_about_the_one_answering()
+{
+	foreach (array('ws_ai_request_channel', 'ws_ai_finish_fail', 'ws_ai_deliver') as $function) {
+		$source = workspace_model_agents_test_source($function);
+		pg_assert_contains('ws_ai_loop_channel_allowed($channel)', $source, $function . ' asks about the one answering');
+		pg_assert_false(strpos($source, 'ws_ai_channel_allowed(') !== false, $function . ': not by Pinegrap AI\'s switch alone');
+	}
+
+	pg_assert_contains("\$claude ? 'ws_claude_channel_allowed' : 'ws_ai_loop_channel_allowed'", workspace_model_agents_test_source('ws_ai_briefing'), 'the briefing: Claude by its own check, otherwise the one answering');
+
+	$loop = workspace_model_agents_test_source('ws_ai_loop_channel_allowed');
+	$model = strpos($loop, 'ws_model_channel_allowed($running, $channel)');
+	$own = strpos($loop, 'ws_ai_channel_allowed($channel)');
+	pg_assert_true(($model !== false) && ($own !== false), 'the assistant\'s rule and Pinegrap AI\'s');
+	pg_assert_true($model < $own, 'the running assistant first');
+
+	$allowed = workspace_model_agents_test_source('ws_model_channel_allowed');
+	pg_assert_contains("ws_channel_agent_row((int) \$channel['id'], (int) \$agent['id'])", $allowed, 'its row in the channel the request was made in');
+	pg_assert_contains('ws_thread_parent_channel($channel)', $allowed, 'a discussion follows its channel for what closes it');
+	pg_assert_contains('ws_channel_share_open(', $allowed, 'a channel shared with a guest');
+	pg_assert_contains('ws_model_channel_verdict(', $allowed);
+
+	pg_assert_false(ws_ai_loop_channel_allowed(array('id' => 31, 'kind' => 'guest')), 'no assistant running: Pinegrap AI\'s rule, never in a guest\'s room');
+	pg_assert_same(null, ws_model_running());
+}
+
+// The loop's own places say the sentences through ws_ai_loop_sentence(), so
+// none of them names Pinegrap AI for a model assistant's request.
+function test_workspace_model_loop_sentences_are_used()
+{
+	$places = array(
+		'ws_ai_step'     => array('unreachable', 'no_model', 'undone'),
+		'ws_ai_final'    => array('unfinished'),
+		'ws_ai_deliver'  => array('channel'),
+		'ws_ai_briefing' => array('channel'),
+	);
+
+	foreach ($places as $function => $sentences) {
+		$source = workspace_model_agents_test_source($function);
+
+		foreach ($sentences as $name) {
+			pg_assert_contains("ws_ai_loop_sentence('" . $name . "')", $source, $function . ' says ' . $name . ' for the one answering');
+		}
+
+		pg_assert_same(0, preg_match("/lang\('Pinegrap AI (could not be reached or took|lists no model|could not do it|could not finish|may not be asked in this channel)/", $source), $function . ' holds none of them for Pinegrap AI alone');
+	}
+
+	$error = workspace_model_agents_test_source('ws_ai_http_error');
+	pg_assert_true(strpos($error, 'ws_model_http_error($running, $response)') < strpos($error, "lang(array('string' => 'Pinegrap AI answered HTTP"), 'a failed call turns to the assistant first');
 }
