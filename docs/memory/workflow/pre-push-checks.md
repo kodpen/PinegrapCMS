@@ -4,14 +4,14 @@ description: git push runs tools/pre_push.sh first (installed when a cloud sessi
 ---
 
 ## Why does a push run checks?
-- A failed workflow run on a pull request branch sends a "Run failed" e-mail to the account that pushed, and cloud sessions push under the owner's account. From 2026-10-21 08:00 to 2026-10-23 06:00 (UTC) 16 runs failed on PR branches: 7 at `tools/memory_index.php --check` (an index not regenerated, a file over 4096 bytes, a description over 200 characters; often a memory file edited after the PR went up, for its PR number), 4 in the unit tests, 3 from one parse error (PHP checks, the install check and the Docker check), 1 PHPCompatibility finding, 1 pecl.php.net outage. 12 of them fail on the pushed commit in a session too.
+- A failed workflow run on a pull request branch sends a "Run failed" e-mail to the account that pushed, and cloud sessions push under the owner's account. From 2026-10-21 08:00 to 2026-10-23 06:00 (UTC) 16 runs failed on PR branches: 7 at `tools/memory_index.php --check` (an index not regenerated, a file or description too long; often a memory file edited after the PR went up, for its PR number), 4 in the unit tests, 3 from one parse error (three workflows), 1 PHPCompatibility finding, 1 pecl.php.net outage. 12 of them fail on the pushed commit in a session too.
 
 ## What does it run, and when?
 - In a temporary worktree of the commit being pushed (about a second to make; edits, ignored files and a sparse checkout do not count). What runs follows from what the branch changes since it left `origin/development`, as CI checks the whole pull request:
   - every push: the memory index and, with a base, the branch's commits and changelog (`tools/check_pr.php`, `branch-guards.md`);
   - any change outside `docs/`, `.github/`, `.claude/`, the root `*.md` files and `license.txt`: `php -l` of the changed PHP files, `check_lang`, `check_bindings`, `check_api_schema`, `check_audit_rules`, `check_copies`, `check_bs6 --strict`, `build_css --check`, the unit tests;
   - a change under `pinegrap/assets/js/`, to `pg_js_bundles()`'s file or to `tools/build_js.php`: `node --check` of the three panel scripts CI checks and `tools/build_js.php --check`; skipped with a note when node, npx or the npm registry is missing.
-- A documentation-only push takes under two seconds, a code push 25-40 (the unit tests take 20-30). Without `origin/development` it runs everything, the whole-tree `tools/lint.php` included (about 75 seconds). Deletions and tags are not checked.
+- A documentation-only push takes under two seconds, a code push as long as its unit tests (2026-11: 2 minutes on CI, 4-5 on Windows). Without `origin/development` it runs everything, the whole-tree `tools/lint.php` too. Deletions and tags are not checked.
 - CI alone runs PHPStan and PHPCompatibility (minutes), the code editor bundle (`npm ci`), the install check and the Docker check. A fast step added to `php-checks.yml` is added to the script too.
 
 ## What can it not see?
@@ -23,7 +23,7 @@ description: git push runs tools/pre_push.sh first (installed when a cloud sessi
 - By hand: `bash tools/pre_push.sh` checks HEAD the same way, `bash tools/pre_push.sh <base>` against another base.
 
 ## Does it work on Windows?
-- Yes, from Git Bash with a Windows PHP; since #2091 the commit check too (`branch-guards.md`).
+- Yes, from Git Bash with a Windows PHP; since #2091 the commit check too (`branch-guards.md`). A limit a test left could stop the unit tests (`unit-test-time-limit.md`).
 
 ## May a push skip it?
 - Not to push a commit that fails: fix it and push again. `git push --no-verify` only when the script itself is broken (say so in the PR), and fix the script.
