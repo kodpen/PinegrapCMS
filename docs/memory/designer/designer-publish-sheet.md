@@ -27,4 +27,4 @@ description: The visual designer's Publish sheet: which pages it lists and check
 - A save that did not run (shared components loading, view mode, nothing to publish, a server or network error) calls `report(null)`: the sheet gives the pick back; the editor already said why.
 - Take off the site still closes the sheet first: it asks in a confirm that must not sit under the sheet.
 
-Plan steps D6 (PR #8009) and D7 of `plans/designer-performance-and-publish.md`.
+Built in #8009 (the sheet) and #8073 (the feedback during and after the save).

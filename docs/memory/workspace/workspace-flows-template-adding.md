@@ -4,7 +4,7 @@ description: How a built-in flow template is added and tested (flow_templates.ph
 ---
 
 ## Why ready templates?
-- The owner asked (2026-11-05, plan flows-next) for ready flows people pick instead of building them box by box: a counter flow built from boxes alone was too hard to follow. Steps T1-T14 added fourteen of them (#7113, #7116, #7435, #7454, #7461, #7486, #7505).
+- The owner asked (2026-11-05) for ready flows people pick instead of building them box by box: a counter flow built from boxes alone was too hard to follow. Steps T1-T14 added fourteen of them (#7113, #7116, #7435, #7454, #7461, #7486, #7505).
 
 ## How is a template added?
 - An entry in `ws_flow_templates()` (`includes/workspace/flow_templates.php`) in the form `workspace-flows-template-format.md` gives, with the settings asked when it is used (`workspace-flows-template-setup.md`); every text through `php tools/tr_add.php`.

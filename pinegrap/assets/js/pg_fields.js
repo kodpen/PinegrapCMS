@@ -4,7 +4,7 @@
  * Panel field widgets behind one interface: pgChips, pgCombobox,
  * pgDatePicker and pgDateTimeField.
  *
- * The panel moves to Bootstrap 6 (docs/memory/plans/bootstrap-6-panel.md),
+ * The panel runs Bootstrap 6 (docs/memory/ui/bootstrap-6.md),
  * whose Chips and Combobox replace tagin and select2; dates and times run on
  * the one date-and-time control of pg_datetime.js, which replaced the jQuery
  * UI pickers and Bootstrap 6 Datepicker. Screens mark a field with a data-pg-* hook and read or write it

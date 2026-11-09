@@ -13,16 +13,16 @@ description: How an ERP invoice goes through the e-document provider: the send g
 
 ## How does a send run? (`erp_edoc_invoice_send()`)
 - `sending` is set before the call only where status, id and `updated_at` are as the gate read them (`erp_edoc_invoice_send_claim_where()`); else it stops, so two sends at once make one (#7045). The code of the account's linked provider card goes along (`erp_edoc_account_link_code()`).
-- Failure: `error` + `edoc_error` (the provider's words). Success: `edoc_provider`, `edoc_external_id`, the driver's status, `edoc_sent_at`, and `gib_uuid` / `gib_number` when the answer has them; event `erp.invoice.edoc_changed`.
-- Both drivers answer `created`: a draft at the provider, not a document yet. With "Hand the document to GİB in the same step" on (`config.erp_edoc_autosend`, 4.63, default 1, `erp_edoc_autosend()`) the same click runs `erp_edoc_invoice_submit()`; off, the operator looks the draft over and presses Hand to GİB. A failed hand-over leaves `created` with the provider's words; no second draft is ever made.
-- `erp_edoc_invoice_submit()` never creates: it refuses `sent` / `accepted` and writes `sent` on success.
+- Failure: `error` + `edoc_error` (provider's words). Success: `edoc_provider`, `edoc_external_id`, the driver's status, `edoc_sent_at`, and `gib_uuid` / `gib_number` when the answer has them; event `erp.invoice.edoc_changed`.
+- Both drivers answer `created`: a draft at the provider, not a document yet. With "Hand the document to GİB in the same step" on (`config.erp_edoc_autosend`, 4.63, default 1, `erp_edoc_autosend()`) the same click runs `erp_edoc_invoice_submit()`; off, the operator looks the draft over and presses Hand to GİB. A failed hand-over leaves `created` with the provider's words; no second draft is made.
+- `erp_edoc_invoice_submit()` never creates: refuses `sent` / `accepted`, writes `sent` on success.
 
 ## How is the status read?
-- `erp_edoc_invoice_poll()` asks the provider that carries the document: a button on the invoice, the order card, the invoice list's bulk action. Nothing polls on its own, nothing processes `erp_edoc_queue`, and neither provider has a webhook.
+- `erp_edoc_invoice_poll()` asks the provider that carries the document: a button on the invoice, the order card, the list's bulk action. Nothing polls on its own or processes `erp_edoc_queue`; neither provider has a webhook.
 - A `gone` answer (the provider has no such record) also clears `edoc_external_id`, `edoc_kind`, `gib_*`, `edoc_sent_at` (`erp_edoc_invoice_poll_gone_set()`): Send is open again (erp-parasut-send-failures.md, #1626).
 - A poll may name the provider card the invoice landed on (`party`); an account without a card is then linked to it (`erp_edoc_account_link_from_invoice()`).
 
 ## How is a sent document taken back?
 - Screens never decide per provider: `erp_edoc_invoice_cancellable($invoice)` answers `ok, manual, reason, url` from the row alone (the driver's `cancellable()`, else a general answer); `erp_edoc_invoice_provider_cancel()` runs the driver's `cancel_invoice()`: delete a draft, cancel through the API, or check the operator did it on the provider's screen (`url`).
 - The local cancel (`erp_invoice_cancel()`) runs only after the provider agrees; a refusal leaves both sides as they were. A deleted draft clears `edoc_external_id` (`none`); a cancelled document keeps its numbers (`cancelled`).
-- A sent e-Fatura is never cancelled: the buyer answers with a return invoice. Per order: erp-order-cancel-and-refund.md; per provider: erp-parasut-driver.md, erp-isbasi-poll-documents-screens.md.
+- A sent e-Fatura is never cancelled: the buyer answers with a return invoice. Per case: erp-edoc-cancel-paths.md; per order: erp-order-cancel-and-refund.md; per provider: erp-parasut-driver.md, erp-isbasi-poll-documents-screens.md.

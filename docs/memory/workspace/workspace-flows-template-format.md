@@ -17,7 +17,7 @@ description: Flow templates (G1 #2161, flow_templates.php): format, the schedule
 - A follow-up's `{{result}}` becomes `{{node.check.text}}`: a flow fills no `{{result}}`, the box's sentence is the same text.
 - A template needing a count the person cannot read is left out (digest needs one of its counts, overdue, stock, invoices theirs).
 - welcome and the event ones of workspace_events.js (merge plan R1): a `join` start (0: any public channel) posting in the channel joined (-1), only with `join`; order_event, form_event, stock_event, overdue_event, approval_event an `event` start, each only when its event is in `events` (`ws_events_js_config()` list); titles as `ws_events_js_strings()`.
-- Event templates with a wait, an approval or a follow-up (plan flows-next): `workspace-flows-template-events.md`.
+- Event templates with a wait, an approval or a follow-up: `workspace-flows-template-events.md`.
 
 ## Which day does a start box get?
 - A day of the site's calendar, as the scheduler reads date + time: from `today` (`date('Y-m-d')`) at noon in UTC (`DateTimeImmutable`). `strtotime('next monday')` in PHP's zone gave the Sunday before east of UTC (PR #2230); tested in five zones.

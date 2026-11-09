@@ -23,4 +23,4 @@ description: data-pg-source combobox (google_product_category) on Bootstrap 6 Co
 - product_builder prints the stored category as `path  (id)` through `pg_pb_google_taxonomy_lookup()`, as the search answers it, not the bare id.
 - Tests: `tests/pg_fields_test.php` (`test_pg_fields_combobox_server_search`).
 
-Related: docs/memory/ui/pg-combobox.md, docs/memory/ui/pg-field-wrappers.md, docs/memory/plans/bootstrap-6-components.md
+Related: docs/memory/ui/pg-combobox.md, docs/memory/ui/pg-field-wrappers.md

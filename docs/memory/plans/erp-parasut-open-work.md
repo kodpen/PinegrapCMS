@@ -1,10 +1,10 @@
 ---
 name: erp-parasut-open-work
-description: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442); where to start
+description: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
 ---
 
 ## Where does it stand?
-- The legacy order buttons, product and stock sync, inbox, connection card and driver fixes are merged: #1405-#1418, #1458, #1505-#1518, #1530, #1543, #1544, #1599, #1600, #1626-#1631, #1660, #1682. What each does: the `erp/erp-parasut-*.md` topic files.
+- The legacy order buttons, product and stock sync, inbox, connection card and driver fixes are merged (#1405-#1682); what each does: the `erp/erp-parasut-*.md` topic files.
 - The demo company 830533's API key expired on 2026-10-25. Everything changed after that is unit-tested only. The demo was left at its baseline: 13 contacts, 0 sales invoices, 0 shipment documents, 9 products (archived included: 14 / 0 / 0 / 12).
 
 ## What waits for a new demo key?
@@ -26,7 +26,11 @@ description: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#16
 
 ## Which small fixes are left? (one PR each, unit tests)
 - Done: #1628 #2032, #1629 #2001, #1630 #2032, #1626 #2025.
-- Bigger, kept elsewhere: the `erp_edoc_queue` worker (`erp-parasut-driver-design.md`); incoming e-invoices through `GET e_invoices`, which needs a company with an e-document integration.
+
+## What bigger work is open?
+- **Queue worker** for `erp_edoc_queue` (nothing processes it; Paraşüt v4 has no webhook): create, convert, poll each tick while the 15-minute job window is open, reconcile from the document at 5 min, 30 min, 2 h, 6 h, 24 h, pay, cancel; after 6 tries `abandoned` and a panel warning. `erp_edoc_job` in `pg_cron_jobs()` (`'inline' => true`, 10 s budget) and a standalone `erp_edoc_job.php`. The e-document error notification and the automatic invoice's send wait on it (`erp/erp-auto-invoice-edocument.md`).
+- **Incoming e-invoices:** the driver declares no `inbox`; `purchase_bills` are Paraşüt's own expense records. Demo probe 2026-10-24 (empty): `GET e_invoices` 200 (filters `issue_date`, `scenario`, `net_total`; includes `invoice`, `responses`), `GET inbound_e_despatches` 200 (incoming e-waybills). Whether incoming ones sit in `e_invoices` needs a company with an e-document integration (`erp/erp-not-built-on-purpose.md`).
+- A list the driver gains follows `meta.total_pages`: `page[size]` is capped at 25.
 
 ## Where to start?
 - Only in the owner's local session on the dev machine (dev database, the demo key: `workflow/sandbox-and-environment.md`); a cloud worker never takes these items, so a coordinator does not offer them.
