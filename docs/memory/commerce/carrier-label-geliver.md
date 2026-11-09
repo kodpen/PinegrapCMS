@@ -9,7 +9,7 @@ description: Geliver label driver (2026.11.0, #3096): two-step flow, offers, bar
 
 ## How does create() work?
 - `$shipment`: see the file header (recipient `state_code` = plate, parcel cm/kg, total in minor units). `districtName` = `district`, else `city` (`tr-district-carriers.md`).
-- `POST /shipments` → offers; until `percentageCompleted` is 100 it reads `GET /shipments/{id}` (`PG_LABEL_GELIVER_OFFER_READS` = 15, 2 s apart). Offer: the asked service's (shipment's, else account's), else `offers.cheapest`, else the list's lowest `totalAmount`/`amount`. Test mode ignores the service. No offer → plain failure; the unpaid shipment stays at Geliver ("Teklif alındı").
+- `POST /shipments` → offers; until `percentageCompleted` is 100 or `totalOffersCompleted` reaches `totalOffersRequested` (seen stuck at 99) it reads `GET /shipments/{id}` (`PG_LABEL_GELIVER_OFFER_READS` = 15, 2 s apart). Offer: the asked service's (shipment's, else account's), else `offers.cheapest`, else the list's lowest `totalAmount`/`amount`. Test mode ignores the service. No offer → plain failure; the unpaid shipment stays at Geliver ("Teklif alındı").
 - Why: on dev (2026-11-09) the test offer came after ~18 s with `cheapest: null`; 5 reads and a cheapest-only pick failed.
 - Checkout fees never come from Geliver, only from the shop's shipping methods.
 - `POST /transactions {offerID}` buys the label. A transport error after the request went out, a 5xx or a non-JSON answer is `unclear` (it may have been charged); `result: false` (E1066 balance etc.) is a plain refusal.
@@ -24,4 +24,4 @@ description: Geliver label driver (2026.11.0, #3096): two-step flow, offers, bar
 
 ## How is it tested?
 - `tests/carrier_label_geliver_test.php` through `pg_label_call()` with `pg_label_geliver_transport()` set to a stand-in (no waiting while one is set) and answers in `tests/fixtures/geliver/` built from the reference's examples.
-- Live with the owner's test key on dev (2026-11-09): token test, `POST /shipments` and the offers read work. Unverified: a purchase, the label host (`labels3.geliver.io` in the reference), error statuses, `cityName` without `cityCode`.
+- Live with the owner's test key on dev (2026-11-09): token test, `POST /shipments`, offers read work; `POST /transactions` refuses an invalid recipient phone (`0000000000`). Unverified: a purchase, the label host (`labels3.geliver.io` in the reference), error statuses, `cityName` without `cityCode`.
