@@ -304,8 +304,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                if (empty($map)) {
-                    $liveform->add_error(h(lang('Choose at least one column to fill.')));
+                $checked = empty($map) ? null : ws_wtable_import_check($viewer, $table, $kept, array('map' => $map));
+
+                if (!$checked || !$checked['ok']) {
+                    $liveform->add_error(h($checked ? ws_wtable_screen_error_text($checked['error']) : lang('Choose at least one column to fill.')));
                     $back = $table_url . '&import=1#ws-wt-import';
                     break;
                 }
@@ -325,8 +327,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                if (empty($plan)) {
-                    $liveform->add_error(h(lang('Choose at least one column to fill.')));
+                $checked = empty($plan) ? null : ws_wtable_import_check($viewer, null, $kept, array('name' => $field('name'), 'plan' => $plan));
+
+                if (!$checked || !$checked['ok']) {
+                    $liveform->add_error(h($checked ? (isset($checked['column']) ? $checked['column'] . ': ' : '') . ws_wtable_screen_error_text($checked['error']) : lang('Choose at least one column to fill.')));
                     $back = $self_url . '?import=1#ws-wt-import';
                     break;
                 }

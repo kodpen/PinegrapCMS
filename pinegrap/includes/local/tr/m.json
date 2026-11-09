@@ -1918,6 +1918,7 @@
     "manager": "menajer",
     "manufacturing, jobs": "üretim, istihdam",
     "map": "harita",
+    "map goes with table_id, an existing table.": "map, table_id ile, yani var olan bir tabloyla gönderilir.",
     "map, habitat number, zone, where, route, toilets, café": "harita, yaşam alanı numarası, bölge, nerede, güzergâh, tuvaletler, kafe",
     "market-news": "piyasa-haberleri",
     "marketing, growth, brand, content, analytics": "pazarlama, büyüme, marka, içerik, analitik",

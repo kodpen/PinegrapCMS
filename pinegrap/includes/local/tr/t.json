@@ -3657,6 +3657,7 @@
     "The file is large; only its first part was counted. The import reads all of it.": "Dosya büyük; yalnızca ilk kısmı sayıldı. İçe aktarma dosyanın tamamını okur.",
     "The file is larger than 1 MB. Please upload it in parts.": "Dosya 1 MB'tan büyük. Lütfen parçalar halinde yükleyin.",
     "The file is larger than 5 MB.": "Dosya 5 MB'tan büyük.",
+    "The file is larger than an upload may be.": "Dosya, bir yüklemenin olabileceğinden büyük.",
     "The file is larger than the server accepts.": "Dosya sunucunun kabul ettiğinden büyük.",
     "The file is larger than the {var:1} bytes this site accepts.": "Dosya, bu sitenin kabul ettiği {var:1} baytı aşıyor.",
     "The file is larger than this server allows.": "Dosya bu sunucunun izin verdiğinden büyük.",
@@ -6447,6 +6448,7 @@
     "The souks, the gardens and the palaces with a local guide.": "Yerel bir rehberle çarşılar, bahçeler ve saraylar.",
     "The sound of a voice message is sent to {var:1} with the key below, and the text written from it is kept beside the message. Public channels are written out, private ones only when their manager allows it. Recordings longer than {var:2} minutes are not sent.": "Sesli mesajın sesi aşağıdaki anahtarla {var:1} hizmetine gönderilir ve ondan yazılan metin mesajın yanında saklanır. Herkese açık kanallar yazıya dökülür, özel kanallar yalnızca yöneticileri izin verirse. {var:2} dakikadan uzun kayıtlar gönderilmez.",
     "The source code in your own repository from day one": "İlk günden kaynak kodu kendi deponuzda",
+    "The source has no column {var:1}.": "Kaynakta {var:1} sütunu yok.",
     "The spa is open from 9:00 to 20:00 every day.": "Spa her gün 9:00 ile 20:00 arasında açıktır.",
     "The space": "Alan",
     "The space for the afternoon and evening": "Öğleden sonra ve akşam için alan",
@@ -10648,5 +10650,6 @@
     "two-step, two factor, 2fa, totp, authenticator, mfa, verification code": "iki adımlı, iki faktörlü, 2fa, totp, doğrulama uygulaması, mfa, doğrulama kodu, two-step, two factor, authenticator, verification code",
     "type": "tür",
     "type is one of {var:1}.": "type şunlardan biri olmalı: {var:1}.",
-    "type must be one of: {var:1}": "type şunlardan biri olmalıdır: {var:1}"
+    "type must be one of: {var:1}": "type şunlardan biri olmalıdır: {var:1}",
+    "types goes with name, a new table.": "types, name ile, yani yeni bir tabloyla gönderilir."
 }

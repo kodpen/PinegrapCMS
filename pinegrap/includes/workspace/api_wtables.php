@@ -97,6 +97,27 @@ function ws_wtable_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.tables.import',
+            'method'      => 'POST',
+            'path'        => '/workspace/tables/import',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_wtables_import',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceTableImport',
+            'summary'     => 'Import rows into a workflow table',
+            'description' => 'Brings the rows of a CSV, Excel (xlsx, xls) or OpenDocument file, or of a table inside a note, into a workflow table, as the Tables screen does. The source is file_id (a file of the site the application may read: it also needs files:read, and only the files GET /files lists are reached) or note_id with note_table, the table\'s number in the note counted from 0 (a note the owner may read). Its first row names the columns; at most ' . $limits['columns'] . ' columns and ' . $limits['rows'] . ' rows. The target is table_id (a table the owner may change) or name (a new table of the owner\'s). Into a table, source columns are paired with its columns by name, case and spaces aside, a formula column never; map pairs them instead (source column name => column id, 0 leaving it out). A new table gets a column per source column in the type its values suggest; types names another (source column name => text, number, money, date, status or checkbox, or empty to leave it out). Each row is checked as POST /workspace/tables/{id}/rows checks it: a refused row is reported (line counts the header as 1) and the others are written; no workspace.wtable.row.* event is sent. With dry_run nothing is written and the answer tells the columns it would make or fill, the rows it would add and every row refused. A source without rows or with no column to fill is refused with 422 validation_failed (no_rows, map_empty).' . $errors,
+            'params'      => array(
+                array('name' => 'file_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A file of the site to read: csv, xlsx, xlsm, xls or ods.'),
+                array('name' => 'note_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A note holding the table to read, instead of a file.'),
+                array('name' => 'note_table', 'in' => 'body', 'type' => 'int', 'min' => 0, 'default' => 0, 'description' => 'Which table of the note, counted from 0.'),
+                array('name' => 'table_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The table the rows are added to.'),
+                array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => $limits['name'], 'description' => 'The name of a new table made from the source, instead of table_id.'),
+                array('name' => 'map', 'in' => 'body', 'type' => 'object', 'description' => 'With table_id: source column name => column id (0 leaves it out). Left out, columns pair by name.'),
+                array('name' => 'types', 'in' => 'body', 'type' => 'object', 'description' => 'With name: source column name => the new column\'s type (text, number, money, date, status, checkbox; empty leaves it out). Left out, each type is guessed from the values.'),
+            ),
+        ),
+
+        array(
             'id'           => 'workspace.tables.update',
             'method'       => 'POST',
             'also_accepts' => array('PATCH'),
@@ -466,6 +487,37 @@ function ws_api_wtable_row_schema()
 }
 
 /**
+ * What an import did: the table, the rows added and those refused.
+ *
+ * @return array
+ */
+function ws_api_wtable_import_schema()
+{
+    return array(
+        'table'         => 'WorkspaceTable',
+        'added'         => 'integer',
+        'refused_count' => 'integer',
+        'refused'       => 'WorkspaceTableImportRefusal[]',
+        'more'          => 'boolean',
+    );
+}
+
+/**
+ * One refused row of an import: its line in the source (the header is 1),
+ * the code, and the refused cells by column name.
+ *
+ * @return array
+ */
+function ws_api_wtable_import_refusal_schema()
+{
+    return array(
+        'line'   => 'integer',
+        'error'  => 'string',
+        'errors' => 'object',
+    );
+}
+
+/**
  * A share of a table: what it was given and what it gives now.
  *
  * @param array $share ws_wtable_shares_list() row
@@ -737,6 +789,205 @@ function ws_api_wtables_create($params)
     $table = ws_api_wtable_or_404($viewer, $result['table_id']);
 
     api_ok(ws_api_wtable_present($table, array()), 201);
+}
+
+/**
+ * The table of a site file the application may read (one GET /files
+ * lists), read as the panel reads an upload, or the API's refusal.
+ *
+ * @param int $file_id
+ * @param int $max lines to keep, header included
+ * @return array ws_wtable_import_file_table()
+ */
+function ws_api_wtable_import_file($file_id, $max)
+{
+    api_require_scope('files:read');
+
+    $row = api_row(api_file_select() . " WHERE files.id = '" . (int) $file_id . "' AND " . api_files_public_clause() . " LIMIT 1");
+    $name = pg_basename((string) ($row['name'] ?? ''));
+    // Through the local copy: the bytes may be kept in object storage.
+    $path = ($row === null) ? '' : pg_file_local_copy((int) $file_id);
+
+    if (($row === null) || ($name === '') || ($path === '') || !is_file($path)) {
+        api_fail_not_found(lang('File'));
+    }
+
+    if ((int) filesize($path) > (int) pg_upload_limits()['file_max']) {
+        api_fail_validation(lang('The file is larger than an upload may be.'), 'file_id');
+    }
+
+    return ws_wtable_import_file_table($path, $name, $max);
+}
+
+/**
+ * The pairing asked for: source index => column id from map (by source
+ * column name), else the columns matched by name.
+ *
+ * @param string[]   $names
+ * @param array      $columns
+ * @param array|null $map source column name => column id
+ * @return array source index => column id
+ */
+function ws_api_wtable_import_map($names, $columns, $map)
+{
+    if (!is_array($map)) {
+        return ws_wtable_import_match($names, $columns)['map'];
+    }
+
+    $pairs = array();
+
+    foreach ($map as $source => $column_id) {
+        $index = array_search((string) $source, $names, true);
+
+        if ($index === false) {
+            api_fail_validation(lang(array('string' => 'The source has no column {var:1}.', 'vars' => (string) $source)), 'map');
+        }
+
+        if (!is_int($column_id) && !(is_string($column_id) && ctype_digit($column_id))) {
+            api_fail_validation(lang(array('string' => 'Refused: {var:1}.', 'vars' => 'column_id')), 'map');
+        }
+
+        if ((int) $column_id === 0) {
+            continue;
+        }
+
+        if (!isset($columns[(int) $column_id]) || !ws_wtable_type_stores((string) $columns[(int) $column_id]['type'])) {
+            api_fail_validation(lang(array('string' => 'Refused: {var:1}.', 'vars' => 'unknown_column ' . (int) $column_id)), 'map');
+        }
+
+        $pairs[(int) $index] = (int) $column_id;
+    }
+
+    return $pairs;
+}
+
+function ws_api_wtables_import($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_wtables_ready();
+
+    $file_id = (int) ($params['file_id'] ?? 0);
+    $note_id = (int) ($params['note_id'] ?? 0);
+    $table_id = (int) ($params['table_id'] ?? 0);
+    $name = trim((string) ($params['name'] ?? ''));
+
+    if (($file_id > 0) === ($note_id > 0)) {
+        api_fail_validation(lang('Send file_id or note_id, one of them.'), 'file_id');
+    }
+
+    if (($table_id > 0) === ($name !== '')) {
+        api_fail_validation(lang('Send table_id or name, one of them.'), 'table_id');
+    }
+
+    if (($table_id > 0) && isset($params['types'])) {
+        api_fail_validation(lang('types goes with name, a new table.'), 'types');
+    }
+
+    if (($name !== '') && isset($params['map'])) {
+        api_fail_validation(lang('map goes with table_id, an existing table.'), 'map');
+    }
+
+    $table = ($table_id > 0) ? ws_api_wtable_writable($viewer, $table_id) : null;
+    $limits = ws_wtable_limits();
+
+    if ($file_id > 0) {
+        $read = ws_api_wtable_import_file($file_id, $limits['rows'] + 1);
+    } else {
+        ws_api_note_or_404($viewer, $note_id);
+        $read = ws_wtable_import_note_read($viewer, $note_id, (int) ($params['note_table'] ?? 0), $limits['rows'] + 1);
+    }
+
+    if (!$read['ok']) {
+        api_fail_validation($read['error'], ($file_id > 0) ? 'file_id' : 'note_table');
+    }
+
+    if (count($read['table']) < 2) {
+        api_fail_validation(ws_api_wtable_message('no_rows'), 'rows');
+    }
+
+    if (count($read['table'][0]) > $limits['columns']) {
+        api_fail(409, 'too_many_columns', ws_api_wtable_message('too_many_columns'));
+    }
+
+    $names = ws_wtable_import_names($read['table'][0]);
+    $kept = array('names' => $names, 'rows' => array_slice($read['table'], 1));
+
+    if ($table !== null) {
+        $choice = array('map' => ws_api_wtable_import_map($names, ws_wtable_columns((int) $table['id']), isset($params['map']) ? (array) $params['map'] : null));
+    } else {
+        $types = isset($params['types']) ? (array) $params['types'] : array();
+
+        foreach ($types as $source => $type) {
+            if (!in_array($source, $names, true)) {
+                api_fail_validation(lang(array('string' => 'The source has no column {var:1}.', 'vars' => (string) $source)), 'types');
+            }
+
+            if (!is_string($type) || (($type !== '') && !in_array($type, ws_wtable_import_types(), true))) {
+                api_fail_validation(ws_api_wtable_message('type_unknown'), 'types');
+            }
+        }
+
+        $choice = array('name' => $name, 'plan' => ws_wtable_import_plan($names, $kept['rows'], $types));
+    }
+
+    $checked = ws_wtable_import_check($viewer, $table, $kept, $choice);
+
+    if (!$checked['ok']) {
+        ws_api_wtable_refused(isset($checked['column']) ? array_merge($checked, array('field' => 'types')) : $checked, lang('Table'));
+    }
+
+    $detail = array(
+        'table_id'      => $table ? (int) $table['id'] : null,
+        'columns'       => $checked['columns'],
+        'rows'          => $checked['rows'],
+        'refused_count' => $checked['refused_count'],
+        'refused'       => ws_api_wtable_import_refused($checked['refused']),
+        'more'          => !empty($read['more']),
+    );
+
+    api_dry_run_stop($table ? 'updated' : 'created', 'workspace_table', $detail);
+
+    @set_time_limit(300);
+
+    $result = ws_api_as_owner(function () use ($viewer, $table, $kept, $choice) {
+        if ($table !== null) {
+            return array('ok' => true, 'table_id' => (int) $table['id'], 'report' => ws_wtable_import_rows($viewer, $table, $kept['rows'], $choice['map']));
+        }
+
+        return ws_wtable_import_create($viewer, $choice['name'], $choice['plan'], $kept['rows']);
+    });
+
+    if (!$result['ok']) {
+        ws_api_wtable_refused($result + array('field' => '', 'status' => 422), lang('Table'));
+    }
+
+    $made = ws_api_wtable_or_404($viewer, (int) $result['table_id']);
+
+    api_ok(array(
+        'table'         => ws_api_wtable_present($made, ws_wtable_columns((int) $made['id'])),
+        'added'         => (int) $result['report']['added'],
+        'refused_count' => (int) $result['report']['refused_count'],
+        'refused'       => ws_api_wtable_import_refused($result['report']['refused']),
+        'more'          => !empty($read['more']),
+    ), $table ? 200 : 201);
+}
+
+/**
+ * Refused rows as the API gives them: errors an object even when empty.
+ *
+ * @param array $refused list of line, error, errors
+ * @return array
+ */
+function ws_api_wtable_import_refused($refused)
+{
+    $out = array();
+
+    foreach ((array) $refused as $line) {
+        $out[] = array('line' => (int) $line['line'], 'error' => (string) $line['error'], 'errors' => (object) $line['errors']);
+    }
+
+    return $out;
 }
 
 function ws_api_wtables_update($params)
