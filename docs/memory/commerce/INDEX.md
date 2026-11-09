@@ -286,6 +286,7 @@
 - shipment-tracking.md: Carrier status polling (2026.11.0, PR #3157): shipment_tracking_job hourly in the light lane, which parcels are open, track() answers written back through the shipment write path, budgets, places
 - shipment-write-path.md: The single shipment write path (includes/fn/shipping.php): pg_shipment_record() upsert, pg_shipment_prune(), pg_shipment_delivered() once per address, the format warning, who calls it
 - shipping-bulk-import.md: Bulk "mark shipped" on the order list and the tracking-number CSV upload (import_shipments.php): what each writes through update_order(), what is refused and why
+- shipping-method-label-link.md: A shipping method linked to a carrier label service (11.0.177, #8403): label_driver and label_service, the Carrier Service picker, the carrier it sets, API fields, Create Label
 - shipping-panel-terms.md: The Turkish words the shipping screens use for fees, handling and transit days, cut-offs and adjustment direction, and which shared keys carry them (#5556, #5557, #5567)
 - shipping-report.md: Shipping report (view_shipping_report.php): which orders it counts, how its period is read and kept, the longest period
 - shipping-today.md: How shipping works today (checked 2026-10-20): tracking tables and write paths, the four meanings of "shipped", estimated dates, known gaps and reusable Turkish validation helpers

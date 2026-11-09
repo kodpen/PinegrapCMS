@@ -55,6 +55,7 @@ function pg_shipping_method_save($shipping_method_id, $columns, $zone_ids, $excl
     $shipping_method_id = (int) $shipping_method_id;
     $created = ($shipping_method_id < 1);
 
+    $columns = pg_shipping_method_link_save_columns($shipping_method_id, $columns);
     $columns['user'] = (int) $user_id;
 
     if ($created) {
@@ -204,3 +205,187 @@ function pg_shipping_method_list_has_service()
 {
     return (int) db_value("SELECT COUNT(*) FROM shipping_methods WHERE service != ''") > 0;
 }
+
+/**
+ * The columns of the carrier label link (label_driver, label_service) and
+ * the carrier a linked method ships with, as pg_shipping_method_save()
+ * writes them. The carrier follows the linked service when the driver ships
+ * with the carrier the service code starts with; a link removed takes the
+ * carrier it set with it. Files land before the upgrade runs, so a column
+ * the database does not have yet is left out.
+ *
+ * @param int   $shipping_method_id 0 for a new method
+ * @param array $columns            Column name => value
+ * @return array
+ */
+function pg_shipping_method_link_save_columns($shipping_method_id, $columns)
+{
+    if (!array_key_exists('label_driver', $columns)) {
+        return $columns;
+    }
+
+    if (!pg_schema_has('shipping_methods', 'label_driver') || !pg_schema_has('shipping_methods', 'label_service')) {
+        unset($columns['label_driver'], $columns['label_service']);
+        return $columns;
+    }
+
+    if (!pg_schema_has('shipping_methods', 'carrier')) {
+        return $columns;
+    }
+
+    $stored = ((int) $shipping_method_id > 0)
+        ? db_item("SELECT carrier, label_driver FROM shipping_methods WHERE id = '" . (int) $shipping_method_id . "'")
+        : null;
+
+    $driver = (string) $columns['label_driver'];
+    $info = ($driver !== '') ? pg_label_info($driver) : array('carriers' => array());
+
+    $columns['carrier'] = pg_shipping_method_link_carrier(
+        $driver,
+        (string) ($columns['label_service'] ?? ''),
+        $info['carriers'],
+        is_array($stored) ? (string) $stored['carrier'] : '',
+        is_array($stored) ? (string) $stored['label_driver'] : '');
+
+    return $columns;
+}
+
+/**
+ * The carrier a shipping method ships with once its link is saved. Linked:
+ * the carrier key the service code starts with (YURTICI_STANDART,
+ * usps_priority, postnl:standard), when the driver ships with it, else ''
+ * (the cheapest offer may come from any of them). Unlinked: '' when the
+ * stored link set the carrier, else the stored carrier as it is. Pure.
+ *
+ * @param string $driver         The linked driver, '' for none
+ * @param string $service        The linked service code, '' for the cheapest
+ * @param array  $carriers       The carrier keys the driver ships with
+ * @param string $stored_carrier shipping_methods.carrier before the save
+ * @param string $stored_driver  shipping_methods.label_driver before the save
+ * @return string
+ */
+function pg_shipping_method_link_carrier($driver, $service, $carriers, $stored_carrier, $stored_driver)
+{
+    if ((string) $driver === '') {
+        return ((string) $stored_driver !== '') ? '' : (string) $stored_carrier;
+    }
+
+    $words = preg_split('/[^a-z0-9]+/', strtolower((string) $service), -1, PREG_SPLIT_NO_EMPTY);
+
+    if ($words && in_array($words[0], (array) $carriers, true)) {
+        return $words[0];
+    }
+
+    return '';
+}
+
+/**
+ * The services a label driver names in its info ('services': code => name),
+ * cleaned: string codes of at most 64 characters (label_service) with a
+ * name, the code itself standing for a missing one. Pure.
+ *
+ * @param mixed $info The driver's _info() answer
+ * @return array code => name
+ */
+function pg_shipping_method_label_services_clean($info)
+{
+    $services = array();
+
+    if (!is_array($info) || !isset($info['services']) || !is_array($info['services'])) {
+        return $services;
+    }
+
+    foreach ($info['services'] as $code => $name) {
+        $code = trim((string) $code);
+
+        if (($code === '') || (mb_strlen($code) > 64)) {
+            continue;
+        }
+
+        $name = is_scalar($name) ? trim((string) $name) : '';
+        $services[$code] = ($name !== '') ? $name : $code;
+    }
+
+    return $services;
+}
+
+/**
+ * The label drivers a shipping method may be linked to: those switched on,
+ * set up and able to make a label (pg_shipment_label_drivers()), each with
+ * its name and the services its info lists (none: the service is typed).
+ *
+ * @return array key => array(name, services)
+ */
+function pg_shipping_method_label_drivers()
+{
+    $drivers = array();
+
+    foreach (array_keys(pg_shipment_label_drivers()) as $key) {
+        $services = array();
+
+        try {
+            $services = pg_shipping_method_label_services_clean(call_user_func(pg_label_function_name($key, 'info')));
+        } catch (\Throwable $exception) {
+            $services = array();
+        }
+
+        $drivers[$key] = array('name' => pg_shipment_label_driver_name($key), 'services' => $services);
+    }
+
+    return $drivers;
+}
+
+/**
+ * The link a post of the method screen saves. label_link is
+ * "<driver>:<service>" from the picker (the service '' for the cheapest);
+ * for a driver without a service list the service is the typed code
+ * (label_service_code). A known driver that is not set up now stays
+ * linked as posted (the picker offers the stored link back), so a plain save
+ * never drops a link whose service was switched off. Pure.
+ *
+ * @param mixed $link    The posted label_link
+ * @param mixed $code    The posted label_service_code
+ * @param array $drivers pg_shipping_method_label_drivers()
+ * @param array $known   Every driver key (pg_label_drivers())
+ * @return array label_driver, label_service
+ */
+function pg_shipping_method_label_link_decide($link, $code, $drivers, $known)
+{
+    $link = is_scalar($link) ? trim((string) $link) : '';
+
+    if (strpos($link, ':') === false) {
+        return array('label_driver' => '', 'label_service' => '');
+    }
+
+    list($driver, $service) = explode(':', $link, 2);
+
+    if (!isset($drivers[$driver]) && !in_array($driver, (array) $known, true)) {
+        return array('label_driver' => '', 'label_service' => '');
+    }
+
+    if (isset($drivers[$driver]) && !$drivers[$driver]['services']) {
+        $service = is_scalar($code) ? (string) $code : '';
+    }
+
+    return array('label_driver' => $driver, 'label_service' => mb_substr(trim($service), 0, 64));
+}
+
+/**
+ * Whether a method can charge a real-time rate: a legacy USPS or UPS
+ * service (FedEx gives none) or a carrier label service link. Pure.
+ *
+ * @param string $service      shipping_methods.service
+ * @param string $label_driver shipping_methods.label_driver
+ * @return bool
+ */
+function pg_shipping_method_has_realtime_rate($service, $label_driver)
+{
+    if ((string) $label_driver !== '') {
+        return true;
+    }
+
+    $service = (string) $service;
+
+    return ($service !== '') && (substr($service, 0, 5) !== 'fedex');
+}
+

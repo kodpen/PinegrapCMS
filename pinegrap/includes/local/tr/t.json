@@ -2609,6 +2609,7 @@
     "The care plan is paid monthly and can be stopped at any time": "Bakım planı aylık ödenir ve istediğiniz zaman durdurulabilir",
     "The carrier collects the active labels at the sender address of the label service. One request is sent for each carrier.": "Kargo firması etkin etiketleri, etiket hizmetindeki gönderici adresinden teslim alır. Her kargo firması için bir talep gönderilir.",
     "The carrier is not one the store knows.": "Kargo firması mağazanın tanıdığı firmalardan biri değil.",
+    "The carrier label service Create Label uses for this method, and whose live price it can charge": "Etiket Oluştur'un bu yöntem için kullandığı ve canlı fiyatı alınabilen kargo etiket servisi",
     "The carrier label service could not be reached.": "Kargo etiket hizmetine ulaşılamadı.",
     "The carrier label service gave an answer that cannot be read. Check the shipment on the service's own screen before trying again.": "Kargo etiket hizmeti okunamayan bir yanıt verdi. Yeniden denemeden önce gönderiyi hizmetin kendi ekranında kontrol edin.",
     "The carrier label service gave no answer.": "Kargo etiket hizmeti yanıt vermedi.",

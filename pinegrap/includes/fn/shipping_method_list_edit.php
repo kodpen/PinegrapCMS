@@ -281,7 +281,7 @@ function pg_shipping_method_quick_value($method, $field)
 /**
  * One quick edit checked the way the method screen checks the same box
  * (pg_shipping_method_form_errors(), pg_shipping_method_form_columns()), as
- * the columns to write. A real-time rate needs a USPS or UPS service, and a
+ * the columns to write. A real-time rate needs a USPS or UPS service or a carrier service link, and a
  * service without one turns it off, as the screen saves them. Pure but for
  * lang().
  *
@@ -345,7 +345,8 @@ function pg_shipping_method_quick_change($method, $field, $value, array $ready)
 
             $columns['service'] = $value;
 
-            if (($value === '') || (substr($value, 0, 5) === 'fedex')) {
+            // A carrier label service link keeps its real-time rate.
+            if (!pg_shipping_method_has_realtime_rate($value, (string) ($method['label_driver'] ?? ''))) {
                 $columns['realtime_rate'] = '0';
             }
             break;
@@ -353,8 +354,8 @@ function pg_shipping_method_quick_change($method, $field, $value, array $ready)
         case 'realtime_rate':
             $service = (string) ($method['service'] ?? '');
 
-            if (($value === '1') && (($service === '') || (substr($service, 0, 5) === 'fedex'))) {
-                return $refuse(lang('A real-time rate needs a USPS or UPS service.'));
+            if (($value === '1') && !pg_shipping_method_has_realtime_rate($service, (string) ($method['label_driver'] ?? ''))) {
+                return $refuse(lang('A real-time rate needs a USPS or UPS service, or a carrier service.'));
             }
 
             $columns['realtime_rate'] = ($value === '1') ? '1' : '0';
@@ -413,7 +414,8 @@ function pg_shipping_method_list_sql($id = 0)
             shipping_methods.start_time,
             shipping_methods.end_time,
             shipping_methods.service,
-            shipping_methods.realtime_rate,
+            shipping_methods.realtime_rate," . (pg_schema_has('shipping_methods', 'label_driver') ? "
+            shipping_methods.label_driver," : "") . "
             shipping_methods.base_rate,
             shipping_methods.variable_base_rate,
             shipping_methods.base_rate_2,

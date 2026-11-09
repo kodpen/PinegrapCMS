@@ -110,6 +110,10 @@ function test_shipping_quick_change_ties_the_real_time_rate_to_the_service()
 	pg_assert_false(pg_shipping_method_quick_change(pg_test_shipping_quick_method(), 'realtime_rate', '1', $ready)['ok'], 'no real-time rate without a service');
 	pg_assert_false(pg_shipping_method_quick_change(pg_test_shipping_quick_method(array('service' => 'fedex_ground')), 'realtime_rate', '1', $ready)['ok'], 'nor with FedEx');
 	pg_assert_same(array('realtime_rate' => '1'), pg_shipping_method_quick_change($kept, 'realtime_rate', '1', $ready)['columns'], 'a USPS service takes one');
+
+	$linked = pg_test_shipping_quick_method(array('label_driver' => 'geliver', 'realtime_rate' => 1));
+	pg_assert_same(array('realtime_rate' => '1'), pg_shipping_method_quick_change($linked, 'realtime_rate', '1', $ready)['columns'], 'a carrier service link takes one without a service');
+	pg_assert_same(array('service' => ''), pg_shipping_method_quick_change($linked, 'service', '', $ready)['columns'], 'and keeps it when the service is cleared');
 }
 
 function test_shipping_quick_pickup_and_variable_base_rate_cells_stay_text()

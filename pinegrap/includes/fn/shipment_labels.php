@@ -178,6 +178,45 @@ function pg_shipment_label_driver_pick($carrier, $drivers)
 }
 
 /**
+ * The driver a label of an address is made with: the one its shipping
+ * method is linked to while that driver is ready, else the one that ships
+ * with the method's carrier (pg_shipment_label_driver_pick()). Pure.
+ *
+ * @param string $method_driver shipping_methods.label_driver
+ * @param string $carrier       pg_shipment_label_carrier()
+ * @param array  $drivers       pg_shipment_label_drivers()
+ * @return string driver key, '' when none fits
+ */
+function pg_shipment_label_method_driver($method_driver, $carrier, $drivers)
+{
+    $method_driver = (string) $method_driver;
+
+    if (($method_driver !== '') && array_key_exists($method_driver, (array) $drivers)) {
+        return $method_driver;
+    }
+
+    return pg_shipment_label_driver_pick($carrier, $drivers);
+}
+
+/**
+ * The service a label is asked for: the linked service of the address's
+ * shipping method when the label is made with the linked driver, else ''
+ * (the account's service, or the cheapest offer). Pure.
+ *
+ * @param array  $ship_to ship_tos row with method_label_driver and method_label_service
+ * @param string $driver  The driver the label is made with
+ * @return string
+ */
+function pg_shipment_label_method_service($ship_to, $driver)
+{
+    if (!is_array($ship_to) || !isset($ship_to['method_label_driver'], $ship_to['method_label_service'])) {
+        return '';
+    }
+
+    return ((string) $ship_to['method_label_driver'] === (string) $driver) ? trim((string) $ship_to['method_label_service']) : '';
+}
+
+/**
  * The drivers that are switched on, set up and able to open a shipment, with
  * the carriers each ships with.
  *
@@ -621,10 +660,15 @@ function pg_shipment_label_create_check($ship_to_id, $return = false)
     $carried_name = '';
 
     if ($ready) {
+        // The link columns come with the 11.0.177 step; files land first.
+        $link = pg_schema_has('shipping_methods', 'label_driver') && pg_schema_has('shipping_methods', 'label_service');
+
         $ship_to = db_item(
             "SELECT
                 ship_tos.*,
-                shipping_methods.carrier AS method_carrier
+                shipping_methods.carrier AS method_carrier" . ($link ? ",
+                shipping_methods.label_driver AS method_label_driver,
+                shipping_methods.label_service AS method_label_service" : "") . "
             FROM ship_tos
             LEFT JOIN shipping_methods ON shipping_methods.id = ship_tos.shipping_method_id
             WHERE ship_tos.id = '" . (int) $ship_to_id . "'");
@@ -642,7 +686,7 @@ function pg_shipment_label_create_check($ship_to_id, $return = false)
             . (pg_shipment_labels_link_returns() ? " AND (order_return_id = '0')" : ""));
 
         $carrier = pg_shipment_label_carrier(isset($ship_to['method_carrier']) ? $ship_to['method_carrier'] : '', $ship_to['shipping_method_code']);
-        $driver = pg_shipment_label_driver_pick($carrier, pg_shipment_label_drivers());
+        $driver = pg_shipment_label_method_driver(isset($ship_to['method_label_driver']) ? $ship_to['method_label_driver'] : '', $carrier, pg_shipment_label_drivers());
 
         $marketplace = $return ? null : pg_shipment_label_marketplace((int) $ship_to['id']);
         $marketplace_name = ($marketplace && ($marketplace['offer'] === 'create')) ? $marketplace['name'] : '';
@@ -783,7 +827,10 @@ function pg_shipment_label_create_locked($ship_to_id, $user_id, $return = false)
 
     $order['currency'] = defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '';
 
-    return pg_shipment_label_open($driver, $order, $ship_to, pg_shipment_label_shipment($order, $ship_to, $items, $state_code, $return), $user_id, $return) + array('code' => '');
+    $shipment = pg_shipment_label_shipment($order, $ship_to, $items, $state_code, $return);
+    $shipment['service'] = pg_shipment_label_method_service($ship_to, $driver);
+
+    return pg_shipment_label_open($driver, $order, $ship_to, $shipment, $user_id, $return) + array('code' => '');
 }
 
 /**
