@@ -1,6 +1,6 @@
 ---
 name: erp-parasut-legacy-buyer-number
-description: The buyer's VKN/TCKN the order screen's Paraşüt buttons send: a Turkish buyer's digits, and Create Invoice refuses a number that fails the check digits instead of issuing an e-Archive (#7674)
+description: The buyer's VKN/TCKN the order screen's Paraşüt buttons send: a Turkish buyer's digits, and Create Invoice refuses a number that fails the check digits instead of issuing an e-Archive (#7674, #8371)
 module: parasut
 ---
 
@@ -13,7 +13,7 @@ module: parasut
 - `parasut_order_identity_refusal()`, asked before the e-document kind: a Turkish number that is not 10 digits (VKN) or 11 (TCKN) passing `erp_edoc_tax_number_valid()`. Nothing is created; the error names the number. Not refused: an empty number (e-Archive, as before), the final consumer's `11111111111`, a buyer abroad.
 - E-Shipment is not refused here; its card gets the digits too.
 
-## Why? (#7674)
+## Why? (#7674, #8371)
 - The number used to go with only `trim()`. Paraşüt answers a filter on a malformed number with 200 and an empty list, the "not registered" answer, so a GİB-registered company typed as `123 456 78 90` or `TR1234567890` (free text at checkout, or a contact saved with spaces) got an e-Archive where an e-Invoice was due, and its card the raw string. `parasut_check_einvoice_address()` and the ERP's lookup already read digits and refused other lengths.
 
 ## Tests
