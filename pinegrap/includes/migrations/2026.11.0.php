@@ -167,7 +167,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_agent_undo();           // 11.0.174
 	upgrade_2026_11_0_ws_channel_links();        // 11.0.175
 	upgrade_2026_11_0_bundle_backorder();        // 11.0.176
-	upgrade_2026_11_0_ws_team_replies();         // 11.0.177
+	upgrade_2026_11_0_ws_team_replies();         // 11.0.179
 
 }
 
@@ -5681,7 +5681,7 @@ function upgrade_2026_11_0_bundle_backorder() {
 
 }
 
-// Team saved replies (11.0.177; includes/workspace/saved_replies.php). A team
+// Team saved replies (11.0.179; includes/workspace/saved_replies.php). A team
 // reply is a ws_saved_replies row with scope 'team' and user_id 0, so the
 // table keeps its shape; the right to add, change and delete them is a column
 // of its own, read for role 3 only (roles 0-2 hold it by role).

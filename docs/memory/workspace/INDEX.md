@@ -303,7 +303,7 @@
 - workspace-sales-quote-change.md: A sales quote added from a change card (kind erp_quote, PR #1705): fields, the erp_lines value kind, what is filled in and checked, the writer erp_quote_save(), how the card and the assistants show it
 - workspace-sales-quote-invoice.md: A sales quote turned into an invoice draft from a change card (erp_quote action invoice, PR #1907): no fields, the shared state rule, the writer erp_quote_to_invoice(), the decision, the proposers
 - workspace-saved-replies-composer.md: Saved replies in the panel (#3114): the composer's ; list (at(), match()), {customer}/{order} filled by the server, insertStored() as one undo step, the Insert menu drawer that manages them
-- workspace-saved-replies-team.md: Team saved replies (#8405, step 11.0.177): the manage_workspace_replies right, its own probe, where it is drawn and saved, the users API field
+- workspace-saved-replies-team.md: Team saved replies (#8405, step 11.0.179): the manage_workspace_replies right, its own probe, where it is drawn and saved, the users API field
 - workspace-saved-replies.md: Saved replies (ws_saved_replies, 11.0.114, #3090): the table, personal and team scopes, the store's checks, the /workspace/saved-replies routes and tools
 - workspace-scheduled-actions-api.md: The /workspace/scheduled-actions routes were removed before 2026.11.0 shipped (PR #2107): why, what took their place, what stays (scheduled messages, the draft card)
 - workspace-scheduled-draft-ai.md: Pinegrap AI's propose_scheduled_action: a sentence drafted in a call of its own, kept under the answer as a flow draft card (C5b leftover), the model's texts and final words, when it is offered

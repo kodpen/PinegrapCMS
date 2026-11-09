@@ -311,7 +311,7 @@ function test_ws_saved_replies_table_wiring()
 	$migration = file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
 	pg_assert_contains('upgrade_2026_11_0_workspace_saved_replies(); // 11.0.114', $migration);
 	pg_assert_contains('UNIQUE KEY uq_shortcut (user_id, scope, shortcut)', $migration);
-	pg_assert_contains('upgrade_2026_11_0_ws_team_replies();         // 11.0.177', $migration);
+	pg_assert_contains('upgrade_2026_11_0_ws_team_replies();         // 11.0.179', $migration);
 	pg_assert_contains("install_add_column('user', 'manage_workspace_replies', \"TINYINT UNSIGNED NOT NULL DEFAULT 0\")", $migration);
 
 	// The right is drawn and saved with the other Workspace rights, behind

@@ -149,7 +149,7 @@ function ws_rights($user)
 }
 
 /**
- * Whether user.manage_workspace_replies is there (step 11.0.177).
+ * Whether user.manage_workspace_replies is there (step 11.0.179).
  *
  * @return bool
  */

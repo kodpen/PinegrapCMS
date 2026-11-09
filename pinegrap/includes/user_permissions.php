@@ -202,7 +202,7 @@ function pg_user_permission_ws_switches($values = array())
 			: '');
 }
 
-// Whether user.manage_workspace_replies is there (step 11.0.177). It has a
+// Whether user.manage_workspace_replies is there (step 11.0.179). It has a
 // probe of its own: pg_user_has_ws_columns() answers for the four older
 // columns, and a site between its new files and its upgrade lacks this one.
 function pg_user_permission_ws_replies_column()
