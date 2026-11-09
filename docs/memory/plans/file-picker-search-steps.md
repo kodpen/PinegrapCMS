@@ -13,4 +13,4 @@ description: Plan: the file and image pickers that still list every file move to
 
 - F3 (decision first, M): a "Choose from File Manager" button beside a picker. The explorer has no pick mode today (no way to open it in a dialog, filtered to a kind, and hand a name or id back), so this needs one in `view_folders.php` and `explorer_side.js`; worth it only if browsing by folder or thumbnail is wanted beyond the name search.
 
-- F4 (optional, S): `select_image_options()` (`includes/fn/forms.php`), the image table of the product and form image dialogs, still prints every image on each load; it is a table, not a select, so it would need its own search box over a `image` kind.
+- F4 (done, #PR, S): `select_image_options()` (`includes/fn/forms.php`) had no caller left and its Select button called `add_this_image()`, which no script defines: the product and form image dialogs no longer draw that table. Removed instead of given a search box; no `image` kind was added.
