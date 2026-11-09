@@ -166,6 +166,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_channel_memory();       // 11.0.173
 	upgrade_2026_11_0_ws_agent_undo();           // 11.0.174
 	upgrade_2026_11_0_ws_channel_links();        // 11.0.175
+	upgrade_2026_11_0_bundle_backorder();        // 11.0.176
 
 }
 
@@ -5639,5 +5640,42 @@ function upgrade_2026_11_0_ws_channel_links() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: a GitHub repository can be linked to a channel, so its CI results, pull requests and labels are written into the channel. Nothing changes until someone links a repository.');
+
+}
+
+// A bundle's own back order choice (includes/fn/bundles.php).
+//
+// products.backorder of a bundle is a cache: the choice only while every
+// tracked component takes back orders. Kept in that one column, the choice
+// was lost as soon as a component stopped taking them, and the bundle never
+// took back orders again. bundle_backorder keeps the choice; the cache is
+// worked out from it (pg_bundle_backorder()). The fill copies the cache of
+// the bundles once, when the column is added: on a rerun it would overwrite
+// choices saved since with the cache.
+function upgrade_2026_11_0_bundle_backorder() {
+
+	if (!install_column_exists('products', 'bundle')) {
+
+		install_skipped('products.bundle does not exist, skipped');
+
+		return;
+
+	}
+
+	$existed = install_column_exists('products', 'bundle_backorder');
+
+	if (!install_add_columns_instant('products', array('bundle_backorder' => "TINYINT(1) NOT NULL DEFAULT 0"))) {
+
+		install_add_column('products', 'bundle_backorder', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	}
+
+	if (!$existed && install_column_exists('products', 'bundle_backorder')) {
+
+		db("UPDATE products SET bundle_backorder = 1 WHERE bundle = 1 AND backorder = 1");
+
+	}
+
+	install_note('Product bundles: a bundle keeps its own Backorder choice apart from what its components allow, so it takes back orders again once they do. A bundle that lost the choice already takes it back when it is saved once.');
 
 }

@@ -10073,8 +10073,8 @@ function pg_assign_product_barcode($product_id, $barcode = '', $type = '')
  * list for the columns later versions added, each only where the source row,
  * read with SELECT *, has it: the AI write marks the copy keeps
  * (pg_ai_fields_copy()), the VAT exemption code a zero-rated ERP line reads,
- * and a bundle's switch, pricing and discount, without which a copied bundle
- * would sell its cached stock as its own.
+ * and a bundle's switch, pricing, discount and back order choice, without
+ * which a copied bundle would sell its cached stock as its own.
  *
  * @param array $row the source product row
  * @param mixed $ai_fields pg_ai_fields_copy(): false names no ai_fields column
@@ -10106,6 +10106,12 @@ function pg_product_copy_extra_sql($row, $ai_fields)
         $values .= "'" . (empty($row['bundle']) ? 0 : 1) . "', "
             . "'" . (($row['bundle_pricing'] === 'sum') ? 'sum' : 'fixed') . "', "
             . "'" . ((($bp < 0) || ($bp > 10000)) ? 0 : $bp) . "',";
+
+        // The bundle's own back order choice (11.0.176), apart from the cache.
+        if (array_key_exists('bundle_backorder', $row)) {
+            $columns .= 'bundle_backorder,';
+            $values .= "'" . (((string) $row['bundle_backorder'] === '1') ? 1 : 0) . "',";
+        }
     }
 
     return array('columns' => $columns, 'values' => $values);

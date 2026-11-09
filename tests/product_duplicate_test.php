@@ -70,6 +70,19 @@ function test_product_copy_extra_sql_columns()
 	pg_assert_same("'','0', 'fixed', '0',", pg_product_copy_extra_sql($plain, false)['values'], 'unknown pricing is fixed, an out-of-range discount 0');
 }
 
+// A bundle's own back order choice is copied with the bundle columns.
+function test_product_copy_extra_sql_bundle_backorder()
+{
+	$row = array('bundle' => '1', 'bundle_pricing' => 'fixed', 'bundle_discount_bp' => '0', 'bundle_backorder' => '1');
+	$extra = pg_product_copy_extra_sql($row, false);
+
+	pg_assert_same('bundle, bundle_pricing, bundle_discount_bp,bundle_backorder,', $extra['columns']);
+	pg_assert_same("'1', 'fixed', '0','1',", $extra['values']);
+
+	$row['bundle_backorder'] = "1' OR '1";
+	pg_assert_same("'1', 'fixed', '0','0',", pg_product_copy_extra_sql($row, false)['values'], 'only 1 is a choice');
+}
+
 // duplicate_product() writes the extra columns, the gallery and a bundle's
 // contents, and derives a bundle copy's stock from them.
 function test_duplicate_product_copies_everything()
