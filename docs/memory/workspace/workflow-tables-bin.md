@@ -31,4 +31,5 @@ description: The bin of workflow tables (11.0.178, #8412): a deleted row goes to
 - `workflow-tables-bin-screens.md`: the screen's cards and the API routes.
 
 ## What meets `tables-relational`?
+- Its step 4: the row number counter never hands out a number a binned row holds.
 - Its step 5 keeps the cells that linked to a binned row in `links` and puts them back on restore where the cell is still empty.

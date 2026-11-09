@@ -42,7 +42,6 @@
 - storefront-api-routes-cart.md: Storefront API design note: the cart routes (create, read, add/update/remove line, coupon, shipping choice), their scopes and the cart code each one calls instead of copying it
 - storefront-api-routes-checkout.md: Storefront API design note: checkout routes (create from cart, totals, payment intent through the payment driver layer, confirm), the totals functions they call, guest checkout
 - storefront-api-routes-customer.md: Storefront API design note: customer routes (sign-in, sign-up, refresh, sign-out, password reset, profile, orders, addresses, returns) with scopes, limits and the website code each one calls
-- tables-bin.md: Plan (owner 2026-11-09): a deleted workflow table or row is kept in a bin for the Recycle Bin's days and can be restored; steps TB1-TB2
 - tables-relational-steps.md: Steps 1-8 of plans/tables-relational.md: row choice, conditions and Read rows, screen query and totals, keys, row links, joined columns, lists, type changes
 - tables-relational.md: Plan (owner 2026-11-09): workflow tables that behave like SQL tables (keys, row links, joined columns, lists, type changes), flows that pick a row or total rows; steps in tables-relational-steps
 - tables-xlsx-import-route.md: Plan (owner 2026-11-09): a workflow table downloads as an Excel file; an API route and MCP tool import a file or a note's table into a table, with a dry run; steps TX1-TX2
