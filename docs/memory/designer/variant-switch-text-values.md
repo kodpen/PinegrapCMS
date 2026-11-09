@@ -9,8 +9,8 @@ module: widgets_catalog
 - A short description holding markup showed as typed on the page and ran as HTML a moment later: the refresh after the load (the variant shown, when the default selection is complete) and every pick wrote it. The text comes from a role-3 user with manage_ecommerce, a products:write API key or a marketplace import.
 
 ## What is the rule?
-- Text unless named: a `text` or `html` binding writes `textContent`; only a key of `HTML_FIELDS` writes `innerHTML`.
-- `HTML_FIELDS`: `description`, `details`, `out_of_stock_message` (rich text, raw tokens on the server too; the refresh maps `out_of_stock_notice` into the last), `price_formatted`, `original_price_formatted`, `discount_amount_formatted` (`pg_visitor_money()`: the symbol is stored as an entity, `&#8378;`) and `reference_price` (the token's text escaped for it, [[widget-currency-symbol-once]]).
+- Text unless named: a `text` or `html` binding writes `textContent`; only a key of `HTML_FIELDS` writes `innerHTML`. A `text` binding's text goes into the run of words the design's markup wraps, when the page shows one ([[variant-switch-page-parity]]).
+- `HTML_FIELDS`: `description`, `details`, `out_of_stock_message` (rich text, raw tokens on the server too; the refresh maps `out_of_stock_notice` into the last), `price_formatted`, `price_range`, `price_block_html` (an offer's strike-through block), `original_price_formatted`, `discount_amount_formatted` (`pg_visitor_money()`: the symbol is stored as an entity, `&#8378;`) and `reference_price` (the token's text escaped for it, [[widget-currency-symbol-once]]).
 - The key decides, not the prop: the server escapes per key, so `html:name` shows the name as text there too.
 - `src`, `alt`, `href` and `value` set DOM properties, which take text: unchanged.
 
@@ -26,6 +26,5 @@ module: widgets_catalog
 ## What holds it?
 - `tests/civ_variants_text_test.php` runs the script under Node on a fake page: the payload's text keys written as text and its markup keys as HTML on a pick, the `get_product` refreshes (after the load and after the pick) writing the raw name as text, an `html:` binding of a text key as text, and the version stamp.
 
-## What is left as it was?
-- The value takes the element's whole content: a rich-text slot the server fills inside markup (`pg_binding_text_slot()`, a link around the name) loses that markup on a switch, as before.
-- The payload's `image_alt` is the short description, the server's `__image_alt` the name; its `price_formatted` is the plain amount where the server's token shows the strike-through block with an offer.
+## What came after?
+- The price block, the photo's alt text and the markup around a bound word now match the page on a switch: [[variant-switch-page-parity]].

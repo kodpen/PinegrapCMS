@@ -28,6 +28,7 @@ $sem('td', 'text-end', array(
 ## What does a text binding replace in a text with markup?
 - Content `heading`, `link`, `paragraph`, `span` and `text` print their text as written, markup included. A `text` binding keeps that markup: the token takes the place of the one run of words the markup wraps, so `<a href="/post">Title</a>` keeps its link (`pg_binding_text_slot()` in `_apply_bindings()`, on the canvas `_sdBindTextSlot()`; change both together).
 - No markup, markup around no words, or several runs of words: the whole text becomes the token.
+- On a product page the variant chooser writes a picked variant's text into the same place (`textSlot()` in `assets/js/pg_civ_variants.js`, [[variant-switch-page-parity]]); a change to the rule reaches it too.
 
 ## Which characters may a bound field name hold?
 - `[a-z0-9_-]`: `_apply_bindings()` and the editor's custom token box both keep the hyphen, because a form field may be named `publish-date` (without it the token named no field and printed nothing). Never add a filter that strips the hyphen.
