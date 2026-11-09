@@ -110,7 +110,7 @@ if ($bookings_scope === null) {
     $bookings_staff_select = '
                         <div class="col-12 md:col-4 xl:col-3">
                             <label for="bookings_staff" class="form-label small mb-1">' . h(lang('Staff')) . '</label>
-                            <select class="form-control form-control-sm" id="bookings_staff" name="staff">' . $bookings_options . '</select>
+                            <select class="form-control form-control-sm" id="bookings_staff" name="staff" data-pg-combobox>' . $bookings_options . '</select>' . pg_fields_script() . '
                         </div>';
 }
 
@@ -139,7 +139,13 @@ $bookings_filters = '
                 </div>
             </form>
             <script>
-                document.getElementById("bookings_filter").addEventListener("change", function () { this.submit(); });
+                // The staff search box (it has no name) changes as the
+                // operator types; only a pick sends the form.
+                document.getElementById("bookings_filter").addEventListener("change", function (event) {
+                    if (!event.target.closest(".pg-combobox-menu")) {
+                        this.submit();
+                    }
+                });
             </script>';
 
 if ($bookings_view === 'list') {

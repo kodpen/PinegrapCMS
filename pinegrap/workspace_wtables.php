@@ -861,7 +861,9 @@ if (!$table) {
                         $choices .= '<option value="' . h($key) . '"' . (((string) $key === $value) ? ' selected' : '') . '>' . h($label) . '</option>';
                     }
 
-                    $input = '<select class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '">' . $choices . '</select>';
+                    // A person column lists the whole team: searched in the
+                    // browser once it is long (data-pg-combobox).
+                    $input = '<select class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '"' . (($column['type'] === 'person') ? ' data-pg-combobox' : '') . '>' . $choices . '</select>';
                     break;
 
                 case 'date':
@@ -1118,7 +1120,7 @@ if (!$table) {
                         <input type="hidden" name="wt_action" value="share_set">
                         <input type="hidden" name="wt_table" value="' . $id . '">
                         <div class="mb-3"><label class="form-label small mb-1" for="ws_wt_share_target">' . h(lang('Share with')) . '</label>
-                            <select class="form-control form-control-sm" name="target" id="ws_wt_share_target" required>' . $targets . '</select></div>
+                            <select class="form-control form-control-sm" name="target" id="ws_wt_share_target" required data-pg-combobox>' . $targets . '</select></div>
                         <div class="mb-3"><label class="form-label small mb-1" for="ws_wt_share_level">' . h(lang('They may')) . '</label>
                             <select class="form-control form-control-sm" name="level" id="ws_wt_share_level">' . $level_options . '</select>
                             <div class="form-text">' . h(lang('A channel\'s readers can only view the table. Sharing again with the same one changes what they may do.')) . '</div></div>

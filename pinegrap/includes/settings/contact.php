@@ -64,7 +64,7 @@ $pg_settings_cards[] = '
                                                    <div class="row gy-5">
                                                         <div class="pg-f-md">
                                                             <label for="chat_operator_user_id" class="form-label">' . lang('Site Chat Operator') . '</label>
-                                                            <select name="chat_operator_user_id" id="chat_operator_user_id" class="form-control">' . $output_chat_operator_options . '</select>
+                                                            <select name="chat_operator_user_id" id="chat_operator_user_id" class="form-control" data-pg-combobox>' . $output_chat_operator_options . '</select>' . pg_fields_script() . '
                                                         </div>
                                                         <div class="pg-f-md">
                                                             <label for="chat_retention_days" class="form-label">' . lang('Chat Retention Period') . '</label>

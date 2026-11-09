@@ -576,6 +576,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - uppercase-heading-brand-names.md: English brand and product names inside text-uppercase titles carry lang="en", or the Turkish panel prints WİNDOWS, MAİLCHİMP, MİCROSOFT (#3613)
 - user-list-folder-filters.md: Users list filters My Private Users and My Content Managers: one row per user, managers listed without folder rights, the fault the PR fixed
 - user-permission-rows.md: Permission rows in add_user/edit_user/import_users (includes/user_permissions.php): value rules, gate_field/gate_scope, drawer panels, top layer, multiselect pitfalls.
+- user-picker-search.md: Searchable user pickers: staff and team lists as local data-pg-combobox, every-user fields on user_search_action.php (users list right, role scope, Turkish fold, 30 results), stored user kept
 - user-screen-checks.md: The checks of the user create, edit, import and bulk delete screens: role, private folder dates, notify mail, registered filter, default view, repeated headings
 - user-screens-names-and-dates.md: User and session screens: session and password dates through get_absolute_time(), the users list checkbox, yes mark and name-menu names, badge label and folder expiry names
 - user-screens-refused-save.md: Create User / Edit User: a refused save goes back to the form with the error and what was sent (liveform add_user / edit_user, pg_user_form_refill()), the field limits and the contact link check
