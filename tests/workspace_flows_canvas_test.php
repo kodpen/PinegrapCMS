@@ -1834,7 +1834,7 @@ JS
 function test_workspace_flows_canvas_table_write_boxes()
 {
 	$result = ws_flows_canvas_test_node(
-		array('kindOf', 'stepLists', 'rowWriteTables', 'rowWriteTable', 'rowWriteColumns', 'memberKind', 'paletteItems', 'rowTable', 'rowCells', 'rowWriteMeta', 'cellPlaces', 'siteDecimal', 'siteNumber', 'siteShown', 'cellShown', 'cellKept', 'setCell', 'fieldTexts', 'openFields'),
+		array('kindOf', 'stepLists', 'rowWriteTables', 'rowWriteTable', 'rowWriteColumns', 'memberKind', 'paletteItems', 'rowTable', 'rowWay', 'rowCells', 'rowWriteMeta', 'cellPlaces', 'siteDecimal', 'siteNumber', 'siteShown', 'cellShown', 'cellKept', 'setCell', 'fieldTexts', 'openFields'),
 		<<<'JS'
 var KINDS = { row: { into: false, out: ['next'] }, row_add: { into: true, out: ['done', 'failed'] }, row_set: { into: true, out: ['done', 'failed'] } };
 var PALETTE = [['row', 'fl_kind_row'], ['row_add', 'fl_kind_row_add'], ['row_set', 'fl_kind_row_set']];
@@ -1891,7 +1891,7 @@ JS
 	pg_assert_same(array('12.50', '{{trigger.amount}}', ''), $result['shown']);
 	pg_assert_same(array(125050, 125000, 1250, 1.5, 1500, '1250,50', '1,234'), $result['turkish'], 'a Turkish figure read the site\'s way, shown the same way');
 	pg_assert_same(array(125050, 1500), $result['english'], 'an English comma groups thousands');
-	pg_assert_same(array('fl_rows_meta Deals Add › Row', 'fl_rows_meta Deals 12', '#8', 'fl_row_none'), $result['meta']);
+	pg_assert_same(array('fl_rows_meta_id Deals Add › Row', 'fl_rows_meta_id Deals 12', '#8', 'fl_row_none'), $result['meta'], 'boxes saved before the choice name ids');
 	pg_assert_same(array('row', 'cells'), $result['texts'], 'the cells\' values are threaded');
 	pg_assert_same(array('row'), $result['open'], 'a value is never dropped into the JSON');
 	pg_assert_same(0, $result['openAdd']);
@@ -1903,7 +1903,7 @@ JS
 function test_workspace_flows_canvas_row_get_box()
 {
 	$result = ws_flows_canvas_test_node(
-		array('kindOf', 'stepLists', 'rowWriteTables', 'memberKind', 'paletteItems', 'rowTable', 'rowCellValues', 'rowWriteMeta', 'boxValues', 'fieldTexts'),
+		array('kindOf', 'stepLists', 'rowWriteTables', 'memberKind', 'paletteItems', 'rowTable', 'rowWay', 'rowCellValues', 'rowWriteMeta', 'boxValues', 'fieldTexts'),
 		<<<'JS'
 var KINDS = { row: { into: false, out: ['next'] }, row_add: { into: true, out: ['done', 'failed'] }, row_get: { into: true, out: ['done', 'failed'] } };
 var PALETTE = [['row', 'fl_kind_row'], ['row_add', 'fl_kind_row_add'], ['row_get', 'fl_kind_row_get']];
@@ -1935,15 +1935,99 @@ JS
 		'{{node.get.text}}:text', '{{node.get.outcome}}:text', '{{node.get.status}}:text',
 		'{{node.get.row_id}}:number', '{{node.get.found}}:number', '{{node.get.cell_7}}:text', '{{node.get.cell_9}}:number',
 	), $result['values'], 'the row, found and every cell of its table');
-	pg_assert_same(array('fl_rows_meta Counters 12', 'fl_row_none'), $result['meta']);
+	pg_assert_same(array('fl_rows_meta_id Counters 12', 'fl_row_none'), $result['meta'], 'a box saved before the choice names an id');
 	pg_assert_same(array('row'), $result['texts'], 'its row reads a value');
 
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
 	$fields = ws_flows_canvas_test_script_function($source, 'rowGetFields');
 
 	pg_assert_contains("stepLists().tables.map", $fields, 'every table the person reads is offered');
-	pg_assert_contains("t('fl_rows_get_row_help')", $fields, 'the row field says a missing row gives found 0');
+	pg_assert_contains("rowByField(box, node);", $fields, 'the way and the row follow the table');
 	pg_assert_contains("rowGetFields(box, node);", $source, 'the settings draw it');
+}
+
+// How a row box finds its row on the canvas: the ways in the list, the
+// way a box keeps (an unknown one by its id), its line on the box, the help
+// naming found as the value list names it, and a new box's settings: a read
+// starts on the first row, a change waits for its row.
+function test_workspace_flows_canvas_row_choice()
+{
+	$result = ws_flows_canvas_test_node(
+		array('stepLists', 'rowTable', 'rowWay', 'rowByOptions', 'rowWriteMeta'),
+		<<<'JS'
+var FL = { steps: { tables: [{ id: 5, name: 'Counters', edit: true, columns: [] }] } };
+var names = { '{{node.loop.index}}': { label: 'Repeat › Item number' } };
+function valueNames() { return names; }
+function meta(config, kind) { return rowWriteMeta({ id: 'get', kind: kind || 'row_get', config: config }); }
+console.log(JSON.stringify({
+    options: rowByOptions().map(function (item) { return item[0]; }),
+    ways: [rowWay({ by: 'position' }), rowWay({ by: 'last' }), rowWay({}), rowWay({ by: 'nearest' })],
+    meta: [
+        meta({ table_id: 5, by: 'position', row: '1' }),
+        meta({ table_id: 5, by: 'id', row: '14' }),
+        meta({ table_id: 5, by: 'last', row: '' }),
+        meta({ table_id: 5, by: 'position', row: '{{node.loop.index}}' }),
+        meta({ table_id: 5, by: 'position', row: '' }, 'row_set'),
+        meta({ table_id: 5, by: 'last' }, 'row_add')
+    ]
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('position', 'id', 'last'), $result['options'], 'its number in the table first');
+	pg_assert_same(array('position', 'last', 'id', 'id'), $result['ways']);
+	pg_assert_same(array(
+		'fl_rows_meta Counters 1',
+		'fl_rows_meta_id Counters 14',
+		'fl_rows_meta_last Counters',
+		'fl_rows_meta Counters Repeat › Item number',
+		'Counters',
+		'Counters',
+	), $result['meta']);
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$field = ws_flows_canvas_test_script_function($source, 'rowByField');
+
+	pg_assert_contains("t('fl_rows_get_missing_help', found ? found.label : 'found')", $field, 'a missing row names found as the value list names it');
+	pg_assert_contains("if (by === 'last') {\n            return;\n        }", $field, 'the last row has no row field');
+	pg_assert_contains("config.row = '';", $field, 'choosing the last row clears the row');
+	pg_assert_contains("rowByField(box, node);", ws_flows_canvas_test_script_function($source, 'rowWriteFields'), 'a change finds its row the same way');
+	pg_assert_contains("config = { table_id: (readable.length === 1) ? readable[0].id : 0, by: 'position', row: '1' };", $source, 'a new read box reads the first row');
+	pg_assert_contains("config.by = 'position';\n                config.row = '';", $source, 'a new change box waits for its row');
+}
+
+// "Add value" with nothing to offer names what comes before the box when
+// something does (a manual start gives no value), else says nothing is
+// connected before it.
+function test_workspace_flows_canvas_values_none_names_the_start()
+{
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'arrowMaps', 'boxesBefore', 'valuesNone'),
+		<<<'JS'
+var KINDS = { manual: { name: 'fl_kind_manual', into: false, out: ['next'] }, row_get: { name: 'fl_kind_row_get', into: true, out: ['done', 'failed'] }, post: { name: 'fl_kind_post', into: true, out: ['done', 'failed'] } };
+function box(id, kind, label, y) { return { id: id, kind: kind, label: label, config: {}, x: 0, y: y }; }
+state = { graph: { nodes: [box('manual_1', 'manual', '', 0), box('row_get_1', 'row_get', 'UN', 1), box('post_1', 'post', '', 2)], edges: [
+    { from: 'manual_1', to: 'row_get_1', on: 'next' }
+] } };
+console.log(JSON.stringify({ connected: valuesNone(nodeById('row_get_1')), alone: valuesNone(nodeById('post_1')), start: valuesNone(nodeById('manual_1')) }));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same('fl_values_none_before fl_kind_manual', $result['connected'], 'behind a manual start: the start is named');
+	pg_assert_same('fl_values_none', $result['alone'], 'nothing before it: connect it first');
+	pg_assert_same('fl_values_none', $result['start']);
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+
+	pg_assert_contains("list.appendChild(el('div', 'small fg-secondary', valuesNone(node)));", ws_flows_canvas_test_script_function($source, 'valueField'));
 }
 
 // The groups of the flow boxes and their colours (dark theme as the visual

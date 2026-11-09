@@ -2869,6 +2869,7 @@
     "Nothing was filled in.": "Hiçbir alan doldurulmadı.",
     "Nothing was found.": "Hiçbir şey bulunmadı.",
     "Nothing was missing.": "Eksik bir şey yoktu.",
+    "Nothing was read.": "Hiçbir şey okunmadı.",
     "Nothing was saved.": "Hiçbir şey kaydedilmedi.",
     "Nothing was saved: name at least one country to let in.": "Hiçbir şey kaydedilmedi: içeri alınacak en az bir ülke yazın.",
     "Nothing was saved: the request was {var:1} and this server accepts at most {var:2} in one request. Choose a smaller file, or raise post_max_size and upload_max_filesize on the server.": "Hiçbir şey kaydedilmedi: istek {var:1} idi ve bu sunucu tek istekte en fazla {var:2} kabul ediyor. Daha küçük bir dosya seçin ya da sunucuda post_max_size ve upload_max_filesize değerlerini yükseltin.",
