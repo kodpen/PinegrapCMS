@@ -5,7 +5,7 @@ module: ecommerce
 ---
 
 ## What does the checkout store for a card order?
-- `submit_order.php` writes `orders.card_verification_number = ''` always: the security code is never stored, masked or not (owner decision 2026-10-28, `plans/security-findings-2026-10.md` item 3).
+- `submit_order.php` writes `orders.card_verification_number = ''` always: the security code is never stored, masked or not (owner decision 2026-10-28, `workflow/decisions-made-product-39.md`).
 - A gateway took the payment (`$transaction_id` set): the number masked (`protect_credit_card_number()`, last four digits).
 - No gateway (`ECOMMERCE_PAYMENT_GATEWAY == ''`, staff run the card by hand): the number AES-CBC encrypted (`encrypt_credit_card_number()`); without encryption it is stored as `''`, never in clear.
 

@@ -28,7 +28,7 @@ description: The panel's licence check (license_check(), includes/fn/output.php)
 - Card row `pg_license_card_title()`: "Pinegrap <type> · <state>" (`pg_license_type_name()`: Demo/Premium/Enterprise, else the escaped code); no type keeps "Pinegrap Premium™"; no separate type line (#4928). `pg_license_card_details()`: "Site rights: 3 / 5". Expiry: `pg_license_expiry_text()`, `get_absolute_time()` plain text (#4929).
 
 ## What does the key field do?
-- Mask `pgLicenseKeyMask()` (`backend.src.js`): the alphabet, any case shown upper. With the switch on, `pg_license_site_warning()` warns under it: `local` (localhost, `.test`, `.local`, private IPv4) still spends a site right; `none` (no valid name) fails every check. The update channel card names what checks send (no erasure promised).
+- Mask `pgLicenseKeyMask()` (`backend.src.js`): the alphabet, any case shown upper. Save normalises the key and refuses nothing. With the switch on, `pg_license_site_warning()` warns under it: `local` (localhost, `.test`, `.local`, private IPv4) still spends a site right; `none` (no valid name) fails every check. The update channel card names what checks send (no erasure promised).
 
 ## What guards it?
 - `tests/output_test.php`: `test_output_license_check_due_*`, `test_output_license_check_again_url_keeps_the_query`, `test_output_license_check_button_only_for_managers`, `test_output_license_card_*`, `test_output_license_check_v1_branch_behind_the_switch`.

@@ -4,7 +4,7 @@ description: Remaining outside-account connections (Meta, Business Profile, soci
 ---
 
 ## What is done and what is left?
-- Done: connection layer (model A, #282), Gmail / Microsoft 365 mail (#294), Search Console (#310), Microsoft, Apple and Google sign-in (#306, #318), backups to Drive / OneDrive / Dropbox (#312), UPS / FedEx / USPS REST with `client_credentials` (#302, #308, #314), Workspace MCP client and remote agent (#347–#361), calendar sync #3254 #4387 #4420 #4490 #4658, Notion #3212, OneNote #3291, cloud file picker #3238 #3261, Merchant Center #3213 #4388 #4423, GA4 card #3275, Google reviews #3292. Rules: `api/api-connected-accounts.md`, `api/api-connected-accounts-usage.md`.
+- Done: the connection layer (model A) and every connection built on it, #282 to #4658 (mail, Search Console, sign-in, backups, carrier REST, MCP, calendar sync, Notion, OneNote, file picker, Merchant Center, GA4, Google reviews); rules: `api/api-connected-accounts.md`, `api/api-connected-accounts-usage.md`.
 
 | Item | What | Effort |
 |---|---|---|

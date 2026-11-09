@@ -4,7 +4,7 @@ description: The visitors table split into one partition per month (step 10.7, #
 ---
 
 ## Why does this exist?
-- Symptom: on a big table the 90-day cleanup deleted for hours in 5,000-row chunks, and the room stayed in the `.ibd` file until "Shrink now" rebuilt the whole table (incident 2026-10-14, 950 MB backup). Plan item 2 of docs/memory/plans/visitor-records-deferred.md.
+- Symptom: on a big table the 90-day cleanup deleted for hours in 5,000-row chunks, and the room stayed in the `.ibd` file until "Shrink now" rebuilt the whole table (incident 2026-10-14, 950 MB backup).
 - With one partition per month a whole old month goes with `DROP PARTITION` in a moment and its file goes back to the disk. Code: `includes/fn/visitor_partitions.php` (#499).
 
 ## What does the table look like?

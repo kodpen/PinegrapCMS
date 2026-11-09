@@ -20,4 +20,4 @@ description: What customer returns cover and leave out (no exchanges; any quanti
 
 ## Where was it built?
 - The plan `customer-returns-flow` (approved 2026-10-19) was finished on 2026-10-25 and its file deleted. Its PRs: model #650, My Account #677, panel #808, refund #936, API and webhooks #1352, refund columns #1571, customer rules and timing #1572, stale-page guard #1612, staff request form #1616, classic order view #1617.
-- Return labels from a carrier's API are left to `plans/shipping-carrier-labels.md`.
+- Return labels from a carrier's API: `shipment-label-returns.md`.

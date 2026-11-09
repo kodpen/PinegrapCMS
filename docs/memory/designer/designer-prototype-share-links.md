@@ -32,4 +32,4 @@ module: prototype_links
 - `uses`, `last_used_at` on a human GET (`waf_classify_bot()`) of the shared address, once per session; never HEAD, a bot or the password form.
 - Not on a move inside (frame click, bar's list, previous/next: `page` named, `pg_proto_link_counts_use()`): each is a new GET, and with cookies refused every one counted. A copied `?link=…&page=N` counts nothing.
 
-Related: docs/memory/designer/designer-prototype-share-link-frame.md, docs/memory/designer/designer-prototype-viewer.md, docs/memory/plans/prototype-sharing.md
+Related: docs/memory/designer/designer-prototype-share-link-frame.md, docs/memory/designer/designer-prototype-viewer.md

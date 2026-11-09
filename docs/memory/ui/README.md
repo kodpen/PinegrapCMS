@@ -33,6 +33,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - account-menu.md: Header account menu (pg_account_menu()): fixed card, phone sheet, why not hung from its button, ids other code needs, where the keyboard shortcuts went
 - ad-region-shared-form.md: The ad region create and edit screens share includes/forms/ad_region_form.php: the columns, the Summary, the save bar, the defaults, what stays in the screens
 - ad-shared-form.md: The ad create and edit screens share includes/forms/ad_form.php: what it holds, what stays in the screens
+- add-edit-forms-kept-apart.md: Create and edit screen pairs left without a shared includes/forms/ file on purpose (offer, product, system style, ERP documents, low-overlap pairs) and why each was left
 - admin-screen-toolbar-rules.md: Button recipes, menu colour rule, shared toolbar CSS classes, card header pattern and narrow-screen behaviour for admin screen toolbars.
 - admin-screen-toolbar.md: Panel screen basics (frame, notices, fields, width, icons, help), the one-toolbar principle with view_folders.php as reference, slot order, classes and the pg_screen_toolbar() helper.
 - ai-write-alt-text.md: "Write with AI" for an image's alt text in the visual designer: the image_alt target, the browser's model only, the image read in the browser, where the button sits and when it shows
@@ -138,7 +139,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dashboard-sales-map-panel.md: Dashboard sales map widget 1 panel behavior: corner menu with fixed Popper, card colour, permission gates, link gating, brief line signals, reused id 1.
 - dashboard-scroll-regions.md: Dashboard card lists that scroll inside the square card become named keyboard regions (pg_widget_scroll_regions() in welcome.php)
 - dashboard-system-status-gauge.md: The System Status gauge, check chips and Release Notes dialog shared by dashboard widget 2 and the new dashboard's System Status card: functions, what stays byte for byte, the fixtures test
-- dashboard-v2-ai-card.md: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant.js): connected or not, the proposals waiting for the person, giving Claude a job through ws_send; the daily summary held on #5014
+- dashboard-v2-ai-card.md: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant.js): connected or not, the proposals waiting for the person, giving Claude a job through ws_send; the daily summary
 - dashboard-v2-brief.md: The old dashboard's brief on the new dashboard (#6431): placement in the greeting card, v2 wording and hour, the phone box, the Top section switch, pg_dash_brief.js
 - dashboard-v2-cards-look.md: The new dashboard's shop and other cards as drawn (pictures 16-19, V5 #8315): what each card draws, the data added for it, the differences kept on purpose
 - dashboard-v2-chart-tips.md: New dashboard charts show each point's label and figure on hover and keyboard focus: pgDash.chartTips() in pg_dash.js, server texts from tips.php, which charts use it, keys
@@ -147,6 +148,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dashboard-v2-edit-mode.md: New dashboard edit mode (#4856): presets.php, dashboard_layout_save and its clean-up, pg_dash_edit.js (bar, grip, drag, card tools and settings, greeting and status parts), what Cancel and Save do
 - dashboard-v2-flows-card.md: New dashboard Flows card (cards/flows.php, renderer in pg_dash_cards_work.js): tiles, the run going on now as a path of boxes, last runs with Approve and Try again through the Workspace actions
 - dashboard-v2-looks.md: The new dashboard's looks as drawn (pictures 12-14, V4 #8241): card faces, backdrops over the old dashboard's washes, compact density, lights off
+- dashboard-v2-overview.md: The new dashboard as a whole: the per-person switch beside the untouched old dashboard, welcome.php's page branch, its files and bundles, SVG charts, refresh rules, string card ids
 - dashboard-v2-personal-cards.md: New dashboard cards goals, notes (#4981), pins, perf (N12b): where goals, pins and notes are kept and saved, what a goal counts, what a pin opens, perf's helpers shared with widget 23
 - dashboard-v2-phone-keyboard.md: New dashboard on phones and from the keyboard (#6145): the edit bar keeps its row, the grid is no live region, Save buttons are solid, the shortcut remove cross is 24 px
 - dashboard-v2-phone-look.md: The new dashboard on a phone as drawn (picture 20, V6 #8350): the edit bar band, Edit dashboard at the left, card tools on two lines, the switch resting in edit mode, the differences kept
@@ -156,6 +158,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dashboard-v2-share.md: New dashboard role defaults and lock (#4975, removal #6393): Share with the team, dashboard_role_default and its remove, which layout a person sees, why the lock skips roles 0-1
 - dashboard-v2-shop-cards.md: The new dashboard's shop cards (shop, salesmap, ops, orders, offers, fx): where each reads its data, the widget queries they share, money as plain text, the map drawing
 - dashboard-v2-side-panel.md: New dashboard side panel (#4888): gallery.php data, pg_dash_panel.js (work area, gallery, Add card tile, top section, look) and its hooks with the edit script
+- dashboard-v2-storage.md: The new dashboard's dashboard_layout table (step 11.0.143), the sign-in upsert, the layout and look JSON, the panel actions, the card function contract, the storage alternatives rejected
 - dashboard-v2-visitmap-card.md: New dashboard Visitor map card (cards/visitmap.php, #6464): data source, home country, abroad share, bubbles by province, country fallback; visit country and CF-IPCity city
 - dashboard-v2-width.md: How wide the new dashboard gets and how many columns its grid takes: the 118rem cap, columns by the dashboard's own width (container queries), edit mode, the fallback
 - dashboard-visitor-head-wrap.md: Visitor Summaries card head on a narrow card: the legend wraps below the figures, the figure lines keep to one line

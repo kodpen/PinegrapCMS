@@ -1,6 +1,6 @@
 ---
 name: dashboard-v2-ai-card
-description: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant.js): connected or not, the proposals waiting for the person, giving Claude a job through ws_send; the daily summary held on #5014
+description: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant.js): connected or not, the proposals waiting for the person, giving Claude a job through ws_send; the daily summary
 ---
 
 ## Where is it?
@@ -18,5 +18,5 @@ description: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant
 - The box posts `<@app:N> text` with the Workspace's own `ws_send` (api.php, checks channel, person and Claude's per-person limit), then `ws_claude_kick`. Nothing in the card writes.
 - Channel: the one the person last asked Claude in, else the oldest public unarchived channel; only where they may post and `ws_claude_channel_allowed()`. None: a line saying a channel manager can allow Claude. The note names the channel; after sending, "Sent to #x" with an Open link to the message.
 
-## What is not built?
-- The daily summary (question 3: a setting with an hour, off by default). Where the setting and the summary are kept is architect issue #5014; step N11c.
+## Where is the daily summary?
+- Above the proposals when it is on (question 3: a setting with an hour, off by default; #5080): `workspace/workspace-claude-daily-summary.md`.

@@ -4,7 +4,7 @@ description: The new dashboard's drawn look (visual pass V): the --pgd-* palette
 ---
 
 ## Where do the dashboard's colours come from?
-- `--pgd-*` tokens at the top of `assets/css/pg_dash.src.css`, on `.pg-dash` and `.pg-dash-switch` (the old dashboard draws the switch row too): fg, strong, soft, muted, card, line, line-2, fill, tile, tile-line, field, accent, main and name (gradients), good / warn / bad / new with `-bg` and `-line`. Dark values are the drawings' own (`plans/new-dashboard/prototype`), light values keep the hues on a white card. A restyled part never picks a colour of its own.
+- `--pgd-*` tokens at the top of `assets/css/pg_dash.src.css`, on `.pg-dash` and `.pg-dash-switch` (the old dashboard draws the switch row too): fg, strong, soft, muted, card, line, line-2, fill, tile, tile-line, field, accent, main and name (gradients), good / warn / bad / new with `-bg` and `-line`. Dark values are the owner's design's own, light values keep the hues on a white card. A restyled part never picks a colour of its own.
 - The card faces (`[data-widget-theme]`: flat, neon, glass, aurora) are the drawings' borders and shadows; aurora and neon draw the border as a `border-box` gradient behind a `padding-box` fill.
 
 ## Which parts follow the drawings (V1, #6166)?
