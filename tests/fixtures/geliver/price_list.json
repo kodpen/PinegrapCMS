@@ -1,0 +1,123 @@
+{
+  "result": true,
+  "additionalMessage": "Success",
+  "priceList": [
+    {
+      "desi": "1",
+      "offers": [
+        {
+          "amount": "74.9",
+          "currency": "TL",
+          "amountLocal": "74.9",
+          "amountVat": "14.98",
+          "amountLocalVat": "14.98",
+          "amountTax": "0",
+          "amountLocalTax": "0",
+          "totalAmount": "89.88",
+          "totalAmountLocal": "89.88",
+          "providerCode": "SENDEO",
+          "providerServiceCode": "SENDEO_STANDART",
+          "isProviderAccountOffer": false
+        },
+        {
+          "amount": "82.5",
+          "currency": "TL",
+          "amountLocal": "82.5",
+          "amountVat": "16.5",
+          "amountLocalVat": "16.5",
+          "amountTax": "0",
+          "amountLocalTax": "0",
+          "totalAmount": "99",
+          "totalAmountLocal": "99",
+          "providerCode": "SURAT",
+          "providerServiceCode": "SURAT_STANDART",
+          "isProviderAccountOffer": false
+        },
+        {
+          "amount": "89",
+          "currency": "TL",
+          "amountLocal": "89",
+          "amountVat": "17.8",
+          "amountLocalVat": "17.8",
+          "amountTax": "0",
+          "amountLocalTax": "0",
+          "totalAmount": "106.8",
+          "totalAmountLocal": "106.8",
+          "providerCode": "HEPSIJET",
+          "providerServiceCode": "HEPSIJET_STANDART",
+          "isProviderAccountOffer": false
+        },
+        {
+          "amount": "95.4",
+          "currency": "TL",
+          "amountLocal": "95.4",
+          "amountVat": "19.08",
+          "amountLocalVat": "19.08",
+          "amountTax": "0",
+          "amountLocalTax": "0",
+          "totalAmount": "114.48",
+          "totalAmountLocal": "114.48",
+          "providerCode": "KOLAYGELSIN",
+          "providerServiceCode": "KOLAYGELSIN_STANDART",
+          "isProviderAccountOffer": false
+        },
+        {
+          "amount": "103",
+          "currency": "TL",
+          "amountLocal": "103",
+          "amountVat": "20.6",
+          "amountLocalVat": "20.6",
+          "amountTax": "0",
+          "amountLocalTax": "0",
+          "totalAmount": "123.6",
+          "totalAmountLocal": "123.6",
+          "providerCode": "PTT",
+          "providerServiceCode": "PTT_STANDART",
+          "isProviderAccountOffer": false
+        },
+        {
+          "amount": "118.25",
+          "currency": "TL",
+          "amountLocal": "118.25",
+          "amountVat": "23.65",
+          "amountLocalVat": "23.65",
+          "amountTax": "0",
+          "amountLocalTax": "0",
+          "totalAmount": "141.9",
+          "totalAmountLocal": "141.9",
+          "providerCode": "MNG",
+          "providerServiceCode": "MNG_STANDART",
+          "isProviderAccountOffer": false
+        },
+        {
+          "amount": "124",
+          "currency": "TL",
+          "amountLocal": "124",
+          "amountVat": "24.8",
+          "amountLocalVat": "24.8",
+          "amountTax": "0",
+          "amountLocalTax": "0",
+          "totalAmount": "148.8",
+          "totalAmountLocal": "148.8",
+          "providerCode": "YURTICI",
+          "providerServiceCode": "YURTICI_STANDART",
+          "isProviderAccountOffer": false
+        },
+        {
+          "amount": "109.5",
+          "currency": "TL",
+          "amountLocal": "109.5",
+          "amountVat": "21.9",
+          "amountLocalVat": "21.9",
+          "amountTax": "0",
+          "amountLocalTax": "0",
+          "totalAmount": "131.4",
+          "totalAmountLocal": "131.4",
+          "providerCode": "YURTICI",
+          "providerServiceCode": "YURTICI_STANDART",
+          "isProviderAccountOffer": true
+        }
+      ]
+    }
+  ]
+}
