@@ -262,7 +262,9 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'The change could not be saved. Check the connection and try again.' => lang('The change could not be saved. Check the connection and try again.'),
     );
 
+    // First in <head>, before any script an old browser might stop on.
     return '
+    ' . pg_old_browser_notice() . '
     <script type="text/javascript">
         var path = "' . escape_javascript(PATH) . '",
             software_directory = "' . escape_javascript(SOFTWARE_DIRECTORY) . '",
@@ -299,6 +301,116 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     <style>' . pg_style_tag_css(CUSTOM_CSS) . '</style>';
 
 
+}
+
+/**
+ * A classic script for <head> that asks a browser too old for Bootstrap 6
+ * to be updated. It tests CSS.supports() for light-dark(), :has() and
+ * relative oklch() colours, which Bootstrap 6 and the panel stylesheet rely
+ * on and which fail below Chrome/Edge 123, Firefox 128 and Safari 17.5; a
+ * browser without CSS.supports() counts as old. Only then is a small bar
+ * put at the bottom of the window, which its close button removes for the
+ * rest of the browser session (sessionStorage). Nothing blocks the page,
+ * nothing is fetched, and a page inside a frame shows no bar of its own.
+ *
+ * The script is ES5 so that the browsers it is for can run it. The bar has
+ * its own fixed colours: the theme's colours are light-dark() values, which
+ * such a browser cannot read. The texts go in as text nodes, written as JSON
+ * with < > & ' " escaped, so no translation can close the script element.
+ *
+ * @param string $text  the notice, translated
+ * @param string $close the close button's name, translated
+ * @return string HTML: one <script> element, '' when a text is not UTF-8
+ */
+function pg_old_browser_notice_script($text, $close)
+{
+    $texts = json_encode(
+        array('text' => (string) $text, 'close' => (string) $close),
+        JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+    if (!is_string($texts)) {
+        return '';
+    }
+
+    $script = <<<'PGOLDBROWSER'
+<script>
+(function () {
+    var texts = PG_OLD_BROWSER_TEXTS;
+    var supported = false;
+    try {
+        supported = !!(window.CSS && CSS.supports &&
+            CSS.supports('color', 'light-dark(#000, #fff)') &&
+            CSS.supports('selector(:has(*))') &&
+            CSS.supports('color', 'oklch(from red l c h)'));
+    } catch (e) {
+        supported = false;
+    }
+    if (supported || (window.self !== window.top)) {
+        return;
+    }
+    try {
+        if (window.sessionStorage && (sessionStorage.getItem('pg-old-browser-notice') === '1')) {
+            return;
+        }
+    } catch (e) {
+    }
+    function show() {
+        if (!document.body || document.getElementById('pg-old-browser-notice')) {
+            return;
+        }
+        var bar = document.createElement('div');
+        var message = document.createElement('span');
+        var button = document.createElement('button');
+        bar.id = 'pg-old-browser-notice';
+        bar.setAttribute('role', 'status');
+        bar.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:2147483000;max-width:40rem;margin:0 auto;'
+            + 'display:flex;align-items:center;padding:6px 6px 6px 14px;border:1px solid #c99a00;border-radius:8px;'
+            + 'background:#fff3cd;color:#3d2e00;box-shadow:0 4px 16px rgba(0,0,0,.25);'
+            + 'font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;';
+        message.style.cssText = 'flex:1 1 auto;';
+        message.appendChild(document.createTextNode(texts.text));
+        button.type = 'button';
+        button.setAttribute('aria-label', texts.close);
+        button.title = texts.close;
+        button.style.cssText = 'flex:0 0 auto;margin-left:8px;min-width:32px;min-height:32px;padding:0 8px;border:0;'
+            + 'border-radius:6px;background:transparent;color:inherit;font:inherit;font-size:20px;line-height:1;cursor:pointer;';
+        button.appendChild(document.createTextNode(String.fromCharCode(215)));
+        button.onclick = function () {
+            try {
+                sessionStorage.setItem('pg-old-browser-notice', '1');
+            } catch (e) {
+            }
+            if (bar.parentNode) {
+                bar.parentNode.removeChild(bar);
+            }
+        };
+        bar.appendChild(message);
+        bar.appendChild(button);
+        document.body.appendChild(bar);
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', show);
+    } else {
+        show();
+    }
+})();
+</script>
+PGOLDBROWSER;
+
+    return str_replace('PG_OLD_BROWSER_TEXTS', $texts, $script);
+}
+
+/**
+ * The old browser notice as the panel head (output_control_panel_header_includes())
+ * and the standalone screens that load Bootstrap 6 without it print it.
+ *
+ * @return string HTML
+ */
+function pg_old_browser_notice()
+{
+    return pg_old_browser_notice_script(
+        lang('Your browser is out of date, so parts of this page may not look or work right. Please update your browser.'),
+        lang('Close'));
 }
 
 /**
