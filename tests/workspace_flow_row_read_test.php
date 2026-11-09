@@ -67,12 +67,12 @@ function test_workspace_flow_row_read_kind()
 // Its settings: the table and the row, as a change box names its row.
 function test_workspace_flow_row_read_config()
 {
-	pg_assert_same(array('table_id' => 12, 'row' => '{{trigger.row_id}}'), ws_step_config_normalize('row_get', array('table_id' => '12', 'row' => " {{trigger.row_id}}\n", 'cells' => '{"3":"x"}')));
-	pg_assert_same(array('table_id' => 0, 'row' => ''), ws_step_config_normalize('row_get', array()));
+	pg_assert_same(array('table_id' => 12, 'by' => 'id', 'row' => '{{trigger.row_id}}'), ws_step_config_normalize('row_get', array('table_id' => '12', 'row' => " {{trigger.row_id}}\n", 'cells' => '{"3":"x"}')));
+	pg_assert_same(array('table_id' => 0, 'by' => 'id', 'row' => ''), ws_step_config_normalize('row_get', array()));
 
 	$catalogue = array_column(ws_flow_kind_catalogue(), null, 'kind');
 
-	pg_assert_same(array('table_id', 'row', 'retry', 'retry_after'), array_column($catalogue['row_get']['settings'], 'key'), 'its settings, then the tries');
+	pg_assert_same(array('table_id', 'by', 'row', 'retry', 'retry_after'), array_column($catalogue['row_get']['settings'], 'key'), 'its settings, then the tries');
 
 	$problems = function ($config) {
 		return implode(' ', ws_step_config_problems('row_get', ws_step_config_normalize('row_get', $config), 'Read'));
@@ -82,7 +82,7 @@ function test_workspace_flow_row_read_config()
 	pg_assert_same('', $problems(array('table_id' => 4, 'row' => '{{node.find.value}}')), 'a row named by one value');
 	pg_assert_contains('needs the table it reads', $problems(array('row' => '15')));
 	pg_assert_contains('needs the row it reads', $problems(array('table_id' => 4)));
-	pg_assert_contains('by its id or by one value', $problems(array('table_id' => 4, 'row' => 'row {{trigger.row_id}}')));
+	pg_assert_contains('write the row\'s id, or add one value', $problems(array('table_id' => 4, 'row' => 'row {{trigger.row_id}}')));
 }
 
 // The values it gives: the row and found, then one per column of its table,
@@ -168,7 +168,7 @@ function test_workspace_flow_row_read_runs_as_the_owner()
 
 	pg_assert_contains("ws_wtable_flow_check(\$viewer, (int) \$table['id'], 'view')", $check, 'read reach is enough');
 	pg_assert_contains("if (\$gate === 'paused')", $check);
-	pg_assert_contains('ws_step_row_names_row($row)', $check);
+	pg_assert_contains('ws_step_row_refusal($by, $row)', $check);
 	pg_assert_false(strpos($check, 'ws_wtable_row(') !== false, 'a row id is not refused when the row is gone');
 
 	$run = workspace_flow_row_read_test_source('ws_step_run');

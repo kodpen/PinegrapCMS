@@ -324,6 +324,43 @@ function ws_wtable_row($table_id, $row_id)
 }
 
 /**
+ * The row a table lists with this number (its position, 1 for the first
+ * row), as stored, or null. Two rows added at once may share a number
+ * (MAX(position) + 1 read by both): the first of them is given.
+ *
+ * @param int $table_id
+ * @param int $position
+ * @return array|null
+ */
+function ws_wtable_row_at($table_id, $position)
+{
+    if (!ws_wtables_ready() || ((int) $position <= 0)) {
+        return null;
+    }
+
+    $row = db_item("SELECT * FROM ws_wtable_rows WHERE table_id = '" . (int) $table_id . "' AND position = '" . (int) $position . "' ORDER BY id LIMIT 1");
+
+    return is_array($row) ? $row : null;
+}
+
+/**
+ * The last row a table lists, as stored, or null for a table without rows.
+ *
+ * @param int $table_id
+ * @return array|null
+ */
+function ws_wtable_row_last($table_id)
+{
+    if (!ws_wtables_ready() || ((int) $table_id <= 0)) {
+        return null;
+    }
+
+    $row = db_item("SELECT * FROM ws_wtable_rows WHERE table_id = '" . (int) $table_id . "' ORDER BY position DESC, id DESC LIMIT 1");
+
+    return is_array($row) ? $row : null;
+}
+
+/**
  * The distinct text values the rows of a table hold in one column, as
  * stored: a status column's keys, read before its choices change so a new
  * choice never takes a key a row still holds.

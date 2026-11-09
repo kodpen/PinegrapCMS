@@ -9,6 +9,7 @@ description: "Add value" in a Flows box's side panel (data-passing D6): the text
 
 ## What does the list offer?
 - `valueGroups(node)`: what started the run first (`trigger_outputs` of `ws_flow_js_config()`: the start kind's, an event box's by its event), then every box before the box along the arrows in `orderedNodes()` order with text, outcome, status and its `outputs` (a web check's by mode, a report's counts as `ws_step_outputs()` keys them). A start that gives nothing (manual, schedule) is left out; so are later boxes and the box itself.
+- An empty list says why (`valuesNone()`, PR #8384): with boxes or a start before it, it names them ("What comes before this box gives no value here: Manual start"); only with nothing before it does it ask to connect it (`fl_values_none`). It used to ask a box behind a manual start to be connected.
 - A box that may not have run is marked "Empty if skipped" (decision 3a of #2414): `sureBefore()` is a port of `ws_flow_sure_before()`, so the mark matches the `skippable_reference` warning. Test `test_workspace_flows_canvas_value_picker_offers_the_boxes_before`.
 
 ## How is a chip kept?

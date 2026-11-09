@@ -37,12 +37,11 @@ description: Plan (owner 2026-11-09): workflow tables that behave like SQL table
 - A box saved before the choice keeps meaning an id.
 - The session put the values over rows in a "Read rows" box. That box takes conditions, so it gives "the sum where …" as well as the sum of all rows. It also gives the rows as a list for For each. "Read a row" stays one row.
 
-## Which questions are open?
-- Asked of the owner 2026-11-09 (answers go in `workflow/decisions-made-product-*.md` and here):
-  - what a row link does when its row is deleted;
-  - what a reader of a table sees through a link to a table they do not read;
-  - what a type change does to cells that do not convert;
-  - what setting a key does on a column that holds the same value twice.
+## What did the owner decide on 2026-11-09? (`workflow/decisions-made-product-39.md`)
+- A deleted row that others link to: the links clear, and the delete confirmation counts the rows affected.
+- A link to a table the reader does not read: no value shows, and the joined columns from that table stay empty.
+- A type change is refused while a cell would not convert; those cells are listed.
+- Keys, both kinds: a stable number per table (1, 2, 3, never shifted by a delete), and a column a person makes the key.
 
 ## Where to start?
-- Step 1 is PR #8381. Steps 2-8 are in `tables-relational-steps.md`, in order: each needs the one before it, except 7 and 8.
+- Step 1 is PR #8384. Steps 2-8 are in `tables-relational-steps.md`, in order: each needs the one before it, except 7 and 8.

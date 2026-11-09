@@ -5150,6 +5150,35 @@
         return list;
     }
 
+    // What "Add value" says when it has nothing to offer: the start and the
+    // boxes before this one by name when some are connected before it but
+    // give no value here (a manual start gives none), else that nothing is
+    // connected before it yet.
+    function valuesNone(node) {
+        var maps = arrowMaps();
+        var into = {};
+
+        Object.keys(maps.next).forEach(function (id) {
+            into[id] = [];
+        });
+        Object.keys(maps.next).forEach(function (from) {
+            maps.next[from].forEach(function (to) {
+                into[to].push(from);
+            });
+        });
+
+        var before = boxesBefore(into, node.id);
+        var names = orderedNodes().filter(function (other) {
+            return before[other.id] && (other.id !== node.id);
+        }).map(nameOf);
+
+        if (!names.length) {
+            return t('fl_values_none');
+        }
+
+        return t('fl_values_none_before', names.slice(0, 3).join(', ') + ((names.length > 3) ? ', …' : ''));
+    }
+
     // The values a box may write in: what started the run, then each box
     // before it in arrow order, one that may not have run marked (its
     // values are then empty).
@@ -5837,7 +5866,7 @@
             K.clear(list);
 
             if (!groups.length) {
-                list.appendChild(el('div', 'small fg-secondary', t('fl_values_none')));
+                list.appendChild(el('div', 'small fg-secondary', valuesNone(node)));
             }
 
             groups.forEach(function (group) {
@@ -7824,8 +7853,8 @@
         return (cells && (typeof cells === 'object') && !Array.isArray(cells)) ? cells : null;
     }
 
-    // Its table, and the row a change or a read names by its number or its
-    // value.
+    // Its table, and the row a change or a read finds: its number, its id
+    // (a value by its name) or the last row.
     function rowWriteMeta(node) {
         var config = node.config;
         var table = rowTable(config);
@@ -7836,9 +7865,25 @@
         }
 
         var name = table ? table.name : '#' + config.table_id;
-        var named = /^\d+$/.test(row) ? null : valueNames(node)[row];
 
-        return (((node.kind === 'row_set') || (node.kind === 'row_get')) && row) ? t('fl_rows_meta', name, named ? named.label : row) : name;
+        if ((node.kind !== 'row_set') && (node.kind !== 'row_get')) {
+            return name;
+        }
+
+        var by = rowWay(config);
+
+        if (by === 'last') {
+            return t('fl_rows_meta_last', name);
+        }
+
+        if (!row) {
+            return name;
+        }
+
+        var named = /^\d+$/.test(row) ? null : valueNames(node)[row];
+        var shown = named ? named.label : row;
+
+        return (by === 'id') ? t('fl_rows_meta_id', name, shown) : t('fl_rows_meta', name, shown);
     }
 
     // Money's decimals, as the table keeps its column (2 unless it says).
@@ -7992,9 +8037,64 @@
         return wrap;
     }
 
+    // The ways a row box finds its row (ws_step_row_bys()) as the list
+    // offers them: its number in the table first, the way of a new box.
+    function rowByOptions() {
+        return [['position', t('fl_rows_by_position')], ['id', t('fl_rows_by_id')], ['last', t('fl_rows_by_last')]];
+    }
+
+    // The way a row box's settings keep (ws_step_row_way()): none or an
+    // unknown one is by its id, as a box saved before the choice meant.
+    function rowWay(config) {
+        return (['id', 'position', 'last'].indexOf(config.by) !== -1) ? config.by : 'id';
+    }
+
+    // How a box that reads or changes a row finds it, then its row: a number
+    // or one value for the first two ways, nothing for the last row. A read
+    // box says what a missing row gives, its found value named as the value
+    // list names it.
+    function rowByField(box, node) {
+        var config = node.config;
+        var by = rowWay(config);
+        var pick = K.select(rowByOptions(), by);
+
+        pick.setAttribute('data-refocus', 'rows-by-' + node.id);
+        pick.addEventListener('change', function () {
+            config.by = pick.value;
+
+            if (config.by === 'last') {
+                config.row = '';
+            } else if ((node.kind === 'row_get') && (config.by === 'position') && !String(config.row || '').trim()) {
+                config.row = '1';
+            }
+
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_rows_by'), pick, (by === 'last') ? t('fl_rows_last_help') : ''));
+
+        if (by === 'last') {
+            return;
+        }
+
+        var help = t((by === 'position') ? 'fl_rows_position_help' : 'fl_rows_id_help');
+
+        if (node.kind === 'row_get') {
+            var found = ((FL.outputs || {}).row_get || []).filter(function (item) { return item.key === 'found'; })[0];
+
+            help += ' ' + t('fl_rows_get_missing_help', found ? found.label : 'found');
+        }
+
+        box.appendChild(valueField(node, t('fl_rows_row'), config.row, 200, function (value) {
+            config.row = value;
+            refreshNode(node);
+        }, false, help));
+    }
+
     // A box that reads a row: a table the person reads (ws_flow_row_tables(),
-    // as ws_step_row_get_check() asks at view) and the row, by its number or
-    // one value. Its cells are offered to the boxes after it (boxValues()).
+    // as ws_step_row_get_check() asks at view) and the row, found by its
+    // number, its id or as the last row. Its cells are offered to the boxes
+    // after it (boxValues()).
     function rowGetFields(box, node) {
         var config = node.config;
         var options = [[0, t('fl_row_table_pick')]].concat(stepLists().tables.map(function (item) { return [item.id, item.name]; }));
@@ -8012,10 +8112,7 @@
             drawSettings();
         });
         box.appendChild(field(t('fl_row_table'), pick, t('fl_rows_read_help')));
-        box.appendChild(valueField(node, t('fl_rows_row'), config.row, 200, function (value) {
-            config.row = value;
-            refreshNode(node);
-        }, false, t('fl_rows_get_row_help')));
+        rowByField(box, node);
     }
 
     // The kind of record a read box reads, as the person may read it
@@ -8305,10 +8402,7 @@
         box.appendChild(field(t('fl_row_table'), pick, t('fl_rows_table_help')));
 
         if (node.kind === 'row_set') {
-            box.appendChild(valueField(node, t('fl_rows_row'), config.row, 200, function (value) {
-                config.row = value;
-                refreshNode(node);
-            }, false, t('fl_rows_row_help')));
+            rowByField(box, node);
         }
 
         if (!config.table_id) {
@@ -9544,13 +9638,17 @@
 
             config = { table_id: (writable.length === 1) ? writable[0].id : 0, cells: '' };
 
+            // A change names its row by its number in the table, left for
+            // the person to choose: a write never falls on row 1 unasked.
             if (kind === 'row_set') {
+                config.by = 'position';
                 config.row = '';
             }
         } else if (kind === 'row_get') {
             var readable = stepLists().tables;
 
-            config = { table_id: (readable.length === 1) ? readable[0].id : 0, row: '' };
+            // A read starts on the first row, a whole box at once.
+            config = { table_id: (readable.length === 1) ? readable[0].id : 0, by: 'position', row: '1' };
         } else if (kind === 'record_get') {
             config = { record: '', id: '' };
         } else if (kind === 'ai') {

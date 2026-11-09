@@ -605,13 +605,13 @@ function ws_step_config_normalize($kind, $config)
             $out = array('table_id' => $number($config['table_id'] ?? 0));
 
             if ($kind === 'row_set') {
-                $out['row'] = ws_flow_line($config['row'] ?? '', 200);
+                $out += ws_step_row_way($config);
             }
 
             return $out + array('cells' => ws_flow_lines($cells, WS_STEP_ROW_CELLS_MAX));
 
         case 'row_get':
-            return array('table_id' => $number($config['table_id'] ?? 0), 'row' => ws_flow_line($config['row'] ?? '', 200));
+            return array('table_id' => $number($config['table_id'] ?? 0)) + ws_step_row_way($config);
 
         case 'record_get':
             $record = is_string($config['record'] ?? null) ? $config['record'] : '';
@@ -789,10 +789,8 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
                 $problems[] = lang(array('string' => 'The box {var:1} needs the table it writes in.', 'vars' => $name));
             }
 
-            if (($kind === 'row_set') && (trim($config['row']) === '')) {
-                $problems[] = lang(array('string' => 'The box {var:1} needs the row it changes.', 'vars' => $name));
-            } elseif (($kind === 'row_set') && !ws_step_row_names_row($config['row'])) {
-                $problems[] = lang(array('string' => 'The box {var:1} names its row by its id or by one value, such as {{trigger.row_id}}.', 'vars' => $name));
+            if ($kind === 'row_set') {
+                $problems = array_merge($problems, ws_step_row_problem($kind, $config, $name));
             }
 
             $cells = ws_step_row_cells($config['cells']);
@@ -812,11 +810,7 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
                 $problems[] = lang(array('string' => 'The box {var:1} needs the table it reads.', 'vars' => $name));
             }
 
-            if (trim($config['row']) === '') {
-                $problems[] = lang(array('string' => 'The box {var:1} needs the row it reads.', 'vars' => $name));
-            } elseif (!ws_step_row_names_row($config['row'])) {
-                $problems[] = lang(array('string' => 'The box {var:1} names its row by its id or by one value, such as {{trigger.row_id}}.', 'vars' => $name));
-            }
+            $problems = array_merge($problems, ws_step_row_problem($kind, $config, $name));
 
             break;
 
@@ -3121,7 +3115,10 @@ function ws_step_row_value_in($value)
 }
 
 /**
- * The row a row text names once it is filled in: its id, 0 for none. Pure.
+ * The number a row text holds once it is filled in, a whole number from 1
+ * (leading zeros allowed, at most ten digits); 0 for anything else. A row
+ * box reads it as the row's id or as its number in the table, by its way
+ * (ws_step_row_way()). Pure.
  *
  * @param string $text
  * @return int
@@ -3130,12 +3127,12 @@ function ws_step_row_id($text)
 {
     $text = trim((string) $text);
 
-    return preg_match('/^[1-9][0-9]{0,9}$/', $text) ? (int) $text : 0;
+    return preg_match('/^0*([1-9][0-9]{0,9})$/', $text, $match) ? (int) $match[1] : 0;
 }
 
 /**
- * Does a change box's row text name a row: its id, or one value of the run
- * alone, such as the row that started the flow ({{trigger.row_id}}) or the
+ * Does a row text name a row: a whole number from 1, or one value of the
+ * run alone, such as the row that started the flow ({{trigger.row_id}}) or
  * one an earlier box added? Pure.
  *
  * @param string $text
@@ -3143,13 +3140,188 @@ function ws_step_row_id($text)
  */
 function ws_step_row_names_row($text)
 {
+    return ws_step_row_text_fault($text) === '';
+}
+
+/**
+ * What is wrong with a row text, one rule for the editor's problems, the
+ * check at publish and each run (ws_step_row_problem(),
+ * ws_step_row_refusal()): '' when it names a row (a whole number from 1, or
+ * one value alone), empty, below_one (0 or a negative number: rows and their
+ * ids are counted from 1) or not_row (any other text). Pure.
+ *
+ * @param string $text
+ * @return string
+ */
+function ws_step_row_text_fault($text)
+{
     $text = trim((string) $text);
 
-    if (ws_step_row_id($text) > 0) {
-        return true;
+    if ($text === '') {
+        return 'empty';
     }
 
-    return (preg_replace(WS_STEP_VALUE_PATTERN, '', $text, -1, $count) === '') && ($count === 1);
+    if (ws_step_row_id($text) > 0) {
+        return '';
+    }
+
+    if (preg_match('/^-?[0-9]+$/', $text)) {
+        return ((int) $text <= 0) ? 'below_one' : 'not_row';
+    }
+
+    return ((preg_replace(WS_STEP_VALUE_PATTERN, '', $text, -1, $count) === '') && ($count === 1)) ? '' : 'not_row';
+}
+
+/**
+ * The ways a box that changes or reads a row finds it: by its id (first, the
+ * meaning of a box saved before there was a choice), by its number as the
+ * table lists it (position, 1 is the first row), or the last row. Pure.
+ *
+ * @return string[]
+ */
+function ws_step_row_bys()
+{
+    return array('id', 'position', 'last');
+}
+
+/**
+ * The way a box that changes or reads a row finds it, and its row text, as
+ * the box's settings keep them: an unknown way is by its id, and the last
+ * row names no row. Pure.
+ *
+ * @param array $config
+ * @return array by, row
+ */
+function ws_step_row_way($config)
+{
+    $by = $config['by'] ?? '';
+    $by = (is_string($by) && in_array($by, ws_step_row_bys(), true)) ? $by : 'id';
+
+    return array('by' => $by, 'row' => ($by === 'last') ? '' : ws_flow_line($config['row'] ?? '', 200));
+}
+
+/**
+ * The editor's problems with the row of a box that reads or changes a row,
+ * named by the box: none for the last row; else what ws_step_row_text_fault()
+ * finds, worded for its way. Pure but for lang().
+ *
+ * @param string $kind   row_get | row_set
+ * @param array  $config ws_step_config_normalize() of the box
+ * @param string $name   the box as the canvas names it
+ * @return string[]
+ */
+function ws_step_row_problem($kind, $config, $name)
+{
+    $by = (string) ($config['by'] ?? 'id');
+
+    if ($by === 'last') {
+        return array();
+    }
+
+    $row = trim((string) ($config['row'] ?? ''));
+    $shown = mb_substr($row, 0, 60);
+
+    switch (ws_step_row_text_fault($row)) {
+        case 'empty':
+            return array(($kind === 'row_get')
+                ? lang(array('string' => 'The box {var:1} needs the row it reads.', 'vars' => $name))
+                : lang(array('string' => 'The box {var:1} needs the row it changes.', 'vars' => $name)));
+
+        case 'below_one':
+            return array(($by === 'position')
+                ? lang(array('string' => 'The box {var:1} names the row {var:2}, but rows are counted from 1: the first row of the table is 1.', 'vars' => array($name, $shown)))
+                : lang(array('string' => 'The box {var:1} names the row id {var:2}, but row ids start at 1.', 'vars' => array($name, $shown))));
+
+        case 'not_row':
+            return array(($by === 'position')
+                ? lang(array('string' => 'The box {var:1} names its row as “{var:2}”: write the row\'s number in the table, such as 1, or add one value with “Add value”.', 'vars' => array($name, $shown)))
+                : lang(array('string' => 'The box {var:1} names its row as “{var:2}”: write the row\'s id, or add one value with “Add value”.', 'vars' => array($name, $shown))));
+    }
+
+    return array();
+}
+
+/**
+ * Why a row box's row is refused at publish, a run or a box try, without
+ * the box's name (the check that names it already says which box): '' when
+ * the way and the text name a row. Pure but for lang().
+ *
+ * @param string $by  ws_step_row_bys()
+ * @param string $row the row text, not filled in
+ * @return string
+ */
+function ws_step_row_refusal($by, $row)
+{
+    if ($by === 'last') {
+        return '';
+    }
+
+    switch (ws_step_row_text_fault($row)) {
+        case 'empty':
+            return lang('The box names no row.');
+
+        case 'below_one':
+            return ($by === 'position') ? lang('Rows are counted from 1: the first row of the table is 1.') : lang('Row ids start at 1.');
+
+        case 'not_row':
+            return ($by === 'position')
+                ? lang('Write the row\'s number in the table, such as 1, or add one value with “Add value”.')
+                : lang('Write the row\'s id, or add one value with “Add value”.');
+    }
+
+    return '';
+}
+
+/**
+ * The words for a row a box did not find in its table, the row text filled
+ * in: by its number, by its id, the last row of an empty table, or a text
+ * that is no row at all. Pure but for lang().
+ *
+ * @param string $by   ws_step_row_bys()
+ * @param string $row  the row text, filled in
+ * @param string $name the table's name
+ * @return string
+ */
+function ws_step_row_missing_text($by, $row, $name)
+{
+    $number = ws_step_row_id($row);
+
+    if ($by === 'last') {
+        return lang(array('string' => 'The table “{var:1}” has no rows.', 'vars' => $name));
+    }
+
+    if ($number <= 0) {
+        return lang(array('string' => 'The table “{var:1}” has no row “{var:2}”.', 'vars' => array($name, mb_substr(trim((string) $row), 0, 60))));
+    }
+
+    return ($by === 'position')
+        ? lang(array('string' => 'The table “{var:1}” has no row {var:2}.', 'vars' => array($name, $number)))
+        : lang(array('string' => 'The table “{var:1}” has no row with the id {var:2}.', 'vars' => array($name, $number)));
+}
+
+/**
+ * The stored row a box finds in its table by its way, the row text filled
+ * in (ws_step_row_way()): by its id, by its number as the table lists it, or
+ * the last row; null for none.
+ *
+ * @param int    $table_id
+ * @param string $by  ws_step_row_bys()
+ * @param string $row the row text, filled in
+ * @return array|null
+ */
+function ws_step_row_find($table_id, $by, $row)
+{
+    if ($by === 'last') {
+        return ws_wtable_row_last((int) $table_id);
+    }
+
+    $number = ws_step_row_id($row);
+
+    if ($number <= 0) {
+        return null;
+    }
+
+    return ($by === 'position') ? ws_wtable_row_at((int) $table_id, $number) : ws_wtable_row((int) $table_id, $number);
 }
 
 /**
@@ -3352,6 +3524,17 @@ function ws_step_row_text($action)
     $table = (string) ($action['table_name'] ?? '');
 
     if ((string) ($action['type'] ?? '') === 'row_set') {
+        $by = (string) ($action['by'] ?? 'id');
+        $number = ws_step_row_id((string) ($action['row'] ?? ''));
+
+        if ($by === 'last') {
+            return lang(array('string' => 'Changes {var:1} in the last row of the table “{var:2}”.', 'vars' => array($columns, $table)));
+        }
+
+        if (($by === 'position') && ($number > 0)) {
+            return lang(array('string' => 'Changes {var:1} in the row {var:2} of the table “{var:3}”.', 'vars' => array($columns, $number, $table)));
+        }
+
         return lang(array('string' => 'Changes {var:1} in a row of the table “{var:2}”.', 'vars' => array($columns, $table)));
     }
 
@@ -3409,13 +3592,18 @@ function ws_step_row_check($viewer, $kind, $config)
     }
 
     $row = ($kind === 'row_set') ? (string) $config['row'] : '';
+    $by = ($kind === 'row_set') ? (string) ($config['by'] ?? 'id') : '';
+    $refusal = ($kind === 'row_set') ? ws_step_row_refusal($by, $row) : '';
 
-    if (($kind === 'row_set') && !ws_step_row_names_row($row)) {
-        return $refuse(lang('Name the row by its id or by one value, such as {{trigger.row_id}}.'));
+    if ($refusal !== '') {
+        return $refuse($refusal);
     }
 
-    if ((ws_step_row_id($row) > 0) && !ws_wtable_row((int) $table['id'], ws_step_row_id($row))) {
-        return $refuse(lang(array('string' => 'The table “{var:1}” has no row with the id {var:2}.', 'vars' => array((string) $table['name'], ws_step_row_id($row)))));
+    // An id never comes back once its row is deleted, so a typed one that
+    // names no row is refused now; a row's number may be reached as the
+    // table grows, and a value is known only as the box runs.
+    if (($by === 'id') && (ws_step_row_id($row) > 0) && !ws_wtable_row((int) $table['id'], ws_step_row_id($row))) {
+        return $refuse(ws_step_row_missing_text('id', $row, (string) $table['name']));
     }
 
     $names = array();
@@ -3428,6 +3616,7 @@ function ws_step_row_check($viewer, $kind, $config)
         'type'       => $kind,
         'table_id'   => (int) $table['id'],
         'table_name' => (string) $table['name'],
+        'by'         => $by,
         'row'        => $row,
         'cells'      => (string) $config['cells'],
         'columns'    => $names,
@@ -3476,18 +3665,19 @@ function ws_step_row_do($owner, $action)
         $written = ws_wtable_row_create($owner, $table, array('cells' => $cells));
         $row_id = (int) ($written['row_id'] ?? 0);
     } else {
-        $row_id = ws_step_row_id($action['row']);
+        $by = (string) ($action['by'] ?? 'id');
+        $row_id = 0;
 
-        if ($row_id <= 0) {
-            return $fail(lang(array('string' => 'The box has no row to change: “{var:1}” is not the id of a row.', 'vars' => (string) $action['row'])));
-        }
-
+        // The row is found again on each try: a row named by its number or
+        // as the last one may have moved while another write went first.
         for ($try = 0; $try < WS_STEP_ROW_TRIES; $try++) {
-            $row = ws_wtable_row((int) $table['id'], $row_id);
+            $row = ws_step_row_find((int) $table['id'], $by, (string) $action['row']);
 
             if (!$row) {
-                return $fail(lang(array('string' => 'The table “{var:1}” has no row with the id {var:2}.', 'vars' => array($name, $row_id))));
+                return $fail(ws_step_row_missing_text($by, (string) $action['row'], $name));
             }
+
+            $row_id = (int) $row['id'];
 
             $added = ws_step_row_cells_added($columns, $cells, ws_wtable_cells_decode($row['cells']), (array) ($action['adds'] ?? array()));
 
