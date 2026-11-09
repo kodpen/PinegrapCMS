@@ -167,6 +167,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_agent_undo();           // 11.0.174
 	upgrade_2026_11_0_ws_channel_links();        // 11.0.175
 	upgrade_2026_11_0_bundle_backorder();        // 11.0.176
+	upgrade_2026_11_0_ws_team_replies();         // 11.0.177
 
 }
 
@@ -5677,5 +5678,23 @@ function upgrade_2026_11_0_bundle_backorder() {
 	}
 
 	install_note('Product bundles: a bundle keeps its own Backorder choice apart from what its components allow, so it takes back orders again once they do. A bundle that lost the choice already takes it back when it is saved once.');
+
+}
+
+// Team saved replies (11.0.177; includes/workspace/saved_replies.php). A team
+// reply is a ws_saved_replies row with scope 'team' and user_id 0, so the
+// table keeps its shape; the right to add, change and delete them is a column
+// of its own, read for role 3 only (roles 0-2 hold it by role).
+function upgrade_2026_11_0_ws_team_replies() {
+
+	if (!install_table_exists('user')) {
+
+		install_skipped('user does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('user', 'manage_workspace_replies', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
 
 }
