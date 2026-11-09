@@ -150,6 +150,7 @@ function ws_wtable_api_routes()
             'returns'     => array('list' => 'WorkspaceDeletedTable'),
             'summary'     => 'Deleted workflow tables',
             'description' => 'The tables of the owner of the application in the bin, the latest deleted first: deleted_at says when, expires_at when it is deleted for good. Nobody reaches a deleted table, its shares included, until it is restored.',
+            'params'      => array(),
         ),
 
         array(
