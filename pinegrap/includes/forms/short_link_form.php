@@ -593,6 +593,17 @@ function pg_short_link_form_validate_destination($liveform, $current)
             case 'file':
                 $liveform->validate_required_field('file', lang('File is required.'));
 
+                // The file pickers search the server, so the posted id is
+                // checked here: a file that exists and is no attachment.
+                if ($liveform->check_field_error('file') == FALSE) {
+                    $result = db_q("SELECT COUNT(*) FROM files WHERE id = ? AND attachment = 0 AND name != ''", array((string) $liveform->get_field_value('file'))) or output_error('Query failed.');
+                    $row = mysqli_fetch_row($result);
+
+                    if ($row[0] == 0) {
+                        $liveform->mark_error('file', lang('The chosen file could not be found.'));
+                    }
+                }
+
                 if (
                     ($liveform->check_field_error('file') == FALSE)
                     && !$kept($liveform->get_field_value('file'), 'file_id')

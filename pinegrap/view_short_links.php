@@ -161,6 +161,7 @@ pg_page_shell(
     </div>
 </main>
 ' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
+' . pg_fields_script() . '
 ' .
 output_footer();
 
