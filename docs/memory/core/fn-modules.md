@@ -231,7 +231,7 @@ description: Generated from the module field of the memory files: each includes/
 - `tax_zone_list_edit`: [[list-table-quick-edit-tax-zones]]
 - `text_search`: [[capital-i-search-term]], [[find-and-replace-architecture]], [[find-and-replace-results]]
 - `theme_list_edit`: [[list-table-quick-edit-themes]]
-- `translate`: [[error-screen-language-and-status]]
+- `translate`: [[content-translation-record-save-jobs]], [[error-screen-language-and-status]]
 - `tree_search`: [[tree-search]]
 - `update`: [[ca-store-choice]], [[migration-screen]]
 - `user_list`: [[user-list-folder-filters]], [[user-screens-names-and-dates]]

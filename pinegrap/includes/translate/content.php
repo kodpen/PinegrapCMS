@@ -1685,10 +1685,30 @@ function pg_tr_db_text($value, $formats = array('text', 'inline'))
  * of a product variant (window.pgCivVariants) is translated in its script;
  * other scripts, styles, code and text areas are left alone.
  *
+ * What it swaps is counted as data (pg_tr_render_scope()): a database text
+ * with no reviewed translation never keeps the page out of the search
+ * engines. A custom HTML block's texts are the page's own and are counted at
+ * its node (pg_tr_render_props()).
+ *
  * @param string $content the page
  * @return string
  */
 function pg_tr_render_db_texts($content)
+{
+    $scope = pg_tr_render_scope('data');
+    $content = pg_tr_render_db_pass($content);
+    pg_tr_render_scope($scope);
+
+    return $content;
+}
+
+/**
+ * pg_tr_render_db_texts() without the counting scope.
+ *
+ * @param string $content the page
+ * @return string
+ */
+function pg_tr_render_db_pass($content)
 {
     pg_tr_map_load(pg_tr_language());
 

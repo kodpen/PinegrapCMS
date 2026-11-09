@@ -378,7 +378,8 @@ function pg_sw_list_wanted($family)
 // of that family, so a tree without lists pays nothing.
 // 'form_record': $data_rows as the form views read form_data (data_id and
 // field_office_use included); $options: 'translate' (the widget includes
-// its records in the translation).
+// its records in the translation), 'own' (a record view: the record is the
+// page's own words, pg_tr_record_fields()).
 // 'product': $data_rows = source => product id => rows, as
 // pg_sw_list_product_read() builds them.
 // 'calendar': $data_rows = source => key => rows, as
@@ -398,7 +399,10 @@ function pg_sw_list_publish($family, $data_rows, $options = array())
     if ($family === 'form_record') {
         $published[$sid][$family] = array(
             'records' => pg_sw_list_form_records($data_rows),
-            'options' => array('translate' => is_array($options) && !empty($options['translate'])),
+            'options' => array(
+                'translate' => is_array($options) && !empty($options['translate']),
+                'own'       => is_array($options) && !empty($options['own']),
+            ),
         );
     } else {
         $published[$sid][$family] = array('rows' => is_array($data_rows) ? $data_rows : array());
@@ -509,7 +513,7 @@ function pg_sw_list_value_rows($records, $arg, $options = array(), $split = fals
 
         $data = $stored;
         if (is_array($options) && !empty($options['translate'])) {
-            $tr   = pg_tr_record_fields(array('v' => array('data' => $data, 'type' => $row['type'], 'wysiwyg' => $row['wysiwyg'], 'translate' => $row['translate'])));
+            $tr   = pg_tr_record_fields(array('v' => array('data' => $data, 'type' => $row['type'], 'wysiwyg' => $row['wysiwyg'], 'translate' => $row['translate'])), !empty($options['own']));
             $data = (is_array($tr) && isset($tr['v']['data'])) ? (string)$tr['v']['data'] : $data;
         }
         $text = (string)prepare_form_data_for_output($data, $row['type'], false, pg_sw_default_date_format($row['type']));

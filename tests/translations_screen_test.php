@@ -5,8 +5,9 @@
  * Tests for the Translations screen's helpers in
  * includes/translate/screen.php: what a page answered the search engines as
  * the page list shows it, the places the texts that keep a page out come
- * from and their order, and the text ids "keep as in the source and
- * approve" accepts.
+ * from and their order, which records count toward a page's verdict (a
+ * record view's, never a list's), and the text ids "keep as in the source
+ * and approve" accepts.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -19,6 +20,7 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/translate/store.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/translate/content.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/translate/screen.php');
 
 // A stored answer of 1 or 0; no row means the page was not drawn since.
@@ -110,4 +112,45 @@ function test_translations_screen_string_ids()
 	pg_assert_same(array(1, 2), pg_tr_screen_string_ids(array(1, 2), 2), 'at the limit');
 	pg_assert_same(array(), pg_tr_screen_string_ids(array(1, 2, 3), 2), 'over the limit');
 	pg_assert_same(array(1), pg_tr_screen_string_ids(array(1, 1, 1), 1), 'repeats do not count against the limit');
+}
+
+// The forms whose records count toward a page's verdict: those a record
+// view includes in the translation. A list's records never keep a page out.
+function test_translations_screen_record_view_forms()
+{
+	$configs = array(
+		'{"regionType":"form_item_view","custom_form_page_id":14,"translate_records":true}',
+		'{"regionType":"form_list_view","custom_form_page_id":21,"translate_records":true}',
+		'{"regionType":"blog_list","form_page_id":22,"translate_records":true}',
+		'{"regionType":"form_item_view","custom_form_page_id":30}',
+		'{"regionType":"form_item_view","form_page_id":14,"translate_records":1}',
+		'not json',
+		null,
+	);
+
+	pg_assert_same(array(14), pg_tr_record_view_forms($configs), 'record views that include their records, once');
+	pg_assert_same(array(), pg_tr_record_view_forms(array()), 'no widgets');
+}
+
+// The texts of a list's records are left out of "Keeping pages out of
+// search"; a record view's stay, as they keep the record's own page out.
+function test_translations_screen_blocking_records_sql()
+{
+	pg_assert_same("u.owner_type <> 'form_records'", pg_tr_screen_blocking_records_sql(array()), 'no record view');
+	pg_assert_same("(u.owner_type <> 'form_records' OR u.owner_id IN (14,30))", pg_tr_screen_blocking_records_sql(array(14, '30', 14, 0, -2)), 'record views');
+}
+
+// The owners a page's "Why?" counts: a list page loses the records its list
+// includes, a record view page keeps its form's.
+function test_translations_screen_verdict_owners()
+{
+	$owners = array(array('page', 5), array('page_seo', 5), array('shared', 12), array('form_records', 21), array('form_records', 14), array('menu', 3));
+
+	pg_assert_same(
+		array(array('page', 5), array('page_seo', 5), array('shared', 12), array('form_records', 14), array('menu', 3)),
+		pg_tr_verdict_owners($owners, array(14)),
+		'the record view\'s form stays'
+	);
+	pg_assert_same(4, count(pg_tr_verdict_owners($owners, array())), 'a list page');
+	pg_assert_same(array(), pg_tr_verdict_owners(null, array(14)), 'nothing given');
 }

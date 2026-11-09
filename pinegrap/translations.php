@@ -177,10 +177,10 @@ if ($engine_key === 'manual') {
     $update_button_title = ($page_id > 0) ? lang('Scan this page and send its pending texts to the engine') : (($group !== '') ? lang('Scan these texts and send the pending ones to the engine') : lang('Scan every page and send the pending texts to the engine'));
 }
 
-// Under the reviewed policy a page is indexed in the language only when
-// every text drawn on it stands approved: what each page answered the last
-// time it was drawn (one read), and for the selected page, on request, which
-// texts kept it out.
+// Under the reviewed policy a page is indexed in the language only when its
+// own words stand approved: what each page answered the last time it was
+// drawn (one read), and for the selected page, on request, which texts kept
+// it out.
 $index_watch = $language_row && ((string) $language_row['index_policy'] === 'reviewed') && pg_tr_page_verdict_ready();
 $verdicts = $index_watch ? pg_tr_page_verdicts($language) : array();
 
@@ -195,7 +195,8 @@ $scope_stats = $site_stats;
 
 if ($language !== '') {
 
-    $owner_where = ($page_id > 0) ? pg_tr_owner_where(pg_tr_page_owners($page_id)) : (($group !== '') ? pg_tr_owner_where(pg_tr_scope_owners('group:' . $group)) : pg_tr_owner_where(array()));
+    $page_owners = ($page_id > 0) ? pg_tr_page_owners($page_id) : array();
+    $owner_where = ($page_id > 0) ? pg_tr_owner_where($page_owners) : (($group !== '') ? pg_tr_owner_where(pg_tr_scope_owners('group:' . $group)) : pg_tr_owner_where(array()));
     $where = array('u.string_id > 0');
 
     if (($page_id > 0) || ($group !== '')) {
@@ -221,9 +222,11 @@ if ($language !== '') {
             break;
         // What keeps a page out of the search engines under the reviewed
         // policy: no translation, or an unapproved one that differs from
-        // the source.
+        // the source. A list's records never do; a record view's keep the
+        // record's own page out (the selected page's widgets, or the site's).
         case 'blocking':
             $where[] = pg_tr_screen_blocking_sql();
+            $where[] = pg_tr_screen_blocking_records_sql(pg_tr_item_view_forms(($page_id > 0) ? $page_owners : null));
             break;
     }
 
@@ -555,7 +558,8 @@ if ($total_pages > 1) {
 }
 
 // Recent jobs, each with what it covered: the whole site, a group of the
-// list (the catalog, the forms, the cookie window) or one page by its name.
+// list (the catalog, the forms, the cookie window), one page by its name, or
+// the records of a form a record save opened a job for.
 $output_jobs = '';
 $job_groups = pg_tr_owner_groups();
 $job_page_names = array();
@@ -573,6 +577,9 @@ foreach ($jobs as $job) {
         $job_scope = $job_groups[$job_match[1]]['label'];
     } elseif (preg_match('/^page:(\d+)$/', (string) $job['scope'], $job_match) && isset($job_page_names[(int) $job_match[1]])) {
         $job_scope = $job_page_names[(int) $job_match[1]];
+    } elseif (preg_match('/^records:\d+$/', (string) $job['scope'])) {
+        // Opened by a record save (pg_tr_records_saved()).
+        $job_scope = $job_groups['forms']['label'];
     }
 
     $output_jobs .= '<div class="d-flex align-items-center gap-3 py-3 border-top small" data-job-id="' . (int) $job['id'] . '">'
@@ -699,7 +706,7 @@ if ($index_watch && $selected_page) {
             $output_index_note .= '<div class="mt-3">' . lang('None of the texts last read from this page is pending. Run "Update this page" so they are read again, then open the page once in this language.') . '</div>';
         }
 
-        $output_index_note .= '<div class="mt-1 opacity-75">' . lang('Counted from the texts last read from this page and from what it places: shared components, menus, the records a list includes. A widget may draw other texts as well (products, form fields), and they count too when the page is drawn.') . '</div>';
+        $output_index_note .= '<div class="mt-1 opacity-75">' . lang('Counted from the texts last read from this page and from what it places: shared components, menus and, on a record\'s own page, the record it shows. Form fields a widget draws count too when the page is drawn. The records a list shows, products and other texts read from the database never keep a page out: they are drawn in the source language until translated.') . '</div>';
     }
 
     $output_index_note .= '</div>';

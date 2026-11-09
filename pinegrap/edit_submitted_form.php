@@ -917,6 +917,14 @@ if (!$_POST) {
             
             log_activity(lang(array('string'=>'submitted form (form name: {var:1}, reference code: {var:2}) was modified','vars'=>array($form_name,$reference_code))), $_SESSION['sessionusername']);
 
+            // Saved complete by someone who may edit the form's records: its
+            // texts go to the languages that translate on save. A submitter
+            // or form editor editing their own record does not spend the
+            // site's engine credit.
+            if ($submitted_forms_manager && $new_complete) {
+                pg_tr_records_saved($custom_form_page_id, $user['id']);
+            }
+
             // If the save-for-later button was clicked.
             if ($liveform->field_in_session('save_for_later_button')) {
                 $message = lang('The form has been saved for later.');

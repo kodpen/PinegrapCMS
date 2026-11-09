@@ -403,6 +403,24 @@ function pg_tr_auto_update_page($page_id, $user_id = 0)
         return;
     }
 
+    $auto = pg_tr_auto_languages();
+
+    if (!$auto) {
+        return;
+    }
+
+    pg_tr_load();
+    pg_tr_auto_update($auto, 'page:' . (int) $page_id, $user_id);
+}
+
+/**
+ * The target languages set to translate on save whose engine works without
+ * the Translations screen (Pinegrap AI, Claude, Google).
+ *
+ * @return array code => site_languages row
+ */
+function pg_tr_auto_languages()
+{
     $auto = array();
 
     foreach (pg_tr_languages() as $code => $row) {
@@ -411,12 +429,81 @@ function pg_tr_auto_update_page($page_id, $user_id = 0)
         }
     }
 
+    return $auto;
+}
+
+/**
+ * After a record of a custom form was created or changed: when a translated
+ * page draws the form's records (a list or record view widget that includes
+ * them in the translation), each language set to translate on save whose
+ * engine is ready gets a job for the records' pending texts, opened the way
+ * pg_tr_auto_update_page() opens one (pg_tr_auto_update(): no engine is
+ * called here, and an open job of the same scope is not opened twice).
+ *
+ * Callers come here only for a record saved by someone who may edit the
+ * form's records (pg_tr_records_editor()): the submitted form screens, a
+ * staff member's entry on the site, the external API with a key. A
+ * visitor's submission never does, so nobody outside spends the site's
+ * engine credit by posting a form.
+ *
+ * @param int $form_page_id the custom form's page
+ * @param int $user_id
+ * @return int jobs opened
+ */
+function pg_tr_records_saved($form_page_id, $user_id = 0)
+{
+    $form_page_id = (int) $form_page_id;
+
+    if (!pg_tr_ready() || ($form_page_id <= 0)) {
+        return 0;
+    }
+
+    $auto = pg_tr_auto_languages();
+
     if (!$auto) {
-        return;
+        return 0;
     }
 
     pg_tr_load();
-    pg_tr_auto_update($auto, 'page:' . (int) $page_id, $user_id);
+
+    // Only records a page draws translated: the uses of the form's records,
+    // or a page that names them (pg_tr_extract_page()).
+    if (!db_value("SELECT 1 FROM translation_uses
+                   WHERE (owner_type = 'form_records' AND owner_id = '$form_page_id')
+                      OR (owner_type = 'page_ref' AND node_id = 'form_records' AND field = '$form_page_id') LIMIT 1")) {
+        return 0;
+    }
+
+    // With no engine ready the records are not even read again.
+    foreach ($auto as $code => $row) {
+        $spec = pg_tr_engine((string) $row['engine']);
+
+        if (!$spec || empty($spec['ready'])) {
+            unset($auto[$code]);
+        }
+    }
+
+    return $auto ? pg_tr_auto_update($auto, 'records:' . $form_page_id, $user_id) : 0;
+}
+
+/**
+ * Whether a signed-in user may edit a custom form's records, the test the
+ * submitted form screens make: a manager or above (Designer 1 is above
+ * Manager 2), or a user with the forms right and edit access to the form
+ * page's folder.
+ *
+ * @param mixed $role               user.role; anything but a number is nobody
+ * @param mixed $manage_forms       user.manage_forms
+ * @param bool  $folder_edit_access check_edit_access() of the form's folder
+ * @return bool
+ */
+function pg_tr_records_editor($role, $manage_forms, $folder_edit_access)
+{
+    if (!is_numeric($role)) {
+        return false;
+    }
+
+    return ((int) $role <= 2) || (!empty($manage_forms) && $folder_edit_access);
 }
 
 /**
@@ -510,17 +597,26 @@ function pg_tr_editor_config($user)
  * on the raw values, before the widget escapes them and turns line breaks
  * into <br>. Unchanged in the source language.
  *
+ * A list's records are drawn in the source language until translated and
+ * never keep the page out of the search engines (counted as data,
+ * pg_tr_render_scope()). The record a record view shows is the words of
+ * that record's own page ($own): it stays out until they are translated
+ * and reviewed.
+ *
  * @param array $fields identifier => array('data', 'type', 'wysiwyg',
  *                      'translate'), as pg_sw_index_form_data() builds them
+ * @param bool  $own    true for the record of a record view
  * @return array
  */
-function pg_tr_record_fields($fields)
+function pg_tr_record_fields($fields, $own = false)
 {
     if (!pg_tr_active() || !is_array($fields)) {
         return $fields;
     }
 
     pg_tr_load();
+
+    $scope = pg_tr_render_scope($own ? 'own' : 'data');
 
     foreach ($fields as $key => $field) {
         if (!pg_tr_record_field_translatable($field)) {
@@ -531,6 +627,8 @@ function pg_tr_record_fields($fields)
             ? pg_tr_render_html_value($field['data'])
             : pg_tr_render_text($field['data'], 'text');
     }
+
+    pg_tr_render_scope($scope);
 
     return $fields;
 }
@@ -823,6 +921,31 @@ function pg_tr_text($text, $format = 'text', $kind = 'content')
     pg_tr_load();
 
     return pg_tr_render_text($text, $format, $kind);
+}
+
+/**
+ * pg_tr_text() for a text a widget reads from the database for a list of
+ * other places (a search result's title, another page's title, a keyword):
+ * drawn in the current language when it has a translation, and never
+ * counted toward the page's own words (pg_tr_render_scope()).
+ *
+ * @param string $text
+ * @param string $format text | inline
+ * @param string $kind   content | seo | ui | option
+ */
+function pg_tr_data_text($text, $format = 'text', $kind = 'content')
+{
+    if (!pg_tr_active() || ($text === '') || ($text === null)) {
+        return $text;
+    }
+
+    pg_tr_load();
+
+    $scope = pg_tr_render_scope('data');
+    $text = pg_tr_render_text($text, $format, $kind);
+    pg_tr_render_scope($scope);
+
+    return $text;
 }
 
 /**

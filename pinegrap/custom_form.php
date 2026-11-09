@@ -1513,6 +1513,14 @@ if ($liveform->check_form_errors() == false) {
     // custom form confirmation and form item view pages.
     $_SESSION['software']['submitted_form_reference_codes'][] = $reference_code;
 
+    // A record entered on the site by someone who may edit the form's
+    // records (staff): its texts go to the languages that translate on
+    // save. A visitor's submission never opens a translation job, so no
+    // anonymous post spends the site's engine credit.
+    if (isset($user) && is_array($user) && pg_tr_records_editor($user['role'] ?? null, $user['manage_forms'] ?? 0, check_edit_access($folder_id))) {
+        pg_tr_records_saved((int) $_POST['page_id'], (int) $user['id']);
+    }
+
     $add_watcher_user = array();
 
     // If the add watcher feature was used where a watcher can be passed via
