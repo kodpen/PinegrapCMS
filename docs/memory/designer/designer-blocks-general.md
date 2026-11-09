@@ -1,6 +1,6 @@
 ---
 name: designer-blocks-general
-description: General sections the sector templates share: the existing block that covers each, and the ones added in general family files (hours-seasons, locations-spaces, locations-floors)
+description: General sections the sector templates share: the existing block that covers each, and the ones added in general family files (hours-seasons, locations-spaces, locations-floors, booking-week)
 ---
 
 ## Which block does a template place for a shared section?
@@ -15,12 +15,14 @@ description: General sections the sector templates share: the existing block tha
 - Venue cards: `locations-cards` (branches: address, hours, phone), `hours-location`; spaces to hire: `locations-spaces` (added); a building's floors: `locations-floors` (added with `coworking-1`).
 - Opening hours: `hours-card` (one week); by season: `hours-seasons` (added).
 - Booking call: `booking-cta`, `booking-split`, `cta-inline`, `cta-simple`.
+- Weekly class timetable: `booking-week` (added with `gym-1`).
 
 ## What was added, and where?
 - Two general families in their own files ([[designer-block-family-files]]), each with a core group's prefix and no `group`, so they join "Hours & Locations"; one prefix per file.
 - `style_designer_blocks_hours.js` → `hours-seasons`: a `table` in `table-responsive` (named region), a column head per season (icon, name, months, `scope="col"`), a row head per day (`scope="row"`), a closed day in a word; three note cards (last entry, closures, groups) that rise on view. Rule `pg-hours-table` (tabular figures).
 - `style_designer_blocks_locations.js` → `locations-spaces`: a card per space (picture `pg-ratio-16x9`, name `h3`, guests, floor area, layout, amenity pills, "From" + price + `/day` as separate nodes, "Ask for a date"); the row rises on view (stagger 120). Rule `pg-space-facts`; it also needs the core `pg-ratio-16x9`.
 - `style_designer_blocks_locations.js` → `locations-floors` (added in step `coworking-1`): an `ol` of floors from the roof down, each a level square (`pg-floor-level`, a figure or a word), name `h3`, a line, what is on it as pills, who may go up (key icon and words); the list rises on view (stagger 100). For a coworking house, a hotel, a museum, an arcade.
+- `style_designer_blocks_booking.js` → `booking-week` (added in step `gym-1`, Services & Booking): an `ol` of seven days (a column each from md up, scrolling sideways as a named region, stacked on a phone), each an `h3` and its classes as `pg-week-slot` (start `<time>`, name, who · where · length, Book). Header fades, days rise (stagger 80). For a gym, a yoga or dance studio, a pool. Test: `designer_blocks_booking_test.php`.
 - "Area" translates as "Bölge" (a region) in the shared keys, so the fact is named "Floor Area".
 
 ## How is it tested?
