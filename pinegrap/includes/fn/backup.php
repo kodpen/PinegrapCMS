@@ -23,6 +23,14 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+/**
+ * Seconds a newest backup may be old before it is reported as a problem: one
+ * month of thirty days. pg_backup_age_state() is the only reader.
+ */
+if (!defined('PG_BACKUP_WARN_AGE')) {
+    define('PG_BACKUP_WARN_AGE', 2592000);
+}
+
 
 /**
  * The directory every backup lives in.
@@ -1024,6 +1032,31 @@ function pg_backup_newest($directory = null)
     }
 
     return $found;
+}
+
+
+/**
+ * How the age of the newest backup is judged: 'fail' when there is none,
+ * 'warn' when it is more than a month old (PG_BACKUP_WARN_AGE), 'pass'
+ * otherwise. A weekly schedule that missed a run or two is not a problem worth
+ * a warning; a month without a backup is.
+ *
+ * The System Status tile, the operations alert and through the tile the
+ * dashboard greeting and the API's system status all follow this answer, so
+ * none of them warns about a backup the others call fine. A switched-off
+ * schedule is the caller's business: the tile greys it, the alert skips it.
+ *
+ * @param int $newest unix time of the newest backup (pg_backup_newest()), 0 for none
+ * @param int $now
+ * @return string 'fail', 'warn' or 'pass'
+ */
+function pg_backup_age_state($newest, $now)
+{
+    if ((int) $newest < 1) {
+        return 'fail';
+    }
+
+    return (((int) $now - (int) $newest) > PG_BACKUP_WARN_AGE) ? 'warn' : 'pass';
 }
 
 

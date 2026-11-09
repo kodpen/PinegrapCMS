@@ -19,7 +19,7 @@ description: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-d
 
 ## Where is each source checked?
 - `pg_ops_alerts_run()` from the general job every tick: checks at most every 10 min, a tick overlapping a pass skips (`data/temp/ops_alerts.lock`); one failing check is logged, the rest run.
-- `backup_stale`: `pg_backup_newest()` (shared with the tile) older than 8 days; never backed up: no alert. `backup_failed`: `auto_backup.php` with `pg_backup_last_error()`, or no pdo_mysql. `backup_remote_failed`: `pg_backup_remote_record()`.
+- `backup_stale`: `pg_backup_age_state()` gives `'warn'` (a month, `backup-age-rule.md`); never backed up: no alert. `backup_failed`: `auto_backup.php` with `pg_backup_last_error()`, or no pdo_mysql. `backup_remote_failed`: `pg_backup_remote_record()`.
 - `integrity`: `check_directory_file_integrity()` run with cwd = software dir (relative paths); not in development mode.
 - `error_spike`: last MB of `php_errors.log` (and `.1` when written within the hour), lines dated in the site zone; names the most frequent message.
 - `disk_low`: `disk_free_space()` of `data/`. `mail_failures`: `mail_outbox` rows of the last day with attempts > 0, queued or failed. `webhook_failing`: `api_webhooks.status = 'failing'`.
@@ -34,4 +34,4 @@ description: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-d
 - Inline job only while switched on (the mail pass always); dispatched job when selected or while dispatching is off; silent a week past its limit = retired, no longer alerted; never run is not a failure.
 
 ## How was it tested?
-- `tests/ops_alerts_test.php`; sandbox: upgrade twice, every source, forced backup failure, invalid recipient, bell endpoint.
+- `tests/ops_alerts_test.php`; sandbox: upgrade twice, every source, a failed backup, bad recipient, bell endpoint.

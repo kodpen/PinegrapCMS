@@ -104,15 +104,16 @@ function test_ops_alerts_state_normalize()
 	pg_assert_same('kept', $state['other']);
 }
 
-// A backup is stale after eight days; never having one is not this alert.
+// A backup is stale after a month (pg_backup_age_state()); never having one
+// is not this alert.
 function test_ops_alerts_backup_stale()
 {
 	$now = 2000000000;
 
 	pg_assert_false(pg_ops_backup_stale(0, $now));
-	pg_assert_false(pg_ops_backup_stale($now - (7 * 86400), $now));
-	pg_assert_false(pg_ops_backup_stale($now - 691200, $now));
-	pg_assert_true(pg_ops_backup_stale($now - 691201, $now));
+	pg_assert_false(pg_ops_backup_stale($now - (8 * 86400), $now));
+	pg_assert_false(pg_ops_backup_stale($now - 2592000, $now));
+	pg_assert_true(pg_ops_backup_stale($now - 2592001, $now));
 }
 
 // A catalogue shaped like pg_cron_jobs(), without its lang() calls.
