@@ -13,7 +13,7 @@ description: Decisions list, workspace part 10 (2026-11-09 on): application line
 - Table bin (`tables-bin.md`): a deleted workflow table or row is kept for the Recycle Bin's days (30 by default) and can be restored. This replaces "a delete is final". Why: people, agents and the API delete rows.
 - Table as Excel and an import route (`tables-xlsx-import-route.md`): whoever may view a table downloads it; the API and MCP import a file or a note's table, with a dry run. Why: teams pass tables around as Excel, and the import was on the panel only.
 - Why a flow box failed (`flows-failure-reason.md`): the failure names the value that came empty and its box, with the fix one click away; a row read that finds nothing stays done. Why: five runs on dev failed with "The message is empty." and nothing named the row box.
-- Team saved replies (`saved-replies-team.md`): every member inserts them, managing takes a right of its own, a personal reply wins a shared shortcut, and the list opens in the e-mail reply box too. Why: each person wrote the same answers to customers.
+- Team saved replies (built: #8405, #8402; `workspace/workspace-saved-replies-team.md`): every member inserts them, managing takes a right of its own, a personal reply wins a shared shortcut, and the list opens in the e-mail reply box too. Why: each person wrote the same answers to customers.
 - Channel export (`channel-export.md`): whoever may read a channel exports what they see as Markdown or a print page, with its decisions and file list, at most 5,000 messages, an audit line each time. Why: notes export, channels did not.
 
 ## Whom does an agent's question ring? (owner, 2026-11-09)

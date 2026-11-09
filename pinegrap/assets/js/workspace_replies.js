@@ -3,13 +3,16 @@
  *
  * Workspace - saved replies on the channel screen: the ; list of the
  * composer (";" and the start of a shortcut suggest the person's replies,
- * their {customer} and {order} already filled for the channel by the server)
- * and the drawer that lists, puts in, adds, changes and deletes them.
+ * then the team's, their {customer} and {order} already filled for the
+ * channel by the server) and the drawer that lists, puts in, adds, changes
+ * and deletes them.
  *
  * assets/js/workspace.js asks for both through window.PGWsReplies and hands
- * over its own helpers. The replies are the person's own; the server reads
- * and writes only theirs (includes/workspace/saved_replies.php). Every text
- * comes from the #ws-config block.
+ * over its own helpers. A personal reply is the person's own; a team reply
+ * every member reads, and only a member with the right to manage team
+ * replies changes it: the server decides both
+ * (includes/workspace/saved_replies.php), the drawer only hides the buttons.
+ * Every text comes from the #ws-config block.
  *
  * Served minified inside assets/js/workspace.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
@@ -73,6 +76,12 @@
         return first.concat(rest).slice(0, limit);
     }
 
+    // What a row of the ; list shows beside the title: the shortcut, and
+    // "Team" for one of the team's.
+    function meta(item, t) {
+        return ';' + item.shortcut + ((item.scope === 'team') ? ' · ' + t('replies_team') : '');
+    }
+
     // A reply's text on one line, its tags by their names, for a row.
     function preview(item, length) {
         var labels = item.labels || {};
@@ -115,8 +124,9 @@
         cache = {};
     }
 
-    // The drawer: the person's replies, each to put into the box, change or
-    // delete, and a form for a new one or a change.
+    // The drawer: the person's replies, then the team's, each to put into
+    // the box, change or delete, and a form for a new one or a change. The
+    // team's part is read-only without the right to manage it.
     function drawer(composer, h) {
         var t = h.t;
         var el = h.el;
@@ -131,11 +141,7 @@
             h.clear(body);
             footer.classList.add('d-none');
 
-            var add = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5 mb-5', t('reply_new'), 'bi-plus-lg');
-            add.addEventListener('click', function () { form(null); });
-            body.appendChild(add);
-
-            var holder = el('div', 'list-group');
+            var holder = el('div');
             body.appendChild(holder);
             holder.appendChild(el('div', 'small fg-secondary', t('loading')));
 
@@ -145,23 +151,48 @@
                 h.clear(holder);
 
                 if (!data.ready) {
-                    add.disabled = true;
                     holder.appendChild(el('div', 'small fg-secondary', t('replies_not_ready')));
                     return;
                 }
 
-                if (!items.length) {
-                    holder.appendChild(el('div', 'small fg-secondary', t('replies_none')));
-                    return;
-                }
-
-                items.forEach(function (item) {
-                    holder.appendChild(row(item));
-                });
+                holder.appendChild(part(items.filter(function (item) { return item.scope !== 'team'; }), 'personal', true, t('replies_mine'), t('reply_new'), t('replies_none')));
+                holder.appendChild(part(items.filter(function (item) { return item.scope === 'team'; }), 'team', !!data.manage_team, t('replies_team'), t('reply_new_team'),
+                    data.manage_team ? t('replies_team_none') : t('replies_team_none_read')));
             }).catch(h.fail);
         }
 
-        function row(item) {
+        // One scope's replies under its heading; a new one only where the
+        // person may write.
+        function part(items, scope, canWrite, heading, addText, noneText) {
+            var section = el('div', 'mb-6');
+            var head = el('div', 'd-flex align-items-center gap-3 mb-3');
+
+            head.appendChild(el('div', 'fw-semibold flex-grow-1', heading));
+
+            if (canWrite) {
+                var add = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', addText, 'bi-plus-lg');
+                add.addEventListener('click', function () { form(null, scope); });
+                head.appendChild(add);
+            }
+
+            section.appendChild(head);
+
+            if (!items.length) {
+                section.appendChild(el('div', 'small fg-secondary', noneText));
+                return section;
+            }
+
+            var group = el('div', 'list-group');
+
+            items.forEach(function (item) {
+                group.appendChild(row(item, canWrite));
+            });
+            section.appendChild(group);
+
+            return section;
+        }
+
+        function row(item, canWrite) {
             var line = el('div', 'list-group-item d-flex align-items-start gap-3');
             var text = el('div', 'flex-grow-1 min-w-0');
 
@@ -181,8 +212,12 @@
                 line.appendChild(use);
             }
 
+            if (!canWrite) {
+                return line;
+            }
+
             var edit = h.button('btn btn-sm btn-text theme-secondary', '', 'bi-pencil', t('edit'));
-            edit.addEventListener('click', function () { form(item); });
+            edit.addEventListener('click', function () { form(item, item.scope); });
             line.appendChild(edit);
 
             var remove = h.button('btn btn-sm btn-text theme-danger', '', 'bi-trash', t('delete'));
@@ -192,7 +227,7 @@
                         return;
                     }
 
-                    h.api('ws_saved_reply_delete', { id: item.id }).then(function () {
+                    h.api('ws_saved_reply_delete', { id: item.id, scope: item.scope }).then(function () {
                         forget();
                         h.toast(t('reply_deleted'));
                         list();
@@ -204,8 +239,12 @@
             return line;
         }
 
-        function form(item) {
+        function form(item, scope) {
             h.clear(body);
+
+            if (scope === 'team') {
+                body.appendChild(el('div', 'small fg-secondary mb-5', t('reply_team_help')));
+            }
 
             var shortcut = el('input', 'form-control');
             shortcut.type = 'text';
@@ -261,6 +300,7 @@
 
                 h.api('ws_saved_reply_save', {
                     id: item ? item.id : 0,
+                    scope: scope,
                     shortcut: shortcut.value,
                     title: title.value,
                     body: field ? field.value() : area.value
@@ -283,5 +323,5 @@
         h.showOffcanvas(node);
     }
 
-    window.PGWsReplies = { at: at, match: match, preview: preview, cached: cached, forget: forget, drawer: drawer };
+    window.PGWsReplies = { at: at, match: match, meta: meta, preview: preview, cached: cached, forget: forget, drawer: drawer };
 }());

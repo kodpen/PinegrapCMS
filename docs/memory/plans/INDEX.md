@@ -30,7 +30,6 @@
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
-- saved-replies-team.md: Plan (owner 2026-11-09): team saved replies beside the personal ones, a right to manage them, and the reply list in the e-mail reply box; steps SR1-SR2
 - shipping-checkout-rates-steps.md: Steps R1-R5 of plans/shipping-checkout-rates.md: Geliver price list, method link, checkout live rate, label on payment, Sendcloud and Shippo quotes; claim as [plan:shipping-checkout-rates] R<n>
 - shipping-checkout-rates.md: Plan (owner 2026-11-09): a shipping method linked to a carrier label service, its live price at checkout (Geliver, then Sendcloud and Shippo), its label made once the order is paid
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification

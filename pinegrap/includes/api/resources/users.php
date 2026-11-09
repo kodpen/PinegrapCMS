@@ -110,7 +110,8 @@ function api_user_permission_columns() {
 		'manage_workspace'         => array('manage_workspace', 'tinyint', 'workspace'),
 		'manage_workspace_assign'  => array('manage_workspace_assign', 'tinyint', 'workspace'),
 		'manage_workspace_board'   => array('manage_workspace_board', 'tinyint', 'workspace'),
-		'manage_workspace_settings' => array('manage_workspace_settings', 'tinyint', 'workspace')
+		'manage_workspace_settings' => array('manage_workspace_settings', 'tinyint', 'workspace'),
+		'manage_workspace_replies' => array('manage_workspace_replies', 'tinyint', 'workspace_replies')
 	);
 
 }
@@ -138,7 +139,8 @@ function api_user_optional_columns($present = null) {
 			'google'       => pg_auth_column_exists('user', 'user_google_id'),
 			'erp'          => pg_user_has_erp_columns(),
 			'erp_readonly' => pg_user_has_erp_readonly_column(),
-			'workspace'    => pg_user_has_ws_columns()
+			'workspace'    => pg_user_has_ws_columns(),
+			'workspace_replies' => (pg_user_has_ws_columns() && pg_user_permission_ws_replies_column())
 		);
 
 	}
@@ -148,7 +150,8 @@ function api_user_optional_columns($present = null) {
 		'google'       => !empty($present['google']),
 		'erp'          => !empty($present['erp']),
 		'erp_readonly' => !empty($present['erp_readonly']),
-		'workspace'    => !empty($present['workspace'])
+		'workspace'    => !empty($present['workspace']),
+		'workspace_replies' => !empty($present['workspace_replies'])
 	);
 
 }
@@ -506,7 +509,8 @@ function api_user_permissions_offered($modules = null) {
 			'offline_payment' => (ECOMMERCE_OFFLINE_PAYMENT == true),
 			'erp'             => (defined('ERP_ENABLED') && ERP_ENABLED && pg_user_has_erp_columns()),
 			'erp_readonly'    => (defined('ERP_ENABLED') && ERP_ENABLED && pg_user_has_erp_readonly_column()),
-			'workspace'       => pg_user_permission_ws_available()
+			'workspace'       => pg_user_permission_ws_available(),
+			'workspace_replies' => (pg_user_permission_ws_available() && pg_user_permission_ws_replies_column())
 		);
 
 	}
@@ -566,6 +570,12 @@ function api_user_permissions_offered($modules = null) {
 		$offered[] = 'manage_workspace_assign';
 		$offered[] = 'manage_workspace_board';
 		$offered[] = 'manage_workspace_settings';
+
+		if ($on('workspace_replies')) {
+
+			$offered[] = 'manage_workspace_replies';
+
+		}
 
 	}
 

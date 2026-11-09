@@ -169,6 +169,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_bundle_backorder();        // 11.0.176
 	upgrade_2026_11_0_shipping_method_label_link(); // 11.0.177
 	upgrade_2026_11_0_ws_wtable_bin();           // 11.0.178
+	upgrade_2026_11_0_ws_team_replies();         // 11.0.179
 
 }
 
@@ -5764,5 +5765,23 @@ function upgrade_2026_11_0_ws_wtable_bin() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: a deleted workflow table or row goes to a bin for the Recycle Bin\'s days and can be restored until then.');
+
+}
+
+// Team saved replies (11.0.179; includes/workspace/saved_replies.php). A team
+// reply is a ws_saved_replies row with scope 'team' and user_id 0, so the
+// table keeps its shape; the right to add, change and delete them is a column
+// of its own, read for role 3 only (roles 0-2 hold it by role).
+function upgrade_2026_11_0_ws_team_replies() {
+
+	if (!install_table_exists('user')) {
+
+		install_skipped('user does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('user', 'manage_workspace_replies', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
 
 }

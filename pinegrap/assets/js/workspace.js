@@ -16053,7 +16053,7 @@
             if (mode === 'reply') {
                 self.picker.setAttribute('aria-label', t('replies_title'));
                 self.drawPicker(window.PGWsReplies.match(window.PGWsReplies.cached(self.channel ? self.channel.id : 0, api) || [], query, 8).map(function (reply) {
-                    return { reply: reply, label: reply.title, meta: ';' + reply.shortcut, detail: window.PGWsReplies.preview(reply, 80), icon: 'bi-chat-square-quote' };
+                    return { reply: reply, label: reply.title, meta: window.PGWsReplies.meta(reply, t), detail: window.PGWsReplies.preview(reply, 80), icon: 'bi-chat-square-quote' };
                 }));
                 return;
             }

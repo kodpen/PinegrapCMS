@@ -77,7 +77,7 @@ function ws_enabled()
  * for the request.
  *
  * @param array $user
- * @return array id, role, member, assign, board, settings
+ * @return array id, role, member, assign, board, settings, replies
  */
 function ws_rights($user)
 {
@@ -98,6 +98,7 @@ function ws_rights($user)
         'assign'   => false,
         'board'    => false,
         'settings' => false,
+        'replies'  => false,
     );
 
     if (($id <= 0) || !ws_ready()) {
@@ -123,6 +124,7 @@ function ws_rights($user)
         $rights['assign'] = $member;
         $rights['board'] = $member;
         $rights['settings'] = $member;
+        $rights['replies'] = ws_rights_team_replies($role, $member, 0);
 
         return $cache[$id] = $rights;
     }
@@ -132,9 +134,47 @@ function ws_rights($user)
         $rights['assign'] = !empty($user['manage_workspace_assign']);
         $rights['board'] = !empty($user['manage_workspace_board']);
         $rights['settings'] = !empty($user['manage_workspace_settings']);
+
+        // Read on its own behind its own probe: the login query and the
+        // SELECT above never name it, so a site between its new files and
+        // the upgrade keeps working.
+        if (!array_key_exists('manage_workspace_replies', $user) && ws_team_replies_column()) {
+            $user['manage_workspace_replies'] = (int) db_value("SELECT manage_workspace_replies FROM user WHERE user_id = '" . $id . "'");
+        }
+
+        $rights['replies'] = ws_rights_team_replies($role, true, $user['manage_workspace_replies'] ?? 0);
     }
 
     return $cache[$id] = $rights;
+}
+
+/**
+ * Whether user.manage_workspace_replies is there (step 11.0.179).
+ *
+ * @return bool
+ */
+function ws_team_replies_column()
+{
+    return function_exists('pg_schema_has') && pg_schema_has('user', 'manage_workspace_replies');
+}
+
+/**
+ * Whether a member may add, change and delete the team's saved replies:
+ * roles 0-2 by their role, a role-3 member by user.manage_workspace_replies.
+ * Without membership there is no right.
+ *
+ * @param int   $role
+ * @param bool  $member
+ * @param mixed $column the stored manage_workspace_replies value
+ * @return bool
+ */
+function ws_rights_team_replies($role, $member, $column)
+{
+    if (!$member) {
+        return false;
+    }
+
+    return ((int) $role < 3) || ((int) $column === 1);
 }
 
 /**
