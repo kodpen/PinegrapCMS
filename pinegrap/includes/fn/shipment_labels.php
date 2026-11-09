@@ -2190,7 +2190,9 @@ function pg_shipment_label_pickup_request($rows, $date, $from, $to, $again)
 /**
  * The pickup dialog: date, window, the "book another" box and the send
  * button, its fields posted with the form named (the orders list's own, or
- * the order screen's shipment-label-form).
+ * the order screen's shipment-label-form). It prints the date order and the
+ * field script its date and times are drawn with: the orders list prints
+ * them only with its advanced filters open.
  *
  * @param string $id      the dialog's id
  * @param string $form    the form id the fields belong to, '' for the
@@ -2223,7 +2225,7 @@ function pg_shipment_label_pickup_dialog($id, $form, $request, $note = '')
                     </div>
                     <div class="col-6 sm:col-4">
                         <label class="form-label" for="' . h($id) . '_to">' . lang('Latest time') . '</label>
-                        <input type="time" data-pg-time class="form-control" id="' . h($id) . '_to" name="pickup_to" value="17:00"' . $owner . '>
+                        <input type="time" data-pg-time class="form-control" id="' . h($id) . '_to" name="pickup_to" value="17:00"' . $owner . '>' . get_date_picker_format() . pg_fields_script() . '
                     </div>
                     <div class="col-12">
                         <div class="form-field">

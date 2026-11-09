@@ -432,6 +432,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-content-contrast.md: Panel and visual editor text and icon contrast (#2530, #4391): secondary states on a solid colour not opacity, pastel fills vs inks, tones pulled toward the text colour, --sd-* mixes
 - panel-count-text.md: Panel counts read right at one: ERP due badges, Create Order cart count, Users lock, API application counts, delete/connection notices and File Manager answers use suffix or two-key forms
 - panel-css-tokens.md: The panel's --pg-* CSS token layer (Bootstrap 6 step B3): names rules read, the alias block on :root and [data-bs-theme], color-mix() instead of -rgb, what is converted
+- panel-date-field-opt-in.md: Panel date, date-and-time and time fields open our calendar, never the browser's: the hook a new field needs, the scripts its screen prints, the help tie, the guard test
 - panel-dates-site-order.md: Application Access, Connected applications, Connections, the chat window and the barcode scan logs show dates in the site's date order and 12/24-hour clock; chat times in the panel's zone
 - panel-field-title-override.md: A labelled panel field carries no title: Bootstrap 6 copies a popover title into aria-label, replacing the label as its name; what replaces the title, the scan test, what is left
 - panel-focus-ring.md: The panel's focus ring on Bootstrap 6's tokens and shape (B9k colour, B10 sizes): the --pg-focus-ring-* tokens, why colour and offset are not aliases, inset rings, what was checked

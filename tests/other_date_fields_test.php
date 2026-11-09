@@ -44,7 +44,7 @@ function test_other_date_fields_native_inputs_are_hooked()
 
 function test_other_date_fields_screens_print_the_date_order_with_the_script()
 {
-	foreach (array('cloudflare.php', 'api_settings.php', 'view_parasut_inbox.php', 'includes/workspace/workdays.php', 'includes/settings/maintenance.php', 'view_folders.php', 'includes/settings/privacy.php', 'product_builder.php', 'includes/fn/store_credit_staff.php') as $file) {
+	foreach (array('cloudflare.php', 'api_settings.php', 'view_parasut_inbox.php', 'includes/workspace/workdays.php', 'includes/settings/maintenance.php', 'view_folders.php', 'includes/settings/privacy.php', 'product_builder.php', 'includes/fn/store_credit_staff.php', 'includes/fn/shipment_labels.php') as $file) {
 		pg_assert_true(strpos(other_date_fields_test_source($file), 'get_date_picker_format() . pg_fields_script()') !== false, $file . ' prints the date order with the field script');
 	}
 }
@@ -77,12 +77,14 @@ function test_other_date_fields_last_browser_pickers_are_hooked()
 	pg_assert_contains('aria-describedby="a11y_statement_date_help"/>', $privacy, 'the statement date is tied to its help');
 	pg_assert_contains('<div class="form-text" id="a11y_statement_date_help">', $privacy, 'the help carries the id');
 
-	// The pickup dialog sits on the order screen and the orders list, which
-	// print the date order and the field script for its date already.
-	$order_screen = other_date_fields_test_source('view_order.php');
-	pg_assert_contains('get_date_picker_format()', $order_screen, 'the order screen prints the date order');
-	pg_assert_contains('pg_fields_script()', $order_screen, 'the order screen prints the field script');
-	pg_assert_contains('get_date_picker_format() . pg_fields_script()', other_date_fields_test_source('view_orders.php'), 'the orders list prints the date order with the field script');
+	// The pickup dialog prints the date order and the field script itself:
+	// the orders list prints them only with its advanced filters open, so its
+	// date (hooked before) and times opened the browser's picker there.
+	$dialog = other_date_fields_test_source('includes/fn/shipment_labels.php');
+	$start = strpos($dialog, 'function pg_shipment_label_pickup_dialog(');
+	$body = substr($dialog, (int) $start, (int) strpos($dialog, "\n}\n", (int) $start) - (int) $start);
+	pg_assert_true($start !== false, 'shipment_labels.php defines the pickup dialog');
+	pg_assert_contains('name="pickup_to" value="17:00"\' . $owner . \'>\' . get_date_picker_format() . pg_fields_script() . \'', $body, 'the pickup dialog prints the date order with the field script');
 }
 
 // A file's code without its comments: PHP comments through the tokenizer,
