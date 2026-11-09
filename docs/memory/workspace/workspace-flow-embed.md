@@ -4,7 +4,7 @@ description: PGWsFlow.embed(host, boot) in workspace_flow.js: the Flows canvas d
 ---
 
 ## What is it?
-- `window.PGWsFlow.embed(host, boot)` draws one flow read-only with the Flows canvas itself (workspace_flow.js on pg_graph_canvas.js), for the flow draft card in a channel (`workspace-flow-draft-card-window.md`, #6630) and Add › Scheduled flow's window (`workspace-flows-scheduled-ways-in.md`, #6665). No second drawing of boxes, arrows or threads.
+- `window.PGWsFlow.embed(host, boot)` draws one flow read-only with the Flows canvas itself (workspace_flow.js on pg_graph_canvas.js), for the flow draft card in a channel (`workspace-flow-draft-card-window.md`, #6630); Add › Scheduled flow's window used it too until it went (2026-11-09). No second drawing of boxes, arrows or threads.
 - The stage and its zoom buttons only (`layoutStage()`, shared with `layout()`): no toolbar, palette, side panel, outline, run bar, marks strip or sketch box; `bindWindow()` (Ctrl+S, undo, blur, beforeunload) is not bound. `state.edit` false; threads always on; fit on load.
 - Needs `window.PGWsKit` (workspace.js) and both bundles on the page; returns null without them.
 

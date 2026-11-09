@@ -749,34 +749,8 @@ function ws_handle_action($action, $request)
         case 'ws_flow_editor_config':
             return ws_action_ok(ws_flow_editor_config($viewer));
 
-        // Add › Scheduled flow in a channel's composer (scheduled_convert.php):
-        // with sketch, the two boxes its mini window draws with what the form
-        // holds so far, each with its dry run, nothing written;
-        // else what the window holds saved as the person's draft flow, then
-        // published when asked or opened on the canvas. Duplicate on a
-        // scheduled action's card opens a new draft on the canvas too.
-        case 'ws_flow_scheduled_new':
-            $channel_id = (int) ($request['channel_id'] ?? 0);
-
-            if (!empty($request['sketch'])) {
-                $result = ws_scheduled_flow_sketch($viewer, $channel_id, ws_scheduled_flow_fill($request));
-
-                return $result['ok'] ? ws_action_ok(array('graph' => $result['graph'], 'view' => $result['view'], 'start' => $result['start'])) : ws_action_error($result['error']);
-            }
-
-            $result = ws_scheduled_flow_new($viewer, $channel_id, ws_scheduled_flow_fill($request) + array(
-                'flow_id'   => (int) ($request['flow_id'] ?? 0),
-                'draft_rev' => (int) ($request['draft_rev'] ?? 0),
-                'publish'   => !empty($request['publish']),
-            ));
-
-            if (!$result['ok']) {
-                return ws_action_error($result['error'], ($result['field'] === 'draft_rev') ? 'changed_meanwhile' : $result['field']);
-            }
-
-            return ws_action_ok(array('flow_id' => $result['flow_id'], 'draft_rev' => $result['draft_rev'],
-                'published' => $result['published'], 'publish_error' => $result['publish_error']));
-
+        // Duplicate on a scheduled action's card: a new draft flow, opened
+        // on the canvas (scheduled_convert.php).
         case 'ws_flow_scheduled_copy':
             $scheduled = ws_can_schedule($viewer) ? ws_scheduled_action((int) ($request['id'] ?? 0)) : null;
 
@@ -1866,13 +1840,15 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(array(
-                'briefing' => $briefing,
-                'channel'  => ws_channel_detail($viewer, $channel),
-                'messages' => ws_message_payloads($viewer, $rows),
-                'has_more' => !empty($rows) && ((int) db_value("SELECT COUNT(*) FROM ws_messages WHERE channel_id = '" . (int) $channel['id'] . "' AND id < '" . (int) $rows[0]['id'] . "' AND id > '" . ws_channel_floor($channel['id']) . "'") > 0),
-                'era'      => null,
-                'last_id'  => $last_id,
-                'now'      => time(),
+                'briefing'   => $briefing,
+                'channel'    => ws_channel_detail($viewer, $channel),
+                // Add › Start a flow is offered only where it lists a flow.
+                'flows_here' => empty($request['as_thread']) && ws_flows_startable_in($viewer, $channel),
+                'messages'   => ws_message_payloads($viewer, $rows),
+                'has_more'   => !empty($rows) && ((int) db_value("SELECT COUNT(*) FROM ws_messages WHERE channel_id = '" . (int) $channel['id'] . "' AND id < '" . (int) $rows[0]['id'] . "' AND id > '" . ws_channel_floor($channel['id']) . "'") > 0),
+                'era'        => null,
+                'last_id'    => $last_id,
+                'now'        => time(),
             ));
 
         // Pinegrap AI's few sentences on what the reader missed, asked from

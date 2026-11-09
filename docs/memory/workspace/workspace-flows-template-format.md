@@ -9,7 +9,7 @@ description: Flow templates (G1 #2161, flow_templates.php): format, the schedule
 
 ## What is a template?
 - key (the scheduled template's, or its own), category, title, help (one line), icon, start (kind of the first box), graph (`ws_flow_graph_normalize()` shape, boxes in columns of 256, follow-ups stacked 112 apart), boxes, threads (count of `{{node.ID.FIELD}}` in its configs), settings `[{type, targets: [[node, key], …]}]` (a box spec gives `setting` [type, key] or `settings`, a list, as the approval box: channel and people).
-- Setting types: channel (id), person (id list), time (HH:MM), url, address; the setup panel asks them (`workspace-flows-template-setup.md`). Each template also carries `motion`.
+- Setting types: channel (id), person (id list), time (HH:MM), url, address, table (saved templates), text (the words of `channel_message`'s post box, `workspace-scheduling-one-place.md`); the setup panel asks them (`workspace-flows-template-setup.md`). Each template also carries `motion`.
 
 ## Which came over, and how?
 - From the form's ready ones (`saTemplates()`, removed in R3a): task_mail, morning, digest, uptime, ssl, overdue, stock, invoices, monthly. Titles and texts are the same `sa_tpl_*` sentences (a test compares them with `ws_scheduled_js_strings()`).

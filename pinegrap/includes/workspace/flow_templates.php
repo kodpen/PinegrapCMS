@@ -62,13 +62,13 @@ function ws_flow_template_categories()
 /**
  * The kinds of value a template asks for: a channel id, people (a list of
  * ids), a time of day (HH:MM), a web address, e-mail addresses, the id of a
- * workflow table (a saved template's row boxes).
+ * workflow table (a saved template's row boxes), a message's words.
  *
  * @return string[]
  */
 function ws_flow_template_setting_types()
 {
-    return array('channel', 'person', 'time', 'url', 'address', 'table');
+    return array('channel', 'person', 'time', 'url', 'address', 'table', 'text');
 }
 
 /**
@@ -134,6 +134,18 @@ function ws_flow_templates($fill)
     };
 
     $out = array();
+
+    // A message of the person's posted in a channel at a set time, every
+    // working day until its start box says otherwise; the setup asks the
+    // time, the channel and the words.
+    $out[] = array('key' => 'channel_message', 'category' => 'team', 'icon' => 'bi-alarm',
+        'title' => lang('Message to a channel at a time'),
+        'help' => lang('Posts your message in a channel at the time you set, once or on a repeat: a reminder, a call to a meeting, a weekly question.'),
+        'boxes' => array(
+            'start' => $start($tomorrow, '09:00', 'workdays') + array('setting' => array('time', 'time')),
+            'post'  => array('kind' => 'post', 'config' => array('channel_id' => $channel, 'body' => ''), 'settings' => array(array('channel', 'channel_id'), array('text', 'body'))),
+        ),
+        'edges' => array(array('start', 'post', 'next')));
 
     // Every Monday, each person the open tasks they are on.
     $out[] = array('key' => 'task_mail', 'category' => 'team', 'icon' => 'bi-envelope-check',
@@ -919,6 +931,13 @@ function ws_flow_template_answers_check($template, $answers)
             case 'table':
                 $value = is_scalar($given) ? (int) $given : 0;
                 $error = ($value > 0) ? '' : lang('Choose a table');
+                break;
+
+            // As long as a post box keeps its text (ws_flow_step_normalize()).
+            case 'text':
+                $value = is_string($given) ? trim($given) : '';
+                $error = ($value === '') ? lang('Write the message to post.')
+                    : ((mb_strlen($value) > 4000) ? lang(array('string' => 'The message is longer than {var:1} characters.', 'vars' => 4000)) : '');
                 break;
 
             default:

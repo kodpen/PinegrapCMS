@@ -217,7 +217,7 @@ function test_ws_flow_api_templates_create_tool()
 // whose answers are all given passes every setting type it asks for.
 function test_ws_flow_api_from_template_every_setting()
 {
-	$values = array('channel' => 4, 'person' => array(6), 'time' => '07:30', 'url' => 'https://example.com/health', 'address' => 'a@example.com');
+	$values = array('channel' => 4, 'person' => array(6), 'time' => '07:30', 'url' => 'https://example.com/health', 'address' => 'a@example.com', 'text' => 'Stand-up in five minutes.');
 
 	foreach (ws_flow_api_templates_test_list() as $template) {
 		$answers = array();

@@ -4,14 +4,15 @@ description: flowLayer() in workspace.js: the whole Flows editor in a full-scree
 ---
 
 ## Why a layer?
-- Owner, 2026-11-08: a flow is designed from a channel without leaving the chat. The whole canvas opens over the channel, mounted in the page (no frame); Add › Scheduled flow's quick window stays for the simple case. It keeps #4967: the layer is the canvas, not a second editor (PRs #8100, #8119, #8141, #8165, L5).
+- Owner, 2026-11-08: a flow is designed from a channel without leaving the chat. The whole canvas opens over the channel, mounted in the page (no frame). It keeps #4967: the layer is the canvas, not a second editor (PRs #8100, #8119, #8141, #8165, L5).
+- Owner, 2026-11-09: it is also where a scheduled flow is set up from a channel; Add › Scheduled flow's quick window went (`workflow/decisions-made-product-41.md`, `workspace-scheduling-one-place.md`).
 
 ## What is it?
 - `flowLayer(flowId, { box, run, opener, home })` (lent as `PGWsKit.flowLayer`): a `.ws-flow-layer` (`position: fixed; inset: 0`, z-index 1035) on `body`, the editor mounted by `PGWsFlow.mount(body, BOOT, { flow, box, run, home, single: true, onShow, onClose })` (`workspace-flow-mount.md`). Bar: the flow's name (`onShow`, also as renamed), "Open on the Flows screen" (`fl_layer_screen`, `flowScreenAddress()` with `?box=` / `?run=`), Close. One at a time.
 
 ## Which ways in open it?
 - `flowGo(flowId, options)`: the layer, or on the Flows screen itself (`CFG.mode === 'flows'`) the address. `flowLinkOpens(link, flowId, options)` keeps the `href` for a new tab or modifier click.
-- Through them: Add › Scheduled flow's Open on the canvas (`flowOpened()`, the drawer hidden first by `hideOffcanvas(node, next)`), a draft card's box link (`box`), an applied draft's flow link, a run card's Open the run (`run`), a scheduled action's Edit (`scheduledEdit()`), Duplicate, Open a drafted action.
+- Through them: a draft card's box link (`box`), an applied draft's flow link, a run card's Open the run (`run`), a scheduled action's Edit (`scheduledEdit()`), Duplicate, Open a drafted action.
 
 ## Add › New flow?
 - The composer's Add list (`fl_new`): `CFG.flows.nav && CFG.flows.scheduled` (staff who build, `ws_flows_scheduled()`), not in a thread or an old era, a public or private channel. `flowLayer(0, { home: channel.id })`: the editor starts at the ways to start (`showGallery(null)`, as New flow on the Flows screen); the bar's link is the Flows screen until a flow is made, then that flow's address.
