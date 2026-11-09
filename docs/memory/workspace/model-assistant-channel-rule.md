@@ -1,6 +1,6 @@
 ---
 name: model-assistant-channel-rule
-description: Where a model assistant is asked (its ws_channel_agents row, not Pinegrap AI's ai_access default), how the shared loop's failure sentences name it, what stays closed and the open question (PR #0000)
+description: Where a model assistant is asked (its ws_channel_agents row, not Pinegrap AI's ai_access default), how the shared loop's failure sentences name it, what stays closed and the open question (PR #8413)
 ---
 
 ## Where may a model assistant be asked?
@@ -13,7 +13,7 @@ description: Where a model assistant is asked (its ws_channel_agents row, not Pi
 - The loop, through `ws_ai_loop_channel_allowed($channel)`: the running assistant's rule while `ws_model_running()` is set, Pinegrap AI's otherwise. Its places: `ws_ai_briefing()` (the request's start), `ws_ai_deliver()`, `ws_ai_finish_fail()` (whether the failure line is written in the channel) and `ws_ai_request_channel()` (a run on a task, which no agent gets: `delegate` false).
 - A new check inside the loop asks `ws_ai_loop_channel_allowed()`, never `ws_ai_channel_allowed()`, or a model assistant is judged by Pinegrap AI's switch again (`tests/workspace_model_agents_test.php`).
 
-## What did it fix? (PR #0000)
+## What did it fix? (PR #8413)
 - An assistant added to a private channel nobody had opened to Pinegrap AI never answered: `ws_ai_briefing()` refused the request before the model was called ("Pinegrap AI may not be asked in this channel."), and `ws_ai_finish_fail()` wrote no line there, so only the request line under the message said so. Reproduced in a throwaway local install against a stand-in chat API (2026-11-10); after the change it answered there.
 - An assistant taken out of a channel while its request is open no longer answers there, in a public channel either.
 
