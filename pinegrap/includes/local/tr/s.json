@@ -5810,6 +5810,7 @@
     "started a discussion in #{var:1}": "#{var:1} kanalında tartışma başlatıldı",
     "started by {var:1}": "başlatan: {var:1}",
     "started {var:1} from Search and audits": "Arama ve denetimler ekranından {var:1} çalışmasını başlattı",
+    "starts with": "ile başlar",
     "starts with the text": "metniyle başlıyor",
     "state": "eyalet/il",
     "status": "durum",
