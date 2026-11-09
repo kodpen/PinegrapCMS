@@ -4904,10 +4904,11 @@ function pg_member_widget_published($type)
         $wid = (int)$r['id'];
         if ($wid <= 0) continue;
         // The page's tree with its style's as the fallback: a page whose
-        // tree still lives on its style has an empty page_tree_json.
+        // tree still lives on its style has an empty page_tree_json. LEFT
+        // JOIN keeps a page with its own tree whose style row is gone.
         $hit = db_value(
             "SELECT page.page_id FROM page
-             INNER JOIN style ON style.style_id = page.page_style
+             LEFT JOIN style ON style.style_id = page.page_style
              WHERE (" . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $wid . ",%'
                  OR " . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $wid . "}%')" . $binned . "
              LIMIT 1");

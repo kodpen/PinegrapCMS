@@ -25,7 +25,7 @@ function test_member_widget_published_reads_the_style_held_tree()
 {
 	$source = pg_test_function_source('pg_member_widget_published');
 
-	pg_assert_contains('INNER JOIN style ON style.style_id = page.page_style', $source, 'the style is joined');
+	pg_assert_contains('LEFT JOIN style ON style.style_id = page.page_style', $source, 'the style is joined, a page with its own tree kept when its style row is gone');
 	pg_assert_contains('pg_page_tree_sql_expr()', $source, 'the tree comes with its style fallback');
 	pg_assert_false(strpos($source, 'page.page_tree_json LIKE') !== false, 'the page column alone is not scanned');
 }
