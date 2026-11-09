@@ -1226,6 +1226,7 @@
     "Download all photos": "Tüm fotoğrafları indirin",
     "Download and print": "İndirin ve bastırın",
     "Download as CSV": "CSV olarak indir",
+    "Download as Excel": "Excel olarak indir",
     "Download as Markdown": "Markdown olarak indir",
     "Download from Google": "Google'dan İndir",
     "Download link of the return label (empty when there is none)": "İade etiketinin indirme bağlantısı (yoksa boş)",
