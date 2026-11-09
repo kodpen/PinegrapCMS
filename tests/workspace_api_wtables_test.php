@@ -59,6 +59,7 @@ function test_ws_api_wtables_routes()
 		'workspace.tables.list'               => array('GET', '/workspace/tables', 'workspace:read'),
 		'workspace.tables.get'                => array('GET', '/workspace/tables/{id}', 'workspace:read'),
 		'workspace.tables.create'             => array('POST', '/workspace/tables', 'workspace:write'),
+		'workspace.tables.import'             => array('POST', '/workspace/tables/import', 'workspace:write'),
 		'workspace.tables.update'             => array('POST', '/workspace/tables/{id}', 'workspace:write'),
 		'workspace.tables.delete'             => array('DELETE', '/workspace/tables/{id}', 'workspace:write'),
 		'workspace.tables.delete_post'        => array('POST', '/workspace/tables/{id}/delete', 'workspace:write'),
@@ -126,6 +127,7 @@ function test_ws_api_wtables_writes_check_before_the_rehearsal()
 {
 	$writes = array(
 		'ws_api_wtables_create'        => array('ws_wtable_create_check(', 'ws_wtable_create('),
+		'ws_api_wtables_import'        => array('ws_wtable_import_check(', 'ws_wtable_import_rows('),
 		'ws_api_wtables_update'        => array('ws_wtable_update_check(', 'ws_wtable_update('),
 		'ws_api_wtables_delete'        => array('ws_wtable_delete_check(', 'ws_wtable_delete('),
 		'ws_api_wtable_columns_create' => array('ws_wtable_column_create_check(', 'ws_wtable_column_create('),

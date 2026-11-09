@@ -35,6 +35,10 @@ function ws_wtable_screen_error_text($code)
             return lang('Only the table\'s owner may do that.');
         case 'not_ready':
             return lang('The database has not been upgraded yet. Run the software update first.');
+        case 'map_empty':
+            return lang('Choose at least one column to fill.');
+        case 'no_rows':
+            return lang('The file has a header row but no rows under it.');
         case 'name_empty':
             return lang('Give it a name.');
         case 'name_too_long':

@@ -261,6 +261,8 @@ function ws_openapi_objects()
         'WorkspaceTableColumn'      => 'ws_api_wtable_column_schema',
         'WorkspaceTableRow'         => 'ws_api_wtable_row_schema',
         'WorkspaceTableShare'       => 'ws_api_wtable_share_schema',
+        'WorkspaceTableImport'      => 'ws_api_wtable_import_schema',
+        'WorkspaceTableImportRefusal' => 'ws_api_wtable_import_refusal_schema',
         'WorkspaceMessageMail'      => 'ws_api_message_mail_schema',
         'WorkspaceMailConversation' => 'ws_api_mail_conversation_schema',
         'WorkspaceMail'             => 'ws_api_mail_schema',
