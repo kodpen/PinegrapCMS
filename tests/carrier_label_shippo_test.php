@@ -113,7 +113,7 @@ function carrier_label_shippo_test_shipment()
 function test_carrier_label_shippo_is_a_builtin_driver()
 {
 	pg_assert_true(pg_label_driver('shippo') !== null);
-	pg_assert_same(array('carriers' => array('ups', 'fedex', 'usps', 'dhl', 'deutschepost', 'dpd', 'royalmail'), 'formats' => array('pdf', 'zpl'), 'services' => array()), pg_label_info('shippo'));
+	pg_assert_same(array('carriers' => array('ups', 'fedex', 'usps', 'dhl', 'deutschepost', 'dpd', 'royalmail'), 'formats' => array('pdf', 'zpl'), 'services' => array(), 'rates' => 'address'), pg_label_info('shippo'));
 
 	foreach (array('test', 'create', 'label', 'cancel', 'track', 'pickup') as $operation) {
 		pg_assert_true(pg_label_can('shippo', $operation), $operation);
@@ -645,4 +645,63 @@ function test_carrier_label_shippo_long_refusal_is_cut_on_a_character()
 	pg_assert_false($answer['success']);
 	pg_assert_true(mb_check_encoding($answer['error'], 'UTF-8'), 'the error is valid UTF-8');
 	pg_assert_contains('A' . str_repeat('ş', 149), htmlspecialchars($answer['error'], ENT_QUOTES, 'UTF-8'));
+}
+
+// The rates of a shipment are quoted without buying one, within 8 seconds.
+function test_carrier_label_shippo_rate_quotes_the_shipment_rates()
+{
+	$GLOBALS['carrier_label_shippo_test_timeouts'] = array();
+	$answers = array('POST /shipments/' => array('shipment.json'));
+	carrier_label_shippo_test_stub($answers);
+	$stub = pg_label_shippo_transport();
+
+	pg_label_shippo_transport(function ($method, $url, $headers, $body, $timeout = 60) use ($stub) {
+		$GLOBALS['carrier_label_shippo_test_timeouts'][] = $timeout;
+
+		return $stub($method, $url, $headers, $body);
+	});
+
+	$answer = pg_label_call('shippo', 'rate', array(carrier_label_shippo_test_shipment(), carrier_label_shippo_test_account()));
+	$sent = $GLOBALS['carrier_label_shippo_test_sent'];
+	carrier_label_shippo_test_done();
+
+	pg_assert_true($answer['success'], $answer['error']);
+	pg_assert_same(array('POST /shipments/'), carrier_label_shippo_test_sent(), 'nothing is bought');
+	pg_assert_same(array(8), $GLOBALS['carrier_label_shippo_test_timeouts']);
+	pg_assert_false(isset($sent[0]['body']['extra']), 'no order reference on a quote');
+	pg_assert_same(array(
+		array('service' => 'dpd_de_classic', 'carrier' => 'dpd', 'amount' => 1190, 'currency' => 'EUR'),
+		array('service' => 'deutsche_post_paket_international', 'carrier' => 'deutschepost', 'amount' => 1420, 'currency' => 'EUR'),
+		array('service' => 'dhl_express_worldwide', 'carrier' => 'dhl', 'amount' => 3250, 'currency' => 'EUR'),
+	), $answer['quotes']);
+}
+
+function test_carrier_label_shippo_rate_quotes_take_the_local_amount_and_the_lower()
+{
+	$quotes = pg_label_shippo_rate_quotes(array(
+		array('servicelevel' => array('token' => 'usps_priority'), 'provider' => 'USPS', 'amount' => '9.00', 'currency' => 'USD', 'amount_local' => '8.30', 'currency_local' => 'eur'),
+		array('servicelevel' => array('token' => 'usps_priority'), 'provider' => 'USPS', 'amount' => '8.00', 'currency' => 'USD', 'amount_local' => '7.40', 'currency_local' => 'EUR'),
+		array('servicelevel' => array('token' => 'ups_ground'), 'provider' => 'UPS', 'amount' => '12.005', 'currency' => 'USD'),
+		array('servicelevel' => array('token' => ''), 'amount' => '1.00', 'currency' => 'USD'),
+		array('servicelevel' => array('token' => 'free_text'), 'amount' => 'free', 'currency' => 'USD'),
+		'nothing',
+	));
+
+	pg_assert_same(array(
+		array('service' => 'usps_priority', 'carrier' => 'usps', 'amount' => 740, 'currency' => 'EUR'),
+		array('service' => 'ups_ground', 'carrier' => 'ups', 'amount' => 1201, 'currency' => 'USD'),
+	), $quotes);
+}
+
+function test_carrier_label_shippo_rate_without_rates_or_answer()
+{
+	carrier_label_shippo_test_stub(array('POST /shipments/' => array('shipment_no_rates.json')));
+	$empty = pg_label_call('shippo', 'rate', array(carrier_label_shippo_test_shipment(), carrier_label_shippo_test_account()));
+	$unreached = pg_label_call('shippo', 'rate', array(carrier_label_shippo_test_shipment(), carrier_label_shippo_test_account()));
+	carrier_label_shippo_test_done();
+
+	foreach (array('empty' => $empty, 'unreached' => $unreached) as $case => $answer) {
+		pg_assert_false($answer['success'], $case);
+		pg_assert_false($answer['unclear'], $case . ': a shipment costs nothing');
+	}
 }

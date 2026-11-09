@@ -18,7 +18,7 @@ description: Steps R1-R5 of plans/shipping-checkout-rates.md: Geliver price list
 - R4 (M) Automatic label on payment. After R2; not beside R3 (both edit `includes/fn/shipment_labels.php`).
   - The switch on the Shipping card for every driver that can create; `pg_shipment_label_auto_run()` in `job.php`; `failed` in `pg_shipment_label_states()`, its row on the order screen ("Otomatik etiket oluşturulamadı") and in the API's labels; the run's limits.
 
-- R5 (S) Sendcloud and Shippo quotes. After R1; may run beside R2-R4.
+- R5 (S) Sendcloud and Shippo quotes. Done (#8420).
   - `pg_label_sendcloud_rate()` (shipping options with quotes, create's route checks), `pg_label_shippo_rate()` (the rates of `POST /shipments/`, an 8-second timeout); the address-priced cache key.
 
 ## Where to start?

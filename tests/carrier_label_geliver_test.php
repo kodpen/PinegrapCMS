@@ -109,6 +109,7 @@ function test_carrier_label_geliver_is_a_builtin_driver()
 	$info = pg_label_info('geliver');
 	pg_assert_same(array('yurtici', 'surat', 'aras', 'mng', 'ptt'), $info['carriers']);
 	pg_assert_same(array('pdf'), $info['formats']);
+	pg_assert_same('national', $info['rates'], 'the price list goes by the parcel alone');
 	pg_assert_same('Yurtiçi Kargo', $info['services']['YURTICI_STANDART']);
 	pg_assert_false(isset($info['services']['GELIVER_STANDART']), 'the test service is not offered');
 

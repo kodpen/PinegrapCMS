@@ -130,8 +130,10 @@ function test_carrier_labels_info_keeps_known_carriers_and_formats()
 {
 	carrier_labels_test_register();
 
-	pg_assert_same(array('carriers' => array('yurtici', 'aras'), 'formats' => array('pdf', 'zpl'), 'services' => array('ARAS_STD' => 'Aras Standard')), pg_label_info('pgtestship'));
-	pg_assert_same(array('carriers' => array(), 'formats' => array(), 'services' => array()), pg_label_info('nodriver'));
+	pg_assert_same(array('carriers' => array('yurtici', 'aras'), 'formats' => array('pdf', 'zpl'), 'services' => array('ARAS_STD' => 'Aras Standard'), 'rates' => 'address'), pg_label_info('pgtestship'));
+	pg_assert_same(array('carriers' => array(), 'formats' => array(), 'services' => array(), 'rates' => 'address'), pg_label_info('nodriver'));
+	pg_assert_same('national', pg_label_info_normalize(array('rates' => 'national'))['rates']);
+	pg_assert_same('address', pg_label_info_normalize(array('rates' => 'city'))['rates']);
 }
 
 function test_carrier_labels_can_asks_the_functions()
@@ -416,4 +418,18 @@ function test_carrier_labels_svg_refuses_external_references()
 
 	pg_assert_true(pg_label_svg_valid(carrier_labels_test_svg('<defs><path id="b" d="M0 0h2v40H0z"/></defs><use xlink:href="#b"/><rect fill="url(#g)"/><image href="data:image/png;base64,iVBORw0KGgo=" width="10" height="10"/>')), 'own references and an embedded PNG');
 	pg_assert_true(pg_label_svg_valid(carrier_labels_test_svg('<text>Teslim: Ayşe, Konak</text>')), 'text naming no address');
+}
+
+// A national price list is cached once for every address; an address-priced
+// one per country and postal code.
+function test_carrier_labels_rate_zone()
+{
+	$recipient = array('country' => 'nl', 'zip' => '5611 em');
+
+	pg_assert_same('', pg_label_rate_zone(array('rates' => 'national'), $recipient));
+	pg_assert_same('NL-5611EM', pg_label_rate_zone(array('rates' => 'address'), $recipient));
+	pg_assert_same('GB-E161ZE', pg_label_rate_zone(array(), array('country' => 'GB', 'zip' => 'E16 1ZE')));
+	pg_assert_same('DE-', pg_label_rate_zone(array(), array('country' => 'DE')));
+	pg_assert_same('----', pg_label_rate_zone(array(), array('zip' => "-'\"")));
+	pg_assert_same(40, strlen(pg_label_rate_zone(array(), array('country' => 'US', 'zip' => str_repeat('9', 60)))));
 }

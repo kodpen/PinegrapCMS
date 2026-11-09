@@ -189,9 +189,10 @@ function pg_label_shippo_sleep($seconds)
  * @param string     $url
  * @param string     $token
  * @param array|null $payload JSON body
+ * @param int        $timeout seconds the whole request may take
  * @return array status (0 when not reached), body, error, sent
  */
-function pg_label_shippo_http($method, $url, $token, $payload = null)
+function pg_label_shippo_http($method, $url, $token, $payload = null, $timeout = 60)
 {
     $headers = array('Accept: application/json, application/pdf, */*');
     $body = null;
@@ -210,15 +211,15 @@ function pg_label_shippo_http($method, $url, $token, $payload = null)
     $transport = pg_label_shippo_transport();
 
     if ($transport !== null) {
-        $call = call_user_func($transport, $method, $url, $headers, $body);
+        $call = call_user_func($transport, $method, $url, $headers, $body, (int) $timeout);
     } else {
         // A purchase waits for the carrier: Shippo's synchronous calls can
         // take tens of seconds.
         $call = pg_curl_run($method, $url, array(
             'headers'         => $headers,
             'body'            => $body,
-            'timeout'         => 60,
-            'connect_timeout' => 10,
+            'timeout'         => (int) $timeout,
+            'connect_timeout' => min(10, (int) $timeout),
             'max_size'        => 10485760,
         ));
 
@@ -297,9 +298,9 @@ function pg_label_shippo_error_texts($data, $path = '')
  * @return array ok (a 2xx answer), reached, sent, status, data (the JSON
  *               answer, array), message, raw
  */
-function pg_label_shippo_api($method, $path, $account, $payload = null)
+function pg_label_shippo_api($method, $path, $account, $payload = null, $timeout = 60)
 {
-    $call = pg_label_shippo_http($method, 'https://api.goshippo.com' . $path, (string) $account['api_token'], $payload);
+    $call = pg_label_shippo_http($method, 'https://api.goshippo.com' . $path, (string) $account['api_token'], $payload, $timeout);
     $decoded = json_decode($call['body'], true);
     $decoded = is_array($decoded) ? $decoded : array();
 
@@ -541,6 +542,60 @@ function pg_label_shippo_rate_pick($rates, $service)
     }
 
     return ($cheapest === null) ? null : $cheapest[1];
+}
+
+/**
+ * The quotes of a shipment's rates: one per service level token (the lower
+ * when a token is listed twice), cheapest first, in the account's currency
+ * (amount_local) when Shippo gives it, else the carrier's. Pure.
+ *
+ * @param mixed $rates a shipment's rates
+ * @return array list of service, carrier, amount (minor units), currency
+ */
+function pg_label_shippo_rate_quotes($rates)
+{
+    $quotes = array();
+
+    foreach (is_array($rates) ? $rates : array() as $rate) {
+        if (!is_array($rate)) {
+            continue;
+        }
+
+        $token = isset($rate['servicelevel']) ? strtolower(pg_label_shippo_text($rate['servicelevel'], 'token')) : '';
+        $amount = pg_label_shippo_text($rate, 'amount_local');
+        $currency = pg_label_shippo_text($rate, 'currency_local');
+
+        if (!is_numeric($amount) || ($currency === '')) {
+            $amount = pg_label_shippo_text($rate, 'amount');
+            $currency = pg_label_shippo_text($rate, 'currency');
+        }
+
+        if (($token === '') || !is_numeric($amount) || ((float) $amount < 0)) {
+            continue;
+        }
+
+        $amount = (int) round(((float) $amount) * 100);
+        $currency = strtoupper($currency);
+
+        if (isset($quotes[$token]) && ($quotes[$token]['currency'] === $currency) && ($quotes[$token]['amount'] <= $amount)) {
+            continue;
+        }
+
+        $quotes[$token] = array(
+            'service'  => $token,
+            'carrier'  => pg_label_shippo_carrier(pg_label_shippo_text($rate, 'provider')),
+            'amount'   => $amount,
+            'currency' => $currency,
+        );
+    }
+
+    $quotes = array_values($quotes);
+
+    usort($quotes, function ($a, $b) {
+        return ($a['amount'] === $b['amount']) ? strcmp($a['service'], $b['service']) : (($a['amount'] < $b['amount']) ? -1 : 1);
+    });
+
+    return $quotes;
 }
 
 /**
@@ -827,6 +882,37 @@ function pg_label_shippo_create($shipment, $account)
     }
 
     return $answer;
+}
+
+/**
+ * The rates of a shipment for the parcel and address, without buying one:
+ * the shipment costs nothing. It is asked while a customer waits at
+ * checkout, so it gets 8 seconds and is never read again.
+ */
+function pg_label_shippo_rate($shipment, $account)
+{
+    $body = pg_label_shippo_shipment_body($shipment, $account);
+
+    if (empty($body['address_to']['country'])) {
+        return array('success' => false, 'error' => lang('Shippo needs the country of the shipping address.'));
+    }
+
+    unset($body['extra']);
+
+    $read = pg_label_shippo_api('POST', '/shipments/', $account, $body, 8);
+
+    if (!$read['ok']) {
+        return pg_label_shippo_failure($read, false);
+    }
+
+    $quotes = pg_label_shippo_rate_quotes(isset($read['data']['rates']) ? $read['data']['rates'] : array());
+
+    return array(
+        'success' => true,
+        'quotes'  => $quotes,
+        'log'     => array('Shippo rates: ' . count($quotes) . ' service levels'),
+        'raw'     => $read['raw'],
+    );
 }
 
 function pg_label_shippo_label($reference, $format, $account)
