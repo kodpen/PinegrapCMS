@@ -1177,6 +1177,7 @@
     "Loading the database: {var:1}": "Veritabanı yükleniyor: {var:1}",
     "Loading the fields...": "Alanlar yükleniyor...",
     "Loading the form fields...": "Form alanları yükleniyor...",
+    "Loading the sound...": "Ses yükleniyor...",
     "Loading...": "Yükleniyor...",
     "Loading…": "Yükleniyor…",
     "Loads after every stylesheet and overrides the variables below.": "Tüm stil dosyalarından sonra yüklenir, aşağıdaki değişkenleri ezer.",
