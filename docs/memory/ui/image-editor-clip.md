@@ -31,4 +31,5 @@ module: image_editor
 - Animate with one clip selected: tabs Video clip and Motion (the entrance, loop and exit as for any layer); the clip tab adds Duplicate and Delete. Draw on is off for a clip.
 
 ## What is left to later steps?
-- Clip rows on the tracks, trim by drag, split, snapping (V3); effects and transitions (V5); export frames and sound (V7); uploads over one request (V8).
+- Clip rows, trim, split, move and snapping came in V3 (`image-editor-clip-timeline.md`).
+- Effects and transitions (V5); export frames and sound (V7); uploads over one request (V8).

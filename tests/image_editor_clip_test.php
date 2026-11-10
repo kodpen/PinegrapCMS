@@ -228,8 +228,8 @@ function test_image_editor_clip_split()
 	}
 
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
-	pg_assert_same(array('to' => 4400, 'row' => 'l1'), array('to' => $r['s']['left']['to'], 'row' => $r['s']['left']['row']), 'the first part ends at the playhead\'s source time');
-	pg_assert_same(array(7, 4400, 6000, 3400, 'l1', '/v.mp4'), array($r['s']['right']['id'], $r['s']['right']['from'], $r['s']['right']['to'], $r['s']['right']['start'], $r['s']['right']['row'], $r['s']['right']['src']), 'the second part on the same source and row, from the playhead');
+	pg_assert_same(array('to' => 4400, 'row' => '1'), array('to' => $r['s']['left']['to'], 'row' => $r['s']['left']['row']), 'the first part ends at the playhead\'s source time');
+	pg_assert_same(array(7, 4400, 6000, 3400, '1', '/v.mp4'), array($r['s']['right']['id'], $r['s']['right']['from'], $r['s']['right']['to'], $r['s']['right']['start'], $r['s']['right']['row'], $r['s']['right']['src']), 'the second part on the same source and row, from the playhead');
 	pg_assert_same(false, isset($r['s']['right']['anim']['in']), 'the second part has no entrance of its own');
 	pg_assert_same(array(4000, 4000, 2000, 'r'), array($r['f']['left']['to'], $r['f']['right']['from'], $r['f']['right']['start'], $r['f']['right']['row']), 'at 2× a second on the timeline is two of source');
 	pg_assert_same(array(null, null, null, null), $r['edge'], 'nothing to split near an end, off the clip or at rest');
