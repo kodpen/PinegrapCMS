@@ -333,3 +333,52 @@ function test_form_mail_links_template_first_keeps_visitor_brackets()
 
 	pg_assert_same("Message: [[x ^^email_preferences_url^^||\nNote: ]]\nTail", $out, 'values kept as written');
 }
+
+// The editor may store a link's ^^ percent-encoded (href="%5E%5Ename%5E%5E");
+// inside a tag it is filled like ^^name^^, in either case of the hex digits,
+// with the same escaping and the same '' for a missing value.
+function test_form_mail_links_percent_encoded_href()
+{
+	$values = array('email_preferences_url' => 'https://example.com/p?a=1&b=2', 'confirm_subscription_url' => '');
+
+	foreach (array('pg_cf_fill_mail_links', 'pg_cf_fill_mail_link_tokens') as $fill) {
+		pg_assert_same(
+			'<a href="https://example.com/p?a=1&amp;b=2">P</a>',
+			$fill('<a href="%5E%5Eemail_preferences_url%5E%5E">P</a>', $values, 'html'),
+			$fill . ': encoded href filled and escaped');
+		pg_assert_same(
+			'<a href="https://example.com/p?a=1&amp;b=2">P</a>',
+			$fill('<a href="http://%5e%5eemail_preferences_url%5E%5e">P</a>', $values, 'html'),
+			$fill . ': lower case hex, Link dialog scheme taken off');
+		pg_assert_same(
+			'<a href="">C</a>',
+			$fill('<a href="%5E%5Econfirm_subscription_url%5E%5E">C</a>', $values, 'html'),
+			$fill . ': no value is empty, never the token');
+		pg_assert_same(
+			'<a href="/t?v=%5E%5Ereference_code%5E%5E&amp;x=%20">R</a> %5E%5Eemail_preferences_url%5E%5E',
+			$fill('<a href="/t?v=%5E%5Ereference_code%5E%5E&amp;x=%20">R</a> %5E%5Eemail_preferences_url%5E%5E', $values, 'html'),
+			$fill . ': other fields and text outside a tag stay as written');
+		pg_assert_same(
+			'Link: %5E%5Eemail_preferences_url%5E%5E',
+			$fill('Link: %5E%5Eemail_preferences_url%5E%5E', $values, 'plain_text'),
+			$fill . ': plain text is not decoded');
+		pg_assert_same(
+			'<a href="https://example.com/p?a=1&amp;b=2">P</a>',
+			$fill('<a href="^^email_preferences_url^^">P</a>', $values, 'html'),
+			$fill . ': the ^^ form is unchanged');
+	}
+}
+
+// Text holding neither ^^ nor %5E%5E comes back as it is.
+function test_form_mail_links_percent_encoded_early_return()
+{
+	pg_assert_same('<a href="/x%5Ey">x</a>', pg_cf_mail_link_decode_tokens('<a href="/x%5Ey">x</a>'), 'a lone %5E stays');
+	pg_assert_same('<p>Hi</p>', pg_cf_fill_mail_link_tokens('<p>Hi</p>', array(), 'html'), 'nothing to fill');
+}
+
+// The name is matched as the ^^ form takes it; only the hex digits may differ in case.
+function test_form_mail_links_percent_encoded_name_exact()
+{
+	pg_assert_same('<a href="^^email_preferences_url^^">', pg_cf_mail_link_decode_tokens('<a href="%5e%5Eemail_preferences_url%5E%5e">'), 'hex case');
+	pg_assert_same('<a href="%5E%5EEMAIL_PREFERENCES_URL%5E%5E">', pg_cf_mail_link_decode_tokens('<a href="%5E%5EEMAIL_PREFERENCES_URL%5E%5E">'), 'another name stays');
+}
