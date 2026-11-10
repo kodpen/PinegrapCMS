@@ -338,7 +338,7 @@ function pg_product_group_form_products_card($form)
                                             <tr>
                                                 <th data-pg-sort="none">
                                                     <div class="form-field">
-                                                        <div class="switch"><input class="" title="' . h(lang('Select/Deselect All')) . '" aria-label="' . h(lang('Select/Deselect All')) . '" type="checkbox" id="select_all"></div>
+                                                        <div class="switch"><input class="no-popover" data-bs-toggle="tooltip" title="' . h(lang('Select/Deselect All')) . '" aria-label="' . h(lang('Select/Deselect All')) . '" type="checkbox" id="select_all"></div>
                                                     </div>
                                                 </th>
                                                 <th data-pg-sort="none">' . lang('Action') . '</th>

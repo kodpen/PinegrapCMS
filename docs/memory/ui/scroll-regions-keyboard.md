@@ -14,8 +14,8 @@ description: Text-only boxes that scroll on their own are named keyboard regions
 - Its `.doc-params` holders (tables with `min-width: 520px`) scroll only below about 560px, so `markScrollers()` in `pgApiConsole.init()` sets the three attributes while `scrollWidth > clientWidth` and removes them otherwise; a 200 ms debounced window resize rechecks. The name is the endpoint's `.doc-path` text and the table heading (`/orders – Query`).
 - Write with AI draft (`pg_ai_write.js`, `showDraft()`, 18rem): named by the panel's title label (`title` / `title_browser`), so no new label key.
 
-## What is left?
-- The guided tour body (`pg_tour.js`) and the panel chat conversation (`chat_backend.src.js`, role log) are not done yet.
+## Where are the other scrolling boxes?
+- The guided tour body is a region while it overflows (`fitBody()`, `guided-tour.md`); the panel chat conversation is a `role=log` Tab stop (`chat-window-keyboard.md`).
 
 ## What was checked in a browser?
 - `markScrollers()` in headless Chromium at 400px (attributes set) and 1000px after resize (removed). The other boxes are pinned by `tests/scroll_regions_keyboard_test.php`.
