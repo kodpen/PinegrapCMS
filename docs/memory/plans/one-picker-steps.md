@@ -8,7 +8,7 @@ description: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry an
 
 - PKV (S, no product code) The screens. The dialog and the field drawn as pictures in `plans/one-picker/`, desktop and phone: files as a grid and as a list, pages, an empty folder, search results, Upload, a chosen value, a missing or binned value. The owner approves them through an Approval issue (`workflow/architect-asking.md`) before PK2 starts.
 
-- PK1 (M) Registry and endpoint. `includes/fn/picker.php` and `picker.php`: the kinds `file`, `image`, `public_image`, `site_icon` and `page`; the requests `list`, `search`, `tree` and `resolve`; the access verdict, the folded name match, paging. `file_picker_search.php` answers through it with its contract unchanged. No screen changes.
+- PK1 (M) Registry and endpoint. `includes/fn/picker.php` and `picker.php`: the kinds `file`, `image`, `public_image`, `site_icon` and `page`; the requests `list`, `search`, `tree` and `resolve`; the access verdict, the folded name match, paging. `file_picker_search.php` answers through it with its contract unchanged. No screen changes. Done (#8515, ui/picker-registry.md)
 
 - PK2 (M) The dialog. After PKV and PK1. `assets/js/pg_picker.js` and its styles in the panel bundle: tree, grid and list, search, sort, one pick, keyboard, the phone sheet; the file kinds. Shown on one screen (Settings, Site Icon) behind a Browse button; the owner approves the built dialog the same way.
 
