@@ -684,23 +684,30 @@ function ws_handle_action($action, $request)
             }
 
             // With a channel: only the flows the person may start there
-            // (the composer's Add › Start a flow).
-            $rows = ((int) ($request['runnable_in'] ?? 0) > 0) ? ws_flows_runnable_in($viewer, (int) $request['runnable_in']) : ws_flows_list($viewer);
+            // (the composer's Add › Start a flow). The Flows table also
+            // lists to staff the converted flows somebody else owns.
+            $runnable = ((int) ($request['runnable_in'] ?? 0) > 0);
+            $rows = $runnable ? ws_flows_runnable_in($viewer, (int) $request['runnable_in']) : ws_flows_with_converted($viewer, ws_flows_list($viewer));
             $numbers = ws_flow_version_numbers($rows);
             // How each flow starts (its kind and the list's sentence) and
             // the name of its home channel, each read once for the list.
             $starts = empty($rows) ? array() : ws_flows_starts($viewer, $rows);
             $channels = empty($rows) ? array() : ws_flows_channel_names($viewer, $rows);
+            // The next run of a live flow that starts at a time, from its
+            // anchor, in one read; it joins the start words, so the search
+            // and the phone's stacked row say it too.
+            $next = $runnable ? array() : ws_flows_next_runs(ws_flows_next_run_ids($rows, $starts));
             // Each flow's last run, for its flag in the list and on the canvas.
             $last = ws_flow_last_runs($viewer, $rows);
             $run_numbers = ws_flow_version_numbers($last);
 
-            return ws_action_ok(array('scheduled' => ((int) ($request['runnable_in'] ?? 0) > 0) ? null : ws_flows_scheduled_rows($viewer), 'flows' => array_map(function ($row) use ($viewer, $numbers, $starts, $channels, $last, $run_numbers) {
+            return ws_action_ok(array('scheduled' => $runnable ? null : ws_flows_scheduled_rows($viewer), 'flows' => array_map(function ($row) use ($viewer, $numbers, $starts, $channels, $next, $last, $run_numbers) {
                 $run = $last[(int) $row['id']] ?? null;
                 $start = $starts[(int) $row['id']] ?? array('kind' => '', 'text' => '');
+                $moment = isset($next[(int) $row['id']]) ? ws_scheduled_moment($next[(int) $row['id']]) : '';
 
                 return ws_flow_brief($viewer, $row, $numbers[(int) $row['version_id']] ?? 0, $start['kind']) + array(
-                    'start_text'   => $start['text'],
+                    'start_text'   => ws_flow_start_with_next($start['text'], $moment),
                     'channel_name' => $channels[(int) $row['channel_id']] ?? '',
                     'last_run'     => $run ? ws_action_flow_run_present($viewer, $run, $run_numbers[(int) $run['version_id']] ?? 0) : null,
                 );

@@ -319,7 +319,7 @@
         panel: '',          // 'runs' while the side panel lists the runs
         section: '',        // 'action' while a scheduled action is drawn read-only, 'templates' in the gallery
         galleryInto: null,  // the flow the gallery was opened to fill, null for a new one
-        scheduled: null,    // the scheduled actions the list ends with: converted (items), refused (count)
+        scheduled: null,    // the scheduled actions the list ends with: refused (count)
         runs: { flow: 0, items: [], next: null, loading: false, error: '' }, // error: why the last load failed
         run: null,          // the run shown on the canvas (ws_flow_run_get)
         stash: null,        // what the run view put aside: the draft, selection, view, edit
@@ -1328,20 +1328,18 @@
         ui.flowsNone = el('p', 'small fg-secondary wsf-flows-none d-none');
         ui.flows.appendChild(ui.flowsNone);
 
-        // Staff's scheduled actions: the converted ones, then the ones
-        // the conversion refused.
+        // Staff's scheduled actions the conversion refused (a converted
+        // one is a row of the table).
         ui.scheduledGroups = el('div', 'wsf-sched-groups');
         ui.flows.appendChild(ui.scheduledGroups);
         drawRows();
         drawScheduled();
     }
 
-    // The groups the flow list ends with (ws_flows_scheduled_rows()):
-    // "Converted from scheduled actions", each row with its when and step,
-    // the converted mark, Open flow, Run now and History; then "Not
-    // converted", the cards of the scheduled actions (scheduledList() in
-    // workspace.js, which lists only those rows here). A group with no
-    // rows is not shown.
+    // The group the flow list ends with (ws_flows_scheduled_rows()): "Not
+    // converted", the cards of the scheduled actions the conversion refused
+    // (scheduledList() in workspace.js, which lists only those rows here).
+    // Not shown without such rows.
     function drawScheduled() {
         var groups = state.scheduled;
 
@@ -1349,19 +1347,6 @@
 
         if (!groups) {
             return;
-        }
-
-        if ((groups.converted || []).length) {
-            var converted = el('section', 'wsf-sched-group');
-            var list = el('ul', 'list-unstyled wsf-sched-list');
-
-            converted.setAttribute('aria-labelledby', 'wsf-sched-converted');
-            converted.appendChild(el('h2', 'h6 wsf-sched-title', t('fl_conv_title', groups.converted.length))).id = 'wsf-sched-converted';
-            groups.converted.forEach(function (item) {
-                list.appendChild(convertedRow(item));
-            });
-            converted.appendChild(list);
-            ui.scheduledGroups.appendChild(converted);
         }
 
         if (groups.refused > 0) {
@@ -1382,115 +1367,6 @@
             ui.scheduledGroups.appendChild(refused);
             K.scheduledList(cards);
         }
-    }
-
-    // One converted scheduled action: its name, state and converted mark;
-    // its when (and next time) and its step; Open flow, Run now (the only
-    // hand start of a flow started by time or event) and History, the
-    // action's runs from before and after the conversion.
-    function convertedRow(item) {
-        var row = el('li', 'wsf-sched-row');
-        var head = el('div', 'wsf-sched-head');
-        var tools = el('div', 'wsf-sched-tools');
-        var historyBox = el('div', 'ws-sa-history');
-        var open = K.button('btn btn-sm btn-outline theme-secondary', t('fl_open_flow'), 'bi-diagram-3');
-        var history = K.button('btn btn-sm btn-text theme-secondary', t('sa_history'), 'bi-clock-history');
-
-        head.appendChild(el('b', 'wsf-sched-name', item.name));
-        head.appendChild(el('span', 'ws-sa-state ws-sa-state-' + item.status, item.status_label));
-
-        var mark = el('span', 'badge rounded-pill badge-subtle theme-secondary border wsf-sched-mark');
-
-        mark.appendChild(K.icon('bi-arrow-left-right', 'me-1'));
-        mark.appendChild(document.createTextNode(t('fl_conv_mark')));
-        head.appendChild(mark);
-        row.appendChild(head);
-        row.appendChild(el('div', 'ws-sa-line', item.when + (item.next ? ' · ' + t('sa_next') + ': ' + item.next : '')));
-        row.appendChild(el('div', 'ws-sa-line ws-sa-do', item.action_text || ''));
-
-        if (item.last) {
-            row.appendChild(el('div', 'ws-sa-line ws-sa-last ws-sa-last-' + item.last.status, t('sa_last') + ': ' + item.last.label + ' · ' + item.last.time + (item.last.text ? ' · ' + item.last.text : '')));
-        }
-
-        // Without the flow store's read, the row has no flow to open.
-        if (item.flow) {
-            open.setAttribute('data-refocus', 'sched-open-' + item.id);
-            open.setAttribute('aria-label', t('fl_open_flow') + ': ' + item.name);
-            open.addEventListener('click', function () {
-                openFromList({ id: item.flow.id });
-            });
-            tools.appendChild(open);
-        }
-
-        if (item.can_edit) {
-            var run = K.button('btn btn-sm btn-text theme-secondary', t('sa_run_now'), 'bi-lightning');
-
-            run.setAttribute('data-refocus', 'sched-run-' + item.id);
-            run.addEventListener('click', function () {
-                K.ask(t('sa_run_now_confirm'), t('sa_run_now')).then(function (yes) {
-                    if (!yes) {
-                        return;
-                    }
-
-                    run.disabled = true;
-                    K.api('ws_scheduled_run_now', { id: item.id }).then(function (data) {
-                        convertedChanged(data.item, 'sched-run-' + item.id);
-                    }).catch(function (error) {
-                        run.disabled = false;
-                        K.fail(error);
-                    });
-                });
-            });
-            tools.appendChild(run);
-        }
-
-        history.setAttribute('aria-expanded', 'false');
-        history.addEventListener('click', function () {
-            if (!historyBox.hidden) {
-                historyBox.hidden = true;
-                history.setAttribute('aria-expanded', 'false');
-                return;
-            }
-
-            K.api('ws_scheduled_get', { id: item.id }).then(function (data) {
-                K.clear(historyBox);
-                historyBox.hidden = false;
-                history.setAttribute('aria-expanded', 'true');
-
-                if (!(data.item.history || []).length) {
-                    historyBox.appendChild(el('div', 'small fg-secondary', t('sa_no_history')));
-                }
-
-                (data.item.history || []).forEach(function (run) {
-                    var line = el('div', 'ws-sa-history-row ws-sa-last-' + run.status);
-
-                    line.appendChild(el('b', '', run.label));
-                    line.appendChild(el('span', 'fg-secondary', run.time + (run.by_hand ? ' · ' + t('sa_by_hand') : '') + (run.source ? ' · ' + t('sa_started_by') + ' ' + run.source : '')));
-                    line.appendChild(el('span', '', run.text));
-                    historyBox.appendChild(line);
-                });
-            }).catch(K.fail);
-        });
-        tools.appendChild(history);
-        historyBox.hidden = true;
-        row.appendChild(tools);
-        row.appendChild(historyBox);
-
-        return row;
-    }
-
-    // A converted row after Run now: drawn again with what it says now.
-    function convertedChanged(item, focus) {
-        if (!item || !state.scheduled) {
-            return;
-        }
-
-        state.scheduled.converted = state.scheduled.converted.map(function (other) {
-            return (other.id === item.id) ? item : other;
-        });
-        state.refocus = focus;
-        drawScheduled();
-        refocus();
     }
 
     // The chips and the rows, drawn again as the search or a chip changes;
