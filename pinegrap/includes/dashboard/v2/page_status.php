@@ -79,19 +79,14 @@ function pg_dashboard_v2_look_attributes($look)
 }
 
 /**
- * How many check chips the System Status card shows before folding the
- * rest behind one "+n more" chip: the drawings' card, about the greeting's
- * height.
- */
-if (!defined('PG_DASHBOARD_V2_STATUS_CHIPS')) {
-    define('PG_DASHBOARD_V2_STATUS_CHIPS', 8);
-}
-
-/**
- * The checks as chips in widget 2's order, the first
- * PG_DASHBOARD_V2_STATUS_CHIPS of them drawn and the rest folded behind one
- * "+n more" chip that opens them. That chip takes the tone of the worst
- * check it holds, so a folded problem still shows.
+ * The checks as chips in widget 2's order. Only the failed ones are always
+ * drawn: they are what needs somebody now. Every other check (warnings, the
+ * priority checks, the calm rest) folds behind one chip that opens them, so
+ * a healthy site's card is its gauge and one quiet chip.
+ *
+ * That chip reads "+n more" after failed chips and "n checks" when it stands
+ * alone. Warnings inside it are counted in words and tint it: the tint alone
+ * would not tell them to someone who cannot see the colour.
  *
  * @param array $checks get_system_status_checks()['checks']
  * @param int   $role
@@ -99,21 +94,46 @@ if (!defined('PG_DASHBOARD_V2_STATUS_CHIPS')) {
  */
 function pg_dashboard_v2_status_chips($checks, $role)
 {
-    $ordered = pg_system_status_order($checks);
-    $shown = array_slice($ordered, 0, PG_DASHBOARD_V2_STATUS_CHIPS);
-    $folded = array_slice($ordered, PG_DASHBOARD_V2_STATUS_CHIPS);
+    $urgent = array();
+    $folded = array();
+    $warnings = 0;
 
-    $output = pg_system_status_chips($shown, $role);
+    foreach (pg_system_status_order($checks) as $check) {
+
+        if ($check['state'] === 'fail') {
+            $urgent[] = $check;
+            continue;
+        }
+
+        $folded[] = $check;
+
+        if ($check['state'] === 'warn') {
+            $warnings++;
+        }
+    }
+
+    $output = pg_system_status_chips($urgent, $role);
 
     if (empty($folded)) {
         return $output;
     }
 
-    $states = array_column($folded, 'state');
-    $tone = in_array('fail', $states, true) ? 'bad' : (in_array('warn', $states, true) ? 'warn' : '');
+    if (!empty($urgent)) {
+        $summary = lang(array('string' => '+{var:1} more', 'vars' => count($folded)));
+    } elseif (count($folded) === 1) {
+        $summary = lang('1 check');
+    } else {
+        $summary = lang(array('string' => '{var:1} checks', 'vars' => count($folded)));
+    }
 
-    return $output . '<details class="pg-dash-status-more"><summary' . (($tone !== '') ? ' data-tone="' . $tone . '"' : '') . '>'
-        . h(lang(array('string' => '+{var:1} more', 'vars' => count($folded)))) . '</summary>'
+    if ($warnings === 1) {
+        $summary .= ' · ' . lang('1 warning');
+    } elseif ($warnings > 1) {
+        $summary .= ' · ' . lang(array('string' => '{var:1} warnings', 'vars' => $warnings));
+    }
+
+    return $output . '<details class="pg-dash-status-more"><summary' . (($warnings > 0) ? ' data-tone="warn"' : '') . '>'
+        . h($summary) . '</summary>'
         . '<div class="pg-dash-status-more-list">' . pg_system_status_chips($folded, $role, 'system_status_more_') . '</div></details>';
 }
 
@@ -144,8 +164,10 @@ function pg_dashboard_v2_status($user, $status = null, $off = false)
 
     $changelog = pg_changelog_dialog();
 
+    // The button opens the Release Notes dialog, so it is named for what the
+    // dialog lists, the changes, not for the card's own details.
     $details = ($changelog['dialog'] !== '')
-        ? '<button type="button" class="btn btn-link btn-sm pg-dash-status-details" data-bs-toggle="dialog" data-bs-target="#changelog_modal" title="' . h(lang('Release Notes')) . '">' . h(lang('Details')) . '</button>'
+        ? '<button type="button" class="btn btn-link btn-sm pg-dash-status-details" data-bs-toggle="dialog" data-bs-target="#changelog_modal" title="' . h(lang('Release Notes')) . '">' . h(lang('Changes')) . '</button>'
         : '';
 
     return '
@@ -154,7 +176,7 @@ function pg_dashboard_v2_status($user, $status = null, $off = false)
                 <h2 class="pg-dash-status-title" id="pg_dash_status_title"><span class="pg-dash-status-icon" aria-hidden="true"><i class="bi bi-activity"></i></span>' . h(lang('System Status')) . '</h2>
                 ' . $details . '
             </div>
-            ' . pg_health_gauge($score) . '
+            ' . pg_health_gauge($score, 'dash') . '
             <div class="pg-checks pg-dash-status-checks">' . pg_dashboard_v2_status_chips($checks, $user['role']) . '
             </div>
             <script>
