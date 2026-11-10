@@ -2,10 +2,10 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Shared pieces of tools/ws_post.php and tools/ws_wait.php: the settings an
- * agent passes in its environment, the HTTP call to a site's external API
- * with an application key, and the pure helpers (options, matching, ETag)
- * the tests read.
+ * Shared pieces of tools/ws_post.php, tools/ws_wait.php and
+ * tools/ws_poll.php: the settings an agent passes in its environment, the
+ * HTTP call to a site's external API with an application key, and the pure
+ * helpers (options, matching, ETag, Idempotency-Key) the tests read.
  *
  * Environment:
  *   PG_WS_SITE     the site's API address, ending in /integration.php
@@ -269,6 +269,23 @@ function ws_client_request($method, $url, $settings, $body = null, $headers = ar
 	curl_close($ch);
 
 	return $out;
+}
+
+/**
+ * The Idempotency-Key header line of --idempotency-key, so a retried call
+ * does not write twice: characters outside the header's safe set become
+ * "-", and the key is cut to 64 characters.
+ *
+ * @param array<string,string|bool> $options
+ * @return string[] no line, or one
+ */
+function ws_client_idempotency_headers($options)
+{
+	if (!isset($options['idempotency-key']) || !is_string($options['idempotency-key']) || $options['idempotency-key'] === '') {
+		return array();
+	}
+
+	return array('Idempotency-Key: ' . substr((string) preg_replace('/[^A-Za-z0-9._:-]/', '-', $options['idempotency-key']), 0, 64));
 }
 
 /**

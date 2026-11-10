@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the agent channel tools (tools/ws_client.php, tools/ws_post.php,
- * tools/ws_wait.php): options, settings and their refusals, the Basic header,
- * the ETag read, the message rule and the post body. No network.
+ * tools/ws_wait.php, tools/ws_poll.php): options, settings and their refusals,
+ * the Basic header, the ETag read, the message rule, the post body, and
+ * tools/ws_poll.php's ask body and close id. No network.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -18,6 +19,7 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(dirname(PG_FUNCTIONS_DIR) . '/tools/ws_post.php');
 require_once(dirname(PG_FUNCTIONS_DIR) . '/tools/ws_wait.php');
+require_once(dirname(PG_FUNCTIONS_DIR) . '/tools/ws_poll.php');
 
 function test_ws_channel_tools_options()
 {
@@ -154,4 +156,54 @@ function test_ws_channel_tools_post_parent()
 	pg_assert_same(array('text' => 'Plan A', 'kind' => 'decision', 'parent_id' => 41), ws_post_body('Plan A', array('kind' => 'decision', 'parent' => '41'))['body']);
 	pg_assert_same(null, ws_post_body('x', array('parent' => '0'))['body']);
 	pg_assert_same(null, ws_post_body('x', array('parent' => true))['body']);
+}
+
+function test_ws_channel_tools_poll_ask_body()
+{
+	pg_assert_same(array('question' => 'Ship it?', 'options' => array('Yes', 'No')), ws_poll_ask_body("  Ship it?\n", array(' Yes ', 'No'))['body']);
+	pg_assert_same(array('question' => 'Q', 'options' => array('B', 'A', 'C')), ws_poll_ask_body('Q', array('B', '', 'A', 'B', '  ', 'C'))['body'], 'blanks and repeats left out, order kept');
+	pg_assert_same(null, ws_poll_ask_body('   ', array('A', 'B'))['body']);
+	pg_assert_same(null, ws_poll_ask_body('Q', array('A'))['body']);
+	pg_assert_same(null, ws_poll_ask_body('Q', array('A', 'A', ' '))['body'], 'one different option is not enough');
+	pg_assert_same(null, ws_poll_ask_body('Q', range(1, 11))['body']);
+	pg_assert_same(10, count(ws_poll_ask_body('Q', array_merge(range(1, 10), array('1')))['body']['options']));
+	pg_assert_same(null, ws_poll_ask_body('Q', array('A', str_repeat('ş', 256)))['body']);
+	pg_assert_same(str_repeat('ş', 255), ws_poll_ask_body('Q', array('A', str_repeat('ş', 255)))['body']['options'][1]);
+	pg_assert_same(null, ws_poll_ask_body(str_repeat('ş', 4001), array('A', 'B'))['body']);
+	pg_assert_same(str_repeat('ş', 4000), ws_poll_ask_body(str_repeat('ş', 4000), array('A', 'B'))['body']['question']);
+	pg_assert_true(ws_poll_ask_body('Q', array('A'))['error'] !== '');
+}
+
+function test_ws_channel_tools_poll_command_and_id()
+{
+	pg_assert_same(array('command' => 'ask', 'args' => array('Q', 'A', 'B'), 'error' => ''), ws_poll_command(array('ask', 'Q', 'A', 'B')));
+	pg_assert_same('close', ws_poll_command(array('close', '12'))['command']);
+	pg_assert_true(ws_poll_command(array())['error'] !== '', 'no command');
+	pg_assert_true(ws_poll_command(array('vote', '1'))['error'] !== '', 'unknown command');
+	pg_assert_true(ws_poll_command(array('close'))['error'] !== '', 'close without an id');
+	pg_assert_true(ws_poll_command(array('close', '1', '2'))['error'] !== '', 'close with two ids');
+
+	pg_assert_same(12, ws_poll_id('12'));
+	pg_assert_same(0, ws_poll_id('0'));
+	pg_assert_same(0, ws_poll_id('-3'));
+	pg_assert_same(0, ws_poll_id('12a'));
+	pg_assert_same(0, ws_poll_id(''));
+}
+
+function test_ws_channel_tools_poll_settings()
+{
+	$no_channel = array('PG_WS_SITE' => 'https://example.com/pinegrap/integration.php', 'PG_WS_KEY' => 'k', 'PG_WS_SECRET' => 's');
+
+	pg_assert_same(array(), ws_poll_settings('close', array(), $no_channel)['missing'], 'close needs no channel');
+	pg_assert_same(array('PG_WS_CHANNEL'), ws_poll_settings('ask', array(), $no_channel)['missing']);
+	pg_assert_same(array(), ws_poll_settings('ask', array('channel' => '5'), $no_channel)['missing']);
+	pg_assert_same(array('PG_WS_KEY'), ws_poll_settings('close', array(), array('PG_WS_KEY' => '') + $no_channel)['missing']);
+}
+
+function test_ws_channel_tools_idempotency_header()
+{
+	pg_assert_same(array('Idempotency-Key: ask-q-1-'), ws_client_idempotency_headers(array('idempotency-key' => 'ask-q 1/')));
+	pg_assert_same(64, strlen(ws_client_idempotency_headers(array('idempotency-key' => str_repeat('a', 80)))[0]) - strlen('Idempotency-Key: '));
+	pg_assert_same(array(), ws_client_idempotency_headers(array()));
+	pg_assert_same(array(), ws_client_idempotency_headers(array('idempotency-key' => true)));
 }
