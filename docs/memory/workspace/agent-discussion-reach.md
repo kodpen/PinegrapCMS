@@ -19,5 +19,5 @@ description: A channel's registry agent asked in the channel's discussions by na
 
 ## What stays the discussion's own?
 - The tier (`ws_channel_agent_tier_of()`: tier 1 with no own row, it never reads the channel), `ws_agent_brief()` (no own row: the loop-guard text), `/wake` and schedules, the flow box, the Memory tab, the rows' writers.
-- A discussion following an agent takes the same reaching row (#8611, `agent-discussion-follow.md`).
+- A discussion following an agent takes the same reaching row (#8608, `agent-discussion-follow.md`).
 - Tests: `tests/workspace_agent_discussion_reach_test.php`.

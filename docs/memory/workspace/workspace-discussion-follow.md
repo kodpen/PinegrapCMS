@@ -4,7 +4,7 @@ description: The assistant a discussion follows (ws_threads.follow_agent, step 1
 ---
 
 ## What is followed?
-- `ws_threads.follow_agent`: '' (nobody), `claude`, `ai`, `mcp:<server id>` (an MCP server that is an agent itself), or a registry agent's `agent:<id>` / `model:<id>` while a row reaches the discussion (#8611, `agent-discussion-follow.md`). VARCHAR(64), so later agent keys fit without a MODIFY. Read and written only behind `ws_thread_follow_ready()` (`pg_schema_has()`): files land before the upgrade runs. Getter/setter `ws_thread_follow_agent()` / `ws_thread_follow_set()` (threads.php).
+- `ws_threads.follow_agent`: '' (nobody), `claude`, `ai`, `mcp:<server id>` (an MCP server that is an agent itself), or a registry agent's `agent:<id>` / `model:<id>` while a row reaches the discussion (#8608, `agent-discussion-follow.md`). VARCHAR(64), so later agent keys fit without a MODIFY. Read and written only behind `ws_thread_follow_ready()` (`pg_schema_has()`): files land before the upgrade runs. Getter/setter `ws_thread_follow_agent()` / `ws_thread_follow_set()` (threads.php).
 - Pinegrap AI asked with an MCP server's tools is followed as `ai`: later messages ask it without the server's tools.
 
 ## When is it set?

@@ -1,10 +1,10 @@
 ---
 name: agent-discussion-follow
-description: A discussion that follows a registry agent (A4b4 #8611): the agent:<id> / model:<id> key, the reaching row read live, the name that starts it, the followed ask through ws_agent_after_send()
+description: A discussion that follows a registry agent (A4b4 #8608): the agent:<id> / model:<id> key, the reaching row read live, the name that starts it, the followed ask through ws_agent_after_send()
 ---
 
 ## What did it fix?
-- #8611, on the architect's decision (`workflow/decisions-made-workspace-12.md`). Before it, asking `@agent` in a discussion did not make it the followed one, and the next message that asked nobody did not ask it.
+- #8608, on the architect's decision (`workflow/decisions-made-workspace-12.md`). Before it, asking `@agent` in a discussion did not make it the followed one, and the next message that asked nobody did not ask it.
 
 ## Which key is kept?
 - `ws_thread_follow_clean()` keeps `agent:<id>` and `model:<id>`, the value the agent's `ws_ai_requests.agent` carries (`ws_agent_request_value()`); `agent:0`, `agent:x` and `app:<n>` give ''. A model assistant is a registry agent woken by the same `ws_agent_after_send()`, so it is followed the same way; its answer comes from the site's loop (`models` in `ws_message_ask_assistants()`).

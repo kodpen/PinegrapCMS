@@ -6,7 +6,7 @@ description: Steps A0-A9 of plans/agent-channel.md: registry, doors, wakes, chan
 ## Which steps are there?
 - S under 400 product lines, M about 1,000; each step its tests and its memory topic in `workspace/`; a schema step rerun twice on a dev DB.
 
-- Done: A0 #7969, A1 #7970, A2 #7968, A3 #8038, A3b #8189, A3c #8235, A4a #8221, A4b1 #8246, A4b2 #8274, A4b3 #8600, A4b4 #8611, A5 #8187 #8188, A5b #8227, A6 #8191, A6b #8219, A7 #8242, A7b #8313, A9 #8236 #8254 #8252 #8299 #8293. What each built: `workspace/agent-registry.md`, `agent-doors.md`, `agent-wakes.md`, `agent-shown.md`, `channel-memory.md`, `agent-questions.md`, `model-assistants.md`, `agent-risk-tiers.md`, `agent-flows.md`, `agent-canvas-svg.md`; the door experiment `workflow/agent-channel-experiment.md`.
+- Done: A0 #7969, A1 #7970, A2 #7968, A3 #8038, A3b #8189, A3c #8235, A4a #8221, A4b1 #8246, A4b2 #8274, A4b3 #8600, A4b4 #8608, A5 #8187 #8188, A5b #8227, A6 #8191, A6b #8219, A7 #8242, A7b #8313, A9 #8236 #8254 #8252 #8299 #8293. What each built: `workspace/agent-registry.md`, `agent-doors.md`, `agent-wakes.md`, `agent-shown.md`, `channel-memory.md`, `agent-questions.md`, `model-assistants.md`, `agent-risk-tiers.md`, `agent-flows.md`, `agent-canvas-svg.md`; the door experiment `workflow/agent-channel-experiment.md`.
 
 - A8 (M) Further doors. After A4. Cut in three:
   - A8a (this repository): per-person sessions over OAuth and the "via" badge, owner decision #8490 (1a, 2a). Cut in two:
