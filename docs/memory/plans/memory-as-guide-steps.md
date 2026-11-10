@@ -14,7 +14,7 @@ description: Steps MG1-MG4 and MG11-MG14 of plans/memory-as-guide.md: decision l
 
 - MG2 Wording, after MG1 (done, #8464): `CLAUDE.md` and the workflow key rule say "before changing or removing a behaviour, search `workflow/DECISIONS.md`", not only before an audit finding. `decisions-made.md` gives the search line in place of its Parts list.
 
-- MG3 Writing rules: `workflow/memory-writing.md` (new) and three lines in the Memory section of `CLAUDE.md`.
+- MG3 Writing rules (done, #8472): `workflow/memory-writing.md` (new) and three lines in the Memory section of `CLAUDE.md`.
   - A description names a screen, box or button by its English label on screen. One file owns a value, the others point to it. A PR that changes a limit or a rule searches all memory for the old value. A line stays under 500 characters: the search tool hides longer ones. A decision is written `Owner (YYYY-MM-DD):`.
   - A cluster of ten files or more has an overview, kept up by its plan's close-out step.
   - Rely on what memory says and check in code what the change depends on. What another account needs goes to `docs/memory` unless it must not be public.
