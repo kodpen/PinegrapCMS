@@ -201,8 +201,11 @@
         });
     }
 
+    // A folder line under a name: the top folder (every path starts there)
+    // is left out once there is a folder below it.
     function pathText(path) {
-        return (path || []).map(function (crumb) { return crumb.name; }).join(' / ');
+        path = path || [];
+        return (path.length > 1 ? path.slice(1) : path).map(function (crumb) { return crumb.name; }).join(' / ');
     }
 
     function fileIcon(type) {
@@ -405,7 +408,7 @@
 
         var sortBox = el('label', 'pg-picker-sort');
         sortBox.appendChild(icon('bi-sort-down'));
-        this.sortSelect = el('select', 'form-select form-select-sm');
+        this.sortSelect = el('select', 'form-control form-control-sm');
         this.sortSelect.setAttribute('aria-label', t('Sort'));
         sortBox.appendChild(this.sortSelect);
 
@@ -448,10 +451,10 @@
 
         this.pickBox = el('div', 'pg-picker-pick');
         this.hint = el('span', 'pg-picker-hint');
-        this.cancel = button('btn btn-outline-secondary pg-picker-cancel', t('Cancel'));
-        this.back = button('btn btn-outline-secondary pg-picker-back', t('Back'));
+        this.cancel = button('btn btn-outline theme-secondary pg-picker-cancel', t('Cancel'));
+        this.back = button('btn btn-outline theme-secondary pg-picker-back', t('Back'));
         this.back.hidden = true;
-        this.choose = button('btn btn-primary pg-picker-choose', t('Choose'));
+        this.choose = button('btn btn-solid theme-primary pg-picker-choose', t('Choose'));
         this.choose.disabled = true;
         [this.pickBox, this.hint, this.cancel, this.back, this.choose].forEach(function (node) { parts.footer.appendChild(node); });
 
@@ -472,7 +475,9 @@
         var self = this;
 
         this.upButton.addEventListener('click', function () { self.goUp(); });
-        this.chip.addEventListener('click', function () { self.showFolderList(true, self.parentOf(self.folder)); });
+        // The chip lists the open folder beside its siblings; at the top,
+        // the folders inside it.
+        this.chip.addEventListener('click', function () { self.showFolderList(true, self.parentOf(self.folder) || self.folder); });
         this.back.addEventListener('click', function () { self.showFolderList(false); });
         this.cancel.addEventListener('click', function () { root.pgUI.dialog.hide(self.root); });
         this.choose.addEventListener('click', function () { self.finish(); });
@@ -496,24 +501,27 @@
             }
         });
 
-        // Escape clears a search before it closes the dialog.
-        this.root.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape' && (self.query !== '' || self.folderList)) {
-                event.preventDefault();
-                event.stopPropagation();
-                if (self.folderList) {
-                    self.showFolderList(false);
-                } else {
-                    self.setQuery('');
-                    self.search.focus();
-                }
+        // Escape clears a search (or leaves the phone's folder list) before
+        // it closes the dialog. Taken on window in the capture phase: a
+        // Bootstrap tooltip of a titled control listens on the document in
+        // capture and spent the first Escape hiding itself
+        // (docs/memory/ui/explorer-keyboard.md).
+        this.escape = function (event) {
+            if (event.key !== 'Escape' || !self.root.matches('[open]:not(.hiding)') || !self.root.contains(event.target)) {
+                return;
             }
-        }, true);
-        this.root.addEventListener('cancel', function (event) {
-            if (self.query !== '' || self.folderList) {
-                event.preventDefault();
+            event.preventDefault();
+            event.stopPropagation();
+            if (self.folderList) {
+                self.showFolderList(false);
+            } else if (self.query !== '' || self.search.value !== '') {
+                self.setQuery('');
+                self.search.focus();
+            } else {
+                root.pgUI.dialog.hide(self.root);
             }
-        });
+        };
+        root.addEventListener('keydown', this.escape, true);
 
         this.itemsBox.addEventListener('click', function (event) {
             var node = event.target.closest('[data-index]');
@@ -630,20 +638,7 @@
         return 0;
     };
 
-    Picker.prototype.findRow = function (id) {
-        var ids = Object.keys(this.tree);
-        for (var i = 0; i < ids.length; i++) {
-            var rows = this.tree[ids[i]];
-            for (var j = 0; j < rows.length; j++) {
-                if (rows[j].id === id) {
-                    return rows[j];
-                }
-            }
-        }
-        return null;
-    };
-
-    Picker.prototype.openFolder = function (id, keepPick) {
+    Picker.prototype.openFolder = function (id) {
         var self = this, seq = ++this.seq;
         this.folder = id;
         this.showFolderList(false);
@@ -666,9 +661,12 @@
             self.files = out[0].items || [];
             self.capped = !!out[0].more;
             return self.loadTree(self.crumbs.map(function (crumb) { return crumb.id; })).then(function () {
-                self.crumbs.forEach(function (crumb) { if (crumb.id !== id) { self.open[crumb.id] = true; } });
+                // The way down to the open folder stays unfolded, the open
+                // folder too, so its branches show beside its tiles.
+                self.crumbs.forEach(function (crumb) { self.open[crumb.id] = true; });
                 self.renderTree();
-                self.render(!keepPick);
+                // The cursor starts on the pick when the folder holds it.
+                self.render(true);
             });
         }).catch(function (error) { self.fail(error); });
     };
@@ -1179,14 +1177,18 @@
 
     // ── The phone's folder list ───────────────────────────────────────────
 
+    // The folders down to the listed one, read off the branches loaded.
     Picker.prototype.listCrumbs = function () {
-        var at = -1;
-        for (var i = 0; i < this.crumbs.length; i++) {
-            if (this.crumbs[i].id === this.listFolder) {
-                at = i;
-            }
+        var self = this, parent = {}, out = [], seen = {}, id = this.listFolder;
+        Object.keys(this.tree).forEach(function (node) {
+            self.tree[node].forEach(function (row) { parent[row.id] = { id: Number(node), name: row.name }; });
+        });
+        while (id && parent[id] && !seen[id]) {
+            seen[id] = true;
+            out.unshift({ id: id, name: parent[id].name });
+            id = parent[id].id;
         }
-        return at === -1 ? (this.listPath || []) : this.crumbs.slice(0, at + 1);
+        return out;
     };
 
     Picker.prototype.showFolderList = function (on, parent) {
@@ -1194,22 +1196,18 @@
         if (!this.root) {
             return;
         }
+        var was = this.folderList;
         this.folderList = !!on;
         this.root.classList.toggle('pg-picker-folders', this.folderList);
         this.back.hidden = !this.folderList;
         this.titleNode.textContent = this.folderList ? t('Choose a folder') : (this.opts.title || t('Choose a file'));
         if (!this.folderList) {
-            if (this.items) {
+            if (was && this.items) {
                 this.render(false);
             }
             return;
         }
         this.listFolder = parent || 0;
-        var row = this.findRow(this.listFolder);
-        this.listPath = (this.listPath || []).filter(function (crumb) { return crumb.id !== self.listFolder; });
-        if (row && !this.listCrumbs().length) {
-            this.listPath.push({ id: row.id, name: row.name });
-        }
         this.loadTree([this.listFolder]).then(function () {
             self.renderCrumbs();
             self.status.textContent = '';
@@ -1264,7 +1262,7 @@
             if (item) {
                 self.pick = item;
                 self.renderPick();
-                return self.openFolder(item.folder, true);
+                return self.openFolder(item.folder);
             }
             var top = self.tree[0] || [];
             if (!top.length) {
@@ -1284,6 +1282,7 @@
             picker.build();
             root.pgUI.on(picker.root, 'dialog', 'hidden', function () {
                 var result = picker.result;
+                root.removeEventListener('keydown', picker.escape, true);
                 picker.root.remove();
                 if (before && before.focus && doc.contains(before)) {
                     before.focus();

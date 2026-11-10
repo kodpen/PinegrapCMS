@@ -15,6 +15,7 @@ description: A throwaway Pinegrap install on the owner's Windows machine without
 - `git archive origin/development pinegrap tools index.php | tar -x -C <scratch>/sbx`, then write `pinegrap/data/config.php` there (`DB_HOST` 127.0.0.1, an `ENCRYPTION_KEY` of 32 A-Z0-9, `DEFAULT_SOFTWARE_LANGUAGE`). A fix is tried by copying its files over the export; `git show <ref>:<file> >` puts the base back.
 - `php -d mysqli.default_port=33917 -S 127.0.0.1:8917 -t <sbx> <sbx>/tools/sandbox_router.php`, then post the installer as `tools/setup_sandbox.sh` does (the token from `/pinegrap/install/`, `install_from_folder=turkish_default`): about 90 seconds.
 - A second sandbox beside another session's takes other ports; stop a `php -S` by the port it listens on.
+- Cookies are kept per host, not per port: two sandboxes on `127.0.0.1` in the app's browser pane sign each other out at once (the panel answers the sign-in page on the next request). Open a sandbox as `http://<name>.localhost:<port>/`, a host of its own.
 
 ## How is the product called from a script?
 - A CLI script sets `$_SERVER` `REQUEST_METHOD` and `HTTP_HOST`, changes to the export's `pinegrap/` and requires `init.php`, then the module's bootstrap. `PG_API_PANEL` is defined before `includes/api/keys.php` is loaded, or that file exits without a word.

@@ -625,8 +625,35 @@ function pg_picker_file_details($kind, $items, $paths = false)
 }
 
 /**
- * How many of a kind's items each folder holds directly, for the tree's
- * counts. Read once per request.
+ * Each folder's count with the counts of the folders under it added, as the
+ * tree shows a branch's total. Pure.
+ *
+ * @param int[] $direct folder id => items directly in it
+ * @param array $map    folder_id => row with folder_parent
+ * @return int[] folder id => items in it and under it
+ */
+function pg_picker_subtree_counts($direct, $map)
+{
+    $totals = array();
+
+    foreach ($direct as $folder => $count) {
+        $seen = array();
+        $id = (int) $folder;
+
+        // A parent loop in damaged data must not hang the request.
+        while (($id > 0) && !isset($seen[$id])) {
+            $seen[$id] = true;
+            $totals[$id] = ($totals[$id] ?? 0) + (int) $count;
+            $id = isset($map[$id]) ? (int) $map[$id]['folder_parent'] : 0;
+        }
+    }
+
+    return $totals;
+}
+
+/**
+ * How many of a kind's items each folder and the folders under it hold, for
+ * the tree's counts. Read once per request.
  *
  * @param string $kind_name
  * @param array  $user
@@ -646,11 +673,14 @@ function pg_picker_folder_counts($kind_name, $user)
     $from = ($kind['source'] === 'pages') ? 'page LEFT JOIN folder ON page.page_folder = folder.folder_id' : 'files';
 
     $rows = db_items("SELECT " . $column . " AS folder_id, COUNT(*) AS items FROM " . $from . " WHERE " . pg_picker_where_for($kind, $user) . " GROUP BY " . $column);
-    $counts[$kind_name] = array();
+    $direct = array();
 
     foreach ((is_array($rows) ? $rows : array()) as $row) {
-        $counts[$kind_name][(int) $row['folder_id']] = (int) $row['items'];
+        $direct[(int) $row['folder_id']] = (int) $row['items'];
     }
+
+    require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+    $counts[$kind_name] = pg_picker_subtree_counts($direct, pg_explorer_folder_map());
 
     return $counts[$kind_name];
 }
@@ -1071,5 +1101,5 @@ function pg_picker_script()
  */
 function pg_picker_browse_button($kind, $field_id, $title)
 {
-    return '<button type="button" class="btn btn-outline-secondary pg-picker-browse" data-pg-picker-browse data-pg-picker-kind="' . h($kind) . '" data-pg-picker-for="' . h($field_id) . '" data-pg-picker-title="' . h($title) . '" aria-label="' . h(lang('Browse') . ': ' . $title) . '"><span class="bi bi-folder2-open" aria-hidden="true"></span><span class="pg-btn-label">' . lang('Browse') . '</span></button>';
+    return '<button type="button" class="btn btn-outline theme-secondary pg-picker-browse" data-pg-picker-browse data-pg-picker-kind="' . h($kind) . '" data-pg-picker-for="' . h($field_id) . '" data-pg-picker-title="' . h($title) . '" aria-label="' . h(lang('Browse…') . ': ' . $title) . '"><span class="bi bi-folder2-open" aria-hidden="true"></span><span class="pg-btn-label">' . lang('Browse…') . '</span></button>';
 }

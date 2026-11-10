@@ -135,7 +135,7 @@ function test_picker_js_search_helpers()
 			under: P.underFolder(results, 4).map(function (i) { return i.text; }),
 			deep: P.underFolder(results, "9").map(function (i) { return i.text; }),
 			ahead: [P.typeAheadIndex(items, "i", 0), P.typeAheadIndex(items, "i", 2), P.typeAheadIndex(items, "ia", 0), P.typeAheadIndex(items, "q", 0), P.typeAheadIndex(items, "", 0)],
-			path: P.pathText(results[1].path),
+			path: [P.pathText(results[1].path), P.pathText([{id: 1, name: "Files"}]), P.pathText(null)],
 			types: P.typesLabel(["png", "svg"]),
 			fill: P.fill("{n} results for “{q}”", {n: 8, q: "kupa"}),
 			keep: P.fill("{x} stays", {}),
@@ -149,7 +149,7 @@ function test_picker_js_search_helpers()
 	pg_assert_same(array('a.jpg', 'b.jpg'), $out['under'], 'the open folder and the folders under it');
 	pg_assert_same(array('b.jpg'), $out['deep']);
 	pg_assert_same(array(1, 2, 1, -1, -1), $out['ahead'], 'İ and i alike, wrapping from the cursor');
-	pg_assert_same('Files / Pictures / Products', $out['path']);
+	pg_assert_same(array('Pictures / Products', 'Files', ''), $out['path'], 'the top folder is left out below it');
 	pg_assert_same('PNG, SVG', $out['types']);
 	pg_assert_same('8 results for “kupa”', $out['fill']);
 	pg_assert_same('{x} stays', $out['keep']);

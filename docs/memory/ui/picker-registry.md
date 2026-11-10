@@ -12,7 +12,7 @@ module: picker
 
 ## What does picker.php answer?
 - GET `kind` and `request`: `list` (`folder`, `page`, `per_page`: one folder's items by name), `search` (`q`, folded match across allowed folders, paged), `tree` (`node_ids[]`, 0 the top: `{nodes:[{id, rows}]}`, rows as `pg_explorer_side_folder_row()`), `resolve` (`values[]`: each stored value with `state`).
-- Item: `{id, value, text, type, folder}`; `value` is what a pick stores. Paged answers carry `page`, `per_page`, `more` (read one row past the page).
+- Item: `{id, value, text, type, folder}`; `value` is what a pick stores; a file item also has size, picture size, modified, access, address and picture (`picker-dialog.md`). Paged answers carry `page`, `per_page`, `more` (read one row past the page).
 - `pg_picker_request($_GET)` checks: unknown kind 404, unknown request 400 (`Invalid request.`); page size default 50, held at 100; page held at 1000; at most 25 branches and 50 values; ids whole numbers only, names up to 255 characters.
 - No session: 403 JSON before `validate_user()`. Read only, so no CSRF token (as `file_picker_search.php`); the session lock is released before answering.
 

@@ -22790,7 +22790,7 @@ select.pg-list-table-field option.private {
   margin: 0;
   color: var(--pg-fg-2);
 }
-.pg-picker-sort .form-select {
+.pg-picker-sort .form-control {
   width: auto;
 }
 .pg-picker-views {
@@ -23082,7 +23082,8 @@ select.pg-list-table-field option.private {
 .pg-picker-is-list .pg-picker-item.is-folder > .pg-picker-thumb {
   font-size: 1.4rem;
 }
-.pg-picker-is-list .pg-picker-text .pg-picker-meta {
+.pg-picker-is-list .pg-picker-item .pg-picker-meta,
+.pg-picker-is-list .pg-picker-item .pg-picker-tick {
   display: none;
 }
 .pg-picker-head .pg-picker-col {
@@ -23163,6 +23164,9 @@ select.pg-list-table-field option.private {
 .pg-picker-sheet.pg-picker-folders .pg-picker-crumbs {
   display: flex;
 }
+.pg-picker-sheet.pg-picker-folders .pg-picker-chip {
+  display: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .pg-picker-toggle {
     transition: none;
@@ -23211,7 +23215,7 @@ select.pg-list-table-field option.private {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  max-width: 55%;
+  max-width: 45%;
   margin-right: auto;
   border: var(--pg-border-width) solid var(--pg-border-color);
   border-radius: var(--pg-radius-pill);
@@ -23224,8 +23228,15 @@ select.pg-list-table-field option.private {
 .pg-picker-sheet .pg-picker-chip .bi-folder-fill {
   color: var(--pg-warning);
 }
-.pg-picker-sheet .pg-picker-sort .form-select {
-  max-width: 7.5rem;
+.pg-picker-sheet .pg-picker-bar {
+  column-gap: 0.35rem;
+}
+.pg-picker-sheet .pg-picker-sort .form-control {
+  max-width: 6.5rem;
+}
+.pg-picker-sheet .pg-picker-views {
+  padding-left: 0;
+  border-left: 0;
 }
 .pg-picker-sheet .pg-picker-items {
   gap: 0.25rem;

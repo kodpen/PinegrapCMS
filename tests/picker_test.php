@@ -325,3 +325,21 @@ function test_picker_dialog_texts_and_script()
 	pg_assert_contains('pgUI.dialog.hide(self.root)', $script);
 	pg_assert_contains("root.pgUI.on(picker.root, 'dialog', 'hidden'", $script, 'the pick is handed over once the dialog has closed');
 }
+
+// A branch's count holds the folders under it.
+function test_picker_subtree_counts()
+{
+	$map = array(
+		1 => array('folder_parent' => 0),
+		4 => array('folder_parent' => 1),
+		9 => array('folder_parent' => 4),
+		5 => array('folder_parent' => 1),
+		20 => array('folder_parent' => 21),
+		21 => array('folder_parent' => 20),
+	);
+
+	pg_assert_same(array(9 => 3, 4 => 5, 1 => 6, 5 => 1), pg_picker_subtree_counts(array(9 => 3, 4 => 2, 5 => 1), $map));
+	pg_assert_same(array(), pg_picker_subtree_counts(array(), $map));
+	pg_assert_same(array(20 => 2, 21 => 2), pg_picker_subtree_counts(array(20 => 2), $map), 'a parent loop ends');
+	pg_assert_same(array(77 => 1), pg_picker_subtree_counts(array(77 => 1), $map), 'a folder the map lacks keeps its own count');
+}
