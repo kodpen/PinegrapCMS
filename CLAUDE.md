@@ -50,6 +50,7 @@ needs. The detail is in memory files, opened when a task needs them.
 | Orders, cart, checkout, products, marketplaces | `commerce/` |
 | ERP (accounting) module, e-documents | `erp/` |
 | Workspace module and its endpoints | `workspace/` |
+| User documentation: the pinegrap.com pages, what each covers, the PR each is written up to | `workflow/user-docs-pages.md` |
 | Working rules, merging, an audit or a "dead code / cleanup" proposal | `workflow/` |
 
 **Before changing or removing a behaviour**, and before writing any audit

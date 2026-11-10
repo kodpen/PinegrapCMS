@@ -5,7 +5,7 @@ description: Standing rules from the owner (Erdal) on docs, how changes are reco
 
 ## Where does user documentation go?
 - Only on pinegrap.com, in English, written with the visual designer; never in the repo. Cloud sessions cannot reach pinegrap.com.
-- Owner (2026-11-10): a session no longer puts the doc text in its PR (9 of 297 PR bodies named documentation). A page is written from the feature's overview file (`<prefix>-overview.md`) and the page's mark. The list of pages, what each covers and the PR each is written up to goes into memory; design and page ids and panel addresses stay out, the repository is public.
+- Owner (2026-11-10): a session no longer puts the doc text in its PR (9 of 297 PR bodies named documentation). A page is written from the feature's overview file (`<prefix>-overview.md`) and the page's mark. The list of pages, what each covers and the PR each is written up to is in memory (`user-docs-pages.md`; how a page is written: `user-docs-writing.md`); design and page ids and panel addresses stay out, the repository is public.
 - Owner (2026-11-10): his instruction for the time the architect is away stays in his machine's notes while the agent channels may change the rules.
 
 ## What may page content never contain?
