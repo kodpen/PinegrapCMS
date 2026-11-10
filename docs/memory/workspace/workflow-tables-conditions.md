@@ -10,11 +10,12 @@ description: Conditions over workflow table rows (wtable_where.php, PR #8400): c
 ## What does a condition look like?
 - `{column, op, value}`, at most `WS_WTABLE_WHERE_MAX` (10) in a list, joined by `all` or `any` (`ws_wtable_where_joins()`, an unknown word is all). No condition keeps every row.
 - `ws_wtable_where_list()` reads a list or its JSON text: column a whole number (0 when it names none), op '' when unknown, value text (true/false as 1/0). Anything but a list of objects is null, so the editor names it.
-- Comparisons (`ws_wtable_where_operators()`): eq, neq, lt, gt, lte, gte, contains, starts, empty, not_empty. Per type (`ws_wtable_where_type_operators()`):
+- Comparisons (`ws_wtable_where_operators()`): eq, neq, lt, gt, lte, gte, contains, not_contains, starts, empty, not_empty. Per type (`ws_wtable_where_type_operators()`):
   - text: eq, neq, contains, starts, empty, not_empty;
   - number, money, formula, date: eq, neq, the four sizes, empty, not_empty;
   - status, person, link: eq, neq, empty, not_empty;
-  - checkbox: eq, neq.
+  - checkbox: eq, neq;
+  - list: contains, not_contains, empty, not_empty (`workflow-tables-lists.md`).
 
 ## How is each type compared?
 - Text without case, the Turkish capitals and dotted/dotless i alike (`ws_fold()`), trimmed. Equal to '' is an empty cell.

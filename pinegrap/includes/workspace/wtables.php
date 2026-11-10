@@ -53,6 +53,8 @@ function ws_wtable_limits()
         'status_label' => 60,
         'formula' => 1000,
         'link_kinds' => 20,
+        'list_items' => 100,
+        'list_item' => 1000,
     );
 }
 
@@ -91,8 +93,35 @@ function ws_wtable_column_types()
         'status' => lang('Status'),
         'checkbox' => lang('Checkbox'),
         'link' => lang('Record link'),
+        'list' => lang('List'),
         'formula' => lang('Formula'),
     );
+}
+
+/**
+ * What the items of a list column are: texts or numbers.
+ *
+ * @return array kind => label
+ */
+function ws_wtable_list_kinds()
+{
+    return array(
+        'text' => lang('Texts'),
+        'number' => lang('Numbers'),
+    );
+}
+
+/**
+ * The kind of the items of a list column, text when it names none.
+ *
+ * @param array $column type and options
+ * @return string text | number
+ */
+function ws_wtable_list_of($column)
+{
+    $of = isset($column['options']['of']) ? (string) $column['options']['of'] : '';
+
+    return isset(ws_wtable_list_kinds()[$of]) ? $of : 'text';
 }
 
 /**
@@ -140,8 +169,9 @@ function ws_wtable_length($text)
  * for the site's) and decimals (0-3, default 2; how many minor units make
  * one). date: time (bool) to keep a time of day too. status: choices, a
  * list of key, label and colour (1-50, keys unique). link: kinds, the
- * record kinds a cell may point at (empty for any). formula: expression,
- * without the leading =. text, person and checkbox take none.
+ * record kinds a cell may point at (empty for any). list: of, what its
+ * items are (text, the default, or number). formula: expression, without
+ * the leading =. text, person and checkbox take none.
  *
  * @param string $type
  * @param mixed  $options
@@ -247,6 +277,16 @@ function ws_wtable_column_options_check($type, $options)
             $value['kinds'] = array_values($value['kinds']);
             break;
 
+        case 'list':
+            $of = array_key_exists('of', $options) ? $options['of'] : 'text';
+
+            if (!is_string($of) || !isset(ws_wtable_list_kinds()[$of])) {
+                return $fail('list_of_invalid');
+            }
+
+            $value['of'] = $of;
+            break;
+
         case 'formula':
             $expression = isset($options['expression']) && is_scalar($options['expression']) ? trim((string) $options['expression']) : '';
             $expression = ltrim($expression, '=');
@@ -289,7 +329,8 @@ function ws_wtable_is_whole($value)
  * than cut; a date is YYYY-MM-DD, with HH:MM after a space when the column
  * keeps a time; a person is a user id, whether they are on the team is
  * the store's check; a status is one of the column's keys; a record link
- * is a kind and an id, the kind among the column's kinds when it names any.
+ * is a kind and an id, the kind among the column's kinds when it names any;
+ * a list is a list of texts or numbers (ws_wtable_list_check()).
  *
  * @param array $column type and options (checked)
  * @param mixed $value
@@ -451,9 +492,136 @@ function ws_wtable_cell_check($column, $value)
             }
 
             return $ok(array('kind' => $kind, 'id' => (int) $value['id']));
+
+        case 'list':
+            $list = ws_wtable_list_check($value, ws_wtable_list_of($column));
+
+            return $list['ok'] ? $ok($list['value']) : $fail($list['error']);
     }
 
     return $fail('type_unknown');
+}
+
+/**
+ * The items a list cell is given: a list, its JSON text, or a text with one
+ * item per line. Anything else is null.
+ *
+ * @param mixed $value
+ * @return array|null
+ */
+function ws_wtable_list_items($value)
+{
+    if (is_array($value)) {
+        return ($value === array_values($value)) ? $value : null;
+    }
+
+    if (is_int($value) || is_float($value)) {
+        return array($value);
+    }
+
+    if (!is_string($value)) {
+        return null;
+    }
+
+    $text = trim($value);
+
+    if (($text !== '') && ($text[0] === '[')) {
+        $decoded = json_decode($text, true);
+
+        if (is_array($decoded) && ($decoded === array_values($decoded))) {
+            return $decoded;
+        }
+    }
+
+    return preg_split('/\r\n|\r|\n/', $value);
+}
+
+/**
+ * A list cell checked, and the list to keep: items trimmed, empty items
+ * dropped, at most list_items of them. A text item is at most list_item
+ * characters; a number item is kept to six places, a whole one as an int.
+ * No item left keeps null, an empty cell.
+ *
+ * @param mixed  $value
+ * @param string $of    text | number
+ * @return array ok, value, error (not_list, list_too_long, item_too_long, not_number, out_of_range)
+ */
+function ws_wtable_list_check($value, $of)
+{
+    $limits = ws_wtable_limits();
+    $items = ws_wtable_list_items($value);
+
+    if ($items === null) {
+        return array('ok' => false, 'value' => null, 'error' => 'not_list');
+    }
+
+    $kept = array();
+
+    foreach ($items as $item) {
+        if (($item === null) || ($item === '')) {
+            continue;
+        }
+
+        if (!is_scalar($item) || is_bool($item)) {
+            return array('ok' => false, 'value' => null, 'error' => 'not_list');
+        }
+
+        if ($of === 'number') {
+            $number = ws_wtable_list_number($item);
+
+            if (!$number['ok']) {
+                return array('ok' => false, 'value' => null, 'error' => $number['error']);
+            }
+
+            $kept[] = $number['value'];
+        } else {
+            $item = trim((string) $item);
+
+            if ($item === '') {
+                continue;
+            }
+
+            if (ws_wtable_length($item) > $limits['list_item']) {
+                return array('ok' => false, 'value' => null, 'error' => 'item_too_long');
+            }
+
+            $kept[] = $item;
+        }
+
+        if (count($kept) > $limits['list_items']) {
+            return array('ok' => false, 'value' => null, 'error' => 'list_too_long');
+        }
+    }
+
+    return array('ok' => true, 'value' => empty($kept) ? null : $kept, 'error' => '');
+}
+
+/**
+ * One number of a list: a figure in machine form, kept to six places, a
+ * whole one as an int.
+ *
+ * @param mixed $item
+ * @return array ok, value, error
+ */
+function ws_wtable_list_number($item)
+{
+    if (is_string($item)) {
+        $item = trim($item);
+
+        if (!preg_match('/^-?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][-+]?[0-9]+)?$/', $item)) {
+            return array('ok' => false, 'value' => null, 'error' => 'not_number');
+        }
+    }
+
+    $number = (float) $item;
+
+    if (!is_finite($number) || (abs($number) >= 1e15)) {
+        return array('ok' => false, 'value' => null, 'error' => 'out_of_range');
+    }
+
+    $number = round($number, 6);
+
+    return array('ok' => true, 'value' => (floor($number) === $number) ? (int) $number : $number, 'error' => '');
 }
 
 /**
@@ -767,10 +935,22 @@ function ws_wtable_column_input_check($input, $old = null)
         if (array_key_exists('type', $input) && ($input['type'] !== $type)) {
             return ws_wtable_refusal('type_fixed', 'type');
         }
+
+        // What a list holds is part of its type: its written items belong to it.
+        if (($type === 'list') && array_key_exists('options', $input) && is_array($input['options'])
+            && array_key_exists('of', $input['options']) && ($input['options']['of'] !== ws_wtable_list_of($old))) {
+            return ws_wtable_refusal('type_fixed', 'options');
+        }
     }
 
     if (($old === null) || array_key_exists('options', $input)) {
-        $options = ws_wtable_column_options_check($type, $input['options'] ?? array());
+        $given = (isset($input['options']) && is_array($input['options'])) ? $input['options'] : array();
+
+        if (($old !== null) && ($type === 'list') && !array_key_exists('of', $given)) {
+            $given['of'] = ws_wtable_list_of($old);
+        }
+
+        $options = ws_wtable_column_options_check($type, $given);
 
         if (!$options['ok']) {
             return ws_wtable_refusal($options['error'], 'options');

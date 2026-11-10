@@ -1296,6 +1296,7 @@
     "A linked repository writes its CI results, pull requests and labels into a channel. The site adds the webhook itself; nothing is set up in the repository.": "Bağlı bir depo CI sonuçlarını, çekme isteklerini ve etiketlerini bir kanala yazar. Webhook'u site kendisi ekler; depoda hiçbir şey kurulmaz.",
     "A linked value or a picture in the cell. Change it in a spreadsheet program.": "Bağlantılı bir değer ya da hücre içi resim. Bir tablo programında değiştirin.",
     "A list contains something other than list items": "Listenin içinde liste öğesi olmayan içerik var",
+    "A list holds at most {var:1} items.": "Bir liste en fazla {var:1} öğe tutar.",
     "A list in which several choices can be picked.": "Birden çok seçim yapılabilen liste.",
     "A list of a kind this site does not know: nothing is drawn": "Bu sitenin tanımadığı türde bir liste: hiçbir şey çizilmez",
     "A list of a widget's values stands outside its widget. Move it back into the widget or remove it, then save again.": "Bir widget'ın değerlerini listeleyen bir liste widget'ın dışında duruyor. Onu widget'ın içine geri taşıyın ya da kaldırın, sonra yeniden kaydedin.",

@@ -59,6 +59,7 @@
 - workflow-tables-export.md: A workflow table downloads as an Excel file (TX1): who may, what each cell becomes, the shared xlsx writer the ERP export also uses
 - workflow-tables-import.md: The import route workspace.tables.import (TX2, #8427): a site file or a note's table into a workflow table over the API and MCP, the pairing, the dry run through ws_wtable_import_check(), refusals [decision: decisions-made-workspace-10.md]
 - workflow-tables-later.md: What workflow tables leave for later (T1-T6 done): a "my tables" strip, table versions, the CRM pipeline; exports still to come and the planned bin [decision: decisions-made-product-11.md]
+- workflow-tables-lists.md: The list column of workflow tables (type list, PR #8486): texts or numbers one a line, contains, a count in formulas, a JSON list in flows, screen, import, privacy
 - workflow-tables-numbers.md: How workflow tables read and show amounts and numbers (#3391, PR #3507, import PR #3524): ws_calc_number() for typed figures, site separators in file import and on display, machine form stored
 - workflow-tables-query.md: The table screen's query bar, sort and totals line, and the rows API's where/join/sort/dir (wtable_query.php, plan tables-relational step 3, PR #8453)
 - workflow-tables-screen.md: The workflow tables screen workspace_wtables.php (T1e, #2966): server-drawn forms over the store, list scopes, rows paged, the row form, column options from the form, shares, nav entry

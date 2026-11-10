@@ -1104,9 +1104,16 @@ if (!$table) {
                     break;
 
                 case 'text':
-                    // Tall enough for the lines the value has, two at least.
+                case 'list':
+                    // Tall enough for the lines the value has, two at least;
+                    // a list takes one item a line.
                     $lines = min(8, max(2, count(preg_split('/\r\n|\r|\n/', $value))));
                     $input = '<textarea class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" rows="' . $lines . '">' . h($value) . '</textarea>';
+
+                    if ($column['type'] === 'list') {
+                        $hint = lang('One item a line.');
+                    }
+
                     break;
 
                 default:
@@ -1188,6 +1195,19 @@ if (!$table) {
                 $out .= '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_kinds">' . h(lang('Record kinds')) . '</label>'
                     . '<input type="text" class="form-control form-control-sm" name="options[kinds]" id="' . $prefix . '_kinds" placeholder="contact, product" value="' . h(implode(', ', (array) ($options['kinds'] ?? array()))) . '">'
                     . '<div class="form-text">' . h(lang('Empty for any kind.')) . '</div></div>';
+                break;
+
+            case 'list':
+                // Fixed once made, as the type is: a made column shows it.
+                $of = $column ? ws_wtable_list_of($column) : 'text';
+                $kinds = '';
+
+                foreach (ws_wtable_list_kinds() as $kind => $label) {
+                    $kinds .= '<option value="' . h($kind) . '"' . (($kind === $of) ? ' selected' : '') . '>' . h($label) . '</option>';
+                }
+
+                $out .= '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_of">' . h(lang('Items')) . '</label>'
+                    . '<select class="form-control form-control-sm" name="options[of]" id="' . $prefix . '_of"' . ($column ? ' disabled' : '') . '>' . $kinds . '</select></div>';
                 break;
 
             case 'formula':
