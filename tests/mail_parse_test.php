@@ -176,6 +176,32 @@ function test_mail_parse_addresses_and_ids()
 	pg_assert_same(0, pg_mail_parse_date(''));
 }
 
+function test_mail_parse_date_weekday_and_ut_zone()
+{
+	// 10 November 1999 was a Wednesday: a wrong day name must not move the date.
+	pg_assert_same(gmmktime(10, 0, 0, 11, 10, 1999), pg_mail_parse_date('Tue, 10 Nov 99 10:00:00 +0000'), 'wrong day name ignored');
+	pg_assert_same(gmmktime(10, 0, 0, 11, 10, 2026), pg_mail_parse_date('Mon, 10 Nov 2026 10:00:00 +0000'), 'wrong day name ignored');
+	pg_assert_same(gmmktime(10, 0, 0, 11, 10, 2026), pg_mail_parse_date('Tuesday, 10 Nov 2026 10:00:00 +0000'), 'full day name');
+	pg_assert_same(gmmktime(10, 0, 0, 11, 3, 2026), pg_mail_parse_date('Tue,  3 Nov 2026 10:00:00 UT'), 'RFC 5322 UT zone');
+	pg_assert_same(gmmktime(10, 0, 0, 11, 3, 2026), pg_mail_parse_date('3 Nov 2026 10:00:00 ut (Universal)'), 'UT zone with a comment');
+}
+
+function test_mail_parse_header_folded_after_colon()
+{
+	$mail = pg_mail_parse(mail_parse_test_crlf(array(
+		'From: a@b.example',
+		'Subject:',
+		' =?UTF-8?Q?Sipari=C5=9F?= durumu',
+		'X-Note:',
+		"\tsecond line",
+		'',
+		'body',
+	)));
+
+	pg_assert_same("Sipari\xC5\x9F durumu", $mail['subject'], 'no leading space from the fold');
+	pg_assert_same(array('second line'), $mail['headers']['x-note']);
+}
+
 function test_mail_parse_charsets()
 {
 	pg_assert_same("\xC4\xB0\xC5\x9F\xC4\x9F", pg_mail_charset_to_utf8("\xDD\xFE\xF0", 'ISO-8859-9'));

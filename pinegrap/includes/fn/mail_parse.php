@@ -232,7 +232,9 @@ function pg_mail_parse_header_block($head, &$state)
 
         if (($line[0] === ' ') || ($line[0] === "\t")) {
             if ($current >= 0) {
-                $fields[$current][1] .= ' ' . ltrim($line);
+                // A field folded right after its colon has an empty first
+                // line: the fold must not leave a leading space.
+                $fields[$current][1] = ltrim($fields[$current][1] . ' ' . ltrim($line));
             }
 
             continue;
@@ -1074,6 +1076,12 @@ function pg_mail_message_ids($value)
 function pg_mail_parse_date($value)
 {
     $value = trim(preg_replace('~\([^)]*\)~', '', (string) $value));
+
+    // The day name is informative only; strtotime() would read it as "next
+    // <day>" and move the date when it does not match. RFC 5322's "UT" zone
+    // is unknown to strtotime().
+    $value = preg_replace('~^[A-Za-z]+\s*,\s*~', '', $value);
+    $value = preg_replace('~\sUT$~i', ' +0000', $value);
 
     if ($value === '') {
         return 0;
