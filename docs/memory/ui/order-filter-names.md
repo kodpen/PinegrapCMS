@@ -20,7 +20,10 @@ description: Advanced Filters panel: printed after the toolbar on every list; on
 ## Where is the panel printed?
 - After the toolbar (`#button_bar`) and before the stats and the list, on Orders, Contacts, Submitted Forms, Commissions and Site Log (Commissions and Site Log: after the row holding the toolbar and the toggle). It was first in `<main>` (Site Log: before it, via `pg_page_shell()` `pre_main_html`), so with the panel open, Tab reached its X and every filter box before the toggle that opened it, while at 1280 px and wider it is drawn as a sticky right column. Test: `tests/advanced_filters_order_test.php`.
 
-## What was left?
-- The Start/End date selects (datetime picker plan), the `filter_list` header icon and the list rows.
+## Are the panel's icons read aloud?
+- No. The header icon before "Filters" and the Update button's icon are `aria-hidden="true"` on all five screens: Orders draws `bi-funnel` and `bi-arrow-repeat`; Contacts, Submitted Forms, Commissions and Site Log draw Material `filter_list` and `sync`. Before, a screen reader read "filter_list Filters" and "sync Update". Test: `test_advanced_filters_order_panel_icons_silent` in `tests/advanced_filters_order_test.php`.
+
+## What else was finished?
+- The Start/End date selects (`tests/list_date_filters_test.php`) and the Orders list rows (`tests/list_row_names_test.php`).
 
 Test: `tests/order_filter_names_test.php`.

@@ -87,3 +87,43 @@ function test_mail_failure_marked_on_the_named_field()
 	$reconciliation = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/reconciliation.php');
 	pg_assert_true(strpos($reconciliation, "'field' => 'to'") !== false, 'erp_reconciliation_send() names the To field for an address refusal');
 }
+
+// A return screen's sentence gets the mail server's reason after it; without
+// one (or only white space) the sentence stays as it was.
+function test_mail_failure_return_text()
+{
+	pg_assert_same('The return was approved, but the e-mail to the customer could not be sent. The mail server said: SMTP Error: Could not authenticate.',
+		pg_return_mail_failure_text('The return was approved, but the e-mail to the customer could not be sent.', " SMTP Error: Could not authenticate.\n"));
+	pg_assert_same('Sentence.', pg_return_mail_failure_text('Sentence.', ''));
+	pg_assert_same('Sentence.', pg_return_mail_failure_text('Sentence.', "  \n"));
+	pg_assert_same('Sentence. The mail server said: Bad <address> & co', pg_return_mail_failure_text('Sentence.', 'Bad <address> & co'), 'returned raw');
+}
+
+// The notice after a staff-recorded request names the reason when it has one.
+function test_mail_failure_return_staff_notice()
+{
+	pg_assert_same('The return request was recorded, but the e-mail to the customer could not be sent. The mail server said: Connection refused',
+		pg_return_staff_notice(array('repeat' => false, 'mailed' => false, 'mail_error' => 'Connection refused')));
+	pg_assert_same('The return request was recorded, but the e-mail to the customer could not be sent.',
+		pg_return_staff_notice(array('repeat' => false, 'mailed' => false, 'mail_error' => '')));
+	pg_assert_same('The return request was recorded. The customer was told by e-mail.',
+		pg_return_staff_notice(array('repeat' => false, 'mailed' => true, 'mail_error' => 'stale')), 'a sent mail ignores a reason');
+}
+
+// The staff return functions clear the reason before each customer e-mail
+// (a sender can return false before email() runs, leaving an older reason)
+// and carry it as mail_error; the return screen prints it.
+function test_mail_failure_return_senders_carry_the_reason()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/returns.php');
+
+	foreach (array('pg_return_send_decision_mail($after[\'id\'])', 'pg_return_send_label_mail($before[\'id\'])', 'pg_return_send_request_mail($id)', 'pg_return_send_refund_mail($return[\'id\'], $amount, $method, $credit)') as $call) {
+		$at = strpos($source, $call);
+		pg_assert_true($at !== false, 'returns.php calls ' . $call);
+		pg_assert_true(strpos(substr($source, max(0, $at - 400), 400), "pg_mail_last_error('');") !== false, 'the reason is cleared before ' . $call);
+		pg_assert_true(strpos(substr($source, $at, 600), "'mail_error'") !== false, 'the reason is carried after ' . $call);
+	}
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_return.php');
+	pg_assert_true(substr_count($screen, 'pg_return_mail_failure_text(') >= 5, 'view_return.php names the reason on the label, refund, approval and rejection notices');
+}

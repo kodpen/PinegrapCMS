@@ -148,8 +148,8 @@ function test_page_form_refusals_store_the_post()
 	$add = file_get_contents(PG_FUNCTIONS_DIR . '/add_page.php');
 	$edit = file_get_contents(PG_FUNCTIONS_DIR . '/edit_page.php');
 
-	// The blank name, the name in use; pg_page_form_refuse() stores it for '/' and the custom form.
-	pg_assert_same(2, substr_count($add, '$liveform_add_page->add_fields_to_session();'), 'add_page.php stores the post');
+	// The blank name, the name in use, a refused canonical address or snippet length; pg_page_form_refuse() stores it for '/' and the custom form.
+	pg_assert_same(3, substr_count($add, '$liveform_add_page->add_fields_to_session();'), 'add_page.php stores the post (blank name, name in use, canonical/snippet)');
 	pg_assert_same(3, substr_count($edit, '$liveform->add_fields_to_session();'), 'edit_page.php stores the post (blank name, canonical/snippet, name in use)');
 
 	$refuse = file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/page_form.php');

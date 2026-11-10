@@ -2082,7 +2082,9 @@ function ws_handle_action($action, $request)
                 ws_flow_mention_after_send($viewer, $channel, $result['message_id'], $body);
             }
 
-            return ws_action_ok(array('message_id' => $result['message_id'], 'claude' => $asked['claude'], 'ai' => $asked['ai'] || !empty($asked['models']), 'agent' => $asked['agent']));
+            // Applications it mentions that may not read the channel: a line
+            // for the writer alone (ws_message_tell_apps()).
+            return ws_action_ok(array('message_id' => $result['message_id'], 'claude' => $asked['claude'], 'ai' => $asked['ai'] || !empty($asked['models']), 'agent' => $asked['agent'], 'notice' => ws_app_mention_unread_line($result['apps_unread'] ?? array())));
 
         case 'ws_edit':
             $message = ws_message((int) ($request['message_id'] ?? 0));
@@ -2099,7 +2101,7 @@ function ws_handle_action($action, $request)
 
             $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
 
-            return ws_action_ok(array('message' => $payload[0]));
+            return ws_action_ok(array('message' => $payload[0], 'notice' => ws_app_mention_unread_line($result['apps_unread'] ?? array())));
 
         // Undo of an agent's edit on a person's canvas (canvas.php): the
         // version before comes back as the newest one.

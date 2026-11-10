@@ -18,4 +18,4 @@ description: How much of a docx or xlsx becomes a libxml tree (office.php, offic
 
 ## What is the rule?
 - Build a DOM only from a part read through `pg_office_xml()`, or a string checked against `PG_OFFICE_MAX_DOM`; walk a streamed part node by node, never expanding an element of it.
-- Tests: `tests/office_dom_ceiling_test.php`. Not covered: the product importer's and the bank statement's xlsx readers (`import_products_f.php`, `includes/erp/bank_import.php`) still take each row with `readOuterXml()`.
+- Tests: `tests/office_dom_ceiling_test.php`. The product importer (`import_products_f.php`) reads its rows and shared strings through the same two helpers, matched by local name, with no limits of the preview's: shared strings with no length limit, every row (`tests/import_products_test.php`). Not covered: the bank statement's xlsx reader (`includes/erp/bank_import.php`) still takes each row with `readOuterXml()`.

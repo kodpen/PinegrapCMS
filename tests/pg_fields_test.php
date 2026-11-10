@@ -383,7 +383,7 @@ function main() {
 
     // Hooks drawn once by the v5 engine, with the screen's options.
     var fields = [
-        ['input', { id: 'tags', 'data-pg-chips': '', value: 'a,b,,c', 'class': 'form-control tagin min-height-tagin border-subtle-danger', 'data-placeholder': 'Add tags' }],
+        ['input', { id: 'tags', 'data-pg-chips': '', value: 'a,b,,c', 'class': 'form-control tagin min-height-tagin border-subtle-danger', 'data-placeholder': 'Add tags', 'aria-describedby': 'tags_help' }],
         ['input', { id: 'classes', 'data-pg-chips': '', 'data-pg-separator': ' ', value: 'one two', 'class': 'form-control form-control-sm tagin' }],
         ['select', { id: 'zones', 'data-pg-combobox': '', 'data-allow-clear': 'true', multiple: '' }],
         ['input', { id: 'day', 'data-pg-date': '', value: '26/10/2026' }],
@@ -425,6 +425,8 @@ function main() {
     var tags = get('tags'), box = tags.nextSibling;
     var shape = function (b) { return b.children.map(function (c) { return c.className + (c.className === 'chip' ? ':' + c.getAttribute('data-bs-chip-value') + ':' + c.querySelectorAll('.chip-dismiss').map(function (d) { return d.getAttribute('aria-label'); }).join('') : ':' + (c.getAttribute('placeholder') || '')); }); };
     out.chips_markup = { box: box.className, children: shape(box), classes: get('classes').nextSibling.className };
+    var ghostOf = function (b) { var g = b.querySelectorAll('.form-ghost')[0]; return g ? g.getAttribute('aria-describedby') : 'no ghost'; };
+    out.chips_described = [ghostOf(box), ghostOf(get('classes').nextSibling)];
 
     // Typing a chip and removing one write the joined list into the posted
     // input and fire its change; the new chip's button gets the label.
@@ -458,6 +460,7 @@ function main() {
         children: shape(tags.nextSibling),
         heard: chipsHeard.length
     };
+    out.chips_described.push(ghostOf(tags.nextSibling));
     a.win.pgChips.set('#classes', ['x', 'y']);
     out.texts = [get('start').value, get('cutoff').value, get('tags').value, get('classes').value];
 
@@ -1250,6 +1253,7 @@ function test_pg_fields_chips_on_bootstrap_6()
 		$r['chips_markup'],
 		'a chip per stored value in the markup, the input\'s own classes but the control ones, the placeholder on the ghost input'
 	);
+	pg_assert_same(array('tags_help', null, 'tags_help'), $r['chips_described'], 'the typing box takes the help tied to the field, after a redraw too; none without one');
 	pg_assert_same(
 		array('heard' => array('a,b,c,d:true', 'b,c,d:true', 'x,y:true'), 'children' => array('chip:b:Remove: b', 'chip:c:Remove: c', 'chip:d:Remove: d', 'form-ghost:Add tags')),
 		$r['chips_typed'],

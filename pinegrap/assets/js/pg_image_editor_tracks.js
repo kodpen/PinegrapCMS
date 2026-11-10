@@ -45,6 +45,11 @@
     // on a layer's lane.
     Editor.trackMarks = [];
 
+    // fn(l, end) on the editor for each row: a row of its own for the layer
+    // (a node), false for none, undefined for the usual one (the clip part
+    // puts clips split from one another on one row).
+    Editor.trackRowMakers = [];
+
     Editor.prototype.tracksShown = function () {
         return !(window.matchMedia && window.matchMedia(NO_TRACKS).matches) && (this.doc.layers.length > 0);
     };
@@ -103,8 +108,20 @@
         // The top layer first, as in the layers list; a hidden layer and a
         // redaction (which never moves) have no row.
         this.doc.layers.slice().reverse().forEach(function (l) {
+            var own;
+
             if (!l.hidden && (l.type !== 'redact')) {
-                rows.appendChild(self.trackRow(l, end));
+                Editor.trackRowMakers.some(function (fn) {
+                    own = fn.call(self, l, end);
+
+                    return own !== undefined;
+                });
+
+                if (own === undefined) {
+                    rows.appendChild(self.trackRow(l, end));
+                } else if (own) {
+                    rows.appendChild(own);
+                }
             }
         });
 

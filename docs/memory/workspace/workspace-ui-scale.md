@@ -16,5 +16,5 @@ description: The Workspace CSS scale (radii, spaces, row and header padding, ava
 - Drawers (`.offcanvas-end` in the workspace or with a `ws-` id) have their inner corners on `--ws-radius-lg`, no hairline, the soft shadow; the overview's cards the same; the composer sits on `--ws-shadow` and lifts to `--ws-shadow-accent` while written in; context menus on `--ws-radius-sm`. The nav icon tones (`[data-ws-nav]`) have lighter twins under `html[data-bs-theme="dark"]`.
 - The workspace CSS runs from the `/* ── Workspace ── */` marker to the `/* ── /Workspace ── */` marker at the end of the file; the feature add-ons (status, templates, time, links, delegation, approvals, acks) are inside it.
 
-## What is next?
+## Where did the friendly-look plan go after the scale?
 - Empty lists and skeleton rows (U4, done): `workspace-empty-states.md`. Channel identity and motion (U3, U5, done): `workspace-channel-identity-motion.md`. Density switch (U6, done): `workspace-density.md`, which also added `--ws-row-y`, `--ws-head-y`, `--ws-head-h` to the scale. The friendly-look plan (2026-10-19, U1-U6) is finished; no display font is loaded (`workflow/decisions-made-product-9.md`). The avatar component and presence dot: Bootstrap 6 Avatar (step B9j, `ui/panel-avatar.md`).

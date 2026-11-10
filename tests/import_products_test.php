@@ -341,3 +341,92 @@ function test_products_import_enabled_cell_disables()
 	pg_assert_true(strpos($source, '&& pg_products_import_disables($enabled)') !== false, 'update path asks the reader');
 	pg_assert_true(strpos($source, '($enabled == 0)') === false, 'no loose comparison with an empty cell');
 }
+
+// A .xlsx comes out as the CSV the importer reads: a shared string split into
+// styled runs is joined, an inline string takes its text or else its runs, a
+// boolean is 1 or 0, a number in a date style is a date, missing cells are
+// filled, an empty row is left out and a short row is squared off.
+function test_products_import_xlsx_to_csv()
+{
+	if (!class_exists('ZipArchive') || !class_exists('XMLReader')) {
+		return;
+	}
+
+	$dir = sys_get_temp_dir() . '/pg_products_import_test_' . bin2hex(random_bytes(4));
+	mkdir($dir);
+	$path = $dir . '/products.xlsx';
+	$main = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+
+	$zip = new ZipArchive();
+	pg_assert_true($zip->open($path, ZipArchive::CREATE) === true, 'zip written');
+
+	$zip->addFromString('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="' . $main . '" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Products" sheetId="1" r:id="rId1"/></sheets></workbook>');
+	$zip->addFromString('xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>');
+	$zip->addFromString('xl/styles.xml', '<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="' . $main . '"><cellXfs count="2"><xf numFmtId="0"/><xf numFmtId="14"/></cellXfs></styleSheet>');
+	$zip->addFromString('xl/sharedStrings.xml', '<?xml version="1.0" encoding="UTF-8"?><sst xmlns="' . $main . '" count="5" uniqueCount="5">'
+		. '<si><t>name</t></si>'
+		. '<si><t>price</t></si>'
+		. '<si><t xml:space="preserve">enabled</t></si>'
+		. '<si><r><rPr><b/></rPr><t>Çay </t></r><r><t>bardağı</t></r></si>'
+		. '<si><t>opens</t></si>'
+		. '</sst>');
+	$zip->addFromString('xl/worksheets/sheet1.xml', '<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="' . $main . '"><sheetData>'
+		. '<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>2</v></c><c r="D1" t="s"><v>4</v></c><c r="E1" t="inlineStr"><is><t>note</t></is></c></row>'
+		. '<row r="2"><c r="A2" t="s"><v>3</v></c><c r="B2"><v>19.99</v></c><c r="C2" t="b"><v>1</v></c><c r="D2" s="1"><v>46296</v></c><c r="E2" t="inlineStr"><is><r><t>Fresh </t></r><r><rPr><i/></rPr><t>batch</t></r></is></c></row>'
+		. '<row r="3"><c r="A3"/><c r="B3" t="inlineStr"/></row>'
+		. '<row r="4"><c r="A4" t="inlineStr"><is><t>Fincan</t></is></c><c r="C4" t="b"><v>0</v></c></row>'
+		. '<row r="5"><c r="B5" s="1"><v>46296.572916666664</v></c></row>'
+		. '</sheetData></worksheet>');
+	$zip->close();
+
+	// The .ods test above loaded PHPExcel, which replaces the zip:// wrapper
+	// and switches libxml's loader off for the rest of the process; an import
+	// request reads one file. Put back here rather than through
+	// pg_office_zip_stream(), which does it once per process and is left for
+	// the office tests that run later.
+	@stream_wrapper_restore('zip');
+
+	if (function_exists('libxml_disable_entity_loader')) {
+		@libxml_disable_entity_loader(false); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.libxml_disable_entity_loaderDeprecated -- guarded by function_exists()
+	}
+
+	$error = '';
+	$csv_path = pg_products_import_xlsx_to_csv($path, $error);
+	$rows = array();
+
+	pg_assert_same('', $error, 'read');
+
+	if ($csv_path !== '') {
+		$handle = fopen($csv_path, 'r');
+
+		while (($row = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
+			$rows[] = $row;
+		}
+
+		fclose($handle);
+		unlink($csv_path);
+	}
+
+	unlink($path);
+	rmdir($dir);
+
+	pg_assert_same(array(
+		array('name', 'price', 'enabled', 'opens', 'note'),
+		array('Çay bardağı', '19.99', '1', '2026-10-01', 'Fresh batch'),
+		array('Fincan', '', '0', '', ''),
+		array('', '2026-10-01 13:45:00', '', '', ''),
+	), $rows, 'rows');
+}
+
+// The rows and the shared strings are read node by node: readString() and
+// readOuterXml() build the element as a tree in libxml's memory first, which
+// memory_limit does not count.
+function test_products_import_xlsx_reads_node_by_node()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/import_products_f.php');
+
+	pg_assert_true(strpos($source, 'readOuterXml(') === false, 'no readOuterXml()');
+	pg_assert_true(strpos($source, 'readString(') === false, 'no readString()');
+	pg_assert_true(strpos($source, 'pg_office_xlsx_cell_parts($reader)') !== false, 'cells through the office reader');
+	pg_assert_true(strpos($source, 'pg_office_reader_text($reader, PHP_INT_MAX)') !== false, 'strings through the office reader');
+}

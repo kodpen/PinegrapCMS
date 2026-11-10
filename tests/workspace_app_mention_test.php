@@ -215,8 +215,38 @@ function test_workspace_app_mention_announced_after_the_write()
 	pg_assert_true($announced !== false, 'announced with its payload');
 	pg_assert_true(strpos($tell, 'ws_app_mention_audience(') < $announced, 'the writer and the assistants are left out first');
 	pg_assert_true(strpos($tell, 'ws_app_hears_mentions(') < $announced, 'an application that may not read the workspace is not told');
-	pg_assert_contains('SELECT id, status, expires_at, owner_user_id, scopes FROM api_apps', $tell, 'the key\'s end is read with it');
+	pg_assert_contains('SELECT id, name, status, expires_at, owner_user_id, scopes FROM api_apps', $tell, 'the key\'s end is read with it, the name for the writer\'s line');
 	pg_assert_true(strpos($tell, 'ws_app_reads_channel($reader, $channel)') < $announced, 'nor one whose owner does not read the channel');
 	pg_assert_contains('ws_plain_text($reader, $message[\'body\'])', $tell, 'the words as the owner reads them');
 	pg_assert_contains("'channel_id'", workspace_app_mention_test_source('ws_app_mention_payload'), 'the event names its channel');
+}
+
+// The writer learns which applications they mentioned may not read the
+// channel: those that would hear it but whose owner does not read there.
+// One that hears no mentions at all, and a registry agent the channel
+// allows (reached through the registry), are not listed.
+function test_workspace_app_mention_unread()
+{
+	$hears = array(7 => true, 3 => true, 5 => false, 8 => true);
+	$reads = array(7 => true, 3 => false, 8 => false);
+
+	pg_assert_same(array(3, 8), ws_app_mention_unread(array(7, 3, 5, 8), $hears, $reads), 'the ones whose owner does not read the channel, in order');
+	pg_assert_same(array(8), ws_app_mention_unread(array(7, 3, 5, 8), $hears, $reads, array('3')), 'an agent the channel allows is reached');
+	pg_assert_same(array(), ws_app_mention_unread(array(5, 9), $hears, $reads), 'not hearing mentions, or unknown: nothing to say');
+	pg_assert_same(array(3), ws_app_mention_unread(array('3', 3), $hears, $reads), 'once, ids read as text');
+	pg_assert_same(array(), ws_app_mention_unread(array(), $hears, $reads), 'no application mentioned');
+
+	pg_assert_same('', ws_app_mention_unread_line(array()), 'no line');
+	pg_assert_contains('@Acme', ws_app_mention_unread_line(array('@Acme')), 'names the application');
+	pg_assert_contains('@Acme, @Beta', ws_app_mention_unread_line(array('@Acme', '@Beta')), 'names each');
+
+	// Only the writer sees it: the send and edit answers carry the tags,
+	// and the panel shows the line without posting it.
+	pg_assert_contains("'apps_unread' => \$apps['unread']", workspace_app_mention_test_source('ws_message_send'), 'the send answer');
+	pg_assert_contains("'apps_unread' => \$apps['unread']", workspace_app_mention_test_source('ws_message_edit'), 'the edit answer');
+
+	$tell = workspace_app_mention_test_source('ws_message_tell_apps');
+
+	pg_assert_true(strpos($tell, 'ws_app_mention_unread(') > strpos($tell, "pg_announce('workspace.app.mentioned'"), 'decided from what was asked before announcing');
+	pg_assert_contains("'unread' => \$labels", $tell, 'the tags as the message draws them');
 }

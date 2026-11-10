@@ -175,7 +175,9 @@ function test_workspace_assistant_reach_claude_context()
 function test_workspace_assistant_reach_claude_is_the_key()
 {
 	pg_assert_contains('api_current_device() === null', workspace_assistant_reach_test_source('ws_api_is_claude'), 'no device session');
-	pg_assert_contains('if (!ws_api_is_claude())', workspace_assistant_reach_test_source('ws_api_claude_guard'), 'the queue asks the same');
+	// The only other caller is the asker's own session through an OAuth
+	// connection, on the routes ws_api_claude_session_routes() lists.
+	pg_assert_contains('if (!ws_api_is_claude() && !(in_array((string) $route, ws_api_claude_session_routes(), true) && ws_api_claude_session_device()))', workspace_assistant_reach_test_source('ws_api_claude_guard'), 'the queue asks the same');
 }
 
 // Claude's application reads where a record was talked about only in the

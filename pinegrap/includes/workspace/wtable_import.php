@@ -892,13 +892,28 @@ function ws_wtable_import_people()
  * @param array $table ws_wtable()
  * @param array $rows  the file's rows, header left out
  * @param array $map   file column index => column id
- * @return array added, refused (list of line, error, errors), refused_count
+ * @return array added, updated (rows changed by their key), refused (list of line, error, errors), refused_count
  */
 function ws_wtable_import_rows($viewer, $table, $rows, $map)
 {
     $columns = ws_wtable_columns((int) $table['id']);
     $people = ws_wtable_import_people();
-    $report = array('added' => 0, 'refused' => array(), 'refused_count' => 0);
+    $report = array('added' => 0, 'updated' => 0, 'refused' => array(), 'refused_count' => 0);
+
+    // A table with a key matches file rows to its rows by key: a row whose
+    // key the table holds changes that row (the file's filled cells laid
+    // over it) instead of adding another.
+    $key = ws_wtable_key_column($columns);
+    $keyed = array();
+
+    foreach ($key ? ws_wtable_key_rows((int) $table['id']) : array() as $stored) {
+        $value = ws_wtable_key_value($key, $stored['cells'][(string) $key['id']] ?? null);
+
+        if ($value !== null) {
+            $keyed[$value] = (int) $stored['id'];
+        }
+    }
+
     $refuse = function ($line, $error, $errors) use (&$report) {
         $report['refused_count']++;
 
@@ -920,10 +935,22 @@ function ws_wtable_import_rows($viewer, $table, $rows, $map)
             continue;
         }
 
-        $result = ws_wtable_row_create($viewer, $table, array('cells' => $cells));
+        $value = $key ? ws_wtable_key_value($key, $cells[(string) $key['id']] ?? null) : null;
+        $stored = (($value !== null) && isset($keyed[$value])) ? ws_wtable_row((int) $table['id'], $keyed[$value]) : null;
+
+        if ($stored) {
+            $result = ws_wtable_row_update($viewer, $table, $stored, array('cells' => $filled, 'revision' => (int) $stored['revision']));
+        } else {
+            $result = ws_wtable_row_create($viewer, $table, array('cells' => $cells));
+        }
 
         if ($result['ok']) {
-            $report['added']++;
+            $report[$stored ? 'updated' : 'added']++;
+
+            if (!$stored && ($value !== null)) {
+                $keyed[$value] = (int) $result['row_id'];
+            }
+
             continue;
         }
 
@@ -1307,4 +1334,20 @@ function ws_wtable_import_temp_name($path)
     $name = pg_basename(str_replace('\\', '/', (string) $path));
 
     return (strpos($name, 'pg_wtimport_') === 0) || (preg_match('/^pg_[0-9a-f]{1,4}\.tmp$/i', $name) === 1);
+}
+
+/**
+ * What an import wrote, in words: the rows added, and the rows of the
+ * table it changed by their key. Pure but for lang().
+ *
+ * @param array $report ws_wtable_import_rows()
+ * @return string
+ */
+function ws_wtable_import_report_text($report)
+{
+    $updated = (int) ($report['updated'] ?? 0);
+
+    return ($updated > 0)
+        ? lang(array('string' => '{var:1} rows were imported and {var:2} rows were changed by their key.', 'vars' => array((int) $report['added'], $updated)))
+        : lang(array('string' => '{var:1} rows were imported.', 'vars' => (int) $report['added']));
 }

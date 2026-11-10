@@ -94,3 +94,64 @@ function test_menu_page_link_is_encoded()
 
 	pg_assert_contains('ORDER BY sort_order, id', $options, 'parent picker in printing order');
 }
+
+// The menu items screen lists a menu depth first from the top level, each row
+// with its depth (1 = top), from the one query that reads the whole menu.
+function test_menu_tree_flatten()
+{
+	$rows = array(
+		array('id' => '5', 'parent_id' => '0', 'name' => 'First'),
+		array('id' => '7', 'parent_id' => '5', 'name' => 'Under first'),
+		array('id' => '10', 'parent_id' => '7', 'name' => 'Deep'),
+		array('id' => '6', 'parent_id' => '0', 'name' => 'Second'),
+		array('id' => '9', 'parent_id' => '5', 'name' => 'Also under first'),
+		array('id' => '8', 'parent_id' => '99', 'name' => 'Orphan'),
+	);
+
+	$flat = pg_menu_tree_flatten($rows);
+
+	pg_assert_same(array('First', 'Under first', 'Deep', 'Also under first', 'Second'), array_column($flat, 'name'), 'depth first, siblings in the order given');
+	pg_assert_same(array(1, 2, 3, 2, 1), array_column($flat, 'level'), 'level counts from 1 at the top');
+	pg_assert_same('Under first', $flat[1]['name'], 'rows keep their own fields');
+	pg_assert_false(in_array('Orphan', array_column($flat, 'name'), true), 'an item whose parent is not in the menu is left out');
+
+	pg_assert_same(array(), pg_menu_tree_flatten(array()), 'an empty menu');
+}
+
+// Siblings with the same sort_order come in by id from the query
+// (ORDER BY sort_order, id) and keep that order.
+function test_menu_tree_flatten_keeps_tie_order()
+{
+	$rows = array(
+		array('id' => '3', 'parent_id' => '0', 'name' => 'A'),
+		array('id' => '4', 'parent_id' => '0', 'name' => 'B'),
+		array('id' => '11', 'parent_id' => '0', 'name' => 'C'),
+	);
+
+	pg_assert_same(array('3', '4', '11'), array_column(pg_menu_tree_flatten($rows), 'id'), 'ties in the order given');
+}
+
+// A parent loop is never reached from the top; an item listed twice (a loop
+// back to an item already shown) is shown once.
+function test_menu_tree_flatten_stops_on_a_loop()
+{
+	$rows = array(
+		array('id' => '1', 'parent_id' => '0', 'name' => 'Top'),
+		array('id' => '2', 'parent_id' => '3', 'name' => 'Loop A'),
+		array('id' => '3', 'parent_id' => '2', 'name' => 'Loop B'),
+		array('id' => '1', 'parent_id' => '1', 'name' => 'Top again'),
+	);
+
+	$flat = pg_menu_tree_flatten($rows);
+
+	pg_assert_same(array('Top'), array_column($flat, 'name'), 'loops are left out and an item is shown once');
+}
+
+// The screen reads the menu once instead of a query per level and per item.
+function test_menu_items_screen_reads_the_menu_once()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_menu_items.php');
+
+	pg_assert_true(strpos($source, 'pg_menu_tree_flatten(') !== false, 'the screen flattens one read');
+	pg_assert_false(strpos($source, 'SELECT COUNT(*) FROM menu_items WHERE parent_id') !== false, 'no child count per item');
+}

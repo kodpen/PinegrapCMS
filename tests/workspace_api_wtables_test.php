@@ -113,7 +113,7 @@ function test_ws_api_wtables_rows_list_takes_a_query()
 		$params[$param['name']] = $param;
 	}
 
-	pg_assert_same(array('id', 'limit', 'cursor', 'where', 'join', 'sort', 'dir'), array_keys($params));
+	pg_assert_same(array('id', 'limit', 'cursor', 'where', 'join', 'sort', 'dir', 'key'), array_keys($params));
 	pg_assert_same('query', $params['where']['in']);
 	pg_assert_same(array('all', 'any'), $params['join']['values']);
 	pg_assert_same('int', $params['sort']['type']);
@@ -249,7 +249,7 @@ function test_ws_api_wtables_row_event_body()
 	}
 
 	// Each write of a row announces itself; a move does not.
-	foreach (array('ws_wtable_row_create' => 'created', 'ws_wtable_row_update' => 'updated', 'ws_wtable_row_delete' => 'deleted') as $writer => $what) {
+	foreach (array('ws_wtable_row_create_write' => 'created', 'ws_wtable_row_update_write' => 'updated', 'ws_wtable_row_delete' => 'deleted') as $writer => $what) {
 		pg_assert_contains("ws_wtable_row_announce('" . $what . "'", ws_api_wtables_test_source($writer), $writer . ' announces ' . $what);
 	}
 

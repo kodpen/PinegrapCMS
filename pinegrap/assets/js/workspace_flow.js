@@ -8132,7 +8132,7 @@
     // offers them: its number in the table first, the way of a new box; a
     // read also by conditions (ws_step_row_get_bys()).
     function rowByOptions(kind) {
-        var ways = [['position', t('fl_rows_by_position')], ['number', t('fl_rows_by_number')], ['id', t('fl_rows_by_id')], ['last', t('fl_rows_by_last')]];
+        var ways = [['position', t('fl_rows_by_position')], ['number', t('fl_rows_by_number')], ['key', t('fl_rows_by_key')], ['id', t('fl_rows_by_id')], ['last', t('fl_rows_by_last')]];
 
         return (kind === 'row_get') ? ways.concat([['match', t('fl_rows_by_match')]]) : ways;
     }
@@ -8140,7 +8140,7 @@
     // The way a row box's settings keep (ws_step_row_way()): none or an
     // unknown one is by its id, as a box saved before the choice meant.
     function rowWay(config) {
-        return (['id', 'position', 'number', 'last', 'match'].indexOf(config.by) !== -1) ? config.by : 'id';
+        return (['id', 'position', 'number', 'key', 'last', 'match'].indexOf(config.by) !== -1) ? config.by : 'id';
     }
 
     // How a box that reads or changes a row finds it, then its row: a number
@@ -8179,7 +8179,7 @@
             return;
         }
 
-        var help = t((by === 'position') ? 'fl_rows_position_help' : ((by === 'number') ? 'fl_rows_number_help' : 'fl_rows_id_help'));
+        var help = t({ position: 'fl_rows_position_help', number: 'fl_rows_number_help', key: 'fl_rows_key_help' }[by] || 'fl_rows_id_help');
 
         if (node.kind === 'row_get') {
             help += ' ' + missing;

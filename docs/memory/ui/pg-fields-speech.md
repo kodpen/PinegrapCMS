@@ -23,7 +23,7 @@ description: Screen readers and panel combobox/chip fields (pg_fields.js v6): to
 - Bootstrap only un-hides `.combobox-no-results`. A `div.visually-hidden[role=status]` after it gets that text on the search box's `input` event (our listener runs after Bootstrap's filter) and is emptied on a match and on `show`.
 
 ## Which chip does Delete remove?
-- The typed box takes the hidden input's `<label>` text as `aria-label`.
+- The typed box takes the hidden input's `<label>` text as `aria-label` and its `aria-describedby`, again on every redraw (#8505).
 - Bootstrap's Chips gives every chip `tabindex=0` but deletes only selected chips. `selectFocusedChip()` selects a chip on `focusin` (through the instance's `selectChip()`), unless the focus came from a press (Chips' own click selects, with Ctrl/Shift) or the chip is already `.active`. So Tab to a chip and Delete removes that chip.
 - Each `.chip-dismiss` is named "Remove: <value>" (`data-pg-remove-label` + the chip's `data-bs-chip-value`), relabelled after every change.
 

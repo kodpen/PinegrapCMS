@@ -220,6 +220,7 @@
 - payment-gateway-secrets.md: Legacy gateway secrets sealed in config (pgenc2, AES-256-GCM since #3058; pgenc1 still read), drawn masked, opened in init.php; plain values still read; the 41-character limit [decision: decisions-made-product-39.md]
 - payment-hosted-classic-pages.md: Hosted card box (Stripe Payment Element, PR #2556) on the classic order preview and express order pages; how payment_hosted.js finds an unmarked card section
 - payment-iyzico-checkout.md: How submit_order.php pays with iyzico: the driver branch for Iyzipay and Pay With Iyzico, return modes, state, the removed inline code (PR #2770) and the instalment surcharge skip
+- payment-iyzico-refusals.md: iyzico card refusals (PR #8517): the visitor sentence by error code, the Site Log line with order, payment id, error group and mdStatus, the 3-D Secure return stopping at a failed verification [decision: here]
 - payment-iyzico-threeds-return.md: How the iyzico card driver's complete() finishes the 3-D Secure return (PR #1710): the iyzipay_3ds_state row and its claim, the instalment limit, the amount check, the totals the order keeps (#1422)
 - payment-method-lists.md: One list of checkout payment methods (pg_payment_checkout_methods(), PR #1743): screens that read it, what a redirect driver still needs by hand, the Pay With Iyzico gaps kept [decision: decisions-made-product.md]
 - payment-refunds.md: Money back through payment drivers (PRs #873, #903): the order's driver for the order screen's refund and the cancellation's void, log_name, the outcome lines [decision: here]

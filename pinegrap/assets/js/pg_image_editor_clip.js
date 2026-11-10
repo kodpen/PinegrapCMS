@@ -116,7 +116,7 @@
 
             buf.width = Math.max(2, Math.round((l.width || 640) * k));
             buf.height = Math.max(2, Math.round((l.height || 360) * k));
-            st = this.clipStates[l.id] = { src: l.src, buf: buf, views: [], nodes: [], want: null, asked: null, shown: null, busy: false };
+            st = this.clipStates[l.id] = { src: l.src, buf: buf, views: [], nodes: [], strips: [], want: null, asked: null, shown: null, busy: false };
         }
 
         return st;
@@ -166,6 +166,9 @@
         st.views.forEach(function (c) {
             c.getContext('2d').drawImage(st.buf, 0, 0, c.width, c.height);
         });
+        // The bars on the tracks show the frame too.
+        st.strips = (st.strips || []).filter(function (c) { return c.isConnected; });
+        st.strips.forEach(function (c) { clipStrip(c, st.buf); });
     };
 
     // A clip on the stage: a canvas in the layer's box (a foreignObject, so
@@ -455,7 +458,16 @@
 
     // ---- changes ----
 
+    // A timing field (the source in or out, the speed) pulls the clips after
+    // the clip on its row and the document's length with it.
+    var TIMING = ['from', 'to', 'speed', 'start'];
+
     Editor.prototype.clipSet = function (id, patch, key, viewOnly) {
+        if (Object.keys(patch).some(function (k) { return TIMING.indexOf(k) >= 0; })) {
+            this.clipCommit(M.clipRipple(this.doc.layers, id, patch), key, viewOnly);
+            return;
+        }
+
         this.change(function (doc) {
             var l = find(doc, id);
 
@@ -501,6 +513,336 @@
         });
     };
 
+    // ---- the clip rows on the tracks ----
+
+    // A dragged end snaps to another end within this many pixels.
+    var SLACK_PX = 6;
+
+    // A clip's row: the clips split from one another on one row, drawn
+    // where the topmost of them is in the stack; the others give none.
+    Editor.prototype.clipTrackRow = function (l, end) {
+        var self = this, row = M.clipRow(this.doc.layers, l).filter(function (o) { return !o.hidden; });
+        var top = row.reduce(function (best, o) { return (self.doc.layers.indexOf(o) > self.doc.layers.indexOf(best)) ? o : best; }, row[0]);
+        var on = row.some(function (o) { return self.sel.indexOf(o.id) >= 0; }), name = this.layerName(top);
+        var lane, pick, bars = {};
+
+        if (top !== l) {
+            return false;
+        }
+
+        lane = el('div', { class: 'pgie-trlane' }, [el('span', { class: 'pgie-trline' })]);
+        pick = el('button', { type: 'button', class: 'pgie-trname', title: name, 'aria-pressed': on ? 'true' : 'false', onclick: function (e) {
+            self.trackSelect(top.id, e.shiftKey);
+        } }, [icon('video'), el('span', { text: name })]);
+
+        row.forEach(function (o) {
+            bars[o.id] = self.clipBar(o, end, lane, bars);
+            lane.appendChild(bars[o.id]);
+        });
+
+        // The cuts a split left: a dashed line with scissors.
+        M.clipJoins(row).forEach(function (at) {
+            lane.appendChild(el('span', { class: 'pgie-clipcut', style: 'left: ' + pct(at, end), 'aria-hidden': 'true' }, [icon('scissors')]));
+        });
+
+        lane.addEventListener('pointerdown', function (e) {
+            if ((e.target === lane) || e.target.classList.contains('pgie-trline')) {
+                self.trackSelect(top.id, e.shiftKey);
+            }
+        });
+
+        return el('div', { class: 'pgie-trrow pgie-cliprow' + (on ? ' on' : ''), role: 'group', 'aria-label': name }, [pick, lane]);
+    };
+
+    function pct(ms, end) {
+        return (100 * Math.max(0, ms) / end) + '%';
+    }
+
+    // The clip's label on its bar and in its tip: its name ("(2)" for the
+    // second part of a source) and its source in and out.
+    Editor.prototype.clipLabel = function (l, c) {
+        var part = M.clipPart(this.doc.layers, l), name = (l.name || t('layer_video')) + ((part.n > 1) ? ' (' + part.n + ')' : '');
+
+        return name + ' · ' + clock(c.from) + ' → ' + clock(c.to);
+    };
+
+    // One clip's bar: a strip of its frame, its label, grips at both ends
+    // when it is the one selected.
+    Editor.prototype.clipBar = function (l, end, lane, bars) {
+        var self = this, c = M.clipLayer(l), sp = M.clipSpan(l), on = (this.sel.length === 1) && (this.sel[0] === l.id), st = this.clipState(l);
+        var strip = el('canvas', { class: 'pgie-clipstrip', 'aria-hidden': 'true' }), label = this.clipLabel(l, c);
+        var bar = el('span', { class: 'pgie-trbar pgie-clipbar' + (on ? ' on' : '') + ((c.muted || !c.sound) ? ' pgie-clipquiet' : ''), style: 'left: ' + pct(sp.from, end) + '; width: ' + pct(sp.to - sp.from, end), title: label, role: 'img', 'aria-label': label }, [
+            strip, el('span', { class: 'pgie-clipname', text: label })
+        ]);
+
+        strip.width = 240;
+        strip.height = 30;
+        st.strips = (st.strips || []).filter(function (s) { return s.isConnected; });
+        st.strips.push(strip);
+
+        if (st.shown !== null) {
+            clipStrip(strip, st.buf);
+        } else if (this.time === null) {
+            // At rest nothing asked for a frame yet: the source in.
+            this.clipDraw(l, c.from);
+        }
+
+        bar.addEventListener('pointerdown', function (e) { self.clipDown(e, l, 'move', bar, lane, bars); });
+
+        if (on) {
+            ['start', 'end'].forEach(function (grip) {
+                var g = el('span', { class: 'pgie-trgrip pgie-trgrip-' + grip, 'aria-hidden': 'true' });
+
+                g.addEventListener('pointerdown', function (e) {
+                    e.stopPropagation();
+                    self.clipDown(e, l, grip, bar, lane, bars);
+                });
+                bar.appendChild(g);
+            });
+        }
+
+        return bar;
+    };
+
+    // The frame side by side along a bar's strip.
+    function clipStrip(strip, buf) {
+        var g = strip.getContext('2d'), w = Math.max(1, Math.round(buf.width * strip.height / Math.max(1, buf.height))), x;
+
+        g.clearRect(0, 0, strip.width, strip.height);
+
+        for (x = 0; x < strip.width; x += w) {
+            g.drawImage(buf, x, 0, w, strip.height);
+        }
+    }
+
+    // The times a dragged clip snaps to: the other layers' bars, the other
+    // clips' ends, the playhead.
+    Editor.prototype.clipTargets = function (l, end) {
+        var list = M.trackTargets(this.doc.layers, end, l.id), now = this.motionNow();
+
+        this.clipLayers().forEach(function (o) {
+            var sp = M.clipSpan(o);
+
+            if (o.id !== l.id) {
+                list.push(sp.from, sp.to);
+            }
+        });
+
+        if ((now !== null) && (now >= 0)) {
+            list.push(now);
+        }
+
+        return list.filter(function (n, i) { return list.indexOf(n) === i; });
+    };
+
+    // A press on a clip's bar or grip: the clip is selected; the drag shows
+    // on the bars (the clips after a trimmed end follow), an amber line
+    // where it snaps, and for an end that end's frame on the stage with a
+    // pill naming its source time. One change on release; Escape cancels.
+    Editor.prototype.clipDown = function (e, l, grip, bar, lane, bars) {
+        var self = this, end = this.motionEnd(), width = lane.getBoundingClientRect().width;
+        var x0 = e.clientX, result = null, moved = false, targets = this.clipTargets(l, end), layers = M.clone(this.doc.layers);
+        var snapLine = el('span', { class: 'pgie-clipsnap', 'aria-hidden': 'true', hidden: 'hidden' }), pill = null;
+
+        if ((e.button !== 0) || !(width > 0)) {
+            return;
+        }
+
+        e.preventDefault();
+
+        if (this.playing) {
+            this.pause();
+            return;
+        }
+
+        if ((this.sel.length !== 1) || (this.sel[0] !== l.id)) {
+            this.sel = [l.id];
+            this.renderPanel();
+        }
+
+        lane.appendChild(snapLine);
+        this.trackDragging = true;
+        this.clipDragging = true;
+        this.hint.textContent = t((grip === 'move') ? 'hintClipMove' : 'hintClipTrim');
+
+        try {
+            bar.setPointerCapture(e.pointerId);
+        } catch (err) {
+            // A pointer the browser no longer tracks: the drag still follows moves.
+        }
+
+        var show = function (patches) {
+            patches.forEach(function (p) {
+                var o = layers.filter(function (n) { return n.id === p.id; })[0], b = bars[p.id], sp;
+
+                if (o && b) {
+                    sp = M.clipSpan(Object.assign({}, o, p.patch));
+                    b.style.left = pct(sp.from, end);
+                    b.style.width = pct(sp.to - sp.from, end);
+                }
+            });
+        };
+
+        var framePill = function (r) {
+            var mine = Object.assign({}, l, r.patches[0].patch), sp = M.clipSpan(mine), text;
+
+            // The end's own frame: the last one before the source out.
+            self.clipDraw(l, (grip === 'end') ? Math.max(0, r.source - 1) : r.source);
+            // Only this clip on the stage: another one over it would hide the frame.
+            self.clipLayers().forEach(function (o) {
+                var st = self.clipStates[o.id];
+
+                (st ? st.nodes : []).forEach(function (n) { n.style.visibility = (o.id === l.id) ? '' : 'hidden'; });
+            });
+
+            text = t((grip === 'end') ? 'clipPillEnd' : 'clipPillStart').replace('{source}', clock(r.source)).replace('{length}', seconds(sp.to - sp.from));
+
+            if (!pill) {
+                pill = el('div', { class: 'pgie-clippill', role: 'status' });
+                self.stage.appendChild(pill);
+            }
+
+            pill.textContent = text;
+        };
+
+        var move = function (ev) {
+            var dt = (ev.clientX - x0) / width * end, o = { targets: targets, slack: SLACK_PX / width * end, fine: ev.shiftKey };
+
+            moved = moved || (Math.abs(ev.clientX - x0) > 2);
+
+            if (!moved) {
+                return;
+            }
+
+            result = (grip === 'move') ? M.clipMove(layers, l.id, dt, o) : M.clipTrim(layers, l.id, grip, dt, o);
+
+            if (!result) {
+                return;
+            }
+
+            show(result.patches);
+            snapLine.hidden = !result.snapped;
+
+            if (result.snapped) {
+                var sp = M.clipSpan(Object.assign({}, l, result.patches[0].patch));
+                var at = (grip === 'move') ? ((targets.indexOf(sp.from) >= 0) ? sp.from : sp.to) : result.at;
+
+                snapLine.style.left = pct(at, end);
+            }
+
+            if (grip !== 'move') {
+                framePill(result);
+            }
+        };
+
+        var done = function (keep) {
+            bar.removeEventListener('pointermove', move);
+            bar.removeEventListener('pointerup', up);
+            bar.removeEventListener('pointercancel', cancel);
+            document.removeEventListener('keydown', key, true);
+            self.trackDragging = false;
+            self.clipDragging = false;
+
+            if (pill) {
+                pill.remove();
+            }
+
+            if (keep && moved && result) {
+                self.clipCommit(result.patches);
+            } else {
+                self.render();
+            }
+
+            self.clipsUpdate();
+        };
+
+        var up = function () { done(true); };
+        var cancel = function () { done(false); };
+
+        var key = function (ev) {
+            if (ev.key === 'Escape') {
+                ev.preventDefault();
+                ev.stopPropagation();
+                done(false);
+            }
+        };
+
+        bar.addEventListener('pointermove', move);
+        bar.addEventListener('pointerup', up);
+        bar.addEventListener('pointercancel', cancel);
+        document.addEventListener('keydown', key, true);
+    };
+
+    // Patches of the clips ([{ id, patch }]) as one undo step; the length
+    // follows the clips.
+    Editor.prototype.clipCommit = function (patches, key, viewOnly) {
+        this.change(function (doc) {
+            M.clipApply(doc, patches);
+        }, key, viewOnly);
+    };
+
+    // Split at the playhead: the second part a new layer right above the
+    // first, on the same source and row, selected. One undo step.
+    Editor.prototype.clipSplitAt = function (l) {
+        var now = (this.time === null) ? null : this.motionNow(), id = M.newId(this.doc), r = M.clipSplit(l, now, id);
+
+        if (l.locked) {
+            return;
+        }
+
+        // The playhead must be inside the clip, 0.1 s from either end.
+        if (!r) {
+            this.showMessage(t('clipSplitNote'), true);
+            return;
+        }
+
+        this.change(function (doc) {
+            var i = doc.layers.findIndex(function (o) { return o.id === l.id; });
+
+            if (i < 0) {
+                return;
+            }
+
+            Object.assign(doc.layers[i], r.left);
+            doc.layers.splice(i + 1, 0, r.right);
+            M.clipApply(doc, []);
+        });
+        this.select([id]);
+    };
+
+    // Delete in the clip's panel: the length follows the clips left, in
+    // the same undo step.
+    Editor.prototype.clipRemove = function (l) {
+        if (l.locked) {
+            return;
+        }
+
+        this.change(function (doc) {
+            doc.layers = doc.layers.filter(function (o) { return o.id !== l.id; });
+            M.clipApply(doc, []);
+        });
+        this.select(this.sel.filter(function (id) { return id !== l.id; }));
+    };
+
+    // What the clip rows show: a drag keeps its bars till release.
+    Editor.prototype.clipsKey = function () {
+        var self = this;
+
+        if (this.clipDragging) {
+            return this.clipKeyNow;
+        }
+
+        this.clipKeyNow = JSON.stringify(this.clipLayers().map(function (l) {
+            return [l.id, l.from, l.to, l.start, l.speed, l.row || '', l.name, l.muted ? 1 : 0, self.sel.indexOf(l.id) >= 0 ? 1 : 0];
+        }));
+
+        return this.clipKeyNow;
+    };
+
+    Editor.trackRowMakers.push(function (l, end) {
+        return (l.type === 'video') ? this.clipTrackRow(l, end) : undefined;
+    });
+
     // ---- the panel ----
 
     Editor.prototype.clipSlider = function (l, field, label, min, max, value, show) {
@@ -537,9 +879,15 @@
     // and Delete (the Animate tool's panel, which has no arrange rows).
     Editor.prototype.clipPanel = function (body, l, whole) {
         var self = this, c = M.clipLayer(l), failed = this.clipFailed[l.src];
-        var meta = [(l.width && l.height) ? l.width + ' × ' + l.height : '', clock(c.length)].filter(Boolean).join(' · ');
+        var part = M.clipPart(this.doc.layers, l), sp = M.clipSpan(l);
+        var meta = [(part.of > 1) ? t('clipSameSource') : '', (l.width && l.height) ? l.width + ' × ' + l.height : '', clock(c.length)].filter(Boolean).join(' · ');
+        var name = (l.name || t('layer_video')) + ((part.n > 1) ? ' (' + part.n + ')' : '');
 
-        body.appendChild(el('div', { class: 'pgie-sndfile pgie-sndhead' }, [icon('video'), el('span', { text: l.name || t('layer_video') }), el('em', { text: meta })]));
+        body.appendChild(el('div', { class: 'pgie-sndfile pgie-sndhead pgie-cliphead' }, [icon('video'), el('span', { text: name }), el('em', { text: meta })]));
+
+        // The part's source and timeline times, as the bar shows them.
+        body.appendChild(section(t('clipFromSource'), el('div', { class: 'pgie-cliptimes' }, [el('span', { text: clock(c.from) }), el('span', { class: 'pgie-cliparrow', 'aria-hidden': 'true', text: '→' }), el('span', { text: clock(c.to) })]), el('span', { class: 'pgie-val', text: seconds(c.to - c.from) })));
+        body.appendChild(section(t('clipOnTimeline'), el('div', { class: 'pgie-cliptimes' }, [el('span', { text: clock(sp.from) }), el('span', { class: 'pgie-cliparrow', 'aria-hidden': 'true', text: '→' }), el('span', { text: clock(sp.to) })]), el('span', { class: 'pgie-val', text: seconds(sp.to - sp.from) })));
 
         if (failed) {
             body.appendChild(el('p', { class: 'pgie-note pgie-warn', text: t('clipBroken') }));
@@ -578,8 +926,12 @@
             body.appendChild(el('p', { class: 'pgie-note', text: t('clipNoSound') }));
         }
 
+        var split = tile('scissors', t('clipSplit'), function () { self.clipSplitAt(l); });
         var detach = tile('music', t('clipDetach'), function () { self.clipDetach(l); });
-        var tiles = [detach];
+        var tiles = [split, detach];
+
+        split.disabled = !!l.locked;
+        split.title = t('clipSplitNote');
 
         detach.disabled = !c.sound || (c.speed !== 1) || l.locked;
         detach.title = t('clipDetachNote');
@@ -593,11 +945,15 @@
 
         if (whole) {
             tiles.push(tile('duplicate', t('duplicate'), function () { self.addLayers([l], 10); }));
-            tiles.push(tile('trash', t('delete'), function () { self.removeLayers(); }));
+            tiles.push(tile('trash', t('delete'), function () { self.clipRemove(l); }));
         }
 
         body.appendChild(el('div', { class: 'pgie-tiles pgie-sndtiles' }, tiles));
         body.appendChild(el('p', { class: 'pgie-note', text: t('clipNote') }));
+
+        if (whole && this.tracksShown()) {
+            body.appendChild(el('p', { class: 'pgie-note', text: t('clipTracksNote') }));
+        }
     };
 
     // The Animate tool with one clip selected: tabs Clip and Motion (the
@@ -681,8 +1037,10 @@
         this.clipStates = {};
         this.clipRests = {};
         this.clipTab = 'clip';
+        this.clipDragging = false;
+        this.clipKeyNow = '';
         this.clipFiles = { search: '', serial: 0, list: null, pick: null };
     });
 
-    Editor.motionDocks.push({ key: function () { return ''; }, node: function () { return null; }, update: Editor.prototype.clipsUpdate, note: function () { return null; } });
+    Editor.motionDocks.push({ key: Editor.prototype.clipsKey, node: function () { return null; }, update: Editor.prototype.clipsUpdate, note: function () { return null; } });
 }(window.PgImageEditor.parts));

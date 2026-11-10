@@ -2874,9 +2874,18 @@ function pg_return_staff_move($return_id, $to, $options = array(), $user_id = 0)
     }
 
     // The move stands whatever happens to the mail.
-    $mailed = in_array($to, array('approved', 'rejected'), true) ? pg_return_send_decision_mail($after['id']) : false;
+    $mailed = false;
+    $mail_error = '';
 
-    return array('ok' => true, 'error' => '', 'code' => '', 'return' => $after, 'mailed' => $mailed);
+    if (in_array($to, array('approved', 'rejected'), true)) {
+        // Cleared first: the sender can refuse before email() runs, which
+        // would leave the reason of an earlier e-mail in this request.
+        pg_mail_last_error('');
+        $mailed = pg_return_send_decision_mail($after['id']);
+        $mail_error = $mailed ? '' : trim(pg_mail_last_error());
+    }
+
+    return array('ok' => true, 'error' => '', 'code' => '', 'return' => $after, 'mailed' => $mailed, 'mail_error' => $mail_error);
 }
 
 /**
@@ -3128,7 +3137,7 @@ function pg_return_send_label_mail($return_id)
  */
 function pg_return_create_label($return_id, $user_id = 0)
 {
-    $out = array('ok' => false, 'error' => '', 'code' => '', 'mailed' => false);
+    $out = array('ok' => false, 'error' => '', 'code' => '', 'mailed' => false, 'mail_error' => '');
     $before = pg_return_load($return_id);
 
     if (!$before) {
@@ -3170,7 +3179,9 @@ function pg_return_create_label($return_id, $user_id = 0)
 
     log_activity(lang(array('string' => 'A return label was created for return request {var:1} of order {var:2}: {var:3}', 'vars' => array((int) $before['id'], $order_number, $label['code']))));
 
+    pg_mail_last_error('');
     $out['mailed'] = pg_return_send_label_mail($before['id']);
+    $out['mail_error'] = $out['mailed'] ? '' : trim(pg_mail_last_error());
 
     return $out;
 }
@@ -3475,7 +3486,7 @@ function pg_return_staff_refusal($code, $error)
  * The notice staff land on the new request with.
  *
  * @param array $recorded pg_return_staff_record()'s answer: repeat, mailed
- *                        (null when no e-mail was asked for)
+ *                        (null when no e-mail was asked for), mail_error
  * @return string text, not yet escaped
  */
 function pg_return_staff_notice($recorded)
@@ -3488,9 +3499,32 @@ function pg_return_staff_notice($recorded)
         return lang('The return request was recorded.');
     }
 
-    return $recorded['mailed']
-        ? lang('The return request was recorded. The customer was told by e-mail.')
-        : lang('The return request was recorded, but the e-mail to the customer could not be sent.');
+    if ($recorded['mailed']) {
+        return lang('The return request was recorded. The customer was told by e-mail.');
+    }
+
+    return pg_return_mail_failure_text(lang('The return request was recorded, but the e-mail to the customer could not be sent.'),
+        isset($recorded['mail_error']) ? $recorded['mail_error'] : '');
+}
+
+/**
+ * A return screen's "the e-mail could not be sent" sentence with the mail
+ * server's reason after it, when the staff function caught one (its
+ * 'mail_error'). A queued e-mail never has one: email() reports it sent.
+ *
+ * @param string $sentence the screen's own sentence
+ * @param string $reason   pg_mail_last_error() read after the failed send
+ * @return string text, not yet escaped
+ */
+function pg_return_mail_failure_text($sentence, $reason)
+{
+    $reason = trim((string) $reason);
+
+    if ($reason === '') {
+        return (string) $sentence;
+    }
+
+    return $sentence . ' ' . lang(array('string' => 'The mail server said: {var:1}', 'vars' => array($reason)));
 }
 
 /**
@@ -3570,9 +3604,16 @@ function pg_return_staff_record($order_id, $ship_to_id, $quantities, $reason, $n
     log_activity(lang(array('string' => 'Return request {var:1} was recorded for order {var:2} from the panel.', 'vars' => array($id, $order_number))));
 
     // The request stands whatever happens to the e-mail.
-    $mailed = !empty($options['notify']) ? pg_return_send_request_mail($id) : null;
+    $mailed = null;
+    $mail_error = '';
 
-    return array_merge($created, array('mailed' => $mailed));
+    if (!empty($options['notify'])) {
+        pg_mail_last_error('');
+        $mailed = pg_return_send_request_mail($id);
+        $mail_error = $mailed ? '' : trim(pg_mail_last_error());
+    }
+
+    return array_merge($created, array('mailed' => $mailed, 'mail_error' => $mail_error));
 }
 
 /* ---------------------------------------------------------------------------
@@ -4234,13 +4275,23 @@ function pg_return_refund($return_id, $options, $user_id = 0)
             : lang(array('string' => 'Return request {var:1} of order {var:2} was recorded as refunded another way: {var:3}.', 'vars' => $vars)), $log_user);
     }
 
+    $mailed = false;
+    $mail_error = '';
+
+    if ($amount > 0) {
+        pg_mail_last_error('');
+        $mailed = pg_return_send_refund_mail($return['id'], $amount, $method, $credit);
+        $mail_error = $mailed ? '' : trim(pg_mail_last_error());
+    }
+
     return array(
         'ok'     => true,
         'error'  => '',
         'code'   => '',
         'amount' => $amount,
         'method' => $method,
-        'mailed' => ($amount > 0) ? pg_return_send_refund_mail($return['id'], $amount, $method, $credit) : false,
+        'mailed' => $mailed,
+        'mail_error' => $mail_error,
         'erp'    => $plan['erp'],
         'unclear' => false,
         'credit' => $credit,

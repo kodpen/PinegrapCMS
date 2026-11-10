@@ -881,6 +881,11 @@
         if (el.labels && el.labels.length && el.labels[0].textContent.trim()) {
             ghost.setAttribute('aria-label', el.labels[0].textContent.replace(/\s+/g, ' ').trim());
         }
+        // Help tied to the hidden input, by hand or by pgBindFieldHelp()
+        // before this draw, is read on the box typed in.
+        if (el.getAttribute('aria-describedby')) {
+            ghost.setAttribute('aria-describedby', el.getAttribute('aria-describedby'));
+        }
         // Not readOnly: the settings dialog shuts every text field read-only
         // until it is reached, the hidden input too.
         if (el.disabled) {

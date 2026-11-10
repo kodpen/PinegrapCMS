@@ -3956,6 +3956,34 @@ function pg_page_form_noindex_sql($flags, $ready)
 }
 
 /**
+ * The canonical address, noarchive and max-snippet pieces of the page
+ * INSERT, empty while the columns are missing (pg_page_seo_extras_ready()) or
+ * when the form did not carry the fields. The canonical address goes as a ?
+ * value; the two numbers are written inline, and an empty snippet length as
+ * NULL: '' is refused by the INT column under STRICT_TRANS_TABLES.
+ *
+ * @param bool     $ready          Whether the columns exist
+ * @param bool     $sent           Whether the form carried the fields
+ * @param string   $canonical_url  pg_page_canonical_url_check() 'value'
+ * @param mixed    $noarchive      The posted box, 1 when ticked
+ * @param int|null $max_snippet    pg_page_max_snippet_check() 'value'
+ * @return array  'columns' and 'values', each ending in a comma, and 'params'
+ *                for the ? in 'values'
+ */
+function pg_page_form_seo_extras_insert_sql($ready, $sent, $canonical_url, $noarchive, $max_snippet)
+{
+    if (!$ready || !$sent) {
+        return array('columns' => '', 'values' => '', 'params' => array());
+    }
+
+    return array(
+        'columns' => "canonical_url, noarchive, max_snippet,",
+        'values' => "?, '" . (($noarchive == 1) ? 1 : 0) . "', " . (($max_snippet === null) ? "NULL" : "'" . (int) $max_snippet . "'") . ",",
+        'params' => array((string) $canonical_url),
+    );
+}
+
+/**
  * Whether a save sends the user on to the form designer, and to which form.
  * A new page ($current null) goes there for every form the page has on: a
  * custom form page, or a shipping, billing or express order form switched

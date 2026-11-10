@@ -136,6 +136,21 @@ function payment_iyzico_threeds_return_test_completed_line()
 		'vars'   => array('Ayşe', 'Yılmaz', 'ayse@example.com')));
 }
 
+// The Site Log line of a payment iyzico refused on the return: the order and
+// the payment it is found by, with the mdStatus the bank posted.
+function payment_iyzico_threeds_return_test_refused_line($code, $group, $message, $md_status = '1')
+{
+	return lang(array(
+		'string' => 'Iyzipay 3D Secure payment for order #{var:1} was not accepted: code {var:2}, group {var:3}, message {var:4} (payment {var:5}, conversation {var:6}, mdStatus {var:7}).',
+		'vars'   => array(438, $code, $group, $message, '24680', '123456789', $md_status)));
+}
+
+// The second line of a refusal whose code names no reason on the card's side.
+function payment_iyzico_threeds_return_test_bank_answer_line()
+{
+	return lang('iyzico gave no card-side reason for this refusal. The bank\'s own answer is shown on the payment\'s detail in the iyzico panel; iyzico support can say what it means.');
+}
+
 /* ---------------------------------------------------------------------------
    The order's figures
    --------------------------------------------------------------------------- */
@@ -351,9 +366,9 @@ function test_payment_iyzico_threeds_return_bank_and_fraud_refusals()
 			lang('3D Secure verification failed. Please try again.'),
 			array(lang(array('string' => 'Iyzipay 3D Secure verification failed (error 5002) for payment {var:1}.', 'vars' => array('24680'))))),
 		'not paid' => array(
-			array('status' => 'failure', 'errorCode' => '10051', 'errorMessage' => 'Yetersiz bakiye'),
-			lang('Payment could not be verified. Please try again.'),
-			array(lang(array('string' => 'Iyzipay 3D Secure payment was not accepted: code {var:1}, message {var:2}', 'vars' => array('10051', 'Yetersiz bakiye'))))),
+			array('status' => 'failure', 'errorCode' => '10051', 'errorGroup' => 'NOT_SUFFICIENT_FUNDS', 'errorMessage' => 'Kart limiti yetersiz, yetersiz bakiye'),
+			lang(array('string' => 'Your bank did not approve the payment ({var:1}). Please check your card with your bank or try another card.', 'vars' => array('Kart limiti yetersiz, yetersiz bakiye'))),
+			array(payment_iyzico_threeds_return_test_refused_line('10051', 'NOT_SUFFICIENT_FUNDS', 'Kart limiti yetersiz, yetersiz bakiye'))),
 		'fraud' => array(
 			payment_iyzico_threeds_return_test_paid(array('fraudStatus' => -1)),
 			lang('Payment was found to be risky and rejected.'),
@@ -378,6 +393,147 @@ function test_payment_iyzico_threeds_return_bank_and_fraud_refusals()
 
 	pg_assert_true($review['success'], 'a payment under review completes the order, as before');
 	pg_assert_same(array(lang(array('string' => 'Iyzipay holds payment {var:1} for a fraud review.', 'vars' => array('24680'))), payment_iyzico_threeds_return_test_completed_line()), $review['log']);
+}
+
+// What iyzico refuses is told by its code. A reason on the card's side is
+// given in the bank's words. Any other bank code (an answer iyzico does not
+// know, the terminal) does not send the visitor to their bank, and the log
+// says where the bank's own answer is read. A lost card and a code that is
+// not a bank's keep the sentence that names no reason.
+function test_payment_iyzico_threeds_return_refusal_sentence_follows_the_code()
+{
+	$plain = lang('Payment could not be verified. Please try again.');
+	$other_card = lang('The payment could not be taken with this card right now. Please try another card or contact us.');
+
+	$cases = array(
+		'an answer iyzico does not know' => array('10202', 'UNKNOWN', 'Ödeme işlemi esnasında genel bir hata oluştu', $other_card, true),
+		'the terminal'                   => array('10058', 'NOT_PERMITTED_TO_TERMINAL', 'Terminalin bu işlemi yapmaya yetkisi yok', $other_card, true),
+		'a lost card'                    => array('10041', 'LOST_CARD', 'Kayıp kart, karta el koyunuz', $plain, false),
+		'not a bank code'                => array('5087', '', 'Ödeme bulunamadı', $plain, false),
+		'a card-side code without words' => array('10005', 'DO_NOT_HONOUR', '', lang('Your bank did not approve the payment. Please check your card with your bank or try another card.'), false),
+	);
+
+	foreach ($cases as $label => $case) {
+		list($code, $group, $message, $error, $bank_answer) = $case;
+
+		$http = payment_iyzico_test_http(array('/payment/3dsecure/auth' => array('status' => 'failure', 'errorCode' => $code, 'errorGroup' => $group, 'errorMessage' => $message)));
+		$answer = payment_iyzico_threeds_return_test_complete(payment_iyzico_threeds_return_test_post(), array('installment' => 3), $store);
+
+		$log = array(payment_iyzico_threeds_return_test_refused_line($code, ($group !== '') ? $group : '-', ($message !== '') ? $message : '-'));
+
+		if ($bank_answer) {
+			$log[] = payment_iyzico_threeds_return_test_bank_answer_line();
+		}
+
+		pg_assert_false($answer['success'], $label);
+		pg_assert_same($error, $answer['error'], $label);
+		pg_assert_same($log, $answer['log'], $label);
+		pg_assert_same(1, count($http->posts), $label . ': no cancel');
+		pg_assert_same(array(), $answer['state'], $label . ': the wait ends');
+	}
+}
+
+// iyzico posts the result of the bank's verification with the payment. A
+// status other than success is a cardholder the bank did not verify: iyzico
+// is not asked for the payment, the row stays unclaimed, and the log keeps
+// the bank's mdStatus with what it means.
+function test_payment_iyzico_threeds_return_stops_at_a_failed_verification()
+{
+	$cases = array(
+		'the signature' => array(array('status' => 'failure', 'mdStatus' => '0'), '0', '24680'),
+		'no payment id' => array(array('status' => 'failure', 'mdStatus' => '5', 'paymentId' => ''), '5', '-'),
+		'no mdStatus'   => array(array('status' => 'failure', 'mdStatus' => ''), '', '24680'),
+	);
+
+	foreach ($cases as $label => $case) {
+		list($changes, $md_status, $payment_id) = $case;
+
+		$http = payment_iyzico_test_http();
+		$answer = payment_iyzico_threeds_return_test_complete(payment_iyzico_threeds_return_test_post($changes), array('installment' => 3), $store);
+
+		pg_assert_false($answer['success'], $label);
+		pg_assert_same(lang('3D Secure verification failed. Please try again.'), $answer['error'], $label);
+		pg_assert_same(array(lang(array(
+			'string' => 'Iyzipay 3D Secure verification was not passed for order #{var:1}: status {var:2}, mdStatus {var:3} ({var:4}), payment {var:5}, conversation {var:6}.',
+			'vars'   => array(438, 'failure', ($md_status !== '') ? $md_status : '-', pg_payment_iyzico_md_status_meaning($md_status), $payment_id, '123456789')))), $answer['log'], $label);
+		pg_assert_same(array(), $http->posts, $label . ': iyzico is not asked');
+		pg_assert_same(array(), $store['claimed'], $label . ': the row is not claimed');
+		pg_assert_same(array(), $answer['state'], $label . ': the wait ends');
+	}
+
+	// Another order's row is no payment of this session, whatever it says.
+	$http = payment_iyzico_test_http();
+	$answer = payment_iyzico_threeds_return_test_complete(
+		payment_iyzico_threeds_return_test_post(array('status' => 'failure', 'mdStatus' => '0')),
+		array('installment' => 3),
+		$store,
+		array('rows' => array('123456789' => payment_iyzico_threeds_return_test_row(array('order_id' => '437')))));
+
+	pg_assert_same(lang('Session could not be verified. Please try again.'), $answer['error']);
+	pg_assert_same(array('installment' => 3), $answer['state'], 'the wait goes on');
+	pg_assert_same(array(), $http->posts);
+
+	// iyzico's own word decides: success in any case, an answer with no status
+	// (read as before the status was) and a success with another mdStatus all
+	// go on to iyzico.
+	$without_status = payment_iyzico_threeds_return_test_post();
+	unset($without_status['status']);
+
+	$asked = array(
+		'upper case'    => payment_iyzico_threeds_return_test_post(array('status' => 'SUCCESS')),
+		'no status'     => $without_status,
+		'a status list' => payment_iyzico_threeds_return_test_post(array('status' => array('failure'))),
+		'mdStatus 4'    => payment_iyzico_threeds_return_test_post(array('mdStatus' => '4')),
+	);
+
+	foreach ($asked as $label => $post) {
+		$http = payment_iyzico_test_http(array('/payment/3dsecure/auth' => payment_iyzico_threeds_return_test_paid()));
+		$answer = payment_iyzico_threeds_return_test_complete($post, array('installment' => 3), $store);
+
+		pg_assert_true($answer['success'], $label);
+		pg_assert_same(1, count($http->posts), $label . ': iyzico is asked');
+	}
+}
+
+// Each mdStatus iyzico lists has its own words for the log.
+function test_payment_iyzico_md_status_meanings()
+{
+	$meanings = array();
+
+	foreach (array('0', '1', '2', '3', '4', '5', '6', '7', '8') as $md_status) {
+		$meanings[$md_status] = pg_payment_iyzico_md_status_meaning($md_status);
+		pg_assert_true($meanings[$md_status] !== '', 'mdStatus ' . $md_status);
+	}
+
+	pg_assert_same(9, count(array_unique($meanings)), 'each its own');
+	pg_assert_same($meanings['0'], pg_payment_iyzico_md_status_meaning('-1'), 'one bank posts -1 for 0');
+	pg_assert_same($meanings['4'], pg_payment_iyzico_md_status_meaning(4), 'a number');
+
+	$unlisted = pg_payment_iyzico_md_status_meaning('9');
+	$missing = pg_payment_iyzico_md_status_meaning('');
+
+	pg_assert_false(in_array($unlisted, $meanings, true), 'a value iyzico does not list');
+	pg_assert_false(in_array($missing, $meanings, true), 'no mdStatus');
+	pg_assert_true($unlisted !== $missing);
+	pg_assert_same($missing, pg_payment_iyzico_md_status_meaning(null));
+	pg_assert_same($missing, pg_payment_iyzico_md_status_meaning(array('0')), 'a list is no mdStatus');
+}
+
+// A bank error code is five digits from 10000. The codes of a reason on the
+// card's side, and the three never told to the visitor, are named one by one.
+function test_payment_iyzico_refusal_kind()
+{
+	foreach (array('10005', '10012', '10051', '10054', '10057', '10084', '10093', '10201', '10206', '10207', '10209', '10212', '10215', '10217', '10218', '10224', '10225', '10226', '10227', '10229', 10051, ' 10051 ') as $code) {
+		pg_assert_same('card', pg_payment_iyzico_refusal_kind($code), 'card ' . trim((string) $code));
+	}
+
+	foreach (array('10202', '10204', '10058', '10208', '10210', '10214', '10219', '10222', '10228', '10000', '10999') as $code) {
+		pg_assert_same('other', pg_payment_iyzico_refusal_kind($code), 'other ' . $code);
+	}
+
+	foreach (array('10034', '10041', '10043', '5087', '5002', '1001', '12', '', 'curl_28', '9999', '100510', '20000', 'x10051', null, array('10051')) as $code) {
+		pg_assert_same('plain', pg_payment_iyzico_refusal_kind($code), 'plain ' . (is_scalar($code) ? (string) $code : gettype($code)));
+	}
 }
 
 // The order must still total what the payment was started with, and iyzico
