@@ -12,9 +12,7 @@ description: The printed order (print_order.php) carries the order screen's tax 
 - Applied gift cards: an "Applied Gift Cards" heading; the "Givex Auth #" row only for Givex cards (`givex != 0`).
 - Recurring lines: `lang('No limit')`, not the literal `[no limit]`.
 - The product form heading closes with `</div>`; a stray `</legend>` left the form answers inside the uppercase heading.
-
-## What was left out on purpose?
-- Repeating table headers on later printed pages (an enhancement, not a defect).
+- Item tables: the heading row is a `<thead>` (repeated on each printed page) with `scope="col"` headings, the rows a `<tbody>` (#PRNUM).
 
 ## How is it checked?
 - `tests/print_order_parity_test.php` (source pins). Not rendered in a browser.
