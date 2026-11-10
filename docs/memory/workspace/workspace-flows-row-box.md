@@ -26,5 +26,5 @@ description: The row start box of flows (#3064): a table row added, changed or d
 - workspace_flow.js: `KINDS.row`, palette entry only while `FL.steps.tables` (from `ws_flow_row_tables()`, tables reached, at most 200, with columns) is not empty; `rowFields()` (table, what, column for a change), `rowMeta()`, `rowCellValues()` add the cells in the value picker. Texts `fl_row_*`, `fl_kind_row`.
 - How the start reads in lists: `ws_flow_row_start_text()` names the table and column only to a reader of the table.
 
-## Left?
-- Add/set row boxes: workspace-flows-table-boxes.md (F6b-1; canvas F6b-2). Run from a table: workspace-flows-from-table.md.
+## Where are the add/set row boxes and run from a table?
+- Add/set row boxes: `workspace-flows-table-boxes.md` (F6b-1; canvas F6b-2, `workspace-flows-table-box-form.md`). Run from a table: `workspace-flows-from-table.md`.
