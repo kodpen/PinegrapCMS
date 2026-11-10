@@ -228,7 +228,8 @@ function ws_wtable_query_from_get($get)
  * A value typed into the bar as a condition compares it: a figure and money
  * the site's way (money to minor units, rounded), a date as ISO or in the
  * site's order, a status by its label or key, a checkbox by yes or no, a
- * person by name or number, a record as kind:id or its number. What it
+ * person by name or number, a record as kind:id or its number, an item of a
+ * list of numbers as a figure. What it
  * cannot read is kept as typed, so the check names it. Pure but for lang().
  *
  * @param array  $column
@@ -299,6 +300,8 @@ function ws_wtable_query_screen_value($column, $text, $people = array(), $date_f
 
         case 'link':
             return preg_match('/^[a-z_]{1,32}\s*[:#]\s*([0-9]{1,18})$/i', $text, $parts) ? $parts[1] : $text;
+        case 'list':
+            return (ws_wtable_list_of($column) === 'number') ? ws_wtable_query_screen_value(array('type' => 'number'), $text) : $text;
     }
 
     return $text;

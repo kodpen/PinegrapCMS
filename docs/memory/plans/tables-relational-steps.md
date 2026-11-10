@@ -27,6 +27,6 @@ description: Steps 1-8 of plans/tables-relational.md: row choice, conditions and
   - a rollup works out the count, sum, average, smallest or largest value of a column over the rows of another table that link to this row (Customers › sum of their Orders' Amount), with step 2 conditions if any.
   - On the screen, board, API, MCP and every flow box reading a row. A reader who does not read the other table sees "a row of a table you do not read" and empty joined columns.
 
-- 7: a list column (an array): several texts or several numbers in one cell, typed one per line. A flow gives it as a JSON list, so For each can walk it. Conditions read "contains". Formulas count it. The privacy reader and the import learn it.
+- 7 (done, PR #8486): a list column (an array): several texts or several numbers in one cell, typed one per line. A flow gives it as a JSON list, so For each can walk it. Conditions read "contains". Formulas count it. The privacy reader and the import learn it (`workspace/workflow-tables-lists.md`).
 
 - 8: changing a column's type, like ALTER … MODIFY: text, number, money, date, list and checkbox can turn into one another. A dry run lists each cell that does not convert, and the change is refused while any is left.

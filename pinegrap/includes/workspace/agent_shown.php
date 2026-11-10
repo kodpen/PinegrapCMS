@@ -178,7 +178,7 @@ function ws_agent_request_state($row)
         ? db_item("SELECT handle, kind, door_kind, door_failures, door_last_knock FROM ws_agents WHERE id = '" . (int) $parsed['id'] . "'")
         : null;
 
-    $handle = is_array($agent) ? '@' . $agent['handle'] : lang('Agent');
+    $handle = is_array($agent) ? '@' . $agent['handle'] : lang('The agent');
     $next_try = 0;
 
     // A poll door is never knocked: its failures say nothing of the queue.
@@ -239,7 +239,7 @@ function ws_agent_picker_entries($rows)
 
         $entries[$app_id] = array(
             'label' => '@' . $handle,
-            'meta'  => ((string) ($row['name'] ?? '') !== '') ? (string) $row['name'] : lang('Agent'),
+            'meta'  => ((string) ($row['name'] ?? '') !== '') ? (string) $row['name'] : lang('The agent'),
             'icon'  => 'bi-robot',
             'token' => '<@app:' . $app_id . '>',
             'shown' => '@' . $handle,

@@ -273,7 +273,33 @@ function test_workspace_wtable_screen_error_text_words_every_code()
 	$fallback = ws_wtable_screen_error_text('no_such_code');
 
 	foreach (array('not_found', 'forbidden', 'name_empty', 'too_many_rows', 'changed_meanwhile', 'cells_invalid', 'channel_level',
-		'target_not_member', 'not_minor_units', 'not_link', 'unknown_column', 'type_fixed', 'formula_empty') as $code) {
+		'target_not_member', 'not_minor_units', 'not_link', 'unknown_column', 'type_fixed', 'formula_empty',
+		'not_list', 'list_too_long', 'item_too_long', 'list_of_invalid') as $code) {
 		pg_assert_true(ws_wtable_screen_error_text($code) !== $fallback, $code . ' has its own sentence');
 	}
+}
+
+// A list cell: one item a line in its field, joined by commas in the list,
+// one item a line in the Excel download; numbers the site's way.
+function test_workspace_wtable_screen_list_cells()
+{
+	$texts = array('type' => 'list', 'options' => array('of' => 'text'));
+	$numbers = array('type' => 'list', 'options' => array('of' => 'number'));
+
+	pg_assert_same(array('Red', '', 'Blue'), ws_wtable_screen_cell_from_form($texts, "Red\r\n\r\nBlue"));
+	pg_assert_same(array('Red', 'Blue'), ws_wtable_cell_check($texts, ws_wtable_screen_cell_from_form($texts, "Red\n\nBlue"))['value'], 'empty lines dropped by the store');
+	pg_assert_same("Red\nBlue", ws_wtable_screen_cell_to_form($texts, array('Red', 'Blue')));
+	pg_assert_same('Red, Blue', ws_wtable_screen_cell_text($texts, array('Red', 'Blue')));
+	pg_assert_same("Red\nBlue", ws_wtable_export_cell($texts, array('Red', 'Blue')));
+	pg_assert_same('', ws_wtable_screen_cell_text($texts, null));
+
+	ws_wtable_screen_test_in(true, function () use ($numbers) {
+		pg_assert_same(array(1.5, 1250.0, 'x'), ws_wtable_screen_cell_from_form($numbers, "1,5\n1.250\nx"), 'what cannot be read is left for the store');
+		pg_assert_same(array(1.5, 1250), ws_wtable_cell_check($numbers, ws_wtable_screen_cell_from_form($numbers, "1,5\n1.250"))['value']);
+		pg_assert_same('1,5; 1.250', implode('; ', ws_wtable_screen_list_items($numbers, array(1.5, 1250))));
+		pg_assert_same("1,5\n1250", ws_wtable_screen_cell_to_form($numbers, array(1.5, 1250)), 'a field ungrouped');
+	});
+
+	pg_assert_same(array('of' => 'number'), ws_wtable_screen_options_from_form('list', array('of' => 'number')));
+	pg_assert_same(array(), ws_wtable_screen_options_from_form('list', array()), 'a made column\'s form sends none');
 }

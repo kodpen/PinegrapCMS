@@ -323,6 +323,7 @@
     "Give the hours as a start and an end, like 09:00 and 18:00.": "Saatleri başlangıç ve bitiş olarak verin, ör. 09:00 ve 18:00.",
     "Give the look a name first.": "Önce görünüme bir ad verin.",
     "Give the mailbox a name of at most 100 characters.": "E-posta kutusuna en fazla 100 karakterlik bir ad verin.",
+    "Give the monthly token limit as a whole number, or 0 for none.": "Aylık token sınırını tam sayı olarak verin; sınır yoksa 0.",
     "Give the name, length and draught of the boat, and how many nights you stay.": "Teknenin adını, boyunu ve su çekimini, kaç gece kalacağınızı bildirin.",
     "Give the number of boxes as a whole number from 1 to {var:1}.": "Koli sayısını 1 ile {var:1} arasında bir tam sayı olarak girin.",
     "Give the number the count is compared with.": "Sayacın karşılaştırılacağı sayıyı yazın.",

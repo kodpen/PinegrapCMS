@@ -1364,7 +1364,8 @@ function pg_privacy_wtable_link_kinds()
  * The cells of one workflow table row that name the person: a person cell
  * holding one of their accounts, a record link to their contact, account or
  * current account. A cell of a column the table no longer has stays in the
- * JSON until the row's next write, so it is read as either. Pure.
+ * JSON until the row's next write, so it is read as either; a list cell
+ * (texts or numbers) is neither. Pure.
  *
  * @param array $types  column id => type, every column the table has
  * @param array $cells  column id => value, as stored
@@ -1380,6 +1381,12 @@ function pg_privacy_wtable_cell_hits(array $types, array $cells, array $scope)
         $id = (string) $id;
         $type = isset($types[$id]) ? (string) $types[$id] : 'gone';
         $targets = array();
+
+        // A list holds texts or numbers, never an account: its number 7 is
+        // nobody's id, now or once its column is deleted.
+        if (($type === 'list') || (is_array($value) && !empty($value) && ($value === array_values($value)))) {
+            continue;
+        }
 
         if (($type === 'person') || ($type === 'gone')) {
             $targets[] = array('user_ids', $value);

@@ -7,8 +7,9 @@
  * body made fit for each API, the request's agent, the hold, the address
  * check, the config a running assistant sees, that ai.php reaches the
  * gateway's licence and hold only for Pinegrap AI's own requests, that the
- * loop's failure sentences name the assistant, and that its own row in a
- * channel decides whether it is asked there.
+ * loop's failure sentences name the assistant, that its own row in a
+ * channel decides whether it is asked there, and that the Site Log line of
+ * its answer names it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -228,8 +229,8 @@ function test_workspace_model_http_error_names_the_assistant()
 // as it decides an application agent's answer, so a private channel nobody
 // opened to Pinegrap AI does not keep out an assistant its people added. A
 // channel closed to Pinegrap AI on purpose keeps it out too: closing is the
-// channel manager's, while whoever may post in a channel adds an assistant
-// to it.
+// channel manager's, while a row there can be a member's (a public channel's,
+// or a private one's from before only its manager added agents).
 function test_workspace_model_channel_verdict()
 {
 	$row = array('channel_id' => 30, 'agent_id' => 7, 'allowed' => 1);
@@ -303,4 +304,49 @@ function test_workspace_model_loop_sentences_are_used()
 
 	$error = workspace_model_agents_test_source('ws_ai_http_error');
 	pg_assert_true(strpos($error, 'ws_model_http_error($running, $response)') < strpos($error, "lang(array('string' => 'Pinegrap AI answered HTTP"), 'a failed call turns to the assistant first');
+}
+
+// The Site Log line of an answer written in a channel names whoever
+// answered: Pinegrap AI for its own requests; the model assistant by its
+// @handle while one runs, in the words an application agent's answer is
+// logged with, and signed with the assistant's name where Pinegrap AI's
+// lines carry Pinegrap AI's.
+function test_workspace_model_log_line_names_the_assistant()
+{
+	$channel = array('id' => 30, 'kind' => 'public', 'name' => 'general');
+
+	pg_assert_same(null, ws_model_running());
+
+	$own = ws_ai_log_answered($channel);
+	pg_assert_same(lang(array('string' => 'Pinegrap AI answered a request in #{var:1}', 'vars' => 'general')), $own, 'Pinegrap AI\'s own answer keeps its line');
+	pg_assert_same($own . ' (Pinegrap AI)', ws_ai_log_line($own), 'and its signature');
+
+	ws_model_running(workspace_model_agents_test_running());
+
+	try {
+		$said = ws_ai_log_answered($channel);
+		pg_assert_same(lang(array('string' => '@{var:1} answered a request in #{var:2}', 'vars' => array('gemini', 'general'))), $said, 'the assistant by its handle');
+		pg_assert_same(ws_model_log_answered(ws_model_running(), $channel), $said, 'the assistant\'s own sentence');
+		pg_assert_same($said . ' (Gemini Helper)', ws_ai_log_line($said), 'signed with its name');
+		pg_assert_false(strpos(ws_ai_log_line($said), 'Pinegrap AI') !== false, 'never as Pinegrap AI');
+	} finally {
+		ws_model_running(null);
+	}
+}
+
+// The loop writes its Site Log lines through them, and the assistant's line
+// is the one an application agent's answer leaves.
+function test_workspace_model_log_line_is_used()
+{
+	$deliver = workspace_model_agents_test_source('ws_ai_deliver');
+	pg_assert_contains('ws_ai_log(ws_ai_log_answered($channel))', $deliver, 'an answer in a channel is logged for the one answering');
+	pg_assert_false(strpos($deliver, "'Pinegrap AI answered a request in #{var:1}'") !== false, 'ws_ai_deliver holds no such line for Pinegrap AI alone');
+
+	$log = workspace_model_agents_test_source('ws_ai_log');
+	pg_assert_contains('log_activity(ws_ai_log_line($what), $owner)', $log, 'every line is signed for the one answering');
+	pg_assert_false(strpos($log, 'Pinegrap AI') !== false, 'ws_ai_log itself signs nothing as Pinegrap AI');
+
+	$words = "'@{var:1} answered a request in #{var:2}'";
+	pg_assert_contains($words, workspace_model_agents_test_source('ws_model_log_answered'));
+	pg_assert_contains($words, workspace_model_agents_test_source('ws_api_agent_request_answer'), 'the words of an application agent\'s answer');
 }

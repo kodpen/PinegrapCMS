@@ -84,7 +84,8 @@ function ws_wtable_where_test_one($column, $op, $value = '')
 // by what they hold; a checkbox ticked or not.
 function test_workspace_wtable_where_operators()
 {
-	pg_assert_same(array('eq', 'neq', 'lt', 'gt', 'lte', 'gte', 'contains', 'starts', 'empty', 'not_empty'), array_keys(ws_wtable_where_operators()));
+	pg_assert_same(array('eq', 'neq', 'lt', 'gt', 'lte', 'gte', 'contains', 'not_contains', 'starts', 'empty', 'not_empty'), array_keys(ws_wtable_where_operators()));
+	pg_assert_same(array('contains', 'not_contains', 'empty', 'not_empty'), ws_wtable_where_type_operators('list'));
 	pg_assert_same(array('all', 'any'), ws_wtable_where_joins());
 
 	pg_assert_same(array('eq', 'neq', 'contains', 'starts', 'empty', 'not_empty'), ws_wtable_where_type_operators('text'));
@@ -327,4 +328,41 @@ function test_workspace_wtable_where_totals()
 
 	$rounded = ws_wtable_rows_totals(array('3' => $columns['3']), array(array('cells' => array('3' => 1)), array('cells' => array('3' => 2))));
 	pg_assert_same(2, $rounded['3']['avg'], '1.5 minor units round to 2');
+}
+
+// A list column: contains holds when an item is the value (a text without
+// case, a number by size); a list sorts by how many items it holds.
+function test_workspace_wtable_where_lists()
+{
+	$columns = array(
+		'1' => array('id' => 1, 'name' => 'Tags', 'type' => 'list', 'options' => array('of' => 'text')),
+		'2' => array('id' => 2, 'name' => 'Sizes', 'type' => 'list', 'options' => array('of' => 'number')),
+	);
+	$rows = array(
+		array('id' => 1, 'cells' => array('1' => array('Kırmızı', 'Blue'), '2' => array(36, 38.5))),
+		array('id' => 2, 'cells' => array('1' => array('Green'), '2' => array(40))),
+		array('id' => 3, 'cells' => array()),
+	);
+	$ids = function ($conditions) use ($columns, $rows) {
+		return array_column(ws_wtable_rows_where($columns, $rows, $conditions), 'id');
+	};
+	$one = 'ws_wtable_where_test_one';
+
+	pg_assert_same(array(1), $ids(array($one(1, 'contains', 'KIRMIZI'))), 'without case, Turkish capitals too');
+	pg_assert_same(array(), $ids(array($one(1, 'contains', 'Blu'))), 'an item, not a part of one');
+	pg_assert_same(array(2, 3), $ids(array($one(1, 'not_contains', 'blue'))), 'an empty list holds none');
+	pg_assert_same(array(1), $ids(array($one(2, 'contains', '38.50'))), 'a number by size');
+	pg_assert_same(array(), $ids(array($one(2, 'contains', 'big'))), 'a value that does not fit holds for no row');
+	pg_assert_same(array(), $ids(array($one(2, 'not_contains', 'big'))));
+	pg_assert_same(array(3), $ids(array($one(1, 'empty'))));
+	pg_assert_same(array(1, 2), $ids(array($one(2, 'not_empty'))));
+	pg_assert_same(array(), $ids(array($one(1, 'eq', 'Green'))), 'a comparison the type does not take');
+
+	pg_assert_same('', ws_wtable_where_value_fault($columns['1'], 'contains', 'anything'));
+	pg_assert_same('not_number', ws_wtable_where_value_fault($columns['2'], 'contains', '1,5'));
+	pg_assert_same('operator', ws_wtable_where_value_fault($columns['2'], 'gt', '1'));
+
+	pg_assert_same(array(1, 2, 3), array_column(ws_wtable_rows_sorted($columns, $rows, 1, 'desc'), 'id'), 'by how many items, empty last');
+	pg_assert_same(array(2, 1, 3), array_column(ws_wtable_rows_sorted($columns, $rows, 1, 'asc'), 'id'));
+	pg_assert_same(array(), ws_wtable_rows_totals($columns, $rows), 'a list is not totalled');
 }

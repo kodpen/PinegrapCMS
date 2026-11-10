@@ -5076,7 +5076,7 @@
         var add = function (token, item) {
             if (!keys[item.key]) {
                 keys[item.key] = true;
-                list.push({ token: '{{' + token + item.key + '}}', key: item.key, label: item.label, type: item.type || 'text' });
+                list.push({ token: '{{' + token + item.key + '}}', key: item.key, label: item.label, type: item.type || 'text', list: !!item.list });
             }
         };
 
@@ -5471,12 +5471,14 @@
     }
 
     // Whether a value holds a list a For each box may go through: a
-    // webhook's answer, the list an End for each box gathered, or the rows
-    // a box read (ws_step_rows_get_list()).
+    // webhook's answer, the list an End for each box gathered, the rows a
+    // box read (ws_step_rows_get_list()), or a list column's cell
+    // (ws_flow_row_cell_text()).
     function listValue(source) {
         return ((source.node.kind === 'webhook') && (source.value.key === 'body'))
             || ((source.node.kind === 'for_each_end') && (source.value.key === 'list'))
-            || ((source.node.kind === 'rows_get') && (source.value.key === 'rows'));
+            || ((source.node.kind === 'rows_get') && (source.value.key === 'rows'))
+            || !!source.value.list;
     }
 
     // Whether a field of a box may take a value: a For each box's list a
@@ -7657,12 +7659,13 @@
     }
 
     // The values of a row's cells a row box gives beside the server's own
-    // (ws_flow_row_outputs()): one per column of its table, by the column's name.
+    // (ws_flow_row_outputs()): one per column of its table, by the column's
+    // name; a list column's is a JSON list a For each box goes through.
     function rowCellValues(config) {
         var table = rowTable(config);
 
         return table ? table.columns.map(function (column) {
-            return { key: 'cell_' + column.id, label: column.name, type: ((column.type === 'number') || (column.type === 'money')) ? 'number' : 'text' };
+            return { key: 'cell_' + column.id, label: column.name, type: ((column.type === 'number') || (column.type === 'money')) ? 'number' : 'text', list: column.type === 'list' };
         }) : [];
     }
 
@@ -7972,6 +7975,11 @@
             return siteShown(value);
         }
 
+        // A list one item a line, numbers the site's way.
+        if ((column.type === 'list') && Array.isArray(value)) {
+            return value.map(function (item) { return (typeof item === 'number') ? siteShown(item) : String(item); }).join('\n');
+        }
+
         return (typeof value === 'object') ? JSON.stringify(value) : String(value);
     }
 
@@ -8003,6 +8011,17 @@
 
         if ((column.type === 'money') && (siteNumber(typed) !== null)) {
             return Math.round(Number(siteNumber(typed)) * Math.pow(10, cellPlaces(column)));
+        }
+
+        // A list one item a line, kept as a list; a value from a box before
+        // (a list a box read) stays a text the run fills, which the table
+        // reads as a JSON list or one item a line.
+        if (column.type === 'list') {
+            return /\{\{/.test(typed) ? typed : typed.split(/\r\n|\r|\n/).map(function (item) {
+                var number = ((column.options || {}).of === 'number') ? siteNumber(item.trim()) : null;
+
+                return (number !== null) ? Number(number) : item.trim();
+            }).filter(function (item) { return item !== ''; });
         }
 
         return (column.type === 'text') ? text : typed;
@@ -8052,11 +8071,11 @@
             return linkField(node, column, value);
         }
 
-        var help = { money: t('fl_rows_money_help'), date: t(options.time ? 'fl_rows_time_help' : 'fl_rows_date_help'), person: t('fl_rows_person_help') }[column.type] || '';
+        var help = { money: t('fl_rows_money_help'), date: t(options.time ? 'fl_rows_time_help' : 'fl_rows_date_help'), person: t('fl_rows_person_help'), list: t('fl_rows_list_help') }[column.type] || '';
 
         return valueField(node, column.name, cellShown(column, value), 4000, function (text) {
             setCell(node, id, cellKept(column, text));
-        }, column.type === 'text', help);
+        }, (column.type === 'text') || (column.type === 'list'), help);
     }
 
     // A record link: its kind (one of the column's, when it names any) and
