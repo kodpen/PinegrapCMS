@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-delay-box
-description: The delay box of a flow (F5b #2135, until mode B4): for a time or until a date from a value, at most 90 days, waits with wake_at, settles done with waited_until, try, canvas
+description: The Wait box ("Bekle", kind delay) of a flow (F5b #2135, until mode B4): for a time or until a date from a value, at most 90 days, waits with wake_at, settles done with waited_until, try, canvas
 ---
 
 ## What does it do?

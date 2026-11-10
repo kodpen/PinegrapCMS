@@ -1,6 +1,6 @@
 ---
 name: order-totals-overview
-description: Order totals across checkout, order pages and the ERP invoice: who works them out, who reads the header, rounding, where a kurus may differ and what is decided
+description: Order totals (a coupon's 1 kurus gap) across checkout, order pages and the ERP invoice: who works them out, who reads the header, rounding, where a kurus may differ and what is decided
 ---
 
 ## What makes an order's total?
