@@ -1704,33 +1704,35 @@ echo pg_page_shell(array(
    scrollbar instead - which is also what a spreadsheet does with the same
    problem. Stacking each row into a block was the other option and was rejected
    here: five applications would become thirty lines, and the whole point of
-   this screen is scanning them side by side. 720px is what the list column
-   beside the status column holds on a 1280px screen without a scrollbar. */
+   this screen is scanning them side by side. 45rem (720px at the default text
+   size) is what the list column beside the status column holds on a 1280px
+   screen without a scrollbar; in rem the threshold grows with the text. The
+   last column holds only the chevron icon and stays px. */
 .api-scroll { overflow-x: auto; overflow-y: hidden; }
 .api-head, .api-row { display: grid; grid-template-columns: 1.9fr 1.5fr .85fr 1.15fr .9fr 34px;
-	gap: 14px; align-items: center; min-width: 720px; }
-.api-head { padding: 0 16px 8px; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--pg-fg-2); }
+	gap: 14px; align-items: center; min-width: 45rem; }
+.api-head { padding: 0 16px 8px; font-size: 0.65625rem; letter-spacing: .06em; text-transform: uppercase; color: var(--pg-fg-2); }
 .api-row { padding: 13px 16px; border-top: 1px solid var(--pg-border-color); cursor: pointer; }
 .api-row:hover, .api-row:focus-visible { background: var(--pg-bg-1); }
 /* Inset: .api-scroll clips a ring drawn outside the row. */
 .api-row:focus-visible { outline: 2px solid var(--pg-primary-ink); outline-offset: -2px; }
 .api-name { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .api-name i { opacity: .7; }
-.api-name b { font-size: 13px; display: block; }
+.api-name b { font-size: 0.8125rem; display: block; }
 /* Secondary text colour rather than opacity: faded chips and codes read
    under 3:1 on the light card. */
-.api-name code { font-size: 10.5px; color: var(--pg-fg-2); }
+.api-name code { font-size: 0.65625rem; color: var(--pg-fg-2); }
 .api-chips { display: flex; flex-wrap: wrap; gap: 4px; }
-.api-chip { font-size: 10px; padding: 2px 6px; border-radius: 5px; border: 1px solid var(--pg-border-color); }
+.api-chip { font-size: 0.625rem; padding: 2px 6px; border-radius: 5px; border: 1px solid var(--pg-border-color); }
 .api-chip.w { border-color: var(--pg-primary); color: var(--pg-primary-fg-emphasis); }
 .api-chip.muted { color: var(--pg-fg-2); }
-.api-status { font-size: 10.5px; padding: 3px 9px; border-radius: 20px; font-weight: 600;
+.api-status { font-size: 0.65625rem; padding: 3px 9px; border-radius: 20px; font-weight: 600;
 	border: 1px solid var(--pg-border-color); display: inline-block; }
 .api-status.on { color: var(--pg-success-fg-emphasis); border-color: color-mix(in srgb, var(--pg-success) 35%, transparent); }
 .api-status.off { color: var(--pg-fg-2); }
 .api-status.warn { color: var(--pg-warning-fg-emphasis); border-color: color-mix(in srgb, var(--pg-warning) 35%, transparent); }
-.api-meta { font-size: 11.5px; color: var(--pg-fg-2); }
-.api-meta small { display: block; font-size: 10.5px; color: var(--pg-fg-2); }
+.api-meta { font-size: 0.71875rem; color: var(--pg-fg-2); }
+.api-meta small { display: block; font-size: 0.65625rem; color: var(--pg-fg-2); }
 .api-meta small.bad { color: var(--pg-danger-fg-emphasis); }
 .api-empty { padding: 26px 16px; text-align: center; color: var(--pg-fg-2); border-top: 1px solid var(--pg-border-color); }
 
@@ -1739,10 +1741,11 @@ echo pg_page_shell(array(
 .api-perm { display: flex; align-items: center; gap: 12px; padding: 13px 2px;
 	border-top: 1px solid var(--pg-border-color); }
 .api-perm:first-of-type { border-top: 0; }
+/* An icon glyph, not text: it keeps its px size. */
 .api-perm > i { font-size: 15px; width: 18px; text-align: center; opacity: .7; }
 .api-perm-text { flex: 1; min-width: 0; }
-.api-perm-text b { display: block; font-size: 12.5px; }
-.api-perm-text span { display: block; font-size: 10.5px; color: var(--pg-fg-2); margin-top: 1px; }
+.api-perm-text b { display: block; font-size: 0.78125rem; }
+.api-perm-text span { display: block; font-size: 0.65625rem; color: var(--pg-fg-2); margin-top: 1px; }
 /* Below this the sentence under the resource name and the three-way control
    cannot share a line without one of them wrapping into the other. The control
    drops beneath the text and keeps its full width, which is the one part of
@@ -1753,7 +1756,7 @@ echo pg_page_shell(array(
 	.api-seg { margin-left: 30px; }
 }
 .api-seg { flex: none; }
-.api-seg .btn { --bs-btn-font-size: 11px; --bs-btn-padding-y: .25rem; --bs-btn-padding-x: .6rem;
+.api-seg .btn { --bs-btn-font-size: 0.6875rem; --bs-btn-padding-y: .25rem; --bs-btn-padding-x: .6rem;
 	--bs-btn-color: var(--pg-fg-2); --bs-btn-border-color: var(--pg-border-color);
 	--bs-btn-hover-border-color: var(--pg-border-color); }
 .api-seg .btn-check:checked + .btn { color: var(--pg-on-accent); background: var(--pg-primary); border-color: var(--pg-primary); }
@@ -1763,34 +1766,34 @@ echo pg_page_shell(array(
    in the dark theme dark ink at partial opacity sinks into the background. */
 .api-seg .btn.implied { color: var(--pg-primary-fg-emphasis); background: var(--pg-primary-bg-subtle);
 	border-color: var(--pg-primary); }
-.api-seg-none { display: inline-flex; align-items: center; justify-content: center; min-width: 34px;
-	font-size: 11px; opacity: .3; border: 1px solid var(--pg-border-color); border-left: 0; }
-.api-log { display: grid; grid-template-columns: 46px 1fr auto auto auto; gap: 9px; align-items: center;
-	padding: 8px 2px; border-top: 1px solid var(--pg-border-color); font-size: 11.5px; }
+.api-seg-none { display: inline-flex; align-items: center; justify-content: center; min-width: 2.125rem;
+	font-size: 0.6875rem; opacity: .3; border: 1px solid var(--pg-border-color); border-left: 0; }
+.api-log { display: grid; grid-template-columns: 2.875rem 1fr auto auto auto; gap: 9px; align-items: center;
+	padding: 8px 2px; border-top: 1px solid var(--pg-border-color); font-size: 0.71875rem; }
 .api-log:first-child { border-top: 0; }
-.api-log .m { font-size: 9.5px; font-weight: 700; text-align: center; border-radius: 4px; padding: 2px 0;
+.api-log .m { font-size: 0.59375rem; font-weight: 700; text-align: center; border-radius: 4px; padding: 2px 0;
 	background: var(--pg-bg-1); }
-.api-log code { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.api-log .s { font-size: 10.5px; font-weight: 600; }
+.api-log code { font-size: 0.6875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.api-log .s { font-size: 0.65625rem; font-weight: 600; }
 .api-log .s.ok { color: var(--pg-success-fg-emphasis); }
 .api-log .s.bad { color: var(--pg-danger-fg-emphasis); }
-.api-log .d, .api-log .t { font-size: 10.5px; color: var(--pg-fg-2); }
+.api-log .d, .api-log .t { font-size: 0.65625rem; color: var(--pg-fg-2); }
 .api-hook { border-top: 1px solid var(--pg-border-color); padding: 11px 2px; }
 .api-hook:first-child { border-top: 0; }
 .api-hook-top { display: flex; align-items: center; gap: 8px; }
-.api-hook-url { flex: 1; min-width: 0; font-size: 12px; word-break: break-all; }
+.api-hook-url { flex: 1; min-width: 0; font-size: 0.75rem; word-break: break-all; }
 .api-hook-events { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-.api-hook-meta { font-size: 10.5px; opacity: .65; margin-top: 6px; }
+.api-hook-meta { font-size: 0.65625rem; opacity: .65; margin-top: 6px; }
 /* A blocked subscription prints its line in the danger ink; faded, it reads
    3:1 in the light theme. */
 .api-hook-meta.fg-danger { opacity: 1; }
-.api-hook-error { font-size: 10.5px; color: var(--pg-danger-fg-emphasis); margin-top: 5px; word-break: break-word; }
+.api-hook-error { font-size: 0.65625rem; color: var(--pg-danger-fg-emphasis); margin-top: 5px; word-break: break-word; }
 .api-hook-acts { display: flex; gap: 5px; margin-top: 8px; }
 .api-secret-box { display: flex; align-items: center; gap: 8px; background: var(--pg-bg-1);
 	border: 1px solid var(--pg-border-color); border-radius: 8px; padding: 9px 11px; }
-.api-secret-box code { flex: 1; font-size: 12px; word-break: break-all; }
+.api-secret-box code { flex: 1; font-size: 0.75rem; word-break: break-all; }
 .api-guide { background: var(--pg-bg-1); border: 1px solid var(--pg-border-color); border-radius: 8px;
-	padding: 10px 12px; margin-bottom: 10px; font-size: 12.5px; }
+	padding: 10px 12px; margin-bottom: 10px; font-size: 0.78125rem; }
 .api-guide-title { font-weight: 600; margin-bottom: 6px; }
 .api-guide ol, .api-guide ul { padding-left: 18px; }
 .api-guide li + li { margin-top: 4px; }
