@@ -118,6 +118,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_catalogue.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtables.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_rows.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_where.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_query.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_shares.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_screen.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_board.php');

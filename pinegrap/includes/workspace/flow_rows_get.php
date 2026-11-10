@@ -252,29 +252,7 @@ function ws_step_where_column_refusal($columns, $condition)
         return '';
     }
 
-    $shown = mb_substr($value, 0, 60);
-
-    switch (ws_wtable_where_value_fault($column, $op, $value)) {
-        case 'not_number':
-            return lang(array('string' => 'The column “{var:1}” holds numbers, written as 12.5: “{var:2}” is not one.', 'vars' => array($name, $shown)));
-
-        case 'not_minor_units':
-            return lang(array('string' => 'The column “{var:1}” holds money in minor units, 1250 for 12.50: “{var:2}” is not a whole number.', 'vars' => array($name, $shown)));
-
-        case 'not_date':
-            return lang(array('string' => 'The column “{var:1}” holds dates, written as 2026-11-09 or 2026-11-09 14:30: “{var:2}” is not one.', 'vars' => array($name, $shown)));
-
-        case 'not_status':
-            return lang(array('string' => 'The column “{var:1}” has no status with the key “{var:2}”.', 'vars' => array($name, $shown)));
-
-        case 'not_checkbox':
-            return lang(array('string' => 'The column “{var:1}” is a checkbox: compare it with 1 (ticked) or 0 (not ticked).', 'vars' => $name));
-
-        case 'not_whole':
-            return lang(array('string' => 'The column “{var:1}” is compared by a number, a person\'s or a record\'s: “{var:2}” is not one.', 'vars' => array($name, $shown)));
-    }
-
-    return '';
+    return ws_wtable_where_fault_text($column, ws_wtable_where_value_fault($column, $op, $value), $value);
 }
 
 /**
