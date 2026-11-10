@@ -4,7 +4,7 @@ description: Changing a workflow table column's type (wtable_retype.php, PR #851
 ---
 
 ## What changes?
-- ALTER … MODIFY for workflow tables (plan `plans/tables-relational.md`, step 8): text, number, money, date, list and checkbox turn into one another, and a list of texts into a list of numbers and back (`ws_wtable_retype_types()`, `ws_wtable_retype_is_change()`). Person, status, record link, row link, lookup and formula do not (`type_not_changeable`); the same type is `type_same`.
+- ALTER … MODIFY for workflow tables (PR #8512, `workflow-tables-relational.md`): text, number, money, date, list and checkbox turn into one another, and a list of texts into a list of numbers and back (`ws_wtable_retype_types()`, `ws_wtable_retype_is_change()`). Person, status, record link, row link, lookup and formula do not (`type_not_changeable`); the same type is `type_same`.
 - No schema change: the column's `type` and `options` are rewritten and each converted row's cells.
 
 ## How does a cell convert?

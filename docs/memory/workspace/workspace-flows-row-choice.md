@@ -7,7 +7,7 @@ description: How Read a row (row_get) and Change a row (row_set) find their row 
 - On dev (2026-11-09), the owner's flow UNNN read the row "1" of the table Fırın. The box took "1" as the row's id, but the table screen numbers rows by `position` (1, 2, 3) and shows no ids. The table's only row had the id 14.
   - So the box was done with found 0 and empty cells, and the next post box failed: "Mesaj boş".
   - A typed "0" was refused with "names its row by its id or by one value", which did not say what was wrong.
-- The owner left the ways to the session (`workflow/decisions-made-product-40.md`, plan `plans/tables-relational.md`).
+- The owner left the ways to the session (`workflow/decisions-made-product-40.md`, `workflow-tables-relational.md`).
 
 ## Which ways are there?
 - `by` in both boxes' settings (`ws_step_row_way()`, `ws_step_row_bys()`):

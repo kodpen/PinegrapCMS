@@ -1,6 +1,6 @@
 ---
 name: workflow-table-key-column
-description: The key column of a workflow table (wtable_keys.php, plan tables-relational 4b): text or number, filled in and unique, refusals, the lock, by: key, the API ?key=, the import matching by key
+description: The key column of a workflow table (wtable_keys.php, PR #8509): text or number, filled in and unique, refusals, the lock, by: key, the API ?key=, the import matching by key
 ---
 
 ## What is the key?

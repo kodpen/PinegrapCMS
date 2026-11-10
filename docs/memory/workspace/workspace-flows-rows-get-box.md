@@ -4,7 +4,7 @@ description: The Read rows box of flows (rows_get, PR #8400) and Read a row by m
 ---
 
 ## What is it?
-- Step kind `rows_get` (`ws_step_kinds()`), functions in `includes/workspace/flow_rows_get.php`, engine in `wtable_where.php` (`workflow-tables-conditions.md`): SELECT … WHERE … ORDER BY … LIMIT for a flow (plan `plans/tables-relational.md`, step 2). Tests `tests/workspace_flow_rows_get_test.php`, `test_workspace_flows_canvas_rows_get_box`.
+- Step kind `rows_get` (`ws_step_kinds()`), functions in `includes/workspace/flow_rows_get.php`, engine in `wtable_where.php` (`workflow-tables-conditions.md`): SELECT … WHERE … ORDER BY … LIMIT for a flow (PR #8400, `workflow-tables-relational.md`). Tests `tests/workspace_flow_rows_get_test.php`, `test_workspace_flows_canvas_rows_get_box`.
 - Settings (`ws_step_rows_get_normalize()`): `table_id`, `match` (all, any), `where`, `sort` (column id, 0 the table order), `dir` (asc, desc), `limit` (1-50, the For each cap; none is 50).
 - `where` is JSON text like a table box's `cells`: a list sent over the API is written as its JSON, a text is kept trimmed. It is the box's only text, filled with target `json`, so a run value lands as given.
 

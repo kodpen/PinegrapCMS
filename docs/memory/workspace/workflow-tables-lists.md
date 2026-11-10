@@ -4,7 +4,7 @@ description: The list column of workflow tables (type list, PR #8486): texts or 
 ---
 
 ## What is a list column?
-- Column type `list` (`ws_wtable_column_types()`, label "List"; plan `plans/tables-relational.md`, step 7): several texts or several numbers in one cell, kept as a JSON array in the row's cells (no schema change).
+- Column type `list` (`ws_wtable_column_types()`, label "List"; PR #8486, `workflow-tables-relational.md`): several texts or several numbers in one cell, kept as a JSON array in the row's cells (no schema change).
 - Option `of`: `text` (default) or `number` (`ws_wtable_list_kinds()`, `ws_wtable_list_of()`). It changes only with a type change (`workflow-tables-column-type.md`): the column form answers `type_fixed`; options sent without `of` keep the column's.
 
 ## What does a cell take?
