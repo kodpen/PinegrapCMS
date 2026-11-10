@@ -719,7 +719,7 @@ function ws_api_message_threads($viewer, $message_ids)
     return $out;
 }
 
-function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null, $checks = null)
+function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null, $checks = null, $forwards = null)
 {
     // Who ticked its checklist (interact.php).
     if ($checks === null) {
@@ -739,6 +739,11 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
     // The note it shares (notes.php).
     if ($note_cards === null) {
         $note_cards = function_exists('ws_note_cards_map') ? ws_note_cards_map($viewer, array($row['id'])) : array();
+    }
+
+    // The copies it forwards (ws_message_forwards).
+    if ($forwards === null) {
+        $forwards = ws_api_message_forwards_map($viewer, array($row['id']));
     }
 
     if ($reactions === null) {
@@ -848,6 +853,7 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         'note_card'      => ws_api_message_note_card($row, $note_cards),
         'checks'         => $deleted ? array() : ws_api_message_checks($row['body'], $checks[(int) $row['id']] ?? array()),
         'mail'           => $deleted ? null : $mail,
+        'forwards'       => ws_api_message_forwards($row, $forwards),
         'created_at'  => api_time($row['created_at']),
     );
 }
@@ -877,6 +883,16 @@ function ws_api_message_schema()
         'note_card'      => 'WorkspaceMessageNoteCard?',
         'checks'         => 'WorkspaceMessageCheck[]',
         'mail'           => 'WorkspaceMessageMail?',
+        'forwards'       => array(array(
+            'source_message_id'   => 'integer?',
+            'source_channel_id'   => 'integer?',
+            'source_channel_name' => 'string?',
+            'can_open'            => 'boolean',
+            'sender'              => 'WorkspaceMessageSender?',
+            'text'                => 'string',
+            'file_name'           => 'string',
+            'created_at'          => 'string?',
+        )),
         'created_at'  => 'string',
     );
 }
@@ -982,6 +998,131 @@ function ws_api_message_note_card($row, $note_cards)
     }
 
     return array('id' => (int) $card['id'], 'name' => (string) $card['name'], 'excerpt' => (string) $card['excerpt']);
+}
+
+/**
+ * The forwarded copies of a page of messages (ws_message_forwards), shaped
+ * for the API, by message id. The source channel counts as readable as in
+ * ws_api_channel_groups_seen(): Claude's key also needs the channel allowed.
+ *
+ * @param array $viewer
+ * @param int[] $message_ids
+ * @return array[] message id => list of ws_api_message_forward_item()
+ */
+function ws_api_message_forwards_map($viewer, $message_ids)
+{
+    $message_ids = array_values(array_unique(array_filter(array_map('intval', (array) $message_ids))));
+
+    if (empty($message_ids) || !function_exists('ws_forwards_ready') || !ws_forwards_ready()) {
+        return array();
+    }
+
+    $rows = (array) db_items("SELECT * FROM ws_message_forwards WHERE message_id IN (" . implode(',', $message_ids) . ") ORDER BY message_id, position");
+
+    if (empty($rows)) {
+        return array();
+    }
+
+    $tokens = array();
+    $senders = array();
+    $sources = array();
+
+    foreach ($rows as $row) {
+        foreach (ws_tokens($row['body']) as $token) {
+            $tokens[] = $token;
+        }
+
+        if ($row['source_sender_kind'] === 'user') {
+            $senders[] = (int) $row['source_sender_id'];
+        }
+
+        $sources[] = (int) $row['source_message_id'];
+    }
+
+    $refs = ws_refs_resolve($viewer, $tokens);
+    $people = ws_people($senders);
+    $sources = array_values(array_unique(array_filter($sources)));
+    $alive = array();
+
+    // A source deleted since the forward cannot be opened.
+    if (!empty($sources)) {
+        foreach ((array) db_items("SELECT id FROM ws_messages WHERE id IN (" . implode(',', $sources) . ") AND deleted_at = 0") as $source) {
+            $alive[(int) $source['id']] = true;
+        }
+    }
+
+    $readable = array();
+    $out = array();
+
+    foreach ($rows as $row) {
+        $channel_id = (int) $row['source_channel_id'];
+
+        if (!isset($readable[$channel_id])) {
+            $channel = ws_channel($channel_id);
+            $readable[$channel_id] = ($channel && ws_can_read_channel($viewer, $channel) && (!ws_api_is_claude() || ws_claude_channel_allowed($channel))) ? $channel : false;
+        }
+
+        $channel = $readable[$channel_id] ?: null;
+        $sender = ws_forward_sender($row['source_sender_kind'], $row['source_sender_id'], $people);
+
+        $out[(int) $row['message_id']][] = ws_api_message_forward_item(
+            $row,
+            $channel,
+            isset($alive[(int) $row['source_message_id']]),
+            $sender,
+            ws_plain_text($viewer, (string) $row['body'], $refs)
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * One forwarded copy as the API shows it: the frozen words as plain text,
+ * never the raw body. The source message and channel are left out when the
+ * reader cannot read that channel, and it opens only then.
+ *
+ * @param array       $row      ws_message_forwards row
+ * @param array|null  $channel  the source channel when the reader reads it
+ * @param bool        $alive    the source message is not deleted
+ * @param array|null  $sender   ws_forward_sender() of the copy
+ * @param string      $text     the copy's words as plain text
+ * @return array
+ */
+function ws_api_message_forward_item($row, $channel, $alive, $sender, $text)
+{
+    $readable = is_array($channel);
+
+    return array(
+        'source_message_id'   => ($readable && ((int) $row['source_message_id'] > 0)) ? (int) $row['source_message_id'] : null,
+        'source_channel_id'   => $readable ? (int) $channel['id'] : null,
+        'source_channel_name' => $readable ? (string) $channel['name'] : null,
+        'can_open'            => $readable && $alive,
+        'sender'              => is_array($sender) ? array(
+            'user_id' => ($row['source_sender_kind'] === 'user') ? (int) $row['source_sender_id'] : null,
+            'name'    => (string) ($sender['name'] ?? ''),
+        ) : null,
+        'text'                => (string) $text,
+        'file_name'           => (string) $row['file_name'],
+        'created_at'          => api_time($row['source_created_at']),
+    );
+}
+
+/**
+ * The forwarded copies of one message from the page's
+ * ws_api_message_forwards_map(): none on a deleted message.
+ *
+ * @param array $row      ws_messages row
+ * @param array $forwards ws_api_message_forwards_map()
+ * @return array[]
+ */
+function ws_api_message_forwards($row, $forwards)
+{
+    if ((int) $row['deleted_at'] > 0) {
+        return array();
+    }
+
+    return array_values((array) ($forwards[(int) $row['id']] ?? array()));
 }
 
 /**
@@ -1133,12 +1274,13 @@ function ws_api_messages_present($viewer, $rows)
     $proposals = function_exists('ws_proposals_by_reply') ? ws_proposals_by_reply($ids) : array();
     $note_cards = function_exists('ws_note_cards_map') ? ws_note_cards_map($viewer, $ids) : array();
     $checks = ws_checks_map($ids);
+    $forwards = ws_api_message_forwards_map($viewer, $ids);
     $out = array();
 
     // A message the person deleted for themselves stays in the page, marked
     // hidden, so that since_id and before_id still page past it.
     foreach ($rows as $row) {
-        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards, $checks);
+        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards, $checks, $forwards);
     }
 
     return $out;
