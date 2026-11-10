@@ -334,6 +334,9 @@ function pg_search_index_refresh_soon()
  * - A link gives its text, never its address; an image gives nothing.
  * - Blocks are kept apart by a line break, spaces are folded and entities
  *   read.
+ * - A tag name ends at a space, / or >, not at a word boundary: a custom
+ *   element such as <main-banner> or <nav-menu> is not <main> or <nav>
+ *   (\b matched before its hyphen and dropped the page's text).
  *
  * @param string $html the page as get_page_content() draws it
  * @return string
@@ -343,7 +346,7 @@ function pg_search_index_text($html)
     $html = (string) $html;
 
     $html = _pg_search_index_replace('/<!--.*?-->/s', ' ', $html);
-    $html = _pg_search_index_replace('/<(head|script|style|noscript|template|svg|title|textarea|select)\b[^>]*>.*?<\/\1\s*>/is', ' ', $html);
+    $html = _pg_search_index_replace('/<(head|script|style|noscript|template|svg|title|textarea|select)(?=[\s\/>])[^>]*>.*?<\/\1\s*>/is', ' ', $html);
     $html = _pg_search_index_drop_consent($html);
 
     $main = _pg_search_index_main($html);
@@ -392,7 +395,7 @@ function _pg_search_index_element_end($html, $name, $start)
 {
     $depth = 0;
     $offset = $start;
-    while (preg_match('/<(\/?)' . $name . '\b[^>]*>/i', $html, $tag, PREG_OFFSET_CAPTURE, $offset)) {
+    while (preg_match('/<(\/?)' . $name . '(?=[\s\/>])[^>]*>/i', $html, $tag, PREG_OFFSET_CAPTURE, $offset)) {
         $depth += ($tag[1][0] === '/') ? -1 : 1;
         $offset = $tag[0][1] + strlen($tag[0][0]);
         if ($depth <= 0) {
@@ -414,7 +417,7 @@ function _pg_search_index_main($html)
 {
     $parts = array();
     $offset = 0;
-    while (preg_match('/<main\b[^>]*>/i', $html, $open, PREG_OFFSET_CAPTURE, $offset)) {
+    while (preg_match('/<main(?=[\s\/>])[^>]*>/i', $html, $open, PREG_OFFSET_CAPTURE, $offset)) {
         $inner_start = $open[0][1] + strlen($open[0][0]);
         $end = _pg_search_index_element_end($html, 'main', $open[0][1]);
         $inner = substr($html, $inner_start, $end - $inner_start);
@@ -433,7 +436,7 @@ function _pg_search_index_main($html)
  */
 function _pg_search_index_drop_consent($html)
 {
-    while (preg_match('/<div\b[^>]*\bid\s*=\s*["\']?pg-cc["\'\s\/>]/i', $html, $match, PREG_OFFSET_CAPTURE)) {
+    while (preg_match('/<div(?=[\s\/>])[^>]*\bid\s*=\s*["\']?pg-cc["\'\s\/>]/i', $html, $match, PREG_OFFSET_CAPTURE)) {
         $at = $match[0][1];
         $html = substr($html, 0, $at) . ' ' . substr($html, _pg_search_index_element_end($html, 'div', $at));
     }
@@ -452,7 +455,7 @@ function _pg_search_index_drop_consent($html)
  */
 function _pg_search_index_drop_regions($html, array $names, array $keep_inside)
 {
-    $scan = '/<(\/?)(' . implode('|', array_merge($names, $keep_inside)) . ')\b[^>]*>/i';
+    $scan = '/<(\/?)(' . implode('|', array_merge($names, $keep_inside)) . ')(?=[\s\/>])[^>]*>/i';
     $depth = 0;
     $offset = 0;
     while (preg_match($scan, $html, $match, PREG_OFFSET_CAPTURE, $offset)) {

@@ -10,6 +10,7 @@ module: site_search
 - without one: the page minus every `<header>`, `<nav>` and `<footer>`, except one inside an `<article>` or `<section>`;
 - never the head, scripts, styles, comments, SVG, `<textarea>`/`<select>` or the cookie window (`div#pg-cc`);
 - link text only, never the address; images give nothing; blocks are parted by a line break, spaces folded, entities read.
+- a tag name ends at a space, `/` or `>`: a custom element such as `<main-banner>`, `<nav-menu>` or `<svg-icon>` is not `<main>`, `<nav>` or `<svg>`. Symptom before: `\b` matched before the hyphen, so a page with `<main-banner>` kept only the banner's text and one with `<nav-menu>` or `<svg-icon>` lost text that was its own.
 
 Title, meta description and keywords are still added by the job around this text, as before.
 
@@ -26,4 +27,4 @@ No. `get_page_content()` skips `pg_consent_inject()` when `UPDATE_SEARCH_INDEX` 
 At the next rebuild: the daily `update_search_index` job, or Pages → tools → "Update Search Index" in the panel. No migration step.
 
 ## Tests?
-`tests/site_search_index_text_test.php`: a Kafe-like page (main only, consent, header/nav/footer, no URLs), a page without `<main>`, spacing, unclosed and look-alike tags, and source checks of the four call sites and the consent guard. The rebuild itself never ran in CI (no database).
+`tests/site_search_index_text_test.php`: a Kafe-like page (main only, consent, header/nav/footer, no URLs), a page without `<main>`, spacing, unclosed and look-alike tags, hyphenated custom elements, and source checks of the four call sites and the consent guard. The rebuild itself never ran in CI (no database).
