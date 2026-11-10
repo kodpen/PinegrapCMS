@@ -12,7 +12,6 @@
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
-- file-picker-search-steps.md: Plan: the file and image pickers that still list every file move to the shared server search (file_picker_search.php, ui/file-picker-search.md); claim as [plan:file-picker-search-steps] <step>
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
 - image-editor-video-steps.md: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, video layer, timeline, sound, effects, overlays, export, large files, reopening, phone, access; claim as [plan:image-editor-video] V<n>
 - image-editor-video-visuals.md: Screens of plans/image-editor-video.md (V0), 35 to 42 in plans/image-editor/: what each shows and which step builds it
@@ -25,6 +24,9 @@
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 - memory-owner-steps.md: Plan: the two memory steps left for the owner's machine (documentation pages list, private notes) and the rerun of the documentation trial after them; the trial tasks and both runs' figures
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
+- one-picker-inventory.md: What chooses a file, a picture, a page or a folder in the software today (2026-11-10, with call counts): what the one picker takes over, and the record searches that model its later kinds
+- one-picker-steps.md: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry and endpoint, dialog, upload, pages, the field, page fields, editor and designer bridges, remaining screens, close-out; open questions
+- one-picker.md: Plan (owner 2026-11-10): one modern picker for choosing a file or a page on every screen (a dialog with tree, grid, search and upload; a field with search and Browse), ready for other records
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19; design note first, code after 2026.11.0 ships, #3798): public storefront API (cart, checkout, customer auth), base for OpenAI ACP and Google UCP bindings

@@ -196,7 +196,7 @@
 - field-help-describedby.md: pgBindFieldHelp() in backend.src.js ties a panel field's .form-text help to the field with aria-describedby at runtime: which field, what is skipped, when it runs, what is left
 - field-shared-form.md: The form field create and edit screens share includes/forms/field_form.php
 - file-manager-replaces-folder-and-file-screens.md: The folder screens (add_folder, edit_folder, their form) and the classic files list (view_files) are retired; where each of their jobs is in the File Manager, what is not there, the links that moved [decision: decisions-made-files.md, decisions-made-workspace-6.md]
-- file-picker-search.md: Searchable file and image pickers: data-pg-combobox with data-pg-source to file_picker_search.php, its named kinds and access, folded name match, stored choice, the screens converted and the ones left
+- file-picker-search.md: Searchable file and image pickers: data-pg-combobox with data-pg-source to file_picker_search.php, its named kinds and access, folded name match, stored choice, the screens converted and the ones left [decision: decisions-made-product-42.md]
 - file-preview-names.md: Names of the File Manager and Edit File previews: frame titles from the item's name, the side pane's image link, the decorative .ico preview
 - file-screen-destinations.md: Where Edit File, Upload File and Upload Design Files go after Save & Return, Delete, rotate, convert, duplicate, the back arrow and a finished upload [decision: decisions-made-files.md, decisions-made-workspace-6.md]
 - file-shared-form.md: add_file.php and edit_file.php draw the File Access Control and Description cards through includes/forms/design_file_form.php; what each screen keeps

@@ -205,6 +205,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-41.md: Where are the rules and the earlier parts?
 - decisions-made-product-41.md: How is scheduled work set up and listed now that scheduled actions are flows? (2026-11-09)
 - decisions-made-product-41.md: How does the new dashboard's System Status card look and behave? (2026-11-10)
+- decisions-made-product-42.md: Where are the rules and the earlier parts?
+- decisions-made-product-42.md: How is a file or a page chosen across the software? (owner, 2026-11-10)
 - decisions-made-product-5.md: Which outside-account leftovers start in 2026.11.0? (#3180)
 - decisions-made-product-5.md: Do subscriptions start, and who runs the renewals? (#3183)
 - decisions-made-product-5.md: Does a beta site without a build file get the beta build of its own version? (#3204)
@@ -243,6 +245,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-13.md: Which tables and columns were approved?
 - decisions-made-schema-14.md: Where are the rules and the earlier parts?
 - decisions-made-schema-14.md: Which tables and columns were approved?
+- decisions-made-schema-15.md: Where are the rules and the earlier parts?
+- decisions-made-schema-15.md: Which tables and columns were approved?
 - decisions-made-schema-2.md: Where are the rules and the earlier steps?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-28?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-29 and later?
@@ -290,6 +294,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-10.md: What happens to requests an application agent does not read? (owner, 2026-11-10)
 - decisions-made-workspace-11.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-11.md: Who adds an agent to a private channel? (owner, 2026-11-10, #8477)
+- decisions-made-workspace-11.md: Under whose name is a message shown that a connected application writes? (owner, 2026-11-10)
+- decisions-made-workspace-11.md: What keeps a connected application's message from waking more than before? (architect, 2026-11-10)
+- decisions-made-workspace-11.md: Whose session answers "@Claude"? (owner, 2026-11-10)
 - decisions-made-workspace-2.md: What may the channel menu hold?
 - decisions-made-workspace-2.md: Where are records created inside a chat?
 - decisions-made-workspace-2.md: Does the customer channel's "New sales quote" stay in the menu?
