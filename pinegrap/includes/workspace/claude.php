@@ -1414,6 +1414,7 @@ function ws_claude_drafts_map($viewer, $message_ids)
     $priorities = ws_task_priorities();
     $can_post = array();
     $out = array();
+    $now = time();
 
     foreach ($rows as $row) {
         $channel_id = (int) $row['channel_id'];
@@ -1433,6 +1434,9 @@ function ws_claude_drafts_map($viewer, $message_ids)
         $due = (string) ($row['due_date'] ?? '');
         $due = (($due !== '') && ($due !== '0000-00-00')) ? $due : '';
         $excerpt = ws_plain_text($viewer, (string) $row['description']);
+        // A claim whose request died before the task was written: the card
+        // offers the proposal again, as a pending one.
+        $stuck = ws_claude_draft_stuck($row, $now);
 
         $out[(int) $row['message_id']][] = array(
             'id'          => (int) $row['id'],
@@ -1442,11 +1446,11 @@ function ws_claude_drafts_map($viewer, $message_ids)
             'due'         => ($due !== '') ? date('d.m.Y', strtotime($due . ' 12:00:00')) : '',
             'priority'    => (string) $row['priority'],
             'priority_label' => (string) ($priorities[$row['priority']] ?? $row['priority']),
-            'status'      => (string) $row['status'],
+            'status'      => $stuck ? 'pending' : (string) $row['status'],
             'task_id'     => (int) $row['task_id'],
             'task_number' => ((int) $row['task_id'] > 0) ? ws_task_number($row['task_id']) : '',
-            'decided_by'  => (string) ($people[(int) $row['decided_by']]['name'] ?? ''),
-            'can_decide'  => ($row['status'] === 'pending') && !empty($can_post[$channel_id]),
+            'decided_by'  => $stuck ? '' : (string) ($people[(int) $row['decided_by']]['name'] ?? ''),
+            'can_decide'  => ws_claude_draft_open($row, $now) && !empty($can_post[$channel_id]),
         );
     }
 
@@ -1462,6 +1466,84 @@ function ws_claude_drafts_map($viewer, $message_ids)
 function ws_claude_draft_people($row)
 {
     return array_values(array_filter(array_map('intval', explode(',', (string) $row['assignees']))));
+}
+
+/**
+ * How long, in seconds, a proposal may stay accepted with no task before its
+ * claim counts as left by a request that died: far beyond any request's
+ * max_execution_time, so a request still opening the task is never raced.
+ *
+ * @return int
+ */
+function ws_claude_draft_stuck_after()
+{
+    return 600;
+}
+
+/**
+ * Is the proposal claimed by a request that died before writing its task:
+ * accepted, no task, claimed at least ws_claude_draft_stuck_after() ago? A
+ * claim with no time written counts as old. Pure.
+ *
+ * @param array $row ws_ai_drafts row (status, task_id, decided_at)
+ * @param int   $now
+ * @return bool
+ */
+function ws_claude_draft_stuck($row, $now)
+{
+    return ((string) ($row['status'] ?? '') === 'accepted') && ((int) ($row['task_id'] ?? 0) === 0)
+        && ((int) ($row['decided_at'] ?? 0) <= ((int) $now - ws_claude_draft_stuck_after()));
+}
+
+/**
+ * May the proposal still be accepted or dismissed: pending, or stuck
+ * (ws_claude_draft_stuck()). Pure.
+ *
+ * @param array $row
+ * @param int   $now
+ * @return bool
+ */
+function ws_claude_draft_open($row, $now)
+{
+    return ((string) ($row['status'] ?? '') === 'pending') || ws_claude_draft_stuck($row, $now);
+}
+
+/**
+ * ws_claude_draft_open() as the condition of the UPDATE that claims a row:
+ * only one of two requests changes it, since the claim moves decided_at to
+ * now. Pure.
+ *
+ * @param int $now
+ * @return string
+ */
+function ws_claude_draft_open_sql($now)
+{
+    return "(status = 'pending' OR (status = 'accepted' AND task_id = 0 AND decided_at <= '" . ((int) $now - ws_claude_draft_stuck_after()) . "'))";
+}
+
+/**
+ * The task a stuck claim's request may have opened before it died
+ * (ws_task_create() writes the task first, then tells people): in the
+ * proposal's channel, created by whoever claimed it, with its title, within
+ * the claim's window. 0 when there is none, or the row is not stuck.
+ *
+ * @param array $draft ws_ai_drafts row, as read before the new claim
+ * @param int   $now
+ * @return int task id
+ */
+function ws_claude_draft_orphan_task($draft, $now)
+{
+    if (!ws_claude_draft_stuck($draft, $now) || ((int) $draft['decided_by'] <= 0)) {
+        return 0;
+    }
+
+    $from = (int) $draft['decided_at'];
+
+    return (int) db_value("SELECT id FROM ws_tasks
+        WHERE channel_id = '" . (int) $draft['channel_id'] . "' AND creator_id = '" . (int) $draft['decided_by'] . "'
+            AND title = '" . e((string) $draft['title']) . "'
+            AND created_at >= '" . $from . "' AND created_at <= '" . ($from + ws_claude_draft_stuck_after()) . "'
+        ORDER BY id LIMIT 1");
 }
 
 /**
@@ -1481,7 +1563,10 @@ function ws_claude_draft_accept($viewer, $draft_id)
         return array('ok' => false, 'error' => lang('That proposal could not be found.'), 'task_id' => 0);
     }
 
-    if ($draft['status'] !== 'pending') {
+    $now = time();
+
+    // Pending, or claimed by a request that died before writing its task.
+    if (!ws_claude_draft_open($draft, $now)) {
         return array('ok' => false, 'error' => lang('Somebody has already decided about this proposal.'), 'task_id' => (int) $draft['task_id']);
     }
 
@@ -1521,16 +1606,19 @@ function ws_claude_draft_accept($viewer, $draft_id)
     }
 
     // Claimed before the task is opened: of two presses at once (or an
-    // accept and a dismiss) only one changes the pending row, so one task
-    // is opened.
-    db("UPDATE ws_ai_drafts SET status = 'accepted', decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'
-        WHERE id = '" . (int) $draft['id'] . "' AND status = 'pending'");
+    // accept and a dismiss) only one changes the open row, so one task is
+    // opened. A stuck row is claimed afresh, its time moved to now.
+    db("UPDATE ws_ai_drafts SET status = 'accepted', decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . $now . "'
+        WHERE id = '" . (int) $draft['id'] . "' AND " . ws_claude_draft_open_sql($now));
 
     if (mysqli_affected_rows(db::$con) < 1) {
         return array('ok' => false, 'error' => lang('Somebody has already decided about this proposal.'), 'task_id' => 0);
     }
 
-    $result = ws_task_create($viewer, $data);
+    // The dead request may have opened the task before it stopped: that
+    // task is the proposal's, and no second one is opened.
+    $orphan = ws_claude_draft_orphan_task($draft, $now);
+    $result = ($orphan > 0) ? array('ok' => true, 'error' => '', 'task_id' => $orphan) : ws_task_create($viewer, $data);
 
     if (!$result['ok']) {
         // No task: the proposal waits again, unless something else moved it.
@@ -1540,13 +1628,16 @@ function ws_claude_draft_accept($viewer, $draft_id)
         return array('ok' => false, 'error' => $result['error'], 'task_id' => 0);
     }
 
-    $sent = ws_message_send($viewer, $channel, '', array('kind' => 'task', 'task_id' => $result['task_id'], 'parent_id' => (int) $draft['message_id']));
+    // Written at once, so a request dying from here on leaves the task found.
+    db("UPDATE ws_ai_drafts SET task_id = '" . (int) $result['task_id'] . "' WHERE id = '" . (int) $draft['id'] . "'");
+
+    // The card under the proposal, unless the dead request already sent it.
+    $carded = ($orphan > 0) && (bool) db_value("SELECT 1 FROM ws_messages WHERE kind = 'task' AND task_id = '" . $orphan . "' LIMIT 1");
+    $sent = $carded ? array('ok' => false) : ws_message_send($viewer, $channel, '', array('kind' => 'task', 'task_id' => $result['task_id'], 'parent_id' => (int) $draft['message_id']));
 
     if ($sent['ok']) {
         db("UPDATE ws_tasks SET source_message_id = '" . (int) $sent['message_id'] . "' WHERE id = '" . (int) $result['task_id'] . "'");
     }
-
-    db("UPDATE ws_ai_drafts SET task_id = '" . (int) $result['task_id'] . "' WHERE id = '" . (int) $draft['id'] . "'");
 
     ws_message_touch($draft['message_id']);
 
@@ -1568,7 +1659,9 @@ function ws_claude_draft_dismiss($viewer, $draft_id)
         return array('ok' => false, 'error' => lang('That proposal could not be found.'));
     }
 
-    if ($draft['status'] !== 'pending') {
+    $now = time();
+
+    if (!ws_claude_draft_open($draft, $now)) {
         return array('ok' => false, 'error' => lang('Somebody has already decided about this proposal.'));
     }
 
@@ -1576,9 +1669,21 @@ function ws_claude_draft_dismiss($viewer, $draft_id)
         return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
     }
 
-    // Only a pending row: an accept that got there first keeps its task.
-    db("UPDATE ws_ai_drafts SET status = 'dismissed', decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'
-        WHERE id = '" . (int) $draft['id'] . "' AND status = 'pending'");
+    // A stuck row whose dead request did open the task was accepted after
+    // all: it gets its task, and the card says so.
+    $orphan = ws_claude_draft_orphan_task($draft, $now);
+
+    if ($orphan > 0) {
+        db("UPDATE ws_ai_drafts SET task_id = '" . $orphan . "'
+            WHERE id = '" . (int) $draft['id'] . "' AND status = 'accepted' AND task_id = 0 AND decided_at = '" . (int) $draft['decided_at'] . "'");
+        ws_message_touch($draft['message_id']);
+
+        return array('ok' => false, 'error' => lang('Somebody has already decided about this proposal.'));
+    }
+
+    // Only an open row: an accept that got there first keeps its task.
+    db("UPDATE ws_ai_drafts SET status = 'dismissed', decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . $now . "'
+        WHERE id = '" . (int) $draft['id'] . "' AND " . ws_claude_draft_open_sql($now));
 
     if (mysqli_affected_rows(db::$con) < 1) {
         return array('ok' => false, 'error' => lang('Somebody has already decided about this proposal.'));
