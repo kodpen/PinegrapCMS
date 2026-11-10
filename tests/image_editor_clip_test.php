@@ -268,3 +268,59 @@ function test_image_editor_clip_move_and_length()
 	pg_assert_same(array(1, 2), $r['row'], 'a row\'s clips by their start');
 	pg_assert_same(array(5000), $r['joins'], 'a cut where one source goes on in the next clip');
 }
+
+// The length rule: a clip edit never ends the document before another
+// layer's motion (an end card after the video); with the clips last the
+// length follows them, shorter too. A hidden layer and a clip's own
+// motion hold nothing.
+function test_image_editor_clip_length_keeps_motion()
+{
+	$r = image_editor_clip_node(
+		'var v = clip({ id: 1, from: 0, to: 6000, start: 0 });' . "\n"
+		. 'var card = { id: 2, type: "text", anim: { "in": { kind: "fade", ms: 800, delay: 9000 }, out: { kind: "fade", ms: 500, delay: 200 } } };' . "\n"
+		. 'var loop = { id: 3, type: "text", anim: { loop: { kind: "pulse", ms: 1500, delay: 7000 } } }, still = { id: 4, type: "text" };' . "\n"
+		. 'var doc = { layers: [v, card], motion: { duration: 15000 } };' . "\n"
+		. 'M.clipApply(doc, [{ id: 1, patch: { to: 4000 } }]);' . "\n"
+		. 'var short = { layers: [v, still, { id: 5, type: "text", anim: { "in": { kind: "fade", ms: 800, delay: 100 } } }], motion: { duration: 15000 } };' . "\n"
+		. 'M.clipApply(short, [{ id: 1, patch: { to: 3000 } }]);' . "\n"
+		. 'console.log(JSON.stringify({ doc: doc.motion.duration, short: short.motion.duration,' . "\n"
+		. ' need: [M.clipMotionNeed(card), M.clipMotionNeed(loop), M.clipMotionNeed(still), M.clipMotionNeed(null)],' . "\n"
+		. ' loop: M.clipLength({ layers: [clip({ from: 0, to: 2000, start: 0 }), loop] }),' . "\n"
+		. ' hidden: M.clipLength({ layers: [clip({ from: 0, to: 2000, start: 0 }), Object.assign({ hidden: true }, card)] }),' . "\n"
+		. ' own: M.clipLength({ layers: [clip({ from: 0, to: 2000, start: 0, anim: { "in": { kind: "fade", ms: 800, delay: 9000 } } })] }),' . "\n"
+		. ' cap: M.clipLength({ layers: [clip({ from: 0, to: 2000, start: 0 }), { id: 9, type: "text", anim: { "in": { kind: "fade", ms: 800, delay: 90000 } } }] }) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(10500, $r['doc'], 'the end card keeps its entrance and exit after a trimmed clip');
+	pg_assert_same(3000, $r['short'], 'with the clips last the length follows them, shorter too');
+	pg_assert_same(array(10500, 7100, 0, 0), $r['need'], 'a layer needs its entrance, the loop\'s start and its exit in a row');
+	pg_assert_same(7100, $r['loop'], 'a loop after the clip still starts');
+	pg_assert_same(2000, $r['hidden'], 'a hidden layer holds nothing');
+	pg_assert_same(2000, $r['own'], 'a clip\'s own motion follows the clip');
+	pg_assert_same(60000, $r['cap'], 'at most 60 s');
+}
+
+// The filmstrip: n source times, the middles of n equal parts of the cut
+// on a 0.1 s grid, at least one, at most CLIP_STRIP_MAX.
+function test_image_editor_clip_strip_times()
+{
+	$r = image_editor_clip_node(
+		'console.log(JSON.stringify({ a: M.clipStripTimes(clip({ from: 2000, to: 6000 }), 4), one: M.clipStripTimes(clip({ from: 2000, to: 6000 }), 0),' . "\n"
+		. ' many: M.clipStripTimes(clip({ from: 0, to: 20000 }), 500).length, max: M.CLIP_STRIP_MAX, odd: M.clipStripTimes(clip({ from: 1234, to: 1567 }), 2) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(2500, 3500, 4500, 5500), $r['a'], 'the middles of four equal parts');
+	pg_assert_same(array(4000), $r['one'], 'at least one frame');
+	pg_assert_same($r['max'], $r['many'], 'at most CLIP_STRIP_MAX frames');
+	pg_assert_same(array(1300, 1400), $r['odd'], 'on a 0.1 s grid');
+}
