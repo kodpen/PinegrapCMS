@@ -26,4 +26,4 @@ description: Overview of note groups, shared groups, tabs, the PIN lock and medi
 - Store: `workspace-note-groups.md`, `workspace-note-group-shares.md`; screen: `workspace-note-groups-screen.md`, `workspace-note-tabs.md`, `workspace-note-groups-shared-screen.md`; API: `workspace-note-groups-api.md`; lock: `workspace-note-lock.md`, `-gate.md`, `-readers.md`, `-screen.md`; media: `note-media.md`.
 
 ## What is still open?
-- A message's `note_group_card` (`ws_note_group_cards_map()`) is not in the API. No unit test drives the database paths of locking with shares.
+- No unit test drives the database paths of locking with shares.
