@@ -749,34 +749,8 @@ function ws_handle_action($action, $request)
         case 'ws_flow_editor_config':
             return ws_action_ok(ws_flow_editor_config($viewer));
 
-        // Add › Scheduled flow in a channel's composer (scheduled_convert.php):
-        // with sketch, the two boxes its mini window draws with what the form
-        // holds so far, each with its dry run, nothing written;
-        // else what the window holds saved as the person's draft flow, then
-        // published when asked or opened on the canvas. Duplicate on a
-        // scheduled action's card opens a new draft on the canvas too.
-        case 'ws_flow_scheduled_new':
-            $channel_id = (int) ($request['channel_id'] ?? 0);
-
-            if (!empty($request['sketch'])) {
-                $result = ws_scheduled_flow_sketch($viewer, $channel_id, ws_scheduled_flow_fill($request));
-
-                return $result['ok'] ? ws_action_ok(array('graph' => $result['graph'], 'view' => $result['view'], 'start' => $result['start'])) : ws_action_error($result['error']);
-            }
-
-            $result = ws_scheduled_flow_new($viewer, $channel_id, ws_scheduled_flow_fill($request) + array(
-                'flow_id'   => (int) ($request['flow_id'] ?? 0),
-                'draft_rev' => (int) ($request['draft_rev'] ?? 0),
-                'publish'   => !empty($request['publish']),
-            ));
-
-            if (!$result['ok']) {
-                return ws_action_error($result['error'], ($result['field'] === 'draft_rev') ? 'changed_meanwhile' : $result['field']);
-            }
-
-            return ws_action_ok(array('flow_id' => $result['flow_id'], 'draft_rev' => $result['draft_rev'],
-                'published' => $result['published'], 'publish_error' => $result['publish_error']));
-
+        // Duplicate on a scheduled action's card: a new draft flow, opened
+        // on the canvas (scheduled_convert.php).
         case 'ws_flow_scheduled_copy':
             $scheduled = ws_can_schedule($viewer) ? ws_scheduled_action((int) ($request['id'] ?? 0)) : null;
 
@@ -1866,13 +1840,15 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(array(
-                'briefing' => $briefing,
-                'channel'  => ws_channel_detail($viewer, $channel),
-                'messages' => ws_message_payloads($viewer, $rows),
-                'has_more' => !empty($rows) && ((int) db_value("SELECT COUNT(*) FROM ws_messages WHERE channel_id = '" . (int) $channel['id'] . "' AND id < '" . (int) $rows[0]['id'] . "' AND id > '" . ws_channel_floor($channel['id']) . "'") > 0),
-                'era'      => null,
-                'last_id'  => $last_id,
-                'now'      => time(),
+                'briefing'   => $briefing,
+                'channel'    => ws_channel_detail($viewer, $channel),
+                // Add › Start a flow is offered only where it lists a flow.
+                'flows_here' => empty($request['as_thread']) && ws_flows_startable_in($viewer, $channel),
+                'messages'   => ws_message_payloads($viewer, $rows),
+                'has_more'   => !empty($rows) && ((int) db_value("SELECT COUNT(*) FROM ws_messages WHERE channel_id = '" . (int) $channel['id'] . "' AND id < '" . (int) $rows[0]['id'] . "' AND id > '" . ws_channel_floor($channel['id']) . "'") > 0),
+                'era'        => null,
+                'last_id'    => $last_id,
+                'now'        => time(),
             ));
 
         // Pinegrap AI's few sentences on what the reader missed, asked from
@@ -2983,9 +2959,10 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok(array('kind' => $result['kind'], 'markup' => $result['markup'], 'from' => $result['from'])) : ws_action_error($result['error']);
 
-        // Saved replies (saved_replies.php): the person's own, for the
-        // composer's ; list (filled for the channel written in) and the list
-        // that manages them.
+        // Saved replies (saved_replies.php): the person's own and the team's,
+        // for the composer's ; list (filled for the channel written in) and
+        // the list that manages them. A team reply is written only with the
+        // right to manage them (ws_saved_reply_save_check()).
         case 'ws_saved_replies':
             $channel = null;
 
@@ -2997,13 +2974,18 @@ function ws_handle_action($action, $request)
                 }
             }
 
-            return ws_action_ok(array('items' => ws_saved_replies_for_box($viewer, $channel), 'ready' => ws_saved_replies_ready()));
+            return ws_action_ok(array(
+                'items'       => ws_saved_replies_for_box($viewer, $channel),
+                'ready'       => ws_saved_replies_ready(),
+                'manage_team' => ws_saved_reply_can_manage_team($viewer),
+            ));
 
         case 'ws_saved_reply_save':
             $row = null;
+            $scope = ws_saved_reply_scope($request['scope'] ?? null);
 
             if ((int) ($request['id'] ?? 0) > 0) {
-                $row = ws_saved_reply_find((int) $viewer['id'], (int) $request['id']);
+                $row = ws_saved_reply_find((int) $viewer['id'], (int) $request['id'], $scope);
 
                 if (!$row) {
                     return ws_action_error(lang('That saved reply could not be found.'));
@@ -3016,15 +2998,20 @@ function ws_handle_action($action, $request)
                 $input[$field] = (string) ($request[$field] ?? '');
             }
 
-            $result = ws_saved_reply_save($viewer, $input, $row);
+            $result = ws_saved_reply_save($viewer, $input, $row, $scope);
 
-            return $result['ok'] ? ws_action_ok(array('id' => $result['id'])) : ws_action_error(ws_saved_reply_error_text($result['error']), (string) ($result['field'] ?? ''));
+            return $result['ok'] ? ws_action_ok(array('id' => $result['id'])) : ws_action_error(ws_saved_reply_error_text($result['error'], $scope), (string) ($result['field'] ?? ''));
 
         case 'ws_saved_reply_delete':
-            $row = ws_saved_reply_find((int) $viewer['id'], (int) ($request['id'] ?? 0));
+            $scope = ws_saved_reply_scope($request['scope'] ?? null);
+            $row = ws_saved_reply_find((int) $viewer['id'], (int) ($request['id'] ?? 0), $scope);
 
             if (!$row) {
                 return ws_action_error(lang('That saved reply could not be found.'));
+            }
+
+            if (($scope === WS_SAVED_REPLY_TEAM) && !ws_saved_reply_can_manage_team($viewer)) {
+                return ws_action_error(ws_saved_reply_error_text('not_allowed', $scope));
             }
 
             return ws_saved_reply_delete($viewer, $row) ? ws_action_ok() : ws_action_error(lang('The saved reply could not be deleted.'));

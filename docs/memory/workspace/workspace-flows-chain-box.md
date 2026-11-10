@@ -6,6 +6,7 @@ description: The start a flow box (PR #2235, flow_runs.php): another live flow s
 ## What is it?
 - Kind `start_flow` in `ws_flow_kinds()` (not a step, not a start), outcomes done, failed, output `run_id`. Settings `{flow_id}` (`ws_flow_chain_normalize()`); no flow is a `bad_config` problem. It is the parity rows "by hand or chain only" (`trigger`) and `{{source}}`, `{{source_result}}` of a flow. Tests `tests/workspace_flow_chain_test.php`.
 - It does not wait for the run it starts: done once the run is written.
+- It is the palette's one box that starts other work: "Start a scheduled action" (`start_action`) is not offered for a new box (`ws_flow_kinds_not_offered()`: palette and Pinegrap AI's catalogue), while a saved one keeps its form and runs (`workspace-scheduling-one-place.md`).
 
 ## What refuses a start?
 - `ws_flow_chain_refusal()` (pure): the flow itself (flows have no loops; a self-retry is part 3d), gone, not live, a start box other than `manual` (flows that start on their own are not chained), and the run started would be the eighth deep (`depth + 1 >= WS_SCHEDULED_CHAIN_DEPTH`), as a scheduled chain stops at 8. Sentences: `ws_flow_chain_refusal_text()`.

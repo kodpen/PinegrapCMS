@@ -15301,6 +15301,15 @@ a.ws-chip:hover {
   box-shadow: 0 8px 24px rgba(0, 0, 0, .15);
   overflow: hidden;
 }
+/* The ; list of saved replies in the e-mail reply drawer
+   (workspace_mail.js), under the answer: above it the drawer's top would
+   cut it off. */
+.ws-mail-reply-box .ws-picker {
+  top: 100%;
+  bottom: auto;
+  left: 0;
+  width: min(26rem, 100%);
+}
 /* The "/" list of a note's inserts, under the caret. */
 .ws-picker.ws-slash {
   position: fixed;

@@ -2000,6 +2000,89 @@ JS
 	pg_assert_contains("config.by = 'position';\n                config.row = '';", $source, 'a new change box waits for its row');
 }
 
+// A box that reads rows: offered while the person reads a table; its
+// conditions kept as the JSON list the server reads, a money value typed as
+// an amount and kept in minor units, a value of the run as it is; its line
+// names how many conditions it has; it gives its count, its list (which a
+// For each box takes, naming the fields of a row after its table) and the
+// totals of each number, money and formula column. Read a row finds its row
+// by conditions too, a change does not.
+function test_workspace_flows_canvas_rows_get_box()
+{
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'kindOf', 'stepLists', 'rowWriteTables', 'memberKind', 'paletteItems', 'rowTable', 'rowWay', 'rowByOptions', 'rowCellValues', 'rowsTotalValues', 'rowsItemLabels',
+			'rowWriteMeta', 'whereList', 'oneValue', 'whereShown', 'whereKept', 'cellPlaces', 'siteDecimal', 'siteNumber', 'siteShown', 'cellShown', 'boxValues', 'fieldTexts', 'listValue', 'fieldTakes'),
+		<<<'JS'
+var KINDS = { rows_get: { into: true, out: ['done', 'failed'] }, row_get: { into: true, out: ['done', 'failed'] }, for_each: { into: true, out: ['each', 'failed'] } };
+var PALETTE = [['row_get', 'fl_kind_row_get'], ['rows_get', 'fl_kind_rows_get']];
+var VALUE_FIELDS = { row_get: [['row', 'fl_rows_row', 200]] };
+var FL = { outputs: { rows_get: [{ key: 'count', type: 'number', label: 'Rows found' }, { key: 'rows', type: 'text', label: 'The rows as a list' }] }, steps: { tables: [
+    { id: 5, name: 'Stock', edit: false, columns: [{ id: 7, name: 'Name', type: 'text' }, { id: 9, name: 'Count', type: 'number' }, { id: 11, name: 'Price', type: 'money', options: { decimals: 2 } }, { id: 12, name: 'Total', type: 'formula' }, { id: 13, name: 'State', type: 'status' }] }
+] } };
+var where = '[{"column":9,"op":"lt","value":"5"},{"column":7,"op":"eq","value":"{{trigger.cell_3}}"}]';
+var rows = { id: 'rows', kind: 'rows_get', config: { table_id: 5, match: 'all', where: where, sort: 0, dir: 'asc', limit: 50 } };
+var loop = { id: 'each', kind: 'for_each', config: { list: '{{node.rows.rows}}', fields: ['cell_7', 'row_id', 'other'] } };
+state = { graph: { nodes: [rows, loop], edges: [] } };
+var price = { id: 11, type: 'money', options: { decimals: 2 } };
+var out = {
+    palette: paletteItems().map(function (item) { return item[0]; }),
+    values: boxValues(rows).map(function (item) { return item.token + ':' + item.type + ':' + item.label; }),
+    loop: boxValues(loop).filter(function (item) { return /cell_|row_id|other/.test(item.key); }).map(function (item) { return item.key + ':' + item.label; }),
+    takes: [fieldTakes(loop, 'list', { node: rows, value: { key: 'rows', type: 'text' } }), fieldTakes(loop, 'list', { node: rows, value: { key: 'count', type: 'number' } })],
+    meta: [rowWriteMeta(rows), rowWriteMeta({ kind: 'rows_get', config: { table_id: 5, where: '' } }), rowWriteMeta({ kind: 'row_get', config: { table_id: 5, by: 'match', where: where } }), rowWriteMeta({ kind: 'rows_get', config: { table_id: 0 } })],
+    texts: fieldTexts(rows).map(function (item) { return item.key; }),
+    readTexts: fieldTexts({ kind: 'row_get', config: { by: 'match', row: '', where: where } }).map(function (item) { return item.key; }),
+    lists: [whereList(''), whereList('{'), whereList('{"column":1}'), whereList('[{"column":"9","op":"gt","value":5},[1],null,{"op":"empty"}]')],
+    ways: [rowByOptions('row_get').map(function (item) { return item[0]; }), rowByOptions('row_set').map(function (item) { return item[0]; }), rowWay({ by: 'match' })],
+    kept: [whereKept(price, '12.5'), whereKept(price, '{{trigger.cell_3}}'), whereKept({ type: 'number' }, '3.50'), whereKept({ type: 'text' }, ' Un '), whereKept({ type: 'date' }, '2026-11-09')],
+    shown: [whereShown(price, '1250'), whereShown(price, '{{trigger.cell_3}}'), whereShown({ type: 'text' }, 'Un')]
+};
+FL.decimal = ',';
+out.turkish = [whereKept(price, '12,50'), whereKept({ type: 'number' }, '2,5'), whereShown(price, '1250'), whereShown({ type: 'number' }, '2.5')];
+FL.steps.tables = [];
+out.none = paletteItems().map(function (item) { return item[0]; });
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('row_get', 'rows_get'), $result['palette'], 'a table read but not changed');
+	pg_assert_same(array(), $result['none'], 'no table read: no read box');
+	pg_assert_same(array(
+		'{{node.rows.text}}:text:fl_values_text', '{{node.rows.outcome}}:text:fl_values_outcome', '{{node.rows.status}}:text:fl_values_status',
+		'{{node.rows.count}}:number:Rows found', '{{node.rows.rows}}:text:The rows as a list',
+		'{{node.rows.sum_9}}:number:fl_rows_sum Count', '{{node.rows.avg_9}}:number:fl_rows_avg Count', '{{node.rows.min_9}}:number:fl_rows_min Count', '{{node.rows.max_9}}:number:fl_rows_max Count',
+		'{{node.rows.sum_11}}:number:fl_rows_sum Price', '{{node.rows.avg_11}}:number:fl_rows_avg Price', '{{node.rows.min_11}}:number:fl_rows_min Price', '{{node.rows.max_11}}:number:fl_rows_max Price',
+		'{{node.rows.sum_12}}:number:fl_rows_sum Total', '{{node.rows.avg_12}}:number:fl_rows_avg Total', '{{node.rows.min_12}}:number:fl_rows_min Total', '{{node.rows.max_12}}:number:fl_rows_max Total',
+	), $result['values'], 'the count, the list, and the totals of the number, money and formula columns');
+	pg_assert_same(array('cell_7:Name', 'row_id:fl_rows_item_row', 'other:other'), $result['loop'], 'a For each box names the fields of a row after its table');
+	pg_assert_same(array(true, false), $result['takes'], 'a For each box goes through the list, not the count');
+	pg_assert_same(array('fl_rows_meta_where Stock 2', 'Stock', 'fl_rows_meta_where Stock 2', 'fl_row_none'), $result['meta']);
+	pg_assert_same(array('where'), $result['texts'], 'its conditions\' values are threaded');
+	pg_assert_same(array('row', 'where'), $result['readTexts'], 'a read by conditions keeps its empty row field, as the last row does');
+	pg_assert_same(array(array(), array(), array(), array(array('column' => 9, 'op' => 'gt', 'value' => '5'), array('column' => 0, 'op' => 'empty', 'value' => ''))), $result['lists'], 'a text it cannot read is no condition');
+	pg_assert_same(array(array('position', 'id', 'last', 'match'), array('position', 'id', 'last'), 'match'), $result['ways'], 'only a read finds its row by conditions');
+	pg_assert_same(array('1250', '{{trigger.cell_3}}', '3.5', 'Un', '2026-11-09'), $result['kept'], 'money in minor units, a value of the run as it is');
+	pg_assert_same(array('12.50', '{{trigger.cell_3}}', 'Un'), $result['shown']);
+	pg_assert_same(array('1250', '2.5', '12,50', '2,5'), $result['turkish'], 'typed and shown the site\'s way');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+
+	pg_assert_contains('rowsGetFields(box, node);', $source, 'the settings draw it');
+	pg_assert_contains('whereFields(box, node);', ws_flows_canvas_test_script_function($source, 'rowsGetFields'));
+	pg_assert_contains("if (by === 'match') {\n            whereFields(box, node);\n            return;\n        }", ws_flows_canvas_test_script_function($source, 'rowByField'), 'a read by conditions draws them in place of its row');
+	pg_assert_contains("config = { table_id: (listed.length === 1) ? listed[0].id : 0, match: 'all', where: '', sort: 0, dir: 'asc', limit: stepLists().where.limit || 50 };", $source, 'a new box reads every row of the one table there is');
+
+	$fields = ws_flows_canvas_test_script_function($source, 'whereFields');
+
+	pg_assert_contains("config.where = list.length ? JSON.stringify(list) : '';", $fields, 'kept as the JSON list the server reads');
+	pg_assert_contains('info.types[column.type]', $fields, 'a column offers the comparisons its type takes');
+	pg_assert_contains('(list.length >= (info.most || 10))', $fields, 'at most ten conditions');
+}
+
 // "Add value" with nothing to offer names what comes before the box when
 // something does (a manual start gives no value), else says nothing is
 // connected before it.
@@ -2040,7 +2123,7 @@ function ws_flows_canvas_test_groups()
 		'logic' => array('#e9b44c', array('condition', 'delay', 'end', 'for_each', 'for_each_end')),
 		'people' => array('#b49cff', array('task', 'task_open', 'checkin', 'approval', 'task_digest', 'lead')),
 		'message' => array('#6ea8ff', array('post', 'email', 'notify', 'report')),
-		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set', 'row_get', 'record_get', 'ai', 'agent'))
+		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'ai', 'agent'))
 	);
 }
 
@@ -2885,6 +2968,21 @@ function test_workspace_flows_canvas_start_box_tell_choice()
 	}
 }
 
+// The setup panel asks a message's words in a box of their own, as long as
+// a post box keeps them, and offers the flow's home as the channel of a box
+// that has none yet: a flow opened from a channel posts there.
+function test_workspace_flows_canvas_template_text_and_home()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$strings = ws_flow_js_strings();
+
+	pg_assert_contains("text: 'fl_tpl_set_text'", $script, 'the words have their label');
+	pg_assert_true(isset($strings['fl_tpl_set_text']), 'the label is handed over');
+	pg_assert_contains("} else if (type === 'text') {\n            control = el('textarea', 'form-control form-control-sm');", $script, 'a box for the words');
+	pg_assert_contains('control.maxLength = 4000;', $script, 'as long as a post box keeps');
+	pg_assert_contains('answers.channel = value || (state.flow && state.flow.channel_id) || 0;', $script, 'the home channel offered');
+}
+
 // The setup panel of a saved template asks the table of its row boxes with
 // a picker of the tables the person reaches: only those whose rows they may
 // change once a box adds or changes rows, every table read for a row start.
@@ -3251,7 +3349,7 @@ function threadsShown() { return true; }
 function open(id) { opened.push(id); state.flow = { id: id, access: 'edit' }; return Promise.resolve(true); }
 function nodeById(id) { return { id: id }; }
 function select(selected) { log.push('select ' + selected.id); }
-function openLastRun(run) { log.push('run ' + run.id); }
+function openLastRun(run) { log.push('run ' + run.id); state.run = { id: run.id }; return Promise.resolve(); }
 function drawList() { log.push('list'); }
 function drawFlows() {}
 function showGallery(into) { log.push('gallery ' + into); }
@@ -3350,7 +3448,7 @@ JS
 	pg_assert_same(array('flow' => 0, 'box' => '', 'run' => 0), $result['noAddress'], 'an empty address names none');
 	pg_assert_same(array('ws_flow_list'), $result['full']['calls'], 'the Flows screen reads its list');
 	pg_assert_same(array(7), $result['full']['opened'], 'start() opens the flow the address names');
-	pg_assert_same(array('bindCanvas', 'list', 'select post_2', 'run 31'), $result['full']['log'], 'then its box and its run');
+	pg_assert_same(array('bindCanvas', 'list', 'run 31', 'select post_2'), $result['full']['log'], 'then its run, and its box in the run shown');
 	pg_assert_true($result['full']['screen'], 'the screen is taken');
 	pg_assert_same(1, $result['full']['embedEnded'], 'an embedded drawing ends first');
 	pg_assert_same(array('destroy', 'flush'), $result['full']['api'], 'mount() gives destroy() and flush()');
@@ -3466,10 +3564,9 @@ function test_workspace_flows_canvas_layer_wiring()
 
 /**
  * The ways in to a flow from a Workspace page open the layer, not the Flows
- * screen: the scheduled flow window's canvas button, the draft card's box
- * link, the run card's Open the run, a scheduled action's Edit and the
- * flows made by Duplicate or from a draft; on the Flows screen itself they
- * still go by the address.
+ * screen: the draft card's box link, the run card's Open the run, a
+ * scheduled action's Edit and the flows made by Duplicate or from a draft;
+ * on the Flows screen itself they still go by the address.
  */
 function test_workspace_flows_canvas_layer_ways_in()
 {
@@ -3485,10 +3582,8 @@ function test_workspace_flows_canvas_layer_ways_in()
 	pg_assert_contains('event.preventDefault();', $link, 'a plain click opens the layer');
 	pg_assert_contains('event.ctrlKey || event.metaKey', $link, 'a new tab follows the address');
 	pg_assert_contains('flowGo(result.flow_id)', $opened, 'a made flow opens in the layer');
-	pg_assert_contains('leave(function () { flowGo(result.flow_id); });', $opened, 'after the window it came from is gone');
 	pg_assert_contains('flowGo(result.flow_id, { opener: trigger });', $edit, 'an Edit converted opens in the layer');
-	pg_assert_contains("hideOffcanvas(node, next);", $kit, 'the scheduled flow window closes before the layer opens');
-	pg_assert_contains('flowGo(run.flow_id, { run: run.id });', $kit, 'Open the run in the layer');
+	pg_assert_contains("flowGo(run.flow_id, (run.status === 'failed') && card.box ? { run: run.id, box: card.box } : { run: run.id });", $kit, 'Open the run in the layer, a failed one on the box it failed at');
 	pg_assert_contains('flowGo(item.flow.id, { opener: edit });', $kit, 'Edit of a converted action in the layer');
 	pg_assert_contains('flowLinkOpens(link, view.flow_id, { box: node.id });', $kit, 'a draft card\'s box in the layer');
 	pg_assert_contains('flowLinkOpens(flow, change.flow_id);', $kit, 'an applied draft\'s flow in the layer');

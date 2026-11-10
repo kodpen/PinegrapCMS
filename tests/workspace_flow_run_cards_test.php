@@ -43,6 +43,37 @@ function test_workspace_flow_run_cards_runnable_here()
 	pg_assert_false(ws_flow_runnable_here($row, 'manual', false), 'an owner who may not write in the channel');
 }
 
+// Add › Start a flow is offered only where it has a flow to start: the
+// channel's opening says so (flows_here), from the same list the drawer
+// shows, never in a direct message, a customer channel or a discussion.
+function test_workspace_flow_run_cards_offered_only_with_a_flow()
+{
+	$viewer = array('id' => 5, 'member' => true, 'role' => 1);
+
+	pg_assert_false(ws_flows_startable_in($viewer, null), 'no channel');
+
+	foreach (array('direct', 'customer', '') as $kind) {
+		pg_assert_false(ws_flows_startable_in($viewer, array('id' => 3, 'kind' => $kind)), 'a channel of kind "' . $kind . '"');
+	}
+
+	$function = new ReflectionFunction('ws_flows_startable_in');
+	$lines = file($function->getFileName());
+	$source = implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+
+	pg_assert_contains('ws_flows_nav_visible($viewer)', $source, 'only for whoever sees Flows');
+	pg_assert_contains("!empty(ws_flows_runnable_in(\$viewer, (int) \$channel['id']))", $source, 'the list the drawer shows');
+
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	$open = substr($actions, (int) strpos($actions, "case 'ws_channel_open':"), 6000);
+
+	pg_assert_contains("'flows_here' => empty(\$request['as_thread']) && ws_flows_startable_in(\$viewer, \$channel),", $open, 'the opening answers it');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_contains('self.flowsHere = !!data.flows_here;', $js, 'kept as the channel opens');
+	pg_assert_contains('(CFG.flows && CFG.flows.nav && self.flowsHere && !self.isThread && !self.era', $js, 'the entry asks it');
+}
+
 // The card: the run without its boxes or graph, its flow, and Open the run
 // only for a reader who reaches the flow.
 function test_workspace_flow_run_cards_payload()
@@ -51,7 +82,8 @@ function test_workspace_flow_run_cards_payload()
 		'started_at' => '2026-10-29T10:00:00Z', 'finished_at' => null, 'steps' => null, 'graph' => null);
 	$card = ws_flow_run_card_payload($run, 'Daily report', 'run');
 
-	pg_assert_same(array('run', 'flow_id', 'flow_name', 'can_open'), array_keys($card));
+	pg_assert_same(array('run', 'flow_id', 'flow_name', 'can_open', 'box'), array_keys($card));
+	pg_assert_same('', $card['box'], 'a run that has not failed opens on no box');
 	pg_assert_same(3, $card['flow_id']);
 	pg_assert_same('Daily report', $card['flow_name']);
 	pg_assert_true($card['can_open'], 'a reader who runs the flow opens the run');
@@ -59,6 +91,9 @@ function test_workspace_flow_run_cards_payload()
 	pg_assert_same('Waiting for Ada.', $card['run']['result']);
 	pg_assert_true($card['run']['can_cancel']);
 	pg_assert_false(ws_flow_run_card_payload($run, 'Daily report', '')['can_open'], 'a reader by the channel alone sees the flag only');
+
+	$run['status'] = 'failed';
+	pg_assert_same('post', ws_flow_run_card_payload($run, 'Daily report', 'run', 'post')['box'], 'a failed run opens on the box it failed at');
 }
 
 // The flow's name in the system line makes no tag, mark or link.

@@ -106,9 +106,14 @@ function carrier_label_geliver_test_done()
 function test_carrier_label_geliver_is_a_builtin_driver()
 {
 	pg_assert_true(pg_label_driver('geliver') !== null);
-	pg_assert_same(array('carriers' => array('yurtici', 'surat', 'aras', 'mng', 'ptt'), 'formats' => array('pdf')), pg_label_info('geliver'));
+	$info = pg_label_info('geliver');
+	pg_assert_same(array('yurtici', 'surat', 'aras', 'mng', 'ptt'), $info['carriers']);
+	pg_assert_same(array('pdf'), $info['formats']);
+	pg_assert_same('national', $info['rates'], 'the price list goes by the parcel alone');
+	pg_assert_same('Yurtiçi Kargo', $info['services']['YURTICI_STANDART']);
+	pg_assert_false(isset($info['services']['GELIVER_STANDART']), 'the test service is not offered');
 
-	foreach (array('test', 'create', 'label', 'cancel', 'track') as $operation) {
+	foreach (array('test', 'create', 'label', 'cancel', 'track', 'rate') as $operation) {
 		pg_assert_true(pg_label_can('geliver', $operation), $operation);
 	}
 
@@ -512,4 +517,71 @@ function test_carrier_label_geliver_district_name_is_the_district_else_the_city(
 	$body = pg_label_geliver_shipment_body($shipment, carrier_label_geliver_test_account());
 	pg_assert_same('Şehzadeler', $body['recipientAddress']['districtName']);
 	pg_assert_same('Manisa', $body['recipientAddress']['cityName']);
+}
+
+// The price list is national and by parcel only; a service listed twice (the
+// account's own contract and Geliver's) is quoted at the lower price.
+function test_carrier_label_geliver_rate_reads_the_price_list()
+{
+	carrier_label_geliver_test_stub(array(
+		'GET /priceList?paramType=parcel&length=30&width=20&height=10.5&weight=1.25' => array('price_list'),
+	));
+
+	$answer = pg_label_call('geliver', 'rate', array(carrier_label_geliver_test_shipment(), carrier_label_geliver_test_account()));
+	carrier_label_geliver_test_done();
+
+	pg_assert_true($answer['success'], $answer['error']);
+	pg_assert_same(array('GET /priceList?paramType=parcel&length=30&width=20&height=10.5&weight=1.25'), carrier_label_geliver_test_sent());
+	pg_assert_same(7, count($answer['quotes']));
+	pg_assert_same(array('service' => 'SENDEO_STANDART', 'carrier' => '', 'amount' => 8988, 'currency' => 'TRY'), $answer['quotes'][0]);
+
+	$by_service = array();
+
+	foreach ($answer['quotes'] as $quote) {
+		$by_service[$quote['service']] = $quote;
+	}
+
+	pg_assert_same(array('service' => 'YURTICI_STANDART', 'carrier' => 'yurtici', 'amount' => 13140, 'currency' => 'TRY'), $by_service['YURTICI_STANDART']);
+	pg_assert_same(9900, $by_service['SURAT_STANDART']['amount']);
+	pg_assert_same('surat', $by_service['SURAT_STANDART']['carrier']);
+}
+
+function test_carrier_label_geliver_rate_quotes_skip_offers_without_a_price()
+{
+	$quotes = pg_label_geliver_rate_quotes(array('priceList' => array(
+		array('desi' => '1', 'offers' => array(
+			array('providerServiceCode' => 'PTT_STANDART', 'providerCode' => 'PTT', 'totalAmount' => '50.005', 'currency' => 'TL'),
+			array('providerServiceCode' => 'MNG_STANDART', 'totalAmount' => '', 'currency' => 'TL'),
+			array('providerServiceCode' => 'ARAS_STANDART', 'totalAmount' => '-3', 'currency' => 'TL'),
+			array('totalAmount' => '10', 'currency' => 'TL'),
+			'nothing',
+		)),
+		'nothing',
+	)));
+
+	pg_assert_same(array(array('service' => 'PTT_STANDART', 'carrier' => 'ptt', 'amount' => 5001, 'currency' => 'TRY')), $quotes);
+	pg_assert_same(array(), pg_label_geliver_rate_quotes(array('data' => array())));
+}
+
+function test_carrier_label_geliver_rate_refused_or_empty()
+{
+	carrier_label_geliver_test_stub(array(
+		'GET /priceList?paramType=parcel&length=30&width=20&height=10.5&weight=1.25' => array(
+			array(401, carrier_label_geliver_test_fixture('error_token')),
+			array(200, '{"result":true,"additionalMessage":"Success","priceList":[]}'),
+		),
+	));
+
+	$refused = pg_label_call('geliver', 'rate', array(carrier_label_geliver_test_shipment(), carrier_label_geliver_test_account()));
+	$empty = pg_label_call('geliver', 'rate', array(carrier_label_geliver_test_shipment(), carrier_label_geliver_test_account()));
+	$unreached = pg_label_call('geliver', 'rate', array(carrier_label_geliver_test_shipment(), carrier_label_geliver_test_account()));
+	carrier_label_geliver_test_done();
+
+	foreach (array('refused' => $refused, 'empty' => $empty, 'unreached' => $unreached) as $case => $answer) {
+		pg_assert_false($answer['success'], $case);
+		pg_assert_false($answer['unclear'], $case . ': a price list changes nothing');
+		pg_assert_same(array(), $answer['quotes'], $case);
+	}
+
+	pg_assert_true(strpos(json_encode($refused['raw']), 'gl-test-token-123456') === false, 'token masked');
 }

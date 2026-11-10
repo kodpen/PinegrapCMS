@@ -103,7 +103,7 @@ function carrier_label_sendcloud_test_shipment($changes = array())
 function test_carrier_label_sendcloud_is_a_builtin_driver()
 {
 	pg_assert_true(pg_label_driver('sendcloud') !== null);
-	pg_assert_same(array('carriers' => array('ups', 'fedex', 'dhl', 'deutschepost', 'dpd', 'royalmail'), 'formats' => array('pdf', 'zpl')), pg_label_info('sendcloud'));
+	pg_assert_same(array('carriers' => array('ups', 'fedex', 'dhl', 'deutschepost', 'dpd', 'royalmail'), 'formats' => array('pdf', 'zpl'), 'services' => array(), 'rates' => 'address'), pg_label_info('sendcloud'));
 
 	foreach (array('test', 'create', 'label', 'cancel', 'track', 'pickup') as $operation) {
 		pg_assert_true(pg_label_can('sendcloud', $operation), $operation);
@@ -884,4 +884,52 @@ function test_carrier_label_sendcloud_long_name_keeps_the_body()
 	pg_assert_true(is_string(end($bodies)), 'the announcement has a body');
 	$sent = json_decode((string) end($bodies), true);
 	pg_assert_same(str_repeat('ü', 60), isset($sent['to_address']['name']) ? $sent['to_address']['name'] : null);
+}
+
+// The quotes are the options a label can be made with: no test letter, no
+// service point, no export documents, none without a price.
+function test_carrier_label_sendcloud_rate_quotes_the_usable_options()
+{
+	carrier_label_sendcloud_test_stub(array(
+		'GET /addresses/sender-addresses?page_size=100' => array('sender_addresses.json'),
+		'POST /shipping-options'                         => array('shipping_options.json'),
+	));
+	$answer = pg_label_call('sendcloud', 'rate', array(carrier_label_sendcloud_test_shipment(), carrier_label_sendcloud_test_account(array('mode' => 'test'))));
+	$sent = $GLOBALS['carrier_label_sendcloud_test_sent'];
+	carrier_label_sendcloud_test_done();
+
+	pg_assert_true($answer['success'], $answer['error']);
+	pg_assert_same(array('GET /addresses/sender-addresses?page_size=100', 'POST /shipping-options'), carrier_label_sendcloud_test_sent(), 'nothing is announced');
+	pg_assert_same(array(
+		array('service' => 'dpd:home', 'carrier' => 'dpd', 'amount' => 610, 'currency' => 'EUR'),
+		array('service' => 'postnl:standard', 'carrier' => '', 'amount' => 725, 'currency' => 'EUR'),
+	), $answer['quotes']);
+	pg_assert_same(array('country_code' => 'DE', 'postal_code' => '10117'), $sent[1]['body']['to_address']);
+	pg_assert_true($sent[1]['body']['calculate_quotes']);
+}
+
+function test_carrier_label_sendcloud_rate_checks_the_route_first()
+{
+	carrier_label_sendcloud_test_stub(array(
+		'GET /addresses/sender-addresses?page_size=100' => array('sender_addresses.json'),
+	));
+	$answer = pg_label_call('sendcloud', 'rate', array(carrier_label_sendcloud_test_shipment(array('recipient' => array('country' => 'US', 'zip' => '10001'))), carrier_label_sendcloud_test_account()));
+	$no_country = pg_label_call('sendcloud', 'rate', array(carrier_label_sendcloud_test_shipment(array('recipient' => array('zip' => '10001'))), carrier_label_sendcloud_test_account()));
+	carrier_label_sendcloud_test_done();
+
+	pg_assert_false($answer['success'], 'a customs route without the customs block');
+	pg_assert_false($answer['unclear']);
+	pg_assert_same(array('GET /addresses/sender-addresses?page_size=100'), carrier_label_sendcloud_test_sent(), 'no option is priced');
+	pg_assert_false($no_country['success']);
+}
+
+function test_carrier_label_sendcloud_rate_quotes_follow_the_incoterm()
+{
+	$options = json_decode(carrier_label_sendcloud_test_fixture('shipping_options.json'), true)['data'];
+
+	$declared = pg_label_sendcloud_rate_quotes($options, 'DDU');
+	pg_assert_same('dhl_express:worldwide/incoterm=dap', $declared[0]['service'], 'a declared parcel may need export documents');
+	pg_assert_same(410, $declared[0]['amount']);
+	pg_assert_same('dhl', $declared[0]['carrier']);
+	pg_assert_same(array(), pg_label_sendcloud_rate_quotes('nothing'));
 }

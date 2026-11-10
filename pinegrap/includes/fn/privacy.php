@@ -990,6 +990,9 @@ function pg_privacy_erase_tables()
         // A workflow table row keeps its place in its owner's table; only the
         // cells naming the person are emptied (_pg_privacy_erase_apply_ws_wtable_cells()).
         'ws_wtable_cells'              => array('table' => 'ws_wtable_rows', 'find' => array('id' => 'wtable_row_ids'), 'action' => 'anonymise', 'fields' => array('cells' => '')),
+        // The rows in a table's bin are kept data too: the same cells are
+        // emptied there (_pg_privacy_erase_apply_ws_wtable_bin_cells()).
+        'ws_wtable_bin_cells'          => array('table' => 'ws_wtable_row_bin', 'find' => array('id' => 'wtable_bin_ids'), 'action' => 'anonymise', 'fields' => array('cells' => '')),
         // Orders go late: the person's other records are found through them,
         // so a run stopped half-way still reaches those records.
         'orders' => array('find' => array('id' => 'order_ids'), 'action' => 'anonymise', 'fields' => array(
@@ -1098,6 +1101,7 @@ function pg_privacy_erase_labels()
         'opt_in'                       => lang('Opt-in answers'),
         'contacts_contact_groups_xref' => lang('Contact groups'),
         'ws_wtable_cells'              => lang('Workflow table cells naming the person'),
+        'ws_wtable_bin_cells'          => lang('Deleted workflow table rows naming the person'),
         'orders'                       => lang('Orders'),
         'contacts'                     => lang('Contact'),
         'user'                         => lang('User account'),
@@ -1178,7 +1182,7 @@ function pg_privacy_erase_set(array $fields, $name, $token)
  * @return array  user_ids, contact_ids, emails, tokens, phones, order_ids,
  *                form_ids, account_ids, conversation_ids, file_ids,
  *                return_ids, audit_ids, cell_ids, revision_form_ids,
- *                wtable_row_ids
+ *                wtable_row_ids, wtable_bin_ids
  */
 function pg_privacy_erase_scope(array $found)
 {
@@ -1201,6 +1205,7 @@ function pg_privacy_erase_scope(array $found)
         'cell_ids'         => array(),
         'revision_form_ids' => array(),
         'wtable_row_ids'   => array(),
+        'wtable_bin_ids'   => array(),
     );
 
     // A counter sale keeps the cashier in user_id and its buyer in contact_id,
@@ -1337,6 +1342,7 @@ function pg_privacy_erase_scope(array $found)
 
     // Workflow table rows with a cell naming the person or their records.
     $scope['wtable_row_ids'] = _pg_privacy_export_column(pg_privacy_wtable_rows($scope)['rows'], 'id');
+    $scope['wtable_bin_ids'] = _pg_privacy_export_column(pg_privacy_wtable_rows($scope, 0, array(), 'bin')['rows'], 'id');
 
     return $scope;
 }
@@ -1443,21 +1449,26 @@ function pg_privacy_wtable_rows_where(array $scope)
 
 /**
  * The workflow table rows with a cell naming the person, read in batches of
- * id order.
+ * id order: those of the tables, or those in the tables' bins
+ * (ws_wtable_row_bin), whose id is the bin entry's and row_id the row's.
  *
- * @param array $scope   user_ids, contact_ids, account_ids
- * @param int   $limit   the most rows to give, 0 for all
- * @param int[] $ids     only these rows, when given
- * @return array  rows (id, table_id, revision, cells, hits, created_at,
- *                updated_at), columns (table id => column id => name, type),
- *                truncated
+ * @param array  $scope   user_ids, contact_ids, account_ids
+ * @param int    $limit   the most rows to give, 0 for all
+ * @param int[]  $ids     only these rows, when given
+ * @param string $store   rows | bin
+ * @return array  rows (id, row_id, table_id, revision, cells, hits,
+ *                created_at, updated_at, deleted_at), columns (table id =>
+ *                column id => name, type), truncated
  */
-function pg_privacy_wtable_rows(array $scope, $limit = 0, array $ids = array())
+function pg_privacy_wtable_rows(array $scope, $limit = 0, array $ids = array(), $store = 'rows')
 {
     $result = array('rows' => array(), 'columns' => array(), 'truncated' => false);
     $where = pg_privacy_wtable_rows_where($scope);
+    $bin = ($store === 'bin');
+    $table = $bin ? 'ws_wtable_row_bin' : 'ws_wtable_rows';
+    $select = $bin ? 'id, row_id, table_id, revision, cells, created_at, updated_at, deleted_at' : 'id, table_id, revision, cells, created_at, updated_at';
 
-    if (($where === '') || !pg_schema_has('ws_wtable_rows', 'cells') || !pg_schema_has('ws_wtable_columns', 'type')) {
+    if (($where === '') || !pg_schema_has($table, 'cells') || !pg_schema_has('ws_wtable_columns', 'type')) {
         return $result;
     }
 
@@ -1468,7 +1479,7 @@ function pg_privacy_wtable_rows(array $scope, $limit = 0, array $ids = array())
     $after = 0;
 
     do {
-        $batch = db_items("SELECT id, table_id, revision, cells, created_at, updated_at FROM ws_wtable_rows WHERE (id > '" . $after . "') AND " . $where . " ORDER BY id LIMIT 500");
+        $batch = db_items("SELECT " . $select . " FROM " . $table . " WHERE (id > '" . $after . "') AND " . $where . " ORDER BY id LIMIT 500");
         $missing = array();
 
         foreach ($batch as $row) {
@@ -1508,12 +1519,14 @@ function pg_privacy_wtable_rows(array $scope, $limit = 0, array $ids = array())
 
             $result['rows'][] = array(
                 'id'         => (int) $row['id'],
+                'row_id'     => (int) ($bin ? $row['row_id'] : $row['id']),
                 'table_id'   => (int) $row['table_id'],
                 'revision'   => (int) $row['revision'],
                 'cells'      => $cells,
                 'hits'       => $hits,
                 'created_at' => (int) $row['created_at'],
                 'updated_at' => (int) $row['updated_at'],
+                'deleted_at' => (int) ($bin ? $row['deleted_at'] : 0),
             );
         }
     } while (count($batch) === 500);
@@ -1963,17 +1976,39 @@ function _pg_privacy_erase_apply_user($where, array $fields, array $scope, $name
  */
 function _pg_privacy_erase_apply_ws_wtable_cells($where, array $fields, array $scope, $name)
 {
-    $pending = $scope['wtable_row_ids'];
+    _pg_privacy_erase_wtable_cells($scope['wtable_row_ids'], $scope, 'rows');
+}
+
+/**
+ * The rows in the tables' bins lose the same cells, as the tables' rows do.
+ */
+function _pg_privacy_erase_apply_ws_wtable_bin_cells($where, array $fields, array $scope, $name)
+{
+    _pg_privacy_erase_wtable_cells(isset($scope['wtable_bin_ids']) ? $scope['wtable_bin_ids'] : array(), $scope, 'bin');
+}
+
+/**
+ * Empty the cells naming the person in these rows of a store
+ * (pg_privacy_wtable_rows()), each row written on its revision and read
+ * again, up to three times, when it changed meanwhile.
+ *
+ * @param int[]  $pending
+ * @param array  $scope
+ * @param string $store  rows | bin
+ */
+function _pg_privacy_erase_wtable_cells(array $pending, array $scope, $store)
+{
+    $table = ($store === 'bin') ? 'ws_wtable_row_bin' : 'ws_wtable_rows';
 
     for ($attempt = 0; $pending && ($attempt < 3); $attempt++) {
-        $read = pg_privacy_wtable_rows($scope, 0, $pending);
+        $read = pg_privacy_wtable_rows($scope, 0, $pending, $store);
         $pending = array();
 
         foreach ($read['rows'] as $row) {
             $cells = pg_privacy_wtable_cells_erased($row['cells'], $row['hits']);
             $json = json_encode((object) $cells, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION);
 
-            db("UPDATE ws_wtable_rows SET cells = '" . e(($json === false) ? '{}' : $json) . "', revision = revision + 1, updated_at = '" . time() . "'
+            db("UPDATE " . $table . " SET cells = '" . e(($json === false) ? '{}' : $json) . "', revision = revision + 1, updated_at = '" . time() . "'
                 WHERE id = '" . $row['id'] . "' AND revision = '" . $row['revision'] . "'");
 
             if ((int) mysqli_affected_rows(db::$con) !== 1) {

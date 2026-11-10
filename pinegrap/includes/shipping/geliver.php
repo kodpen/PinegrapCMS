@@ -30,6 +30,9 @@
  * The offer accepted is the one of the service asked for, else the cheapest.
  * $reference is Geliver's shipment id.
  *
+ * rate() takes the same shipment but reads only its parcel: Geliver's price
+ * list is national and priced by parcel alone.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -52,6 +55,33 @@ function pg_label_geliver_info()
     return array(
         'carriers' => array_values(array_unique(pg_label_geliver_carriers())),
         'formats'  => array('pdf'),
+        'services' => pg_label_geliver_services(),
+        // The price list goes by the parcel alone, never the address.
+        'rates'    => 'national',
+    );
+}
+
+/**
+ * Geliver's service codes (its reference's provider service codes and the
+ * ones its price list answers with), code => name. GELIVER_STANDART is the
+ * test shipments' service and is left out; carrier names are not translated.
+ *
+ * @return array
+ */
+function pg_label_geliver_services()
+{
+    return array(
+        'ARAS_STANDART'        => 'Aras Kargo',
+        'DHL_STANDART'         => 'DHL eCommerce',
+        'HEPSIJET_STANDART'    => 'hepsiJET',
+        'KOLAYGELSIN_STANDART' => 'Kolay Gelsin',
+        'MNG_STANDART'         => 'MNG Kargo',
+        'PAKETTAXI_STANDART'   => 'Paket Taxi',
+        'PTT_STANDART'         => 'PTT Kargo',
+        'PTT_KAPIDA_ODEME'     => 'PTT Kargo (' . lang('Cash on Delivery') . ')',
+        'SENDEO_STANDART'      => 'Sendeo',
+        'SURAT_STANDART'       => 'Sürat Kargo',
+        'YURTICI_STANDART'     => 'Yurtiçi Kargo',
     );
 }
 
@@ -433,6 +463,59 @@ function pg_label_geliver_offers_complete($offers)
 }
 
 /**
+ * The quotes of a GET /priceList answer: one per service code, the lower
+ * when a service is listed twice, cheapest first. totalAmount is the price
+ * with VAT and other taxes; Geliver writes Turkish lira as TL. An offer
+ * without a service code or a total of 0 or more is left out.
+ *
+ * @param array $answer the decoded answer (priceList is beside data, not in it)
+ * @return array list of service, carrier, amount (minor units), currency
+ */
+function pg_label_geliver_rate_quotes($answer)
+{
+    $quotes = array();
+    $groups = (is_array($answer) && isset($answer['priceList']) && is_array($answer['priceList'])) ? $answer['priceList'] : array();
+
+    foreach ($groups as $group) {
+        if (!is_array($group) || !isset($group['offers']) || !is_array($group['offers'])) {
+            continue;
+        }
+
+        foreach ($group['offers'] as $offer) {
+            if (!is_array($offer) || !isset($offer['providerServiceCode'], $offer['totalAmount'])
+                || !is_string($offer['providerServiceCode']) || !is_numeric($offer['totalAmount'])
+                || ((float) $offer['totalAmount'] < 0)) {
+                continue;
+            }
+
+            $service = strtoupper(trim($offer['providerServiceCode']));
+            $currency = (isset($offer['currency']) && is_string($offer['currency'])) ? strtoupper(trim($offer['currency'])) : '';
+            $currency = (($currency === '') || ($currency === 'TL')) ? 'TRY' : $currency;
+            $amount = (int) round(((float) $offer['totalAmount']) * 100);
+
+            if (($service === '') || (isset($quotes[$service]) && ($quotes[$service]['currency'] === $currency) && ($quotes[$service]['amount'] <= $amount))) {
+                continue;
+            }
+
+            $quotes[$service] = array(
+                'service'  => $service,
+                'carrier'  => pg_label_geliver_carrier($offer),
+                'amount'   => $amount,
+                'currency' => $currency,
+            );
+        }
+    }
+
+    $quotes = array_values($quotes);
+
+    usort($quotes, function ($a, $b) {
+        return ($a['amount'] === $b['amount']) ? strcmp($a['service'], $b['service']) : (($a['amount'] < $b['amount']) ? -1 : 1);
+    });
+
+    return $quotes;
+}
+
+/**
  * The carrier key of a shipment's provider code, '' for one the store does
  * not know.
  *
@@ -678,6 +761,37 @@ function pg_label_geliver_create($shipment, $account)
     }
 
     return $answer;
+}
+
+function pg_label_geliver_rate($shipment, $account)
+{
+    $parcel = (is_array($shipment) && isset($shipment['parcel']) && is_array($shipment['parcel'])) ? $shipment['parcel'] : array();
+    $size = function ($name, $places) use ($parcel) {
+        return pg_label_geliver_number((isset($parcel[$name]) && is_scalar($parcel[$name])) ? trim((string) $parcel[$name]) : '', $places);
+    };
+
+    $path = '/priceList?' . http_build_query(array(
+        'paramType' => 'parcel',
+        'length'    => $size('length', 2),
+        'width'     => $size('width', 2),
+        'height'    => $size('height', 2),
+        'weight'    => $size('weight', 3),
+    ), '', '&');
+
+    $read = pg_label_geliver_api('GET', $path, $account);
+
+    if (!$read['ok']) {
+        return pg_label_geliver_failure($read, false);
+    }
+
+    $quotes = pg_label_geliver_rate_quotes(is_array($read['raw']['answer']) ? $read['raw']['answer'] : array());
+
+    return array(
+        'success' => true,
+        'quotes'  => $quotes,
+        'log'     => array('Geliver price list: ' . count($quotes) . ' services'),
+        'raw'     => $read['raw'],
+    );
 }
 
 function pg_label_geliver_label($reference, $format, $account)

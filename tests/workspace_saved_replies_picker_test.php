@@ -114,6 +114,23 @@ function test_ws_saved_replies_picker_preview()
 	pg_assert_same('abcd…', $got[1]);
 }
 
+// A team reply is marked in the ; list.
+function test_ws_saved_replies_picker_meta()
+{
+	$got = workspace_saved_replies_picker_run('R.meta(one, function (key) { return key === "replies_team" ? "Team" : key; })', array(
+		array('shortcut' => 'iade', 'scope' => 'personal'),
+		array('shortcut' => 'iade', 'scope' => 'team'),
+	));
+
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(';iade', $got[0]);
+	pg_assert_same(';iade · Team', $got[1]);
+	pg_assert_contains('meta: window.PGWsReplies.meta(reply, t)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'), 'the ; list draws it');
+}
+
 function test_ws_saved_replies_picker_wiring()
 {
 	$app = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');

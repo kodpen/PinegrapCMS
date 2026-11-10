@@ -7,6 +7,8 @@
  * is switched off, or in the Recycle Bin (which switches it off), is not on
  * the site: every chooser lists enabled products only, so the action answers
  * "Product not found." for it instead of its texts, price, stock and photos.
+ * With an offer the answer carries the strike-through price block beside the
+ * amount, which stays as it was.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -19,10 +21,11 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 // Runs pg_panel_get_product() for product 7 in a fresh PHP, the database
-// answering $row for the product read. Returns the decoded answer plus the
-// queries, array('error' => output) on a crash, or null when PHP cannot be
-// started again.
-function storefront_get_product_run($row)
+// answering $row for the product read and $discounts (product id => price
+// in cents) for the offers. Returns the decoded answer plus the queries,
+// array('error' => output) on a crash, or null when PHP cannot be started
+// again.
+function storefront_get_product_run($row, $discounts = array())
 {
 	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
 		return null;
@@ -53,6 +56,8 @@ function db_q($sql, $params = array()) { $GLOBALS['queries'][] = $sql; return fa
 function lang($text) { return $text; }
 function encode_url_path($path) { return $path; }
 function pg_visitor_money($amount, $symbol) { return $symbol . $amount; }
+function _pg_format_price_with_discount($original, $effective, $symbol) { return 'block:' . $original . ':' . $effective . ':' . $symbol; }
+function get_discounted_product_prices() { return $GLOBALS['discounts']; }
 function pg_product_oos_notice($product) { return ''; }
 function encode_json($value) { return json_encode($value); }
 
@@ -67,6 +72,7 @@ PHP;
 
 	file_put_contents($file, '<?php' . "\n"
 		. '$GLOBALS[\'row\'] = ' . var_export($row, true) . ";\n"
+		. '$GLOBALS[\'discounts\'] = ' . var_export($discounts, true) . ";\n"
 		. '$handler = ' . var_export($handler, true) . ";\n"
 		. $script . "\n");
 
@@ -129,4 +135,21 @@ function test_storefront_get_product_answers_enabled_product()
 	pg_assert_same(12990, $run['answer']['product']['price_cents']);
 	pg_assert_false(array_key_exists('enabled', $run['answer']['product']), 'the enabled column is in the answer');
 	pg_assert_contains('enabled', $run['queries'][0]);
+}
+
+// With an offer the answer carries the strike-through block the product's
+// page draws (price_block_html), for the variant chooser; price_formatted
+// stays the amount for the layouts that read it.
+function test_storefront_get_product_sends_the_price_block()
+{
+	$run = storefront_get_product_run(storefront_get_product_row('1'), array(7 => 9990));
+
+	if ($run === null) {
+		return;
+	}
+
+	pg_assert_false(isset($run['error']), isset($run['error']) ? $run['error'] : '');
+	pg_assert_same('block:12990:9990:$', $run['answer']['product']['price_block_html'], 'the block of the offer');
+	pg_assert_same('$99.9', $run['answer']['product']['price_formatted'], 'the amount, as before');
+	pg_assert_same('1', $run['answer']['product']['has_discount']);
 }

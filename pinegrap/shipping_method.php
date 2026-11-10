@@ -106,7 +106,7 @@ if ($liveform->check_form_errors() == false) {
             name,
             code,
             service,
-            realtime_rate,
+            realtime_rate" . pg_shipping_label_rate_select() . ",
             base_rate,
             variable_base_rate,
             base_rate_2,
@@ -135,6 +135,8 @@ if ($liveform->check_form_errors() == false) {
     $shipping_method_code = $row['code'];
     $shipping_method_service = $row['service'];
     $shipping_method_realtime_rate = $row['realtime_rate'];
+    $shipping_method_label_driver = $row['label_driver'];
+    $shipping_method_label_service = $row['label_service'];
     $shipping_method_base_rate = $row['base_rate'];
     $shipping_method_variable_base_rate = $row['variable_base_rate'];
     $shipping_method_base_rate_2 = $row['base_rate_2'];
@@ -200,6 +202,9 @@ if ($liveform->check_form_errors() == false) {
         'ship_to_id' => $_POST['ship_to_id'],
         'service' => $shipping_method_service,
         'realtime_rate' => $shipping_method_realtime_rate,
+        'label_driver' => $shipping_method_label_driver,
+        'label_service' => $shipping_method_label_service,
+        'country' => $country_code,
         'items' => $order_items));
 
     // If there was an error getting the realtime rate, then output error.

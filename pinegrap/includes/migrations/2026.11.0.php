@@ -167,6 +167,9 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_agent_undo();           // 11.0.174
 	upgrade_2026_11_0_ws_channel_links();        // 11.0.175
 	upgrade_2026_11_0_bundle_backorder();        // 11.0.176
+	upgrade_2026_11_0_shipping_method_label_link(); // 11.0.177
+	upgrade_2026_11_0_ws_wtable_bin();           // 11.0.178
+	upgrade_2026_11_0_ws_team_replies();         // 11.0.179
 
 }
 
@@ -5677,5 +5680,108 @@ function upgrade_2026_11_0_bundle_backorder() {
 	}
 
 	install_note('Product bundles: a bundle keeps its own Backorder choice apart from what its components allow, so it takes back orders again once they do. A bundle that lost the choice already takes it back when it is saved once.');
+
+}
+
+// A shipping method linked to a carrier label service (includes/fn/shipping_methods.php).
+//
+// label_driver names the label driver (pg_label_drivers() key) and
+// label_service one of its services, '' for the cheapest quote; Create Label
+// takes that driver while it is ready, and a method with realtime_rate on
+// charges the driver's quote at checkout. shipping_rates is the day cache of
+// live rates: its service was an ENUM of the UPS/USPS/FedEx services, so a
+// row of a label service (label:<driver>:<service>) could not be kept. The
+// ENUM becomes a VARCHAR that holds every old value as it is. MODIFY runs
+// only while the column is not a VARCHAR yet, so a rerun changes nothing.
+function upgrade_2026_11_0_shipping_method_label_link() {
+
+	install_add_column('shipping_methods', 'label_driver', "VARCHAR(32) NOT NULL DEFAULT ''");
+	install_add_column('shipping_methods', 'label_service', "VARCHAR(64) NOT NULL DEFAULT '' AFTER label_driver");
+
+	$service = install_column_info('shipping_rates', 'service');
+
+	if (is_array($service) && (stripos((string) $service['Type'], 'varchar') !== 0)) {
+
+		install_modify_column('shipping_rates', 'service', "VARCHAR(100) NOT NULL DEFAULT ''");
+
+	} elseif (is_array($service)) {
+
+		install_skipped('shipping_rates.service is already a VARCHAR');
+
+	}
+
+	install_note('Shipping methods: a method can be linked to a carrier label service and one of its services, which Create Label then uses. Nothing changes until a method is linked.');
+
+}
+
+// The bin of workflow tables (includes/workspace/wtable_bin.php).
+//
+// A deleted table keeps its row in ws_wtables with deleted_at set, so its id
+// stays taken and the flows that name it work again after a restore. A
+// deleted row leaves ws_wtable_rows for ws_wtable_row_bin, so the statements
+// that read rows need no filter. links holds the row's ws_refs tags as JSON.
+function upgrade_2026_11_0_ws_wtable_bin() {
+
+	if (!install_table_exists('ws_wtables')) {
+
+		install_skipped('ws_wtables does not exist, skipped');
+
+		return;
+
+	}
+
+	$columns = array(
+		'deleted_at' => "INT UNSIGNED NOT NULL DEFAULT 0",
+		'deleted_by' => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('ws_wtables', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('ws_wtables', $column, $definition);
+
+		}
+
+	}
+
+	install_create_table('ws_wtable_row_bin', "CREATE TABLE ws_wtable_row_bin (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		row_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		table_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		position    INT UNSIGNED NOT NULL DEFAULT 0,
+		cells       MEDIUMTEXT NULL,
+		revision    INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		links       MEDIUMTEXT NULL,
+		deleted_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		deleted_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_table (table_id, deleted_at),
+		KEY idx_deleted (deleted_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a deleted workflow table or row goes to a bin for the Recycle Bin\'s days and can be restored until then.');
+
+}
+
+// Team saved replies (11.0.179; includes/workspace/saved_replies.php). A team
+// reply is a ws_saved_replies row with scope 'team' and user_id 0, so the
+// table keeps its shape; the right to add, change and delete them is a column
+// of its own, read for role 3 only (roles 0-2 hold it by role).
+function upgrade_2026_11_0_ws_team_replies() {
+
+	if (!install_table_exists('user')) {
+
+		install_skipped('user does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('user', 'manage_workspace_replies', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
 
 }

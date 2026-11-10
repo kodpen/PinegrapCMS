@@ -96,6 +96,26 @@ function ws_flows_runnable_in($viewer, $channel_id)
 }
 
 /**
+ * Has the channel a flow the person may start in it, as Add › Start a flow
+ * lists them? Asked as the channel opens, so the composer offers the entry
+ * only where it has something to start: for whoever the Workspace shows
+ * Flows to, in a public or private channel.
+ *
+ * @param array      $viewer
+ * @param array|null $channel ws_channel()
+ * @return bool
+ */
+function ws_flows_startable_in($viewer, $channel)
+{
+    if (!is_array($channel) || !in_array((string) ($channel['kind'] ?? ''), array('public', 'private'), true)
+        || !function_exists('ws_flows_nav_visible') || !ws_flows_nav_visible($viewer)) {
+        return false;
+    }
+
+    return !empty(ws_flows_runnable_in($viewer, (int) $channel['id']));
+}
+
+/**
  * The line a run started from the composer writes into its channel, tied to
  * the run so the screen draws the run's card under it.
  *
@@ -138,9 +158,11 @@ function ws_flow_run_card_name($name)
  * @param array  $run         ws_api_flow_run_present() answer
  * @param string $flow_name
  * @param string $flow_access ws_flow_access() of the reader
- * @return array run, flow_id, flow_name, can_open
+ * @param string $box         the box the run failed at, '' for none: the
+ *                            card opens the canvas on it
+ * @return array run, flow_id, flow_name, can_open, box
  */
-function ws_flow_run_card_payload($run, $flow_name, $flow_access)
+function ws_flow_run_card_payload($run, $flow_name, $flow_access, $box = '')
 {
     unset($run['steps'], $run['graph']);
 
@@ -149,7 +171,42 @@ function ws_flow_run_card_payload($run, $flow_name, $flow_access)
         'flow_id'   => (int) $run['flow_id'],
         'flow_name' => (string) $flow_name,
         'can_open'  => ((string) $flow_access !== ''),
+        'box'       => ((string) ($run['status'] ?? '') === 'failed') ? (string) $box : '',
     );
+}
+
+/**
+ * The box each failed run of a page failed at first, as
+ * ws_flow_run_failure() picks it.
+ *
+ * @param array[] $runs ws_flow_runs rows
+ * @return array run id => node id
+ */
+function ws_flow_run_cards_failed_boxes($runs)
+{
+    $ids = array();
+
+    foreach ((array) $runs as $run) {
+        if ((string) ($run['status'] ?? '') === 'failed') {
+            $ids[] = (int) $run['id'];
+        }
+    }
+
+    if (empty($ids)) {
+        return array();
+    }
+
+    $out = array();
+    $rows = (array) db_items("SELECT run_id, node_id FROM ws_flow_run_steps
+        WHERE run_id IN (" . implode(',', $ids) . ") AND status = 'failed' ORDER BY finished_at, id");
+
+    foreach ($rows as $row) {
+        if (!isset($out[(int) $row['run_id']])) {
+            $out[(int) $row['run_id']] = (string) $row['node_id'];
+        }
+    }
+
+    return $out;
 }
 
 /**
@@ -192,12 +249,13 @@ function ws_flow_run_cards_map($viewer, $ids)
 
     $results = ws_flow_runs_results($runs);
     $numbers = ws_flow_version_numbers($runs);
+    $failed = ws_flow_run_cards_failed_boxes($runs);
     $out = array();
 
     foreach ($by_message as $message_id => $run_id) {
         $run = $runs[$run_id];
         $present = ws_api_flow_run_present($viewer, $run, $numbers[(int) $run['version_id']] ?? 0, null, null, $results[$run_id] ?? '');
-        $out[$message_id] = ws_flow_run_card_payload($present, (string) $run['flow']['name'], ws_flow_access($viewer, $run['flow']));
+        $out[$message_id] = ws_flow_run_card_payload($present, (string) $run['flow']['name'], ws_flow_access($viewer, $run['flow']), $failed[$run_id] ?? '');
     }
 
     return $out;

@@ -159,7 +159,7 @@ function carrier_label_aras_test_cargo_info($columns)
 function test_carrier_label_aras_is_a_builtin_driver()
 {
 	pg_assert_true(pg_label_driver('aras') !== null);
-	pg_assert_same(array('carriers' => array('aras'), 'formats' => array('pdf', 'zpl')), pg_label_info('aras'));
+	pg_assert_same(array('carriers' => array('aras'), 'formats' => array('pdf', 'zpl'), 'services' => array(), 'rates' => 'address'), pg_label_info('aras'));
 
 	foreach (array('test', 'create', 'label', 'cancel', 'track') as $operation) {
 		pg_assert_true(pg_label_can('aras', $operation), $operation);

@@ -58,6 +58,8 @@ function pg_shipping_method_form_new_values($time_format = null)
         'carrier_title' => '',
         'carrier_vkn' => '',
         'service' => null,
+        'label_driver' => '',
+        'label_service' => '',
         'stock_location_id' => 0,
         'realtime_rate' => false,
         'base_rate' => '',
@@ -140,6 +142,9 @@ function pg_shipping_method_form_row_values($row, $excluded_transit_dates)
         'carrier_title' => (string) ($row['carrier_title'] ?? ''),
         'carrier_vkn' => (string) ($row['carrier_vkn'] ?? ''),
         'service' => (string) $row['service'],
+        // Absent until the 11.0.177 step has run.
+        'label_driver' => (string) ($row['label_driver'] ?? ''),
+        'label_service' => (string) ($row['label_service'] ?? ''),
         'stock_location_id' => (int) ($row['stock_location_id'] ?? 0),
         'realtime_rate' => (bool) $row['realtime_rate'],
         'base_rate' => pg_format_input_amount($row['base_rate'] / 100),
@@ -470,6 +475,77 @@ function pg_shipping_method_service_field($ready, $stored)
 }
 
 /**
+ * The Carrier Service field of the form: the label services a method can be
+ * linked to (switched on, set up, able to make a label), each with its
+ * cheapest offer and its services; a service without a list takes a typed
+ * service code. A stored link whose service is not set up now is offered on
+ * its own, so a plain save keeps it. With no service and no link the field
+ * is left out and the link posts as none.
+ *
+ * @param array  $drivers pg_shipping_method_label_drivers()
+ * @param string $driver  The stored label_driver
+ * @param string $service The stored label_service
+ * @return string HTML
+ */
+function pg_shipping_method_label_field($drivers, $driver, $service)
+{
+    $driver = (string) $driver;
+    $service = (string) $service;
+
+    if (!$drivers && ($driver === '')) {
+        return '<input type="hidden" name="label_link" id="label_link" value="" />';
+    }
+
+    $stored = ($driver !== '') ? $driver . ':' . $service : '';
+    $typed = (($driver !== '') && isset($drivers[$driver]) && !$drivers[$driver]['services']) ? $service : '';
+
+    $option = function ($value, $text, $free = false) use ($stored, $driver, $drivers) {
+        // A service without a list is one option; its typed code goes beside it.
+        $selected = $free ? (isset($drivers[$driver]) && ($value === $driver . ':')) : ($value === $stored);
+
+        return '<option value="' . h($value) . '"' . ($free ? ' data-pg-service-code="1"' : '') . ($selected ? ' selected="selected"' : '') . '>' . h($text) . '</option>';
+    };
+
+    $options = '<option value="">' . h(lang('None')) . '</option>';
+
+    if (($driver !== '') && !isset($drivers[$driver])) {
+        $text = pg_shipment_label_driver_name($driver) . (($service !== '') ? ' - ' . $service : '');
+        $options .= $option($stored, lang(array('string' => '{var:1} (not set up)', 'vars' => $text)));
+    }
+
+    foreach ($drivers as $key => $definition) {
+        $options .= '<optgroup label="' . h($definition['name']) . '">';
+
+        if (!$definition['services']) {
+            $options .= $option($key . ':', lang(array('string' => '{var:1}: the service code below, or the cheapest offer', 'vars' => $definition['name'])), true);
+        } else {
+            $options .= $option($key . ':', lang(array('string' => '{var:1}: the cheapest offer', 'vars' => $definition['name'])));
+
+            if (($key === $driver) && ($service !== '') && !isset($definition['services'][$service])) {
+                $options .= $option($key . ':' . $service, lang(array('string' => '{var:1} (not offered)', 'vars' => $service)));
+            }
+
+            foreach ($definition['services'] as $code => $name) {
+                $options .= $option($key . ':' . $code, $definition['name'] . ' - ' . $name);
+            }
+        }
+
+        $options .= '</optgroup>';
+    }
+
+    return '<div class="col-12 md:col-6 my-3">
+                                            <label for="label_link" class="form-label">' . lang('Carrier Service') . '</label>
+                                            <select id="label_link" name="label_link" class="form-control">' . $options . '</select>
+                                            <div class="form-text">' . lang('The carrier label service Create Label uses for this method, and whose live price it can charge') . '</div>
+                                        </div>
+                                        <div class="col-12 md:col-6 my-3 collapse" id="label_service_code_row">
+                                            <label for="label_service_code" class="form-label">' . lang('Service Code') . '</label>
+                                            <input value="' . h($typed) . '" type="text" name="label_service_code" id="label_service_code" class="form-control" maxlength="64" />
+                                            <div class="form-text">' . lang('Empty takes the cheapest offer.') . '</div>
+                                        </div>';
+}
+
+/**
  * The stored value of a posted start or end time: 'Y-m-d H:i' from a date
  * in the site's order and a 12- or 24-hour time, as the date and time field
  * posts them, or null when the text is not that. The date is checked before
@@ -643,11 +719,14 @@ function pg_shipping_method_form_columns($post)
 
     $service = $text('service');
 
-    // An unticked box is not posted at all. A service without real-time
-    // rates keeps the box off, so the list does not show it as on.
+    $link = pg_shipping_method_label_link_decide($post['label_link'] ?? '', $post['label_service_code'] ?? '', pg_shipping_method_label_drivers(), array_keys(pg_label_drivers()));
+
+    // An unticked box is not posted at all. A method without a service
+    // that has real-time rates keeps the box off, so the list does not show
+    // it as on.
     $realtime_rate = $post['realtime_rate'] ?? 0;
 
-    if (!$service or substr($service, 0, 5) == 'fedex') {
+    if (!pg_shipping_method_has_realtime_rate($service, $link['label_driver'])) {
         $realtime_rate = 0;
     }
 
@@ -699,6 +778,8 @@ function pg_shipping_method_form_columns($post)
     }
 
     $columns['protected'] = $text('protected');
+    $columns['label_driver'] = $link['label_driver'];
+    $columns['label_service'] = $link['label_service'];
 
     // A pickup method names its location and carries no rate.
     return array_merge($columns, pg_stock_pickup_columns($post, pg_stock_locations()));
@@ -757,6 +838,8 @@ function pg_shipping_method_form_cards($values, $zone_options)
         'ups' => (bool) UPS,
         'fedex' => (bool) FEDEX,
     ), $values['service']);
+
+    $output_service .= pg_shipping_method_label_field(pg_shipping_method_label_drivers(), $values['label_driver'], $values['label_service']);
 
     // Pickup at a location, only on a site that keeps stock per location.
     $output_pickup = '';
@@ -908,6 +991,7 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                                 <div class="switch"><input class="" type="checkbox" id="realtime_rate" name="realtime_rate" value="1"' . $checked('realtime_rate') . '/></div>
                                                 <label class="" for="realtime_rate">' . lang('Real-Time Rate') . '</label>
                                             </div>
+                                            <div class="form-text">' . lang('Adds the live price of the service above to the charges below at checkout. A carrier service that gives no price leaves the method out.') . '</div>
                                             <script>init_shipping_method_service()</script>
                                         </div>
                                         <div class="col-12 my-3">

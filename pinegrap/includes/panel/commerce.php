@@ -693,6 +693,9 @@ function pg_panel_get_product($request, $action)
     //   • price_cents / price (raw integer cents → matches DB unit)
     //   • price_decimal      (cents/100 with 2 decimals — for arithmetic)
     //   • price_formatted    (currency-symbol-prefixed display string)
+    //   • price_block_html   (the strike-through block a product page shows
+    //                          while an offer lowers the price, else the
+    //                          plain block: _pg_format_price_with_discount())
     //   • image_url          (full URL to main image, or '' when missing)
     //   • detail_url         (full URL to the product's detail page,
     //                          when products.address_name is set)
@@ -763,6 +766,10 @@ function pg_panel_get_product($request, $action)
     $product['discount_amount']          = $_pg_save_cents > 0 ? number_format($_pg_save_cents / 100, 2, '.', '') : '';
     $product['discount_amount_formatted']= $_pg_save_cents > 0 ? pg_visitor_money($_pg_save_cents / 100, $_pg_curr) : '';
     $product['discount_percent']         = $_pg_save_pct > 0 ? (string)$_pg_save_pct : '';
+    // The variant chooser shows it where a page shows __price_formatted
+    // during an offer; price_formatted stays the amount for the layouts
+    // that read it.
+    $product['price_block_html']         = _pg_format_price_with_discount($_pg_orig_cents, $_pg_price_cents, $_pg_curr);
     $product['image_url']       = $_pg_main !== '' ? PATH . encode_url_path($_pg_main) : '';
     $product['address_name']    = $_pg_addr;
     $product['gallery']         = $_pg_gallery;

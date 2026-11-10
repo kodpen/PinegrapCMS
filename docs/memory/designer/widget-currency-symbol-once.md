@@ -16,7 +16,7 @@ module: widgets_order_form, widgets_catalog, widgets_lists_cart, widgets_lists_c
 - A list row built from the renderer's money: `html_entity_decode($money, ENT_QUOTES | ENT_HTML5, 'UTF-8')` in the row builder (`pg_sw_list_cart_rows()`, `pg_sw_list_checkout_rows()`, `pg_sw_list_product_related_rows()`, the account list's `__order_total`).
 - The symbol alone: decoded, then `h()` (`pg_of_tokens()`).
 - Decoded first, a symbol typed as markup on the currency screen shows as text; it never runs.
-- A text token also going to `pg_civ_variants.js`, which writes its payload with `innerHTML`, is escaped for it: `reference_price` = `h()` of `__reference_price`.
+- A text token also going to `pg_civ_variants.js` under a key it writes as HTML (`HTML_FIELDS`) is escaped for it: `reference_price` = `h()` of `__reference_price`. Its other keys are written as text ([[variant-switch-text-values]]).
 
 ## What did #8393 fix?
 - All read `&#8378;` on a TRY shop. The order form's `__currency_symbol` (the donation box), was `h(VISITOR_CURRENCY_SYMBOL)`.

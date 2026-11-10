@@ -207,6 +207,7 @@
         row_add: ['M1.5 2h9v8.5h-9z', 'M1.5 5.5h9M5 5.5v5', 'M13 9.5v5M10.5 12h5'],
         row_set: ['M1.5 2h9v8.5h-9z', 'M1.5 5.5h9M5 5.5v5', 'M13 8.5l1.75 1.75L10 15H8.25v-1.75z'],
         row_get: ['M1.5 2h9v8.5h-9z', 'M1.5 5.5h9M5 5.5v5', 'M10 12.25a2 2 0 1 0 4 0a2 2 0 1 0 -4 0', 'M13.5 13.75l1.25 1.25'],
+        rows_get: ['M1.5 2h9v8.5h-9z', 'M1.5 4.75h9M1.5 7.5h9M5 4.75v5.75', 'M9.5 10.5h5.5l-2.25 2.5v2.25l-1-.75V13z'],
         record_get: ['M2.5 1.5h7l2.5 2.5v4.5', 'M2.5 1.5v13h6', 'M4.5 5.5h5M4.5 8h3', 'M10 12.25a2 2 0 1 0 4 0a2 2 0 1 0 -4 0', 'M13.5 13.75l1.25 1.25'],
         ai: ['M6 2l1.25 3.25L10.5 6.5L7.25 7.75L6 11L4.75 7.75L1.5 6.5l3.25-1.25z', 'M12 9l.75 1.75l1.75.75l-1.75.75L12 14l-.75-1.75L9.5 11.5l1.75-.75z'],
         agent: ['M3.5 5.5h9v7.5h-9z', 'M8 2.5v3', 'M6 9v.5M10 9v.5', 'M6.5 11.25h3'],
@@ -7573,14 +7574,6 @@
             if (part === 'messages') {
                 var mine = el('div', 'ws-sm-list');
 
-                // Staff find their scheduled actions in Flows.
-                if (CFG.scheduled && !staff) {
-                    var moved = el('a', 'small d-inline-block mb-3', t('fl_sa_moved'));
-                    moved.href = CFG.urls.flows + '?view=scheduled';
-                    moved.insertBefore(icon('bi-diagram-3', 'me-1'), moved.firstChild);
-                    body.appendChild(moved);
-                }
-
                 body.appendChild(el('p', 'small fg-secondary', t('sm_mine_help')));
                 body.appendChild(mine);
                 scheduledMessagesList(mine, 0, null, function (item) {
@@ -8415,6 +8408,8 @@
                 screenHeading('channel');
                 self.channel = data.channel;
                 self.era = data.era || null;
+                // Whether Add › Start a flow has a flow to offer here.
+                self.flowsHere = !!data.flows_here;
                 self.messages = data.messages;
                 self.briefing = data.briefing || null;
 
@@ -11761,7 +11756,7 @@
         },
 
         // A still picture of a flow: a flow draft's card at rest
-        // (flowWindow()), Add › Scheduled flow where the canvas cannot load.
+        // (flowWindow()).
         // Drawn to the visual spec in px (ws_flow_card_graph()): boxes
         // 128 × 60 with the kind's icon and name, the kind and the box's dry
         // run as its third line; control arrows 2 px with a filled head;
@@ -12588,321 +12583,6 @@
             });
         },
 
-        // Add › Scheduled flow: a time start and a message posted here, drawn
-        // as a small flow (ws_scheduled_flow_sketch()) with each box's
-        // settings under it, published here or opened on the canvas. The
-        // first write keeps its draft; a later one from this window changes
-        // that draft (ws_scheduled_flow_new()), so a refused publish leaves
-        // one draft behind.
-        scheduledFlowWindow: function () {
-            var self = this;
-            var channelId = self.channel.id;
-            var node = offcanvas('ws-flow-sched', t('sa_flow_new'));
-            var body = clear(node.querySelector('.drawer-body'));
-            var footer = clear(node.querySelector('.drawer-footer'));
-            var drawing = el('div', 'ws-fd-window mb-5');
-            var stage = null;
-            var saved = { flow_id: 0, draft_rev: 0 };
-            var busy = false;
-
-            // The canvas lives while the drawer is open: closing it ends
-            // the drawing (one canvas drawing at a time, flowCardOpen()).
-            if (!node.wsSketchBound) {
-                node.wsSketchBound = true;
-                pgUI.drawer.on(node, 'hidden', function () {
-                    if (self.flowSketch) {
-                        self.flowSketch.destroy();
-                        self.flowSketch = null;
-                    }
-                });
-            }
-
-            footer.classList.remove('d-none');
-            body.appendChild(el('p', 'small fg-secondary', t('sf_help', self.channel.name)));
-            body.appendChild(drawing);
-            drawing.appendChild(el('div', 'ws-empty', t('loading')));
-            showOffcanvas(node);
-
-            api('ws_flow_scheduled_new', { channel_id: channelId, sketch: 1 }).then(function (data) {
-                clear(drawing);
-                build(data);
-            }).catch(function (error) {
-                clear(drawing);
-                drawing.appendChild(el('div', 'ws-draft-meta fg-emphasis-warning', (error && error.message) || String(error)));
-            });
-
-            function field(type, value) {
-                var input = el('input', 'form-control form-control-sm');
-
-                input.type = type;
-                input.value = (value === undefined || value === null) ? '' : String(value);
-
-                return input;
-            }
-
-            function build(data) {
-                var start = data.start || {};
-                var name = field('text', t('sa_flow_new'));
-                var when = el('fieldset', 'mb-3');
-                var post = el('fieldset', 'mb-3');
-                var date = field('date', start.date);
-                var time = field('time', start.time);
-                var repeat = el('select', 'form-control form-control-sm');
-                var every = field('number', start.every || 1);
-                var until = field('date', start.until);
-                var days = el('div', 'd-flex flex-wrap gap-3');
-                var message = el('textarea', 'form-control form-control-sm');
-                var rows = {};
-                var said = el('div', 'small mb-3');
-                // Under each part, its box's dry run when it would not run.
-                var notes = { when: el('div', 'small fg-emphasis-warning mt-2 d-none'), post: el('div', 'small fg-emphasis-warning mt-2 d-none') };
-                var touched = { when: false, post: false };
-                var tries = {};
-
-                said.setAttribute('aria-live', 'polite');
-                name.maxLength = 160;
-                every.min = 1;
-                every.max = 720;
-                message.rows = 4;
-                message.maxLength = 4000;
-
-                Object.keys((CFG.scheduled && CFG.scheduled.repeats) || { none: '' }).forEach(function (key) {
-                    var option = el('option', '', CFG.scheduled.repeats[key]);
-
-                    option.value = key;
-                    option.selected = (key === (start.repeat || 'none'));
-                    repeat.appendChild(option);
-                });
-
-                // 1 Monday to 7 Sunday, named in the panel's language
-                // (1 January 2024 was a Monday).
-                [1, 2, 3, 4, 5, 6, 7].forEach(function (day) {
-                    var label = el('label', 'd-flex align-items-center gap-1 small');
-                    var box = el('input', '');
-
-                    box.type = 'checkbox';
-                    box.value = String(day);
-                    box.checked = (start.days || []).indexOf(day) !== -1;
-                    label.appendChild(box);
-                    label.appendChild(document.createTextNode(new Date(Date.UTC(2024, 0, day)).toLocaleDateString(document.documentElement.lang || undefined, { weekday: 'short', timeZone: 'UTC' })));
-                    days.appendChild(label);
-                });
-
-                body.appendChild(formRow(t('sf_name'), name));
-                when.appendChild(el('legend', 'h6', data.graph.nodes[0].name));
-                when.appendChild(formRow(t('sf_date'), date));
-                when.appendChild(formRow(t('sf_time'), time));
-                when.appendChild(formRow(t('sf_repeat'), repeat));
-                rows.every = when.appendChild(formRow(t('sf_every'), every));
-                rows.days = when.appendChild(formRow(t('sf_days'), days));
-                rows.until = when.appendChild(formRow(t('sf_until'), until, t('sf_until_help')));
-                when.appendChild(notes.when);
-                post.appendChild(el('legend', 'h6', data.graph.nodes[1].name));
-                post.appendChild(formRow(t('sf_message'), message, t('sf_message_help', self.channel.name)));
-                post.appendChild(notes.post);
-                body.appendChild(when);
-                body.appendChild(post);
-                body.appendChild(said);
-
-                function shown() {
-                    var shows = scheduledFlowShows(repeat.value);
-
-                    Object.keys(rows).forEach(function (key) {
-                        rows[key].classList.toggle('d-none', !shows[key]);
-                    });
-                }
-
-                repeat.addEventListener('change', shown);
-                shown();
-
-                // The date picker offers no end before the first day.
-                function earliest() {
-                    until.min = date.value || '';
-                }
-
-                date.addEventListener('change', earliest);
-                earliest();
-
-                function noted() {
-                    var lines = scheduledFlowNotes(tries, touched);
-
-                    Object.keys(notes).forEach(function (part) {
-                        notes[part].textContent = lines[part];
-                        notes[part].classList.toggle('d-none', lines[part] === '');
-                    });
-                }
-
-                // The sketch on the Flows canvas itself, read-only
-                // (PGWsFlow.embed()), drawn anew with each answer; a box
-                // picked brings its settings forward. Where the canvas cannot
-                // be loaded, or the Flows screen holds it, the card's still
-                // picture stands in.
-                function draw(answer) {
-                    tries = (answer.view && answer.view.tries) || {};
-                    noted();
-
-                    self.flowEmbedKit().then(function (config) {
-                        if (!node.open) {
-                            return;
-                        }
-
-                        clear(drawing);
-                        drawing.className = 'ws-fd-window mb-5';
-                        stage = el('div', 'ws-fd-stage is-open');
-                        drawing.appendChild(stage);
-                        self.flowSketch = window.PGWsFlow.embed(stage, {
-                            graph: answer.view.graph,
-                            tries: answer.view.tries,
-                            config: config,
-                            people: (BOOT && BOOT.people) || [],
-                            channels: (BOOT && BOOT.channels) || [],
-                            departments: (BOOT && BOOT.departments) || [],
-                            onSelect: function (picked) {
-                                if (!picked) {
-                                    return;
-                                }
-
-                                var target = (picked.id === 'post') ? message : date;
-
-                                // After the canvas has focused the box it
-                                // selected.
-                                setTimeout(function () {
-                                    target.focus();
-                                    target.scrollIntoView({ block: 'nearest' });
-                                }, 0);
-                            }
-                        });
-
-                        if (!self.flowSketch) {
-                            still(answer);
-                        }
-                    }).catch(function () {
-                        still(answer);
-                    });
-                }
-
-                // A late answer (the change event of a box left as the
-                // drawer closes) draws nothing in a closed drawer.
-                function still(answer) {
-                    if (!node.open) {
-                        return;
-                    }
-
-                    clear(drawing);
-                    self.flowWindowDraw(drawing, answer.graph);
-                }
-
-                function filled() {
-                    return {
-                        channel_id: channelId,
-                        name: name.value,
-                        body: message.value,
-                        start: scheduledFlowStart({
-                            date: date.value,
-                            time: time.value,
-                            repeat: repeat.value,
-                            every: every.value,
-                            until: until.value,
-                            days: Array.prototype.filter.call(days.querySelectorAll('input'), function (box) {
-                                return box.checked;
-                            }).map(function (box) { return box.value; })
-                        })
-                    };
-                }
-
-                draw(data);
-
-                // Each box's dry run follows the form: the sketch is asked
-                // again with what it holds once typing stops. A late answer
-                // to an older form is dropped.
-                var asked = 0;
-                var wait = null;
-
-                function sketchAgain() {
-                    var mine = ++asked;
-
-                    api('ws_flow_scheduled_new', Object.assign(filled(), { sketch: 1 })).then(function (again) {
-                        if (mine === asked) {
-                            draw(again);
-                        }
-                    }).catch(function () {
-                        // The drawing as it was stays; Publish says what is wrong.
-                    });
-                }
-
-                ['input', 'change'].forEach(function (type) {
-                    body.addEventListener(type, function (event) {
-                        if (drawing.contains(event.target)) {
-                            return;
-                        }
-
-                        touched.when = touched.when || when.contains(event.target);
-                        touched.post = touched.post || post.contains(event.target);
-                        clearTimeout(wait);
-                        wait = setTimeout(sketchAgain, 600);
-                    });
-                });
-
-                function send(publish, control) {
-                    if (busy) {
-                        return;
-                    }
-
-                    busy = true;
-                    control.disabled = true;
-                    clear(said);
-
-                    if (publish) {
-                        touched.when = true;
-                        touched.post = true;
-                        noted();
-                    }
-
-                    api('ws_flow_scheduled_new', Object.assign(filled(), {
-                        flow_id: saved.flow_id,
-                        draft_rev: saved.draft_rev,
-                        publish: publish ? 1 : 0
-                    })).then(function (result) {
-                        busy = false;
-                        control.disabled = false;
-                        saved.flow_id = result.flow_id;
-                        saved.draft_rev = result.draft_rev;
-
-                        // The canvas over the channel once this window
-                        // has gone (a drawer the layer would sit under).
-                        if (!publish) {
-                            flowOpened(result, null, function (next) {
-                                hideOffcanvas(node, next);
-                            });
-                            return;
-                        }
-
-                        if (!result.published) {
-                            said.className = 'small mb-3 fg-emphasis-warning';
-                            said.textContent = result.publish_error;
-                            return;
-                        }
-
-                        hideOffcanvas(node);
-                        toast(t('sf_published'), 'success');
-                    }).catch(function (error) {
-                        busy = false;
-                        control.disabled = false;
-                        fail(error);
-                    });
-                }
-
-                var canvas = button('btn btn-sm btn-outline theme-secondary', t('sf_canvas'), 'bi-diagram-3');
-                var publish = button('btn btn-sm btn-solid theme-primary', t('sf_publish'), 'bi-broadcast');
-
-                canvas.addEventListener('click', function () { send(false, canvas); });
-                publish.addEventListener('click', function () { send(true, publish); });
-                footer.appendChild(canvas);
-                footer.appendChild(publish);
-                name.focus();
-            }
-        },
-
         // The card under a run's line: the run's flag (workspace_flow_flag.js),
         // read again while the run is open, with Stop for whoever may cancel
         // it and Open the run for whoever reaches its flow.
@@ -12919,8 +12599,9 @@
                 box.appendChild(window.PGWsFlowFlag.runFlag(card.run, {
                     key: key,
                     label: t('fl_run_card', card.flow_name),
+                    // A failed run opens on the box it failed at.
                     open: card.can_open ? function (run) {
-                        flowGo(run.flow_id, { run: run.id });
+                        flowGo(run.flow_id, (run.status === 'failed') && card.box ? { run: run.id, box: card.box } : { run: run.id });
                     } : null,
                     stop: stop
                 }));
@@ -12940,6 +12621,12 @@
 
             function took(run) {
                 var keep = {};
+                var failed = (run.steps || []).filter(function (step) { return step.status === 'failed'; })[0];
+
+                // The first box that failed, as the server picks it for the card.
+                if (failed) {
+                    card.box = failed.node_id;
+                }
 
                 Object.keys(run).forEach(function (name) {
                     if ((name !== 'steps') && (name !== 'graph')) {
@@ -14010,9 +13697,10 @@
                     CFG.blocks ? { icon: 'bi-box-arrow-in-down', label: t('pull_title'), action: function () {
                         blockPuller(function (data) { self.insertPulled(data); });
                     } } : null,
-                    // A flow the member may start here; the run opens its
-                    // tasks in this channel and leaves its card in it.
-                    (CFG.flows && CFG.flows.nav && !self.isThread && !self.era && ((self.channel.kind === 'public') || (self.channel.kind === 'private')))
+                    // A flow the member may start here, offered only where
+                    // there is one (flows_here of ws_channel_open); the run
+                    // opens its tasks in this channel and leaves its card in it.
+                    (CFG.flows && CFG.flows.nav && self.flowsHere && !self.isThread && !self.era && ((self.channel.kind === 'public') || (self.channel.kind === 'private')))
                         ? { icon: 'bi-play-circle', label: t('fl_here_start'), action: function () { self.flowStarter(); } } : null,
                     // A new flow whose home is this channel, designed in the
                     // layer over it: staff who build flows (CFG.flows.scheduled,
@@ -14020,12 +13708,7 @@
                     (CFG.flows && CFG.flows.nav && CFG.flows.scheduled && !self.isThread && !self.era && ((self.channel.kind === 'public') || (self.channel.kind === 'private')))
                         ? { icon: 'bi-diagram-3', label: t('fl_new'), action: function () {
                             flowLayer(0, { home: self.channel.id, opener: insert });
-                        } } : null,
-                    // A scheduled job is a flow with a time start: a new one
-                    // posting here, filled in its mini window.
-                    (CFG.scheduled && !self.isThread) ? { icon: 'bi-alarm', label: t('sa_flow_new'), action: function () {
-                        self.scheduledFlowWindow();
-                    } } : null
+                        } } : null
                 ], true);
             });
             parts.push(insert);
@@ -16377,7 +16060,7 @@
             if (mode === 'reply') {
                 self.picker.setAttribute('aria-label', t('replies_title'));
                 self.drawPicker(window.PGWsReplies.match(window.PGWsReplies.cached(self.channel ? self.channel.id : 0, api) || [], query, 8).map(function (reply) {
-                    return { reply: reply, label: reply.title, meta: ';' + reply.shortcut, detail: window.PGWsReplies.preview(reply, 80), icon: 'bi-chat-square-quote' };
+                    return { reply: reply, label: reply.title, meta: window.PGWsReplies.meta(reply, t), detail: window.PGWsReplies.preview(reply, 80), icon: 'bi-chat-square-quote' };
                 }));
                 return;
             }
@@ -18335,8 +18018,7 @@
     // Every scheduled action, for staff, by state: the scheduled screen's
     // list and the Scheduled actions section of Flows (workspace_flow.js,
     // through PGWsKit). It offers no New: a new rule is a flow, started
-    // from New flow or Add › Scheduled flow. The list is read again while
-    // it is still on the page.
+    // from New flow. The list is read again while it is still on the page.
     function scheduledList(body) {
         var filters = el('div', 'ws-sa-filters');
         var list = el('div', 'ws-sa-list');
@@ -18623,67 +18305,12 @@
         return 'channel.' + Array.prototype.map.call(random, function (value) { return ('0' + value.toString(16)).slice(-2); }).join('');
     }
 
-    // Which settings of a time start a repeat asks for: how often for every
-    // repeat but once and working days, the days of the week for a weekly
-    // one, an end date for any repeat.
-    function scheduledFlowShows(repeat) {
-        return {
-            every: (repeat !== 'none') && (repeat !== 'workdays'),
-            days: repeat === 'weekly',
-            until: repeat !== 'none'
-        };
-    }
-
-    // The time start the mini window sends: only the settings its repeat
-    // shows, the days as numbers 1 to 7 in order.
-    function scheduledFlowStart(values) {
-        var shows = scheduledFlowShows(values.repeat || 'none');
-        var start = { date: values.date || '', time: values.time || '', repeat: values.repeat || 'none' };
-
-        if (shows.every) {
-            start.every = Math.max(1, parseInt(values.every, 10) || 1);
-        }
-
-        if (shows.days) {
-            start.days = (values.days || []).map(function (day) {
-                return parseInt(day, 10);
-            }).filter(function (day) {
-                return day >= 1 && day <= 7;
-            }).sort(function (a, b) { return a - b; });
-        }
-
-        if (shows.until && values.until) {
-            start.until = values.until;
-        }
-
-        return start;
-    }
-
-    // The sentence under each part of the Scheduled flow window: its box's
-    // dry run when the box would not run, once the person has changed that
-    // part or tried to publish, so the empty message of a window just
-    // opened is not flagged.
-    function scheduledFlowNotes(tries, touched) {
-        var line = function (id, part) {
-            var tried = (tries || {})[id];
-
-            return (touched && touched[part] && tried && tried.failed) ? String(tried.said || '') : '';
-        };
-
-        return { when: line('start', 'when'), post: line('post', 'post') };
-    }
-
     // A flow just made or converted opened on the canvas (flowGo()); what
     // it left behind is told first. stay: called when the person stays
-    // where they are; leave(next): called before the canvas opens, next()
-    // once the page is ready for it (a drawer gone).
-    function flowOpened(result, stay, leave) {
+    // where they are.
+    function flowOpened(result, stay) {
         var go = function () {
-            if (leave) {
-                leave(function () { flowGo(result.flow_id); });
-            } else {
-                flowGo(result.flow_id);
-            }
+            flowGo(result.flow_id);
         };
 
         if (!result.left || !result.left.length) {

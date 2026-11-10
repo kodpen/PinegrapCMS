@@ -37,7 +37,6 @@ function pg_test_short_link_quick_edit()
 		'product_pages' => array('12' => 'detail'),
 		'groups' => array('4' => 'Shoes'),
 		'products' => array('30' => 'Boot'),
-		'files' => array('9' => 'a.pdf'),
 	), true, 191, 2048);
 }
 
@@ -121,6 +120,35 @@ function test_short_link_quick_cell_needs_its_stored_choice()
 	pg_assert_same(array(), pg_short_link_quick_attributes('destination', pg_test_short_link_quick_link(array('product_id' => '31')), $quick_edit), 'a product not offered (in the bin) stays text');
 	pg_assert_same(array(), pg_short_link_quick_attributes('name', pg_test_short_link_quick_link(), array()), 'no quick edit, no field');
 	pg_assert_same('mail', pg_short_link_quick_attributes('tracking_code', pg_test_short_link_quick_link(), $quick_edit)['data-pg-edit-value'] ?? '');
+}
+
+// The File cell searches the files (kind file): it is a field for any file
+// the link has, carrying its name, and stays text for a file that is gone.
+function test_short_link_quick_file_cell_searches()
+{
+	$quick_edit = pg_test_short_link_quick_edit();
+	$file = pg_test_short_link_quick_link(array('destination_type' => 'file', 'file_id' => '9'));
+
+	pg_assert_same('search', $quick_edit['file_id']['type']);
+	pg_assert_contains('file_picker_search.php?kind=file', $quick_edit['file_id']['source']);
+	pg_assert_false(isset($quick_edit['file_id']['options']), 'no list of every file');
+
+	$attributes = pg_short_link_quick_attributes('destination', $file, $quick_edit, 'a.pdf [IN RECYCLE BIN]');
+
+	pg_assert_same('file_id', $attributes['data-pg-edit'] ?? '');
+	pg_assert_same('9', $attributes['data-pg-edit-value'] ?? '');
+	pg_assert_same('a.pdf [IN RECYCLE BIN]', $attributes['data-pg-edit-text'] ?? '', 'the stored file as the field shows it');
+	pg_assert_same(array(), pg_short_link_quick_attributes('destination', $file, $quick_edit, ''), 'a file that no longer exists stays text');
+	pg_assert_false(isset(pg_short_link_quick_attributes('destination', pg_test_short_link_quick_link(), $quick_edit)['data-pg-edit-text']), 'a select carries no text');
+
+	$saved = pg_short_link_quick_saved(array(
+		'destination' => pg_list_cell('a.pdf', 'align-middle', $attributes),
+		'name' => pg_list_cell('x', 'align-middle', array('data-pg-edit-value' => 'x')),
+	), 'destination');
+
+	pg_assert_same('9', $saved['value']);
+	pg_assert_same('a.pdf [IN RECYCLE BIN]', $saved['text'], 'the answer names the file, for undo and apply');
+	pg_assert_false(isset($saved['cells']['name']['text']));
 }
 
 function test_short_link_quick_pairs_read_both_pick_list_forms()

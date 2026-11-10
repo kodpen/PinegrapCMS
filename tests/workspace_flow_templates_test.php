@@ -66,6 +66,8 @@ function ws_flow_templates_test_value($type)
 			return 'https://example.org/';
 		case 'address':
 			return 'team@example.org';
+		case 'text':
+			return 'Stand-up in five minutes.';
 	}
 
 	return null;
@@ -446,6 +448,51 @@ function test_workspace_flow_templates_dates_ignore_the_default_timezone()
 	} finally {
 		date_default_timezone_set($zone);
 	}
+}
+
+// A message of the person's own posted in a channel at a time: the setup
+// asks the time, the channel and the words, and the post box takes what was
+// written; empty words, or more than a post box keeps, are refused.
+function test_workspace_flow_templates_channel_message()
+{
+	$by_key = array_column(ws_flow_templates(ws_flow_templates_test_fill()), null, 'key');
+	$template = $by_key['channel_message'] ?? null;
+
+	pg_assert_true(is_array($template), 'offered');
+
+	if (!is_array($template)) {
+		return;
+	}
+
+	pg_assert_same('team', $template['category']);
+	pg_assert_same(array('schedule', 'post'), array_column($template['graph']['nodes'], 'kind'));
+	pg_assert_same('workdays', $template['graph']['nodes'][0]['config']['repeat']);
+	pg_assert_same('2026-10-28', $template['graph']['nodes'][0]['config']['date'], 'from tomorrow');
+	pg_assert_same('', $template['graph']['nodes'][1]['config']['body'], 'the person writes the words');
+	pg_assert_same(array('time', 'channel', 'text'), array_column($template['settings'], 'type'), 'asked in the order of the boxes');
+	pg_assert_same(array(array('post', 'body')), $template['settings'][2]['targets']);
+	pg_assert_true(in_array('text', ws_flow_template_setting_types(), true), 'words are a kind of setting');
+
+	$answers = array('time' => '08:00', 'channel' => 4, 'text' => "  Stand-up in five minutes.\n");
+	$check = ws_flow_template_answers_check($template, $answers);
+
+	pg_assert_true($check['ok'], 'filled in');
+	pg_assert_same('Stand-up in five minutes.', $check['values']['text'], 'trimmed');
+
+	$graph = ws_flow_template_apply($template, $template['graph'], $check['values']);
+
+	pg_assert_same('08:00', $graph['nodes'][0]['config']['time']);
+	pg_assert_same(4, (int) $graph['nodes'][1]['config']['channel_id']);
+	pg_assert_same('Stand-up in five minutes.', $graph['nodes'][1]['config']['body']);
+
+	foreach (array('   ', str_repeat('a', 4001), null, array('x')) as $text) {
+		$refused = ws_flow_template_answers_check($template, array('text' => $text) + $answers);
+
+		pg_assert_false($refused['ok'], 'refused: ' . (is_string($text) ? strlen($text) . ' characters' : gettype($text)));
+		pg_assert_same('text', $refused['field']);
+	}
+
+	pg_assert_true(ws_flow_template_answers_check($template, array('text' => str_repeat('ş', 4000)) + $answers)['ok'], 'counted in characters');
 }
 
 // The canvas is handed the list, its texts, and draws the gallery.

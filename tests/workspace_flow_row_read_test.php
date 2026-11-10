@@ -51,7 +51,7 @@ function test_workspace_flow_row_read_kind()
 
 	pg_assert_true(isset($kinds['row_get']));
 	pg_assert_same('row_get', $kinds['row_get']['type']);
-	pg_assert_same(array('row'), $kinds['row_get']['texts']);
+	pg_assert_same(array('row', 'where'), $kinds['row_get']['texts'], 'its row, or the conditions it finds the row by');
 	pg_assert_same(array('row'), $kinds['row_get']['lines'], 'a row is one line');
 	pg_assert_same(array('row_id', 'found'), array_column($kinds['row_get']['outputs'], 'key'));
 	pg_assert_same(array('done', 'failed'), ws_flow_kinds()['row_get']['outcomes']);
@@ -67,12 +67,12 @@ function test_workspace_flow_row_read_kind()
 // Its settings: the table and the row, as a change box names its row.
 function test_workspace_flow_row_read_config()
 {
-	pg_assert_same(array('table_id' => 12, 'by' => 'id', 'row' => '{{trigger.row_id}}'), ws_step_config_normalize('row_get', array('table_id' => '12', 'row' => " {{trigger.row_id}}\n", 'cells' => '{"3":"x"}')));
-	pg_assert_same(array('table_id' => 0, 'by' => 'id', 'row' => ''), ws_step_config_normalize('row_get', array()));
+	pg_assert_same(array('table_id' => 12, 'by' => 'id', 'row' => '{{trigger.row_id}}', 'match' => 'all', 'where' => ''), ws_step_config_normalize('row_get', array('table_id' => '12', 'row' => " {{trigger.row_id}}\n", 'cells' => '{"3":"x"}')));
+	pg_assert_same(array('table_id' => 0, 'by' => 'id', 'row' => '', 'match' => 'all', 'where' => ''), ws_step_config_normalize('row_get', array()));
 
 	$catalogue = array_column(ws_flow_kind_catalogue(), null, 'kind');
 
-	pg_assert_same(array('table_id', 'by', 'row', 'retry', 'retry_after'), array_column($catalogue['row_get']['settings'], 'key'), 'its settings, then the tries');
+	pg_assert_same(array('table_id', 'by', 'row', 'match', 'where', 'retry', 'retry_after'), array_column($catalogue['row_get']['settings'], 'key'), 'its settings, then the tries');
 
 	$problems = function ($config) {
 		return implode(' ', ws_step_config_problems('row_get', ws_step_config_normalize('row_get', $config), 'Read'));
@@ -179,6 +179,7 @@ function test_workspace_flow_row_read_runs_as_the_owner()
 
 	$do = workspace_flow_row_read_test_source('ws_step_row_get_do');
 
-	pg_assert_contains('ws_wtable_row_present(ws_wtable_row_out($stored, $columns))', $do, 'formulas worked out as a read does');
+	pg_assert_contains('ws_wtable_row_out($stored, $columns)', $do, 'formulas worked out as a read does');
+	pg_assert_contains('ws_wtable_row_present($read)', $do);
 	pg_assert_contains("'ok'     => true,", $do, 'a row not there is no failure');
 }

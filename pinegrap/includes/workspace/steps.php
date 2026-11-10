@@ -146,9 +146,13 @@ function ws_step_kinds()
             'outputs' => array($number('row_id', lang('Row')))),
         'row_set'   => array('label' => lang('Change a row of a table'), 'type' => 'row_set', 'texts' => array('row', 'cells'), 'lines' => array('row'),
             'outputs' => array($number('row_id', lang('Row')))),
-        // Its cells follow from the table's columns (ws_step_outputs()).
-        'row_get'   => array('label' => lang('Read a row of a table'), 'type' => 'row_get', 'texts' => array('row'), 'lines' => array('row'),
+        // Its cells follow from the table's columns (ws_step_outputs()); a
+        // row found by conditions reads values in them.
+        'row_get'   => array('label' => lang('Read a row of a table'), 'type' => 'row_get', 'texts' => array('row', 'where'), 'lines' => array('row'),
             'outputs' => array($number('row_id', lang('Row')), $number('found', lang('Row found (1 or 0)')))),
+        // Its totals follow from the table's columns (ws_step_outputs()).
+        'rows_get'  => array('label' => lang('Read rows of a table'), 'type' => 'rows_get', 'texts' => array('where'), 'lines' => array(),
+            'outputs' => array($number('count', lang('Rows found')), $text('rows', lang('The rows as a list')))),
         // Its fields follow from the kind of record it reads (ws_step_outputs()).
         'record_get' => array('label' => lang('Read a record'), 'type' => 'record_get', 'texts' => array('id'), 'lines' => array('id'),
             'outputs' => array($number('record_id', lang('Record')), $number('found', lang('Record found (1 or 0)')))),
@@ -179,7 +183,7 @@ function ws_step_kinds()
 function ws_step_outputs_held()
 {
     return array('change' => array('*'), 'start_flow' => array('*'), 'webhook' => array('body'), 'mcp' => array('result'),
-        'row_add' => array('*'), 'row_set' => array('*'), 'row_get' => array('*'), 'record_get' => array('*'), 'ai' => array('*'), 'agent' => array('*'), 'for_each' => array('items'), 'for_each_end' => array('list'));
+        'row_add' => array('*'), 'row_set' => array('*'), 'row_get' => array('*'), 'rows_get' => array('*'), 'record_get' => array('*'), 'ai' => array('*'), 'agent' => array('*'), 'for_each' => array('items'), 'for_each_end' => array('list'));
 }
 
 /**
@@ -247,6 +251,11 @@ function ws_step_outputs($kind, $config, $labels = array())
         }
     }
 
+    // A box that reads rows gives the totals of its table's number columns.
+    if (($kind === 'rows_get') && function_exists('ws_flow_row_columns')) {
+        $out = array_merge($out, ws_step_rows_get_outputs(ws_flow_row_columns($config)));
+    }
+
     // An approval box that asks for an answer gives it, read as a number
     // too, and who gave it.
     if (($kind === 'approval') && in_array($config['answer'] ?? 'none', array('text', 'number'), true)) {
@@ -309,7 +318,9 @@ function ws_step_result_data($kind, $config, $done)
         // A cell read is kept as the text it fills in (ws_flow_row_cell_text()):
         // a number cell may have decimals.
         // So is a record's field: money has decimals.
+        // So is a total of rows: a sum or an average may have decimals.
         if ((($kind === 'row_get') && (strpos($key, 'cell_') === 0))
+            || (($kind === 'rows_get') && preg_match('/^(sum|avg|min|max)_/', $key))
             || (($kind === 'record_get') && !in_array($key, array('record_id', 'found'), true))) {
             $value = is_scalar($value) ? (string) $value : '';
         } elseif ((($kind === 'approval') && ($key === 'answer_number')) || (($kind === 'ai') && ($key === 'number'))) {
@@ -384,7 +395,9 @@ function ws_step_outcomes()
  *            written as its JSON)
  * row_set:   table_id, row (the row's id, or one value such as
  *            {{trigger.row_id}}), cells
- * row_get:   table_id, row (as row_set's)
+ * row_get:   table_id, by (ws_step_row_get_bys()), row (as row_set's),
+ *            match and where (ws_step_where_normalize(), kept for by match)
+ * rows_get:  ws_step_rows_get_normalize()
  * record_get: record (a kind of ws_flow_record_get_fields(), '' for
  *            another), id (the record's id, or one value such as
  *            {{trigger.record_id}})
@@ -611,7 +624,13 @@ function ws_step_config_normalize($kind, $config)
             return $out + array('cells' => ws_flow_lines($cells, WS_STEP_ROW_CELLS_MAX));
 
         case 'row_get':
-            return array('table_id' => $number($config['table_id'] ?? 0)) + ws_step_row_way($config);
+            $match = (($config['by'] ?? '') === 'match');
+            $way = $match ? array('by' => 'match', 'row' => '') : ws_step_row_way($config);
+
+            return array('table_id' => $number($config['table_id'] ?? 0)) + $way + ws_step_where_normalize($config, $match);
+
+        case 'rows_get':
+            return ws_step_rows_get_normalize($config);
 
         case 'record_get':
             $record = is_string($config['record'] ?? null) ? $config['record'] : '';
@@ -812,6 +831,20 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
 
             $problems = array_merge($problems, ws_step_row_problem($kind, $config, $name));
 
+            if ($config['by'] === 'match') {
+                $problems = array_merge($problems, ws_step_where_problems($config, $name, true));
+            }
+
+            break;
+
+        // A box that reads rows names its table, and its conditions if any.
+        case 'rows_get':
+            if ((int) $config['table_id'] <= 0) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the table it reads.', 'vars' => $name));
+            }
+
+            $problems = array_merge($problems, ws_step_where_problems($config, $name, false));
+
             break;
 
         // A box that reads a record names its kind and the record as a row
@@ -891,6 +924,10 @@ function ws_step_check($viewer, $kind, $config, $joined = false)
 
     if ($kind === 'row_get') {
         return ws_step_row_get_check($viewer, ws_step_config_normalize('row_get', $config));
+    }
+
+    if ($kind === 'rows_get') {
+        return ws_step_rows_get_check($viewer, ws_step_config_normalize('rows_get', $config));
     }
 
     if ($kind === 'record_get') {
@@ -1306,6 +1343,7 @@ function ws_step_fill_target($kind, $action)
         case 'row_add':
         case 'row_set':
         case 'row_get':
+        case 'rows_get':
         case 'record_get':
             return 'json';
     }
@@ -1721,7 +1759,7 @@ function ws_step_idempotency_key($run_id, $node_id, $pass)
  */
 function ws_step_result_shown($kind, $outcome, $text, $edit)
 {
-    if ($edit || !in_array((string) $kind, array('change', 'condition', 'start_flow', 'row_add', 'row_set', 'row_get', 'record_get', 'ai', 'agent'), true) || ((string) $text === '')) {
+    if ($edit || !in_array((string) $kind, array('change', 'condition', 'start_flow', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'ai', 'agent'), true) || ((string) $text === '')) {
         return (string) $text;
     }
 
@@ -1744,6 +1782,10 @@ function ws_step_result_shown($kind, $outcome, $text, $edit)
 
     if ((string) $kind === 'row_get') {
         return ((string) $outcome === 'done') ? lang('A row of a table was read.') : lang('No row of the table was read.');
+    }
+
+    if ((string) $kind === 'rows_get') {
+        return ((string) $outcome === 'done') ? lang('Rows of a table were read.') : lang('No rows of the table were read.');
     }
 
     // The table may be one the reader does not reach: its name and its
@@ -2045,6 +2087,8 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         $done = ws_step_row_do($owner, $action);
     } elseif ($kind === 'row_get') {
         $done = ws_step_row_get_do($owner, $action);
+    } elseif ($kind === 'rows_get') {
+        $done = ws_step_rows_get_do($owner, $action);
     } elseif ($kind === 'record_get') {
         $done = ws_step_record_get_do($owner, $action);
     } else {
@@ -2063,6 +2107,18 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     }
 
     $data = ws_step_result_data($kind, $node['config'], $done);
+
+    // A failure keeps the values its texts read empty, so the run names the
+    // box each came from (flow_failure_reason.php).
+    if (empty($done['ok'])) {
+        $empty = ws_flow_empty_values(ws_flow_step_texts($kind, $check['action']), $values);
+
+        if (!empty($empty)) {
+            $data['empty_values'] = ws_flow_empty_entries($empty, (array) ($graph['nodes'] ?? array()), $values, function ($giver, $field) {
+                return function_exists('ws_flow_condition_field_label') ? ws_flow_condition_field_label($giver, $field, ws_flow_kinds()) : '';
+            });
+        }
+    }
 
     // A failure tries again first where the box is set to (its owner's
     // answer to a passing outage); the arrow on failed is taken once the
@@ -2234,6 +2290,8 @@ function ws_flow_box_try($viewer, $flow, $data)
             $said = ws_step_row_text($action);
         } elseif ($kind === 'row_get') {
             $said = ws_step_row_get_text($action);
+        } elseif ($kind === 'rows_get') {
+            $said = ws_step_rows_get_text($action);
         } elseif ($kind === 'record_get') {
             $said = ws_step_record_get_text($action);
         } elseif ($kind === 'ai') {
@@ -3185,6 +3243,18 @@ function ws_step_row_bys()
 }
 
 /**
+ * The ways a box that reads a row finds it: those of ws_step_row_bys(),
+ * and the first row that meets conditions (match, ws_step_row_match()).
+ * Pure.
+ *
+ * @return string[]
+ */
+function ws_step_row_get_bys()
+{
+    return array_merge(ws_step_row_bys(), array('match'));
+}
+
+/**
  * The way a box that changes or reads a row finds it, and its row text, as
  * the box's settings keep them: an unknown way is by its id, and the last
  * row names no row. Pure.
@@ -3214,7 +3284,9 @@ function ws_step_row_problem($kind, $config, $name)
 {
     $by = (string) ($config['by'] ?? 'id');
 
-    if ($by === 'last') {
+    // The last row needs no row text, nor does a row found by conditions
+    // (ws_step_where_problems()).
+    if (($by === 'last') || ($by === 'match')) {
         return array();
     }
 
@@ -3252,7 +3324,7 @@ function ws_step_row_problem($kind, $config, $name)
  */
 function ws_step_row_refusal($by, $row)
 {
-    if ($by === 'last') {
+    if (($by === 'last') || ($by === 'match')) {
         return '';
     }
 
@@ -3288,6 +3360,10 @@ function ws_step_row_missing_text($by, $row, $name)
 
     if ($by === 'last') {
         return lang(array('string' => 'The table “{var:1}” has no rows.', 'vars' => $name));
+    }
+
+    if ($by === 'match') {
+        return lang(array('string' => 'No row of the table “{var:1}” meets the conditions.', 'vars' => $name));
     }
 
     if ($number <= 0) {

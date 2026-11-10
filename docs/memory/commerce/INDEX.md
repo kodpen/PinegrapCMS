@@ -39,6 +39,7 @@
 - carrier-label-drivers.md: Carrier label driver layer (2026.11.0): pg_label_<key>_ contract, pg_label_call() answers, what reaches the shipment row, connect_apps label_<key>, Shipping card and test
 - carrier-label-geliver.md: Geliver label driver (2026.11.0, #3096): two-step flow, offers, barcode as tracking number, PDF only, statuses, webhook in carrier-webhook-geliver.md, what is unverified
 - carrier-label-kargonomi.md: Kargonomi label driver (2026.11.0, #3286), Turkish aggregator, no test mode: draft, prices, confirmation as the charge, carrier number read after it, PDF label, cancel in 36 h, unverified points
+- carrier-label-rate.md: Label driver rate() operation (#8406, Sendcloud and Shippo #8420): quotes shape and checks, info services and rates, the rate zone, Geliver, Sendcloud and Shippo quotes
 - carrier-label-roadmap.md: Carrier label drivers as a whole: the rules every driver keeps (one write path, polling then webhooks, return labels, what stays outside), the order they came in, which wait for documentation
 - carrier-label-sendcloud-customs.md: Sendcloud customs data (2026.11.0, #3474, decided #3408): route opened only by a filled shop block, parcel_items and customs_information of API v3, incoterm through the option, what is unverified
 - carrier-label-sendcloud-returns.md: Sendcloud customer return labels (#3409): Returns API announce from the customer to the sender address, live mode and EU only, r-<return>-<parcel> reference, cancel request
@@ -286,6 +287,8 @@
 - shipment-tracking.md: Carrier status polling (2026.11.0, PR #3157): shipment_tracking_job hourly in the light lane, which parcels are open, track() answers written back through the shipment write path, budgets, places
 - shipment-write-path.md: The single shipment write path (includes/fn/shipping.php): pg_shipment_record() upsert, pg_shipment_prune(), pg_shipment_delivered() once per address, the format warning, who calls it
 - shipping-bulk-import.md: Bulk "mark shipped" on the order list and the tracking-number CSV upload (import_shipments.php): what each writes through update_order(), what is refused and why
+- shipping-label-checkout-rate.md: Checkout live rate of a method linked to a label service (R3): get_shipping_realtime_rate() branch, parcel, cache rows, stale fallback, purge, currency, no price = not offered
+- shipping-method-label-link.md: A shipping method linked to a carrier label service (11.0.177, #8403): label_driver and label_service, the Carrier Service picker, the carrier it sets, API fields, Create Label
 - shipping-panel-terms.md: The Turkish words the shipping screens use for fees, handling and transit days, cut-offs and adjustment direction, and which shared keys carry them (#5556, #5557, #5567)
 - shipping-report.md: Shipping report (view_shipping_report.php): which orders it counts, how its period is read and kept, the longest period
 - shipping-today.md: How shipping works today (checked 2026-10-20): tracking tables and write paths, the four meanings of "shipped", estimated dates, known gaps and reusable Turkish validation helpers

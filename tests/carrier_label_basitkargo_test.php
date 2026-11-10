@@ -102,7 +102,7 @@ function carrier_label_basitkargo_test_shipment()
 function test_carrier_label_basitkargo_is_a_builtin_driver()
 {
 	pg_assert_true(pg_label_driver('basitkargo') !== null);
-	pg_assert_same(array('carriers' => array('yurtici', 'surat', 'aras', 'mng', 'ptt'), 'formats' => array('svg')), pg_label_info('basitkargo'));
+	pg_assert_same(array('carriers' => array('yurtici', 'surat', 'aras', 'mng', 'ptt'), 'formats' => array('svg'), 'services' => array(), 'rates' => 'address'), pg_label_info('basitkargo'));
 
 	foreach (array('test', 'create', 'label', 'cancel', 'track') as $operation) {
 		pg_assert_true(pg_label_can('basitkargo', $operation), $operation);

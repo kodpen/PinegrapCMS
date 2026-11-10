@@ -188,6 +188,55 @@
         select.pgTint = tint;
     }
 
+    /**
+     * A searching select (type 'search'): a <select> holding the empty
+     * choice and the stored one, drawn by pgFields as a Combobox that asks
+     * def.source as the operator types. Without pg_fields.js it stays a
+     * select of those two choices.
+     */
+    function searchSelect(def, value, text) {
+        var control = document.createElement('select');
+        var empty = document.createElement('option');
+
+        control.className = 'form-control form-control-sm pg-list-table-field';
+        control.setAttribute('data-pg-combobox', '');
+        control.setAttribute('data-pg-source', String(def.source || ''));
+        control.setAttribute('data-pg-min-length', '1');
+        empty.value = '';
+        control.appendChild(empty);
+        searchChoice(control, value, text);
+
+        return control;
+    }
+
+    /** A searching select set to a value, its option named text (added when missing). */
+    function searchChoice(control, value, text) {
+        var found = null;
+
+        Array.prototype.forEach.call(control.options, function (option) {
+            if (option.value === value) {
+                found = option;
+            }
+        });
+
+        if (!found && (value !== '')) {
+            found = document.createElement('option');
+            found.value = value;
+            control.appendChild(found);
+        }
+
+        if (found && (value !== '') && (text !== '')) {
+            found.textContent = text;
+        }
+
+        control.value = value;
+    }
+
+    /** What the keyboard reaches of a field: a drawn Combobox's toggle, else the field. */
+    function fieldTarget(control) {
+        return control.pgComboboxToggle || control;
+    }
+
     function rowNameText(node) {
         var walk = function (parent) {
             var text = '';
@@ -459,6 +508,8 @@
             });
 
             tintSelect(control);
+        } else if (def.type === 'search') {
+            control = searchSelect(def, value, cell.getAttribute('data-pg-edit-text') || '');
         } else if (def.type === 'multiselect') {
             control = choiceGroup(def, value);
         } else if (def.type === 'textarea') {
@@ -533,11 +584,87 @@
         control.addEventListener('keydown', function (event) {
             self.fieldKey(cell, event);
         });
+
+        if (def.type === 'search') {
+            this.openSearch(cell, control);
+        }
+    };
+
+    /**
+     * A searching field drawn as a Combobox. Its keys arrive on the toggle
+     * and the menu, not on the hidden select: on the closed toggle Enter,
+     * Escape, F2 and Ctrl+S are the field's keys (taken before the toggle
+     * opens its menu on Enter); Space and the arrows open the menu, whose
+     * keys (search box, items, Escape) stay the Combobox's. A pick writes
+     * the select and fires its change, which saves at once; moving through
+     * the items saves nothing. No key reaches the rows.
+     */
+    D.openSearch = function (cell, control) {
+        var self = this;
+
+        cell.pgQuickKeys = function (event) {
+            var target = event.target;
+            var toggle = control.pgComboboxToggle;
+
+            if (!toggle || (target !== toggle) || (toggle.getAttribute('aria-expanded') === 'true')) {
+                return;
+            }
+
+            if ((event.key === 'Enter') || (event.key === 'Escape') || (event.key === 'F2') || ((event.ctrlKey || event.metaKey) && ((event.key === 's') || (event.key === 'S')))) {
+                self.fieldKey(cell, event);
+            }
+        };
+
+        cell.pgQuickHold = function (event) {
+            event.stopPropagation();
+        };
+
+        cell.addEventListener('keydown', cell.pgQuickKeys, true);
+        cell.addEventListener('keydown', cell.pgQuickHold);
+
+        if (window.pgFields && (typeof window.pgFields.init === 'function')) {
+            window.pgFields.init(control);
+        }
+    };
+
+    /** A searching field shows a value (and its name) without saving it. */
+    D.showSearch = function (cell, value) {
+        var control = cell.pgQuick.control;
+        var text = cell.getAttribute('data-pg-edit-text') || '';
+        var option = (control.selectedIndex >= 0) ? control.options[control.selectedIndex] : null;
+
+        if ((control.value === value) && (!option || (value === '') || (text === '') || (option.textContent === text))) {
+            return;
+        }
+
+        var toggle = control.pgComboboxToggle;
+        var focused = !!toggle && (document.activeElement === toggle);
+
+        searchChoice(control, value, text);
+
+        if (toggle && window.pgCombobox && (typeof window.pgCombobox.refresh === 'function')) {
+            window.pgCombobox.refresh(control);
+
+            if (focused && control.pgComboboxToggle) {
+                control.pgComboboxToggle.focus();
+            }
+        }
     };
 
     D.closeField = function (cell) {
         if (!cell.pgQuick) {
             return;
+        }
+
+        if (cell.pgQuickKeys) {
+            cell.removeEventListener('keydown', cell.pgQuickKeys, true);
+            cell.removeEventListener('keydown', cell.pgQuickHold);
+            delete cell.pgQuickKeys;
+            delete cell.pgQuickHold;
+
+            if (window.pgFields && (typeof window.pgFields.destroy === 'function')) {
+                window.pgFields.destroy(cell.pgQuick.control);
+            }
         }
 
         cell.innerHTML = cell.pgQuickHtml;
@@ -559,6 +686,10 @@
             event.preventDefault();
             this.quickSave(cell);
             this.fieldStep(cell, event.shiftKey ? -1 : 1);
+        } else if ((event.key === 'Escape') && (quick.def.type === 'search')) {
+            event.preventDefault();
+            this.showSearch(cell, cell.getAttribute('data-pg-edit-value') || '');
+            this.fieldNote(cell, '');
         } else if (event.key === 'Escape') {
             event.preventDefault();
             quick.control.value = (quick.control.tagName === 'TEXTAREA') ? quickValue('textarea', cell.getAttribute('data-pg-edit-value') || '') : (cell.getAttribute('data-pg-edit-value') || '');
@@ -588,10 +719,12 @@
             var next = row ? row.querySelector('td[data-pg-col="' + quote(key) + '"]') : null;
 
             if (next && next.pgQuick) {
-                next.pgQuick.control.focus();
+                var target = fieldTarget(next.pgQuick.control);
 
-                if (next.pgQuick.control.select) {
-                    next.pgQuick.control.select();
+                target.focus();
+
+                if ((target.tagName === 'INPUT') || (target.tagName === 'TEXTAREA')) {
+                    target.select();
                 }
 
                 return;
@@ -611,13 +744,21 @@
 
         quick.note.textContent = message;
         quick.note.hidden = (message === '');
-        quick.control.classList.toggle('is-invalid', message !== '');
 
-        if (message !== '') {
-            quick.control.setAttribute('aria-invalid', 'true');
-        } else {
-            quick.control.removeAttribute('aria-invalid');
-        }
+        // A searching field is reached by its toggle, which says it too.
+        [quick.control, quick.control.pgComboboxToggle].forEach(function (node) {
+            if (!node) {
+                return;
+            }
+
+            node.classList.toggle('is-invalid', message !== '');
+
+            if (message !== '') {
+                node.setAttribute('aria-invalid', 'true');
+            } else {
+                node.removeAttribute('aria-invalid');
+            }
+        });
     };
 
     D.token = function () {
@@ -685,7 +826,14 @@
         if ((view.value !== undefined) && (view.value !== null) && cell.hasAttribute('data-pg-edit')) {
             cell.setAttribute('data-pg-edit-value', String(view.value));
 
-            if (cell.pgQuick) {
+            // A searching field's choice comes with its name.
+            if (typeof view.text === 'string') {
+                cell.setAttribute('data-pg-edit-text', view.text);
+            }
+
+            if (cell.pgQuick && (cell.pgQuick.def.type === 'search')) {
+                this.showSearch(cell, String(view.value));
+            } else if (cell.pgQuick) {
                 cell.pgQuick.control.value = String(view.value);
 
                 if (cell.pgQuick.control.tagName === 'SELECT') {
@@ -997,6 +1145,8 @@
     T.quickChoices = quickChoices;
     T.rowNameText = rowNameText;
     T.tintSelect = tintSelect;
+    T.searchChoice = searchChoice;
+    T.fieldTarget = fieldTarget;
 
     // Lists the driver started before this part loaded.
     if (typeof document !== 'undefined' && document.querySelectorAll) {

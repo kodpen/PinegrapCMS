@@ -63,6 +63,30 @@ function test_list_edit_multiselect_reads_offered_values_in_their_order()
 	pg_assert_true(in_array('multiselect', pg_list_table_edit_kinds(), true));
 }
 
+// A searching select takes any record id; the screen's own save decides
+// whether that record may be chosen.
+function test_list_edit_search_reads_an_id()
+{
+	$column = array('type' => 'search', 'label' => 'File', 'source' => '/pg/file_picker_search.php?kind=file', 'required' => true);
+
+	pg_assert_same('42', pg_list_edit_parse($column, ' 042 ')['value'], 'any id, not among options');
+	pg_assert_false(pg_list_edit_parse($column, '')['ok'], 'a required one needs a choice');
+	pg_assert_same('', pg_list_edit_parse(array('required' => false) + $column, '')['value'], 'one that is not required can be emptied');
+
+	foreach (array('0', '-3', '4.5', 'a.pdf', '99999999999', array('3')) as $raw) {
+		pg_assert_false(pg_list_edit_parse($column, $raw)['ok'], 'not an id: ' . json_encode($raw));
+	}
+
+	$table = stripslashes(html_entity_decode(pg_list_edit_table('view_short_links.php', array('file_id' => $column)), ENT_QUOTES, 'UTF-8'));
+
+	pg_assert_contains('"file_id":{"type":"search","label":"File","source":"/pg/file_picker_search.php?kind=file"}', $table, 'the script is told where to search');
+
+	$cell = pg_list_edit_cell_attributes(array('file_id' => $column), 'file_id', 7, '42', 'a.pdf');
+
+	pg_assert_same('a.pdf', $cell['data-pg-edit-text'], 'the stored choice as named');
+	pg_assert_false(isset(pg_list_edit_cell_attributes(array('file_id' => $column), 'file_id', 7, '42')['data-pg-edit-text']), 'other cells carry no text');
+}
+
 function test_list_edit_text_longer_than_its_column_is_refused()
 {
 	$columns = list_edit_columns();

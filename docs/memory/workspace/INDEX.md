@@ -8,6 +8,7 @@
 - agent-canvas-svg.md: Agents draw Workspace canvases from SVG (POST channels/{id}/canvases) and read any canvas (GET messages/{id}/canvas): Import port, blank picture, pending, who may
 - agent-doors.md: The agents' request queue: wake rules make one ws_ai_requests row per agent (app:<id>, model:<id>), the brakes, the push knock and its retry, the agent-requests routes (A4a #8221)
 - agent-flows.md: The flows part of the agent risk tiers (flow_agent_box.php, A7b): the Ask an agent box (kind agent) and runs an application agent starts within its channel tier
+- agent-key-trial.md: The agent's own side tried live on dev (2026-11-10) with an application agent's key: the request list, the brief of a mention and of a wake, claim, answer, no_answer, fail, agent-wake
 - agent-questions.md: How an agent asks the people with a poll or an approval, and why the outcome is written in the agent's name (never as the owner's decision)
 - agent-registry.md: The agent registry (ws_agents) and the channel-agent row (ws_channel_agents): fields, Claude's routine as the first push agent, the membership routes, the depth and hourly brakes
 - agent-risk-tiers.md: Agent risk tiers (agent_tiers.php, A7): the tier of a change, when an application agent's proposal is applied at once, the undo journal in ws_ai_changes (step 11.0.174), who may undo and when
@@ -44,7 +45,10 @@
 - workflow-table-shares.md: Workflow table shares (wtable_shares.php, T1c, #2820): owner-only, person view/edit, channel view; wtable_shared bell line; ws_wtable_flow_gate() pauses a gone owner's table
 - workflow-table-starters.md: Starters on the New table card (T6c, #3044): contact pipeline and checklist live in code (ws_wtable_starters()), made through the store's functions with optional sample rows; no store, no schema
 - workflow-tables-api.md: Workflow tables in the external API and MCP (api_wtables.php, T1d1 #2890, T1d2 #2931): routes, which are tools, dry run, errors, rows paging, Claude's reach, shares, workspace.wtable.row.* webhooks
-- workflow-tables-later.md: What workflow tables leave for later (T1-T6 done): a "my tables" strip, table versions, the CRM pipeline; the planned import route, Excel download and bin
+- workflow-tables-bin.md: The bin of workflow tables (11.0.178, TB1): a deleted row goes to ws_wtable_row_bin, a deleted table gets ws_wtables.deleted_at; restore, purge, privacy and contact readers
+- workflow-tables-conditions.md: Conditions over workflow table rows (wtable_where.php, PR #8400): comparisons per column type, how each type compares, all or any, sorting with empty cells last, sum/average/smallest/largest
+- workflow-tables-export.md: A workflow table downloads as an Excel file (TX1): who may, what each cell becomes, the shared xlsx writer the ERP export also uses
+- workflow-tables-later.md: What workflow tables leave for later (T1-T6 done): a "my tables" strip, table versions, the CRM pipeline; the planned import route and bin
 - workflow-tables-numbers.md: How workflow tables read and show amounts and numbers (#3391, PR #3507, import PR #3524): ws_calc_number() for typed figures, site separators in file import and on display, machine form stored
 - workflow-tables-screen.md: The workflow tables screen workspace_wtables.php (T1e, #2966): server-drawn forms over the store, list scopes, rows paged, the row form, column options from the form, shares, nav entry
 - workflow-tables.md: Workflow tables (11.0.110, #2746): the four ws_wtable* tables column by column, ws_wtable_access(), column changes; JSON person/link cells and the privacy reader
@@ -173,6 +177,7 @@
 - workspace-flows-empty-fallback.md: The per-thread "When empty, write" fallback of a Flows value (T6, PR #3729, #2415 2a): token syntax, where it is filled, which references take it, the warning rule, the chip
 - workspace-flows-erp-start-events.md: ERP events a flow can start on (PR #7428): invoices, receipts, incoming e-documents, quote decisions; the new erp.invoice.overdue and erp.edoc.received
 - workspace-flows-event-depth.md: The chain depth a flow run's events carry: ws_event_depth() said by a step box around its work, stamped as _depth by ws_event() and pg_event_record(), read by ws_events_start()
+- workspace-flows-failure-reason.md: Why a flow box failed (FR1, PR #8425): data.empty_values, the added sentence on card, bell and run view, the canvas buttons and the card link to the failed box
 - workspace-flows-for-each-canvas.md: The For each loop on the Flows canvas (D9 canvas, #3422): kinds, arrows, the body frame, the list and collect forms, which values a box inside or outside the loop is offered
 - workspace-flows-for-each-count.md: Repeat N times (For each count mode, FL2) and value boxes inside a loop body: settings, items 1..N, checks, the pure-box loop rule, the reader's pass, a Wait box per round, canvas
 - workspace-flows-for-each.md: Flows For each loop (D9, #3312, #3323, #3422): For each / End boxes, body per item at pass = item, graph check, 50-item cap, End outputs, 16 KB list, size warning
@@ -199,6 +204,7 @@
 - workspace-flows-row-box.md: The row start box of flows (#3064): a table row added, changed or deleted starts the flow; rule type row, ws_event() in ws_wtable_row_announce(), the table gate, cells as trigger values
 - workspace-flows-row-choice.md: How Read a row (row_get) and Change a row (row_set) find their row (PR #8384): by its number in the table, its id or the last row; what the row field takes; one check; where its values come from
 - workspace-flows-row-get-box.md: The Read a row box of flows (row_get): view reach with the owner's rights, pause, outputs row_id/found/cell_<id>, a missing row done with found 0, non-editors, canvas
+- workspace-flows-rows-get-box.md: The Read rows box of flows (rows_get, PR #8400) and Read a row by match: conditions as JSON, view reach, outputs count/rows/sum_ avg_ min_ max_<id>, the list For each walks, checks, canvas
 - workspace-flows-run-chain-notice.md: One flow_finished inbox line per chain of runs (#3526 step 1, PR #3537, #3371): root from context chain_root or start_key, fold rule, update while unread, sent again, push, failure turn
 - workspace-flows-run-channel.md: The channel a flow run opens its tasks in: the flow's home as the run starts, or the channel_id named on POST /workspace/flows/{id}/runs (decision #2413); ws_flow_run_channel_check(), shared with C2
 - workspace-flows-run-events.md: Webhook events of flow runs (A7, #2406): workspace.flow.run.finished, .failed, .cancelled, .waiting; where each is announced once, the body, words only in public channels, what is never announced
@@ -212,7 +218,7 @@
 - workspace-flows-runner.md: Workspace flow runs (flow_runs.php): start, run channel, walk, task boxes, wake-ups, recovery, drivers, limits, end, cancel, routes
 - workspace-flows-scheduled-merge.md: Scheduled actions moved into Flows (owner, 2026-10-24): what was decided, the two anchors, what stays a scheduled action, and the PRs of each slice
 - workspace-flows-scheduled-section.md: Staff's scheduled actions at the end of the Flows list (V5, #3222): converted rows with Run now and History, the Not converted cards, ?view=scheduled opens the list, Show on canvas
-- workspace-flows-scheduled-ways-in.md: Scheduled work opens on the flow canvas (merge plan 4b, R2): Add › Scheduled flow's mini window (C3, #3066), Duplicate, Edit retrying the conversion; no New on the list, no note toolbar entry
+- workspace-flows-scheduled-ways-in.md: Ways onto the canvas for scheduled work: New flow only (the Scheduled flow window went 2026-11-09), Duplicate on a card, Edit retrying the conversion; no New on the list, no note toolbar entry
 - workspace-flows-shares.md: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/edit, who manages and publishes, access, runs, Claude's reach, lists, bell row, actions, API, Share dialog
 - workspace-flows-steps.md: Step boxes of a flow (steps.php, F4a #1835, F4b #1857, F4b2 #1923, F4b3 #1957): 13 kinds run by ws_scheduled_do(), the MCP and table boxes, outcomes, owner rights, {{node.ID.FIELD}}, never twice
 - workspace-flows-store.md: Workspace flows store (graph check, API; runs: workspace-flows-runner.md): the four tables (11.0.80), graph JSON, problem codes, access, routes, why publishing is the person's own
@@ -303,10 +309,12 @@
 - workspace-sales-quote-change.md: A sales quote added from a change card (kind erp_quote, PR #1705): fields, the erp_lines value kind, what is filled in and checked, the writer erp_quote_save(), how the card and the assistants show it
 - workspace-sales-quote-invoice.md: A sales quote turned into an invoice draft from a change card (erp_quote action invoice, PR #1907): no fields, the shared state rule, the writer erp_quote_to_invoice(), the decision, the proposers
 - workspace-saved-replies-composer.md: Saved replies in the panel (#3114): the composer's ; list (at(), match()), {customer}/{order} filled by the server, insertStored() as one undo step, the Insert menu drawer that manages them
-- workspace-saved-replies.md: Saved replies (ws_saved_replies, 11.0.114, #3090): the table, the store's checks, personal rows only, the /workspace/saved-replies routes and tools, rows deleted with their user
+- workspace-saved-replies-team.md: Team saved replies (#8405, step 11.0.179): the manage_workspace_replies right, its own probe, where it is drawn and saved, the users API field
+- workspace-saved-replies.md: Saved replies (ws_saved_replies, 11.0.114, #3090): the table, personal and team scopes, the store's checks, the /workspace/saved-replies routes and tools
 - workspace-scheduled-actions-api.md: The /workspace/scheduled-actions routes were removed before 2026.11.0 shipped (PR #2107): why, what took their place, what stays (scheduled messages, the draft card)
 - workspace-scheduled-draft-ai.md: Pinegrap AI's propose_scheduled_action: a sentence drafted in a call of its own, kept under the answer as a flow draft card (C5b leftover), the model's texts and final words, when it is offered
 - workspace-scheduled-draft-proposals.md: A connected app proposes a scheduled action (type scheduled in workspace.changes.propose): body, the save check, kept as a flow draft card since C5b, older scheduled cards, why never on a task
+- workspace-scheduling-one-place.md: Scheduled work set up only on the flow canvas (no Scheduled flow window; channel_message template), Start a flow only where one can start, no new start_action boxes (#8394)
 - workspace-screen-companion-scripts.md: Why the Flows canvas and the channel Board tab wait for their own bundle (workspace_flow.js, workspace_board_channel.js) instead of racing ws_bootstrap; the "script did not load" fallback (#2516)
 - workspace-screen-frame.md: Every Workspace screen but the channel one is padded by .ws-shell-main (no screen list), where sticky columns stop, how the MCP servers card wraps on a phone
 - workspace-screen-messages.md: Server-drawn Workspace screens show liveform errors, warnings and notices as corner toasts through ws_screen_messages(), never the panel's Notice/Warning/Error boxes (#6799)

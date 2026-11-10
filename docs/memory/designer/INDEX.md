@@ -473,6 +473,8 @@
 - tree-search.md: Site search (simple mode) and Find & Replace read designer page trees and shared component trees: which texts, how a replace writes a tree, what is left out
 - unread-segment-404.md: A path segment after the page name that no widget reads (/about/xyz) answers 404 into the 404 log; which widgets mark it read and where the check runs (#4826)
 - user-styles-card-edits.md: How the Styles panel's User Styles cards read and edit the User Styles text (assets/js/pg_user_styles.js): which rules are listed, edits in place, Create as one undo step
+- variant-switch-page-parity.md: A picked variant shows what its page shows - an offer's strike-through price block (get_product price_block_html), the short description as photo alt, a rich text's value inside its markup
+- variant-switch-text-values.md: The variant chooser (pg_civ_variants.js) writes a bound value as text unless its key holds markup (HTML_FIELDS), as the server escapes the token; why the script decides, tests
 - widget-accessible-names.md: Names and keyboard use in system widget output: CAPTCHA answer id and label, no empty liveform ids, product carousel link names, the login region's account toggle as a button.
 - widget-address-params.md: How the system widgets read a value from the address (?r=, ?cancelled=, ?query=): one value only, an array is no value; the warnings #5173 fixed
 - widget-attr-bindings.md: A widget record's values in an element's attributes ({{token}} in the Attributes panel or a title): placeholder and carrier, the pass stage, refused attributes and tokens, editor completion (W15)

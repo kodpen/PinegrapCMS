@@ -865,14 +865,14 @@ function ws_flow_card_threads($graph, $nodes)
 
 /**
  * The flow a card's window tries its boxes on (pure): a waiting new flow,
- * or the sketch of Add › Scheduled flow, as a flow of the person's own in
- * memory (owner the asker, a draft holding the graph, edit access), so the
+ * as a flow of the person's own in memory (owner the asker, a draft holding
+ * the graph, edit access), so the
  * try reads with the asker's rights and nothing is written; a waiting patch
  * none, as its flow's owner alone tries boxes (ws_flow_box_try()); an
  * opened draft its flow, only where the person may try it.
  *
  * @param array      $viewer
- * @param string     $state   new (a waiting new flow or a sketch) | patch | opened
+ * @param string     $state   new (a waiting new flow) | patch | opened
  * @param array      $graph   ws_flow_graph_normalize(), for new
  * @param array|null $flow    the flow, for opened (ws_flow_for())
  * @param bool       $can_try for opened (ws_flow_share_manager())
@@ -1256,7 +1256,8 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
         'approval' => 'also any yes-or-no question put to people in a channel: title is the question, approved is yes and rejected is no',
         'post'     => 'only says something in a channel; it never waits for an answer',
         'mention'  => 'starts the flow when a person writes @ and the flow\'s name in the channel channel_id (never a flow\'s, an application\'s or an assistant\'s message; one start per person a minute); it gives message_id, text, author_id, author_name, channel_id and channel_name',
-        'row_get'  => 'reads one row of a workflow table, found by by: position (row is its number as the table lists it, 1 the first row), id (row is the row\'s id, such as {{trigger.row_id}} or a row_id an earlier box gave) or last (the last row, no row); row may be one value alone; it gives row_id, found (1, or 0 when the row is not there) and cell_COLUMN_ID for each column',
+        'row_get'  => 'reads one row of a workflow table, found by by: position (row is its number as the table lists it, 1 the first row), id (row is the row\'s id, such as {{trigger.row_id}} or a row_id an earlier box gave), last (the last row, no row) or match (the first row that meets the conditions in where), the conditions and match written as rows_get\'s, as a lookup such as the customer whose e-mail a form gave; row may be one value alone; it gives row_id, found (1, or 0 when the row is not there) and cell_COLUMN_ID for each column',
+        'rows_get' => 'reads the rows of a workflow table that meet its conditions: where is a JSON list of up to 10 conditions, each {"column":COLUMN_ID,"op":"lt","value":"5"} with op eq, neq, lt, gt, lte, gte, contains, starts, empty or not_empty and value typed (money in minor units, a date as YYYY-MM-DD, a status by its key, a checkbox 1 or 0) or one value alone such as {{trigger.cell_3}}, joined by match all or any; none reads every row; sort is a column id (0 the table\'s order) and dir asc or desc; it gives count (every row that met them), sum_COLUMN_ID, avg_COLUMN_ID, min_COLUMN_ID and max_COLUMN_ID for each number, money and formula column, and rows, a list of at most limit (1-50) rows that a For each box goes through (list {{node.ID.rows}}, fields such as row_id and cell_COLUMN_ID)',
         'row_set'  => 'changes cells of one row of a workflow table, found by by and row as row_get finds it; a row that is not there fails the box',
         'ai'       => 'asks Pinegrap AI on the site\'s quota and waits for its answer (answer); only prompt and text, with their values, are sent; closes_in is the hours it waits before leaving on failed',
         'agent'    => 'asks an agent of the registry (agent_id) in the channel channel_id where it is allowed, writing @handle and the prompt there, and waits for its answer (answer, message_id); the agent acts within its own tier there; closes_in is the hours it waits before leaving on failed',
@@ -1283,7 +1284,8 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
 }
 
 /**
- * The catalogue Pinegrap AI drafts from: ws_flow_kind_catalogue() with the
+ * The catalogue Pinegrap AI drafts from: ws_flow_kind_catalogue() without
+ * the kinds no new box is made of (ws_flow_kinds_not_offered()), with the
  * hints of ws_flow_ai_catalogue_hints(), the kinds of record read from the
  * site.
  *
@@ -1292,8 +1294,11 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
 function ws_flow_ai_catalogue()
 {
     $subjects = function_exists('ws_scheduled_record_types') ? array_keys(ws_scheduled_record_types()) : array();
+    $offered = array_values(array_filter(ws_flow_kind_catalogue(), function ($kind) {
+        return !in_array($kind['kind'], ws_flow_kinds_not_offered(), true);
+    }));
 
-    return ws_flow_ai_catalogue_hints(ws_flow_kind_catalogue(), $subjects);
+    return ws_flow_ai_catalogue_hints($offered, $subjects);
 }
 
 /**

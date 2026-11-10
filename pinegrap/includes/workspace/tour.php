@@ -158,7 +158,7 @@ function ws_tour_steps($viewer)
             'placement' => 'right',
             'optional'  => true,
             'title'     => lang('Flows'),
-            'text'      => lang('Processes drawn as boxes and arrows, and the scheduled actions: work the workspace does by itself at the times you set, a reminder, a summary, a task, a webhook, one after another if need be.'),
+            'text'      => lang('Processes drawn as boxes and arrows, started by hand, at the times you set or when something happens: a reminder, a summary, a task, a webhook, one after another if need be.'),
         );
     } elseif (function_exists('ws_can_schedule') && ws_can_schedule($viewer)) {
         $steps[] = array(

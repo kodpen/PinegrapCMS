@@ -72,11 +72,12 @@ function pg_short_link_quick_pairs($options)
 /**
  * What the list's pickers offer, read once per request with the pickers
  * of the short link screen: pages, catalog and catalog detail pages,
- * product groups, products and files, none in the Recycle Bin. A link that
- * still points at one in the bin keeps it, but its cell stays text.
+ * product groups and products, none in the Recycle Bin. A link that still
+ * points at one in the bin keeps it, but its cell stays text. Files are
+ * not listed: the File cell searches them (kind file).
  *
  * @return array 'pages', 'group_pages', 'product_pages', 'groups',
- *               'products', 'files' (value => label), 'page_types'
+ *               'products' (value => label), 'page_types'
  *               (page id => 'catalog' or 'catalog detail')
  */
 function pg_short_link_quick_choices()
@@ -96,7 +97,6 @@ function pg_short_link_quick_choices()
         'product_pages' => $detail,
         'groups' => pg_short_link_quick_pairs(pg_short_link_form_product_group_options(array())),
         'products' => pg_short_link_quick_pairs(get_product_options(false)),
-        'files' => pg_short_link_quick_pairs(get_file_options(true)),
         'page_types' => array_fill_keys(array_map('strval', array_keys($catalog)), 'catalog') + array_fill_keys(array_map('strval', array_keys($detail)), 'catalog detail'),
     );
 
@@ -124,7 +124,7 @@ function pg_short_link_quick_edit_columns(array $choices, $answers, $name_max, $
         'product_group_id' => array('type' => 'select', 'label' => lang('Product Group'), 'options' => $choices['groups'] ?? array()),
         'product_id' => array('type' => 'select', 'label' => lang('Product'), 'options' => $choices['products'] ?? array()),
         'url' => array('type' => 'text', 'label' => lang('Destination URL'), 'max' => (int) $url_max, 'required' => true),
-        'file_id' => array('type' => 'select', 'label' => lang('File'), 'options' => $choices['files'] ?? array()),
+        'file_id' => array('type' => 'search', 'label' => lang('File'), 'source' => pg_file_picker_source('file'), 'required' => true),
         'tracking_code' => array('type' => 'text', 'label' => lang('Tracking Code'), 'max' => pg_short_link_form_tracking_code_max()),
     );
 
@@ -219,16 +219,19 @@ function pg_short_link_quick_field($column, array $link)
 
 /**
  * The quick edit attributes of a link's cell: none when the cell is text
- * for the link, or when its stored choice is not offered (a page, group,
- * product or file in the Recycle Bin or out of the user's folders), so
- * the list never shows a picker that cannot hold the stored value. Pure.
+ * for the link, or when its stored choice is not offered (a page, group or
+ * product in the Recycle Bin or out of the user's folders), so the list
+ * never shows a picker that cannot hold the stored value. A searching
+ * cell (the file) carries its stored choice's name instead; a file that no
+ * longer exists has none, and its cell stays text. Pure.
  *
  * @param string $column
  * @param array  $link
  * @param array  $quick_edit field => definition, empty for none
+ * @param string $text the stored choice as the cell shows it, plain text
  * @return array
  */
-function pg_short_link_quick_attributes($column, array $link, array $quick_edit)
+function pg_short_link_quick_attributes($column, array $link, array $quick_edit, $text = '')
 {
     $field = pg_short_link_quick_field($column, $link);
 
@@ -236,8 +239,18 @@ function pg_short_link_quick_attributes($column, array $link, array $quick_edit)
         return array();
     }
 
-    if ((($quick_edit[$field[0]]['type'] ?? '') === 'select') && !isset($quick_edit[$field[0]]['options'][$field[1]])) {
+    $type = (string) ($quick_edit[$field[0]]['type'] ?? '');
+
+    if (($type === 'select') && !isset($quick_edit[$field[0]]['options'][$field[1]])) {
         return array();
+    }
+
+    if ($type === 'search') {
+        if (((int) $field[1] > 0) && ((string) $text === '')) {
+            return array();
+        }
+
+        return pg_list_edit_cell_attributes($quick_edit, $field[0], (int) $link['id'], $field[1], (string) $text);
     }
 
     return pg_list_edit_cell_attributes($quick_edit, $field[0], (int) $link['id'], $field[1]);
@@ -407,8 +420,12 @@ function pg_short_link_list_cells(array $short_link, array $quick_edit)
     // with 301 (pg_short_link_status()).
     $answer = pg_short_link_answer_label(pg_short_link_status($short_link));
     $id = (int) $short_link['id'];
-    $cell = function ($column, $html) use ($short_link, $quick_edit) {
-        return pg_list_cell($html, 'align-middle', pg_short_link_quick_attributes($column, $short_link, $quick_edit));
+    // The file cell searches, so it carries the name its field opens with.
+    $file_text = (($type === 'file') && ((string) ($short_link['file_name'] ?? '') !== ''))
+        ? (string) $short_link['file_name'] . (($binned !== '') ? ' [' . lang('IN RECYCLE BIN') . ']' : '')
+        : '';
+    $cell = function ($column, $html) use ($short_link, $quick_edit, $file_text) {
+        return pg_list_cell($html, 'align-middle', pg_short_link_quick_attributes($column, $short_link, $quick_edit, ($column === 'destination') ? $file_text : ''));
     };
 
     $cells = array(
@@ -445,6 +462,10 @@ function pg_short_link_quick_saved(array $cells, $column)
 
         if (isset($cell['attributes']['data-pg-edit-value'])) {
             $out['value'] = (string) $cell['attributes']['data-pg-edit-value'];
+        }
+
+        if (isset($cell['attributes']['data-pg-edit-text'])) {
+            $out['text'] = (string) $cell['attributes']['data-pg-edit-text'];
         }
 
         return $out;

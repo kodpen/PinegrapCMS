@@ -620,31 +620,93 @@ function pg_label_sendcloud_shipment_body($shipment, $account, $sender, $option,
  */
 function pg_label_sendcloud_option_pick($options, $return = false, $incoterm = '')
 {
+    $cheapest = null;
+
+    foreach (is_array($options) ? $options : array() as $option) {
+        $priced = pg_label_sendcloud_option_priced($option, $return, $incoterm);
+
+        if (($priced !== null) && (($cheapest === null) || ($priced['total'] < $cheapest['total']))) {
+            $cheapest = $priced;
+        }
+    }
+
+    return ($cheapest === null) ? '' : $cheapest['code'];
+}
+
+/**
+ * A shipping option of POST /shipping-options that a label can be made
+ * with (the rules of pg_label_sendcloud_option_pick()), with its price, or
+ * null when it cannot be used. Pure.
+ *
+ * @param mixed  $option
+ * @param bool   $return
+ * @param string $incoterm DDU, DAP or DDP for a declared parcel, '' for none
+ * @return array|null code, carrier (Sendcloud's code), total (float),
+ *                    currency
+ */
+function pg_label_sendcloud_option_priced($option, $return = false, $incoterm = '')
+{
     // DDU and DAP leave the duties to the recipient, DDP to the shop.
     $incoterm = strtoupper(trim((string) $incoterm));
     $terms = ($incoterm === 'DDP') ? array('ddp', 'dap_dp') : array('ddu', 'dap', 'dap_np');
 
-    $cheapest = null;
+    if (!is_array($option)) {
+        return null;
+    }
+
+    $code = pg_label_sendcloud_text($option, 'code');
+    $needs = (isset($option['requirements']) && is_array($option['requirements'])) ? $option['requirements'] : array();
+    $price = isset($option['quotes'][0]['price']['total']) ? $option['quotes'][0]['price']['total'] : array();
+    $total = pg_label_sendcloud_text($price, 'value');
+    $term = isset($option['functionalities']) ? strtolower(pg_label_sendcloud_text($option['functionalities'], 'incoterm')) : '';
+
+    if (($code === '') || (strncmp($code, 'sendcloud:letter', 16) === 0) || !empty($option['quote_error'])
+        || (($incoterm === '') && !empty($needs['export_documents'])) || (($incoterm !== '') && ($term !== '') && !in_array($term, $terms, true))
+        || !empty($needs['is_service_point_required']) || !is_numeric($total)
+        || ($return && empty($option['functionalities']['returns']))) {
+        return null;
+    }
+
+    return array(
+        'code'     => $code,
+        'carrier'  => isset($option['carrier']) ? pg_label_sendcloud_text($option['carrier'], 'code') : '',
+        'total'    => (float) $total,
+        'currency' => strtoupper(pg_label_sendcloud_text($price, 'currency')),
+    );
+}
+
+/**
+ * The quotes of the shipping options a label can be made with, cheapest
+ * first, amounts in minor units. Pure.
+ *
+ * @param mixed  $options  the data of POST /shipping-options
+ * @param string $incoterm as in pg_label_sendcloud_option_priced()
+ * @return array list of service, carrier, amount, currency
+ */
+function pg_label_sendcloud_rate_quotes($options, $incoterm = '')
+{
+    $quotes = array();
 
     foreach (is_array($options) ? $options : array() as $option) {
-        $code = pg_label_sendcloud_text($option, 'code');
-        $needs = (isset($option['requirements']) && is_array($option['requirements'])) ? $option['requirements'] : array();
-        $total = isset($option['quotes'][0]['price']['total']) ? pg_label_sendcloud_text($option['quotes'][0]['price']['total'], 'value') : '';
-        $term = isset($option['functionalities']) ? strtolower(pg_label_sendcloud_text($option['functionalities'], 'incoterm')) : '';
+        $priced = pg_label_sendcloud_option_priced($option, false, $incoterm);
 
-        if (($code === '') || (strncmp($code, 'sendcloud:letter', 16) === 0) || !empty($option['quote_error'])
-            || (($incoterm === '') && !empty($needs['export_documents'])) || (($incoterm !== '') && ($term !== '') && !in_array($term, $terms, true))
-            || !empty($needs['is_service_point_required']) || !is_numeric($total)
-            || ($return && empty($option['functionalities']['returns']))) {
+        if (($priced === null) || ($priced['total'] < 0)) {
             continue;
         }
 
-        if (($cheapest === null) || ((float) $total < $cheapest[0])) {
-            $cheapest = array((float) $total, $code);
-        }
+        $quotes[] = array(
+            'service'  => $priced['code'],
+            'carrier'  => pg_label_sendcloud_carrier($priced['carrier']),
+            'amount'   => (int) round($priced['total'] * 100),
+            'currency' => $priced['currency'],
+        );
     }
 
-    return ($cheapest === null) ? '' : $cheapest[1];
+    usort($quotes, function ($a, $b) {
+        return ($a['amount'] === $b['amount']) ? strcmp($a['service'], $b['service']) : (($a['amount'] < $b['amount']) ? -1 : 1);
+    });
+
+    return $quotes;
 }
 
 /**
@@ -1145,6 +1207,67 @@ function pg_label_sendcloud_create($shipment, $account)
     }
 
     return $answer;
+}
+
+/**
+ * What the shipping options would charge for the shipment's parcel, after
+ * the checks create() makes of the route (sender countries, a customs route
+ * only when the shop declares customs). Asked in live and test mode alike:
+ * pricing costs nothing.
+ */
+function pg_label_sendcloud_rate($shipment, $account)
+{
+    $recipient = (is_array($shipment) && isset($shipment['recipient'])) ? $shipment['recipient'] : array();
+    $to = strtoupper(pg_label_sendcloud_text($recipient, 'country'));
+
+    if ($to === '') {
+        return array('success' => false, 'error' => lang('Sendcloud needs the country of the shipping address.'));
+    }
+
+    $sender = pg_label_sendcloud_sender($account);
+
+    if (!$sender['read']['ok']) {
+        return pg_label_sendcloud_failure($sender['read'], false);
+    }
+
+    if ($sender['address'] === null) {
+        return array('success' => false, 'error' => lang('Sendcloud has no sender address of this id. Add one in the Sendcloud panel.'), 'raw' => $sender['read']['raw']);
+    }
+
+    $from = strtoupper(pg_label_sendcloud_text($sender['address'], 'country_code'));
+    $customs = pg_label_sendcloud_customs_filled($account);
+    $refusal = pg_label_sendcloud_route_error($from, $to, false, $customs);
+
+    if ($refusal !== '') {
+        return array('success' => false, 'error' => $refusal);
+    }
+
+    $incoterm = '';
+
+    if ($customs && pg_label_customs_needed($from, $to)) {
+        $incoterm = strtoupper(pg_label_sendcloud_text($account, 'customs_incoterm'));
+        $incoterm = in_array($incoterm, array('DDU', 'DAP', 'DDP'), true) ? $incoterm : 'DDU';
+    }
+
+    $read = pg_label_sendcloud_api('POST', '/shipping-options', $account, array(
+        'from_address'     => array_filter(array('country_code' => $from, 'postal_code' => pg_label_sendcloud_text($sender['address'], 'postal_code')), 'strlen'),
+        'to_address'       => array_filter(array('country_code' => $to, 'postal_code' => pg_label_sendcloud_text($recipient, 'zip')), 'strlen'),
+        'parcels'          => array(pg_label_sendcloud_parcel(isset($shipment['parcel']) ? $shipment['parcel'] : array())),
+        'calculate_quotes' => true,
+    ));
+
+    if (!$read['ok']) {
+        return pg_label_sendcloud_failure($read, false);
+    }
+
+    $quotes = pg_label_sendcloud_rate_quotes(isset($read['data']['data']) ? $read['data']['data'] : array(), $incoterm);
+
+    return array(
+        'success' => true,
+        'quotes'  => $quotes,
+        'log'     => array('Sendcloud shipping options: ' . count($quotes) . ' priced'),
+        'raw'     => $read['raw'],
+    );
 }
 
 function pg_label_sendcloud_label($reference, $format, $account)

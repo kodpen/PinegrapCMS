@@ -12,10 +12,7 @@ description: Steps 1-8 of plans/tables-relational.md: row choice, conditions and
 - 1 (done, PR #8384): "Read a row" and "Change a row" find their row (`by`): by its number in the table (`position`, the default of a new box, "1"), by its id (`id`, also for a box saved before), or as the last row (`last`).
   - One check in the editor, at publish and at run (a whole number from 1, or one value alone), a message per fault. "Add value" with nothing before it names the start. A template keeps a row number, clears an id.
 
-- 2: a condition engine and a "Read rows of a table" box (`rows_get`), the SQL `SELECT … WHERE … ORDER BY … LIMIT`.
-  - `ws_wtable_rows_where()` (pure): conditions, all or any; each a column, an operator (equals, differs, less, more, at most, at least, contains, starts with, empty, not empty) and a value, typed or a run value, compared by the column's type.
-  - The box takes conditions, a sort and a limit (1-50, the For each cap). It gives `count`; `sum_<id>`, `avg_<id>`, `min_<id>`, `max_<id>` per number and money column (and number formulas) over the matching rows; `rows`, a list For each walks (`row_id`, `position`, `cell_<id>`).
-  - "Read a row" gains `by: match`, the first row meeting the conditions: a lookup, the join step of a flow.
+- 2 (done, PR #8400): a condition engine (`ws_wtable_rows_where()`, `workspace/workflow-tables-conditions.md`) and a "Read rows of a table" box (`rows_get`), the SQL `SELECT … WHERE … ORDER BY … LIMIT`: `count`, `sum_`/`avg_`/`min_`/`max_<id>` and `rows` for For each. "Read a row" gains `by: match`, the join step of a flow (`workspace/workspace-flows-rows-get-box.md`).
 
 - 3: table screen, a query bar: the step 2 conditions and a sort over the rows. The paging follows the filtered rows. A totals line under the table shows the sum, average, smallest and largest value of each number and money column, for the rows shown or for every row. The tables API `GET …/rows` takes the same `where` and `sort`.
 

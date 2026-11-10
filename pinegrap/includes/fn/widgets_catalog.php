@@ -3814,6 +3814,36 @@ function _pg_format_price_with_discount($original_cents, $effective_cents, $curr
 }
 
 /**
+ * The price a product detail page shows for ^^__price_formatted^^ and
+ * ^^__price_range^^: the strike-through block while an offer lowers it
+ * (_pg_format_price_with_discount()), else the amount. The variant
+ * chooser's payload carries the same per variant, so a picked variant
+ * shows what its own page shows.
+ *
+ * @param int    $original_cents  Sticker price in cents.
+ * @param int    $effective_cents Price after offers in cents.
+ * @param string $currency_symbol Currency symbol as stored (may be an entity).
+ * @return string                 Inline HTML.
+ */
+function _civ_price_shown($original_cents, $effective_cents, $currency_symbol)
+{
+    if ((int)$effective_cents < (int)$original_cents) {
+        return _pg_format_price_with_discount($original_cents, $effective_cents, $currency_symbol);
+    }
+    return pg_visitor_money(((int)$effective_cents) / 100, $currency_symbol);
+}
+
+/**
+ * A product photo's alt text on the product detail page: the name the
+ * store shows (the short description), else the Product ID / SKU (name),
+ * as the cart's ^^__item_image_alt^^. Plain text; the token map escapes it.
+ */
+function _civ_image_alt($short_description, $name)
+{
+    return ((string)$short_description !== '') ? (string)$short_description : (string)$name;
+}
+
+/**
  * Expand `<!--pg-variant-attr:base64(cfg)-->` markers in $html by cloning
  * the configured template once per shared attribute in $vattrs.
  *
@@ -5384,6 +5414,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                         ? $base_path . encode_url_path((string)$_vr['product_image'])
                         : '';
                     $_p_rating      = _pg_catalog_rating_values($_vr['product_rating_avg'], $_vr['product_rating_count']);
+                    // Plain text stays raw: pg_civ_variants.js writes a value
+                    // as text unless its key holds markup (HTML_FIELDS there:
+                    // the rich text and the formatted prices), as the tokens
+                    // below escape the same text once.
                     $vproducts[$_pid] = array(
                         'id'              => $_pid,
                         'name'            => (string)$_vr['product_name'],
@@ -5391,15 +5425,20 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                         'short_description' => (string)$_vr['product_short_desc'],
                         'description'     => (string)$_vr['product_full_desc'],
                         'details'         => (string)$_vr['product_details'],
-                        // Price tokens — `price`/`price_formatted` reflect
-                        // the EFFECTIVE price (after discount when one
-                        // applies). `original_price` keeps the pre-discount
-                        // sticker for the strike-through. `has_discount`
-                        // (1/0) lets the designer hide-when-empty markup
-                        // for the "indirim" badge.
+                        // Price tokens — `price` reflects the EFFECTIVE
+                        // price (after discount when one applies);
+                        // `price_formatted` and `price_range` are what the
+                        // page's tokens show (_civ_price_shown(): the
+                        // strike-through block during an offer).
+                        // `original_price` keeps the pre-discount sticker
+                        // for the strike-through. `has_discount` (1/0) lets
+                        // the designer hide-when-empty markup for the
+                        // "indirim" badge.
                         'price'           => number_format($_p_disc_cents / 100, 2, '.', ''),
                         'price_cents'     => $_p_disc_cents,
-                        'price_formatted' => pg_visitor_money($_p_disc_cents / 100, $currency_symbol),
+                        'price_formatted' => _civ_price_shown($_p_orig_cents, $_p_disc_cents, $currency_symbol),
+                        'price_range'     => _civ_price_shown($_p_orig_cents, $_p_disc_cents, $currency_symbol),
+                        'price_block_html' => _pg_format_price_with_discount($_p_orig_cents, $_p_disc_cents, $currency_symbol),
                         'original_price'           => number_format($_p_orig_cents / 100, 2, '.', ''),
                         'original_price_cents'     => $_p_orig_cents,
                         'original_price_formatted' => pg_visitor_money($_p_orig_cents / 100, $currency_symbol),
@@ -5408,7 +5447,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                         'discount_amount_formatted' => $_p_save_cents > 0 ? pg_visitor_money($_p_save_cents / 100, $currency_symbol) : '',
                         'discount_percent'         => $_p_save_pct > 0 ? (string)$_p_save_pct : '',
                         'image_url'       => $_p_image_url,
-                        'image_alt'       => (string)$_vr['product_short_desc'],
+                        'image_alt'       => _civ_image_alt($_vr['product_short_desc'], $_vr['product_name']),
                         'thumbnail_url'   => $_p_image_url,
                         'mpn'             => (string)$_vr['product_mpn'],
                         'gtin'            => (string)$_vr['product_gtin'],
@@ -5537,7 +5576,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         // the group (pg_price_reference_page()); the variant script swaps
         // reference_price / reference_label with the rest. It writes the
         // payload's prices as HTML (innerHTML), so the token's text is
-        // escaped for it.
+        // escaped for it; the label is written as text.
         $_civ_ref_items = array();
         foreach ($vproducts as $_pid => $_vp) {
             $_civ_ref_items[$_pid] = array('price' => (int)$_vp['price_cents'], 'reduced' => (int)$_vp['price_cents'] < (int)$_vp['original_price_cents']);
@@ -5858,16 +5897,15 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         }
 
         // Price formatting (cents → display) — with offer-driven discount.
-        // $price_cents/$price_decimal/$price_formatted reflect the EFFECTIVE
-        // price (after order-scope offers); $original_* keep the sticker
-        // price for the strike-through. `__has_discount` (1/0) toggles the
-        // designer's "indirim" badge / strike-through visibility via
-        // hide-when-empty markup.
+        // $price_cents/$price_decimal reflect the EFFECTIVE price (after
+        // order-scope offers); $original_* keep the sticker price for the
+        // strike-through. `__has_discount` (1/0) toggles the designer's
+        // "indirim" badge / strike-through visibility via hide-when-empty
+        // markup.
         $original_price_cents     = (int)$p['price'];
         $price_cents              = isset($_civ_disc_prices[$p_id]) ? (int)$_civ_disc_prices[$p_id] : $original_price_cents;
         $price_decimal            = $price_cents / 100;
         $original_price_decimal   = $original_price_cents / 100;
-        $price_formatted          = pg_visitor_money($price_decimal, $currency_symbol);
         $has_discount             = ($price_cents < $original_price_cents) ? 1 : 0;
         $discount_save_cents      = $original_price_cents - $price_cents;
         // The variant read above already holds the product shown; a plain
@@ -5928,10 +5966,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             //     still sees the discount visual without composing two
             //     spans.
             '__price'                => number_format($price_decimal, 2, '.', ''),
-            '__price_formatted'      => $has_discount ? _pg_format_price_with_discount($original_price_cents, $price_cents, $currency_symbol) : $price_formatted,
+            '__price_formatted'      => _civ_price_shown($original_price_cents, $price_cents, $currency_symbol),
             '__price_min'            => number_format($price_decimal, 2, '.', ''),
             '__price_max'            => number_format($price_decimal, 2, '.', ''),
-            '__price_range'          => $has_discount ? _pg_format_price_with_discount($original_price_cents, $price_cents, $currency_symbol) : $price_formatted,
+            '__price_range'          => _civ_price_shown($original_price_cents, $price_cents, $currency_symbol),
             // Price — sticker (pre-discount, for strike-through display).
             // EMPTY when no discount applies → the designer's bound
             // strike-through element auto-hides (via CSS :empty rule).
@@ -5958,7 +5996,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
 
             // Image
             '__image_url'            => $image_url,
-            '__image_alt'            => isset($p['name']) ? (string)$p['name'] : '',
+            '__image_alt'            => _civ_image_alt(isset($p['short_description']) ? $p['short_description'] : '', isset($p['name']) ? $p['name'] : ''),
             '__thumbnail_url'        => $image_url,   // alias — no separate thumb yet
             '__gallery_count'        => (string)$gallery_count,
             '__gallery_image_1'      => isset($gallery_urls[0]) ? $gallery_urls[0] : '',
@@ -6303,7 +6341,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $_civ_v_base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
                      . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
                      . '/assets/js/';
-        $_civ_v_v   = '10';  // bump on pg_civ_variants.js source changes
+        $_civ_v_v   = '12';  // bump on pg_civ_variants.js source changes
         $_civ_variant_script = pg_civ_variants_script($variant_data)
             . '<script src="' . h($_civ_v_base) . 'pg_civ_variants.js?v=' . $_civ_v_v . '" defer></script>';
     }
