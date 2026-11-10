@@ -10,7 +10,7 @@
 - release-sandbox-checks.md: What no running site has confirmed yet and a sandbox pass (tools/setup_sandbox.sh) checks before 2026.11.0 is released: the 2026-10-19 security fixes on other servers, InnoDB search, list speed
 - release-status.md: Last released version (2026.4.10), the open version (2026.11.0, first calendar-versioned number), its migration file and step labels, how a release branch, tag and GitHub release are made
 - released-vs-open-version.md: Released versions are closed, unreleased ones open: where the status is recorded, how the upgrade loop compares versions, no new number while one is open. [decision: decisions-made-data.md]
-- rerun-upgrade-steps.md: How to re-run an open version's upgrade steps on a dev DB (config.version rollback by SQL or the Yazılımı Onar card, which versions it offers) and the package repair card.
+- rerun-upgrade-steps.md: How to re-run an open version's upgrade steps on a dev DB (config.version rollback by SQL, the Repair Software card, from a browser tab or a script) and what the package repair card does.
 - schema-cache-file.md: How pg_schema_has() writes data/temp/schema_*.json (merge with the file, Windows rename fallback) and why waf_table_has_column() and pg_mfa_table_exists() go through it (issues #6070, #6079)
 - schema-probe-rules.md: Code that reads a table/column added by a migration probes first with pg_schema_has() (cache file, invalidation, pg_schema_forget() for a recheck); which hot probes use it, the router's config check
 - schema-probe-without-db.md: waf_table_has_column() with no db class loaded answers false, so pure functions that probe a column run in unit tests alone
