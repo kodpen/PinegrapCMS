@@ -60,6 +60,7 @@
     "Waiting": "Bekliyor",
     "Waiting List": "Bekleme Listesi",
     "Waiting List Link": "Bekleme Listesi Bağlantısı",
+    "Waiting and failed requests": "Bekleyen ve başarısız istekler",
     "Waiting events for {var:1} will be sent again on the next run of the scheduled task.": "{var:1} için bekleyen olaylar, zamanlanmış görevin bir sonraki çalışmasında yeniden gönderilecek.",
     "Waiting for @{var:1}": "@{var:1} bekleniyor",
     "Waiting for Claude to pick the job up…": "Claude'un işi almasını bekliyor…",
