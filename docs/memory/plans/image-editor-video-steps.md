@@ -12,7 +12,7 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
   - Own MP4 (moov, trak, stsd, stts, ctts, stss, stsz, stco/co64) and WebM (EBML, Cluster, SimpleBlock) readers; WebCodecs decoders; a frame cache by time; seeking from the nearest key frame; what the browser cannot decode (HEVC on some) gets a message.
   - Tests: sample tables of small MP4 and WebM fixtures under Node; the seek point for a time.
 
-- V2 (M) The video layer. Part `clip`. Done (#8483, `ui/image-editor-clip.md`; with V4's Detach sound; the export's frames at each moment left to V7).
+- V2 (M) The video layer. Part `clip`. Done (#8483, `ui/image-editor-clip.md`; with V4's Detach sound; the export's frames at each moment still open after V7).
   - `type: 'video'` with its file, source in and out, place on the timeline, speed, volume, muted. Drawn at the playhead under or over other layers; playing in step with the play bar; added from Files or this computer through E31's Import menu (`ui/image-editor-import.md`).
 
 - V3 (M) Timeline editing. Done (#8510, `ui/image-editor-clip-timeline.md`).
@@ -30,14 +30,14 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
 - V6 (S) Pictures and animations over video. After V5.
   - Layers keep their start and end on the timeline; picture in picture (a second video layer, its size and corners).
 
-- V7 (M) Export with sound. After V4, also before V1-V3.
+- V7 (M) Export with sound. Done (#8484, `ui/image-editor-mix.md`).
   - Frames as AN6; the sound mixed in an `OfflineAudioContext`, AAC or Opus through `AudioEncoder`; both interleaved in AN6's muxers; estimate, progress, Cancel.
   - An animation's MP4 or WebM carries its sound; GIF, APNG, WebP and PDF cannot, and the dialog says so when the document has sound.
 
-- V8 (M) Large files. One at a time with the save-path steps.
+- V8 (M) Large files. `free` after V7 and V2. One at a time with the save-path steps.
   - Chunked, resumable upload of a source video into Files; chunked save of the export (AN4's action in parts); type told by its bytes (AN4); the size limits as settings.
 
-- V9 (S) Save and open again.
+- V9 (S) Save and open again. `free` after V8 and V3.
   - The project document (clips, sound, layers) kept in the export's version, as AN4 keeps an animation's; the same-format replace.
 
 - V10 (S) Phone. `free` after V3 and V4.

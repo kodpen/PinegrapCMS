@@ -15,7 +15,7 @@ module: image_editor
 - On the stage a `<foreignObject>` with a canvas in the layer's box (presses pass to the stage), so it stacks among the layers: arrange puts it under or over them.
 - `M.clipAt(l, t)`: at rest (`this.time` null: outside Animate, every save) the source in; off its span null, and the node is hidden. A motion dock with no rows (`Editor.motionDocks`) calls `clipsUpdate()` with each playhead move.
 - `clipDraw()` asks the source's `frameAt()` one request at a time per clip; the newest time waits and goes next, so playing or scrubbing never queues stale frames. The stage's frame is at most 1280 px on its long edge.
-- A save paints the source in at the file's own size (`ready()` decodes it first). The animation's frames take the same still frame until the export step (V7) draws each moment.
+- A save paints the source in at the file's own size (`ready()` decodes it first). An animation's export still takes that frame for every frame (open after V7, #8484); its sound is mixed in (`image-editor-mix.md`).
 
 ## How does its sound play?
 - The sound part plays `this.sounds()` plus `this.soundsMore()`: the clips' own sound as sound entries (`M.clipSound()`, offset by the scene's start). Silent when muted, hidden, without a sound track, or off 1× (the sound would not match). Its file is fetched again for `decodeAudioData()`.
@@ -32,4 +32,4 @@ module: image_editor
 
 ## What is left to later steps?
 - Clip rows, trim, split, move and snapping came in V3 (`image-editor-clip-timeline.md`).
-- Effects and transitions (V5); export frames and sound (V7); uploads over one request (V8).
+- Effects and transitions (V5); uploads over one request (V8).
