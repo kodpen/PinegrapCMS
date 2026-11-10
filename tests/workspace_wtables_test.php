@@ -35,7 +35,7 @@ function ws_wtables_test_cell($type, $value, $options = array())
 // The ten types, and which of them keep cells.
 function test_workspace_wtables_types()
 {
-	pg_assert_same(array('text', 'number', 'money', 'date', 'person', 'status', 'checkbox', 'link', 'list', 'formula'), array_keys(ws_wtable_column_types()));
+	pg_assert_same(array('text', 'number', 'money', 'date', 'person', 'status', 'checkbox', 'link', 'list', 'row', 'formula'), array_keys(ws_wtable_column_types()));
 	pg_assert_true(ws_wtable_type_stores('list'));
 	pg_assert_true(ws_wtable_type_stores('money'));
 	pg_assert_false(ws_wtable_type_stores('formula'), 'a formula is worked out');

@@ -94,6 +94,7 @@ function ws_wtable_column_types()
         'checkbox' => lang('Checkbox'),
         'link' => lang('Record link'),
         'list' => lang('List'),
+        'row' => lang('Row link'),
         'formula' => lang('Formula'),
     );
 }
@@ -170,7 +171,8 @@ function ws_wtable_length($text)
  * one). date: time (bool) to keep a time of day too. status: choices, a
  * list of key, label and colour (1-50, keys unique). link: kinds, the
  * record kinds a cell may point at (empty for any). list: of, what its
- * items are (text, the default, or number). formula: expression, without
+ * items are (text, the default, or number). row: table, the id of the
+ * workflow table its cells link to (wtable_links.php). formula: expression, without
  * the leading =. text, person and checkbox take none.
  *
  * @param string $type
@@ -287,6 +289,16 @@ function ws_wtable_column_options_check($type, $options)
             $value['of'] = $of;
             break;
 
+        case 'row':
+            $linked = $options['table'] ?? null;
+
+            if (!ws_wtable_is_whole($linked) || ((int) $linked <= 0)) {
+                return $fail('row_table_invalid');
+            }
+
+            $value['table'] = (int) $linked;
+            break;
+
         case 'formula':
             $expression = isset($options['expression']) && is_scalar($options['expression']) ? trim((string) $options['expression']) : '';
             $expression = ltrim($expression, '=');
@@ -339,7 +351,9 @@ function ws_wtable_is_whole($value)
  * keeps a time; a person is a user id, whether they are on the team is
  * the store's check; a status is one of the column's keys; a record link
  * is a kind and an id, the kind among the column's kinds when it names any;
- * a list is a list of texts or numbers (ws_wtable_list_check()).
+ * a list is a list of texts or numbers (ws_wtable_list_check()); a row
+ * link is a row id (whether that row is there is the store's check,
+ * ws_wtable_link_cells_refusal()).
  *
  * @param array $column type and options (checked)
  * @param mixed $value
@@ -506,6 +520,13 @@ function ws_wtable_cell_check($column, $value)
             $list = ws_wtable_list_check($value, ws_wtable_list_of($column));
 
             return $list['ok'] ? $ok($list['value']) : $fail($list['error']);
+
+        case 'row':
+            if (!ws_wtable_is_whole($value) || ((int) $value <= 0)) {
+                return $fail('not_row');
+            }
+
+            return $ok((int) $value);
     }
 
     return $fail('type_unknown');
@@ -950,6 +971,12 @@ function ws_wtable_column_input_check($input, $old = null)
             && array_key_exists('of', $input['options']) && ($input['options']['of'] !== ws_wtable_list_of($old))) {
             return ws_wtable_refusal('type_fixed', 'options');
         }
+
+        // So is the table a row link points at: its cells are that table's rows.
+        if (($type === 'row') && array_key_exists('options', $input) && is_array($input['options'])
+            && array_key_exists('table', $input['options']) && ((int) $input['options']['table'] !== ws_wtable_link_table($old))) {
+            return ws_wtable_refusal('type_fixed', 'options');
+        }
     }
 
     if (($old === null) || array_key_exists('options', $input)) {
@@ -957,6 +984,10 @@ function ws_wtable_column_input_check($input, $old = null)
 
         if (($old !== null) && ($type === 'list') && !array_key_exists('of', $given)) {
             $given['of'] = ws_wtable_list_of($old);
+        }
+
+        if (($old !== null) && ($type === 'row') && !array_key_exists('table', $given)) {
+            $given['table'] = ws_wtable_link_table($old);
         }
 
         // Options sent without the key keep it: only key false takes it away.
@@ -1459,6 +1490,10 @@ function ws_wtable_column_create_check($viewer, $table, $input)
     }
 
     $refused = ws_wtable_column_key_check($table, null, $check['sets']);
+
+    if ($refused === null) {
+        $refused = ws_wtable_link_column_refusal($viewer, $check['sets']);
+    }
 
     return ($refused !== null) ? $refused : $check;
 }

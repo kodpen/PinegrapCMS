@@ -602,6 +602,10 @@ function ws_wtable_row_create_check($viewer, $table, $input)
 
     $key = ws_wtable_key_cells_refusal((int) $table['id'], $columns, ws_wtable_cells_merge($columns, array(), $cells['cells']));
 
+    if ($key === null) {
+        $key = ws_wtable_link_cells_refusal($viewer, $columns, $cells['cells']);
+    }
+
     if ($key !== null) {
         return $key;
     }
@@ -724,6 +728,10 @@ function ws_wtable_row_update_check($viewer, $table, $row, $input)
     $key = ws_wtable_key_cells_refusal((int) $table['id'], $columns,
         ws_wtable_cells_merge($columns, ws_wtable_cells_decode($row['cells'] ?? null), $cells['cells']), (int) $row['id']);
 
+    if ($key === null) {
+        $key = ws_wtable_link_cells_refusal($viewer, $columns, $cells['cells'], ws_wtable_cells_decode($row['cells'] ?? null));
+    }
+
     if ($key !== null) {
         return $key;
     }
@@ -825,13 +833,14 @@ function ws_wtable_row_delete_check($viewer, $table, $row, $input = array())
  * and the table counts one fewer, only when this request is the one that
  * removed it. The copy is written first, so that a request stopped halfway
  * never loses the row; a copy whose row this request did not remove is
- * taken out again.
+ * taken out again. The row links of other rows to it are cleared
+ * (ws_wtable_links_clear()), links_cleared counting those rows.
  *
  * @param array      $viewer
  * @param array|null $table
  * @param array|null $row
  * @param mixed      $input revision (optional)
- * @return array ok, error, field, status
+ * @return array ok, error, field, status, links_cleared
  */
 function ws_wtable_row_delete($viewer, $table, $row, $input = array())
 {
@@ -864,6 +873,7 @@ function ws_wtable_row_delete($viewer, $table, $row, $input = array())
     db("UPDATE ws_wtable_rows SET position = position - 1 WHERE table_id = '" . $table_id . "' AND position > '" . (int) $row['position'] . "'");
     db("UPDATE ws_wtables SET row_count = IF(row_count > 0, row_count - 1, 0), updated_at = '" . time() . "' WHERE id = '" . $table_id . "'");
     ws_ref_source_write('wtable_row', array((int) $row['id'] => array()));
+    $check['links_cleared'] = ws_wtable_links_clear($table_id, (int) $row['id'], (int) $viewer['id']);
     ws_wtable_row_announce('deleted', $table, $row, (int) $viewer['id']);
 
     return $check;

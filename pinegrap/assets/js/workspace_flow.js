@@ -7984,7 +7984,8 @@
             return siteShown((value / Math.pow(10, cellPlaces(column))).toFixed(cellPlaces(column)));
         }
 
-        if (typeof value === 'number') {
+        // A row link is the linked row's id, never grouped as a figure.
+        if ((typeof value === 'number') && (column.type !== 'row')) {
             return siteShown(value);
         }
 
@@ -8018,7 +8019,7 @@
             return '+' + ((column.type === 'money') ? Math.round(Number(amount) * Math.pow(10, cellPlaces(column))) : Number(amount));
         }
 
-        if (((column.type === 'number') && (siteNumber(typed) !== null)) || ((column.type === 'person') && /^\d+$/.test(typed))) {
+        if (((column.type === 'number') && (siteNumber(typed) !== null)) || (((column.type === 'person') || (column.type === 'row')) && /^\d+$/.test(typed))) {
             return Number((column.type === 'number') ? siteNumber(typed) : typed);
         }
 
@@ -8084,7 +8085,7 @@
             return linkField(node, column, value);
         }
 
-        var help = { money: t('fl_rows_money_help'), date: t(options.time ? 'fl_rows_time_help' : 'fl_rows_date_help'), person: t('fl_rows_person_help'), list: t('fl_rows_list_help') }[column.type] || '';
+        var help = { money: t('fl_rows_money_help'), date: t(options.time ? 'fl_rows_time_help' : 'fl_rows_date_help'), person: t('fl_rows_person_help'), list: t('fl_rows_list_help'), row: t('fl_rows_row_help') }[column.type] || '';
 
         return valueField(node, column.name, cellShown(column, value), 4000, function (text) {
             setCell(node, id, cellKept(column, text));

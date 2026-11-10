@@ -375,9 +375,11 @@ function ws_wtable_query_total_text($column, $value)
  * @param array  $team      ws_team_members()
  * @param string $refusal   ws_wtable_query_refusal(), '' when it fits
  * @param bool   $totals_all the totals are over every row kept
+ * @param array  $row_choices column id => ws_wtable_link_choices(), the rows
+ *                            a row link column is compared with
  * @return string HTML
  */
-function ws_wtable_screen_query_bar($self_url, $table_id, $columns, $screen, $team, $refusal, $totals_all)
+function ws_wtable_screen_query_bar($self_url, $table_id, $columns, $screen, $team, $refusal, $totals_all, $row_choices = array())
 {
     $table_url = $self_url . '?id=' . (int) $table_id;
     $typed = array_values((array) $screen['typed']);
@@ -428,6 +430,8 @@ function ws_wtable_screen_query_bar($self_url, $table_id, $columns, $screen, $te
             foreach ((array) $team as $person) {
                 $list[(string) (int) $person['id']] = (string) $person['name'];
             }
+        } elseif (($type === 'row') && is_array($row_choices[(string) (int) $line['column']] ?? null)) {
+            $list = $row_choices[(string) (int) $line['column']];
         }
 
         if ($list !== null) {

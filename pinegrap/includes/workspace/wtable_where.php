@@ -8,8 +8,8 @@
  * smallest and largest value of each number column over them. Each
  * condition is a column, a comparison and a value, compared by the column's
  * type: a number, money (in minor units) and a formula by size, a date as
- * its ISO text, a status by its key, a checkbox as 1 or 0, a person and a
- * record link by their numbers, a text without case (ws_fold()).
+ * its ISO text, a status by its key, a checkbox as 1 or 0, a person, a
+ * record link and a row link by their numbers, a text without case (ws_fold()).
  *
  * The cells are JSON per row, so all of it is worked out in PHP over the
  * rows a read gives (ws_wtable_rows(), formulas worked out); the table's
@@ -77,6 +77,7 @@ function ws_wtable_where_type_operators($type)
         case 'status':
         case 'person':
         case 'link':
+        case 'row':
             return array('eq', 'neq', 'empty', 'not_empty');
 
         case 'checkbox':
@@ -227,7 +228,7 @@ function ws_wtable_where_value_fault($column, $op, $value)
     }
 
     $faults = array('number' => 'not_number', 'money' => 'not_number', 'formula' => 'not_number', 'date' => 'not_date',
-        'status' => 'not_status', 'checkbox' => 'not_checkbox', 'person' => 'not_whole', 'link' => 'not_whole');
+        'status' => 'not_status', 'checkbox' => 'not_checkbox', 'person' => 'not_whole', 'link' => 'not_whole', 'row' => 'not_whole');
 
     return $faults[$type] ?? '';
 }
@@ -273,6 +274,7 @@ function ws_wtable_where_cell($column, $cell)
             return is_string($cell) ? trim($cell) : null;
 
         case 'person':
+        case 'row':
             return ws_wtable_is_whole($cell) ? (int) $cell : null;
 
         case 'link':
@@ -345,6 +347,7 @@ function ws_wtable_where_value($column, $value)
 
         case 'person':
         case 'link':
+        case 'row':
             return preg_match('/^[1-9]\d{0,17}$/', $value) ? (int) $value : null;
 
         case 'text':
