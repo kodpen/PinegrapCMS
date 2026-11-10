@@ -4,8 +4,9 @@
  *
  * Tests that the text of Marketplace product matching, the Marketplaces
  * account screen, API Documentation, Update Search Index, the dashboard cards
- * (with their loading skeleton), the calendar card, Sales Map and the bell
- * panel is sized in rem, so it grows with the browser's text size like the
+ * (with their loading skeleton), the calendar card, Sales Map, the bell
+ * panel, API Applications, the API console page and the Calendars month grid
+ * is sized in rem, so it grows with the browser's text size like the
  * rest of the panel, and that the columns and boxes holding that text grow
  * with it.
  *
@@ -46,6 +47,16 @@ function panel_text_size_test_console_css()
 	$end = strpos($source, "\n';\n", (int) $start);
 
 	return substr($source, (int) $start, (int) $end - (int) $start);
+}
+
+// A screen's unlayered <style> block that starts with $marker.
+function panel_text_size_test_plain_style($file, $marker)
+{
+	$source = panel_text_size_test_source($file);
+	$start = strpos($source, '<style>' . "\n" . $marker);
+	pg_assert_true($start !== false, $file . ' has its style block');
+
+	return substr($source, (int) $start, (int) strpos($source, '</style>', (int) $start) - (int) $start);
 }
 
 function panel_text_size_test_no_px_font_size($css, $label)
@@ -169,4 +180,56 @@ function test_panel_text_size_dashboard_skeleton_in_rem()
 	pg_assert_contains('<span class="placeholder rounded-4 flex-shrink-0" style="width:1.375rem;height:1.375rem"></span>', $source);
 	pg_assert_contains('<div class="pg-ec-fact" style="height:2.26875rem">', $source);
 	pg_assert_contains('style="min-height:8.75rem"', $source);
+}
+
+function test_panel_text_size_api_settings_in_rem()
+{
+	$style = panel_text_size_test_plain_style('api_settings.php', '/* The list reads as rows');
+
+	// The permission row's resource icon is a glyph, not text: the only px size kept.
+	pg_assert_contains('.api-perm > i { font-size: 15px;', $style);
+	panel_text_size_test_no_px_font_size(str_replace('.api-perm > i { font-size: 15px;', '', $style), 'api_settings.php');
+	pg_assert_contains('--bs-btn-font-size: 0.6875rem;', $style);
+	pg_assert_contains('.api-head { padding: 0 16px 8px; font-size: 0.65625rem;', $style);
+	// The method badge column and the empty segment hold text and grow with it;
+	// the row's scroll threshold grows too, the chevron column stays px.
+	pg_assert_contains('grid-template-columns: 2.875rem 1fr auto auto auto;', $style);
+	pg_assert_contains('.api-log .m { font-size: 0.59375rem;', $style);
+	pg_assert_contains('min-width: 2.125rem;', $style);
+	pg_assert_contains('min-width: 45rem;', $style);
+	pg_assert_contains('.9fr 34px;', $style);
+}
+
+function test_panel_text_size_api_console_page_in_rem()
+{
+	$style = panel_text_size_test_style('includes/api/console.php');
+	$style = substr($style, 0, (int) strpos($style, "' . api_console_css()"));
+
+	panel_text_size_test_no_px_font_size($style, 'includes/api/console.php');
+	pg_assert_contains('.con-head h1 { font-size: 1.375rem;', $style);
+	pg_assert_contains('.con-base { font-size: 0.78125rem;', $style);
+}
+
+function test_panel_text_size_calendars_grid_in_rem()
+{
+	$css = panel_text_size_test_source('assets/css/backend.src.css');
+
+	// The Calendars screen's own rules, not the .widget calendar card overrides.
+	preg_match_all('/\ntable\.monthly_calendar[^{]*\{[^}]*\}/', $css, $grid);
+	pg_assert_true(count($grid[0]) >= 8, 'the Calendars grid rules are there');
+	foreach ($grid[0] as $rule) {
+		pg_assert_same(0, preg_match('/(?:font-size|width|height|line-height):\s*[0-9.]+px/', $rule), 'no px text box in ' . trim(strtok($rule, '{')));
+	}
+
+	pg_assert_contains('font-size: 1.25rem;', panel_text_size_test_rule($css, 'table.monthly_calendar .calendar-day-wrapper'));
+	$cell = panel_text_size_test_rule($css, "table.monthly_calendar td,\ntable.monthly_calendar th");
+	pg_assert_contains('width: 12.5rem;', $cell);
+	pg_assert_contains('min-width: 6.25rem;', $cell);
+	pg_assert_contains('height: 6.25rem;', panel_text_size_test_rule($css, 'table.monthly_calendar td:not(.inactive)'));
+	pg_assert_contains('height: 6.25rem;', panel_text_size_test_rule($css, 'table.monthly_calendar td.inactive'));
+	$today = panel_text_size_test_rule($css, 'table.monthly_calendar .calendar-day-wrapper span.today');
+	pg_assert_contains('width: 1.875rem;', $today);
+	pg_assert_contains('height: 1.875rem;', $today);
+	pg_assert_contains('line-height: 1.875rem;', $today);
+	pg_assert_contains('max-width: 12.5rem;', panel_text_size_test_rule($css, 'table.monthly_calendar .calendar-event a'));
 }

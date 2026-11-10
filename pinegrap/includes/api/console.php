@@ -96,15 +96,15 @@ function api_console_page($params) {
 	$html = output_header_secure(array('title' => lang('API console'), 'icon' => 'setting')) . '
 <style>@layer custom {
 .con-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
-.con-head h1 { font-size: 22px; margin: 0; }
-.con-head .con-sub { font-size: 14px; color: var(--pg-fg-2); }
+.con-head h1 { font-size: 1.375rem; margin: 0; }
+.con-head .con-sub { font-size: 0.875rem; color: var(--pg-fg-2); }
 .con-head .con-theme { margin-left: auto; }
-.con-base { font-size: 12.5px; word-break: break-all; }
-.con-meta dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; font-size: 12.5px; }
+.con-base { font-size: 0.78125rem; word-break: break-all; }
+.con-meta dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; font-size: 0.78125rem; }
 .con-meta dt { font-weight: 600; opacity: .7; }
 .con-meta dd { margin: 0; word-break: break-word; }
-.con-curl { font-size: 12px; white-space: pre-wrap; word-break: break-all; }
-#doc_empty { padding: 40px 20px; text-align: center; color: var(--pg-fg-2); font-size: 13px; }
+.con-curl { font-size: 0.75rem; white-space: pre-wrap; word-break: break-all; }
+#doc_empty { padding: 40px 20px; text-align: center; color: var(--pg-fg-2); font-size: 0.8125rem; }
 .doc-nav { max-height: calc(100vh - 32px); }
 ' . api_console_css() . '
 }</style>
