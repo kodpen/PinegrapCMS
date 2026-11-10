@@ -6473,6 +6473,20 @@ function _pg_find_system_widget_in_list($widgets, $region_type)
     return $found;
 }
 
+// Whether a page's catalog_item_view widget writes the Product structured
+// data of a 'catalog detail' page: only when its layout ($content, before the
+// System regions are drawn) has no System region and no comments block. With
+// a real <system> region, or the synthetic one a comments block gets, the
+// classic 'catalog detail' case of get_page_content.php writes it. Pure.
+function _pg_catalog_detail_widget_writes_jsonld($page_type, $content)
+{
+    if ((string) $page_type !== 'catalog detail') return false;
+    $content = (string) $content;
+    return strpos($content, '<system>') === false
+        && strpos($content, '<system ') === false
+        && strpos($content, '<!--pg-comments-block-->') === false;
+}
+
 // Resolve the "active" product group for RSS/structured-data purposes the
 // same way _render_system_widget_catalog_listing resolves it for HTML
 // rendering: the widget's configured product_group_id, overridable via the

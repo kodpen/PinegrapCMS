@@ -9,8 +9,8 @@
  * matches travel. Before, each picker listed every file of the site on every
  * load of its screen, with no way to search.
  *
- * The kind names a filter of pg_file_picker_kinds(); the browser never sends
- * a condition. Names are matched folded (fold_keyword_for_matching()), so
+ * The kind names a file kind of the picker's registry (includes/fn/picker.php,
+ * pg_picker_kinds()); the browser never sends a condition. Names are matched folded (fold_keyword_for_matching()), so
  * "isik" finds "Işık.png" and "ist" finds "İstanbul.jpg".
  *
  * @author      Erdal Güral (Kodpen)
@@ -23,30 +23,25 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/picker.php');
+
 /**
- * The kinds a picker may ask for, by name.
+ * The kinds this search answers, by name: the file kinds of the picker's
+ * registry (pg_picker_kinds()) it answered before the registry existed. Any
+ * other name stays unknown here, so the contract of file_picker_search.php
+ * does not grow with the registry.
  *
  *   types   files.type values listed; empty lists every type
- *   public  only files every visitor may open (pg_public_image_files_where()):
- *           what is chosen is shown to everyone
+ *   public  only files every visitor may open
  *   design  design files listed too
  *   value   what an answer posts: 'name' or 'id'
  *   role    the highest role that may ask (0 Administrator ... 3 User)
- *
- * site_icon and public_image are the Site Settings pictures (Site Icon; App
- * Icon, Default Share Image, Organization Logo, Fediverse avatar), behind the
- * settings gate; file is the short link destination, which a role 3 user with
- * edit rights may search within the folders they may edit.
  *
  * @return array name => definition
  */
 function pg_file_picker_kinds()
 {
-    return array(
-        'site_icon' => array('types' => array('png', 'svg'), 'public' => true, 'design' => true, 'value' => 'name', 'role' => 2),
-        'public_image' => array('types' => pg_public_image_file_types(), 'public' => true, 'design' => true, 'value' => 'name', 'role' => 2),
-        'file' => array('types' => array(), 'public' => false, 'design' => true, 'value' => 'id', 'role' => 3),
-    );
+    return array_intersect_key(pg_picker_kinds(), array_flip(array('site_icon', 'public_image', 'file')));
 }
 
 /** The most answers one search sends. */
@@ -55,17 +50,15 @@ function pg_file_picker_limit()
     return 30;
 }
 
-/**
- * The most rows one search reads before the folded match drops the ones the
- * LIKE wildcards let through (pg_file_picker_like_term()).
- */
+/** The most rows one search reads (pg_picker_scan_limit()). */
 function pg_file_picker_scan_limit()
 {
-    return 400;
+    return pg_picker_scan_limit();
 }
 
 /**
- * Whether a user may search a kind. Pure.
+ * Whether a user may search a kind (pg_picker_access_verdict() over
+ * pg_file_picker_kinds()). Pure.
  *
  * @param mixed $kind        the requested kind name
  * @param mixed $role        user.user_role
@@ -74,28 +67,11 @@ function pg_file_picker_scan_limit()
  */
 function pg_file_picker_access_verdict($kind, $role, $edit_rights)
 {
-    $kinds = pg_file_picker_kinds();
-
-    if (!is_string($kind) || !isset($kinds[$kind])) {
-        return 'unknown';
-    }
-
-    $role = (int) $role;
-
-    if ($role > (int) $kinds[$kind]['role']) {
-        return 'denied';
-    }
-
-    // A User without edit rights has no panel screen to pick from.
-    if (($role >= 3) && !$edit_rights) {
-        return 'denied';
-    }
-
-    return 'ok';
+    return pg_picker_access_verdict($kind, $role, $edit_rights, pg_file_picker_kinds());
 }
 
 /**
- * The `files` condition of a kind. Pure.
+ * The `files` condition of a kind (pg_picker_files_where()). Pure.
  *
  * @param array      $kind         one of pg_file_picker_kinds()
  * @param string     $public_where pg_public_image_files_where() for a public kind
@@ -105,82 +81,35 @@ function pg_file_picker_access_verdict($kind, $role, $edit_rights)
  */
 function pg_file_picker_where($kind, $public_where, $bin_ids, $folders)
 {
-    $ints = function ($ids) {
-        return array_values(array_unique(array_map('intval', (array) $ids)));
-    };
-
-    $where = array("(name != '')", '(attachment = 0)');
-
-    if (empty($kind['design'])) {
-        $where[] = '(design = 0)';
-    }
-
-    // The types come from pg_file_picker_kinds(), never from the request;
-    // anything but a plain extension is dropped all the same.
-    $types = array();
-
-    foreach ((array) ($kind['types'] ?? array()) as $type) {
-        $type = strtolower((string) $type);
-
-        if (preg_match('/^[a-z0-9]{1,10}$/', $type)) {
-            $types[] = $type;
-        }
-    }
-
-    if ($types) {
-        $where[] = "(type IN ('" . implode("', '", array_unique($types)) . "'))";
-    }
-
-    // A public kind without its condition lists nothing.
-    if (!empty($kind['public'])) {
-        $where[] = (trim((string) $public_where) !== '') ? '(' . $public_where . ')' : '(folder IN (-1))';
-    }
-
-    $bin = $ints($bin_ids);
-
-    if ($bin) {
-        $where[] = '(folder NOT IN (' . implode(', ', $bin) . '))';
-    }
-
-    if ($folders !== null) {
-        $folders = $ints($folders);
-        $where[] = '(folder IN (' . ($folders ? implode(', ', $folders) : '-1') . '))';
-    }
-
-    return implode(' AND ', $where);
+    return pg_picker_files_where($kind, $public_where, $bin_ids, $folders);
 }
 
 /**
- * A name or a typed text folded for matching: lowercase, every i-letter a
- * plain i, accents dropped. Pure.
+ * A name or a typed text folded for matching (pg_picker_fold()). Pure.
  *
  * @param mixed $text
  * @return string
  */
 function pg_file_picker_fold($text)
 {
-    return fold_keyword_for_matching(trim((string) $text));
+    return pg_picker_fold($text);
 }
 
 /**
- * The LIKE term (escaped for LIKE, not yet for SQL) the rows are read with:
- * the folded text, each i a one-letter wildcard. The column's collation
- * ignores case and accents but keeps i and ı apart, so "isik" would miss
- * "ışık"; the wildcard reads both and pg_file_picker_results() keeps only the
- * real matches. Pure.
+ * The LIKE term the rows are read with (pg_picker_like_term()). Pure.
  *
  * @param mixed $query
  * @return string
  */
 function pg_file_picker_like_term($query)
 {
-    return implode('_', array_map('escape_like', explode('i', pg_file_picker_fold($query))));
+    return pg_picker_like_term($query);
 }
 
 /**
  * The answers among rows read with the LIKE term: names whose folded form
- * holds the folded text, those starting with it first, each list in the
- * order read. Pure.
+ * holds the folded text, those starting with it first (pg_picker_matches()),
+ * as {id, text}. Pure.
  *
  * @param array  $rows  id, name
  * @param mixed  $query the typed text
@@ -190,43 +119,20 @@ function pg_file_picker_like_term($query)
  */
 function pg_file_picker_results($rows, $query, $value, $limit)
 {
-    $needle = pg_file_picker_fold($query);
+    $answers = array();
 
-    if ($needle === '') {
-        return array();
+    foreach (array_slice(pg_picker_matches($rows, $query), 0, max(1, (int) $limit)) as $row) {
+        $name = (string) $row['name'];
+        $answers[] = array('id' => ($value === 'id') ? (int) ($row['id'] ?? 0) : $name, 'text' => $name);
     }
 
-    $first = array();
-    $rest = array();
-
-    foreach ((array) $rows as $row) {
-        $name = (string) ($row['name'] ?? '');
-
-        if ($name === '') {
-            continue;
-        }
-
-        $at = mb_strpos(pg_file_picker_fold($name), $needle, 0, 'UTF-8');
-
-        if ($at === false) {
-            continue;
-        }
-
-        $answer = array('id' => ($value === 'id') ? (int) ($row['id'] ?? 0) : $name, 'text' => $name);
-
-        if ($at === 0) {
-            $first[] = $answer;
-        } else {
-            $rest[] = $answer;
-        }
-    }
-
-    return array_slice(array_merge($first, $rest), 0, max(1, (int) $limit));
+    return $answers;
 }
 
 /**
  * The files of a kind whose name matches the typed text, for a user the
- * caller has let through pg_file_picker_access_verdict().
+ * caller has let through pg_file_picker_access_verdict(): the picker's search
+ * (pg_picker_search_rows()), at most pg_file_picker_limit() answers.
  *
  * @param string $kind_name
  * @param mixed  $query
@@ -236,28 +142,14 @@ function pg_file_picker_results($rows, $query, $value, $limit)
 function pg_file_picker_search($kind_name, $query, $user)
 {
     $kinds = pg_file_picker_kinds();
-    $query = mb_substr(trim((string) $query), 0, 100, 'UTF-8');
 
-    if (!isset($kinds[$kind_name]) || (pg_file_picker_fold($query) === '')) {
+    if (!isset($kinds[$kind_name])) {
         return array();
     }
 
-    $kind = $kinds[$kind_name];
+    $rows = pg_picker_search_rows($kind_name, $query, $user);
 
-    $where = pg_file_picker_where(
-        $kind,
-        !empty($kind['public']) ? pg_public_image_files_where() : '',
-        pg_recycle_bin_folder_ids(),
-        ((int) $user['role'] >= 3) ? get_folders_that_user_has_access_to($user['id']) : null);
-
-    $rows = db_items(
-        "SELECT id, name FROM files
-        WHERE " . $where . "
-            AND (LOWER(name) LIKE '%" . e(pg_file_picker_like_term($query)) . "%')
-        ORDER BY name
-        LIMIT " . pg_file_picker_scan_limit());
-
-    return pg_file_picker_results(is_array($rows) ? $rows : array(), $query, $kind['value'], pg_file_picker_limit());
+    return pg_file_picker_results($rows, $query, $kinds[$kind_name]['value'], pg_file_picker_limit());
 }
 
 /**

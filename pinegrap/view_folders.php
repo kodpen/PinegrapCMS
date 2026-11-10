@@ -2864,6 +2864,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     var erpSearchTimer = null;
     var searchStatusTimer = null;
 
+    // The ERP search narrows the listing on the server, so its count is said
+    // when the answer arrives. Only the reload a search started speaks; going
+    // into a folder, switching the view or loading more stays silent.
+    var erpSearchSeq = 0;
+
     // The status bar's "{shown} of {total} shown" is never read out; the same
     // count goes into a hidden status region a moment after the typing stops,
     // so it is said once per search rather than on every key.
@@ -2980,11 +2985,35 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             syncViewButtons();
             highlightTree();
 
+            if (seq === erpSearchSeq) {
+                erpSearchSeq = 0;
+                // A count still waiting from the folders' own search would
+                // otherwise be said over this one.
+                if (searchStatusTimer) {
+                    window.clearTimeout(searchStatusTimer);
+                    searchStatusTimer = null;
+                }
+                var searchRegion = document.getElementById('explorer_search_status');
+                if (searchRegion) { searchRegion.textContent = state.filter ? erpCountText() : ''; }
+            }
+
             if (done) { done(); }
         }, function () {
             if (seq !== loadSeq) { return; }
             renderLoadError(0, done, L.load_failed);
         });
+    }
+
+    // The count the status bar shows for the ERP folders, and the one a
+    // search there announces.
+    function erpCountText() {
+        if ((state.erpFolder !== '') && (state.erpTotal > state.items.files.length)) {
+            return fmt(L.erp_showing, [state.items.files.length, state.erpTotal]);
+        }
+
+        return (state.items.folders.length > 0)
+            ? fmt(L.erp_folders_count, [state.items.folders.length])
+            : fmt(L.erp_docs_count, [state.items.files.length]);
     }
 
     // The next page of the open folder, under the rows already drawn.
@@ -6351,13 +6380,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (insideErp()) {
 
-            var erpCount = (state.items.folders.length > 0)
-                ? fmt(L.erp_folders_count, [state.items.folders.length])
-                : fmt(L.erp_docs_count, [state.items.files.length]);
-
-            if ((state.erpFolder !== '') && (state.erpTotal > state.items.files.length)) {
-                erpCount = fmt(L.erp_showing, [state.items.files.length, state.erpTotal]);
-            }
+            var erpCount = erpCountText();
 
             document.getElementById('explorer_statusbar').innerHTML =
                 '<span>' + esc(erpCount) + '</span>' +
@@ -16074,7 +16097,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // after the typing stops rather than on every key.
         if (insideErp()) {
             if (erpSearchTimer) { window.clearTimeout(erpSearchTimer); }
-            erpSearchTimer = window.setTimeout(function () { erpSearchTimer = null; reload(); }, 300);
+            erpSearchTimer = window.setTimeout(function () {
+                erpSearchTimer = null;
+                reload();
+                erpSearchSeq = loadSeq;
+            }, 300);
             return;
         }
 

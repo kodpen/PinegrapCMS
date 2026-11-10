@@ -15126,6 +15126,7 @@
                     self.editing = null;
                     self.drawReplyBar();
                     self.autosize();
+                    self.mentionNotice(data.notice);
                 }).catch(function (error) {
                     self.busy = false;
                     fail(error);
@@ -15233,6 +15234,7 @@
                 self.drawReplyBar();
                 self.autosize();
                 self.sync(true);
+                self.mentionNotice(result.notice);
 
                 // The message asked Claude: start the run now, beside the
                 // conversation. When this call is lost the next screen that
@@ -15252,6 +15254,22 @@
                 self.busy = false;
                 fail(error);
             });
+        },
+
+        // A line for the writer alone, under the conversation: the
+        // applications the message mentions that may not read the channel
+        // were not told. Nothing is posted and nobody else sees it.
+        mentionNotice: function (text) {
+            if (!text) {
+                return;
+            }
+
+            var box = el('div', 'ws-ephemeral', text);
+            var close = button('btn btn-sm btn-text theme-secondary float-end py-0', '', 'bi-x-lg', t('close'));
+            close.addEventListener('click', function () { box.remove(); });
+            box.insertBefore(close, box.firstChild);
+            this.pane.appendChild(box);
+            this.scrollToEnd();
         },
 
         drawPreview: function (command) {
@@ -22294,7 +22312,11 @@
 
             if (note.pinned) {
                 var pinMark = icon('bi-pin-angle-fill', 'ws-nb-item-pin');
+                // A named image, not hidden as icon() leaves it.
                 pinMark.title = t('notes_pinned');
+                pinMark.removeAttribute('aria-hidden');
+                pinMark.setAttribute('role', 'img');
+                pinMark.setAttribute('aria-label', t('notes_pinned'));
                 top.appendChild(pinMark);
             }
 

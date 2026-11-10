@@ -907,7 +907,7 @@ function ws_note_groups_mark_shared($groups)
  *
  * @param array $viewer
  * @param int[] $message_ids
- * @return array message id => group_id, name, hex, owner, notes (id, name, updated), url
+ * @return array message id => group_id, name, hex, owner, notes (id, name, updated, updated_at), url
  */
 function ws_note_group_cards_map($viewer, $message_ids)
 {
@@ -948,6 +948,8 @@ function ws_note_group_cards_map($viewer, $message_ids)
                 'id'      => (int) $row['id'],
                 'name'    => ws_note_title($viewer, $row),
                 'updated' => ws_time_label($row['updated_at']),
+                // The time itself, for the external API's card.
+                'updated_at' => (int) $row['updated_at'],
             );
         }
 

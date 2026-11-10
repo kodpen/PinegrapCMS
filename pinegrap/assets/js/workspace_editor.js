@@ -3186,6 +3186,11 @@
 
     function hideTip() {
         if (tip) {
+            // Matches painted by the find tip go with it.
+            if (tip.classList.contains('ws-find-tip')) {
+                findPaint(null, null);
+            }
+
             tip.remove();
             tip = null;
         }
@@ -3500,7 +3505,7 @@
     // What the shortcut sheet lists, as [keys, label key]: the marks, undo
     // and redo, Enter as the box takes it where the box is an Editor (send:
     // true when Enter sends, as in the composer; 'ctrl' when Ctrl+Enter
-    // sends, as in its expanded box), and the sheet itself.
+    // sends, as in its expanded box), Ctrl+F in an Editor, and the sheet itself.
     function shortcutRows(send, editor) {
         var rows = [
             ['Control+B', 'fmt_bold'],
@@ -3519,6 +3524,10 @@
         } else if (editor) {
             rows.push(['Enter', send ? 'keys_send' : 'keys_newline']);
             rows.push(['Shift+Enter', 'keys_newline']);
+        }
+
+        if (editor) {
+            rows.push(['Control+F', 'find_title']);
         }
 
         rows.push(['Control+/', 'keys_title']);
@@ -3611,9 +3620,402 @@
         tip.focus();
     }
 
+    // ── Find and replace in a writing box (Ctrl+F) ─────────────────────
+
+    // The text as a search without "Match case" compares it, one letter for
+    // one: small letters, the dotted and dotless i of Turkish both as i, a
+    // letter whose small form is longer (İ in some engines) kept as it is.
+    function findFold(text) {
+        var out = '';
+
+        for (var i = 0; i < text.length; i++) {
+            var letter = text.charAt(i);
+            var small = /[Iİı]/.test(letter) ? 'i' : letter.toLowerCase();
+
+            out += (small.length === 1) ? small : letter;
+        }
+
+        return out;
+    }
+
+    // Where the query occurs in the text, as [start, end] pairs from left to
+    // right, never overlapping; none for an empty query.
+    function findMatches(text, query, matchCase) {
+        var found = [];
+        var hay = matchCase ? String(text) : findFold(String(text));
+        var needle = matchCase ? String(query) : findFold(String(query));
+        var at = needle ? hay.indexOf(needle) : -1;
+
+        while (at !== -1) {
+            found.push([at, at + needle.length]);
+            at = hay.indexOf(needle, at + needle.length);
+        }
+
+        return found;
+    }
+
+    // The box's text pieces (its text nodes in order, as found by
+    // findSegments()) after the matches, given over the pieces joined, are
+    // replaced: a match's replacement goes into the piece it starts in and
+    // the rest of the match is cut from the pieces after it, so the marks
+    // around each piece stay where they were.
+    function findReplace(segments, matches, replacement) {
+        var out = segments.slice();
+        var starts = [];
+        var pos = 0;
+
+        segments.forEach(function (piece) {
+            starts.push(pos);
+            pos += piece.length;
+        });
+
+        // From the last match back, so the offsets before it still hold.
+        for (var m = matches.length - 1; m >= 0; m--) {
+            var a = matches[m][0];
+            var b = matches[m][1];
+
+            for (var i = segments.length - 1; i >= 0; i--) {
+                var s0 = starts[i];
+                var s1 = s0 + segments[i].length;
+
+                if ((s1 <= a) || (s0 >= b)) {
+                    continue;
+                }
+
+                var put = ((a >= s0) && (a < s1)) ? replacement : '';
+
+                out[i] = out[i].slice(0, Math.max(a, s0) - s0) + put + out[i].slice(Math.min(b, s1) - s0);
+            }
+        }
+
+        return out;
+    }
+
+    // The text nodes of a box in order, as [{ node, text }]. A line break, a
+    // block's edge, a chip, a card or a shown result is a '\n' piece with no
+    // node: a search (one line) never runs across it and never changes it.
+    function findSegments(surface) {
+        var list = [];
+        var cut = function () {
+            if (list.length && (list[list.length - 1].node !== null)) {
+                list.push({ node: null, text: '\n' });
+            }
+        };
+        var walk = function (parent) {
+            Array.prototype.forEach.call(parent.childNodes, function (child) {
+                if (child.nodeType === 3) {
+                    list.push({ node: child, text: child.nodeValue });
+                    return;
+                }
+
+                if (child.nodeType !== 1) {
+                    return;
+                }
+
+                if ((child.tagName === 'BR') || child.hasAttribute('data-ws-skip') || child.hasAttribute('data-token') || (child.getAttribute('contenteditable') === 'false')) {
+                    cut();
+                    return;
+                }
+
+                var block = /^(P|DIV|LI|UL|OL|BLOCKQUOTE|H[1-6]|PRE|TABLE|TR|TD|TH)$/.test(child.tagName);
+
+                if (block) {
+                    cut();
+                }
+
+                walk(child);
+
+                if (block) {
+                    cut();
+                }
+            });
+        };
+
+        walk(surface);
+
+        return list;
+    }
+
+    // A DOM range over the flat offsets [start, end] of the pieces.
+    function findRange(list, match) {
+        var range = document.createRange();
+        var pos = 0;
+        var started = false;
+
+        for (var i = 0; i < list.length; i++) {
+            var end = pos + list[i].text.length;
+
+            if (list[i].node && !started && (match[0] >= pos) && (match[0] < end)) {
+                range.setStart(list[i].node, match[0] - pos);
+                started = true;
+            }
+
+            if (list[i].node && started && (match[1] > pos) && (match[1] <= end)) {
+                range.setEnd(list[i].node, match[1] - pos);
+                return range;
+            }
+
+            pos = end;
+        }
+
+        return null;
+    }
+
+    function findPaint(all, current) {
+        if (!(window.CSS && CSS.highlights && window.Highlight)) {
+            return;
+        }
+
+        CSS.highlights.delete('ws-find');
+        CSS.highlights.delete('ws-find-current');
+
+        if (all && all.length) {
+            var paint = new Highlight();
+
+            all.forEach(function (range) { paint.add(range); });
+            CSS.highlights.set('ws-find', paint);
+        }
+
+        if (current) {
+            CSS.highlights.set('ws-find-current', new Highlight(current));
+        }
+    }
+
+    // The find tip over a writing box: Find and Replace with fields, Match
+    // case, previous and next, Replace and Replace all, the count in a live
+    // region. Matches are painted with the CSS Custom Highlight API where the
+    // browser has it, the text and its selection stay untouched while the
+    // tip is open; a replacement is a step of the box's undo. Escape or the
+    // close button puts the focus back with the current match selected.
+    function openFind(surface) {
+        var editor = surface.wsEditor;
+        var range = selectionRange();
+        var picked = (range && !range.collapsed && surface.contains(range.commonAncestorContainer)) ? range.toString() : '';
+        var index = 0;
+        var list = [];
+        var matches = [];
+
+        hideBar();
+        hideTip();
+
+        tip = el('div', 'ws-link-tip ws-find-tip shadow');
+        tip.setAttribute('role', 'dialog');
+        tip.setAttribute('aria-label', t('find_title'));
+
+        var mine = tip;
+        var form = el('form', 'd-flex flex-column gap-1');
+        var line = el('div', 'd-flex align-items-center gap-1');
+        var query = el('input', 'form-control form-control-sm');
+        var count = el('span', 'small fg-3 text-nowrap ws-find-count');
+        var prev = button('btn btn-sm btn-text theme-secondary', '', 'bi-chevron-up', t('find_prev'));
+        var next = button('btn btn-sm btn-text theme-secondary', '', 'bi-chevron-down', t('find_next'));
+        var close = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('find_close'));
+        var swap = el('div', 'd-flex align-items-center gap-1');
+        var replace = el('input', 'form-control form-control-sm');
+        var one = button('btn btn-sm btn-outline theme-secondary', t('find_replace'), '', '');
+        var all = button('btn btn-sm btn-outline theme-secondary', t('find_replace_all'), '', '');
+        var caseField = el('div', 'form-field small mb-0');
+        var caseBox = el('input', 'check');
+        var caseLabel = el('label', '', t('find_case'));
+
+        query.type = 'text';
+        query.placeholder = t('find_title');
+        query.setAttribute('aria-label', t('find_title'));
+        query.value = (picked.indexOf('\n') === -1) ? picked : '';
+
+        if (!query.value && editor.findQuery) {
+            query.value = editor.findQuery;
+        }
+
+        count.setAttribute('role', 'status');
+        count.setAttribute('aria-live', 'polite');
+        line.appendChild(query);
+        line.appendChild(count);
+        line.appendChild(prev);
+        line.appendChild(next);
+        line.appendChild(close);
+        form.appendChild(line);
+
+        replace.type = 'text';
+        replace.placeholder = t('find_replace_with');
+        replace.setAttribute('aria-label', t('find_replace_with'));
+        replace.value = editor.findReplacement || '';
+        swap.appendChild(replace);
+        swap.appendChild(one);
+        swap.appendChild(all);
+        form.appendChild(swap);
+
+        caseBox.type = 'checkbox';
+        caseBox.id = 'ws-find-case-' + Math.random().toString(36).slice(2);
+        caseBox.checked = !!editor.findCase;
+        caseLabel.htmlFor = caseBox.id;
+        caseField.appendChild(caseBox);
+        caseField.appendChild(caseLabel);
+        form.appendChild(caseField);
+
+        // Reads the box again (it may have changed under the tip), paints the
+        // matches and says how many there are.
+        var refresh = function (scroll) {
+            list = findSegments(surface);
+            matches = findMatches(list.map(function (one) { return one.text; }).join(''), query.value, caseBox.checked);
+            editor.findQuery = query.value;
+            editor.findCase = caseBox.checked;
+            editor.findReplacement = replace.value;
+
+            if (index >= matches.length) {
+                index = 0;
+            }
+
+            var ranges = matches.map(function (match) { return findRange(list, match); }).filter(Boolean);
+            var current = matches.length ? findRange(list, matches[index]) : null;
+
+            findPaint(ranges, current);
+            count.textContent = matches.length ? t('find_count', index + 1, matches.length) : (query.value ? t('find_none') : '');
+            [prev, next, one, all].forEach(function (control) { control.disabled = !matches.length; });
+
+            if (scroll && current) {
+                var node = current.startContainer.parentNode;
+
+                if (node && node.scrollIntoView) {
+                    node.scrollIntoView({ block: 'nearest' });
+                }
+            }
+        };
+
+        var step = function (by) {
+            refresh(false);
+
+            if (matches.length) {
+                index = (index + by + matches.length) % matches.length;
+                refresh(true);
+            }
+        };
+
+        // Writes the new texts of the pieces into their nodes; a node left
+        // empty goes, and so does a mark it leaves empty.
+        var write = function (picks) {
+            var texts = findReplace(list.map(function (one) { return one.text; }), picks, replace.value);
+
+            return editor.change(function () {
+                var done = false;
+
+                list.forEach(function (one, i) {
+                    if (!one.node || (texts[i] === one.text)) {
+                        return;
+                    }
+
+                    done = true;
+
+                    if (texts[i] !== '') {
+                        one.node.nodeValue = texts[i];
+                        return;
+                    }
+
+                    var parent = one.node.parentNode;
+
+                    one.node.remove();
+
+                    while (parent && (parent !== surface) && /^(B|I|S|MARK|CODE|A|STRONG|EM|DEL)$/.test(parent.tagName) && !parent.childNodes.length) {
+                        var up = parent.parentNode;
+
+                        parent.remove();
+                        parent = up;
+                    }
+                });
+
+                return done;
+            });
+        };
+
+        var back = function () {
+            var current = matches.length ? findRange(list, matches[index]) : null;
+
+            findPaint(null, null);
+            hideTip();
+            surface.focus();
+
+            if (current) {
+                var selection = window.getSelection();
+
+                selection.removeAllRanges();
+                selection.addRange(current);
+            }
+        };
+
+        query.addEventListener('input', function () { index = 0; refresh(true); });
+        replace.addEventListener('input', function () { editor.findReplacement = replace.value; });
+        caseBox.addEventListener('change', function () { index = 0; refresh(true); });
+        prev.addEventListener('click', function () { step(-1); });
+        next.addEventListener('click', function () { step(1); });
+        close.addEventListener('click', back);
+
+        one.addEventListener('click', function () {
+            refresh(false);
+
+            if (matches.length) {
+                write([matches[index]]);
+                refresh(true);
+            }
+        });
+
+        all.addEventListener('click', function () {
+            refresh(false);
+
+            if (matches.length) {
+                write(matches);
+                index = 0;
+                refresh(false);
+            }
+        });
+
+        // Enter finds the next match, Shift+Enter the one before; Enter in
+        // the Replace with field replaces the current one.
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+        });
+
+        form.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                back();
+                return;
+            }
+
+            if ((event.key === 'Enter') && !event.isComposing) {
+                event.preventDefault();
+
+                if (event.target === replace) {
+                    one.click();
+                } else if (event.target === query) {
+                    step(event.shiftKey ? -1 : 1);
+                }
+            }
+        });
+
+        // The box's own edits while the tip is open keep the count true.
+        var heard = function () {
+            if (tip === mine) {
+                refresh(false);
+            } else {
+                findPaint(null, null);
+                surface.removeEventListener('input', heard);
+            }
+        };
+
+        surface.addEventListener('input', heard);
+        tip.appendChild(form);
+        floatingHost(surface).appendChild(tip);
+        place(tip, surface.getBoundingClientRect(), false);
+        refresh(true);
+        query.focus();
+        query.select();
+    }
+
     // Keyboard shortcuts in any writing surface: Ctrl+B, Ctrl+I,
-    // Ctrl+Shift+X, Ctrl+Shift+H (highlight), Ctrl+E (code), Ctrl+K (link)
-    // and Ctrl+/ (the shortcut sheet), Cmd on a Mac.
+    // Ctrl+Shift+X, Ctrl+Shift+H (highlight), Ctrl+E (code), Ctrl+K (link),
+    // Ctrl+/ (the shortcut sheet) and, in a writing box, Ctrl+F (find and
+    // replace), Cmd on a Mac.
     function shortcut(surface, event) {
         if (!(event.ctrlKey || event.metaKey) || event.altKey) {
             return false;
@@ -3629,6 +4031,17 @@
 
             return true;
         }
+
+        // Ctrl+F in a writing box finds in the box; anywhere else, and in a
+        // table cell or a one-line field, the browser's own find runs.
+        if ((key === 'f') && !event.shiftKey && surface.wsEditor) {
+            event.preventDefault();
+            event.stopPropagation();
+            openFind(surface);
+
+            return true;
+        }
+
         var keys = { b: 'bold', i: 'italic', e: 'code', k: 'link' };
         var name = Object.prototype.hasOwnProperty.call(keys, key) ? keys[key] : (((key === 'x') && event.shiftKey) ? 'strike' : (((key === 'h') && event.shiftKey) ? 'highlight' : ''));
 

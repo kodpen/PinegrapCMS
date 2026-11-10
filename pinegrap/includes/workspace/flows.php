@@ -3194,6 +3194,8 @@ function ws_flow_js_strings()
         'fl_rows_by'          => lang('Find the row'),
         'fl_rows_by_position' => lang('By its place in the table'),
         'fl_rows_by_number'   => lang('By its # number'),
+        'fl_rows_by_key'      => lang('By its key'),
+        'fl_rows_key_help'    => lang('The value of the table\'s key column, such as an order number or an e-mail address: no two rows share it. A value may give it.'),
         'fl_rows_number_help' => lang('The number the table shows in its # column: it stays with the row and is never given to another row, whatever is deleted. A value may give it.'),
         'fl_rows_by_id'       => lang('By its id'),
         'fl_rows_by_last'     => lang('The last row'),

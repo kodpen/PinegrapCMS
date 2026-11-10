@@ -15,7 +15,8 @@ description: Shared note groups on the screen (G6) — workspace_note_group_shar
 - Tabs (`workspace_note_tabs.js`) get own and shared groups: a people mark for a shared group, no + when `reach` is view, the share button only on own unlocked groups.
 
 ## How does a channel show a shared group?
-- `ws_note_group_cards_map()` gives `note_group_card` on a message (`messages.php`): group name, colour, owner, the notes the channel was given (its `via_group` rows, in the group's order, only those the viewer reads), `url` = `workspace_notes.php?group=N`. Such a message is not editable. The card lists the notes (each opens `openNoteView()`) and Open in My Notes. The external API does not carry it yet (G7).
+- `ws_note_group_cards_map()` gives `note_group_card` on a message (`messages.php`): group name, colour, owner, the notes the channel was given (its `via_group` rows, in the group's order, only those the viewer reads), `url` = `workspace_notes.php?group=N`. Such a message is not editable. The card lists the notes (each opens `openNoteView()`) and Open in My Notes.
+- The Workspace API carries it as `note_group_card` on every message (#8518): `group_id`, `name`, `color` (hex), `owner` {`user_id`, `name`}, `notes` [{`id`, `name`, `updated_at`}], the same notes the screen draws for the reader; null on a deleted message or one sharing no group (a locked group's shares are forgotten). Component `WorkspaceMessageNoteGroupCard`; `ws_api_message_note_group_card()`, tested in tests/workspace_api_note_group_card_test.php. Claude's key reaches the card only through a message of a channel it may be asked in, and the notes are those that channel was given.
 
 ## What does ?group=N do?
 - After the list loads: an own or shared group opens its folder and its first note (the tabs then show the group); any other group says it is not among the person's notes.

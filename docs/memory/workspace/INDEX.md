@@ -15,12 +15,14 @@
 - agent-questions.md: How an agent asks the people with a poll or an approval, and why the outcome is written in the agent's name (never as the owner's decision)
 - agent-registry.md: The agent registry (ws_agents) and the channel-agent row (ws_channel_agents): fields, Claude's routine as the first push agent, where the membership rules are, the depth and hourly brakes [decision: decisions-made-workspace-7.md, decisions-made-workspace-8.md]
 - agent-risk-tiers.md: Agent risk tiers (agent_tiers.php, A7): the tier of a change, when an application agent's proposal is applied at once, the undo journal in ws_ai_changes (step 11.0.174), who may undo and when
+- agent-sessions.md: The asker's own Claude session over OAuth: @Claude waits 2 min for the asker's online connection, then the routine; claimed_device_id; via_client_id in the depth brake
 - agent-shown.md: How a registry agent shows (A4b2): the line under the message that woke it, its tag and @ picker entry, its ws_assistants() entry kept off tasks, its own message edits
 - agent-token-limit.md: A model assistant's monthly token limit (ws_agents.token_limit): set on its form, checked before each step, the request fails with a sentence naming the limit; the card shows used of limit [decision: decisions-made-schema-14.md]
 - agent-wakes.md: An app agent's scheduled wakes (every N minutes, once at a time) made by the general job, /wake in a channel, the agent-wake API routes, and the brief an app agent reads (A4b1, #8246) [decision: decisions-made-workspace-10.md]
 - approval-guest-frozen-channel.md: An approval link sent outside the team opens as closed while the channel is gone or archived, or the request is in an earlier version of a cleared conversation
 - channel-agent-rights.md: Who adds, changes or removes a channel's agents ("Agents in this channel" in Channel settings, workspace.channels.agents.*): who may post; the tier and a private channel's new agent only its manager [decision: decisions-made-workspace-11.md, decisions-made-workspace-9.md]
 - channel-memory.md: A channel's memory (ws_channel_memory) and the decision mark by a person or an agent (ws_messages.marked_by_kind): rows, routes, the index in the brief, the Memory tab [decision: decisions-made-workspace-7.md, decisions-made-workspace-9.md]
+- claude-code-channel-check.md: Claude Code channels tried on 2026-10-28 (Claude Code 2.1.309): a stdio MCP server with the claude/channel capability pushes into a running CLI session; start flag, handshake, what is open
 - claude-draft-decide-once.md: A task Claude or Pinegrap AI proposes in a channel (ws_ai_drafts) is accepted or dismissed once: conditional UPDATE on the pending row, checked by affected rows, before the task is opened.
 - claude-not-channel-agent.md: Claude is no channel agent: never offered in a channel's Agents list, refused with 422 on the add route, its old ws_channel_agents rows unread but removable [decision: here]
 - contact-group-joined-event.md: Flow event contact_group.joined: one ws_events_in row per contact added to a group, from pg_announce_contact_group_members(); payload, group filter kept as status, outputs [decision: decisions-made-product-27.md]
@@ -49,6 +51,7 @@
 - workflow-table-board.md: Board view of a workflow table (T2, #2994): rows as cards by a status column via the channel board's mountSource(); a move writes the status cell with ws_wtable_row_update()
 - workflow-table-import-notes.md: A note's table block into a workflow table (T6b, #3044): notes and tables offered, cells read (tags, marks, formulas), then the file import's confirmation and writes; the note never changes
 - workflow-table-import.md: A CSV/xlsx/xls/ods file into a workflow table (T6a, #3022): a new table with guessed column types or rows added by column name, confirmed first, every row through ws_wtable_row_create(), no webhooks
+- workflow-table-key-column.md: The key column of a workflow table (wtable_keys.php, plan tables-relational 4b): text or number, filled in and unique, refusals, the lock, by: key, the API ?key=, the import matching by key [decision: here]
 - workflow-table-row-numbers.md: The stable # number of workflow table rows (11.0.183, PR #8461): counter in ws_wtables.next_number, the row's number, kept through the bin, shown in #, found by by: number [decision: here]
 - workflow-table-rows.md: Workflow table rows (wtable_rows.php, T1b): add, change, delete, move; row_count and the 5000 limit in one UPDATE; 409 changed_meanwhile; person/link cells open; formulas on read
 - workflow-table-shares.md: Workflow table shares (wtable_shares.php, T1c, #2820): owner-only, person view/edit, channel view; wtable_shared bell line; ws_wtable_flow_gate() pauses a gone owner's table
@@ -84,6 +87,7 @@
 - workspace-app-commands.md: An application's own / commands (ws_app_commands, 11.0.87, PR #2213): register/delete routes, workspace:commands, never posted, workspace.app.command to that app alone
 - workspace-app-handles.md: How an application tag <@app:N> is drawn (Claude's link @Claude, Pinegrap AI's @ai, any other app a handle from its own name) and which apps the @ picker offers per channel
 - workspace-app-lines-fold.md: A run of an application's one-line messages folds into its newest line with "+N lines"; the reader picks Folded, All or Hidden per channel in the browser [decision: decisions-made-workspace-10.md]
+- workspace-app-mention-unread-line.md: A person who mentions an application that may not read the channel gets a line only they see; the app learns nothing (PR #8494)
 - workspace-app-mentioned-webhook.md: workspace.app.mentioned (PR #809): an app mentioned with <@app:N> is told through its own subscriptions only, where it may read the channel; self, assistants, expired keys, privacy, payload
 - workspace-approval-decide-checks.md: What ws_approval_decide_check() refuses before a team member's answer to an approval request, shared by the panel, the external API and its dry run
 - workspace-assistant-discussions.md: An assistant asked in a discussion: what it reads about it (Claude's context thread, PR #1121; Pinegrap AI's first message), where it may be asked, following
@@ -133,7 +137,7 @@
 - workspace-command-schedule.md: /schedule (/zamanla) in a Workspace channel: when it reads (+30dk, a day, 14:00), the 09:00 and tomorrow defaults, ws_scheduled_message_save(), its writer-only answer and live line
 - workspace-command-status.md: /status (/durum) in a Workspace channel (PR #1896): the status words it reads, ws_task_set_status(), the lines it posts, its live line and the statuses popup
 - workspace-composer-expanded.md: The composer's "Aa" expanded box (Editor.expand()): Enter a new line, Ctrl/Cmd+Enter sends, every tool shown, the per-viewer choice in localStorage, how the switch gets on the row without workspace.js
-- workspace-composer-later.md: Workspace writing-box tools (toolbar, lists, headings, highlight, slash inserts, smart paste, saved replies, AI rewrite): the owner's answers that still bind and what is left for later
+- workspace-composer-later.md: Workspace writing-box tools (toolbar, lists, headings, highlight, slash inserts, smart paste, saved replies, AI rewrite, find): the owner's answers that still bind and what is left for later
 - workspace-context-menu.md: Workspace messages take focus (one roving Tab stop); the own context menu and floating boxes give focus back, Tab closes a menu, radio entries, aria-haspopup openers
 - workspace-create-commands.md: /create (/oluştur) product|group and its alias /product (/ürün) in a channel: kind word, parsers, the single-create card through ws_quick_create_input()/_save(), what Create sends [decision: decisions-made-workspace-2.md]
 - workspace-crm-lead-intake.md: Lead step and box (CRM seams 6, PR #2092): a submitted form's customer into their channel or a new New customer channel; contact by forms.contact_id or e-mail, hourly cap [decision: decisions-made-product-11.md]
@@ -146,6 +150,7 @@
 - workspace-discussion-follow.md: The assistant a discussion follows (ws_threads.follow_agent, step 11.0.113, decision #2419, PR #2924): who is followed, which message asks it, the no-pile-up rule, scheduled sends [decision: decisions-made-schema-2.md]
 - workspace-discussion-names.md: How a Workspace discussion (ws_channels kind thread) is named outside its panel: bell lines name its channel via ws_inbox_place(), its writing box says "Reply in the discussion" (#5187)
 - workspace-editor-autoformat.md: Autoformat while typing in a Workspace writing box: ==x== to a highlight, "- " "* " "1. " "> " at a line's start to a list or quote; one undo, IME and paste guards, the per-viewer off switch
+- workspace-editor-find-replace.md: Find and replace in the Workspace writing boxes (Ctrl+F, openFind()): where the shortcut works, how matches are found and painted, how a replacement keeps marks and undo, its labels and tests
 - workspace-editor-link-keys.md: The link tip's Text field (linkText()), the Ctrl+/ shortcut sheet (openKeys(), shortcutRows(), keyLabel()) of the Workspace writing boxes since #2101, and the selection bar acting on click
 - workspace-editor-lists.md: Lists and quotes in the Workspace writing box (#1897): twins of the server's rules, lines written back as stored, keys, the three tools, a pick inside a mark, select all and delete
 - workspace-editor-smart-paste.md: Pasting into a Workspace writing box (#2018): HTML mapped to the box's markup and why it is safe, sheet ranges to the table window, a URL over words, a note's picture

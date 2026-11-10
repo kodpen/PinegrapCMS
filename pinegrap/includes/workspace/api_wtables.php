@@ -278,6 +278,8 @@ function ws_wtable_api_routes()
                 array('name' => 'join', 'in' => 'query', 'type' => 'enum', 'values' => ws_wtable_where_joins(), 'default' => 'all', 'description' => 'all: every condition holds; any: one does.'),
                 array('name' => 'sort', 'in' => 'query', 'type' => 'int', 'min' => 0, 'default' => 0, 'description' => 'The column id the rows are sorted by; 0 keeps the table\'s order.'),
                 array('name' => 'dir', 'in' => 'query', 'type' => 'enum', 'values' => ws_wtable_sort_directions(), 'default' => 'asc', 'description' => 'desc reverses the order: by no column, the last row first.'),
+                array('name' => 'key', 'in' => 'query', 'type' => 'string', 'max_length' => 2000,
+                    'description' => 'The value of the table\'s key column (a column whose options hold key: true, filled in and different on every row): the list holds the one row with that key, or none. A text key is matched without case, a number key by its value. A table without a key column answers 422.'),
             ),
         ),
 
@@ -630,6 +632,7 @@ function ws_api_wtable_import_schema()
     return array(
         'table'         => 'WorkspaceTable',
         'added'         => 'integer',
+        'updated'       => 'integer',
         'refused_count' => 'integer',
         'refused'       => 'WorkspaceTableImportRefusal[]',
         'more'          => 'boolean',
@@ -792,6 +795,15 @@ function ws_api_wtable_message($code)
         case 'too_many_rows':
         case 'too_many_shares':
             return lang(array('string' => 'The limit is reached: {var:1}.', 'vars' => (string) $code));
+
+        case 'key_taken':
+            return lang('Another column is already the key: take the key off it first.');
+
+        case 'key_not_unique':
+            return lang('The column cannot be the key while rows are empty in it or repeat a value.');
+
+        case 'key_type':
+            return lang('Only a text or number column can be the key.');
     }
 
     return lang(array('string' => 'Refused: {var:1}.', 'vars' => (string) $code));
@@ -822,6 +834,11 @@ function ws_api_wtable_refused($result, $what)
 
             if (isset($result['revision'])) {
                 $message .= ' ' . lang(array('string' => 'Revision now: {var:1}.', 'vars' => (string) (int) $result['revision']));
+            }
+
+            // The rows at fault, by the numbers the table shows.
+            if (!empty($result['rows'])) {
+                $message .= ' ' . lang(array('string' => 'Rows by number: {var:1} ({var:2} in all).', 'vars' => array(implode(', ', array_map('intval', $result['rows'])), (int) ($result['rows_count'] ?? count($result['rows'])))));
             }
 
             api_fail(409, $code, $message, $field);
@@ -1101,6 +1118,7 @@ function ws_api_wtables_import($params)
     api_ok(array(
         'table'         => ws_api_wtable_present($made, ws_wtable_columns((int) $made['id'])),
         'added'         => (int) $result['report']['added'],
+        'updated'       => (int) ($result['report']['updated'] ?? 0),
         'refused_count' => (int) $result['report']['refused_count'],
         'refused'       => ws_api_wtable_import_refused($result['report']['refused']),
         'more'          => !empty($read['more']),
@@ -1398,6 +1416,19 @@ function ws_api_wtable_rows_list($params)
 
     $limit = (int) ($params['limit'] ?? 100);
     $columns = ws_wtable_columns((int) $table['id']);
+
+    if (isset($params['key']) && ((string) $params['key'] !== '')) {
+        if (ws_wtable_key_column($columns) === null) {
+            api_fail_validation(lang('The table has no key column.'), 'key');
+        }
+
+        $found = ws_wtable_row_keyed((int) $table['id'], (string) $params['key']);
+        $rows = $found ? array(ws_api_wtable_row_present(ws_wtable_row_out($found, $columns))) : array();
+
+        api_ok_list($rows, $limit, null, count($rows));
+
+        return;
+    }
     $query = ws_wtable_query((string) ($params['where'] ?? ''), (string) ($params['join'] ?? 'all'), (int) ($params['sort'] ?? 0), (string) ($params['dir'] ?? 'asc'));
 
     if (ws_wtable_query_active($query)) {

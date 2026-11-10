@@ -22,6 +22,6 @@ description: Contacts Advanced Filters: no address autofill, phone and web addre
 
 ## What was left?
 - Submitted Forms Contact Name and Username: too few address-type boxes and no password box, so no autofill is offered.
-- The Add/Edit Contact form (`includes/forms/contact_form.php`) phone and website boxes.
+- The Add/Edit Contact form's phone and website keyboards are in `contact-shared-form.md`.
 
 Test: `tests/contact_filter_keyboards_test.php` (filter boxes; the email alias override in `backend.src.js` and `backend.min.js`).

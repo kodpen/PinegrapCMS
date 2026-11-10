@@ -761,6 +761,27 @@ function pg_bundle_take_stock($order_item_id, $bundle_id, $quantity, $source, &$
 }
 
 /**
+ * The cart's stock pool counted at the order's location: a tracked product
+ * with a units figure at the location takes it in place of the total; a
+ * product without one (null or missing: the site has no locations) keeps
+ * the total.
+ *
+ * @param array $stock       product_id => array(tracked, quantity, backorder)
+ * @param array $at_location product_id => units at the location, or null
+ * @return array the same pool
+ */
+function pg_bundle_stock_at_location($stock, $at_location)
+{
+    foreach ($stock as $product_id => $entry) {
+        if ($entry['tracked'] && isset($at_location[$product_id])) {
+            $stock[$product_id]['quantity'] = (int) $at_location[$product_id];
+        }
+    }
+
+    return $stock;
+}
+
+/**
  * check_inventory() for a cart that holds a bundle: every line is checked
  * against one stock pool (pg_bundle_cart_allowance()), so a component bought
  * alone and inside a bundle cannot be sold twice. A line the stock cannot
@@ -823,6 +844,23 @@ function pg_bundle_check_inventory($liveform, $order_id, $bundle_ids)
 
         $lines[] = $line;
     }
+
+    // The checkout takes a bundle's components from the order's location, so
+    // the cart check counts what that location holds; without locations the
+    // total, as before. A product that is a component and a line of its own
+    // shares one stock entry, so its units are read once.
+    $location_id = pg_stock_order_location((int) $order_id);
+    $at_location = array();
+
+    if ($location_id > 0) {
+        foreach ($stock as $stock_product_id => $entry) {
+            if ($entry['tracked']) {
+                $at_location[$stock_product_id] = pg_stock_quantity_at($stock_product_id, $location_id, $entry['quantity']);
+            }
+        }
+    }
+
+    $stock = pg_bundle_stock_at_location($stock, $at_location);
 
     $allowance = pg_bundle_cart_allowance($lines, $stock);
 

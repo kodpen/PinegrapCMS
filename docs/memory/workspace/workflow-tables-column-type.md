@@ -27,7 +27,7 @@ description: Changing a workflow table column's type (wtable_retype.php, PR #851
 - API `POST /workspace/tables/{id}/columns/{column_id}/type` (`workspace.table_columns.retype`, MCP tool, `dry_run`): type, options; refusals 422 `validation_failed`, field `type`, the message listing up to 50 cells.
 
 ## And the key column?
-- The key (step 4b, `options['key']`) is text or number, filled and unique: its type does not change (`key_column`, "make it an ordinary column first"), so a type change never breaks those rules.
+- The key (step 4b, `options['key']`) is text or number, filled and unique: its type does not change (`key_column`, "make it an ordinary column first"), and options that would make a key are refused (`key_on_retype`), so the column form's key check is never skipped.
 
 ## Tests
 - `tests/workspace_wtable_retype_test.php`; routes in `tests/workspace_api_wtables_test.php`.

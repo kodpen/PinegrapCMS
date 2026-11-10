@@ -127,7 +127,7 @@ function test_order_completion_tail_writes_in_order()
 		'reward points' => array('UPDATE user SET user_reward_points = user_reward_points + ?'),
 		'reward membership' => array('UPDATE contacts SET expiration_date = ? WHERE id = ?'),
 		'reward e-mail' => array('ECOMMERCE_REWARD_PROGRAM_EMAIL_SUBJECT'),
-		'contact groups' => array('"INSERT INTO contacts_contact_groups_xref ('),
+		'contact groups' => array('pg_audience_door_join($contact_id, (int) $contact_group_id);'),
 		'abandoned campaigns cancelled' => array('"UPDATE email_campaigns'),
 		'visitor record' => array('UPDATE visitors'),
 		'activity log' => array("pg_log_lang(array('string' => 'Order was completed'))"),

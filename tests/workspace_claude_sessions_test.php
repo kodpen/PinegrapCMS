@@ -1,0 +1,137 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Tests for the asker's own session over OAuth (includes/workspace/claude.php,
+ * api_claude.php, agent_queue.php) that need no database: who may take a
+ * request to Claude, the depth brake on a message a connection wrote, and
+ * the routes a connection may call.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+if (!defined('PG_API_PANEL')) {
+	define('PG_API_PANEL', true);
+}
+
+if (!defined('PG_INIT_LOADED')) {
+	define('PG_INIT_LOADED', true);
+}
+
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
+
+function workspace_claude_sessions_test_row($extra = array())
+{
+	return array_merge(array(
+		'id'                => 7,
+		'status'            => 'queued',
+		'channel_id'        => 3,
+		'message_id'        => 40,
+		'requested_by'      => 12,
+		'created_at'        => 1700000000,
+		'claimed_device_id' => 0,
+	), $extra);
+}
+
+function test_workspace_claude_holder_waits_for_the_online_asker()
+{
+	$row = workspace_claude_sessions_test_row();
+	$now = 1700000000 + 30;
+
+	pg_assert_same(array('who' => 'person', 'device' => 0), ws_claude_request_holder($row, false, true, $now), 'the asker is online: their session takes it first');
+	pg_assert_same(array('who' => 'routine', 'device' => 0), ws_claude_request_holder($row, false, false, $now), 'nobody online: the routine as before');
+	pg_assert_same(array('who' => 'routine', 'device' => 0), ws_claude_request_holder($row, false, true, 1700000000 + WS_CLAUDE_SESSION_WAIT), 'unclaimed after two minutes: the routine');
+	pg_assert_same(120, WS_CLAUDE_SESSION_WAIT);
+}
+
+function test_workspace_claude_holder_of_a_claimed_request()
+{
+	$row = workspace_claude_sessions_test_row(array('status' => 'running', 'claimed_device_id' => 55));
+
+	pg_assert_same(array('who' => 'person', 'device' => 55), ws_claude_request_holder($row, false, false, 1700009999), 'the session that claimed it keeps it');
+	pg_assert_same(array('who' => 'routine', 'device' => 0), ws_claude_request_holder(workspace_claude_sessions_test_row(array('status' => 'running')), false, true, 1700000001), 'the routine claimed it');
+}
+
+function test_workspace_claude_holder_never_a_session_for_a_connections_message()
+{
+	// A message a connection wrote asks what the application's message asks
+	// today: the site's routine, never the asker's own session, which would
+	// be asking itself.
+	$row = workspace_claude_sessions_test_row();
+
+	pg_assert_same(array('who' => 'routine', 'device' => 0), ws_claude_request_holder($row, true, true, 1700000001));
+}
+
+function test_workspace_claude_holder_only_for_a_message()
+{
+	// The daily summary, a note, a task run and the Visual Page Editor go to
+	// the routine as before.
+	foreach (array(array('message_id' => 0), array('note_id' => 5), array('task_id' => 9), array('page_id' => 2)) as $extra) {
+		pg_assert_same('routine', ws_claude_request_holder(workspace_claude_sessions_test_row($extra), false, true, 1700000001)['who'], json_encode($extra));
+	}
+}
+
+function test_workspace_claude_session_may_take()
+{
+	$held = array('who' => 'person', 'device' => 0);
+	$row = workspace_claude_sessions_test_row();
+
+	pg_assert_true(ws_claude_caller_may($held, $row, 12, 55), 'the asker\'s connection');
+	pg_assert_true(!ws_claude_caller_may($held, $row, 13, 56), 'somebody else\'s connection never');
+	pg_assert_true(!ws_claude_caller_may($held, $row, 12, 0), 'the routine waits');
+	pg_assert_true(ws_claude_caller_may(array('who' => 'person', 'device' => 55), $row, 12, 55), 'the claiming session');
+	pg_assert_true(!ws_claude_caller_may(array('who' => 'person', 'device' => 55), $row, 12, 56), 'another session of the asker');
+	pg_assert_true(ws_claude_caller_may(array('who' => 'routine', 'device' => 0), $row, 0, 0), 'the routine');
+	pg_assert_true(!ws_claude_caller_may(array('who' => 'routine', 'device' => 0), $row, 12, 55), 'handed to the routine: the session no longer');
+}
+
+function test_workspace_agent_chain_counts_a_connections_message()
+{
+	pg_assert_true(ws_agent_chain_entry(array('id' => 1, 'sender_kind' => 'user', 'sender_id' => 12, 'via_client_id' => 4), array(9))['by_agent'], 'written through a connection: an agent\'s message');
+	pg_assert_true(!ws_agent_chain_entry(array('id' => 1, 'sender_kind' => 'user', 'sender_id' => 12, 'via_client_id' => 0), array(9))['by_agent'], 'a person\'s own message ends the count');
+	pg_assert_true(!ws_agent_chain_entry(array('id' => 1, 'sender_kind' => 'user', 'sender_id' => 12), array(9))['by_agent'], 'no column yet: a person\'s');
+	pg_assert_true(ws_agent_chain_entry(array('id' => 1, 'sender_kind' => 'app', 'sender_id' => 9), array(9))['by_agent'], 'an agent\'s application as before');
+
+	$chain = array(
+		ws_agent_chain_entry(array('id' => 3, 'sender_kind' => 'app', 'sender_id' => 9), array(9)),
+		ws_agent_chain_entry(array('id' => 2, 'sender_kind' => 'user', 'sender_id' => 12, 'via_client_id' => 4), array(9)),
+		ws_agent_chain_entry(array('id' => 1, 'sender_kind' => 'user', 'sender_id' => 12, 'via_client_id' => 0), array(9)),
+	);
+
+	pg_assert_same(2, ws_agent_chain_depth($chain));
+}
+
+function test_workspace_claude_routes_a_connection_may_call()
+{
+	$open = ws_api_claude_session_routes();
+
+	foreach (array('workspace.claude.requests.list', 'workspace.claude.requests.brief', 'workspace.claude.requests.claim', 'workspace.claude.requests.answer', 'workspace.claude.requests.fail', 'workspace.claude.change_types', 'workspace.claude.record') as $id) {
+		pg_assert_true(in_array($id, $open, true), $id);
+	}
+
+	pg_assert_true(!in_array('workspace.claude.instructions', $open, true), 'the routine\'s instructions stay its own');
+}
+
+function test_workspace_claude_sessions_wiring()
+{
+	$source = function ($name) {
+		$reflection = new ReflectionFunction($name);
+		$lines = file($reflection->getFileName());
+
+		return implode('', array_slice($lines, $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+	};
+
+	pg_assert_contains('ws_claude_routine_ids(', $source('ws_claude_dispatch'), 'a request held for the asker starts no run');
+	pg_assert_contains('ws_claude_routine_ids(', $source('ws_claude_fire'), 'a held request is not marked sent');
+	pg_assert_contains('claimed_device_id', $source('ws_api_claude_claim'), 'the claiming connection is kept');
+	pg_assert_contains('ws_api_writer_app_id()', $source('ws_api_claude_answer'), 'a connection answers as its connection writes');
+	pg_assert_contains('ws_api_writer_app_id()', $source('ws_api_claude_fail'));
+	pg_assert_contains('via_client_id', $source('ws_agent_chain'));
+}

@@ -12,4 +12,4 @@ description: What the Word and Excel support does not do and why: edits stop at 
 - No library is added for any of them (SheetJS, docx-preview, mammoth, JSZip, PhpSpreadsheet, PHPWord): the readers and writers are the product's own (`office-files.md`), as its xlsx writer is (`erp/erp-accountant-pack.md`).
 
 ## Where may the xlsx reader go next?
-- It can later replace its twin in `import_products_f.php`, which walks a sheet the same way (XMLReader, a row at a time) but still takes each row with `readOuterXml()` (`office-dom-ceiling.md`). Not started.
+- Its twin in `import_products_f.php` walks a sheet the same way (XMLReader, a row at a time) and reads cells and shared strings through its node-by-node helpers (`pg_office_xlsx_cell_parts()`, `pg_office_reader_text()`), but keeps its own walk and value rules: booleans as 1/0, its own date text, no row, column or string limits (`office-dom-ceiling.md`). Replacing the walk itself with `pg_office_xlsx_rows()` would cut an import at the preview's limits.

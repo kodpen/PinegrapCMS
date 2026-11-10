@@ -66,6 +66,14 @@ function test_workspace_wtable_retype_input()
 	pg_assert_same(array('id' => 4, 'type' => 'money', 'options' => array('decimals' => 2, 'currency' => 'EUR')), $check['to']);
 	pg_assert_same('type_same', ws_wtable_retype_input_check($text, array('type' => 'text'))['error']);
 	pg_assert_same('key_column', ws_wtable_retype_input_check(array('id' => 4, 'type' => 'text', 'options' => array('key' => true)), array('type' => 'number'))['error'], 'never the key column');
+
+	// The store takes a key on a text or number column (wtable_keys.php),
+	// but a type change never makes one: that skips the key's own check.
+	pg_assert_true(ws_wtable_column_options_check('text', array('key' => true))['ok'], 'a key is an option of a text column');
+	pg_assert_same('key_on_retype', ws_wtable_retype_input_check(ws_wtable_retype_test_column('money'), array('type' => 'text', 'options' => array('key' => true)))['error']);
+	pg_assert_same('options', ws_wtable_retype_input_check(ws_wtable_retype_test_column('date'), array('type' => 'number', 'options' => array('key' => 1)))['field']);
+	pg_assert_false(isset(ws_wtable_retype_input_check(ws_wtable_retype_test_column('money'), array('type' => 'text', 'options' => array('key' => false)))['to']['options']['key']), 'a key turned off is no key');
+	pg_assert_true(function_exists('ws_wtable_column_key_check'), 'the column form\'s key check is there');
 	pg_assert_same('type_unknown', ws_wtable_retype_input_check($text, array('type' => 'person'))['error']);
 	pg_assert_same('type_not_changeable', ws_wtable_retype_input_check(ws_wtable_retype_test_column('status', array('choices' => array(array('key' => 'a', 'label' => 'A')))), array('type' => 'text'))['error']);
 	pg_assert_same('decimals_invalid', ws_wtable_retype_input_check($text, array('type' => 'number', 'options' => array('decimals' => 9)))['error']);
@@ -228,7 +236,7 @@ function test_workspace_wtable_retype_screen()
 	pg_assert_true(strpos($text, '«n/a»') !== false, 'the value');
 	pg_assert_true(strpos($text, ws_wtable_screen_error_text('not_number')) !== false, 'and why');
 
-	foreach (array('type_same', 'key_column', 'type_not_changeable', 'cells_not_converted', 'no_conversion', 'list_many', 'decimals_lost', 'time_lost') as $code) {
+	foreach (array('type_same', 'key_column', 'key_on_retype', 'type_not_changeable', 'cells_not_converted', 'no_conversion', 'list_many', 'decimals_lost', 'time_lost') as $code) {
 		pg_assert_true(ws_wtable_screen_error_text($code) !== ws_wtable_screen_error_text('no_such_code'), $code . ' has its own sentence');
 	}
 }

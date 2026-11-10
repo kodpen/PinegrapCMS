@@ -404,7 +404,9 @@
         var node = kit.icon(note.lock_closed ? 'bi-lock-fill' : 'bi-unlock', 'ws-nb-item-lock');
         var label = kit.t(note.lock_closed ? 'nlock_mark_closed' : 'nlock_mark_open');
 
+        // A named image: kit.icon() hides it from screen readers.
         node.title = label;
+        node.removeAttribute('aria-hidden');
         node.setAttribute('role', 'img');
         node.setAttribute('aria-label', label);
 

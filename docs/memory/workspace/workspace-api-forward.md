@@ -17,5 +17,7 @@ description: Forwarding messages over the Workspace API and MCP (POST /workspace
 - Webhook: `ws_message_send()` announces `workspace.message.created` with `channel_id` for a public target; no new event.
 - Test: `test_ws_api_messages_forward_route` and the order row in `test_ws_api_rehearsal_stops_before_the_write` (tests/workspace_api_test.php).
 
-## What is missing?
-- `ws_api_message_present()` does not show a message's forwarded copies yet, so an application reading the channel sees the forward's own words only.
+## How does a message show its forwarded copies?
+- Every message the API answers carries `forwards`, one item per `ws_message_forwards` row in order (#8500): `source_message_id`, `source_channel_id`, `source_channel_name`, `can_open`, `sender` {`user_id`, `name`}, `text` (plain, `ws_plain_text()`), `file_name`, `created_at` (the source's time). The raw body is never given.
+- The source message and channel are null when the reader cannot read that channel (`ws_can_read_channel()`, and for Claude's key `ws_claude_channel_allowed()`); the frozen words still show, as in the panel. `can_open` also needs the source not deleted. A deleted message lists none.
+- `ws_api_messages_present()` reads the page's copies once (`ws_api_message_forwards_map()`); shapers `ws_api_message_forward_item()` / `ws_api_message_forwards()`, tested in tests/workspace_api_forward_test.php.

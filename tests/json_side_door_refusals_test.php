@@ -2,11 +2,13 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Pins, by source, that two JSON requests of manager screens answer an ended
+ * Pins, by source, that three JSON requests of panel screens answer an ended
  * session, a missing right or a stale token in JSON before the HTML helpers
  * run: the API documentation's Try it credential (api_docs.php,
- * test_credential) and the Database Engine visitor cleanup step
- * (database_engine.php, ajax=1). validate_user() would redirect to the sign-in
+ * test_credential), the Database Engine visitor cleanup step
+ * (database_engine.php, ajax=1) and the batches of the Send E-mail Campaign
+ * window (send_email_campaign.php, format=json), which a role-3 user with the
+ * e-mail right opens too. validate_user() would redirect to the sign-in
  * page, which fetch follows as a 200, and validate_token_field() prints an
  * HTML error page; either one reached the scripts as
  * "Unexpected token '<'".
@@ -91,4 +93,26 @@ function test_json_side_door_database_engine_step_loop_reads_refusal()
 	pg_assert_contains('sessionEnded', $body);
 	pg_assert_contains('return response.json().then(function (answer) {', $body);
 	pg_assert_contains('answer.text', $body);
+}
+
+function test_json_side_door_send_email_campaign_refuses_ended_session_in_json()
+{
+	$head = json_side_door_before_validate_user(json_side_door_source('send_email_campaign.php'));
+	pg_assert_contains("(\$_GET['format'] ?? '') === 'json'", $head);
+	pg_assert_contains('USER_LOGGED_IN', $head);
+	pg_assert_contains("lang('Your session expired or you logged out. Sign in again and send the campaign again to resume it.')", $head);
+	pg_assert_contains('401', $head);
+}
+
+function test_json_side_door_send_email_campaign_refuses_missing_email_right_in_json()
+{
+	$source = json_side_door_source('send_email_campaign.php');
+	$start = strpos($source, '$user = validate_user();');
+	$end = strpos($source, 'validate_email_access($user);');
+	pg_assert_true(($start !== false) && ($end !== false) && ($end > $start), 'validate_user() comes before validate_email_access()');
+	$between = substr($source, (int) $start, (int) $end - (int) $start);
+	pg_assert_contains('manage_emails', $between);
+	pg_assert_contains("lang('Access denied.')", $between);
+	pg_assert_contains('403', $between);
+	pg_assert_contains('send_email_campaign_json(', $between);
 }

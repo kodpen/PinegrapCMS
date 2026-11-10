@@ -788,7 +788,8 @@ function ws_message_parent_check($channel, $parent_id)
  * @param array  $options kind (message | note | decision | task), task_id, file_id,
  *                        file_name, parent_id, app_id (written by an API application
  *                        acting for $viewer)
- * @return array ok, error, message_id
+ * @return array ok, error, message_id, apps_unread (the tags of the applications
+ *               it mentions that may not read the channel, for the writer)
  */
 function ws_message_send($viewer, $channel, $body, $options = array())
 {
@@ -914,10 +915,10 @@ function ws_message_send($viewer, $channel, $body, $options = array())
     }
 
     // An application it mentions hears it through its own subscriptions,
-    // in any channel it may read.
-    ws_message_tell_apps($channel, $message_id, $tokens);
+    // in any channel it may read; the writer alone learns which may not.
+    $apps = ws_message_tell_apps($channel, $message_id, $tokens);
 
-    return array('ok' => true, 'error' => '', 'message_id' => $message_id);
+    return array('ok' => true, 'error' => '', 'message_id' => $message_id, 'apps_unread' => $apps['unread']);
 }
 
 /**
@@ -1315,20 +1316,27 @@ function ws_app_mention_payload($message, $channel, $thread, $app_id, $text, $ed
  * @param array $channel    the channel or discussion the message is in
  * @param int   $message_id
  * @param array $tokens     ws_tokens() of the tags to tell about
+ * The writer is told which applications were left out because they may
+ * not read the channel (ws_app_mention_unread()): the line is theirs alone,
+ * and the application learns nothing.
+ *
  * @param bool  $edited     an edit added them
- * @return int[] the applications an event was announced for
+ * @return array told: the applications an event was announced for;
+ *               unread: the tags (@handle) of those that may not read the channel
  */
 function ws_message_tell_apps($channel, $message_id, $tokens, $edited = false)
 {
+    $none = array('told' => array(), 'unread' => array());
+
     // Nearly every message mentions no application: settled without a query.
     if (empty(ws_mentioned_app_ids($tokens)) || !function_exists('pg_announce')) {
-        return array();
+        return $none;
     }
 
     $message = ws_message($message_id);
 
     if (!$message || ((int) $message['deleted_at'] > 0)) {
-        return array();
+        return $none;
     }
 
     $assistants = array(
@@ -1339,22 +1347,27 @@ function ws_message_tell_apps($channel, $message_id, $tokens, $edited = false)
     $ids = ws_app_mention_audience($tokens, ((string) $message['sender_kind'] === 'app') ? (int) $message['sender_id'] : 0, $assistants);
 
     if (empty($ids)) {
-        return array();
+        return $none;
     }
 
-    $apps = db_items("SELECT id, status, expires_at, owner_user_id, scopes FROM api_apps WHERE id IN (" . implode(',', $ids) . ")", 'id');
+    $apps = db_items("SELECT id, name, status, expires_at, owner_user_id, scopes FROM api_apps WHERE id IN (" . implode(',', $ids) . ")", 'id');
     $thread = ws_channel_is_thread($channel) ? ws_thread($channel['id']) : null;
     $told = array();
+    $hears = array();
+    $reads = array();
 
     foreach ($ids as $app_id) {
-        if (!isset($apps[$app_id]) || !ws_app_hears_mentions($apps[$app_id])) {
+        $hears[$app_id] = isset($apps[$app_id]) && ws_app_hears_mentions($apps[$app_id]);
+
+        if (!$hears[$app_id]) {
             continue;
         }
 
         $owner = pg_load_user_row((int) $apps[$app_id]['owner_user_id']);
         $reader = is_array($owner) ? ws_viewer($owner) : null;
+        $reads[$app_id] = ws_app_reads_channel($reader, $channel);
 
-        if (!ws_app_reads_channel($reader, $channel)) {
+        if (!$reads[$app_id]) {
             continue;
         }
 
@@ -1363,7 +1376,80 @@ function ws_message_tell_apps($channel, $message_id, $tokens, $edited = false)
         $told[] = $app_id;
     }
 
-    return $told;
+    // A registry agent the channel allows is reached through the registry
+    // (agent_queue.php), whatever its owner reads.
+    $allowed = (function_exists('ws_agent_channel_rows') && function_exists('ws_agents_ready') && ws_agents_ready())
+        ? array_column(ws_agent_channel_rows((int) $channel['id']), 'app_id')
+        : array();
+    $unread = ws_app_mention_unread($ids, $hears, $reads, $allowed);
+
+    if (empty($unread)) {
+        return array('told' => $told, 'unread' => array());
+    }
+
+    $taken = function_exists('ws_mcp_servers') ? array_column(ws_mcp_servers(), 'alias') : array();
+    $agents = function_exists('ws_agent_tags') ? ws_agent_tags() : array();
+    $labels = array();
+
+    foreach ($unread as $app_id) {
+        $labels[] = ws_app_tag($app_id, $apps[$app_id], 0, 0, $taken, $agents)['label'];
+    }
+
+    return array('told' => $told, 'unread' => $labels);
+}
+
+/**
+ * The applications a message mentions that would hear it but may not read
+ * its channel, so the writer can be told they were not reached. An
+ * application that does not hear mentions at all (switched off, no
+ * workspace permission) is not listed - reading the channel would not
+ * change that - and neither is a registry agent the channel allows, which
+ * is reached through the registry. Pure.
+ *
+ * @param int[]  $ids     the applications mentioned (ws_app_mention_audience())
+ * @param bool[] $hears   by app id: ws_app_hears_mentions()
+ * @param bool[] $reads   by app id: ws_app_reads_channel() for its owner
+ * @param int[]  $allowed the registry agents' applications the channel allows
+ * @return int[] in the order mentioned
+ */
+function ws_app_mention_unread($ids, $hears, $reads, $allowed = array())
+{
+    $allowed = array_map('intval', (array) $allowed);
+    $unread = array();
+
+    foreach ((array) $ids as $app_id) {
+        $app_id = (int) $app_id;
+
+        if (!empty($hears[$app_id]) && empty($reads[$app_id]) && !in_array($app_id, $allowed, true) && !in_array($app_id, $unread, true)) {
+            $unread[] = $app_id;
+        }
+    }
+
+    return $unread;
+}
+
+/**
+ * The line shown to the writer alone when applications they mentioned may
+ * not read the channel: it names the applications as the message draws
+ * them and nothing about the channel reaches the applications. Empty when
+ * there are none.
+ *
+ * @param string[] $labels the applications' tags (@handle)
+ * @return string
+ */
+function ws_app_mention_unread_line($labels)
+{
+    $labels = array_values(array_filter(array_map('strval', (array) $labels), 'strlen'));
+
+    if (empty($labels)) {
+        return '';
+    }
+
+    if (count($labels) === 1) {
+        return lang(array('string' => '{var:1} cannot read this channel, so it was not told about your message.', 'vars' => $labels[0]));
+    }
+
+    return lang(array('string' => 'These applications cannot read this channel, so they were not told about your message: {var:1}', 'vars' => implode(', ', $labels)));
 }
 
 /**
@@ -1564,7 +1650,8 @@ function ws_message_edit_check($viewer, $message, $body, $as_app = 0)
  * @param array  $message
  * @param string $body
  * @param int    $as_app an agent's application changing its own message, 0 for a person
- * @return array ok, error
+ * @return array ok, error, apps_unread (the tags of the applications the edit
+ *               newly mentions that may not read the channel, for the writer)
  */
 function ws_message_edit($viewer, $message, $body, $as_app = 0)
 {
@@ -1607,13 +1694,13 @@ function ws_message_edit($viewer, $message, $body, $as_app = 0)
     ws_message_notify_mentions($viewer, $channel, $message['id'], $new);
 
     // So are the applications it mentions for the first time.
-    ws_message_tell_apps($channel, $message['id'], $new, true);
+    $apps = ws_message_tell_apps($channel, $message['id'], $new, true);
 
     if ($channel['kind'] === 'thread') {
         ws_thread_copy_sync($message['id']);
     }
 
-    return array('ok' => true, 'error' => '');
+    return array('ok' => true, 'error' => '', 'apps_unread' => $apps['unread']);
 }
 
 /**

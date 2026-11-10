@@ -153,7 +153,7 @@ function test_ws_ref_note_writers()
 // through the row create.
 function test_ws_ref_table_row_writers()
 {
-	foreach (array('ws_wtable_row_create', 'ws_wtable_row_update') as $function) {
+	foreach (array('ws_wtable_row_create_write', 'ws_wtable_row_update_write') as $function) {
 		$source = workspace_ref_sources_test_source($function);
 
 		pg_assert_contains("ws_ref_source_write('wtable_row'", $source, $function . ' keeps the row\'s links');

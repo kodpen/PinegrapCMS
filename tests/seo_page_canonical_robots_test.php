@@ -255,3 +255,37 @@ function test_page_canonical_designer_check_agrees()
 		pg_assert_same($case[1], $answers[$i] ?? null, 'designer: ' . json_encode($case[0]));
 	}
 }
+
+// Create Page writes the three only when the columns exist and the form
+// carried them; an empty snippet length is SQL NULL, never '' (rejected by
+// an INT column under STRICT_TRANS_TABLES).
+function test_page_form_seo_extras_insert_sql()
+{
+	$none = array('columns' => '', 'values' => '', 'params' => array());
+	pg_assert_same($none, pg_page_form_seo_extras_insert_sql(false, true, '/x', 1, 5), 'no columns yet');
+	pg_assert_same($none, pg_page_form_seo_extras_insert_sql(true, false, '/x', 1, 5), 'form did not carry them');
+
+	$sql = pg_page_form_seo_extras_insert_sql(true, true, '', '', null);
+	pg_assert_same("canonical_url, noarchive, max_snippet,", $sql['columns']);
+	pg_assert_same("?, '0', NULL,", $sql['values']);
+	pg_assert_same(array(''), $sql['params']);
+
+	$sql = pg_page_form_seo_extras_insert_sql(true, true, "https://example.com/a'b", '1', -1);
+	pg_assert_same("?, '1', '-1',", $sql['values']);
+	pg_assert_same(array("https://example.com/a'b"), $sql['params']);
+
+	pg_assert_same("?, '0', '0',", pg_page_form_seo_extras_insert_sql(true, true, '', 0, 0)['values'], 'zero is no snippet, not empty');
+}
+
+// Create Page draws the fields behind the extras switch and checks both
+// values before its INSERT, the way Edit Page does.
+function test_add_page_offers_seo_extras()
+{
+	$add = file_get_contents(PG_FUNCTIONS_DIR . '/add_page.php');
+
+	foreach (array('pg_page_seo_extras_ready()', 'name="seo_extras" value="1"', 'pg_page_canonical_url_check(', 'pg_page_max_snippet_check(', 'pg_page_canonical_url_message(', 'pg_page_max_snippet_message(', 'pg_page_form_seo_extras_insert_sql(') as $needle) {
+		pg_assert_true(strpos($add, $needle) !== false, 'add_page.php has ' . $needle);
+	}
+
+	pg_assert_true(strpos($add, 'pg_page_form_seo_extras_insert_sql(') > strpos($add, 'pg_page_max_snippet_check('), 'checked before the INSERT is built');
+}

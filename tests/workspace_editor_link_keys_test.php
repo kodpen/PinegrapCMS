@@ -127,12 +127,12 @@ function test_workspace_editor_shortcut_rows()
 		return array_map(function ($row) { return $row[0]; }, $rows);
 	};
 
-	pg_assert_same(array('Control+B', 'Control+I', 'Control+Shift+X', 'Control+Shift+H', 'Control+E', 'Control+K', 'Control+Z', 'Control+Y', 'Enter', 'Shift+Enter', 'Control+/'), $keys($answer[0]), 'the composer');
+	pg_assert_same(array('Control+B', 'Control+I', 'Control+Shift+X', 'Control+Shift+H', 'Control+E', 'Control+K', 'Control+Z', 'Control+Y', 'Enter', 'Shift+Enter', 'Control+F', 'Control+/'), $keys($answer[0]), 'the composer');
 	pg_assert_same(array('Enter', 'keys_send'), $answer[0][8], 'Enter sends in the composer');
 	pg_assert_same(array('Shift+Enter', 'keys_newline'), $answer[0][9], 'Shift+Enter is a new line there');
 	pg_assert_same(array('Enter', 'keys_newline'), $answer[1][8], 'Enter is a new line in a note');
 	pg_assert_same(array('Shift+Enter', 'keys_newline'), $answer[1][9], 'and so is Shift+Enter');
-	pg_assert_same(array('Control+B', 'Control+I', 'Control+Shift+X', 'Control+Shift+H', 'Control+E', 'Control+K', 'Control+Z', 'Control+Y', 'Control+/'), $keys($answer[2]), 'a cell: no Enter rows');
+	pg_assert_same(array('Control+B', 'Control+I', 'Control+Shift+X', 'Control+Shift+H', 'Control+E', 'Control+K', 'Control+Z', 'Control+Y', 'Control+/'), $keys($answer[2]), 'a cell: no Enter rows, no find');
 	pg_assert_same(array('Control+B', 'fmt_bold'), $answer[0][0], 'the mark\'s own label');
 }
 

@@ -260,11 +260,13 @@ Later", $old, array('s3')), 'key'),
 function test_workspace_wtable_screen_options_from_form()
 {
 	pg_assert_same(array('decimals' => '2', 'currency' => 'usd'), ws_wtable_screen_options_from_form('money', array('decimals' => '2', 'currency' => ' usd ')));
-	pg_assert_same(array(), ws_wtable_screen_options_from_form('number', array('decimals' => '')), 'the store\'s default');
+	pg_assert_same(array('key' => false), ws_wtable_screen_options_from_form('number', array('decimals' => '')), 'the store\'s default');
+	pg_assert_same(array('key' => true), ws_wtable_screen_options_from_form('number', array('key' => '1')), 'a number column may be the key');
 	pg_assert_same(array('time' => true), ws_wtable_screen_options_from_form('date', array('time' => '1')));
 	pg_assert_same(array('kinds' => array('contact', 'product')), ws_wtable_screen_options_from_form('link', array('kinds' => 'Contact, product,')));
 	pg_assert_same(array('expression' => 'Price * Quantity'), ws_wtable_screen_options_from_form('formula', array('expression' => 'Price * Quantity')));
-	pg_assert_same(array(), ws_wtable_screen_options_from_form('text', array('expression' => 'x')));
+	pg_assert_same(array('key' => false), ws_wtable_screen_options_from_form('text', array('expression' => 'x')), 'a text takes only the key');
+	pg_assert_same(array('key' => true), ws_wtable_screen_options_from_form('text', array('key' => '1')));
 	pg_assert_same(array(), ws_wtable_screen_options_from_form('checkbox', 'not an array'));
 }
 

@@ -25,6 +25,5 @@ description: A person's Workspace tasks written to their own Google or Outlook c
 ## What does a change made in the calendar do to the task? (#4490)
 - Owner (2026-11-01, `workflow/decisions-made-workspace-6.md`): a moved event writes the task's due date and time back through the drawer's check (`ws_task_update_check()`, `ws_task_update()`), with a "from your calendar" note on the log and the bell lines; a refused move is written back as it was plus one bell line to the person; repeating-task copies and done tasks are skipped; deletion and a new title are ignored, the next write restores them. Read back with Google `events.list?syncToken=` on the site's calendar and Graph `calendarView/delta` on it; both tokens go in the sealed entry.
 
-## What is unverified and what is left?
-- No live provider call ran in CI; zero-length events and the 404 paths follow the API references.
-- Reading changes back (slice 3) is done: `workspace-calendar-read.md`.
+## What is unverified?
+- No live provider call ran in CI; zero-length events and the 404 paths follow the API references. Reading changes back: `workspace-calendar-read.md`.

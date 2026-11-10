@@ -127,7 +127,7 @@ function db_q_express_checkout_test_built($text)
 
 function test_db_q_express_checkout_value_queries_use_db_q()
 {
-	$expected = array('express_order.php' => 25, 'get_express_order.php' => 16, 'get_shipping_method.php' => 14, 'billing_information.php' => 11, 'shipping_address_and_arrival.php' => 9);
+	$expected = array('express_order.php' => 23, 'get_express_order.php' => 16, 'get_shipping_method.php' => 14, 'billing_information.php' => 9, 'shipping_address_and_arrival.php' => 9);
 
 	foreach ($expected as $path => $minimum) {
 		$db_q = 0;

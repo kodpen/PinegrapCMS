@@ -414,7 +414,8 @@ function ws_wtable_retype_rows($from, $to, $rows)
 /**
  * The column a type change asks for, checked: the new type among those
  * that change, its options as the type takes them; never the table's key
- * column (key_column). Pure.
+ * column (key_column), nor options that make it the key (key_on_retype).
+ * Pure.
  *
  * @param array $column the column as it is
  * @param mixed $input  type, options
@@ -437,6 +438,12 @@ function ws_wtable_retype_input_check($column, $input)
     // type changes only once it is no longer the key.
     if (!empty($column['options']['key'])) {
         return ws_wtable_refusal('key_column', 'type');
+    }
+
+    // Nor does a type change make a key: that goes through the column form,
+    // whose key check reads every cell and the table's other key.
+    if (is_array($input['options'] ?? null) && !empty($input['options']['key'])) {
+        return ws_wtable_refusal('key_on_retype', 'options');
     }
 
     $options = ws_wtable_column_options_check($type, $input['options'] ?? array());

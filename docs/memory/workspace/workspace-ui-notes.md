@@ -21,5 +21,5 @@ description: Where the Workspace screens are drawn and styled, its tokens, colou
 ## How does a text point at a control?
 - By its label, never icon, shape or place: "the Tour of the workspace button", "New channel", "the channel list" (below 1024px it sits in the menu drawer), "the eyes reaction (👀)", the template grip "Drag to change the order" and its arrow keys; message tools by pointer or Tab. The calendar notice names the Google button only on https, where it is drawn. tests/workspace_sensory_texts_test.php (PR #3448).
 
-## What is known and left for the UI plan?
-- Keyboard focus rings are switched off with `!important` (~9422), the accent is typed twice (hex and RGB), `<img src="">` is drawn for a person without a picture, and several rule blocks are duplicated (`.ws-channel-link`, `.ws-tabs`, `.ws-center`). All listed in the plan; none changes behaviour.
+## What is known and left?
+- The accent is typed twice: `--ws-accent` and `--ws-accent-rgb` (backend.src.css). Focus rings are on, and a person without a picture gets letters, no `<img>`. `.ws-channel-link`, `.ws-tabs`, `.ws-center` have one top-level block each (`tests/workspace_css_blocks_test.php`).

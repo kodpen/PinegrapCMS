@@ -8,7 +8,8 @@
  * canvas, Replace, the document's latest clip end, the clip's own sound and
  * Detach sound; and the server's side: a video told by its bytes and the
  * videos' listing (pg_image_editor_clip_*, pg_image_editor_sound_* with the
- * video types).
+ * video types); timeline editing: trim, split, move, the length following
+ * the clips (M.clipTrim(), clipSplit(), clipMove(), clipApply()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -170,4 +171,100 @@ function test_image_editor_clip_server()
 	pg_assert_same(array(2), array_map(function ($f) { return $f['id']; }, pg_image_editor_sound_rows($rows, null)), 'sounds by default');
 	pg_assert_contains("type IN ('mp4', 'm4v', 'webm')", pg_image_editor_sound_where('', null, array(), true, pg_image_editor_clip_types()), 'the video types');
 	pg_assert_contains("'mp3'", pg_image_editor_sound_where('', null, array(), true), 'the sound types by default');
+}
+
+// Timeline editing (V3): the ends trimmed inside the source and to at least
+// 0.1 s, snapped to another end or to 0.1 s steps (Shift: 0.01 s, no snap);
+// a trimmed end pulls the clips after it on its row with no gap.
+function test_image_editor_clip_trim()
+{
+	$r = image_editor_clip_node(
+		'var a = clip({ id: 1, row: "1", from: 2000, to: 6000, start: 1000 }), b = clip({ id: 2, row: "1", from: 0, to: 3000, start: 5000 }), o = clip({ id: 3, from: 0, to: 2000, start: 0 });' . "\n"
+		. 'var ls = [a, b, o], tg = [0, 7330, 12000];' . "\n"
+		. 'console.log(JSON.stringify({' . "\n"
+		. ' endIn: M.clipTrim(ls, 1, "end", -1240, {}),' . "\n"
+		. ' endSnap: M.clipTrim(ls, 1, "end", 2300, { targets: tg, slack: 50 }),' . "\n"
+		. ' endFine: M.clipTrim(ls, 1, "end", 2333, { targets: tg, slack: 50, fine: true }),' . "\n"
+		. ' endShort: M.clipTrim(ls, 1, "end", -9000, {}),' . "\n"
+		. ' endLong: M.clipTrim(ls, 1, "end", 90000, {}),' . "\n"
+		. ' endMax: M.clipTrim(ls, 1, "end", 90000, { max: 9000 }),' . "\n"
+		. ' startIn: M.clipTrim(ls, 1, "start", 700, {}),' . "\n"
+		. ' startOut: M.clipTrim(ls, 1, "start", -5000, {}),' . "\n"
+		. ' startPrev: M.clipTrim(ls, 2, "start", -3000, {}),' . "\n"
+		. ' fast: M.clipTrim([clip({ id: 4, speed: 2, from: 2000, to: 6000, start: 1000 })], 4, "end", 500, {}),' . "\n"
+		. ' none: M.clipTrim(ls, 9, "end", 100, {}) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(array('id' => 1, 'patch' => array('to' => 4800)), array('id' => 2, 'patch' => array('start' => 3800))), $r['endIn']['patches'], 'the end comes in 1.2 s on the grid; the next clip follows with no gap');
+	pg_assert_same(array(3800, 4800, false), array($r['endIn']['at'], $r['endIn']['source'], $r['endIn']['snapped']), 'the end\'s timeline and source time');
+	pg_assert_same(array(7330, 8330, true), array($r['endSnap']['at'], $r['endSnap']['patches'][0]['patch']['to'], $r['endSnap']['snapped']), 'an end near another end takes it');
+	pg_assert_same(8330, $r['endFine']['patches'][0]['patch']['to'], 'Shift: a hundredth of a second, no snap');
+	pg_assert_same(2100, $r['endShort']['patches'][0]['patch']['to'], 'at least 0.1 s of source');
+	pg_assert_same(20000, $r['endLong']['patches'][0]['patch']['to'], 'never past the end of the file');
+	pg_assert_same(array(7000, 6000), array($r['endMax']['patches'][0]['patch']['to'], $r['endMax']['patches'][1]['patch']['start']), 'the clips after it stay inside the longest document');
+	pg_assert_same(array(array('id' => 1, 'patch' => array('start' => 1700, 'from' => 2700))), $r['startIn']['patches'], 'the start trims the source in and keeps the end; the rest of the row stays');
+	pg_assert_same(array('start' => 0, 'from' => 1000), $r['startOut']['patches'][0]['patch'], 'the start stops at 0 on the timeline');
+	pg_assert_same(array('start' => 5000, 'from' => 0), $r['startPrev']['patches'][0]['patch'], 'never before the source in or over the clip before it');
+	pg_assert_same(array('to' => 7000), $r['fast']['patches'][0]['patch'], 'at 2× half a second on the timeline is a second of source');
+	pg_assert_same(null, $r['none'], 'no such clip');
+}
+
+// Split at the playhead: two layers on one source and one row, the speed
+// counted; nothing within 0.1 s of either end.
+function test_image_editor_clip_split()
+{
+	$r = image_editor_clip_node(
+		'var s = M.clipSplit(clip({ id: 1, anim: { in: { kind: "fade" } } }), 3400, 7), f = M.clipSplit(clip({ id: 2, speed: 2, row: "r" }), 2000, 8);' . "\n"
+		. 'console.log(JSON.stringify({ s: s, f: f, edge: [M.clipSplit(clip(), 1050, 9), M.clipSplit(clip(), 4950, 9), M.clipSplit(clip(), 6000, 9), M.clipSplit(clip(), null, 9)] }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('to' => 4400, 'row' => '1'), array('to' => $r['s']['left']['to'], 'row' => $r['s']['left']['row']), 'the first part ends at the playhead\'s source time');
+	pg_assert_same(array(7, 4400, 6000, 3400, '1', '/v.mp4'), array($r['s']['right']['id'], $r['s']['right']['from'], $r['s']['right']['to'], $r['s']['right']['start'], $r['s']['right']['row'], $r['s']['right']['src']), 'the second part on the same source and row, from the playhead');
+	pg_assert_same(false, isset($r['s']['right']['anim']['in']), 'the second part has no entrance of its own');
+	pg_assert_same(array(4000, 4000, 2000, 'r'), array($r['f']['left']['to'], $r['f']['right']['from'], $r['f']['right']['start'], $r['f']['right']['row']), 'at 2× a second on the timeline is two of source');
+	pg_assert_same(array(null, null, null, null), $r['edge'], 'nothing to split near an end, off the clip or at rest');
+}
+
+// Move: the start shifts on the grid or snaps by either end, never before 0,
+// over a neighbour on its row or past the longest document; the length of
+// the document follows its clips; the parts of one source in order.
+function test_image_editor_clip_move_and_length()
+{
+	$r = image_editor_clip_node(
+		'var a = clip({ id: 1, row: "1", from: 2000, to: 6000, start: 1000 }), b = clip({ id: 2, row: "1", from: 0, to: 3000, start: 7000 }), o = clip({ id: 3, from: 0, to: 2000, start: 0 });' . "\n"
+		. 'var ls = [a, b, o], doc = { layers: [a, b, { id: 5, type: "text" }], motion: { duration: 12000, loop: 1 } };' . "\n"
+		. 'M.clipApply(doc, [{ id: 2, patch: { to: 2440 } }]);' . "\n"
+		. 'var long = { layers: [clip({ start: 59000 })] }, none = { layers: [{ id: 5, type: "text" }] };' . "\n"
+		. 'console.log(JSON.stringify({ m: M.clipMove(ls, 1, 1240, {}), back: M.clipMove(ls, 1, -5000, {}), over: M.clipMove(ls, 1, 9000, {}), snap: M.clipMove(ls, 3, 950, { targets: [3000], slack: 80 }),' . "\n"
+		. ' max: M.clipMove([o], 3, 90000, { max: 30000 }), doc: doc, lengths: [M.clipLength(long), M.clipLength(none), M.clipLength({ layers: [clip({ to: 2050, start: 0 })] })],' . "\n"
+		. ' part: [M.clipPart(ls, a), M.clipPart(ls, b), M.clipPart([a], a)], row: M.clipRow(ls, b).map(function (l) { return l.id; }),' . "\n"
+		. ' joins: M.clipJoins([a, clip({ id: 4, from: 6000, to: 7000, start: 5000 }), clip({ id: 6, from: 0, to: 1000, start: 6000 })]) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(array('id' => 1, 'patch' => array('start' => 2200))), $r['m']['patches'], 'moved on the grid');
+	pg_assert_same(0, $r['back']['patches'][0]['patch']['start'], 'never before 0');
+	pg_assert_same(3000, $r['over']['patches'][0]['patch']['start'], 'stops at the next clip on its row');
+	pg_assert_same(array(1000, true), array($r['snap']['patches'][0]['patch']['start'], $r['snap']['snapped']), 'the end snaps to another end');
+	pg_assert_same(28000, $r['max']['patches'][0]['patch']['start'], 'inside the longest document');
+	pg_assert_same(9500, $r['doc']['motion']['duration'], 'the length follows the last clip\'s end, a tenth of a second up');
+	pg_assert_same(array(2440, 1), array($r['doc']['layers'][1]['to'], $r['doc']['motion']['loop']), 'the patch applied, the rest of the motion kept');
+	pg_assert_same(array(60000, null, 1000), $r['lengths'], 'at most 60 s, none without a clip, at least 1 s');
+	pg_assert_same(array(array('n' => 2, 'of' => 3), array('n' => 3, 'of' => 3), array('n' => 1, 'of' => 1)), $r['part'], 'the parts of one source by their start');
+	pg_assert_same(array(1, 2), $r['row'], 'a row\'s clips by their start');
+	pg_assert_same(array(5000), $r['joins'], 'a cut where one source goes on in the next clip');
 }
