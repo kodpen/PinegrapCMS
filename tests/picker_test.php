@@ -1,0 +1,270 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Tests for the picker's registry and endpoint (includes/fn/picker.php,
+ * picker.php): the kinds and their fields, request checks and page sizes,
+ * who may ask for which kind, the folder rule, the conditions each kind
+ * builds, the folded name match, paging, items and stored value states.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+function picker_test_source($path)
+{
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
+}
+
+function test_picker_kinds()
+{
+	$kinds = pg_picker_kinds();
+
+	pg_assert_same(array('file', 'image', 'public_image', 'site_icon', 'page'), array_keys($kinds));
+
+	foreach ($kinds as $name => $kind) {
+		foreach (array('source', 'types', 'public', 'design', 'archived', 'value', 'role', 'tree', 'pictures', 'upload') as $field) {
+			pg_assert_true(array_key_exists($field, $kind), $name . ' names ' . $field);
+		}
+	}
+
+	pg_assert_same('files', $kinds['file']['source']);
+	pg_assert_same('pages', $kinds['page']['source']);
+	pg_assert_same('id', $kinds['file']['value'], 'a short link stores the file id');
+	pg_assert_same('id', $kinds['page']['value'], 'a page field stores the page id');
+	pg_assert_same('name', $kinds['image']['value'], 'a picture field stores the name');
+	pg_assert_same('name', $kinds['public_image']['value']);
+	pg_assert_same(array('png', 'svg'), $kinds['site_icon']['types']);
+	pg_assert_same(pg_public_image_file_types(), $kinds['public_image']['types']);
+	pg_assert_same(pg_picker_image_types(), $kinds['image']['types']);
+	pg_assert_true($kinds['site_icon']['public'] && $kinds['public_image']['public'], 'the settings pictures are public');
+	pg_assert_false($kinds['image']['public'] || $kinds['file']['public']);
+	pg_assert_same(2, $kinds['site_icon']['role'], 'behind the settings gate');
+	pg_assert_same(3, $kinds['page']['role']);
+	pg_assert_true($kinds['image']['pictures'] && !$kinds['file']['pictures'] && !$kinds['page']['pictures']);
+	pg_assert_true($kinds['file']['upload'] && !$kinds['page']['upload'], 'no upload of pages');
+	pg_assert_false($kinds['page']['archived'], 'pages in archived folders are left out as today');
+
+	// The search's kinds are the registry's under their names.
+	foreach (pg_file_picker_kinds() as $name => $kind) {
+		pg_assert_same($kinds[$name], $kind, $name . ' moved into the registry');
+	}
+
+	pg_assert_same(array('list', 'search', 'tree', 'resolve'), pg_picker_requests());
+}
+
+function test_picker_access_verdict()
+{
+	foreach (array(0, 1, 2) as $role) {
+		foreach (array_keys(pg_picker_kinds()) as $kind) {
+			pg_assert_same('ok', pg_picker_access_verdict($kind, $role, false), $kind . ' for role ' . $role);
+		}
+	}
+
+	foreach (array('file', 'image', 'page') as $kind) {
+		pg_assert_same('ok', pg_picker_access_verdict($kind, 3, true), $kind . ': a User with edit rights');
+		pg_assert_same('denied', pg_picker_access_verdict($kind, '3', false), $kind . ': a User without edit rights');
+	}
+
+	pg_assert_same('denied', pg_picker_access_verdict('site_icon', 3, true), 'a User never picks the settings pictures');
+	pg_assert_same('denied', pg_picker_access_verdict('public_image', 3, true));
+	pg_assert_same('unknown', pg_picker_access_verdict('', 0, false));
+	pg_assert_same('unknown', pg_picker_access_verdict('folder', 0, false), 'no kind the registry lacks');
+	pg_assert_same('unknown', pg_picker_access_verdict(array('file'), 0, false), 'a kind posted as a list');
+	pg_assert_same('unknown', pg_picker_access_verdict('page', 0, false, pg_file_picker_kinds()), 'a narrower list');
+}
+
+function test_picker_request_checks()
+{
+	pg_assert_same('kind', pg_picker_request(array())['error']);
+	pg_assert_same('kind', pg_picker_request(array('kind' => 'attachments', 'request' => 'list'))['error'], 'an unknown kind');
+	pg_assert_same('kind', pg_picker_request(array('kind' => array('file'), 'request' => 'list'))['error']);
+	pg_assert_same('request', pg_picker_request(array('kind' => 'file'))['error']);
+	pg_assert_same('request', pg_picker_request(array('kind' => 'file', 'request' => 'delete'))['error'], 'an unknown request');
+	pg_assert_same('request', pg_picker_request(array('kind' => 'file', 'request' => array('list')))['error']);
+
+	$request = pg_picker_request(array('kind' => 'page', 'request' => 'search', 'q' => '  Hakkımızda  '));
+
+	pg_assert_same('', $request['error']);
+	pg_assert_same('Hakkımızda', $request['q']);
+	pg_assert_same(0, $request['folder']);
+	pg_assert_same(1, $request['page']);
+	pg_assert_same(50, $request['per_page'], 'the default page size');
+	pg_assert_same(array(0), $request['node_ids'], 'the tree starts at the top');
+	pg_assert_same(100, mb_strlen(pg_picker_request(array('kind' => 'file', 'request' => 'search', 'q' => str_repeat('ş', 150)))['q'], 'UTF-8'), 'the text is cut');
+	pg_assert_same('', pg_picker_request(array('kind' => 'file', 'request' => 'search', 'q' => array('a')))['q']);
+}
+
+function test_picker_request_page_size_bounds()
+{
+	$read = function ($input) {
+		return pg_picker_request(array_merge(array('kind' => 'file', 'request' => 'list'), $input));
+	};
+
+	pg_assert_same(100, $read(array('per_page' => '5000'))['per_page'], 'held at the largest');
+	pg_assert_same(50, $read(array('per_page' => '0'))['per_page'], 'none asked');
+	pg_assert_same(50, $read(array('per_page' => '-3'))['per_page']);
+	pg_assert_same(50, $read(array('per_page' => '1e3'))['per_page'], 'not a whole number');
+	pg_assert_same(20, $read(array('per_page' => '20'))['per_page']);
+	pg_assert_same(1, $read(array('page' => '0'))['page']);
+	pg_assert_same(3, $read(array('page' => '3'))['page']);
+	pg_assert_same(1000, $read(array('page' => '999999'))['page'], 'held at the highest page');
+	pg_assert_same(7, $read(array('folder' => '7'))['folder']);
+	pg_assert_same(0, $read(array('folder' => '7 OR 1=1'))['folder']);
+	pg_assert_same(0, $read(array('folder' => array(7)))['folder']);
+	pg_assert_same(array(0, 4, 9), $read(array('node_ids' => array('0', '4', 'x', '4', 9, -2)))['node_ids']);
+	pg_assert_same(25, count($read(array('node_ids' => range(1, 60)))['node_ids']));
+}
+
+function test_picker_request_values()
+{
+	pg_assert_same(array(4, 9), pg_picker_request(array('kind' => 'page', 'request' => 'resolve', 'values' => array('4', '0', 'x', 9, '4')))['values'], 'whole ids for an id kind');
+	pg_assert_same(array(12), pg_picker_request(array('kind' => 'file', 'request' => 'resolve', 'value' => '12'))['values'], 'one value');
+	pg_assert_same(array('logo.png', 'Işık.svg'), pg_picker_request(array('kind' => 'image', 'request' => 'resolve', 'values' => array('logo.png', ' ', 'Işık.svg', array('x'), str_repeat('a', 256))))['values'], 'names for a name kind');
+	pg_assert_same(50, count(pg_picker_values(range(1, 80), 'id')));
+}
+
+// Never the bin; a role 3 user only within the folders they may edit.
+function test_picker_folder_allowed()
+{
+	pg_assert_true(pg_picker_folder_allowed(4, array(9, 10), null), 'a manager uses any folder');
+	pg_assert_false(pg_picker_folder_allowed(9, array(9, 10), null), 'never the Recycle Bin');
+	pg_assert_false(pg_picker_folder_allowed('10', array('9', '10'), null), 'nor a folder inside it');
+	pg_assert_false(pg_picker_folder_allowed(0, array(), null), 'no folder 0');
+	pg_assert_true(pg_picker_folder_allowed('5', array(9), array('3', 5)), 'a granted folder');
+	pg_assert_false(pg_picker_folder_allowed(6, array(9), array(3, 5)), 'not a folder not granted');
+	pg_assert_false(pg_picker_folder_allowed(9, array(9), array(9)), 'a grant never opens the bin');
+	pg_assert_false(pg_picker_folder_allowed(3, array(), array()), 'no grant, no folder');
+}
+
+function test_picker_files_where()
+{
+	$kinds = pg_picker_kinds();
+
+	pg_assert_same(
+		"(name != '') AND (attachment = 0) AND (type IN ('png', 'svg')) AND ((attachment = 0) AND (folder IN (1, 4))) AND (folder NOT IN (9, 10)) AND (folder = '4')",
+		pg_picker_files_where($kinds['site_icon'], '(attachment = 0) AND (folder IN (1, 4))', array(9, '10', 9), null, '4'),
+		'one folder of the site icon kind');
+
+	pg_assert_same(
+		"(name != '') AND (attachment = 0) AND (folder NOT IN (9)) AND (folder IN (3, 5))",
+		pg_picker_files_where($kinds['file'], '', array(9), array('3', 5, 3)),
+		'a User kept to their folders');
+
+	pg_assert_contains("(type IN ('gif', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'svg', 'webp', 'avif'))", pg_picker_files_where($kinds['image'], '', array(), null));
+	pg_assert_same(
+		"(name != '') AND (attachment = 0) AND (design = 0) AND (type IN ('jpg'))",
+		pg_picker_files_where(array('types' => array('JPG', "png') OR (1=1"), 'design' => false), '', array(), null),
+		'only plain types; design files left out when the kind says so');
+	pg_assert_contains('(folder IN (-1))', pg_picker_files_where($kinds['public_image'], '', array(), null), 'a public kind without its condition lists nothing');
+}
+
+function test_picker_pages_where()
+{
+	$kinds = pg_picker_kinds();
+
+	pg_assert_same(
+		"(page.page_name != '') AND (folder.folder_archived = '0') AND (page.page_folder NOT IN (9, 10)) AND (page.page_folder IN (3)) AND (page.page_folder = '3')",
+		pg_picker_pages_where($kinds['page'], array(9, 10), array(3), 3),
+		'a User\'s folder, never the bin or an archived folder');
+
+	pg_assert_same(
+		"(page.page_name != '') AND (folder.folder_archived = '0') AND (page.page_folder IN (-1))",
+		pg_picker_pages_where($kinds['page'], array(), array()),
+		'no grant lists nothing');
+
+	pg_assert_same(
+		"(page.page_name != '') AND (page.page_type IN ('standard', 'form list view'))",
+		pg_picker_pages_where(array('types' => array('standard', 'Form List View', "x') OR ('1"), 'archived' => true), array(), null),
+		'page types of the kind; anything but a plain word dropped');
+}
+
+// The same match as the file search: folded, Turkish İ/ı included, names
+// starting with the text first.
+function test_picker_folded_match()
+{
+	pg_assert_same('_s_k', pg_picker_like_term('Işık'));
+	pg_assert_same('_stanbul', pg_picker_like_term(' İstanbul '));
+	pg_assert_same('50\\%\\_off', pg_picker_like_term('50%_off'));
+
+	$rows = array(
+		array('id' => 1, 'name' => 'acon.png'),
+		array('id' => 2, 'name' => 'dark-icon.png'),
+		array('id' => 3, 'name' => 'Işık-icon.svg'),
+		array('id' => 4, 'name' => 'icon.png'),
+		array('id' => 5, 'name' => ''),
+		array('id' => 6, 'name' => 'İstanbul.jpg'),
+	);
+
+	pg_assert_same(array(4, 2, 3), array_column(pg_picker_matches($rows, 'İCON'), 'id'));
+	pg_assert_same(array(3), array_column(pg_picker_matches($rows, 'isik'), 'id'), '"isik" finds "Işık"');
+	pg_assert_same(array(3), array_column(pg_picker_matches($rows, 'IŞIK'), 'id'));
+	pg_assert_same(array(6), array_column(pg_picker_matches($rows, 'ist'), 'id'), '"ist" finds "İstanbul"');
+	pg_assert_same(array(), pg_picker_matches($rows, '  '));
+
+	$pages = array(array('page_id' => 8, 'page_name' => 'Hakkımızda'), array('page_id' => 9, 'page_name' => 'İletişim'));
+
+	pg_assert_same(array(9), array_column(pg_picker_matches($pages, 'iletisim', 'page_name'), 'page_id'), 'pages by page_name');
+	pg_assert_same(array(8), array_column(pg_picker_matches($pages, 'HAKKIMIZ', 'page_name'), 'page_id'));
+
+	// The file search answers the same names.
+	pg_assert_same(
+		array_column(pg_picker_matches($rows, 'icon'), 'name'),
+		array_column(pg_file_picker_results($rows, 'icon', 'name', 30), 'text'));
+}
+
+function test_picker_paging()
+{
+	pg_assert_same(0, pg_picker_offset(1, 50));
+	pg_assert_same(100, pg_picker_offset(3, 50));
+	pg_assert_same(0, pg_picker_offset(0, 0));
+	pg_assert_same(array('items' => array(1, 2), 'more' => true), pg_picker_page_slice(array(1, 2, 3), 2), 'the extra row tells a next page');
+	pg_assert_same(array('items' => array(1, 2), 'more' => false), pg_picker_page_slice(array(1, 2), 2));
+	pg_assert_same(array('items' => array(), 'more' => false), pg_picker_page_slice(array(), 50));
+}
+
+function test_picker_items_and_states()
+{
+	$kinds = pg_picker_kinds();
+
+	pg_assert_same(
+		array('id' => 7, 'value' => 7, 'text' => 'a.pdf', 'type' => 'pdf', 'folder' => 3),
+		pg_picker_item($kinds['file'], array('id' => '7', 'name' => 'a.pdf', 'type' => 'pdf', 'folder' => '3')));
+	pg_assert_same('logo.png', pg_picker_item($kinds['image'], array('id' => '7', 'name' => 'logo.png', 'type' => 'png', 'folder' => '3'))['value'], 'a name kind stores the name');
+	pg_assert_same(
+		array('id' => 12, 'value' => 12, 'text' => 'Home', 'type' => 'standard', 'folder' => 1),
+		pg_picker_item($kinds['page'], array('page_id' => '12', 'page_name' => 'Home', 'page_type' => 'standard', 'page_folder' => '1')));
+
+	pg_assert_same('missing', pg_picker_value_state(false, false, false, false));
+	pg_assert_same('hidden', pg_picker_value_state(true, false, true, false), 'a folder the User may not edit tells nothing');
+	pg_assert_same('binned', pg_picker_value_state(true, true, true, true));
+	pg_assert_same('offline', pg_picker_value_state(true, true, false, true));
+	pg_assert_same('ok', pg_picker_value_state(true, true, false, false));
+}
+
+// The endpoint refuses in JSON before validate_user(), checks the request
+// before the verdict, and the module is loaded with the file search.
+function test_picker_endpoint_wired()
+{
+	$endpoint = picker_test_source('picker.php');
+
+	pg_assert_true(strpos($endpoint, '(USER_LOGGED_IN !== true)') < strpos($endpoint, '$user = validate_user();'), 'no session answers in JSON');
+	pg_assert_contains('$request = pg_picker_request($_GET);', $endpoint);
+	pg_assert_contains("pg_picker_access_verdict(\$request['kind'], \$user['role'], ((int) \$user['role'] >= 3) && no_acl_check(\$user['id']))", $endpoint);
+	pg_assert_contains("header('Content-Type: application/json; charset=utf-8');", $endpoint);
+	pg_assert_contains('pg_picker_answer($request, $user)', $endpoint);
+	pg_assert_true(strpos($endpoint, 'pg_picker_access_verdict(') < strpos($endpoint, 'pg_picker_answer($request'), 'the verdict before the answer');
+
+	$module = picker_test_source('includes/fn/picker.php');
+
+	pg_assert_contains('pg_recycle_bin_folder_ids()', $module);
+	pg_assert_contains("e(pg_picker_like_term(\$query))", $module, 'the typed text is escaped');
+	pg_assert_contains("array_map('e', \$request['values'])", $module, 'resolved names are escaped');
+	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/fn/picker.php');", picker_test_source('includes/fn/file_picker_search.php'));
+}

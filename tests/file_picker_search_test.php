@@ -39,6 +39,8 @@ function test_file_picker_access_verdict()
 	pg_assert_same('unknown', pg_file_picker_access_verdict('', 0, false));
 	pg_assert_same('unknown', pg_file_picker_access_verdict('attachments', 0, false), 'no kind the table lacks');
 	pg_assert_same('unknown', pg_file_picker_access_verdict(array('file'), 0, false), 'a kind posted as a list');
+	pg_assert_same('unknown', pg_file_picker_access_verdict('page', 0, false), 'the picker kinds added later stay unknown here');
+	pg_assert_same('unknown', pg_file_picker_access_verdict('image', 0, false));
 }
 
 function test_file_picker_where()
@@ -157,11 +159,17 @@ function test_file_picker_endpoint_wired()
 	pg_assert_contains("header('Content-Type: application/json; charset=utf-8');", $endpoint);
 	pg_assert_contains('pg_file_picker_search($kind, $query, $user)', $endpoint);
 
+	// The search answers through the picker's registry and its search.
 	$search = file_picker_search_test_source('includes/fn/file_picker_search.php');
 
-	pg_assert_contains('pg_recycle_bin_folder_ids(),', $search, 'the bin is always left out');
-	pg_assert_contains("get_folders_that_user_has_access_to(\$user['id'])", $search, 'a User searches their folders only');
-	pg_assert_contains("e(pg_file_picker_like_term(\$query))", $search, 'the typed text is escaped');
+	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/fn/picker.php');", $search);
+	pg_assert_contains('pg_picker_search_rows($kind_name, $query, $user)', $search);
+
+	$picker = file_picker_search_test_source('includes/fn/picker.php');
+
+	pg_assert_contains('pg_recycle_bin_folder_ids(),', $picker, 'the bin is always left out');
+	pg_assert_contains("get_folders_that_user_has_access_to(\$user['id'])", $picker, 'a User searches their folders only');
+	pg_assert_contains("e(pg_picker_like_term(\$query))", $picker, 'the typed text is escaped');
 	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/fn/file_picker_search.php');", file_picker_search_test_source('functions.php'));
 }
 
