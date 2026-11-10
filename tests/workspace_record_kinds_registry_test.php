@@ -4,8 +4,9 @@
  *
  * The record-kind registry, ws_record_kinds() in
  * includes/workspace/refs.php, describes every kind of site record a
- * Workspace tag can point at in one place. The lists that name kinds one by
- * one stay as they are, so these tests hold the registry and each of them
+ * Workspace tag can point at in one place. ws_record_type_keys() and
+ * ws_customer_types() read it; the other lists that name kinds one by one
+ * keep their own literals, so these tests hold the registry and each of them
  * together: a kind a list names that the registry lacks, or a kind the
  * registry gives a list that the list lacks, fails with the list's name. A
  * difference kept on purpose is listed with its reason in
@@ -105,14 +106,9 @@ function workspace_record_kinds_registry_test_lists()
 		}
 	}
 
+	// ws_record_type_keys() and ws_customer_types() are read from the registry
+	// (pinned below), so they have no entry here.
 	return array(
-		'record_types' => array(
-			'where'    => 'ws_record_type_keys() in includes/workspace/refs.php',
-			'names'    => ws_record_type_keys(),
-			'part'     => 'a kind',
-			'registry' => array_keys(ws_record_kinds()),
-			'except'   => array(),
-		),
 		'tags' => array(
 			'where'    => 'ws_ref_types() in includes/workspace/refs.php (with record true)',
 			'names'    => $tags,
@@ -158,13 +154,6 @@ function workspace_record_kinds_registry_test_lists()
 			'names'    => ws_quick_edit_types(),
 			'part'     => 'a kind with quick_edit true',
 			'registry' => workspace_record_kinds_registry_test_column('quick_edit', false),
-			'except'   => array(),
-		),
-		'customers' => array(
-			'where'    => 'ws_customer_types() in includes/workspace/customer.php',
-			'names'    => ws_customer_types(),
-			'part'     => 'a kind with customer true',
-			'registry' => workspace_record_kinds_registry_test_column('customer', false),
 			'except'   => array(),
 		),
 		'scopes' => array(
@@ -226,11 +215,39 @@ function test_workspace_record_kinds_registry_matches_every_list()
 	}
 }
 
-// The registry keeps the order of ws_record_type_keys(), so the list can be
-// read from it later without moving a kind.
-function test_workspace_record_kinds_registry_keeps_the_record_type_order()
+// ws_record_type_keys() and ws_customer_types() read the registry, so a new
+// kind is written once: neither body names a kind of its own.
+function test_workspace_record_kinds_registry_is_read_by_the_record_and_customer_lists()
 {
-	pg_assert_same(ws_record_type_keys(), array_keys(ws_record_kinds()), 'the kinds of ws_record_kinds(), in the order of ws_record_type_keys()');
+	$bodies = array(
+		'ws_record_type_keys' => array('ws_record_kinds()'),
+		'ws_customer_types'   => array('ws_record_kinds()', "'customer'"),
+	);
+
+	foreach ($bodies as $function => $needles) {
+		$source = pg_test_function_source($function);
+
+		foreach ($needles as $needle) {
+			pg_assert_true(strpos($source, $needle) !== false, $function . '() reads ' . $needle);
+		}
+
+		foreach (array_keys(ws_record_kinds()) as $kind) {
+			pg_assert_true(strpos($source, "'" . $kind . "'") === false, $function . '() names no kind of its own (found \'' . $kind . '\')');
+		}
+	}
+}
+
+// Reading the registry gives the same lists, in the same order, as before.
+function test_workspace_record_kinds_registry_gives_the_record_and_customer_lists()
+{
+	pg_assert_same(array(
+		'order', 'product', 'product_group', 'offer', 'cart_quote',
+		'contact', 'user_account',
+		'erp_account', 'invoice', 'waybill', 'receipt', 'edoc', 'erp_quote',
+		'form', 'calendar_event', 'booking',
+		'file', 'page',
+	), ws_record_type_keys(), 'ws_record_type_keys()');
+	pg_assert_same(array('contact', 'user_account', 'erp_account'), ws_customer_types(), 'ws_customer_types()');
 }
 
 // A kind's prefixes are the ones ws_ref_types() offers after #, and its

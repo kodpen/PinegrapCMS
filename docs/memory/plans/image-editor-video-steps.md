@@ -16,7 +16,9 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
   - `type: 'video'` with its file, source in and out, place on the timeline, speed, volume, muted. Drawn at the playhead under or over other layers; playing in step with the play bar; added from Files or this computer through E31's Import menu (`ui/image-editor-import.md`).
 
 - V3 (M) Timeline editing. Done (#8510, `ui/image-editor-clip-timeline.md`).
-  - Clip rows on the tracks (AN2): trim the ends, split at the playhead (two layers on one source), move, snap; the document's length follows its clips.
+
+- V3b (S) Length rule and clip bar. `free`, one at a time with V5 and V10 (the `clip` part). Owner 2026-11-10, #8521.
+  - A clip edit never ends the document before another layer's motion. The clip bar of screen 35: a filmstrip of several frames, the clip's sound as a waveform.
 
 - V4 (M) Sound. Done (#7642, `ui/image-editor-sound.md`; from this computer left to V8). Screens 37-sound, 35-video. Needs no video layer: may run right after V0, before V1-V3 (owner 2026-11-05: sound in an animation's video too).
   - An audio layer on any canvas: music and sounds from Files (MP3, AAC, WAV, Ogg), its start, trim, volume, fade in and out, mute; its row with a waveform on the tracks; Web Audio playback in step with the play bar, so an animation gets its music.
@@ -28,9 +30,7 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
 - V6 (S) Pictures and animations over video. After V5.
   - Layers keep their start and end on the timeline; picture in picture (a second video layer, its size and corners).
 
-- V7 (M) Export with sound. Done (#8484, `ui/image-editor-mix.md`).
-  - Frames as AN6; the sound mixed in an `OfflineAudioContext`, AAC or Opus through `AudioEncoder`; both interleaved in AN6's muxers; estimate, progress, Cancel.
-  - An animation's MP4 or WebM carries its sound; GIF, APNG, WebP and PDF cannot, and the dialog says so when the document has sound.
+- V7 (M) Export with sound. Done (#8484, `ui/image-editor-mix.md`: MP4 with AAC, WebM with Opus; the other formats carry none).
 
 - V8 (M) Large files. `free` after V7 and V2. One at a time with the save-path steps.
   - Chunked, resumable upload of a source video into Files; chunked save of the export (AN4's action in parts); type told by its bytes (AN4); the size limits as settings.
