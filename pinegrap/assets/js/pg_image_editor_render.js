@@ -571,7 +571,7 @@
                     return job.cancelled ? null : encoder();
                 });
             }).then(function (enc) {
-                var drawn = 0, framed = 0, waiting = null;
+                var drawn = 0, framed = 0, waiting = null, sent = false;
 
                 if (!enc) {
                     return null;
@@ -592,7 +592,8 @@
                         resolve({ bytes: M.animEstimate(m.header, m.frame, count), count: count, size: size });
                     } else if (m.type === 'framed') {
                         framed++;
-                        progress((framed === count) ? (sound ? 'audio' : 'encode') : 'frames', drawn, count);
+                        // Once every frame is sent the steps stay past the frames.
+                        progress((sent || (framed === count)) ? (sound ? 'audio' : 'encode') : 'frames', drawn, count);
 
                         if (waiting) {
                             var go = waiting;
@@ -642,6 +643,8 @@
                     }
 
                     if (i >= count) {
+                        sent = true;
+
                         if (pcm) {
                             var planes = pcm.map(function (p) { return p.buffer; });
 
