@@ -918,6 +918,7 @@
     "Enter a whole number.": "Bir tam sayı girin.",
     "Enter address to see options.": "Seçenekleri görmek için adres girin.",
     "Enter an Event": "Etkinliğe Katıl",
+    "Enter an HS code, or choose to clear it.": "Bir GTİP / HS kodu girin ya da temizlemeyi seçin.",
     "Enter an Inventory Quantity instead of the Current Inventory Quantity.": "Mevcut Stok Miktarı yerine yeni bir Stok Miktarı girin.",
     "Enter an amount for the price change.": "Fiyat değişikliği için bir tutar girin.",
     "Enter an amount greater than zero.": "Sıfırdan büyük bir tutar girin.",

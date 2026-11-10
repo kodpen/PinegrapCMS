@@ -256,15 +256,42 @@ function pg_products_mass_change_besides_price($post, $quantity_value)
         || ($quantity_value !== null)
         || !empty($post['edit_allowed_zones'])
         || !empty($post['edit_disallowed_zones'])
-        || ((string) ($post['edit_tax_rate_method'] ?? '') !== '');
+        || ((string) ($post['edit_tax_rate_method'] ?? '') !== '')
+        || (pg_products_mass_customs_values($post) !== array('hs_code' => null, 'origin_country' => null));
+}
+
+// The HS code and the country of origin Modify Selected asks for: null for
+// no change, '' to clear (the shop default), the parsed value to set, or
+// false when "Set to" holds a value the product screen would refuse or none.
+function pg_products_mass_customs_values($post)
+{
+    $values = array();
+
+    foreach (array('hs_code' => 'pg_product_hs_code_parse', 'origin_country' => 'pg_product_origin_country_parse') as $column => $parse) {
+        $method = $post['edit_' . $column . '_method'] ?? '';
+        $method = is_string($method) ? $method : '';
+
+        if ($method === 'clear') {
+            $values[$column] = '';
+        } elseif ($method === 'set') {
+            $value = $parse($post['edit_' . $column] ?? '');
+            $values[$column] = ($value === '') ? false : $value;
+        } else {
+            $values[$column] = null;
+        }
+    }
+
+    return $values;
 }
 
 // Why the product list's Modify Selected submit cannot be carried out, or ''
 // when it can: a stock process with no figure ('quantity_missing'), a tax
 // rate to set with none or no number ('tax_rate_missing'), one outside
 // 0..100 ('tax_rate_range'), or a shipping zone both allowed and disallowed
-// ('zones_overlap': the allow ran first and the disallow removed it again).
-// The screen refuses the whole submit, before any product is touched.
+// ('zones_overlap': the allow ran first and the disallow removed it again),
+// or an HS code or a country of origin to set that is empty
+// ('hs_code_missing', 'origin_country_missing') or not valid
+// ('hs_code_invalid', 'origin_country_invalid'). The screen refuses the whole submit, before any product is touched.
 function pg_products_mass_edit_problem($post)
 {
     $process = (string) ($post['edit_inventory_quantity_process'] ?? '');
@@ -292,6 +319,13 @@ function pg_products_mass_edit_problem($post)
 
     if (array_intersect($allowed, $disallowed)) {
         return 'zones_overlap';
+    }
+
+    foreach (pg_products_mass_customs_values($post) as $column => $value) {
+        if ($value === false) {
+            $typed = $post['edit_' . $column] ?? '';
+            return (is_scalar($typed) && (trim((string) $typed) === '')) ? $column . '_missing' : $column . '_invalid';
+        }
     }
 
     return '';
