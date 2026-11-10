@@ -77,3 +77,24 @@ function test_workspace_channel_agents_actions_and_texts()
 		pg_assert_true(isset($strings['cha_wake_' . $rule]), 'every wake rule has its label: ' . $rule);
 	}
 }
+
+// Who may change the channel's agents and who may add one are two answers: a
+// member of a private channel changes what wakes an agent it has, while a new
+// one comes only from its manager. The section offers the Add list to whoever
+// may add and tells the others why it is not there.
+function test_workspace_channel_agents_add_is_offered_to_whoever_may_add()
+{
+	$reflection = new ReflectionFunction('ws_channel_agents_panel_state');
+	$lines = file($reflection->getFileName());
+	$state = implode('', array_slice($lines, $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+
+	pg_assert_same(2, substr_count($state, "'can_add'"), 'the state says who may add, with the registry missing too');
+	pg_assert_contains('ws_channel_agent_enter_problem($viewer, $channel, null)', $state, 'asked as for an agent the channel does not have');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_channel_agents.js');
+	$draw = substr($source, strpos($source, 'function draw(state)'));
+
+	pg_assert_contains('state.can_add ? addNode(state)', $draw, 'the Add list is drawn for whoever may add');
+	pg_assert_contains("t('cha_add_manager')", $draw, 'anybody else reads who adds an agent here');
+	pg_assert_same(ws_channel_agent_error_text('manager_only'), ws_channel_agents_js_strings()['cha_add_manager'] ?? null, 'in the words of the refusal');
+}

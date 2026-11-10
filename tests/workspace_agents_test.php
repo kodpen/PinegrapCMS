@@ -104,6 +104,40 @@ function test_workspace_channel_agent_check_tier_is_the_managers()
 	pg_assert_same('tier_invalid', ws_channel_agent_check(array('tier' => 0), null, true)['error']);
 }
 
+// A private channel takes a new agent only from whoever manages it: from
+// then on the messages that wake the agent and the channel's memory reach its
+// application or its model's provider, and whether a private channel's words
+// leave the site is its manager's choice. An agent the channel has is still
+// changed by whoever may post there, and any other channel takes one from
+// them as before.
+function test_workspace_channel_agent_enter_verdict()
+{
+	$row = array('channel_id' => 30, 'agent_id' => 7, 'allowed' => 1);
+
+	pg_assert_same('manager_only', ws_channel_agent_enter_verdict('private', null, false), 'a member adds no agent to a private channel');
+	pg_assert_same('', ws_channel_agent_enter_verdict('private', null, true), 'whoever manages it does');
+	pg_assert_same('', ws_channel_agent_enter_verdict('private', $row, false), 'a member changes what wakes an agent the channel has');
+	pg_assert_same('manager_only', ws_channel_agent_enter_verdict('private', array('allowed' => 0) + $row, false), 'a row that does not allow the agent is not having it');
+	pg_assert_same('', ws_channel_agent_enter_verdict('private', array('allowed' => 0) + $row, true), 'which its manager may allow again');
+	pg_assert_same('', ws_channel_agent_enter_verdict('public', null, false), 'a public channel takes one from whoever may post');
+
+	pg_assert_true(ws_channel_agent_error_text('manager_only') !== ws_channel_agent_error_text('no_such_code'), 'the refusal has a sentence of its own');
+}
+
+// The panel action asks it before the row is written, and only for a write
+// that can add: taking an agent out is left to whoever may post.
+function test_workspace_channel_agent_enter_is_asked_by_the_panel_action()
+{
+	$panel = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/channel_agents_panel.php');
+	$action = substr($panel, strpos($panel, 'function ws_channel_agents_action('));
+	$action = substr($action, 0, strpos($action, "\nfunction "));
+	$asked = strpos($action, 'ws_channel_agent_enter_problem(');
+
+	pg_assert_true($asked !== false, 'the panel action asks it');
+	pg_assert_true($asked < strpos($action, 'ws_channel_agent_save('), 'before the row is written');
+	pg_assert_true(strpos($action, 'ws_channel_agent_remove(') < $asked, 'after the branch that takes an agent out');
+}
+
 function test_workspace_agent_shape_hides_secrets()
 {
 	$agent = ws_agent_shape(array('id' => '3', 'kind' => 'claude', 'handle' => 'claude', 'door_kind' => 'push', 'door_secret_sealed' => 'abc:def', 'key_sealed' => null, 'wake_every' => '30'));

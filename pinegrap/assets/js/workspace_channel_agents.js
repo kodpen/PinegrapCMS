@@ -5,9 +5,9 @@
  * added to it, each with what wakes it here (a mention, every message, a
  * prefix, replies to its own messages), its tier and the loop-guard switch,
  * and the registered agents it can still take. Whoever may post in the
- * channel, in a private one only a member, adds, changes and removes them;
- * the tier is the channel owner's. The server decides both
- * (includes/workspace/channel_agents_panel.php).
+ * channel, in a private one only a member, changes and removes them; a
+ * private channel's new agent and the tier are its manager's. The server
+ * decides all of it (includes/workspace/channel_agents_panel.php).
  *
  * assets/js/workspace.js mounts it through window.PGWsChannelAgents.mount()
  * and lends its helpers through window.PGWsKit. Every text comes from the
@@ -276,10 +276,13 @@
                 root.appendChild(list);
             }
 
+            // Whoever may change the agents here may not always add one: a
+            // private channel takes a new agent from its manager, and the
+            // others read why the Add list is not there.
             if (!state.can_edit) {
                 root.appendChild(el('div', 'form-text', t('cha_readonly')));
             } else if (state.addable.length) {
-                root.appendChild(addNode(state));
+                root.appendChild(state.can_add ? addNode(state) : el('div', 'form-text mt-3', t('cha_add_manager')));
             }
         }
 
