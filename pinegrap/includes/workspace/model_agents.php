@@ -723,7 +723,12 @@ function ws_model_agent_run($agent, $budget)
             $row = ws_ai_request_row($row['id']);
         }
 
-        if (ws_ai_step($row) === 'held') {
+        // The answers of this step add their tokens to the request.
+        ws_ai_usage_request((int) $row['id']);
+        $step = ws_ai_step($row);
+        ws_ai_usage_request(0);
+
+        if ($step === 'held') {
             $status = 'held';
             break;
         }

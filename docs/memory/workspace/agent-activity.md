@@ -1,6 +1,6 @@
 ---
 name: agent-activity
-description: The Agents card's activity per app and model agent (AU1): counts of 7 and 30 days, next wake, door failures, the newest waiting and failed requests with Cancel, Ask again and Knock now
+description: The Agents card's activity per app and model agent: counts of 7 and 30 days, next wake, door failures, waiting and failed requests with Cancel, Ask again, Knock now; token counts
 ---
 
 ## Where is it?
@@ -19,5 +19,9 @@ description: The Agents card's activity per app and model agent (AU1): counts of
 - Ask again (failed, on a message, agent active): a new queued request for the same message by the viewer, only while the channel still allows the agent, under `ws_agent_brake()` (chain depth and the hour's count over both key shapes); a push door is knocked. A wake (no message) is not asked again.
 - Knock now (queued, active app agent with a push door): `ws_agent_knock()` at once; the outcome lands on the agent's row as any knock.
 
+## How are tokens counted?
+- `ws_ai_requests.tokens_in` / `tokens_out` (step 11.0.181, INT UNSIGNED, 0 for older rows). The shared loops (`ws_ai_kick()`, `ws_model_kick()`) hold the request id (`ws_ai_usage_request()`) around each `ws_ai_step()`; every `/chat/completions` answer of `ws_ai_http()` in that window, Pinegrap AI's or a model assistant's own API, adds its `usage` (`ws_ai_usage_tokens()`: `prompt_tokens`/`completion_tokens`, or `input_tokens`/`output_tokens`) through `ws_ai_usage_add()`. Translation, bulk text and the connection try run outside the window and count nothing; a provider that sends no `usage` counts 0.
+- Shown as "Tokens, last 7 days: …; last 30 days: …" (`ws_ai_tokens_line()`): on a model agent's block (summed in the same grouped query, `ws_agent_activity_tokens()`) and on the Pinegrap AI card (`ws_ai_read_tokens()`). Claude and app agents run elsewhere: no figure. Both read only after `ws_ai_tokens_ready()`.
+
 ## What is not done?
-- Not tried on a database or a browser: the grouped count query, the buttons and the card's look. Token counts and the monthly limit are AU2 and AU3 (`plans/agent-activity-usage.md`).
+- Not tried on a database or a browser: the grouped count query, the token update, the buttons and the card's look. The monthly limit is AU3 (`plans/agent-activity-usage.md`).
