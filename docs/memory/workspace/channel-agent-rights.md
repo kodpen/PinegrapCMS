@@ -11,13 +11,13 @@ description: Who adds, changes or removes a channel's agents ("Agents in this ch
 
 ## What leaves the site with a request?
 - An application agent's brief holds the waking message and the channel's memory (`ws_agent_brief()`); a model assistant's briefing goes to its provider (`ws_ai_briefing()`).
-- The symptom: since #8413 a model assistant answers in a private channel nobody opened to Pinegrap AI, and any member who could post there could add one.
+- The symptom (fixed in #8477): since #8413 a model assistant answers in a private channel nobody opened to Pinegrap AI, and any member who could post there could add one.
 
 ## What did that rule leave as it was?
 These are the implementation's choices, not owner decisions.
 - A row made before the rule stays and works: nothing reads `added_by`.
 - An agent the channel has: whoever may post still changes what wakes it and takes it out; taken out, it comes back only through a manager. A row that does not allow the agent (`allowed` 0, which nothing writes today) counts as not having it.
-- A discussion follows the channel it is about: its new agent comes from that channel's manager, who must be in the discussion to change its agents at all; from nobody once that channel is gone.
+- A discussion follows the channel it is about: its new agent comes from that channel's manager, who must be in the discussion to change its agents at all; from nobody once that channel is gone. The tier there stays with whoever manages the discussion itself (whoever started it, and staff in it).
 - A public channel and a guest's room take an agent from whoever may post there. Setting an agent's wakes (`ws_agent_wake_problem()`) needs the agent in the channel already, so it asks only `ws_channel_agent_add_problem()`.
 
 ## Where are the doors?

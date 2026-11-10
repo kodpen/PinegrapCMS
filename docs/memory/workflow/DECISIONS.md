@@ -289,7 +289,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-10.md: Is the agent channel tried live? (owner, 2026-11-09)
 - decisions-made-workspace-10.md: What happens to requests an application agent does not read? (owner, 2026-11-10)
 - decisions-made-workspace-11.md: Where are the rules and the earlier parts?
-- decisions-made-workspace-11.md: Who adds an agent to a private channel? (owner, 2026-11-10)
+- decisions-made-workspace-11.md: Who adds an agent to a private channel? (owner, 2026-11-10, #8477)
 - decisions-made-workspace-2.md: What may the channel menu hold?
 - decisions-made-workspace-2.md: Where are records created inside a chat?
 - decisions-made-workspace-2.md: Does the customer channel's "New sales quote" stay in the menu?
