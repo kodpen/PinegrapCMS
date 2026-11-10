@@ -88,7 +88,7 @@ function ws_app_tag($app_id, $app, $claude_app_id, $ai_app_id, $taken = array(),
     if (isset($agents[$app_id]) && ((string) ($agents[$app_id]['handle'] ?? '') !== '')) {
         $name = trim((string) ($agents[$app_id]['name'] ?? ''));
 
-        return array('label' => '@' . $agents[$app_id]['handle'], 'meta' => ($name !== '') ? $name : lang('Agent'), 'icon' => 'bi-robot', 'known' => true, 'gone' => false);
+        return array('label' => '@' . $agents[$app_id]['handle'], 'meta' => ($name !== '') ? $name : lang('The agent'), 'icon' => 'bi-robot', 'known' => true, 'gone' => false);
     }
 
     if (!is_array($app)) {
