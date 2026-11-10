@@ -343,7 +343,7 @@ function pg_migration_write_design_files($files, $user_id)
             continue;
         }
         if ($root <= 0) $root = (int)db_value("SELECT folder_id FROM folder WHERE folder_parent = '0' ORDER BY folder_id LIMIT 1");
-        if (@file_put_contents(FILE_DIRECTORY_PATH . '/' . $name, $f['content']) === false) {
+        if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $name, $f['content'])) {
             $out['kept'][] = $name;
             continue;
         }

@@ -82,10 +82,11 @@ function pg_panel_upload_file($request, $action)
         'type' => 'file'
     ));
 
-    // save the file
-    $handle = fopen(FILE_DIRECTORY_PATH . '/' . $file_name, 'w');
-    fwrite($handle, $image_data);
-    fclose($handle);
+    // Write the file as a whole; on a full disk or an unwritable folder
+    // nothing is left behind and no row is inserted.
+    if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $file_name, $image_data)) {
+        respond(array('status' => 'error', 'message' => lang(array('string' => '{var:1} could not be written to disk.', 'vars' => $file_name))));
+    }
 
     // insert file data into files table
     $query =

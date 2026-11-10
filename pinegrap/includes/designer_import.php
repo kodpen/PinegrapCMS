@@ -11,7 +11,7 @@
  * designer's own — Bootstrap from our sentinels, imported stylesheets and
  * scripts as design assets, Google Fonts in the fonts list.
  *
- * Two callers share this: the designer's "Sayfa Ekle → HTML / ZIP İçe Aktar"
+ * Two callers share this: the designer's "Add Page → Import HTML / ZIP"
  * (adds pages to the open design; the operator reviews and saves) and the
  * file manager's Import ZIP screen (creates a new design outright).
  *
@@ -1787,7 +1787,7 @@ function pg_di_store_file($path, $content, $ctx)
     if ($dir !== '.' && $dir !== '') foreach (explode('/', $dir) as $s) $segs[] = $s;
     $folder_id = pg_di_folder_path($segs, $ctx);
 
-    if (@file_put_contents(FILE_DIRECTORY_PATH . '/' . $name, $content) === false) {
+    if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $name, $content)) {
         $ctx->warnings[] = lang(array('string' => '{var:1} could not be written to disk.', 'vars' => $path));
         return;
     }

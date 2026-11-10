@@ -1459,6 +1459,7 @@
     "The Corner Office": "Köşe Ofis",
     "The Crew": "Ekip",
     "The DKIM key could not be generated on this server. Any existing DKIM key was left unchanged.": "DKIM anahtarı bu sunucuda oluşturulamadı. Varsa mevcut DKIM anahtarı değiştirilmedi.",
+    "The DKIM key could not be saved. Any existing DKIM key was left unchanged.": "DKIM anahtarı kaydedilemedi. Var olan DKIM anahtarına dokunulmadı.",
     "The DNS record ID is not valid.": "DNS kayıt kimliği geçerli değil.",
     "The DNS records of {var:1} that tell mailbox providers the site may send for it. Changes to DNS can take hours to be seen.": "{var:1} alan adının, posta sağlayıcılarına sitenin bu alan adı adına gönderebileceğini söyleyen DNS kayıtları. DNS değişikliklerinin görünmesi saatler sürebilir.",
     "The Daily Bake": "Günün Fırını",

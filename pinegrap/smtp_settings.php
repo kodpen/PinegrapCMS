@@ -603,31 +603,50 @@ if (!$_POST) {
                 $liveform_settings->add_warning(lang('DKIM domain and selector must be filled before generating key.'));
             } else {
                 // The new pair is made before the old one is touched: when OpenSSL
-                // cannot make a key, the pair in use keeps signing.
+                // cannot make a key, the pair in use keeps signing. Each file is
+                // then written as a whole over the old one, dkim.pub first and
+                // dkim.key second, so a failed key write leaves the signing key
+                // as it was; dkim.pub is then put back (or removed when there was
+                // none) to keep the two files a pair. The records change only
+                // once both files are written.
                 $dkim_pair = pg_dkim_key_pair($selector, $domain);
+                $dkim_saved = false;
 
                 if (!$dkim_pair) {
                     $liveform_settings->add_warning(lang('The DKIM key could not be generated on this server. Any existing DKIM key was left unchanged.'));
                 } else {
-                    // Delete the old records and files
-                    db("DELETE FROM files WHERE name IN ('dkim.key','dkim.pub')");
-                    @unlink(FILE_DIRECTORY_PATH . '/dkim.key');
-                    @unlink(FILE_DIRECTORY_PATH . '/dkim.pub');
-
                     $private_pem = $dkim_pair['private'];
                     $public_pem = $dkim_pair['public'];
                     $txt_record = $dkim_pair['txt_record'];
 
-                    // Private key file
-                    file_put_contents(FILE_DIRECTORY_PATH . '/dkim.key', $private_pem);
-                    // Owner-only: the private key must not be readable by other accounts. Failure is ignored so Windows/IIS installs keep working.
-                    @chmod(FILE_DIRECTORY_PATH . '/dkim.key', 0600);
+                    $had_pub = is_file(FILE_DIRECTORY_PATH . '/dkim.pub');
+                    $old_pub = $had_pub ? @file_get_contents(FILE_DIRECTORY_PATH . '/dkim.pub') : false;
+
+                    if (pg_file_write_whole(FILE_DIRECTORY_PATH . '/dkim.pub', $public_pem)) {
+                        if (pg_file_write_whole(FILE_DIRECTORY_PATH . '/dkim.key', $private_pem)) {
+                            // Owner-only: the private key must not be readable by other accounts. Failure is ignored so Windows/IIS installs keep working.
+                            @chmod(FILE_DIRECTORY_PATH . '/dkim.key', 0600);
+                            $dkim_saved = true;
+                        } elseif ($old_pub !== false) {
+                            pg_file_write_whole(FILE_DIRECTORY_PATH . '/dkim.pub', $old_pub);
+                        } elseif (!$had_pub) {
+                            @unlink(FILE_DIRECTORY_PATH . '/dkim.pub');
+                        }
+                    }
+
+                    if (!$dkim_saved) {
+                        $liveform_settings->add_warning(lang('The DKIM key could not be saved. Any existing DKIM key was left unchanged.'));
+                    }
+                }
+
+                if ($dkim_saved) {
+                    // Replace the old records
+                    db("DELETE FROM files WHERE name IN ('dkim.key','dkim.pub')");
+
                     $size = @filesize(FILE_DIRECTORY_PATH . '/dkim.key');
                     db("INSERT INTO files (name,folder,description,type,size,design,user,timestamp)
                         VALUES ('dkim.key','" . escape(getPublicRootFolderId()) . "','" . escape($txt_record) . "','application/x-pem-file','" . escape($size) . "',1,'" . USER_ID . "',UNIX_TIMESTAMP())");
 
-                    // Public key file
-                    file_put_contents(FILE_DIRECTORY_PATH . '/dkim.pub', $public_pem);
                     $size = @filesize(FILE_DIRECTORY_PATH . '/dkim.pub');
                     db("INSERT INTO files (name,folder,description,type,size,design,user,timestamp)
                         VALUES ('dkim.pub','" . escape(getPublicRootFolderId()) . "','DKIM Public Key (PEM)','application/x-pem-file','" . escape($size) . "',1,'" . USER_ID . "',UNIX_TIMESTAMP())");
