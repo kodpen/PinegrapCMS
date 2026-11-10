@@ -15,7 +15,8 @@ description: workspace.app.mentioned (PR #809): an app mentioned with <@app:N> i
 ## Where do the words go, and where nothing?
 - The key is active, not expired (the API refuses it) and holds `workspace:read` or `workspace:write` (`ws_app_hears_mentions()`), and its owner reads the channel as the API lets it (`ws_app_reads_channel()`): public channels; private channels, guest rooms and discussions the owner is in. Never through inspection: `ws_can_read_channel()` is asked with role 3, since an inspection is open in one person's session and the API keeps none.
 - Elsewhere no event at all rather than one without text: the name, existence and writers of a private channel stay inside, and the application could not answer there (404).
-- Apps have no channel memberships yet, so the owner's reach stands in for the plan rule "content only for channels the app is a member of", the reach the API already reads with.
+
+- The writer is told, in a line only they see (workspace-app-mention-unread-line.md).
 
 ## What does the payload hold?
 `id`, `channel_id` (where to answer; a discussion's own id), `channel`, `channel_kind` (public, private, guest, thread), `thread` (null, or the `channel_id` and `message_id` the discussion is about, as in `WorkspaceThread`), `parent_id`, `sender_id` (0 for an application), `app_id` (the writer, 0 for a person), `mentioned_app_id`, `kind`, `text` (drawn as the owner reads it), `body` (tokens), `task_id`, `edited`; ids are ints, 0 for none (`ws_app_mention_payload()`).
@@ -23,7 +24,6 @@ description: workspace.app.mentioned (PR #809): an app mentioned with <@app:N> i
 
 ## What is still missing?
 - An outside application's tag is drawn with a handle from its own name, in the panel and in `text` (workspace-app-handles.md). The @ picker offers the applications a mention there reaches (workspace-app-handles.md); step A3 of `plans/agent-channel.md` turns `ws_app_reads_channel()` into the asker's invitation where the channel allows the app, as for the assistants (workspace-assistant-reach.md).
-- A person mentioning an application that may not read the channel gets no line saying so.
 
 ## Where is the code?
 - `includes/workspace/messages.php`: `ws_message_tell_apps()`, called by `ws_message_send()` (after `workspace.message.created`) and `ws_message_edit()`. Filter: `includes/api/outbound/webhooks.php`. Event text: `includes/workspace/api.php`. No schema, scope, tr.json string, MCP tool or changelog line of its own (the open version's catch-all line covers it).
