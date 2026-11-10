@@ -6,12 +6,14 @@ description: How an application tag <@app:N> is drawn (Claude's link @Claude, Pi
 ## What does a tag read as?
 - `ws_refs_resolve()` (refs.php) reads every tagged application's `api_apps` row in one query and asks `ws_app_tag()` (app_handles.php).
 - The application linked as Claude (`ws_claude_config()['app_id']`) reads "@Claude", Pinegrap AI's (`ws_ai_config()['app_id']`) "@ai", Pinegrap AI first when both point at one. They keep that name while the link points at them, even switched off or with their row deleted.
-- Any other application reads "@<handle>" from its own name, the name as meta, icon `bi-plug`. Before this every such tag read "@Claude", in the panel and in the `text` of `workspace.app.mentioned`.
+- A registry agent's application reads as the agent: its own `@handle`, the agent's name as meta, icon `bi-robot` (`ws_agent_tags()`, agent-shown.md).
+- With no row (deleted) it reads "@app-N" (below). Any other application reads "@<handle>" from its own name, the name as meta, icon `bi-plug`. Before this every such tag read "@Claude", in the panel and in the `text` of `workspace.app.mentioned`.
+- `ws_app_tag()` asks in that order: Pinegrap AI, Claude, a registry agent, a deleted row, the handle from the name.
 
 ## How is the handle made?
 - `ws_app_handle($name, $app_id, $taken)`: Turkish and common accented letters folded, lower case, any other run of characters one dash, starts with a letter, cut to 32, no dash or underscore at either end: the shape `ws_mcp_alias_shape_problem()` accepts.
 - Never one of `ws_mcp_reserved_aliases()` (so an app named "Claude" that is not linked reads "@app-N") nor an MCP server's alias (`$taken`, read only when such an app is drawn). Otherwise, or when the name gives fewer than 2 characters, `app-<id>`.
-- Two applications with one name share a handle: the token says which one; uniqueness and a person's user name wait for the registry (plans/agent-channel.md, step A3).
+- A registry agent's handle is its own, unique and never a person's user name (`ws_agent_handle_problem()`, agent-registry.md). Two outside applications not in the registry with one name share a handle: the token says which one.
 
 ## What do a deleted and a former application read as?
 - No row: "@app-N", meta "Deleted record", `known` false, `gone` true, like any tag whose record is gone.
