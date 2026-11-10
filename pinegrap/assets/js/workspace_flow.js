@@ -10357,6 +10357,9 @@
                     flow.status = data.flow.status;
                     flow.version = data.flow.version;
                     flow.graph = data.flow.graph;
+                    // How the live version starts decides Run or Run now.
+                    flow.start = data.flow.start;
+                    flow.run_now = data.flow.run_now;
                     flow.changed = true;
                     listEntry(flow);
                     redrawBar();

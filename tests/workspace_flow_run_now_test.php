@@ -204,6 +204,12 @@ function test_workspace_flow_run_now_canvas_button()
 	pg_assert_contains("t(now ? 'fl_run_now' : 'fl_run')", $button, 'its own name');
 	pg_assert_contains("t(now ? 'fl_run_now_help' : 'fl_run_help')", $button, 'its own help');
 
+	// Published with changes still being saved: the flow keeps its draft
+	// but takes how the new live version starts, which decides the button.
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+
+	pg_assert_contains("flow.start = data.flow.start;\n                    flow.run_now = data.flow.run_now;", $script, 'a publish answer brings start and run_now');
+
 	$strings = ws_flow_js_strings();
 
 	foreach (array('fl_run_now', 'fl_run_now_help', 'fl_run_now_ask') as $key) {
