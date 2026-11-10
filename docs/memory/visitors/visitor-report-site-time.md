@@ -16,7 +16,10 @@ module: site_time_sql
 ## Which window does the report give it?
 - The date changer's `$start_timestamp` / `$stop_timestamp`; with a Date filter (which replaces that range) `MIN(visitors.start_timestamp)` (indexed) through `time()`. Used for the Date filter operand and `get_summarize_by_column()`'s year, month and day.
 
+## Does the Order Report do the same?
+- Yes (PR #NNNN): `view_order_report.php` reads its Date filter operand and `get_summarize_by_column()`'s year, month and day through `pg_site_time_sql('orders.order_date', ...)`. The window is the date changer's range, or with a Date filter `MIN(order_date) WHERE order_date > 0` (indexed) through `time()`. `get_summarize_by_column()` keeps the same `($summarize_by, $from = null, $to = null)` signature in both reports, since static analysis compares the two. Test: `tests/order_report_site_time_test.php`.
+
 ## What is still on the fixed offset?
-- `view_order_report.php`, the `view_orders.php` sparkline, the API sales report (`includes/api/resources/reports.php`) and the rollup backfill in `includes/fn/seo.php`; each can reuse the helper in its own step.
+- The `view_orders.php` sparkline, the API sales report (`includes/api/resources/reports.php`) and the rollup backfill in `includes/fn/seo.php`; each can reuse the helper in its own step.
 
 Related: docs/memory/visitors/visitor-rollup-backfill-runtime.md, docs/memory/visitors/visitor-report-sql-pitfalls.md
