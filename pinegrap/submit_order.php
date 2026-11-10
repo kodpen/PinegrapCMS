@@ -204,27 +204,9 @@ function submit_order($type) {
         $contact_group_id = mysqli_insert_id(db::$con);
     }
     
-    // check if contact is already in Orders contact group
-    $query =
-        "SELECT contact_id
-        FROM contacts_contact_groups_xref
-        WHERE
-            (contact_id = ?)
-            AND (contact_group_id = ?)";
-    $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
-    
-    // if contact is not already in contact group, then add contact to Orders contact group
-    // (unless the group is filled by rules)
-    if ((mysqli_num_rows($result) == 0) && !pg_audience_group_is_dynamic($contact_group_id)) {
-        $query =
-            "INSERT INTO contacts_contact_groups_xref (
-                contact_id,
-                contact_group_id)
-            VALUES (
-                ?,
-                ?)";
-        $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
-    }
+    // add contact to Orders contact group (unless already in it or the group
+    // is filled by rules) and announce the join
+    pg_audience_door_join($contact_id, (int) $contact_group_id);
     
     // add user id and contact id to order record in database
     $query = "UPDATE orders
