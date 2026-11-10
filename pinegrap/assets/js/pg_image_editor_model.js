@@ -9739,6 +9739,106 @@
         clipApply: clipApply, clipPart: clipPart, clipJoins: clipJoins, clipMotionNeed: clipMotionNeed, CLIP_STRIP_MAX: CLIP_STRIP_MAX, clipStripTimes: clipStripTimes
     };
 
+    // ---- MIX (pg_image_editor_mix.js) ----
+
+    // An animation's sound in its MP4 or WebM: the sounds mixed into one
+    // stereo track at 48 kHz by an OfflineAudioContext, then AAC (MP4) or
+    // Opus (WebM) at 128 kbit/s through the browser's AudioEncoder.
+    var MIX_RATE = 48000;
+    var MIX_CHANNELS = 2;
+    var MIX_BITRATE = 128000;
+    var MIX_CODECS = { mp4: { codec: 'mp4a.40.2', name: 'AAC', kind: 'aac' }, webm: { codec: 'opus', name: 'Opus', kind: 'opus' } };
+
+    // What the mix plays for sounds (M.soundList()) over total ms: per heard
+    // sound its file, when it starts in the output, where in the file and
+    // for how long (ms), and its gain as [time, gain] corners (output
+    // time) between which it ramps linearly. A sound past the end, muted,
+    // silent or shorter than 1 ms is left out; one running past the end
+    // is cut there.
+    function mixPlan(sounds, total) {
+        total = Math.max(0, Number(total) || 0);
+
+        return (sounds || []).map(function (s) {
+            var sp = soundSpan(s), stop = Math.min(sp.to, total), times = [];
+
+            if (s.muted || (s.volume <= 0) || (stop - sp.from < 1)) {
+                return null;
+            }
+
+            [sp.from, sp.from + s.fadeIn, sp.to - s.fadeOut, stop].forEach(function (k) {
+                k = Math.max(sp.from, Math.min(stop, k));
+
+                if (times.indexOf(k) < 0) {
+                    times.push(k);
+                }
+            });
+            times.sort(function (a, b) { return a - b; });
+
+            return {
+                src: s.src, when: sp.from, offset: s.from, dur: stop - sp.from,
+                gains: times.map(function (k) { return [k, Math.round(soundGain(s, k) * 1000) / 1000]; })
+            };
+        }).filter(Boolean);
+    }
+
+    // The files a plan needs, each once.
+    function mixSources(plan) {
+        var out = [];
+
+        plan.forEach(function (p) {
+            if (out.indexOf(p.src) < 0) {
+                out.push(p.src);
+            }
+        });
+
+        return out;
+    }
+
+    // The names the dialog lists after "Add sound", each once, in order.
+    function mixNames(sounds, total) {
+        var heard = mixPlan(sounds, total).map(function (p) { return p.src; }), out = [];
+
+        (sounds || []).forEach(function (s) {
+            if ((heard.indexOf(s.src) >= 0) && s.name && (out.indexOf(s.name) < 0)) {
+                out.push(s.name);
+            }
+        });
+
+        return out;
+    }
+
+    // Sample frames of ms at rate.
+    function mixFrames(ms, rate) {
+        return Math.max(1, Math.ceil(Math.max(0, Number(ms) || 0) * (rate || MIX_RATE) / 1000));
+    }
+
+    // The sound's share of the file: the bit rate over ms and a few bytes
+    // of index per packet (AAC's 1024 samples, Opus's 20 ms).
+    function mixBytes(ms, format) {
+        var packets = (format === 'webm') ? Math.ceil(ms / 20) : Math.ceil(ms * MIX_RATE / 1000 / 1024);
+
+        return Math.round(Math.max(0, ms) * MIX_BITRATE / 8000) + packets * 8;
+    }
+
+    // Whether a format carries sound: only the video formats do.
+    function mixCarries(format) {
+        return !!(ANIM_FORMATS[format] && ANIM_FORMATS[format].video && MIX_CODECS[format]);
+    }
+
+    // The encoder's audio settings for a format (the begin message), or
+    // null where it carries none.
+    function mixConfig(format) {
+        var c = mixCarries(format) ? MIX_CODECS[format] : null;
+
+        return c ? { codec: c.codec, kind: c.kind, rate: MIX_RATE, channels: MIX_CHANNELS, bitrate: MIX_BITRATE } : null;
+    }
+
+    var MIX = {
+        MIX_RATE: MIX_RATE, MIX_CHANNELS: MIX_CHANNELS, MIX_BITRATE: MIX_BITRATE, MIX_CODECS: MIX_CODECS,
+        mixPlan: mixPlan, mixSources: mixSources, mixNames: mixNames, mixFrames: mixFrames, mixBytes: mixBytes,
+        mixCarries: mixCarries, mixConfig: mixConfig
+    };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -9756,7 +9856,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

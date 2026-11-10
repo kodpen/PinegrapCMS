@@ -154,6 +154,24 @@ function test_workspace_channel_agent_enter_is_asked_by_the_route()
 	pg_assert_false(strpos($remove, 'ws_channel_agent_enter_problem(') !== false, 'taking an agent out is not adding one');
 }
 
+// The routes' own words say the same: adding to a private channel takes its
+// manager, while whoever may post there, a member, still changes an agent
+// the channel has and takes one out.
+function test_workspace_channel_agent_routes_say_who_adds_and_who_takes_out()
+{
+	$said = array();
+
+	foreach (ws_agent_api_routes() as $route) {
+		$said[$route['id']] = (string) $route['description'];
+	}
+
+	pg_assert_contains('to a private one only when the owner manages it', $said['workspace.channels.agents.set'], 'a private channel\'s new agent is its manager\'s');
+	pg_assert_contains('an agent the channel has, in a private one as a member of it', $said['workspace.channels.agents.set'], 'a change takes a member');
+	pg_assert_contains('an agent added to a private channel, by anybody but a manager', $said['workspace.channels.agents.set'], 'and the refusal is named with the others');
+	pg_assert_contains('Whoever may post in the channel takes an agent out of it', $said['workspace.channels.agents.remove'], 'taking one out takes the right to post');
+	pg_assert_false(strpos($said['workspace.channels.agents.remove'], 'may add') !== false, 'not the right to add');
+}
+
 function test_workspace_agent_shape_hides_secrets()
 {
 	$agent = ws_agent_shape(array('id' => '3', 'kind' => 'claude', 'handle' => 'claude', 'door_kind' => 'push', 'door_secret_sealed' => 'abc:def', 'key_sealed' => null, 'wake_every' => '30'));

@@ -20,7 +20,7 @@ description: The key column of a workflow table (wtable_keys.php, plan tables-re
 - Import (`ws_wtable_import_rows()`): a file row whose key the table holds changes that row with the file's filled cells (`updated` in the report and the API answer); others are added. The dry run (`ws_wtable_import_rows_check()`) still counts every file row as an add.
 
 ## What must a column type change keep?
-- A change of the key column's type (plan step 8) keeps the rules above: to a type other than text or number it is refused while the column is the key (`key_type`); text to number or back is refused when converted values come out empty or repeated, naming the rows as `key_not_unique` does.
+- The key column's type does not change while it is the key (`key_column`, PR #8512), and a type change never makes a key (`key_on_retype`): the key is set in the column form, through its own check. Allowing text↔number with `ws_wtable_key_faults()` over `ws_wtable_retype_rows()` is a follow-up.
 
 ## Tests
 - `tests/workspace_wtable_keys_test.php`.

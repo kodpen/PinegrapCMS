@@ -9,7 +9,7 @@ description: Flow event contact_group.joined: one ws_events_in row per contact a
 - Owner decision #6599/#6625 (`workflow/decisions-made-product-27.md`): once per contact, never one run per change.
 - Added in #6651.
 - A confirmed double opt-in (`pg_fs_confirm()`) announces the contact when its membership insert wrote a row (`pg_fs_confirm_joined()`, pure); a second press and a dynamic group announce nothing. Before, a confirmed sign-up never started a "joined a group" profile or flow.
-- Open gap: the form door in `custom_form.php` (its group loop) still inserts without announcing.
+- A custom form's group and membership group announce the contacts their insert added (`custom_form.php`, its group loop, `pg_fs_confirm_joined()` on the written row, #8547); a contact already in the group is not announced. Before, a form sign-up never started a "joined a group" profile or flow, nor the members_changed webhook.
 
 ## What does it carry?
 - Payload `id` (the contact, as every contact event names it), `contact_id`, `group_id`, `group_name`. `ws_events_record_of()` maps it to `contact`; `ws_events_watched()` leaves it out (no line in a watching channel).
@@ -23,4 +23,4 @@ description: Flow event contact_group.joined: one ws_events_in row per contact a
 - `ws_scheduled_rule_input()` checks the group exists outside `$filter_values` (the parity test calls those functions without a database); its rule text reads "When a contact joins the contact group {name}".
 
 ## Tests?
-- `tests/audiences_joined_event_test.php`; the parity table has the event and the `group` filter.
+- `tests/audiences_joined_event_test.php` (also pins the form door's announce after its insert); the parity table has the event and the `group` filter.

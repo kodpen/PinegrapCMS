@@ -1188,10 +1188,12 @@ function ws_api_claude_answer($params)
     }
 
     // The routine writes as Claude's application; the asker's own session
-    // as its connection writes (ws_api_writer_app_id()).
+    // as the asker, through its client (ws_api_message_writer()).
+    $writer = ws_api_message_writer();
     $options = array(
-        'parent_id' => (int) $row['message_id'],
-        'app_id'    => ws_api_writer_app_id(),
+        'parent_id'     => (int) $row['message_id'],
+        'app_id'        => $writer['app_id'],
+        'via_client_id' => $writer['via_client_id'],
     );
 
     // The checks ws_message_send() makes, made first so that a dry run meets
@@ -1283,9 +1285,11 @@ function ws_api_claude_fail($params)
     // The reason goes to the person who asked, where they asked. A channel
     // that closed to Claude meanwhile keeps only the state on the request.
     if ($told) {
+        $as = ws_api_message_writer();
         $sent = ws_message_send($writer, $channel, '<@user:' . (int) $row['requested_by'] . '> ' . $reason, array(
-            'parent_id' => (int) $row['message_id'],
-            'app_id'    => ws_api_writer_app_id(),
+            'parent_id'     => (int) $row['message_id'],
+            'app_id'        => $as['app_id'],
+            'via_client_id' => $as['via_client_id'],
         ));
 
         $reply_id = $sent['ok'] ? (int) $sent['message_id'] : 0;

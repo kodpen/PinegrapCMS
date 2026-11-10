@@ -5,7 +5,8 @@
  * Tests for the contacts list (includes/fn/contact_list.php): the view names,
  * the filter's SQL and bound values for a manager (no database for the
  * views other than the duplicates one), the sort, the search columns, the
- * duplicates order, the address line and a row.
+ * duplicates order, the address line and a row; the mass delete's group
+ * names, raw for the log line and escaped for the notice.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -392,9 +393,10 @@ function test_contact_list_posted_group_ids_read_only_text()
 	pg_assert_contains("pg_contact_list_posted_group_ids(\$_POST['remove_from_contact_groups'] ?? '')", $save, 'the removed groups are read as text');
 }
 
-// The mass delete's notice is HTML: a group's name is escaped there, and a
-// group the user may not see, or one that is gone, is left out rather than
-// named or turned into a PHP warning.
+// The mass delete names its groups as plain text: the log line keeps them
+// raw (Site Log escapes once), and the screen escapes them where they enter
+// the notice. A group the user may not see, or one that is gone, is left
+// out rather than named or turned into a PHP warning.
 function test_contact_list_deleted_groups_label()
 {
 	$groups = array(
@@ -404,14 +406,19 @@ function test_contact_list_deleted_groups_label()
 	$none = '[' . lang('None') . ']';
 	$all = '[' . lang('All') . ']';
 
-	pg_assert_same('&lt;img src=x onerror=alert(1)&gt;', pg_contact_list_deleted_groups_label(false, array(), '3', $groups));
+	pg_assert_same('<img src=x onerror=alert(1)>', pg_contact_list_deleted_groups_label(false, array(), '3', $groups));
+	pg_assert_same('&lt;img src=x onerror=alert(1)&gt;', h(pg_contact_list_deleted_groups_label(false, array(), '3', $groups)));
 	pg_assert_same($all, pg_contact_list_deleted_groups_label(false, array(), $all, $groups));
+	pg_assert_same($all, h(pg_contact_list_deleted_groups_label(false, array(), $all, $groups)));
 	pg_assert_same($none, pg_contact_list_deleted_groups_label(false, array(), $none, $groups));
 	pg_assert_same('', pg_contact_list_deleted_groups_label(false, array(), '99', $groups));
 
-	pg_assert_same($none . ', Ali &amp; Veli', pg_contact_list_deleted_groups_label(true, array($none, '7', '99'), '3', $groups));
+	pg_assert_same($none . ', Ali & Veli', pg_contact_list_deleted_groups_label(true, array($none, '7', '99'), '3', $groups));
+	pg_assert_same($none . ', Ali &amp; Veli', h(pg_contact_list_deleted_groups_label(true, array($none, '7', '99'), '3', $groups)));
 	pg_assert_same('', pg_contact_list_deleted_groups_label(true, '', '3', $groups));
 
 	$screen = file_get_contents(PG_FUNCTIONS_DIR . '/view_contacts.php');
-	pg_assert_contains('pg_contact_list_deleted_groups_label($advanced_filters', $screen, 'the delete notice names the groups through the helper');
+pg_assert_contains('pg_contact_list_deleted_groups_label($advanced_filters', $screen, 'the delete notice names the groups through the helper');
+	pg_assert_contains("log_activity(lang(array('string'=>'{var:1} contact(s) from contact group(s) ({var:2}) were deleted','vars'=>array(pg_format_number(\$number_of_contacts, 0), \$contact_group_list)))", $screen, 'the log line carries the raw names');
+	pg_assert_contains("\$liveform->add_notice(lang(array('string'=>'{var:1} contact(s) from contact group(s) ({var:2}) were deleted','vars'=>array(pg_format_number(\$number_of_contacts, 0), h(\$contact_group_list)))))", $screen, 'the notice carries the escaped names');
 }

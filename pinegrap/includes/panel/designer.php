@@ -1056,7 +1056,7 @@ function pg_panel_designer($request, $action)
             if (check_name_availability(array('name' => $file_name)) == false) {
                 respond(array('status' => 'error', 'message' => lang(array('string' => 'The Theme ({var:1}) already exists.', 'vars' => $file_name))));
             }
-            if (@file_put_contents(FILE_DIRECTORY_PATH . '/' . $file_name, $css) === false) {
+            if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $file_name, $css)) {
                 respond(array('status' => 'error', 'message' => lang(array('string' => '{var:1} could not be written to disk.', 'vars' => $file_name))));
             }
             $folder_id = (int)db_value("SELECT folder_id FROM folder WHERE folder_parent = '0' ORDER BY folder_id LIMIT 1");
@@ -1252,14 +1252,13 @@ function pg_panel_designer_file($request, $action)
                 $df_content = ($df_type === 'json') ? '{}' : '';
             }
 
+            // Written whole or not at all, so a full disk or an unwritable
+            // folder never leaves a cut-off file with a row of its own.
             $df_path = FILE_DIRECTORY_PATH . '/' . $df_name;
-            $df_handle = @fopen($df_path, 'w');
-            if (!$df_handle) {
-                respond(array('status' => 'error', 'message' => 'Could not create file on disk.'));
+            if (!pg_file_write_whole($df_path, $df_content)) {
+                respond(array('status' => 'error', 'message' => lang(array('string' => '{var:1} could not be written to disk.', 'vars' => $df_name))));
             }
-            if ($df_content !== '') fwrite($df_handle, $df_content);
-            fclose($df_handle);
-            $df_size = (int) @filesize($df_path);
+            $df_size = strlen($df_content);
 
             db("INSERT INTO files (name, folder, description, type, size, design, user, timestamp)
                     VALUES (
@@ -1377,9 +1376,10 @@ function pg_panel_designer_file($request, $action)
                 respond(array('status' => 'error', 'message' => lang('Access denied')));
             }
             $df_path = FILE_DIRECTORY_PATH . '/' . $df_name_safe;
-            $df_written = @file_put_contents($df_path, $df_content);
-            if ($df_written === false) {
-                respond(array('status' => 'error', 'message' => 'Could not write file.'));
+            // A full disk or an unwritable folder leaves the stored file and
+            // its row as they were.
+            if (!pg_file_write_whole($df_path, $df_content)) {
+                respond(array('status' => 'error', 'message' => lang(array('string' => '{var:1} could not be written to disk.', 'vars' => $df_name_safe))));
             }
             db("UPDATE files SET size = '" . (int)strlen($df_content) . "', timestamp = UNIX_TIMESTAMP()
                     WHERE name = '" . e($df_name_safe) . "'");

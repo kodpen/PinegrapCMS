@@ -4,7 +4,7 @@ description: Which Workspace API writes the person must make themselves: ws_api_
 ---
 
 ## Whose name does a write carry?
-- A team devices session (`POST /auth/login`) writes as the person (`ws_api_device_writes_as_person()`; `ws_api_writer_app_id()` is 0), so their rate limit, auto-join and read mark apply as in the panel. An application key and an OAuth connection write as the application: everything an application writes shows under its name. Callers: `api-device-sessions.md`.
+- A team devices session (`POST /auth/login`) writes as the person (`ws_api_device_writes_as_person()`; `ws_api_writer_app_id()` is 0), so their rate limit, auto-join and read mark apply as in the panel. A key writes as the application; an OAuth connection's message is its owner's (`agent-sessions.md`). Callers: `api-device-sessions.md`.
 
 ## Which answers must be the person's own? (`ws_api_person_only()`)
 - The person's answer or preference: read receipt, read mark, approval, applying or setting aside a proposed change, vote, a channel's notify level, pinning a channel and its order, joining or leaving a discussion, closing a poll (`agent-questions.md`). An application key gets 403; an OAuth connection is accepted, since it acts for the person who approved it. Refusals say "signed in on a device".

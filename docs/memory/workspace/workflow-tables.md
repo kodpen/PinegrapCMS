@@ -20,7 +20,7 @@ description: Workflow tables (11.0.110, #2746): the four ws_wtable* tables colum
 - `ws_wtable_may()`: read view+, write edit+ (name, description, columns, rows), manage owner only (delete, shares).
 
 ## How do column changes behave?
-- A column's type is fixed once made (`type_fixed`): written cells belong to it. Name and options may change.
+- The column form changes name and options (`type_fixed`); the type changes in `workflow-tables-column-type.md`.
 - A deleted column's cells stay in the rows' JSON until the row's next write (`ws_wtable_cells_merge()` drops columns the table lacks); reads skip them. Column ids are never reused.
 - A table or row delete goes to the bin (`workflow-tables-bin.md`); a final delete takes the table row first, so a request stopped halfway leaves nothing reachable.
 - Results are codes (`not_found` 404, `forbidden` 403, `too_many_*` 409, field errors 422).

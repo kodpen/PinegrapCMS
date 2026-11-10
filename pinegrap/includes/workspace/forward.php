@@ -170,6 +170,24 @@ function ws_message_quotes_map($viewer, $message_ids)
 }
 
 /**
+ * The options a forward's message is checked and written with: how many it
+ * carries, the application that writes it, and the OAuth client a person's
+ * message came through (via_client_id). Pure.
+ *
+ * @param int   $count   the messages it carries
+ * @param array $options app_id, via_client_id
+ * @return array for ws_message_send_check() and ws_message_send()
+ */
+function ws_forward_send_options($count, $options)
+{
+    return array(
+        'forwards'      => (int) $count,
+        'app_id'        => (int) ($options['app_id'] ?? 0),
+        'via_client_id' => (int) ($options['via_client_id'] ?? 0),
+    );
+}
+
+/**
  * Everything a forward to a channel is checked against before anything is
  * written, shared by the panel and the external API (its dry run included):
  * the messages, the channel they go to and the words above them.
@@ -207,10 +225,7 @@ function ws_forward_to_channel_check($viewer, $message_ids, $target, $comment = 
         return $fail(lang('Messages cannot be forwarded into a room with a guest.'), 'channel');
     }
 
-    $checked = ws_message_send_check($viewer, $target, (string) $comment, array(
-        'forwards' => count($picked['rows']),
-        'app_id'   => (int) ($options['app_id'] ?? 0),
-    ));
+    $checked = ws_message_send_check($viewer, $target, (string) $comment, ws_forward_send_options(count($picked['rows']), $options));
 
     if (!$checked['ok']) {
         return $fail($checked['error'], 'text');
@@ -238,10 +253,7 @@ function ws_forward_to_channel($viewer, $message_ids, $target, $comment = '', $o
         return array('ok' => false, 'error' => $picked['error'], 'message_id' => 0);
     }
 
-    $sent = ws_message_send($viewer, $target, (string) $comment, array(
-        'forwards' => count($picked['rows']),
-        'app_id'   => (int) ($options['app_id'] ?? 0),
-    ));
+    $sent = ws_message_send($viewer, $target, (string) $comment, ws_forward_send_options(count($picked['rows']), $options));
 
     if (!$sent['ok']) {
         return array('ok' => false, 'error' => $sent['error'], 'message_id' => 0);

@@ -4143,6 +4143,28 @@ button.pgie-sndfile:hover {
   color: var(--pgie-muted);
 }
 
+/* -- An animation's sound in its video (pg_image_editor_mix.js) -- */
+
+/* Under the formats: a muted speaker and the line on the formats that
+   carry no sound, drawn close under the chips. */
+.pgie-confirm-box p.pgie-mix-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: -6px 0 0;
+  font-size: 12px;
+}
+
+.pgie-mix-note .pgie-ic {
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+}
+
+.pgie-mix-field .pgie-check {
+  align-items: flex-start;
+}
+
 /* -- Selection bar (pg_image_editor_actions.js) -- */
 
 /* A row along the stage's bottom, above an open sheet (--pgie-act-bottom)

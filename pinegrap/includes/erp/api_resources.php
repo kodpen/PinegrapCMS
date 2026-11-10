@@ -128,8 +128,7 @@ function erp_api_page($select, $where, $sort, $id_column, $params, $count_from)
 
 /**
  * The application owner as the ERP sees them: id, username and whether they
- * hold the cash right. The API loads the owner with the store's rights only,
- * so the till right is read here, once per request.
+ * hold the cash right, from the owner the API loaded for this request.
  *
  * @return array ['id' => int, 'username' => string, 'cash' => bool]
  */
@@ -139,23 +138,29 @@ function erp_api_owner()
 
     if ($owner === null) {
         $app = api_current_app();
-        $id = (int) ($app['owner']['id'] ?? 0);
-        $role = (int) ($app['owner']['role'] ?? 9);
-
-        $cash = ($role < 3);
-
-        if (!$cash && ($id > 0)) {
-            $cash = ((int) db_value("SELECT manage_erp_cash FROM user WHERE user_id = '" . $id . "' LIMIT 1") === 1);
-        }
-
-        $owner = array(
-            'id' => $id,
-            'username' => (string) ($app['owner']['username'] ?? ''),
-            'cash' => $cash,
-        );
+        $owner = erp_api_owner_from($app['owner'] ?? array());
     }
 
     return $owner;
+}
+
+/**
+ * The ERP's view of an owner row as api_load_owner() builds it. That row
+ * already carries every permission column, so the cash right is its
+ * manage_erp_cash key; role < 3 holds it regardless.
+ *
+ * @param array $owner
+ * @return array ['id' => int, 'username' => string, 'cash' => bool]
+ */
+function erp_api_owner_from(array $owner)
+{
+    $role = (int) ($owner['role'] ?? 9);
+
+    return array(
+        'id' => (int) ($owner['id'] ?? 0),
+        'username' => (string) ($owner['username'] ?? ''),
+        'cash' => ($role < 3) || ((int) ($owner['manage_erp_cash'] ?? 0) === 1),
+    );
 }
 
 /**

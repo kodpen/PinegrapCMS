@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-8
-description: Decisions list, workspace part 8 (2026-11-07 on): note groups and tabs, PIN locks, note media; agents as people in agent channels; the owner's tick answers a checklist question
+description: Decisions list, workspace part 8 (2026-11-07 on): note groups and tabs, PIN locks, note media; agents as people in agent channels; the owner's own account answers an agent's question
 ---
 
 ## Where are the rules and the earlier parts?
@@ -25,4 +25,5 @@ description: Decisions list, workspace part 8 (2026-11-07 on): note groups and t
 - A channel-agent row decides waking and the tier only. An application keeps reading with its owner's reach (`ws_app_reads_channel()`), so running integrations lose no channel at upgrade; reading only member channels may come later as a per-channel switch.
 
 ## Does the owner answer an agent's question in the channel? (owner, 2026-11-08, in the architect's window)
-- Yes. An agent asks the people a question in an agent channel as a checklist (`::: question` then `- [ ] option` lines), not a numbered list to answer by typing (owner: "not suitable"). The box ticked from the owner's own account is an owner decision, as binding as an answer in the architect's window; anybody else's tick is a channel decision. The asking agent writes the outcome as a `decision` message answering the question; the architect records an owner answer in `decisions-made-*.md`. `workspace/agent-checklist-questions.md`.
+- Yes. An agent asks the people a question in an agent channel with a control they choose in, not a numbered list to answer by typing (owner: "not suitable"). The answer given from the owner's own account is an owner decision, as binding as an answer in the architect's window; anybody else's is a channel decision. The asking agent writes the outcome as a `decision`; the architect records an owner answer in `decisions-made-*.md`.
+- The control: a one-choice poll for a question with one answer, a checklist where several lines are ticked (`decisions-made-workspace-12.md`).

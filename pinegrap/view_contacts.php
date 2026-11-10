@@ -514,7 +514,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         pg_audit_record_many('delete', 'contacts', $audit_before);
     }
 
-    // The groups the delete ran on, escaped for the notice.
+    // The groups the delete ran on, as plain text: the log line keeps them
+    // raw and the notice escapes them where they enter it.
     $contact_group_list = pg_contact_list_deleted_groups_label($advanced_filters, ($_SESSION['software']['view_contacts']['contact_groups'] ?? array()), $contact_groups_filter, $contact_groups);
 
     $number_of_contacts -= count($delete_refusals);
@@ -525,9 +526,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
 
     // if at least one contact was deleted
     if ($number_of_contacts > 0) {
-        log_activity(lang(array('string'=>'{var:1} contact(s) from contact group(s) ({var:2}) were deleted','vars'=>array(pg_format_number($number_of_contacts, 0),$contact_group_list  ) )), $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'{var:1} contact(s) from contact group(s) ({var:2}) were deleted','vars'=>array(pg_format_number($number_of_contacts, 0), $contact_group_list))), $_SESSION['sessionusername']);
 
-        $liveform->add_notice(lang(array('string'=>'{var:1} contact(s) from contact group(s) ({var:2}) were deleted','vars'=>array(pg_format_number($number_of_contacts, 0),$contact_group_list  ) )) );
+        $liveform->add_notice(lang(array('string'=>'{var:1} contact(s) from contact group(s) ({var:2}) were deleted','vars'=>array(pg_format_number($number_of_contacts, 0), h($contact_group_list)))));
     } else {
         $liveform->add_notice(lang('No contacts were deleted'));
     }

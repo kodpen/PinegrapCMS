@@ -32,4 +32,4 @@ description: Steps 1-8 of plans/tables-relational.md: row choice, conditions and
 
 - 7 (done, PR #8486): a list column (an array): several texts or several numbers in one cell, typed one per line. A flow gives it as a JSON list, so For each can walk it. Conditions read "contains". Formulas count it. The privacy reader and the import learn it (`workspace/workflow-tables-lists.md`).
 
-- 8: changing a column's type, like ALTER … MODIFY: text, number, money, date, list and checkbox can turn into one another. A dry run lists each cell that does not convert, and the change is refused while any is left.
+- 8 (done, PR #8512): changing a column's type, like ALTER … MODIFY: text, number, money, date, list and checkbox can turn into one another. A dry run lists each cell that does not convert, and the change is refused while any is left.

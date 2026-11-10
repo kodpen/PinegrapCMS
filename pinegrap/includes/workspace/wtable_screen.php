@@ -129,6 +129,26 @@ function ws_wtable_screen_error_text($code)
             return lang(array('string' => 'Each item is at most {var:1} characters.', 'vars' => $limits['list_item']));
         case 'list_of_invalid':
             return lang('Choose what the list holds: texts or numbers.');
+        case 'type_same':
+            return lang('Choose another type.');
+        case 'key_on_retype':
+            return lang('A type change does not make a key: make the column the key in its form afterwards.');
+        case 'key_column':
+            return lang('This column is the key of the table: make it an ordinary column first, then change its type.');
+        case 'type_not_changeable':
+            return lang('Only text, number, money, date, list and checkbox columns change their type.');
+        case 'cells_not_converted':
+            return lang('Some cells do not fit the new type: change or empty them, then try again.');
+        case 'no_conversion':
+            return lang('This value has no form in the new type.');
+        case 'list_many':
+            return lang('A list of several items does not fit one value.');
+        case 'decimals_lost':
+            return lang('It has more decimals than the new column keeps.');
+        case 'time_lost':
+            return lang('Its time of day would be lost: choose a date with the time.');
+        case 'not_saved':
+            return lang('That could not be saved.');
         case 'unknown_column':
             return lang('The column was deleted meanwhile.');
         // The table's key (wtable_keys.php).
@@ -826,4 +846,88 @@ function ws_wtable_screen_delete_confirm($what, $name, $days)
     return ((int) $days > 0)
         ? lang(array('string' => 'Delete this row? It stays in the table\'s deleted rows for {var:1} days, where it can be restored.', 'vars' => (int) $days))
         : lang('Delete this row?');
+}
+
+/**
+ * The types a column may change into on the screen, by the form's word:
+ * a date with or without its time, a list of texts or of numbers. Its own
+ * type is left out; a column whose type does not change has none. Pure but
+ * for lang().
+ *
+ * @param array $column type, options
+ * @return array choice => label
+ */
+function ws_wtable_screen_retype_choices($column)
+{
+    $choices = array(
+        'text'        => lang('Text'),
+        'number'      => lang('Number'),
+        'money'       => lang('Money'),
+        'date'        => lang('Date'),
+        'date_time'   => lang('Date with the time of day'),
+        'list_text'   => lang('List of texts'),
+        'list_number' => lang('List of numbers'),
+        'checkbox'    => lang('Checkbox'),
+    );
+    $out = array();
+
+    if (!in_array((string) ($column['type'] ?? ''), ws_wtable_retype_types(), true)) {
+        return $out;
+    }
+
+    foreach ($choices as $choice => $label) {
+        if (ws_wtable_retype_is_change($column, ws_wtable_screen_retype_input($choice, '', $column))) {
+            $out[$choice] = $label;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The type and options a choice of the form asks for. Decimals typed are
+ * kept for a number or money; left empty, money keeps 2 and a number takes
+ * those of the money column it was, else none. A money column keeps the
+ * site's currency. Pure.
+ *
+ * @param string $choice   ws_wtable_screen_retype_choices()
+ * @param string $decimals as typed
+ * @param array  $column   the column as it is
+ * @return array type, options
+ */
+function ws_wtable_screen_retype_input($choice, $decimals, $column)
+{
+    $words = array(
+        'date_time'   => array('date', array('time' => true)),
+        'list_text'   => array('list', array('of' => 'text')),
+        'list_number' => array('list', array('of' => 'number')),
+    );
+    list($type, $options) = $words[(string) $choice] ?? array((string) $choice, array());
+    $decimals = trim((string) $decimals);
+
+    if (($type === 'number') || ($type === 'money')) {
+        if ($decimals !== '') {
+            $options['decimals'] = $decimals;
+        } elseif (($type === 'number') && ((string) ($column['type'] ?? '') === 'money')) {
+            $options['decimals'] = (int) ($column['options']['decimals'] ?? 2);
+        }
+    }
+
+    return array('type' => $type, 'options' => $options);
+}
+
+/**
+ * A cell that does not convert as the screen lists it: its row, in the bin
+ * or not, its value and why. Pure but for lang().
+ *
+ * @param array $fault ws_wtable_retype_rows() fault
+ * @return string
+ */
+function ws_wtable_screen_retype_fault_text($fault)
+{
+    $row = !empty($fault['bin'])
+        ? lang(array('string' => 'Row #{var:1} (deleted, in the bin)', 'vars' => (int) $fault['label']))
+        : lang(array('string' => 'Row #{var:1}', 'vars' => (int) $fault['label']));
+
+    return $row . ': «' . (string) $fault['value'] . '» · ' . ws_wtable_screen_error_text((string) $fault['error']);
 }
