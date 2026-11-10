@@ -5,8 +5,9 @@
  * The printed order (print_order.php) says what the order screen says:
  * district and country names, tax number and office, an order put on
  * account, the unpaid state and the cancellation reason, the order codes of
- * a free order, the number of installments, a headed gift card block and
- * the form answers outside the form heading.
+ * a free order, the number of installments, a headed gift card block,
+ * the form answers outside the form heading and item table headings that
+ * repeat on every printed page.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -78,4 +79,18 @@ function test_print_order_parity_installments_gift_cards_and_forms()
 	pg_assert_false(strpos($source, "'[no limit]'") !== false, 'no untranslated no limit');
 	pg_assert_contains("lang('No limit')", $source, 'no limit translated');
 	pg_assert_false(strpos($source, '</legend>') !== false, 'the form heading closes with its own tag');
+}
+
+function test_print_order_parity_item_headings_repeat_on_each_page()
+{
+	$source = print_order_parity_source();
+
+	pg_assert_contains("'<th scope=\"col\">' . lang('Payment Period') . '</th>", $source, 'the recurring headings carry scope');
+	pg_assert_contains("\$output_custom_field_1_heading = '<th scope=\"col\">' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL)", $source, 'the custom field headings carry scope');
+	pg_assert_contains("<table cellpadding=\"4\" class=\"order_details table table-bordered w-auto\">\n                        <thead>\n                        <tr>\n                            <th scope=\"col\">' . lang('Product ID / SKU') . '</th>", $source, 'the per recipient heading row in a thead');
+	pg_assert_contains("</tr>\n                        </thead>\n                        <tbody>';", $source, 'the per recipient rows in a tbody');
+	pg_assert_contains("'       </tbody>\n                    </table>", $source, 'the per recipient tbody closed before its table');
+	pg_assert_contains("\$output_order_details_heading =\n            '<tr>\n                <th scope=\"col\">' . lang('Product ID / SKU') . '</th>", $source, 'the heading row of the layout without shipping kept apart');
+	pg_assert_contains("(\$output_order_details_heading != '' ? '<thead>' . \$output_order_details_heading . '</thead>' : '') . '<tbody>' . \$output_order_details . '</tbody></table>", $source, 'the layout without shipping wraps heading and rows');
+	pg_assert_true(strpos($source, '<th>') === false, 'every item heading carries scope');
 }
