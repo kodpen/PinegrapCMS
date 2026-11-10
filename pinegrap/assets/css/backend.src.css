@@ -15032,6 +15032,18 @@ a.ws-chip:hover {
 .ws-link-tip .btn {
   flex-shrink: 0;
 }
+/* The find tip of a writing box and the matches it paints. */
+.ws-find-count {
+  min-width: 3.5rem;
+  text-align: center;
+}
+::highlight(ws-find) {
+  background-color: rgba(var(--ws-accent-rgb), .2);
+}
+::highlight(ws-find-current) {
+  background-color: rgba(var(--ws-accent-rgb), .55);
+  color: var(--pg-fg-body);
+}
 
 /* The design windows: table, checklist, code. */
 .ws-table-tools {
