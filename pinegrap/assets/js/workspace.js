@@ -2645,7 +2645,7 @@
     // act only on the message itself, so a control inside keeps its own.
     function messageKeys(pane) {
         function messages() {
-            return Array.prototype.slice.call(pane.querySelectorAll('.ws-msg'));
+            return Array.prototype.slice.call(pane.querySelectorAll('.ws-msg:not(.ws-msg-folded)'));
         }
 
         function moveStop(target) {
@@ -3064,6 +3064,63 @@
     // A recording made with the writing box's microphone (workspace_voice.js).
     function voiceFile(file) {
         return !!(file && window.PGWsVoice && window.PGWsVoice.isVoice(file.name));
+    }
+
+    // The application a message is a plain line of, 0 when it is anything
+    // else: a one-line message of an application that is no agent, with
+    // nothing on it a reader acts on (a file, a poll, an approval, a
+    // checklist, a mark, the pin, replies, a read receipt, a task, a mention
+    // of the reader). Pure.
+    function appLine(message, pinId) {
+        var sender = (message && message.sender) || {};
+
+        if (!message || message.deleted || (message.sender_kind !== 'app') || (message.kind !== 'message') || !sender.app_id
+            || sender.claude || sender.ai || sender.mcp || sender.agent
+            || !message.one_line || message.mentions_me || message.parent_id || message.task_id
+            || message.file || message.poll || message.approval || message.ack || message.status_card || message.has_list
+            || message.thread || message.scheduled || message.note_card || message.note_group_card || message.flow_run
+            || (message.changes || []).length || (message.drafts || []).length || (message.design || []).length
+            || (message.list_tasks || []).length || (pinId && (message.id === pinId))) {
+            return 0;
+        }
+
+        return sender.app_id;
+    }
+
+    // The runs of plain application lines in a conversation, oldest first:
+    // lines in a row from one application on one day (dayOf(), optional).
+    // A deleted message leaves no trace and breaks nothing; any other
+    // message ends the run. Each run: { app, ids }. Pure.
+    function appLineRuns(messages, pinId, dayOf) {
+        var runs = [];
+        var run = null;
+        var lastDay = null;
+
+        (messages || []).forEach(function (message) {
+            if (!message || message.deleted) {
+                return;
+            }
+
+            var day = dayOf ? dayOf(message) : '';
+            var app = appLine(message, pinId);
+
+            if (!app || !run || (run.app !== app) || (day !== lastDay)) {
+                run = null;
+            }
+
+            if (app) {
+                if (!run) {
+                    run = { app: app, ids: [] };
+                    runs.push(run);
+                }
+
+                run.ids.push(message.id);
+            }
+
+            lastDay = day;
+        });
+
+        return runs;
     }
 
     function params() {
@@ -8489,6 +8546,11 @@
 
                 self.view = 'channel';
                 screenHeading('channel');
+
+                if (!self.channel || (self.channel.id !== data.channel.id)) {
+                    self.appLinesOpen = {};
+                }
+
                 self.channel = data.channel;
                 self.era = data.era || null;
                 // Whether Add › Start a flow has a flow to offer here.
@@ -8515,6 +8577,8 @@
                 self.drawSide();
 
                 if (messageId) {
+                    self.revealAppLine(messageId);
+
                     var target = self.center.querySelector('[data-ws-message="' + messageId + '"]');
 
                     if (target) {
@@ -9172,6 +9236,27 @@
             // only when the customer is or is tied to such an account.
             if (channel.sales_quote_url) {
                 item(t('sales_quote_new'), 'bi-file-earmark-plus', function () { window.location.href = channel.sales_quote_url; });
+                divider();
+            }
+
+            // The reader's own choice in this browser: how an application's
+            // one-line messages read here.
+            if (self.hasAppLines() || (self.appLinesMode() !== 'folded')) {
+                var linesMode = self.appLinesMode();
+
+                [['folded', t('apl_folded'), 'bi-chevron-bar-contract'], ['all', t('apl_all'), 'bi-list'], ['hidden', t('apl_hidden'), 'bi-eye-slash']].forEach(function (option) {
+                    item(option[1], option[2], function () {
+                        self.setAppLinesMode(option[0]);
+
+                        // The menu marks the new choice next time it opens.
+                        var actions = self.center ? self.center.querySelector('.ws-head-channel .ws-head-actions') : null;
+                        var wrapNow = actions ? actions.querySelector(':scope > .pg-menu-wrap') : null;
+
+                        if (wrapNow) {
+                            actions.replaceChild(self.channelMenu(), wrapNow);
+                        }
+                    }, '', linesMode === option[0], true);
+                });
                 divider();
             }
 
@@ -9869,6 +9954,160 @@
                 self.appendMessage(message, previous, pane);
                 previous = message;
             });
+
+            self.foldAppLines();
+        },
+
+        // ── Application lines (a run of an application's one-line messages) ──
+
+        // The reader's choice for this channel, in this browser: folded (the
+        // default), all or hidden.
+        appLinesMode: function () {
+            var mode = '';
+
+            try {
+                mode = this.channel ? (window.localStorage.getItem('ws-app-lines:' + this.channel.id) || '') : '';
+            } catch (error) {
+                mode = '';
+            }
+
+            return (mode === 'all' || mode === 'hidden') ? mode : 'folded';
+        },
+
+        setAppLinesMode: function (mode) {
+            try {
+                if (mode === 'folded') {
+                    window.localStorage.removeItem('ws-app-lines:' + this.channel.id);
+                } else {
+                    window.localStorage.setItem('ws-app-lines:' + this.channel.id, mode);
+                }
+            } catch (error) {
+                // Kept for this view only.
+            }
+
+            this.appLinesOpen = {};
+            this.foldAppLines();
+        },
+
+        // Whether the conversation holds a line the choice acts on.
+        hasAppLines: function () {
+            var pinId = (this.channel && this.channel.pin) ? this.channel.pin.id : 0;
+
+            return (this.messages || []).some(function (message) { return !!appLine(message, pinId); });
+        },
+
+        // Draws the fold over the messages on the screen: in a folded run
+        // (three lines or more) the newest line stays with "+N lines" under
+        // it; hidden, every run is one count row. Opened runs stay open
+        // while new lines join them.
+        foldAppLines: function () {
+            var self = this;
+            var pane = self.pane;
+
+            if (!pane || !self.channel || (self.tab !== 'messages')) {
+                return;
+            }
+
+            Array.prototype.slice.call(pane.querySelectorAll('.ws-app-fold')).forEach(function (row) { row.remove(); });
+            Array.prototype.slice.call(pane.querySelectorAll('.ws-msg-folded, .ws-msg-fold-head')).forEach(function (node) {
+                node.classList.remove('ws-msg-folded', 'ws-msg-fold-head');
+            });
+
+            var mode = self.appLinesMode();
+
+            if (mode === 'all') {
+                return;
+            }
+
+            var open = self.appLinesOpen || (self.appLinesOpen = {});
+            var pinId = self.channel.pin ? self.channel.pin.id : 0;
+
+            appLineRuns(self.messages, pinId, function (message) { return self.dayKey(message); }).forEach(function (run) {
+                var count = run.ids.length;
+
+                if ((mode === 'folded') && (count < 3)) {
+                    return;
+                }
+
+                var nodes = run.ids.map(function (id) { return pane.querySelector('[data-ws-message="' + id + '"]'); }).filter(Boolean);
+                var last = nodes[nodes.length - 1];
+
+                if (!last) {
+                    return;
+                }
+
+                var opened = run.ids.some(function (id) { return !!open[id]; });
+                var row = el('div', 'ws-app-fold');
+                var label;
+
+                if (opened) {
+                    label = t('apl_fold');
+                } else if (mode === 'folded') {
+                    label = t('apl_more', count - 1);
+                } else {
+                    label = (count === 1) ? t('apl_one') : t('apl_count', count);
+                }
+
+                var toggle = button('btn btn-sm btn-text theme-secondary', label, opened ? 'bi-chevron-contract' : 'bi-chevron-expand');
+
+                toggle.setAttribute('aria-expanded', opened ? 'true' : 'false');
+                toggle.addEventListener('click', function () {
+                    run.ids.forEach(function (id) {
+                        if (opened) {
+                            delete open[id];
+                        } else {
+                            open[id] = true;
+                        }
+                    });
+                    self.foldAppLines();
+
+                    var still = pane.querySelector('.ws-app-fold [data-ws-fold="' + run.ids[0] + '"]');
+
+                    if (still) {
+                        still.focus();
+                    }
+                });
+                toggle.setAttribute('data-ws-fold', run.ids[0]);
+                row.appendChild(toggle);
+                last.parentNode.insertBefore(row, last.nextSibling);
+
+                if (opened) {
+                    return;
+                }
+
+                nodes.forEach(function (node, index) {
+                    if ((mode === 'hidden') || (index < nodes.length - 1)) {
+                        node.classList.add('ws-msg-folded');
+                    }
+                });
+
+                // The newest line of a folded run reads with its name again.
+                if (mode === 'folded') {
+                    last.classList.add('ws-msg-fold-head');
+                }
+            });
+        },
+
+        // Opens the run that holds a message: a link or a search hit lands
+        // on it.
+        revealAppLine: function (messageId) {
+            var node = this.pane ? this.pane.querySelector('[data-ws-message="' + messageId + '"]') : null;
+
+            if (!node || !node.classList.contains('ws-msg-folded')) {
+                return;
+            }
+
+            var self = this;
+            var pinId = (self.channel && self.channel.pin) ? self.channel.pin.id : 0;
+            var open = self.appLinesOpen || (self.appLinesOpen = {});
+
+            appLineRuns(self.messages, pinId, function (message) { return self.dayKey(message); }).forEach(function (run) {
+                if (run.ids.indexOf(messageId) !== -1) {
+                    run.ids.forEach(function (id) { open[id] = true; });
+                }
+            });
+
+            self.foldAppLines();
         },
 
         // The newest message still on the screen.
@@ -9927,6 +10166,7 @@
             }
 
             if (!next) {
+                this.foldAppLines();
                 return;
             }
 
@@ -9939,6 +10179,8 @@
             if (nextNode) {
                 nextNode.parentNode.replaceChild(this.messageNode(next, previous), nextNode);
             }
+
+            this.foldAppLines();
         },
 
         dayKey: function (message) {
@@ -11232,12 +11474,15 @@
             if (node) {
                 var fresh = this.messageNode(message, previous);
                 node.parentNode.replaceChild(fresh, node);
+                this.foldAppLines();
             }
         },
 
         // Where a message is: in view it is highlighted, otherwise the
         // channel opens there.
         jumpTo: function (messageId, flash) {
+            this.revealAppLine(messageId);
+
             var target = this.center.querySelector('[data-ws-message="' + messageId + '"]');
 
             if (target) {
@@ -17191,6 +17436,11 @@
                             arrived++;
                         }
                     });
+
+                    // A line that arrives joins its run on the screen.
+                    if (grew) {
+                        self.foldAppLines();
+                    }
                 }
 
                 if (data.messages.length) {

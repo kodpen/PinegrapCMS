@@ -13201,6 +13201,33 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 .ws-msg.ws-msg-highlight {
   background: color-mix(in srgb, var(--pg-warning) 18%, transparent);
 }
+/* A folded run of an application's one-line messages (workspace.js
+   foldAppLines()): the hidden lines, the newest line read with its name
+   again, and the row that opens and closes the run. */
+.ws-msg.ws-msg-folded {
+  display: none;
+}
+.ws-msg.ws-msg-follow.ws-msg-fold-head {
+  padding-top: var(--ws-row-y, .3rem);
+}
+.ws-msg.ws-msg-follow.ws-msg-fold-head .ws-msg-avatar {
+  display: block;
+}
+.ws-msg.ws-msg-follow.ws-msg-fold-head .ws-msg-avatar > :not(.ws-msg-clock) {
+  display: revert;
+}
+.ws-msg.ws-msg-fold-head .ws-msg-clock {
+  display: none;
+}
+.ws-msg.ws-msg-follow.ws-msg-fold-head .ws-msg-meta {
+  display: flex;
+}
+.ws-app-fold {
+  padding: 0 var(--ws-space-2, .5rem) .2rem calc(2.2rem + .6rem + var(--ws-space-2, .5rem));
+}
+.ws-app-fold .btn {
+  font-size: .78rem;
+}
 .ws-msg-avatar .avatar {
   --bs-avatar-size: var(--ws-avatar);
 }
