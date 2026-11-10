@@ -254,6 +254,19 @@ function test_shipment_number_warning()
 	pg_assert_false(pg_shipment_number_warning('', 'yurtici'), 'no number, nothing to warn about');
 }
 
+// A UPS, FedEx or USPS number is checked in capitals and without the spaces
+// of its printed groups, as the S10 check reads a PTT number.
+function test_shipment_number_warning_case_and_groups()
+{
+	pg_assert_false(pg_shipment_number_warning('1z999aa10123456784', 'ups'), 'UPS in lower case');
+	pg_assert_false(pg_shipment_number_warning('9400 1118 9922 3197 4284 90', 'usps'), 'USPS in groups of four');
+	pg_assert_false(pg_shipment_number_warning('ea123456789us', 'usps'), 'USPS international in lower case');
+	pg_assert_false(pg_shipment_number_warning('1234 5678 9012', 'fedex'), 'FedEx in groups of four');
+	pg_assert_true(pg_shipment_number_warning('abcdefgh', 'ups'), 'still nothing like a UPS number');
+	pg_assert_true(pg_shipment_number_warning('1234 5678', 'fedex'), 'still too few digits for FedEx');
+	pg_assert_true(pg_shipment_number_warning('1234 5678 901', 'yurtici'), 'a Turkish courier still takes digits only');
+}
+
 // The write path refuses before it asks the database anything.
 function test_shipment_writers_refuse_without_a_parcel()
 {
