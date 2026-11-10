@@ -606,6 +606,28 @@ function ws_model_agent_missing($agent)
     return '';
 }
 
+/**
+ * Whether a model assistant can be called now: '' when it can, 'missing'
+ * while it lacks something (ws_model_agent_missing()), 'held' while it waits
+ * out a failed call. ws_model_kick() skips it then; a draft made inside its
+ * request asks the same (ws_scheduled_draft_ready(), pg_ai_state()).
+ *
+ * @param array $agent the raw row
+ * @return string '' | missing | held
+ */
+function ws_model_agent_blocked($agent)
+{
+    if (ws_model_agent_missing($agent) !== '') {
+        return 'missing';
+    }
+
+    if (((int) ($agent['door_last_knock'] ?? 0) + ws_model_hold_seconds((int) ($agent['door_failures'] ?? 0))) > time()) {
+        return 'held';
+    }
+
+    return '';
+}
+
 /* ---------------------------------------------------------------------------
    The work
    --------------------------------------------------------------------------- */
@@ -672,11 +694,13 @@ function ws_model_kick($budget = WS_AI_BUDGET)
             continue;
         }
 
-        if (ws_model_agent_missing($agent) !== '') {
+        $blocked = ws_model_agent_blocked($agent);
+
+        if ($blocked === 'missing') {
             continue;
         }
 
-        if (((int) $agent['door_last_knock'] + ws_model_hold_seconds((int) $agent['door_failures'])) > time()) {
+        if ($blocked === 'held') {
             $status = 'held';
             continue;
         }

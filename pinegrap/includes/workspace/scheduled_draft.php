@@ -51,14 +51,56 @@ define('WS_SCHEDULED_DRAFT_PER_ANSWER', 2);
 
 /**
  * Can this person have a scheduled action drafted from a sentence: staff
- * who schedule, on a site where Pinegrap AI can be asked.
+ * who schedule, on a site where the model that drafts it can be asked.
+ * Inside a model assistant's request that is the assistant (its call goes
+ * to its own API), never Pinegrap AI's switch, application or licence.
  *
  * @param array $viewer
  * @return bool
  */
 function ws_scheduled_draft_ready($viewer)
 {
-    return ws_can_schedule($viewer) && ws_scheduled_ready() && function_exists('ws_ai_ready') && ws_ai_ready();
+    return ws_can_schedule($viewer) && ws_scheduled_ready() && ws_scheduled_draft_model_ready();
+}
+
+/**
+ * Can the model that drafts be asked: the running model assistant
+ * (ws_model_agent_blocked(), the test ws_model_kick() makes), Pinegrap AI
+ * otherwise (ws_ai_ready()). pg_ai_state() asks the same.
+ *
+ * @return bool
+ */
+function ws_scheduled_draft_model_ready()
+{
+    $agent = function_exists('ws_model_running') ? ws_model_running() : null;
+
+    if ($agent) {
+        return ws_model_agent_blocked($agent) === '';
+    }
+
+    return function_exists('ws_ai_ready') && ws_ai_ready();
+}
+
+/**
+ * A failure sentence of the draft: naming the running model assistant,
+ * Pinegrap AI's wording otherwise.
+ *
+ * @param string $which not_ready | unreadable
+ * @return string
+ */
+function ws_scheduled_draft_sentence($which)
+{
+    $agent = function_exists('ws_model_running') ? ws_model_running() : null;
+
+    if ($which === 'unreadable') {
+        return $agent
+            ? lang(array('string' => 'The answer of {var:1} could not be read as a form. Try again with the sentence put a little differently.', 'vars' => (string) $agent['name']))
+            : lang('The answer of Pinegrap AI could not be read as a form. Try again with the sentence put a little differently.');
+    }
+
+    return $agent
+        ? lang(array('string' => '{var:1} cannot draft it right now.', 'vars' => (string) $agent['name']))
+        : lang('Pinegrap AI is not ready on this site, so the form has to be filled in by hand.');
 }
 
 /**
@@ -88,7 +130,7 @@ function ws_scheduled_draft($viewer, $text, $channel_id = 0)
     }
 
     if (!ws_scheduled_draft_ready($viewer)) {
-        return $fail(lang('Pinegrap AI is not ready on this site, so the form has to be filled in by hand.'));
+        return $fail(ws_scheduled_draft_sentence('not_ready'));
     }
 
     if (!function_exists('pg_ai_chat')) {
@@ -105,7 +147,7 @@ function ws_scheduled_draft($viewer, $text, $channel_id = 0)
     $draft = ws_scheduled_draft_parse($reply['text']);
 
     if ($draft === null) {
-        return $fail(lang('The answer of Pinegrap AI could not be read as a form. Try again with the sentence put a little differently.'));
+        return $fail(ws_scheduled_draft_sentence('unreadable'));
     }
 
     $tidy = ws_scheduled_draft_tidy($draft, $lists, mb_substr($text, 0, 60));

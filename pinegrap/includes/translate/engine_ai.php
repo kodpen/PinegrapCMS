@@ -75,6 +75,21 @@ function pg_ai_state()
         return array('ready' => false, 'reason' => lang('Pinegrap AI is set up in the Workspace module, which this site has not switched on.'), 'retry' => false);
     }
 
+    // Inside a model assistant's request the call goes to its own API:
+    // its readiness counts, never Pinegrap AI's switch, application or
+    // licence (model assistants run on every site).
+    $agent = function_exists('ws_model_running') ? ws_model_running() : null;
+
+    if ($agent) {
+        $blocked = ws_model_agent_blocked($agent);
+
+        if ($blocked !== '') {
+            return array('ready' => false, 'reason' => lang(array('string' => '{var:1} cannot answer right now.', 'vars' => (string) $agent['name'])), 'retry' => ($blocked === 'held'));
+        }
+
+        return array('ready' => true, 'reason' => '', 'retry' => false);
+    }
+
     $missing = ws_ai_missing();
 
     if ($missing) {
@@ -131,7 +146,12 @@ function pg_ai_chat($messages, $options = array())
     if ($problem !== '') {
         $error = ($problem === 'license') ? ws_ai_license_problem() : ws_ai_http_error($response);
 
-        return array('ok' => false, 'text' => '', 'error' => ($error !== '') ? $error : lang('Pinegrap AI did not answer.'));
+        if ($error === '') {
+            $agent = function_exists('ws_model_running') ? ws_model_running() : null;
+            $error = $agent ? ws_model_loop_sentence($agent, 'unreachable') : lang('Pinegrap AI did not answer.');
+        }
+
+        return array('ok' => false, 'text' => '', 'error' => $error);
     }
 
     $message = $response['json']['choices'][0]['message'];
