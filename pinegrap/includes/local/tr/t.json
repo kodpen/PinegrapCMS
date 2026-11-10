@@ -2169,6 +2169,8 @@
     "The automatic backup failed": "Otomatik yedekleme başarısız oldu",
     "The automatic backup keeps one backup per week; every run in the same week replaces it. Older weeks beyond this number are deleted. 0 keeps all of them. Backups taken by hand and the install dumps are never deleted.": "Otomatik yedekleme her hafta için bir yedek tutar; aynı hafta içindeki her çalışma o yedeğin yerine yazar. Bu sayıyı aşan eski haftalar silinir. 0 hepsini saklar. Elle alınan yedekler ve kurulum dökümleri hiçbir zaman silinmez.",
     "The automatic check found no known limitations.": "Otomatik denetim bilinen bir kısıtlama bulmadı.",
+    "The automatic label could not be created, so there is no label to print.": "Otomatik etiket oluşturulamadı; yazdırılacak bir etiket yok.",
+    "The automatic shipping label of order {var:1} could not be created; create it on the order: {var:2}": "{var:1} numaralı siparişin otomatik kargo etiketi oluşturulamadı; etiketi siparişte oluşturun: {var:2}",
     "The autumn edit": "Sonbahar seçkisi",
     "The autumn lookbook": "Sonbahar lookbook'u",
     "The autumn menu is here.": "Sonbahar menüsü geldi.",

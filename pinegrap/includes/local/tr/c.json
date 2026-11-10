@@ -3822,6 +3822,7 @@
     "Create the department": "Departmanı oluştur",
     "Create the file": "Dosyayı oluştur",
     "Create the invoice": "Faturayı oluştur",
+    "Create the label automatically once the order is paid": "Sipariş ödenince etiketi otomatik oluştur",
     "Create the messages displayed in the login region before and after users log in.": "Kullanıcılar oturum açmadan önce ve sonra oturum açma bölgesinde görüntülenen mesajları oluşturun.",
     "Create the statement page": "Beyan sayfasını oluştur",
     "Create the task": "Görevi oluştur",

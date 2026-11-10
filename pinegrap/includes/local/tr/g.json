@@ -795,6 +795,7 @@
     "general job brought {var:1} file(s) back from the object store ({var:2})": "genel görev nesne depolamadan {var:1} dosyayı geri aldı ({var:2})",
     "general job cancelled unpaid bank transfer order #{var:1} after {var:2} day(s)": "genel görev, ödenmemiş #{var:1} numaralı havale siparişini {var:2} gün sonra iptal etti",
     "general job corrected the rating of {var:1} product(s) from their reviews": "genel iş {var:1} ürünün puanını değerlendirmelerinden yeniden hesaplayarak düzeltti",
+    "general job created {var:1} shipping label(s) for paid orders": "genel görev ödenen siparişler için {var:1} kargo etiketi oluşturdu",
     "general job deleted {var:1} object(s) of deleted or replaced files from the object store": "genel görev silinen ya da değiştirilen dosyaların {var:1} nesnesini nesne deposundan sildi",
     "general job ended the pre-order of {var:1} product(s)": "genel görev {var:1} ürünün ön satışını bitirdi",
     "general job ended the undo of {var:1} imported item(s) older than 30 days": "genel görev, 30 günden eski {var:1} içe aktarılmış öğenin geri alınabilirliğini sonlandırdı",

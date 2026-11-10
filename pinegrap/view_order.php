@@ -1120,6 +1120,18 @@ if (!$_POST) {
                     $shipment_label_pickup = array();
 
                     foreach (pg_shipment_label_rows($ship_to_id) as $shipment_label) {
+                        // An automatic label that could not be made is a
+                        // row without a number or document: it is shown,
+                        // never printed, and Create Label stays.
+                        if ($shipment_label['state'] === 'failed') {
+                            $output_shipment_labels .=
+                                '<li class="d-flex flex-wrap align-items-center gap-3 py-2 border-bottom">
+                                    <span class="badge theme-danger text-wrap">' . lang('Automatic label could not be created') . '</span>
+                                    <span class="small fg-secondary">' . h(pg_shipment_label_driver_name($shipment_label['driver'])) . ' · ' . get_absolute_time(array('timestamp' => (int) $shipment_label['created_at'], 'type' => 'date')) . '</span>
+                                </li>';
+                            continue;
+                        }
+
                         $shipment_label_cancelled = ($shipment_label['state'] === 'cancelled');
                         $shipment_label_return = (int) $shipment_label['is_return'] ? 1 : 0;
                         $shipment_label_active[$shipment_label_return] = $shipment_label_active[$shipment_label_return] || !$shipment_label_cancelled;
