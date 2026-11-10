@@ -204,6 +204,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-40.md: What alt text does a product photo get? (2026-11-10)
 - decisions-made-product-41.md: Where are the rules and the earlier parts?
 - decisions-made-product-41.md: How is scheduled work set up and listed now that scheduled actions are flows? (2026-11-09)
+- decisions-made-product-41.md: How does the new dashboard's System Status card look and behave? (2026-11-10)
 - decisions-made-product-5.md: Which outside-account leftovers start in 2026.11.0? (#3180)
 - decisions-made-product-5.md: Do subscriptions start, and who runs the renewals? (#3183)
 - decisions-made-product-5.md: Does a beta site without a build file get the beta build of its own version? (#3204)
@@ -447,7 +448,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/ai-write-decisions.md: Why "Write with AI" is built the way it is (decided 2026-10-19/20): one endpoint, the models, daily cap, brand voice, the panel, labelling and the marks, translation, alt text on the browser's model
 - ui/back-arrow-no-copies.md: The way back to a parent or list screen is only the back arrow and the breadcrumb; which back-to-list copies were removed and where the screens now go back
 - ui/brand-logo.md: The Pinegrap logo (the squirrel's space window, the single-line wordmark): its files, which shape goes where, the panel's moving loop, the still frames, private label
-- ui/dashboard-system-status-gauge.md: The System Status gauge, check chips and Release Notes dialog shared by dashboard widget 2 and the new dashboard's System Status card: functions, what stays byte for byte, the fixtures test
+- ui/dashboard-system-status-gauge.md: The System Status gauge, check chips and Release Notes dialog shared by dashboard widget 2 and the new dashboard's card: functions, the two palettes, what stays byte for byte, the fixtures test
 - ui/dashboard-v2-brief.md: The old dashboard's brief on the new dashboard (#6431): placement in the greeting card, v2 wording and hour, the phone box, the Top section switch, pg_dash_brief.js
 - ui/dashboard-v2-drawn-look.md: The new dashboard's drawn look (visual pass V): the --pgd-* palette every part reads, the frame and faces, the drawn Assistant and goals, the differences kept on purpose
 - ui/dashboard-v2-overview.md: The new dashboard as a whole: the per-person switch beside the untouched old dashboard, welcome.php's page branch, its files and bundles, SVG charts, refresh rules, string card ids
