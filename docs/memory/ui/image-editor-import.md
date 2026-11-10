@@ -11,6 +11,7 @@ module: image_editor
 
 ## What does an import make?
 - A picture: a picture layer as the Image tool made it (`addPicture()`, `addFilePicture()`).
+- A video (MP4, M4V, WebM, from this computer or the menu's Video from the site, `Editor.importItems`): a video layer after an upload into Files (`image-editor-clip.md`).
 - An SVG: its text goes to the action `svg_import` (`pg_svg_sanitize()`; a file by id with `pg_image_editor_svg_file()`'s gates), then `svgImport()` makes one `svg` layer of kind `g` with `imported: true` and `fileName`: an outer `<g id>` carrying the root's id (the scope of its sanitized style rules), an inner `<g transform>` with the view box's matrix and the root's inherited paint. Its box is `M.svgFit()`: 60 % of the visible stage, centred, grown for a small drawing.
 - Every id in the file gets the prefix `i<n>-` with the smallest n that clashes with no id of the document (`M.svgIdMap()`); references follow (`M.svgRenameValue()` for href and url(#…), `M.svgRenameCss()` for selectors and url(#…), a colour like `#fff` left alone). Without a root id the file gets `svg`, renamed the same way.
 

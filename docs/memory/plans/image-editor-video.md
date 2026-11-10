@@ -1,10 +1,10 @@
 ---
 name: image-editor-video
-description: Plan (owner 2026-11-03): video editing inside the image editor: clips on the timeline, trim, split, effects, sound, layers over video, export with sound; held by the editor's holder
+description: Plan (owner 2026-11-03): video editing inside the image editor: clips on the timeline, trim, split, effects, sound, layers over video, export with sound; open steps go to workers
 ---
 
 ## What is the status?
-- Held by the image editor's holder (the editor: `ui/image-editor-overview.md`), run as `image-editor-workers.md` says; claimed as `[plan:image-editor-video] V<n> — <topic>`. Video comes last (owner, 2026-11-03): V0 starts once E21-E28 and the animation steps through AN8 have landed; the holder marks lines `free`.
+- Owner, 2026-11-10: the remaining steps go to workers, claimed as `[plan:image-editor-video] V<n> — <topic>` and handed over through the usual PR flow to `development`, run as `image-editor-workers.md` says; each open step line names the step it follows and says `free` once that step has landed. The editor: `ui/image-editor-overview.md`.
 
 ## What is it?
 - A video is a layer of the editor's document, on the animation timeline (AN1, AN2, AN9) and in scenes (AN7): trim, split, move, speed, volume. Pictures, texts, stickers, shapes and their motion lie over it; effects and transitions apply to clips.
