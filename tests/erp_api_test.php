@@ -9,7 +9,8 @@
  * rehearsed with X-Dry-Run, money moves only with the cash scope, the
  * helpers that read a typed document's lines (includes/erp/api_documents.php,
  * api_stock.php), the cash forecast's shape (api_reports.php), and whose
- * name a collection's bell row carries (includes/erp/alerts.php).
+ * name a collection's bell row carries (includes/erp/alerts.php), and how
+ * erp_api_owner() reads the till right from the owner the API loaded.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -27,6 +28,7 @@ if (!defined('PG_API_PANEL')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/alerts.php');
+require_once(__DIR__ . '/helpers/source_reader.php');
 
 function test_erp_api_routes_reach_a_handler()
 {
@@ -402,4 +404,20 @@ function test_erp_api_expense_writes_can_be_rehearsed()
 	pg_assert_contains('erp_expense_payment_refusal(', $source('erp_expense_post_payment'), 'and again inside it');
 
 	pg_assert_same(lang('Choose a payment method.'), erp_expense_payment_refusal(array('expense_date' => '2026-01-01', 'currency' => 'TRY'), array('payment_method' => 'barter', 'cash_account_id' => 1)));
+}
+
+function test_erp_api_owner_takes_the_till_right_from_the_loaded_owner()
+{
+	pg_assert_true(erp_api_owner_from(array('id' => 1, 'role' => 1))['cash'], 'role 1 holds the till right without the column');
+	pg_assert_true(erp_api_owner_from(array('id' => 2, 'role' => 2, 'manage_erp_cash' => '1'))['cash'], 'role 2 holds it');
+	pg_assert_true(erp_api_owner_from(array('id' => 3, 'role' => 3, 'manage_erp_cash' => '1'))['cash'], 'role 3 holds it with manage_erp_cash');
+	pg_assert_false(erp_api_owner_from(array('id' => 3, 'role' => 3, 'manage_erp_cash' => '0'))['cash'], 'role 3 without manage_erp_cash does not');
+	pg_assert_false(erp_api_owner_from(array('id' => 3, 'role' => 3))['cash'], 'role 3 without the column does not');
+	pg_assert_false(erp_api_owner_from(array('id' => 4))['cash'], 'an owner without a role does not');
+	pg_assert_same(array('id' => 7, 'username' => 'ada', 'cash' => false), erp_api_owner_from(array('id' => '7', 'username' => 'ada', 'role' => '3')), 'id and username are carried');
+	pg_assert_same(array('id' => 0, 'username' => '', 'cash' => false), erp_api_owner_from(array()), 'an empty owner holds nothing');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/api_resources.php');
+	pg_assert_false(strpos($source, 'SELECT manage_erp_cash') !== false, 'the till right is not queried again');
+	pg_assert_contains('erp_api_owner_from(', pg_test_function_source('erp_api_owner'), 'erp_api_owner() reads the loaded owner');
 }
