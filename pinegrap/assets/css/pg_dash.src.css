@@ -886,12 +886,19 @@
     color: var(--pgd-strong);
   }
 
+  /* The gauge takes the room the folded chips left: the dial as wide as the
+     card, centred between the heading and the chips, which sit at the foot
+     of a card stretched to the greeting's height. */
   .pg-dash-status .pg-health {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: center;
     padding: .25rem 0 0;
   }
 
   .pg-dash-status .pg-health-dial {
-    max-width: 16rem;
+    max-width: 18rem;
   }
 
   /* The number takes the arc's own sweep, as the name in the greeting takes
@@ -903,7 +910,7 @@
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    font-size: 2.5rem;
+    font-size: 2.75rem;
   }
 
   @media (forced-colors: active) {
