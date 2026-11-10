@@ -22,7 +22,7 @@ module: image_editor
 - Detach sound (`M.clipDetach()`, only at 1× with a sound track): an entry of `doc.sounds` on the same file and times, the clip muted.
 
 ## How is a video added?
-- Import (`image-editor-import.md`): From this computer takes `.mp4`, `.m4v`, `.webm` too (and a drop on the stage): the file is opened in the browser first (a codec it cannot decode is said before any upload), then sent to `video_upload` and lands beside the open file or in the unsaved canvas's folder (edit right, not the bin; type by its bytes, `pg_image_editor_clip_format()`; the one-request limit of `pg_image_editor_animation_limit()`). A callback save (Workspace) has no Files: a message says so.
+- Import (`image-editor-import.md`): From this computer takes `.mp4`, `.m4v`, `.webm` too (and a drop on the stage): the file is opened in the browser first (a codec it cannot decode is said before any upload), then sent to `video_upload` and lands beside the open file or in the unsaved canvas's folder (edit right, not the bin; type by its bytes, `pg_image_editor_clip_format()`; over one request in parts, `image-editor-upload.md`). A callback save (Workspace) has no Files: a message says so.
 - Video from the site: `Editor.importItems` adds the item; `video_files` lists mp4, m4v and webm files as `sound_files` lists sounds (`pg_image_editor_sound_where()` and `_rows()` take the types).
 - The clip goes to the bottom, fills the canvas (ratio kept), starts at the playhead and is selected; the document's length grows to its end (at most 60 s).
 
@@ -32,4 +32,4 @@ module: image_editor
 
 ## What is left to later steps?
 - Clip rows, trim, split, move and snapping came in V3 (`image-editor-clip-timeline.md`).
-- Effects and transitions (V5); uploads over one request (V8).
+- Effects and transitions (V5); uploads in parts came in V8.

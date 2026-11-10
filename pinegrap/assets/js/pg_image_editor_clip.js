@@ -363,27 +363,15 @@
         });
     };
 
-    // The file after the request's line as it is (pg_image_editor_binary_body()).
+    // The file after the request's line, or in parts when it is larger than
+    // one (uploadSend(), pg_image_editor_upload.js).
     Editor.prototype.clipUpload = function (file) {
-        var cfg = X.config(), head = {
-            token: cfg.token || '', action: 'video_upload', file_id: this.opts.fileId || 0,
+        var head = {
+            action: 'video_upload', file_id: this.opts.fileId || 0,
             folder_id: (this.opts.save && this.opts.save.folderId) || 0, name: file.name || ''
         };
 
-        return fetch(cfg.api, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/octet-stream', Accept: 'application/json' },
-            body: new Blob([JSON.stringify(head) + '\n', file])
-        }).then(function (res) {
-            return res.json().catch(function () { return null; });
-        }).then(function (r) {
-            if (!r || (r.status !== 'success')) {
-                throw new Error((r && r.message) || t('clipUploadError'));
-            }
-
-            return r;
-        });
+        return this.uploadSend(file, 'video', head, { error: t('clipUploadError') });
     };
 
     // Videos from Files (action video_files) over the editor; a press adds

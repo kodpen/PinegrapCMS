@@ -9792,6 +9792,69 @@
         mixCarries: mixCarries, mixConfig: mixConfig
     };
 
+    // ---- UPLOAD (pg_image_editor_upload.js) ----
+
+    // A file larger than one part goes to the server in parts, each one
+    // request (pg_image_editor_upload_limits()); a broken upload goes on
+    // from the bytes the server holds.
+    var UPLOAD_TRIES = 6;
+
+    // Whether a file of size bytes goes in parts of part bytes.
+    function uploadChunked(size, part) {
+        return (part > 0) && (size > part);
+    }
+
+    // The part to send once the server holds received bytes, null when
+    // the file is all there.
+    function uploadNext(size, part, received) {
+        var at = Math.max(0, Math.floor(Number(received) || 0));
+
+        if (!(part > 0) || (at >= size)) {
+            return null;
+        }
+
+        return { offset: at, length: Math.min(part, size - at) };
+    }
+
+    // Every part of a file in order: [{ offset, length }].
+    function uploadParts(size, part) {
+        var out = [], next = uploadNext(size, part, 0);
+
+        while (next) {
+            out.push(next);
+            next = uploadNext(size, part, next.offset + next.length);
+        }
+
+        return out;
+    }
+
+    // The wait in ms before try n (1 the first retry): 1, 2, 4, 8 then
+    // 15 s.
+    function uploadDelay(n) {
+        return Math.min(15000, 1000 * Math.pow(2, Math.max(0, (Number(n) || 1) - 1)));
+    }
+
+    // Where a file picked again goes on: its kind, where it lands and the
+    // file itself (name, size, time); '' for bytes made here (a Blob has
+    // no name), which cannot be picked again.
+    function uploadKey(kind, where, file) {
+        if (!file || (typeof file.name !== 'string') || !file.name || !(file.size > 0)) {
+            return '';
+        }
+
+        return ['pgie-upload', kind, where || '', file.name, file.size, file.lastModified || 0].join('|');
+    }
+
+    // Whether a file fits the largest the server takes (0: none known).
+    function uploadFits(size, max) {
+        return !(max > 0) || (size <= max);
+    }
+
+    var UPLOAD = {
+        UPLOAD_TRIES: UPLOAD_TRIES, uploadChunked: uploadChunked, uploadNext: uploadNext, uploadParts: uploadParts,
+        uploadDelay: uploadDelay, uploadKey: uploadKey, uploadFits: uploadFits
+    };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -9809,7 +9872,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

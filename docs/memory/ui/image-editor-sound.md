@@ -10,7 +10,7 @@ module: image_editor
 - The model's `SOUND` section reads it through `M.soundList(doc, origin)`: an entry with no id, or an address that is not the site's own (`M.soundSrcOk()`: a root path, or http(s) of the same origin; `//host` refused), is left out, the numbers are put in range, at most 20 (`SOUND_MAX`). So an opened document never makes the editor fetch another host. Every change goes through `soundChange()`, which writes that clean list back: one undo step each, a slider's moves one step by its key.
 
 ## Where do sounds come from?
-- Files only (`sound_files`: MP3, M4A, AAC, WAV, Ogg, Oga, Opus by `files.type`, no Recycle Bin, no ERP document, a role-3 user's folders, newest 60, a search). From this computer is left to V8's upload. Add sound sits at the end of the rows and in the panel's Sounds list (the only way on a phone).
+- Files only (`sound_files`: MP3, M4A, AAC, WAV, Ogg, Oga, Opus by `files.type`, no Recycle Bin, no ERP document, a role-3 user's folders, newest 60, a search). From this computer (V8, `image-editor-upload.md`) is the first button of Sound from Files. Add sound sits at the end of the rows and in the panel's Sounds list (the only way on a phone).
 - The file is decoded first; `M.soundNew()` puts it at the playhead, cut to what is left of the timeline (whole when nothing is left), picked.
 
 ## How does it play?

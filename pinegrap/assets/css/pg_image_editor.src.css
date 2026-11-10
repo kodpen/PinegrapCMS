@@ -4139,6 +4139,19 @@ button.pgie-sndfile:hover {
   align-items: flex-start;
 }
 
+/* -- Large files (pg_image_editor_upload.js) -- */
+
+/* From this computer at the top of the Add sound box, as wide as the
+   search under it. */
+.pgie-importbox .pgie-sndlocal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
 /* -- Selection bar (pg_image_editor_actions.js) -- */
 
 /* A row along the stage's bottom, above an open sheet (--pgie-act-bottom)
