@@ -43,8 +43,11 @@ needs. The detail is in memory files, opened when a task needs them.
 | Workspace module and its endpoints | `workspace/` |
 | Working rules, merging, an audit or a "dead code / cleanup" proposal | `workflow/` |
 
-Read `docs/memory/workflow/decisions-made.md` **before** writing any audit
-finding: it lists decisions already made.
+**Before changing or removing a behaviour**, and before writing any audit
+finding, search `docs/memory/workflow/DECISIONS.md`
+(`grep -i 'word' docs/memory/workflow/DECISIONS.md`): it lists every decision
+already made; an index line ending in `[decision: …]` names the part that
+binds the file.
 
 ## Project in two lines
 
