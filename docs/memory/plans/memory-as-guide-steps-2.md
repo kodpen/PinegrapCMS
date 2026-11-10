@@ -27,6 +27,6 @@ description: Steps MG5-MG10 of plans/memory-as-guide.md: an overview each for fl
 
 - MG9 Custom forms: `designer/custom-form-overview.md` for the 17 `custom-form-*` files.
 
-- MG10 Order totals: `commerce/order-totals-overview.md`, a subject spread over two folders.
+- MG10 Order totals (done, #8473): `commerce/order-totals-overview.md`, a subject spread over two folders.
   - Which surfaces work totals out and which read the stored header; where a kurus may differ between the lines and the total, and which of those are decided: `commerce/offer-percent-rounding.md`, `offer-discounted-units.md`, `product-tax-rate.md`, `erp/erp-discounted-order-vat.md`, `erp-vat-per-rate-group.md`, `erp-order-charges-vat.md`.
   - A rounding key rule in the commerce README. Fixed rule 7 of `CLAUDE.md` says "round with `round()`" and `offer-percent-rounding.md` says never a float `round()` for a percentage: the rule names `pg_percent_of()` beside it.
