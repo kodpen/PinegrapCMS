@@ -356,3 +356,140 @@ function ws_wtable_query_total_text($column, $value)
 
     return ws_wtable_screen_cell_text(array('type' => 'number'), is_int($value) ? $value : (float) $value);
 }
+
+/**
+ * The query bar above a table's rows: a line per condition as typed and an
+ * empty one to add, each a column, a comparison and a value (a list for a
+ * status, a checkbox and a person, a date picker for a date), how the
+ * conditions join, the sort, Apply and Clear. A GET form, so a filtered
+ * view is a link that can be kept. The refusal of a query that does not
+ * fit is shown under it.
+ *
+ * @param string $self_url  workspace_wtables.php
+ * @param int    $table_id
+ * @param array  $columns   column id => column
+ * @param array  $screen    ws_wtable_query_from_get()
+ * @param array  $team      ws_team_members()
+ * @param string $refusal   ws_wtable_query_refusal(), '' when it fits
+ * @param bool   $totals_all the totals are over every row kept
+ * @return string HTML
+ */
+function ws_wtable_screen_query_bar($self_url, $table_id, $columns, $screen, $team, $refusal, $totals_all)
+{
+    $table_url = $self_url . '?id=' . (int) $table_id;
+    $typed = array_values((array) $screen['typed']);
+    $screen['typed'] = $typed;
+    $lines = $typed;
+
+    if (count($lines) < WS_WTABLE_WHERE_MAX) {
+        $lines[] = array('column' => 0, 'op' => '', 'value' => '');
+    }
+
+    $operators = ws_wtable_where_operators();
+    $out = '';
+
+    foreach ($lines as $place => $line) {
+        $column = $columns[(string) (int) $line['column']] ?? null;
+        $type = is_array($column) ? (string) $column['type'] : '';
+        $name = 'q[' . $place . ']';
+        $choices = '<option value="">' . h(lang('Column…')) . '</option>';
+
+        foreach ($columns as $column_id => $item) {
+            $choices .= '<option value="' . (int) $column_id . '"' . (((int) $column_id === (int) $line['column']) ? ' selected' : '') . '>' . h($item['name']) . '</option>';
+        }
+
+        $ops = '<option value="">' . h(lang('Comparison…')) . '</option>';
+
+        foreach ((($type !== '') ? ws_wtable_where_type_operators($type) : array_keys($operators)) as $op) {
+            $ops .= '<option value="' . h($op) . '"' . (($op === (string) $line['op']) ? ' selected' : '') . '>' . h($operators[$op]) . '</option>';
+        }
+
+        $value = (string) $line['value'];
+        $value_label = ' aria-label="' . h(lang('Value')) . '"';
+        $list = null;
+
+        if ($type === 'status') {
+            $list = array();
+
+            foreach ((array) ($column['options']['choices'] ?? array()) as $choice) {
+                $list[(string) $choice['key']] = (string) $choice['label'];
+            }
+
+            $value = ws_wtable_query_screen_value($column, $value);
+        } elseif ($type === 'checkbox') {
+            $list = array('1' => lang('Ticked'), '0' => lang('Not ticked'));
+            $value = ws_wtable_query_screen_value($column, $value);
+        } elseif ($type === 'person') {
+            $list = array();
+
+            foreach ((array) $team as $person) {
+                $list[(string) (int) $person['id']] = (string) $person['name'];
+            }
+        }
+
+        if ($list !== null) {
+            $field = '<option value=""></option>';
+
+            foreach ($list as $key => $label) {
+                $field .= '<option value="' . h($key) . '"' . (((string) $key === $value) ? ' selected' : '') . '>' . h($label) . '</option>';
+            }
+
+            $field = '<select class="form-control form-control-sm" name="' . $name . '[v]"' . $value_label . '>' . $field . '</select>';
+        } elseif ($type === 'date') {
+            $timed = !empty($column['options']['time']);
+            $iso = ws_wtable_query_screen_value($column, $value, array(), defined('DATE_FORMAT') ? (string) DATE_FORMAT : '');
+            $shown = preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/', $iso) ? ($timed ? str_replace(' ', 'T', (strlen($iso) === 10) ? $iso . ' 00:00' : $iso) : substr($iso, 0, 10)) : '';
+            $field = '<input type="' . ($timed ? 'datetime-local' : 'date') . '" class="form-control form-control-sm" name="' . $name . '[v]" value="' . h($shown) . '"' . $value_label . ' ' . ($timed ? 'data-pg-datetime' : 'data-pg-date') . ' autocomplete="off">';
+        } else {
+            $field = '<input type="text" class="form-control form-control-sm" name="' . $name . '[v]" value="' . h($value) . '"' . $value_label
+                . (in_array($type, array('number', 'money', 'formula'), true) ? ' inputmode="decimal"' : '') . ' placeholder="' . h(lang('Value')) . '">';
+        }
+
+        $remove = '';
+
+        if ($place < count($typed)) {
+            $kept = $screen;
+            unset($kept['typed'][$place]);
+            $params = ws_wtable_query_params($kept) + ($totals_all ? array('totals' => 'all') : array());
+            $remove = '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . (empty($params) ? '' : '&' . http_build_query($params))) . '#ws-wt-rows" title="' . h(lang('Remove condition')) . '" aria-label="' . h(lang('Remove condition')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></a>';
+        }
+
+        $out .= '<div class="d-flex flex-wrap align-items-center gap-2 mb-2">'
+            . '<select class="form-control form-control-sm w-auto" name="' . $name . '[c]" aria-label="' . h(lang('Column')) . '">' . $choices . '</select>'
+            . '<select class="form-control form-control-sm w-auto" name="' . $name . '[o]" aria-label="' . h(lang('Comparison')) . '">' . $ops . '</select>'
+            . '<div class="flex-grow-1" style="min-width: 10rem;">' . $field . '</div>' . $remove . '</div>';
+    }
+
+    $joins = '';
+
+    foreach (array('all' => lang('Every condition holds'), 'any' => lang('Any condition holds')) as $key => $label) {
+        $joins .= '<option value="' . $key . '"' . (($key === (string) $screen['join']) ? ' selected' : '') . '>' . h($label) . '</option>';
+    }
+
+    $sorts = '<option value="0">' . h(lang('Table order')) . '</option>';
+
+    foreach ($columns as $column_id => $item) {
+        $sorts .= '<option value="' . (int) $column_id . '"' . (((int) $column_id === (int) $screen['sort']) ? ' selected' : '') . '>' . h($item['name']) . '</option>';
+    }
+
+    $dirs = '';
+
+    foreach (array('asc' => lang('Ascending'), 'desc' => lang('Descending')) as $key => $label) {
+        $dirs .= '<option value="' . $key . '"' . (($key === (string) $screen['dir']) ? ' selected' : '') . '>' . h($label) . '</option>';
+    }
+
+    $active = !empty($typed) || ((int) $screen['sort'] > 0) || ((string) $screen['dir'] === 'desc');
+    return '<form method="get" action="' . h($self_url) . '#ws-wt-rows" class="ws-wt-query border-bottom pb-3 mb-4" role="search" aria-label="' . h(lang('Filter and sort rows')) . '">
+        <input type="hidden" name="id" value="' . (int) $table_id . '">' . ($totals_all ? '<input type="hidden" name="totals" value="all">' : '') . '
+        ' . $out . '
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            ' . ((count($typed) > 0) ? '<select class="form-control form-control-sm w-auto" name="join" aria-label="' . h(lang('How the conditions join')) . '">' . $joins . '</select>' : '') . '
+            <label class="small fg-secondary sm:ms-auto" for="ws-wt-query-sort">' . h(lang('Sort by')) . '</label>
+            <select class="form-control form-control-sm w-auto" name="sort" id="ws-wt-query-sort">' . $sorts . '</select>
+            <select class="form-control form-control-sm w-auto" name="dir" aria-label="' . h(lang('Direction')) . '">' . $dirs . '</select>
+            <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-4"><i class="bi bi-funnel me-1" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Apply')) . '</span></button>
+            ' . ($active ? '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . ($totals_all ? '&totals=all' : '')) . '#ws-wt-rows">' . h(lang('Clear')) . '</a>' : '') . '
+        </div>'
+        . (($refusal !== '') ? '<div class="alert theme-warning small py-3 mt-3 mb-0" role="alert">' . h($refusal) . ' ' . h(lang('The rows show unfiltered.')) . '</div>' : '') . '
+    </form>';
+}

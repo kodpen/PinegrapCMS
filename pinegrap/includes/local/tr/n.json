@@ -2052,6 +2052,7 @@
     "No room booking requests yet.": "Henüz salon ayırtma isteği yok.",
     "No room booking requests yet. Choose a room and send a request.": "Henüz salon ayırtma isteği yok. Bir salon seçin ve istek gönderin.",
     "No room matches these choices. Try another kind of room or view, or ask us: we will find you one.": "Bu seçimlere uyan oda yok. Başka bir oda türü ya da manzara deneyin veya bize sorun: size bir oda buluruz.",
+    "No row meets the conditions": "Koşullara uyan satır yok",
     "No row names a step: there is nothing to make a flow of.": "Hiçbir satır bir adım adlandırmıyor: akış yapılacak bir şey yok.",
     "No row of the table was read.": "Tablonun hiçbir satırı okunmadı.",
     "No row of the table “{var:1}” meets the conditions.": "“{var:1}” tablosunda koşullara uyan satır yok.",

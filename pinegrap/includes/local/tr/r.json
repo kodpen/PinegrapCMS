@@ -2098,6 +2098,7 @@
     "Rows of the table “{var:1}” that met the conditions: {var:2}.": "“{var:1}” tablosunda koşullara uyan satır sayısı: {var:2}.",
     "Rows of the table “{var:1}”: {var:2}.": "“{var:1}” tablosundaki satır sayısı: {var:2}.",
     "Rows on this page": "Bu sayfadaki satır sayısı",
+    "Rows shown": "Gösterilen satırlar",
     "Rows that were not written": "Yazılmayan satırlar",
     "Rows to show": "Gösterilecek satır",
     "Rows without a step were left out: {var:1}.": "Adımı olmayan satırlar dışarıda bırakıldı: {var:1}.",

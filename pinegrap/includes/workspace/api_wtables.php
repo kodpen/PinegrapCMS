@@ -252,11 +252,17 @@ function ws_wtable_api_routes()
             'handler'     => 'ws_api_wtable_rows_list',
             'returns'     => array('list' => 'WorkspaceTableRow'),
             'summary'     => 'The rows of a workflow table',
-            'description' => 'The rows of a table the owner reaches, in their order. ' . $cells . ' A formula\'s error is in formula_errors by column id (ref, cycle and the like), its cell null.',
+            'description' => 'The rows of a table the owner reaches, in their order. ' . $cells . ' A formula\'s error is in formula_errors by column id (ref, cycle and the like), its cell null.'
+                . ' With where, only the rows meeting its conditions, joined by join (all or any); with sort, sorted by that column (dir asc or desc), empty cells last. total is then the count of the rows kept, and the cursor pages through them: keep the same where and sort while paging.',
             'params'      => array(
                 $id,
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 100),
                 array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200),
+                array('name' => 'where', 'in' => 'query', 'type' => 'string', 'max_length' => 4000,
+                    'description' => 'A JSON list of at most ' . WS_WTABLE_WHERE_MAX . ' conditions, each {"column": column id, "op": eq|neq|lt|gt|lte|gte|contains|starts|empty|not_empty, "value": text}. A column compares by its type: text without case (contains, starts), number, money and formula by size (money in minor units, 1250 for 12.50), a date as YYYY-MM-DD or YYYY-MM-DD HH:MM, a status by its key, a checkbox as 1 or 0, a person or a linked record by its number. An unfit comparison or value answers 422.'),
+                array('name' => 'join', 'in' => 'query', 'type' => 'enum', 'values' => ws_wtable_where_joins(), 'default' => 'all', 'description' => 'all: every condition holds; any: one does.'),
+                array('name' => 'sort', 'in' => 'query', 'type' => 'int', 'min' => 0, 'default' => 0, 'description' => 'The column id the rows are sorted by; 0 keeps the table\'s order.'),
+                array('name' => 'dir', 'in' => 'query', 'type' => 'enum', 'values' => ws_wtable_sort_directions(), 'default' => 'asc', 'description' => 'desc reverses the order: by no column, the last row first.'),
             ),
         ),
 
@@ -1328,11 +1334,55 @@ function ws_api_wtable_rows_list($params)
     }
 
     $limit = (int) ($params['limit'] ?? 100);
-    $page = ws_wtable_rows_page((int) $table['id'], ws_wtable_columns((int) $table['id']), $after, $limit, $after_id);
+    $columns = ws_wtable_columns((int) $table['id']);
+    $query = ws_wtable_query((string) ($params['where'] ?? ''), (string) ($params['join'] ?? 'all'), (int) ($params['sort'] ?? 0), (string) ($params['dir'] ?? 'asc'));
+
+    if (ws_wtable_query_active($query)) {
+        ws_api_wtable_rows_query($table, $columns, $query, $limit, $after, $after_id, isset($cursor));
+
+        return;
+    }
+
+    $page = ws_wtable_rows_page((int) $table['id'], $columns, $after, $limit, $after_id);
     $last = end($page['rows']);
 
     api_ok_list(array_map('ws_api_wtable_row_present', $page['rows']), $limit,
         ($page['next'] !== null) ? api_cursor_encode($page['next'], (int) $last['id']) : null, (int) $table['row_count']);
+}
+
+/**
+ * The rows a query keeps, a page of them: refused with 422 when it does not
+ * fit the table; worked out over every row (a table holds at most 5000), so
+ * the cursor is an offset into the rows kept, its id 0. A cursor of the
+ * plain listing (an id past 0) answers 400.
+ *
+ * @param array $table
+ * @param array $columns
+ * @param array $query     ws_wtable_query()
+ * @param int   $limit
+ * @param int   $from      the cursor's offset
+ * @param int   $cursor_id the cursor's id
+ * @param bool  $paging    a cursor was given
+ * @return void
+ */
+function ws_api_wtable_rows_query($table, $columns, $query, $limit, $from, $cursor_id, $paging)
+{
+    if ($paging && ($cursor_id !== 0)) {
+        api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+    }
+
+    $refusal = ws_wtable_query_refusal($columns, $query);
+
+    if ($refusal !== '') {
+        // The sort is named only when the conditions alone fit.
+        api_fail(422, 'validation_failed', $refusal, (ws_wtable_query_refusal($columns, array('sort' => 0) + $query) === '') ? 'sort' : 'where');
+    }
+
+    $kept = ws_wtable_query_rows($columns, ws_wtable_rows((int) $table['id'], $columns), $query);
+    $page = ws_wtable_query_page($kept, $from, $limit);
+
+    api_ok_list(array_map('ws_api_wtable_row_present', $page['rows']), $limit,
+        ($page['next'] !== null) ? api_cursor_encode($page['next'], 0) : null, count($kept));
 }
 
 function ws_api_wtable_rows_get($params)

@@ -236,3 +236,35 @@ function test_workspace_wtable_query_total_text()
 		pg_assert_same('', ws_wtable_query_total_text($columns['2'], null));
 	});
 }
+
+// The bar: a line per condition and an empty one, the comparisons of each
+// column's type, a list for a status, a picker for a date, a link that
+// takes one condition away and keeps the rest, and the refusal under it.
+function test_workspace_wtable_query_screen_bar()
+{
+	$columns = ws_wtable_query_test_columns();
+	$screen = ws_wtable_query_from_get(array('q' => array(array('c' => '5', 'o' => 'eq', 'v' => 'Done'), array('c' => '4', 'o' => 'gte', 'v' => '2026-11-01')), 'sort' => '3', 'dir' => 'desc'));
+	$team = array(array('id' => 12, 'name' => 'Ayşe Kaya'));
+	$html = ws_wtable_screen_query_bar('workspace_wtables.php', 7, $columns, $screen, $team, '', true);
+
+	pg_assert_contains('<form method="get" action="workspace_wtables.php#ws-wt-rows"', $html);
+	pg_assert_contains('<input type="hidden" name="id" value="7">', $html);
+	pg_assert_contains('<input type="hidden" name="totals" value="all">', $html);
+	pg_assert_contains('name="q[2][c]"', $html, 'an empty line to add');
+	pg_assert_false(strpos($html, 'name="q[3][c]"') !== false);
+	pg_assert_contains('<option value="done" selected>Done</option>', $html, 'a status by its label');
+	pg_assert_contains('type="date" class="form-control form-control-sm" name="q[1][v]" value="2026-11-01"', $html);
+	pg_assert_contains('<option value="desc" selected>', $html);
+	pg_assert_contains('name="join"', $html);
+	pg_assert_contains('href="workspace_wtables.php?id=7&amp;q%5B0%5D%5Bc%5D=4', $html, 'the remove link keeps the other line');
+	pg_assert_false(strpos($html, 'theme-warning') !== false);
+
+	// A status takes no size comparison.
+	preg_match('/name="q\[0\]\[o\]"[^>]*>(.*?)<\/select>/s', $html, $ops);
+	pg_assert_false(strpos($ops[1], 'value="lt"') !== false);
+
+	$bare = ws_wtable_screen_query_bar('workspace_wtables.php', 7, $columns, ws_wtable_query_from_get(array()), $team, 'Condition 1: no.', false);
+	pg_assert_false(strpos($bare, 'name="join"') !== false);
+	pg_assert_false(strpos($bare, 'name="totals"') !== false);
+	pg_assert_contains('Condition 1: no.', $bare);
+}
