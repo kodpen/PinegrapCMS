@@ -85,7 +85,7 @@ if (($_GET['from'] ?? '') == 'pages') {
 function build_sortable_html($menu_id, $grouped_items = null, $parent_id = 0, $level = 0)
 {
     if ($grouped_items === null) {
-        $query = "SELECT id, name, parent_id FROM menu_items WHERE menu_id = ? ORDER BY sort_order";
+        $query = "SELECT id, name, parent_id FROM menu_items WHERE menu_id = ? ORDER BY sort_order, id";
         $result = db_q($query, array((string) $menu_id)) or output_error('Query failed.');
         $grouped_items = array();
         while ($row = mysqli_fetch_assoc($result)) {
@@ -111,15 +111,14 @@ function build_sortable_html($menu_id, $grouped_items = null, $parent_id = 0, $l
     return $html;
 }
 
-// function for getting all menu items
-function get_menu_items($menu_id, $parent_id = 0, $level = 1)
+// Every item of the menu in one query, listed depth first with its depth
+// (pg_menu_tree_flatten()); ties in sort_order list by id.
+function get_menu_items($menu_id)
 {
-    $menu_items = array();
-    
-    // get menu items
     $query = 
         "SELECT
             menu_items.id,
+            menu_items.parent_id,
             menu_items.name,
             menu_items.link_page_id,
             menu_items.link_url,
@@ -132,41 +131,17 @@ function get_menu_items($menu_id, $parent_id = 0, $level = 1)
          FROM menu_items
          LEFT JOIN user ON menu_items.created_user_id = user.user_id
          LEFT JOIN user as user2 ON menu_items.last_modified_user_id = user2.user_id
-         WHERE
-            (menu_id = ?)
-            AND (parent_id = ?)
-         ORDER BY menu_items.sort_order";
-    $result = db_q($query, array((string) $menu_id, (string) $parent_id)) or output_error('Query failed.');
+         WHERE menu_id = ?
+         ORDER BY menu_items.sort_order, menu_items.id";
+    $result = db_q($query, array((string) $menu_id)) or output_error('Query failed.');
     
-    $current_menu_items = array();
+    $rows = array();
     
-    // loop through menu items in order to build array
     while ($row = mysqli_fetch_assoc($result)) {
-        $current_menu_items[] = $row;
+        $rows[] = $row;
     }
     
-    // loop through menu items in order to build array of menu items
-    foreach ($current_menu_items as $menu_item) {
-        $menu_item['level'] = $level;
-        
-        $menu_items[] = $menu_item;
-        
-        // determine if there is a sub menu
-        $query = "SELECT COUNT(*) FROM menu_items WHERE parent_id = ?";
-        $result = db_q($query, array((string) $menu_item['id'])) or output_error('Query failed.');
-        $row = mysqli_fetch_row($result);
-        
-        // if there is a sub menu, then get menu items for sub menu
-        if ($row[0] > 0) {
-            // get menu items for sub menu
-            $sub_menu_items = get_menu_items($menu_id, $menu_item['id'], $level + 1);
-            
-            // add sub menu items to menu items array
-            $menu_items = array_merge($menu_items, $sub_menu_items);
-        }
-    }
-    
-    return $menu_items;
+    return pg_menu_tree_flatten($rows);
 }
 
 // Get menu items
