@@ -96,6 +96,7 @@
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, the PR footer (pointer), editing shared files without conflicts, API vs ERP files
 - install-check-filter.md: When install-check.yml runs its six-database matrix (#1985): the changes job, the paths it reads, always on merge trains and pushes, why plain git, a skipped job blocks nothing
 - memory-index-key-rules.md: The hand-written key-rules block of each memory folder README, what tools/memory_index.php keeps and regenerates, when it stops with exit 1 and how a merge conflict in a README is settled
+- memory-writing.md: How a memory file is written so the next task finds it: labels as on screen, one owner per value, old values searched, lines under 500 characters, decisions dated, an overview per cluster
 - merge-review.md: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, digs deeper for access, payments, SQL, schema; an architect decision counts as the owner's [decision: here]
 - merge-train-forks.md: A PR from a fork never rides a merge train, never lands alone and is never merged by a session; the owner reviews it. Where tools/merge_train.php enforces it
 - merge-train-landing.md: How a green merge train lands (2026-10-25): one fast-forward push, GitHub marks the PRs merged and wakes their sessions, no push to PR branches; why not a squash per PR; a red train; the merge queue
