@@ -717,8 +717,13 @@ function ws_api_message_threads($viewer, $message_ids)
     return $out;
 }
 
-function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null)
+function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null, $checks = null)
 {
+    // Who ticked its checklist (interact.php).
+    if ($checks === null) {
+        $checks = ws_checks_map(array($row['id']));
+    }
+
     // The messages the reader deleted for themselves (ws_message_hide()).
     if ($hidden === null) {
         $hidden = ws_message_hidden_ids($viewer['id'], array($row['id']));
@@ -839,6 +844,7 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         'from_thread_id' => $deleted ? null : ($threads['copies'][(int) $row['id']] ?? null),
         'poll'           => (!$deleted && isset($polls[(int) $row['id']])) ? ws_api_poll_present($polls[(int) $row['id']]) : null,
         'note_card'      => ws_api_message_note_card($row, $note_cards),
+        'checks'         => $deleted ? array() : ws_api_message_checks($row['body'], $checks[(int) $row['id']] ?? array()),
         'mail'           => $deleted ? null : $mail,
         'created_at'  => api_time($row['created_at']),
     );
@@ -867,6 +873,7 @@ function ws_api_message_schema()
         'from_thread_id' => 'integer?',
         'poll'           => 'WorkspacePoll?',
         'note_card'      => 'WorkspaceMessageNoteCard?',
+        'checks'         => 'WorkspaceMessageCheck[]',
         'mail'           => 'WorkspaceMessageMail?',
         'created_at'  => 'string',
     );
@@ -910,6 +917,44 @@ function ws_api_message_voice_schema()
 function ws_api_message_thread_schema()
 {
     return array('id' => 'integer', 'title' => 'string', 'message_count' => 'integer', 'last_message_at' => 'string?', 'closed' => 'boolean');
+}
+
+// One item of a message's checklist (ws_api_message_checks()).
+function ws_api_message_check_schema()
+{
+    return array('item' => 'integer', 'text' => 'string', 'checked' => 'boolean', 'by' => 'WorkspaceMessageSender?', 'at' => 'string?');
+}
+
+/**
+ * A message's checklist as the API shows it: one entry per "- [ ] item"
+ * line, in order, with the tick someone gave it since over the state it was
+ * written with, as the channel screen draws it (ws_render_body()). by and at
+ * are null for an item nobody ticked or cleared; a guest has no user id.
+ *
+ * @param string $body   the message text
+ * @param array  $checks ws_checks_map() entry of the message: item => state
+ * @return array[] item, text, checked, by, at
+ */
+function ws_api_message_checks($body, $checks)
+{
+    $out = array();
+
+    foreach (ws_checklist_items($body) as $entry) {
+        $state = $checks[(int) $entry['index']] ?? null;
+
+        $out[] = array(
+            'item'    => (int) $entry['index'],
+            'text'    => (string) $entry['text'],
+            'checked' => is_array($state) ? !empty($state['checked']) : !empty($entry['checked']),
+            'by'      => is_array($state) ? array(
+                'user_id' => (empty($state['guest']) && ((int) $state['user_id'] > 0)) ? (int) $state['user_id'] : null,
+                'name'    => (string) $state['name'],
+            ) : null,
+            'at'      => is_array($state) ? api_time((int) ($state['updated_at'] ?? 0)) : null,
+        );
+    }
+
+    return $out;
 }
 
 function ws_api_message_note_card_schema()
@@ -1085,12 +1130,13 @@ function ws_api_messages_present($viewer, $rows)
     $polls = ws_polls_map($ids, $viewer);
     $proposals = function_exists('ws_proposals_by_reply') ? ws_proposals_by_reply($ids) : array();
     $note_cards = function_exists('ws_note_cards_map') ? ws_note_cards_map($viewer, $ids) : array();
+    $checks = ws_checks_map($ids);
     $out = array();
 
     // A message the person deleted for themselves stays in the page, marked
     // hidden, so that since_id and before_id still page past it.
     foreach ($rows as $row) {
-        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards);
+        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards, $checks);
     }
 
     return $out;

@@ -109,3 +109,49 @@ function test_ws_channel_tools_post_body()
 	pg_assert_same(null, ws_post_body(str_repeat('ş', 4001), array())['body']);
 	pg_assert_same(array('text' => str_repeat('ş', 4000)), ws_post_body(str_repeat('ş', 4000), array())['body']);
 }
+
+function test_ws_channel_tools_from_and_mention()
+{
+	$person = array('id' => 50, 'text' => '@mimar look', 'body' => '<@app:7> look', 'sender_kind' => 'user', 'sender' => array('user_id' => 3, 'name' => 'Ada'));
+	$app = array('id' => 51, 'text' => '[ci] green', 'body' => '[ci] green', 'sender_kind' => 'app', 'sender' => array('user_id' => null, 'name' => 'CI'));
+
+	pg_assert_true(ws_client_message_matches($person, array('from' => 'person'), 0));
+	pg_assert_false(ws_client_message_matches($app, array('from' => 'person'), 0), 'an application never wakes a session waiting for people');
+	pg_assert_true(ws_client_message_matches($app, array('from' => 'app'), 0));
+	pg_assert_false(ws_client_message_matches($person, array('from' => 'app'), 0));
+	pg_assert_true(ws_client_message_matches($person, array('mention' => '7'), 0));
+	pg_assert_false(ws_client_message_matches($person, array('mention' => '70'), 0), 'the whole tag');
+	pg_assert_false(ws_client_message_matches($app, array('mention' => '7'), 0));
+
+	pg_assert_true(ws_wait_plan(array('from' => 'bot'))['error'] !== '');
+	pg_assert_true(ws_wait_plan(array('mention' => 'x'))['error'] !== '');
+	pg_assert_same(array('from' => 'person', 'mention' => '7'), ws_wait_plan(array('from' => 'person', 'mention' => '7'))['rule']);
+}
+
+function test_ws_channel_tools_wait_changed()
+{
+	$plan = ws_wait_plan(array('changed' => '40, 41,40'));
+	pg_assert_same(array(40, 41), $plan['changed']);
+	pg_assert_same('', $plan['error']);
+	pg_assert_true(ws_wait_plan(array('changed' => '40,x'))['error'] !== '');
+	pg_assert_true(ws_wait_plan(array('changed' => true))['error'] !== '');
+
+	$sync = array(
+		'messages' => array(array('id' => 60, 'text' => 'chat', 'sender' => array('user_id' => 3))),
+		'changed'  => array(array('id' => 39, 'text' => 'other'), array('id' => 41, 'text' => 'Ship?', 'checks' => array(array('item' => 0, 'checked' => true)))),
+	);
+
+	$hit = ws_wait_pick($sync, array(), 0, array(40, 41));
+	pg_assert_same(41, $hit['id']);
+	pg_assert_true($hit['checks'][0]['checked'], 'printed with its checks');
+	pg_assert_same(null, ws_wait_pick(array('changed' => array()) + $sync, array(), 0, array(40)), 'with --changed alone a new message does not wake');
+	pg_assert_same(60, ws_wait_pick(array('changed' => array()) + $sync, array('from' => 'person'), 0, array(40))['id'], 'with a rule as well either wakes');
+	pg_assert_same(60, ws_wait_pick($sync, array(), 0)['id'], 'without --changed as before');
+}
+
+function test_ws_channel_tools_post_parent()
+{
+	pg_assert_same(array('text' => 'Plan A', 'kind' => 'decision', 'parent_id' => 41), ws_post_body('Plan A', array('kind' => 'decision', 'parent' => '41'))['body']);
+	pg_assert_same(null, ws_post_body('x', array('parent' => '0'))['body']);
+	pg_assert_same(null, ws_post_body('x', array('parent' => true))['body']);
+}

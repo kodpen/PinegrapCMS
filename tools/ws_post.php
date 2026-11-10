@@ -7,15 +7,18 @@
  * or a CI step uses it to say "[ci] …" or "[ready] …" in an agent channel.
  *
  * Usage:  php tools/ws_post.php [--channel=ID] [--kind=message|note|decision]
- *                               [--idempotency-key=K] [--skip-missing] "text"
+ *                               [--parent=ID] [--idempotency-key=K]
+ *                               [--skip-missing] "text"
  *         The text may also come on stdin ("-" or no text argument).
  * Exit:   0 written (or skipped with --skip-missing while settings are
  *         missing); 1 the site refused or could not be reached; 2 usage or
  *         missing settings.
  *
  * Settings come from the environment (tools/ws_client.php): PG_WS_SITE,
- * PG_WS_KEY, PG_WS_SECRET, PG_WS_CHANNEL. The answer's message id is printed
- * on stdout; nothing secret is printed.
+ * PG_WS_KEY, PG_WS_SECRET, PG_WS_CHANNEL. --parent answers a message of the
+ * channel, as Reply does in the panel: the decision that closes a checklist
+ * question answers the question. The answer's message id is printed on
+ * stdout; nothing secret is printed.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -35,7 +38,7 @@ require_once(__DIR__ . '/ws_client.php');
  *
  * @param string $text
  * @param array<string,string|bool> $options
- * @return array{body: array<string,string>|null, error: string}
+ * @return array{body: array<string,string|int>|null, error: string}
  */
 function ws_post_body($text, $options)
 {
@@ -59,6 +62,14 @@ function ws_post_body($text, $options)
 
 	if ($kind !== 'message') {
 		$body['kind'] = $kind;
+	}
+
+	if (isset($options['parent'])) {
+		if (!is_string($options['parent']) || !ctype_digit($options['parent']) || (int) $options['parent'] < 1) {
+			return array('body' => null, 'error' => '--parent must be a message id');
+		}
+
+		$body['parent_id'] = (int) $options['parent'];
 	}
 
 	return array('body' => $body, 'error' => '');

@@ -150,7 +150,7 @@ function ws_client_etag($headers)
  * id at or below $after_id.
  *
  * @param array<string,mixed> $message
- * @param array{prefix?: string, contains?: string, regex?: string} $rule
+ * @param array{prefix?: string, contains?: string, regex?: string, from?: string, mention?: string} $rule
  * @param int $after_id
  * @return bool
  */
@@ -161,6 +161,22 @@ function ws_client_message_matches($message, $rule, $after_id)
 	}
 
 	if (!empty($message['deleted']) || !empty($message['hidden'])) {
+		return false;
+	}
+
+	// person: written by somebody of the team (sender.user_id set), so an
+	// application's line never wakes a session waiting for people; app: by
+	// an application.
+	if (isset($rule['from']) && $rule['from'] !== '') {
+		$person = is_array($message['sender'] ?? null) && (int) ($message['sender']['user_id'] ?? 0) > 0;
+
+		if (($rule['from'] === 'person') !== $person || ($rule['from'] === 'app' && (string) ($message['sender_kind'] ?? '') !== 'app')) {
+			return false;
+		}
+	}
+
+	// An application picked from the @ picker is its tag in body.
+	if (isset($rule['mention']) && $rule['mention'] !== '' && strpos((string) ($message['body'] ?? ''), '<@app:' . (int) $rule['mention'] . '>') === false) {
 		return false;
 	}
 

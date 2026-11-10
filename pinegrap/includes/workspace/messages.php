@@ -798,6 +798,12 @@ function ws_message_send($viewer, $channel, $body, $options = array())
     }
     ws_message_notify_mentions($viewer, $channel, $message_id, $tokens, $app_id);
 
+    // An application asking with a checklist rings the people it asks
+    // (interact.php).
+    if (($app_id > 0) && function_exists('ws_question_ring') && ws_checklist_asks($body)) {
+        ws_question_ring($channel, $message_id, $tokens);
+    }
+
     // A decision, a note or a task card of a discussion goes into its
     // channel too, and the bar under the message it talks over counts the
     // new one (threads.php).
