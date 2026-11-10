@@ -57,7 +57,7 @@ function test_workspace_wtable_numbers_step()
 function test_workspace_wtable_numbers_store()
 {
 	pg_assert_contains('next_number = LAST_INSERT_ID(next_number + 1)', ws_wtable_numbers_test_source('ws_wtable_number_take'));
-	pg_assert_contains('ws_wtable_number_take($table_id)', ws_wtable_numbers_test_source('ws_wtable_row_create'));
+	pg_assert_contains('ws_wtable_number_take($table_id)', ws_wtable_numbers_test_source('ws_wtable_row_create_write'));
 	pg_assert_contains("ws_wtable_number_value((int) (\$row['number'] ?? 0))", ws_wtable_numbers_test_source('ws_wtable_row_bin_put'));
 
 	$restore = ws_wtable_numbers_test_source('ws_wtable_row_restore');

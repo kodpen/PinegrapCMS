@@ -303,6 +303,15 @@ function ws_wtable_column_options_check($type, $options)
             break;
     }
 
+    // A text or number column may be the table's key (wtable_keys.php).
+    if (!empty($options['key'])) {
+        if (!in_array($type, array('text', 'number'), true)) {
+            return $fail('key_type');
+        }
+
+        $value['key'] = true;
+    }
+
     return array('ok' => true, 'value' => $value, 'error' => '');
 }
 
@@ -950,6 +959,11 @@ function ws_wtable_column_input_check($input, $old = null)
             $given['of'] = ws_wtable_list_of($old);
         }
 
+        // Options sent without the key keep it: only key false takes it away.
+        if (($old !== null) && !array_key_exists('key', $given) && !empty($old['options']['key'])) {
+            $given['key'] = true;
+        }
+
         $options = ws_wtable_column_options_check($type, $given);
 
         if (!$options['ok']) {
@@ -1444,7 +1458,38 @@ function ws_wtable_column_create_check($viewer, $table, $input)
         return ws_wtable_refusal('too_many_columns', '', 409);
     }
 
-    return $check;
+    $refused = ws_wtable_column_key_check($table, null, $check['sets']);
+
+    return ($refused !== null) ? $refused : $check;
+}
+
+/**
+ * Why a column cannot become the table's key, null when it can or does
+ * not ask to: key_taken (409) when another column is the key, then
+ * key_not_unique with the rows that are empty or repeat a value. A new
+ * column is empty on every row, so it becomes the key of an empty table
+ * only.
+ *
+ * @param array      $table
+ * @param array|null $column the column changed, null for a new one
+ * @param array      $sets   ws_wtable_column_input_check() sets
+ * @return array|null
+ */
+function ws_wtable_column_key_check($table, $column, $sets)
+{
+    if (empty($sets['options']['key']) || ($column && !empty($column['options']['key']))) {
+        return null;
+    }
+
+    foreach (ws_wtable_columns((int) $table['id']) as $other) {
+        if (ws_wtable_is_key($other) && (!$column || ((int) $other['id'] !== (int) $column['id']))) {
+            return ws_wtable_refusal('key_taken', 'options', 409);
+        }
+    }
+
+    $probe = array('id' => $column ? (int) $column['id'] : 0, 'type' => $column ? $column['type'] : $sets['type'], 'options' => $sets['options']);
+
+    return ws_wtable_key_refusal(ws_wtable_key_faults($probe, ws_wtable_key_rows((int) $table['id'])));
 }
 
 /**
@@ -1514,7 +1559,15 @@ function ws_wtable_column_update_check($viewer, $table, $column, $input)
         return ws_wtable_refusal('not_found', '', 404);
     }
 
-    return ws_wtable_column_input_check($input, $column);
+    $check = ws_wtable_column_input_check($input, $column);
+
+    if (!$check['ok']) {
+        return $check;
+    }
+
+    $refused = ws_wtable_column_key_check($table, $column, $check['sets']);
+
+    return ($refused !== null) ? $refused : $check;
 }
 
 /**

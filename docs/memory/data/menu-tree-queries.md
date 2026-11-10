@@ -15,5 +15,7 @@ description: Classic menus (get_menu_content(), get_menu_sequence()) read a menu
 - Security (`check_view_access()`) is asked per item while drawing, not kept in the tree; the sequence does not ask it.
 - `get_menu_sequence()` keeps its global `$page_names_in_menu_sequence`: a second call in the same request adds only pages not seen yet, so a second `<menu_sequence>` of the same menu prints nothing.
 
-## Where does the pattern remain?
-- `view_menu_items.php` (panel list of a menu) still counts children item by item; it is not on a page view.
+## How does the panel list a menu?
+- `view_menu_items.php` (the menu items screen) reads every item of the menu in one query (`ORDER BY sort_order, id`, same columns and user joins) and lists it through `pg_menu_tree_flatten()` (`includes/fn/content.php`, pure, `tests/menu_tree_test.php`): depth first from parent 0, `level` 1 at the top. Before, every level was a query and every item asked `COUNT(*)` of its children. PR #8524.
+- The list is the old one: the count only decided whether to descend, and the descent read this menu's rows. An item whose parent is not in the menu is left out; an item met twice (a parent loop) is listed once.
+- The drag-drop order list (`build_sortable_html()`) was already one query; its ties now also order by id.

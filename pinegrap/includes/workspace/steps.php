@@ -3239,7 +3239,7 @@ function ws_step_row_text_fault($text)
  */
 function ws_step_row_bys()
 {
-    return array('id', 'position', 'last', 'number');
+    return array('id', 'position', 'last', 'number', 'key');
 }
 
 /**
@@ -3293,6 +3293,15 @@ function ws_step_row_problem($kind, $config, $name)
     $row = trim((string) ($config['row'] ?? ''));
     $shown = mb_substr($row, 0, 60);
 
+    // A key is any text: only an empty one is wrong.
+    if (($by === 'key') && ($row === '')) {
+        return array(lang(array('string' => 'The box {var:1} needs the key of its row.', 'vars' => $name)));
+    }
+
+    if ($by === 'key') {
+        return array();
+    }
+
     switch (ws_step_row_text_fault($row)) {
         case 'empty':
             return array(($kind === 'row_get')
@@ -3334,6 +3343,10 @@ function ws_step_row_refusal($by, $row)
 {
     if (($by === 'last') || ($by === 'match')) {
         return '';
+    }
+
+    if ($by === 'key') {
+        return (trim((string) $row) === '') ? lang('The box names no key.') : '';
     }
 
     switch (ws_step_row_text_fault($row)) {
@@ -3382,6 +3395,10 @@ function ws_step_row_missing_text($by, $row, $name)
         return lang(array('string' => 'No row of the table “{var:1}” meets the conditions.', 'vars' => $name));
     }
 
+    if ($by === 'key') {
+        return lang(array('string' => 'The table “{var:1}” has no row with the key “{var:2}”.', 'vars' => array($name, mb_substr(trim((string) $row), 0, 60))));
+    }
+
     if ($number <= 0) {
         return lang(array('string' => 'The table “{var:1}” has no row “{var:2}”.', 'vars' => array($name, mb_substr(trim((string) $row), 0, 60))));
     }
@@ -3409,6 +3426,10 @@ function ws_step_row_find($table_id, $by, $row)
 {
     if ($by === 'last') {
         return ws_wtable_row_last((int) $table_id);
+    }
+
+    if ($by === 'key') {
+        return ws_wtable_row_keyed((int) $table_id, (string) $row);
     }
 
     $number = ws_step_row_id($row);
@@ -3637,6 +3658,10 @@ function ws_step_row_text($action)
 
         if (($by === 'number') && ($number > 0)) {
             return lang(array('string' => 'Changes {var:1} in the row #{var:2} of the table “{var:3}”.', 'vars' => array($columns, $number, $table)));
+        }
+
+        if (($by === 'key') && (trim((string) ($action['row'] ?? '')) !== '') && (strpos((string) $action['row'], '{{') === false)) {
+            return lang(array('string' => 'Changes {var:1} in the row with the key “{var:2}” of the table “{var:3}”.', 'vars' => array($columns, mb_substr(trim((string) $action['row']), 0, 60), $table)));
         }
 
         return lang(array('string' => 'Changes {var:1} in a row of the table “{var:2}”.', 'vars' => array($columns, $table)));

@@ -67,6 +67,13 @@ define('WS_CLAUDE_SUMMARY_MARK', 'daily_summary');
 define('WS_CLAUDE_PER_PERSON', 5);
 
 /**
+ * Seconds a request asked in a message waits for the asker's own online
+ * session (an OAuth connection) before the site's routine takes it; also how
+ * recently such a connection must have called to count as online.
+ */
+define('WS_CLAUDE_SESSION_WAIT', 120);
+
+/**
  * The version of the short prompt pasted into the routine on claude.ai
  * (ws_claude_bootstrap_prompt()). Raised only when that text changes; what
  * the routine does is served by the site and changes without it.
@@ -651,6 +658,145 @@ function ws_claude_after_send($viewer, $channel, $message_id, $body, $followed =
 }
 
 /**
+ * Whether the step that brought the asker's own session in has run
+ * (ws_ai_requests.claimed_device_id, ws_messages.via_client_id). Without it
+ * every request goes to the routine, as before.
+ *
+ * @return bool
+ */
+function ws_claude_sessions_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('waf_table_has_column')
+            && waf_table_has_column('ws_ai_requests', 'claimed_device_id')
+            && waf_table_has_column('ws_messages', 'via_client_id');
+    }
+
+    return $ready;
+}
+
+/**
+ * Who may take a request to Claude now. One the asker's connection claimed
+ * stays with that connection; one the routine claimed or closed with the
+ * routine. An open request asked in a message waits for the asker's own
+ * session while one is online, for WS_CLAUDE_SESSION_WAIT seconds; after
+ * that, or with none online, it is the routine's as before. A message
+ * written through a connection never goes to a session: it asks what the
+ * application's message asked, and the session would be asking itself. The
+ * daily summary, a note, a task run and the Visual Page Editor stay the
+ * routine's. Pure.
+ *
+ * @param array $row          ws_ai_requests row
+ * @param bool  $via          the asking message was written through a connection
+ * @param bool  $asker_online the asker has an OAuth connection online
+ * @param int   $now
+ * @return array who (person | routine), device (the claiming api_devices id, 0 for any of the asker's)
+ */
+function ws_claude_request_holder($row, $via, $asker_online, $now)
+{
+    $claimed = (int) ($row['claimed_device_id'] ?? 0);
+
+    if ($claimed > 0) {
+        return array('who' => 'person', 'device' => $claimed);
+    }
+
+    $open = in_array((string) ($row['status'] ?? ''), array('queued', 'sent'), true);
+    $asked = ((int) ($row['message_id'] ?? 0) > 0)
+        && ((int) ($row['note_id'] ?? 0) === 0)
+        && ((int) ($row['task_id'] ?? 0) === 0)
+        && ((int) ($row['page_id'] ?? 0) === 0);
+
+    if ($open && $asked && !$via && $asker_online && ((int) $now < (int) ($row['created_at'] ?? 0) + WS_CLAUDE_SESSION_WAIT)) {
+        return array('who' => 'person', 'device' => 0);
+    }
+
+    return array('who' => 'routine', 'device' => 0);
+}
+
+/**
+ * May this caller work on a request held as ws_claude_request_holder() says:
+ * the routine (device 0) on the routine's, the asker's connection on one held
+ * for the asker or claimed by that same connection. Pure.
+ *
+ * @param array $holder    ws_claude_request_holder()
+ * @param array $row       ws_ai_requests row
+ * @param int   $owner_id  the person signed in on the connection, 0 for the routine
+ * @param int   $device_id the connection's api_devices id, 0 for the routine
+ * @return bool
+ */
+function ws_claude_caller_may($holder, $row, $owner_id, $device_id)
+{
+    if ((int) $device_id <= 0) {
+        return $holder['who'] === 'routine';
+    }
+
+    return ($holder['who'] === 'person')
+        && ((int) $owner_id > 0) && ((int) $row['requested_by'] === (int) $owner_id)
+        && (((int) $holder['device'] === 0) || ((int) $holder['device'] === (int) $device_id));
+}
+
+/**
+ * The holders of a list of requests, with two reads: who of the askers has
+ * an OAuth connection online, and which asking messages were written
+ * through one.
+ *
+ * @param array[] $rows ws_ai_requests rows
+ * @param int     $now
+ * @return array request id => ws_claude_request_holder()
+ */
+function ws_claude_request_holders($rows, $now)
+{
+    $out = array();
+    $ready = ws_claude_sessions_ready();
+    $askers = array();
+    $messages = array();
+
+    foreach ((array) $rows as $row) {
+        if ($ready && in_array((string) $row['status'], array('queued', 'sent'), true) && ((int) ($row['claimed_device_id'] ?? 0) === 0)) {
+            $askers[(int) $row['requested_by']] = true;
+            $messages[(int) $row['message_id']] = true;
+        }
+    }
+
+    unset($askers[0], $messages[0]);
+
+    $online = empty($askers) ? array() : array_flip(array_map('intval', (array) db_values("SELECT DISTINCT user_id FROM api_devices
+        WHERE oauth_client_id > 0 AND last_used_timestamp > '" . ((int) $now - WS_CLAUDE_SESSION_WAIT) . "'
+            AND user_id IN ('" . implode("', '", array_keys($askers)) . "')")));
+    $via = empty($messages) ? array() : array_flip(array_map('intval', (array) db_values("SELECT id FROM ws_messages
+        WHERE via_client_id > 0 AND id IN ('" . implode("', '", array_keys($messages)) . "')")));
+
+    foreach ((array) $rows as $row) {
+        $out[(int) $row['id']] = ws_claude_request_holder($ready ? $row : array_merge($row, array('claimed_device_id' => 0)),
+            isset($via[(int) $row['message_id']]), $ready && isset($online[(int) $row['requested_by']]), $now);
+    }
+
+    return $out;
+}
+
+/**
+ * The queued requests the routine may take now: the rest wait for the
+ * asker's own session (ws_claude_request_holder()).
+ *
+ * @return int[]
+ */
+function ws_claude_routine_ids()
+{
+    $rows = (array) db_items("SELECT * FROM ws_ai_requests WHERE status = 'queued'" . ws_claude_only());
+    $ids = array();
+
+    foreach (ws_claude_request_holders($rows, time()) as $id => $holder) {
+        if ($holder['who'] === 'routine') {
+            $ids[] = (int) $id;
+        }
+    }
+
+    return $ids;
+}
+
+/**
  * Starts a run when requests are waiting and no run is busy with them.
  *
  * @return array ok, status (sent | busy | held | idle | failed), error
@@ -667,7 +813,8 @@ function ws_claude_dispatch()
         return array('ok' => false, 'status' => 'idle', 'error' => '');
     }
 
-    $queued = (int) db_value("SELECT COUNT(*) FROM ws_ai_requests WHERE status = 'queued'" . ws_claude_only());
+    // A request waiting for the asker's own session starts no run.
+    $queued = count(ws_claude_routine_ids());
 
     if ($queued === 0) {
         return array('ok' => true, 'status' => 'idle', 'error' => '');
@@ -765,10 +912,16 @@ function ws_claude_fire($test = false, $queue = 'workspace')
         $session = preg_match('#^https://claude\.ai/[A-Za-z0-9_/.-]{1,200}$#', $session) ? $session : '';
 
         if ($workspace) {
-            $rows = (array) db_items("SELECT id, message_id FROM ws_ai_requests WHERE status = 'queued'" . ws_claude_only());
+            // Only what the routine may take: a request waiting for the
+            // asker's own session stays queued, so it starts a run of its
+            // own once its wait is over.
+            $ids = ws_claude_routine_ids();
+            $rows = empty($ids) ? array() : (array) db_items("SELECT id, message_id FROM ws_ai_requests WHERE id IN ('" . implode("', '", $ids) . "')");
 
-            db("UPDATE ws_ai_requests SET status = 'sent', sent_at = '" . $now . "', session_url = '" . e($session) . "', attempts = attempts + 1
-                WHERE status = 'queued'" . ws_claude_only());
+            if (!empty($ids)) {
+                db("UPDATE ws_ai_requests SET status = 'sent', sent_at = '" . $now . "', session_url = '" . e($session) . "', attempts = attempts + 1
+                    WHERE status = 'queued' AND id IN ('" . implode("', '", $ids) . "')" . ws_claude_only());
+            }
 
             foreach ($rows as $row) {
                 ws_message_touch($row['message_id']);

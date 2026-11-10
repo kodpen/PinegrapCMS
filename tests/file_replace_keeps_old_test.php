@@ -5,7 +5,9 @@
  * Tests for the screens and passes that write over a stored file: Edit
  * File's code save and SVG conversion (edit_file.php), the refresh of
  * imported style sheets and scripts (update_imported_items.php) and the
- * visual designer's custom CSS/JS asset files (pg_designer_sync_asset_files()).
+ * visual designer's custom CSS/JS asset files (pg_designer_sync_asset_files()),
+ * and each file Import My Site and Import ZIP create (import_design.php,
+ * import_zip.php).
  * Each writes through pg_file_write_whole(), so a full disk or a folder PHP
  * may not write leaves the old file in place; only a whole new file deletes
  * the old one or changes the record.
@@ -76,4 +78,37 @@ function test_file_replace_keeps_old_designer_asset_files()
 
 	pg_assert_same(false, strpos($source, "@file_put_contents(FILE_DIRECTORY_PATH . '/' . \$asset['name'], \$asset['content']);"), 'no unchecked in-place write');
 	pg_assert_true(strpos($source, "if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . \$asset['name'], (string) \$asset['content'])) continue;") !== false, 'a failed write records nothing');
+}
+
+// Import My Site and Import ZIP write each file as a whole before its row is
+// inserted; a failed write moves a backed-up old file back under its name.
+function file_replace_keeps_old_test_importer($relative)
+{
+	$source = file_replace_keeps_old_test_source($relative);
+
+	pg_assert_same(false, strpos($source, "@file_put_contents(FILE_DIRECTORY_PATH . '/' . \$name"), $relative . ': no unchecked write');
+
+	$write = strpos($source, "if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . \$name, \$content)) {");
+	$insert = strpos($source, 'INSERT INTO files');
+	pg_assert_true(($write !== false) && ($insert !== false) && ($write < $insert), $relative . ': the row is inserted only after a whole write');
+
+	$branch = ($write !== false) ? substr($source, $write, 1400) : '';
+	$restore = strpos($branch, "@rename(FILE_DIRECTORY_PATH . '/' . \$backup_name, FILE_DIRECTORY_PATH . '/' . \$name)");
+	$rename_row = strpos($branch, "SET name = '\" . e(\$name) . \"'");
+	pg_assert_true(($restore !== false) && ($rename_row !== false) && ($restore < $rename_row), $relative . ': the backup goes back before its row');
+	pg_assert_contains('continue;', $branch, $relative . ': the item is skipped');
+
+	return $branch;
+}
+
+function test_file_replace_keeps_old_import_design()
+{
+	$branch = file_replace_keeps_old_test_importer('import_design.php');
+	pg_assert_contains("'reason' => 'write'", $branch, 'reported as not written');
+}
+
+function test_file_replace_keeps_old_import_zip()
+{
+	$branch = file_replace_keeps_old_test_importer('import_zip.php');
+	pg_assert_contains("\$skipped_unread[] = lang(array('string' => '{var:1} could not be written to disk.'", $branch, 'reported as not written');
 }

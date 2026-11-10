@@ -9425,9 +9425,271 @@
         return (CLIP_TYPES.indexOf(ext) >= 0) ? ext : '';
     }
 
+    // ---- timeline editing (V3) ----
+
+    // A clip's row on the tracks: clips split from one another share it
+    // (l.row), any other clip has a row of its own (its id).
+    function clipRowKey(l) {
+        return String((l && (l.row !== undefined) && (l.row !== null) && (l.row !== '')) ? l.row : (l && l.id));
+    }
+
+    // The video layers on l's row, by their start.
+    function clipRow(layers, l) {
+        var key = clipRowKey(l);
+
+        return (layers || []).filter(function (o) {
+            return o && (o.type === 'video') && (clipRowKey(o) === key);
+        }).sort(function (a, b) { return clipSpan(a).from - clipSpan(b).from; });
+    }
+
+    function clipFind(layers, id) {
+        return (layers || []).filter(function (o) { return o && (o.type === 'video') && (o.id === id); })[0] || null;
+    }
+
+    // A dragged time on the grid or on a target within slack (trackSnap());
+    // snapped says a target took it.
+    function clipSnapTo(ms, o) {
+        var at = trackSnap(ms, o.targets, o.slack || 0, o.fine);
+
+        return { at: at, snapped: !o.fine && ((o.targets || []).indexOf(at) >= 0) && (Math.abs(at - ms) <= (o.slack || 0)) };
+    }
+
+    function clipTarget(at, o) {
+        return !o.fine && ((o.targets || []).indexOf(at) >= 0);
+    }
+
+    // A change of clip id that may change its end: the clips after it on
+    // its row (starting at or after its old end) follow by as much, so a
+    // row with no gap keeps none. A patch that moves the start pulls none.
+    // [{ id, patch }].
+    function clipRipple(layers, id, patch) {
+        var l = clipFind(layers, id), end, delta, out;
+
+        if (!l) {
+            return [];
+        }
+
+        out = [{ id: id, patch: patch }];
+
+        if (patch.start !== undefined) {
+            return out;
+        }
+
+        end = clipSpan(l).to;
+        delta = Math.round(clipSpan(Object.assign({}, l, patch)).to - end);
+
+        if (delta) {
+            clipRow(layers, l).forEach(function (o) {
+                if ((o.id !== id) && (clipSpan(o).from >= end - 1)) {
+                    out.push({ id: o.id, patch: { start: Math.max(0, Math.round(clipSpan(o).from + delta)) } });
+                }
+            });
+        }
+
+        return out;
+    }
+
+    // A drag of dt ms on one end of clip id ('start' or 'end'): { patches,
+    // at, source, snapped }, at the end's time on the timeline and source
+    // its time in the file. The start trims the source in and keeps the end,
+    // never before 0, the source's start or the clip before it on its row;
+    // the end trims the source out, the clips after it follow, all of them
+    // inside opts.max (the longest document). At least 0.1 s of source.
+    // opts: { targets, slack, fine, max }. null for no such clip.
+    function clipTrim(layers, id, grip, dt, opts) {
+        var o = opts || {}, l = clipFind(layers, id), c, sp, max = Number(o.max) || MOTION_MAX, s, lo, hi, prev, tail, at, src, patch;
+
+        if (!l) {
+            return null;
+        }
+
+        c = clipLayer(l);
+        sp = clipSpan(l);
+
+        if (grip === 'start') {
+            prev = 0;
+            clipRow(layers, l).forEach(function (n) {
+                var e = clipSpan(n).to;
+
+                if ((n.id !== id) && (e <= sp.from + 1)) {
+                    prev = Math.max(prev, e);
+                }
+            });
+            lo = Math.max(prev, sp.from - c.from / c.speed);
+            hi = sp.to - CLIP_MIN / c.speed;
+            s = clipSnapTo(sp.from + dt, o);
+            at = Math.round(clamp(s.at, lo, Math.max(lo, hi)));
+            src = Math.round(clamp(c.from + (at - sp.from) * c.speed, 0, c.to - CLIP_MIN));
+            patch = { start: at, from: src };
+
+            return { patches: [{ id: id, patch: patch }], at: at, source: src, snapped: clipTarget(at, o) };
+        }
+
+        tail = 0;
+        clipRow(layers, l).forEach(function (n) {
+            var ns = clipSpan(n);
+
+            if ((n.id !== id) && (ns.from >= sp.to - 1)) {
+                tail = Math.max(tail, ns.to - sp.to);
+            }
+        });
+        lo = sp.from + CLIP_MIN / c.speed;
+        hi = Math.min(sp.from + (c.length - c.from) / c.speed, max - tail);
+        s = clipSnapTo(sp.to + dt, o);
+        at = clamp(s.at, lo, Math.max(lo, hi));
+        src = Math.round(clamp(c.from + (at - sp.from) * c.speed, c.from + CLIP_MIN, Math.max(c.from + CLIP_MIN, c.length)));
+        at = Math.round(sp.from + (src - c.from) / c.speed);
+
+        return { patches: clipRipple(layers, id, { to: src }), at: at, source: src, snapped: clipTarget(at, o) };
+    }
+
+    // A drag of dt ms on the middle of clip id: { patches, at, snapped },
+    // at the new start. Either end snaps; never before 0, over a
+    // neighbour on its row or past opts.max.
+    function clipMove(layers, id, dt, opts) {
+        var o = opts || {}, l = clipFind(layers, id), sp, len, lo = 0, hi, nf, s1, s2;
+
+        if (!l) {
+            return null;
+        }
+
+        sp = clipSpan(l);
+        len = sp.to - sp.from;
+        hi = (Number(o.max) || MOTION_MAX) - len;
+        clipRow(layers, l).forEach(function (n) {
+            var ns = clipSpan(n);
+
+            if (n.id === id) {
+                return;
+            }
+
+            if (ns.to <= sp.from + 1) {
+                lo = Math.max(lo, ns.to);
+            } else if (ns.from >= sp.to - 1) {
+                hi = Math.min(hi, ns.from - len);
+            }
+        });
+
+        nf = sp.from + dt;
+        s1 = clipSnapTo(nf, o);
+        s2 = clipSnapTo(nf + len, o);
+
+        if (s1.snapped && (!s2.snapped || (Math.abs(s1.at - nf) <= Math.abs(s2.at - nf - len)))) {
+            nf = s1.at;
+        } else if (s2.snapped) {
+            nf = s2.at - len;
+        } else {
+            nf = s1.at;
+        }
+
+        nf = Math.round(clamp(nf, lo, Math.max(lo, hi)));
+
+        return { patches: [{ id: id, patch: { start: nf } }], at: nf, snapped: clipTarget(nf, o) || clipTarget(nf + len, o) };
+    }
+
+    // Split clip l at document time t: { left, right }, left the patch of
+    // the first part (its source out at t), right the second part as a new
+    // layer with the id given, on the same source and row from t. The first
+    // part keeps the entrance, the second the exit. null at rest, off the
+    // clip or within 0.1 s of source of either end.
+    function clipSplit(l, t, id) {
+        var c = clipLayer(l), sp = clipSpan(l), src, right, row = clipRowKey(l), left;
+
+        if ((t === null) || (t === undefined) || !(t > sp.from) || !(t < sp.to)) {
+            return null;
+        }
+
+        src = Math.round(c.from + (t - sp.from) * c.speed);
+
+        if ((src - c.from < CLIP_MIN) || (c.to - src < CLIP_MIN)) {
+            return null;
+        }
+
+        right = clone(l);
+        right.id = id;
+        right.from = src;
+        right.start = Math.round(sp.from + (src - c.from) / c.speed);
+        right.row = row;
+        left = { to: src, row: row };
+
+        if (l.anim) {
+            right.anim = clone(l.anim);
+            delete right.anim['in'];
+            left.anim = clone(l.anim);
+            delete left.anim.out;
+        }
+
+        return { left: left, right: right };
+    }
+
+    // The document's length that follows its clips: the last clip's end, a
+    // tenth of a second up, inside MOTION_MIN-MOTION_MAX; null with none.
+    function clipLength(doc) {
+        var has = ((doc && Array.isArray(doc.layers)) ? doc.layers : []).some(function (l) { return l && (l.type === 'video'); });
+
+        return has ? clamp(Math.ceil(clipEnd(doc) / 100) * 100, MOTION_MIN, MOTION_MAX) : null;
+    }
+
+    // The patches ([{ id, patch }]) put on doc's clips in place (inside an
+    // editor change), then the length following them.
+    function clipApply(doc, patches) {
+        var length;
+
+        (patches || []).forEach(function (p) {
+            var l = clipFind(doc.layers, p.id);
+
+            if (l) {
+                Object.assign(l, p.patch);
+            }
+        });
+
+        length = clipLength(doc);
+
+        if (length !== null) {
+            doc.motion = Object.assign({}, doc.motion || {}, { duration: length });
+        }
+
+        return doc;
+    }
+
+    // Which part of its source l is: { n, of } among the video layers on
+    // the same file, by their start.
+    function clipPart(layers, l) {
+        var same = (layers || []).filter(function (o) { return o && (o.type === 'video') && (o.src === l.src); });
+
+        same.sort(function (a, b) { return (clipSpan(a).from - clipSpan(b).from) || (String(a.id) < String(b.id) ? -1 : 1); });
+
+        return { n: same.indexOf(l) + 1, of: same.length };
+    }
+
+    // The times on a row (clips by their start) where one source goes on in
+    // the next clip with no gap: the cuts a split left.
+    function clipJoins(row) {
+        var out = [];
+
+        (row || []).forEach(function (b, i) {
+            var a = row[i - 1], ca, cb;
+
+            if (!a) {
+                return;
+            }
+
+            ca = clipLayer(a);
+            cb = clipLayer(b);
+
+            if ((a.src === b.src) && (ca.to === cb.from) && (ca.speed === cb.speed) && (Math.abs(clipSpan(a).to - cb.start) < 1)) {
+                out.push(cb.start);
+            }
+        });
+
+        return out;
+    }
+
     var CLIP = {
         CLIP_SPEEDS: CLIP_SPEEDS, CLIP_TYPES: CLIP_TYPES, CLIP_MIN: CLIP_MIN, clipLayer: clipLayer, clipSpan: clipSpan, clipAt: clipAt,
-        clipFit: clipFit, clipNew: clipNew, clipReplace: clipReplace, clipEnd: clipEnd, clipSound: clipSound, clipDetach: clipDetach, clipType: clipType
+        clipFit: clipFit, clipNew: clipNew, clipReplace: clipReplace, clipEnd: clipEnd, clipSound: clipSound, clipDetach: clipDetach, clipType: clipType,
+        clipRowKey: clipRowKey, clipRow: clipRow, clipRipple: clipRipple, clipTrim: clipTrim, clipMove: clipMove, clipSplit: clipSplit, clipLength: clipLength,
+        clipApply: clipApply, clipPart: clipPart, clipJoins: clipJoins
     };
 
     // ---- MIX (pg_image_editor_mix.js) ----

@@ -14,7 +14,6 @@ description: Stock per location as a whole: why it exists, the sum contract, wha
 
 ## What stays on the total?
 - Marketplace pushes and imports, ERP documents and stock counts, Workspace and product import change or send the total; their location is a later question. A transfer leaves the total as it is, so it announces nothing and queues no marketplace.
-- Bundles still count totals at checkout (`pg_bundle_check_inventory()`).
 
 ## Where is each part?
 - Tables, writer, seeding: `stock-locations-model.md`. Product screens, bulk edit, import/export: `stock-locations-screens.md`. Sales, scans, the API's `location`, event keys: `stock-locations-completion.md`. Settings card, history, transfers: `stock-locations-moves.md`. Pickup at a location: `stock-locations-pickup.md`. API locations, levels and transfer, MCP: `api/api-inventory-locations.md`.

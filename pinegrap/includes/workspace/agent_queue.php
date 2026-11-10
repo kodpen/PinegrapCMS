@@ -159,8 +159,32 @@ function ws_agent_channel_rows($channel_id)
 }
 
 /**
+ * One message of a reply chain as the depth brake reads it: by_agent when an
+ * agent's application wrote it, or when it was written through a person's
+ * OAuth connection (via_client_id): such a message is the person's in name
+ * but a tool's words, and two sessions answering each other must still stop.
+ * Pure.
+ *
+ * @param array $message ws_messages row: id, sender_kind, sender_id, via_client_id when the column is there
+ * @param int[] $agent_apps the applications agents write through
+ * @return array id, by_agent, sender_kind, sender_id
+ */
+function ws_agent_chain_entry($message, $agent_apps)
+{
+    $kind = (string) $message['sender_kind'];
+    $sender = (int) $message['sender_id'];
+
+    return array(
+        'id'          => (int) $message['id'],
+        'by_agent'    => (($kind === 'app') && in_array($sender, $agent_apps, true)) || ((int) ($message['via_client_id'] ?? 0) > 0),
+        'sender_kind' => $kind,
+        'sender_id'   => $sender,
+    );
+}
+
+/**
  * The reply chain a message stands at the end of, newest first, each marked
- * by_agent when an agent's application wrote it. At most the depth brake's
+ * by_agent as ws_agent_chain_entry() reads it. At most the depth brake's
  * length is read.
  *
  * @param int   $message_id
@@ -171,20 +195,16 @@ function ws_agent_chain($message_id, $agent_apps)
 {
     $chain = array();
     $id = (int) $message_id;
+    $via = (function_exists('ws_claude_sessions_ready') && ws_claude_sessions_ready()) ? ', via_client_id' : '';
 
     while (($id > 0) && (count($chain) <= WS_AGENT_DEPTH_MAX)) {
-        $message = db_item("SELECT id, parent_id, sender_kind, sender_id FROM ws_messages WHERE id = '" . $id . "'");
+        $message = db_item("SELECT id, parent_id, sender_kind, sender_id" . $via . " FROM ws_messages WHERE id = '" . $id . "'");
 
         if (!$message) {
             break;
         }
 
-        $chain[] = array(
-            'id'          => (int) $message['id'],
-            'by_agent'    => ((string) $message['sender_kind'] === 'app') && in_array((int) $message['sender_id'], $agent_apps, true),
-            'sender_kind' => (string) $message['sender_kind'],
-            'sender_id'   => (int) $message['sender_id'],
-        );
+        $chain[] = ws_agent_chain_entry($message, $agent_apps);
         $id = (int) $message['parent_id'];
     }
 

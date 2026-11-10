@@ -12146,6 +12146,8 @@ button.ws-thread-bar:focus-visible {
   padding: var(--ws-row-y, .3rem) var(--ws-space-2, .5rem);
   font-size: .9rem;
   text-decoration: none;
+  position: relative;
+  transition: background .12s ease;
 }
 .ws-channel-link:hover {
   background: var(--pg-bg-2);
@@ -12155,10 +12157,6 @@ button.ws-thread-bar:focus-visible {
   color: var(--pg-fg-emphasis);
   font-weight: 600;
   box-shadow: inset 3px 0 0 var(--ws-accent);
-}
-.ws-channel-link {
-  position: relative;
-  transition: background .12s ease;
 }
 .ws-channel-link .ws-pin {
   display: none;
@@ -12829,6 +12827,8 @@ html[data-bs-theme="dark"] .ws-group-icon {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  /* Anchors .ws-drop-overlay. */
+  position: relative;
 }
 .ws-head {
   display: flex;
@@ -13057,6 +13057,7 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   padding: .35rem 1rem 0;
   border-bottom: 1px solid var(--pg-border-color);
   overflow-x: auto;
+  scrollbar-width: none;
 }
 .ws-tabs button {
   border: 0;
@@ -13125,9 +13126,6 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   flex-shrink: 0;
   max-height: 40vh;
   overflow-y: auto;
-}
-.ws-tabs {
-  scrollbar-width: none;
 }
 .ws-tabs::-webkit-scrollbar {
   display: none;
@@ -16715,9 +16713,6 @@ a.ws-chip:hover {
 }
 
 /* Files dragged over a conversation. */
-.ws-center {
-  position: relative;
-}
 .ws-drop-overlay {
   position: absolute;
   inset: .5rem;

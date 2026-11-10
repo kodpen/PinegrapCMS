@@ -63,6 +63,27 @@ function test_explorer_search_count_is_announced()
 	pg_assert_contains('setTimeout', $announce, 'the count is said once typing stops');
 }
 
+function test_explorer_erp_search_count_is_announced()
+{
+	$source = panel_live_status_local_source('view_folders.php');
+
+	$input = panel_live_status_local_slice($source, "document.getElementById('filter_input').addEventListener('input'", "\n    });");
+	pg_assert_contains('erpSearchSeq = loadSeq', $input, 'the ERP search marks the reload it starts');
+
+	$load = panel_live_status_local_slice($source, "\n    function loadErp(", "\n    function ");
+	pg_assert_contains('seq === erpSearchSeq', $load, 'only the reload the search started speaks');
+	pg_assert_contains("getElementById('explorer_search_status')", $load, 'the ERP count goes into the search status region');
+	pg_assert_contains('erpCountText()', $load, 'the ERP count uses the status bar wording');
+
+	$text = panel_live_status_local_slice($source, "\n    function erpCountText(", "\n    function ");
+	pg_assert_contains('L.erp_folders_count', $text, 'the folder count wording');
+	pg_assert_contains('L.erp_docs_count', $text, 'the document count wording');
+	pg_assert_contains('L.erp_showing', $text, 'the partial page wording');
+
+	$bar = panel_live_status_local_slice($source, "\n    function renderStatusbar(", "\n    function ");
+	pg_assert_contains('erpCountText()', $bar, 'the status bar and the announcement share one text');
+}
+
 function test_unsplash_status_is_live_and_counts_in_words()
 {
 	$source = panel_live_status_local_source('editor_select_image.php');

@@ -118,3 +118,16 @@ function test_import_summary_escapes_addresses_and_names_reason()
 	pg_assert_contains(lang('file name not allowed'), $summary['warning'], 'refused name reason');
 	pg_assert_contains(lang('download failed'), $summary['warning'], 'download reason');
 }
+
+// A file that could not be written names its own reason, not a download.
+function test_import_summary_names_write_reason()
+{
+	$summary = import_design_import_summary(1, array(
+		array('url' => 'https://example.com/c.css', 'reason' => 'write'),
+	));
+
+	pg_assert_contains(lang('could not be written to disk'), $summary['warning'], 'write reason in the warning');
+	pg_assert_contains(lang('could not be written to disk'), $summary['text'], 'write reason in the text');
+	pg_assert_false(strpos($summary['warning'], lang('download failed')) !== false, 'not called a failed download');
+	pg_assert_false(strpos($summary['text'], lang('download failed')) !== false, 'not called a failed download in the text');
+}

@@ -294,33 +294,10 @@ if (!isset($_POST['submit'])) {
             pg_announce_contact_created($contact_id);
         }
         
-        // check if affiliate contact group exists
-        $query = "SELECT id FROM contact_groups WHERE (id = ?) AND " . pg_audience_hand_sql();
-        $result = db_q($query, array((string) AFFILIATE_CONTACT_GROUP_ID)) or output_error('Query failed.');
-        
-        // if affiliate contact group exists
-        if (mysqli_num_rows($result) > 0) {
-            // check if contact is already in affiliate contact group
-            $query =
-                "SELECT contact_id
-                FROM contacts_contact_groups_xref
-                WHERE
-                    (contact_id = ?)
-                    AND (contact_group_id = ?)";
-            $result = db_q($query, array((string) $contact_id, (string) AFFILIATE_CONTACT_GROUP_ID)) or output_error('Query failed.');
-            
-            // if contact is not already in contact group, then add contact to affiliate contact group
-            if (mysqli_num_rows($result) == 0) {
-                $query =
-                    "INSERT INTO contacts_contact_groups_xref (
-                        contact_id,
-                        contact_group_id)
-                    VALUES (
-                        ?,
-                        ?)";
-                $result = db_q($query, array((string) $contact_id, (string) AFFILIATE_CONTACT_GROUP_ID)) or output_error('Query failed.');
-            }
-        }
+        // add contact to the affiliate contact group (skipped when the group
+        // is gone or filled by rules, or the contact is already in it) and
+        // announce the join
+        pg_audience_door_join($contact_id, (int) AFFILIATE_CONTACT_GROUP_ID);
 
         // A pending reset or set password link went to the old address: a
         // new address ends it, so the old mailbox cannot set the password.

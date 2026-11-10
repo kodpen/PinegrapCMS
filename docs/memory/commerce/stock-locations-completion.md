@@ -9,8 +9,7 @@ module: stock_sales
 - Completion (`pg_order_complete_lines()`) and the local sale store it with `pg_stock_order_location_save()`; a till has no shipping method, so a local sale uses the default.
 
 ## What does the checkout refuse? (#5042 question 2)
-- `check_inventory()` counts the units at the cart's location (`pg_stock_quantity_at()`, `pg_stock_available_at()`: a product with no rows yet holds its total at the default, nothing elsewhere) in place of the total: a line the location cannot cover is shortened or removed with the old notices. Nothing counts from another location.
-- Not yet per location: a cart with a bundle (`pg_bundle_check_inventory()` counts totals).
+- `check_inventory()` counts the units at the cart's location (`pg_stock_quantity_at()`, `pg_stock_available_at()`: a product with no rows yet holds its total at the default, nothing elsewhere) in place of the total: a line the location cannot cover is shortened or removed with the old notices. A cart with a bundle counts at the location too (`pg_bundle_check_inventory()`, #8531). Nothing counts from another location.
 
 ## What does completion take?
 - `pg_order_complete_line_stock()`, `pg_bundle_take_stock()` (optional `$location_id`; checkout passes the order's) and the local sale call `pg_stock_sale_take()`: the line's quantity or what the location holds, whichever is less (`pg_stock_sale_amount()`), through `pg_stock_change()`, read again and retried up to 3 times when a parallel writer moved the row (`pg_stock_change_from_row()`). A location with none left takes nothing and announces nothing; the out-of-stock flag still reads the total.

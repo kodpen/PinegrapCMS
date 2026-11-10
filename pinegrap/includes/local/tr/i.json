@@ -1577,11 +1577,14 @@
     "Iyzipay 3D Secure answer matches no payment started for order #{var:1} (conversation {var:2}).": "Iyzipay 3D Secure yanıtı #{var:1} numaralı sipariş için başlatılmış hiçbir ödemeyle eşleşmiyor (konuşma {var:2}).",
     "Iyzipay 3D Secure answer was already used (conversation {var:1}).": "Iyzipay 3D Secure yanıtı zaten kullanılmış (konuşma {var:1}).",
     "Iyzipay 3D Secure could not be started: status {var:1}, code {var:2}, message {var:3}. Answer: {var:4}": "Iyzipay 3D Secure başlatılamadı: durum {var:1}, kod {var:2}, mesaj {var:3}. Yanıt: {var:4}",
+    "Iyzipay 3D Secure payment for order #{var:1} was not accepted: code {var:2}, group {var:3}, message {var:4} (payment {var:5}, conversation {var:6}, mdStatus {var:7}).": "#{var:1} numaralı sipariş için Iyzipay 3D Secure ödemesi kabul edilmedi: kod {var:2}, grup {var:3}, mesaj {var:4} (ödeme {var:5}, konuşma {var:6}, mdStatus {var:7}).",
     "Iyzipay 3D Secure payment was not accepted: code {var:1}, message {var:2}": "Iyzipay 3D Secure ödemesi kabul edilmedi: kod {var:1}, mesaj {var:2}",
     "Iyzipay 3D Secure verification failed (error 5002) for payment {var:1}.": "{var:1} numaralı ödeme için Iyzipay 3D Secure doğrulaması başarısız oldu (hata 5002).",
+    "Iyzipay 3D Secure verification was not passed for order #{var:1}: status {var:2}, mdStatus {var:3} ({var:4}), payment {var:5}, conversation {var:6}.": "#{var:1} numaralı sipariş için Iyzipay 3D Secure doğrulaması geçilemedi: durum {var:2}, mdStatus {var:3} ({var:4}), ödeme {var:5}, konuşma {var:6}.",
     "Iyzipay holds payment {var:1} for a fraud review.": "Iyzipay {var:1} numaralı ödemeyi dolandırıcılık incelemesi için bekletiyor.",
     "Iyzipay holds the renewal of subscription #{var:1} for a fraud review (payment {var:2}).": "Iyzipay #{var:1} numaralı aboneliğin yenilemesini dolandırıcılık incelemesi için bekletiyor (ödeme {var:2}).",
     "Iyzipay payment could not be cancelled because the payment id is empty ({var:1}).": "Iyzipay ödemesi iptal edilemedi, çünkü ödeme kimliği boş ({var:1}).",
+    "Iyzipay payment for order #{var:1} was not accepted: code {var:2}, group {var:3}, message {var:4} (payment {var:5}, conversation {var:6}).": "#{var:1} numaralı sipariş için Iyzipay ödemesi kabul edilmedi: kod {var:2}, grup {var:3}, mesaj {var:4} (ödeme {var:5}, konuşma {var:6}).",
     "Iyzipay payment was not accepted: code {var:1}, message {var:2}": "Iyzipay ödemeyi kabul etmedi: kod {var:1}, mesaj {var:2}",
     "Iyzipay payment {var:1} could not be cancelled ({var:2}). MANUAL REFUND REQUIRED. Gateway message: {var:3}": "Iyzipay ödemesi {var:1} iptal edilemedi ({var:2}). ELLE İADE GEREKİYOR. Ödeme altyapısının iletisi: {var:3}",
     "Iyzipay payment {var:1} could not be cancelled ({var:2}). MANUAL REFUND REQUIRED. {var:3}": "Iyzipay ödemesi {var:1} iptal edilemedi ({var:2}). ELLE İADE GEREKİYOR. {var:3}",
@@ -1716,5 +1719,6 @@
     "its own design": "kendi tasarımı",
     "iys, ileti yönetim sistemi, consent, permission, brand, marketing, opt-in, refusal": "iys, ileti yönetim sistemi, izin, onay, marka, pazarlama, ticari ileti, ret, consent, permission, brand, marketing, opt-in, refusal",
     "iyzico": "iyzico",
+    "iyzico gave no card-side reason for this refusal. The bank's own answer is shown on the payment's detail in the iyzico panel; iyzico support can say what it means.": "iyzico bu ret için karta bağlı bir neden bildirmedi. Bankanın kendi yanıtı iyzico panelinde ödemenin detayında görünür; ne anlama geldiğini iyzico destek söyleyebilir.",
     "iyzico logo address": "iyzico logosunun adresi"
 }

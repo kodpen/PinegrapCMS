@@ -174,6 +174,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_ai_tokens();            // 11.0.181
 	upgrade_2026_11_0_ws_agent_token_limit();     // 11.0.182
 	upgrade_2026_11_0_ws_wtable_numbers();       // 11.0.183
+	upgrade_2026_11_0_ws_agent_sessions();       // 11.0.184
 
 }
 
@@ -5906,5 +5907,29 @@ function upgrade_2026_11_0_ws_wtable_numbers() {
 		install_ran(lang(array('string' => 'workflow table rows numbered in {var:1} tables', 'vars' => count($tables))));
 
 	}
+
+}
+
+// The asker's own session over OAuth and the connection a message was
+// written through (11.0.184; includes/workspace/claude.php, agent_queue.php).
+// ws_messages.via_client_id is the oauth_clients id a message was written
+// through (0: not through a connection); the depth brake counts such a
+// message as an agent's. ws_ai_requests.claimed_device_id is the api_devices
+// id of the asker's connection that claimed a request to Claude (0: the
+// site's routine). No backfill and no index: old rows read 0, as before.
+function upgrade_2026_11_0_ws_agent_sessions() {
+
+	if (!install_table_exists('ws_messages') || !install_table_exists('ws_ai_requests')) {
+
+		install_skipped('ws_messages or ws_ai_requests does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_messages', 'via_client_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_ai_requests', 'claimed_device_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: a request to Claude can be taken by the asker\'s own connected session; existing messages and requests are unchanged.');
 
 }

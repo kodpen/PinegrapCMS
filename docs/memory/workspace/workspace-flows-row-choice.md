@@ -14,6 +14,7 @@ description: How Read a row (row_get) and Change a row (row_set) find their row 
   - `id`: the first of the list, so a box saved before the choice, or sent over the API without `by`, keeps its meaning. An unknown word is also `id`.
   - `position`: the row's number as the table lists it, `ws_wtable_row_at()`. When two rows share a number (two rows added at once), the lower id wins.
   - `number`: the stable # number the table shows (`ws_wtable_row_numbered()`, `workflow-table-row-numbers.md`), worded "row #N". Since it, `position` is labelled "By its place in the table".
+  - `key`: the value of the table's key column, any text (`ws_wtable_row_keyed()`, `workflow-table-key-column.md`).
   - `last`: the bottom row, `ws_wtable_row_last()` (position, then id, descending). The row text is emptied.
   - `match`, Read a row only (`ws_step_row_get_bys()`, PR #8400): the first row in table order that meets its conditions (`workspace-flows-rows-get-box.md`). The row text is emptied; `ws_step_row_problem()` and `ws_step_row_refusal()` leave it to the conditions' checks.
 - `ws_step_row_find()` is the single reader, used by `ws_step_row_get_do()` and by the try loop of `ws_step_row_do()`. The loop finds the row again on every try, because a row named by its number may move.
