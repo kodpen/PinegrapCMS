@@ -35,6 +35,7 @@
 - mail-status.md: State of a Workspace e-mail conversation (G5a, G5b, mail_status.php): open/waiting/closed, the holder, the first-response target, the card's controls, the automatic answer
 - mail-tables.md: Incoming e-mail tables (G1b, step 11.0.82): ws_mail_boxes, ws_mail_conversations, ws_mail_items, sender kind 'mail'; what each column holds and why
 - mail-triage.md: Pinegrap AI's one suggestion on a new e-mail conversation (G8, PR #3787, decision #3744 a): the per-box switch, when it runs, the prompt, the message and its draft, what it never does
+- model-assistant-channel-rule.md: Where a model assistant is asked (its own ws_channel_agents row; a channel closed to Pinegrap AI on purpose keeps it out too) and how the shared loop's failure sentences name it (PR #8413)
 - model-assistants.md: Model assistants (ws_agents kind 'model'): providers and their data terms, the card, how ws_ai_step() answers a model:<id> request with the assistant's address, key, model and application
 - note-media.md: A note line linking only to a file of this site is drawn as the file in the read view (ws_render_body, note_media.php) and as a media card in the writing box (workspace_editor.js)
 - plan-board-grid.md: Plan board (workspace_board.php) grid columns and why .ws-board's min-width equals the grid minimum (#3815)
@@ -46,10 +47,12 @@
 - workflow-table-shares.md: Workflow table shares (wtable_shares.php, T1c, #2820): owner-only, person view/edit, channel view; wtable_shared bell line; ws_wtable_flow_gate() pauses a gone owner's table
 - workflow-table-starters.md: Starters on the New table card (T6c, #3044): contact pipeline and checklist live in code (ws_wtable_starters()), made through the store's functions with optional sample rows; no store, no schema
 - workflow-tables-api.md: Workflow tables in the external API and MCP (api_wtables.php, T1d1 #2890, T1d2 #2931): routes, which are tools, dry run, errors, rows paging, Claude's reach, shares, workspace.wtable.row.* webhooks
-- workflow-tables-bin.md: The bin of workflow tables (11.0.178, TB1): a deleted row goes to ws_wtable_row_bin, a deleted table gets ws_wtables.deleted_at; restore, purge, privacy and contact readers
+- workflow-tables-bin-screens.md: Where the workflow table bin shows (TB2): Deleted tables and Deleted rows cards on workspace_wtables.php, the delete confirmations, and the deleted-tables / deleted-rows API routes
+- workflow-tables-bin.md: The bin of workflow tables (11.0.178, #8412): a deleted row goes to ws_wtable_row_bin, a deleted table gets ws_wtables.deleted_at; restore, purge, privacy and contact readers
 - workflow-tables-conditions.md: Conditions over workflow table rows (wtable_where.php, PR #8400): comparisons per column type, how each type compares, all or any, sorting with empty cells last, sum/average/smallest/largest
 - workflow-tables-export.md: A workflow table downloads as an Excel file (TX1): who may, what each cell becomes, the shared xlsx writer the ERP export also uses
-- workflow-tables-later.md: What workflow tables leave for later (T1-T6 done): a "my tables" strip, table versions, the CRM pipeline; the planned import route and bin
+- workflow-tables-import.md: The import route workspace.tables.import (TX2, #8427): a site file or a note's table into a workflow table over the API and MCP, the pairing, the dry run through ws_wtable_import_check(), refusals
+- workflow-tables-later.md: What workflow tables leave for later (T1-T6 done): a "my tables" strip, table versions, the CRM pipeline; exports still to come and the planned bin
 - workflow-tables-numbers.md: How workflow tables read and show amounts and numbers (#3391, PR #3507, import PR #3524): ws_calc_number() for typed figures, site separators in file import and on display, machine form stored
 - workflow-tables-screen.md: The workflow tables screen workspace_wtables.php (T1e, #2966): server-drawn forms over the store, list scopes, rows paged, the row form, column options from the form, shares, nav entry
 - workflow-tables.md: Workflow tables (11.0.110, #2746): the four ws_wtable* tables column by column, ws_wtable_access(), column changes; JSON person/link cells and the privacy reader
@@ -93,6 +96,7 @@
 - workspace-channel-catchup.md: Over a channel's conversation (C2, C3 of workspace-channel-screen.md): the catch-up line in place of the greeting card, the pinned line, one row on a phone
 - workspace-channel-composer.md: The channel's writing box in one row (C5 of workspace-channel-screen.md): no hint line, marks behind Aa; a phone's one row with the tools switch, the keyboard rules
 - workspace-channel-decisions-tab.md: The channel's Decisions tab draws each decision as a card of its own with a gap between them, not stacked like the conversation's messages
+- workspace-channel-export.md: A channel's conversation as a Markdown file or a print page (workspace_channel_export.php, channel_export.php): range, what it holds, the 5,000 limit, audit line, the channel-menu drawer
 - workspace-channel-files-tab.md: A channel's Files tab (drawFiles() in workspace.js): the groups it draws (images, videos, voice messages and audio, documents) and the one-line file row
 - workspace-channel-greeting-task-counts.md: How a channel's greeting counts its open tasks (ws_channel_task_counts()): a 0000-00-00 due date is no due date, as on the dashboard and Today
 - workspace-channel-group-events.md: Webhook events about Workspace channel groups themselves (workspace.channel_group.created/updated/access_changed/deleted): payload, who hears them, what stays quiet

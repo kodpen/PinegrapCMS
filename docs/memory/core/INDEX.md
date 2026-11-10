@@ -121,7 +121,7 @@
 - page-messages-defuse.md: Liveform messages (errors, notices, warnings) are HTML printed into the page before the page eval and marker expansion; pg_defuse_page_message() on store and on print, and the escaped upload refusal
 - panel-action-table.md: Adding an api.php panel action: the pg_panel_actions() row and its columns, handler file and signature, what the general gate does with listed, unlisted and prefixed names, the test.
 - panel-shared-keys.md: Short keys read in the wrong sense (SEO, Created, Given, Return, audit actions, UTM Medium, Quotes, reviews, Edit/Restore, Open) and the separate keys used instead
-- panel-turkish-terms-2.md: More Turkish panel words (shipping method, Site Log file lines, Cloudflare setting values, Private Label Branding card, gift card and commission labels), continued from panel-turkish-terms
+- panel-turkish-terms-2.md: More Turkish panel words (shipping method, Site Log file lines, Cloudflare values, Private Label Branding card, gift card and commission labels, Workspace agent), continued from panel-turkish-terms
 - panel-turkish-terms.md: Turkish words for panel terms translated in several ways (Manager role, contact group, password pages, Guide, short link, opt-in/opt-out, visitor order steps, ERP quotes, Anonymous)
 - passkey-account-section.md: Passkeys on the account page (pg_passkey_account_section(), PR #1384, #2226): who may add one, the proofs incl. the e-mailed code, recovery codes of passkey-only accounts, rename and remove
 - passkey-ceremonies.md: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys.php, passkey.php, the passkey at the second step of mfa.php, the account page; decisions in passkey-decisions

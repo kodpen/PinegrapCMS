@@ -31,7 +31,7 @@ function workspace_channel_menu_test_allowed()
 		'voice_speak', 'claude_allow', 'ai_allow', 'voice_allow',
 		'make_private', 'make_public', 'grp_move_channel',
 		'tpl_apply', 'tpl_from_channel', 'share_start',
-		'era_list', 'era_clear', 'archive', 'unarchive', 'leave_channel',
+		'era_list', 'era_clear', 'chx_menu', 'archive', 'unarchive', 'leave_channel',
 	);
 }
 

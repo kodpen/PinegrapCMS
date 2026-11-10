@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-9
-description: Decisions list, workspace part 9 (2026-11-08 on): agent channels by a slash command, their decisions apart; agents' messages markable; channel memory read by title; GitHub by OAuth; SVG canvases
+description: Decisions list, workspace part 9 (2026-11-08 on): agent channels by slash command, decisions apart; markable agent messages; memory by title; GitHub OAuth; SVG canvases; model assistant vs ai_access
 ---
 
 ## Where are the rules and the earlier parts?
@@ -27,3 +27,6 @@ description: Decisions list, workspace part 9 (2026-11-08 on): agent channels by
 - By writing SVG: the site sanitizes it and makes an image editor canvas with layers; the channel's browser draws the picture. It replaces the 2026-11-07 route taking the editor's document and a PNG (`decisions-made-workspace-7.md`). Reason: as Claude's artifacts, and every agent writes SVG (Claude, the built-in assistant, model assistants) while few can draw a PNG.
 - An agent edits a person's canvas in place: a new version, "Edited by @handle" with Undo on the message, its author notified; its own canvas likewise.
 - Built as its own plan, not after A4 (#8236, #8254, #8252, #8299; the built-in assistant's tools #8293): `workspace/agent-canvas-svg.md` and its siblings.
+
+## Does a channel closed to Pinegrap AI keep a model assistant out? (owner, 2026-11-10, #8413)
+- Yes. Where a manager closed the channel to Pinegrap AI (`ai_access` 2), a model assistant added to it does not answer either. Chosen over letting it answer there, and over letting it answer only where a manager added it. Why: whether a channel is open to AI is its manager's choice, while whoever may post in a channel adds a model assistant to it, so an answer would let a member send a closed channel's words to an outside provider. `workspace/model-assistant-channel-rule.md`.

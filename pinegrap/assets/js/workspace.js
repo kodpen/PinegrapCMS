@@ -5901,6 +5901,89 @@
 
     // A channel of the team shared with somebody outside it (guests.php):
     // who it is for, whether they only read, and how the link opens.
+    // The channel's conversation as a file (workspace_channel_export.php):
+    // a date range, empty for everything, and the form; the server reads only
+    // what the person may read and refuses a range that is too long.
+    function exportForm(channel) {
+        var node = offcanvas('ws-channel-export', '');
+        var body = clear(node.querySelector('.drawer-body'));
+        var footer = clear(node.querySelector('.drawer-footer'));
+        var group = nextId('ws_chx_format_');
+        var format = 'markdown';
+
+        footer.classList.remove('d-none');
+        node.querySelector('.drawer-title').textContent = t('chx_title') + ' · #' + channel.name;
+        body.appendChild(el('div', 'form-text mt-0 mb-5', t('chx_help')));
+
+        var grid = el('div', 'row g-3');
+        var fromCell = el('div', 'col-6');
+        var toCell = el('div', 'col-6');
+        var from = el('input', 'form-control form-control-sm');
+        var to = el('input', 'form-control form-control-sm');
+
+        pgDateField(from, 'date');
+        pgDateField(to, 'date');
+        from.max = CFG.today;
+        to.max = CFG.today;
+        fromCell.appendChild(formRow(t('chx_from'), from));
+        toCell.appendChild(formRow(t('chx_to'), to));
+        grid.appendChild(fromCell);
+        grid.appendChild(toCell);
+        body.appendChild(grid);
+
+        var choices = el('div', 'mb-5');
+        choices.appendChild(el('div', 'form-label', t('chx_format')));
+
+        [['markdown', t('chx_markdown'), 'bi-filetype-md'], ['print', t('chx_print'), 'bi-printer']].forEach(function (option) {
+            var wrap = el('div', 'form-field');
+            var radio = el('input', 'radio');
+            radio.type = 'radio';
+            radio.name = group;
+            radio.value = option[0];
+            radio.id = nextId('ws-chx-format-');
+            radio.checked = (option[0] === format);
+            radio.addEventListener('change', function () { format = radio.value; });
+
+            var label = el('label', '');
+            label.htmlFor = radio.id;
+            label.appendChild(icon(option[2], 'me-1'));
+            label.appendChild(document.createTextNode(option[1]));
+            wrap.appendChild(radio);
+            wrap.appendChild(label);
+            choices.appendChild(wrap);
+        });
+
+        body.appendChild(choices);
+
+        var go = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('chx_go'), 'bi-download');
+        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+        cancel.setAttribute('data-bs-dismiss', 'drawer');
+        footer.appendChild(cancel);
+        footer.appendChild(go);
+
+        go.addEventListener('click', function () {
+            // Y-m-d strings compare as dates.
+            if (from.value && to.value && from.value > to.value) {
+                toast(t('chx_dates'), 'danger');
+                return;
+            }
+
+            var url = CFG.urls.channel_export + '?channel=' + encodeURIComponent(channel.id)
+                + (from.value ? '&from=' + encodeURIComponent(from.value) : '')
+                + (to.value ? '&to=' + encodeURIComponent(to.value) : '');
+
+            hideOffcanvas(node);
+
+            if (format === 'print') {
+                window.open(url + '&print=1', '_blank', 'noopener');
+            } else {
+                window.location.href = url;
+            }
+        });
+
+        showOffcanvas(node);
+    }
+
     function shareForm(channel, onDone) {
         var conf = CFG.guests || {};
         var node = offcanvas('ws-share-form', '');
@@ -9207,6 +9290,11 @@
                         shareForm(channel, function () { self.reloadChannels(channel.id); });
                     }
                 });
+            }
+
+            // Whoever reads the channel may take its conversation with them.
+            if (CFG.urls.channel_export && !self.era) {
+                item(t('chx_menu'), 'bi-box-arrow-down', function () { exportForm(channel); });
             }
 
             if (CFG.eras && channel.eras) {

@@ -23,4 +23,4 @@ module: xlsx_write
 - The download writes to a `tempnam()` file under `data/temp`, sends it and deletes it.
 
 ## What is left?
-- A download of what the screen's filter shows, a CSV download, an export route in the API (`plans/tables-xlsx-import-route.md`, later).
+- A download of what the screen's filter shows, a CSV download, an export route in the API (`workflow-tables-later.md`).

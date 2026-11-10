@@ -28,4 +28,4 @@ description: A CSV/xlsx/xls/ods file into a workflow table (T6a, #3022): a new t
 - `ws_wtable_row_announce_quiet(true)` for the run: no `workspace.wtable.row.*` event per row (api/ key rule); the catalogue says so.
 
 ## What else comes in this way?
-- A note's table block (T6b, #3044): `workflow-table-import-notes.md`. Starters on the New table card (T6c): `workflow-table-starters.md`. Still missing: an API/MCP import route (`workflow-tables-later.md`).
+- A note's table block (T6b, #3044): `workflow-table-import-notes.md`. Starters on the New table card (T6c): `workflow-table-starters.md`. Over the API and MCP: `workflow-tables-import.md`.

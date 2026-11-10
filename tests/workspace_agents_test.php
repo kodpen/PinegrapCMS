@@ -3,7 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the agent registry's checks (includes/workspace/agents.php)
- * that need no database: an agent's handle and its door.
+ * that need no database: an agent's handle and its door, and the heading of
+ * the Agents card (includes/workspace/agents_settings.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -24,6 +25,31 @@ if (!defined('PG_INIT_LOADED')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
+require_once(__DIR__ . '/helpers/language_map.php');
+
+// The Agents card is headed with a key of its own. "Agents" belongs to the
+// real-estate template, whose estate agents are "Danışmanlar" in Turkish;
+// under that key the card of the Workspace's agents ("ajan" everywhere else
+// on it) read "Danışmanlar" too.
+function test_workspace_agents_card_heading()
+{
+	$reflection = new ReflectionFunction('ws_agents_settings_card');
+	$lines = file($reflection->getFileName());
+	$card = implode('', array_slice($lines, $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+
+	pg_assert_same(1, preg_match("~<h2 [^>]*>.*?h\(lang\('([^']+)'\)\)~s", $card, $heading), 'the card has a heading');
+
+	$turkish = pg_test_language_map('tr');
+	$key = (string) ($heading[1] ?? '');
+
+	pg_assert_same('Workspace agents', $key);
+	pg_assert_same('Ajanlar', $turkish[$key] ?? null, 'the card is headed "Ajanlar" in Turkish, as its texts call it');
+	pg_assert_contains('Ajanlar kart', (string) ($turkish['@{var:1} is paused on the Agents card.'] ?? ''), 'which is the name other screens send people to');
+	pg_assert_false(strpos($card, "lang('Agents')") !== false, 'never the real-estate template\'s key');
+
+	pg_assert_same('Danışmanlar', $turkish['Agents'] ?? null, 'the template\'s estate agents keep their wording');
+	pg_assert_contains("lang('Agents')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-realestate/pages_public.php'), 'and the template still asks for it');
+}
 
 function test_workspace_agent_handle_problem()
 {

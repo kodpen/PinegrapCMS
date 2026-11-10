@@ -5,7 +5,9 @@
  * Workspace - the person's workflow tables: their own and those shared with
  * them or in a channel they read. Without ?id= the list and a new table;
  * with it one table: its rows a page at a time, the row form (?row= opens a
- * row in it), the columns, the name and description, and the shares. Every
+ * row in it), the columns, the name and description, the shares and the
+ * rows in the table's bin; the list shows the person's deleted tables too
+ * (includes/workspace/wtable_bin.php). Every
  * change is a form posted with the token and goes through the store
  * (includes/workspace/wtables.php, wtable_rows.php, wtable_shares.php),
  * which decides who may do what; wtable_screen.php turns fields into cells.
@@ -47,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     validate_token_field();
 
-    pg_request_single_values(array('wt_action', 'wt_table', 'wt_column', 'wt_row', 'wt_share', 'revision', 'name', 'description', 'type', 'target', 'level', 'value', 'note', 'starter', 'samples'));
+    pg_request_single_values(array('wt_action', 'wt_table', 'wt_column', 'wt_row', 'wt_share', 'wt_bin', 'revision', 'name', 'description', 'type', 'target', 'level', 'value', 'note', 'starter', 'samples'));
 
     $action = (string) ($_POST['wt_action'] ?? '');
     $table = ws_wtable((int) ($_POST['wt_table'] ?? 0));
@@ -102,10 +104,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($result['ok']) {
                 log_activity(lang(array('string' => 'workspace table ({var:1}) was deleted', 'vars' => $table['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
-                $liveform->add_notice(h(lang(array('string' => 'The table {var:1} was deleted.', 'vars' => $table['name']))));
-                $back = $self_url;
+                $liveform->add_notice(h(ws_wtable_bin_ready()
+                    ? lang(array('string' => 'The table {var:1} was deleted. It is in Deleted tables, where you can restore it.', 'vars' => $table['name']))
+                    : lang(array('string' => 'The table {var:1} was deleted.', 'vars' => $table['name']))));
+                $back = $self_url . (ws_wtable_bin_ready() ? '#ws-wt-deleted' : '');
             } else {
                 $refused($result);
+            }
+
+            break;
+
+        case 'table_restore':
+            // A table of the person's own back from the bin, whole.
+            $binned = ws_wtable_binned((int) ($_POST['wt_table'] ?? 0));
+            $result = ws_wtable_restore($viewer, $binned);
+
+            if ($result['ok']) {
+                log_activity(lang(array('string' => 'workspace table ({var:1}) was restored', 'vars' => $binned['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
+                $liveform->add_notice(h(lang(array('string' => 'The table {var:1} was restored.', 'vars' => $binned['name']))));
+                $back = $self_url . '?id=' . (int) $binned['id'];
+            } else {
+                $refused($result);
+                $back = $self_url . '#ws-wt-deleted';
             }
 
             break;
@@ -192,6 +212,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = ws_wtable_row_delete($viewer, $table, $row, array('revision' => $field('revision')));
             $result['ok'] ? $liveform->add_notice(h(lang('The row was deleted.'))) : $refused($result);
             $back .= '#ws-wt-rows';
+            break;
+
+        case 'row_restore':
+            // A row back from the table's bin, at the end of the table.
+            $bin = ws_wtable_bin_row((int) ($table['id'] ?? 0), (int) ($_POST['wt_bin'] ?? 0));
+            $result = ws_wtable_row_restore($viewer, $table, $bin);
+
+            if (!$result['ok']) {
+                $refused($result);
+                $back .= '#ws-wt-deleted-rows';
+                break;
+            }
+
+            $liveform->add_notice(h($result['id_changed']
+                ? lang('The row was restored under a new number: the links other rows had to it were not restored.')
+                : lang('The row was restored at the end of the table.')));
+            $back .= '#ws-wt-row-' . (int) $result['row_id'];
+            break;
+
+        case 'bin_row_delete':
+            $bin = ws_wtable_bin_row((int) ($table['id'] ?? 0), (int) ($_POST['wt_bin'] ?? 0));
+            $result = ws_wtable_bin_row_delete($viewer, $table, $bin);
+            $result['ok'] ? $liveform->add_notice(h(lang('The row was deleted for good.'))) : $refused($result);
+            $back .= '#ws-wt-deleted-rows';
             break;
 
         case 'share_set':
@@ -304,8 +348,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                if (empty($map)) {
-                    $liveform->add_error(h(lang('Choose at least one column to fill.')));
+                $checked = empty($map) ? null : ws_wtable_import_check($viewer, $table, $kept, array('map' => $map));
+
+                if (!$checked || !$checked['ok']) {
+                    $liveform->add_error(h($checked ? ws_wtable_screen_error_text($checked['error']) : lang('Choose at least one column to fill.')));
                     $back = $table_url . '&import=1#ws-wt-import';
                     break;
                 }
@@ -325,8 +371,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                if (empty($plan)) {
-                    $liveform->add_error(h(lang('Choose at least one column to fill.')));
+                $checked = empty($plan) ? null : ws_wtable_import_check($viewer, null, $kept, array('name' => $field('name'), 'plan' => $plan));
+
+                if (!$checked || !$checked['ok']) {
+                    $liveform->add_error(h($checked ? (isset($checked['column']) ? $checked['column'] . ': ' : '') . ws_wtable_screen_error_text($checked['error']) : lang('Choose at least one column to fill.')));
                     $back = $self_url . '?import=1#ws-wt-import';
                     break;
                 }
@@ -683,6 +731,39 @@ if (!$table) {
             <tbody>' . $lines . '</tbody>
         </table></div>';
 
+    // The person's own deleted tables, each restored whole until the bin
+    // lets it go.
+    $deleted_card = '';
+    $binned = ($scope === 'shared') ? array() : ws_wtables_binned($viewer);
+
+    if (!empty($binned)) {
+        $deleted_lines = '';
+
+        foreach ($binned as $item) {
+            $deleted_lines .= '
+            <tr>
+                <td><i class="bi bi-table me-1 fg-secondary" aria-hidden="true"></i>' . h($item['name']) . '</td>
+                <td class="text-end">' . (int) $item['row_count'] . '</td>
+                <td class="small fg-secondary text-nowrap">' . h(ws_time_label((int) $item['deleted_at'])) . '</td>
+                <td class="small fg-secondary text-nowrap">' . h(date('d.m.Y', (int) $item['expires_at'])) . '</td>
+                <td class="text-end"><button type="button" class="btn btn-sm btn-text theme-primary ws-wt-action" data-action="table_restore" data-table="' . (int) $item['id'] . '">'
+                    . '<i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Restore')) . '</button></td>
+            </tr>';
+        }
+
+        $deleted_card = '
+            <div class="card mb-5" id="ws-wt-deleted">
+                <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang('Deleted tables')) . '</h2></div>
+                <div class="card-body">
+                    <p class="small fg-secondary">' . h(lang(array('string' => 'A deleted table stays here for {var:1} days, out of everybody\'s reach; then it is deleted for good.', 'vars' => ws_wtable_bin_days()))) . '</p>
+                    <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+                        <thead><tr><th scope="col">' . h(lang('Name')) . '</th><th scope="col" class="text-end">' . h(lang('Rows')) . '</th><th scope="col">' . h(lang('Deleted')) . '</th><th scope="col">' . h(lang('Deleted for good on')) . '</th><th scope="col" aria-label="' . h(lang('Actions')) . '"></th></tr></thead>
+                        <tbody>' . $deleted_lines . '</tbody>
+                    </table></div>
+                </div>
+            </div>';
+    }
+
     $starter_options = '<option value="">' . h(lang('An empty table')) . '</option>';
 
     foreach (ws_wtable_starters() as $key => $starter) {
@@ -695,7 +776,7 @@ if (!$table) {
             <div class="card mb-5">
                 <div class="card-header d-flex flex-wrap gap-3 align-items-center">' . $tabs . '</div>
                 <div class="card-body">' . $list . '</div>
-            </div>
+            </div>' . $deleted_card . '
         </div>
         <div class="col-12 xl:col-4">
             <div class="card mb-5" id="ws-wt-new">
@@ -769,6 +850,20 @@ if (!$table) {
         }
     }
 
+    // The rows in the table's bin, for whoever may change the table.
+    $bin_days = ws_wtable_bin_ready() ? ws_wtable_bin_days() : 0;
+    $bin_rows = $can_write ? (array) ws_wtable_bin_rows($viewer, $table) : array();
+
+    foreach ($bin_rows as $row) {
+        foreach ($columns as $column_id => $column) {
+            if (($column['type'] === 'person') && !empty($row['cells'][$column_id])) {
+                $person_ids[] = (int) $row['cells'][$column_id];
+            }
+        }
+
+        $person_ids[] = (int) $row['deleted_by'];
+    }
+
     $people = empty($person_ids) ? array() : ws_people(array_unique($person_ids));
 
     // The rows.
@@ -811,7 +906,7 @@ if (!$table) {
 
         if ($can_write) {
             $tools = '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . '&row=' . (int) $row['id'] . ($after ? '&after=' . $after : '')) . '#ws-wt-row-form" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>'
-                . ws_wtable_screen_action_button(array('action' => 'row_delete', 'row' => (int) $row['id'], 'revision' => (int) $row['revision']), lang('Delete'), 'bi-trash', lang('Delete this row?'));
+                . ws_wtable_screen_action_button(array('action' => 'row_delete', 'row' => (int) $row['id'], 'revision' => (int) $row['revision']), lang('Delete'), 'bi-trash', ws_wtable_screen_delete_confirm('row', (string) $table['name'], $bin_days));
         }
 
         $lines .= '<tr id="ws-wt-row-' . (int) $row['id'] . '"><td class="small fg-secondary text-end">' . (int) $row['position'] . '</td>' . $line . ($can_write ? '<td class="text-end text-nowrap">' . $tools . '</td>' : '') . '</tr>';
@@ -1175,6 +1270,37 @@ if (!$table) {
                 </div>
             </div>';
 
+    // The table's deleted rows: restored at the end of the table, or deleted
+    // for good, until the bin lets them go.
+    $bin_card = '';
+
+    if (!empty($bin_rows)) {
+        $bin_lines = '';
+
+        foreach ($bin_rows as $row) {
+            $summary = ws_wtable_screen_bin_summary($columns, (array) $row['cells'], $people);
+            $bin_lines .= '
+                    <li class="d-flex align-items-start gap-2 py-2 border-bottom">
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="small text-truncate">' . h(($summary !== '') ? $summary : lang('An empty row')) . '</div>
+                            <div class="small fg-secondary">' . h(lang(array('string' => 'Deleted by {var:1}, {var:2} · deleted for good on {var:3}', 'vars' => array(
+                                $people[(int) $row['deleted_by']]['name'] ?? lang('somebody'), ws_time_label((int) $row['deleted_at']), date('d.m.Y', (int) $row['expires_at']))))) . '</div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-text theme-primary ws-wt-action" data-action="row_restore" data-bin="' . (int) $row['bin_id'] . '" title="' . h(lang('Restore')) . '" aria-label="' . h(lang('Restore')) . '"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></button>
+                        ' . ws_wtable_screen_action_button(array('action' => 'bin_row_delete', 'bin' => (int) $row['bin_id']), lang('Delete for good'), 'bi-x-lg', lang('Delete this row for good? It cannot be brought back.')) . '
+                    </li>';
+        }
+
+        $bin_card = '
+            <div class="card mb-5" id="ws-wt-deleted-rows">
+                <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Deleted rows ({var:1})', 'vars' => count($bin_rows)))) . '</h2></div>
+                <div class="card-body">
+                    <p class="small fg-secondary">' . h(lang(array('string' => 'A deleted row stays here for {var:1} days. Restored, it comes back at the end of the table.', 'vars' => $bin_days))) . '</p>
+                    <ul class="list-unstyled mb-0">' . $bin_lines . '</ul>
+                </div>
+            </div>';
+    }
+
     $owner_note = '';
 
     if (!$can_manage) {
@@ -1298,7 +1424,7 @@ if (!$table) {
                 ' . $row_form . '
             </div>
             <div class="col-12 xl:col-4">
-                ' . $columns_card . $import_rows_card . $details_card . $shares_card . '
+                ' . $columns_card . $import_rows_card . $details_card . $shares_card . $bin_card . '
             </div>
         </div>';
 
@@ -1366,7 +1492,7 @@ if (!$table) {
         ' . (($row_form !== '') ? '<a class="btn btn-sm btn-text theme-primary" href="' . h($table_url) . '#ws-wt-row-form"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New row')) . '</a>' : '') . '
         <a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . '&download=xlsx') . '" download><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>' . h(lang('Download as Excel')) . '</a>
         ' . ($can_manage ? '<button type="button" class="btn btn-sm btn-text theme-danger ws-wt-action ms-auto" data-action="table_delete" data-confirm="'
-            . h(lang(array('string' => 'Delete the table {var:1} with its rows and shares? It cannot be brought back.', 'vars' => $table['name']))) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang('Delete table')) . '</button>' : '') . '
+            . h(ws_wtable_screen_delete_confirm('table', (string) $table['name'], $bin_days)) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang('Delete table')) . '</button>' : '') . '
     </nav>' . $flow_window;
 
     $title = (string) $table['name'];
@@ -1414,6 +1540,7 @@ $shell . '
         <input type="hidden" name="wt_column" value="">
         <input type="hidden" name="wt_row" value="">
         <input type="hidden" name="wt_share" value="">
+        <input type="hidden" name="wt_bin" value="">
         <input type="hidden" name="revision" value="">
     </form>
 </div>
@@ -1423,8 +1550,8 @@ $shell . '
 <script>
 (function () {
 
-    // Deletes post through one form outside the cards and the table rows,
-    // each asking first.
+    // Deletes and restores post through one form outside the cards and the
+    // table rows; a delete asks first.
     document.addEventListener("click", function (e) {
         var button = e.target.closest(".ws-wt-action");
         if (!button) { return; }
@@ -1435,6 +1562,8 @@ $shell . '
         form.elements.wt_column.value = button.dataset.column || "";
         form.elements.wt_row.value = button.dataset.row || "";
         form.elements.wt_share.value = button.dataset.share || "";
+        form.elements.wt_bin.value = button.dataset.bin || "";
+        if (button.dataset.table) { form.elements.wt_table.value = button.dataset.table; }
         form.elements.revision.value = button.dataset.revision || "";
         form.submit();
     });
