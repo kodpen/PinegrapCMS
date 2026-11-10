@@ -18,7 +18,7 @@ description: Steps 1-8 of plans/tables-relational.md: row choice, conditions and
 
 - 4 (cut in two): keys, both kinds.
   - 4a (done, PR #8461): the stable number, `workspace/workflow-table-row-numbers.md`.
-  - 4b (done, PR #PRNUM): the column key, `workspace/workflow-table-key-column.md`.
+  - 4b (done, PR #8509): the column key, `workspace/workflow-table-key-column.md`.
   - Every table numbers its rows 1, 2, 3 for good: a cell set by the store on add (max + 1 under GET_LOCK per table, never reused, a delete shifts none), shown first on the screen; row boxes find it (`by: number`).
   - A column may also be the key (text or number): filled in and different on every row; the store refuses a duplicate (`duplicate_key`), and making a column the key is refused while it holds repeats or empties, listing those rows. Found by `by: key` and the API `?key=`; import matches by key.
 
