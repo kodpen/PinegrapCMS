@@ -539,9 +539,14 @@
         return !!X.config().api && (this.saveMode !== 'callback');
     };
 
+    // More items of the Import menu (the video layer's part): fn() on the
+    // editor gives [label, action] or null.
+    Editor.importItems = [];
+
     // A file from this computer or a drop: an SVG becomes one SVG layer
-    // (svgImport(), through the sanitizer), any other picture a picture
-    // layer as the Image tool makes it.
+    // (svgImport(), through the sanitizer), a video a video layer
+    // (videoImport()), any other picture a picture layer as the Image tool
+    // makes it.
     Editor.prototype.importFile = function (f) {
         var self = this;
 
@@ -552,6 +557,8 @@
                 self.importSvgRequest({ svg: String(reader.result) }, f.name || '');
             };
             reader.readAsText(f);
+        } else if (X.isVideoFile && X.isVideoFile(f) && this.videoImport) {
+            this.videoImport(f);
         } else if (/^image\//.test(f.type || '')) {
             this.addPicture(f);
         }
@@ -576,7 +583,7 @@
     };
 
     Editor.prototype.pickImports = function () {
-        var self = this, input = el('input', { type: 'file', accept: 'image/*,.svg', multiple: true, hidden: true });
+        var self = this, input = el('input', { type: 'file', accept: 'image/*,.svg' + (this.videoImport ? ',video/mp4,video/webm,.mp4,.m4v,.webm' : ''), multiple: true, hidden: true });
 
         input.addEventListener('change', function () {
             Array.prototype.forEach.call(input.files || [], function (f) {
@@ -616,6 +623,14 @@
         if (this.importApi()) {
             items.push(item(t('importSite'), function () { self.openImportFiles(); }));
         }
+
+        Editor.importItems.forEach(function (more) {
+            var it = more.call(self);
+
+            if (it) {
+                items.push(item(it[0], it[1]));
+            }
+        });
 
         this.importMenu = el('div', { class: 'pgie-menu pgie-importmenu', role: 'menu', 'aria-label': t('import') }, items);
 

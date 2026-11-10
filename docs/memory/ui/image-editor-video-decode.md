@@ -20,4 +20,4 @@ module: image_editor
 - `X.video.message(e)` gives the label; `editor.videoOpen(data)` shows it as an error toast. A browser with no decoder for the codec (H.265 in Firefox, in Chrome without hardware support) is named in the message.
 
 ## What is left to later steps?
-- The video layer and drawing at the playhead (V2), sound decoding (V4, V7), files over one request (V8: the source reads the whole file into memory now).
+- Sound decoding (V4, V7), files over one request (V8: the source reads the whole file into memory now). The video layer that asks for the frames: `image-editor-clip.md`.

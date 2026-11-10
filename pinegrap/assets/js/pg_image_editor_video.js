@@ -84,6 +84,9 @@
         this.duration = d.duration;
         this.width = tr.width;
         this.height = tr.height;
+        // Whether the file has a sound track too (the video layer's mute
+        // and Detach sound).
+        this.sound = !!M.videoTrack(d, 'audio');
         this.config = M.videoConfig(tr);
         this.cache = M.videoCache(M.videoCacheSize(tr.width, tr.height));
         this.byTs = {};

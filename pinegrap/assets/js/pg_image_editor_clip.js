@@ -1,0 +1,666 @@
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Image editor: the video layer (type 'video', the model's CLIP section).
+ * A clip shows its source between the source in and out, from its start on
+ * the document's timeline, at its speed; the stage draws the frame at the
+ * playhead (the video part's frameAt()) into a canvas inside the layer's
+ * box, under or over the other layers, and its sound plays with the sound
+ * part's in step with the play bar. Videos come from Files or this computer
+ * through Import (a file from this computer is uploaded into Files first,
+ * action video_upload). The clip's panel holds the source in and out, the
+ * start, the speed, the volume and mute, Detach sound and Replace.
+ *
+ * At rest (outside the Animate tool, and in every save) the clip shows its
+ * frame at the source in; the animation's frames take it at each moment in
+ * the export step.
+ *
+ * A part of window.PgImageEditor, bundled after pg_image_editor_video.js
+ * (pg_js_bundles()); it hangs its code on the editor through
+ * PgImageEditor.parts (docs/memory/ui/image-editor-parts.md).
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+(function (X) {
+    'use strict';
+
+    var Editor = X.Editor, M = X.M, t = X.t, el = X.el, icon = X.icon, button = X.button, section = X.section, tile = X.tile, SVGNS = X.SVGNS, find = X.find;
+
+    var PHONE = '(max-width: 599.98px)';
+    // The stage's canvas of a clip is at most this long on its long edge:
+    // the preview needs no more, a save draws the full-size frame.
+    var PREVIEW_EDGE = 1280;
+
+    X.icons.video = 'M3.5 6.5h12v11h-12zM15.5 10.5l5-3v9l-5-3';
+    X.icons.replace = 'M4 12a8 8 0 0 1 13.7-5.6L20 8.5M20 4.5v4h-4M20 12a8 8 0 0 1-13.7 5.6L4 15.5M4 19.5v-4h4';
+
+    function origin() {
+        return (window.location && window.location.origin) || '';
+    }
+
+    // m:ss.d, as the play bar's clock.
+    function clock(ms) {
+        var tenths = Math.max(0, Math.round(ms / 100)), m = Math.floor(tenths / 600), s = (tenths % 600) / 10;
+        var cfg = window.pgImageEditorConfig, sep = (cfg && cfg.decimal) || '.';
+
+        return m + ':' + ((s < 10) ? '0' : '') + s.toFixed(1).replace('.', sep);
+    }
+
+    function seconds(ms) {
+        return X.decimal(Math.round(ms / 100) / 10) + ' ' + t('motionSecondsUnit');
+    }
+
+    function speedText(s) {
+        return String(s).replace('.', (window.pgImageEditorConfig && window.pgImageEditorConfig.decimal) || '.') + '×';
+    }
+
+    // A video file of this computer: by its type, or its name when the
+    // browser gives none.
+    X.isVideoFile = function (f) {
+        return /^video\/(mp4|webm|x-m4v)$/i.test((f && f.type) || '') || !!M.clipType(f && f.name);
+    };
+
+    Editor.prototype.clipLayers = function () {
+        return this.doc.layers.filter(function (l) { return l.type === 'video'; });
+    };
+
+    // ---- sources and frames ----
+
+    // The source of a clip's address, opened once (a promise); data is the
+    // file when it is at hand (just uploaded). A failure is said once.
+    Editor.prototype.clipSource = function (src, data) {
+        var self = this, entry = this.clipSources[src];
+
+        if (entry) {
+            return entry;
+        }
+
+        if (!data && !M.soundSrcOk(src, origin())) {
+            return Promise.reject(new Error('video-format'));
+        }
+
+        entry = this.clipSources[src] = (data ? Promise.resolve(data) : fetch(src, { credentials: 'same-origin' }).then(function (r) {
+            if (!r.ok) {
+                throw new Error('video-broken');
+            }
+
+            return r.arrayBuffer();
+        })).then(function (bytes) {
+            return X.video.open(bytes);
+        });
+
+        entry.then(null, function (e) {
+            if (!self.clipFailed[src] && !self.finished) {
+                self.clipFailed[src] = true;
+                self.showMessage(X.video.message(e), true);
+                self.renderPanel();
+            }
+        });
+
+        return entry;
+    };
+
+    // What the stage keeps of a clip: the last frame drawn (buf, at most
+    // PREVIEW_EDGE), the canvases showing it, the time asked for and the
+    // one shown.
+    Editor.prototype.clipState = function (l) {
+        var st = this.clipStates[l.id];
+
+        if (!st || (st.src !== l.src)) {
+            var k = Math.min(1, PREVIEW_EDGE / Math.max(1, l.width || 0, l.height || 0)), buf = document.createElement('canvas');
+
+            buf.width = Math.max(2, Math.round((l.width || 640) * k));
+            buf.height = Math.max(2, Math.round((l.height || 360) * k));
+            st = this.clipStates[l.id] = { src: l.src, buf: buf, views: [], node: null, want: null, asked: null, shown: null, busy: false };
+        }
+
+        return st;
+    };
+
+    // The frame at source time ms into the clip's canvases. One request at
+    // a time per clip: while one decodes, the newest time waits and is
+    // asked for next, so playing and scrubbing never queue stale frames.
+    Editor.prototype.clipDraw = function (l, ms) {
+        var self = this, st = this.clipState(l);
+
+        st.want = ms;
+
+        if (st.busy || (ms === st.shown)) {
+            return;
+        }
+
+        st.busy = true;
+        st.asked = ms;
+        this.clipSource(l.src).then(function (source) {
+            return source.frameAt(ms);
+        }).then(function (frame) {
+            if (!frame) {
+                return;
+            }
+
+            if (!self.finished) {
+                st.buf.getContext('2d').drawImage(frame, 0, 0, st.buf.width, st.buf.height);
+                st.shown = ms;
+                self.clipShow(st);
+            }
+
+            frame.close();
+        }).then(null, function () {
+            // Said once by clipSource(); the clip stays blank.
+        }).then(function () {
+            st.busy = false;
+
+            if (!self.finished && (st.want !== null) && (st.want !== st.asked)) {
+                self.clipDraw(l, st.want);
+            }
+        });
+    };
+
+    Editor.prototype.clipShow = function (st) {
+        st.views = st.views.filter(function (c) { return c.isConnected; });
+        st.views.forEach(function (c) {
+            c.getContext('2d').drawImage(st.buf, 0, 0, c.width, c.height);
+        });
+    };
+
+    // A clip on the stage: a canvas in the layer's box (a foreignObject, so
+    // it stacks among the other layers), turned around its centre, showing
+    // the frame at the playhead; nothing while the clip is off the timeline
+    // there.
+    function clipNode(l) {
+        var st = this.clipState(l), fo = document.createElementNS(SVGNS, 'foreignObject'), c = document.createElement('canvas');
+        var at = M.clipAt(l, (this.time === null) ? null : this.motionNow());
+
+        fo.setAttribute('x', l.x);
+        fo.setAttribute('y', l.y);
+        fo.setAttribute('width', Math.max(1, l.w));
+        fo.setAttribute('height', Math.max(1, l.h));
+        fo.setAttribute('class', 'pgie-clipview');
+
+        if (l.rot) {
+            fo.setAttribute('transform', 'rotate(' + l.rot + ' ' + (l.x + l.w / 2) + ' ' + (l.y + l.h / 2) + ')');
+        }
+
+        if ((l.opacity !== undefined) && (l.opacity < 1)) {
+            fo.setAttribute('opacity', l.opacity);
+        }
+
+        c.width = st.buf.width;
+        c.height = st.buf.height;
+        fo.appendChild(c);
+        st.views.push(c);
+        st.node = fo;
+
+        if (st.shown !== null) {
+            c.getContext('2d').drawImage(st.buf, 0, 0);
+        }
+
+        fo.style.visibility = (at === null) ? 'hidden' : '';
+
+        if (at !== null) {
+            this.clipDraw(l, at);
+        }
+
+        return fo;
+    }
+
+    // A save's frame: the source in at the source's own size.
+    function restKey(l) {
+        return l.src + '#' + M.clipLayer(l).from;
+    }
+
+    function clipReady(l) {
+        var self = this, key = restKey(l), entry = this.clipRests[key];
+
+        if (entry) {
+            return entry.promise;
+        }
+
+        entry = this.clipRests[key] = { canvas: null };
+        entry.promise = this.clipSource(l.src).then(function (source) {
+            return source.frameAt(M.clipLayer(l).from);
+        }).then(function (frame) {
+            if (frame) {
+                var c = document.createElement('canvas');
+
+                c.width = frame.displayWidth;
+                c.height = frame.displayHeight;
+                c.getContext('2d').drawImage(frame, 0, 0);
+                frame.close();
+                entry.canvas = c;
+            }
+        }, function () {
+            // A source that cannot be read draws nothing.
+        });
+
+        return entry.promise;
+    }
+
+    function clipPaint(g, l) {
+        var entry = this.clipRests[restKey(l)];
+
+        if (entry && entry.canvas) {
+            g.translate(l.x + l.w / 2, l.y + l.h / 2);
+            g.rotate((l.rot || 0) * Math.PI / 180);
+            g.drawImage(entry.canvas, -l.w / 2, -l.h / 2, l.w, l.h);
+        }
+    }
+
+    // With the playhead (a motion dock with no rows): each clip shows the
+    // frame at that moment, or nothing off its span.
+    Editor.prototype.clipsUpdate = function () {
+        var self = this, now = (this.time === null) ? null : this.motionNow();
+
+        this.clipLayers().forEach(function (l) {
+            var st = self.clipStates[l.id], at = M.clipAt(l, now);
+
+            if (l.hidden) {
+                return;
+            }
+
+            if (st && st.node) {
+                st.node.style.visibility = (at === null) ? 'hidden' : '';
+            }
+
+            if (at !== null) {
+                self.clipDraw(l, at);
+            }
+        });
+    };
+
+    // The clips' own sound for the sound part (soundStart()).
+    Editor.prototype.soundsMore = function () {
+        var offset = this.motionStart(), o = origin();
+
+        return this.clipLayers().filter(function (l) { return M.soundSrcOk(l.src, o); }).map(function (l) { return M.clipSound(l, offset); });
+    };
+
+    // ---- adding ----
+
+    // The source opened, then one change: the clip at the bottom of the
+    // stack, filling the canvas, from the playhead; the document long
+    // enough for it (up to its 60 s).
+    Editor.prototype.clipAdd = function (f, data) {
+        var self = this;
+
+        this.showMessage(t('clipLoading'));
+
+        return this.clipSource(f.url, data).then(function (source) {
+            var start = (self.time === null) ? 0 : Math.max(0, self.motionNow()), id = null;
+            var l = M.clipNew(f, { length: source.duration, width: source.width, height: source.height, sound: source.sound }, self.viewRect(), start);
+
+            self.hideMessage();
+
+            if (self.tool !== 'motion') {
+                self.toSelect();
+            }
+
+            self.change(function (doc) {
+                var end = M.clipEnd({ layers: [l] }), dm = M.docMotion(doc);
+
+                l.id = id = M.newId(doc);
+                doc.layers.unshift(l);
+
+                if (end > dm.duration) {
+                    doc.motion = Object.assign({}, doc.motion || {}, { duration: Math.ceil(end / 100) * 100 });
+                }
+            });
+            self.select([id]);
+        }, function () {
+            // Said by clipSource().
+        });
+    };
+
+    // A video of this computer: opened here first (a codec this browser
+    // cannot decode is said before anything is sent), then uploaded into
+    // Files beside the picture or in the canvas's folder, then a layer.
+    Editor.prototype.videoImport = function (file) {
+        var self = this;
+
+        if (!this.importApi()) {
+            this.showMessage(t('clipNeedsFiles'), true);
+            return;
+        }
+
+        X.video.open(file).then(function (local) {
+            local.close();
+            self.showMessage(t('clipUploading'));
+
+            return self.clipUpload(file).then(function (r) {
+                return self.clipAdd({ id: r.id, name: r.name, url: r.url }, file);
+            }, function (e) {
+                self.showMessage(e.message || t('clipUploadError'), true);
+            });
+        }, function (e) {
+            self.showMessage(X.video.message(e), true);
+        });
+    };
+
+    // The file after the request's line as it is (pg_image_editor_binary_body()).
+    Editor.prototype.clipUpload = function (file) {
+        var cfg = X.config(), head = {
+            token: cfg.token || '', action: 'video_upload', file_id: this.opts.fileId || 0,
+            folder_id: (this.opts.save && this.opts.save.folderId) || 0, name: file.name || ''
+        };
+
+        return fetch(cfg.api, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/octet-stream', Accept: 'application/json' },
+            body: new Blob([JSON.stringify(head) + '\n', file])
+        }).then(function (res) {
+            return res.json().catch(function () { return null; });
+        }).then(function (r) {
+            if (!r || (r.status !== 'success')) {
+                throw new Error((r && r.message) || t('clipUploadError'));
+            }
+
+            return r;
+        });
+    };
+
+    // Videos from Files (action video_files) over the editor; a press adds
+    // one, or hands it to pick(file) (Replace).
+    Editor.prototype.openClipFiles = function (pick) {
+        var self = this, timer = null, st = this.clipFiles;
+        var find = el('input', { type: 'search', class: 'pgie-input pgie-stkfind', value: st.search, placeholder: t('clipFind'), 'aria-label': t('clipFind') });
+
+        st.pick = (typeof pick === 'function') ? pick : null;
+        st.list = el('div', { class: 'pgie-sndfiles' });
+        find.addEventListener('input', function () {
+            clearTimeout(timer);
+            timer = setTimeout(function () { self.loadClipFiles(find.value); }, 350);
+        });
+
+        this.confirmBox = el('div', { class: 'pgie-confirm', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pgie-clip-title' }, [
+            el('div', { class: 'pgie-confirm-box pgie-importbox' }, [
+                el('div', { class: 'pgie-importhead' }, [el('h2', { id: 'pgie-clip-title', text: t('clipFiles') }), button('pgie-ibtn', t('close'), 'close', function () { self.closeConfirm(); })]),
+                find,
+                st.list
+            ])
+        ]);
+        this.confirmReturn = st.pick ? document.activeElement : (this.importBtn || document.activeElement);
+        this.root.appendChild(this.confirmBox);
+        this.loadClipFiles(st.search);
+        find.focus();
+    };
+
+    Editor.prototype.loadClipFiles = function (search) {
+        var self = this, st = this.clipFiles, ask = ++st.serial;
+
+        st.search = search || '';
+        this.request({ action: 'video_files', search: st.search }).then(function (r) {
+            if (ask === st.serial) {
+                self.showClipFiles((r && (r.status === 'success')) ? (r.files || []) : null);
+            }
+        }, function () {
+            if (ask === st.serial) {
+                self.showClipFiles(null);
+            }
+        });
+    };
+
+    Editor.prototype.showClipFiles = function (files) {
+        var self = this, list = this.clipFiles.list;
+
+        if (!list || !this.confirmBox || !this.confirmBox.contains(list)) {
+            return;
+        }
+
+        list.textContent = '';
+
+        if (!files || !files.length) {
+            list.appendChild(el('p', { class: 'pgie-note', text: t(files ? 'clipFilesNone' : 'clipFilesError') }));
+            return;
+        }
+
+        files.forEach(function (f) {
+            list.appendChild(el('button', { type: 'button', class: 'pgie-sndfile', onclick: function () {
+                var pick = self.clipFiles.pick;
+
+                self.closeConfirm();
+
+                if (pick) {
+                    pick(f);
+                } else if (M.soundSrcOk(f.url, origin())) {
+                    self.clipAdd(f);
+                }
+            } }, [icon('video'), el('span', { text: f.name }), el('em', { text: f.size || '' })]));
+        });
+    };
+
+    // ---- changes ----
+
+    Editor.prototype.clipSet = function (id, patch, key, viewOnly) {
+        this.change(function (doc) {
+            var l = find(doc, id);
+
+            if (l) {
+                Object.assign(l, patch);
+            }
+        }, key, viewOnly);
+    };
+
+    // Detach sound: the clip's sound as a row of its own (doc.sounds) from
+    // the same source and times; the clip muted. One undo step.
+    Editor.prototype.clipDetach = function (l) {
+        var o = origin(), snd = M.clipDetach(l, M.soundId(this.doc), this.motionStart());
+
+        if (!snd || (M.soundList(this.doc, o).length >= M.SOUND_MAX)) {
+            return;
+        }
+
+        this.change(function (doc) {
+            var list = M.soundList(doc, o);
+
+            list.push(snd);
+            doc.sounds = list;
+            find(doc, l.id).muted = true;
+        });
+    };
+
+    // Replace: another video from Files in the same box and on the same
+    // timeline place.
+    Editor.prototype.clipReplace = function (l) {
+        var self = this;
+
+        this.openClipFiles(function (f) {
+            if (!M.soundSrcOk(f.url, origin())) {
+                return;
+            }
+
+            self.clipSource(f.url).then(function (source) {
+                self.clipSet(l.id, M.clipReplace(l, f, { length: source.duration, width: source.width, height: source.height, sound: source.sound }));
+            }, function () {
+                // Said by clipSource().
+            });
+        });
+    };
+
+    // ---- the panel ----
+
+    Editor.prototype.clipSlider = function (l, field, label, min, max, value, show) {
+        var self = this, shown = el('span', { class: 'pgie-val', text: show(value) });
+        var slider = el('input', { type: 'range', class: 'pgie-range', min: String(min), max: String(Math.max(min, max)), step: (field === 'volume') ? '1' : '100', value: String(value), 'aria-label': label });
+
+        slider.addEventListener('input', function () {
+            var n = Number(slider.value), c = M.clipLayer(l), patch = {};
+
+            shown.textContent = show(n);
+
+            if (field === 'volume') {
+                patch.volume = n / 100;
+            } else if (field === 'from') {
+                patch.from = Math.min(n, c.to - M.CLIP_MIN);
+            } else if (field === 'to') {
+                patch.to = Math.max(n, c.from + M.CLIP_MIN);
+            } else {
+                patch[field] = n;
+            }
+
+            self.clipSet(l.id, patch, 'clip-' + l.id + '-' + field, true);
+        });
+        slider.addEventListener('change', function () {
+            self.history.key = null;
+            self.render();
+        });
+
+        return section(label, slider, shown);
+    };
+
+    // The clip's controls: its file, source in and out, start, speed,
+    // volume and mute, then Detach sound and Replace; whole adds Duplicate
+    // and Delete (the Animate tool's panel, which has no arrange rows).
+    Editor.prototype.clipPanel = function (body, l, whole) {
+        var self = this, c = M.clipLayer(l), failed = this.clipFailed[l.src];
+        var meta = [(l.width && l.height) ? l.width + ' × ' + l.height : '', clock(c.length)].filter(Boolean).join(' · ');
+
+        body.appendChild(el('div', { class: 'pgie-sndfile pgie-sndhead' }, [icon('video'), el('span', { text: l.name || t('layer_video') }), el('em', { text: meta })]));
+
+        if (failed) {
+            body.appendChild(el('p', { class: 'pgie-note pgie-warn', text: t('clipBroken') }));
+        }
+
+        body.appendChild(this.clipSlider(l, 'from', t('clipFrom'), 0, c.length, c.from, clock));
+        body.appendChild(this.clipSlider(l, 'to', t('clipTo'), 0, c.length, c.to, clock));
+        body.appendChild(this.clipSlider(l, 'start', t('soundStart'), 0, Math.max(this.motionEnd(), c.start), c.start, seconds));
+
+        var speeds = el('div', { class: 'pgie-seg pgie-clipspeeds', role: 'group', 'aria-label': t('clipSpeed') });
+
+        M.CLIP_SPEEDS.forEach(function (s) {
+            var on = (s === c.speed);
+
+            speeds.appendChild(el('button', { type: 'button', class: on ? 'on' : '', 'aria-pressed': on ? 'true' : 'false', text: speedText(s), onclick: function () {
+                self.clipSet(l.id, { speed: s });
+            } }));
+        });
+        body.appendChild(section(t('clipSpeed'), speeds, el('span', { class: 'pgie-val', text: seconds((c.to - c.from) / c.speed) })));
+
+        if (c.sound) {
+            var mute = button('pgie-ibtn pgie-sndmute' + (c.muted ? ' on' : ''), t(c.muted ? 'soundUnmute' : 'soundMute'), c.muted ? 'mute' : 'volume', function () {
+                self.clipSet(l.id, { muted: !c.muted });
+            });
+            var vol = this.clipSlider(l, 'volume', t('soundVolume'), 0, 100, Math.round(c.volume * 100), function (n) { return Math.round(n) + '%'; });
+
+            mute.setAttribute('aria-pressed', c.muted ? 'true' : 'false');
+            vol.classList.add('pgie-sndvol');
+            vol.appendChild(el('div', { class: 'pgie-sndvolrow' }, [mute, vol.lastChild]));
+            body.appendChild(vol);
+
+            if (c.speed !== 1) {
+                body.appendChild(el('p', { class: 'pgie-note', text: t('clipSpeedMuted') }));
+            }
+        } else {
+            body.appendChild(el('p', { class: 'pgie-note', text: t('clipNoSound') }));
+        }
+
+        var detach = tile('music', t('clipDetach'), function () { self.clipDetach(l); });
+        var tiles = [detach];
+
+        detach.disabled = !c.sound || (c.speed !== 1) || l.locked;
+        detach.title = t('clipDetachNote');
+
+        if (this.importApi()) {
+            var swap = tile('replace', t('clipReplace'), function () { self.clipReplace(l); });
+
+            swap.disabled = !!l.locked;
+            tiles.push(swap);
+        }
+
+        if (whole) {
+            tiles.push(tile('duplicate', t('duplicate'), function () { self.addLayers([l], 10); }));
+            tiles.push(tile('trash', t('delete'), function () { self.removeLayers(); }));
+        }
+
+        body.appendChild(el('div', { class: 'pgie-tiles pgie-sndtiles' }, tiles));
+        body.appendChild(el('p', { class: 'pgie-note', text: t('clipNote') }));
+    };
+
+    // The Animate tool with one clip selected: tabs Clip and Motion (the
+    // entrance, loop and exit as for any layer).
+    var motionPanel = Editor.panels.motion;
+
+    Editor.panels.motion = function (body) {
+        var self = this, picked = this.selected(), l = picked[0], phone = window.matchMedia && window.matchMedia(PHONE).matches;
+
+        if (!l || (l.type !== 'video') || (picked.length > 1)) {
+            motionPanel.call(this, body);
+            return;
+        }
+
+        var tabs = el('div', { class: 'pgie-seg pgie-cliptabs', role: 'tablist', 'aria-label': t('layer_video') });
+
+        [['clip', t('clipTab')], ['motion', t('clipTabMotion')]].forEach(function (tab) {
+            var on = (self.clipTab === tab[0]);
+
+            tabs.appendChild(el('button', { type: 'button', role: 'tab', class: on ? 'on' : '', 'aria-selected': on ? 'true' : 'false', text: tab[1], onclick: function () {
+                self.clipTab = tab[0];
+                self.render();
+            } }));
+        });
+
+        if (this.clipTab === 'motion') {
+            motionPanel.call(this, body);
+            // After the play bar a phone puts first.
+            body.insertBefore(tabs, phone ? body.children[1] || null : body.firstChild);
+            return;
+        }
+
+        if (phone) {
+            body.appendChild(this.motionBar());
+        }
+
+        body.appendChild(tabs);
+        this.clipPanel(body, l, true);
+        this.motionWhole(body);
+    };
+
+    Editor.layerTypes.video = {
+        node: clipNode,
+        paint: clipPaint,
+        ready: clipReady,
+        ratio: true,
+        name: function (l) { return l.name || ''; },
+        panel: function (body, layers) {
+            if (layers.length === 1) {
+                this.clipPanel(body, layers[0], false);
+            }
+        }
+    };
+
+    // Import: Video from the site.
+    Editor.importItems.push(function () {
+        var self = this;
+
+        return this.importApi() ? [t('clipImportSite'), function () { self.openClipFiles(); }] : null;
+    });
+
+    // The editor closed: every source and its decoder let go.
+    var finish = Editor.prototype.finish;
+
+    Editor.prototype.finish = function () {
+        var sources = this.clipSources;
+
+        this.clipSources = {};
+        Object.keys(sources).forEach(function (src) {
+            sources[src].then(function (s) { s.close(); }, function () {});
+        });
+
+        return finish.apply(this, arguments);
+    };
+
+    Editor.inits.push(function () {
+        this.clipSources = {};
+        this.clipFailed = {};
+        this.clipStates = {};
+        this.clipRests = {};
+        this.clipTab = 'clip';
+        this.clipFiles = { search: '', serial: 0, list: null, pick: null };
+    });
+
+    Editor.motionDocks.push({ key: function () { return ''; }, node: function () { return null; }, update: Editor.prototype.clipsUpdate, note: function () { return null; } });
+}(window.PgImageEditor.parts));
