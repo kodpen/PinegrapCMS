@@ -11,6 +11,4 @@ description: Focus rings drawn by a screen's own styles use the 2px --pg-primary
 - #3435: the API application rows (`api_settings.php`; the row had `outline: 0` in the unlayered page style and showed only the hover tint, `.api-scroll` clipped the global halo), the dashboard card lists (`welcome.php`, `dashboard-scroll-regions.md`), the guided tour's text and buttons (`pg_tour.css`; on Next the light ring matched the button fill) and the File Manager tree and list-heading rings (`view_folders.php`).
 - `tests/faint_focus_rings_test.php` pins them.
 - #3477: the sortable heading buttons (`.pg-sort-btn`, style `#pg_sort_style`) and the list quick-edit cells (`td[data-pg-edit]`, inset, style `#pg_list_edit_style`) in `assets/js/backend.src.js`. Both styles are injected unlayered, so they beat the global ring in `@layer custom`; only their colour changed. `tests/backend_js_focus_rings_test.php` pins them.
-
-## Which still use the light accent?
-- The chat launcher in `chat.php`.
+- #8539: the panel chat launcher (`chat.php`; its ring was a 50% `--pg-primary` mix). `tests/faint_focus_rings_test.php` pins it.
