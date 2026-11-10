@@ -1360,7 +1360,8 @@ function pg_calendar_event_ics($event, $host, $page_name, $rrule)
         'METHOD:PUBLISH',
         'BEGIN:VEVENT',
         'UID:' . $event['id'] . $event['created_timestamp'],
-        'DTSTAMP:' . date('Ymd\THis', $start),
+        // DTSTAMP must be a UTC time (RFC 5545); the event times stay local.
+        'DTSTAMP:' . gmdate('Ymd\THis\Z', $start),
     );
 
     if ((string) $event['all_day'] === '1') {

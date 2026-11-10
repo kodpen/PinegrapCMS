@@ -343,7 +343,8 @@ function pg_booking_settings_week_days($first_day)
  * The weekly hours grid read back: h<day>a-h<day>b is the first range of an
  * ISO weekday and h<day>c-h<day>d the second. A day with both boxes of a
  * range empty has no such range; a range with one box, an unreadable time or
- * an end not after the start is named in bad (its box that is wrong).
+ * an end not after the start is named in bad (its box that is wrong). An
+ * end of 00:00 is the end of the day (24:00).
  *
  * @param array $fields
  * @return array hours => as pg_booking_hours_clean(), bad => box keys
@@ -370,6 +371,13 @@ function pg_booking_settings_hours_from_fields($fields)
             $start = pg_booking_minutes($from);
             $end = pg_booking_minutes($to);
 
+            // A time box ends at 23:59 and cannot post 24:00: an end of
+            // 00:00 is the end of the day.
+            if ($end === 0) {
+                $end = 1440;
+                $to = '24:00';
+            }
+
             if ($start === null) {
                 $bad[] = $from_key;
             } elseif (($end === null) || ($end <= $start)) {
@@ -381,6 +389,17 @@ function pg_booking_settings_hours_from_fields($fields)
     }
 
     return array('hours' => pg_booking_hours_clean($hours), 'bad' => $bad);
+}
+
+/**
+ * A range's end as a time box shows it: the end of the day (24:00) as 00:00.
+ *
+ * @param string $end 'HH:MM'
+ * @return string
+ */
+function pg_booking_settings_box_end($end)
+{
+    return ($end === '24:00') ? '00:00' : $end;
 }
 
 /**
@@ -400,11 +419,13 @@ function pg_booking_settings_hours_fields($hours)
 
         $ranges = isset($hours[$day]) ? $hours[$day] : array();
 
+        // A time box cannot show 24:00 and would come back empty: the end
+        // of the day is shown as 00:00, which the save reads as 24:00.
         $fields[$day] = array(
             isset($ranges[0]) ? $ranges[0][0] : '',
-            isset($ranges[0]) ? $ranges[0][1] : '',
+            isset($ranges[0]) ? pg_booking_settings_box_end($ranges[0][1]) : '',
             isset($ranges[1]) ? $ranges[1][0] : '',
-            isset($ranges[1]) ? $ranges[1][1] : '',
+            isset($ranges[1]) ? pg_booking_settings_box_end($ranges[1][1]) : '',
         );
     }
 
@@ -455,6 +476,11 @@ function pg_booking_settings_exceptions_from_rows($from, $to, $open, $close, $to
 
         if (($start !== '') || ($end !== '')) {
 
+            // As in the weekly grid, an end of 00:00 is the end of the day.
+            if (pg_booking_minutes($end) === 0) {
+                $end = '24:00';
+            }
+
             $ranges = pg_booking_ranges_clean(array(array($start, $end)));
 
             if (!$ranges) {
@@ -500,7 +526,7 @@ function pg_booking_settings_exception_rows($exceptions, $today)
         }
 
         $open = isset($ranges[0]) ? $ranges[0][0] : '';
-        $close = isset($ranges[0]) ? $ranges[0][1] : '';
+        $close = isset($ranges[0]) ? pg_booking_settings_box_end($ranges[0][1]) : '';
         $last = count($rows) - 1;
 
         if (($last >= 0) && ($previous !== '')
