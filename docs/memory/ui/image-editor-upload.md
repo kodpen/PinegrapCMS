@@ -17,7 +17,7 @@ module: image_editor
 
 ## What is checked on the server?
 - Start: the kind, a size above 0 and not over `max` (413), disk room for twice the size plus 64 MB (507). The destination is checked by the finishing action.
-- Each part: the upload is this user's (another's: 403), touched within a day (else 410 `upload_gone` and removed), the offset and length (`pg_image_editor_upload_part_check()`); the first part tells the type by its bytes (`pg_image_editor_upload_format()`: video `pg_image_editor_clip_format()`, sound `pg_image_editor_sound_format()`, animation `pg_image_editor_animation_type()`), a wrong type removes the upload.
+- Each part: the upload is this user's (another's: 403), touched within a day (else 410 `upload_gone` and removed), the offset and length (`pg_image_editor_upload_part_check()`); the first part tells the type by its bytes (`pg_image_editor_upload_format()`), a wrong type removes the upload.
 - Finish: complete and of the same kind, else 409 `upload_open`.
 
 ## Where are the parts kept?
@@ -25,11 +25,11 @@ module: image_editor
 
 ## Which bounds apply?
 - `pg_image_editor_upload_limits()` reads them all: `part` = one request (`pg_image_editor_animation_limit()`) less room for its line, 16 KB to 8 MB; `max` = PHP's `upload_max_filesize`, never below one request. The config's `animationLimit` is `max` now, so Save to Files takes files over one request.
-- Whether `max` becomes a setting (`config` column on Settings → Features) is architect issue #8587; until answered nothing in the schema changed.
-- A signed-in request skips the firewall's global rate limit (`waf_handle_rate_global()`): parts meet none.
+- Signed in, parts skip the firewall's global rate limit (`waf_handle_rate_global()`).
 
 ## What does a sound from this computer do?
 - From this computer, first in Sound from Files: a sound told by its bytes into the open file's or the canvas's folder (`pg_image_editor_upload_place()`, as `video_upload`), then `addSound()` at the playhead. Not shown for a callback save.
 
 ## What is left?
-- The size setting (#8587). Decoding still reads the whole video into the browser's memory (`image-editor-video-decode.md`).
+- The size setting (#8587, a `config` column on Settings → Features): a schema change waits for the owner; the answer adds the column and its field and reads it in `pg_image_editor_upload_limits()`. Decoding still reads the whole video into memory (`image-editor-video-decode.md`).
+- Not tried in a browser (#8585): the browser's offline switch (drops were scripted), the real file picker, Apache or nginx.

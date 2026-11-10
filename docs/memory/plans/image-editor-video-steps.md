@@ -32,7 +32,7 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
 
 - V7 (M) Export with sound. Done (#8484, `ui/image-editor-mix.md`: MP4 with AAC, WebM with Opus; the other formats carry none).
 
-- V8 (M) Large files. Done (#8585, `ui/image-editor-upload.md`; the size setting waits on #8587).
+- V8 (M) Large files. Done (#8585, `ui/image-editor-upload.md`). Left: the size setting, a `config` column only the owner may add (#8587); until then the largest file is `upload_max_filesize`.
   - Chunked, resumable upload of a source video into Files; chunked save of the export (AN4's action in parts); type told by its bytes (AN4); the size limits as settings.
 
 - V9 (S) Save and open again. `free` after V8 and V3.
