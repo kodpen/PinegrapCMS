@@ -7,8 +7,11 @@
  * imported style sheets and scripts (update_imported_items.php), the
  * visual designer's custom CSS/JS asset files (pg_designer_sync_asset_files()),
  * each file Import My Site and Import ZIP create (import_design.php,
- * import_zip.php), and the visual designer's file save, New File and theme
- * saves (includes/panel/designer.php, pg_design_theme_save_file()).
+ * import_zip.php), the visual designer's file save, New File and theme
+ * saves (includes/panel/designer.php, pg_design_theme_save_file()), the
+ * panel's upload_file action (pg_panel_upload_file()), the designer's
+ * HTML/ZIP import (pg_di_store_file()) and the site migration's design files
+ * (pg_migration_write_design_files()).
  * Each writes through pg_file_write_whole(), so a full disk or a folder PHP
  * may not write leaves the old file in place; only a whole new file deletes
  * the old one or changes the record.
@@ -164,4 +167,53 @@ function test_file_replace_keeps_old_design_theme_save_file()
 
 	pg_assert_same(false, strpos($body, 'file_put_contents('), 'no unchecked theme write');
 	pg_assert_true(file_replace_keeps_old_test_before($body, "if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . \$file_name, \$css)) {", 'INSERT INTO files'), 'the row is inserted only after a whole write');
+}
+
+// The panel's upload_file action writes the upload as a whole and answers
+// with an error before any row is inserted. Before, an unchecked fopen()
+// reached fwrite(false), a fatal error on PHP 8, and a row was inserted for
+// a file that was not written.
+function test_file_replace_keeps_old_panel_upload_file()
+{
+	$source = file_replace_keeps_old_test_source('includes/panel/content.php');
+	$body = file_replace_keeps_old_test_section($source, 'function pg_panel_upload_file(', "\n}\n");
+
+	pg_assert_same(false, strpos($body, 'fopen('), 'no unchecked fopen()');
+	$write = "if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . \$file_name, \$image_data)) {";
+	pg_assert_true(file_replace_keeps_old_test_before($body, $write, 'INSERT INTO files'), 'the row is inserted only after a whole write');
+
+	$branch = file_replace_keeps_old_test_section($body, $write, "\n    }\n");
+	pg_assert_contains("respond(array('status' => 'error', 'message' => lang(array('string' => '{var:1} could not be written to disk.', 'vars' => \$file_name))));", $branch, 'a failed write answers with an error');
+	pg_assert_same(false, strpos($branch, 'INSERT INTO files'), 'a failed write inserts no row');
+}
+
+// The visual designer's HTML/ZIP import and the site migration's design
+// files write each file as a whole before its row is inserted; a cut-off
+// write was taken for a whole one before and left a full-size row.
+function test_file_replace_keeps_old_designer_import_store_file()
+{
+	$source = file_replace_keeps_old_test_source('includes/designer_import.php');
+	$body = file_replace_keeps_old_test_section($source, 'function pg_di_store_file(', "\n}\n");
+
+	pg_assert_same(false, strpos($body, 'file_put_contents('), 'no unchecked write');
+	$write = "if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . \$name, \$content)) {";
+	pg_assert_true(file_replace_keeps_old_test_before($body, $write, 'INSERT INTO files'), 'the row is inserted only after a whole write');
+
+	$branch = file_replace_keeps_old_test_section($body, $write, "\n    }\n");
+	pg_assert_contains("'{var:1} could not be written to disk.', 'vars' => \$path", $branch, 'a failed write is a warning');
+	pg_assert_contains('return;', $branch, 'a failed write inserts no row');
+}
+
+function test_file_replace_keeps_old_site_migration_design_files()
+{
+	$source = file_replace_keeps_old_test_source('includes/fn/site_migration.php');
+	$body = file_replace_keeps_old_test_section($source, 'function pg_migration_write_design_files(', "\n}\n");
+
+	pg_assert_same(false, strpos($body, 'file_put_contents('), 'no unchecked write');
+	$write = "if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . \$name, \$f['content'])) {";
+	pg_assert_true(file_replace_keeps_old_test_before($body, $write, 'INSERT INTO files'), 'the row is inserted only after a whole write');
+
+	$branch = file_replace_keeps_old_test_section($body, $write, "\n        }\n");
+	pg_assert_contains("\$out['kept'][] = \$name;", $branch, 'a failed write is listed as kept');
+	pg_assert_contains('continue;', $branch, 'a failed write inserts no row');
 }

@@ -104,23 +104,38 @@ function test_dkim_key_pair_signs_and_verifies()
 	pg_assert_same(0, strpos($pair['txt_record'], 'pinegrap._domainkey.example.com IN TXT "v=DKIM1; k=rsa; p=MII'));
 }
 
-// The screen makes the new pair before it deletes the old files and records,
-// and warns instead when no pair could be made. Before, it deleted first and
-// called openssl_pkey_new() without the shipped configuration file, so a
-// server without one lost its pair and showed nothing.
+// The screen makes the new pair first, writes dkim.pub and then dkim.key
+// through pg_file_write_whole(), and changes the records only once both are
+// written; a failed key write puts the old dkim.pub back. Before, it deleted
+// the old records and files and then wrote both unchecked, so a failed write
+// lost the pair in use and mail went out unsigned. Earlier still it deleted
+// first and called openssl_pkey_new() without the shipped configuration
+// file, so a server without one lost its pair and showed nothing.
 function test_dkim_key_screen_makes_the_pair_before_removing_the_old_one()
 {
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/smtp_settings.php');
 
 	$make = strpos($screen, 'pg_dkim_key_pair($selector, $domain)');
 	$warning = strpos($screen, "lang('The DKIM key could not be generated on this server.");
+	$write_pub = strpos($screen, "pg_file_write_whole(FILE_DIRECTORY_PATH . '/dkim.pub', \$public_pem)");
+	$write_key = strpos($screen, "pg_file_write_whole(FILE_DIRECTORY_PATH . '/dkim.key', \$private_pem)");
+	$chmod = strpos($screen, "@chmod(FILE_DIRECTORY_PATH . '/dkim.key', 0600)");
+	$restore = strpos($screen, "pg_file_write_whole(FILE_DIRECTORY_PATH . '/dkim.pub', \$old_pub)");
+	$save_warning = strpos($screen, "lang('The DKIM key could not be saved. Any existing DKIM key was left unchanged.')");
 	$delete = strpos($screen, "DELETE FROM files WHERE name IN ('dkim.key','dkim.pub')");
-	$unlink = strpos($screen, "unlink(FILE_DIRECTORY_PATH . '/dkim.key')");
+	$insert = strpos($screen, "VALUES ('dkim.key'");
+	$notice = strpos($screen, "lang('DKIM key pair generated successfully.')");
 
 	pg_assert_true($make !== false, 'the screen makes the pair with pg_dkim_key_pair()');
-	pg_assert_true(($warning !== false) && ($warning > $make) && ($warning < $delete), 'the failure warns before anything is deleted');
-	pg_assert_true(($delete !== false) && ($delete > $make), 'the old records are deleted after the pair is made');
-	pg_assert_true(($unlink !== false) && ($unlink > $make), 'the old files are deleted after the pair is made');
+	pg_assert_true(($warning !== false) && ($warning > $make) && ($warning < $write_pub) && ($warning < $delete), 'the failure warns before anything is written or deleted');
+	pg_assert_true(($write_pub !== false) && ($write_pub > $make) && ($write_key !== false) && ($write_pub < $write_key), 'dkim.pub is written as a whole, then dkim.key');
+	pg_assert_true(($chmod !== false) && ($chmod > $write_key) && ($chmod < $delete), 'the key is made owner-only right after its write');
+	pg_assert_true(($restore !== false) && ($restore > $write_key) && ($restore < $delete), 'a failed key write puts the old dkim.pub back');
+	pg_assert_true(($save_warning !== false) && ($save_warning > $write_key) && ($save_warning < $delete), 'a failed write warns');
+	pg_assert_true(($delete !== false) && ($delete > $write_key) && ($insert !== false) && ($delete < $insert), 'the records change only after both writes');
+	pg_assert_true(($notice !== false) && ($notice > $insert), 'the success notice comes after the records');
+	pg_assert_false(strpos($screen, "unlink(FILE_DIRECTORY_PATH . '/dkim.key')"), 'the key in use is never deleted');
+	pg_assert_false(strpos($screen, "file_put_contents(FILE_DIRECTORY_PATH . '/dkim."), 'no unchecked key write');
 	pg_assert_false(strpos($screen, 'openssl_pkey_new('), 'the screen does not make keys itself');
 }
 
