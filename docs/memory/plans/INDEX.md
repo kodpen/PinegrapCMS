@@ -13,6 +13,7 @@
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
+- image-editor-video-steps-2.md: More steps of plans/image-editor-video.md, beside image-editor-video-steps.md: V7b the clip's frames in the export; claim as [plan:image-editor-video] V<n>
 - image-editor-video-steps.md: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, video layer, timeline, sound, effects, overlays, export, large files, reopening, phone, access; claim as [plan:image-editor-video] V<n>
 - image-editor-video-visuals.md: Screens of plans/image-editor-video.md (V0), 35 to 42 in plans/image-editor/: what each shows and which step builds it
 - image-editor-video.md: Plan (owner 2026-11-03): video editing inside the image editor: clips on the timeline, trim, split, effects, sound, layers over video, export with sound; open steps go to workers
@@ -40,4 +41,6 @@
 - tables-relational-steps.md: Steps 1-8 of plans/tables-relational.md: row choice, conditions and Read rows, screen query and totals, keys, row links, joined columns, lists, type changes
 - tables-relational.md: Plan (owner 2026-11-09): workflow tables that behave like SQL tables (keys, row links, joined columns, lists, type changes), flows that pick a row or total rows; steps in tables-relational-steps
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
+- workspace-channel-look-prototype.md: The style sheet tried on dev for step CL1 of plans/workspace-channel-look.md (one header card, colour wash, pill tabs, day chip, writing box card); a browser trial, not in the code
+- workspace-channel-look.md: Proposal, not to be started before the owner approves the look: the Workspace channel screen in the dashboard's manner (one header card, colour wash, pill tabs, panes as cards); steps CL1-CL3
 - workspace-menu-layout.md: Plan (owner decision 2026-10-30) for a tidier Workspace list in the main menu: search, places, one Channels section, discussions, Tools tiles; channel screen unchanged
