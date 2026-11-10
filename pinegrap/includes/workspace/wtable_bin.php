@@ -290,7 +290,12 @@ function ws_wtable_row_restore_check($viewer, $table, $bin)
         return ws_wtable_refusal('too_many_rows', '', 409);
     }
 
-    return array('ok' => true, 'error' => '', 'field' => '', 'status' => 200);
+    // A row whose key another row has taken since, or that has none while
+    // the table now has a key, stays in the bin.
+    $columns = ws_wtable_columns((int) $table['id']);
+    $key = ws_wtable_key_cells_refusal((int) $table['id'], $columns, ws_wtable_cells_merge($columns, array(), ws_wtable_cells_decode($bin['cells'] ?? null)));
+
+    return ($key !== null) ? $key : array('ok' => true, 'error' => '', 'field' => '', 'status' => 200);
 }
 
 /**

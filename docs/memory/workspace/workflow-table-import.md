@@ -21,10 +21,10 @@ description: A CSV/xlsx/xls/ods file into a workflow table (T6a, #3022): a new t
 - Numbers (`workflow-tables-numbers.md`): with `.` and `,` the last is decimal; one mark twice is thousands; a lone one by the site's language. Dates: `Y-m-d`, `d.m.Y`, `d/m/Y` (day first), `Y/m/d`, optional time.
 
 ## How are rows written?
-- Every row through `ws_wtable_row_create()` (rights, cell checks, the 5000 limit stay the store's). `ws_wtable_import_cell()` turns a value into what the cell check takes (money to minor units with `round()`, status by label, person by name or user name, link `kind:id`); what it cannot read goes as written, so the store's code answers. A row whose cells are all empty is skipped.
+- Every row through `ws_wtable_row_create()` (rights, cell checks, limit: the store's). `ws_wtable_import_cell()` turns a value into what the cell check takes (money to minor units with `round()`, status by label, person by name or user name, link `kind:id`); what it cannot read goes as written, so the store's code answers. An all-empty row is skipped.
 - New table: `ws_wtable_create()` and `ws_wtable_column_create()` per column; a refused column deletes the new table.
 - Appending: file columns matched to table columns by name, case and spaces aside, a formula column never (`ws_wtable_import_match()`); another column or "(not imported)" may be chosen. Name, status, person keys: `ws_fold()` (`workspace-text-fold.md`).
-- Report (`#ws-wt-import-report`, once): rows added, rows refused with row number (header = 1) and each cell's code, first 100. At `too_many_rows` or any non-cell refusal the rest counts as refused and the import stops.
+- Report (`#ws-wt-import-report`, once): rows added, rows changed by key (`workflow-table-key-column.md`), rows refused with row number (header = 1), each cell's code, first 100. At `too_many_rows` or any non-cell refusal the rest counts as refused and the import stops.
 - `ws_wtable_row_announce_quiet(true)` for the run: no `workspace.wtable.row.*` event per row (api/ key rule); the catalogue says so.
 
 ## What else comes in this way?

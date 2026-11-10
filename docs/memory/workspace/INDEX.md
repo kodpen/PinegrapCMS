@@ -49,6 +49,7 @@
 - workflow-table-board.md: Board view of a workflow table (T2, #2994): rows as cards by a status column via the channel board's mountSource(); a move writes the status cell with ws_wtable_row_update()
 - workflow-table-import-notes.md: A note's table block into a workflow table (T6b, #3044): notes and tables offered, cells read (tags, marks, formulas), then the file import's confirmation and writes; the note never changes
 - workflow-table-import.md: A CSV/xlsx/xls/ods file into a workflow table (T6a, #3022): a new table with guessed column types or rows added by column name, confirmed first, every row through ws_wtable_row_create(), no webhooks
+- workflow-table-key-column.md: The key column of a workflow table (wtable_keys.php, plan tables-relational 4b): text or number, filled in and unique, refusals, the lock, by: key, the API ?key=, the import matching by key [decision: here]
 - workflow-table-row-numbers.md: The stable # number of workflow table rows (11.0.183, PR #8461): counter in ws_wtables.next_number, the row's number, kept through the bin, shown in #, found by by: number [decision: here]
 - workflow-table-rows.md: Workflow table rows (wtable_rows.php, T1b): add, change, delete, move; row_count and the 5000 limit in one UPDATE; 409 changed_meanwhile; person/link cells open; formulas on read
 - workflow-table-shares.md: Workflow table shares (wtable_shares.php, T1c, #2820): owner-only, person view/edit, channel view; wtable_shared bell line; ws_wtable_flow_gate() pauses a gone owner's table
