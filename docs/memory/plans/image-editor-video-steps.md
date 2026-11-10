@@ -31,8 +31,6 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
   - Layers keep their start and end on the timeline; picture in picture (a second video layer, its size and corners).
 
 - V7 (M) Export with sound. Done (#8484, `ui/image-editor-mix.md`).
-  - Frames as AN6; the sound mixed in an `OfflineAudioContext`, AAC or Opus through `AudioEncoder`; both interleaved in AN6's muxers; estimate, progress, Cancel.
-  - An animation's MP4 or WebM carries its sound; GIF, APNG, WebP and PDF cannot, and the dialog says so when the document has sound.
 
 - V8 (M) Large files. `free` after V7 and V2. One at a time with the save-path steps.
   - Chunked, resumable upload of a source video into Files; chunked save of the export (AN4's action in parts); type told by its bytes (AN4); the size limits as settings.
