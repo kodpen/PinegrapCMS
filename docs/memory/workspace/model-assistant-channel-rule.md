@@ -25,6 +25,6 @@ description: Where a model assistant is asked (its own ws_channel_agents row; a 
 - In Turkish the name takes no case ending ("{var:1} ile bağlantı kurulamadı", not "{var:1}'a ulaşılamadı"): an ending does not fit every name.
 
 ## What still says Pinegrap AI for a model assistant?
-- The Site Log line of its answer (`ws_ai_log()`: "Pinegrap AI answered a request in #… (Pinegrap AI)") and `pg_ai_chat()`'s own sentences (`includes/translate/engine_ai.php`).
+- `pg_ai_chat()`'s own sentences (`includes/translate/engine_ai.php`). The Site Log line of its answer names it: `model-assistant-site-log.md`.
 
 Related: docs/memory/workspace/model-assistants.md, docs/memory/workspace/agent-registry.md, docs/memory/workspace/agent-doors.md

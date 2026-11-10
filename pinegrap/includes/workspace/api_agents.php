@@ -42,7 +42,7 @@ function ws_agent_api_routes()
             'handler'     => 'ws_api_channel_agents_list',
             'returns'     => array('list' => 'WorkspaceChannelAgent'),
             'summary'     => 'The agents in a channel',
-            'description' => 'The agents added to a channel the owner of the application may read, in the order they were added, each with what wakes it there, its tier and whether the loop-guard text is on. An agent with no row in a channel works by its defaults there (Claude by the channel\'s claude_access).',
+            'description' => 'The agents added to a channel the owner of the application may read, in the order they were added, each with what wakes it there, its tier and whether the loop-guard text is on. Claude is no channel agent and is not listed: it answers where the channel\'s claude_access allows.',
             'params'      => array($id),
         ),
 
@@ -55,7 +55,7 @@ function ws_agent_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceChannelAgent',
             'summary'     => 'Add an agent to a channel or change its row',
-            'description' => 'Adds an agent to a channel the owner of the application may post in - a private one only when the owner is in it - or changes what wakes it there. Fields left out keep their value (a new row: woken by a mention, tier 1, loop guard on). A row decides waking and the tier only, never what the agent may read.' . $errors,
+            'description' => 'Adds an agent to a channel the owner of the application may post in - a private one only when the owner is in it - or changes what wakes it there. Fields left out keep their value (a new row: woken by a mention, tier 1, loop guard on). A row decides waking and the tier only, never what the agent may read. Claude is no channel agent: its agent_id answers 422 validation_failed (claude_not_channel_agent), a rehearsal too.' . $errors,
             'params'      => array(
                 $id,
                 array('name' => 'agent_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true),
@@ -76,7 +76,7 @@ function ws_agent_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspaceChannelAgentRemoval',
             'summary'      => 'Take an agent out of a channel',
-            'description'  => 'Whoever may add an agent to the channel takes it out; an agent that was not in it is not an error: removed is then false. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'description'  => 'Whoever may add an agent to the channel takes it out; an agent that was not in it is not an error: removed is then false. A Claude row made before Claude was left out of the channels is taken out here too. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
             'params'       => array(
                 $id,
                 array('name' => 'agent_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
@@ -165,7 +165,7 @@ function ws_api_channel_agent_target($viewer, $params)
     $agent = ws_agent($params['agent_id']);
 
     if (!$agent) {
-        api_fail_not_found(lang('Agent'));
+        api_fail_not_found(lang('The agent'));
     }
 
     return array('channel' => $channel, 'agent' => $agent);
@@ -190,6 +190,12 @@ function ws_api_channel_agents_set($params)
     $target = ws_api_channel_agent_target($viewer, $params);
     $channel = $target['channel'];
     $agent = $target['agent'];
+    $kind_problem = ws_channel_agent_kind_problem($agent['kind']);
+
+    if ($kind_problem !== '') {
+        api_fail(422, 'validation_failed', ws_channel_agent_error_text($kind_problem), 'agent_id');
+    }
+
     $current = ws_channel_agent_row($channel['id'], $agent['id']);
     $check = ws_channel_agent_check($params, $current, ws_can_manage_channel($viewer, $channel));
 
@@ -211,7 +217,7 @@ function ws_api_channel_agents_set($params)
         }
     }
 
-    api_fail_not_found(lang('Agent'));
+    api_fail_not_found(lang('The agent'));
 }
 
 function ws_api_channel_agents_remove($params)

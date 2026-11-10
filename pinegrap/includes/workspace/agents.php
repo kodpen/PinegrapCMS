@@ -352,6 +352,8 @@ function ws_channel_agent_check($input, $current, $can_manage)
 function ws_channel_agent_error_text($error)
 {
     switch ((string) $error) {
+        case 'claude_not_channel_agent':
+            return lang('Claude is not added to a channel: it answers where the channel\'s Claude access allows.');
         case 'wake_rule_invalid':
             return lang('An agent is woken by a mention, every message, a prefix or replies to it.');
         case 'wake_prefix_invalid':
@@ -368,7 +370,42 @@ function ws_channel_agent_error_text($error)
 }
 
 /**
- * The agents of a channel: its channel-agent rows with the agent beside each.
+ * Whether an agent of this kind can be a channel's agent. Claude is not one:
+ * it is asked where the channel's claude_access allows, and no reader takes
+ * a channel-agent row of kind claude (the tiers read app rows only). Pure.
+ *
+ * @param string $kind ws_agents.kind
+ * @return string '' or 'claude_not_channel_agent'
+ */
+function ws_channel_agent_kind_problem($kind)
+{
+    return ((string) $kind === 'claude') ? 'claude_not_channel_agent' : '';
+}
+
+/**
+ * The channel-agent rows that are read: a claude row made before Claude was
+ * left out of the channels stays in the table, unread, until it is taken
+ * out. Pure.
+ *
+ * @param array[] $rows ws_channel_agent_shape() rows
+ * @return array[]
+ */
+function ws_channel_agents_readable($rows)
+{
+    $out = array();
+
+    foreach ((array) $rows as $row) {
+        if (ws_channel_agent_kind_problem($row['agent']['kind'] ?? '') === '') {
+            $out[] = $row;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The agents of a channel: its channel-agent rows with the agent beside each,
+ * a claude row left out (ws_channel_agents_readable()).
  *
  * @param int $channel_id
  * @return array[] agent (ws_agent_shape()), allowed, wake_rule, wake_prefix, tier, loop_guard, added_by, added_at
@@ -397,7 +434,7 @@ function ws_channel_agents($channel_id)
         }
     }
 
-    return $out;
+    return ws_channel_agents_readable($out);
 }
 
 /**

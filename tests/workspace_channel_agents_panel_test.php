@@ -54,9 +54,9 @@ function test_workspace_channel_agents_addable()
 	);
 	$out = ws_channel_agents_addable($agents, array('2'));
 
-	pg_assert_same(array(1, 3), array_column($out, 'agent_id'), 'the agents already in the channel are left out');
+	pg_assert_same(array(3), array_column($out, 'agent_id'), 'the agents already in the channel and Claude, which is no channel agent, are left out');
 	pg_assert_same(array('agent_id', 'kind', 'handle', 'name', 'active'), array_keys($out[0]), 'only what the list shows');
-	pg_assert_same(false, $out[1]['active']);
+	pg_assert_same(false, $out[0]['active']);
 	pg_assert_same(array(), ws_channel_agents_addable(array(), array()));
 }
 

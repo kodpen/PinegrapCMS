@@ -11,9 +11,10 @@
  * address, the key, the model and the application it writes through are the
  * assistant's. The agent card (agents_settings.php) keeps its row. While one runs, ws_model_running() holds it and the few
  * places of ai.php that reach the gateway or its config read it from there;
- * the loop's failure sentences name it (ws_model_loop_sentence()) and its
- * own row in a channel says whether it is asked there
- * (ws_model_channel_allowed()).
+ * the loop's failure sentences name it (ws_model_loop_sentence()), its own
+ * row in a channel says whether it is asked there
+ * (ws_model_channel_allowed()) and the activity log's line of its answer
+ * names it (ws_model_log_answered()).
  *
  * For a model agent the door is the site itself, so no knock goes out;
  * door_url holds the chat API's base address where the provider has no
@@ -456,6 +457,20 @@ function ws_model_loop_sentence($agent, $which)
 }
 
 /**
+ * The activity log's sentence for an answer the assistant wrote in a
+ * channel: by its @handle, in the words an application agent's answer is
+ * logged with (ws_api_agent_request_answer()).
+ *
+ * @param array $agent   the raw row
+ * @param array $channel the channel or discussion the answer was written in
+ * @return string
+ */
+function ws_model_log_answered($agent, $channel)
+{
+    return lang(array('string' => '@{var:1} answered a request in #{var:2}', 'vars' => array((string) $agent['handle'], (string) $channel['name'])));
+}
+
+/**
  * May a model assistant be asked in a channel, from what is known of the
  * two? Its own row there decides (ws_channel_agents.allowed), as it decides
  * an application agent's answer (ws_api_agent_request_place()): the
@@ -721,6 +736,15 @@ function ws_model_agent_run($agent, $budget)
             }
 
             $row = ws_ai_request_row($row['id']);
+        }
+
+        // An assistant that used its month's tokens takes no further step:
+        // the request fails with the sentence that names the limit.
+        $refusal = function_exists('ws_agent_token_refusal') ? ws_agent_token_refusal($agent) : '';
+
+        if ($refusal !== '') {
+            ws_ai_finish_fail($row, $refusal);
+            continue;
         }
 
         // The answers of this step add their tokens to the request.

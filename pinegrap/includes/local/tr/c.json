@@ -2077,6 +2077,7 @@
     "Claude could not take this request: its routine does not read the instructions this site gives it. An administrator copies the prompt again from Claude in the channels in the Workspace Settings.": "Claude bu isteği alamadı: rutini bu sitenin verdiği talimatları okumuyor. Bir yönetici istemi Çalışma Alanı Ayarları'ndaki Kanallarda Claude kartından yeniden kopyalar.",
     "Claude did not answer in time.": "Claude zamanında yanıt vermedi.",
     "Claude in the channels": "Kanallarda Claude",
+    "Claude is not added to a channel: it answers where the channel's Claude access allows.": "Claude kanala eklenmez: kanalın Claude erişimi izin verdiği yerde yanıt verir.",
     "Claude is not connected yet.": "Claude henüz bağlı değil.",
     "Claude is not connected yet. An administrator sets it up in the Workspace Settings.": "Claude henüz bağlanmadı. Bir yönetici Çalışma Alanı Ayarları'ndan kurar.",
     "Claude is not switched on on this site.": "Bu sitede Claude açık değil.",

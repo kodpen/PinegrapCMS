@@ -172,6 +172,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_team_replies();         // 11.0.179
 	upgrade_2026_11_0_ws_agent_channel();        // 11.0.180
 	upgrade_2026_11_0_ws_ai_tokens();            // 11.0.181
+	upgrade_2026_11_0_ws_agent_token_limit();     // 11.0.182
 	upgrade_2026_11_0_ws_wtable_numbers();       // 11.0.183
 
 }
@@ -5829,6 +5830,27 @@ function upgrade_2026_11_0_ws_ai_tokens() {
 	install_add_column('ws_ai_requests', 'tokens_out', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Workspace: the tokens each request of Pinegrap AI and of a model assistant uses are counted from now on and shown on the Agents and Pinegrap AI cards.');
+
+}
+
+// A model assistant's monthly token limit (11.0.182;
+// includes/workspace/agent_activity.php). Set on the assistant's form, 0 for
+// none; ws_model_agent_run() refuses a request once the calendar month's
+// tokens (ws_ai_requests.tokens_in + tokens_out) reach it. Every existing
+// assistant starts with none, so nothing changes on a running site.
+function upgrade_2026_11_0_ws_agent_token_limit() {
+
+	if (!install_table_exists('ws_agents')) {
+
+		install_skipped('ws_agents does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_agents', 'token_limit', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: a model assistant can be given a monthly token limit on its form; none is set on the existing ones.');
 
 }
 

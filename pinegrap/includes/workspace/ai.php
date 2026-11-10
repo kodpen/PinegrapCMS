@@ -2291,7 +2291,7 @@ function ws_ai_owner()
 }
 
 /**
- * A line in the activity log.
+ * A line in the activity log, signed for whoever answers (ws_ai_log_line()).
  *
  * @param string $what
  */
@@ -2304,7 +2304,41 @@ function ws_ai_log($what)
     $app = ws_ai_app();
     $owner = $app ? (string) db_value("SELECT user_username FROM user WHERE user_id = '" . (int) $app['owner_user_id'] . "'") : '';
 
-    log_activity($what . ' (Pinegrap AI)', $owner);
+    log_activity(ws_ai_log_line($what), $owner);
+}
+
+/**
+ * A line of the activity log as it is written: the sentence, then in
+ * brackets who answers the request - Pinegrap AI, or the model assistant
+ * whose request is being answered (ws_model_running()) by its name.
+ *
+ * @param string $what
+ * @return string
+ */
+function ws_ai_log_line($what)
+{
+    $running = function_exists('ws_model_running') ? ws_model_running() : null;
+
+    return $what . ' (' . ($running ? (string) $running['name'] : 'Pinegrap AI') . ')';
+}
+
+/**
+ * The activity log's sentence for an answer written in a channel: Pinegrap
+ * AI's, or for the model assistant whose request is being answered
+ * (ws_model_running()) the one that names it (ws_model_log_answered()).
+ *
+ * @param array $channel the channel or discussion the answer was written in
+ * @return string
+ */
+function ws_ai_log_answered($channel)
+{
+    $running = function_exists('ws_model_running') ? ws_model_running() : null;
+
+    if ($running) {
+        return ws_model_log_answered($running, $channel);
+    }
+
+    return lang(array('string' => 'Pinegrap AI answered a request in #{var:1}', 'vars' => $channel['name']));
 }
 
 /**
@@ -2633,7 +2667,7 @@ function ws_ai_deliver($row, $text, $proposals)
     ws_ai_react((int) $row['message_id'], '👀', false);
     ws_ai_react((int) $row['message_id'], '✅', true);
 
-    ws_ai_log(lang(array('string' => 'Pinegrap AI answered a request in #{var:1}', 'vars' => $channel['name'])));
+    ws_ai_log(ws_ai_log_answered($channel));
 
     // A flow's agent box waiting on a model agent's request goes on
     // (flow_agent_box.php).
