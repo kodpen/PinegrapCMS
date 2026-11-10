@@ -20,6 +20,7 @@ description: A throwaway Pinegrap install on the owner's Windows machine without
 - A CLI script sets `$_SERVER` `REQUEST_METHOD` and `HTTP_HOST`, changes to the export's `pinegrap/` and requires `init.php`, then the module's bootstrap. `PG_API_PANEL` is defined before `includes/api/keys.php` is loaded, or that file exits without a word.
 - `config.workspace_enabled` is 0 after install: set it and run again, the constant is read at init.
 - A panel action runs as a person by setting `$_SESSION['sessionuserid']` before the call; `ws_channel_membership_forget()` between people. A test person gets a password with `pg_password_store($id, $password)`.
+- A Workspace member of the user role is one `user` row with `user_role` 3 and `manage_workspace` 1; staff are members by their role. A Workspace action answers `status` success or error with `message`.
 - A model call without a provider: a model agent with provider `custom` whose address is a second `php -S` answering `/v1/chat/completions` with a tool call; `ws_ai_kick()` then runs the whole loop.
 
 ## How is the API called over HTTP?

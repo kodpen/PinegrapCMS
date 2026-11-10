@@ -1,6 +1,6 @@
 ---
 name: memory-writing
-description: How a memory file is written so the next task finds it: labels as on screen, one owner per value, old values searched, lines under 500 characters, decisions dated, an overview per cluster
+description: How a memory file is written so the next task finds it: labels as on screen, one owner per value, old values searched, lines under 500 characters, decisions dated, cluster overviews, trials
 ---
 
 ## What goes into docs/memory?
@@ -26,3 +26,8 @@ description: How a memory file is written so the next task finds it: labels as o
 ## How far is memory trusted?
 - Rely on what memory says; check in the code only what the change depends on. A trial answered right by its fourth call, then spent 15 more checking in code what memory had said.
 - When memory and code disagree, the code wins and the memory line is corrected in the same PR.
+
+## How is memory tried?
+- A trial: a fresh session reads `CLAUDE.md`, prepares one task in the owner's words up to the first line of code, changes nothing, and reports its searches, the memory files it opened, what binds the task and where memory slowed it. Better is the same findings with fewer files opened and fewer calls.
+- Six tasks ran on 2026-11-10, before and after the overviews, decision marks and cluster map: from 117,000 to 256,000 tokens and 28 to 100 calls each down to 65,000 to 81,000 tokens and 4 to 11 calls. The tasks and each run's figures are in git history: `git show 4608205942:docs/memory/plans/<name>` with `memory-owner-steps.md`, and `4608205942^` with `memory-as-guide-trials.md`.
+- The documentation task ran a third time once `user-docs-pages.md` existed: the pages, their mark and who may change them by the second call, from memory alone; the runs before had them from the machine's notes, or not at all. Its 210,000 tokens and 61 calls went into a 22-line change list read from 22 topic files, because memory has no list of what is new since a mark (`user-docs-pages.md`).
