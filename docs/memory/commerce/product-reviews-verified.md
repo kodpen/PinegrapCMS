@@ -9,7 +9,7 @@ module: reviews
 - Only on `catalog detail` (and `catalog`) pages, classic block or comments widget, and designed product pages (catalog_item_view, [[comments-widget-product-page]]); a post naming them elsewhere is refused ([[comment-thread-verify]]).
 
 ## Who may write one, and why?
-- Ticari Reklam Yönetmeliği 28/B (RG 33297, in force 2026-08-01): only buyers review; a review whose purchase was not verified may not be published or used in advertising; a refused review is told to its author at once.
+- Ticari Reklam Yönetmeliği 28/B (RG 33297, in force 2026-08-01): only buyers review; a review whose purchase was not verified may not be published or used in advertising; a refused review is told to its author.
 - A signed-in customer with a "bought" order holding the item that no review of the item names yet (`pg_review_eligibility()`): status `complete`/`exported`, and not an unpaid bank transfer (`payment_method <> 'Offline Payment' OR paid_at > 0 OR erp_on_account = 1`); cart lines saved for later do not count; a group counts any of its products. Orders by `orders.user_id`, as My Account lists them.
 - One purchase opens one review: the order id is kept in `comments.verified_order_id`, so the next order of the item opens the next review.
 - Refusals (`pg_review_refusal()`): `sign_in`, `not_bought`, `reviewed`, each with its own sentence (`pg_review_refusal_message()`).
