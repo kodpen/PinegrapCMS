@@ -19,5 +19,8 @@ description: The key column of a workflow table (wtable_keys.php, plan tables-re
 - API: `GET /workspace/tables/{id}/rows?key=` lists that row or none; 422 on a table without a key. 409 messages name the rows.
 - Import (`ws_wtable_import_rows()`): a file row whose key the table holds changes that row with the file's filled cells (`updated` in the report and the API answer); others are added. The dry run (`ws_wtable_import_rows_check()`) still counts every file row as an add.
 
+## What must a column type change keep?
+- A change of the key column's type (plan step 8) keeps the rules above: to a type other than text or number it is refused while the column is the key (`key_type`); text to number or back is refused when converted values come out empty or repeated, naming the rows as `key_not_unique` does.
+
 ## Tests
 - `tests/workspace_wtable_keys_test.php`.
