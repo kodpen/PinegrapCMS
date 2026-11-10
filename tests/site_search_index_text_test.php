@@ -94,6 +94,21 @@ function test_site_search_index_text_edges()
 	pg_assert_same('a b c', pg_search_index_text('<navbar>a</navbar> <headers>b</headers> <mainx>c</mainx>'));
 }
 
+// A custom element whose name starts with one of the element names and a
+// hyphen (<main-banner>, <nav-menu>, <svg-icon>) is not that element: the
+// page's text around it stays and the custom element's own text is kept.
+function test_site_search_index_text_custom_elements_are_not_the_elements()
+{
+	pg_assert_same('Banner Gövde', pg_search_index_text('<main-banner>Banner</main-banner><p>Gövde</p>'));
+	pg_assert_same('Menü Gövde', pg_search_index_text('<nav-menu>Menü</nav-menu><p>Gövde</p>'));
+	pg_assert_same('Üst Gövde Alt', pg_search_index_text('<header-bar>Üst</header-bar><p>Gövde</p><footer-note>Alt</footer-note>'));
+	pg_assert_same('İçerik', pg_search_index_text('<section-card><footer>Alt bilgi</footer></section-card><p>İçerik</p>'));
+	pg_assert_same('Simge Metin', pg_search_index_text('<svg-icon>Simge</svg-icon><p>Metin</p><svg><text>çizim</text></svg>'));
+	pg_assert_same('Seçim Metin', pg_search_index_text('<select-box>Seçim</select-box><p>Metin</p><select><option>a</option></select>'));
+	pg_assert_same('Ana İçerik', pg_search_index_text('<main><main-title>Ana</main-title><p>İçerik</p></main><footer>Alt</footer>'));
+	pg_assert_same('Çerez Metin', pg_search_index_text('<div-box id="pg-cc">Çerez</div-box><p>Metin</p>'));
+}
+
 // Every index path takes its text from the same extraction, and no drawn
 // page reaches convert_html_to_text() (the e-mail body converter) any more.
 function test_site_search_index_text_call_sites()
