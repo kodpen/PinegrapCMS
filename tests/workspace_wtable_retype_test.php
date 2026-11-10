@@ -92,10 +92,11 @@ function test_workspace_wtable_retype_from_text()
 	ws_wtable_retype_test_in(true, function () {
 		pg_assert_same(1250, ws_wtable_retype_test('text', 'number', ' 1.250 '), 'a Turkish thousands point');
 		pg_assert_same(1.5, ws_wtable_retype_test('text', 'number', '1,5', array(), array('decimals' => 2)));
-		pg_assert_same(2, ws_wtable_retype_test('text', 'number', '1,5'), 'rounded to the column\'s decimals');
+		pg_assert_same('error:decimals_lost', ws_wtable_retype_test('text', 'number', '1,5'), 'never rounded away');
 		pg_assert_same('error:not_number', ws_wtable_retype_test('text', 'number', '12 kg'));
 		pg_assert_same(125075, ws_wtable_retype_test('text', 'money', '₺1.250,75'), 'minor units');
-		pg_assert_same(29, ws_wtable_retype_test('text', 'money', '0,29'), 'rounded, not cut');
+		pg_assert_same(29, ws_wtable_retype_test('text', 'money', '0,29'), 'not cut to 28');
+		pg_assert_same('error:decimals_lost', ws_wtable_retype_test('text', 'money', '0,295'));
 		pg_assert_same('error:not_minor_units', ws_wtable_retype_test('text', 'money', 'free'));
 		pg_assert_same(array(1.5, 2), ws_wtable_retype_test('text', 'list', "1,5\n\n2", array(), array('of' => 'number')));
 		pg_assert_same('error:not_number', ws_wtable_retype_test('text', 'list', "1\nmany", array(), array('of' => 'number')));
@@ -124,7 +125,9 @@ function test_workspace_wtable_retype_from_numbers()
 	});
 
 	pg_assert_same(12.5, ws_wtable_retype_test('money', 'number', 1250, array(), array('decimals' => 2)));
-	pg_assert_same(13, ws_wtable_retype_test('money', 'number', 1250), 'to the number\'s decimals');
+	pg_assert_same('error:decimals_lost', ws_wtable_retype_test('money', 'number', 1250), 'a number of no decimals');
+	pg_assert_same(12, ws_wtable_retype_test('money', 'number', 1200));
+	pg_assert_same('error:decimals_lost', ws_wtable_retype_test('number', 'money', 12.345, array('decimals' => 3)));
 	pg_assert_same(1250, ws_wtable_retype_test('number', 'money', 12.5, array('decimals' => 2)));
 	pg_assert_same(12, ws_wtable_retype_test('number', 'money', 12, array(), array('decimals' => 0)));
 	pg_assert_same(true, ws_wtable_retype_test('number', 'checkbox', 1));
@@ -201,4 +204,30 @@ function test_workspace_wtable_retype_rows()
 function test_workspace_wtable_retype_is_loaded()
 {
 	pg_assert_same(1, substr_count((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php'), "require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_retype.php');"));
+}
+
+// The screen's choices: every type but its own, a date with or without its
+// time, a list of texts or numbers; decimals as typed or the default.
+function test_workspace_wtable_retype_screen()
+{
+	$money = ws_wtable_retype_test_column('money', array('decimals' => 3));
+
+	pg_assert_same(array('text', 'number', 'date', 'date_time', 'list_text', 'list_number', 'checkbox'), array_keys(ws_wtable_screen_retype_choices($money)));
+	pg_assert_same(array('text', 'number', 'money', 'date', 'date_time', 'list_number', 'checkbox'), array_keys(ws_wtable_screen_retype_choices(ws_wtable_retype_test_column('list'))), 'a list of texts into numbers');
+	pg_assert_same(array(), ws_wtable_screen_retype_choices(ws_wtable_retype_test_column('person')));
+
+	pg_assert_same(array('type' => 'number', 'options' => array('decimals' => 3)), ws_wtable_screen_retype_input('number', '', $money), 'a number keeps the money\'s decimals');
+	pg_assert_same(array('type' => 'number', 'options' => array('decimals' => '1')), ws_wtable_screen_retype_input('number', ' 1 ', $money));
+	pg_assert_same(array('type' => 'money', 'options' => array()), ws_wtable_screen_retype_input('money', '', ws_wtable_retype_test_column('text')));
+	pg_assert_same(array('type' => 'date', 'options' => array('time' => true)), ws_wtable_screen_retype_input('date_time', '', $money));
+	pg_assert_same(array('type' => 'list', 'options' => array('of' => 'number')), ws_wtable_screen_retype_input('list_number', '4', $money), 'decimals only for a number or money');
+
+	$text = ws_wtable_screen_retype_fault_text(array('label' => 7, 'bin' => true, 'value' => 'n/a', 'error' => 'not_number'));
+	pg_assert_true(strpos($text, '#7') !== false, 'the row by its number');
+	pg_assert_true(strpos($text, '«n/a»') !== false, 'the value');
+	pg_assert_true(strpos($text, ws_wtable_screen_error_text('not_number')) !== false, 'and why');
+
+	foreach (array('type_same', 'type_not_changeable', 'cells_not_converted', 'no_conversion', 'list_many', 'decimals_lost', 'time_lost') as $code) {
+		pg_assert_true(ws_wtable_screen_error_text($code) !== ws_wtable_screen_error_text('no_such_code'), $code . ' has its own sentence');
+	}
 }

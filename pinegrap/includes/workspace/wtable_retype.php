@@ -89,6 +89,25 @@ function ws_wtable_retype_figure_text($from, $value)
 }
 
 /**
+ * An amount as minor units of a money column, or decimals_lost when the
+ * column keeps fewer decimals than the amount has. Pure.
+ *
+ * @param float $amount
+ * @param array $to
+ * @return array value, error
+ */
+function ws_wtable_retype_minor($amount, $to)
+{
+    $minor = round($amount * ws_wtable_retype_unit($to), 6);
+
+    if (floor($minor) !== $minor) {
+        return array('value' => null, 'error' => 'decimals_lost');
+    }
+
+    return array('value' => (int) $minor, 'error' => '');
+}
+
+/**
  * One kept cell turned into what the new type takes, before its check. An
  * empty cell (null, an unticked box, no item) stays empty. A text is read
  * the site's way, as the file import reads it: a number, an amount (to
@@ -98,7 +117,8 @@ function ws_wtable_retype_figure_text($from, $value)
  * ticked box into 1, one unit, "1" or [1]; a date into its text or a list
  * of it; a list of one item into what its item turns into, its items into
  * one a line of text. What has no conversion (a date into a number, a list
- * of several items into one value) gives the error instead. Pure but for
+ * of several items into one value, an amount with more decimals than the
+ * money column keeps) gives the error instead. Pure but for
  * the site's decimal mark.
  *
  * @param array $from  column: type, options
@@ -189,7 +209,7 @@ function ws_wtable_retype_candidate($from, $to, $value)
 
         case 'money':
             if ($a === 'number') {
-                return is_numeric($value) ? $give((int) round((float) $value * ws_wtable_retype_unit($to))) : $none;
+                return is_numeric($value) ? ws_wtable_retype_minor((float) $value, $to) : $none;
             }
 
             if ($a === 'checkbox') {
@@ -199,7 +219,7 @@ function ws_wtable_retype_candidate($from, $to, $value)
             if ($a === 'text') {
                 $money = ws_wtable_import_money((string) $value);
 
-                return ($money === null) ? array('value' => null, 'error' => 'not_minor_units') : $give((int) round((float) $money['amount'] * ws_wtable_retype_unit($to)));
+                return ($money === null) ? array('value' => null, 'error' => 'not_minor_units') : ws_wtable_retype_minor((float) $money['amount'], $to);
             }
 
             return $none;
@@ -293,7 +313,8 @@ function ws_wtable_retype_candidate($from, $to, $value)
 /**
  * One kept cell converted and checked as a write of the new type checks
  * it: the value to keep (null for an empty cell, false for an unticked
- * box) or the reason it does not convert. Pure but for the site's decimal
+ * box) or the reason it does not convert; a number its column would round
+ * is decimals_lost. Pure but for the site's decimal
  * mark.
  *
  * @param array $from
@@ -310,6 +331,13 @@ function ws_wtable_retype_cell($from, $to, $value)
     }
 
     $check = ws_wtable_cell_check($to, $candidate['value']);
+
+    // A number column rounds to its decimals: a figure it would change is
+    // listed, never rounded away.
+    if ($check['ok'] && ((string) ($to['type'] ?? '') === 'number') && is_numeric($candidate['value'])
+        && (abs((float) $candidate['value'] - (float) $check['value']) > 1e-9)) {
+        return array('ok' => false, 'value' => null, 'error' => 'decimals_lost');
+    }
 
     return $check['ok'] ? array('ok' => true, 'value' => $check['value'], 'error' => '')
         : array('ok' => false, 'value' => null, 'error' => $check['error']);

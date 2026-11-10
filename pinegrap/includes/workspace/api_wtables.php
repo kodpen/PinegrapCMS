@@ -217,6 +217,21 @@ function ws_wtable_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.table_columns.retype',
+            'method'      => 'POST',
+            'path'        => '/workspace/tables/{id}/columns/{column_id}/type',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_wtable_columns_retype',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceTableColumn',
+            'summary'     => 'Change the type of a workflow table column',
+            'description' => 'Changes a column\'s type, as ALTER ... MODIFY does: text, number, money, date, list and checkbox turn into one another, and a list of texts into a list of numbers and back. Every cell, of binned rows too, is converted and checked as a write of the new type checks it: a text read the site\'s way (a number, an amount, a date, a tick word or 1/0, one list item a line), a number or an amount into its text, a ticked box into 1, a list of one item as that item. While any cell does not convert nothing changes and the answer is 422 validation_failed, field type, its message listing each such cell by row number (no_conversion, list_many, decimals_lost when the new column keeps fewer decimals, time_lost when a date without a time would drop one, or the cell check\'s own code); with dry_run that is the dry run. A converted row\'s revision moves on; no workspace.wtable.row.* event is sent. Other types (person, status, record link, formula) and the same type are refused with 422 validation_failed too.' . $errors,
+            'params'      => array($id, $column_id,
+                array('name' => 'type', 'in' => 'body', 'type' => 'enum', 'values' => ws_wtable_retype_types(), 'required' => true, 'description' => 'The new type.'),
+                array('name' => 'options', 'in' => 'body', 'type' => 'object', 'description' => 'The new type\'s options, as POST /workspace/tables/{id}/columns takes them (number and money decimals, money currency, date time, list of). Left out, the type\'s defaults.')),
+        ),
+
+        array(
             'id'          => 'workspace.table_columns.delete',
             'method'      => 'DELETE',
             'path'        => '/workspace/tables/{id}/columns/{column_id}',
@@ -1258,6 +1273,53 @@ function ws_api_wtable_columns_update($params)
     }
 
     api_ok(ws_api_wtable_column_present(ws_api_wtable_column_or_404($table, $column['id'])));
+}
+
+function ws_api_wtable_columns_retype($params)
+{
+    $viewer = ws_api_viewer();
+    $table = ws_api_wtable_writable($viewer, $params['id']);
+    $column = ws_api_wtable_column_or_404($table, $params['column_id']);
+    $data = ws_api_wtable_input($params, array('type', 'options'));
+    $checked = ws_wtable_column_retype_check($viewer, $table, $column, $data);
+
+    if (!$checked['ok']) {
+        ws_api_wtable_retype_refused($checked);
+    }
+
+    api_dry_run_stop('updated', 'workspace_table_column', array('id' => (int) $column['id'], 'type' => $checked['to']['type'], 'cells' => count($checked['changed'])));
+
+    $result = ws_wtable_column_retype($viewer, $table, $column, $data);
+
+    if (!$result['ok']) {
+        ws_api_wtable_retype_refused($result);
+    }
+
+    api_ok(ws_api_wtable_column_present(ws_api_wtable_column_or_404($table, $column['id'])));
+}
+
+/**
+ * A refused type change: the cells that do not convert listed in the
+ * message (at most 50, by row number, a binned row marked), else the
+ * table's usual refusal.
+ *
+ * @param array $result ws_wtable_column_retype_check()
+ */
+function ws_api_wtable_retype_refused($result)
+{
+    if (((string) $result['error'] === 'cells_not_converted') && !empty($result['faults'])) {
+        $parts = array();
+
+        foreach (array_slice($result['faults'], 0, 50) as $fault) {
+            $parts[] = 'row ' . (int) $fault['label'] . (!empty($fault['bin']) ? ' (bin)' : '') . ' ' . (string) $fault['error'];
+        }
+
+        $more = count($result['faults']) - count($parts);
+
+        api_fail_validation(lang(array('string' => 'These cells do not convert: {var:1}.', 'vars' => implode(', ', $parts) . (($more > 0) ? ' +' . $more : ''))), 'type');
+    }
+
+    ws_api_wtable_refused($result, lang('Table column'));
 }
 
 function ws_api_wtable_columns_delete($params)
