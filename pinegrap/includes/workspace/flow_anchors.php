@@ -77,12 +77,12 @@ function ws_flow_row_whats()
  * The values a row box gives {{trigger.<field>}}: the table, the row, who
  * wrote it, then one value per column of the table (cell_<column id>, the
  * column's name as its label), as ws_wtable_row_present() keys the cells.
- * A lookup only when the box reads the row itself ($joined): the event a
- * row start box hears is built once, for no reader, without lookups.
+ * A lookup or rollup only when the box reads the row itself ($joined): the
+ * event a row start box hears is built once, for no reader, without them.
  * Pure.
  *
  * @param array[] $columns ws_wtable_columns() of the table: id, name, type
- * @param bool    $joined  lookups too (Read a row)
+ * @param bool    $joined  lookups and rollups too (Read a row)
  * @return array[] key, type, label
  */
 function ws_flow_row_outputs($columns, $joined = false)
@@ -95,8 +95,8 @@ function ws_flow_row_outputs($columns, $joined = false)
     );
 
     foreach ((array) $columns as $column) {
-        if (((int) ($column['id'] ?? 0) > 0) && ($joined || (($column['type'] ?? '') !== 'lookup'))) {
-            $number = in_array((string) ($column['type'] ?? ''), array('number', 'money'), true);
+        if (((int) ($column['id'] ?? 0) > 0) && ($joined || !ws_wtable_joined_type($column['type'] ?? ''))) {
+            $number = in_array((string) ($column['type'] ?? ''), array('number', 'money', 'rollup'), true);
             $out[] = array('key' => 'cell_' . (int) $column['id'], 'type' => $number ? 'number' : 'text', 'label' => (string) ($column['name'] ?? ''));
         }
     }

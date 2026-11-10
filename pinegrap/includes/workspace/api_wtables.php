@@ -49,11 +49,11 @@ function ws_wtable_api_routes()
 
     $column_fields = array(
         array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => $limits['name'], 'description' => 'What the column is called. A formula names other columns by it.'),
-        array('name' => 'options', 'in' => 'body', 'type' => 'object', 'description' => 'What the type takes: number and money decimals (0-6; money 2 when left out) and money currency (three letters); date time (true to keep a time HH:MM too); status choices (1-' . $limits['statuses'] . ' objects of key [a-z0-9_-], label and color #rrggbb); link kinds (the record kinds it may point to, all when empty); list of (text, the default, or number: what its items are, fixed once made); row table (the id of a workflow table the owner reads, whose rows its cells link to, fixed once made: row_table_invalid otherwise); formula expression (other columns by name, as Price * Quantity); lookup link (the id of a row column of this table) and column (the id of a column of the table that row column links to, one the owner reads, neither a row nor a lookup column: lookup_link_invalid, lookup_table_unread, lookup_column_invalid otherwise). Sent on a change, it replaces the options.'),
+        array('name' => 'options', 'in' => 'body', 'type' => 'object', 'description' => 'What the type takes: number and money decimals (0-6; money 2 when left out) and money currency (three letters); date time (true to keep a time HH:MM too); status choices (1-' . $limits['statuses'] . ' objects of key [a-z0-9_-], label and color #rrggbb); link kinds (the record kinds it may point to, all when empty); list of (text, the default, or number: what its items are, fixed once made); row table (the id of a workflow table the owner reads, whose rows its cells link to, fixed once made: row_table_invalid otherwise); formula expression (other columns by name, as Price * Quantity); lookup link (the id of a row column of this table) and column (the id of a column of the table that row column links to, one the owner reads, neither a row nor a lookup column: lookup_link_invalid, lookup_table_unread, lookup_column_invalid otherwise); rollup table (another table the owner reads), link (the id of its row column that links to this table), op (count, sum, avg, min or max), column (the id of its number, money or formula column to total; ignored by count), where (a list of conditions on its columns, as GET /workspace/tables/{id}/rows takes them) and match (all or any): rollup_table_invalid, rollup_table_unread, rollup_link_invalid, rollup_op_invalid, rollup_column_invalid, rollup_where_invalid otherwise. Sent on a change, it replaces the options.'),
     );
 
     $errors = ' A refused value answers 422 validation_failed naming the field, with the reason code in the message (name_empty, name_too_long, description_too_long, type_unknown, type_fixed, decimals_invalid, currency_invalid, choices_empty, choice_key_invalid, kinds_invalid, formula_too_long and the like).';
-    $cells = 'Cells by column id: text a string, number a number, money an integer in minor units, date YYYY-MM-DD (with HH:MM on a column that keeps a time), person a user id, status a choice key, checkbox true or false, link an object of {kind, id}, row the id of a row of the linked table (one the owner reads: row_table_unread otherwise; a row that is not there answers row_not_found), list a JSON list of strings or numbers (or a text of one item a line; at most ' . $limits['list_items'] . ' items, a text item at most ' . $limits['list_item'] . ' characters); null empties a cell. A formula or lookup column takes no cell: its value is worked out when the row is read. A lookup gives the cell of the linked row\'s column, as that column keeps it (a formula worked out), and is empty when the row link is empty, the linked row or column is gone or the owner does not read the linked table.';
+    $cells = 'Cells by column id: text a string, number a number, money an integer in minor units, date YYYY-MM-DD (with HH:MM on a column that keeps a time), person a user id, status a choice key, checkbox true or false, link an object of {kind, id}, row the id of a row of the linked table (one the owner reads: row_table_unread otherwise; a row that is not there answers row_not_found), list a JSON list of strings or numbers (or a text of one item a line; at most ' . $limits['list_items'] . ' items, a text item at most ' . $limits['list_item'] . ' characters); null empties a cell. A formula, lookup or rollup column takes no cell: its value is worked out when the row is read. A lookup gives the cell of the linked row\'s column, as that column keeps it (a formula worked out), and is empty when the row link is empty, the linked row or column is gone or the owner does not read the linked table. A rollup gives the count of the other table\'s rows that link to this row and meet its conditions (0 for none), or the sum, average, smallest or largest value of its column over them (money in minor units, its average rounded; empty when no row gives a value), and is empty when the owner does not read that table.';
 
     return array(
         array(
@@ -276,7 +276,7 @@ function ws_wtable_api_routes()
                 array('name' => 'where', 'in' => 'query', 'type' => 'string', 'max_length' => 4000,
                     'description' => 'A JSON list of at most ' . WS_WTABLE_WHERE_MAX . ' conditions, each {"column": column id, "op": eq|neq|lt|gt|lte|gte|contains|not_contains|starts|empty|not_empty, "value": text}. A column compares by its type: text without case (contains, starts), number, money and formula by size (money in minor units, 1250 for 12.50), a date as YYYY-MM-DD or YYYY-MM-DD HH:MM, a status by its key, a checkbox as 1 or 0, a person or a linked record by its number, a list by an item it holds or not (contains, not_contains). An unfit comparison or value answers 422.'),
                 array('name' => 'join', 'in' => 'query', 'type' => 'enum', 'values' => ws_wtable_where_joins(), 'default' => 'all', 'description' => 'all: every condition holds; any: one does.'),
-                array('name' => 'sort', 'in' => 'query', 'type' => 'int', 'min' => 0, 'default' => 0, 'description' => 'The column id the rows are sorted by; 0 keeps the table\'s order. A lookup column neither sorts nor takes a condition (422).'),
+                array('name' => 'sort', 'in' => 'query', 'type' => 'int', 'min' => 0, 'default' => 0, 'description' => 'The column id the rows are sorted by; 0 keeps the table\'s order. A lookup or rollup column neither sorts nor takes a condition (422).'),
                 array('name' => 'dir', 'in' => 'query', 'type' => 'enum', 'values' => ws_wtable_sort_directions(), 'default' => 'asc', 'description' => 'desc reverses the order: by no column, the last row first.'),
                 array('name' => 'key', 'in' => 'query', 'type' => 'string', 'max_length' => 2000,
                     'description' => 'The value of the table\'s key column (a column whose options hold key: true, filled in and different on every row): the list holds the one row with that key, or none. A text key is matched without case, a number key by its value. A table without a key column answers 422.'),
@@ -550,8 +550,8 @@ function ws_api_wtable_row_present($row)
 }
 
 /**
- * Rows as the API hands them out, their lookups worked out for the caller
- * (ws_wtable_lookup_fill()): a lookup of a table the owner does not read
+ * Rows as the API hands them out, their lookups and rollups worked out for
+ * the caller (ws_wtable_joined_fill()): one of a table the owner does not read
  * stays empty.
  *
  * @param array   $viewer
@@ -561,7 +561,7 @@ function ws_api_wtable_row_present($row)
  */
 function ws_api_wtable_rows_present($viewer, $columns, $rows)
 {
-    return array_map('ws_api_wtable_row_present', ws_wtable_lookup_fill($viewer, $columns, array_values((array) $rows)));
+    return array_map('ws_api_wtable_row_present', ws_wtable_joined_fill($viewer, $columns, array_values((array) $rows)));
 }
 
 /**

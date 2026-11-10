@@ -7776,7 +7776,13 @@
 
     // The columns it writes: all but formulas, which are worked out.
     function rowWriteColumns(table) {
-        return table ? table.columns.filter(function (column) { return column.type !== 'formula'; }) : [];
+        return table ? table.columns.filter(function (column) { return ['formula', 'lookup', 'rollup'].indexOf(column.type) === -1; }) : [];
+    }
+
+    // A lookup or rollup is worked out per page from another table, after
+    // the conditions and the sort: neither is offered to them.
+    function rowQueryColumns(table) {
+        return table ? table.columns.filter(function (column) { return ['lookup', 'rollup'].indexOf(column.type) === -1; }) : [];
     }
 
     // A box's cells as an object, column id => value; null for a text that
@@ -8190,7 +8196,7 @@
     function whereFields(box, node) {
         var config = node.config;
         var table = rowTable(config);
-        var columns = table ? table.columns : [];
+        var columns = rowQueryColumns(table);
         var info = stepLists().where;
         var list = whereList(config.where);
         var keep = function () {
@@ -8290,7 +8296,7 @@
     function rowsGetFields(box, node) {
         var config = node.config;
         var table = rowTable(config);
-        var columns = table ? table.columns : [];
+        var columns = rowQueryColumns(table);
         var most = stepLists().where.limit || 50;
         var options = [[0, t('fl_row_table_pick')]].concat(stepLists().tables.map(function (item) { return [item.id, item.name]; }));
 

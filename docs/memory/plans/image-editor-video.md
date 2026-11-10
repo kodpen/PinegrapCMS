@@ -22,4 +22,4 @@ description: Plan (owner 2026-11-03): video editing inside the image editor: cli
 - Files larger than one request: uploaded and saved in chunks (V8); the limits are settings.
 
 ## Which files hold the rest?
-- `image-editor-video-steps.md`: steps V0-V11. The screens: 35-42 in `plans/image-editor/`, read with `image-editor-video-visuals.md`.
+- `image-editor-video-steps.md`: steps V0-V11; `image-editor-video-steps-2.md`: V7b, added later. The screens: 35-42 in `plans/image-editor/`, read with `image-editor-video-visuals.md`.

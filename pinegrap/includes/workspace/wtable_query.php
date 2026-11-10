@@ -143,8 +143,8 @@ function ws_wtable_query_refusal($columns, $query)
 
     $sort = (int) ($query['sort'] ?? 0);
 
-    if (($sort > 0) && (($columns[(string) $sort]['type'] ?? '') === 'lookup')) {
-        return lang('The rows cannot be sorted by a lookup column.');
+    if (($sort > 0) && ws_wtable_joined_type($columns[(string) $sort]['type'] ?? '')) {
+        return lang('The rows cannot be sorted by a lookup or rollup column.');
     }
 
     return (($sort > 0) && !isset($columns[(string) $sort])) ? lang('The rows are sorted by a column the table does not have.') : '';
@@ -404,7 +404,7 @@ function ws_wtable_screen_query_bar($self_url, $table_id, $columns, $screen, $te
         $choices = '<option value="">' . h(lang('Column…')) . '</option>';
 
         foreach ($columns as $column_id => $item) {
-            // A column no comparison takes (a lookup) is not offered.
+            // A column no comparison takes (a lookup, a rollup) is not offered.
             if (empty(ws_wtable_where_type_operators($item['type']))) {
                 continue;
             }

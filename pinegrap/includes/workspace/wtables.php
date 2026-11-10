@@ -97,6 +97,7 @@ function ws_wtable_column_types()
         'row' => lang('Row link'),
         'formula' => lang('Formula'),
         'lookup' => lang('Lookup'),
+        'rollup' => lang('Rollup'),
     );
 }
 
@@ -127,15 +128,16 @@ function ws_wtable_list_of($column)
 }
 
 /**
- * Whether a column type keeps cells; the value of a formula and of a
- * lookup (wtable_lookup.php) is worked out when the row is read instead.
+ * Whether a column type keeps cells; the value of a formula, a lookup
+ * (wtable_lookup.php) and a rollup (wtable_rollup.php) is worked out when
+ * the row is read instead.
  *
  * @param string $type
  * @return bool
  */
 function ws_wtable_type_stores($type)
 {
-    return isset(ws_wtable_column_types()[$type]) && !in_array($type, array('formula', 'lookup'), true);
+    return isset(ws_wtable_column_types()[$type]) && !in_array($type, array('formula', 'lookup', 'rollup'), true);
 }
 
 /**
@@ -176,8 +178,9 @@ function ws_wtable_length($text)
  * items are (text, the default, or number). row: table, the id of the
  * workflow table its cells link to (wtable_links.php). formula: expression, without
  * the leading =. lookup: link, a row link column of the table, and column, a
- * column of the linked table (wtable_lookup.php). text, person and checkbox
- * take none.
+ * column of the linked table (wtable_lookup.php). rollup: table, link, op,
+ * column, where and match (ws_wtable_rollup_options_check()). text, person
+ * and checkbox take none.
  *
  * @param string $type
  * @param mixed  $options
@@ -329,6 +332,16 @@ function ws_wtable_column_options_check($type, $options)
                 $value[$key] = (int) $id;
             }
 
+            break;
+
+        case 'rollup':
+            $rollup = ws_wtable_rollup_options_check($options);
+
+            if (!$rollup['ok']) {
+                return $fail($rollup['error']);
+            }
+
+            $value = $rollup['value'];
             break;
     }
 
@@ -1516,6 +1529,10 @@ function ws_wtable_column_create_check($viewer, $table, $input)
         $refused = ws_wtable_lookup_column_refusal($viewer, $table, $check['sets']);
     }
 
+    if ($refused === null) {
+        $refused = ws_wtable_rollup_column_refusal($viewer, $table, $check['sets']);
+    }
+
     return ($refused !== null) ? $refused : $check;
 }
 
@@ -1625,6 +1642,10 @@ function ws_wtable_column_update_check($viewer, $table, $column, $input)
 
     if ($refused === null) {
         $refused = ws_wtable_lookup_column_refusal($viewer, $table, array('type' => (string) $column['type']) + $check['sets']);
+    }
+
+    if ($refused === null) {
+        $refused = ws_wtable_rollup_column_refusal($viewer, $table, array('type' => (string) $column['type']) + $check['sets']);
     }
 
     return ($refused !== null) ? $refused : $check;

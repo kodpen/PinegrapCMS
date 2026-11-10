@@ -235,11 +235,14 @@ function test_workspace_wtable_lookup_filled_where_read()
 		}
 
 		$source = pg_test_function_source($function);
-		pg_assert_true((strpos($source, 'ws_wtable_lookup_fill') !== false) || (strpos($source, 'ws_api_wtable_rows_present') !== false), $function);
+		pg_assert_true((strpos($source, 'ws_wtable_joined_fill') !== false) || (strpos($source, 'ws_api_wtable_rows_present') !== false), $function);
 	}
 
+	pg_assert_true(strpos(pg_test_function_source('ws_wtable_joined_fill'), 'ws_wtable_lookup_fill') !== false);
+	pg_assert_true(strpos(pg_test_function_source('ws_api_wtable_rows_present'), 'ws_wtable_joined_fill') !== false);
+
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_wtables.php');
-	pg_assert_same(4, substr_count($screen, 'ws_wtable_lookup_fill('), 'board, download, page and row form');
+	pg_assert_same(4, substr_count($screen, 'ws_wtable_joined_fill('), 'board, download, page and row form');
 	pg_assert_same(3, substr_count($screen, 'ws_wtable_people_with_lookups('));
 
 	$hints = pg_test_function_source('ws_flow_ai_catalogue_hints');
