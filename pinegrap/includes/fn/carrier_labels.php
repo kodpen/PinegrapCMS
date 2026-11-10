@@ -855,7 +855,7 @@ function pg_label_settings_key($key)
  * The name a driver's input is posted under.
  *
  * @param string $key
- * @param string $field a field name, or 'present' / 'enabled' / 'row'
+ * @param string $field a field name, or 'present' / 'enabled' / 'row' / 'auto_label'
  * @return string
  */
 function pg_label_input_name($key, $field)
@@ -992,15 +992,22 @@ function pg_label_ready($key)
  * driver is switched on. Only a change is written, and a driver never set
  * up gets no row while it is off with every value at its default.
  *
+ * A driver that can create keeps its automatic label switch in the values
+ * beside its fields: auto_label '1' and auto_label_since, the time it was
+ * turned on (kept while it stays on with the driver), so no order paid
+ * before then gets a label (includes/fn/shipment_label_auto.php). While it
+ * is off neither value is kept.
+ *
  * @param string $key
  * @param array  $fields pg_label_fields()
  * @param array  $post
  * @param array  $stored pg_label_settings()
+ * @param int    $now    0 for time()
  * @return array posted, key, values, secrets (only the newly typed ones),
  *               enabled, changed, test (its connection test was asked for),
  *               marks (input name => sentence)
  */
-function pg_label_settings_decide($key, $fields, $post, $stored)
+function pg_label_settings_decide($key, $fields, $post, $stored, $now = 0)
 {
     if (!is_array($post) || !isset($post[pg_label_input_name($key, 'present')])) {
         return array('posted' => false);
@@ -1064,9 +1071,24 @@ function pg_label_settings_decide($key, $fields, $post, $stored)
         $marks[pg_label_input_name($key, $name)] = $sentence;
     }
 
+    $stored_values = (isset($stored['values']) && is_array($stored['values'])) ? $stored['values'] : array();
+    $auto_was_on = isset($stored_values['auto_label']) && ((string) $stored_values['auto_label'] === '1');
+    $auto_turned_off = false;
+
+    if (pg_label_can($key, 'create')) {
+        if ($enabled && ($posted('auto_label') === '1')) {
+            $since = ($auto_was_on && !empty($stored['enabled'])) ? (int) (isset($stored_values['auto_label_since']) ? $stored_values['auto_label_since'] : 0) : 0;
+
+            $values['auto_label'] = '1';
+            $values['auto_label_since'] = (string) (($since > 0) ? $since : (((int) $now > 0) ? (int) $now : time()));
+        } else {
+            $auto_turned_off = $auto_was_on;
+        }
+    }
+
     if (!empty($stored['exists'])) {
-        $compare = isset($stored['values']) ? $stored['values'] : array();
-        $changed = ($enabled !== !empty($stored['enabled']));
+        $compare = $stored_values;
+        $changed = ($enabled !== !empty($stored['enabled'])) || $auto_turned_off;
     } else {
         $compare = array();
 
@@ -1329,6 +1351,22 @@ function pg_label_settings_rows()
                                                                                         <div class="pg-f-md">
                                                                                             <label class="form-label" for="' . h($id) . '">' . h($field['label']) . '</label>
                                                                                             ' . $input . $help . '
+                                                                                        </div>';
+        }
+
+        // The automatic label once an order is paid
+        // (includes/fn/shipment_label_auto.php).
+        if (pg_label_can($key, 'create')) {
+            $auto_id = pg_label_input_name($key, 'auto_label');
+            $auto_on = isset($settings['values']['auto_label']) && ($settings['values']['auto_label'] === '1');
+
+            $html .= '
+                                                                                        <div class="col-12">
+                                                                                            <div class="form-field">
+                                                                                                <div class="switch"><input value="1"' . ($auto_on ? ' checked="checked"' : '') . ' type="checkbox" id="' . h($auto_id) . '" name="' . h($auto_id) . '"/></div>
+                                                                                                <label class="" for="' . h($auto_id) . '">' . lang('Create the label automatically once the order is paid') . '</label>
+                                                                                                <div class="form-text">' . lang('For orders paid after this is switched on, within 3 days of payment, at most 10 labels each time the scheduled job runs. Each address is tried once: when the service refuses, the order shows it and Create Label stays.') . '</div>
+                                                                                            </div>
                                                                                         </div>';
         }
 

@@ -44,13 +44,15 @@ define('PG_SHIPMENT_LABEL_KEEP_DAYS_MAX', 90);
 define('PG_SHIPMENT_LABEL_SWEEP_LIMIT', 500);
 
 /**
- * The states a label row takes.
+ * The states a label row takes. A failed row marks an address whose
+ * automatic label could not be made (includes/fn/shipment_label_auto.php):
+ * it has no number, no document and is never active.
  *
  * @return array
  */
 function pg_shipment_label_states()
 {
-    return array('active', 'cancelled');
+    return array('active', 'cancelled', 'failed');
 }
 
 /**
@@ -1254,6 +1256,13 @@ function pg_shipment_label_customer_headers($format, $file_name)
 function pg_shipment_label_document($row)
 {
     $out = array('ok' => false, 'error' => '', 'document' => '', 'format' => '');
+
+    // An automatic label that could not be made has no document anywhere.
+    if ((string) $row['state'] === 'failed') {
+        $out['error'] = lang('The automatic label could not be created, so there is no label to print.');
+        return $out;
+    }
+
     $path = ((int) $row['label_removed_at'] === 0) ? pg_shipment_label_path((string) $row['label_file']) : '';
 
     if (($path !== '') && is_file($path)) {

@@ -195,6 +195,23 @@ if ($shipment_labels_removed > 0) {
 
 }
 
+// Labels of paid orders, made by the carrier label services whose automatic
+// label is switched on (includes/fn/shipment_label_auto.php); never in the
+// checkout request. A failure is logged by the run itself.
+if (ECOMMERCE) {
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipment_label_auto.php');
+
+    $shipment_labels_auto = pg_shipment_label_auto_run();
+
+    if ($shipment_labels_auto['created'] > 0) {
+
+        log_activity(lang(array('string' => 'general job created {var:1} shipping label(s) for paid orders', 'vars' => array(pg_format_number($shipment_labels_auto['created'], 0)))), 'UNKNOWN');
+
+    }
+
+}
+
 // Card data of processed orders (includes/fn/ecommerce.php): an order that
 // left complete through any path loses its card number, and no security code
 // stays stored. Once an hour; a tick between passes reads one small file.
