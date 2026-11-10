@@ -1636,6 +1636,7 @@ function ws_voice_message_send($viewer, $channel, $text, $options = array())
 
     $result = ws_message_send($viewer, $channel, '', array(
         'app_id'    => (int) ($options['app_id'] ?? 0),
+        'via_client_id' => (int) ($options['via_client_id'] ?? 0),
         'file_id'   => (int) $stored['file_id'],
         'file_name' => (string) $stored['name'],
         'parent_id' => (int) ($options['parent_id'] ?? 0),

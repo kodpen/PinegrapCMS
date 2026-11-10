@@ -13,7 +13,7 @@ description: The asker's own Claude session over OAuth: @Claude waits 2 min for 
 - `ws_api_claude_session_routes()` in `api_claude.php`: list, brief, claim, answer, fail, change-types, record, through an OAuth connection (`ws_api_claude_session_device()`), still `'mcp' => false` (REST only). The instructions route stays the routine's.
 - `ws_api_claude_request_for_caller()`: another person's request is 404 to a connection; one held by the other side is 409 `held`. The list shows each side only what `ws_claude_caller_may()` lets it take.
 - A connection's claim skips the instructions check and writes `claimed_device_id`; the routine's claim and the connection's both need `claimed_device_id = 0`.
-- Answer and fail write with `ws_api_writer_app_id()`: the routine as Claude's application, a connection as its connection writes (today the connection's application; A8a2 makes it the person with `via`). The 👀/✅ stay Claude's.
+- Answer and fail write with `ws_api_message_writer()`: the routine as Claude's application, a connection as the asker with `via_client_id` (A8a2). The 👀/✅ stay Claude's.
 
 ## When does the routine take a held request?
 - `ws_claude_dispatch()` counts and `ws_claude_fire()` marks sent only `ws_claude_routine_ids()`: a held request starts no run and stays queued, so the next `ws_tick` of a screen or the hourly job sends it once its wait is over.
@@ -21,6 +21,13 @@ description: The asker's own Claude session over OAuth: @Claude waits 2 min for 
 ## What does the depth brake read?
 - `ws_agent_chain_entry()` (`agent_queue.php`, pure): a message with `via_client_id` > 0 is an agent's message, so two sessions answering each other stop as two agents do (`agent-doors.md`).
 
-## What is left for A8a2?
-- Writing a connection's message as the person (`sender_kind = 'user'`, `via_client_id`), the API's `via`, the "via <client>" badge, and the thread-follow decision treating such a message as an application's (`plans/agent-channel-steps-2.md`).
-- Schema step 11.0.184 `upgrade_2026_11_0_ws_agent_sessions()` brought both columns; not run on a dev DB in #8489.
+## How is a connection's message written? (A8a2)
+- Create, forward, file, voice and a Claude answer or fail through a connection write as its owner (`sender_kind = 'user'`, `via_client_id` the oauth_clients id; `ws_api_message_writer()`): the person's rate limit, auto-join and read mark apply.
+- The API message has `via` {client_id, name}, the screen payload `via` (the name). It asks no assistant, as the application's message did not (`ws_api_message_asks_assistants()`).
+- Reactions, notes, tasks, polls and approvals stay the application's.
+- `ws_message_by_person()` (messages.php) reads it as no person's own words: a discussion's follow decision treats it as an application's. Edit and delete in the panel are the person's, as for any message of theirs; the API's own-words routes stay refused to a connection.
+- The `workspace.message.created` webhook carries the person's `sender_id` and `app_id` 0 for it.
+- The "via <client>" badge on the channel screen (workspace.js, backend.src.css) reads the payload's `via` (drawn once #8520 has landed).
+
+## Schema
+- Step 11.0.184 `upgrade_2026_11_0_ws_agent_sessions()` brought both columns (#8489).

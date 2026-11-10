@@ -131,7 +131,67 @@ function test_workspace_claude_sessions_wiring()
 	pg_assert_contains('ws_claude_routine_ids(', $source('ws_claude_dispatch'), 'a request held for the asker starts no run');
 	pg_assert_contains('ws_claude_routine_ids(', $source('ws_claude_fire'), 'a held request is not marked sent');
 	pg_assert_contains('claimed_device_id', $source('ws_api_claude_claim'), 'the claiming connection is kept');
-	pg_assert_contains('ws_api_writer_app_id()', $source('ws_api_claude_answer'), 'a connection answers as its connection writes');
-	pg_assert_contains('ws_api_writer_app_id()', $source('ws_api_claude_fail'));
 	pg_assert_contains('via_client_id', $source('ws_agent_chain'));
+}
+
+function test_workspace_api_message_writer_of_a_connection()
+{
+	// A connection's message is its owner's, with the client it came through;
+	// a team devices session is the person's; a key writes as its application.
+	pg_assert_same(array('app_id' => 0, 'via_client_id' => 4), ws_api_message_writer_of(array('id' => 9, 'oauth_client_id' => 4), 31, true));
+	pg_assert_same(array('app_id' => 0, 'via_client_id' => 0), ws_api_message_writer_of(array('id' => 9, 'oauth_client_id' => 0), 31, true));
+	pg_assert_same(array('app_id' => 31, 'via_client_id' => 0), ws_api_message_writer_of(null, 31, true));
+	pg_assert_same(array('app_id' => 31, 'via_client_id' => 0), ws_api_message_writer_of(array('id' => 9, 'oauth_client_id' => 4), 31, false), 'before the step: the application, as before');
+}
+
+function test_workspace_api_message_via()
+{
+	pg_assert_same(array('client_id' => 4, 'name' => 'Claude Code'), ws_api_message_via(array('via_client_id' => 4), array(4 => 'Claude Code')));
+	pg_assert_same(null, ws_api_message_via(array('via_client_id' => 0), array()));
+	pg_assert_same(null, ws_api_message_via(array(), array()), 'no column yet');
+	pg_assert_same(array('client_id' => 5, 'name' => ''), ws_api_message_via(array('via_client_id' => 5), array()), 'a client deleted since');
+	pg_assert_same('WorkspaceMessageVia?', ws_api_message_schema()['via']);
+	pg_assert_same(array('client_id' => 'integer', 'name' => 'string'), ws_api_message_via_schema());
+}
+
+function test_workspace_connection_message_wakes_what_the_application_message_woke()
+{
+	// Before the step a connection wrote as the application, and an
+	// application's message asked no assistant; written as the person with
+	// via, it still asks none.
+	pg_assert_true(!ws_api_message_asks_assistants(31, 'message'), 'the application\'s message');
+	pg_assert_true(!ws_api_message_asks_assistants(0, 'message', 4), 'the same message written through the connection');
+	pg_assert_true(ws_api_message_asks_assistants(0, 'message'), 'the person\'s own device asks as the panel does');
+	pg_assert_true(!ws_api_message_asks_assistants(0, 'note'));
+}
+
+function test_workspace_connection_message_wiring()
+{
+	$source = function ($name) {
+		$reflection = new ReflectionFunction($name);
+		$lines = file($reflection->getFileName());
+
+		return implode('', array_slice($lines, $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+	};
+
+	pg_assert_contains('via_client_id', $source('ws_message_send'), 'the client is stored on the message');
+	pg_assert_contains("'via'", $source('ws_message_payload'), 'the screen gets the client\'s name');
+	pg_assert_contains("'via'", $source('ws_api_message_present'));
+
+	foreach (array('ws_api_messages_create', 'ws_api_messages_forward', 'ws_api_files_create', 'ws_api_messages_voice', 'ws_api_claude_answer', 'ws_api_claude_fail') as $name) {
+		pg_assert_contains('ws_api_message_writer()', $source($name), $name);
+	}
+
+	// A message written through a connection decides a discussion's
+	// following as an application's does.
+	pg_assert_contains('ws_message_by_person(', $source('ws_message_ask_assistants'));
+}
+
+function test_workspace_message_by_person()
+{
+	pg_assert_true(ws_message_by_person(array('sender_kind' => 'user', 'via_client_id' => 0)));
+	pg_assert_true(ws_message_by_person(array('sender_kind' => 'user')));
+	pg_assert_true(!ws_message_by_person(array('sender_kind' => 'user', 'via_client_id' => 4)));
+	pg_assert_true(!ws_message_by_person(array('sender_kind' => 'app', 'via_client_id' => 0)));
+	pg_assert_true(!ws_message_by_person(null));
 }

@@ -59,8 +59,8 @@ function ws_api_app_id()
  * Does a call made from this device row write as the person? A team devices
  * session does: the phone is the person's own, not an integration, so their
  * words carry their name the way the panel's do. An OAuth connection is a
- * device row too, and keeps writing as the application until it is settled
- * how a connection's words are shown.
+ * device row too: its messages are its owner's with the client named
+ * (ws_api_message_writer()); its other writes stay the application's.
  *
  * @param array|null $device api_devices row, null for an application key
  * @return bool
@@ -82,6 +82,68 @@ function ws_api_writer_app_id()
     $device = function_exists('api_current_device') ? api_current_device() : null;
 
     return ws_api_device_writes_as_person($device) ? 0 : ws_api_app_id();
+}
+
+/**
+ * Who a message written now is written as. Pure.
+ *
+ * A team devices session writes as the person; an OAuth connection too, with
+ * the client it came through kept on the message (via_client_id), so it is
+ * drawn with the person's name and a "via <client>" badge and the person's
+ * rate limit, joining and read mark apply; a key writes as its application.
+ * Before the schema step a connection writes as the application, as it did.
+ *
+ * @param array|null $device api_devices row, null for an application key
+ * @param int        $app_id ws_api_app_id()
+ * @param bool       $ready  ws_claude_sessions_ready()
+ * @return array app_id (0: the person), via_client_id
+ */
+function ws_api_message_writer_of($device, $app_id, $ready)
+{
+    $client = is_array($device) ? (int) ($device['oauth_client_id'] ?? 0) : 0;
+
+    if (ws_api_device_writes_as_person($device)) {
+        return array('app_id' => 0, 'via_client_id' => 0);
+    }
+
+    if (($client > 0) && $ready) {
+        return array('app_id' => 0, 'via_client_id' => $client);
+    }
+
+    return array('app_id' => (int) $app_id, 'via_client_id' => 0);
+}
+
+/**
+ * ws_api_message_writer_of() for this call.
+ *
+ * @return array app_id, via_client_id
+ */
+function ws_api_message_writer()
+{
+    $device = function_exists('api_current_device') ? api_current_device() : null;
+
+    return ws_api_message_writer_of($device, ws_api_app_id(), function_exists('ws_claude_sessions_ready') && ws_claude_sessions_ready());
+}
+
+/**
+ * The client a message was written through, as the API shows it: null for
+ * none. Pure.
+ *
+ * @param array    $row   ws_messages row
+ * @param string[] $names oauth_clients names by id (ws_message_via_names())
+ * @return array|null client_id, name ('' for a client deleted since)
+ */
+function ws_api_message_via($row, $names)
+{
+    $id = (int) ($row['via_client_id'] ?? 0);
+
+    return ($id > 0) ? array('client_id' => $id, 'name' => (string) ($names[$id] ?? '')) : null;
+}
+
+// What ws_api_message_via() returns.
+function ws_api_message_via_schema()
+{
+    return array('client_id' => 'integer', 'name' => 'string');
 }
 
 /**
@@ -860,6 +922,8 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         'checks'         => $deleted ? array() : ws_api_message_checks($row['body'], $checks[(int) $row['id']] ?? array()),
         'mail'           => $deleted ? null : $mail,
         'forwards'       => ws_api_message_forwards($row, $forwards),
+        // The OAuth client a person's message was written through.
+        'via'            => ws_api_message_via($row, ws_message_via_names(array($row))),
         'created_at'  => api_time($row['created_at']),
     );
 }
@@ -900,6 +964,7 @@ function ws_api_message_schema()
             'file_name'           => 'string',
             'created_at'          => 'string?',
         )),
+        'via'         => 'WorkspaceMessageVia?',
         'created_at'  => 'string',
     );
 }
@@ -1351,7 +1416,8 @@ function ws_api_messages_create($params)
 
     $kind = (string) ($params['kind'] ?? 'message');
     $ack = !empty($params['ack']);
-    $app_id = ws_api_writer_app_id();
+    $writer = ws_api_message_writer();
+    $app_id = $writer['app_id'];
 
     // A read receipt is asked for only where it may be, and that is settled
     // before anything is written. The message about to be written comes
@@ -1404,6 +1470,7 @@ function ws_api_messages_create($params)
     $result = ws_message_send($viewer, $channel, (string) $params['text'], array(
         'kind'      => $kind,
         'app_id'    => $app_id,
+        'via_client_id' => $writer['via_client_id'],
         'parent_id' => $parent_id,
     ));
 
@@ -1419,7 +1486,7 @@ function ws_api_messages_create($params)
 
     // @Claude, @ai or an MCP server's alias written from the person's own
     // device asks as it does from the panel's composer.
-    if (ws_api_message_asks_assistants($app_id, $kind)) {
+    if (ws_api_message_asks_assistants($app_id, $kind, $writer['via_client_id'])) {
         ws_api_assistants_carry_on(ws_message_ask_assistants($viewer, $channel, $row['id'], (string) $params['text']));
     }
 
@@ -1431,16 +1498,17 @@ function ws_api_messages_create($params)
  * message there carrying a copy of each. It is an ordinary write, not a
  * change to the person's words: the copies are frozen as they were, and the
  * new message carries the writer's name like any other message, so an
- * application writes it as itself (ws_api_writer_app_id()).
+ * application writes it as itself (ws_api_message_writer()).
  */
 function ws_api_messages_forward($params)
 {
     $viewer = ws_api_viewer();
     $target = ws_api_channel_or_404($viewer, $params['id']);
     $text = (string) ($params['text'] ?? '');
-    $app_id = ws_api_writer_app_id();
+    $writer = ws_api_message_writer();
+    $app_id = $writer['app_id'];
 
-    $checked = ws_forward_to_channel_check($viewer, (array) $params['message_ids'], $target, $text, array('app_id' => $app_id));
+    $checked = ws_forward_to_channel_check($viewer, (array) $params['message_ids'], $target, $text, array('app_id' => $app_id, 'via_client_id' => $writer['via_client_id']));
 
     if (!$checked['ok']) {
         if ($checked['field'] === '') {
@@ -1464,7 +1532,7 @@ function ws_api_messages_forward($params)
         'forwards'          => count($checked['rows']),
     ));
 
-    $result = ws_forward_to_channel($viewer, (array) $params['message_ids'], $target, $text, array('app_id' => $app_id));
+    $result = ws_forward_to_channel($viewer, (array) $params['message_ids'], $target, $text, array('app_id' => $app_id, 'via_client_id' => $writer['via_client_id']));
 
     if (!$result['ok']) {
         api_fail_validation($result['error'], 'message_ids');
@@ -1479,15 +1547,18 @@ function ws_api_messages_forward($params)
  * Does a message written now ask the assistants it names? Only a person's
  * own message, as the panel's composer writes it: an application's words
  * never ask one (an agent quoting an alias in its answer would ask itself
- * again), and a decision or a note is kept, not asked.
+ * again), and a decision or a note is kept, not asked. A message written
+ * through an OAuth connection asks what the application's message asked
+ * before it was written as the person: none.
  *
- * @param int    $app_id ws_api_writer_app_id()
- * @param string $kind   message | note | decision
+ * @param int    $app_id        ws_api_message_writer()['app_id']
+ * @param string $kind          message | note | decision
+ * @param int    $via_client_id ws_api_message_writer()['via_client_id']
  * @return bool
  */
-function ws_api_message_asks_assistants($app_id, $kind)
+function ws_api_message_asks_assistants($app_id, $kind, $via_client_id = 0)
 {
-    return ((int) $app_id === 0) && ((string) $kind === 'message');
+    return ((int) $app_id === 0) && ((int) $via_client_id === 0) && ((string) $kind === 'message');
 }
 
 /**
@@ -1651,7 +1722,8 @@ function ws_api_files_create($params)
         api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
     }
 
-    $app_id = ws_api_writer_app_id();
+    $writer = ws_api_message_writer();
+    $app_id = $writer['app_id'];
 
     // The person's limit is met before the file is kept, so a message that
     // would be refused leaves no file behind.
@@ -1707,6 +1779,7 @@ function ws_api_files_create($params)
 
     $result = ws_message_send($viewer, $channel, (string) ($params['text'] ?? ''), array(
         'app_id'    => $app_id,
+        'via_client_id' => $writer['via_client_id'],
         'file_id'   => $stored['file_id'],
         'file_name' => $stored['name'],
         'parent_id' => $parent_id,
@@ -1723,7 +1796,7 @@ function ws_api_files_create($params)
     if (function_exists('ws_voice_queue')) {
         $queued = ws_voice_queue($channel, $result['message_id'], $stored['file_id'], $stored['name']);
 
-        if (ws_api_message_asks_assistants($app_id, 'message')) {
+        if (ws_api_message_asks_assistants($app_id, 'message', $writer['via_client_id'])) {
             ws_api_assistants_carry_on(ws_voice_posted($viewer, $channel, $result['message_id'], (string) ($params['text'] ?? ''), $stored['name'], $queued));
         }
     }
@@ -1762,9 +1835,11 @@ function ws_api_messages_voice($params)
         api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
     }
 
-    $app_id = ws_api_writer_app_id();
+    $writer = ws_api_message_writer();
+    $app_id = $writer['app_id'];
     $options = array(
         'app_id'    => $app_id,
+        'via_client_id' => $writer['via_client_id'],
         'parent_id' => (int) ($params['reply_to'] ?? 0),
         'voice'     => (string) ($params['voice'] ?? ''),
     );

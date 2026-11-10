@@ -210,6 +210,7 @@ function ws_forward_to_channel_check($viewer, $message_ids, $target, $comment = 
     $checked = ws_message_send_check($viewer, $target, (string) $comment, array(
         'forwards' => count($picked['rows']),
         'app_id'   => (int) ($options['app_id'] ?? 0),
+        'via_client_id' => (int) ($options['via_client_id'] ?? 0),
     ));
 
     if (!$checked['ok']) {
