@@ -119,3 +119,47 @@ function test_workspace_agent_activity_place()
 	pg_assert_same(array('name' => '#ops', 'url' => 'workspace.php?channel=3'), ws_agent_activity_place(array('message_id' => 0) + $row, 'ops', true), 'a wake has its channel only');
 	pg_assert_same(array('name' => '', 'url' => ''), ws_agent_activity_place(array('channel_id' => 0, 'message_id' => 0), 'x', true));
 }
+
+function test_workspace_ai_usage_tokens()
+{
+	pg_assert_same(array('in' => 120, 'out' => 30), ws_ai_usage_tokens(array('usage' => array('prompt_tokens' => 120, 'completion_tokens' => 30, 'total_tokens' => 150))), 'the OpenAI shape');
+	pg_assert_same(array('in' => 7, 'out' => 2), ws_ai_usage_tokens(array('usage' => array('input_tokens' => '7', 'output_tokens' => '2'))), 'input and output names');
+	pg_assert_same(array('in' => 0, 'out' => 0), ws_ai_usage_tokens(array('choices' => array())), 'no usage counts nothing');
+	pg_assert_same(array('in' => 0, 'out' => 0), ws_ai_usage_tokens(null));
+	pg_assert_same(array('in' => 0, 'out' => 5), ws_ai_usage_tokens(array('usage' => array('prompt_tokens' => -3, 'completion_tokens' => 5))), 'never below 0');
+	pg_assert_same(array('in' => 0, 'out' => 0), ws_ai_usage_tokens(array('usage' => 'many')));
+}
+
+function test_workspace_ai_tokens_periods()
+{
+	$periods = ws_ai_tokens_periods(array(
+		array('week' => 1, 'tokens_in' => '100', 'tokens_out' => '20'),
+		array('week' => '0', 'tokens_in' => 50, 'tokens_out' => 5),
+		array('week' => 1, 'tokens_in' => null, 'tokens_out' => null),
+	));
+
+	pg_assert_same(array('in' => 100, 'out' => 20), $periods['d7']);
+	pg_assert_same(array('in' => 150, 'out' => 25), $periods['d30'], 'the week is within the month');
+	pg_assert_same(array('d7' => array('in' => 0, 'out' => 0), 'd30' => array('in' => 0, 'out' => 0)), ws_ai_tokens_periods(array()));
+}
+
+function test_workspace_agent_activity_tokens()
+{
+	$tokens = ws_agent_activity_tokens(array(
+		array('agent' => 'model:9', 'status' => 'answered', 'week' => 1, 'tokens_in' => 10, 'tokens_out' => 4),
+		array('agent' => 'model:9', 'status' => 'failed', 'week' => 0, 'tokens_in' => 6, 'tokens_out' => 0),
+		array('agent' => 'app:4', 'status' => 'answered', 'week' => 1, 'tokens_in' => 0, 'tokens_out' => 0),
+		array('agent' => 'ai', 'status' => 'answered', 'week' => 1, 'tokens_in' => 99, 'tokens_out' => 99),
+	));
+
+	pg_assert_same(array(9, 4), array_keys($tokens), 'Pinegrap AI is not a registry agent');
+	pg_assert_same(array('in' => 10, 'out' => 4), $tokens[9]['d7']);
+	pg_assert_same(array('in' => 16, 'out' => 4), $tokens[9]['d30'], 'every status counts');
+}
+
+function test_workspace_ai_tokens_text()
+{
+	$text = ws_ai_tokens_line(array('d7' => array('in' => 5, 'out' => 2), 'd30' => array('in' => 8, 'out' => 3)));
+
+	pg_assert_true(strpos($text, '5') !== false && strpos($text, '8') !== false, 'both periods in the line');
+}

@@ -339,7 +339,10 @@ function ws_ai_http($method, $path, $payload = null, $timeout = 15)
     $running = function_exists('ws_model_running') ? ws_model_running() : null;
 
     if ($running && ($path === '/chat/completions')) {
-        return ws_model_http($running, $method, $path, $payload, $timeout);
+        $out = ws_model_http($running, $method, $path, $payload, $timeout);
+        ws_ai_usage_add($out);
+
+        return $out;
     }
 
     if (!function_exists('curl_init')) {
@@ -391,6 +394,10 @@ function ws_ai_http($method, $path, $payload = null, $timeout = 15)
         $out['headers'] = $answer['headers'];
         $out['body'] = $answer['body'];
         $out['json'] = json_decode($out['body'], true);
+    }
+
+    if ($path === '/chat/completions') {
+        ws_ai_usage_add($out);
     }
 
     return $out;
@@ -1276,7 +1283,10 @@ function ws_ai_kick($budget = WS_AI_BUDGET)
             $row = ws_ai_request_row($row['id']);
         }
 
+        // The answers of this step add their tokens to the request.
+        ws_ai_usage_request((int) $row['id']);
         $step = ws_ai_step($row);
+        ws_ai_usage_request(0);
 
         if ($step === 'held') {
             $status = 'held';
@@ -5044,6 +5054,7 @@ function ws_ai_settings_card($self_url, $viewer)
                                 <button type="submit" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Try the connection')) . '</button>
                                 <div class="form-text">' . h(lang('Checks the licence and asks the model for a one-word answer; it may take up to a minute.')) . '</div>
                             </form>' : '') . '
+                            ' . (ws_ai_tokens_ready() ? '<div class="small fg-secondary mb-5">' . h(ws_ai_tokens_line(ws_ai_read_tokens())) . '</div>' : '') . '
                             <div class="small fw-semibold mb-1">' . h(lang('The latest requests')) . '</div>
                             <ul class="list-unstyled ws-claude-recent">' . $recent . '</ul>
                         </div>

@@ -5,7 +5,9 @@
  * Workspace - what the registry's app and model agents did, on the Agents
  * card: their requests of the last 7 and 30 days by state, the next wake,
  * the push door's failures, and their newest waiting and failed requests
- * with Cancel, Ask again and Knock now.
+ * with Cancel, Ask again and Knock now. The tokens a request's answers
+ * used are counted here too (ws_ai_usage_add()), for Pinegrap AI and the
+ * model assistants, and shown as sums of 7 and 30 days.
  *
  * A request is matched to its agent by every value its row may carry
  * (ws_agent_activity_keys()), so older rows are still counted after the
@@ -154,6 +156,110 @@ function ws_agent_activity_counts_text($counts)
 }
 
 /**
+ * The tokens one answer used, from its usage: prompt_tokens and
+ * completion_tokens in the OpenAI shape, input_tokens and output_tokens
+ * where a provider names them so. A provider that sends no usage counts
+ * nothing. Pure.
+ *
+ * @param mixed $json the decoded answer
+ * @return array in, out (int, never below 0)
+ */
+function ws_ai_usage_tokens($json)
+{
+    $usage = (is_array($json) && isset($json['usage']) && is_array($json['usage'])) ? $json['usage'] : array();
+    $read = function ($names) use ($usage) {
+        foreach ($names as $name) {
+            if (isset($usage[$name]) && is_numeric($usage[$name])) {
+                return max(0, (int) $usage[$name]);
+            }
+        }
+
+        return 0;
+    };
+
+    return array(
+        'in'  => $read(array('prompt_tokens', 'input_tokens')),
+        'out' => $read(array('completion_tokens', 'output_tokens')),
+    );
+}
+
+/**
+ * The tokens of the last 30 days, and of the last 7 within them, from rows
+ * already narrowed to one agent. Pure.
+ *
+ * @param array[] $rows week (1: within 7 days), tokens_in, tokens_out
+ * @return array d7 => in, out; d30 => in, out
+ */
+function ws_ai_tokens_periods($rows)
+{
+    $out = array('d7' => array('in' => 0, 'out' => 0), 'd30' => array('in' => 0, 'out' => 0));
+
+    foreach ((array) $rows as $row) {
+        $in = max(0, (int) ($row['tokens_in'] ?? 0));
+        $used = max(0, (int) ($row['tokens_out'] ?? 0));
+
+        $out['d30']['in'] += $in;
+        $out['d30']['out'] += $used;
+
+        if ((int) ($row['week'] ?? 0) === 1) {
+            $out['d7']['in'] += $in;
+            $out['d7']['out'] += $used;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The tokens of every registry agent from grouped rows, both request key
+ * shapes summed. Pure.
+ *
+ * @param array[] $rows agent, week, tokens_in, tokens_out
+ * @return array agent id => ws_ai_tokens_periods()
+ */
+function ws_agent_activity_tokens($rows)
+{
+    $grouped = array();
+
+    foreach ((array) $rows as $row) {
+        $id = ws_agent_activity_agent_id((string) ($row['agent'] ?? ''));
+
+        if ($id > 0) {
+            $grouped[$id][] = $row;
+        }
+    }
+
+    return array_map('ws_ai_tokens_periods', $grouped);
+}
+
+/**
+ * One period's tokens in words. Pure but for the site's number separators.
+ *
+ * @param array $period in, out
+ * @return string
+ */
+function ws_ai_tokens_text($period)
+{
+    $format = function ($n) {
+        return function_exists('pg_format_number') ? pg_format_number((int) $n, 0) : number_format((int) $n);
+    };
+
+    return lang(array('string' => '{var:1} in, {var:2} out', 'vars' => array($format($period['in'] ?? 0), $format($period['out'] ?? 0))));
+}
+
+/**
+ * The tokens of 7 and 30 days in one line. Pure but for the site's number
+ * separators.
+ *
+ * @param array $tokens ws_ai_tokens_periods()
+ * @return string
+ */
+function ws_ai_tokens_line($tokens)
+{
+    return lang(array('string' => 'Tokens, last 7 days: {var:1}; last 30 days: {var:2}', 'vars' => array(ws_ai_tokens_text($tokens['d7'] ?? array()), ws_ai_tokens_text($tokens['d30'] ?? array()))));
+}
+
+/**
  * Which buttons a request's line offers its reader: Cancel while it waits,
  * Ask again when it failed on a message, Knock now while it waits on a
  * push door. The one who asked and an administrator use them, as an MCP
@@ -233,11 +339,97 @@ function ws_agent_activity_read_counts($agents)
     }
 
     $now = time();
-
-    return ws_agent_activity_counts((array) db_items("SELECT agent, status, (created_at > '" . ($now - 7 * 86400) . "') AS week, COUNT(*) AS n
+    $tokens = ws_ai_tokens_ready() ? ', SUM(tokens_in) AS tokens_in, SUM(tokens_out) AS tokens_out' : '';
+    $rows = (array) db_items("SELECT agent, status, (created_at > '" . ($now - 7 * 86400) . "') AS week, COUNT(*) AS n" . $tokens . "
         FROM ws_ai_requests
         WHERE agent IN (" . implode(', ', $keys) . ") AND created_at > '" . ($now - 30 * 86400) . "'
-        GROUP BY agent, status, week"));
+        GROUP BY agent, status, week");
+    $counts = ws_agent_activity_counts($rows);
+
+    foreach (ws_agent_activity_tokens($rows) as $id => $periods) {
+        if (isset($counts[$id])) {
+            $counts[$id]['tokens'] = $periods;
+        }
+    }
+
+    return $counts;
+}
+
+/**
+ * Whether the schema step that added the token columns has run.
+ *
+ * @return bool
+ */
+function ws_ai_tokens_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = pg_schema_has('ws_ai_requests', 'tokens_in') && pg_schema_has('ws_ai_requests', 'tokens_out');
+    }
+
+    return $ready;
+}
+
+/**
+ * The request whose answers are counted now: set by the shared loop around
+ * each ws_ai_step(), 0 outside it, so a call that answers no request (a
+ * translation, a bulk text, the connection try) counts nothing.
+ *
+ * @param int|false $set a request id to hold, 0 to let go, false to read
+ * @return int
+ */
+function ws_ai_usage_request($set = false)
+{
+    static $request_id = 0;
+
+    if ($set !== false) {
+        $request_id = max(0, (int) $set);
+    }
+
+    return $request_id;
+}
+
+/**
+ * Adds one answer's tokens to the request being answered.
+ *
+ * @param array $response ws_ai_http()
+ * @return void
+ */
+function ws_ai_usage_add($response)
+{
+    $request_id = ws_ai_usage_request();
+
+    if (($request_id <= 0) || !is_array($response) || !ws_ai_tokens_ready()) {
+        return;
+    }
+
+    $tokens = ws_ai_usage_tokens($response['json'] ?? null);
+
+    if (($tokens['in'] + $tokens['out']) <= 0) {
+        return;
+    }
+
+    db_q("UPDATE ws_ai_requests SET tokens_in = tokens_in + ?, tokens_out = tokens_out + ? WHERE id = ?", array($tokens['in'], $tokens['out'], $request_id));
+}
+
+/**
+ * Pinegrap AI's own tokens over the last 30 days.
+ *
+ * @return array ws_ai_tokens_periods()
+ */
+function ws_ai_read_tokens()
+{
+    if (!ws_ai_schema_ready() || !ws_ai_tokens_ready()) {
+        return ws_ai_tokens_periods(array());
+    }
+
+    $now = time();
+
+    return ws_ai_tokens_periods((array) db_items("SELECT (created_at > '" . ($now - 7 * 86400) . "') AS week, SUM(tokens_in) AS tokens_in, SUM(tokens_out) AS tokens_out
+        FROM ws_ai_requests
+        WHERE agent = 'ai' AND created_at > '" . ($now - 30 * 86400) . "'
+        GROUP BY week"));
 }
 
 /**
@@ -447,6 +639,12 @@ function ws_agent_activity_block($self_url, $viewer, $agent, $counts)
         lang('Last 7 days') . ': ' . ws_agent_activity_counts_text($mine['d7']),
         lang('Last 30 days') . ': ' . ws_agent_activity_counts_text($mine['d30']),
     );
+
+    // Claude and application agents run elsewhere: no figure of theirs.
+    if (($agent['kind'] === 'model') && ws_ai_tokens_ready()) {
+        $tokens = $mine['tokens'] ?? ws_ai_tokens_periods(array());
+        $facts[] = ws_ai_tokens_line($tokens);
+    }
 
     if ((int) $agent['wake_next_at'] > 0) {
         $facts[] = lang(array('string' => 'Next wake: {var:1}', 'vars' => date('d.m.Y H:i', (int) $agent['wake_next_at'])));

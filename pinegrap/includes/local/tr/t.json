@@ -9309,6 +9309,7 @@
     "Token: ^^__my_account_url^^": "Belirteç: ^^__my_account_url^^",
     "Token: ^^__my_account_url^^ — the link drops when there is none.": "Token: ^^__my_account_url^^ — yoksa bağlantı kalkar.",
     "Token: ^^__register_url^^ — the link drops when the site has no registration page.": "Belirteç: ^^__register_url^^ — sitede kayıt sayfası yoksa bağlantı gösterilmez.",
+    "Tokens, last 7 days: {var:1}; last 30 days: {var:2}": "Token, son 7 gün: {var:1}; son 30 gün: {var:2}",
     "Tokyo": "Tokyo",
     "Tokyo city fun run places sell out in under an hour": "Tokyo halk koşusunun kontenjanı bir saatten kısa sürede doldu",
     "Tokyo robotics show draws families for a hands-on weekend": "Tokyo robotik fuarı uygulamalı bir hafta sonu için aileleri ağırlıyor",
