@@ -23,7 +23,7 @@ description: Steps MG5-MG10 of plans/memory-as-guide.md: an overview each for fl
 
 - MG7 Paraşüt: `erp/erp-parasut-overview.md` for the 29 `erp-parasut-*` files.
 
-- MG8 Designer blocks: `designer/designer-blocks-overview.md` for the 26 `designer-blocks-*` files.
+- MG8 Designer blocks (done, #8469): `designer/designer-blocks-overview.md` for the 26 `designer-blocks-*` files.
 
 - MG9 Custom forms: `designer/custom-form-overview.md` for the 17 `custom-form-*` files.
 
