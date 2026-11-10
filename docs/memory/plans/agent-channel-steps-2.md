@@ -8,7 +8,10 @@ description: Steps A0-A9 of plans/agent-channel.md: registry, doors, wakes, chan
 
 - Done: A0 #7969, A1 #7970, A2 #7968, A3 #8038, A3b #8189, A3c #8235, A4a #8221, A4b1 #8246, A4b2 #8274, A5 #8187 #8188, A5b #8227, A6 #8191, A6b #8219, A7 #8242, A7b #8313, A9 #8236 #8254 #8252 #8299 #8293. What each built: `workspace/agent-registry.md`, `agent-doors.md`, `agent-wakes.md`, `agent-shown.md`, `channel-memory.md`, `agent-questions.md`, `model-assistants.md`, `agent-risk-tiers.md`, `agent-flows.md`, `agent-canvas-svg.md`; the door experiment `workflow/agent-channel-experiment.md`.
 
-- A8 (M) Further doors. After A4. The Claude Code channel plugin in a separate repository (`kodpen/pinegrap-claude-channel`: poll, claim, push the event, tools reply, fail, context, record, react, post), applied to Anthropic's channel list, under the shelved plan's security rules; per-person sessions over OAuth with the "via" badge; a chat box on the dashboard on the same catalogue.
+- A8 (M) Further doors. After A4. Cut in three:
+  - A8a (this repository): per-person sessions over OAuth (an `@Claude` ask goes to the asker's own connected session, else the site's) and the "via" badge on what a connection writes (the person's name with the connection's). Both need an owner answer and a schema step first (shelved `claude-code-channel` C4, C5).
+  - A8b (this repository): a chat box on the dashboard on the same catalogue, beside the Assistant card's job box (`ui/dashboard-v2-ai-card.md`). After A8a.
+  - The Claude Code channel plugin in a separate repository (`kodpen/pinegrap-claude-channel`: poll, claim, push the event, tools reply, fail, context, record, react, post), applied to Anthropic's channel list, under the shelved plan's security rules. Waits until that repository is opened.
 
 - Left for later, no step yet: a discussion following an agent (A4b2 left it out).
 
