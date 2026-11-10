@@ -1362,6 +1362,7 @@
     "Every column of this table is worked out by a formula.": "Bu tablonun her sütunu bir formülle hesaplanır.",
     "Every complete record of {var} that has a comment can be listed here, with its title and address.": "{var} formunun yorum almış her tamamlanmış kaydı, başlığı ve adresiyle burada listelenebilir.",
     "Every completed order, counter sales included. Invoices written in the ERP without an order are not counted.": "Kasa satışları dahil tamamlanmış her sipariş. ERP'de siparişsiz kesilen faturalar sayılmaz.",
+    "Every condition holds": "Tüm koşullar sağlanıyor",
     "Every consultation request, newest first: propose a time under each, then set the status.": "Her ön görüşme talebi, en yenisi önce: her birinin altına bir saat önerin, sonra durumunu ayarlayın.",
     "Every contact with an order already has an account.": "Siparişi olan her kişinin zaten bir cari hesabı var.",
     "Every control you put inside the widget is a field of this form; a field's settings live in the <strong>Form Field</strong> panel while the control is selected. Submissions are saved to this page.": "Widget'ın içine koyduğunuz her kontrol bu formun bir alanıdır; alanın ayarları kontrol seçiliyken <strong>Form Alanı</strong> panelinde. Gönderimler bu sayfaya kaydedilir.",

@@ -1359,6 +1359,7 @@
     "{var:1} of {var:2} records changed since their last check; the next run checks them.": "{var:2} kayıttan {var:1} tanesi son denetimden sonra değişti; sonraki çalışmada denetlenecek.",
     "{var:1} of {var:2} records waiting.": "{var:2} kayıttan {var:1} tanesi bekliyor.",
     "{var:1} of {var:2} requests took longer than {var:3} ms ({var:4}%)": "{var:2} isteğin {var:1} tanesi {var:3} ms üzerinde sürdü (%{var:4})",
+    "{var:1} of {var:2} rows": "{var:2} satırdan {var:1}",
     "{var:1} of {var:2} sections shown": "{var:2} bölümden {var:1} tanesi gösteriliyor",
     "{var:1} of {var:2} selected": "{var:2} seçenekten {var:1} tanesi seçili",
     "{var:1} of {var:2} shown": "{var:1} / {var:2} gösteriliyor",

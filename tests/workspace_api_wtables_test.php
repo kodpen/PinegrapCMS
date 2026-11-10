@@ -103,6 +103,24 @@ function test_ws_api_wtables_routes()
 	}
 }
 
+// The rows listing takes the screen's query: where, join, sort, dir.
+function test_ws_api_wtables_rows_list_takes_a_query()
+{
+	$routes = ws_api_wtables_test_routes();
+	$params = array();
+
+	foreach ($routes['workspace.table_rows.list']['params'] as $param) {
+		$params[$param['name']] = $param;
+	}
+
+	pg_assert_same(array('id', 'limit', 'cursor', 'where', 'join', 'sort', 'dir'), array_keys($params));
+	pg_assert_same('query', $params['where']['in']);
+	pg_assert_same(array('all', 'any'), $params['join']['values']);
+	pg_assert_same('int', $params['sort']['type']);
+	pg_assert_same(array('asc', 'desc'), $params['dir']['values']);
+	pg_assert_true(function_exists('ws_api_wtable_rows_query'));
+}
+
 // Reading and writing tables, columns and rows are tools, as notes are, and
 // so is restoring a deleted row; deleting a table or a column takes it from
 // everybody, the bin of tables is its owner's, and sharing is the person's

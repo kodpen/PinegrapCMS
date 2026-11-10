@@ -837,9 +837,59 @@ if (!$table) {
     $can_manage = ws_wtable_may($table['access'], 'manage');
     $columns = ws_wtable_columns($id);
     $after = (is_string($_GET['after'] ?? null) && ((int) $_GET['after'] > 0)) ? (int) $_GET['after'] : 0;
-    $page = ws_wtable_rows_page($id, $columns, $after, 100);
-
     $team = ws_team_members();
+    $team_names = array();
+
+    foreach ($team as $person) {
+        $team_names[(int) $person['id']] = array('name' => (string) $person['name']);
+    }
+
+    // The query bar: conditions as typed, read the screen's way into the
+    // values the conditions compare (money to minor units, a status by its
+    // label), and a sort. A query that does not fit the table is named and
+    // the rows show unfiltered.
+    $screen_query = ws_wtable_query_from_get($_GET);
+    $query = array('where' => array()) + $screen_query;
+    unset($query['typed']);
+
+    foreach ($screen_query['typed'] as $line) {
+        $column = $columns[(string) $line['column']] ?? null;
+        $query['where'][] = array('column' => $line['column'], 'op' => $line['op'],
+            'value' => is_array($column) ? ws_wtable_query_screen_value($column, $line['value'], $team_names, defined('DATE_FORMAT') ? (string) DATE_FORMAT : '') : $line['value']);
+    }
+
+    $query_refusal = ws_wtable_query_active($query) ? ws_wtable_query_refusal($columns, $query) : '';
+    $query_on = ws_wtable_query_active($query) && ($query_refusal === '');
+    $query_params = ws_wtable_query_params($screen_query);
+    $total_columns = array_filter($columns, function ($column) {
+        return ws_wtable_total_type($column['type']);
+    });
+    $totals_all = !empty($total_columns) && (($_GET['totals'] ?? '') === 'all');
+
+    if ($totals_all) {
+        $query_params['totals'] = 'all';
+    }
+
+    $query_qs = empty($query_params) ? '' : '&' . http_build_query($query_params);
+    $from = 0;
+    $query_rows = null;
+
+    if ($query_on) {
+        // Filtered or sorted: worked out over every row, paged by an offset.
+        $from = (is_string($_GET['from'] ?? null) && ((int) $_GET['from'] > 0)) ? (int) $_GET['from'] : 0;
+        $after = 0;
+        $query_rows = ws_wtable_query_rows($columns, ws_wtable_rows($id, $columns), $query);
+        $page = ws_wtable_query_page($query_rows, $from, 100);
+    } else {
+        $page = ws_wtable_rows_page($id, $columns, $after, 100);
+
+        if ($totals_all) {
+            $query_rows = ws_wtable_rows($id, $columns);
+        }
+    }
+
+    // What a link to this page of rows carries: the query and the page.
+    $page_qs = $query_qs . ($query_on ? ($from ? '&from=' . $from : '') : ($after ? '&after=' . $after : ''));
     $person_ids = array();
 
     foreach ($page['rows'] as $row) {
@@ -869,8 +919,51 @@ if (!$table) {
     // The rows.
     $head = '';
 
-    foreach ($columns as $column) {
-        $head .= '<th scope="col"' . (in_array($column['type'], array('number', 'money', 'formula'), true) ? ' class="text-end"' : '') . '>' . h($column['name']) . '</th>';
+    foreach ($columns as $column_id => $column) {
+        // A heading sorts by its column: up, then down, then the table's order.
+        $sorted = ((int) $screen_query['sort'] === (int) $column_id) ? (string) $screen_query['dir'] : '';
+        $next = array('' => array('sort' => (string) (int) $column_id), 'asc' => array('sort' => (string) (int) $column_id, 'dir' => 'desc'), 'desc' => array())[$sorted];
+        $sort_params = array_diff_key($query_params, array('sort' => 1, 'dir' => 1)) + $next;
+        $icon = array('' => '', 'asc' => ' <i class="bi bi-sort-up" aria-hidden="true"></i>', 'desc' => ' <i class="bi bi-sort-down" aria-hidden="true"></i>')[$sorted];
+
+        $head .= '<th scope="col"' . (in_array($column['type'], array('number', 'money', 'formula'), true) ? ' class="text-end"' : '')
+            . (($sorted !== '') ? ' aria-sort="' . (($sorted === 'asc') ? 'ascending' : 'descending') . '"' : '') . '>'
+            . '<a class="fg-reset text-decoration-none" href="' . h($table_url . (empty($sort_params) ? '' : '&' . http_build_query($sort_params))) . '#ws-wt-rows" title="' . h(lang('Sort by this column')) . '">' . h($column['name']) . $icon . '</a></th>';
+    }
+
+    // The totals line: sum, average, smallest and largest of each number,
+    // money and formula column, over the rows shown or every row the query
+    // keeps.
+    $totals_foot = '';
+    $totals_switch = '';
+
+    if (!empty($total_columns) && !empty($page['rows'])) {
+        $totals = ws_wtable_rows_totals($columns, $totals_all ? (array) $query_rows : $page['rows']);
+        $names = array('sum' => lang('Sum'), 'avg' => lang('Average'), 'min' => lang('Smallest'), 'max' => lang('Largest'));
+
+        foreach ($names as $key => $label) {
+            $cells = '';
+
+            foreach ($columns as $column_id => $column) {
+                $cells .= isset($totals[(string) $column_id])
+                    ? '<td class="text-end text-nowrap">' . h(ws_wtable_query_total_text($column, $totals[(string) $column_id][$key])) . '</td>'
+                    : '<td></td>';
+            }
+
+            $totals_foot .= '<tr class="small"><th scope="row" class="fw-normal fg-secondary text-end text-nowrap">' . h($label) . '</th>' . $cells . ($can_write ? '<td></td>' : '') . '</tr>';
+        }
+
+        $totals_foot = '<tfoot class="ws-wt-totals">' . $totals_foot . '</tfoot>';
+        $totals_switch = '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('Totals over')) . '">';
+
+        foreach (array('page' => lang('Rows shown'), 'all' => $query_on ? lang('All matching rows') : lang('All rows')) as $key => $label) {
+            $here = (($key === 'all') === $totals_all);
+            $switch_params = array_diff_key($query_params, array('totals' => 1)) + (($key === 'all') ? array('totals' => 'all') : array());
+            $totals_switch .= '<a class="btn btn-text theme-secondary' . ($here ? ' active' : '') . '" href="' . h($table_url . (empty($switch_params) ? '' : '&' . http_build_query($switch_params)) . ($query_on ? ($from ? '&from=' . $from : '') : ($after ? '&after=' . $after : ''))) . '#ws-wt-rows"'
+                . ($here ? ' aria-current="true"' : '') . '>' . h($label) . '</a>';
+        }
+
+        $totals_switch .= '</div>';
     }
 
     $lines = '';
@@ -905,7 +998,7 @@ if (!$table) {
         $tools = '';
 
         if ($can_write) {
-            $tools = '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . '&row=' . (int) $row['id'] . ($after ? '&after=' . $after : '')) . '#ws-wt-row-form" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>'
+            $tools = '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . '&row=' . (int) $row['id'] . $page_qs) . '#ws-wt-row-form" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>'
                 . ws_wtable_screen_action_button(array('action' => 'row_delete', 'row' => (int) $row['id'], 'revision' => (int) $row['revision']), lang('Delete'), 'bi-trash', ws_wtable_screen_delete_confirm('row', (string) $table['name'], $bin_days));
         }
 
@@ -914,23 +1007,29 @@ if (!$table) {
 
     $pager = '';
 
-    if ($after > 0) {
-        $pager .= '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url) . '#ws-wt-rows"><i class="bi bi-chevron-double-left me-1" aria-hidden="true"></i>' . h(lang('First page')) . '</a>';
+    if (($after > 0) || ($from > 0)) {
+        $pager .= '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . $query_qs) . '#ws-wt-rows"><i class="bi bi-chevron-double-left me-1" aria-hidden="true"></i>' . h(lang('First page')) . '</a>';
     }
 
     if ($page['next'] !== null) {
-        $pager .= '<a class="btn btn-sm btn-text theme-secondary ms-auto" href="' . h($table_url . '&after=' . (int) $page['next']) . '#ws-wt-rows">' . h(lang('Next page')) . '<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i></a>';
+        $pager .= '<a class="btn btn-sm btn-text theme-secondary ms-auto" href="' . h($table_url . $query_qs . ($query_on ? '&from=' : '&after=') . (int) $page['next']) . '#ws-wt-rows">' . h(lang('Next page')) . '<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i></a>';
     }
 
     if (empty($columns)) {
         $rows_body = pg_empty_state('bi-layout-three-columns', lang('No column yet'), $can_write ? lang('Add the table\'s columns first: their names and what each holds.') : '');
+    } elseif (($lines === '') && $query_on) {
+        $rows_body = pg_empty_state('bi-funnel', lang('No row meets the conditions'));
     } elseif ($lines === '') {
         $rows_body = pg_empty_state('bi-table', lang('No row yet'));
     } else {
         $rows_body = '<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
             <thead><tr><th scope="col" class="text-end">#</th>' . $head . ($can_write ? '<th scope="col" aria-label="' . h(lang('Actions')) . '"></th>' : '') . '</tr></thead>
-            <tbody>' . $lines . '</tbody>
-        </table></div>' . (($pager !== '') ? '<div class="d-flex gap-3 mt-3">' . $pager . '</div>' : '');
+            <tbody>' . $lines . '</tbody>' . $totals_foot . '
+        </table></div>' . ((($pager !== '') || ($totals_switch !== '')) ? '<div class="d-flex flex-wrap align-items-center gap-3 mt-3">' . $totals_switch . $pager . '</div>' : '');
+    }
+
+    if (!empty($columns)) {
+        $rows_body = ws_wtable_screen_query_bar($self_url, $id, $columns, $screen_query, $team, $query_refusal, $totals_all) . $rows_body;
     }
 
     // The row form: a new row, or the one ?row= names.
@@ -1044,7 +1143,7 @@ if (!$table) {
                         ' . (($fields !== '') ? $fields : '<p class="small fg-secondary">' . h(lang('Every column of this table is worked out by a formula.')) . '</p>') . '
                         <div class="d-flex gap-3 mt-5">
                             <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . h($edit ? lang('Save') : lang('Add')) . '</button>
-                            ' . ($edit || ($edit_id > 0) ? '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . ($after ? '&after=' . $after : '')) . '#ws-wt-rows">' . h(lang('Cancel')) . '</a>' : '') . '
+                            ' . ($edit || ($edit_id > 0) ? '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . $page_qs) . '#ws-wt-rows">' . h(lang('Cancel')) . '</a>' : '') . '
                         </div>
                     </form>
                 </div>
@@ -1418,7 +1517,9 @@ if (!$table) {
             <div class="col-12 xl:col-8">
                 <div class="card mb-5" id="ws-wt-rows">
                     <div class="card-header d-flex align-items-center gap-3"><h2 class="h6 mb-0 flex-grow-1"><i class="bi bi-table me-1" aria-hidden="true"></i>'
-                        . h(lang(array('string' => '{var:1} rows', 'vars' => (int) $table['row_count']))) . '</h2>' . $views . '</div>
+                        . h($query_on && !empty($query['where'])
+                            ? lang(array('string' => '{var:1} of {var:2} rows', 'vars' => array(count((array) $query_rows), (int) $table['row_count'])))
+                            : lang(array('string' => '{var:1} rows', 'vars' => (int) $table['row_count']))) . '</h2>' . $views . '</div>
                     <div class="card-body">' . $rows_body . '</div>
                 </div>
                 ' . $row_form . '
