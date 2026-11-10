@@ -346,7 +346,7 @@ function pg_panel_actions()
         'ws_thread_join', 'ws_thread_close', 'ws_thread_rename',
         'ws_thread_leave', 'ws_thread_follow', 'ws_share_relink', 'ws_share_end',
         'ws_task_time_start', 'ws_task_time_stop', 'ws_task_time_add',
-        'ws_task_time_delete', 'ws_task_time_channel',
+        'ws_task_time_update', 'ws_task_time_delete', 'ws_task_time_channel',
         'ws_task_time_invoice', 'ws_task_time_unlink', 'ws_task_time_mine',
         'ws_task_link_add', 'ws_task_link_remove', 'ws_task_delegate',
         'ws_task_delegation', 'ws_task_delegation_stop',

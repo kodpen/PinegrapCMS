@@ -84,7 +84,7 @@ function test_workspace_module_date_inputs_carry_their_hook()
 		'workspace_approvals.js' => 2,
 		'workspace_customer.js' => 2,
 		'workspace_recurrence.js' => 1,
-		'workspace_task_time.js' => 2,
+		'workspace_task_time.js' => 3,
 		'workspace_task_approval.js' => 1,
 	);
 

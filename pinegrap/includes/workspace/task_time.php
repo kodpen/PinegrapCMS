@@ -295,6 +295,9 @@ function ws_task_time_present($viewer, $row, $people = array())
         'running'    => $running,
         'started_at' => (int) $row['started_at'],
         'can_delete' => ((int) $row['invoice_id'] === 0) && ($mine || ws_task_time_is_manager($viewer)),
+        // The same gates as ws_task_time_update_check(): who may delete it,
+        // and not while the timer runs.
+        'can_edit'   => !$running && ((int) $row['invoice_id'] === 0) && ($mine || ws_task_time_is_manager($viewer)),
     );
 }
 
@@ -620,6 +623,24 @@ function ws_task_time_update_check($viewer, $entry, $changes, $today = null)
     }
 
     return array('ok' => true, 'error' => '', 'field' => '', 'status' => 200, 'data' => $data);
+}
+
+/**
+ * The changes the panel's edit form sends, for ws_task_time_update(): the
+ * typed time read by ws_task_time_parse() (0 when it cannot be read, which
+ * the check refuses on minutes), the day, the note and billable.
+ *
+ * @param array $request text, worked_on, note, billable
+ * @return array minutes, worked_on, note, billable
+ */
+function ws_task_time_panel_changes($request)
+{
+    return array(
+        'minutes'   => ws_task_time_parse((string) ($request['text'] ?? '')),
+        'worked_on' => (string) ($request['worked_on'] ?? ''),
+        'note'      => trim((string) ($request['note'] ?? '')),
+        'billable'  => !empty($request['billable']),
+    );
 }
 
 /**
