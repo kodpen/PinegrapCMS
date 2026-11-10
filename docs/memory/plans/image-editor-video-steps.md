@@ -32,7 +32,7 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
 
 - V7 (M) Export with sound. Done (#8484, `ui/image-editor-mix.md`: MP4 with AAC, WebM with Opus; the other formats carry none).
 
-- V8 (M) Large files. `free` after V7 and V2. One at a time with the save-path steps.
+- V8 (M) Large files. In work (after V7 and V2). One at a time with the save-path steps.
   - Chunked, resumable upload of a source video into Files; chunked save of the export (AN4's action in parts); type told by its bytes (AN4); the size limits as settings.
 
 - V9 (S) Save and open again. `free` after V8 and V3.
