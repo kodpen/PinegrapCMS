@@ -24,7 +24,7 @@ description: Steps 1-8 of plans/tables-relational.md: row choice, conditions and
 
 - 6 (cut in two): joined columns, worked out on read like formulas, on the screen, board, API, MCP and every flow box reading a row; empty to a reader who does not read the other table.
   - 6a (done, PR #8574): a lookup shows one column of the linked row (Orders › Customer › Phone), `workspace/workflow-tables-lookup.md`.
-  - 6b (done, PR #PRNUM): a rollup works out the count, sum, average, smallest or largest value of a column over the rows of another table that link to this row (Customers › sum of their Orders' Amount), with step 2 conditions if any `workspace/workflow-tables-rollup.md`; the canvas leaves lookups and rollups out of row writes, conditions and sorts.
+  - 6b (done, PR #8584): a rollup works out the count, sum, average, smallest or largest value of a column over the rows of another table that link to this row (Customers › sum of their Orders' Amount), with step 2 conditions if any `workspace/workflow-tables-rollup.md`; the canvas leaves lookups and rollups out of row writes, conditions and sorts.
 
 - 7 (done, PR #8486): a list column (an array): several texts or several numbers in one cell, typed one per line. A flow gives it as a JSON list, so For each can walk it. Conditions read "contains". Formulas count it. The privacy reader and the import learn it (`workspace/workflow-tables-lists.md`).
 

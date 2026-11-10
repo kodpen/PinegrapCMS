@@ -1,6 +1,6 @@
 ---
 name: workflow-tables-rollup
-description: Rollup columns of workflow tables (type rollup, wtable_rollup.php, PR #PRNUM): count, sum, average, smallest or largest over the rows of another table that link to the row, worked out on read
+description: Rollup columns of workflow tables (type rollup, wtable_rollup.php, PR #8584): count, sum, average, smallest or largest over the rows of another table that link to the row, worked out on read
 ---
 
 ## What is a rollup?
