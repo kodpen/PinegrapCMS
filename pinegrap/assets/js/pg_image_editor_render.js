@@ -514,6 +514,9 @@
         var ms = M.sceneTotal(this.doc), count = M.animFrames(ms, set.fps), job = { cancelled: false, enc: null };
         var bitrate = M.animBitrate(size, set.fps);
         var canvas = document.createElement('canvas');
+        // A video's sound (pg_image_editor_mix.js): mixed before the
+        // frames, encoded after them.
+        var sound = this.mixFor ? this.mixFor(set) : null, pcm = null;
 
         // A PDF is a page per scene, made by pg_image_editor_present.js.
         if (f.pdf && this.pdfJob) {
@@ -543,7 +546,7 @@
 
             // A video's size follows its bit rate.
             if (f.video && estimate) {
-                resolve({ bytes: M.animEstimate(1000, bitrate / 8 / set.fps, count), count: count, size: size });
+                resolve({ bytes: M.animEstimate(1000, bitrate / 8 / set.fps, count) + (sound ? sound.bytes : 0), count: count, size: size, sound: sound ? sound.bytes : 0 });
                 return;
             }
 
@@ -556,7 +559,17 @@
                     return recordVideo(self, set, size, count, canvas, job, progress).then(resolve, reject);
                 }
 
-                return encoder();
+                if (!sound) {
+                    return encoder();
+                }
+
+                progress('mix', 0, count);
+
+                return self.mixRender(sound).then(function (planes) {
+                    pcm = planes;
+
+                    return job.cancelled ? null : encoder();
+                });
             }).then(function (enc) {
                 var drawn = 0, framed = 0, waiting = null;
 
@@ -579,7 +592,7 @@
                         resolve({ bytes: M.animEstimate(m.header, m.frame, count), count: count, size: size });
                     } else if (m.type === 'framed') {
                         framed++;
-                        progress((framed === count) ? 'encode' : 'frames', drawn, count);
+                        progress((framed === count) ? (sound ? 'audio' : 'encode') : 'frames', drawn, count);
 
                         if (waiting) {
                             var go = waiting;
@@ -587,12 +600,14 @@
                             waiting = null;
                             go();
                         }
+                    } else if (m.type === 'audioed') {
+                        progress('encode', count, count);
                     } else if (m.type === 'file') {
                         enc.stop();
                         resolve(new Blob([m.data], { type: m.mime }));
                     }
                 });
-                enc.send({ type: 'begin', format: set.format, width: size.w, height: size.h, fps: set.fps, loop: set.loop, dither: set.dither, count: count, bitrate: bitrate, codecs: f.codecs });
+                enc.send({ type: 'begin', format: set.format, width: size.w, height: size.h, fps: set.fps, loop: set.loop, dither: set.dither, count: count, bitrate: bitrate, codecs: f.codecs, audio: sound ? sound.config : null });
 
                 var samples = f.video ? [] : M.animSamples(count, SAMPLES);
 
@@ -627,7 +642,16 @@
                     }
 
                     if (i >= count) {
-                        progress('encode', count, count);
+                        if (pcm) {
+                            var planes = pcm.map(function (p) { return p.buffer; });
+
+                            pcm = null;
+                            progress('audio', count, count);
+                            enc.send({ type: 'audio', data: planes }, planes);
+                        } else {
+                            progress('encode', count, count);
+                        }
+
                         enc.send({ type: 'end' });
                         return null;
                     }
@@ -779,7 +803,18 @@
         }
 
         main.appendChild(chips(t('animFormat'), this.animKinds.map(function (k) { return [k, t('animFormat_' + k)]; }), set.format, function (v) { change(M.animSwitch(set, v)); }));
+
+        // Which formats carry the document's sound, and a video's Sound
+        // field (pg_image_editor_mix.js).
+        if (this.mixNote) {
+            this.mixNote(main);
+        }
+
         main.appendChild(chips(t('animSize'), M.animEdges(out, set.format).map(function (e) { return [e, String(e)]; }), Math.min(set.edge, Math.max(out.w, out.h)), function (v) { change({ edge: v }); }, size.w + ' × ' + size.h + ' px'));
+
+        if (this.mixField) {
+            this.mixField(main, set);
+        }
         // A PDF's pages are still: no rate, no repeat.
         if (!f.pdf) {
             main.appendChild(chips(t('animRate'), f.rates.map(function (r) { return [r, String(r)]; }), set.fps, function (v) { change({ fps: v }); }, set.fps + ' ' + t('animFps')));
@@ -830,7 +865,7 @@
                 button('pgie-ibtn', t('close'), 'close', function () { self.closeAnimation(); })
             ]),
             el('div', { class: 'pgie-anim-body' }, [el('div', { class: 'pgie-anim-side' }, [preview, this.animEls.caption]), main]),
-            el('div', { class: 'pgie-anim-foot' }, [el('p', { class: 'pgie-note', text: t('animLocal') }), download, files])
+            el('div', { class: 'pgie-anim-foot' }, [el('p', { class: 'pgie-note', text: (this.mixFor && this.mixFor(set)) ? t('mixLocal') : t('animLocal') }), download, files])
         ]));
 
         this.animPreviewAt(size);
@@ -893,7 +928,7 @@
                 var e = self.animEls.estimate;
 
                 e.children[1].textContent = '≈ ' + bytesText(r.bytes);
-                e.children[2].textContent = M.ANIM_FORMATS[set.format].pdf ? t('animPages').replace('{n}', r.count) : t('animFrames').replace('{n}', r.count) + ' · ' + X.decimal(M.sceneTotal(self.doc) / 1000) + ' ' + t('motionSecondsUnit');
+                e.children[2].textContent = M.ANIM_FORMATS[set.format].pdf ? t('animPages').replace('{n}', r.count) : t('animFrames').replace('{n}', r.count) + ' · ' + X.decimal(M.sceneTotal(self.doc) / 1000) + ' ' + t('motionSecondsUnit') + (r.sound ? ' · ' + t('mixEstimate').replace('{size}', bytesText(r.sound)) : '');
                 self.animLimit(r.bytes);
             }, function (err) {
                 if ((self.animTask === task) && err) {
@@ -969,7 +1004,7 @@
         var self = this, set = Object.assign({}, this.animSet), f = M.ANIM_FORMATS[set.format];
         var name = (target === 'replace') ? this.animFile.name : M.animName((this.file && this.file.name) || this.opts.fileName || '', f.ext);
         var bar = el('span'), percent = el('b'), steps = el('ul', { class: 'pgie-anim-steps' });
-        var size = M.animSize(M.saveSize(this.doc), set.edge, f.even), main, side;
+        var size = M.animSize(M.saveSize(this.doc), set.edge, f.even), main, side, sound = this.mixFor ? this.mixFor(set) : null;
 
         clearTimeout(this.animTimer);
 
@@ -991,24 +1026,25 @@
         body.appendChild(side);
         body.appendChild(main);
         foot.textContent = '';
-        foot.appendChild(el('p', { class: 'pgie-note', text: [t('animFormat_' + set.format), size.w + ' × ' + size.h + ' px', f.pdf ? t('animPages').replace('{n}', M.sceneCount(this.doc)) : set.fps + ' ' + t('animFps')].join(' · ') }));
+        foot.appendChild(el('p', { class: 'pgie-note', text: [t('animFormat_' + set.format), size.w + ' × ' + size.h + ' px', f.pdf ? t('animPages').replace('{n}', M.sceneCount(this.doc)) : set.fps + ' ' + t('animFps')].concat(sound ? [t('mixRate').replace('{codec}', sound.name)] : []).join(' · ') }));
 
         var cancel = el('button', { type: 'button', class: 'pgie-btn', text: t('cancel'), onclick: function () { self.closeAnimation(); } });
 
         foot.appendChild(cancel);
         cancel.focus({ preventScroll: true });
 
-        var order = (target === 'download') ? ['base', 'frames', 'encode'] : ['base', 'frames', 'encode', 'upload'];
+        var order = (sound ? ['base', 'mix', 'frames', 'audio', 'encode'] : ['base', 'frames', 'encode']).concat((target === 'download') ? [] : ['upload']);
+        var share = { base: 0, mix: 0.03, audio: 0.92, encode: 0.96, upload: 0.98 };
 
         function progress(stage, done, count) {
-            var at = order.indexOf(stage), p = Math.round(100 * ((at === 0) ? 0 : (at === 1 ? 0.05 + 0.9 * done / count : (at === 2 ? 0.96 : 0.98))));
+            var at = order.indexOf(stage), p = Math.round(100 * ((stage === 'frames') ? 0.05 + (sound ? 0.85 : 0.9) * done / count : share[stage]));
 
             bar.style.width = p + '%';
             bar.parentNode.setAttribute('aria-valuenow', String(p));
             percent.textContent = pct(p);
             steps.textContent = '';
             order.forEach(function (s, i) {
-                var text = t('animStep_' + s) + ((s === 'frames') && (i === at) ? ' · ' + done + ' / ' + count : '');
+                var text = t('animStep_' + s).replace('{codec}', sound ? sound.name : '') + ((s === 'frames') && (i === at) ? ' · ' + done + ' / ' + count : '');
 
                 steps.appendChild(el('li', { class: (i < at) ? 'done' : ((i === at) ? 'on' : '') }, [i < at ? icon('check') : el('span', { class: 'pgie-anim-dot' }), el('span', { text: text })]));
             });

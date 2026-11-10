@@ -9298,8 +9298,6 @@
     var MIX_CHANNELS = 2;
     var MIX_BITRATE = 128000;
     var MIX_CODECS = { mp4: { codec: 'mp4a.40.2', name: 'AAC', kind: 'aac' }, webm: { codec: 'opus', name: 'Opus', kind: 'opus' } };
-    // A second of samples per AudioData handed to the encoder.
-    var MIX_PIECE = 48000;
 
     // What the mix plays for sounds (M.soundList()) over total ms: per heard
     // sound its file, when it starts in the output, where in the file and
@@ -9364,20 +9362,6 @@
         return Math.max(1, Math.ceil(Math.max(0, Number(ms) || 0) * (rate || MIX_RATE) / 1000));
     }
 
-    // The pieces [offset, count] the samples go to the encoder in.
-    function mixPieces(frames, piece) {
-        var out = [], at = 0;
-
-        piece = piece || MIX_PIECE;
-
-        while (at < frames) {
-            out.push([at, Math.min(piece, frames - at)]);
-            at += piece;
-        }
-
-        return out;
-    }
-
     // The sound's share of the file: the bit rate over ms and a few bytes
     // of index per packet (AAC's 1024 samples, Opus's 20 ms).
     function mixBytes(ms, format) {
@@ -9400,8 +9384,8 @@
     }
 
     var MIX = {
-        MIX_RATE: MIX_RATE, MIX_CHANNELS: MIX_CHANNELS, MIX_BITRATE: MIX_BITRATE, MIX_CODECS: MIX_CODECS, MIX_PIECE: MIX_PIECE,
-        mixPlan: mixPlan, mixSources: mixSources, mixNames: mixNames, mixFrames: mixFrames, mixPieces: mixPieces, mixBytes: mixBytes,
+        MIX_RATE: MIX_RATE, MIX_CHANNELS: MIX_CHANNELS, MIX_BITRATE: MIX_BITRATE, MIX_CODECS: MIX_CODECS,
+        mixPlan: mixPlan, mixSources: mixSources, mixNames: mixNames, mixFrames: mixFrames, mixBytes: mixBytes,
         mixCarries: mixCarries, mixConfig: mixConfig
     };
 

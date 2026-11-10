@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'video', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'video', 'mix', 'actions', 'menu');
 }
 
 /**
@@ -5284,5 +5284,33 @@ function pg_image_editor_strings_video()
         'videoNoTrack'    => lang('This file has no picture track.'),
         'videoNoCodecs'   => lang('This browser cannot edit videos. Use a current Chrome, Edge, Safari or Firefox.'),
         'videoCodec'      => lang('This browser cannot play {var:1} video. Save the video as H.264 MP4 or WebM, or open it in another browser.'),
+    );
+}
+
+// -- An animation's sound in its video (pg_image_editor_mix.js) --
+
+/**
+ * The mix part's labels: the Save animation dialog's note on the formats
+ * without sound, its Sound field and the steps of mixing and encoding the
+ * sound. {codec}, {names}, {format}, {size} and {name} are filled in by the
+ * script.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_mix()
+{
+    return array(
+        'mixNone'        => lang('GIF, APNG, WebP and PDF carry no sound: the sound of this document goes only into MP4 and WebM video.'),
+        'mixSound'       => lang('Sound'),
+        'mixSpec'        => lang('{codec} · 128 kbps · stereo'),
+        'mixAdd'         => lang('Add sound: {names}'),
+        'mixCannot'      => lang('This browser cannot encode the sound for {format}: the video is saved without it.'),
+        'mixEstimate'    => lang('sound {size}'),
+        'mixLocal'       => lang('Frames and sound are drawn, mixed and encoded in this browser.'),
+        'mixRate'        => lang('{codec} 128 kbps'),
+        'animStep_mix'   => lang('Mixing the sound'),
+        'animStep_audio' => lang('Encoding the sound ({codec})'),
+        'mixFileError'   => lang('The sound {name} could not be read.'),
+        'mixError'       => lang('This browser cannot mix the sound.'),
     );
 }

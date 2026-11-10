@@ -485,6 +485,8 @@
     "{1} changes": "{1} değişiklik",
     "{1} paragraph(s) changed.": "{1} paragraf değişti.",
     "{1} picture(s) could not be shown.": "{1} resim gösterilemedi.",
+    "{codec} 128 kbps": "{codec} 128 kbps",
+    "{codec} · 128 kbps · stereo": "{codec} · 128 kbps · stereo",
     "{count} image(s) optimized on upload: {before} -> {after}.": "{count} görsel yüklenirken optimize edildi: {before} -> {after}.",
     "{count} photo(s) were too large for this server, so they were scaled down in your browser before uploading.": "{count} fotoğraf bu sunucu için çok büyüktü, yüklenmeden önce tarayıcınızda küçültüldü.",
     "{count} price(s) typed by hand will be recalculated from the rules.": "Elle girilen {count} fiyat kurallara göre yeniden hesaplanacak.",
