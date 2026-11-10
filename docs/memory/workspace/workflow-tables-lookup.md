@@ -1,6 +1,6 @@
 ---
 name: workflow-tables-lookup
-description: Lookup columns of workflow tables (type lookup, wtable_lookup.php, PR #PRNUM): a column of the linked row, worked out on read for whoever reads, never stored
+description: Lookup columns of workflow tables (type lookup, wtable_lookup.php, PR #8574): a column of the linked row, worked out on read for whoever reads, never stored
 ---
 
 ## What is a lookup?
