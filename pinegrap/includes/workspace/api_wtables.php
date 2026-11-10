@@ -49,11 +49,11 @@ function ws_wtable_api_routes()
 
     $column_fields = array(
         array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => $limits['name'], 'description' => 'What the column is called. A formula names other columns by it.'),
-        array('name' => 'options', 'in' => 'body', 'type' => 'object', 'description' => 'What the type takes: number and money decimals (0-6; money 2 when left out) and money currency (three letters); date time (true to keep a time HH:MM too); status choices (1-' . $limits['statuses'] . ' objects of key [a-z0-9_-], label and color #rrggbb); link kinds (the record kinds it may point to, all when empty); list of (text, the default, or number: what its items are, fixed once made); formula expression (other columns by name, as Price * Quantity). Sent on a change, it replaces the options.'),
+        array('name' => 'options', 'in' => 'body', 'type' => 'object', 'description' => 'What the type takes: number and money decimals (0-6; money 2 when left out) and money currency (three letters); date time (true to keep a time HH:MM too); status choices (1-' . $limits['statuses'] . ' objects of key [a-z0-9_-], label and color #rrggbb); link kinds (the record kinds it may point to, all when empty); list of (text, the default, or number: what its items are, fixed once made); row table (the id of a workflow table the owner reads, whose rows its cells link to, fixed once made: row_table_invalid otherwise); formula expression (other columns by name, as Price * Quantity). Sent on a change, it replaces the options.'),
     );
 
     $errors = ' A refused value answers 422 validation_failed naming the field, with the reason code in the message (name_empty, name_too_long, description_too_long, type_unknown, type_fixed, decimals_invalid, currency_invalid, choices_empty, choice_key_invalid, kinds_invalid, formula_too_long and the like).';
-    $cells = 'Cells by column id: text a string, number a number, money an integer in minor units, date YYYY-MM-DD (with HH:MM on a column that keeps a time), person a user id, status a choice key, checkbox true or false, link an object of {kind, id}, list a JSON list of strings or numbers (or a text of one item a line; at most ' . $limits['list_items'] . ' items, a text item at most ' . $limits['list_item'] . ' characters); null empties a cell. A formula column takes no cell: its value is worked out when the row is read.';
+    $cells = 'Cells by column id: text a string, number a number, money an integer in minor units, date YYYY-MM-DD (with HH:MM on a column that keeps a time), person a user id, status a choice key, checkbox true or false, link an object of {kind, id}, row the id of a row of the linked table (one the owner reads: row_table_unread otherwise; a row that is not there answers row_not_found), list a JSON list of strings or numbers (or a text of one item a line; at most ' . $limits['list_items'] . ' items, a text item at most ' . $limits['list_item'] . ' characters); null empties a cell. A formula column takes no cell: its value is worked out when the row is read.';
 
     return array(
         array(
@@ -305,7 +305,7 @@ function ws_wtable_api_routes()
             'returns'     => 'WorkspaceTableRow',
             'status'      => 201,
             'summary'     => 'Add a row to a workflow table',
-            'description' => 'Adds a row at the end of a table the owner may change. A table has at most ' . $limits['rows'] . ' rows: one more is refused with 409 too_many_rows. Cells refused answer 422 with field cells.<column id> and each column\'s reason in the message (not_number, not_minor_units, not_date, not_status, unknown_column, computed and the like).',
+            'description' => 'Adds a row at the end of a table the owner may change. A table has at most ' . $limits['rows'] . ' rows: one more is refused with 409 too_many_rows. Cells refused answer 422 with field cells.<column id> and each column\'s reason in the message (not_number, not_minor_units, not_date, not_status, not_row, row_not_found, row_table_unread, unknown_column, computed and the like).',
             'params'      => array($id, array('name' => 'cells', 'in' => 'body', 'type' => 'object', 'description' => $cells)),
         ),
 
@@ -350,7 +350,7 @@ function ws_wtable_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceTableRow',
             'summary'     => 'Delete a row of a workflow table',
-            'description' => 'Deletes a row of a table the owner may change; the answer is the row as it was, and the rows after it move up one. The row goes to the table\'s bin for the days the site\'s Recycle Bin keeps (30 unless changed): GET /workspace/tables/{id}/deleted-rows lists it and POST /workspace/tables/{id}/deleted-rows/{bin_id}/restore brings it back. With revision, a row changed since is refused with 409 changed_meanwhile. POST /workspace/tables/{id}/rows/{row_id}/delete does the same for servers that refuse DELETE.',
+            'description' => 'Deletes a row of a table the owner may change; the answer is the row as it was, and the rows after it move up one. The row goes to the table\'s bin for the days the site\'s Recycle Bin keeps (30 unless changed): GET /workspace/tables/{id}/deleted-rows lists it and POST /workspace/tables/{id}/deleted-rows/{bin_id}/restore brings it back. With revision, a row changed since is refused with 409 changed_meanwhile. The row link cells of other rows that point at it are emptied, and a restore does not bring them back; with dry_run, links_cleared tells how many rows that would change. POST /workspace/tables/{id}/rows/{row_id}/delete does the same for servers that refuse DELETE.',
             'params'      => array($id, $row_id, array('name' => 'revision', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'The revision the row was read at: deleted only when it is still the row\'s.')),
         ),
 
@@ -1569,7 +1569,8 @@ function ws_api_wtable_rows_delete($params)
 
     $before = ws_api_wtable_row_present(ws_wtable_row_out($row, ws_wtable_columns((int) $table['id'])));
 
-    api_dry_run_stop('deleted', 'workspace_table_row', array('id' => (int) $row['id'], 'table_id' => (int) $table['id']));
+    api_dry_run_stop('deleted', 'workspace_table_row', array('id' => (int) $row['id'], 'table_id' => (int) $table['id'],
+        'links_cleared' => (int) (ws_wtable_link_counts((int) $table['id'], array((int) $row['id']))[(int) $row['id']] ?? 0)));
 
     $result = ws_wtable_row_delete($viewer, $table, $row, $data);
 

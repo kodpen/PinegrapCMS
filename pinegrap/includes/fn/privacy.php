@@ -1383,8 +1383,9 @@ function pg_privacy_wtable_cell_hits(array $types, array $cells, array $scope)
         $targets = array();
 
         // A list holds texts or numbers, never an account: its number 7 is
-        // nobody's id, now or once its column is deleted.
-        if (($type === 'list') || (is_array($value) && !empty($value) && ($value === array_values($value)))) {
+        // nobody's id, now or once its column is deleted. A row link holds a
+        // row id of another table, nobody's either.
+        if (($type === 'list') || ($type === 'row') || (is_array($value) && !empty($value) && ($value === array_values($value)))) {
             continue;
         }
 

@@ -3545,6 +3545,9 @@ function ws_step_row_cell_reason($code)
 
         case 'computed':
             return lang('The column is worked out from the others.');
+
+        case 'row_table_unread':
+            return lang('The flow\'s owner does not read the table the column links to.');
     }
 
     return ws_wtable_screen_error_text($code);

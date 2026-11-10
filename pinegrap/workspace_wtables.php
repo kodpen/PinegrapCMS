@@ -192,7 +192,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $values = array();
 
             foreach ($columns as $id => $column) {
-                if (!ws_wtable_type_stores($column['type'])) {
+                // A row link the form could not offer (a table the person
+                // does not read) is not sent, and the row keeps it.
+                if (!ws_wtable_type_stores($column['type']) || (($column['type'] === 'row') && !array_key_exists($id, $typed))) {
                     continue;
                 }
 
@@ -507,7 +509,8 @@ if ($table && (($_GET['board_json'] ?? '') === '1')) {
         }
     }
 
-    $board = ws_wtable_board($columns, $rows, $status_id, empty($person_ids) ? array() : ws_people(array_unique($person_ids)), ws_wtable_may($table['access'], 'write'), (($_GET['all'] ?? '') === '1'));
+    $people = ws_wtable_people_with_links(empty($person_ids) ? array() : ws_people(array_unique($person_ids)), ws_wtable_link_texts($viewer, $columns, $rows));
+    $board = ws_wtable_board($columns, $rows, $status_id, $people, ws_wtable_may($table['access'], 'write'), (($_GET['all'] ?? '') === '1'));
 
     header('Content-Type: application/json; charset=utf-8');
     echo pg_json_encode_answer($board);
@@ -530,7 +533,7 @@ if ($table && (($_GET['download'] ?? '') === 'xlsx')) {
         }
     }
 
-    $sheet = ws_wtable_export_sheet($columns, $rows, empty($person_ids) ? array() : ws_people(array_unique($person_ids)));
+    $sheet = ws_wtable_export_sheet($columns, $rows, ws_wtable_people_with_links(empty($person_ids) ? array() : ws_people(array_unique($person_ids)), ws_wtable_link_texts($viewer, $columns, $rows)));
     $directory = PG_FUNCTIONS_DIR . '/data/temp';
     $path = (is_dir($directory) || @mkdir($directory, 0755, true)) ? @tempnam($directory, 'wtable_') : false;
 
@@ -941,7 +944,11 @@ if (!$table) {
         $person_ids[] = (int) $row['deleted_by'];
     }
 
-    $people = empty($person_ids) ? array() : ws_people(array_unique($person_ids));
+    // The texts of the rows that row link cells point at, and how many rows
+    // link to each row shown, for its delete confirmation.
+    $people = ws_wtable_people_with_links(empty($person_ids) ? array() : ws_people(array_unique($person_ids)),
+        ws_wtable_link_texts($viewer, $columns, array_merge($page['rows'], $bin_rows)));
+    $link_counts = $can_write ? ws_wtable_link_counts($id, array_column($page['rows'], 'id')) : array();
 
     // The rows.
     $head = '';
@@ -1026,7 +1033,8 @@ if (!$table) {
 
         if ($can_write) {
             $tools = '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . '&row=' . (int) $row['id'] . $page_qs) . '#ws-wt-row-form" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>'
-                . ws_wtable_screen_action_button(array('action' => 'row_delete', 'row' => (int) $row['id'], 'revision' => (int) $row['revision']), lang('Delete'), 'bi-trash', ws_wtable_screen_delete_confirm('row', (string) $table['name'], $bin_days));
+                . ws_wtable_screen_action_button(array('action' => 'row_delete', 'row' => (int) $row['id'], 'revision' => (int) $row['revision']), lang('Delete'), 'bi-trash',
+                    ws_wtable_screen_delete_confirm('row', (string) $table['name'], $bin_days, (int) ($link_counts[(int) $row['id']] ?? 0)));
         }
 
         $lines .= '<tr id="ws-wt-row-' . (int) $row['id'] . '"><td class="small fg-secondary text-end">' . ws_wtable_row_label($row) . '</td>' . $line . ($can_write ? '<td class="text-end text-nowrap">' . $tools . '</td>' : '') . '</tr>';
@@ -1056,7 +1064,15 @@ if (!$table) {
     }
 
     if (!empty($columns)) {
-        $rows_body = ws_wtable_screen_query_bar($self_url, $id, $columns, $screen_query, $team, $query_refusal, $totals_all) . $rows_body;
+        $row_choices = array();
+
+        foreach ($columns as $column_id => $column) {
+            if ($column['type'] === 'row') {
+                $row_choices[(string) $column_id] = ws_wtable_link_choices($viewer, $column);
+            }
+        }
+
+        $rows_body = ws_wtable_screen_query_bar($self_url, $id, $columns, $screen_query, $team, $query_refusal, $totals_all, $row_choices) . $rows_body;
     }
 
     // The row form: a new row, or the one ?row= names.
@@ -1125,6 +1141,26 @@ if (!$table) {
                     $input = '<select class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '"' . (($column['type'] === 'person') ? ' data-pg-combobox' : '') . '>' . $choices . '</select>';
                     break;
 
+                case 'row':
+                    // The linked table's rows by their key or first text; a
+                    // table the person does not read is not listed, and its
+                    // link is not sent, so the row keeps it.
+                    $linked = ws_wtable_link_choices($viewer, $column);
+
+                    if ($linked === null) {
+                        $input = '<input type="text" class="form-control form-control-sm" id="' . $field_id . '" value="' . h(($value !== '') ? ws_wtable_link_unread_text() : '') . '" disabled>';
+                        break;
+                    }
+
+                    $choices = '<option value="">' . h(lang('(none)')) . '</option>';
+
+                    foreach ($linked as $key => $label) {
+                        $choices .= '<option value="' . (int) $key . '"' . (((string) $key === $value) ? ' selected' : '') . '>' . h($label) . '</option>';
+                    }
+
+                    $input = '<select class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" data-pg-combobox>' . $choices . '</select>';
+                    break;
+
                 case 'date':
                     // A native input keeps the ISO store the cell is saved in.
                     $input = '<input type="' . (!empty($options['time']) ? 'datetime-local' : 'date') . '" class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" value="' . h($value) . '" ' . (!empty($options['time']) ? 'data-pg-datetime' : 'data-pg-date') . ' autocomplete="off">';
@@ -1185,7 +1221,7 @@ if (!$table) {
     }
 
     // The column form fields of one type: the options it takes.
-    $option_fields = function ($type, $column, $prefix) {
+    $option_fields = function ($type, $column, $prefix) use ($viewer, $id) {
         $options = $column ? (array) $column['options'] : array();
         $out = '';
 
@@ -1235,6 +1271,26 @@ if (!$table) {
 
                 $out .= '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_of">' . h(lang('Items')) . '</label>'
                     . '<select class="form-control form-control-sm" name="options[of]" id="' . $prefix . '_of"' . ($column ? ' disabled' : '') . '>' . $kinds . '</select></div>';
+                break;
+
+            case 'row':
+                // The table its cells link to, among those the person reads;
+                // fixed once made, as the type is.
+                $linked = $column ? ws_wtable_link_table($column) : 0;
+                $tables = '';
+
+                foreach (ws_wtables_reached($viewer, 'all') as $item) {
+                    $tables .= '<option value="' . (int) $item['id'] . '"' . (((int) $item['id'] === $linked) ? ' selected' : '') . '>'
+                        . h(((int) $item['id'] === (int) $id) ? lang(array('string' => '{var:1} (this table)', 'vars' => $item['name'])) : $item['name']) . '</option>';
+                }
+
+                if (($linked > 0) && (strpos($tables, 'value="' . $linked . '" selected') === false)) {
+                    $tables = '<option value="' . $linked . '" selected>' . h(lang('A table you do not read')) . '</option>' . $tables;
+                }
+
+                $out .= '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_table">' . h(lang('Linked table')) . '</label>'
+                    . '<select class="form-control form-control-sm" name="options[table]" id="' . $prefix . '_table"' . ($column ? ' disabled' : ' required') . '>' . $tables . '</select>'
+                    . '<div class="form-text">' . h(lang('A cell picks one of its rows, shown by its key or first text.')) . '</div></div>';
                 break;
 
             case 'formula':
@@ -1307,7 +1363,8 @@ if (!$table) {
 
     foreach ($columns as $column_id => $column) {
         $line = '<div class="d-flex align-items-center gap-3">'
-            . '<div class="flex-grow-1 min-w-0"><span class="fw-semibold">' . h($column['name']) . '</span> <span class="small fg-secondary">· ' . h($types[$column['type']] ?? $column['type']) . '</span>'
+            . '<div class="flex-grow-1 min-w-0"><span class="fw-semibold">' . h($column['name']) . '</span> <span class="small fg-secondary">· ' . h($types[$column['type']] ?? $column['type'])
+            . (($column['type'] === 'row') ? ' · ' . h(ws_wtable_link_readable($viewer, ws_wtable_link_table($column)) ? (string) (ws_wtable(ws_wtable_link_table($column))['name'] ?? '') : lang('A table you do not read')) : '') . '</span>'
             . (ws_wtable_is_key($column) ? ' <span class="badge theme-secondary fw-normal"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Key')) . '</span>' : '') . '</div>';
 
         if ($can_write) {

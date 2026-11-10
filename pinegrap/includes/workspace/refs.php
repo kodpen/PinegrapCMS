@@ -569,9 +569,10 @@ function ws_note_ref_tokens($body)
 /**
  * The records a workflow table row points at, as ws_refs keeps them for it:
  * its record-link cells ({kind, id}) in the link columns the table has now,
- * whose kind is a record's (ws_record_type_keys()), each once. The cell of a
- * deleted column, kept in the row's JSON until the row is next written, does
- * not count. Pure.
+ * whose kind is a record's (ws_record_type_keys()), and the rows its row
+ * link cells point at (type wtable_row, wtable_links.php), each once. The
+ * cell of a deleted column, kept in the row's JSON until the row is next
+ * written, does not count. Pure.
  *
  * @param array $columns column id => column (type), ws_wtable_columns()
  * @param array $cells   column id => stored value
@@ -583,7 +584,14 @@ function ws_wtable_row_ref_tokens($columns, $cells)
     $out = array();
 
     foreach ((array) $cells as $column_id => $value) {
-        if ((($columns[(string) $column_id]['type'] ?? '') !== 'link') || !is_array($value)) {
+        $type = $columns[(string) $column_id]['type'] ?? '';
+
+        if (($type === 'row') && is_numeric($value) && ((int) $value > 0)) {
+            $out['wtable_row:' . (int) $value] = array('type' => 'wtable_row', 'id' => (int) $value);
+            continue;
+        }
+
+        if (($type !== 'link') || !is_array($value)) {
             continue;
         }
 

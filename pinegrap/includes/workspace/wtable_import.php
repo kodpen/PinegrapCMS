@@ -378,7 +378,10 @@ function ws_wtable_import_options($type, $values)
  *
  * @param array  $column type, options
  * @param string $text
- * @param array  $people name or user name folded (ws_fold()) => user id
+ * @param array  $people name or user name folded (ws_fold()) => user id;
+ *                       under WS_WTABLE_LINKS_KEY, by row link column id,
+ *                       the linked rows by their text folded and #N
+ *                       (ws_wtable_import_people())
  * @return mixed
  */
 function ws_wtable_import_cell($column, $text, $people = array())
@@ -438,6 +441,15 @@ function ws_wtable_import_cell($column, $text, $people = array())
 
         case 'link':
             return ws_wtable_screen_cell_from_form($column, $text);
+
+        // A row link by the text the download writes (the linked row's key
+        // or first text) or by #N; what matches no row stays as written, so
+        // the store refuses it (not_row).
+        case 'row':
+            $rows = (array) ($people[WS_WTABLE_LINKS_KEY][(string) ($column['id'] ?? '')] ?? array());
+            $folded = ws_fold($text);
+
+            return $rows[$folded] ?? ($rows['#' . ltrim($folded, '#')] ?? $text);
 
         case 'list':
             $items = ws_wtable_import_list_items($text);
@@ -863,11 +875,14 @@ function ws_wtable_import_note_read($viewer, $note_id, $block, $max)
    --------------------------------------------------------------------------- */
 
 /**
- * The team by name and user name folded (ws_fold()), for person cells.
+ * The team by name and user name folded (ws_fold()), for person cells, and
+ * the rows each row link column may point at (ws_wtable_link_import_rows()).
  *
+ * @param array|null $viewer  who imports
+ * @param array      $columns the table's columns
  * @return array
  */
-function ws_wtable_import_people()
+function ws_wtable_import_people($viewer = null, $columns = array())
 {
     $people = array();
 
@@ -877,6 +892,10 @@ function ws_wtable_import_people()
                 $people[ws_fold((string) $person[$key])] = (int) $person['id'];
             }
         }
+    }
+
+    if (is_array($viewer)) {
+        $people[WS_WTABLE_LINKS_KEY] = ws_wtable_link_import_rows($viewer, $columns);
     }
 
     return $people;
@@ -897,7 +916,7 @@ function ws_wtable_import_people()
 function ws_wtable_import_rows($viewer, $table, $rows, $map)
 {
     $columns = ws_wtable_columns((int) $table['id']);
-    $people = ws_wtable_import_people();
+    $people = ws_wtable_import_people($viewer, $columns);
     $report = array('added' => 0, 'updated' => 0, 'refused' => array(), 'refused_count' => 0);
 
     // A table with a key matches file rows to its rows by key: a row whose
@@ -1077,7 +1096,7 @@ function ws_wtable_import_check($viewer, $table, $read, $choice)
         );
     }
 
-    return array_merge($answer, ws_wtable_import_rows_check($columns, $map, $rows, $room, ws_wtable_import_people()));
+    return array_merge($answer, ws_wtable_import_rows_check($columns, $map, $rows, $room, ws_wtable_import_people($viewer, ($table !== null) ? $columns : array())));
 }
 
 /**

@@ -129,6 +129,14 @@ function ws_wtable_screen_error_text($code)
             return lang(array('string' => 'Each item is at most {var:1} characters.', 'vars' => $limits['list_item']));
         case 'list_of_invalid':
             return lang('Choose what the list holds: texts or numbers.');
+        // Row links (wtable_links.php).
+        case 'row_table_invalid':
+            return lang('Choose a table you read for the link.');
+        case 'not_row':
+        case 'row_not_found':
+            return lang('Choose a row of the linked table: that row is not there.');
+        case 'row_table_unread':
+            return lang('You do not read the linked table, so you cannot choose its row.');
         case 'type_same':
             return lang('Choose another type.');
         case 'key_on_retype':
@@ -386,6 +394,10 @@ function ws_wtable_screen_options_from_form($type, $form, $old = null, $held = a
             // does not send it, and the store keeps the one it has.
             return ($text('of') !== '') ? array('of' => $text('of')) : array();
 
+        case 'row':
+            // So is the table a row link points at.
+            return ($text('table') !== '') ? array('table' => $text('table')) : array();
+
         case 'text':
             return array('key' => ($text('key') === '1'));
     }
@@ -632,6 +644,9 @@ function ws_wtable_screen_cell_text($column, $value, $people = array())
         case 'link':
             return (is_array($value) && isset($value['kind'], $value['id'])) ? $value['kind'] . ' #' . (int) $value['id'] : '';
 
+        case 'row':
+            return ws_wtable_link_cell_text($value, $people);
+
         case 'list':
             return implode(', ', ws_wtable_screen_list_items($column, $value));
     }
@@ -828,14 +843,16 @@ function ws_wtable_screen_bin_summary($columns, $cells, $people = array(), $max 
 
 /**
  * What a delete asks first: how long the bin keeps what is deleted, or, before
- * the bin's step has run, that it cannot be brought back.
+ * the bin's step has run, that it cannot be brought back; for a row, how many
+ * rows link to it and lose that link.
  *
- * @param string $what table | row
- * @param string $name the table's name
- * @param int    $days the bin's days, 0 when there is no bin
+ * @param string $what  table | row
+ * @param string $name  the table's name
+ * @param int    $days  the bin's days, 0 when there is no bin
+ * @param int    $links the rows that link to the row (ws_wtable_link_counts())
  * @return string
  */
-function ws_wtable_screen_delete_confirm($what, $name, $days)
+function ws_wtable_screen_delete_confirm($what, $name, $days, $links = 0)
 {
     if ($what === 'table') {
         return ((int) $days > 0)
@@ -843,9 +860,17 @@ function ws_wtable_screen_delete_confirm($what, $name, $days)
             : lang(array('string' => 'Delete the table {var:1} with its rows and shares? It cannot be brought back.', 'vars' => $name));
     }
 
-    return ((int) $days > 0)
+    $ask = ((int) $days > 0)
         ? lang(array('string' => 'Delete this row? It stays in the table\'s deleted rows for {var:1} days, where it can be restored.', 'vars' => (int) $days))
         : lang('Delete this row?');
+
+    if ((int) $links === 1) {
+        return $ask . ' ' . lang('One row links to it: that link is cleared, and a restore does not bring it back.');
+    }
+
+    return ((int) $links > 1)
+        ? $ask . ' ' . lang(array('string' => '{var:1} rows link to it: those links are cleared, and a restore does not bring them back.', 'vars' => (int) $links))
+        : $ask;
 }
 
 /**
