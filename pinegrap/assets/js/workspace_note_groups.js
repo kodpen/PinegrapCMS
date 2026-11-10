@@ -434,7 +434,9 @@
 
         if (group.locked) {
             var lock = kit.icon('bi-lock-fill', 'ws-nb-group-lock');
+            // A named image: kit.icon() hides it from screen readers.
             lock.title = kit.t('notes_group_locked');
+            lock.removeAttribute('aria-hidden');
             lock.setAttribute('role', 'img');
             lock.setAttribute('aria-label', kit.t('notes_group_locked'));
             toggle.appendChild(lock);

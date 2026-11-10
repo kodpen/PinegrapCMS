@@ -54,3 +54,18 @@ function test_ws_notes_a11y_lock()
 	pg_assert_contains("input.setAttribute('aria-invalid', text ? 'true' : 'false');", $src);
 	pg_assert_contains("(state && state.set_up) ? 'menu' : 'dialog'", $src);
 }
+
+// The pin and lock marks of a note row and a folder's lock mark are read by
+// their label: icon() hides an icon from screen readers, so each mark drops
+// that and stands as a named image.
+function test_ws_notes_a11y_marks_named()
+{
+	$main = workspace_notes_a11y_test_src('workspace.js');
+
+	pg_assert_contains("pinMark.removeAttribute('aria-hidden');", $main, 'pin mark not hidden');
+	pg_assert_contains("pinMark.setAttribute('role', 'img');", $main);
+	pg_assert_contains("pinMark.setAttribute('aria-label', t('notes_pinned'));", $main);
+
+	pg_assert_contains("node.removeAttribute('aria-hidden');", workspace_notes_a11y_test_src('workspace_note_lock.js'), 'note lock mark not hidden');
+	pg_assert_contains("lock.removeAttribute('aria-hidden');", workspace_notes_a11y_test_src('workspace_note_groups.js'), 'folder lock mark not hidden');
+}

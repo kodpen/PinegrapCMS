@@ -22312,7 +22312,11 @@
 
             if (note.pinned) {
                 var pinMark = icon('bi-pin-angle-fill', 'ws-nb-item-pin');
+                // A named image, not hidden as icon() leaves it.
                 pinMark.title = t('notes_pinned');
+                pinMark.removeAttribute('aria-hidden');
+                pinMark.setAttribute('role', 'img');
+                pinMark.setAttribute('aria-label', t('notes_pinned'));
                 top.appendChild(pinMark);
             }
 

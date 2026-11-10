@@ -18,6 +18,7 @@ description: Overview of note groups, shared groups, tabs, the PIN lock and medi
 ## Which are the keyboard and screen-reader ways?
 - Drag and drop has menu twins: a note's Move to group, Move up and Move down; a folder's Move up and Move down; the context-menu key or a long press opens a row's menu. After a move from a menu the list is drawn again and the focus goes to the moved note's row (`data-note-id`) or the folder's toggle (`data-group-id`), unless it already sits somewhere else (`refocus()` in `workspace_note_groups.js`).
 - A folder: toggle with `aria-expanded`/`aria-controls`, body `role="group"` named after the folder, lock mark `role="img"` with a name, its ⋯ button named "More: <group>".
+- A note row's pin mark (`drawItem()`, workspace.js, "Pinned") and lock mark (`mark()`, workspace_note_lock.js) and a folder's lock mark are `role="img"` with an `aria-label`, and drop the `aria-hidden` that `icon()` / `kit.icon()` sets; before, the label was never read (PR #NUM).
 - Tabs: ARIA tablist, one tab in the Tab order, arrows/Home/End move, Ctrl+Shift+arrow drags a tab along (`aria-keyshortcuts`); a cut title is read whole from a `visually-hidden` span.
 - Lock: the toolbar button's `aria-haspopup` is `dialog` before set-up, `menu` after; a refused PIN's message is `role="alert"`, tied to the fields with `aria-describedby`, the fields `aria-invalid`. Pinned in `tests/workspace_notes_a11y_test.php`.
 
@@ -25,4 +26,4 @@ description: Overview of note groups, shared groups, tabs, the PIN lock and medi
 - Store: `workspace-note-groups.md`, `workspace-note-group-shares.md`; screen: `workspace-note-groups-screen.md`, `workspace-note-tabs.md`, `workspace-note-groups-shared-screen.md`; API: `workspace-note-groups-api.md`; lock: `workspace-note-lock.md`, `-gate.md`, `-readers.md`, `-screen.md`; media: `note-media.md`.
 
 ## What is still open?
-- A message's `note_group_card` (`ws_note_group_cards_map()`) is not in the API. No unit test drives the database paths of locking with shares. The note row's pin mark in `drawItem()` (`workspace.js`) has a title but no accessible name.
+- A message's `note_group_card` (`ws_note_group_cards_map()`) is not in the API. No unit test drives the database paths of locking with shares.
