@@ -67,8 +67,17 @@ if (!$_POST) {
 		}
 	}
 
+    // Before the upgrade adds products.hs_code and origin_country the dialog
+    // has no customs fields; a posted choice is not carried into the UPDATE.
+    if (!pg_product_customs_ready()) {
+        unset($_POST['edit_hs_code_method'], $_POST['edit_origin_country_method']);
+    }
+
+    $customs_values = pg_products_mass_customs_values($_POST);
+
     // A stock process with no figure, a tax rate to set with none or one
-    // outside 0..100, or a zone both allowed and disallowed stops the whole
+    // outside 0..100, an HS code or a country of origin to set that is empty
+    // or not valid, or a zone both allowed and disallowed stops the whole
     // change before any product is touched, with its own message.
     if (($_POST['action'] ?? '') === 'edit') {
         $mass_edit_problem = pg_products_mass_edit_problem($_POST);
@@ -77,6 +86,10 @@ if (!$_POST) {
             'tax_rate_missing' => lang('Enter a tax rate, or choose to follow the tax zone.'),
             'tax_rate_range' => lang('Enter a tax rate between 0 and 100.'),
             'zones_overlap' => lang('A shipping zone cannot be both allowed and disallowed.'),
+            'hs_code_missing' => lang('Enter an HS code, or choose to clear it.'),
+            'hs_code_invalid' => lang('The HS code may hold only digits and dots, up to 16 characters.'),
+            'origin_country_missing' => lang('Choose a country of origin, or choose to clear it.'),
+            'origin_country_invalid' => lang('The country of origin is not a known country.'),
         );
 
         if ($mass_edit_problem !== '') {
@@ -134,6 +147,8 @@ if (!$_POST) {
                     || ($quantity_value !== null)
 					|| (($_POST['edit_change_price_method'] != '') && !$price_value_refused)
                     || (($_POST['edit_tax_rate_method'] ?? '') != '')
+                    || ($customs_values['hs_code'] !== null)
+                    || ($customs_values['origin_country'] !== null)
                 ) {
                     if ($_POST['edit_allowed_zones']) {
                         $allowed_zones = explode(',', $_POST['edit_allowed_zones']);
@@ -153,6 +168,16 @@ if (!$_POST) {
                     $number_of_price_changed_products = 0;
                     $number_of_binned_products = 0;
                     $change_besides_price = pg_products_mass_change_besides_price($_POST, $quantity_value);
+
+                    // The customs columns, the same for every product; the
+                    // values are parsed, so they hold digits, dots or two
+                    // capital letters only, and are escaped all the same.
+                    $sql_customs = '';
+                    foreach ($customs_values as $customs_column => $customs_value) {
+                        if (is_string($customs_value)) {
+                            $sql_customs .= $customs_column . " = '" . e($customs_value) . "',";
+                        }
+                    }
 
                     // Loop through selected products in order to edit them.
                     foreach ($product_ids as $product_id) {
@@ -385,6 +410,7 @@ if (!$_POST) {
                                 $sql_inventory
                                 $sql_out_of_stock
                                 $sql_tax_rate
+                                $sql_customs
                                 timestamp = UNIX_TIMESTAMP(),
                                 user = '" . USER_ID . "'
                             WHERE id = '" . escape($product_id) . "'");
@@ -490,6 +516,14 @@ if (!$_POST) {
 
                         if ($sql_tax_rate != '') {
                             $changes[] = ($tax_rate_method === 'zone') ? lang('tax rate cleared') : lang('tax rate changed');
+                        }
+
+                        if ($customs_values['hs_code'] !== null) {
+                            $changes[] = ($customs_values['hs_code'] === '') ? lang('HS code cleared') : lang('HS code changed');
+                        }
+
+                        if ($customs_values['origin_country'] !== null) {
+                            $changes[] = ($customs_values['origin_country'] === '') ? lang('country of origin cleared') : lang('country of origin changed');
                         }
 
                         if ($changes) {
