@@ -11,9 +11,10 @@
  * address, the key, the model and the application it writes through are the
  * assistant's. The agent card (agents_settings.php) keeps its row. While one runs, ws_model_running() holds it and the few
  * places of ai.php that reach the gateway or its config read it from there;
- * the loop's failure sentences name it (ws_model_loop_sentence()) and its
- * own row in a channel says whether it is asked there
- * (ws_model_channel_allowed()).
+ * the loop's failure sentences name it (ws_model_loop_sentence()), its own
+ * row in a channel says whether it is asked there
+ * (ws_model_channel_allowed()) and the activity log's line of its answer
+ * names it (ws_model_log_answered()).
  *
  * For a model agent the door is the site itself, so no knock goes out;
  * door_url holds the chat API's base address where the provider has no
@@ -453,6 +454,20 @@ function ws_model_loop_sentence($agent, $which)
     }
 
     return '';
+}
+
+/**
+ * The activity log's sentence for an answer the assistant wrote in a
+ * channel: by its @handle, in the words an application agent's answer is
+ * logged with (ws_api_agent_request_answer()).
+ *
+ * @param array $agent   the raw row
+ * @param array $channel the channel or discussion the answer was written in
+ * @return string
+ */
+function ws_model_log_answered($agent, $channel)
+{
+    return lang(array('string' => '@{var:1} answered a request in #{var:2}', 'vars' => array((string) $agent['handle'], (string) $channel['name'])));
 }
 
 /**
