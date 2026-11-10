@@ -185,7 +185,7 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin)
         $rows .= $field('kind', lang('Kind'), $select('kind', array('app' => lang('Works through an application'), 'model' => lang('Runs on a model')), 'app'));
     }
 
-    $rows .= $field('handle', lang('Handle'), $input('handle', $value('handle'), ' maxlength="32" autocomplete="off"' . ($claude ? ' readonly' : '')), lang('Called with @ in the channels: 2 to 32 small letters, digits, - or _.'));
+    $rows .= $field('handle', lang('Handle (@name)'), $input('handle', $value('handle'), ' maxlength="32" autocomplete="off"' . ($claude ? ' readonly' : '')), lang('Called with @ in the channels: 2 to 32 small letters, digits, - or _.'));
     $rows .= $field('name', lang('Name'), $input('name', $value('name'), ' maxlength="100"'));
     $rows .= $field('status', lang('Status'), $select('status', array('active' => lang('Active'), 'paused' => lang('Paused'), 'off' => lang('Off')), $agent ? $agent['status'] : 'active'));
 
@@ -256,7 +256,8 @@ function ws_agents_settings_card($self_url, $viewer)
     $list = '';
 
     foreach (ws_agents_list() as $agent) {
-        $door = ($agent['door_kind'] === 'push') ? lang('Push') : lang('Poll');
+        // Keys of their own: "Poll" is a vote and "Handle" a user name elsewhere.
+        $door = ($agent['door_kind'] === 'push') ? lang('Push door') : lang('Poll door');
         $knock = ($agent['door_last_knock'] > 0) ? lang(array('string' => 'last {var:1}', 'vars' => date('d.m.Y H:i', $agent['door_last_knock']))) : '';
         $error = ($agent['door_error'] !== '') ? '<div class="small fg-danger">' . h($agent['door_error']) . '</div>' : '';
         $schedule = ($agent['wake_every'] > 0) ? ' · ' . h(lang(array('string' => 'every {var:1} min', 'vars' => $agent['wake_every']))) : '';
