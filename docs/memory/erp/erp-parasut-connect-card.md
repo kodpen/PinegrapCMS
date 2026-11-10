@@ -1,10 +1,10 @@
 ---
 name: erp-parasut-connect-card
-description: The Paraşüt card of the commerce settings: status line, connect steps, secret and password boxes, default product help, what Connect answers, which company it takes
+description: The Paraşüt part of Settings › Accounting › E-Invoice: status line, connect steps, secret and password boxes, default product help, what Connect answers, which company it takes
 ---
 
 ## What does the card show?
-- A status line (`parasut_connection_line(parasut_connection_status())`, no call to Paraşüt), then "Connect in three steps" (client id + secret → authorization page → code + Connect; a `<details>` open while not connected, closed as "Authorize again" once connected), then "Advanced" (company number, the user name / password grant). Built in `includes/settings/prep.php`, printed in `commerce.php`.
+- A status line (`parasut_connection_line(parasut_connection_status())`, no call to Paraşüt), then "Connect in three steps" (client id + secret → authorization page → code + Connect; a `<details>` open while not connected, closed as "Authorize again or connect another account" once connected), then "Advanced" (company number, the user name / password grant). Prepared in `includes/settings/prep.php`, printed in `includes/settings/accounting.php`, saved by `accounting.save.php`.
 - Connect answers `fill` (company number, emptied code and secret boxes), `status` and `tone`; `backend.src.js` writes them into the open card.
 - The settings save keeps the saved company number when the box is empty (`parasut_company_id_for_save()`). Until 2026-10-19 a Save after Connect wrote the empty box back and orphaned the token (owner stamp).
 - Client Secret and Password each have a help text for a stored value and one for none; only the "Saved" placeholder needs a stored value. Each box reads its own value in `parasut_credentials_enc` (re-sealed on a key reset, `platform/encryption-key-reseal-registry.md`) (`parasut_credential_boxes(parasut_credentials_decode())`). A code connection stores the secret alone; until #1599 one "Saved" and one help served both boxes, so the operator counted on a password that was not there.

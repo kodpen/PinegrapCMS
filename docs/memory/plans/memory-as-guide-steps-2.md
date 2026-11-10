@@ -21,7 +21,7 @@ description: Steps MG5-MG10 of plans/memory-as-guide.md: an overview each for fl
   - Says which filter control a new list takes (`page-button-bar.md` asks for a select, `list-table-driver-sort.md` has filter buttons) and when a list is named in `pg_list_table_printed_lists()` (`list-table-printed.md`, `list-table-commerce-lists.md`).
   - Takes the row checkbox sentence out of `list-and-table-screens.md`: its next line says there are none.
 
-- MG7 Paraşüt: `erp/erp-parasut-overview.md` for the 29 `erp-parasut-*` files.
+- MG7 Paraşüt (done, #8468): `erp/erp-parasut-overview.md` for the 29 `erp-parasut-*` files.
 
 - MG8 Designer blocks: `designer/designer-blocks-overview.md` for the 26 `designer-blocks-*` files.
 
