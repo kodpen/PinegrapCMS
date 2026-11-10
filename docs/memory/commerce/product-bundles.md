@@ -25,7 +25,7 @@ module: bundles
 - Counter sale (`pg_local_order_complete()`): a bundle line calls `pg_bundle_take_stock()`: one `order_item_components` row per component (unit_cost from `erp_product_costs.avg_cost`), each tracked component goes down; `$stock_left` is shared.
 - Marketplace import (`mp_order_take_stock()`) the same, source `marketplace`; cancel restock (`mp_order_return_stock()`) returns the snapshot's components (`pg_bundle_return_stock()`).
 - Checkout (#2826): `pg_order_complete_line_stock()` sends a line passing `pg_bundle_sale_takes_components()` (pure) to `pg_bundle_take_stock(..., 'checkout', $stock_left)` before the plain decrement.
-- `check_inventory()`: a cart holding a bundle goes to `pg_bundle_check_inventory()`: every line against one stock pool (`pg_bundle_cart_allowance()`, id order).
+- `check_inventory()`: a bundle cart goes to `pg_bundle_check_inventory()`: every line against one pool at the order's location (`pg_bundle_cart_allowance()`, id order).
 
 ## Where else is a bundle handled?
 - ERP: one invoice line, a stock move per component (`erp/erp-bundle-lines.md`). Storefront: [[product-bundles-storefront]]. Copy: [[product-duplicate]].

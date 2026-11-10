@@ -123,6 +123,37 @@ function test_stock_completion_site_without_locations_keeps_its_statements()
 	pg_assert_contains('$at_location = pg_stock_quantity_at($product[\'id\'], $stock_location_id, $product[\'inventory_quantity\']);', $check, 'the checkout counts the order location');
 }
 
+function test_stock_completion_bundle_cart_counts_the_order_location()
+{
+	$stock = array(
+		10 => array('tracked' => true, 'quantity' => 9, 'backorder' => false),
+		11 => array('tracked' => true, 'quantity' => 4, 'backorder' => false),
+		12 => array('tracked' => false, 'quantity' => 0, 'backorder' => false),
+	);
+
+	$counted = pg_bundle_stock_at_location($stock, array(10 => 2, 11 => null, 12 => 5));
+	pg_assert_same(2, $counted[10]['quantity'], 'the location\'s units replace the total');
+	pg_assert_same(4, $counted[11]['quantity'], 'no figure at the location keeps the total');
+	pg_assert_same(0, $counted[12]['quantity'], 'an untracked product is not counted');
+	pg_assert_same($stock, pg_bundle_stock_at_location($stock, array()), 'a site without locations keeps the totals');
+
+	// A bundle of two units of product 10 and one line of product 10: the
+	// location holds 2, so the bundle takes them and the plain line goes.
+	$lines = array(
+		array('id' => 1, 'product_id' => 50, 'quantity' => 1, 'components' => array(array('product_id' => 10, 'quantity' => 2))),
+		array('id' => 2, 'product_id' => 10, 'quantity' => 1),
+	);
+	$allowance = pg_bundle_cart_allowance($lines, $counted);
+	pg_assert_same(1, $allowance[1]['allowed']);
+	pg_assert_same(0, $allowance[2]['allowed'], 'the location cannot cover the plain line');
+
+	$bundles = stock_completion_test_source('includes/fn/bundles.php');
+	$check = substr($bundles, (int) strpos($bundles, 'function pg_bundle_check_inventory('));
+	pg_assert_contains('$location_id = pg_stock_order_location((int) $order_id);', $check, 'the bundle cart reads the order location');
+	pg_assert_contains('pg_stock_quantity_at($stock_product_id, $location_id, $entry[\'quantity\'])', $check, 'and counts each product there');
+	pg_assert_contains('$stock = pg_bundle_stock_at_location($stock, $at_location);', $check);
+}
+
 function test_stock_completion_api_declares_the_location()
 {
 	$found = 0;
