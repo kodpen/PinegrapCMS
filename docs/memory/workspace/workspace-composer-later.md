@@ -1,10 +1,10 @@
 ---
 name: workspace-composer-later
-description: Workspace writing-box tools (toolbar, lists, headings, highlight, slash inserts, smart paste, saved replies, AI rewrite): the owner's answers that still bind and what is left for later
+description: Workspace writing-box tools (toolbar, lists, headings, highlight, slash inserts, smart paste, saved replies, AI rewrite, find): the owner's answers that still bind and what is left for later
 ---
 
 ## Where is each tool written down?
-- One engine, `assets/js/workspace_editor.js` (`PGWsEditor`); its toolbar `workspace-editor-toolbar.md`. Lists and quotes `workspace-text-lists.md`, headings `workspace-text-headings.md`, highlight `workspace-text-highlight.md`, autoformat `workspace-editor-autoformat.md`, link and Ctrl+/ `workspace-editor-link-keys.md`, "Aa" `workspace-composer-expanded.md`, notes' `/` `workspace-notes-slash-inserts.md`, smart paste `workspace-editor-smart-paste.md`, draft `workspace-unsent-draft.md`, meter `workspace-message-meter.md`, `:` emoji `workspace-colon-emoji.md`, tag card `workspace-tag-card.md`, checklist to task `workspace-checklist-to-task.md`, saved replies `workspace-saved-replies.md`, AI rewrite `workspace-ai-rewrite.md`.
+- One engine, `assets/js/workspace_editor.js` (`PGWsEditor`); its toolbar `workspace-editor-toolbar.md`. Lists and quotes `workspace-text-lists.md`, headings `workspace-text-headings.md`, highlight `workspace-text-highlight.md`, autoformat `workspace-editor-autoformat.md`, link and Ctrl+/ `workspace-editor-link-keys.md`, "Aa" `workspace-composer-expanded.md`, notes' `/` `workspace-notes-slash-inserts.md`, smart paste `workspace-editor-smart-paste.md`, draft `workspace-unsent-draft.md`, meter `workspace-message-meter.md`, `:` emoji `workspace-colon-emoji.md`, tag card `workspace-tag-card.md`, checklist to task `workspace-checklist-to-task.md`, saved replies `workspace-saved-replies.md`, AI rewrite `workspace-ai-rewrite.md`, find and replace (Ctrl+F) `workspace-editor-find-replace.md`.
 
 ## How is a new syntax added?
 - Drawn by `ws_render_body()` (and its fast-path regex) alone, twin in `inlineNodes()`/`parseBlocks()`/`serializeNode()`, readable in `ws_plain_text()` (push, e-mail, API `text`) and `ws_guest_render()`, styled in `workspace_guest.css` and the print page; API `body`, MCP, search and Markdown export stay raw. Test `tests/workspace_render_test.php`, red first.
@@ -18,4 +18,4 @@ description: Workspace writing-box tools (toolbar, lists, headings, highlight, s
 - Dictation in the box: not now; recordings and transcripts are built (`workspace-voice-recording.md`).
 
 ## What is left for later?
-- Callouts, toggles, mermaid, find/replace in the box. No GIF, no video.
+- Callouts, toggles, mermaid. No GIF, no video.

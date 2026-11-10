@@ -59,7 +59,7 @@ function test_workspace_composer_expand_shortcut_rows()
 
 	$keys = array_map(function ($row) { return $row[0]; }, $answer);
 
-	pg_assert_same(array('Control+B', 'Control+I', 'Control+Shift+X', 'Control+Shift+H', 'Control+E', 'Control+K', 'Control+Z', 'Control+Y', 'Enter', 'Control+Enter', 'Control+/'), $keys, 'the expanded box');
+	pg_assert_same(array('Control+B', 'Control+I', 'Control+Shift+X', 'Control+Shift+H', 'Control+E', 'Control+K', 'Control+Z', 'Control+Y', 'Enter', 'Control+Enter', 'Control+F', 'Control+/'), $keys, 'the expanded box');
 	pg_assert_same(array('Enter', 'keys_newline'), $answer[8], 'Enter is a new line');
 	pg_assert_same(array('Control+Enter', 'keys_send'), $answer[9], 'Ctrl+Enter sends');
 }
