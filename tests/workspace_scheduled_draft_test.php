@@ -21,6 +21,9 @@ if (!defined('PG_TEST_RUNNER')) {
 // The module files hold functions and constants only; loading them runs nothing.
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/ai.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled_draft.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/model_agents.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/translate/engine_ai.php');
+require_once(__DIR__ . '/helpers/source_reader.php');
 
 // What ws_scheduled_draft_lists() gives for a site with everything on: two
 // channels and two people offered, the form opened in channel 3.
@@ -568,4 +571,47 @@ function test_workspace_scheduled_draft_outline_reads_money_as_sent()
 	$code = workspace_scheduled_draft_test_code('ws_scheduled_draft_outline');
 
 	pg_assert_contains("'rules' => ws_scheduled_rules_as_sent((array) (\$data['rules'] ?? array()), ws_scheduled_money_metrics())", $code, 'the rules go to the preview as the form sends them');
+}
+
+// Inside a model assistant's request the tool is offered and the draft made
+// by the assistant's own readiness, the test ws_model_kick() makes
+// (ws_model_agent_blocked()): never Pinegrap AI's switch, application or
+// licence (ws_ai_ready(), ws_ai_missing()). The offer and pg_ai_state() ask
+// the same, so an offered tool is not refused at the call.
+function test_workspace_scheduled_draft_asks_the_running_assistant()
+{
+	$ready = pg_test_function_source('ws_scheduled_draft_ready');
+	pg_assert_true(strpos($ready, 'ws_scheduled_draft_model_ready()') !== false, 'the offer asks the drafting model');
+	pg_assert_true(strpos($ready, 'ws_ai_ready') === false, 'not Pinegrap AI directly');
+
+	$model = pg_test_function_source('ws_scheduled_draft_model_ready');
+	$running = strpos($model, 'ws_model_running()');
+	$blocked = strpos($model, 'ws_model_agent_blocked($agent)');
+	pg_assert_true(($running !== false) && ($blocked !== false), 'the running assistant is asked');
+	pg_assert_true($blocked < strpos($model, 'ws_ai_ready()'), 'and answers before Pinegrap AI is asked');
+
+	$state = pg_test_function_source('pg_ai_state');
+	$branch = strpos($state, 'ws_model_agent_blocked($agent)');
+	pg_assert_true(($branch !== false) && ($branch < strpos($state, 'ws_ai_missing()')), 'the call asks the same before ws_ai_missing()');
+	pg_assert_true(strpos(substr($state, $branch, strpos($state, 'ws_ai_missing()') - $branch), "return array('ready' => true") !== false, 'and returns without it');
+
+	pg_assert_true(strpos(pg_test_function_source('ws_model_kick'), 'ws_model_agent_blocked($agent)') !== false, 'the kick skips by the same test');
+}
+
+// The draft's own failure sentences name the running assistant; Pinegrap
+// AI's wording stays for its own requests and the panel.
+function test_workspace_scheduled_draft_sentences_name_the_assistant()
+{
+	ws_model_running(array('id' => 4, 'name' => 'Ada'));
+	$unreadable = ws_scheduled_draft_sentence('unreadable');
+	$not_ready = ws_scheduled_draft_sentence('not_ready');
+	ws_model_running(null);
+
+	pg_assert_true(strpos($unreadable, 'Ada') !== false, 'unreadable names it');
+	pg_assert_true(strpos($not_ready, 'Ada') !== false, 'not ready names it');
+	pg_assert_true(strpos($unreadable . $not_ready, 'Pinegrap AI') === false, 'not Pinegrap AI');
+	pg_assert_true(strpos(ws_scheduled_draft_sentence('unreadable'), 'Pinegrap AI') !== false, 'Pinegrap AI for its own');
+
+	$chat = pg_test_function_source('pg_ai_chat');
+	pg_assert_true(strpos($chat, 'ws_model_loop_sentence($agent, \'unreachable\')') !== false, 'pg_ai_chat names the assistant when no error is given');
 }

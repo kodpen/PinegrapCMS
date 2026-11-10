@@ -9,7 +9,8 @@
  * gateway's licence and hold only for Pinegrap AI's own requests, that the
  * loop's failure sentences name the assistant, that its own row in a
  * channel decides whether it is asked there, and that the Site Log line of
- * its answer names it.
+ * its answer names it, and that a scheduled-action draft in its request asks
+ * its own readiness.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
