@@ -360,6 +360,9 @@ function test_ws_api_change_proposals_never_write_records()
 	}
 
 	pg_assert_contains('ws_api_is_assistant(', ws_api_test_handler_source('ws_api_proposal_agent'), 'an assistant proposes in its answer');
+	pg_assert_contains('ws_api_agent_key_proposes(', ws_api_test_handler_source('ws_api_proposal_agent'), 'an app agent\'s own key may propose in a channel');
+	pg_assert_contains('ws_api_proposal_agent(true)', ws_api_test_handler_source('ws_api_changes_propose'), 'the channel route lets it through to its tier');
+	pg_assert_contains('ws_api_proposal_agent()', ws_api_test_handler_source('ws_api_task_changes_propose'), 'the task route still refuses it');
 	pg_assert_contains("api_require_scope('tasks:read')", ws_api_test_handler_source('ws_api_task_changes_propose'), 'the task is seen under tasks:read');
 
 	// A user account is read by no API scope: refused before any record is

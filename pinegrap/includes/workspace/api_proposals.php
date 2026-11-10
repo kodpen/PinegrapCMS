@@ -123,16 +123,53 @@ function ws_proposal_api_routes()
 }
 
 /**
+ * Does an assistant's application propose in a channel with its own key?
+ * Only when every assistant it writes for is an app agent of the registry
+ * (key agent:<id>, agent_shown.php), so ws_agent_apply_within_tier() can
+ * apply what its tier allows. Claude, Pinegrap AI and a model agent answer
+ * their requests instead. Pure.
+ *
+ * @param array[] $assistants ws_assistants()
+ * @param int     $app_id     the caller's application
+ * @param bool    $is_claude  ws_api_is_claude()
+ * @return bool
+ */
+function ws_api_agent_key_proposes($assistants, $app_id, $is_claude)
+{
+    if ($is_claude || ((int) $app_id <= 0)) {
+        return false;
+    }
+
+    $found = false;
+
+    foreach ((array) $assistants as $key => $assistant) {
+        if ((int) ($assistant['app_id'] ?? 0) !== (int) $app_id) {
+            continue;
+        }
+
+        if (strpos((string) ($assistant['key'] ?? $key), 'agent:') !== 0) {
+            return false;
+        }
+
+        $found = true;
+    }
+
+    return $found;
+}
+
+/**
  * The agent the caller proposes under, or a 403: only an application key or
  * an OAuth connection proposes. A person on their own device changes the
  * record themselves; an assistant's application proposes in its answer to
- * the request it works on, where the person who asked applies it.
+ * the request it works on, where the person who asked applies it. An app
+ * agent's own key proposes in a channel, where its tier is read.
  *
+ * @param bool $in_channel the channel's changes route
  * @return string ws_proposal_agent_key()
  */
-function ws_api_proposal_agent()
+function ws_api_proposal_agent($in_channel = false)
 {
-    if (ws_api_is_assistant()) {
+    if (ws_api_is_assistant() && !($in_channel && ws_api_agent_key_proposes(ws_assistants(), ws_api_app_id(), ws_api_is_claude()))) {
         api_fail(403, 'forbidden', lang('An assistant proposes changes in its answer to the request it works on.'));
     }
 
@@ -238,7 +275,7 @@ function ws_api_proposal_rows($changes, $viewer, $channel_id, $task_id)
 function ws_api_changes_propose($params)
 {
     $viewer = ws_api_viewer();
-    $agent = ws_api_proposal_agent();
+    $agent = ws_api_proposal_agent(true);
     $channel = ws_api_channel_or_404($viewer, $params['id']);
 
     if (!ws_can_post_channel($viewer, $channel)) {

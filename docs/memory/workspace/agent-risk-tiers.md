@@ -9,6 +9,7 @@ description: Agent risk tiers (agent_tiers.php, A7): the tier of a change, when 
 
 ## When is a change applied at once?
 - Only on `workspace.changes.propose` in a channel, called with an application key whose application is a `kind = 'app'` agent with an allowed row in that channel (`ws_channel_agent_tier_of()`: the highest such row). OAuth connections, the assistants and task proposals stay proposals.
+- An active app agent's application is in `ws_assistants()`, so `ws_api_is_assistant()` holds for its key; on this route only, `ws_api_agent_key_proposes()` lets it through when every assistant of that application is an `agent:` one (not Claude, Pinegrap AI or a model agent). The task route and handing a task over still refuse it. Why: on dev the key got 403 and tiers 2 and 3 were never reached (#8452).
 - `ws_agent_apply_within_tier()` runs after `ws_proposal_store()`: when every change of the call is within the tier (`ws_agent_applies_at_once()`, tier at least 2), each goes through `ws_change_apply($owner, $id, true)`, in the name of the person the key acts for, with all its checks. One change above the tier keeps the whole call a proposal. The decision says it was applied at once and may be undone; the row gets `applied_by_kind = 'app'`; the API answer gives the changes as applied.
 
 ## How is it undone?
