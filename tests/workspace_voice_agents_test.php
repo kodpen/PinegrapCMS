@@ -135,6 +135,6 @@ function test_ws_voice_agent_in_a_discussion()
 	pg_assert_contains("\$out[] = 'mcp:' . (int) \$server['id'];", $threads, 'followed as the agent');
 
 	$messages = ws_voice_agents_test_source('includes/workspace/messages.php');
-	pg_assert_contains("\$named = \$follows ? ws_thread_agents_asked(\$body, \$message_id) : array();", $messages, 'ws_voice_ask() reaches it through ws_message_ask_assistants()');
+	pg_assert_contains("\$named = \$follows ? ws_thread_agents_asked(\$body, \$message_id, \$channel) : array();", $messages, 'ws_voice_ask() reaches it through ws_message_ask_assistants()');
 	pg_assert_contains("\$agent = (\$kind === 'agent') ? true : \$agent;", $messages, 'a discussion that follows the agent asks it');
 }

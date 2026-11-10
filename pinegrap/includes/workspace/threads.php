@@ -532,8 +532,9 @@ function ws_thread_follow_ready()
 }
 
 /**
- * An agent's key as follow_agent keeps it: claude, ai or mcp:<server id>;
- * '' for anything else.
+ * An agent's key as follow_agent keeps it: claude, ai, mcp:<server id>, or
+ * a registry agent's agent:<id> / model:<id> (the value its requests carry,
+ * ws_agent_request_value()); '' for anything else.
  *
  * @param string $agent
  * @return string
@@ -546,7 +547,79 @@ function ws_thread_follow_clean($agent)
         return $agent;
     }
 
-    return preg_match('/^mcp:([1-9][0-9]{0,9})$/', $agent, $match) ? 'mcp:' . (int) $match[1] : '';
+    return preg_match('/^(mcp|agent|model):([1-9][0-9]{0,9})$/', $agent, $match) ? $match[1] . ':' . (int) $match[2] : '';
+}
+
+/**
+ * Is the key a registry agent's (agent:<id> or model:<id>)? Pure.
+ *
+ * @param string $agent a clean key
+ * @return bool
+ */
+function ws_thread_follow_is_registry($agent)
+{
+    return (strpos((string) $agent, 'agent:') === 0) || (strpos((string) $agent, 'model:') === 0);
+}
+
+/**
+ * The row among those reaching a discussion (ws_agent_reach_rows()) that
+ * belongs to a registry agent's key; null when none does. Pure.
+ *
+ * @param array[] $rows
+ * @param string  $agent agent:<id> | model:<id>
+ * @return array|null
+ */
+function ws_thread_follow_reach_pick($rows, $agent)
+{
+    foreach ((array) $rows as $row) {
+        if (function_exists('ws_agent_request_value') && (ws_agent_request_value($row) === (string) $agent)) {
+            return $row;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * The registry agents a message names among the rows reaching its channel:
+ * their @handle as a word or their application's tag. The rows' other wake
+ * rules never count: only a name starts a follow. Pure.
+ *
+ * @param array[] $rows ws_agent_reach_rows(), in their id order
+ * @param string  $body normalised
+ * @return string[] agent:<id> | model:<id>
+ */
+function ws_thread_agents_named($rows, $body)
+{
+    $out = array();
+
+    foreach ((array) $rows as $row) {
+        $value = function_exists('ws_agent_request_value') ? ws_agent_request_value($row) : '';
+
+        if (($value !== '') && ws_agent_wake_matches(array_merge($row, array('wake_rule' => 'mention')), $body, false)) {
+            $out[] = $value;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Does the agent reach the discussion? Claude, Pinegrap AI and MCP agents
+ * check their own rights when asked; a registry agent only while a row
+ * reaches it (its own, or the channel's it is about), read live.
+ *
+ * @param array|null $channel the discussion
+ * @param string     $agent   a clean key
+ * @return bool
+ */
+function ws_thread_follow_reaches($channel, $agent)
+{
+    if (!ws_thread_follow_is_registry($agent)) {
+        return $agent !== '';
+    }
+
+    return function_exists('ws_agent_reach_rows') && (ws_thread_follow_reach_pick(ws_agent_reach_rows($channel), $agent) !== null);
 }
 
 /**
@@ -561,14 +634,17 @@ function ws_thread_follow_agent($channel_id)
         return '';
     }
 
-    return ws_thread_follow_clean(db_value("SELECT follow_agent FROM ws_threads WHERE channel_id = '" . (int) $channel_id . "'"));
+    $agent = ws_thread_follow_clean(db_value("SELECT follow_agent FROM ws_threads WHERE channel_id = '" . (int) $channel_id . "'"));
+
+    // A registry agent that no longer reaches the discussion is not followed.
+    return (ws_thread_follow_is_registry($agent) && !ws_thread_follow_reaches(ws_channel((int) $channel_id), $agent)) ? '' : $agent;
 }
 
 /**
  * Sets the agent a discussion follows; '' follows nobody.
  *
  * @param int    $channel_id the discussion
- * @param string $agent      claude | ai | mcp:<server id> | ''
+ * @param string $agent      claude | ai | mcp:<server id> | agent:<id> | model:<id> | ''
  */
 function ws_thread_follow_set($channel_id, $agent)
 {
@@ -580,15 +656,23 @@ function ws_thread_follow_set($channel_id, $agent)
 }
 
 /**
- * The handle an agent is written with: @Claude, @ai, or an MCP server's
- * @alias; '' for an agent that is not there any more.
+ * The handle an agent is written with: @Claude, @ai, an MCP server's @alias
+ * or a registry agent's @handle; '' for an agent that is not there any more
+ * or, a registry agent, does not reach the discussion.
  *
- * @param string $agent claude | ai | mcp:<server id>
+ * @param string     $agent   claude | ai | mcp:<server id> | agent:<id> | model:<id>
+ * @param array|null $channel the discussion, for a registry agent
  * @return string
  */
-function ws_thread_follow_handle($agent)
+function ws_thread_follow_handle($agent, $channel = null)
 {
     $agent = ws_thread_follow_clean($agent);
+
+    if (ws_thread_follow_is_registry($agent)) {
+        $row = (is_array($channel) && function_exists('ws_agent_reach_rows')) ? ws_thread_follow_reach_pick(ws_agent_reach_rows($channel), $agent) : null;
+
+        return ($row && ((string) ($row['handle'] ?? '') !== '')) ? '@' . (string) $row['handle'] : '';
+    }
 
     if ($agent === 'claude') {
         return '@Claude';
@@ -623,9 +707,11 @@ function ws_thread_follow_last($thread)
 
     if (is_array($row)) {
         $agent = ((string) ($row['agent'] ?? 'claude') === 'mcp') ? 'mcp:' . (int) ($row['mcp_server_id'] ?? 0) : (string) ($row['agent'] ?? 'claude');
+        $agent = ws_thread_follow_clean($agent);
 
-        if (ws_thread_follow_clean($agent) !== '') {
-            return ws_thread_follow_clean($agent);
+        // A registry agent comes back only while it reaches the discussion.
+        if (($agent !== '') && (!ws_thread_follow_is_registry($agent) || ws_thread_follow_reaches(ws_channel((int) $thread['channel_id']), $agent))) {
+            return $agent;
         }
     }
 
@@ -728,7 +814,7 @@ function ws_thread_follow_change($viewer, $channel, $follow)
 
     ws_thread_follow_set($channel['id'], $agent);
 
-    $handle = ws_thread_follow_handle($follow ? $agent : $now);
+    $handle = ws_thread_follow_handle($follow ? $agent : $now, $channel);
     $handle = ($handle !== '') ? $handle : lang('the assistant');
     $who = '<@user:' . (int) $viewer['id'] . '>';
 
@@ -744,13 +830,16 @@ function ws_thread_follow_change($viewer, $channel, $follow)
 /**
  * The agents a message asks by name or by answering one of their answers,
  * as ws_message_ask_assistants() asks them: Claude, then an MCP server that
- * is an agent itself or Pinegrap AI.
+ * is an agent itself or Pinegrap AI, then, given the channel, the registry
+ * agents reaching it that it names (ws_thread_agents_named(), by id). The
+ * last of them is followed.
  *
- * @param string $body       normalised (ws_tokens_normalise())
- * @param int    $message_id
+ * @param string     $body       normalised (ws_tokens_normalise())
+ * @param int        $message_id
+ * @param array|null $channel    the discussion; null leaves registry agents out
  * @return string[] agent keys
  */
-function ws_thread_agents_asked($body, $message_id)
+function ws_thread_agents_asked($body, $message_id, $channel = null)
 {
     $out = array();
 
@@ -765,6 +854,10 @@ function ws_thread_agents_asked($body, $message_id)
     } elseif ($server || (function_exists('ws_ai_schema_ready') && ws_ai_schema_ready() && (ws_ai_asked($body) || ws_ai_answers_ai($message_id)))) {
         // Pinegrap AI, with a server's tools or without.
         $out[] = 'ai';
+    }
+
+    if (is_array($channel) && function_exists('ws_agent_reach_rows')) {
+        $out = array_merge($out, ws_thread_agents_named(ws_agent_reach_rows($channel), $body));
     }
 
     return $out;
@@ -884,20 +977,22 @@ function ws_thread_follow_pending_plan($open)
 /**
  * Asks the agent a discussion follows about a person's message that asks
  * nobody: the usual checks of each agent stay (allowed there, waiting
- * limits, an MCP server's account), only its name need not be written.
+ * limits, an MCP server's account; a registry agent's reach, own-message
+ * rule, brakes and push door), only its name need not be written.
  *
  * @param array  $viewer
  * @param array  $channel    the discussion
  * @param int    $message_id
  * @param string $body       normalised
  * @param string $agent      the followed agent's key
- * @return string claude | agent | ai: whose request was queued, '' for none
+ * @return string claude | agent (an MCP agent) | ai | the registry agent's
+ *                agent:<id> / model:<id>: whose request was queued, '' for none
  */
 function ws_thread_follow_ask($viewer, $channel, $message_id, $body, $agent)
 {
     $agent = ws_thread_follow_clean($agent);
 
-    if ($agent === '') {
+    if (($agent === '') || !ws_thread_follow_reaches($channel, $agent)) {
         return '';
     }
 
@@ -911,7 +1006,7 @@ function ws_thread_follow_ask($viewer, $channel, $message_id, $body, $agent)
     foreach ((array) db_items("SELECT id, message_id, status FROM ws_ai_requests
         WHERE channel_id = '" . (int) $channel['id'] . "' AND status IN ('queued', 'sent')" . $where) as $row) {
         $asked = ws_message((int) $row['message_id']);
-        $named = $asked && in_array($agent, ws_thread_agents_asked(ws_tokens_normalise(trim((string) $asked['body'])), (int) $asked['id']), true);
+        $named = $asked && in_array($agent, ws_thread_agents_asked(ws_tokens_normalise(trim((string) $asked['body'])), (int) $asked['id'], $channel), true);
         $open[] = array('id' => (int) $row['id'], 'status' => (string) $row['status'], 'named' => $named, 'message_id' => (int) $row['message_id']);
     }
 
@@ -921,7 +1016,11 @@ function ws_thread_follow_ask($viewer, $channel, $message_id, $body, $agent)
         return '';
     }
 
-    if ($agent === 'claude') {
+    if (ws_thread_follow_is_registry($agent)) {
+        // Its own wake path, never Pinegrap AI's.
+        $queued = function_exists('ws_agent_after_send') && in_array($agent, ws_agent_after_send($viewer, $channel, $message_id, $body, $agent), true);
+        $kind = $agent;
+    } elseif ($agent === 'claude') {
         $queued = function_exists('ws_claude_after_send') && ws_claude_after_send($viewer, $channel, $message_id, $body, true);
         $kind = 'claude';
     } elseif ($server_id > 0) {
@@ -965,6 +1064,7 @@ function ws_thread_present($viewer, $thread, $channel)
     $closed = ((int) $thread['closed_at'] > 0);
     $agents = array_values(array_filter(explode(',', (string) $thread['assistants'])));
     $followed = ws_thread_follow_ready() ? ws_thread_follow_clean($thread['follow_agent'] ?? '') : '';
+    $followed = ws_thread_follow_reaches($channel, $followed) ? $followed : '';
     $follow = ws_thread_follow_state($followed, (($followed === '') && $member && !$closed && ws_thread_follow_ready()) ? ws_thread_follow_last($thread) : '', (bool) $member, $closed);
     $names = array();
 
@@ -990,9 +1090,9 @@ function ws_thread_present($viewer, $thread, $channel)
             ws_person_name($thread['closed_by']), date('d.m.Y', (int) $thread['closed_at']), date('d.m.Y', (int) $thread['purge_at'])))) : '',
         'assistants' => $names,
         'follow'     => $follow['follow'],
-        'follow_handle' => ws_thread_follow_handle($follow['follow']),
+        'follow_handle' => ws_thread_follow_handle($follow['follow'], $channel),
         'follow_again' => $follow['again'],
-        'follow_again_handle' => ws_thread_follow_handle($follow['again']),
+        'follow_again_handle' => ws_thread_follow_handle($follow['again'], $channel),
         'can_follow' => $follow['can_change'],
     );
 }
