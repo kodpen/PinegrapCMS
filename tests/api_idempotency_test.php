@@ -172,3 +172,24 @@ function test_api_idempotency_replay_restores_a_routes_redacted_fields()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/idempotency.php');
 	pg_assert_contains("api_send((int)\$row['status_code'], api_idempotency_restored(\$stored, \$context['restore']));", $source);
 }
+
+// A one-time short link's address is its credential: only its hash is kept,
+// so the Idempotency-Key record leaves it out and a retry answers it null.
+function test_api_idempotency_short_link_token_url_is_kept_out_of_the_record()
+{
+	if (!defined('PG_INIT_LOADED')) {
+		define('PG_INIT_LOADED', true);
+	}
+	require_once(PG_FUNCTIONS_DIR . '/includes/api/schema.php');
+
+	$route = null;
+	foreach (api_schema() as $row) {
+		if ($row['id'] === 'short_links.create') {
+			$route = $row;
+		}
+	}
+
+	pg_assert_same(array('token_url'), $route['idempotency_redact'] ?? null, 'the one-time address is kept in no Idempotency-Key record');
+	pg_assert_false(isset($route['idempotency_restore']), 'and cannot be read back: only its hash is kept');
+	pg_assert_contains('carries token_url null', (string) ($route['description'] ?? ''), 'the description tells a client what a retry answers');
+}

@@ -124,6 +124,59 @@ function pg_menu_tree_from_rows(array $rows, array $counts)
 }
 
 /**
+ * A menu's rows in listing order: depth first from the top level, each row
+ * with its depth in 'level' (1 = top). An item whose parent is not in the
+ * rows is never reached, and an item met a second time (a parent loop) is
+ * not listed again.
+ *
+ * @param array $rows  menu items with id and parent_id, siblings in order
+ * @return array  the rows reached from the top, each with 'level'
+ */
+function pg_menu_tree_flatten(array $rows)
+{
+    $tree = pg_menu_tree_from_rows($rows, array());
+    $children = $tree['children'];
+    $list = array();
+    $visited = array();
+
+    if (empty($children[0])) {
+        return $list;
+    }
+
+    // An explicit stack of (siblings, position, level) keeps a deep menu off
+    // the call stack.
+    $stack = array(array($children[0], 0, 1));
+
+    while ($stack) {
+        $top = count($stack) - 1;
+        list($siblings, $position, $level) = $stack[$top];
+
+        if ($position >= count($siblings)) {
+            array_pop($stack);
+            continue;
+        }
+
+        $stack[$top][1] = $position + 1;
+        $row = $siblings[$position];
+        $id = (int) $row['id'];
+
+        if (isset($visited[$id])) {
+            continue;
+        }
+
+        $visited[$id] = true;
+        $row['level'] = $level;
+        $list[] = $row;
+
+        if (!empty($children[$id])) {
+            $stack[] = array($children[$id], 0, $level + 1);
+        }
+    }
+
+    return $list;
+}
+
+/**
  * The common and designer regions behind <cregion> tags, read once per
  * request: the names a call asks for that no earlier call has read are read
  * together in one query, and what was read (a region, or that there is none)

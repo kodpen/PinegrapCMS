@@ -410,6 +410,7 @@
     "On the site being called, exclude the endpoint path instead — one entry covers every site that calls it, forever. It is not treated as privileged here: a user agent is a claim, not a credential.": "Çağrılan sitede ise bunun yerine uç nokta yolunu muaf tutun — tek kayıt, onu çağıran tüm siteleri kalıcı olarak kapsar. Burada ayrıcalıklı sayılmaz: tarayıcı kimliği bir iddiadır, kimlik belgesi değil.",
     "On the site now": "Şu an sitede",
     "On the third day, a little dry shampoo at the roots and a minute with a round brush bring the volume back.": "Üçüncü gün diplere biraz kuru şampuan ve yuvarlak fırçayla bir dakika, hacmi geri getirir.",
+    "On the timeline": "Zaman çizelgesinde",
     "On the walls": "Duvarlarda",
     "On the water and ashore": "Denizde ve karada",
     "On the way": "Yolda",

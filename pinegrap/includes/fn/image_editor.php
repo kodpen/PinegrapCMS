@@ -5296,7 +5296,7 @@ function pg_image_editor_strings_video()
 
 /**
  * The video layer's labels: its panel, the Import menu's item, the videos
- * from Files and the upload from this computer.
+ * from Files, the upload from this computer and the clip rows' editing.
  *
  * @return array key => translated text
  */
@@ -5325,6 +5325,16 @@ function pg_image_editor_strings_clip()
         'clipUploading'   => lang('Uploading the video into Files...'),
         'clipUploadError' => lang('The video could not be uploaded.'),
         'clipNeedsFiles'  => lang('A video is added through Files: save this image in the File Manager first.'),
+        'clipSplit'       => lang('Split clip'),
+        'clipSplitNote'   => lang('Splits the clip in two at the playhead: in the Animate tool, put the playhead inside the clip.'),
+        'clipSameSource'  => lang('Same source'),
+        'clipFromSource'  => lang('From the source'),
+        'clipOnTimeline'  => lang('On the timeline'),
+        'clipPillStart'   => lang('Start frame · source {source} · clip {length}'),
+        'clipPillEnd'     => lang('End frame · source {source} · clip {length}'),
+        'clipTracksNote'  => lang('While an end is dragged the stage shows its frame. The clips after it follow with no gap and the length of the document follows the clips. Ends snap to the playhead, the other layers\' ends and 0.1 s steps; Shift turns snapping off.'),
+        'hintClipMove'    => lang('Clip: moving · Shift turns off snapping · Esc cancels'),
+        'hintClipTrim'    => lang('Trim: dragging an end · Shift turns off snapping · Esc cancels'),
     );
 }
 

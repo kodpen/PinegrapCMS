@@ -15,14 +15,14 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
 - V2 (M) The video layer. Part `clip`. Done (#8483, `ui/image-editor-clip.md`; with V4's Detach sound; the export's frames at each moment left to V7).
   - `type: 'video'` with its file, source in and out, place on the timeline, speed, volume, muted. Drawn at the playhead under or over other layers; playing in step with the play bar; added from Files or this computer through E31's Import menu (`ui/image-editor-import.md`).
 
-- V3 (M) Timeline editing. After V2, `free`.
+- V3 (M) Timeline editing. Done (#8510, `ui/image-editor-clip-timeline.md`).
   - Clip rows on the tracks (AN2): trim the ends, split at the playhead (two layers on one source), move, snap; the document's length follows its clips.
 
 - V4 (M) Sound. Done (#7642, `ui/image-editor-sound.md`; from this computer left to V8). Screens 37-sound, 35-video. Needs no video layer: may run right after V0, before V1-V3 (owner 2026-11-05: sound in an animation's video too).
   - An audio layer on any canvas: music and sounds from Files (MP3, AAC, WAV, Ogg), its start, trim, volume, fade in and out, mute; its row with a waveform on the tracks; Web Audio playback in step with the play bar, so an animation gets its music.
   - With V2: a clip's sound as its own row (Detach sound mutes the clip and adds an audio layer on the same source).
 
-- V5 (M) Effects and transitions. After V3.
+- V5 (M) Effects and transitions. `free` after V3.
   - The Adjust filters per clip (brightness, contrast, saturation, warmth, blur, vignette) drawn per frame; transitions between clips (AN7's fade, slide, wipe); speed 0.25-4× (sound muted off 1×).
 
 - V6 (S) Pictures and animations over video. After V5.
@@ -38,7 +38,7 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
 - V9 (S) Save and open again.
   - The project document (clips, sound, layers) kept in the export's version, as AN4 keeps an animation's; the same-format replace.
 
-- V10 (S) Phone. After V3 and V4.
+- V10 (S) Phone. `free` after V3 and V4.
   - One list of rows, touch-sized trim handles, the sound rows folded.
 
 - V11 (S) Access and close-out. The holder.

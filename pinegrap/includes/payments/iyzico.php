@@ -365,6 +365,191 @@ function pg_payment_iyzico_start_error($error_message, $raw)
 }
 
 /* ---------------------------------------------------------------------------
+   A refused card payment
+   --------------------------------------------------------------------------- */
+
+/**
+ * iyzico's bank error codes that name a reason on the card's side, which the
+ * cardholder settles with the bank or by paying with another card: not
+ * honoured, an invalid transaction, no funds or limit, an expired, blocked or
+ * restricted card, a card closed to this payment or to online shopping, a
+ * wrong CVC, card number, PIN or expiry, a debit card that needs 3-D Secure
+ * or takes no instalments.
+ *
+ * @return string[]
+ */
+function pg_payment_iyzico_card_side_codes()
+{
+    return array(
+        '10005', '10012', '10051', '10054', '10057', '10084', '10093', '10201', '10206', '10207',
+        '10209', '10212', '10215', '10217', '10218', '10224', '10225', '10226', '10227', '10229',
+    );
+}
+
+/**
+ * How a payment iyzico refused is told to the visitor.
+ *
+ *   card   a bank error code with a reason on the card's side
+ *          (pg_payment_iyzico_card_side_codes()): told in the bank's words
+ *   other  any other bank error code (five digits from 10000): an answer
+ *          iyzico does not know, the terminal, a system error. The bank named
+ *          nothing the cardholder can settle, so the visitor is not sent to
+ *          their bank
+ *   plain  the rest, told without a reason: a card reported lost or stolen
+ *          and a fraud suspicion, whose words are not for the visitor, and a
+ *          code that is not a bank's (a refused request, no answer)
+ *
+ * @param mixed $error_code iyzico's errorCode
+ * @return string card, other or plain
+ */
+function pg_payment_iyzico_refusal_kind($error_code)
+{
+    $error_code = is_scalar($error_code) ? trim((string) $error_code) : '';
+
+    if ((preg_match('/^1\d{4}$/', $error_code) !== 1) || in_array($error_code, array('10034', '10041', '10043'), true)) {
+        return 'plain';
+    }
+
+    return in_array($error_code, pg_payment_iyzico_card_side_codes(), true) ? 'card' : 'other';
+}
+
+/**
+ * The sentence for the visitor when iyzico refused a card payment.
+ *
+ * @param mixed  $error_code    iyzico's errorCode
+ * @param mixed  $error_message iyzico's errorMessage, which it words in the
+ *                              language the payment was sent in
+ * @param string $plain         the sentence of a refusal told without a reason
+ * @return string
+ */
+function pg_payment_iyzico_refusal_sentence($error_code, $error_message, $plain)
+{
+    $kind = pg_payment_iyzico_refusal_kind($error_code);
+
+    if ($kind === 'other') {
+        return lang('The payment could not be taken with this card right now. Please try another card or contact us.');
+    }
+
+    if ($kind !== 'card') {
+        return (string) $plain;
+    }
+
+    $error_message = is_scalar($error_message) ? trim((string) $error_message) : '';
+
+    if ($error_message === '') {
+        return lang('Your bank did not approve the payment. Please check your card with your bank or try another card.');
+    }
+
+    return lang(array(
+        'string' => 'Your bank did not approve the payment ({var:1}). Please check your card with your bank or try another card.',
+        'vars'   => array($error_message),
+    ));
+}
+
+/**
+ * The log lines of a card payment iyzico refused: what iyzico answered, for
+ * which order, and what the payment is found by at iyzico. When the code
+ * names no reason on the card's side a second line says where the bank's own
+ * answer is read: iyzico's answer to the request does not carry it.
+ *
+ * @param \Iyzipay\IyzipayResource $refused         iyzico's answer
+ * @param int                      $order_id
+ * @param mixed                    $payment_id      iyzico's id of the payment, '' when it gave none
+ * @param mixed                    $conversation_id
+ * @param mixed                    $md_status       the mdStatus the bank posted on the 3-D Secure
+ *                                                  return; null for a payment without 3-D Secure
+ * @return array
+ */
+function pg_payment_iyzico_refusal_log($refused, $order_id, $payment_id, $conversation_id, $md_status = null)
+{
+    // The payment id and the mdStatus of a return are what was posted.
+    $shown = function ($value) {
+        $value = is_scalar($value) ? mb_substr(trim((string) $value), 0, 200) : '';
+
+        return ($value !== '') ? $value : '-';
+    };
+
+    $error_code = $refused->getErrorCode();
+
+    $vars = array(
+        (int) $order_id,
+        $shown($error_code),
+        $shown($refused->getErrorGroup()),
+        $shown($refused->getErrorMessage()),
+        $shown($payment_id),
+        $shown($conversation_id),
+    );
+
+    if ($md_status !== null) {
+        $vars[] = $shown($md_status);
+
+        $log = array(pg_log_lang(array(
+            'string' => 'Iyzipay 3D Secure payment for order #{var:1} was not accepted: code {var:2}, group {var:3}, message {var:4} (payment {var:5}, conversation {var:6}, mdStatus {var:7}).',
+            'vars'   => $vars,
+        )));
+    } else {
+        $log = array(pg_log_lang(array(
+            'string' => 'Iyzipay payment for order #{var:1} was not accepted: code {var:2}, group {var:3}, message {var:4} (payment {var:5}, conversation {var:6}).',
+            'vars'   => $vars,
+        )));
+    }
+
+    if (pg_payment_iyzico_refusal_kind($error_code) === 'other') {
+        $log[] = pg_log_lang(array('string' => 'iyzico gave no card-side reason for this refusal. The bank\'s own answer is shown on the payment\'s detail in the iyzico panel; iyzico support can say what it means.'));
+    }
+
+    return $log;
+}
+
+/**
+ * What the mdStatus of the bank's 3-D Secure answer means, in the words of
+ * iyzico's list, for the log.
+ *
+ * @param mixed $md_status as the bank posted it
+ * @return string
+ */
+function pg_payment_iyzico_md_status_meaning($md_status)
+{
+    $md_status = is_scalar($md_status) ? trim((string) $md_status) : '';
+
+    switch ($md_status) {
+        case '':
+            return pg_log_lang(array('string' => 'the answer carried no mdStatus'));
+
+        case '1':
+            return pg_log_lang(array('string' => 'the bank verified the cardholder'));
+
+        // One bank posts -1 where the others post 0.
+        case '0':
+        case '-1':
+            return pg_log_lang(array('string' => 'the 3D Secure signature or verification is not valid'));
+
+        case '2':
+            return pg_log_lang(array('string' => 'the cardholder or the card\'s bank is not registered for 3D Secure'));
+
+        case '3':
+            return pg_log_lang(array('string' => 'the card\'s bank is not registered for 3D Secure'));
+
+        case '4':
+            return pg_log_lang(array('string' => 'the cardholder chose to register for 3D Secure later'));
+
+        case '5':
+            return pg_log_lang(array('string' => 'the 3D Secure verification could not be made'));
+
+        case '6':
+            return pg_log_lang(array('string' => 'a 3D Secure error at the bank'));
+
+        case '7':
+            return pg_log_lang(array('string' => 'a system error during 3D Secure'));
+
+        case '8':
+            return pg_log_lang(array('string' => 'the card number is not known to 3D Secure'));
+    }
+
+    return pg_log_lang(array('string' => 'a value iyzico does not list'));
+}
+
+/* ---------------------------------------------------------------------------
    Card payment
    --------------------------------------------------------------------------- */
 
@@ -608,9 +793,9 @@ function pg_payment_iyzico_authorize_with($order, $amount, $payment, $settings, 
     $fraud_status = $paid->getFraudStatus();
 
     if ($status !== 'success') {
-        $log[] = pg_log_lang(array('string' => 'Iyzipay payment was not accepted: code {var:1}, message {var:2}', 'vars' => array((string) $error_code, (string) $error_message)));
+        $log = array_merge($log, pg_payment_iyzico_refusal_log($paid, (int) pg_payment_iyzico_order_value($order, 'id'), $payment_id, $conversation_id));
 
-        return pg_payment_failure_logged(lang('Payment failed. Please try again.'), $log);
+        return pg_payment_failure_logged(pg_payment_iyzico_refusal_sentence($error_code, $error_message, lang('Payment failed. Please try again.')), $log);
     }
 
     if ($fraud_status === -1) {
@@ -717,19 +902,23 @@ function pg_payment_iyzico_threeds_claim($row, $payment_id)
  * started with (the iyzipay_3ds_state row), and the order records the row's
  * total and instalment charge, which are what the card was charged. The row
  * is claimed before iyzico is asked, so a replayed return cannot take the
- * payment twice; a payment iyzico took for another total is cancelled.
+ * payment twice; a payment iyzico took for another total is cancelled. A
+ * return whose status says the bank did not verify the cardholder ends
+ * there, iyzico unasked and the row unclaimed.
  *
  * @param array    $order    orders row of the order in the visitor's session
  * @param int      $amount   hundredths: the order total now, before any
  *                           instalment charge
  * @param array    $return   what the bank posted back (conversationId,
- *                           paymentId, conversationData)
+ *                           paymentId, conversationData, status, mdStatus)
  * @param array    $state    pg_payment_iyzico_authorize_with(): the instalment
  *                           number the visitor picked
  * @param array    $settings pg_payment_iyzico_settings(true)
  * @param callable $find     reads the row (pg_payment_iyzico_threeds_find())
  * @param callable $claim    marks it used (pg_payment_iyzico_threeds_claim())
- * @return array an answer: paid; state kept only while iyzico was not asked
+ * @return array an answer: paid; state kept only while the return was not
+ *               taken as this payment's answer (the limit, no matching row,
+ *               a row already used)
  */
 function pg_payment_iyzico_complete_with($order, $amount, $return, $state, $settings, $find, $claim)
 {
@@ -756,12 +945,38 @@ function pg_payment_iyzico_complete_with($order, $amount, $return, $state, $sett
 
     $conversation_id = $posted('conversationId');
     $posted_payment_id = $posted('paymentId');
+    $posted_status = $posted('status');
+    $md_status = $posted('mdStatus');
     $order_id = (int) pg_payment_iyzico_order_value($order, 'id');
     $row = ($conversation_id !== '') ? call_user_func($find, $conversation_id) : null;
 
     // The row must belong to the order in the visitor's session, otherwise a
     // conversation id taken from another order could complete this one.
-    if (!is_array($row) || ($order_id <= 0) || ((int) $row['order_id'] !== $order_id) || ($posted_payment_id === '')) {
+    $matched = is_array($row) && ($order_id > 0) && ((int) $row['order_id'] === $order_id);
+
+    // iyzico posts the result of the bank's verification with the payment and
+    // takes a payment only after a successful one. A status other than
+    // success is a cardholder the bank did not verify: iyzico is not asked,
+    // and the log keeps what the bank answered. An answer with no status is
+    // left to iyzico, as every answer was before the status was read.
+    if ($matched && ($posted_status !== '') && (strtolower($posted_status) !== 'success')) {
+        // Posted values, so the log takes no more of them than an answer has.
+        $log[] = pg_log_lang(array(
+            'string' => 'Iyzipay 3D Secure verification was not passed for order #{var:1}: status {var:2}, mdStatus {var:3} ({var:4}), payment {var:5}, conversation {var:6}.',
+            'vars'   => array(
+                $order_id,
+                mb_substr($posted_status, 0, 20),
+                ($md_status !== '') ? mb_substr($md_status, 0, 5) : '-',
+                pg_payment_iyzico_md_status_meaning($md_status),
+                ($posted_payment_id !== '') ? mb_substr($posted_payment_id, 0, 40) : '-',
+                $conversation_id,
+            ),
+        ));
+
+        return pg_payment_failure_logged(lang('3D Secure verification failed. Please try again.'), $log);
+    }
+
+    if (!$matched || ($posted_payment_id === '')) {
         $log[] = pg_log_lang(array('string' => 'Iyzipay 3D Secure answer matches no payment started for order #{var:1} (conversation {var:2}).', 'vars' => array($order_id, $conversation_id)));
 
         $answer = pg_payment_failure_logged(lang('Session could not be verified. Please try again.'), $log);
@@ -803,9 +1018,9 @@ function pg_payment_iyzico_complete_with($order, $amount, $return, $state, $sett
     }
 
     if ($status !== 'success') {
-        $log[] = pg_log_lang(array('string' => 'Iyzipay 3D Secure payment was not accepted: code {var:1}, message {var:2}', 'vars' => array((string) $error_code, (string) $error_message)));
+        $log = array_merge($log, pg_payment_iyzico_refusal_log($paid, $order_id, $posted_payment_id, $conversation_id, $md_status));
 
-        return pg_payment_failure_logged(lang('Payment could not be verified. Please try again.'), $log);
+        return pg_payment_failure_logged(pg_payment_iyzico_refusal_sentence($error_code, $error_message, lang('Payment could not be verified. Please try again.')), $log);
     }
 
     if ($fraud_status === -1) {
