@@ -5,7 +5,7 @@ module: picker
 ---
 
 ## Where is it and how is it opened?
-- `assets/js/pg_picker.js`, served as `assets/js/pg_picker.min.js` (`pg_js_bundles()`); styles in `backend.src.css` under "The picker dialog". PK2 of `plans/one-picker.md`, PR #PRNUM.
+- `assets/js/pg_picker.js`, served as `assets/js/pg_picker.min.js` (`pg_js_bundles()`); styles in `backend.src.css` under "The picker dialog". PK2 of `plans/one-picker.md`, PR #8562.
 - A screen prints `pg_picker_script()` once (the `#pg_picker_config` JSON with the `picker.php` address and `pg_picker_texts()`, then the bundle); it works in markup injected with jQuery, as the Settings cards are.
 - `pgPicker.open({kind, value, title})` returns a promise of the picked item or null, settled once the dialog has closed (`dialog-result-after-close.md`).
 - `pg_picker_browse_button($kind, $field_id, $title)` prints Browse…: it opens the dialog at the field's value and writes the pick into the field (a select gets the option, then `pgCombobox.set()`, which fires `change`).

@@ -10,7 +10,7 @@ description: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry an
 
 - PK1 (M) Registry and endpoint. `includes/fn/picker.php` and `picker.php`: the kinds `file`, `image`, `public_image`, `site_icon` and `page`; the requests `list`, `search`, `tree` and `resolve`; the access verdict, the folded name match, paging. `file_picker_search.php` answers through it with its contract unchanged. No screen changes. Done (#8515, ui/picker-registry.md)
 
-- PK2 (M) The dialog. After PKV and PK1. `assets/js/pg_picker.js` and its styles in the panel bundle: tree, grid and list, search, sort, one pick, keyboard, the phone sheet; the file kinds. Shown on one screen (Settings, Site Icon) behind a Browse button; the owner approves the built dialog the same way.
+- PK2 (M) The dialog. After PKV and PK1. `assets/js/pg_picker.js` and its styles in the panel bundle: tree, grid and list, search, sort, one pick, keyboard, the phone sheet; the file kinds. Shown on one screen (Settings, Site Icon) behind a Browse button; the owner approves the built dialog the same way. Done (#8562, ui/picker-dialog.md)
 
 - PK3 (M) Upload, Recent and several picks. Upload by drop or by choice into the open folder under the folder's edit right; a person's recent picks, kept in the browser; `multiple` for the product pictures.
 
