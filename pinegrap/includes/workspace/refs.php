@@ -79,29 +79,30 @@ function ws_viewer($user)
 /**
  * Every kind of token a text can hold, whatever the reader may see: what the
  * patterns that find tokens are built from. Record types are the ones that
- * live outside the workspace and have a screen of their own.
+ * live outside the workspace and have a screen of their own: the kinds of
+ * ws_record_kinds(), in its order, so a new kind is written there only.
  *
  * @return string[]
  */
 function ws_record_type_keys()
 {
-    return array(
-        'order', 'product', 'product_group', 'offer', 'cart_quote',
-        'contact', 'user_account',
-        'erp_account', 'invoice', 'waybill', 'receipt', 'edoc', 'erp_quote',
-        'form', 'calendar_event', 'booking',
-        'file', 'page',
-    );
+    static $keys = null;
+
+    if ($keys === null) {
+        $keys = array_keys(ws_record_kinds());
+    }
+
+    return $keys;
 }
 
 /**
- * Every kind of site record a tag can point at, described in one place, in
- * the order of ws_record_type_keys(). A new kind is described here first;
- * the lists that name kinds one by one (the tags, the change catalogue, the
- * drawer, the customer kinds, the audit trail, the assistants' scopes) still
- * hold it as well, and tests/workspace_record_kinds_registry_test.php names
- * the list a kind here is missing from, or the kind a list names that is
- * missing here.
+ * Every kind of site record a tag can point at, described in one place: its
+ * order is the order of the kinds everywhere. ws_record_type_keys() and
+ * ws_customer_types() read their kinds from here; the other lists that name
+ * kinds one by one (the tags, the change catalogue, the drawer, the audit
+ * trail, the assistants' scopes) still hold a new kind as well, and
+ * tests/workspace_record_kinds_registry_test.php names the list a kind here
+ * is missing from, or the kind a list names that is missing here.
  *
  * Per kind:
  * - prefixes: the words typed after # that pick it (ws_ref_types());
