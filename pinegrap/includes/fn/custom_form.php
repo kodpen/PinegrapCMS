@@ -4848,6 +4848,8 @@ function pg_cf_confirm_subscription_url_for($url, $email_address, $contact_addre
  * [[...||...]] block and never leaves the token as written. In HTML the
  * value is escaped, and the http:// the editor's Link dialog puts in front
  * of href="^^email_preferences_url^^" is taken off first.
+ * A field the editor stored percent-encoded in a tag (%5E%5Ename%5E%5E) is
+ * filled the same way (pg_cf_mail_link_decode_tokens()).
  *
  * Only for text that carries no submitted value yet (a subject or plain
  * text body before get_variable_submitted_form_data_for_content(), a form
@@ -4865,14 +4867,14 @@ function pg_cf_fill_mail_links($content, $values, $format)
 {
     $content = (string)$content;
 
-    if (strpos($content, '^^') === false) {
+    if ((strpos($content, '^^') === false) && (stripos($content, '%5E%5E') === false)) {
         return $content;
     }
 
     $format = ($format === 'html') ? 'html' : 'plain_text';
 
     if ($format === 'html') {
-        $content = pg_mail_merge_address_hrefs($content, pg_cf_mail_link_names());
+        $content = pg_mail_merge_address_hrefs(pg_cf_mail_link_decode_tokens($content), pg_cf_mail_link_names());
     }
 
     $fields = array();
@@ -4889,7 +4891,8 @@ function pg_cf_fill_mail_links($content, $values, $format)
  * values, such as an HTML e-mail drawn by get_page_content(): no [[...]]
  * block is evaluated, so a submitted value can neither hide nor reveal
  * other text. In HTML the value is escaped and the Link dialog's http:// in
- * front of the field is taken off; '' for a missing value.
+ * front of the field is taken off; '' for a missing value. A percent-encoded
+ * field in a tag is filled too (pg_cf_mail_link_decode_tokens()).
  *
  * @param string $content
  * @param array  $values name => value (pg_cf_mail_link_values())
@@ -4900,14 +4903,14 @@ function pg_cf_fill_mail_link_tokens($content, $values, $format)
 {
     $content = (string)$content;
 
-    if (strpos($content, '^^') === false) {
+    if ((strpos($content, '^^') === false) && (stripos($content, '%5E%5E') === false)) {
         return $content;
     }
 
     $html = ($format === 'html');
 
     if ($html) {
-        $content = pg_mail_merge_address_hrefs($content, pg_cf_mail_link_names());
+        $content = pg_mail_merge_address_hrefs(pg_cf_mail_link_decode_tokens($content), pg_cf_mail_link_names());
     }
 
     $replace = array();
@@ -4917,6 +4920,36 @@ function pg_cf_fill_mail_link_tokens($content, $values, $format)
     }
 
     return strtr($content, $replace);
+}
+
+/**
+ * Turns a link field the editor stored percent-encoded inside a tag
+ * (href="%5E%5Eemail_preferences_url%5E%5E", the hex digits in either case)
+ * back into ^^email_preferences_url^^, so it is filled like the plain form.
+ * Only the names of pg_cf_mail_link_names() and only text inside a tag (an
+ * attribute value); other percent-encoded text and text between tags stay
+ * as written.
+ *
+ * @param string $html
+ * @return string
+ */
+function pg_cf_mail_link_decode_tokens($html)
+{
+    $html = (string)$html;
+
+    if (stripos($html, '%5E%5E') === false) {
+        return $html;
+    }
+
+    $names = array_map(function ($name) { return preg_quote($name, '/'); }, pg_cf_mail_link_names());
+    // The hex digits in either case; the name exactly as ^^name^^ takes it.
+    $token = '/%5[eE]%5[eE](' . implode('|', $names) . ')%5[eE]%5[eE]/';
+
+    $result = preg_replace_callback('/<[^<>]*>/', function ($tag) use ($token) {
+        return preg_replace($token, '^^$1^^', $tag[0]);
+    }, $html);
+
+    return ($result === null) ? $html : $result;
 }
 
 /**
