@@ -26,6 +26,10 @@
 - kodpen-vendor-api-client-steps.md: Steps P1-P8 of plans/kodpen-vendor-api-client.md: changes, files, tests, memory, size, order; claim as [plan:kodpen-vendor-api-client] P<n>
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): 2026.11.0 asks api.kodpen.com/v1 for licences and signed updates behind one switch line, no api2 fallback; steps P1-P8 in -steps, contract in platform/vendor-api-*.md
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
+- memory-as-guide-steps-2.md: Steps MG5-MG10 of plans/memory-as-guide.md: an overview each for flows, list table, Paraşüt, designer blocks, custom forms and order totals; claim as [plan:memory-as-guide] MG<n>
+- memory-as-guide-steps.md: Steps MG1-MG4 and MG11-MG14 of plans/memory-as-guide.md: decision list and marks, writing rules, cluster map, link check, documentation pages, private notes; claim as [plan:memory-as-guide] MG<n>
+- memory-as-guide-trials.md: Trials of plans/memory-as-guide.md: six tasks in the owner's words given to fresh sessions on 2026-11-10, what each found, its tokens, tool calls and files opened, and how a rerun is judged
+- memory-as-guide.md: Plan (owner 2026-11-10): memory as a guide for the next task as well as a record: decisions shown where a session lands, an overview per cluster, user documentation fed from memory
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
