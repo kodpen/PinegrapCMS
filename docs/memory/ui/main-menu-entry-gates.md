@@ -25,6 +25,6 @@ description: Main menu entries follow the gate of the screen they open: the scre
 - Ten sandbox users (roles 0-3, mixed rights, a calendar and a contact group assigned to one, read-only accountant with the settings right) on the old and new menu: every row equal except these changes, then every link of the menu opened as its user. Before: 10 refused links; after: none.
 
 ## What was left for the owner?
-- `duplicate_products.php` (site-specific option ids, untranslated labels), `view_system_style_source.php` (needs a style id), the menu item and ad region screens managers reach only from the site (their lists are designer-gated), and Ctrl+K chips that offer screens the person cannot open (`includes/panel/search.php`).
+- `duplicate_products.php` (site-specific option ids, untranslated labels), `view_system_style_source.php` (needs a style id), the menu item and ad region screens managers reach only from the site (their lists are designer-gated). The Ctrl+K chips follow these gates (`command-palette-chips.md`).
 
 Related: docs/memory/ui/main-menu-panels.md, docs/memory/ui/main-menu-settings-row.md

@@ -29,4 +29,4 @@ module: site_log_list
 - `tests/site_log_language_test.php` lists the writers (moved over or checked), scans `includes/api` and fails on a bare literal or on `log_activity(lang(` in a visitor file. The `assets/lib/tiny_mce_3_5_10` `add_file.php` pair stays bare English (`check_lang.php` skips `assets/lib`).
 
 ## What is left of #2054?
-- The main menu panels' markup (about 170 KB per panel screen), the Repair Software permission scan (3.4 s per visit), `sitemap.xml` built per request, minified panel JS/CSS.
+- The main menu panels' markup (about 170 KB per panel screen).
