@@ -142,6 +142,18 @@ function ws_wtable_screen_error_text($code)
             return lang('Choose a row link column of this table for the lookup.');
         case 'lookup_column_invalid':
             return lang('Choose a column of the linked table to show: not a row link or another lookup.');
+        // Rollups (wtable_rollup.php).
+        case 'rollup_table_invalid':
+        case 'rollup_table_unread':
+            return lang('Choose a table you read whose rows link to this table.');
+        case 'rollup_link_invalid':
+            return lang('Choose a row link column of the other table that points at this table.');
+        case 'rollup_op_invalid':
+            return lang('Choose what to work out: count, sum, average, smallest or largest.');
+        case 'rollup_column_invalid':
+            return lang('Choose a number, money or formula column of the other table to total.');
+        case 'rollup_where_invalid':
+            return lang('The conditions do not fit the other table\'s columns.');
         case 'lookup_table_unread':
             return lang('You do not read the linked table, so its columns cannot be shown.');
         case 'type_same':
@@ -405,6 +417,14 @@ function ws_wtable_screen_options_from_form($type, $form, $old = null, $held = a
             // So is the table a row link points at.
             return ($text('table') !== '') ? array('table' => $text('table')) : array();
 
+        case 'rollup':
+            // One choice names the other table, its link and the column; the
+            // conditions are a JSON list, as the tables API takes them.
+            $pick = explode(':', $text('pick'), 3);
+
+            return array('table' => trim($pick[0]), 'link' => trim($pick[1] ?? ''), 'column' => trim($pick[2] ?? ''),
+                'op' => $text('op'), 'where' => $text('where'), 'match' => $text('match'));
+
         case 'lookup':
             // One choice names both: the row link column and the linked column.
             $pick = explode(':', $text('pick'), 2);
@@ -619,8 +639,8 @@ function ws_wtable_screen_cell_text($column, $value, $people = array())
     $type = (string) ($column['type'] ?? '');
     $options = (array) ($column['options'] ?? array());
 
-    // A lookup is written as the linked column it shows.
-    if ($type === 'lookup') {
+    // A lookup is written as the linked column it shows, a rollup as its total.
+    if (ws_wtable_joined_type($type)) {
         $target = ws_wtable_lookup_target_of($column, $people);
 
         return ($target !== null) ? ws_wtable_screen_cell_text($target, $value, $people) : '';
@@ -718,7 +738,7 @@ function ws_wtable_export_cell($column, $value, $people = array(), $error = null
     $type = (string) ($column['type'] ?? '');
     $options = (array) ($column['options'] ?? array());
 
-    if ($type === 'lookup') {
+    if (ws_wtable_joined_type($type)) {
         $target = ws_wtable_lookup_target_of($column, $people);
 
         return ($target !== null) ? ws_wtable_export_cell($target, $value, $people) : '';
