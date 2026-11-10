@@ -445,14 +445,19 @@ function pg_products_import_xlsx_strings($path, $part)
 
     while ($reader->read()) {
 
-        if (($reader->nodeType != XMLReader::ELEMENT) || ($reader->name != 'si')) {
+        // By the local name, as the preview reads a workbook: Open XML SDK
+        // writes x:si with a namespace prefix.
+        if (($reader->nodeType != XMLReader::ELEMENT) || ($reader->localName != 'si')) {
             continue;
         }
 
         // A single <si> can be split into several <r> runs when part of the
-        // text is styled differently. readString() joins them, which is what
-        // the cell reads as.
-        $strings[] = $reader->readString();
+        // text is styled differently; every text node inside it is joined,
+        // which is what the cell reads as. Read node by node rather than
+        // with XMLReader::readString, which builds the element as a tree in
+        // libxml's memory first (memory_limit does not count it). No length
+        // limit, as before.
+        $strings[] = pg_office_reader_text($reader, PHP_INT_MAX);
     }
 
     libxml_clear_errors();
@@ -626,59 +631,59 @@ function pg_products_import_xlsx_to_csv($source_path, &$error)
 
     while ($reader->read()) {
 
-        if (($reader->nodeType != XMLReader::ELEMENT) || ($reader->name != 'row')) {
+        if (($reader->nodeType != XMLReader::ELEMENT) || ($reader->localName != 'row')) {
             continue;
         }
 
         $row = array();
         $filled = false;
+        $depth = $reader->depth;
+        $has_cells = !$reader->isEmptyElement;
 
-        // One row, read out of the reader as its own small document. The rows
-        // of a worksheet are the one place where the cells are worth having
-        // all at once, because a cell can be missing and the row still has to
-        // line up with its heading.
-        $row_xml = simplexml_load_string($reader->readOuterXml());
+        // The row's own cells, each read node by node
+        // (pg_office_xlsx_cell_parts()). A row is never built as a tree:
+        // XMLReader::readOuterXml would build it in libxml's memory, which
+        // memory_limit does not count, and one row a few kilobytes long on
+        // disk can unpack to millions of nodes. The cells are still all
+        // held for the row, because a cell can be missing and the row has
+        // to line up with its heading.
+        while ($has_cells && $reader->read() && ($reader->depth > $depth)) {
 
-        if ($row_xml === false) {
-            continue;
-        }
+            if (($reader->nodeType != XMLReader::ELEMENT) || ($reader->depth != $depth + 1) || ($reader->localName != 'c')) {
+                continue;
+            }
 
-        foreach ($row_xml->c as $cell) {
-
-            $column = pg_products_import_xlsx_column((string) $cell['r']);
-            $type = (string) $cell['t'];
+            $column = pg_products_import_xlsx_column((string) $reader->getAttribute('r'));
+            $type = (string) $reader->getAttribute('t');
+            $style = (int) $reader->getAttribute('s');
+            $cell = pg_office_xlsx_cell_parts($reader);
             $value = '';
 
             switch ($type) {
 
                 case 's':
-                    $index = (int) $cell->v;
+                    $index = (int) $cell['v'];
                     $value = isset($strings[$index]) ? $strings[$index] : '';
                     break;
 
                 case 'inlineStr':
-                    $value = isset($cell->is) ? (string) $cell->is->t : '';
+                    $value = $cell['is'] ? $cell['t'] : '';
 
                     // Styled runs again: the text is in <r><t> rather than <t>.
-                    if (($value == '') && (isset($cell->is->r))) {
-
-                        foreach ($cell->is->r as $run) {
-                            $value .= (string) $run->t;
-                        }
+                    if (($value == '') && $cell['r']) {
+                        $value = $cell['runs'];
                     }
 
                     break;
 
                 case 'b':
-                    $value = (((string) $cell->v) == '1') ? '1' : '0';
+                    $value = ($cell['v'] == '1') ? '1' : '0';
                     break;
 
                 default:
-                    $value = (string) $cell->v;
+                    $value = $cell['v'];
 
                     if (($value != '') && (is_numeric($value))) {
-
-                        $style = (int) $cell['s'];
 
                         if (isset($date_styles[$style])) {
                             $value = pg_products_import_xlsx_date($value);
