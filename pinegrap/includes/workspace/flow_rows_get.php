@@ -180,7 +180,8 @@ function ws_step_where_problems($config, $name, $needs_one)
  * problems name, then per condition a column the table no longer has, a
  * comparison its type does not take or a typed value that does not fit it
  * (a value of the run is known only as the box runs: it holds for no row
- * when it does not fit), and a sort column the table no longer has. Pure
+ * when it does not fit), and a sort column the table no longer has or a
+ * lookup, worked out after the rows are sorted. Pure
  * but for lang().
  *
  * @param array $columns   column id => column (ws_wtable_columns())
@@ -213,6 +214,10 @@ function ws_step_where_refusal($columns, $config, $needs_one)
     }
 
     $sort = (int) ($config['sort'] ?? 0);
+
+    if (($sort > 0) && (($columns[(string) $sort]['type'] ?? '') === 'lookup')) {
+        return lang('The rows cannot be sorted by a lookup column.');
+    }
 
     return (($sort > 0) && !isset($columns[(string) $sort])) ? lang('The box sorts by a column the table no longer has.') : '';
 }
@@ -503,7 +508,9 @@ function ws_step_rows_get_do($owner, $action)
     $rows = ws_wtable_rows_where($columns, ws_wtable_rows((int) $table['id'], $columns), $conditions, (string) ($action['match'] ?? 'all'));
     $sorted = ws_wtable_rows_sorted($columns, $rows, (int) ($action['sort'] ?? 0), (string) ($action['dir'] ?? 'asc'));
     $limit = max(1, min(WS_FLOW_LOOP_ITEMS_MAX, (int) ($action['limit'] ?? WS_FLOW_LOOP_ITEMS_MAX)));
-    $list = ws_step_rows_get_list(ws_step_rows_get_items($columns, array_slice($sorted, 0, $limit)), WS_FLOW_LOOP_ITEMS_BYTES);
+    // The lookups of the rows listed, with the owner's rights.
+    $listed = ws_wtable_lookup_fill($owner, $columns, array_slice($sorted, 0, $limit));
+    $list = ws_step_rows_get_list(ws_step_rows_get_items($columns, $listed), WS_FLOW_LOOP_ITEMS_BYTES);
 
     return array(
         'ok'   => true,

@@ -96,6 +96,7 @@ function ws_wtable_column_types()
         'list' => lang('List'),
         'row' => lang('Row link'),
         'formula' => lang('Formula'),
+        'lookup' => lang('Lookup'),
     );
 }
 
@@ -126,14 +127,15 @@ function ws_wtable_list_of($column)
 }
 
 /**
- * Whether a column type keeps cells; a formula's value is worked out instead.
+ * Whether a column type keeps cells; the value of a formula and of a
+ * lookup (wtable_lookup.php) is worked out when the row is read instead.
  *
  * @param string $type
  * @return bool
  */
 function ws_wtable_type_stores($type)
 {
-    return isset(ws_wtable_column_types()[$type]) && ($type !== 'formula');
+    return isset(ws_wtable_column_types()[$type]) && !in_array($type, array('formula', 'lookup'), true);
 }
 
 /**
@@ -173,7 +175,9 @@ function ws_wtable_length($text)
  * record kinds a cell may point at (empty for any). list: of, what its
  * items are (text, the default, or number). row: table, the id of the
  * workflow table its cells link to (wtable_links.php). formula: expression, without
- * the leading =. text, person and checkbox take none.
+ * the leading =. lookup: link, a row link column of the table, and column, a
+ * column of the linked table (wtable_lookup.php). text, person and checkbox
+ * take none.
  *
  * @param string $type
  * @param mixed  $options
@@ -313,6 +317,19 @@ function ws_wtable_column_options_check($type, $options)
 
             $value['expression'] = $expression;
             break;
+
+        case 'lookup':
+            foreach (array('link' => 'lookup_link_invalid', 'column' => 'lookup_column_invalid') as $key => $error) {
+                $id = $options[$key] ?? null;
+
+                if (!ws_wtable_is_whole($id) || ((int) $id <= 0)) {
+                    return $fail($error);
+                }
+
+                $value[$key] = (int) $id;
+            }
+
+            break;
     }
 
     // A text or number column may be the table's key (wtable_keys.php).
@@ -377,7 +394,7 @@ function ws_wtable_cell_check($column, $value)
         return $fail('type_unknown');
     }
 
-    if ($type === 'formula') {
+    if (!ws_wtable_type_stores($type)) {
         return $fail('computed');
     }
 
@@ -1495,6 +1512,10 @@ function ws_wtable_column_create_check($viewer, $table, $input)
         $refused = ws_wtable_link_column_refusal($viewer, $check['sets']);
     }
 
+    if ($refused === null) {
+        $refused = ws_wtable_lookup_column_refusal($viewer, $table, $check['sets']);
+    }
+
     return ($refused !== null) ? $refused : $check;
 }
 
@@ -1601,6 +1622,10 @@ function ws_wtable_column_update_check($viewer, $table, $column, $input)
     }
 
     $refused = ws_wtable_column_key_check($table, $column, $check['sets']);
+
+    if ($refused === null) {
+        $refused = ws_wtable_lookup_column_refusal($viewer, $table, array('type' => (string) $column['type']) + $check['sets']);
+    }
 
     return ($refused !== null) ? $refused : $check;
 }

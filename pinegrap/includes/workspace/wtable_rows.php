@@ -85,7 +85,7 @@ function ws_wtable_row_cells_input($columns, $cells)
  * A stored cell as a formula reads it: a number, money in whole units (1250
  * minor units with two decimals is 12.5), a checkbox 1 or 0, a list how many
  * items it holds, an empty cell nought. Text, a date, a status, a person or
- * a link is a value error.
+ * a link is a value error; a lookup is a ref error.
  *
  * @param array $column
  * @param mixed $value
@@ -93,6 +93,12 @@ function ws_wtable_row_cells_input($columns, $cells)
  */
 function ws_wtable_formula_operand($column, $value)
 {
+    // A formula is worked out from the row's own cells, before the linked
+    // rows of its lookups are read.
+    if ((string) ($column['type'] ?? '') === 'lookup') {
+        return 'ref';
+    }
+
     if (($value === null) || ($value === '')) {
         return 0.0;
     }

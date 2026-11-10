@@ -137,6 +137,13 @@ function ws_wtable_screen_error_text($code)
             return lang('Choose a row of the linked table: that row is not there.');
         case 'row_table_unread':
             return lang('You do not read the linked table, so you cannot choose its row.');
+        // Lookups (wtable_lookup.php).
+        case 'lookup_link_invalid':
+            return lang('Choose a row link column of this table for the lookup.');
+        case 'lookup_column_invalid':
+            return lang('Choose a column of the linked table to show: not a row link or another lookup.');
+        case 'lookup_table_unread':
+            return lang('You do not read the linked table, so its columns cannot be shown.');
         case 'type_same':
             return lang('Choose another type.');
         case 'key_on_retype':
@@ -398,6 +405,12 @@ function ws_wtable_screen_options_from_form($type, $form, $old = null, $held = a
             // So is the table a row link points at.
             return ($text('table') !== '') ? array('table' => $text('table')) : array();
 
+        case 'lookup':
+            // One choice names both: the row link column and the linked column.
+            $pick = explode(':', $text('pick'), 2);
+
+            return array('link' => trim($pick[0]), 'column' => trim($pick[1] ?? ''));
+
         case 'text':
             return array('key' => ($text('key') === '1'));
     }
@@ -606,6 +619,13 @@ function ws_wtable_screen_cell_text($column, $value, $people = array())
     $type = (string) ($column['type'] ?? '');
     $options = (array) ($column['options'] ?? array());
 
+    // A lookup is written as the linked column it shows.
+    if ($type === 'lookup') {
+        $target = ws_wtable_lookup_target_of($column, $people);
+
+        return ($target !== null) ? ws_wtable_screen_cell_text($target, $value, $people) : '';
+    }
+
     if ($type === 'checkbox') {
         return $value ? '✓' : '';
     }
@@ -697,6 +717,12 @@ function ws_wtable_export_cell($column, $value, $people = array(), $error = null
 {
     $type = (string) ($column['type'] ?? '');
     $options = (array) ($column['options'] ?? array());
+
+    if ($type === 'lookup') {
+        $target = ws_wtable_lookup_target_of($column, $people);
+
+        return ($target !== null) ? ws_wtable_export_cell($target, $value, $people) : '';
+    }
 
     if ($type === 'checkbox') {
         return $value ? lang('Yes') : lang('No');

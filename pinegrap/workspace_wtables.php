@@ -498,8 +498,9 @@ if (($table_id > 0) && !$table) {
 if ($table && (($_GET['board_json'] ?? '') === '1')) {
     $columns = ws_wtable_columns((int) $table['id']);
     $status_id = ws_wtable_board_column_id($columns, $_GET['by'] ?? 0);
-    $rows = ($status_id > 0) ? ws_wtable_rows((int) $table['id'], $columns) : array();
-    $person_ids = array();
+    $rows = ($status_id > 0) ? ws_wtable_lookup_fill($viewer, $columns, ws_wtable_rows((int) $table['id'], $columns)) : array();
+    $lookup_targets = ws_wtable_lookup_targets($viewer, $columns);
+    $person_ids = ws_wtable_lookup_person_ids($lookup_targets, $rows);
 
     foreach ($rows as $row) {
         foreach ($columns as $column_id => $column) {
@@ -509,7 +510,7 @@ if ($table && (($_GET['board_json'] ?? '') === '1')) {
         }
     }
 
-    $people = ws_wtable_people_with_links(empty($person_ids) ? array() : ws_people(array_unique($person_ids)), ws_wtable_link_texts($viewer, $columns, $rows));
+    $people = ws_wtable_people_with_lookups(ws_wtable_people_with_links(empty($person_ids) ? array() : ws_people(array_unique($person_ids)), ws_wtable_link_texts($viewer, $columns, $rows)), $lookup_targets);
     $board = ws_wtable_board($columns, $rows, $status_id, $people, ws_wtable_may($table['access'], 'write'), (($_GET['all'] ?? '') === '1'));
 
     header('Content-Type: application/json; charset=utf-8');
@@ -522,8 +523,9 @@ if ($table && (($_GET['board_json'] ?? '') === '1')) {
 // enough, as the screen shows the same cells.
 if ($table && (($_GET['download'] ?? '') === 'xlsx')) {
     $columns = ws_wtable_columns((int) $table['id']);
-    $rows = ws_wtable_rows((int) $table['id'], $columns);
-    $person_ids = array();
+    $rows = ws_wtable_lookup_fill($viewer, $columns, ws_wtable_rows((int) $table['id'], $columns));
+    $lookup_targets = ws_wtable_lookup_targets($viewer, $columns);
+    $person_ids = ws_wtable_lookup_person_ids($lookup_targets, $rows);
 
     foreach ($rows as $row) {
         foreach ($columns as $column_id => $column) {
@@ -533,7 +535,7 @@ if ($table && (($_GET['download'] ?? '') === 'xlsx')) {
         }
     }
 
-    $sheet = ws_wtable_export_sheet($columns, $rows, ws_wtable_people_with_links(empty($person_ids) ? array() : ws_people(array_unique($person_ids)), ws_wtable_link_texts($viewer, $columns, $rows)));
+    $sheet = ws_wtable_export_sheet($columns, $rows, ws_wtable_people_with_lookups(ws_wtable_people_with_links(empty($person_ids) ? array() : ws_people(array_unique($person_ids)), ws_wtable_link_texts($viewer, $columns, $rows)), $lookup_targets));
     $directory = PG_FUNCTIONS_DIR . '/data/temp';
     $path = (is_dir($directory) || @mkdir($directory, 0755, true)) ? @tempnam($directory, 'wtable_') : false;
 
@@ -920,7 +922,11 @@ if (!$table) {
 
     // What a link to this page of rows carries: the query and the page.
     $page_qs = $query_qs . ($query_on ? ($from ? '&from=' . $from : '') : ($after ? '&after=' . $after : ''));
-    $person_ids = array();
+
+    // The lookups of the rows shown, worked out for the reader.
+    $page['rows'] = ws_wtable_lookup_fill($viewer, $columns, $page['rows']);
+    $lookup_targets = ws_wtable_lookup_targets($viewer, $columns);
+    $person_ids = ws_wtable_lookup_person_ids($lookup_targets, $page['rows']);
 
     foreach ($page['rows'] as $row) {
         foreach ($columns as $column_id => $column) {
@@ -946,8 +952,8 @@ if (!$table) {
 
     // The texts of the rows that row link cells point at, and how many rows
     // link to each row shown, for its delete confirmation.
-    $people = ws_wtable_people_with_links(empty($person_ids) ? array() : ws_people(array_unique($person_ids)),
-        ws_wtable_link_texts($viewer, $columns, array_merge($page['rows'], $bin_rows)));
+    $people = ws_wtable_people_with_lookups(ws_wtable_people_with_links(empty($person_ids) ? array() : ws_people(array_unique($person_ids)),
+        ws_wtable_link_texts($viewer, $columns, array_merge($page['rows'], $bin_rows))), $lookup_targets);
     $link_counts = $can_write ? ws_wtable_link_counts($id, array_column($page['rows'], 'id')) : array();
 
     // The rows.
@@ -960,9 +966,11 @@ if (!$table) {
         $sort_params = array_diff_key($query_params, array('sort' => 1, 'dir' => 1)) + $next;
         $icon = array('' => '', 'asc' => ' <i class="bi bi-sort-up" aria-hidden="true"></i>', 'desc' => ' <i class="bi bi-sort-down" aria-hidden="true"></i>')[$sorted];
 
-        $head .= '<th scope="col"' . (in_array($column['type'], array('number', 'money', 'formula'), true) ? ' class="text-end"' : '')
+        $shown_type = (string) (($column['type'] === 'lookup') ? ($lookup_targets[(string) $column_id]['type'] ?? '') : $column['type']);
+        $head .= '<th scope="col"' . (in_array($shown_type, array('number', 'money', 'formula'), true) ? ' class="text-end"' : '')
             . (($sorted !== '') ? ' aria-sort="' . (($sorted === 'asc') ? 'ascending' : 'descending') . '"' : '') . '>'
-            . '<a class="fg-reset text-decoration-none" href="' . h($table_url . (empty($sort_params) ? '' : '&' . http_build_query($sort_params))) . '#ws-wt-rows" title="' . h(lang('Sort by this column')) . '">' . h($column['name']) . $icon . '</a></th>';
+            // A lookup is worked out after the rows are sorted: it sorts nothing.
+            . (($column['type'] === 'lookup') ? h($column['name']) : '<a class="fg-reset text-decoration-none" href="' . h($table_url . (empty($sort_params) ? '' : '&' . http_build_query($sort_params))) . '#ws-wt-rows" title="' . h(lang('Sort by this column')) . '">' . h($column['name']) . $icon . '</a>') . '</th>';
     }
 
     // The totals line: sum, average, smallest and largest of each number,
@@ -1008,7 +1016,8 @@ if (!$table) {
         foreach ($columns as $column_id => $column) {
             $value = $row['cells'][$column_id] ?? null;
             $text = ws_wtable_screen_cell_text($column, $value, $people);
-            $class = in_array($column['type'], array('number', 'money', 'formula'), true) ? ' class="text-end text-nowrap"' : '';
+            $shown_type = (string) (($column['type'] === 'lookup') ? ($lookup_targets[(string) $column_id]['type'] ?? '') : $column['type']);
+            $class = in_array($shown_type, array('number', 'money', 'formula'), true) ? ' class="text-end text-nowrap"' : '';
 
             if (($column['type'] === 'formula') && isset($row['formula_errors'][$column_id])) {
                 $cell = '<span class="fg-danger" title="' . h((string) $row['formula_errors'][$column_id]) . '">#' . h(strtoupper((string) $row['formula_errors'][$column_id])) . '</span>';
@@ -1084,13 +1093,20 @@ if (!$table) {
 
         if ($edit_id > 0) {
             $stored = ws_wtable_row($id, $edit_id);
-            $edit = $stored ? ws_wtable_row_out($stored, $columns) : null;
+            $edit = $stored ? (ws_wtable_lookup_fill($viewer, $columns, array(ws_wtable_row_out($stored, $columns)))[0] ?? null) : null;
         }
 
         $mine = ($state && ((int) $state['table'] === $id) && ((int) $state['row'] === ($edit ? (int) $edit['id'] : 0))) ? $state : null;
         $fields = '';
 
         foreach ($columns as $column_id => $column) {
+            // A lookup is read from the linked row: shown, never written here.
+            if (($column['type'] === 'lookup') && $edit) {
+                $fields .= '<div class="mb-3"><label class="form-label small mb-1" for="ws_wt_cell_' . (int) $column_id . '">' . h($column['name']) . '</label>'
+                    . '<input type="text" class="form-control form-control-sm" id="ws_wt_cell_' . (int) $column_id . '" value="' . h(ws_wtable_screen_cell_text($column, $edit['cells'][$column_id] ?? null, $people)) . '" readonly>'
+                    . '<div class="form-text">' . h(lang('Shown from the linked row; change it there.')) . '</div></div>';
+            }
+
             if (!ws_wtable_type_stores($column['type'])) {
                 continue;
             }
@@ -1221,7 +1237,7 @@ if (!$table) {
     }
 
     // The column form fields of one type: the options it takes.
-    $option_fields = function ($type, $column, $prefix) use ($viewer, $id) {
+    $option_fields = function ($type, $column, $prefix) use ($viewer, $id, $columns) {
         $options = $column ? (array) $column['options'] : array();
         $out = '';
 
@@ -1291,6 +1307,25 @@ if (!$table) {
                 $out .= '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_table">' . h(lang('Linked table')) . '</label>'
                     . '<select class="form-control form-control-sm" name="options[table]" id="' . $prefix . '_table"' . ($column ? ' disabled' : ' required') . '>' . $tables . '</select>'
                     . '<div class="form-text">' . h(lang('A cell picks one of its rows, shown by its key or first text.')) . '</div></div>';
+                break;
+
+            case 'lookup':
+                // The row link column and the linked column it shows, in one choice.
+                $picked = $column ? implode(':', ws_wtable_lookup_parts($column)) : '';
+                $picks = '';
+
+                foreach (ws_wtable_lookup_choices($viewer, $columns) as $value => $label) {
+                    $picks .= '<option value="' . h($value) . '"' . (($value === $picked) ? ' selected' : '') . '>' . h($label) . '</option>';
+                }
+
+                if (($picked !== '') && (strpos($picks, 'value="' . $picked . '" selected') === false)) {
+                    $picks = '<option value="' . h($picked) . '" selected>' . h(ws_wtable_lookup_label($column, $columns, null)) . '</option>' . $picks;
+                }
+
+                $out .= '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_pick">' . h(lang('Column of the linked row')) . '</label>'
+                    . '<select class="form-control form-control-sm" name="options[pick]" id="' . $prefix . '_pick" required>'
+                    . (($picks === '') ? '<option value="">' . h(lang('Add a row link column first.')) . '</option>' : $picks) . '</select>'
+                    . '<div class="form-text">' . h(lang('Shows that column of the row each cell links to; it is read, never written.')) . '</div></div>';
                 break;
 
             case 'formula':
@@ -1364,7 +1399,8 @@ if (!$table) {
     foreach ($columns as $column_id => $column) {
         $line = '<div class="d-flex align-items-center gap-3">'
             . '<div class="flex-grow-1 min-w-0"><span class="fw-semibold">' . h($column['name']) . '</span> <span class="small fg-secondary">· ' . h($types[$column['type']] ?? $column['type'])
-            . (($column['type'] === 'row') ? ' · ' . h(ws_wtable_link_readable($viewer, ws_wtable_link_table($column)) ? (string) (ws_wtable(ws_wtable_link_table($column))['name'] ?? '') : lang('A table you do not read')) : '') . '</span>'
+            . (($column['type'] === 'row') ? ' · ' . h(ws_wtable_link_readable($viewer, ws_wtable_link_table($column)) ? (string) (ws_wtable(ws_wtable_link_table($column))['name'] ?? '') : lang('A table you do not read')) : '')
+            . (($column['type'] === 'lookup') ? ' · ' . h(ws_wtable_lookup_column_label($viewer, $column, $columns)) : '') . '</span>'
             . (ws_wtable_is_key($column) ? ' <span class="badge theme-secondary fw-normal"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Key')) . '</span>' : '') . '</div>';
 
         if ($can_write) {

@@ -4,7 +4,7 @@ description: Row links of workflow tables (type row, "Row link", wtable_links.ph
 ---
 
 ## What is a row link?
-- Column type `row`, "Row link", a foreign key: `options.table` names the table its cells link to, fixed with the type (`type_fixed`; options sent without it keep it). The same table may be named.
+- Column type `row`, "Row link", a foreign key: `options.table` names the table its cells link to, fixed with the type (`type_fixed`). The same table may be named. Its columns show through a lookup (`workflow-tables-lookup.md`).
 - A cell keeps the linked row's id, an int (`not_row` otherwise). No schema change.
 
 ## What does the store check?
