@@ -18,6 +18,15 @@ needs. The detail is in memory files, opened when a task needs them.
   `description: <one line>` / optional `module: <includes/fn modules>` /
   `---`. Stale text is corrected or deleted, never kept beside a "now"
   note.
+- Write for the next task (`workflow/memory-writing.md`): screens and
+  buttons by their English label, one file per value (a changed limit or
+  rule is searched for in all memory), lines under 500 characters, a
+  decision as `Owner (YYYY-MM-DD):`.
+- A cluster of ten files or more has a `<prefix>-overview.md`, kept up by
+  its plan's close-out step.
+- Rely on memory and check in code only what your change depends on;
+  what another account needs goes into `docs/memory` unless it must not be
+  public.
 - Plans are files in `docs/memory/plans/`. A finished plan moves its lasting
   decisions to the topic folder and is deleted.
 - READMEs and `INDEX.md` files are generated: after adding, renaming or
