@@ -4,7 +4,7 @@ description: Claude is no channel agent: never offered in a channel's Agents lis
 ---
 
 ## Why is Claude no channel agent?
-- Owner (2026-11-10), #8445: Claude is asked where `ws_channels.claude_access` allows; no reader takes a `ws_channel_agents` row of `kind = 'claude'` (the tiers read `app` rows only, `agent-risk-tiers.md`). A row that would decide for Claude is a feature of its own, built only if the owner asks.
+- Owner (2026-11-10), #8445, built in #8481: Claude is asked where `ws_channels.claude_access` allows; no reader takes a `ws_channel_agents` row of `kind = 'claude'` (the tiers read `app` rows only, `agent-risk-tiers.md`). A row that would decide for Claude is a feature of its own, built only if the owner asks.
 - Seen on the dev trial (`plans/agent-channel-trial.md` finding 6): the drawer offered Claude, and the row made changed nothing.
 
 ## What does the code do?
