@@ -643,6 +643,7 @@
     "{var:1} asks for a credential. Paste an access token the service gives you; or sign in with an application of your own, under More settings.": "{var:1} kimlik bilgisi istiyor. Hizmetin verdiği bir erişim jetonunu yapıştırın ya da Diğer ayarlar altında kendi uygulamanızla giriş yapın.",
     "{var:1} asks for a credential: paste an access token (API key) the service gives you.": "{var:1} kimlik bilgisi istiyor: hizmetin verdiği bir erişim jetonunu (API anahtarı) yapıştırın.",
     "{var:1} asks for a sign-in and registers the site on its own: add it, then sign in to the service on its own page.": "{var:1} giriş istiyor ve siteyi kendisi kaydediyor: ekleyin, ardından hizmetin kendi sayfasında giriş yapın.",
+    "{var:1} asks you in {var:2}": "{var:1} {var:2} kanalında size soruyor",
     "{var:1} asks you to approve": "{var:1} sizden onay istiyor",
     "{var:1} asks you to approve:": "{var:1} sizden onay istiyor:",
     "{var:1} asks {var:2} to approve this.": "Merhaba {var:2}, {var:1} bunu onaylamanızı istiyor.",

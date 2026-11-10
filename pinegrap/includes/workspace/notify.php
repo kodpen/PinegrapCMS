@@ -47,6 +47,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                         | mail_assigned | mail_customer (an e-mail conversation given to one, its
  *                           customer writing again on one held: mail_status.php, mail.php)
  *                         | canvas_edited (an agent edited one's canvas: canvas_edit.php)
+ *                         | question_asked (an application asks one with a checklist
+ *                           or a poll: interact.php)
  * @param array  $data     channel_id, message_id, task_id, note_id, event_id, actor_id; quiet: no device banner;
  *                         batch: the device is queued but not woken here - the caller
  *                         tells many people in a row and calls ws_push_batch_done();
@@ -557,6 +559,18 @@ function ws_inbox_describe($viewer, $row)
                 'body'  => $message ? mb_substr(trim(preg_replace('/\s+/u', ' ', (string) $message['body'])), 0, 140) : '',
                 'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . (($last > 0) ? '&message=' . $last : ''),
                 'icon'  => 'bi-door-open',
+            );
+
+        // An application asks with a checklist or a poll (interact.php).
+        case 'question_asked':
+            $message = ((int) $row['message_id'] > 0) ? ws_message($row['message_id']) : null;
+            $asker = ($message && ($message['sender_kind'] === 'app')) ? (string) (ws_app_sender((int) $message['sender_id'])['name'] ?? '') : $actor;
+
+            return array(
+                'title' => lang(array('string' => '{var:1} asks you in {var:2}', 'vars' => array($asker, $channel_name))),
+                'body'  => $message ? ws_voice_excerpt($viewer, $message, 140) : '',
+                'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'],
+                'icon'  => 'bi-ui-checks',
             );
 
         // Approval requests (approvals.php): asked, settled, a day before

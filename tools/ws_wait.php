@@ -10,6 +10,8 @@
  *
  * Usage:  php tools/ws_wait.php [--channel=ID] [--prefix=TEXT]
  *                               [--contains=TEXT] [--regex=/…/]
+ *                               [--from=person|app] [--mention=APP_ID]
+ *                               [--changed=ID[,ID…]]
  *                               [--after-id=N] [--timeout=SECONDS]
  *                               [--interval=SECONDS]
  * Exit:   0 a message matched (printed on stdout); 1 the site refused or the
@@ -18,7 +20,13 @@
  *
  * Only messages written after the first answer count, unless --after-id
  * names an earlier id: the first answer carries the channel's newest 50,
- * which are the past. Settings come from the environment
+ * which are the past. --from=person wakes only on a person's message (an
+ * application's line, CI's included, never), --from=app only on an
+ * application's; --mention=N only on a message tagging application N
+ * (<@app:N>). --changed waits for one of the named messages to change - a
+ * checklist item ticked, an edit - and prints it as it is now, its checks
+ * included; with --changed alone new messages do not wake, with a rule as
+ * well either does. Settings come from the environment
  * (tools/ws_client.php). --timeout defaults to 600, --interval to 5 (at
  * least 2).
  *
@@ -43,12 +51,37 @@ require_once(__DIR__ . '/ws_client.php');
  */
 function ws_wait_plan($options)
 {
-	$out = array('rule' => array(), 'after_id' => -1, 'timeout' => 600, 'interval' => 5, 'error' => '');
+	$out = array('rule' => array(), 'changed' => array(), 'after_id' => -1, 'timeout' => 600, 'interval' => 5, 'error' => '');
 
-	foreach (array('prefix', 'contains', 'regex') as $name) {
+	foreach (array('prefix', 'contains', 'regex', 'from', 'mention') as $name) {
 		if (isset($options[$name]) && is_string($options[$name]) && $options[$name] !== '') {
 			$out['rule'][$name] = $options[$name];
 		}
+	}
+
+	if (isset($out['rule']['from']) && !in_array($out['rule']['from'], array('person', 'app'), true)) {
+		$out['error'] = '--from must be person or app';
+	}
+
+	if (isset($out['rule']['mention']) && (!ctype_digit($out['rule']['mention']) || (int) $out['rule']['mention'] < 1)) {
+		$out['error'] = '--mention must be an application id';
+	}
+
+	if (isset($options['changed'])) {
+		$ids = is_string($options['changed']) ? explode(',', $options['changed']) : array('');
+
+		foreach ($ids as $id) {
+			$id = trim($id);
+
+			if (!ctype_digit($id) || (int) $id < 1) {
+				$out['error'] = '--changed must be message ids separated by commas';
+				break;
+			}
+
+			$out['changed'][] = (int) $id;
+		}
+
+		$out['changed'] = array_values(array_unique($out['changed']));
 	}
 
 	if (isset($out['rule']['regex']) && @preg_match($out['rule']['regex'], '') === false) {
@@ -74,15 +107,30 @@ function ws_wait_plan($options)
 }
 
 /**
- * The first matching message of a sync answer, null when none.
+ * The first matching message of a sync answer, null when none: one of the
+ * watched ids among changed first, then a new message matching the rule.
+ * With watched ids and no rule, new messages match nothing.
  *
  * @param array<string,mixed> $sync
  * @param array<string,string> $rule
  * @param int $after_id
+ * @param int[] $changed message ids watched for a change
  * @return array<string,mixed>|null
  */
-function ws_wait_pick($sync, $rule, $after_id)
+function ws_wait_pick($sync, $rule, $after_id, $changed = array())
 {
+	if ($changed) {
+		foreach ((isset($sync['changed']) && is_array($sync['changed'])) ? $sync['changed'] : array() as $message) {
+			if (is_array($message) && in_array((int) ($message['id'] ?? 0), $changed, true)) {
+				return $message;
+			}
+		}
+
+		if (!$rule) {
+			return null;
+		}
+	}
+
 	$messages = isset($sync['messages']) && is_array($sync['messages']) ? $sync['messages'] : array();
 
 	usort($messages, function ($a, $b) {
@@ -144,7 +192,7 @@ function ws_wait_main($argv)
 			}
 
 			$first = false;
-			$match = ws_wait_pick($sync, $plan['rule'], max(0, $after_id));
+			$match = ws_wait_pick($sync, $plan['rule'], max(0, $after_id), $plan['changed']);
 
 			if ($match !== null) {
 				fwrite(STDOUT, json_encode($match, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n");

@@ -268,10 +268,98 @@ function ws_checklist_items($body)
 }
 
 /**
+ * Does a text ask with a checklist: at least one item written unticked? A
+ * list written all ticked reports what is done and asks nothing.
+ *
+ * @param string $body
+ * @return bool
+ */
+function ws_checklist_asks($body)
+{
+    foreach (ws_checklist_items($body) as $item) {
+        if (empty($item['checked'])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Whom an application's question rings: the people it mentions, or the
+ * channel's owners when it mentions nobody. Each once, in order.
+ *
+ * @param int[] $mentioned user ids the message mentions
+ * @param int[] $owners    user ids of the channel's owners
+ * @return int[]
+ */
+function ws_question_ring_pick($mentioned, $owners)
+{
+    $mentioned = array_values(array_unique(array_filter(array_map('intval', (array) $mentioned))));
+
+    return $mentioned ?: array_values(array_unique(array_filter(array_map('intval', (array) $owners))));
+}
+
+/**
+ * Rings the people an application asks with a checklist question or a poll
+ * (question_asked), whatever their channel's notify level: an approval
+ * request rings its approvers the same way. Somebody who already holds an
+ * unread mention of the message is not rung twice. People's own checklists
+ * and polls ring nobody beyond their mentions.
+ *
+ * @param array $channel
+ * @param int   $message_id
+ * @param array $tokens ws_tokens() of the message
+ * @return int[] the people rung
+ */
+function ws_question_ring($channel, $message_id, $tokens)
+{
+    $mentioned = array();
+
+    foreach ((array) $tokens as $token) {
+        if ((($token['sigil'] ?? '@') !== '@')) {
+            continue;
+        }
+
+        if (($token['type'] ?? '') === 'user') {
+            $mentioned[] = (int) $token['id'];
+        } elseif (($token['type'] ?? '') === 'dept') {
+            foreach (ws_department_member_ids($token['id']) as $user_id) {
+                $mentioned[] = (int) $user_id;
+            }
+        }
+    }
+
+    // A discussion has the owners of the channel it was started in.
+    $place = (function_exists('ws_thread_parent_channel') ? ws_thread_parent_channel($channel) : null) ?: $channel;
+    $owners = $mentioned ? array() : array_map('intval', (array) db_values("SELECT user_id FROM ws_channel_members
+        WHERE channel_id = '" . (int) $place['id'] . "' AND role = 'owner'"));
+    $rung = array();
+
+    foreach (ws_question_ring_pick($mentioned, $owners) as $user_id) {
+        if (!ws_is_team_member($user_id) || !ws_can_read_channel(ws_rights_for_id($user_id), $channel)) {
+            continue;
+        }
+
+        $mention = (int) db_value("SELECT id FROM ws_inbox
+            WHERE user_id = '" . $user_id . "' AND kind = 'mention' AND message_id = '" . (int) $message_id . "' AND read_at = 0 LIMIT 1");
+
+        if ($mention > 0) {
+            continue;
+        }
+
+        ws_notify($user_id, 'question_asked', array('channel_id' => (int) $channel['id'], 'message_id' => (int) $message_id, 'actor_id' => 0));
+        $rung[] = $user_id;
+    }
+
+    return $rung;
+}
+
+/**
  * Who ticked what since the message was written.
  *
  * @param int[] $message_ids
- * @return array message id => item => [checked, user_id, name, at]
+ * @return array message id => item => [checked, user_id, name, at, updated_at]
  */
 function ws_checks_map($message_ids)
 {
@@ -300,6 +388,9 @@ function ws_checks_map($message_ids)
             'user_id' => (int) $row['user_id'],
             'name'    => $guest ? ws_guest_sender((int) $row['guest_id'])['name'] : ($people[(int) $row['user_id']]['name'] ?? ws_person_name($row['user_id'])),
             'at'      => ws_time_label($row['updated_at']),
+            // The time itself, for the API (ws_api_message_checks()).
+            'updated_at' => (int) $row['updated_at'],
+            'guest'   => $guest,
         );
     }
 
@@ -527,6 +618,11 @@ function ws_poll_create($viewer, $channel, $data, $app_id = 0)
 
     foreach ($options as $sort => $label) {
         db("INSERT INTO ws_poll_options (poll_id, sort, label) VALUES ('" . $poll_id . "', '" . (int) $sort . "', '" . e($label) . "')");
+    }
+
+    // An application's poll rings the people it asks.
+    if ((int) $app_id > 0) {
+        ws_question_ring($channel, (int) $sent['message_id'], ws_tokens($checked['question']));
     }
 
     return array('ok' => true, 'error' => '', 'field' => '', 'message_id' => (int) $sent['message_id'], 'poll_id' => $poll_id);
