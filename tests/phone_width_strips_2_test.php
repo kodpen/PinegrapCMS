@@ -51,7 +51,7 @@ function test_phone_width_form_item_view_variables_header_wraps()
 {
 	$source = phone_width_strips_2_test_source('includes/forms/form_item_view_form.php');
 
-	pg_assert_true(preg_match('/id="pg_fiv_variables">\s*<div class="([^"]*)">/', $source, $match) === 1, 'variables header found');
+	pg_assert_true(preg_match('/id="\' \. h\(\$id\) \. \'">\s*<div class="([^"]*)">/', $source, $match) === 1, 'variables header found');
 	pg_assert_true(strpos(' ' . $match[1] . ' ', ' flex-wrap ') !== false, 'variables header wraps');
 }
 

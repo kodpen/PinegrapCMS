@@ -55,7 +55,7 @@ function test_form_list_view_variables_insert_script_shared()
 	pg_assert_contains('insertAtCursor', $script, 'inserts at the editor cursor');
 	pg_assert_contains('focusin', $script, 'follows the last focused editor');
 
-	foreach (array('edit_form_item_view.php', 'edit_form_list_view.php') as $file) {
+	foreach (array('edit_form_item_view.php', 'edit_form_list_view.php', 'includes/forms/page_form.php') as $file) {
 		$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 		pg_assert_contains('pg_form_item_view_form_insert_script(', $screen, $file . ' prints the shared script');
 		pg_assert_contains('pg_form_item_view_form_variables(', $screen, $file . ' draws the shared card');
@@ -78,4 +78,47 @@ function test_form_list_view_variables_checkbox_pair()
 	pg_assert_same('Yes', pg_cf_checkbox_format_text('1', 'Yes|No'), 'ticked');
 	pg_assert_same('No', pg_cf_checkbox_format_text(null, 'Yes|No'), 'no row');
 	pg_assert_same(null, pg_cf_checkbox_format_text('2026-01-01', 'd.m.Y'), 'a date format is no pair');
+}
+
+// The defaults draw the card the two form view screens show; the options give
+// it another id, leave the Hints button out and start it folded.
+function test_form_list_view_variables_card_options()
+{
+	$help = pg_test_form_list_view_help();
+	$default = pg_form_item_view_form_variables($help);
+	pg_assert_contains('id="pg_fiv_variables"', $default, 'the default card id');
+	pg_assert_contains('id="pg_fiv_variables_list"', $default, 'the default list id');
+	pg_assert_contains('data-bs-target="#hints"', $default, 'the Hints button by default');
+	pg_assert_contains('collapse show" id="pg_fiv_variables_list"', $default, 'open by default');
+	pg_assert_contains('aria-expanded="true"', $default, 'expanded by default');
+
+	$html = pg_form_item_view_form_variables($help, array('id' => 'pg_mail_vars', 'hints' => false, 'open' => false));
+	pg_assert_contains('id="pg_mail_vars"', $html, 'the given card id');
+	pg_assert_contains('data-bs-target="#pg_mail_vars_list"', $html, 'the toggle opens the given list');
+	pg_assert_contains('collapse" id="pg_mail_vars_list"', $html, 'folded');
+	pg_assert_contains('aria-expanded="false"', $html, 'the toggle says folded');
+	pg_assert_false(strpos($html, '#hints') !== false, 'no Hints button without a dialog');
+	pg_assert_false(strpos($html, 'pg_fiv_variables') !== false, 'no default id left');
+}
+
+// A card in markup that is replaced (the designer's pane) drops its focus
+// listener once it is gone; the default script keeps the plain listener.
+function test_form_list_view_variables_insert_script_transient()
+{
+	$plain = pg_form_item_view_form_insert_script('pg_fiv_variables', array('layout'));
+	pg_assert_false(strpos($plain, 'removeEventListener') !== false, 'the default listener stays');
+
+	$transient = pg_form_item_view_form_insert_script('pg_mail_vars', array('a', 'b'), array('transient' => true));
+	pg_assert_contains('document.removeEventListener("focusin", onFocus);', $transient, 'drops itself');
+	pg_assert_contains('!panel.isConnected', $transient, 'once the card is gone');
+}
+
+// The form settings list the variables for the two e-mails' subjects and
+// bodies, read from the form's fields only for a custom form.
+function test_form_list_view_variables_page_form_mail_fields()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/page_form.php');
+	pg_assert_contains("array('custom_form_submitter_email_body', 'custom_form_submitter_email_subject', 'custom_form_administrator_email_body', 'custom_form_administrator_email_subject')", $source, 'the four e-mail fields');
+	pg_assert_contains("pg_cf_variables_help((\$page_type == 'custom form') ? \$page_id : 0)", $source, 'fields only for a custom form');
+	pg_assert_contains("'hints' => false", $source, 'no Hints dialog on this screen');
 }

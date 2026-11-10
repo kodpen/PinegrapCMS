@@ -210,7 +210,7 @@
 - form-date-whole-value.md: validate_date() takes a site-format date only when the whole value is one; prepare_form_data_for_input() trims a date before splitting it
 - form-field-shared-form.md: The form field create and edit screens share includes/forms/field_form.php: wide layout with the type first, a Summary (form, type, name, Last Modified), what stays in the screens
 - form-item-view-layout.md: edit_form_item_view.php in the wide layout (B11) through includes/forms/form_item_view_form.php: layout card, sticky Summary and variables, save bar; what stays in the screen
-- form-item-view-variables.md: Variables a form item view layout (and form e-mail subject/body) can use: ^^field^^, conditional blocks, date and check box formats, and where the edit screen's clickable list comes from
+- form-item-view-variables.md: Variables form layouts and e-mails can use: ^^field^^, conditional blocks, date and check box formats, and the screens' clickable list
 - form-list-view-carried-query.md: How a form list view's browse filter and pagination links carry the current query string, and the nested-list crash it fixed
 - form-list-view-default-results.md: When a classic form list view page (get_form_list_view.php) lists its records, and why a page with browse and search both off always lists
 - form-list-view-field-columns.md: Which order-by and filter fields a form list view can store, the address_name ENUM widening and the screen's refusal of other values
