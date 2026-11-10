@@ -53,7 +53,8 @@ function ws_channel_agent_panel_row($row)
 
 /**
  * The registered agents a channel does not have yet, for the Add list: only
- * what the list shows, never the door or the key. Pure.
+ * what the list shows, never the door or the key. Claude is no channel agent
+ * (ws_channel_agent_kind_problem()) and is not offered. Pure.
  *
  * @param array[] $agents ws_agent_shape() rows
  * @param int[]   $in     ids of the agents already in the channel
@@ -65,7 +66,7 @@ function ws_channel_agents_addable($agents, $in)
     $out = array();
 
     foreach ((array) $agents as $agent) {
-        if (in_array((int) $agent['id'], $in, true)) {
+        if (in_array((int) $agent['id'], $in, true) || (ws_channel_agent_kind_problem($agent['kind']) !== '')) {
             continue;
         }
 
@@ -163,6 +164,12 @@ function ws_channel_agents_action($action, $request)
         ws_channel_agent_remove($channel['id'], $agent['id']);
 
         return ws_action_ok(ws_channel_agents_panel_state($viewer, $channel));
+    }
+
+    $kind_problem = ws_channel_agent_kind_problem($agent['kind']);
+
+    if ($kind_problem !== '') {
+        return ws_action_error(ws_channel_agent_error_text($kind_problem));
     }
 
     $input = array();
