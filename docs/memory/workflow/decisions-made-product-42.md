@@ -14,7 +14,7 @@ description: Decisions list, product part 42 (2026-11-10 on): one modern picker 
   - Its structure follows today's File Manager.
   - It is ready to choose other kinds of records later; the owner named a product, a quote, a shipping method and a contact.
   - When the software's own editor replaces CKEditor, the editor's file choosing reaches the picker through a bridge of its own.
-  - It is built with great care, as a plan of its own in `plans/`.
+  - It is built with great care, as a plan of its own: `plans/one-picker.md`.
 - F3 is not built: no button is added beside the searchable pickers (`ui/file-picker-search.md`); they are among the places the picker takes over.
 - Refused with it: the name search alone, the editor's image browser on the picture pickers, a folder dialog with names only, a pick mode of the File Manager as a step of the search plan. Each keeps or adds a separate way of choosing.
 - Architect (2026-11-10): until the picker's step for a screen lands, that screen keeps the picker it has; nothing is converted ahead of the plan.

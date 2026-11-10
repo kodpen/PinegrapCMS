@@ -27,6 +27,6 @@ module: file_picker_search
 - Add/Edit Short Link: File (`file`).
 - File Manager short link wizard: File (`file`). `pg_explorer_handle_short_link_options()` sends only the link's own file (`pg_file_picker_id_options()`) and `file_source`; `view_folders.php` draws the select through `pgFields.init()` and sets it with `pgCombobox.set()`. Lists holding a link's file are never `kept`.
 - Short link list quick edit File cell (#8424): the list table driver's `search` type, kind `file` (`list-table-quick-edit-search.md`); `get_file_options()` is gone.
-- Next: `workflow/decisions-made-product-42.md`.
+- Next: `plans/one-picker.md`.
 
 Tests: `tests/file_picker_search_test.php`, `tests/settings_public_image_test.php`, `tests/short_link_requests_test.php`.
