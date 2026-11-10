@@ -23,6 +23,6 @@ module: ecommerce, commission_list
 
 ## Which schema and edges?
 - Columns: 2026.11.0 step 11.0.139 (`upgrade_2026_11_0_commission_cancel_marker()`). Every reader and writer probes `pg_schema_has()`; before the upgrade runs, the cancel changes nothing (a void that could not be restored would lose the status).
-- No fifth status (the enum, API filter and My Account labels stay). A partial refund moves nothing. An unpaid order cancelled by the job has no commission (written at completion). The voiding and the restore announce no webhook event; a hand edit or `POST /commissions/{id}` announces `commission.status_changed` (`api/api-commission-writes.md`).
+- No fifth status (the enum, API filter and My Account labels stay). A partial refund moves nothing; a full refund on the order screen cancels the order and so voids the commission (`order-status-moves.md`, PR #1500). An unpaid order cancelled by the job has no commission (written at completion). The voiding and the restore announce no webhook event; a hand edit or `POST /commissions/{id}` announces `commission.status_changed` (`api/api-commission-writes.md`).
 
 Related: docs/memory/commerce/order-cancellation-flow.md, docs/memory/commerce/order-cancel-gift-cards.md
