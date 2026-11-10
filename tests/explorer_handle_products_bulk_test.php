@@ -6,7 +6,8 @@
  * (includes/explorer/handle_products_bulk.php): the handlers live there,
  * behind the gate, pg_explorer_handle() calls each one for its sub-action,
  * and the pure parts (the group pickers' tree order, a product's new price
- * and its new stock quantity) behave as before.
+ * and its new stock quantity) behave as before; a percentage is the exact
+ * product, pg_percent_off(), on every PHP version.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -19,6 +20,7 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+require_once(__DIR__ . '/helpers/source_reader.php');
 
 // Each sub-action has its own handler, loaded by the explorer's functions and
 // called from pg_explorer_handle().
@@ -71,6 +73,19 @@ function test_explorer_bulk_product_new_price()
 	pg_assert_same(1149, pg_explorer_bulk_product_new_price(999, 'increase_percent', 15.0), 'rounded, not truncated');
 	pg_assert_same(-50, pg_explorer_bulk_product_new_price(100, 'decrease', 150.0), 'below zero is left to the caller');
 	pg_assert_same(100, pg_explorer_bulk_product_new_price(100, 'other', 10.0), 'unknown method');
+}
+
+// A percentage is the exact product, what is left rounded half away from zero:
+// 65% off 13.10 leaves 4.585, so 4.59, and 15% on 0.50 is 0.575, so 0.58, on
+// every PHP version; the float formula gives 4.58 on PHP 8.4 and later.
+function test_explorer_bulk_product_new_price_percentage_is_the_exact_product()
+{
+	pg_assert_same(459, pg_explorer_bulk_product_new_price(1310, 'decrease_percent', 65.0), 'decrease at half a kuruş');
+	pg_assert_same(58, pg_explorer_bulk_product_new_price(50, 'increase_percent', 15.0), 'increase at half a kuruş');
+
+	$source = pg_test_function_source('pg_explorer_bulk_product_new_price');
+	pg_assert_false(strpos($source, '/ 100) * $old_price') !== false, 'no float percentage formula');
+	pg_assert_true(strpos($source, 'pg_percent_off(') !== false, 'the percentage goes through pg_percent_off()');
 }
 
 // The bulk price change value: an amount is read the way the product screen

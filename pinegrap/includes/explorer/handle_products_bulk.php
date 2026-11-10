@@ -53,9 +53,10 @@ function pg_explorer_bulk_product_group_options($group_map)
 
 // A product's price after a bulk change, in integer minor units. A money
 // amount ('increase', 'decrease') arrives already in minor units; a
-// percentage produces fractions of one, so the result is rounded rather than
-// cast -- the cast truncates, and the card and the feed then disagree by a
-// kuruş. A result at zero or below is the caller's to refuse.
+// percentage is the exact product, what is left rounded half away from zero
+// by pg_percent_off() (an increase is a negative percentage off), so the
+// result does not depend on the PHP version's round(). A result at zero or
+// below is the caller's to refuse.
 function pg_explorer_bulk_product_new_price($old_price, $method, $value)
 {
     $old_price = (int) $old_price;
@@ -68,10 +69,10 @@ function pg_explorer_bulk_product_new_price($old_price, $method, $value)
         $new_price = $old_price - $value;
 
     } elseif ($method === 'increase_percent') {
-        $new_price = ((100 + $value) / 100) * $old_price;
+        $new_price = pg_percent_off($old_price, -(float) $value);
 
     } elseif ($method === 'decrease_percent') {
-        $new_price = ((100 - $value) / 100) * $old_price;
+        $new_price = pg_percent_off($old_price, (float) $value);
     }
 
     // A float past what products.price holds stays a float for the caller to
