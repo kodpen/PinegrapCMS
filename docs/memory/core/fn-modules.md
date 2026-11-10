@@ -123,7 +123,7 @@ description: Generated from the module field of the memory files: each includes/
 - `link_resolve`: [[designer-prototype-viewer]], [[link-resolve-letter-case]], [[seo-link-graph-self-links]]
 - `list_paging`: [[list-label-sort]], [[list-page-number]], [[server-paged-lists]]
 - `list_period`: [[list-period-navigator-and-clock]], [[list-period-order]], [[list-period-week]]
-- `list_table`: [[details-panel-rule]], [[list-table-driver]], [[list-table-driver-lists]], [[list-table-layout]], [[list-table-printed]]
+- `list_table`: [[details-panel-rule]], [[list-table-driver]], [[list-table-driver-lists]], [[list-table-layout]], [[list-table-overview]], [[list-table-printed]]
 - `list_table_edit`: [[list-table-quick-edit-pages]], [[list-table-quick-edit-values]]
 - `local_order`: [[erp-counter-sale-completion]]
 - `mail`: [[auto-campaign-group-opt-out]], [[helper-fixes-2026-11]], [[mail-merge-values-once]], [[mail-transport-failure]], [[single-email-address-boxes]]
