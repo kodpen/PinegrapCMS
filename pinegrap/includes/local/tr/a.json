@@ -6918,6 +6918,7 @@
     "At most {var:1} addresses at a time.": "Bir seferde en çok {var:1} adres.",
     "At most {var:1} channels for customers are opened an hour, so none was opened for this one.": "Saatte en çok {var:1} müşteri kanalı açılır; bu müşteri için kanal açılmadı.",
     "At most {var:1} characters.": "En fazla {var:1} karakter.",
+    "At most {var:1} conditions.": "En fazla {var:1} koşul.",
     "At most {var:1} customers can be asked to approve.": "En çok {var:1} müşteriden onay istenebilir.",
     "At most {var:1} files can be attached.": "En fazla {var:1} dosya eklenebilir.",
     "At most {var:1} messages can be chosen together.": "En fazla {var:1} mesaj birlikte seçilebilir.",
