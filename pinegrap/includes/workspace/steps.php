@@ -3239,7 +3239,7 @@ function ws_step_row_text_fault($text)
  */
 function ws_step_row_bys()
 {
-    return array('id', 'position', 'last');
+    return array('id', 'position', 'last', 'number');
 }
 
 /**
@@ -3300,11 +3300,19 @@ function ws_step_row_problem($kind, $config, $name)
                 : lang(array('string' => 'The box {var:1} needs the row it changes.', 'vars' => $name)));
 
         case 'below_one':
+            if ($by === 'number') {
+                return array(lang(array('string' => 'The box {var:1} names the row #{var:2}, but row numbers start at 1.', 'vars' => array($name, $shown))));
+            }
+
             return array(($by === 'position')
                 ? lang(array('string' => 'The box {var:1} names the row {var:2}, but rows are counted from 1: the first row of the table is 1.', 'vars' => array($name, $shown)))
                 : lang(array('string' => 'The box {var:1} names the row id {var:2}, but row ids start at 1.', 'vars' => array($name, $shown))));
 
         case 'not_row':
+            if ($by === 'number') {
+                return array(lang(array('string' => 'The box {var:1} names its row as “{var:2}”: write the row\'s # number, such as 12, or add one value with “Add value”.', 'vars' => array($name, $shown))));
+            }
+
             return array(($by === 'position')
                 ? lang(array('string' => 'The box {var:1} names its row as “{var:2}”: write the row\'s number in the table, such as 1, or add one value with “Add value”.', 'vars' => array($name, $shown)))
                 : lang(array('string' => 'The box {var:1} names its row as “{var:2}”: write the row\'s id, or add one value with “Add value”.', 'vars' => array($name, $shown))));
@@ -3333,9 +3341,17 @@ function ws_step_row_refusal($by, $row)
             return lang('The box names no row.');
 
         case 'below_one':
+            if ($by === 'number') {
+                return lang('Row numbers start at 1.');
+            }
+
             return ($by === 'position') ? lang('Rows are counted from 1: the first row of the table is 1.') : lang('Row ids start at 1.');
 
         case 'not_row':
+            if ($by === 'number') {
+                return lang('Write the row\'s # number, such as 12, or add one value with “Add value”.');
+            }
+
             return ($by === 'position')
                 ? lang('Write the row\'s number in the table, such as 1, or add one value with “Add value”.')
                 : lang('Write the row\'s id, or add one value with “Add value”.');
@@ -3370,6 +3386,10 @@ function ws_step_row_missing_text($by, $row, $name)
         return lang(array('string' => 'The table “{var:1}” has no row “{var:2}”.', 'vars' => array($name, mb_substr(trim((string) $row), 0, 60))));
     }
 
+    if ($by === 'number') {
+        return lang(array('string' => 'The table “{var:1}” has no row #{var:2}.', 'vars' => array($name, $number)));
+    }
+
     return ($by === 'position')
         ? lang(array('string' => 'The table “{var:1}” has no row {var:2}.', 'vars' => array($name, $number)))
         : lang(array('string' => 'The table “{var:1}” has no row with the id {var:2}.', 'vars' => array($name, $number)));
@@ -3395,6 +3415,10 @@ function ws_step_row_find($table_id, $by, $row)
 
     if ($number <= 0) {
         return null;
+    }
+
+    if ($by === 'number') {
+        return ws_wtable_row_numbered((int) $table_id, $number);
     }
 
     return ($by === 'position') ? ws_wtable_row_at((int) $table_id, $number) : ws_wtable_row((int) $table_id, $number);
@@ -3609,6 +3633,10 @@ function ws_step_row_text($action)
 
         if (($by === 'position') && ($number > 0)) {
             return lang(array('string' => 'Changes {var:1} in the row {var:2} of the table “{var:3}”.', 'vars' => array($columns, $number, $table)));
+        }
+
+        if (($by === 'number') && ($number > 0)) {
+            return lang(array('string' => 'Changes {var:1} in the row #{var:2} of the table “{var:3}”.', 'vars' => array($columns, $number, $table)));
         }
 
         return lang(array('string' => 'Changes {var:1} in a row of the table “{var:2}”.', 'vars' => array($columns, $table)));

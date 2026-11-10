@@ -16,7 +16,10 @@ description: Steps 1-8 of plans/tables-relational.md: row choice, conditions and
 
 - 3 (done, PR #8453): table screen, a query bar: the step 2 conditions and a sort over the rows. The paging follows the filtered rows. A totals line under the table shows the sum, average, smallest and largest value of each number and money column, for the rows shown or for every row. The tables API `GET …/rows` takes the same `where` and `sort` (`workspace/workflow-tables-query.md`).
 
-- 4: keys, both kinds. Every table numbers its rows 1, 2, 3 for good: a cell set by the store on add (max + 1 under GET_LOCK per table, never reused, a delete shifts none), shown first on the screen; row boxes find it (`by: number`).
+- 4 (cut in two): keys, both kinds.
+  - 4a (done, PR #8461; owner chose columns in #8460): the stable number, `workspace/workflow-table-row-numbers.md`.
+  - 4b: the column key below, with `by: key`, the API `?key=` and the import matching by key.
+  - Every table numbers its rows 1, 2, 3 for good: a cell set by the store on add (max + 1 under GET_LOCK per table, never reused, a delete shifts none), shown first on the screen; row boxes find it (`by: number`).
   - A column may also be the key (text or number): filled in and different on every row; the store refuses a duplicate (`duplicate_key`), and making a column the key is refused while it holds repeats or empties, listing those rows. Found by `by: key` and the API `?key=`; import matches by key.
 
 - 5: row links (a foreign key): a column type `row` whose options name another table. A cell keeps the linked row's id; the screen shows that row's key, else its first text.

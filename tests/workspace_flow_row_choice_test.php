@@ -34,7 +34,7 @@ function workspace_flow_row_choice_test_source($function)
 // before the choice, then by its number in the table and the last row.
 function test_workspace_flow_row_choice_ways()
 {
-	pg_assert_same(array('id', 'position', 'last'), ws_step_row_bys());
+	pg_assert_same(array('id', 'position', 'last', 'number'), ws_step_row_bys());
 	pg_assert_same(ws_step_row_get_bys(), ws_flow_setting_values()['row_get.by'], 'a read also finds the first row that meets conditions');
 	pg_assert_same(ws_step_row_bys(), ws_flow_setting_values()['row_set.by']);
 
@@ -42,7 +42,7 @@ function test_workspace_flow_row_choice_ways()
 
 	pg_assert_same(array('table_id', 'by', 'row', 'match', 'where', 'retry', 'retry_after'), array_column($catalogue['row_get']['settings'], 'key'));
 	pg_assert_same(array('table_id', 'by', 'row', 'cells', 'retry', 'retry_after'), array_column($catalogue['row_set']['settings'], 'key'));
-	pg_assert_same(array('id', 'position', 'last', 'match'), array_column($catalogue['row_get']['settings'], 'values', 'key')['by']);
+	pg_assert_same(array('id', 'position', 'last', 'number', 'match'), array_column($catalogue['row_get']['settings'], 'values', 'key')['by']);
 }
 
 // The way is kept; none or an unknown one is by its id, as a box saved
@@ -173,4 +173,27 @@ function test_workspace_flow_row_choice_reads_through_the_store()
 	pg_assert_contains('ws_step_row_refusal(', workspace_flow_row_choice_test_source('ws_step_row_get_check'));
 	pg_assert_contains('ws_step_row_refusal(', workspace_flow_row_choice_test_source('ws_step_row_check'));
 	pg_assert_contains('ws_step_row_problem(', workspace_flow_row_choice_test_source('ws_step_config_problems'));
+}
+
+// By its # number: the stable number the table shows, found by its own
+// reader and worded as a # number, never as a place or an id.
+function test_workspace_flow_row_choice_by_number()
+{
+	pg_assert_same('number', ws_step_row_way(array('by' => 'number', 'row' => '12'))['by']);
+	pg_assert_same('12', ws_step_row_way(array('by' => 'number', 'row' => '12'))['row']);
+
+	pg_assert_same('', ws_step_row_refusal('number', '12'));
+	pg_assert_same('Row numbers start at 1.', ws_step_row_refusal('number', '0'));
+	pg_assert_contains('# number', ws_step_row_refusal('number', 'abc'));
+	pg_assert_contains('#0', ws_step_row_problem('row_get', array('by' => 'number', 'row' => '0'), 'Read')[0]);
+	pg_assert_contains('# number', ws_step_row_problem('row_set', array('by' => 'number', 'row' => 'x'), 'Change')[0]);
+
+	pg_assert_same('The table “Fırın” has no row #7.', ws_step_row_missing_text('number', '7', 'Fırın'));
+	pg_assert_same('Reads the row #7 of the table “Fırın”.', ws_step_row_get_text(array('table_name' => 'Fırın', 'by' => 'number', 'row' => '7')));
+
+	$find = workspace_flow_row_choice_test_source('ws_step_row_find');
+	pg_assert_contains('ws_wtable_row_numbered(', $find);
+
+	$numbered = workspace_flow_row_choice_test_source('ws_wtable_row_numbered');
+	pg_assert_contains("AND number = '\" . (int) \$number . \"'", $numbered);
 }
