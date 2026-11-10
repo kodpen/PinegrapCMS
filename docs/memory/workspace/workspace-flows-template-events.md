@@ -5,7 +5,7 @@ description: The flow templates started by a site event that wait, ask for appro
 
 ## Which are they?
 - All in category Sales, each offered only when its event is in the viewer's `events` (`ws_events_js_config()`), built with the `$on`, `$task` (task_open, due in 2 days, linking the record) and `$tell` (a post to the channel open, else a notify to the person) helpers of `ws_flow_templates()`.
-- `review_request` (#7113): order.delivered → delay 7 days (`WS_FLOW_DELAY_MAX` is a week) → a task to ask the customer for a review.
+- `review_request` (#7113): order.delivered → delay 7 days (a Wait box takes up to 90 days, `WS_FLOW_DELAY_MAX`) → a task to ask the customer for a review.
 - `restock_approval` (#7113): stock.low → approval in a channel, 48 h → task_open on approved, notify on rejected or expired. Unlike `stock_event`, nothing is ordered before somebody approves.
 - `return_task` (#7113): order.return.requested → a waiting task (due in 2 days, 48 h timeout) and a line at once → notify on timeout.
 - `booking_cancelled` (#7116): booking.cancelled → a line and a task to offer another time.
