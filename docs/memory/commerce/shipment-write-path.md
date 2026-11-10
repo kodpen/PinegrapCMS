@@ -19,7 +19,7 @@ description: The single shipment write path (includes/fn/shipping.php): pg_shipm
 - `format_warning`: recomputed on each write against the carrier shown (named, else `pg_shipping_carrier()` with the default).
 
 ## What does the format warning check?
-- `pg_shipment_number_warning()`: 5–40 of `[A-Za-z0-9 -]`, alphanumeric first; yurtici, surat, aras, mng 8–20 digits; ptt 8–20 digits or a valid UPU S10 (`pg_shipment_s10_valid()`, mod 11); UPS/FedEx/USPS their patterns (also upper-cased, unspaced); others the general shape. Never blocks; `_order_has_shipped()` ignores it.
+- `pg_shipment_number_warning()`: 5–40 of `[A-Za-z0-9 -]`, alphanumeric first; yurtici, surat, aras, mng 8–20 digits; ptt 8–20 digits or a valid UPU S10 (`pg_shipment_s10_valid()`, mod 11); UPS/FedEx/USPS their patterns (also upper-cased, unspaced, #8596); others the general shape. Never blocks; `_order_has_shipped()` ignores it.
 
 ## When is a delivery recorded?
 - `update_order()`: `pg_shipment_delivery_entered()`, i.e. the save enters or changes the delivery date to a day not after today (an unchanged estimate records nothing; a future date is an estimate). Tracking: a service's delivered answer, at its time.
