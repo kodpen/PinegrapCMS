@@ -5,9 +5,10 @@
  * Workspace - the agents of a channel in the external API and MCP
  * (includes/workspace/agents.php): list them, add an agent to a channel or
  * change what wakes it there, and take it out. Whoever may post in a channel
- * adds one, in a private channel only a member; the tier above 1 is the
- * channel manager's. A row decides waking and the tier only: an application
- * keeps reading with its owner's reach.
+ * changes its agents, in a private channel only a member; a new agent in a
+ * private channel and the tier above 1 are the channel manager's. A row
+ * decides waking and the tier only: an application keeps reading with its
+ * owner's reach.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -31,7 +32,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 function ws_agent_api_routes()
 {
     $id = array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true);
-    $errors = ' A refused value answers 422 validation_failed naming the field (wake_rule_invalid, wake_prefix_invalid, tier_invalid); a tier changed by anybody but the owner of the channel 403 forbidden; the database not updated yet 503 service_unavailable.';
+    $errors = ' A refused value answers 422 validation_failed naming the field (wake_rule_invalid, wake_prefix_invalid, tier_invalid); a tier changed, or an agent added to a private channel, by anybody but a manager of the channel 403 forbidden; the database not updated yet 503 service_unavailable.';
 
     return array(
         array(
@@ -55,7 +56,7 @@ function ws_agent_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceChannelAgent',
             'summary'     => 'Add an agent to a channel or change its row',
-            'description' => 'Adds an agent to a channel the owner of the application may post in - a private one only when the owner is in it - or changes what wakes it there. Fields left out keep their value (a new row: woken by a mention, tier 1, loop guard on). A row decides waking and the tier only, never what the agent may read.' . $errors,
+            'description' => 'Adds an agent to a channel the owner of the application may post in - to a private one only when the owner manages it - or changes what wakes an agent the channel has, in a private one as a member of it. Fields left out keep their value (a new row: woken by a mention, tier 1, loop guard on). A row decides waking and the tier only, never what the agent may read.' . $errors,
             'params'      => array(
                 $id,
                 array('name' => 'agent_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true),
@@ -76,7 +77,7 @@ function ws_agent_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspaceChannelAgentRemoval',
             'summary'      => 'Take an agent out of a channel',
-            'description'  => 'Whoever may add an agent to the channel takes it out; an agent that was not in it is not an error: removed is then false. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'description'  => 'Whoever may post in the channel takes an agent out of it, in a private channel as a member of it; an agent that was not in it is not an error: removed is then false. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
             'params'       => array(
                 $id,
                 array('name' => 'agent_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
@@ -191,6 +192,12 @@ function ws_api_channel_agents_set($params)
     $channel = $target['channel'];
     $agent = $target['agent'];
     $current = ws_channel_agent_row($channel['id'], $agent['id']);
+    $problem = ws_channel_agent_enter_problem($viewer, $channel, $current);
+
+    if ($problem !== '') {
+        api_fail(403, 'forbidden', ws_channel_agent_error_text($problem));
+    }
+
     $check = ws_channel_agent_check($params, $current, ws_can_manage_channel($viewer, $channel));
 
     if (!$check['ok']) {

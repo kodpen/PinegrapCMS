@@ -462,8 +462,9 @@ function ws_model_loop_sentence($agent, $which)
  * channel's people added it, so a private channel nobody opened to Pinegrap
  * AI does not keep it out. A channel closed to Pinegrap AI on purpose
  * (ai_access 2) does: closing is the channel manager's
- * (ws_ai_channel_set()), while whoever may post in a channel adds an
- * assistant to it (ws_channel_agent_add_problem()), so an answer there
+ * (ws_ai_channel_set()), while a row there can be a member's
+ * (ws_channel_agent_add_problem(); only a private channel's new agent is
+ * its manager's, ws_channel_agent_enter_verdict()), so an answer there
  * would send a closed channel's words to the assistant's provider on a
  * member's word. Nor is it asked where the assistants never are: a guest's
  * room, a channel a guest reads along in. Pure.

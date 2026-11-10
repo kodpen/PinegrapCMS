@@ -138,6 +138,22 @@ function test_workspace_channel_agent_enter_is_asked_by_the_panel_action()
 	pg_assert_true(strpos($action, 'ws_channel_agent_remove(') < $asked, 'after the branch that takes an agent out');
 }
 
+// So does the route, before anything is written or rehearsed, and not for a
+// removal either.
+function test_workspace_channel_agent_enter_is_asked_by_the_route()
+{
+	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_agents.php');
+	$set = substr($api, strpos($api, 'function ws_api_channel_agents_set('));
+	$set = substr($set, 0, strpos($set, "\nfunction "));
+
+	pg_assert_contains('ws_channel_agent_enter_problem($viewer, $channel, $current)', $set, 'the route asks who lets a new agent in');
+	pg_assert_true(strpos($set, 'ws_channel_agent_enter_problem(') < strpos($set, 'api_dry_run_stop('), 'before the rehearsal stops');
+	pg_assert_true(strpos($set, 'ws_channel_agent_enter_problem(') < strpos($set, 'ws_channel_agent_save('), 'and before the row is written');
+
+	$remove = substr($api, strpos($api, 'function ws_api_channel_agents_remove('));
+	pg_assert_false(strpos($remove, 'ws_channel_agent_enter_problem(') !== false, 'taking an agent out is not adding one');
+}
+
 function test_workspace_agent_shape_hides_secrets()
 {
 	$agent = ws_agent_shape(array('id' => '3', 'kind' => 'claude', 'handle' => 'claude', 'door_kind' => 'push', 'door_secret_sealed' => 'abc:def', 'key_sealed' => null, 'wake_every' => '30'));
