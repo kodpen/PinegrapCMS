@@ -11,18 +11,18 @@
 - api-php-credentials-in-body.md: api.php accepting username/password in the request body: API_USERNAME vs API_AUTHENTICATED, CSRF skip, remember-me, login throttle, WAF rate buckets.
 - api-php-role-gate-and-actions.md: api.php general role gate before handlers, the exempt column, the designer endpoint's content-role allowlist, read vs write gates on shared_component, and the role numbers to compare against.
 - asset-paths-and-inline-escaping.md: Local asset paths decoded before the parent-folder check, design asset files written under a plain name only, the hero's typed style escaped, the variant payload script with \u-escaped tags
-- audiences-door-join.md: pg_audience_door_join(): storefront sign-up doors put a contact into the registration, membership or a ticked group and announce the join for flows, campaign profiles and webhooks
-- audiences-doors.md: Hand doors of a contact group filled by rules: which paths refuse or skip a dynamic group, API/MCP 409 contact_group_by_rule, the guard functions, readers and erasure
-- audiences-overview.md: Contact groups filled by rules as a whole (owner 2026-11-02): why they exist, the decisions that bind them, and which file holds each part (rules, recompute, editor, doors, token, joined triggers)
-- audiences-recompute.md: How a contact group filled by rules is recomputed: pages of contact ids, the rule-row diff, the hour and 20-second budget of the general job, the announce once a pass, Refresh now (audience_refresh)
+- audiences-door-join.md: pg_audience_door_join(): storefront sign-up doors put a contact into the registration, membership or a ticked group and announce the join for flows, campaign profiles and webhooks [decision: decisions-made-product-27.md]
+- audiences-doors.md: Hand doors of a contact group filled by rules: which paths refuse or skip a dynamic group, API/MCP 409 contact_group_by_rule, the guard functions, readers and erasure [decision: decisions-made-product-25.md]
+- audiences-overview.md: Contact groups filled by rules as a whole (owner 2026-11-02): why they exist, the decisions that bind them, and which file holds each part (rules, recompute, editor, doors, token, joined triggers) [decision: decisions-made-product-25.md, decisions-made-product-27.md, decisions-made-schema-10.md]
+- audiences-recompute.md: How a contact group filled by rules is recomputed: pages of contact ids, the rule-row diff, the hour and 20-second budget of the general job, the announce once a pass, Refresh now (audience_refresh) [decision: decisions-made-product-25.md]
 - audiences-rules.md: Contact groups filled by rules: the 11.0.155 columns, the condition catalogue, the one rule shape, the pure SQL builder pg_audience_sql() and what each condition family reads
-- audit-trail-contacts.md: Contacts in audit_log (#2170, #2246, #2620, #2643, #2768): which panel, API, import, İYS, Workspace, storefront, job, merge paths write a line, the label, erasure
+- audit-trail-contacts.md: Contacts in audit_log (#2170, #2246, #2620, #2643, #2768): which panel, API, import, İYS, Workspace, storefront, job, merge paths write a line, the label, erasure [decision: here]
 - audit-trail-diff.md: How pg_audit_diff() decides a field changed: values as strings, NULL and '' equal when both sides hold the field
 - audit-trail-file-content.md: How a save that writes a file's content gets an audit line even when the size stays the same (content_sha1 on both sides)
 - audit-trail-recycle-bin.md: How Recycle Bin work appears in audit_log: the daily purge recorded as a job (pg_audit_as_job), not as the operator whose visit ran it
 - audit-trail-screen.md: The audit trail screen view_audit_log.php, its CSV export and GET /audit-log (includes/fn/audit_view.php): who may open it, filters, how each stored value form is shown, export limits
 - audit-trail-settings-name.md: A Site Settings save in the audit trail and the Site Log: the category key is stored, the category's name is shown
-- audit-trail-stored-values.md: What audit_log leaves out of before/after, how secrets are masked (by name, inside JSON text), how JSON text and long values are stored, what the audit screen must expect
+- audit-trail-stored-values.md: What audit_log leaves out of before/after, how secrets are masked (by name, inside JSON text), how JSON text and long values are stored, what the audit screen must expect [decision: here]
 - audit-trail-workspace.md: How Workspace writes reach audit_log through ws_change_write(): kind to table, recycle vs deletes the helpers write, offers, the job as actor for bulk and scheduled changes
 - audit-trail-writers.md: Which save paths write audit_log rows, how they read the row before and after (pg_audit_fetch, pg_audit_record), which paths are not hooked
 - auto-campaign-group-opt-out.md: A commercial "joined a contact group" campaign profile skips a contact whose opt_in row for that subscription group is 0, as a manual campaign to the group does (#7596)
@@ -41,15 +41,15 @@
 - consent-log-writer-gaps.md: What the e-mail consent log writers leave unrecorded or record unasked (custom layouts without the box), what was run against them, open questions for the owner (PR #1581)
 - consent-log-writers.md: Who writes consent_log rows: own e-mail and SMS marketing answers (sign-up, preferences, one-click, checkout, custom form; PR #1581, #3660), accepted checkout documents as contract rows (PR #2000)
 - contact-delete-refusals.md: A contact a user account holds (user.user_contact) or an ERP account is linked to is not deleted, in the panel (Edit Contact, Modify Contacts, the list's mass delete) or the API (#5267)
-- contact-holders.md: pg_contact_holders(): the one list of every place a contact id is kept, shared by merge_contacts() and the erasure; what the merge does with each, the ERP refusal, the drift test
+- contact-holders.md: pg_contact_holders(): the one list of every place a contact id is kept, shared by merge_contacts() and the erasure; what the merge does with each, the ERP refusal, the drift test [decision: decisions-made-product-11.md]
 - contact-import-cells.md: Contact importer (import_contacts.php): cells read by pg_import_contact_value() (yes/no, dates, lengths, export guard undone), repeated headings left out, Turkish headings, the screen's hint
-- contact-lead-source.md: contacts.lead_source picked from referral_sources on the add/edit contact screens (#3427, decided #3416 3(a)); old free text kept; the same check on the external API (#4043); writers left as they were
+- contact-lead-source.md: contacts.lead_source picked from referral_sources on the add/edit contact screens (#3427, decided #3416 3(a)); old free text kept; the same check on the external API (#4043); writers left as they were [decision: decisions-made-product-11.md, decisions-made-workspace-4.md]
 - contact-merge-columns.md: pg_contact_merge_select(), the one SELECT list of both merge screens (#5325); the blank-column fill and the group opt-in rule of both merge branches
 - contact-merge-role.md: Who may merge duplicate contacts: a role above user (3) on both merge paths; view_contacts.php checks it itself (#5124)
 - content-translation-html-pieces.md: Translating stored HTML (custom HTML block, product description, form message): how a block is cut into texts so images, form controls, buttons and data-* attributes stay on the translated page
 - content-translation-jobs-duplicates.md: Translation jobs (includes/translate/jobs.php): why translate-on-save opens no second job while one is open, and why a job skips texts translated meanwhile
 - content-translation-product-answers.md: How a product's texts reach a page drawn in another language after it is drawn: variant data in the page, get_product refreshes with pg_lang, pg_tr_product_fields()
-- content-translation-record-save-jobs.md: Translate on save for form records: who opens a translation job by saving a record (never a visitor), the records scope, and the save paths that are not hooked
+- content-translation-record-save-jobs.md: Translate on save for form records: who opens a translation job by saving a record (never a visitor), the records scope, and the save paths that are not hooked [decision: decisions-made-product-38.md]
 - content-translation-result-check.md: pg_tr_result_check(): when a translation of a site text is refused or marked suspicious, and why a brand name the glossary keeps is not suspicious
 - content-translation-uses.md: translation_uses (where a text of the front-end translation is drawn): owner types, who rewrites them, and how a deleted or binned page's texts leave the counts and the pending list
 - cross-site-json-requests.md: api.php and booking_slots.php refuse a browser's cross-site request (pg_request_cross_site()), because the session cookie can be SameSite=None after a checkout.
@@ -62,7 +62,7 @@
 - csv-line-endings.md: The CSV importers open the upload with pg_csv_open(), which turns a classic Mac (CR-only) file into LF lines instead of the auto_detect_line_endings setting deprecated in PHP 8.1 (PR #1757)
 - currency-symbol-as-text.md: A stored currency symbol is HTML (&#8378;): raw into HTML, decoded (pg_money_text(), html_entity_decode()) before h(), .text(), a canvas or a script; fixed spots, the guard test
 - custom-form-private-access-expiry.md: A custom form's private access expiry is today plus N calendar days (pg_cf_private_expiry_date()), never N * 86400 seconds, so a clock change does not end it a day early (PR #7039)
-- db-legacy-and-magic-quotes.md: PHP 5 remnants removed (PR #3149, #3195): the DB_LEGACY mysql_* connection in db_connect() and router.php, the magic quotes strip of init.php and the installer; a config that still sets DB_LEGACY
+- db-legacy-and-magic-quotes.md: PHP 5 remnants removed (PR #3149, #3195): the DB_LEGACY mysql_* connection in db_connect() and router.php, the magic quotes strip of init.php and the installer; a config that still sets DB_LEGACY [decision: decisions-made-product-3.md]
 - deprecated-resource-free-calls.md: Handles are freed with unset(), not curl_close()/finfo_close()/openssl_x509_free(); db_connect() checks a reused connection with SELECT 1, not mysqli_ping() (PR #1744)
 - designer-i18n-audit-tool.md: The designer text audit tool docs/_tools/designer_i18n.php (not in the repository): check/extract/apply workflow, how Turkish is detected, and the three classes allowed in skip.
 - device-limit-and-session-sign-out.md: Which sessions the device limit signs out, what ends with a session (notifications), and the Sessions screen's confirmations and wording
@@ -93,7 +93,7 @@
 - get-file-shared-code.md: get_file.php never loads functions.php: the shared files (authentication.php, image_engine.php, http_range.php, record_files.php), what they may call, and the copies check_copies.php allows.
 - guest-session-flag.md: $_SESSION['software']['guest'] exists only after a visitor picks Guest; every guest-access check reads it with ?? false
 - helper-fixes-2026-11.md: Order status stage of negated words, plain-text mail entities, responsive images with quotes inside values, short link names after leading spaces: what each helper does now
-- important-files-and-js-twins.md: Key product files and their roles; which scripts have a .src/.min twin chosen by ENVIRONMENT_SUFFIX (edit both) and which are served as written; where front-end JS lives.
+- important-files-and-js-twins.md: Key product files and their roles; which scripts have a .src/.min twin chosen by ENVIRONMENT_SUFFIX (edit both) and which are served as written; where front-end JS lives. [decision: decisions-made-files.md, decisions-made-workspace-6.md]
 - init-constants-and-config-file.md: Constants defined in init.php (CONFIG_FILE_PATH, OUTPUT_PATH, ECOMMERCE, ADS ...) and how data/config.php is written (installer, settings screens, escaping, closing tag).
 - js-bundles.md: Scripts minified from a list (pg_js_bundles(), tools/build_js.php): the bundles, how a screen prints one, src mode, the CI check, the test, the Workspace drawer's loader on record screens.
 - json-endpoint-rules.md: Endpoints that speak JSON: rejections and CSRF failures in JSON with the right status, api.php reads a JSON body (FormData gets "Invalid action."), no pg_post_body_discarded() on a JSON body.
@@ -106,7 +106,7 @@
 - lang-placeholders.md: How lang() fills {var:N}, its case modifiers and {suffix}: one strtr() pass, values never re-scanned, plain {var} left for JavaScript
 - mail-bounce-screens.md: Where the bounce record is shown: campaign delivery counts, the Suppressed contact view and export column, the contact card badge with Allow again, personal data export and erasure
 - mail-bounce-verp.md: VERP return path with a signed per-message token, pg_mail_parse_dsn() for delivery reports and ARF complaints, and the Workspace mailbox that reads bounces and records them
-- mail-bounces.md: The bounce record (mail_bounces, one row per address) and the send gate the mail queue and campaigns ask before a send; complaint withdraws e-mail consent; resubscribe or address change clears
+- mail-bounces.md: The bounce record (mail_bounces, one row per address) and the send gate the mail queue and campaigns ask before a send; complaint withdraws e-mail consent; resubscribe or address change clears [decision: decisions-made-product-19.md]
 - mail-failure-reason.md: Screens that send an e-mail at once show the mail server's reason on failure through pg_mail_failure_sentence(), not a pointer at the log
 - mail-merge-values-once.md: replace_variables() fills every ^^field^^ in one pass; a filled-in value is never read again as a field.
 - mail-queue-permanent-errors.md: Mail queue gives a message up on its first attempt when the failure is permanent (no recipient, empty body, refused address), and tells the panel bell once per given-up message (action mail_failed)
@@ -117,23 +117,23 @@
 - membership-day-in-get-file.md: Which calendar day ends a membership or private access in get_file.php (site zone set before USER_MEMBER) and in the recurring job (the calendar day before)
 - message-carried-values.md: Values a liveform message carries (records, panel input, service and database texts) go in through h(); the connect flash, upload values, logs and PHP-escaped warnings; what is still left
 - multibyte-trim.md: trim()/rtrim()/ltrim() read their character list byte by byte, so "–", "—", "·" or "“" in it breaks other characters; trim those with a /u regex (pg_ai_write_cut(), #744)
-- output-escaping.md: Escaping output: h() for every value in HTML, liveform values raw, lang() in handlers via json_encode(), raw & in query strings, lang() {var:N} values, form labels as text, _sdT(), PHP tags
+- output-escaping.md: Escaping output: h() for every value in HTML, liveform values raw, lang() in handlers via json_encode(), raw & in query strings, lang() {var:N} values, form labels as text, _sdT(), PHP tags [decision: decisions-made-product-39.md]
 - page-messages-defuse.md: Liveform messages (errors, notices, warnings) are HTML printed into the page before the page eval and marker expansion; pg_defuse_page_message() on store and on print, and the escaped upload refusal
-- panel-action-table.md: Adding an api.php panel action: the pg_panel_actions() row and its columns, handler file and signature, what the general gate does with listed, unlisted and prefixed names, the test.
+- panel-action-table.md: Adding an api.php panel action: the pg_panel_actions() row and its columns, handler file and signature, what the general gate does with listed, unlisted and prefixed names, the test. [decision: decisions-made-access.md]
 - panel-shared-keys.md: Short keys read in the wrong sense (SEO, Created, Given, Return, audit actions, UTM Medium, Quotes, reviews, Edit/Restore, Open) and the separate keys used instead
-- panel-turkish-terms-2.md: More Turkish panel words (shipping method, Site Log file lines, Cloudflare values, Private Label Branding card, gift card and commission labels, Workspace agent), continued from panel-turkish-terms
-- panel-turkish-terms.md: Turkish words for panel terms translated in several ways (Manager role, contact group, password pages, Guide, short link, opt-in/opt-out, visitor order steps, ERP quotes, Anonymous)
-- passkey-account-section.md: Passkeys on the account page (pg_passkey_account_section(), PR #1384, #2226): who may add one, the proofs incl. the e-mailed code, recovery codes of passkey-only accounts, rename and remove
+- panel-turkish-terms-2.md: More Turkish panel words (shipping method, Site Log file lines, Cloudflare values, Private Label Branding card, gift card and commission labels, Workspace agent), continued from panel-turkish-terms [decision: decisions-made-workspace-9.md]
+- panel-turkish-terms.md: Turkish words for panel terms translated in several ways (Manager role, contact group, password pages, Guide, short link, opt-in/opt-out, visitor order steps, ERP quotes, Anonymous) [decision: decisions-made-product-8.md]
+- passkey-account-section.md: Passkeys on the account page (pg_passkey_account_section(), PR #1384, #2226): who may add one, the proofs incl. the e-mailed code, recovery codes of passkey-only accounts, rename and remove [decision: here]
 - passkey-ceremonies.md: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys.php, passkey.php, the passkey at the second step of mfa.php, the account page; decisions in passkey-decisions
-- passkey-decisions.md: Lasting decisions of the passkeys work (approved 2026-10-19, built in 2026.11.0) and the memory file that holds each built piece
-- passkey-passwordless.md: Sign-in with a passkey alone (PR #1882): the switch config.passkey_signin (11.0.41, default off), the button among the sign-in buttons, passkey.php options, the answer handled by index.php
+- passkey-decisions.md: Lasting decisions of the passkeys work (approved 2026-10-19, built in 2026.11.0) and the memory file that holds each built piece [decision: here]
+- passkey-passwordless.md: Sign-in with a passkey alone (PR #1882): the switch config.passkey_signin (11.0.41, default off), the button among the sign-in buttons, passkey.php options, the answer handled by index.php [decision: here]
 - passkey-second-factor.md: A passkey alone is a second factor (PR #1862): pg_mfa_has_passkey/has_factor/gate_mode, the passkey-only verify screen, what still looks at TOTP only
-- passkey-sessions.md: Sessions opened with a passkey (PR #2250): auth_tokens.passkey_id (11.0.46), the sign-in mark, the session row on the account page, removing a passkey ends its sessions
-- passkey-without-totp.md: An account without TOTP (PR #2226): the e-mailed code (passkey.php email_code) and its purposes, recovery codes from the first passkey and new ones later, removing the last one
+- passkey-sessions.md: Sessions opened with a passkey (PR #2250): auth_tokens.passkey_id (11.0.46), the sign-in mark, the session row on the account page, removing a passkey ends its sessions [decision: here]
+- passkey-without-totp.md: An account without TOTP (PR #2226): the e-mailed code (passkey.php email_code) and its purposes, recovery codes from the first passkey and new ones later, removing the last one [decision: here]
 - permission-columns.md: Adding a user right: column type and naming, the role-3 ladder files that must learn it, column probes, drawing it on the user screens, exact stored values, separate gates for a card and its links.
-- personal-data-erasure.md: privacy_erase.php (PR #1706): erasing one person after a dry run; whose records are taken, what is deleted and what is kept with personal fields replaced, the checks, the audit lines
+- personal-data-erasure.md: privacy_erase.php (PR #1706): erasing one person after a dry run; whose records are taken, what is deleted and what is kept with personal fields replaced, the checks, the audit lines [decision: decisions-made-product.md]
 - personal-data-export.md: privacy_export.php (PR #938): one person's data as JSON and a PDF summary, how the person is found, what each section reads and masks, the role rule, the audit line
-- php-regions-eval-and-content.md: get_page_content.php evaluates the assembled page when PHP_REGIONS is on; who may write PHP, where content-level markup is defused with pg_defuse_php_tags(), and the site importer's fetch rules.
+- php-regions-eval-and-content.md: get_page_content.php evaluates the assembled page when PHP_REGIONS is on; who may write PHP, where content-level markup is defused with pg_defuse_php_tags(), and the site importer's fetch rules. [decision: decisions-made-product-39.md]
 - preg-replace-replacement-escaping.md: Text put into a page through preg_replace() goes through pg_regex_replacement(): $NN and \N in it are back references, "$400'dan" printed as "0'dan"; where it applies and the guard test
 - privacy-log-retention.md: How long audit_log and consent_log keep lines: config.audit_log_retention_years (11.0.47), the Audit Trail settings card, the daily job pass, why the answer in force stays
 - push-disabled-account.md: The device push queue drops a disabled or deleted account's queued rows and browsers instead of waking them (pg_push_account_wakeable())
@@ -145,14 +145,14 @@
 - request-parameter-arrays.md: How screens must treat a request parameter that arrives as an array (?id[]=x), missing records, and null passed to escaping helpers
 - reset-link-revoked-on-change.md: A pending password reset or set password link (user.token) is cleared when the owner changes the password or the e-mail address on the site.
 - sdt-designer-js-text-rules.md: How visible text in style_designer.src.js must use _sdT('English') keys: literal-key rule, server key scan and cache, variables instead of built keys, escaping, PHP/JS default twins, the checks.
-- security-helpers-and-secret-storage.md: CSRF helpers; secret config fields (one encrypted blob, never a constant, never shown back, the written exception); session cookie flags and sign-in renewal; the install unlock throttle.
+- security-helpers-and-secret-storage.md: CSRF helpers; secret config fields (one encrypted blob, never a constant, never shown back, the written exception); session cookie flags and sign-in renewal; the install unlock throttle. [decision: decisions-made-access.md]
 - send-to-url-safety.md: What pg_send_to_url() refuses (control characters, '//' and '/\' starts, non-paths) and why it matches pg_safe_redirect_path() (PR #3563)
 - session-token-binding.md: How a signed-in session is bound to its auth_tokens row (selector kept in the session), what ends a session server-side, and the rules every sign-in and minting path must follow.
-- sign-in-one-message.md: The sign-in screens give one message for an unknown name and a wrong password, and an unknown name costs the same password_verify() (pg_login_refused_message(), pg_password_dummy_verify())
+- sign-in-one-message.md: The sign-in screens give one message for an unknown name and a wrong password, and an unknown name costs the same password_verify() (pg_login_refused_message(), pg_password_dummy_verify()) [decision: decisions-made-product-13.md, decisions-made-product-39.md]
 - site-fetch-language.md: Site-side fetch()/XMLHttpRequest calls send the page language (pg_lang from <html data-pg-lang>) themselves: which scripts do it, how the server reads it, the scan test
 - site-log-client-address.md: Which address a site log row records: pg_auth_request_address(), the visitor behind a trusted proxy, in both log_activity() copies and the e-mail-a-friend limit (#2044)
 - site-path-detection.md: How a request finds the site path (PATH) from SCRIPT_NAME and the software folder, in any case; when config.path is written and when it is not (cron reads it)
-- sms-consent-box.md: The SMS marketing box beside the e-mail box (PR #3660, #3694 checkout, #3715 custom forms): when it is drawn, how it starts, the consent_log sms rows it writes
+- sms-consent-box.md: The SMS marketing box beside the e-mail box (PR #3660, #3694 checkout, #3715 custom forms): when it is drawn, how it starts, the consent_log sms rows it writes [decision: decisions-made-customers.md, decisions-made-product-8.md]
 - sms-consent-custom-form.md: The SMS marketing question on custom forms (PR #3715): the opt_in_sms binding, which is no contacts column, when it is drawn, how it starts, the sms:marketing row it writes
 - smtp-kept-password.md: SMTP Settings: an empty password box keeps the saved SMTP password only for the same host and port; a new server drops it and a save that would sign in there is refused
 - social-sign-in-address-match.md: Social sign-in ties a verified provider address only to an account whose stored address is the same apart from letter case; accent-folded look-alikes are refused, not tied and not opened (#1196)
@@ -160,8 +160,8 @@
 - social-sign-in-connect.md: Connecting Google, Microsoft or Apple to an account that is already signed in ("Connect with ..." buttons), whatever its e-mail address, and the rules that refuse it
 - social-sign-in-providers.md: Adding a sign-in provider: the 'signin' block of its provider file (order, scopes, pkce, return, claims, Apple's JWT secret), its switch, what is stored (no token), the old user_google_id column.
 - social-sign-in.md: Sign in with Google, Microsoft and Apple: the flow, how an account is matched, where the buttons come from, and the failure screen (no more "404" on a refused sign-in)
-- software-text-in-site-languages.md: Which language the software's own texts take on a site page in a language with no language file: English, except the cookie window (owner decision 2026-10-09), and how that exception is fed.
-- sortablejs-library.md: The vendored SortableJS (assets/lib/sortablejs/, 1.15.7, unmodified): why it replaced jQuery UI .sortable(), which screens load it, how to update it
+- software-text-in-site-languages.md: Which language the software's own texts take on a site page in a language with no language file: English, except the cookie window (owner decision 2026-10-09), and how that exception is fed. [decision: here]
+- sortablejs-library.md: The vendored SortableJS (assets/lib/sortablejs/, 1.15.7, unmodified): why it replaced jQuery UI .sortable(), which screens load it, how to update it [decision: decisions-made-panel-2.md]
 - style-tag-css.md: CSS printed inside a <style> element goes through pg_style_tag_css(), never h(); the theme designer preview in get_page.php (edit_theme) and its theme_id key
 - submitted-form-content-helpers.md: pg_submitted_form_page() fills the page row keys of submitted billing/shipping forms; pg_form_reference_title_row() escapes the reference code title row; faults fixed.
 - submitter-email-access.md: How a member gets a submitted form's rights by e-mail address (submitter or watcher) and why a blank address never matches
@@ -173,5 +173,5 @@
 - two-step-sign-in.md: Two-step sign-in (TOTP + recovery codes, 2026.4.8 step 8.40): where the gate sits in every sign-in path, storage, API and ShipWorks behaviour, recovery, encryption key risk
 - user-disabled.md: Disabled users (2026.11.0, 11.0.160): user.user_disabled_at, the helpers every sign-in path asks, the gates, the Account enabled switch and its guards (#6186)
 - user-write.md: Creating, saving and deleting a panel account goes through includes/fn/user_write.php, shared by add_user.php, edit_user.php, delete_users.php and the /users API writes
-- vanilla-calendar-library.md: The vendored vanilla-calendar-pro (assets/lib/vanilla-calendar-pro/, 3.4.0, unmodified) behind the one date-and-time control: why, how it loads once, how to update it
+- vanilla-calendar-library.md: The vendored vanilla-calendar-pro (assets/lib/vanilla-calendar-pro/, 3.4.0, unmodified) behind the one date-and-time control: why, how it loads once, how to update it [decision: decisions-made-panel-2.md, decisions-made-panel.md]
 - webauthn-verifier.md: WebAuthn (passkey) verifier in includes/webauthn/ (PR #594): API, what it accepts and refuses, error codes, record fields, W3C test vectors, what a caller must do

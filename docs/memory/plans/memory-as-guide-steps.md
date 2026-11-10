@@ -9,7 +9,7 @@ description: Steps MG1-MG4 and MG11-MG14 of plans/memory-as-guide.md: decision l
 - The overviews, MG5 to MG10, are in `memory-as-guide-steps-2.md`; they run side by side with these.
 
 ## Steps
-- MG1 Decision list and marks: the tool writes `workflow/DECISIONS.md`, named in the workflow README as a searched file: one line per entry heading of `workflow/decisions-made*.md` (file, heading) and one per topic file whose own text records a dated owner or architect decision (file, description).
+- MG1 Decision list and marks (done, #8457): the tool writes `workflow/DECISIONS.md`, named in the workflow README as a searched file: one line per entry heading of `workflow/decisions-made*.md` (file, heading) and one per topic file whose own text records a dated owner or architect decision (file, description).
   - A topic file's index line ends with `[decision: <part>]` when a part names the file or the file cites an issue number of an entry heading, and with `[decision: here]` when only its own text records one. Today that marks 470 of 2,614 topic files, `erp/erp-till-below-zero.md` among them.
 
 - MG2 Wording, after MG1: `CLAUDE.md` and the workflow key rule say "before changing or removing a behaviour, search `workflow/DECISIONS.md`", not only before an audit finding. `decisions-made.md` gives the search line in place of its Parts list.

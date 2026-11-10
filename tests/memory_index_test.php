@@ -81,3 +81,65 @@ function test_memory_index_module_list_empty()
 {
 	pg_assert_contains('No memory file names a module yet.', memory_index_module_list(array()));
 }
+
+function test_memory_index_decision_parts_collected()
+{
+	$parts = memory_index_decision_parts(array(
+		'decisions-made-product-15.md' => "---\nname: x\n---\n\n## May a till go below zero? (#4460)\n- Owner: no (`erp/erp-till-below-zero.md`).\n\n## Which rounding? (#12, PR #13)\n- See [[offer-percent-rounding]] and erp-cheques.md, not other-decisions-made.md.\n",
+		'decisions-made.md' => "## What is this list?\n- Parts: `decisions-made-data.md`.\n",
+	));
+
+	pg_assert_same(array(
+		array('decisions-made-product-15.md', 'May a till go below zero? (#4460)'),
+		array('decisions-made-product-15.md', 'Which rounding? (#12, PR #13)'),
+		array('decisions-made.md', 'What is this list?'),
+	), $parts['headings']);
+	pg_assert_same(array('decisions-made-product-15.md'), $parts['issues']['4460']);
+	pg_assert_same(array('decisions-made-product-15.md'), $parts['issues']['13']);
+	pg_assert_same(array('decisions-made-product-15.md'), $parts['named']['erp-till-below-zero']);
+	pg_assert_same(array('decisions-made-product-15.md'), $parts['named']['offer-percent-rounding']);
+	pg_assert_same(array('decisions-made-product-15.md'), $parts['named']['erp-cheques']);
+	pg_assert_true(!isset($parts['named']['decisions']), 'a hyphenated name is taken whole');
+	pg_assert_true(!isset($parts['issues']['1']), 'only headings give issue numbers');
+}
+
+function test_memory_index_decision_recorded_in_own_text()
+{
+	pg_assert_true(memory_index_decision_recorded("- Owner (2026-11-10): the box stays."));
+	pg_assert_true(memory_index_decision_recorded("- Kept (owner, 2026-10-26, #1773)."));
+	pg_assert_true(memory_index_decision_recorded("- architect, 2026-11-02: one path."));
+	pg_assert_true(memory_index_decision_recorded("- Owner decision (2026-10-30): no."));
+	pg_assert_true(memory_index_decision_recorded("- owner decision 2026-10-30: no."));
+	pg_assert_true(!memory_index_decision_recorded("- The owner reported it on 2026-10-30."), 'a report is not a decision');
+	pg_assert_true(!memory_index_decision_recorded("- owner request 2026-10-30."));
+	pg_assert_true(!memory_index_decision_recorded("- Decided by the owner."), 'undated');
+	pg_assert_true(!memory_index_decision_recorded("- The site owner sees it (2026-10-30)."));
+}
+
+function test_memory_index_decision_mark()
+{
+	$parts = memory_index_decision_parts(array(
+		'decisions-made-b.md' => "## Q? (#4460)\n- `erp/erp-till-below-zero.md`.\n",
+		'decisions-made-a.md' => "## R?\n- [[erp-till-below-zero]], [[other]].\n",
+	));
+
+	pg_assert_same('decisions-made-a.md, decisions-made-b.md', memory_index_decision_mark('erp-till-below-zero', '- Plain.', $parts), 'parts sorted, each once');
+	pg_assert_same('decisions-made-b.md', memory_index_decision_mark('erp-x', "## Which? (#4460, PR #4666)\n- Plain.", $parts), 'an issue number of an entry heading');
+	pg_assert_same('decisions-made-a.md', memory_index_decision_mark('other', '- Owner (2026-11-10): kept.', $parts), 'a part wins over the own text');
+	pg_assert_same('here', memory_index_decision_mark('erp-y', '- Owner (2026-11-10): kept.', $parts));
+	pg_assert_same('', memory_index_decision_mark('erp-z', '- Plain (#44600).', $parts), 'a longer number is another issue');
+}
+
+function test_memory_index_decision_list()
+{
+	$list = memory_index_decision_list(
+		array(array('decisions-made-b.md', 'Q? (#4460)'), array('decisions-made-a.md', 'R?')),
+		array('erp/erp-y.md' => 'Y description', 'core/a-x.md' => 'X description')
+	);
+
+	pg_assert_true(strncmp($list, "# docs/memory/workflow/DECISIONS.md\n", 36) === 0);
+	pg_assert_contains("\n- decisions-made-a.md: R?\n- decisions-made-b.md: Q? (#4460)\n", $list);
+	pg_assert_contains("\n- core/a-x.md: X description\n- erp/erp-y.md: Y description\n", $list);
+	pg_assert_same("\n", substr($list, -1));
+	pg_assert_true(substr($list, -2) !== "\n\n", 'one newline at the end');
+}

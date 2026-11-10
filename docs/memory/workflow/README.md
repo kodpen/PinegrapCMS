@@ -21,3 +21,4 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 
 - `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.
 - `grep -i 'word' docs/memory/workflow/INDEX.md`; across every folder: `grep -i 'word' docs/memory/*/INDEX.md`.
+- `DECISIONS.md` lists every decision, one line each: the entry headings of the `decisions-made*.md` parts and the topic files that record a dated owner or architect decision. Search it like an index: `grep -i 'word' docs/memory/workflow/DECISIONS.md`. A topic file's index line ending in `[decision: …]` is bound by the part it names, or by its own text (`here`).
