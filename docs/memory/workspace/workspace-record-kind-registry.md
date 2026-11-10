@@ -17,7 +17,7 @@ description: ws_record_kinds() (refs.php): one entry per Workspace record kind (
 - erp_account: `manage_erp_readonly` reads, never changes (erp/erp-readonly-accountant-right.md); `ws_change_erp_readonly_refusal()` refuses the drawer and change cards (#1650).
 
 ## Do the old lists read it?
-- `ws_record_type_keys()` (its keys) and `ws_customer_types()` (kinds with `customer`) read it (#PR). `ws_ref_types()`, `ws_change_types()`, `ws_change_audit_target()`, `ws_quick_edit_types()`, `ws_ai_type_scope()`, `pg_audit_tables()` keep literals: a new kind goes into the registry, then each.
+- `ws_record_type_keys()` (its keys) and `ws_customer_types()` (kinds with `customer`) read it (#8540). `ws_ref_types()`, `ws_change_types()`, `ws_change_audit_target()`, `ws_quick_edit_types()`, `ws_ai_type_scope()`, `pg_audit_tables()` keep literals: a new kind goes into the registry, then each.
 
 ## What holds them together?
 - tests/workspace_record_kinds_registry_test.php, list by list: a name the list has that the registry lacks, or one the registry gives it that it lacks, fails with the list's name. A difference kept on purpose sits in that list's `except` in `workspace_record_kinds_registry_test_lists()` with its reason; a reason that no longer matches a difference fails as out of date.
