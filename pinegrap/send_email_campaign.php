@@ -20,14 +20,29 @@ include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/iys/client.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_send.php');
 
-$user = validate_user();
-validate_email_access($user);
-
 // The window is drawn once and its script sends the next batches through the
 // JSON mode (?format=json), which answers {sent, total, done, error}. A JSON
-// caller gets its refusals in JSON: validate_token_field() and output_error()
-// print an HTML page, which the script cannot read.
+// caller gets its refusals in JSON: validate_user() redirects to the sign-in
+// page, and validate_email_access(), validate_token_field() and output_error()
+// print an HTML page, none of which the script can read.
 $send_json = (($_GET['format'] ?? '') === 'json');
+
+// An ended session, a deleted or a disabled account leaves USER_LOGGED_IN
+// false. The text asks to send the campaign again rather than to reload: a
+// reload of this window replays its old token and ends on an HTML page.
+if ($send_json && (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN)) {
+    send_email_campaign_json(array('error' => lang('Your session expired or you logged out. Sign in again and send the campaign again to resume it.')), 401);
+}
+
+$user = validate_user();
+
+// The same rule and log line as validate_email_access(), answered in JSON.
+if ($send_json && !(($user['role'] < 3) || $user['manage_emails'])) {
+    log_activity(lang('access denied to e-mail page'), $_SESSION['sessionusername']);
+    send_email_campaign_json(array('error' => lang('Access denied.')), 403);
+}
+
+validate_email_access($user);
 
 // Sending is a change, so it carries the CSRF token like the other actions:
 // both links that open this window and every request that sends the next
