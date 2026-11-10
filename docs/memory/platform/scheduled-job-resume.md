@@ -21,8 +21,8 @@ module: cron
 
 ## How do the health screens tell a finished run from a stamped tick?
 - The dispatcher stamps the job's row after every tick, finished, crashed or declined (`pg_cron_stamp()`), so the rotation moves. Only `pg_cron_ran()`, called by the job at its real end, also writes `<job>_done` (dispatched, not inline jobs: `pg_cron_done_marker()`).
-- System Status, `pg_ops_alerts_check_cron()` and the accessibility screen's "Last full check" read `pg_cron_health_last_runs()`: the `_done` time stands for the job when present (`pg_cron_health_runs()`, pure). Before, a crashed index run or an accessibility pass cut at its budget showed healthy and "No problem found".
-- A job that has not finished since the update has no marker yet and still reads its plain row. `health.php` and the API's meta still read the plain rows.
+- System Status, `pg_ops_alerts_check_cron()`, the accessibility screen's "Last full check" and `GET /meta` (#8548) read `pg_cron_health_last_runs()`: the `_done` time stands for the job when present (`pg_cron_health_runs()`, pure). Before, a crashed index run or an accessibility pass cut at its budget showed healthy and "No problem found".
+- A job that has not finished since the update has no marker yet and still reads its plain row. `health.php` reads only the dispatcher's own row, which has no marker.
 
 ## Where does the accessibility pass keep its place?
 - `data/temp/seo_a11y.json` written after every page, not only when the budget runs out: a killed process carries on after the last page checked.
