@@ -10,11 +10,10 @@ description: How an agent asks the people with a poll or an approval; a one-answ
 
 ## How is a question with one answer asked, and when is the answer locked?
 - Owner (2026-11-10): one choice, no change afterwards, a poll rather than a checklist; the shape is the architect's (#8554, `workflow/decisions-made-workspace-12.md`).
-- Ask: `POST /workspace/channels/{id}/polls` with `question` and `options` (the recommended one first), `multiple` and `anonymous` left out, an `Idempotency-Key`. The answer is the message; its `poll.id` is the poll's id.
+- Ask: `php tools/ws_poll.php ask [--idempotency-key=K] "<question>" "<recommended>" "<other>"` prints `<message id> <poll id>` (#8564). It posts `POST /workspace/channels/{id}/polls` with `question` and `options` (trimmed, blank and repeated ones left out, two to ten), `multiple` and `anonymous` left out.
 - Wait: `php tools/ws_wait.php --changed=<message id>` wakes on a vote and prints the message; `poll.options[].voters` names who chose what (`user_id`, `name`).
-- Lock: as soon as it reads the vote it waits for (the owner account's, for an owner question) the asking agent closes the poll, `POST /workspace/polls/{poll id}/close`. A clear winner is written as a decision under the poll, and a closed poll takes no vote (`ws_poll_vote_state()`). Until then a vote can be changed or taken back (`ws_poll_vote()`).
+- Lock: as soon as it reads the vote it waits for (the owner account's, for an owner question) the asking agent closes the poll, `php tools/ws_poll.php close <poll id>` (`POST /workspace/polls/{poll id}/close`, no channel needed; prints `poll.result_message_id`; another's poll is 403, exit 1). A clear winner is written as a decision under the poll, and a closed poll takes no vote (`ws_poll_vote_state()`). Until then a vote can be changed or taken back (`ws_poll_vote()`).
 - No vote or a tie gives a line of the system's, not a decision: the agent then writes the answer itself, `php tools/ws_post.php --kind=decision --parent=<message id> "<option> — <who answered, where>"`. The same when the answer came in the architect's window.
-- No tool asks or closes a poll yet (step AQ2 of `plans/agent-channel-steps-2.md`): until then the two routes are called with `ws_client_request()` of `tools/ws_client.php`.
 - A list where several lines are ticked, and a question one agent asks another, stay a checklist (`agent-checklist-questions.md`).
 
 ## In whose name is the outcome written?
