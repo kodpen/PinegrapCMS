@@ -3435,8 +3435,10 @@ function pg_bulk_price_change($price, $method, $value)
         return array('price' => $price, 'refused' => false, 'too_large' => false);
     }
 
-    // Worked out as a float and bounded before the int cast, which wraps on
-    // a 32-bit build.
+    // A percentage is the exact product, what is left rounded half away from
+    // zero by pg_percent_off(), so the result does not depend on the PHP
+    // version's round(); an increase is a negative percentage off. The result
+    // is bounded before the int cast, which wraps on a 32-bit build.
     switch ($method) {
         case '1':
             $new = $price - round((float) $value);
@@ -3445,10 +3447,10 @@ function pg_bulk_price_change($price, $method, $value)
             $new = $price + round((float) $value);
             break;
         case '3':
-            $new = round(((100 - (float) $value) / 100) * $price);
+            $new = pg_percent_off($price, (float) $value);
             break;
         default:
-            $new = round(((100 + (float) $value) / 100) * $price);
+            $new = pg_percent_off($price, -(float) $value);
             break;
     }
 

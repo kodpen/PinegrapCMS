@@ -5,7 +5,8 @@
  * Tests for the price a bulk product edit gives a product
  * (includes/fn/ecommerce.php pg_bulk_price_change(), used by
  * edit_products.php): a change never leaves a product it lowers at or below
- * zero, whichever of the four methods is used.
+ * zero, whichever of the four methods is used, and a percentage is the exact
+ * product, pg_percent_off(), on every PHP version.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -16,6 +17,8 @@
 if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
+
+require_once(__DIR__ . '/helpers/source_reader.php');
 
 // The two decrease methods keep refusing a price at or below zero.
 function test_bulk_price_change_decrease_keeps_the_price_above_zero()
@@ -84,4 +87,18 @@ function test_bulk_price_change_screen_refuses_a_value_that_is_no_amount()
 	pg_assert_contains("if(\$price_value === null){", $source);
 	pg_assert_contains("\$liveform->add_error(lang('Enter an amount for the price change.'))", $source);
 	pg_assert_contains("(\$_POST['edit_change_price_method'] != '') && !\$price_value_refused", $source);
+}
+
+// A percentage is the exact product, what is left rounded half away from zero:
+// 65% off 13.10 leaves 4.585, so 4.59, and 15% on 0.50 is 0.575, so 0.58. The
+// float ((100 - 65) / 100) * 1310 is 458.4999..., which PHP 8.4 and later
+// round down to 4.58, so the source must not take that route.
+function test_bulk_price_change_percentage_is_the_exact_product()
+{
+	pg_assert_same(array('price' => 459, 'refused' => false, 'too_large' => false), pg_bulk_price_change(1310, '3', '65'), 'decrease at half a kuruş');
+	pg_assert_same(array('price' => 58, 'refused' => false, 'too_large' => false), pg_bulk_price_change(50, '4', '15'), 'increase at half a kuruş');
+
+	$source = pg_test_function_source('pg_bulk_price_change');
+	pg_assert_false(strpos($source, '/ 100) * $price') !== false, 'no float percentage formula');
+	pg_assert_true(strpos($source, 'pg_percent_off(') !== false, 'the percentage goes through pg_percent_off()');
 }
