@@ -229,8 +229,8 @@ function test_workspace_model_http_error_names_the_assistant()
 // as it decides an application agent's answer, so a private channel nobody
 // opened to Pinegrap AI does not keep out an assistant its people added. A
 // channel closed to Pinegrap AI on purpose keeps it out too: closing is the
-// channel manager's, while whoever may post in a channel adds an assistant
-// to it.
+// channel manager's, while a row there can be a member's (a public channel's,
+// or a private one's from before only its manager added agents).
 function test_workspace_model_channel_verdict()
 {
 	$row = array('channel_id' => 30, 'agent_id' => 7, 'allowed' => 1);

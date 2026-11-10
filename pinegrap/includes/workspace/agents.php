@@ -364,6 +364,8 @@ function ws_channel_agent_error_text($error)
             return lang('Only the owner of the channel can change an agent\'s tier.');
         case 'member_only':
             return lang('Only a member of a private channel can add an agent to it.');
+        case 'manager_only':
+            return lang('Only a manager of a private channel can add an agent to it.');
     }
 
     return lang('Invalid request.');
@@ -478,8 +480,9 @@ function ws_channel_agent_row($channel_id, $agent_id)
 
 /**
  * Who may add an agent to a channel, or change its row there: whoever may
- * post in it, and in a private channel only a member. Changing the tier is
- * checked apart (ws_channel_agent_check()).
+ * post in it, and in a private channel only a member. Changing the tier
+ * (ws_channel_agent_check()) and a private channel's new agent
+ * (ws_channel_agent_enter_problem()) are checked apart.
  *
  * @param array $viewer
  * @param array $channel
@@ -496,6 +499,52 @@ function ws_channel_agent_add_problem($viewer, $channel)
     }
 
     return '';
+}
+
+/**
+ * What stands in the way of an agent entering a channel it is not in, beyond
+ * ws_channel_agent_add_problem(): a private channel takes a new agent only
+ * from whoever manages it. From then on a request to the agent carries the
+ * channel's words to its application or to its model's provider
+ * (ws_agent_brief(), ws_ai_briefing()), and whether a private channel's
+ * words leave the site is its manager's choice, as opening it to Pinegrap AI
+ * is (ws_ai_channel_set()). An agent the channel has is changed and taken
+ * out by whoever may post, as in any other channel. Pure.
+ *
+ * @param string     $kind       the kind of the channel; for a discussion, of the channel it is about
+ * @param array|null $row        the agent's row there (ws_channel_agent_row()), null when it has none
+ * @param bool       $can_manage may the caller manage that channel
+ * @return string '' or the refusal code
+ */
+function ws_channel_agent_enter_verdict($kind, $row, $can_manage)
+{
+    if (((string) $kind !== 'private') || $can_manage) {
+        return '';
+    }
+
+    return (is_array($row) && ((int) ($row['allowed'] ?? 0) === 1)) ? '' : 'manager_only';
+}
+
+/**
+ * ws_channel_agent_enter_verdict() for a caller and a channel. A discussion
+ * follows the channel it is about (threads.php): its new agent comes from
+ * whoever manages that channel, and from nobody once that channel is gone.
+ *
+ * @param array      $viewer
+ * @param array      $channel
+ * @param array|null $row the agent's row in the channel, null when it has none
+ * @return string '' or the refusal code
+ */
+function ws_channel_agent_enter_problem($viewer, $channel, $row)
+{
+    $thread = (($channel['kind'] ?? '') === 'thread');
+    $place = $thread ? ws_thread_parent_channel($channel) : $channel;
+
+    if (!is_array($place)) {
+        return ws_channel_agent_enter_verdict('private', $row, false);
+    }
+
+    return ws_channel_agent_enter_verdict((string) $place['kind'], $row, ws_can_manage_channel($viewer, $place));
 }
 
 /**
