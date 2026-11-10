@@ -3,9 +3,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Source test for focus rings drawn by a screen's own styles: the API
- * application rows, the dashboard card lists, the guided tour and the File
- * Manager draw the panel's 2px --pg-primary-ink ring, never a pastel
- * --pg-primary or 35% ring that reads about 1.3-2.2:1 on white.
+ * application rows, the dashboard card lists, the guided tour, the File
+ * Manager and the panel chat launcher draw the panel's 2px --pg-primary-ink
+ * ring, never a pastel --pg-primary or 35% ring that reads about 1.3-2.2:1
+ * on white.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -58,4 +59,13 @@ function test_faint_focus_rings_tour_and_file_manager()
 
 	pg_assert_contains('#explorer_tree_pane .tree-toggle:focus-visible { outline: 2px solid var(--pg-primary-ink); outline-offset: -2px; }', $folders);
 	pg_assert_same(1, preg_match('/#explorer_list_table th \.col-grip:focus-visible\s*\{\s*outline:\s*2px solid var\(--pg-primary-ink\);/', $folders), 'list heading ring');
+}
+
+// The launcher is fixed to the viewport, so its ring stays outside it.
+function test_faint_focus_rings_chat_launcher()
+{
+	$source = faint_focus_rings_source('chat.php');
+
+	pg_assert_contains('#pg-chat-root .pg-chat-launcher:focus-visible { outline: 2px solid var(--pg-primary-ink); outline-offset: 2px; }', $source);
+	pg_assert_same(0, preg_match('/\.pg-chat-launcher:focus-visible[^{]*\{[^}]*color-mix\(/', $source), 'no mixed launcher ring');
 }
