@@ -9,7 +9,7 @@ description: Steps MG5-MG10 of plans/memory-as-guide.md: an overview each for fl
 - These steps touch different folders and run side by side; none changes the product.
 
 ## Steps
-- MG5 Flows: `workspace/workspace-flows-overview.md` for the 107 `workspace-flow*` files.
+- MG5 Flows: `workspace/workspace-flows-overview.md` for the 107 `workspace-flow*` files. Done in #8467.
   - The box kinds of `ws_flow_kinds()` by their label, so "is it there already?" is answered first: the trial was asked for a Wait box, which is kind `delay`.
   - What drives a run: who calls `ws_scheduled_run()` and how late a wake can be.
   - `workspace-flows-adding.md` becomes the full recipe. It does not name the case in `ws_flow_graph_normalize()`, `ws_flow_node_texts()`, the dispatch in `ws_flow_step_run()`, `ws_flow_member_kinds()` or the bundle build.
