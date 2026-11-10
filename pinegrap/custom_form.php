@@ -1398,6 +1398,15 @@ if ($liveform->check_form_errors() == false) {
                             contact_group_id)
                         VALUES (?, ?)";
                     $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
+
+                    // The same seam every other door announces through, so a
+                    // "joined a group" profile, flow and the members_changed
+                    // webhook start for a form sign-up too.
+                    $joined = pg_fs_confirm_joined($contact_id, mysqli_affected_rows(db::$con));
+
+                    if ($joined && function_exists('pg_announce_contact_group_members')) {
+                        pg_announce_contact_group_members($contact_group_id, $joined);
+                    }
                 }
             }
         }
