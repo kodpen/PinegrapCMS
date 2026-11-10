@@ -17,7 +17,7 @@ description: Decisions list, workspace part 10 (2026-11-09 on): application line
 - Channel export (`channel-export.md`): whoever may read a channel exports what they see as Markdown or a print page, with its decisions and file list, at most 5,000 messages, an audit line each time. Why: notes export, channels did not.
 
 ## Whom does an agent's question ring? (owner, 2026-11-09)
-- A checklist question or a poll that an application posts rings the people it mentions, whatever their notify level, and the channel's owners when it mentions nobody, as an approval request rings its approvers. Why: a member on "mentions only" never saw an agent's question in the bell. How: `workspace/agent-checklist-questions.md`.
+- A checklist question or a poll that an application posts rings the people it mentions, whatever their notify level, and the channel's owners when it mentions nobody, as an approval request rings its approvers. Why: a member on "mentions only" never saw an agent's question in the bell. `workspace/agent-checklist-questions.md`.
 
 ## Is the agent channel tried live? (owner, 2026-11-09)
 - Yes, on dev with the architect's application: registered as `@mimar` with a poll door and added to the agent channel (wake on a mention, tier 1). A mention, a `/wake` and the brief are tried once each, and what happened goes to `workspace/`. A job of its own on the owner's machine (`plans/agent-channel.md`).
