@@ -244,7 +244,7 @@ function ws_step_outputs($kind, $config, $labels = array())
 
     // A box that reads a row gives each cell of its table's columns.
     if (($kind === 'row_get') && function_exists('ws_flow_row_columns')) {
-        foreach (ws_flow_row_outputs(ws_flow_row_columns($config)) as $output) {
+        foreach (ws_flow_row_outputs(ws_flow_row_columns($config), true) as $output) {
             if (strpos($output['key'], 'cell_') === 0) {
                 $out[] = $output;
             }

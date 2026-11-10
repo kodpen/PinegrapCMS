@@ -14,7 +14,7 @@ description: The Read a row box of flows (row_get): view reach with the owner's 
 
 ## What does it give?
 - `ws_step_outputs('row_get', $config)`: `row_id`, `found` (1 or 0), then `cell_<column id>` per column from `ws_flow_row_outputs()` (columns from the store unless `$config['columns']` gives them; number/money typed number).
-- `ws_step_row_get_do()` reads `ws_step_row_find()` (by its way; `ws_step_row_match()` by match) → `ws_wtable_row_out()` (formulas worked out) → `ws_wtable_row_present()`; `ws_step_row_get_data()` (pure) turns the cells into text by `ws_flow_row_cell_text()`.
+- `ws_step_row_get_do()` reads `ws_step_row_find()` (by its way; `ws_step_row_match()` by match) → `ws_wtable_row_out()` (formulas worked out) → `ws_wtable_lookup_fill()` (lookups, owner's rights) → `ws_wtable_row_present()`; `ws_step_row_get_data()` (pure) turns the cells into text by `ws_flow_row_cell_text()`.
 - A row that is not there, or a filled row text that is no number: done, `found` 0, `row_id` null, every cell ''. Only a gone table fails the box.
 - `ws_step_result_data()` keeps a `row_get` cell as text (a number cell may have decimals; the number branch would cut it to an int).
 

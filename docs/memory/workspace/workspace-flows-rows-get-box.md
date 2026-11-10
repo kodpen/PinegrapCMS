@@ -17,7 +17,7 @@ description: The Read rows box of flows (rows_get, PR #8400) and Read a row by m
 - `ws_step_rows_get_do()`: every row (`ws_wtable_rows()`), those meeting the conditions, their totals, sorted, the first `limit` listed.
 - Outputs: `count` (every row that met them, not only the list), `rows`, then per number, money and formula column `sum_<id>`, `avg_<id>`, `min_<id>`, `max_<id>` ("Sum of Price" …).
 - Totals stay text (`ws_step_result_data()`) so decimals survive: up to six places, money in minor units, '' when no row had a value, a sum of nothing '0'.
-- `rows`: JSON `[{row_id, position, cell_<id>}]`, cells as a read row gives them, whole rows while it fits `WS_FLOW_LOOP_ITEMS_BYTES` (32 KB); the sentence says when it holds fewer. A For each box takes it (`listValue()`); the canvas names its fields after the columns (`rowsItemLabels()`).
+- `rows`: JSON `[{row_id, position, cell_<id>}]`, cells as a read row gives them (lookups filled for the listed rows only, owner's rights), whole rows while it fits `WS_FLOW_LOOP_ITEMS_BYTES` (32 KB); the sentence says when it holds fewer. A For each box takes it (`listValue()`); the canvas names its fields after the columns (`rowsItemLabels()`).
 
 ## Read a row by match
 - `row_get` gains `by: match` (`ws_step_row_get_bys()`; `row_set` keeps three ways): no row text, `match` and `where` as above, the first row in table order that meets them (`ws_step_row_match()`). No condition is a problem; none found is done with found 0.

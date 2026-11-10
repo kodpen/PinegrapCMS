@@ -141,6 +141,8 @@ function ws_step_row_get_do($owner, $action)
         $read = $stored ? ws_wtable_row_out($stored, $columns) : null;
     }
 
+    // Its lookups, with the owner's rights.
+    $read = $read ? (ws_wtable_lookup_fill($owner, $columns, array($read))[0] ?? $read) : null;
     $cells = $read ? (array) ws_wtable_row_present($read)['cells'] : null;
     $data = ws_step_row_get_data($columns, $cells, $read ? (int) $read['id'] : 0);
 
