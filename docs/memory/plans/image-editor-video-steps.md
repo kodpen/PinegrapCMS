@@ -17,7 +17,7 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
 
 - V3 (M) Timeline editing. Done (#8510, `ui/image-editor-clip-timeline.md`).
 
-- V3b (S) Length rule and clip bar. `free`, one at a time with V5 and V10 (the `clip` part). Owner 2026-11-10, #8521.
+- V3b (S) Length rule and clip bar. Done (#PRNUM, `ui/image-editor-clip-timeline.md`). Owner 2026-11-10, #8521.
   - A clip edit never ends the document before another layer's motion. The clip bar of screen 35: a filmstrip of several frames, the clip's sound as a waveform.
 
 - V4 (M) Sound. Done (#7642, `ui/image-editor-sound.md`; from this computer left to V8). Screens 37-sound, 35-video. Needs no video layer: may run right after V0, before V1-V3 (owner 2026-11-05: sound in an animation's video too).
