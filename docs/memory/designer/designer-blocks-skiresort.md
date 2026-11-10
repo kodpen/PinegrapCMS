@@ -4,7 +4,7 @@ description: The Ski Resort block family (skiresort- prefix, its own palette gro
 ---
 
 ## Where does it live?
-- `assets/js/style_designer_blocks_skiresort.js`, one `StyleDesigner.registerBlockFamily()` call ([[designer-block-family-files]]); prefix `skiresort-`, palette group "Ski Resort" (`bi-snow`). Built for the Ski Resort template's pages ([[design-template-skiresort-design]]), usable by any mountain or outdoor site.
+- `assets/js/style_designer_blocks_skiresort.js`, one `StyleDesigner.registerBlockFamily()` call ([[designer-block-family-files]]); prefix `skiresort-`, palette group "Ski Resort" (`bi-snow`). Built for the Ski Resort template's pages ([[design-template-skiresort]]), usable by any mountain or outdoor site.
 
 ## Which blocks does it hold?
 - `skiresort-conditions`: today's figures on a dark band (`data-bs-theme="dark"` + `bg-body text-body`): slopes and lifts open as `{var:1} / {var:2}`, snow depth, new snow, temperature, wind, an "open" pill, the avalanche danger line, links to lift status and snow report.

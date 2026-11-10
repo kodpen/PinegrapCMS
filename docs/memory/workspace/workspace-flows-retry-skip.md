@@ -25,6 +25,6 @@ description: A failed box of a flow run tried again on its own (3d, PR #2275, re
 - Tests: `tests/workspace_flow_mend_test.php`.
 
 ## Does a box try again on its own?
-- A step box set to (PR #2275): `retry` 0-7 more tries (`WS_FLOW_RETRY_MAX`, 8 in all: the depth a scheduled action starting itself again stops at) and `retry_after` minutes (1 to `WS_FLOW_DELAY_MAX`), kept by `ws_flow_config_normalize()` for step kinds only; tries without minutes are a `bad_config` problem (`ws_flow_retry_problems()`).
+- A step box set to (PR #2275): `retry` 0-7 more tries (`WS_FLOW_RETRY_MAX`, 8 in all: the depth a scheduled action starting itself again stops at) and `retry_after` minutes (1 to `WS_FLOW_RETRY_AFTER_MAX`, a week), kept by `ws_flow_config_normalize()` for step kinds only; tries without minutes are a `bad_config` problem (`ws_flow_retry_problems()`).
 - `ws_step_run()` sends each failure to `ws_flow_retry_wait()` first: while `attempt <= retry` (`ws_flow_retry_until()`) the box goes running → waiting with effect cleared (a try may post again), wait_key `retry:<until>`, wake_at; tries used, it settles as before (arrow on failed or always, else the run fails).
 - `ws_flow_step_recheck()` → `ws_flow_retry_recheck()`: at the moment the box is ready again (from waiting only), the claim counts the attempt. Canvas `retryFields()`; tests `tests/workspace_flow_retry_test.php`.

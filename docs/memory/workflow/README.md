@@ -7,7 +7,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 ## Key rules
 
 <!-- key-rules:start -->
-- Read the decisions list before writing any audit finding or proposing a cleanup: a listed place is not a finding, and an entry you doubt is asked about, never changed (`decisions-made.md`).
+- Before changing or removing a behaviour, and before writing any audit finding or proposing a cleanup, search `workflow/DECISIONS.md` (`grep -i 'word' docs/memory/workflow/DECISIONS.md`); an index line ending in `[decision: …]` names the part that binds the file. A listed place is not a finding, and an entry you doubt is asked about, never changed (`decisions-made.md`).
 - Work in the working mode: claim a task with a draft PR and never an issue (issues only for decision questions, labelled `architect`: `architect.md`, and for `bug` reports of the test coordinator, which wait for the owner: `test-coordinator.md`, `coordinator-no-plans.md`), one open PR per session, no stacked branches, light checks, no review chains (`working-mode.md`, `session-checks.md`). When CI is green put the `ready` label on, wait subscribed, never merge `development` into the PR after that, and take the plan's next step once it is merged (`session-lifecycle.md`). Only the merging session merges, in merge trains landed by one fast-forward push (`merge-train.md`, `merge-train-landing.md`); a coordinator per account starts the workers (`coordinator.md`); the architect session decides every question together with the owner and records it (`architect.md`).
 - Owner decisions are about the product's behaviour and carry their reason (`decisions-made.md`); a working rule is never written as the owner's decision (`CLAUDE.md`, Fixed rules 6).
 - Never edit `changelog.txt` (name the `[NEW]` line or `[SCHEME]` item in the PR body), add translation keys only with `php tools/tr_add.php` (sorted shards in `includes/local/tr/`, never edited by hand), and only append to the open migration file and `init.php`; merge `origin/development` once before the PR goes up (`working-mode.md`, `git-branches-and-shared-files.md`).
@@ -17,7 +17,12 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - Keep area rules in memory only (folder README key rules and topic files, no `.claude/skills`); settle a README conflict with `php tools/memory_index.php` and merge only the key-rules block by hand, never by deleting the README (`owner-rules.md`, `memory-index-key-rules.md`).
 <!-- key-rules:end -->
 
+## Clusters
+
+- `decisions-made-*`: 78 files; start at `decisions-made.md`.
+
 ## Files
 
 - `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.
 - `grep -i 'word' docs/memory/workflow/INDEX.md`; across every folder: `grep -i 'word' docs/memory/*/INDEX.md`.
+- `DECISIONS.md` lists every decision, one line each: the entry headings of the `decisions-made*.md` parts and the topic files that record a dated owner or architect decision. Search it like an index: `grep -i 'word' docs/memory/workflow/DECISIONS.md`. A topic file's index line ending in `[decision: …]` is bound by the part it names, or by its own text (`here`).

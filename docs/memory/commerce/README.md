@@ -7,6 +7,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 ## Key rules
 
 <!-- key-rules:start -->
+- Round money in minor units, half away from zero, on the exact product: a percentage with `pg_percent_of()` / `pg_percent_off()`, a tax rate with `pg_tax_apply_rate()`; never a float `round($p / 100 * $x)` and never an `(int)` cut (`offer-percent-rounding.md`, map: `order-totals-overview.md`).
 - Sum tax per line with `SUM(order_items.tax_total)`, never `tax * quantity`; checkout no longer writes `order_items.tax` (`product-tax-rate.md`).
 - Treat `products.tax_rate` NULL as the zone's rate and `0.000` as zero-rated; go through `get_effective_tax_rate()`, `parse_tax_rate()`, `format_tax_rate()` (`product-tax-rate.md`).
 - Pin `form_type = 'product'` in every product-form query and check an id from `LEFT JOIN products` before use: `''` becomes 0 and matches rows of no product (`form-fields-zero-id-query-trap.md`).
@@ -18,6 +19,20 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - After any stock or price write call `pg_marketplace_product_changed()`; a marketplace is never called in the request, only queued (`marketplace-outbound-layer.md`).
 - After a `products.price` write call `pg_price_history_record()` (bulk: `pg_price_history_queue()` + flush), or the reference price misses the change (`product-price-history.md`).
 <!-- key-rules:end -->
+
+## Clusters
+
+- `carrier-label-*`: 13 files.
+- `express-order-*`: 8 files.
+- `gift-card-*`: 7 files.
+- `order-completion-*`: 10 files; start at `order-completion.md`.
+- `order-returns-*`: 14 files; start at `order-returns.md`.
+- `payment-driver-*`: 9 files; start at `payment-drivers.md`.
+- `product-price-*`: 6 files.
+- `product-review-*`: 6 files.
+- `shipment-label-*`: 8 files; start at `shipment-labels.md`.
+- `stock-locations-*`: 6 files.
+- `store-credit-*`: 9 files.
 
 ## Files
 

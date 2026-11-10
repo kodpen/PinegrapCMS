@@ -9,7 +9,8 @@ description: Panel list and table rules: lists on the list table driver, which l
 
 ## How are list cells and icons made safe and named?
 - A preview of stored markup (login region headers and footers) is cut to 50 characters first, then escaped with `h()` in its cell; it once printed short previews raw, so a stored `<h3>` or `<style>` rendered in the list.
-- A Material ligature that stands for a value says it: a `task_alt` check mark is `role="img" aria-label` Yes, the pages list's `home` mark Home Page; a decorative one beside a name (`folder`) is `aria-hidden="true"`. A row checkbox carries `aria-label` "Select {var:1}" with the row's name.
+- A Material ligature that stands for a value says it: a `task_alt` check mark is `role="img" aria-label` Yes, the pages list's `home` mark Home Page; a decorative one beside a name (`folder`) is `aria-hidden="true"`.
+- A list on the driver has no row checkbox (owner 2026-11-03, `workflow/decisions-made-product-22.md`): a click, Ctrl, Shift or Space selects the row (`list-table-driver-browser.md`).
 - File lists: `download` holds the file's name (it once held the type, `jpg`); thumbnails keep 50x50 with `object-fit: cover`. Pinned by `tests/content_lists_test.php`.
 
 ## Which lists must stay plain tables?

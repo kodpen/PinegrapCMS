@@ -10,7 +10,7 @@
 - experiment-goals.md: Page experiment goals (PX3, #6230): form, order, click, page; counted for the variant the pg_exp cookie holds, once a day per experiment by a mark in the cookie, into experiment_hourly.goals
 - high-volume-counter-rules.md: Rules for a new high-volume counter, log or report: write-time buckets, sha1 keys, no query string in a key, MAX(id) caps, totals in SQL, ONLY_FULL_GROUP_BY, DST-safe day steps, derived data rebuilt.
 - page-canonical-robots-directives.md: A page's own canonical address and noarchive / max-snippet (page.canonical_url, noarchive, max_snippet; 11.0.22, #802): storage, where it applies, languages, editors, PHP/JS twin.
-- page-noindex-switch.md: What the per-page noindex/nofollow switch does in three places, which four screens write it, the sitemap query rule and the PHP/JS lockstep rule (2026.4.3).
+- page-noindex-switch.md: What the per-page noindex/nofollow switch does in three places, which four screens write it, the sitemap query rule and the PHP/JS lockstep rule (2026.4.3). [decision: decisions-made-product.md]
 - page-view-beacon.md: How a visit answered from the page file cache is still counted (PR #1402): the signed beacon in the stored copy, page_view.php, what it counts and what it cannot
 - page-vitals-beacon.md: Real-user LCP/INP/CLS beacon into page_vitals_hourly (11.0.149, #5040): which pages carry it, day-signed page id, rate limit, validation, buckets, upsert, 400-day sweep
 - page-vitals-figures.md: Page speed figures from page_vitals_hourly: the p75 estimate from buckets and sums, the figures of a row, site / pages / trend readers, the reports/vitals API route and MCP tool
@@ -21,13 +21,13 @@
 - seo-impact-window-days.md: The SEO screens' recent-views column starts its window with pg_seo_impact_since(): calendar days, not 86400-second blocks, so a clock change does not move the first day.
 - seo-link-graph-self-links.md: SEO link graph: a page's link to itself is neither an incoming link nor a click-path step, so a page only its own menu item links to is an orphan
 - seo-structure-non-html-output.md: Pages may output JSON/XML/CSV, so SEO/structure rules must not assume an HTML document; what the structure check does with such output and the robots splice risk.
-- site-search-rollup.md: site_search_daily (11.0.147), the per-day search rollup: who counts, once per visit, the signed result click through page_view.php, the 400-day sweep.
+- site-search-rollup.md: site_search_daily (11.0.147), the per-day search rollup: who counts, once per visit, the signed result click through page_view.php, the 400-day sweep. [decision: decisions-made-product-19.md]
 - site-search-terms-on-visit.md: Who writes visitors.site_search_terms, and why the search widget writes it only on the first results page
 - sitemap-cache.md: sitemap.xml kept in data/cache/sitemap.txt under config.page_cache_generation with a one-hour lifetime (#2054): what redraws it, what waits for the lifetime, the lock, the wait with no copy, the purge
 - sitemap-listed-pages.md: Which pages sitemap.xml lists bare: the page types (pg_sitemap_page_types()), designed pages whose system widget stands in for an unlisted type, the home page exception, detail pages vs their records
 - translation-head-alternates.md: When a drawn page names its language versions (hreflang links) in its head: own address, none named yet, and not noindex under any language policy
-- translation-index-verdict.md: The "reviewed" policy's one rule for a translated page's robots meta, alternates and sitemap.xml: only the page's own words count; no kept answer means not offered; what drops or keeps it
-- visitor-channel-rule.md: The channel of a visit (paid, email, ai, organic, social, referral, direct), the search-engine table of init_tracking() and the ENUM step that appended today's engines
+- translation-index-verdict.md: The "reviewed" policy's one rule for a translated page's robots meta, alternates and sitemap.xml: only the page's own words count; no kept answer means not offered; what drops or keeps it [decision: decisions-made-product-38.md]
+- visitor-channel-rule.md: The channel of a visit (paid, email, ai, organic, social, referral, direct), the search-engine table of init_tracking() and the ENUM step that appended today's engines [decision: decisions-made-schema-10.md]
 - visitor-counter-dedup-key.md: Why http_referer is not part of the visitor dedup key in init_tracking(), how the visitor IP is resolved, and the defensive user_agent column probe (2026.2.5).
 - visitor-daily-summary.md: The daily visitor summary written for every day through yesterday: what a day holds, the day order of a run, where the raw rows take over (pg_visitor_rows_from), who reads it
 - visitor-figures-module.md: includes/fn/visitor_figures.php: the visitor figures of a window (totals, breakdown, traffic series, content), which days come from the daily summary and which from the raw rows
@@ -51,4 +51,4 @@
 - visitors-places.md: The places and devices section of the Visitors overview (includes/visitors/places.php): country and city top lists, device and first/return split bars, where a place comes from
 - visitors-sources.md: The sources section of visitors.php: channel bar and list, the eight top lists with the earlier figure, the summary days line; what it reads and what it leaves out
 - visitors-traffic.md: The traffic section of visitors.php (includes/visitors/traffic.php): headline tiles, the line by the period's grain with the earlier period dashed, the busiest content in the tooltip, the empty states
-- web-vitals-ai-visibility-decisions.md: Decisions behind the page speed figures and the AI visibility view (owner 2026-11-02, #5040): privacy, where the beacon is off, derived data, table shapes, unverified bots, where the screens go
+- web-vitals-ai-visibility-decisions.md: Decisions behind the page speed figures and the AI visibility view (owner 2026-11-02, #5040): privacy, where the beacon is off, derived data, table shapes, unverified bots, where the screens go [decision: here]

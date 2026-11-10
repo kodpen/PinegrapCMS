@@ -24,6 +24,14 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - Keep provider names out of the module (`erp_edoc_supports()`, `erp_edoc_has_capability()`, `erp_edoc_call()`), work fully without a provider, and never guess a provider's endpoint (`erp-edoc-driver-layer.md`).
 <!-- key-rules:end -->
 
+## Clusters
+
+- `erp-account-*`: 6 files.
+- `erp-edoc-*`: 9 files.
+- `erp-invoice-*`: 9 files.
+- `erp-order-*`: 7 files.
+- `erp-parasut-*`: 30 files; start at `erp-parasut-overview.md`.
+
 ## Files
 
 - `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.
