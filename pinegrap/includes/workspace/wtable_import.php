@@ -27,10 +27,25 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
-/** The column types an import guesses or lets the person choose. */
+/**
+ * The column types an import guesses or lets the person choose; a list is
+ * never guessed, only chosen.
+ */
 function ws_wtable_import_types()
 {
-    return array('text', 'number', 'money', 'date', 'status', 'checkbox');
+    return array('text', 'number', 'money', 'date', 'status', 'checkbox', 'list');
+}
+
+/**
+ * A value of the file as the items of a list: one a line, as the Excel
+ * download writes a list cell; empty lines dropped. Pure.
+ *
+ * @param string $text
+ * @return string[]
+ */
+function ws_wtable_import_list_items($text)
+{
+    return array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', (string) $text)), 'strlen'));
 }
 
 /**
@@ -281,7 +296,7 @@ function ws_wtable_import_guess($values)
  * The options a column of a type is made with, from its values: a number's
  * decimals (the most written, 0-6), money's currency (the first named) with
  * 2 decimals, whether a date keeps a time, a status's choices (each label
- * once, in the order met).
+ * once, in the order met), a list of numbers when every item is one.
  *
  * @param string   $type
  * @param string[] $values
@@ -292,6 +307,21 @@ function ws_wtable_import_options($type, $values)
     $values = array_filter(array_map('trim', array_map('strval', (array) $values)), 'strlen');
 
     switch ($type) {
+        case 'list':
+            $items = array();
+
+            foreach ($values as $value) {
+                $items = array_merge($items, ws_wtable_import_list_items($value));
+            }
+
+            foreach ($items as $item) {
+                if (ws_wtable_import_number($item) === null) {
+                    return array('of' => 'text');
+                }
+            }
+
+            return array('of' => empty($items) ? 'text' : 'number');
+
         case 'number':
             $decimals = 0;
 
@@ -342,7 +372,8 @@ function ws_wtable_import_options($type, $values)
  * One value of the file as the store's cell check takes it for a column:
  * a number, money in minor units (rounded, never cut), a date in the
  * column's form, a status's key by its label, a tick, a colleague by
- * name or user name ($people), a record link from kind:id. A value it cannot
+ * name or user name ($people), a record link from kind:id, a list one item
+ * a line (numbers read as a number column reads them). A value it cannot
  * read is given as written, so that the store answers with its own code.
  *
  * @param array  $column type, options
@@ -407,6 +438,18 @@ function ws_wtable_import_cell($column, $text, $people = array())
 
         case 'link':
             return ws_wtable_screen_cell_from_form($column, $text);
+
+        case 'list':
+            $items = ws_wtable_import_list_items($text);
+
+            if (ws_wtable_list_of($column) === 'number') {
+                foreach ($items as $place => $item) {
+                    $number = ws_wtable_import_number($item);
+                    $items[$place] = ($number === null) ? $item : $number;
+                }
+            }
+
+            return $items;
     }
 
     return $text;

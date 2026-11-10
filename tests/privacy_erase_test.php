@@ -520,6 +520,9 @@ function test_privacy_wtable_cell_hits()
 		'12' => 'text',
 	), $scope), 'cells of a deleted column');
 
+	$types['13'] = 'list';
+	pg_assert_same(array(), pg_privacy_wtable_cell_hits($types, array('13' => array(7, 12), '14' => array(7), '15' => array('7')), $scope), 'a list, its column there or deleted, names nobody');
+
 	$scope['user_ids'] = array();
 	pg_assert_same(array(), pg_privacy_wtable_cell_hits($types, array('1' => 7), $scope), 'no account in the scope');
 }

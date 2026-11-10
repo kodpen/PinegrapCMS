@@ -544,7 +544,7 @@ function ws_wtable_list_items($value)
  *
  * @param mixed  $value
  * @param string $of    text | number
- * @return array ok, value, error (not_list, list_too_long, too_long, not_number, out_of_range)
+ * @return array ok, value, error (not_list, list_too_long, item_too_long, not_number, out_of_range)
  */
 function ws_wtable_list_check($value, $of)
 {
@@ -582,7 +582,7 @@ function ws_wtable_list_check($value, $of)
             }
 
             if (ws_wtable_length($item) > $limits['list_item']) {
-                return array('ok' => false, 'value' => null, 'error' => 'too_long');
+                return array('ok' => false, 'value' => null, 'error' => 'item_too_long');
             }
 
             $kept[] = $item;

@@ -202,6 +202,7 @@
     "Each issued invoice goes to the account by e-mail. Switch it off for a customer who does not want them; an invoice can still be sent from its own screen.": "Kesilen her fatura bu cariye e-postayla gider. İstemeyen müşteri için kapatın; fatura yine kendi ekranından gönderilebilir.",
     "Each item is an object of order_item_id and quantity.": "Her kalem, order_item_id ve quantity alanlarından oluşan bir nesnedir.",
     "Each item is an object with a hash and a text.": "Her öğe hash ve text alanları olan bir nesnedir.",
+    "Each item is at most {var:1} characters.": "Her öğe en fazla {var:1} karakterdir.",
     "Each item must be an object.": "Her kalem bir nesne olmalıdır.",
     "Each item needs an id or a sku.": "Her kalemde id veya sku bulunmalıdır.",
     "Each item needs an id, an sku or a barcode.": "Her kalemde id, sku veya barkod bulunmalıdır.",

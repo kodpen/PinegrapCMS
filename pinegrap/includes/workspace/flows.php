@@ -3244,6 +3244,7 @@ function ws_flow_js_strings()
         'fl_rows_date_help'   => lang('As YYYY-MM-DD.'),
         'fl_rows_time_help'   => lang('As YYYY-MM-DD, or YYYY-MM-DD HH:MM.'),
         'fl_rows_person_help' => lang('The person\'s user number.'),
+        'fl_rows_list_help' => lang('One item a line, or a list a box before gave.'),
         'fl_rows_link_kind'   => lang('Kind of record'),
         'fl_rows_link_id'     => lang('Record number'),
         'fl_rows_meta'        => ws_js_template('{var:1} · row {var:2}', 2),

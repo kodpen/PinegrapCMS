@@ -284,7 +284,7 @@ function test_workspace_wtables_list_cells()
 	pg_assert_same('not_list', ws_wtables_test_cell('list', array('a' => 'x'))['error'], 'an object');
 	pg_assert_same('not_list', ws_wtables_test_cell('list', array(array('x')))['error'], 'a list inside');
 	pg_assert_same('not_list', ws_wtables_test_cell('list', true)['error']);
-	pg_assert_same('too_long', ws_wtables_test_cell('list', array(str_repeat('a', 1001)))['error']);
+	pg_assert_same('item_too_long', ws_wtables_test_cell('list', array(str_repeat('a', 1001)))['error']);
 	pg_assert_true(ws_wtables_test_cell('list', array(str_repeat('ş', 1000)))['ok'], 'characters, not bytes');
 	pg_assert_true(ws_wtables_test_cell('list', range(1, 100))['ok']);
 	pg_assert_same('list_too_long', ws_wtables_test_cell('list', range(1, 101))['error']);
