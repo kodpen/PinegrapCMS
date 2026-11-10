@@ -15,6 +15,8 @@ description: Steps A0-A9 of plans/agent-channel.md: registry, doors, wakes, chan
   - A8b (this repository): a chat box on the dashboard on the same catalogue, beside the Assistant card's job box (`ui/dashboard-v2-ai-card.md`). After A8a.
   - The Claude Code channel plugin in a separate repository (`kodpen/pinegrap-claude-channel`: poll, claim, push the event, tools reply, fail, context, record, react, post), applied to Anthropic's channel list, under the shelved plan's security rules. Waits until that repository is opened.
 
+- AQ2 (S) A tool for an agent's poll. `free`, tools only: `tools/ws_poll.php` with `ask` (question and options; prints the message id and the poll id) and `close` (the poll id), on `tools/ws_client.php` like `ws_post.php`, with its tests. Why: a one-answer question is a poll the asking agent closes (`workspace/agent-questions.md`, #8554) and no tool reaches the two routes.
+
 - Left for later, no step yet: a discussion following an agent (A4b2 left it out).
 
 ## What did the plan take over? (2026-11-06)
