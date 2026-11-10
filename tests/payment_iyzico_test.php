@@ -759,12 +759,47 @@ function test_payment_iyzico_threeds_start_failure_names_iyzicos_reason()
 
 function test_payment_iyzico_payment_failure_and_fraud()
 {
-	payment_iyzico_test_http(array('/payment/auth' => array('status' => 'failure', 'errorCode' => '10051', 'errorMessage' => 'Yetersiz bakiye')));
-	$failed = payment_iyzico_test_authorize(payment_iyzico_test_settings(), payment_iyzico_test_payment());
+	// A refusal is told by its code, as on the 3-D Secure return: the bank's
+	// words for a reason on the card's side, no bank to turn to for any other
+	// bank code, and the plain sentence for the rest. The log names the order
+	// and what the payment is found by at iyzico.
+	$refused_line = 'Iyzipay payment for order #{var:1} was not accepted: code {var:2}, group {var:3}, message {var:4} (payment {var:5}, conversation {var:6}).';
+	$bank_answer_line = lang('iyzico gave no card-side reason for this refusal. The bank\'s own answer is shown on the payment\'s detail in the iyzico panel; iyzico support can say what it means.');
 
-	pg_assert_false($failed['success']);
-	pg_assert_same(lang('Payment failed. Please try again.'), $failed['error']);
-	pg_assert_same(array(lang(array('string' => 'Iyzipay payment was not accepted: code {var:1}, message {var:2}', 'vars' => array('10051', 'Yetersiz bakiye')))), $failed['log']);
+	$refusals = array(
+		'no funds' => array(
+			array('status' => 'failure', 'errorCode' => '10051', 'errorGroup' => 'NOT_SUFFICIENT_FUNDS', 'errorMessage' => 'Yetersiz bakiye'),
+			lang(array('string' => 'Your bank did not approve the payment ({var:1}). Please check your card with your bank or try another card.', 'vars' => array('Yetersiz bakiye'))),
+			array('10051', 'NOT_SUFFICIENT_FUNDS', 'Yetersiz bakiye', '-'),
+			false),
+		'an answer iyzico does not know' => array(
+			array('status' => 'failure', 'errorCode' => '10202', 'errorGroup' => 'UNKNOWN', 'errorMessage' => 'Ödeme işlemi esnasında genel bir hata oluştu', 'paymentId' => '9911'),
+			lang('The payment could not be taken with this card right now. Please try another card or contact us.'),
+			array('10202', 'UNKNOWN', 'Ödeme işlemi esnasında genel bir hata oluştu', '9911'),
+			true),
+		'not a bank code' => array(
+			array('status' => 'failure', 'errorCode' => '1001', 'errorMessage' => 'Api bilgileri bulunamadı'),
+			lang('Payment failed. Please try again.'),
+			array('1001', '-', 'Api bilgileri bulunamadı', '-'),
+			false),
+	);
+
+	foreach ($refusals as $label => $refusal) {
+		list($body, $error, $logged, $bank_answer) = $refusal;
+
+		$http = payment_iyzico_test_http(array('/payment/auth' => $body));
+		$failed = payment_iyzico_test_authorize(payment_iyzico_test_settings(), payment_iyzico_test_payment());
+
+		$log = array(lang(array('string' => $refused_line, 'vars' => array(438, $logged[0], $logged[1], $logged[2], $logged[3], $http->posts[0]['body']['conversationId']))));
+
+		if ($bank_answer) {
+			$log[] = $bank_answer_line;
+		}
+
+		pg_assert_false($failed['success'], $label);
+		pg_assert_same($error, $failed['error'], $label);
+		pg_assert_same($log, $failed['log'], $label);
+	}
 
 	payment_iyzico_test_http(array('/payment/auth' => payment_iyzico_test_success(array('paymentId' => '77', 'fraudStatus' => -1))));
 	$rejected = payment_iyzico_test_authorize(payment_iyzico_test_settings(), payment_iyzico_test_payment());

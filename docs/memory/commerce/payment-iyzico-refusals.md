@@ -1,6 +1,6 @@
 ---
 name: payment-iyzico-refusals
-description: iyzico card refusals: the visitor sentence by error code, the Site Log line with order, payment id, error group and mdStatus, the 3-D Secure return stopping at a failed verification
+description: iyzico card refusals (PR #8517): the visitor sentence by error code, the Site Log line with order, payment id, error group and mdStatus, the 3-D Secure return stopping at a failed verification
 ---
 
 ## What does the visitor read when iyzico refuses a card payment?

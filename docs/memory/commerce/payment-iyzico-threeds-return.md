@@ -10,7 +10,7 @@ description: How the iyzico card driver's complete() finishes the 3-D Secure ret
 ## What does the return check, in order?
 - The kept instalment choice against the store's limit (it may have been lowered meanwhile); no new quote from iyzico. No state, no check.
 - The row of the posted `conversationId` (`pg_payment_iyzico_threeds_find()`) must belong to the session's order, else "Session could not be verified".
-- A posted `status` other than success (the bank did not verify the cardholder) ends the return: iyzico unasked, row unclaimed, state ended (`payment-iyzico-refusals.md`).
+- A posted `status` other than success (the bank did not verify the cardholder) ends the return: iyzico unasked, row unclaimed, state ended (PR #8517, `payment-iyzico-refusals.md`).
 - A `paymentId` must be posted, else "Session could not be verified".
 - `pg_payment_iyzico_threeds_claim()` writes the posted payment id into the row only while it is empty: a replayed return finds it used and is refused. The session state is kept on the limit, on no matching row and on a used row.
 - ThreedsPayment: error 5002, a status other than success, fraud -1 refuse; fraud 0 is logged and passes. The sentence and log line of a refusal follow iyzico's error code (`payment-iyzico-refusals.md`).
