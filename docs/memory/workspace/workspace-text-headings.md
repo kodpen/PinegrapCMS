@@ -18,7 +18,7 @@ description: Headings "#" to "###" and "---" rules in Workspace notes only (#264
 - Tools `heading1 heading2 heading3 rule` (labels `tool_heading1`…`tool_rule`), on the note's row only: `editor.heading(level)` → `toggleHeading()` (off when every line is that level already), `editor.rule()` → `insertRule()` (below the caret's line, or in place of an empty one). `formatState()` reports `heading1`–`3` for `aria-pressed`.
 - Enter in a heading puts the words after the caret on a plain line below (`headingEnter()`); Backspace at its start makes it a line again (`headingKey()`).
 - Autoformat: `# `, `## `, `### ` typed alone on a line (`autoHeading()`), through the same `autoformat()` as lists: one undo, the IME/paste guards, the per-viewer off switch (workspace-editor-autoformat.md). Not in a list item or a heading.
-- Not in the "/" list (`SLASH`) and smart paste still makes HTML headings bold lines.
+- Not in the "/" list (`SLASH`). Smart paste in a note writes HTML h1–h3 as `#`–`###`, h4–h6 as `###` (as the import), a box's own heading at its level; in an item, quote or cell a bold line (#8541, workspace-editor-smart-paste.md).
 
 ## What does the import do?
 - `ws_note_import_convert()` (notes_io.php) keeps `#`–`###`, writes `####` and below as `###`, a line underlined with `=` as `#`, with `-` as `##`, drops a closing run of `#`. `\# words` keeps its backslash, else the note would draw a heading.

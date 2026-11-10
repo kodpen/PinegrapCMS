@@ -5,8 +5,9 @@
  * Tests for pasting into the Workspace writing boxes
  * (assets/js/workspace_editor.js). Run under Node: pasteMarkup() turns the
  * HTML another program put on the clipboard into the box's stored markup
- * (marks, links, lists, quotes, checklists, code, tables; everything else as
- * its words, nothing of the HTML itself), pasteSheet() reads a range copied
+ * (marks, links, lists, quotes, checklists, code, tables and, in a note's
+ * box, HTML headings as note headings; everything else as its words, nothing
+ * of the HTML itself), pasteSheet() reads a range copied
  * from a sheet as a table, pastedUrl() answers whether a pasted text is one
  * address alone. The HTML is parsed here by PHP's DOM and handed to Node as a
  * tree, as the browser's DOMParser hands its document to the walk. The rest
@@ -87,8 +88,8 @@ function workspace_editor_paste_test_run($steps)
 		$script .= $part;
 	}
 
-	foreach (array('fenceOpen', 'fenceInfo', 'fenceClose', 'tableRow', 'tableAlignments', 'tableCells', 'startsBlock', 'listLine', 'textBlocks', 'parseBlocks', 'wrapLines',
-		'pasteStyle', 'pasteMarks', 'pasteWords', 'pasteRunsMarkup', 'pasteRunMarkup', 'pasteLink', 'pasteFlush', 'pasteOut', 'pasteLine', 'pasteWalk', 'pasteItems',
+	foreach (array('fenceOpen', 'fenceInfo', 'fenceClose', 'tableRow', 'tableAlignments', 'tableCells', 'startsBlock', 'headingLine', 'ruleLine', 'listLine', 'textBlocks', 'parseBlocks', 'wrapLines',
+		'pasteStyle', 'pasteMarks', 'pasteWords', 'pasteRunsMarkup', 'pasteRunMarkup', 'pasteLink', 'pasteFlush', 'pasteOut', 'pasteLine', 'pasteHeading', 'pasteWalk', 'pasteItems',
 		'pasteItem', 'pasteCheck', 'pasteRows', 'pasteTableRows', 'pasteMarkup', 'pasteSheet', 'pastedUrl') as $name) {
 		$part = workspace_editor_lists_test_function($name);
 		pg_assert_true($part !== '', $name . ' is found');
@@ -96,7 +97,7 @@ function workspace_editor_paste_test_run($steps)
 	}
 
 	foreach ($steps as $index => $step) {
-		if ($step[0] === 'html') {
+		if ($step[0] === 'html' || $step[0] === 'note') {
 			$steps[$index][1] = workspace_editor_paste_test_body($step[1]);
 		}
 	}
@@ -109,6 +110,7 @@ function workspace_editor_paste_test_run($steps)
 		. "var steps = " . json_encode($steps) . ";\n"
 		. "console.log(JSON.stringify(steps.map(function (step) {\n"
 		. "  if (step[0] === 'html') { return pasteMarkup(shim(step[1])); }\n"
+		. "  if (step[0] === 'note') { var m = pasteMarkup(shim(step[1]), true); return [m, parseBlocks(m, true).map(function (b) { return b.kind + (b.level ? b.level : ''); })]; }\n"
 		. "  if (step[0] === 'sheet') { return pasteSheet(step[1]); }\n"
 		. "  if (step[0] === 'url') { return pastedUrl(step[1]); }\n"
 		. "  if (step[0] === 'blocks') { return parseBlocks(step[1]).map(function (b) { return b.kind; }); }\n"
@@ -146,6 +148,43 @@ function workspace_editor_paste_test_cases($cases)
 
 	foreach ($cases as $index => $case) {
 		pg_assert_same($case[1], $answer[$index], 'pasted: ' . $case[0]);
+	}
+}
+
+// In a note's box (headings on) an HTML heading of the pasted page is a note
+// heading: <h4> and below "###", a box's own heading keeps its level; inside
+// an item, a quote or a cell it stays a bold line.
+function test_workspace_editor_paste_note_headings()
+{
+	$cases = array(
+		array('<h1>One</h1><h2>Two</h2><h3>Three</h3><h4>Four</h4><h6>Six</h6>', "# One\n## Two\n### Three\n### Four\n### Six", array('heading1', 'heading2', 'heading3', 'heading3', 'heading3')),
+		array('<h2 class="ws-heading h4">Own</h2><h3 class="ws-heading h5">Own2</h3><h4 class="ws-heading h6">Own3</h4>', "# Own\n## Own2\n### Own3", array('heading1', 'heading2', 'heading3')),
+		array('<h2>a<br>b</h2>', '## a b', array('heading2')),
+		array('<p>x</p><h2> </h2><p>y</p>', "x\ny", array('text', 'text')),
+		array('<ul><li><h3>in item</h3></li></ul>', '- **in item**', array('list')),
+		array('<blockquote><h2>quoted</h2></blockquote>', '> **quoted**', array('list')),
+		array('<table><tr><th><h3>A</h3></th><th>B</th></tr><tr><td>1</td><td>2</td></tr></table>', "| **A** | B |\n| --- | --- |\n| 1 | 2 |", array('table')),
+		array('<b style="font-weight:normal" id="docs-internal-guid-1"><h1 dir="ltr"><span style="font-weight:400">Docs title</span></h1><p>text</p></b>', "# Docs title\ntext", array('heading1', 'text')),
+		array('<h2>A <b>bold</b> <i>word</i></h2>', '## A **bold** _word_', array('heading2')),
+		array('<h2><a href="https://a.co">Linked</a></h2>', '## [Linked](https://a.co)', array('heading2')),
+		array('<h2><a href="#s">Anchor</a></h2>', '## Anchor', array('heading2')),
+		array('<ul><li>a</li></ul><h2>After</h2><p>more</p>', "- a\n\n## After\nmore", array('list', 'text', 'heading2', 'text')),
+	);
+	$steps = array();
+
+	foreach ($cases as $case) {
+		$steps[] = array('note', $case[0]);
+	}
+
+	$answer = workspace_editor_paste_test_run($steps);
+
+	if ($answer === null) {
+		return;
+	}
+
+	foreach ($cases as $index => $case) {
+		pg_assert_same($case[1], $answer[$index][0], 'pasted in a note: ' . $case[0]);
+		pg_assert_same($case[2], $answer[$index][1], 'read back in a note: ' . $case[0]);
 	}
 }
 
@@ -342,7 +381,8 @@ function test_workspace_editor_paste_wiring()
 	$place = workspace_editor_lists_test_method('placeBlocks');
 
 	pg_assert_true(strpos($html, "new DOMParser().parseFromString(html, 'text/html')") !== false, 'HTML is read by DOMParser');
-	pg_assert_true(strpos($html, 'pasteMarkup(doc.body)') !== false, 'only the mapped markup leaves pasteHtml()');
+	pg_assert_true(strpos($html, 'pasteMarkup(doc.body, headings)') !== false, 'only the mapped markup leaves pasteHtml()');
+	pg_assert_true(strpos($smart, 'pasteHtml(html, !!this.options.headings)') !== false, 'only a box with headings pastes HTML headings as headings');
 	foreach (array($paste, $html, $smart, $insert, $place) as $part) {
 		pg_assert_true(strpos($part, 'innerHTML') === false && strpos($part, 'insertHTML') === false, 'pasted HTML is never inserted');
 	}
