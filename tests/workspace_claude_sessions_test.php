@@ -195,3 +195,12 @@ function test_workspace_message_by_person()
 	pg_assert_true(!ws_message_by_person(array('sender_kind' => 'app', 'via_client_id' => 0)));
 	pg_assert_true(!ws_message_by_person(null));
 }
+
+function test_workspace_via_badge_is_drawn()
+{
+	$js = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_contains("t('via_badge', message.via)", $js, 'the badge beside the person\'s name');
+	pg_assert_contains('ws-via-badge', file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css'));
+	pg_assert_contains("'via_badge'", file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/claude.php'), 'its words are translated');
+}

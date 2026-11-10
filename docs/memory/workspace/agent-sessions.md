@@ -27,7 +27,7 @@ description: The asker's own Claude session over OAuth: @Claude waits 2 min for 
 - Reactions, notes, tasks, polls and approvals stay the application's.
 - `ws_message_by_person()` (messages.php) reads it as no person's own words: a discussion's follow decision treats it as an application's. Edit and delete in the panel are the person's, as for any message of theirs; the API's own-words routes stay refused to a connection.
 - The `workspace.message.created` webhook carries the person's `sender_id` and `app_id` 0 for it.
-- The "via <client>" badge on the channel screen (workspace.js, backend.src.css) reads the payload's `via` (drawn once #8520 has landed).
+- The "via <client>" badge on the channel screen (workspace.js, backend.src.css) reads the payload's `via`: `t('via_badge')`, "via {client}" beside the name.
 
 ## Schema
 - Step 11.0.184 `upgrade_2026_11_0_ws_agent_sessions()` brought both columns (#8489).
