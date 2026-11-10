@@ -254,8 +254,10 @@ function ws_agents_settings_card($self_url, $viewer)
     $apps = ws_agents_settings_apps();
     $status = array('active' => lang('Active'), 'paused' => lang('Paused'), 'off' => lang('Off'));
     $list = '';
+    $agents = ws_agents_list();
+    $counts = function_exists('ws_agent_activity_read_counts') ? ws_agent_activity_read_counts($agents) : array();
 
-    foreach (ws_agents_list() as $agent) {
+    foreach ($agents as $agent) {
         // Keys of their own: "Poll" is a vote and "Handle" a user name elsewhere.
         $door = ($agent['door_kind'] === 'push') ? lang('Push door') : lang('Poll door');
         $knock = ($agent['door_last_knock'] > 0) ? lang(array('string' => 'last {var:1}', 'vars' => date('d.m.Y H:i', $agent['door_last_knock']))) : '';
@@ -270,7 +272,7 @@ function ws_agents_settings_card($self_url, $viewer)
                     <span class="small fg-secondary">' . h($door) . (($knock !== '') ? ', ' . h($knock) : '') . $schedule . '</span>
                     <span class="badge badge-subtle ' . (($agent['status'] === 'active') ? 'theme-success' : 'theme-secondary') . '">' . h($status[$agent['status']] ?? $agent['status']) . '</span>
                 </summary>
-                ' . $error . ws_agents_settings_form($self_url, $agent, $apps, $admin) . '
+                ' . $error . (function_exists('ws_agent_activity_block') ? ws_agent_activity_block($self_url, $viewer, $agent, $counts) : '') . ws_agents_settings_form($self_url, $agent, $apps, $admin) . '
             </details>';
     }
 

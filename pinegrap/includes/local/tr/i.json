@@ -1485,6 +1485,7 @@
     "It was taken off the desk or the site, for example at your request.": "Örneğin sizin isteğinizle masadan ya da siteden kaldırıldı.",
     "It was taken out of the docs, for example because it no longer applies.": "Örneğin artık geçerli olmadığı için dokümanlardan çıkarıldı.",
     "It was the home page: the site has no home page until another page is marked as home.": "Bu sayfa ana sayfaydı: başka bir sayfa ana sayfa yapılana kadar sitenin ana sayfası yok.",
+    "It was woken too often in the last hour.": "Son bir saatte çok sık uyandırıldı.",
     "It will also be removed from {var:1} shipping zone{suffix:1} and {var:2} tax zone{suffix:2}.": "Ayrıca {var:1} nakliye bölgesinden ve {var:2} vergi bölgesinden çıkarılacak.",
     "It will also be removed from {var:1} shipping zone{suffix:1}.": "Ayrıca {var:1} nakliye bölgesinden çıkarılacak.",
     "It will also be removed from {var:1} tax zone{suffix:1}.": "Ayrıca {var:1} vergi bölgesinden çıkarılacak.",

@@ -5060,6 +5060,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/model_agents.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_queue.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_wake.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_shown.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_activity.php');
 
 // Canvases the assistants draw and edit (tools of ws_ai_step()).
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_ai.php');
