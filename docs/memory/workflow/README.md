@@ -17,6 +17,10 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - Keep area rules in memory only (folder README key rules and topic files, no `.claude/skills`); settle a README conflict with `php tools/memory_index.php` and merge only the key-rules block by hand, never by deleting the README (`owner-rules.md`, `memory-index-key-rules.md`).
 <!-- key-rules:end -->
 
+## Clusters
+
+- `decisions-made-*`: 78 files; start at `decisions-made.md`.
+
 ## Files
 
 - `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.

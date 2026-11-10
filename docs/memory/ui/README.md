@@ -28,6 +28,19 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - Never style every child of a `:has()` element (`X:has(…) > *`, `> :not(…)`, `X:has(…) *`): Chromium then restyles the whole document on each DOM insertion; put the `:has()` on the subject (`css-has-whole-document-restyle.md`, `tests/css_has_restyle_test.php`).
 <!-- key-rules:end -->
 
+## Clusters
+
+- `ai-write-*`: 9 files; start at `ai-write.md`.
+- `bootstrap-6-*`: 12 files; start at `bootstrap-6.md`.
+- `calendar-event-*`: 6 files.
+- `dashboard-v2-*`: 23 files; start at `dashboard-v2-overview.md`.
+- `email-campaign-*`: 7 files.
+- `image-editor-*`: 58 files; start at `image-editor-overview.md`.
+- `list-table-*`: 45 files.
+- `main-menu-*`: 9 files.
+- `settings-card-*`: 6 files.
+- `settings-modal-*`: 11 files.
+
 ## Files
 
 - `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.

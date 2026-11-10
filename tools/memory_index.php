@@ -57,6 +57,11 @@
  * The marks are generated from the text; no field is added by hand. Plans and
  * the parts themselves carry no mark.
  *
+ * A folder README also lists the folder's clusters (MIN_CLUSTER_FILES or
+ * more files sharing their first two name tokens, a plural s aside) with the
+ * count and the start file, <prefix>.md or <prefix>-overview.md, when the
+ * folder has one, so a session sees where a large topic begins.
+ *
  * A folder index that exists without the two markers (an older copy taken
  * during a merge) stops the run, so the rules are never dropped in silence;
  * a new folder starts with an empty block. After a merge conflict in a
@@ -111,6 +116,9 @@ const MODULE_LIST_DESCRIPTION = 'Generated from the module field of the memory f
 // The generated decisions list, relative to docs/, and the file name of its parts.
 const DECISION_LIST = 'memory/workflow/DECISIONS.md';
 const DECISION_PART_PREFIX = 'decisions-made';
+
+// The fewest files sharing their first two name tokens that a README lists as a cluster.
+const MIN_CLUSTER_FILES = 6;
 
 // Memory folders and what they hold, as listed in the top index.
 const FOLDERS = array(
@@ -273,7 +281,7 @@ foreach ($folders as $folder => $entries) {
 		continue;
 	}
 
-	$indexes[$relative] = memory_index_folder($folder, $rules);
+	$indexes[$relative] = memory_index_folder($folder, $rules, memory_index_clusters(array_keys($entries)));
 	$indexes["memory/$folder/INDEX.md"] = memory_index_folder_files($folder, $entries);
 }
 
@@ -439,10 +447,11 @@ function memory_index_top($folders, $others) {
 
 /**
  * A folder's README.md: the folder's key rules as written by hand (a heading
- * only when there are some), then how to search its INDEX.md. It names no
- * file count, so two branches that each add a file do not both change it.
+ * only when there are some), its clusters as memory_index_clusters() returns
+ * them, then how to search its INDEX.md. A cluster's count changes when a
+ * branch adds a file to it; running the tool again after a merge settles it.
  */
-function memory_index_folder($folder, $rules) {
+function memory_index_folder($folder, $rules, $clusters = array()) {
 
 	$lines = array(
 		'# docs/memory/' . $folder . '/',
@@ -464,6 +473,16 @@ function memory_index_folder($folder, $rules) {
 
 	$lines[] = KEY_RULES_END;
 	$lines[] = '';
+
+	if ($clusters) {
+		$lines[] = '## Clusters';
+		$lines[] = '';
+		foreach ($clusters as $cluster) {
+			$lines[] = '- `' . $cluster[0] . '-*`: ' . $cluster[1] . ' files' . ($cluster[2] !== null ? '; start at `' . $cluster[2] . '`' : '') . '.';
+		}
+		$lines[] = '';
+	}
+
 	$lines[] = '## Files';
 	$lines[] = '';
 	$lines[] = '- `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.';
@@ -774,4 +793,67 @@ function memory_index_decision_list($headings, $recorded) {
 	}
 
 	return implode("\n", $lines) . "\n";
+}
+
+/**
+ * The clusters of a folder: groups of at least MIN_CLUSTER_FILES files whose
+ * names share their first two tokens (split at hyphens), a trailing s of a
+ * token set aside, so workspace-flow-x.md and workspace-flows-y.md group
+ * together. Each is array(prefix, count, start file or null), sorted by
+ * prefix. The prefix is the form most files use (the shorter on a tie); the
+ * start file is <prefix>.md or <prefix>-overview.md in either form.
+ * $files are file names with .md.
+ */
+function memory_index_clusters($files) {
+
+	$groups = array();
+	$present = array_flip($files);
+
+	foreach ($files as $file) {
+
+		$tokens = explode('-', basename($file, '.md'));
+
+		if (count($tokens) < 2) {
+			continue;
+		}
+
+		$form = $tokens[0] . '-' . $tokens[1];
+		$key = rtrim($tokens[0], 's') . '-' . rtrim($tokens[1], 's');
+		$groups[$key][$form] = isset($groups[$key][$form]) ? $groups[$key][$form] + 1 : 1;
+	}
+
+	$clusters = array();
+
+	foreach ($groups as $forms) {
+
+		$count = array_sum($forms);
+
+		if ($count < MIN_CLUSTER_FILES) {
+			continue;
+		}
+
+		uksort($forms, function ($a, $b) use ($forms) {
+			if ($forms[$a] !== $forms[$b]) {
+				return $forms[$b] - $forms[$a];
+			}
+			return strlen($a) !== strlen($b) ? strlen($a) - strlen($b) : strcmp($a, $b);
+		});
+
+		$names = array_keys($forms);
+		$start = null;
+
+		foreach (array('', '-overview') as $suffix) {
+			foreach ($names as $name) {
+				if ($start === null && isset($present[$name . $suffix . '.md'])) {
+					$start = $name . $suffix . '.md';
+				}
+			}
+		}
+
+		$clusters[$names[0]] = array($names[0], $count, $start);
+	}
+
+	uksort($clusters, 'strcmp');
+
+	return array_values($clusters);
 }

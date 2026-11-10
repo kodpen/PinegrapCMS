@@ -27,6 +27,10 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - Keep a file's bytes matching its name's extension: a format change is a new file or a derivative, never a rename or rewrite in place, and the upload stays the master (`image-same-address-why.md`).
 <!-- key-rules:end -->
 
+## Clusters
+
+- `object-storage-*`: 6 files.
+
 ## Files
 
 - `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.

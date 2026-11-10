@@ -19,6 +19,20 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - After a `products.price` write call `pg_price_history_record()` (bulk: `pg_price_history_queue()` + flush), or the reference price misses the change (`product-price-history.md`).
 <!-- key-rules:end -->
 
+## Clusters
+
+- `carrier-label-*`: 13 files.
+- `express-order-*`: 8 files.
+- `gift-card-*`: 7 files.
+- `order-completion-*`: 10 files; start at `order-completion.md`.
+- `order-returns-*`: 14 files; start at `order-returns.md`.
+- `payment-driver-*`: 9 files; start at `payment-drivers.md`.
+- `product-price-*`: 6 files.
+- `product-review-*`: 6 files.
+- `shipment-label-*`: 8 files; start at `shipment-labels.md`.
+- `stock-locations-*`: 6 files.
+- `store-credit-*`: 9 files.
+
 ## Files
 
 - `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.
