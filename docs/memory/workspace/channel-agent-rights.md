@@ -11,7 +11,7 @@ description: Who adds, changes or removes a channel's agents ("Agents in this ch
 
 ## What leaves the site with a request?
 - An application agent's brief holds the waking message and the channel's memory (`ws_agent_brief()`); a model assistant's briefing goes to its provider (`ws_ai_briefing()`).
-- The symptom (fixed in #8477): since #8413 a model assistant answers in a private channel nobody opened to Pinegrap AI, and any member who could post there could add one.
+- The symptom (fixed in #8477): since #8413 a model assistant answers in a private channel nobody opened to Pinegrap AI, and any member who could post there could add one with the route, an MCP tool or the action called directly.
 
 ## What did that rule leave as it was?
 These are the implementation's choices, not owner decisions.
@@ -24,6 +24,6 @@ These are the implementation's choices, not owner decisions.
 - Routes `workspace.channels.agents.list|set|remove` (`api_agents.php`), MCP tools as every route. Fields left out keep their value; a new row is mention, tier 1, loop guard on.
 - In the panel: the "Agents in this channel" section of the Channel settings drawer (`assets/js/workspace_channel_agents.js`, mounted by `channelForm()`), on the actions `ws_channel_agents_list|set|remove` (`includes/workspace/channel_agents_panel.php`, dispatched from `includes/panel/workspace.php` before `ws_handle_action()`). Its `set` action asks `ws_channel_agent_enter_problem()` before the row is written; removing does not ask it.
 - Its "Add an agent" list shows id, handle, name and status only, never a door or key; hidden while the registry is missing or no agent is registered. The Tier select is drawn only for a channel manager.
-- The section's state carries `can_edit` (may change the agents), `can_add` (may also add one) and `can_tier`. With `can_edit` but not `can_add` it shows the refusal's sentence (`cha_add_manager`) where the "Add an agent" list would be.
+- Channel settings open only for whoever manages the channel (`channel.can_manage` in `workspace.js`) and a discussion has none, so the section never offered its "Add an agent" list to anybody else. The refusal is met past the screen: the action called directly, the route, an MCP tool.
 
 Related: docs/memory/workspace/agent-registry.md, docs/memory/workspace/model-assistant-channel-rule.md, docs/memory/workspace/agent-risk-tiers.md

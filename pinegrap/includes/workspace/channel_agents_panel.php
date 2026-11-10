@@ -91,7 +91,7 @@ function ws_channel_agents_addable($agents, $in)
 function ws_channel_agents_panel_state($viewer, $channel)
 {
     if (!ws_agents_ready()) {
-        return array('ready' => false, 'agents' => array(), 'addable' => array(), 'can_edit' => false, 'can_add' => false, 'can_tier' => false);
+        return array('ready' => false, 'agents' => array(), 'addable' => array(), 'can_edit' => false, 'can_tier' => false);
     }
 
     $rows = ws_channel_agents($channel['id']);
@@ -101,14 +101,11 @@ function ws_channel_agents_panel_state($viewer, $channel)
         $in[] = (int) $row['agent']['id'];
     }
 
-    $can_edit = (ws_channel_agent_add_problem($viewer, $channel) === '');
-
     return array(
         'ready'    => true,
         'agents'   => array_map('ws_channel_agent_panel_row', $rows),
         'addable'  => ws_channel_agents_addable(ws_agents_list(), $in),
-        'can_edit' => $can_edit,
-        'can_add'  => $can_edit && (ws_channel_agent_enter_problem($viewer, $channel, null) === ''),
+        'can_edit' => (ws_channel_agent_add_problem($viewer, $channel) === ''),
         'can_tier' => ws_can_manage_channel($viewer, $channel),
     );
 }
@@ -176,6 +173,8 @@ function ws_channel_agents_action($action, $request)
         }
     }
 
+    // The settings open only for whoever manages the channel, and a
+    // discussion has none; the request can still be made without them.
     $current = ws_channel_agent_row($channel['id'], $agent['id']);
     $problem = ws_channel_agent_enter_problem($viewer, $channel, $current);
 
@@ -226,6 +225,5 @@ function ws_channel_agents_js_strings()
         'cha_tier_help'   => lang('Only the owner of the channel changes the tier.'),
         'cha_loop_guard'  => lang('Add the loop-guard text to its requests'),
         'cha_readonly'    => lang('Only whoever may post here, and in a private channel only a member, changes the agents.'),
-        'cha_add_manager' => ws_channel_agent_error_text('manager_only'),
     );
 }
