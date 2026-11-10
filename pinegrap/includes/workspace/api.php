@@ -228,6 +228,7 @@ function ws_openapi_objects()
         'WorkspaceChannelGroupMove' => 'ws_api_channel_group_move_schema',
         'WorkspacePerson'           => 'ws_api_person_schema',
         'WorkspaceMessageSender'    => 'ws_api_message_sender_schema',
+        'WorkspaceMessageVia'       => 'ws_api_message_via_schema',
         'WorkspaceMessageFile'      => 'ws_api_message_file_schema',
         'WorkspaceMessageVoice'     => 'ws_api_message_voice_schema',
         'WorkspaceMessageThread'    => 'ws_api_message_thread_schema',

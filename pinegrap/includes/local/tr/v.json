@@ -600,6 +600,7 @@
     "veterans": "veteranlar",
     "vhf, radio, channel, coordinates, entrance, night, harbour office": "vhf, telsiz, kanal, koordinatlar, giriş, gece, liman ofisi",
     "vhf, radio, channel, coordinates, gps, chart, harbour office": "vhf, telsiz, kanal, koordinatlar, gps, harita, liman ofisi",
+    "via {var:1}": "{var:1} ile",
     "video production, filming, advert, brand film, music video, documentary, editing, grading": "video prodüksiyon, çekim, reklam, marka filmi, müzik videosu, belgesel, kurgu, renk düzenleme",
     "video, 4K, 8K, slow motion, stabilisation": "video, 4K, 8K, ağır çekim, sabitleme",
     "videos": "videolar",

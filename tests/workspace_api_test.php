@@ -2496,7 +2496,7 @@ function test_ws_api_messages_forward_route()
 
 	pg_assert_false(strpos($source, 'ws_api_own_words_only(') !== false, 'forward is not gated as the person\'s own words');
 	pg_assert_false(strpos($source, 'ws_api_person_only(') !== false, 'an application key may forward');
-	pg_assert_true(strpos($source, 'ws_api_writer_app_id()') !== false, 'an application forwards as itself');
+	pg_assert_true(strpos($source, 'ws_api_message_writer()') !== false, 'an application forwards as itself, a connection as its owner (via)');
 	pg_assert_true(strpos(ws_api_test_handler_source('ws_forward_to_channel'), 'ws_forward_to_channel_check(') !== false, 'the panel meets the same check');
 	pg_assert_true(strpos(ws_api_test_handler_source('ws_forward_to_channel_check'), 'ws_forward_pick(') !== false, 'the source channel is read with ws_can_read_channel()');
 	pg_assert_true(strpos(ws_api_test_handler_source('ws_forward_pick'), 'ws_can_read_channel(') !== false, 'the pick reads the source channel');
