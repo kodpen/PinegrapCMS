@@ -130,8 +130,9 @@
         }
     }
 
-    // Giving a job posts "@Claude <text>" through the Workspace's own send
-    // action, then asks it to start a run; both check the person again.
+    // Giving a job, or a chat line, posts through the Workspace's own send
+    // action; asking an assistant to start is a call of its own. Every call
+    // checks the person again.
     function send(request) {
         request.token = (typeof software_token !== "undefined") ? software_token : "";
 
@@ -144,20 +145,17 @@
         });
     }
 
-    function job(body, data) {
+    function messageUrl(channelId, messageId) {
+        return "workspace.php?channel=" + channelId + "&message=" + messageId;
+    }
+
+    // A labelled field and the gradient send button, with a status line read
+    // out when it changes; the job box and the chat box share it.
+    function box(part, inputId, className) {
         var el = pgDash.el;
-        var part = data.job;
-
-        if (!part) {
-            body.appendChild(el("p", "pg-dash-card-note", data.no_job));
-            return;
-        }
-
-        var form = el("form", "pg-dash-ai-job");
-        var inputId = "pg_dash_ai_job";
+        var form = el("form", "pg-dash-ai-job" + (className ? " " + className : ""));
         var label = el("label", "visually-hidden", part.label);
         label.htmlFor = inputId;
-        form.appendChild(label);
 
         var input = el("input", "form-control pg-dash-ai-input");
         input.type = "text";
@@ -165,7 +163,6 @@
         input.maxLength = part.max;
         input.placeholder = part.placeholder;
         input.autocomplete = "off";
-        form.appendChild(input);
 
         var button = el("button", "btn btn-solid theme-primary pg-dash-ai-send");
         button.type = "submit";
@@ -173,12 +170,14 @@
         var arrow = el("i", "bi bi-arrow-right");
         arrow.setAttribute("aria-hidden", "true");
         button.appendChild(arrow);
+
+        form.appendChild(label);
+        form.appendChild(input);
         form.appendChild(button);
-        body.appendChild(form);
 
         var status = el("p", "pg-dash-card-note pg-dash-ai-status", part.note);
         status.setAttribute("role", "status");
-        body.appendChild(status);
+        status.setAttribute("aria-live", "polite");
 
         function say(text, tone, url) {
             status.textContent = text;
@@ -191,27 +190,241 @@
             }
         }
 
-        form.addEventListener("submit", function (event) {
-            event.preventDefault();
-            var text = input.value.trim();
+        // Enter submits the form; an empty field or a send under way does
+        // nothing.
+        function onSend(handler) {
+            form.addEventListener("submit", function (event) {
+                event.preventDefault();
+                var text = input.value.trim();
 
-            if (!text || button.disabled) {
+                if (!text || button.disabled) {
+                    return;
+                }
+
+                button.disabled = true;
+                handler(text, function () {
+                    button.disabled = false;
+                });
+            });
+        }
+
+        return {form: form, input: input, status: status, say: say, onSend: onSend};
+    }
+
+    function job(body, data) {
+        var part = data.job;
+
+        if (!part) {
+            body.appendChild(pgDash.el("p", "pg-dash-card-note", data.no_job));
+            return;
+        }
+
+        var ui = box(part, "pg_dash_ai_job");
+        body.appendChild(ui.form);
+        body.appendChild(ui.status);
+
+        ui.onSend(function (text, done) {
+            send({action: "ws_send", channel_id: part.channel_id, body: part.tag + " " + text}).done(function (answer) {
+                done();
+                if (!answer || answer.status !== "success") {
+                    ui.say((answer && answer.message) || part.failed, "bad");
+                    return;
+                }
+                ui.input.value = "";
+                ui.say(part.sent, "good", (answer.data && answer.data.message_id) ? messageUrl(part.channel_id, answer.data.message_id) : "");
+                send({action: "ws_claude_kick"});
+            }).fail(function () {
+                done();
+                ui.say(part.failed, "bad");
+            });
+        });
+    }
+
+    // A message's text without its markup: the Workspace drew it, and a
+    // parsed document runs nothing and loads nothing.
+    function plain(html) {
+        if (!html || !window.DOMParser) {
+            return "";
+        }
+
+        return (new DOMParser().parseFromString(html, "text/html").body.textContent || "").replace(/\s+/g, " ").trim();
+    }
+
+    // The chat polls the channel for answers this long after the last line
+    // sent, this often.
+    var CHAT_WAIT = 10 * 60 * 1000;
+    var CHAT_EVERY = 8000;
+
+    // The chat box: a reply chain in the chosen assistant's channel. The
+    // first line is a new message, the next ones answer it; every message
+    // answering one of the chain's joins it and shows here.
+    function chat(body, data) {
+        var el = pgDash.el;
+        var part = data.chat;
+
+        if (!part) {
+            return;
+        }
+
+        if (!(part.options || []).length) {
+            body.appendChild(el("p", "pg-dash-card-note", part.none));
+            return;
+        }
+
+        var section = el("section", "pg-dash-ai-talk");
+        section.setAttribute("aria-labelledby", "pg_dash_ai_chat_title");
+        var title = el("h3", "pg-dash-rows-title", part.title);
+        title.id = "pg_dash_ai_chat_title";
+        section.appendChild(title);
+
+        var picker = null;
+
+        if (part.options.length > 1) {
+            var row = el("div", "pg-dash-ai-pick");
+            var pickLabel = el("label", "form-label pg-dash-ai-pick-label", part.pick);
+            pickLabel.htmlFor = "pg_dash_ai_chat_to";
+            picker = el("select", "form-control form-control-sm pg-dash-ai-pick-select");
+            picker.id = "pg_dash_ai_chat_to";
+            part.options.forEach(function (option, index) {
+                var item = el("option", "", option.name + " · #" + option.channel);
+                item.value = String(index);
+                picker.appendChild(item);
+            });
+            row.appendChild(pickLabel);
+            row.appendChild(picker);
+            section.appendChild(row);
+        }
+
+        var log = el("ol", "pg-dash-ai-log");
+        log.setAttribute("role", "log");
+        log.setAttribute("aria-live", "polite");
+        log.hidden = true;
+        section.appendChild(log);
+
+        var first = part.options[0];
+        var ui = box({label: part.label, max: first.max, placeholder: part.placeholder, send: part.send, note: first.note, open: part.open}, "pg_dash_ai_chat", "pg-dash-ai-chat-form");
+        section.appendChild(ui.form);
+        section.appendChild(ui.status);
+        body.appendChild(section);
+
+        // The conversation: its channel, the ids in it, the newest id read.
+        var talk = null;
+        var timer = 0;
+
+        function chosen() {
+            return part.options[picker ? (parseInt(picker.value, 10) || 0) : 0];
+        }
+
+        if (picker) {
+            picker.addEventListener("change", function () {
+                var option = chosen();
+                ui.input.maxLength = option.max;
+                ui.say(option.note, "");
+            });
+        }
+
+        function line(who, text, mine, url) {
+            var item = el("li", "pg-dash-ai-line");
+            item.setAttribute("data-mine", mine ? "1" : "0");
+            item.appendChild(el("span", "pg-dash-ai-line-who", who));
+            item.appendChild(el("span", "pg-dash-ai-line-text", text));
+            if (url) {
+                var open = el("a", "pg-dash-ai-line-open", part.open);
+                open.href = url;
+                item.appendChild(open);
+            }
+            log.appendChild(item);
+            log.hidden = false;
+        }
+
+        function poll() {
+            timer = 0;
+
+            if (!talk || (Date.now() > talk.until)) {
+                if (talk && talk.waiting) {
+                    talk.waiting = false;
+                    ui.say(part.late, "");
+                }
                 return;
             }
 
-            button.disabled = true;
-            send({action: "ws_send", channel_id: part.channel_id, body: part.tag + " " + text}).done(function (answer) {
-                button.disabled = false;
-                if (!answer || answer.status !== "success") {
-                    say((answer && answer.message) || part.failed, "bad");
+            send({action: "ws_sync", channel_id: talk.channel_id, since_id: talk.last, panel: 1}).done(function (answer) {
+                var rows = (answer && answer.status === "success" && answer.data) ? (answer.data.messages || []) : [];
+
+                rows.forEach(function (message) {
+                    talk.last = Math.max(talk.last, message.id);
+
+                    if (message.deleted || message.mine || (talk.ids.indexOf(message.parent_id) < 0) || (talk.ids.indexOf(message.id) >= 0)) {
+                        return;
+                    }
+
+                    talk.ids.push(message.id);
+                    var text = plain(message.html);
+
+                    if (text) {
+                        talk.waiting = false;
+                        line((message.sender && message.sender.name) || "", text, false, messageUrl(talk.channel_id, message.id));
+                    }
+                });
+
+                // Pinegrap AI, a model assistant and an MCP agent go on a step
+                // at a time, carried on by a screen that waits for them.
+                if (talk.ai) {
+                    send({action: "ws_ai_kick"});
+                }
+                if (talk.agent) {
+                    send({action: "ws_mcp_agent_kick"});
+                }
+            }).always(function () {
+                timer = window.setTimeout(poll, CHAT_EVERY);
+            });
+        }
+
+        ui.onSend(function (text, done) {
+            var option = chosen();
+
+            // Another assistant's channel starts a conversation of its own.
+            if (talk && (talk.channel_id !== option.channel_id)) {
+                talk = null;
+            }
+
+            var request = {action: "ws_send", channel_id: option.channel_id, body: option.prefix + text};
+
+            if (talk) {
+                request.parent_id = talk.root;
+            }
+
+            send(request).done(function (answer) {
+                done();
+                var sent = (answer && answer.status === "success" && answer.data) ? answer.data : null;
+
+                if (!sent || !sent.message_id) {
+                    ui.say((answer && answer.message) || part.failed, "bad");
                     return;
                 }
-                input.value = "";
-                say(part.sent, "good", (answer.data && answer.data.message_id) ? "workspace.php?channel=" + part.channel_id + "&message=" + answer.data.message_id : "");
-                send({action: "ws_claude_kick"});
+
+                if (!talk) {
+                    talk = {channel_id: option.channel_id, root: sent.message_id, ids: [], last: sent.message_id - 1};
+                }
+
+                talk.ids.push(sent.message_id);
+                talk.until = Date.now() + CHAT_WAIT;
+                talk.waiting = true;
+                talk.ai = talk.ai || !!sent.ai;
+                talk.agent = talk.agent || !!sent.agent;
+                ui.input.value = "";
+                line(part.you, text, true, "");
+                ui.say(option.sent + " " + part.wait, "good", messageUrl(option.channel_id, sent.message_id));
+
+                if (sent.claude) {
+                    send({action: "ws_claude_kick"});
+                }
+                if (!timer) {
+                    poll();
+                }
             }).fail(function () {
-                button.disabled = false;
-                say(part.failed, "bad");
+                done();
+                ui.say(part.failed, "bad");
             });
         });
     }
@@ -227,5 +440,6 @@
         summary(body, data);
         proposals(body, data);
         job(body, data);
+        chat(body, data);
     };
 })();

@@ -1204,6 +1204,7 @@
     "No answer": "Cevap yok",
     "No answer came, so the inventory quantity may or may not have changed. Check the inventory of the product before scanning again.": "Yanıt gelmedi; stok miktarı değişmiş de olabilir, değişmemiş de. Yeniden okutmadan önce ürünün stok miktarını kontrol edin.",
     "No answer yet. A pharmacist answers here, usually the same day.": "Henüz yanıt yok. Bir eczacı burada, genellikle aynı gün yanıt verir.",
+    "No answer yet. It will be in the channel when it comes.": "Henüz cevap yok. Gelince kanalda olacak.",
     "No answer yet: {var:1} The box asks again within the hour.": "Henüz yanıt yok: {var:1} Kutu bir saat içinde yeniden sorar.",
     "No answer yet?": "Henüz bir yanıt yok mu?",
     "No antifouling needed": "Zehirli boya gerekmez",
