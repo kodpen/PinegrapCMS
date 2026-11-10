@@ -22,7 +22,7 @@ description: Steps 1-8 of plans/tables-relational.md: row choice, conditions and
   - Every table numbers its rows 1, 2, 3 for good: a cell set by the store on add (max + 1 under GET_LOCK per table, never reused, a delete shifts none), shown first on the screen; row boxes find it (`by: number`).
   - A column may also be the key (text or number): filled in and different on every row; the store refuses a duplicate (`duplicate_key`), and making a column the key is refused while it holds repeats or empties, listing those rows. Found by `by: key` and the API `?key=`; import matches by key.
 
-- 5 (in progress): row links (a foreign key): a column type `row` whose options name another table. A cell keeps the linked row's id; the screen shows that row's key, else its first text.
+- 5 (done, PR #8557): row links (a foreign key), `workspace/workflow-tables-row-links.md`: a column type `row` whose options name another table. A cell keeps the linked row's id; the screen shows that row's key, else its first text.
   - The writer reads the linked table; the row exists. A deleted row clears the links to it, and its delete confirmation counts them. Flows read a link as a row id. `ws_refs` (source `wtable_row`) finds the rows that link to a row.
 
 - 6: joined columns, worked out on read like formulas:
