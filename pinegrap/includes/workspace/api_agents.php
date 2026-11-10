@@ -56,7 +56,7 @@ function ws_agent_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceChannelAgent',
             'summary'     => 'Add an agent to a channel or change its row',
-            'description' => 'Adds an agent to a channel the owner of the application may post in - to a private one only when the owner manages it - or changes what wakes an agent the channel has, in a private one as a member of it. Fields left out keep their value (a new row: woken by a mention, tier 1, loop guard on). A row decides waking and the tier only, never what the agent may read.' . $errors,
+            'description' => 'Adds an agent to a channel the owner of the application may post in - a private one only when the owner is in it - or changes what wakes it there. Fields left out keep their value (a new row: woken by a mention, tier 1, loop guard on). A row decides waking and the tier only, never what the agent may read.' . $errors,
             'params'      => array(
                 $id,
                 array('name' => 'agent_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true),
@@ -77,7 +77,7 @@ function ws_agent_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspaceChannelAgentRemoval',
             'summary'      => 'Take an agent out of a channel',
-            'description'  => 'Whoever may post in the channel takes an agent out of it, in a private channel as a member of it; an agent that was not in it is not an error: removed is then false. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'description'  => 'Whoever may add an agent to the channel takes it out; an agent that was not in it is not an error: removed is then false. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
             'params'       => array(
                 $id,
                 array('name' => 'agent_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
