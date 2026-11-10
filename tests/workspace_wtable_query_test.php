@@ -198,6 +198,8 @@ function test_workspace_wtable_query_screen_value()
 		pg_assert_same('1001', ws_wtable_query_screen_value($columns['3'], '10.005'));
 		pg_assert_same('abc', ws_wtable_query_screen_value($columns['3'], 'abc'));
 		pg_assert_same('2.5', ws_wtable_query_screen_value($columns['2'], '2.50'));
+		pg_assert_same('2.5', ws_wtable_query_screen_value(array('type' => 'list', 'options' => array('of' => 'number')), '2.50'), 'an item of a list of numbers');
+		pg_assert_same('Ayşe', ws_wtable_query_screen_value(array('type' => 'list', 'options' => array('of' => 'text')), ' Ayşe '));
 		pg_assert_same('', ws_wtable_query_screen_value($columns['2'], '  '));
 
 		pg_assert_same('2026-11-09', ws_wtable_query_screen_value($columns['4'], '2026-11-09'));

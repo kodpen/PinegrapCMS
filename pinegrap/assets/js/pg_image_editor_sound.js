@@ -71,6 +71,11 @@
         return M.soundList(this.doc, origin());
     };
 
+    // More sounds to play that are not rows: none here.
+    Editor.prototype.soundsMore = function () {
+        return [];
+    };
+
     Editor.prototype.soundPicked = function () {
         var id = this.soundSel;
 
@@ -190,7 +195,9 @@
             ctx.resume();
         }
 
-        this.sounds().forEach(function (s) {
+        // The clips' own sound plays with them (soundsMore(), the video
+        // layer's part).
+        this.sounds().concat(this.soundsMore()).forEach(function (s) {
             var entry = self.soundBufs[s.src], plan = M.soundPlan(s, time);
 
             if (!entry) {

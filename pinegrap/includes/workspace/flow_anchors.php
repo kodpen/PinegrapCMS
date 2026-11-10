@@ -104,7 +104,8 @@ function ws_flow_row_outputs($columns)
 /**
  * A cell of a row as the text {{trigger.cell_<id>}} gives: a number, a text
  * or a person's id as it is, a ticked box 1 (not ticked empty), a record
- * link the record's id; anything else is empty. Pure.
+ * link the record's id, a list its JSON list (["a","b"], [1,2.5]);
+ * anything else is empty. Pure.
  *
  * @param mixed $value a cell of ws_wtable_row_present()
  * @return string
@@ -121,6 +122,13 @@ function ws_flow_row_cell_text($value)
 
     if (is_array($value) && isset($value['kind'], $value['id']) && is_scalar($value['id']) && !is_bool($value['id'])) {
         return (string) $value['id'];
+    }
+
+    // A list cell is its JSON list, which a For each box goes through.
+    if (is_array($value) && !empty($value) && ($value === array_values($value))) {
+        $json = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION);
+
+        return ($json === false) ? '' : $json;
     }
 
     return '';

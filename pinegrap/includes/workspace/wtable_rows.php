@@ -83,8 +83,9 @@ function ws_wtable_row_cells_input($columns, $cells)
 
 /**
  * A stored cell as a formula reads it: a number, money in whole units (1250
- * minor units with two decimals is 12.5), a checkbox 1 or 0, an empty cell
- * nought. Text, a date, a status, a person or a link is a value error.
+ * minor units with two decimals is 12.5), a checkbox 1 or 0, a list how many
+ * items it holds, an empty cell nought. Text, a date, a status, a person or
+ * a link is a value error.
  *
  * @param array $column
  * @param mixed $value
@@ -107,6 +108,9 @@ function ws_wtable_formula_operand($column, $value)
 
         case 'checkbox':
             return $value ? 1.0 : 0.0;
+
+        case 'list':
+            return is_array($value) ? (float) count($value) : 1.0;
     }
 
     return 'value';
@@ -228,6 +232,7 @@ function ws_wtable_row_out($record, $columns, $bound = null)
 
     return array(
         'id' => (int) $record['id'],
+        'number' => (int) ($record['number'] ?? 0),
         'position' => (int) $record['position'],
         'revision' => (int) $record['revision'],
         'cells' => $cells,
@@ -251,6 +256,7 @@ function ws_wtable_row_present($row)
 {
     return array(
         'id' => (int) $row['id'],
+        'number' => (int) ($row['number'] ?? 0),
         'position' => (int) $row['position'],
         'revision' => (int) $row['revision'],
         'cells' => (object) $row['cells'],
@@ -341,6 +347,85 @@ function ws_wtable_row_at($table_id, $position)
     $row = db_item("SELECT * FROM ws_wtable_rows WHERE table_id = '" . (int) $table_id . "' AND position = '" . (int) $position . "' ORDER BY id LIMIT 1");
 
     return is_array($row) ? $row : null;
+}
+
+/**
+ * The row that holds this stable number in its table (1 for the first row
+ * the table was given, never shifted by a delete), as stored, or null.
+ *
+ * @param int $table_id
+ * @param int $number
+ * @return array|null
+ */
+function ws_wtable_row_numbered($table_id, $number)
+{
+    if (!ws_wtable_numbers_ready() || ((int) $number <= 0)) {
+        return null;
+    }
+
+    $row = db_item("SELECT * FROM ws_wtable_rows WHERE table_id = '" . (int) $table_id . "' AND number = '" . (int) $number . "' ORDER BY id LIMIT 1");
+
+    return is_array($row) ? $row : null;
+}
+
+/**
+ * Take the table's next stable row number: the counter goes up by one in
+ * a single statement, so two rows added at once never get the same number,
+ * and a number once given is never given again (a row that then fails to
+ * be written leaves a gap). 0 before the numbers are there.
+ *
+ * @param int $table_id
+ * @return int
+ */
+function ws_wtable_number_take($table_id)
+{
+    if (!ws_wtable_numbers_ready() || ((int) $table_id <= 0)) {
+        return 0;
+    }
+
+    db("UPDATE ws_wtables SET next_number = LAST_INSERT_ID(next_number + 1) WHERE id = '" . (int) $table_id . "'");
+
+    if ((int) mysqli_affected_rows(db::$con) !== 1) {
+        return 0;
+    }
+
+    return (int) db_value("SELECT LAST_INSERT_ID()");
+}
+
+/**
+ * The number a row is shown and found by: its stable number, or its place
+ * before the numbers are there (a row binned before them restored without
+ * one). Pure.
+ *
+ * @param array $row as stored or as read
+ * @return int
+ */
+function ws_wtable_row_label($row)
+{
+    return ((int) ($row['number'] ?? 0) > 0) ? (int) $row['number'] : (int) ($row['position'] ?? 0);
+}
+
+/**
+ * The number column of an INSERT into the rows or the bin, '' before the
+ * numbers are there, so the statement fits the schema either way.
+ *
+ * @param int $number
+ * @return string
+ */
+function ws_wtable_number_field($number)
+{
+    return ws_wtable_numbers_ready() ? ', number' : '';
+}
+
+/**
+ * The number's value in that INSERT, '' before the numbers are there.
+ *
+ * @param int $number
+ * @return string
+ */
+function ws_wtable_number_value($number)
+{
+    return ws_wtable_numbers_ready() ? ", '" . max(0, (int) $number) . "'" : '';
 }
 
 /**
@@ -552,10 +637,11 @@ function ws_wtable_row_create($viewer, $table, $input)
     $columns = ws_wtable_columns($table_id);
     $cells = ws_wtable_cells_merge($columns, array(), $check['cells']);
     $position = (int) db_value("SELECT COALESCE(MAX(position), 0) FROM ws_wtable_rows WHERE table_id = '" . $table_id . "'") + 1;
+    $number = ws_wtable_number_take($table_id);
 
-    db("INSERT INTO ws_wtable_rows (table_id, position, cells, revision, created_by, created_at, updated_by, updated_at)
+    db("INSERT INTO ws_wtable_rows (table_id, position, cells, revision, created_by, created_at, updated_by, updated_at" . ws_wtable_number_field($number) . ")
         VALUES ('" . $table_id . "', '" . $position . "', '" . e(ws_wtable_cells_encode($cells)) . "', 1,
-            '" . (int) $viewer['id'] . "', '" . $now . "', '" . (int) $viewer['id'] . "', '" . $now . "')");
+            '" . (int) $viewer['id'] . "', '" . $now . "', '" . (int) $viewer['id'] . "', '" . $now . "'" . ws_wtable_number_value($number) . ")");
 
     $row_id = (int) mysqli_insert_id(db::$con);
 

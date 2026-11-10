@@ -20,7 +20,7 @@ description: The row start box of flows (#3064): a table row added, changed or d
 
 ## What does a box read? ({{trigger.*}})
 - `ws_flow_row_outputs($columns)`: `table_id`, `table_name`, `row_id`, `actor_id`, then `cell_<column id>` labelled by the column's name (number/money typed number). `ws_flow_trigger_outputs('row', $config)` reads the columns from the store unless `$config['columns']` gives them.
-- `ws_step_trigger_values()` fills them only while the owner reads the table now (`ws_step_trigger_values_for()`); each cell via `ws_flow_row_cell_text()`: scalar as is, ticked box 1, a record link its id, anything else ''. Trigger values never reach run readers without edit (they are not in run results).
+- `ws_step_trigger_values()` fills them only while the owner reads the table now (`ws_step_trigger_values_for()`); each cell via `ws_flow_row_cell_text()`: scalar as is, ticked box 1, a record link its id, a list its JSON list (`workflow-tables-lists.md`), anything else ''. Trigger values never reach run readers without edit (they are not in run results).
 
 ## Canvas
 - workspace_flow.js: `KINDS.row`, palette entry only while `FL.steps.tables` (from `ws_flow_row_tables()`, tables reached, at most 200, with columns) is not empty; `rowFields()` (table, what, column for a change), `rowMeta()`, `rowCellValues()` add the cells in the value picker. Texts `fl_row_*`, `fl_kind_row`.

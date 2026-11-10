@@ -1002,7 +1002,7 @@ if (!$table) {
                 . ws_wtable_screen_action_button(array('action' => 'row_delete', 'row' => (int) $row['id'], 'revision' => (int) $row['revision']), lang('Delete'), 'bi-trash', ws_wtable_screen_delete_confirm('row', (string) $table['name'], $bin_days));
         }
 
-        $lines .= '<tr id="ws-wt-row-' . (int) $row['id'] . '"><td class="small fg-secondary text-end">' . (int) $row['position'] . '</td>' . $line . ($can_write ? '<td class="text-end text-nowrap">' . $tools . '</td>' : '') . '</tr>';
+        $lines .= '<tr id="ws-wt-row-' . (int) $row['id'] . '"><td class="small fg-secondary text-end">' . ws_wtable_row_label($row) . '</td>' . $line . ($can_write ? '<td class="text-end text-nowrap">' . $tools . '</td>' : '') . '</tr>';
     }
 
     $pager = '';
@@ -1104,9 +1104,16 @@ if (!$table) {
                     break;
 
                 case 'text':
-                    // Tall enough for the lines the value has, two at least.
+                case 'list':
+                    // Tall enough for the lines the value has, two at least;
+                    // a list takes one item a line.
                     $lines = min(8, max(2, count(preg_split('/\r\n|\r|\n/', $value))));
                     $input = '<textarea class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" rows="' . $lines . '">' . h($value) . '</textarea>';
+
+                    if ($column['type'] === 'list') {
+                        $hint = lang('One item a line.');
+                    }
+
                     break;
 
                 default:
@@ -1131,7 +1138,7 @@ if (!$table) {
         $row_form = '
             <div class="card mb-5' . ($edit ? ' border-primary' : '') . '" id="ws-wt-row-form">
                 <div class="card-header"><h2 class="h6 mb-0"><i class="bi ' . ($edit ? 'bi-pencil' : 'bi-plus-lg') . ' me-1" aria-hidden="true"></i>'
-                    . h($edit ? lang(array('string' => 'Row {var:1}', 'vars' => (int) $edit['position'])) : lang('New row')) . '</h2></div>
+                    . h($edit ? lang(array('string' => 'Row {var:1}', 'vars' => ws_wtable_row_label($edit))) : lang('New row')) . '</h2></div>
                 <div class="card-body">
                     ' . (($edit_id > 0) && !$edit ? '<div class="alert theme-warning small py-3">' . h(lang('That row could not be found: it may have been deleted.')) . '</div>' : '') . '
                     <form method="post" action="' . h($self_url) . '" class="disable_shortcut">
@@ -1188,6 +1195,19 @@ if (!$table) {
                 $out .= '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_kinds">' . h(lang('Record kinds')) . '</label>'
                     . '<input type="text" class="form-control form-control-sm" name="options[kinds]" id="' . $prefix . '_kinds" placeholder="contact, product" value="' . h(implode(', ', (array) ($options['kinds'] ?? array()))) . '">'
                     . '<div class="form-text">' . h(lang('Empty for any kind.')) . '</div></div>';
+                break;
+
+            case 'list':
+                // Fixed once made, as the type is: a made column shows it.
+                $of = $column ? ws_wtable_list_of($column) : 'text';
+                $kinds = '';
+
+                foreach (ws_wtable_list_kinds() as $kind => $label) {
+                    $kinds .= '<option value="' . h($kind) . '"' . (($kind === $of) ? ' selected' : '') . '>' . h($label) . '</option>';
+                }
+
+                $out .= '<div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_of">' . h(lang('Items')) . '</label>'
+                    . '<select class="form-control form-control-sm" name="options[of]" id="' . $prefix . '_of"' . ($column ? ' disabled' : '') . '>' . $kinds . '</select></div>';
                 break;
 
             case 'formula':

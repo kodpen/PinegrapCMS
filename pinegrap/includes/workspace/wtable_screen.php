@@ -121,6 +121,14 @@ function ws_wtable_screen_error_text($code)
             return lang('Write the record as kind:id, such as contact:12.');
         case 'link_kind_refused':
             return lang('The column does not take records of that kind.');
+        case 'not_list':
+            return lang('Write one item a line.');
+        case 'list_too_long':
+            return lang(array('string' => 'A list holds at most {var:1} items.', 'vars' => $limits['list_items']));
+        case 'item_too_long':
+            return lang(array('string' => 'Each item is at most {var:1} characters.', 'vars' => $limits['list_item']));
+        case 'list_of_invalid':
+            return lang('Choose what the list holds: texts or numbers.');
         case 'unknown_column':
             return lang('The column was deleted meanwhile.');
     }
@@ -337,6 +345,11 @@ function ws_wtable_screen_options_from_form($type, $form, $old = null, $held = a
 
         case 'formula':
             return array('expression' => $text('expression'));
+
+        case 'list':
+            // What a list holds is fixed once made: a form of a made column
+            // does not send it, and the store keeps the one it has.
+            return ($text('of') !== '') ? array('of' => $text('of')) : array();
     }
 
     return array();
@@ -346,8 +359,9 @@ function ws_wtable_screen_options_from_form($type, $form, $old = null, $held = a
  * A cell as typed into its field, for the store's check: money and numbers
  * read the site's way (ws_wtable_screen_figure()), money to minor units
  * (rounded, never cut), a date and time from the picker's
- * text, a ticked box, a record link from kind:id. What cannot be read is
- * handed over as typed, so that the store refuses it with its own code.
+ * text, a ticked box, a record link from kind:id, a list one item a line
+ * (numbers the site's way). What cannot be read is handed over as typed,
+ * so that the store refuses it with its own code.
  *
  * @param array $column type, options
  * @param mixed $raw
@@ -406,6 +420,18 @@ function ws_wtable_screen_cell_from_form($column, $raw)
             }
 
             return $raw;
+
+        case 'list':
+            $items = preg_split('/\r\n|\r|\n/', $raw);
+
+            if (ws_wtable_list_of($column) === 'number') {
+                foreach ($items as $place => $item) {
+                    $number = (trim($item) === '') ? null : ws_wtable_screen_figure(trim($item));
+                    $items[$place] = ($number === null) ? trim($item) : $number;
+                }
+            }
+
+            return $items;
     }
 
     return $raw;
@@ -440,6 +466,9 @@ function ws_wtable_screen_cell_to_form($column, $value)
 
         case 'link':
             return (is_array($value) && isset($value['kind'], $value['id'])) ? $value['kind'] . ':' . (int) $value['id'] : '';
+
+        case 'list':
+            return implode("\n", ws_wtable_screen_list_items($column, $value, false));
 
         case 'date':
             // The field is a native date or datetime-local input, which
@@ -539,16 +568,46 @@ function ws_wtable_screen_cell_text($column, $value, $people = array())
 
         case 'link':
             return (is_array($value) && isset($value['kind'], $value['id'])) ? $value['kind'] . ' #' . (int) $value['id'] : '';
+
+        case 'list':
+            return implode(', ', ws_wtable_screen_list_items($column, $value));
     }
 
     return is_scalar($value) ? (string) $value : '';
 }
 
 /**
+ * The items of a list cell as the screen writes them: a text as it is, a
+ * number the site's way (grouped in the list, ungrouped in a field). A
+ * value that is not a list reads as its one item. Pure but for the site's
+ * separators.
+ *
+ * @param array $column
+ * @param mixed $value
+ * @param bool  $group  thousands grouped
+ * @return string[]
+ */
+function ws_wtable_screen_list_items($column, $value, $group = true)
+{
+    $number = (ws_wtable_list_of($column) === 'number');
+    $out = array();
+
+    foreach ((is_array($value) ? $value : array($value)) as $item) {
+        if (!is_scalar($item) || is_bool($item) || ((string) $item === '')) {
+            continue;
+        }
+
+        $out[] = ($number && is_numeric($item)) ? ws_wtable_screen_figure_text(ws_wtable_screen_number_text($item), $group) : (string) $item;
+    }
+
+    return $out;
+}
+
+/**
  * A cell as the Excel download writes it (pg_xlsx_sheet_rows()): number,
  * money and formula cells as numbers (money as its figure, the currency
- * goes to the heading), a date as a date, a checkbox Yes or No, and the
- * rest as the text the screen shows. Pure.
+ * goes to the heading), a date as a date, a checkbox Yes or No, a list one
+ * item a line, and the rest as the text the screen shows. Pure.
  *
  * @param array       $column
  * @param mixed       $value
@@ -593,6 +652,9 @@ function ws_wtable_export_cell($column, $value, $people = array(), $error = null
 
         case 'date':
             return (is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}(?: \d{2}:\d{2})?$/', $value)) ? array('date' => $value) : (is_scalar($value) ? (string) $value : '');
+        // One item a line, as the import reads a list back.
+        case 'list':
+            return implode("\n", ws_wtable_screen_list_items($column, $value, false));
     }
 
     return ws_wtable_screen_cell_text($column, $value, $people);

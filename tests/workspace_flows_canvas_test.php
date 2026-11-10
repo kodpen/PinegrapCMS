@@ -1978,7 +1978,7 @@ JS
 		return;
 	}
 
-	pg_assert_same(array('position', 'id', 'last'), $result['options'], 'its number in the table first');
+	pg_assert_same(array('position', 'number', 'id', 'last'), $result['options'], 'its place in the table first');
 	pg_assert_same(array('position', 'last', 'id', 'id'), $result['ways']);
 	pg_assert_same(array(
 		'fl_rows_meta Counters 1',
@@ -2064,7 +2064,7 @@ JS
 	pg_assert_same(array('where'), $result['texts'], 'its conditions\' values are threaded');
 	pg_assert_same(array('row', 'where'), $result['readTexts'], 'a read by conditions keeps its empty row field, as the last row does');
 	pg_assert_same(array(array(), array(), array(), array(array('column' => 9, 'op' => 'gt', 'value' => '5'), array('column' => 0, 'op' => 'empty', 'value' => ''))), $result['lists'], 'a text it cannot read is no condition');
-	pg_assert_same(array(array('position', 'id', 'last', 'match'), array('position', 'id', 'last'), 'match'), $result['ways'], 'only a read finds its row by conditions');
+	pg_assert_same(array(array('position', 'number', 'id', 'last', 'match'), array('position', 'number', 'id', 'last'), 'match'), $result['ways'], 'only a read finds its row by conditions');
 	pg_assert_same(array('1250', '{{trigger.cell_3}}', '3.5', 'Un', '2026-11-09'), $result['kept'], 'money in minor units, a value of the run as it is');
 	pg_assert_same(array('12.50', '{{trigger.cell_3}}', 'Un'), $result['shown']);
 	pg_assert_same(array('1250', '2.5', '12,50', '2,5'), $result['turkish'], 'typed and shown the site\'s way');

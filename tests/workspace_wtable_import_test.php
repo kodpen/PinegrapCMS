@@ -204,6 +204,19 @@ function test_workspace_wtable_import_cell()
 	// Every converted value passes the store's own check.
 	pg_assert_true(ws_wtable_cell_check($money, ws_wtable_import_cell($money, '€ 1.250,75'))['ok']);
 	pg_assert_true(ws_wtable_cell_check($status, ws_wtable_import_cell($status, 'open'))['ok']);
+
+	// A list one item a line, as the Excel download writes it; a list is
+	// chosen, never guessed.
+	$texts = array('type' => 'list', 'options' => array('of' => 'text'));
+	$numbers = array('type' => 'list', 'options' => array('of' => 'number'));
+	pg_assert_same(array('a, b', 'c'), ws_wtable_import_cell($texts, "a, b\r\n\nc"));
+	pg_assert_same(array('1234.5', '2', 'n/a'), ws_wtable_import_cell($numbers, "1.234,5\n2\nn/a"));
+	pg_assert_same(array(1234.5, 2), ws_wtable_cell_check($numbers, ws_wtable_import_cell($numbers, "1.234,5\n2"))['value']);
+	pg_assert_true(in_array('list', ws_wtable_import_types(), true));
+	pg_assert_same('text', ws_wtable_import_guess(array("a\nb", 'c'))['type']);
+	pg_assert_same(array('of' => 'number'), ws_wtable_import_options('list', array("1\n2,5", '3')));
+	pg_assert_same(array('of' => 'text'), ws_wtable_import_options('list', array("1\nx")));
+	pg_assert_same(array('of' => 'text'), ws_wtable_import_options('list', array('')));
 }
 
 // A Turkish file written in capitals: İ, I, ı and i are one letter in the

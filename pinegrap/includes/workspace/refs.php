@@ -759,7 +759,7 @@ function ws_ref_rows_open($viewer, $ids, $records, $before = 0)
             'table_id'   => $table_id,
             'table'      => $tables[$table_id]['name'],
             'access'     => $tables[$table_id]['access'],
-            'title'      => ($title !== '') ? $title : lang(array('string' => 'Row {var:1}', 'vars' => (int) $row['position'])),
+            'title'      => ($title !== '') ? $title : lang(array('string' => 'Row {var:1}', 'vars' => ws_wtable_row_label($row))),
             'updated_at' => (int) $row['updated_at'],
         );
     }

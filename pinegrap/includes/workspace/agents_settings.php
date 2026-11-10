@@ -126,7 +126,19 @@ function ws_agents_settings_post($viewer, $action, $liveform)
         return;
     }
 
-    ws_agent_save($viewer, $check['values'], $current, $key, $door);
+    // The monthly token limit belongs to a model assistant alone.
+    $token_limit = ($check['values']['kind'] === 'model') ? ws_agent_token_limit_check($_POST['agent_token_limit'] ?? '') : null;
+
+    if ($token_limit && !$token_limit['ok']) {
+        $liveform->add_error(h($token_limit['error']));
+        return;
+    }
+
+    $saved_id = ws_agent_save($viewer, $check['values'], $current, $key, $door);
+
+    if ($token_limit && ((int) $saved_id > 0)) {
+        ws_agent_token_limit_save((int) $saved_id, $token_limit['value']);
+    }
 
     log_activity(lang(array('string' => 'the agent @{var:1} was saved', 'vars' => $check['values']['handle'])), $_SESSION['sessionusername'] ?? '');
     $liveform->add_notice(lang('The agent was saved.'));
@@ -209,6 +221,11 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin)
         $rows .= $field('model', lang('Model'), $input('model', $value('model'), ' maxlength="100"'), implode(' · ', $hints));
         $rows .= $field('base', lang('Address'), $input('base', ($kind === 'model') ? $value('door_url') : '', ' type="url" maxlength="500" placeholder="https://your-resource.openai.azure.com/openai/v1"'), lang('Only for Azure OpenAI and a custom address: the chat API\'s address.'));
         $rows .= $field('key', lang('Provider key'), $secret('key', $agent && $agent['key_set']));
+
+        if (ws_agent_token_limit_ready()) {
+            $limit = $agent ? ws_agent_token_limit((int) $agent['id']) : 0;
+            $rows .= $field('token_limit', lang('Monthly token limit'), $input('token_limit', (string) $limit, ' type="number" min="0" max="4294967295" step="1"'), lang('Tokens in and out in a calendar month; once reached, its requests fail until the next month. 0: no limit.'));
+        }
     }
 
     if (!$claude && ($kind === 'app')) {

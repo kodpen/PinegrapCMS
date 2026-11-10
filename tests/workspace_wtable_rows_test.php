@@ -87,6 +87,12 @@ function test_workspace_wtable_rows_formula_values()
 	$columns['3']['options']['expression'] = 'Done * 2';
 	pg_assert_same(2.0, ws_wtable_formula_values($columns, array('6' => true))['values']['3']);
 
+	$columns['20'] = array('id' => 20, 'name' => 'Tags', 'type' => 'list', 'options' => array('of' => 'text'));
+	$columns['3']['options']['expression'] = 'Tags * 10';
+	pg_assert_same(30.0, ws_wtable_formula_values($columns, array('20' => array('a', 'b', 'c')))['values']['3'], 'a list counts its items');
+	pg_assert_same(0.0, ws_wtable_formula_values($columns, array())['values']['3'], 'an empty list is nought');
+	unset($columns['20']);
+
 	$columns['3']['options']['expression'] = 'Missing * 2';
 	pg_assert_same('ref', ws_wtable_formula_values($columns, array())['errors']['3']);
 
