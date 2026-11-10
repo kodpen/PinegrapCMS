@@ -32,4 +32,4 @@ description: The bin of workflow tables (11.0.178, #8412): a deleted row goes to
 
 ## How does the bin meet row numbers and row links?
 - A binned row keeps its stable `number` and gets it back on restore; the counter never hands it out again (`workflow-table-row-numbers.md`).
-- Row links (PR #8557, `workflow-tables-row-links.md`) keep the cells that linked to a binned row in `links` and put them back on restore where the cell is still empty.
+- Row links (PR #8557, `workflow-tables-row-links.md`): a row delete clears the cells that link to it (`ws_wtable_links_clear()`); the bin's `links` keeps only the row's own ws_refs tags, so a restore does not bring those cells back (owner 2026-11-09).
