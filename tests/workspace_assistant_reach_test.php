@@ -138,7 +138,7 @@ function test_workspace_assistant_reach_ai_writes_only_with_its_application()
 		pg_assert_false(strpos($source, "'app_id'    => (int) ws_ai_config()['app_id']") !== false, $function . ': not the configured id, which may name no application');
 	}
 
-	pg_assert_contains('($channel && $app && ws_ai_channel_allowed($channel))', workspace_assistant_reach_test_source('ws_ai_finish_fail'), 'no application: the refusal is kept on the request only');
+	pg_assert_contains('($channel && $app && ws_ai_loop_channel_allowed($channel))', workspace_assistant_reach_test_source('ws_ai_finish_fail'), 'no application: the refusal is kept on the request only');
 	pg_assert_contains('$writer = $app ? ws_assistant_writer(', workspace_assistant_reach_test_source('ws_ai_deliver'), 'no application: the answer is refused');
 }
 

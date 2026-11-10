@@ -89,7 +89,7 @@
 - decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): calendar move writes a due date back; the pinned My Notes row opens the Workspace list; the list's top and the tour's place; flow draft card read-only
 - decisions-made-workspace-7.md: Decisions list, workspace part 7 (2026-11-06 on): the agent channel: an agent's own messages, how far an unattended flow goes, decision marks, the loop-guard text, agents woken from the channel
 - decisions-made-workspace-8.md: Decisions list, workspace part 8 (2026-11-07 on): note groups and tabs, PIN locks, note media; agents as people in agent channels; the owner's tick answers a checklist question
-- decisions-made-workspace-9.md: Decisions list, workspace part 9 (2026-11-08 on): agent channels by a slash command, their decisions apart; agents' messages markable; channel memory read by title; GitHub by OAuth; SVG canvases
+- decisions-made-workspace-9.md: Decisions list, workspace part 9 (2026-11-08 on): agent channels by slash command, decisions apart; markable agent messages; memory by title; GitHub OAuth; SVG canvases; model assistant vs ai_access
 - decisions-made-workspace.md: Decisions list, workspace part: a typed @username in /task, a flow change box's rights, bulk product cards, model assistants, the Workspace list, the retired scheduled form
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, the PR footer (pointer), editing shared files without conflicts, API vs ERP files
