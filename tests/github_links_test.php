@@ -17,6 +17,9 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/github_links.php');
+require_once(__DIR__ . '/helpers/source_reader.php');
+
 function test_github_repo_parse_reads_owner_and_name()
 {
 	pg_assert_same('kodpen/pinegrapcms', pg_github_repo_parse('kodpen/pinegrapcms'), 'plain');
@@ -149,4 +152,13 @@ function test_github_api_problem_reads_the_status()
 	pg_assert_true(strpos(pg_github_api_problem(422, array('message' => 'Hook already exists')), 'Hook already exists') !== false, 'GitHub\'s message on 422');
 	pg_assert_same(pg_github_api_problem(403, null), pg_github_api_problem(404, null), 'no access reads as not found');
 	pg_assert_same('timeout', pg_github_api_problem(0, null, 'timeout'), 'the transport\'s words');
+}
+
+function test_github_link_channels_check_the_full_row()
+{
+	// The sidebar's short form has no archived_at, which the post check reads.
+	$source = pg_test_function_source('ws_github_link_channels');
+
+	pg_assert_contains("ws_can_post_channel(\$viewer, ws_channel(\$brief['id']))", $source, 'the channel\'s own row is checked');
+	pg_assert_false(strpos($source, "ws_can_post_channel(\$viewer, \$brief)") !== false, 'never the short form');
 }

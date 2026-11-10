@@ -207,7 +207,7 @@ function ws_channel_agents_js_strings()
         'cha_wake_all'    => lang('Every message'),
         'cha_wake_prefix' => lang('Messages starting with a prefix'),
         'cha_wake_replies' => lang('Replies to its messages'),
-        'cha_prefix'      => lang('Prefix'),
+        'cha_prefix'      => lang('Prefix to wake on'),
         'cha_prefix_help' => lang('Such as [ci], up to 32 characters.'),
         'cha_tier'        => lang('Tier'),
         'cha_tier_1'      => lang('1: reading and messages'),
