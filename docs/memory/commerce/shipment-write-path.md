@@ -16,10 +16,10 @@ description: The single shipment write path (includes/fn/shipping.php): pg_shipm
 - `carrier` only when named: `$opts['carrier']` (key or name; with `carrier_chosen` an unknown name is kept as typed, #2715, others' unknown text dropped), else the row's own (not with `carrier_chosen`: Automatic), else `shipping_methods.carrier`, else one the method code spells. Site default and number shape stay read-time guesses.
 - An old row with `shipped_at` 0 takes the address's `ship_date` (noon) once that day comes.
 - Later `status`: a carrier service's `$opts['status']` (`pg_shipment_status_reported()`, not delivered) at `status_at`, on change, before arrival; `existing_only` (tracking job) adds no row, so a removed parcel stays removed.
-- `format_warning`: recomputed on each write against the carrier the customer is shown (named, else `pg_shipping_carrier()` with the default).
+- `format_warning`: recomputed on each write against the carrier shown (named, else `pg_shipping_carrier()` with the default).
 
 ## What does the format warning check?
-- `pg_shipment_number_warning()`: 5–40 of `[A-Za-z0-9 -]`, alphanumeric first; yurtici, surat, aras, mng 8–20 digits; ptt 8–20 digits or a valid UPU S10 (`pg_shipment_s10_valid()`, mod 11); UPS/FedEx/USPS their patterns; others the general shape. Never blocks; `_order_has_shipped()` ignores it.
+- `pg_shipment_number_warning()`: 5–40 of `[A-Za-z0-9 -]`, alphanumeric first; yurtici, surat, aras, mng 8–20 digits; ptt 8–20 digits or a valid UPU S10 (`pg_shipment_s10_valid()`, mod 11); UPS/FedEx/USPS their patterns (also upper-cased, unspaced); others the general shape. Never blocks; `_order_has_shipped()` ignores it.
 
 ## When is a delivery recorded?
 - `update_order()`: `pg_shipment_delivery_entered()`, i.e. the save enters or changes the delivery date to a day not after today (an unchanged estimate records nothing; a future date is an estimate). Tracking: a service's delivered answer, at its time.

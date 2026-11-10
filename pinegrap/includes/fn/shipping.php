@@ -306,8 +306,8 @@ function pg_shipment_number_shapes()
  *   every number   letters, digits, spaces and hyphens, 5 to 40 of them and
  *                  starting with a letter or digit - a pasted link, a note
  *                  ("Aras: 123") or a stray character fails;
- *   UPS, FedEx,    one of the carrier's own recognition patterns;
- *   USPS
+ *   UPS, FedEx,    one of the carrier's own recognition patterns, as typed
+ *   USPS           or in capitals without spaces;
  *   Turkish        8 to 20 digits and nothing else (PTT: or a valid S10
  *   couriers       number).
  *
@@ -349,8 +349,14 @@ function pg_shipment_number_warning($number, $carrier)
         return false;
     }
 
+    // The patterns are written for capitals and mostly without spaces, while
+    // an operator may type the number in lower case or copy it in the groups
+    // the label prints ("9400 1118 ..."); like the S10 check, both forms are
+    // the same number.
+    $plain = strtoupper(str_replace(' ', '', $number));
+
     foreach ($carriers[$carrier]['patterns'] as $pattern) {
-        if (preg_match($pattern, $number) === 1) {
+        if ((preg_match($pattern, $number) === 1) || (preg_match($pattern, $plain) === 1)) {
             return false;
         }
     }
