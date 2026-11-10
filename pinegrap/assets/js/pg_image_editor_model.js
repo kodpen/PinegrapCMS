@@ -4788,6 +4788,829 @@
 
     var MENU = { menuList: menuList };
 
+    // ---- video: demux and seek (pg_image_editor_video.js) ----
+
+    // A video file read in the browser: its tracks from its own MP4 (ISO
+    // BMFF) or WebM (Matroska) reader, each with the decoder configuration
+    // WebCodecs takes and its samples in decode order as
+    // { at, size, ts, dur, key } (bytes from at, presentation time and
+    // length in microseconds, a key frame). A failure throws an Error whose
+    // message is a code: video-format, video-broken, video-fragmented.
+
+    // Frames kept decoded: about this many bytes of pictures, never fewer
+    // than VIDEO_CACHE_MIN nor more than VIDEO_CACHE_MAX frames.
+    var VIDEO_CACHE_BYTES = 192 * 1024 * 1024;
+    var VIDEO_CACHE_MIN = 8;
+    var VIDEO_CACHE_MAX = 90;
+
+    function videoFail(code) {
+        return new Error(code);
+    }
+
+    function vU16(b, i) {
+        return (b[i] << 8) | b[i + 1];
+    }
+
+    function vU32(b, i) {
+        if (i + 4 > b.length) {
+            throw videoFail('video-broken');
+        }
+
+        return ((b[i] << 24) >>> 0) + ((b[i + 1] << 16) | (b[i + 2] << 8) | b[i + 3]);
+    }
+
+    function vU64(b, i) {
+        return vU32(b, i) * 4294967296 + vU32(b, i + 4);
+    }
+
+    function vHex(n) {
+        return ((n < 16) ? '0' : '') + n.toString(16);
+    }
+
+    function vPad(n) {
+        return ((n < 10) ? '0' : '') + n;
+    }
+
+    function vText(b, i, n) {
+        return String.fromCharCode.apply(null, Array.prototype.slice.call(b.subarray(i, i + n)));
+    }
+
+    // The format told by the first bytes: 'mp4', 'webm' or ''.
+    function videoKind(b) {
+        if ((b.length >= 12) && (['ftyp', 'moov', 'mdat', 'free', 'wide', 'skip'].indexOf(vText(b, 4, 4)) >= 0)) {
+            return 'mp4';
+        }
+
+        return ((b.length >= 4) && (b[0] === 0x1A) && (b[1] === 0x45) && (b[2] === 0xDF) && (b[3] === 0xA3)) ? 'webm' : '';
+    }
+
+    // The codec strings of the decoder configuration records.
+    function avcCodec(c) {
+        return 'avc1.' + vHex(c[1]) + vHex(c[2]) + vHex(c[3]);
+    }
+
+    // RFC 6381 for HEVC: profile space and idc, the compatibility flags in
+    // reverse bit order, tier and level, the constraint bytes without the
+    // trailing zeros.
+    function hevcCodec(type, c) {
+        var flags = vU32(c, 2), rev = 0, i, s, last = 11;
+
+        for (i = 0; i < 32; i++) {
+            rev = ((rev << 1) | ((flags >>> i) & 1)) >>> 0;
+        }
+
+        s = type + '.' + ['', 'A', 'B', 'C'][c[1] >> 6] + (c[1] & 31) + '.' + rev.toString(16).toUpperCase() + '.' + ((c[1] & 32) ? 'H' : 'L') + c[12];
+
+        while ((last >= 6) && !c[last]) {
+            last--;
+        }
+
+        for (i = 6; i <= last; i++) {
+            s += '.' + c[i].toString(16).toUpperCase();
+        }
+
+        return s;
+    }
+
+    function av1Codec(c) {
+        var depth = (c[2] & 64) ? ((c[2] & 32) ? 12 : 10) : 8;
+
+        return 'av01.' + (c[1] >> 5) + '.' + vPad(c[1] & 31) + ((c[2] & 128) ? 'H' : 'M') + '.' + vPad(depth);
+    }
+
+    // AAC: the audio object type of the AudioSpecificConfig.
+    function aacCodec(asc) {
+        var aot = asc.length ? (asc[0] >> 3) : 2;
+
+        if ((aot === 31) && (asc.length > 1)) {
+            aot = 32 + (((asc[0] & 7) << 3) | (asc[1] >> 5));
+        }
+
+        return 'mp4a.40.' + aot;
+    }
+
+    // ---- MP4 ----
+
+    // The boxes from `from` to `to` as [{ type, at (body), end }].
+    function mp4Boxes(b, from, to) {
+        var out = [], at = from;
+
+        while (at + 8 <= to) {
+            var size = vU32(b, at), head = 8;
+
+            if (size === 1) {
+                size = vU64(b, at + 8);
+                head = 16;
+            } else if (size === 0) {
+                size = to - at;
+            }
+
+            if ((size < head) || (at + size > to)) {
+                throw videoFail('video-broken');
+            }
+
+            out.push({ type: vText(b, at + 4, 4), at: at + head, end: at + size });
+            at += size;
+        }
+
+        return out;
+    }
+
+    // The first box along path (['mdia', 'minf']) under a box, or null.
+    function mp4Find(b, box, path) {
+        for (var i = 0; box && (i < path.length); i++) {
+            var next = null;
+
+            mp4Boxes(b, box.at, box.end).some(function (c) {
+                return (c.type === path[i]) && !!(next = c);
+            });
+            box = next;
+        }
+
+        return box;
+    }
+
+    // A table box's entries (count at body + 4) through read(i, at).
+    function mp4Table(b, box, width, read) {
+        if (!box) {
+            return [];
+        }
+
+        var n = vU32(b, box.at + 4), out = [], i;
+
+        if (box.at + 8 + n * width > box.end) {
+            throw videoFail('video-broken');
+        }
+
+        for (i = 0; i < n; i++) {
+            out.push(read(box.at + 8 + i * width));
+        }
+
+        return out;
+    }
+
+    // The sample entry's codec, its description and size or sound.
+    function mp4Entry(b, stsd, tr) {
+        var e = mp4Boxes(b, stsd.at + 8, stsd.end)[0];
+
+        if (!e) {
+            throw videoFail('video-broken');
+        }
+
+        tr.fourcc = e.type;
+
+        if (tr.kind === 'video') {
+            tr.width = vU16(b, e.at + 24);
+            tr.height = vU16(b, e.at + 26);
+            mp4Boxes(b, e.at + 78, e.end).forEach(function (c) {
+                var body = b.slice(c.at, c.end);
+
+                if (c.type === 'avcC') {
+                    tr.codec = avcCodec(body);
+                    tr.description = body;
+                } else if (c.type === 'hvcC') {
+                    tr.codec = hevcCodec((e.type === 'hev1') ? 'hev1' : 'hvc1', body);
+                    tr.description = body;
+                } else if (c.type === 'vpcC') {
+                    tr.codec = 'vp09.' + vPad(body[4]) + '.' + vPad(body[5]) + '.' + vPad(body[6] >> 4);
+                } else if (c.type === 'av1C') {
+                    tr.codec = av1Codec(body);
+                    tr.description = body;
+                }
+            });
+        } else {
+            var version = vU16(b, e.at + 8);
+
+            tr.channels = vU16(b, e.at + 16);
+            tr.rate = vU16(b, e.at + 24);
+            mp4Boxes(b, e.at + 28 + ((version === 1) ? 16 : (version === 2) ? 36 : 0), e.end).forEach(function (c) {
+                if (c.type === 'esds') {
+                    var dsi = mp4Descriptor(b, c.at + 4, c.end, 5);
+
+                    tr.description = dsi;
+                    tr.codec = aacCodec(dsi || new Uint8Array(0));
+                } else if (c.type === 'dOps') {
+                    tr.codec = 'opus';
+                }
+            });
+
+            if (!tr.codec && (e.type === 'Opus')) {
+                tr.codec = 'opus';
+            }
+        }
+
+        if (!tr.codec) {
+            tr.codec = e.type;
+        }
+    }
+
+    // The body of the descriptor with tag `want` inside an esds (ES 3,
+    // DecoderConfig 4, DecoderSpecificInfo 5), or null.
+    function mp4Descriptor(b, at, end, want) {
+        while (at + 2 <= end) {
+            var tag = b[at++], len = 0, k = 0;
+
+            do {
+                len = (len << 7) | (b[at] & 127);
+            } while ((b[at++] & 128) && (++k < 4));
+
+            if (tag === want) {
+                return b.slice(at, Math.min(end, at + len));
+            }
+
+            if (tag === 3) {
+                var flags = b[at + 2];
+
+                at += 3 + ((flags & 128) ? 2 : 0) + ((flags & 32) ? 1 + b[at + 3] : 0) + ((flags & 64) ? 2 : 0);
+            } else if (tag === 4) {
+                at += 13;
+            } else {
+                at += len;
+            }
+        }
+
+        return null;
+    }
+
+    // The samples of a stbl in decode order; shift (media units) is taken
+    // from each composition time, delay (microseconds) added.
+    function mp4Samples(b, stbl, scale, shift, delay) {
+        var stts = mp4Table(b, mp4Find(b, stbl, ['stts']), 8, function (i) { return [vU32(b, i), vU32(b, i + 4)]; });
+        var cttsBox = mp4Find(b, stbl, ['ctts']), signed = cttsBox && b[cttsBox.at];
+        var ctts = mp4Table(b, cttsBox, 8, function (i) { var v = vU32(b, i + 4); return [vU32(b, i), (signed && (v > 2147483647)) ? v - 4294967296 : v]; });
+        var stssBox = mp4Find(b, stbl, ['stss']), keys = {};
+        var stsc = mp4Table(b, mp4Find(b, stbl, ['stsc']), 12, function (i) { return [vU32(b, i), vU32(b, i + 4)]; });
+        var co64 = mp4Find(b, stbl, ['co64']);
+        var chunks = co64 ? mp4Table(b, co64, 8, function (i) { return vU64(b, i); }) : mp4Table(b, mp4Find(b, stbl, ['stco']), 4, function (i) { return vU32(b, i); });
+        var stsz = mp4Find(b, stbl, ['stsz']), sizes = [], i, j, c;
+
+        if (!stsz) {
+            throw videoFail('video-broken');
+        }
+
+        var fixed = vU32(b, stsz.at + 4), count = vU32(b, stsz.at + 8);
+
+        for (i = 0; i < count; i++) {
+            sizes.push(fixed || vU32(b, stsz.at + 12 + 4 * i));
+        }
+
+        mp4Table(b, stssBox, 4, function (i) { keys[vU32(b, i) - 1] = true; });
+
+        var out = [], dts = 0, n = 0, ci = 0, cLeft = ctts.length ? ctts[0][0] : 0;
+
+        stts.forEach(function (run) {
+            for (j = 0; (j < run[0]) && (n < count); j++, n++) {
+                var off = 0;
+
+                if (ctts.length) {
+                    while ((cLeft === 0) && (ci + 1 < ctts.length)) {
+                        cLeft = ctts[++ci][0];
+                    }
+                    off = ctts[ci][1];
+                    cLeft--;
+                }
+
+                out.push({ at: 0, size: sizes[n], ts: Math.round((dts + off - shift) * 1e6 / scale + delay), dur: Math.round(run[1] * 1e6 / scale), key: !stssBox || !!keys[n] });
+                dts += run[1];
+            }
+        });
+
+        // Offsets: chunk by chunk, samples per chunk from stsc.
+        for (n = 0, c = 0; (c < chunks.length) && (n < out.length); c++) {
+            var per = 0;
+
+            stsc.forEach(function (r) {
+                if (r[0] <= c + 1) {
+                    per = r[1];
+                }
+            });
+
+            for (j = 0, i = chunks[c]; (j < per) && (n < out.length); j++, n++) {
+                out[n].at = i;
+                i += out[n].size;
+            }
+        }
+
+        return out;
+    }
+
+    function mp4Demux(b) {
+        var top = mp4Boxes(b, 0, b.length), moov = null, frag = false;
+
+        top.forEach(function (x) {
+            moov = moov || ((x.type === 'moov') ? x : null);
+            frag = frag || (x.type === 'moof');
+        });
+
+        if (!moov) {
+            throw videoFail('video-broken');
+        }
+
+        var mvhd = mp4Find(b, moov, ['mvhd']), v1 = b[mvhd.at] === 1;
+        var movieScale = vU32(b, mvhd.at + (v1 ? 20 : 12)), length = v1 ? vU64(b, mvhd.at + 24) : vU32(b, mvhd.at + 16);
+        var out = { kind: 'mp4', duration: Math.round(length * 1000 / movieScale), tracks: [] };
+
+        if (frag && mp4Find(b, moov, ['mvex'])) {
+            throw videoFail('video-fragmented');
+        }
+
+        mp4Boxes(b, moov.at, moov.end).forEach(function (trak) {
+            if (trak.type !== 'trak') {
+                return;
+            }
+
+            var hdlr = mp4Find(b, trak, ['mdia', 'hdlr']), handler = hdlr ? vText(b, hdlr.at + 8, 4) : '';
+            var kind = { vide: 'video', soun: 'audio' }[handler];
+            var mdhd = mp4Find(b, trak, ['mdia', 'mdhd']), stbl = mp4Find(b, trak, ['mdia', 'minf', 'stbl']);
+            var tkhd = mp4Find(b, trak, ['tkhd']);
+
+            if (!kind || !mdhd || !stbl || !mp4Find(b, stbl, ['stsd'])) {
+                return;
+            }
+
+            var m1 = b[mdhd.at] === 1, scale = vU32(b, mdhd.at + (m1 ? 20 : 12));
+            var tr = { id: tkhd ? vU32(b, tkhd.at + ((b[tkhd.at] === 1) ? 20 : 12)) : out.tracks.length + 1, kind: kind, codec: '', description: null, timescale: scale };
+            var edit = mp4Edit(b, mp4Find(b, trak, ['edts', 'elst']), movieScale);
+
+            mp4Entry(b, mp4Find(b, stbl, ['stsd']), tr);
+            tr.samples = mp4Samples(b, stbl, scale, edit.shift, edit.delay);
+            out.tracks.push(tr);
+        });
+
+        return out;
+    }
+
+    // The edit list's start: empty edits first delay the track, the first
+    // real edit's media time is where it starts (both 0 without one).
+    function mp4Edit(b, elst, movieScale) {
+        var r = { shift: 0, delay: 0 };
+
+        if (!elst) {
+            return r;
+        }
+
+        var v1 = b[elst.at] === 1, w = v1 ? 20 : 12;
+
+        mp4Table(b, elst, w, function (i) {
+            var dur = v1 ? vU64(b, i) : vU32(b, i), mt = v1 ? vU64(b, i + 8) : vU32(b, i + 4);
+            var empty = v1 ? (vU32(b, i + 8) === 0xFFFFFFFF) : (mt === 0xFFFFFFFF);
+
+            if (r.done) {
+                return;
+            }
+
+            if (empty) {
+                r.delay += dur * 1e6 / movieScale;
+            } else {
+                r.shift = mt;
+                r.done = true;
+            }
+        });
+
+        return { shift: r.shift, delay: r.delay };
+    }
+
+    // ---- WebM ----
+
+    var EBML_UNKNOWN = -1;
+    // The ids a Cluster holds; another id ends a Cluster of unknown size.
+    var WEBM_IN_CLUSTER = [0xE7, 0xA3, 0xA0, 0xAB, 0xA7, 0x5854, 0xEC, 0xBF];
+
+    // An element head at i: { id, size (EBML_UNKNOWN for all ones), at }.
+    function ebmlHead(b, i) {
+        var first = b[i], len = 1, id, size, k, ones;
+
+        if (first === undefined) {
+            throw videoFail('video-broken');
+        }
+
+        while ((len <= 4) && !(first & (0x80 >> (len - 1)))) {
+            len++;
+        }
+
+        if (len > 4) {
+            throw videoFail('video-broken');
+        }
+
+        for (id = 0, k = 0; k < len; k++) {
+            id = id * 256 + b[i + k];
+        }
+
+        i += len;
+        first = b[i];
+        len = 1;
+
+        while ((len <= 8) && !(first & (0x80 >> (len - 1)))) {
+            len++;
+        }
+
+        if ((len > 8) || (i + len > b.length)) {
+            throw videoFail('video-broken');
+        }
+
+        size = first & (0xFF >> len);
+        ones = size === (0xFF >> len);
+
+        for (k = 1; k < len; k++) {
+            size = size * 256 + b[i + k];
+            ones = ones && (b[i + k] === 0xFF);
+        }
+
+        return { id: id, size: ones ? EBML_UNKNOWN : size, at: i + len };
+    }
+
+    function ebmlUint(b, at, n) {
+        for (var v = 0, k = 0; k < n; k++) {
+            v = v * 256 + b[at + k];
+        }
+
+        return v;
+    }
+
+    function ebmlFloat(b, at, n) {
+        var view = new DataView(b.buffer, b.byteOffset + at, n);
+
+        return (n === 4) ? view.getFloat32(0) : view.getFloat64(0);
+    }
+
+    // The children of a master element from at to end as heads with end;
+    // an unknown size runs to `end` (Segment) or to the next id not in
+    // `inside` (Cluster).
+    function ebmlChildren(b, at, end, each, inside) {
+        while (at < end) {
+            var h = ebmlHead(b, at);
+
+            if (inside && (inside.indexOf(h.id) < 0)) {
+                return at;
+            }
+
+            h.end = (h.size === EBML_UNKNOWN) ? end : Math.min(end, h.at + h.size);
+
+            var next = each(h);
+
+            at = (typeof next === 'number') ? next : h.end;
+        }
+
+        return at;
+    }
+
+    var WEBM_CODECS = { V_VP8: 'vp8', V_VP9: 'vp09.00.10.08', A_OPUS: 'opus', A_VORBIS: 'vorbis' };
+
+    function webmTrack(b, h) {
+        var tr = { id: 0, kind: '', codec: '', description: null, timescale: 1e6, defaultDur: 0, samples: [] }, id = '', priv = null;
+
+        ebmlChildren(b, h.at, h.end, function (c) {
+            if (c.id === 0xD7) {
+                tr.id = ebmlUint(b, c.at, c.size);
+            } else if (c.id === 0x83) {
+                tr.kind = { 1: 'video', 2: 'audio' }[ebmlUint(b, c.at, c.size)] || '';
+            } else if (c.id === 0x86) {
+                id = vText(b, c.at, c.size).replace(/\0+$/, '');
+            } else if (c.id === 0x63A2) {
+                priv = b.slice(c.at, c.end);
+            } else if (c.id === 0x23E383) {
+                tr.defaultDur = ebmlUint(b, c.at, c.size) / 1000;
+            } else if ((c.id === 0xE0) || (c.id === 0xE1)) {
+                ebmlChildren(b, c.at, c.end, function (d) {
+                    if (d.id === 0xB0) {
+                        tr.width = ebmlUint(b, d.at, d.size);
+                    } else if (d.id === 0xBA) {
+                        tr.height = ebmlUint(b, d.at, d.size);
+                    } else if (d.id === 0xB5) {
+                        tr.rate = Math.round(ebmlFloat(b, d.at, d.size));
+                    } else if (d.id === 0x9F) {
+                        tr.channels = ebmlUint(b, d.at, d.size);
+                    }
+                });
+            }
+        });
+
+        tr.fourcc = id;
+        tr.codec = WEBM_CODECS[id] || '';
+
+        if ((id === 'V_VP9') && priv) {
+            tr.codec = webmVp9(priv);
+        } else if (priv && (id === 'V_AV1')) {
+            tr.codec = av1Codec(priv);
+            tr.description = priv;
+        } else if (priv && (id === 'V_MPEG4/ISO/AVC')) {
+            tr.codec = avcCodec(priv);
+            tr.description = priv;
+        } else if (priv && (id === 'V_MPEGH/ISO/HEVC')) {
+            tr.codec = hevcCodec('hvc1', priv);
+            tr.description = priv;
+        } else if (id === 'A_AAC') {
+            tr.codec = aacCodec(priv || new Uint8Array(0));
+            tr.description = priv;
+        } else if (/^A_/.test(id)) {
+            tr.description = priv;
+        }
+
+        tr.codec = tr.codec || id;
+
+        return tr;
+    }
+
+    // VP9's CodecPrivate features: 1 profile, 2 level, 3 bit depth.
+    function webmVp9(p) {
+        var f = { 1: 0, 2: 10, 3: 8 }, i = 0;
+
+        while (i + 2 <= p.length) {
+            if (p[i + 1] === 1) {
+                f[p[i]] = p[i + 2];
+            }
+            i += 2 + p[i + 1];
+        }
+
+        return 'vp09.' + vPad(f[1]) + '.' + vPad(f[2]) + '.' + vPad(f[3]);
+    }
+
+    // A Block or SimpleBlock body: its frames, laced or not.
+    function webmBlock(b, h, cluster, scale, tracks, simple, keyGiven) {
+        var num = ebmlNumber(b, h.at), at = num.at, tr = tracks[num.value];
+
+        if (!tr || (at + 3 > h.end)) {
+            return;
+        }
+
+        var rel = (b[at] << 8) | b[at + 1], flags = b[at + 2], ts = (cluster + ((rel > 32767) ? rel - 65536 : rel)) * scale / 1000;
+        var key = simple ? !!(flags & 0x80) : keyGiven, sizes = [], lacing = (flags >> 1) & 3, k;
+
+        at += 3;
+
+        if (!lacing) {
+            sizes.push(h.end - at);
+        } else {
+            var frames = b[at++] + 1, total = 0;
+
+            if (lacing === 2) {
+                for (k = 0; k < frames - 1; k++) {
+                    sizes.push(Math.floor((h.end - at) / frames));
+                }
+            } else if (lacing === 1) {
+                for (k = 0; k < frames - 1; k++) {
+                    var s = 0;
+
+                    do {
+                        s += b[at];
+                    } while (b[at++] === 255);
+                    sizes.push(s);
+                }
+            } else {
+                var v = ebmlNumber(b, at);
+
+                sizes.push(v.value);
+                at = v.at;
+
+                for (k = 1; k < frames - 1; k++) {
+                    v = ebmlNumber(b, at);
+                    sizes.push(sizes[k - 1] + v.value - (Math.pow(2, 7 * v.len - 1) - 1));
+                    at = v.at;
+                }
+            }
+
+            sizes.forEach(function (n) { total += n; });
+            sizes.push(h.end - at - total);
+        }
+
+        sizes.forEach(function (n, i) {
+            if ((n < 0) || (at + n > h.end)) {
+                throw videoFail('video-broken');
+            }
+
+            tr.samples.push({ at: at, size: n, ts: Math.round(ts + i * (tr.defaultDur || 0)), dur: 0, key: key && !i });
+            at += n;
+        });
+    }
+
+    // An unsigned EBML number (its length marker removed) at i.
+    function ebmlNumber(b, i) {
+        var first = b[i], len = 1;
+
+        while ((len <= 8) && !(first & (0x80 >> (len - 1)))) {
+            len++;
+        }
+
+        return { value: ebmlUint(b, i, len) - (0x80 >> (len - 1)) * Math.pow(256, len - 1), len: len, at: i + len };
+    }
+
+    function webmDemux(b) {
+        var out = { kind: 'webm', duration: 0, tracks: [] }, byNum = {}, scale = 1e6, length = 0, segment = null;
+
+        ebmlChildren(b, 0, b.length, function (h) {
+            if (h.id === 0x18538067) {
+                segment = h;
+            }
+        });
+
+        if (!segment) {
+            throw videoFail('video-broken');
+        }
+
+        ebmlChildren(b, segment.at, segment.end, function (h) {
+            if (h.id === 0x1549A966) {
+                ebmlChildren(b, h.at, h.end, function (c) {
+                    if (c.id === 0x2AD7B1) {
+                        scale = ebmlUint(b, c.at, c.size);
+                    } else if (c.id === 0x4489) {
+                        length = ebmlFloat(b, c.at, c.size);
+                    }
+                });
+            } else if (h.id === 0x1654AE6B) {
+                ebmlChildren(b, h.at, h.end, function (c) {
+                    if (c.id === 0xAE) {
+                        var tr = webmTrack(b, c);
+
+                        if (tr.kind) {
+                            byNum[tr.id] = tr;
+                            out.tracks.push(tr);
+                        }
+                    }
+                });
+            } else if (h.id === 0x1F43B675) {
+                var tc = 0;
+
+                return ebmlChildren(b, h.at, h.end, function (c) {
+                    if (c.id === 0xE7) {
+                        tc = ebmlUint(b, c.at, c.size);
+                    } else if (c.id === 0xA3) {
+                        webmBlock(b, c, tc, scale, byNum, true);
+                    } else if (c.id === 0xA0) {
+                        var block = null, ref = false;
+
+                        ebmlChildren(b, c.at, c.end, function (d) {
+                            block = (d.id === 0xA1) ? d : block;
+                            ref = ref || (d.id === 0xFB);
+                        });
+
+                        if (block) {
+                            webmBlock(b, block, tc, scale, byNum, false, !ref);
+                        }
+                    }
+                }, (h.size === EBML_UNKNOWN) ? WEBM_IN_CLUSTER : null);
+            }
+        });
+
+        out.duration = Math.round(length * scale / 1e6);
+
+        out.tracks.forEach(function (tr) {
+            var s = tr.samples, i, end = out.duration * 1000;
+
+            for (i = 0; i < s.length; i++) {
+                s[i].dur = (i + 1 < s.length) ? Math.max(0, s[i + 1].ts - s[i].ts) : (tr.defaultDur ? Math.round(tr.defaultDur) : ((end > s[i].ts) ? end - s[i].ts : (i ? s[i - 1].dur : 0)));
+            }
+
+            if (s.length && !length) {
+                out.duration = Math.max(out.duration, Math.round((s[s.length - 1].ts + s[s.length - 1].dur) / 1000));
+            }
+
+            delete tr.defaultDur;
+        });
+
+        return out;
+    }
+
+    // ---- reading and seeking ----
+
+    // The file's tracks: { kind, duration (ms), tracks }.
+    function videoDemux(bytes) {
+        var b = (bytes instanceof Uint8Array) ? bytes : new Uint8Array(bytes), kind = videoKind(b);
+
+        if (!kind) {
+            throw videoFail('video-format');
+        }
+
+        try {
+            var d = (kind === 'mp4') ? mp4Demux(b) : webmDemux(b);
+
+            // A file cut off after its index: samples past its end.
+            d.tracks.forEach(function (tr) {
+                tr.samples.forEach(function (s) {
+                    if (s.at + s.size > b.length) {
+                        throw videoFail('video-broken');
+                    }
+                });
+            });
+
+            return d;
+        } catch (e) {
+            throw /^video-/.test(e && e.message) ? e : videoFail('video-broken');
+        }
+    }
+
+    // The first track of a kind ('video', 'audio') with samples, or null.
+    function videoTrack(d, kind) {
+        return (d && d.tracks || []).filter(function (tr) { return (tr.kind === kind) && tr.samples.length; })[0] || null;
+    }
+
+    // VideoDecoder.configure()'s argument for a track.
+    function videoConfig(tr) {
+        var c = { codec: tr.codec, codedWidth: tr.width, codedHeight: tr.height };
+
+        if (tr.description) {
+            c.description = tr.description;
+        }
+
+        return c;
+    }
+
+    // The codec's name for a message: H.264, H.265 (HEVC), VP8, VP9, AV1,
+    // else the codec string.
+    function videoCodecName(codec) {
+        var names = [[/^avc[13]\./, 'H.264'], [/^(hvc1|hev1)/, 'H.265 (HEVC)'], [/^vp8$/, 'VP8'], [/^vp09\./, 'VP9'], [/^av01\./, 'AV1']];
+
+        for (var i = 0; i < names.length; i++) {
+            if (names[i][0].test(codec || '')) {
+                return names[i][1];
+            }
+        }
+
+        return String(codec || '');
+    }
+
+    // The sample shown at us (microseconds): the one with the latest
+    // presentation time not after it (the first before the start), the key
+    // frame decoding starts from (the last one at or before it in decode
+    // order), as { frame, from } sample indexes; null for no samples.
+    function videoSeek(tr, us) {
+        var s = tr && tr.samples, frame = -1, first = -1, i;
+
+        if (!s || !s.length) {
+            return null;
+        }
+
+        for (i = 0; i < s.length; i++) {
+            if ((s[i].ts <= us) && ((frame < 0) || (s[i].ts > s[frame].ts))) {
+                frame = i;
+            }
+
+            if ((first < 0) || (s[i].ts < s[first].ts)) {
+                first = i;
+            }
+        }
+
+        frame = (frame < 0) ? first : frame;
+
+        for (i = frame; (i > 0) && !s[i].key; i--) {
+            // back to the key frame
+        }
+
+        return { frame: frame, from: i };
+    }
+
+    // How many decoded frames of w x h the cache keeps.
+    function videoCacheSize(w, h) {
+        return Math.max(VIDEO_CACHE_MIN, Math.min(VIDEO_CACHE_MAX, Math.floor(VIDEO_CACHE_BYTES / Math.max(1, w * h * 4))));
+    }
+
+    // Decoded frames by sample index, the least recently used closed past
+    // max: get(i), put(i, frame), has(i), clear().
+    function videoCache(max) {
+        var map = new Map();
+
+        function drop(i) {
+            var f = map.get(i);
+
+            map.delete(i);
+
+            if (f && f.close) {
+                f.close();
+            }
+        }
+
+        return {
+            has: function (i) { return map.has(i); },
+            get: function (i) {
+                var f = map.get(i);
+
+                if (f) {
+                    map.delete(i);
+                    map.set(i, f);
+                }
+
+                return f || null;
+            },
+            put: function (i, f) {
+                if (map.has(i)) {
+                    drop(i);
+                }
+
+                map.set(i, f);
+
+                while (map.size > max) {
+                    drop(map.keys().next().value);
+                }
+            },
+            size: function () { return map.size; },
+            clear: function () { Array.from(map.keys()).forEach(drop); }
+        };
+    }
+
+    var VIDEO = {
+        videoKind: videoKind, videoDemux: videoDemux, videoTrack: videoTrack, videoConfig: videoConfig, videoCodecName: videoCodecName,
+        videoSeek: videoSeek, videoCacheSize: videoCacheSize, videoCache: videoCache
+    };
+
     // -- Google Fonts choice of the Text tool (pg_image_editor_fonts.js) --
 
     // The catalogue's families (window.PgGoogleFonts) whose name holds the
@@ -8296,7 +9119,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

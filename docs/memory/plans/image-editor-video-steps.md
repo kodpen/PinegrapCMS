@@ -8,7 +8,7 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
 
 - V0 (S) Screens. Done (#7619, screens 35-42, `image-editor-video-visuals.md`).
 
-- V1 (M) Demux and decode. Part `video`. `free`.
+- V1 (M) Demux and decode. Part `video`. Done (#7658, `ui/image-editor-video-decode.md`).
   - Own MP4 (moov, trak, stsd, stts, ctts, stss, stsz, stco/co64) and WebM (EBML, Cluster, SimpleBlock) readers; WebCodecs decoders; a frame cache by time; seeking from the nearest key frame; what the browser cannot decode (HEVC on some) gets a message.
   - Tests: sample tables of small MP4 and WebM fixtures under Node; the seek point for a time.
 
