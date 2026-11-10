@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'video', 'actions', 'menu');
 }
 
 /**
@@ -3738,6 +3738,148 @@ function pg_image_editor_strings_tracks()
     );
 }
 
+// -- Sound (pg_image_editor_sound.js) --
+
+/**
+ * The sound part's labels: the sound rows under the tracks, the sound's
+ * panel and the list of sound files.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_sound()
+{
+    return array(
+        'soundTitle'      => lang('Sound'),
+        'soundRows'       => lang('Sounds'),
+        'soundRegion'     => lang('Sound tracks'),
+        'soundAdd'        => lang('Add sound'),
+        'soundFiles'      => lang('Sound from Files'),
+        'soundFind'       => lang('Search sounds'),
+        'soundFilesNone'  => lang('No sound files yet. Upload MP3, AAC, WAV or Ogg files in the File Manager.'),
+        'soundFilesError' => lang('The sound files could not be loaded.'),
+        'soundLoading'    => lang('Loading the sound...'),
+        'soundError'      => lang('This browser could not play this sound.'),
+        'soundStart'      => lang('Start on the timeline'),
+        'soundFrom'       => lang('From the file at'),
+        'soundTo'         => lang('To the file at'),
+        'soundVolume'     => lang('Volume'),
+        'soundMute'       => lang('Mute'),
+        'soundUnmute'     => lang('Unmute'),
+        'soundFadeIn'     => lang('Sound fade in'),
+        'soundFadeOut'    => lang('Sound fade out'),
+        'soundSplit'      => lang('Split the sound'),
+        'soundSplitNote'  => lang('Splits the sound at the playhead'),
+        'soundNote'       => lang('Music and sounds come from Files and play with the play bar. Drag a sound on its track to move it, its ends to trim it.'),
+    );
+}
+
+/**
+ * The sound types the editor plays (the model's SOUND_TYPES).
+ *
+ * @return array lower-case file types
+ */
+function pg_image_editor_sound_types()
+{
+    return array('mp3', 'm4a', 'aac', 'wav', 'ogg', 'oga', 'opus');
+}
+
+/**
+ * The WHERE clause of the sound files' listing: the sound types, none in the
+ * Recycle Bin, no ERP document (as the sticker listing), a role-3 user's
+ * folders only (null when none is left), and the name search.
+ *
+ * @param string     $search    part of the name, '' for all
+ * @param array|null $folders   the folder ids a role-3 user may reach; null for every folder
+ * @param array      $bin       the Recycle Bin's folder ids
+ * @param bool|null  $erp_ready files has erp_doc_type; null looks it up
+ * @return string|null
+ */
+function pg_image_editor_sound_where($search, $folders, $bin, $erp_ready = null)
+{
+    if ($erp_ready === null) {
+        $erp_ready = function_exists('waf_table_has_column') && waf_table_has_column('files', 'erp_doc_type');
+    }
+
+    $ids = function ($list) {
+        return implode(', ', array_map(function ($id) { return "'" . (int) $id . "'"; }, $list));
+    };
+    $where = "(type IN ('" . implode("', '", pg_image_editor_sound_types()) . "')) AND (name != '')" . ($erp_ready ? " AND (erp_doc_type = '')" : '');
+
+    if ($folders !== null) {
+        $folders = array_values(array_diff(array_map('intval', $folders), array_map('intval', $bin)));
+
+        if (!$folders) {
+            return null;
+        }
+
+        $where .= ' AND (folder IN (' . $ids($folders) . '))';
+    } elseif ($bin) {
+        $where .= ' AND (folder NOT IN (' . $ids($bin) . '))';
+    }
+
+    if ($search !== '') {
+        $where .= " AND (name LIKE '" . e(pg_list_like_pattern($search)) . "')";
+    }
+
+    return $where;
+}
+
+/**
+ * The sound files of files rows the user may reach, for the editor. Pure.
+ *
+ * @param array      $rows    files rows (id, name, type, folder, size)
+ * @param array|null $folders the folder ids a role-3 user may reach; null for every folder
+ * @return array [{ id, name, url, size }]
+ */
+function pg_image_editor_sound_rows($rows, $folders)
+{
+    $list = array();
+
+    foreach ($rows as $row) {
+        if (!in_array(strtolower((string) $row['type']), pg_image_editor_sound_types(), true)) {
+            continue;
+        }
+
+        if (($folders !== null) && !in_array((int) $row['folder'], array_map('intval', $folders), true)) {
+            continue;
+        }
+
+        $list[] = array(
+            'id'   => (int) $row['id'],
+            'name' => (string) $row['name'],
+            'url'  => PATH . encode_url_path((string) $row['name']),
+            'size' => convert_bytes_to_string((int) $row['size']));
+    }
+
+    return $list;
+}
+
+/**
+ * Action sound_files: the newest sound files in Files, or those whose name
+ * holds the search, for Add sound in the Animate tool. Read only; a role-3
+ * user sees the folders they may edit.
+ *
+ *   { search?: string } -> { status, files: [{ id, name, url, size }] }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_sound_files($request, $user)
+{
+    $search = (isset($request['search']) && is_string($request['search'])) ? trim(mb_substr($request['search'], 0, 100)) : '';
+    $folders = ((int) $user['role'] === 3) ? get_folders_that_user_has_access_to($user['id']) : null;
+    $where = pg_image_editor_sound_where($search, $folders, pg_recycle_bin_folder_ids());
+    $rows = ($where === null) ? array() : db_items(
+        "SELECT id, name, type, folder, size
+        FROM files
+        WHERE $where
+        ORDER BY timestamp DESC
+        LIMIT 60");
+
+    return array(array(
+        'status' => 'success',
+        'files'  => pg_image_editor_sound_rows(is_array($rows) ? $rows : array(), $folders)), 200);
+}
+
 // -- Keyframes (pg_image_editor_keyframes.js) --
 
 /**
@@ -5122,5 +5264,25 @@ function pg_image_editor_strings_record()
         'recPick'      => lang('Select one layer to record its move.'),
         'recHint'      => lang('Recording: drag the layer, letting go stops it · Esc cancels the recording'),
         'recHintPhone' => lang('Drag the layer; letting go stops the recording.'),
+    );
+}
+
+// -- Reading a video (pg_image_editor_video.js) --
+
+/**
+ * The video reading part's labels: what is said when a video cannot be
+ * opened or this browser cannot decode it.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_video()
+{
+    return array(
+        'videoFormat'     => lang('This file is not an MP4 or WebM video.'),
+        'videoBroken'     => lang('This video could not be read: the file is damaged or incomplete.'),
+        'videoFragmented' => lang('This video is saved in parts for streaming and cannot be edited. Save it again as a normal MP4.'),
+        'videoNoTrack'    => lang('This file has no picture track.'),
+        'videoNoCodecs'   => lang('This browser cannot edit videos. Use a current Chrome, Edge, Safari or Firefox.'),
+        'videoCodec'      => lang('This browser cannot play {var:1} video. Save the video as H.264 MP4 or WebM, or open it in another browser.'),
     );
 }

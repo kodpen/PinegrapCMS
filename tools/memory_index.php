@@ -40,6 +40,28 @@
  *     - one rule per line, with the memory file that explains it
  *     <!-- key-rules:end -->
  *
+ * The decisions list is generated into docs/memory/workflow/DECISIONS.md
+ * (DECISION_LIST), searched like an INDEX.md: one line per entry heading of
+ * the decisions parts (workflow/decisions-made*.md) and one per topic file
+ * whose own text records a dated owner or architect decision. A topic file's
+ * index line ends with a mark, so a session that lands on the file sees the
+ * decision before it changes the behaviour:
+ *
+ *     [decision: decisions-made-product-15.md]   a part names the file, or
+ *                                                the file cites the issue
+ *                                                number of a part's heading
+ *     [decision: here]                           only the file's own text
+ *                                                records one ("Owner
+ *                                                (2026-11-10): ...")
+ *
+ * The marks are generated from the text; no field is added by hand. Plans and
+ * the parts themselves carry no mark.
+ *
+ * A folder README also lists the folder's clusters (MIN_CLUSTER_FILES or
+ * more files sharing their first two name tokens, a plural s aside) with the
+ * count and the start file, <prefix>.md or <prefix>-overview.md, when the
+ * folder has one, so a session sees where a large topic begins.
+ *
  * A folder index that exists without the two markers (an older copy taken
  * during a merge) stops the run, so the rules are never dropped in silence;
  * a new folder starts with an empty block. After a merge conflict in a
@@ -63,7 +85,8 @@
  *         missing or invalid frontmatter, a memory file is too large or sits
  *         outside a known folder, a module field names no module file, a
  *         folder index has no key rules block or a merge conflict inside it,
- *         or, with --check, an index differs from what the files produce.
+ *         a topic file or decisions part links a memory file that does not
+ *         exist ([[name]] or folder/file.md; plans are exempt), or, with --check, an index differs from what the files produce.
  *
  * Line endings do not count: files are read with CR removed and the indexes
  * are written with LF endings, so a checkout that turned them into CRLF passes.
@@ -90,6 +113,13 @@ const KEY_RULES_END = '<!-- key-rules:end -->';
 // The generated module list, relative to docs/, and its line in the core index.
 const MODULE_LIST = 'memory/core/fn-modules.md';
 const MODULE_LIST_DESCRIPTION = 'Generated from the module field of the memory files: each includes/fn/ module so named and the memory files that describe it';
+
+// The generated decisions list, relative to docs/, and the file name of its parts.
+const DECISION_LIST = 'memory/workflow/DECISIONS.md';
+const DECISION_PART_PREFIX = 'decisions-made';
+
+// The fewest files sharing their first two name tokens that a README lists as a cluster.
+const MIN_CLUSTER_FILES = 6;
 
 // Memory folders and what they hold, as listed in the top index.
 const FOLDERS = array(
@@ -124,6 +154,8 @@ $folders = array();
 $others = array();
 $names = array();
 $modules = array();
+$decision_parts = array();
+$topics = array();
 
 foreach (memory_index_files($docs) as $relative) {
 
@@ -194,8 +226,30 @@ foreach (memory_index_files($docs) as $relative) {
 			continue;
 		}
 		$folders[$parts[1]][$parts[2]] = $description;
+		if ($parts[1] === 'workflow' && strncmp($stem, DECISION_PART_PREFIX, strlen(DECISION_PART_PREFIX)) === 0) {
+			$decision_parts[$parts[2]] = $content;
+		} elseif ($parts[1] !== 'plans') {
+			$topics[$parts[1] . '/' . $parts[2]] = $content;
+		}
 	} else {
 		$others[$relative] = $description;
+	}
+}
+
+// Links to memory files that do not exist; plans are exempt, they name files to come.
+$existing = array(substr(MODULE_LIST, 7), substr(DECISION_LIST, 7));
+
+foreach ($folders as $folder => $entries) {
+	$existing[] = $folder . '/README.md';
+	$existing[] = $folder . '/INDEX.md';
+	foreach (array_keys($entries) as $entry) {
+		$existing[] = $folder . '/' . $entry;
+	}
+}
+
+foreach ($topics + memory_index_prefixed($decision_parts, 'workflow/') as $relative => $content) {
+	foreach (memory_index_broken_links($content, $existing) as $link) {
+		$errors[] = "docs/memory/$relative: $link names no memory file; correct or remove the link";
 	}
 }
 
@@ -210,10 +264,29 @@ if ($errors) {
 // The generated module list is listed in its folder like a memory file.
 $folders['core'][basename(MODULE_LIST)] = MODULE_LIST_DESCRIPTION;
 
+// Decision marks on the topic files' index lines, and the decisions list.
+$decisions = memory_index_decision_parts($decision_parts);
+$recorded = array();
+
+foreach ($topics as $relative => $content) {
+
+	list($folder, $entry) = explode('/', $relative);
+	$mark = memory_index_decision_mark(basename($entry, '.md'), $content, $decisions);
+
+	if (memory_index_decision_recorded($content)) {
+		$recorded[$relative] = $folders[$folder][$entry];
+	}
+
+	if ($mark !== '') {
+		$folders[$folder][$entry] .= ' [decision: ' . $mark . ']';
+	}
+}
+
 // Index path relative to docs/ => expected content.
 $indexes = array(
 	'memory/README.md' => memory_index_top($folders, $others),
 	MODULE_LIST => memory_index_module_list($modules),
+	DECISION_LIST => memory_index_decision_list($decisions['headings'], $recorded),
 );
 
 foreach ($folders as $folder => $entries) {
@@ -226,7 +299,7 @@ foreach ($folders as $folder => $entries) {
 		continue;
 	}
 
-	$indexes[$relative] = memory_index_folder($folder, $rules);
+	$indexes[$relative] = memory_index_folder($folder, $rules, memory_index_clusters(array_keys($entries)));
 	$indexes["memory/$folder/INDEX.md"] = memory_index_folder_files($folder, $entries);
 }
 
@@ -308,7 +381,7 @@ function memory_index_files($docs) {
 
 		$relative = str_replace('\\', '/', substr($file->getPathname(), strlen($docs) + 1));
 
-		if ($relative === 'memory/README.md' || $relative === MODULE_LIST || (strncmp($relative, 'memory/', 7) === 0 && in_array(basename($relative), array('README.md', 'INDEX.md'), true))) {
+		if ($relative === 'memory/README.md' || $relative === MODULE_LIST || $relative === DECISION_LIST || (strncmp($relative, 'memory/', 7) === 0 && in_array(basename($relative), array('README.md', 'INDEX.md'), true))) {
 			continue;
 		}
 
@@ -392,10 +465,11 @@ function memory_index_top($folders, $others) {
 
 /**
  * A folder's README.md: the folder's key rules as written by hand (a heading
- * only when there are some), then how to search its INDEX.md. It names no
- * file count, so two branches that each add a file do not both change it.
+ * only when there are some), its clusters as memory_index_clusters() returns
+ * them, then how to search its INDEX.md. A cluster's count changes when a
+ * branch adds a file to it; running the tool again after a merge settles it.
  */
-function memory_index_folder($folder, $rules) {
+function memory_index_folder($folder, $rules, $clusters = array()) {
 
 	$lines = array(
 		'# docs/memory/' . $folder . '/',
@@ -417,10 +491,24 @@ function memory_index_folder($folder, $rules) {
 
 	$lines[] = KEY_RULES_END;
 	$lines[] = '';
+
+	if ($clusters) {
+		$lines[] = '## Clusters';
+		$lines[] = '';
+		foreach ($clusters as $cluster) {
+			$lines[] = '- `' . $cluster[0] . '-*`: ' . $cluster[1] . ' files' . ($cluster[2] !== null ? '; start at `' . $cluster[2] . '`' : '') . '.';
+		}
+		$lines[] = '';
+	}
+
 	$lines[] = '## Files';
 	$lines[] = '';
 	$lines[] = '- `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.';
 	$lines[] = "- `grep -i 'word' docs/memory/" . $folder . "/INDEX.md`; across every folder: `grep -i 'word' docs/memory/*/INDEX.md`.";
+
+	if ('memory/' . $folder . '/' . basename(DECISION_LIST) === DECISION_LIST) {
+		$lines[] = '- `' . basename(DECISION_LIST) . '` lists every decision, one line each: the entry headings of the `' . DECISION_PART_PREFIX . '*.md` parts and the topic files that record a dated owner or architect decision. Search it like an index: `grep -i \'word\' docs/' . DECISION_LIST . '`. A topic file\'s index line ending in `[decision: …]` is bound by the part it names, or by its own text (`here`).';
+	}
 
 	return implode("\n", $lines) . "\n";
 }
@@ -594,4 +682,249 @@ function memory_index_module_list($modules) {
 	$lines[] = '- The memory file that describes it names it in its frontmatter (`module: comments, widgets_comments`) and `php tools/memory_index.php` is run. The kinds of function the older modules hold are in [[fn-module-map]].';
 
 	return implode("\n", $lines) . "\n";
+}
+
+/**
+ * What the decisions parts hold: 'headings', each entry heading as
+ * array(part, heading) in part and file order; 'issues', each issue number
+ * cited in a heading => the parts citing it; 'named', each memory file name
+ * a part refers to (folder/name.md, name.md or [[name]]) => those parts.
+ * $parts is part file name => content. The lists of parts are sorted.
+ */
+function memory_index_decision_parts($parts) {
+
+	uksort($parts, 'strcmp');
+
+	$result = array('headings' => array(), 'issues' => array(), 'named' => array());
+
+	foreach ($parts as $part => $content) {
+
+		foreach (explode("\n", str_replace("\r", '', $content)) as $line) {
+
+			if (strncmp($line, '## ', 3) !== 0) {
+				continue;
+			}
+
+			$heading = trim(substr($line, 3));
+			$result['headings'][] = array($part, $heading);
+
+			preg_match_all('/#(\d+)\b/', $heading, $numbers);
+			foreach ($numbers[1] as $number) {
+				$result['issues'][$number][$part] = true;
+			}
+		}
+
+		preg_match_all('/(?<![\w.-])([a-z0-9][a-z0-9-]*)\.md\b|\[\[([a-z0-9-]+)\]\]/', $content, $references, PREG_SET_ORDER);
+		foreach ($references as $reference) {
+			$name = isset($reference[2]) && $reference[2] !== '' ? $reference[2] : $reference[1];
+			$result['named'][$name][$part] = true;
+		}
+	}
+
+	foreach (array('issues', 'named') as $key) {
+		foreach ($result[$key] as $item => $listed) {
+			$result[$key][$item] = array_keys($listed);
+		}
+	}
+
+	return $result;
+}
+
+/**
+ * Whether a file's own text records a dated owner or architect decision:
+ * "Owner (2026-11-10)", "owner, 2026-10-26", "architect 2026-11-02",
+ * "Owner decision (2026-10-30)". A request or a report by the owner is not
+ * one, nor an undated mention.
+ */
+function memory_index_decision_recorded($content) {
+
+	return (bool) preg_match('/\b(?:owner|architect)(?: decision| decided| approved)?(?: on)?,? \(?\d{4}-\d{2}-\d{2}\b/i', $content);
+}
+
+/**
+ * The decision mark of a topic file: the parts that name it or the issue
+ * number of whose headings it cites, sorted and separated by commas; 'here'
+ * when no part does and its own text records a decision; '' otherwise.
+ * $decisions is what memory_index_decision_parts() returned.
+ */
+function memory_index_decision_mark($name, $content, $decisions) {
+
+	$parts = isset($decisions['named'][$name]) ? $decisions['named'][$name] : array();
+
+	preg_match_all('/#(\d+)\b/', $content, $numbers);
+	foreach (array_unique($numbers[1]) as $number) {
+		if (isset($decisions['issues'][$number])) {
+			$parts = array_merge($parts, $decisions['issues'][$number]);
+		}
+	}
+
+	if ($parts) {
+		$parts = array_unique($parts);
+		usort($parts, 'strcmp');
+		return implode(', ', $parts);
+	}
+
+	return memory_index_decision_recorded($content) ? 'here' : '';
+}
+
+/**
+ * The generated decisions list: the entry headings of the parts, grouped by
+ * part in file name order and in their own order within a part, then the
+ * topic files that record a decision in their own text, sorted, with their
+ * description. $headings is a list of array(part, heading); $recorded is
+ * folder/file => description.
+ */
+function memory_index_decision_list($headings, $recorded) {
+
+	$by_part = array();
+
+	foreach ($headings as $heading) {
+		$by_part[$heading[0]][] = $heading[1];
+	}
+
+	uksort($by_part, 'strcmp');
+	uksort($recorded, 'strcmp');
+
+	$lines = array(
+		'# docs/' . DECISION_LIST,
+		'',
+		'<!-- Generated by php tools/memory_index.php from the decisions parts and the topic files. Do not edit by hand. -->',
+		'',
+		'Search it rather than read it whole, then open the part or file that matches: `grep -i \'word\' docs/' . DECISION_LIST . '`.',
+		'',
+		'## Entries of the decisions parts (workflow/' . DECISION_PART_PREFIX . '*.md)',
+		'',
+	);
+
+	foreach ($by_part as $part => $list) {
+		foreach ($list as $heading) {
+			$lines[] = '- ' . $part . ': ' . $heading;
+		}
+	}
+
+	$lines[] = '';
+	$lines[] = '## Topic files that record a dated owner or architect decision';
+	$lines[] = '';
+
+	foreach ($recorded as $file => $description) {
+		$lines[] = '- ' . $file . ': ' . $description;
+	}
+
+	return implode("\n", $lines) . "\n";
+}
+
+/**
+ * The clusters of a folder: groups of at least MIN_CLUSTER_FILES files whose
+ * names share their first two tokens (split at hyphens), a trailing s of a
+ * token set aside, so workspace-flow-x.md and workspace-flows-y.md group
+ * together. Each is array(prefix, count, start file or null), sorted by
+ * prefix. The prefix is the form most files use (the shorter on a tie); the
+ * start file is <prefix>.md or <prefix>-overview.md in either form.
+ * $files are file names with .md.
+ */
+function memory_index_clusters($files) {
+
+	$groups = array();
+	$present = array_flip($files);
+
+	foreach ($files as $file) {
+
+		$tokens = explode('-', basename($file, '.md'));
+
+		if (count($tokens) < 2) {
+			continue;
+		}
+
+		$form = $tokens[0] . '-' . $tokens[1];
+		$key = rtrim($tokens[0], 's') . '-' . rtrim($tokens[1], 's');
+		$groups[$key][$form] = isset($groups[$key][$form]) ? $groups[$key][$form] + 1 : 1;
+	}
+
+	$clusters = array();
+
+	foreach ($groups as $forms) {
+
+		$count = array_sum($forms);
+
+		if ($count < MIN_CLUSTER_FILES) {
+			continue;
+		}
+
+		uksort($forms, function ($a, $b) use ($forms) {
+			if ($forms[$a] !== $forms[$b]) {
+				return $forms[$b] - $forms[$a];
+			}
+			return strlen($a) !== strlen($b) ? strlen($a) - strlen($b) : strcmp($a, $b);
+		});
+
+		$names = array_keys($forms);
+		$start = null;
+
+		foreach (array('', '-overview') as $suffix) {
+			foreach ($names as $name) {
+				if ($start === null && isset($present[$name . $suffix . '.md'])) {
+					$start = $name . $suffix . '.md';
+				}
+			}
+		}
+
+		$clusters[$names[0]] = array($names[0], $count, $start);
+	}
+
+	uksort($clusters, 'strcmp');
+
+	return array_values($clusters);
+}
+
+/**
+ * The references in a memory file's text to memory files that do not exist,
+ * each once, in the order met: a [[name]] link (a file name without .md, in
+ * any folder) and a folder/file.md path whose folder is in FOLDERS, with or
+ * without docs/memory/ in front. A path inside another path (assets/ui/x.md),
+ * a wildcard or placeholder (erp/<name>.md), an Obsidian embed (![[x]])
+ * and a [[name]] quoted alone in backticks as an example are not references.
+ * $existing lists folder/file.md for every file in the memory folders,
+ * generated indexes included.
+ */
+function memory_index_broken_links($content, $existing) {
+
+	$paths = array_flip($existing);
+	$names = array();
+
+	foreach ($existing as $path) {
+		$names[basename($path, '.md')] = true;
+	}
+
+	$folders = implode('|', array_map('preg_quote', array_keys(FOLDERS)));
+	$pattern = '~(?<![\w./<*-])(?:docs/memory/)?((?:' . $folders . ')/[A-Za-z0-9_.-]+\.md)(?![\w*<>-])|(?<![!`])\[\[([a-z0-9-]+)\]\](?!`)~';
+
+	preg_match_all($pattern, $content, $references, PREG_SET_ORDER);
+
+	$broken = array();
+
+	foreach ($references as $reference) {
+		if (isset($reference[2]) && $reference[2] !== '') {
+			if (!isset($names[$reference[2]])) {
+				$broken['[[' . $reference[2] . ']]'] = true;
+			}
+		} elseif (!isset($paths[$reference[1]])) {
+			$broken[$reference[1]] = true;
+		}
+	}
+
+	return array_keys($broken);
+}
+
+/**
+ * The array with $prefix put before each key.
+ */
+function memory_index_prefixed($items, $prefix) {
+
+	$result = array();
+
+	foreach ($items as $key => $value) {
+		$result[$prefix . $key] = $value;
+	}
+
+	return $result;
 }

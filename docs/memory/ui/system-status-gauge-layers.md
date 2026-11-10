@@ -4,7 +4,7 @@ description: System Status gauge (widget 2) as five stacked SVGs: paint order, w
 ---
 
 ## How is the gauge drawn?
-- `includes/dashboard/widgets/widget_2.php` prints five SVGs inside `.pg-health-dial`, all `viewBox="8 8 124 72"`, in paint order:
+- `pg_health_gauge()` (`includes/fn/health_gauge.php`, called by widget 2 and by the new dashboard's card) prints five SVGs inside `.pg-health-dial`, all `viewBox="8 8 124 72"`, in paint order:
   1. `.pg-health-layer-base`: the groove plus the shared `<defs>` (both gradients, the three `feGaussianBlur` filters);
   2. `.pg-health-layer-bloom`: the bloom circle;
   3. `.pg-health-layer-glow`: the glow circle;
@@ -21,9 +21,11 @@ description: System Status gauge (widget 2) as five stacked SVGs: paint order, w
 - Glow and bloom breathe on their layer `<svg>` (`will-change: opacity`), never on the filtered circle, which sits at opacity 1. Rest opacity on the layer: glow .62, bloom .4; light theme: bloom layer `display:none`, glow rests at .16. Keyframes have literal values per layer and theme: `pg-health-glow-breathe` (.52↔.72, 5.1s, -2.4s), `pg-health-bloom-breathe` (.31↔.5, 7.1s, -6.1s), `pg-health-glow-breathe-light` (.11↔.21).
 - The halo never animates.
 - Every infinite gauge animation stays inside `@media (prefers-reduced-motion: no-preference)`; reduced motion sees the rest values, as before.
+- The new dashboard sets the glow and bloom strengths by card style with keyframes of its own in `pg_dash.src.css`, and hides both layers with lights off (`dashboard-v2-status-card-look.md`).
 
 ## When does it pause?
-- A small inline script at the end of the widget's `$output_data` (it runs on both draw paths: `pg_widget_apply` in `welcome.php` and `window.pgHealthReload` in `backend.src.js`) watches every `.pg-health-dial` with one `IntersectionObserver` kept on `window.pgHealthObserver`; a redraw disconnects the old one first, so no second observer piles up. Off screen it adds `.is-paused`, which sets `animation-play-state: paused` on the cells and the layers. Without `IntersectionObserver` nothing pauses. A hidden tab gets no animation frames anyway.
+- A small inline script at the end of the gauge's markup (it runs on both of widget 2's draw paths, `pg_widget_apply` in `welcome.php` and `window.pgHealthReload` in `backend.src.js`, and on the new dashboard) watches every `.pg-health-dial` with one `IntersectionObserver` kept on `window.pgHealthObserver`; a redraw disconnects the old one first, so no second observer piles up. Off screen it adds `.is-paused`, which sets `animation-play-state: paused` on the cells and the layers. Without `IntersectionObserver` nothing pauses. A hidden tab gets no animation frames anyway.
+- Nothing else pauses it: the new dashboard's lights off held the twinkle until #8448 and no longer does.
 
 ## What pins it?
 - `tests/dashboard_gauge_motion_test.php`. Same PR also pauses the loading curtain's loops once done (`loading-curtain.md`). Added in #3676.

@@ -13,7 +13,7 @@ description: The Zoo block family (zoo- prefix, its own palette group): the four
 - `zoo-conservation`: three project `article` cards on `bg-success-subtle`: a status pill ("CR · Critically Endangered"), species, place and partner, what is done, one impact figure; Adopt and news links.
 
 ## Which blocks are reused instead?
-- Adoption levels: `pricing-tiers` (one price per level, what it includes). Ticket prices by visitor: `pricing-tiers` or a table on the page. Opening hours: `hours-card` (`hours-seasons` once shipped). Events: `events-list` / `events-cards`. Keepers: `team-grid`. The habitat zones as cards: `features-grid`.
+- Adoption levels: `pricing-tiers` (one price per level, what it includes). Ticket prices by visitor: `pricing-tiers` or a table on the page. Opening hours: `hours-card`, by season `hours-seasons`. Events: `events-list` / `events-cards`. Keepers: `team-grid`. The habitat zones as cards: `features-grid`.
 - `zoo-today` is not `timeline-vertical`: that one is milestones (a date and a story per row); a day schedule needs `<time>` values, a kind pill, a place and the next-slot marker.
 - `zoo-map` is not `skiresort-slope-map`: that legend is difficulty grades with counts and area buttons; this one is numbered habitats keyed to the picture, grouped by zone.
 

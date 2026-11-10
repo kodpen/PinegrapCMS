@@ -2645,7 +2645,7 @@
     // act only on the message itself, so a control inside keeps its own.
     function messageKeys(pane) {
         function messages() {
-            return Array.prototype.slice.call(pane.querySelectorAll('.ws-msg'));
+            return Array.prototype.slice.call(pane.querySelectorAll('.ws-msg:not(.ws-msg-folded)'));
         }
 
         function moveStop(target) {
@@ -3064,6 +3064,63 @@
     // A recording made with the writing box's microphone (workspace_voice.js).
     function voiceFile(file) {
         return !!(file && window.PGWsVoice && window.PGWsVoice.isVoice(file.name));
+    }
+
+    // The application a message is a plain line of, 0 when it is anything
+    // else: a one-line message of an application that is no agent, with
+    // nothing on it a reader acts on (a file, a poll, an approval, a
+    // checklist, a mark, the pin, replies, a read receipt, a task, a mention
+    // of the reader). Pure.
+    function appLine(message, pinId) {
+        var sender = (message && message.sender) || {};
+
+        if (!message || message.deleted || (message.sender_kind !== 'app') || (message.kind !== 'message') || !sender.app_id
+            || sender.claude || sender.ai || sender.mcp || sender.agent
+            || !message.one_line || message.mentions_me || message.parent_id || message.task_id
+            || message.file || message.poll || message.approval || message.ack || message.status_card || message.has_list
+            || message.thread || message.scheduled || message.note_card || message.note_group_card || message.flow_run
+            || (message.changes || []).length || (message.drafts || []).length || (message.design || []).length
+            || (message.list_tasks || []).length || (pinId && (message.id === pinId))) {
+            return 0;
+        }
+
+        return sender.app_id;
+    }
+
+    // The runs of plain application lines in a conversation, oldest first:
+    // lines in a row from one application on one day (dayOf(), optional).
+    // A deleted message leaves no trace and breaks nothing; any other
+    // message ends the run. Each run: { app, ids }. Pure.
+    function appLineRuns(messages, pinId, dayOf) {
+        var runs = [];
+        var run = null;
+        var lastDay = null;
+
+        (messages || []).forEach(function (message) {
+            if (!message || message.deleted) {
+                return;
+            }
+
+            var day = dayOf ? dayOf(message) : '';
+            var app = appLine(message, pinId);
+
+            if (!app || !run || (run.app !== app) || (day !== lastDay)) {
+                run = null;
+            }
+
+            if (app) {
+                if (!run) {
+                    run = { app: app, ids: [] };
+                    runs.push(run);
+                }
+
+                run.ids.push(message.id);
+            }
+
+            lastDay = day;
+        });
+
+        return runs;
     }
 
     function params() {
@@ -5901,6 +5958,89 @@
 
     // A channel of the team shared with somebody outside it (guests.php):
     // who it is for, whether they only read, and how the link opens.
+    // The channel's conversation as a file (workspace_channel_export.php):
+    // a date range, empty for everything, and the form; the server reads only
+    // what the person may read and refuses a range that is too long.
+    function exportForm(channel) {
+        var node = offcanvas('ws-channel-export', '');
+        var body = clear(node.querySelector('.drawer-body'));
+        var footer = clear(node.querySelector('.drawer-footer'));
+        var group = nextId('ws_chx_format_');
+        var format = 'markdown';
+
+        footer.classList.remove('d-none');
+        node.querySelector('.drawer-title').textContent = t('chx_title') + ' · #' + channel.name;
+        body.appendChild(el('div', 'form-text mt-0 mb-5', t('chx_help')));
+
+        var grid = el('div', 'row g-3');
+        var fromCell = el('div', 'col-6');
+        var toCell = el('div', 'col-6');
+        var from = el('input', 'form-control form-control-sm');
+        var to = el('input', 'form-control form-control-sm');
+
+        pgDateField(from, 'date');
+        pgDateField(to, 'date');
+        from.max = CFG.today;
+        to.max = CFG.today;
+        fromCell.appendChild(formRow(t('chx_from'), from));
+        toCell.appendChild(formRow(t('chx_to'), to));
+        grid.appendChild(fromCell);
+        grid.appendChild(toCell);
+        body.appendChild(grid);
+
+        var choices = el('div', 'mb-5');
+        choices.appendChild(el('div', 'form-label', t('chx_format')));
+
+        [['markdown', t('chx_markdown'), 'bi-filetype-md'], ['print', t('chx_print'), 'bi-printer']].forEach(function (option) {
+            var wrap = el('div', 'form-field');
+            var radio = el('input', 'radio');
+            radio.type = 'radio';
+            radio.name = group;
+            radio.value = option[0];
+            radio.id = nextId('ws-chx-format-');
+            radio.checked = (option[0] === format);
+            radio.addEventListener('change', function () { format = radio.value; });
+
+            var label = el('label', '');
+            label.htmlFor = radio.id;
+            label.appendChild(icon(option[2], 'me-1'));
+            label.appendChild(document.createTextNode(option[1]));
+            wrap.appendChild(radio);
+            wrap.appendChild(label);
+            choices.appendChild(wrap);
+        });
+
+        body.appendChild(choices);
+
+        var go = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('chx_go'), 'bi-download');
+        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+        cancel.setAttribute('data-bs-dismiss', 'drawer');
+        footer.appendChild(cancel);
+        footer.appendChild(go);
+
+        go.addEventListener('click', function () {
+            // Y-m-d strings compare as dates.
+            if (from.value && to.value && from.value > to.value) {
+                toast(t('chx_dates'), 'danger');
+                return;
+            }
+
+            var url = CFG.urls.channel_export + '?channel=' + encodeURIComponent(channel.id)
+                + (from.value ? '&from=' + encodeURIComponent(from.value) : '')
+                + (to.value ? '&to=' + encodeURIComponent(to.value) : '');
+
+            hideOffcanvas(node);
+
+            if (format === 'print') {
+                window.open(url + '&print=1', '_blank', 'noopener');
+            } else {
+                window.location.href = url;
+            }
+        });
+
+        showOffcanvas(node);
+    }
+
     function shareForm(channel, onDone) {
         var conf = CFG.guests || {};
         var node = offcanvas('ws-share-form', '');
@@ -8406,6 +8546,11 @@
 
                 self.view = 'channel';
                 screenHeading('channel');
+
+                if (!self.channel || (self.channel.id !== data.channel.id)) {
+                    self.appLinesOpen = {};
+                }
+
                 self.channel = data.channel;
                 self.era = data.era || null;
                 // Whether Add › Start a flow has a flow to offer here.
@@ -8432,6 +8577,8 @@
                 self.drawSide();
 
                 if (messageId) {
+                    self.revealAppLine(messageId);
+
                     var target = self.center.querySelector('[data-ws-message="' + messageId + '"]');
 
                     if (target) {
@@ -9092,6 +9239,27 @@
                 divider();
             }
 
+            // The reader's own choice in this browser: how an application's
+            // one-line messages read here.
+            if (self.hasAppLines() || (self.appLinesMode() !== 'folded')) {
+                var linesMode = self.appLinesMode();
+
+                [['folded', t('apl_folded'), 'bi-chevron-bar-contract'], ['all', t('apl_all'), 'bi-list'], ['hidden', t('apl_hidden'), 'bi-eye-slash']].forEach(function (option) {
+                    item(option[1], option[2], function () {
+                        self.setAppLinesMode(option[0]);
+
+                        // The menu marks the new choice next time it opens.
+                        var actions = self.center ? self.center.querySelector('.ws-head-channel .ws-head-actions') : null;
+                        var wrapNow = actions ? actions.querySelector(':scope > .pg-menu-wrap') : null;
+
+                        if (wrapNow) {
+                            actions.replaceChild(self.channelMenu(), wrapNow);
+                        }
+                    }, '', linesMode === option[0], true);
+                });
+                divider();
+            }
+
             if (channel.joined) {
                 [['all', t('notify_all')], ['mentions', t('notify_mentions')], ['none', t('notify_none')]].forEach(function (option) {
                     item(option[1], option[0] === 'none' ? 'bi-bell-slash' : 'bi-bell', function () {
@@ -9207,6 +9375,11 @@
                         shareForm(channel, function () { self.reloadChannels(channel.id); });
                     }
                 });
+            }
+
+            // Whoever reads the channel may take its conversation with them.
+            if (CFG.urls.channel_export && !self.era) {
+                item(t('chx_menu'), 'bi-box-arrow-down', function () { exportForm(channel); });
             }
 
             if (CFG.eras && channel.eras) {
@@ -9781,6 +9954,160 @@
                 self.appendMessage(message, previous, pane);
                 previous = message;
             });
+
+            self.foldAppLines();
+        },
+
+        // ── Application lines (a run of an application's one-line messages) ──
+
+        // The reader's choice for this channel, in this browser: folded (the
+        // default), all or hidden.
+        appLinesMode: function () {
+            var mode = '';
+
+            try {
+                mode = this.channel ? (window.localStorage.getItem('ws-app-lines:' + this.channel.id) || '') : '';
+            } catch (error) {
+                mode = '';
+            }
+
+            return (mode === 'all' || mode === 'hidden') ? mode : 'folded';
+        },
+
+        setAppLinesMode: function (mode) {
+            try {
+                if (mode === 'folded') {
+                    window.localStorage.removeItem('ws-app-lines:' + this.channel.id);
+                } else {
+                    window.localStorage.setItem('ws-app-lines:' + this.channel.id, mode);
+                }
+            } catch (error) {
+                // Kept for this view only.
+            }
+
+            this.appLinesOpen = {};
+            this.foldAppLines();
+        },
+
+        // Whether the conversation holds a line the choice acts on.
+        hasAppLines: function () {
+            var pinId = (this.channel && this.channel.pin) ? this.channel.pin.id : 0;
+
+            return (this.messages || []).some(function (message) { return !!appLine(message, pinId); });
+        },
+
+        // Draws the fold over the messages on the screen: in a folded run
+        // (three lines or more) the newest line stays with "+N lines" under
+        // it; hidden, every run is one count row. Opened runs stay open
+        // while new lines join them.
+        foldAppLines: function () {
+            var self = this;
+            var pane = self.pane;
+
+            if (!pane || !self.channel || (self.tab !== 'messages')) {
+                return;
+            }
+
+            Array.prototype.slice.call(pane.querySelectorAll('.ws-app-fold')).forEach(function (row) { row.remove(); });
+            Array.prototype.slice.call(pane.querySelectorAll('.ws-msg-folded, .ws-msg-fold-head')).forEach(function (node) {
+                node.classList.remove('ws-msg-folded', 'ws-msg-fold-head');
+            });
+
+            var mode = self.appLinesMode();
+
+            if (mode === 'all') {
+                return;
+            }
+
+            var open = self.appLinesOpen || (self.appLinesOpen = {});
+            var pinId = self.channel.pin ? self.channel.pin.id : 0;
+
+            appLineRuns(self.messages, pinId, function (message) { return self.dayKey(message); }).forEach(function (run) {
+                var count = run.ids.length;
+
+                if ((mode === 'folded') && (count < 3)) {
+                    return;
+                }
+
+                var nodes = run.ids.map(function (id) { return pane.querySelector('[data-ws-message="' + id + '"]'); }).filter(Boolean);
+                var last = nodes[nodes.length - 1];
+
+                if (!last) {
+                    return;
+                }
+
+                var opened = run.ids.some(function (id) { return !!open[id]; });
+                var row = el('div', 'ws-app-fold');
+                var label;
+
+                if (opened) {
+                    label = t('apl_fold');
+                } else if (mode === 'folded') {
+                    label = t('apl_more', count - 1);
+                } else {
+                    label = (count === 1) ? t('apl_one') : t('apl_count', count);
+                }
+
+                var toggle = button('btn btn-sm btn-text theme-secondary', label, opened ? 'bi-chevron-contract' : 'bi-chevron-expand');
+
+                toggle.setAttribute('aria-expanded', opened ? 'true' : 'false');
+                toggle.addEventListener('click', function () {
+                    run.ids.forEach(function (id) {
+                        if (opened) {
+                            delete open[id];
+                        } else {
+                            open[id] = true;
+                        }
+                    });
+                    self.foldAppLines();
+
+                    var still = pane.querySelector('.ws-app-fold [data-ws-fold="' + run.ids[0] + '"]');
+
+                    if (still) {
+                        still.focus();
+                    }
+                });
+                toggle.setAttribute('data-ws-fold', run.ids[0]);
+                row.appendChild(toggle);
+                last.parentNode.insertBefore(row, last.nextSibling);
+
+                if (opened) {
+                    return;
+                }
+
+                nodes.forEach(function (node, index) {
+                    if ((mode === 'hidden') || (index < nodes.length - 1)) {
+                        node.classList.add('ws-msg-folded');
+                    }
+                });
+
+                // The newest line of a folded run reads with its name again.
+                if (mode === 'folded') {
+                    last.classList.add('ws-msg-fold-head');
+                }
+            });
+        },
+
+        // Opens the run that holds a message: a link or a search hit lands
+        // on it.
+        revealAppLine: function (messageId) {
+            var node = this.pane ? this.pane.querySelector('[data-ws-message="' + messageId + '"]') : null;
+
+            if (!node || !node.classList.contains('ws-msg-folded')) {
+                return;
+            }
+
+            var self = this;
+            var pinId = (self.channel && self.channel.pin) ? self.channel.pin.id : 0;
+            var open = self.appLinesOpen || (self.appLinesOpen = {});
+
+            appLineRuns(self.messages, pinId, function (message) { return self.dayKey(message); }).forEach(function (run) {
+                if (run.ids.indexOf(messageId) !== -1) {
+                    run.ids.forEach(function (id) { open[id] = true; });
+                }
+            });
+
+            self.foldAppLines();
         },
 
         // The newest message still on the screen.
@@ -9839,6 +10166,7 @@
             }
 
             if (!next) {
+                this.foldAppLines();
                 return;
             }
 
@@ -9851,6 +10179,8 @@
             if (nextNode) {
                 nextNode.parentNode.replaceChild(this.messageNode(next, previous), nextNode);
             }
+
+            this.foldAppLines();
         },
 
         dayKey: function (message) {
@@ -11144,12 +11474,15 @@
             if (node) {
                 var fresh = this.messageNode(message, previous);
                 node.parentNode.replaceChild(fresh, node);
+                this.foldAppLines();
             }
         },
 
         // Where a message is: in view it is highlighted, otherwise the
         // channel opens there.
         jumpTo: function (messageId, flash) {
+            this.revealAppLine(messageId);
+
             var target = this.center.querySelector('[data-ws-message="' + messageId + '"]');
 
             if (target) {
@@ -17103,6 +17436,11 @@
                             arrived++;
                         }
                     });
+
+                    // A line that arrives joins its run on the screen.
+                    if (grew) {
+                        self.foldAppLines();
+                    }
                 }
 
                 if (data.messages.length) {
@@ -21059,7 +21397,8 @@
             from: dateOf(query.from),
             to: dateOf(query.to),
             search: String(query.q || '').slice(0, 100),
-            notes: query.notes === '1'
+            notes: query.notes === '1',
+            agents: query.agents === '1'
         };
         var next = '';
         var loading = false;
@@ -21154,6 +21493,21 @@
         });
         bar.appendChild(notesToggle);
 
+        // Agent channels' decisions are left out of the list; this shows
+        // theirs alone. It shows once the person may read an agent channel.
+        var agentsToggle = button('btn btn-sm btn-text theme-secondary' + (state.agents ? ' active' : '') + (state.agents ? '' : ' d-none'), t('tl_agents'), 'bi-robot');
+        agentsToggle.title = t('tl_agents_help');
+        agentsToggle.setAttribute('aria-pressed', state.agents ? 'true' : 'false');
+        agentsToggle.addEventListener('click', function () {
+            state.agents = !state.agents;
+            state.channel_id = 0;
+            channelSelect.value = '0';
+            agentsToggle.classList.toggle('active', state.agents);
+            agentsToggle.setAttribute('aria-pressed', state.agents ? 'true' : 'false');
+            load(true);
+        });
+        bar.appendChild(agentsToggle);
+
         var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
         var searchIcon = el('span', 'form-adorn-text');
         searchIcon.setAttribute('aria-hidden', 'true');
@@ -21229,6 +21583,7 @@
             add('to', state.to);
             add('q', state.search);
             add('notes', state.notes ? '1' : '');
+            add('agents', state.agents ? '1' : '');
 
             window.history.replaceState(null, '', CFG.urls.timeline + (parts.length ? '?' + parts.join('&') : ''));
         }
@@ -21536,7 +21891,8 @@
                 from: state.from,
                 to: state.to,
                 search: state.search,
-                notes: state.notes ? 1 : 0
+                notes: state.notes ? 1 : 0,
+                agent_channels: state.agents ? 'only' : ''
             };
 
             if (!reset) {
@@ -21564,6 +21920,7 @@
                     drawSide(data.channels || []);
                     drawSummary(data);
                     drawHidden(data.hidden || []);
+                    agentsToggle.classList.toggle('d-none', !(state.agents || data.agent_channels > 0));
                     list.removeAttribute('aria-busy');
 
                     if (!data.items.length) {

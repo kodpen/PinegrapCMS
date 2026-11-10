@@ -5,7 +5,9 @@
  * Workspace - the person's workflow tables: their own and those shared with
  * them or in a channel they read. Without ?id= the list and a new table;
  * with it one table: its rows a page at a time, the row form (?row= opens a
- * row in it), the columns, the name and description, and the shares. Every
+ * row in it), the columns, the name and description, the shares and the
+ * rows in the table's bin; the list shows the person's deleted tables too
+ * (includes/workspace/wtable_bin.php). Every
  * change is a form posted with the token and goes through the store
  * (includes/workspace/wtables.php, wtable_rows.php, wtable_shares.php),
  * which decides who may do what; wtable_screen.php turns fields into cells.
@@ -47,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     validate_token_field();
 
-    pg_request_single_values(array('wt_action', 'wt_table', 'wt_column', 'wt_row', 'wt_share', 'revision', 'name', 'description', 'type', 'target', 'level', 'value', 'note', 'starter', 'samples'));
+    pg_request_single_values(array('wt_action', 'wt_table', 'wt_column', 'wt_row', 'wt_share', 'wt_bin', 'revision', 'name', 'description', 'type', 'target', 'level', 'value', 'note', 'starter', 'samples'));
 
     $action = (string) ($_POST['wt_action'] ?? '');
     $table = ws_wtable((int) ($_POST['wt_table'] ?? 0));
@@ -102,10 +104,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($result['ok']) {
                 log_activity(lang(array('string' => 'workspace table ({var:1}) was deleted', 'vars' => $table['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
-                $liveform->add_notice(h(lang(array('string' => 'The table {var:1} was deleted.', 'vars' => $table['name']))));
-                $back = $self_url;
+                $liveform->add_notice(h(ws_wtable_bin_ready()
+                    ? lang(array('string' => 'The table {var:1} was deleted. It is in Deleted tables, where you can restore it.', 'vars' => $table['name']))
+                    : lang(array('string' => 'The table {var:1} was deleted.', 'vars' => $table['name']))));
+                $back = $self_url . (ws_wtable_bin_ready() ? '#ws-wt-deleted' : '');
             } else {
                 $refused($result);
+            }
+
+            break;
+
+        case 'table_restore':
+            // A table of the person's own back from the bin, whole.
+            $binned = ws_wtable_binned((int) ($_POST['wt_table'] ?? 0));
+            $result = ws_wtable_restore($viewer, $binned);
+
+            if ($result['ok']) {
+                log_activity(lang(array('string' => 'workspace table ({var:1}) was restored', 'vars' => $binned['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
+                $liveform->add_notice(h(lang(array('string' => 'The table {var:1} was restored.', 'vars' => $binned['name']))));
+                $back = $self_url . '?id=' . (int) $binned['id'];
+            } else {
+                $refused($result);
+                $back = $self_url . '#ws-wt-deleted';
             }
 
             break;
@@ -192,6 +212,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = ws_wtable_row_delete($viewer, $table, $row, array('revision' => $field('revision')));
             $result['ok'] ? $liveform->add_notice(h(lang('The row was deleted.'))) : $refused($result);
             $back .= '#ws-wt-rows';
+            break;
+
+        case 'row_restore':
+            // A row back from the table's bin, at the end of the table.
+            $bin = ws_wtable_bin_row((int) ($table['id'] ?? 0), (int) ($_POST['wt_bin'] ?? 0));
+            $result = ws_wtable_row_restore($viewer, $table, $bin);
+
+            if (!$result['ok']) {
+                $refused($result);
+                $back .= '#ws-wt-deleted-rows';
+                break;
+            }
+
+            $liveform->add_notice(h($result['id_changed']
+                ? lang('The row was restored under a new number: the links other rows had to it were not restored.')
+                : lang('The row was restored at the end of the table.')));
+            $back .= '#ws-wt-row-' . (int) $result['row_id'];
+            break;
+
+        case 'bin_row_delete':
+            $bin = ws_wtable_bin_row((int) ($table['id'] ?? 0), (int) ($_POST['wt_bin'] ?? 0));
+            $result = ws_wtable_bin_row_delete($viewer, $table, $bin);
+            $result['ok'] ? $liveform->add_notice(h(lang('The row was deleted for good.'))) : $refused($result);
+            $back .= '#ws-wt-deleted-rows';
             break;
 
         case 'share_set':
@@ -304,8 +348,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                if (empty($map)) {
-                    $liveform->add_error(h(lang('Choose at least one column to fill.')));
+                $checked = empty($map) ? null : ws_wtable_import_check($viewer, $table, $kept, array('map' => $map));
+
+                if (!$checked || !$checked['ok']) {
+                    $liveform->add_error(h($checked ? ws_wtable_screen_error_text($checked['error']) : lang('Choose at least one column to fill.')));
                     $back = $table_url . '&import=1#ws-wt-import';
                     break;
                 }
@@ -325,8 +371,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                if (empty($plan)) {
-                    $liveform->add_error(h(lang('Choose at least one column to fill.')));
+                $checked = empty($plan) ? null : ws_wtable_import_check($viewer, null, $kept, array('name' => $field('name'), 'plan' => $plan));
+
+                if (!$checked || !$checked['ok']) {
+                    $liveform->add_error(h($checked ? (isset($checked['column']) ? $checked['column'] . ': ' : '') . ws_wtable_screen_error_text($checked['error']) : lang('Choose at least one column to fill.')));
                     $back = $self_url . '?import=1#ws-wt-import';
                     break;
                 }
@@ -683,6 +731,39 @@ if (!$table) {
             <tbody>' . $lines . '</tbody>
         </table></div>';
 
+    // The person's own deleted tables, each restored whole until the bin
+    // lets it go.
+    $deleted_card = '';
+    $binned = ($scope === 'shared') ? array() : ws_wtables_binned($viewer);
+
+    if (!empty($binned)) {
+        $deleted_lines = '';
+
+        foreach ($binned as $item) {
+            $deleted_lines .= '
+            <tr>
+                <td><i class="bi bi-table me-1 fg-secondary" aria-hidden="true"></i>' . h($item['name']) . '</td>
+                <td class="text-end">' . (int) $item['row_count'] . '</td>
+                <td class="small fg-secondary text-nowrap">' . h(ws_time_label((int) $item['deleted_at'])) . '</td>
+                <td class="small fg-secondary text-nowrap">' . h(date('d.m.Y', (int) $item['expires_at'])) . '</td>
+                <td class="text-end"><button type="button" class="btn btn-sm btn-text theme-primary ws-wt-action" data-action="table_restore" data-table="' . (int) $item['id'] . '">'
+                    . '<i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Restore')) . '</button></td>
+            </tr>';
+        }
+
+        $deleted_card = '
+            <div class="card mb-5" id="ws-wt-deleted">
+                <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang('Deleted tables')) . '</h2></div>
+                <div class="card-body">
+                    <p class="small fg-secondary">' . h(lang(array('string' => 'A deleted table stays here for {var:1} days, out of everybody\'s reach; then it is deleted for good.', 'vars' => ws_wtable_bin_days()))) . '</p>
+                    <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+                        <thead><tr><th scope="col">' . h(lang('Name')) . '</th><th scope="col" class="text-end">' . h(lang('Rows')) . '</th><th scope="col">' . h(lang('Deleted')) . '</th><th scope="col">' . h(lang('Deleted for good on')) . '</th><th scope="col" aria-label="' . h(lang('Actions')) . '"></th></tr></thead>
+                        <tbody>' . $deleted_lines . '</tbody>
+                    </table></div>
+                </div>
+            </div>';
+    }
+
     $starter_options = '<option value="">' . h(lang('An empty table')) . '</option>';
 
     foreach (ws_wtable_starters() as $key => $starter) {
@@ -695,7 +776,7 @@ if (!$table) {
             <div class="card mb-5">
                 <div class="card-header d-flex flex-wrap gap-3 align-items-center">' . $tabs . '</div>
                 <div class="card-body">' . $list . '</div>
-            </div>
+            </div>' . $deleted_card . '
         </div>
         <div class="col-12 xl:col-4">
             <div class="card mb-5" id="ws-wt-new">
@@ -756,9 +837,59 @@ if (!$table) {
     $can_manage = ws_wtable_may($table['access'], 'manage');
     $columns = ws_wtable_columns($id);
     $after = (is_string($_GET['after'] ?? null) && ((int) $_GET['after'] > 0)) ? (int) $_GET['after'] : 0;
-    $page = ws_wtable_rows_page($id, $columns, $after, 100);
-
     $team = ws_team_members();
+    $team_names = array();
+
+    foreach ($team as $person) {
+        $team_names[(int) $person['id']] = array('name' => (string) $person['name']);
+    }
+
+    // The query bar: conditions as typed, read the screen's way into the
+    // values the conditions compare (money to minor units, a status by its
+    // label), and a sort. A query that does not fit the table is named and
+    // the rows show unfiltered.
+    $screen_query = ws_wtable_query_from_get($_GET);
+    $query = array('where' => array()) + $screen_query;
+    unset($query['typed']);
+
+    foreach ($screen_query['typed'] as $line) {
+        $column = $columns[(string) $line['column']] ?? null;
+        $query['where'][] = array('column' => $line['column'], 'op' => $line['op'],
+            'value' => is_array($column) ? ws_wtable_query_screen_value($column, $line['value'], $team_names, defined('DATE_FORMAT') ? (string) DATE_FORMAT : '') : $line['value']);
+    }
+
+    $query_refusal = ws_wtable_query_active($query) ? ws_wtable_query_refusal($columns, $query) : '';
+    $query_on = ws_wtable_query_active($query) && ($query_refusal === '');
+    $query_params = ws_wtable_query_params($screen_query);
+    $total_columns = array_filter($columns, function ($column) {
+        return ws_wtable_total_type($column['type']);
+    });
+    $totals_all = !empty($total_columns) && (($_GET['totals'] ?? '') === 'all');
+
+    if ($totals_all) {
+        $query_params['totals'] = 'all';
+    }
+
+    $query_qs = empty($query_params) ? '' : '&' . http_build_query($query_params);
+    $from = 0;
+    $query_rows = null;
+
+    if ($query_on) {
+        // Filtered or sorted: worked out over every row, paged by an offset.
+        $from = (is_string($_GET['from'] ?? null) && ((int) $_GET['from'] > 0)) ? (int) $_GET['from'] : 0;
+        $after = 0;
+        $query_rows = ws_wtable_query_rows($columns, ws_wtable_rows($id, $columns), $query);
+        $page = ws_wtable_query_page($query_rows, $from, 100);
+    } else {
+        $page = ws_wtable_rows_page($id, $columns, $after, 100);
+
+        if ($totals_all) {
+            $query_rows = ws_wtable_rows($id, $columns);
+        }
+    }
+
+    // What a link to this page of rows carries: the query and the page.
+    $page_qs = $query_qs . ($query_on ? ($from ? '&from=' . $from : '') : ($after ? '&after=' . $after : ''));
     $person_ids = array();
 
     foreach ($page['rows'] as $row) {
@@ -769,13 +900,70 @@ if (!$table) {
         }
     }
 
+    // The rows in the table's bin, for whoever may change the table.
+    $bin_days = ws_wtable_bin_ready() ? ws_wtable_bin_days() : 0;
+    $bin_rows = $can_write ? (array) ws_wtable_bin_rows($viewer, $table) : array();
+
+    foreach ($bin_rows as $row) {
+        foreach ($columns as $column_id => $column) {
+            if (($column['type'] === 'person') && !empty($row['cells'][$column_id])) {
+                $person_ids[] = (int) $row['cells'][$column_id];
+            }
+        }
+
+        $person_ids[] = (int) $row['deleted_by'];
+    }
+
     $people = empty($person_ids) ? array() : ws_people(array_unique($person_ids));
 
     // The rows.
     $head = '';
 
-    foreach ($columns as $column) {
-        $head .= '<th scope="col"' . (in_array($column['type'], array('number', 'money', 'formula'), true) ? ' class="text-end"' : '') . '>' . h($column['name']) . '</th>';
+    foreach ($columns as $column_id => $column) {
+        // A heading sorts by its column: up, then down, then the table's order.
+        $sorted = ((int) $screen_query['sort'] === (int) $column_id) ? (string) $screen_query['dir'] : '';
+        $next = array('' => array('sort' => (string) (int) $column_id), 'asc' => array('sort' => (string) (int) $column_id, 'dir' => 'desc'), 'desc' => array())[$sorted];
+        $sort_params = array_diff_key($query_params, array('sort' => 1, 'dir' => 1)) + $next;
+        $icon = array('' => '', 'asc' => ' <i class="bi bi-sort-up" aria-hidden="true"></i>', 'desc' => ' <i class="bi bi-sort-down" aria-hidden="true"></i>')[$sorted];
+
+        $head .= '<th scope="col"' . (in_array($column['type'], array('number', 'money', 'formula'), true) ? ' class="text-end"' : '')
+            . (($sorted !== '') ? ' aria-sort="' . (($sorted === 'asc') ? 'ascending' : 'descending') . '"' : '') . '>'
+            . '<a class="fg-reset text-decoration-none" href="' . h($table_url . (empty($sort_params) ? '' : '&' . http_build_query($sort_params))) . '#ws-wt-rows" title="' . h(lang('Sort by this column')) . '">' . h($column['name']) . $icon . '</a></th>';
+    }
+
+    // The totals line: sum, average, smallest and largest of each number,
+    // money and formula column, over the rows shown or every row the query
+    // keeps.
+    $totals_foot = '';
+    $totals_switch = '';
+
+    if (!empty($total_columns) && !empty($page['rows'])) {
+        $totals = ws_wtable_rows_totals($columns, $totals_all ? (array) $query_rows : $page['rows']);
+        $names = array('sum' => lang('Sum'), 'avg' => lang('Average'), 'min' => lang('Smallest'), 'max' => lang('Largest'));
+
+        foreach ($names as $key => $label) {
+            $cells = '';
+
+            foreach ($columns as $column_id => $column) {
+                $cells .= isset($totals[(string) $column_id])
+                    ? '<td class="text-end text-nowrap">' . h(ws_wtable_query_total_text($column, $totals[(string) $column_id][$key])) . '</td>'
+                    : '<td></td>';
+            }
+
+            $totals_foot .= '<tr class="small"><th scope="row" class="fw-normal fg-secondary text-end text-nowrap">' . h($label) . '</th>' . $cells . ($can_write ? '<td></td>' : '') . '</tr>';
+        }
+
+        $totals_foot = '<tfoot class="ws-wt-totals">' . $totals_foot . '</tfoot>';
+        $totals_switch = '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('Totals over')) . '">';
+
+        foreach (array('page' => lang('Rows shown'), 'all' => $query_on ? lang('All matching rows') : lang('All rows')) as $key => $label) {
+            $here = (($key === 'all') === $totals_all);
+            $switch_params = array_diff_key($query_params, array('totals' => 1)) + (($key === 'all') ? array('totals' => 'all') : array());
+            $totals_switch .= '<a class="btn btn-text theme-secondary' . ($here ? ' active' : '') . '" href="' . h($table_url . (empty($switch_params) ? '' : '&' . http_build_query($switch_params)) . ($query_on ? ($from ? '&from=' . $from : '') : ($after ? '&after=' . $after : ''))) . '#ws-wt-rows"'
+                . ($here ? ' aria-current="true"' : '') . '>' . h($label) . '</a>';
+        }
+
+        $totals_switch .= '</div>';
     }
 
     $lines = '';
@@ -810,8 +998,8 @@ if (!$table) {
         $tools = '';
 
         if ($can_write) {
-            $tools = '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . '&row=' . (int) $row['id'] . ($after ? '&after=' . $after : '')) . '#ws-wt-row-form" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>'
-                . ws_wtable_screen_action_button(array('action' => 'row_delete', 'row' => (int) $row['id'], 'revision' => (int) $row['revision']), lang('Delete'), 'bi-trash', lang('Delete this row?'));
+            $tools = '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . '&row=' . (int) $row['id'] . $page_qs) . '#ws-wt-row-form" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>'
+                . ws_wtable_screen_action_button(array('action' => 'row_delete', 'row' => (int) $row['id'], 'revision' => (int) $row['revision']), lang('Delete'), 'bi-trash', ws_wtable_screen_delete_confirm('row', (string) $table['name'], $bin_days));
         }
 
         $lines .= '<tr id="ws-wt-row-' . (int) $row['id'] . '"><td class="small fg-secondary text-end">' . (int) $row['position'] . '</td>' . $line . ($can_write ? '<td class="text-end text-nowrap">' . $tools . '</td>' : '') . '</tr>';
@@ -819,23 +1007,29 @@ if (!$table) {
 
     $pager = '';
 
-    if ($after > 0) {
-        $pager .= '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url) . '#ws-wt-rows"><i class="bi bi-chevron-double-left me-1" aria-hidden="true"></i>' . h(lang('First page')) . '</a>';
+    if (($after > 0) || ($from > 0)) {
+        $pager .= '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . $query_qs) . '#ws-wt-rows"><i class="bi bi-chevron-double-left me-1" aria-hidden="true"></i>' . h(lang('First page')) . '</a>';
     }
 
     if ($page['next'] !== null) {
-        $pager .= '<a class="btn btn-sm btn-text theme-secondary ms-auto" href="' . h($table_url . '&after=' . (int) $page['next']) . '#ws-wt-rows">' . h(lang('Next page')) . '<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i></a>';
+        $pager .= '<a class="btn btn-sm btn-text theme-secondary ms-auto" href="' . h($table_url . $query_qs . ($query_on ? '&from=' : '&after=') . (int) $page['next']) . '#ws-wt-rows">' . h(lang('Next page')) . '<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i></a>';
     }
 
     if (empty($columns)) {
         $rows_body = pg_empty_state('bi-layout-three-columns', lang('No column yet'), $can_write ? lang('Add the table\'s columns first: their names and what each holds.') : '');
+    } elseif (($lines === '') && $query_on) {
+        $rows_body = pg_empty_state('bi-funnel', lang('No row meets the conditions'));
     } elseif ($lines === '') {
         $rows_body = pg_empty_state('bi-table', lang('No row yet'));
     } else {
         $rows_body = '<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
             <thead><tr><th scope="col" class="text-end">#</th>' . $head . ($can_write ? '<th scope="col" aria-label="' . h(lang('Actions')) . '"></th>' : '') . '</tr></thead>
-            <tbody>' . $lines . '</tbody>
-        </table></div>' . (($pager !== '') ? '<div class="d-flex gap-3 mt-3">' . $pager . '</div>' : '');
+            <tbody>' . $lines . '</tbody>' . $totals_foot . '
+        </table></div>' . ((($pager !== '') || ($totals_switch !== '')) ? '<div class="d-flex flex-wrap align-items-center gap-3 mt-3">' . $totals_switch . $pager . '</div>' : '');
+    }
+
+    if (!empty($columns)) {
+        $rows_body = ws_wtable_screen_query_bar($self_url, $id, $columns, $screen_query, $team, $query_refusal, $totals_all) . $rows_body;
     }
 
     // The row form: a new row, or the one ?row= names.
@@ -949,7 +1143,7 @@ if (!$table) {
                         ' . (($fields !== '') ? $fields : '<p class="small fg-secondary">' . h(lang('Every column of this table is worked out by a formula.')) . '</p>') . '
                         <div class="d-flex gap-3 mt-5">
                             <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . h($edit ? lang('Save') : lang('Add')) . '</button>
-                            ' . ($edit || ($edit_id > 0) ? '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . ($after ? '&after=' . $after : '')) . '#ws-wt-rows">' . h(lang('Cancel')) . '</a>' : '') . '
+                            ' . ($edit || ($edit_id > 0) ? '<a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . $page_qs) . '#ws-wt-rows">' . h(lang('Cancel')) . '</a>' : '') . '
                         </div>
                     </form>
                 </div>
@@ -1175,6 +1369,37 @@ if (!$table) {
                 </div>
             </div>';
 
+    // The table's deleted rows: restored at the end of the table, or deleted
+    // for good, until the bin lets them go.
+    $bin_card = '';
+
+    if (!empty($bin_rows)) {
+        $bin_lines = '';
+
+        foreach ($bin_rows as $row) {
+            $summary = ws_wtable_screen_bin_summary($columns, (array) $row['cells'], $people);
+            $bin_lines .= '
+                    <li class="d-flex align-items-start gap-2 py-2 border-bottom">
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="small text-truncate">' . h(($summary !== '') ? $summary : lang('An empty row')) . '</div>
+                            <div class="small fg-secondary">' . h(lang(array('string' => 'Deleted by {var:1}, {var:2} · deleted for good on {var:3}', 'vars' => array(
+                                $people[(int) $row['deleted_by']]['name'] ?? lang('somebody'), ws_time_label((int) $row['deleted_at']), date('d.m.Y', (int) $row['expires_at']))))) . '</div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-text theme-primary ws-wt-action" data-action="row_restore" data-bin="' . (int) $row['bin_id'] . '" title="' . h(lang('Restore')) . '" aria-label="' . h(lang('Restore')) . '"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></button>
+                        ' . ws_wtable_screen_action_button(array('action' => 'bin_row_delete', 'bin' => (int) $row['bin_id']), lang('Delete for good'), 'bi-x-lg', lang('Delete this row for good? It cannot be brought back.')) . '
+                    </li>';
+        }
+
+        $bin_card = '
+            <div class="card mb-5" id="ws-wt-deleted-rows">
+                <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Deleted rows ({var:1})', 'vars' => count($bin_rows)))) . '</h2></div>
+                <div class="card-body">
+                    <p class="small fg-secondary">' . h(lang(array('string' => 'A deleted row stays here for {var:1} days. Restored, it comes back at the end of the table.', 'vars' => $bin_days))) . '</p>
+                    <ul class="list-unstyled mb-0">' . $bin_lines . '</ul>
+                </div>
+            </div>';
+    }
+
     $owner_note = '';
 
     if (!$can_manage) {
@@ -1292,13 +1517,15 @@ if (!$table) {
             <div class="col-12 xl:col-8">
                 <div class="card mb-5" id="ws-wt-rows">
                     <div class="card-header d-flex align-items-center gap-3"><h2 class="h6 mb-0 flex-grow-1"><i class="bi bi-table me-1" aria-hidden="true"></i>'
-                        . h(lang(array('string' => '{var:1} rows', 'vars' => (int) $table['row_count']))) . '</h2>' . $views . '</div>
+                        . h($query_on && !empty($query['where'])
+                            ? lang(array('string' => '{var:1} of {var:2} rows', 'vars' => array(count((array) $query_rows), (int) $table['row_count'])))
+                            : lang(array('string' => '{var:1} rows', 'vars' => (int) $table['row_count']))) . '</h2>' . $views . '</div>
                     <div class="card-body">' . $rows_body . '</div>
                 </div>
                 ' . $row_form . '
             </div>
             <div class="col-12 xl:col-4">
-                ' . $columns_card . $import_rows_card . $details_card . $shares_card . '
+                ' . $columns_card . $import_rows_card . $details_card . $shares_card . $bin_card . '
             </div>
         </div>';
 
@@ -1366,7 +1593,7 @@ if (!$table) {
         ' . (($row_form !== '') ? '<a class="btn btn-sm btn-text theme-primary" href="' . h($table_url) . '#ws-wt-row-form"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New row')) . '</a>' : '') . '
         <a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . '&download=xlsx') . '" download><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>' . h(lang('Download as Excel')) . '</a>
         ' . ($can_manage ? '<button type="button" class="btn btn-sm btn-text theme-danger ws-wt-action ms-auto" data-action="table_delete" data-confirm="'
-            . h(lang(array('string' => 'Delete the table {var:1} with its rows and shares? It cannot be brought back.', 'vars' => $table['name']))) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang('Delete table')) . '</button>' : '') . '
+            . h(ws_wtable_screen_delete_confirm('table', (string) $table['name'], $bin_days)) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang('Delete table')) . '</button>' : '') . '
     </nav>' . $flow_window;
 
     $title = (string) $table['name'];
@@ -1414,6 +1641,7 @@ $shell . '
         <input type="hidden" name="wt_column" value="">
         <input type="hidden" name="wt_row" value="">
         <input type="hidden" name="wt_share" value="">
+        <input type="hidden" name="wt_bin" value="">
         <input type="hidden" name="revision" value="">
     </form>
 </div>
@@ -1423,8 +1651,8 @@ $shell . '
 <script>
 (function () {
 
-    // Deletes post through one form outside the cards and the table rows,
-    // each asking first.
+    // Deletes and restores post through one form outside the cards and the
+    // table rows; a delete asks first.
     document.addEventListener("click", function (e) {
         var button = e.target.closest(".ws-wt-action");
         if (!button) { return; }
@@ -1435,6 +1663,8 @@ $shell . '
         form.elements.wt_column.value = button.dataset.column || "";
         form.elements.wt_row.value = button.dataset.row || "";
         form.elements.wt_share.value = button.dataset.share || "";
+        form.elements.wt_bin.value = button.dataset.bin || "";
+        if (button.dataset.table) { form.elements.wt_table.value = button.dataset.table; }
         form.elements.revision.value = button.dataset.revision || "";
         form.submit();
     });

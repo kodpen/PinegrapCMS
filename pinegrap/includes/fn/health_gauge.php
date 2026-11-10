@@ -21,13 +21,67 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * The colours of the gauge for a score: four gradient stops for a dark card,
+ * four for a light one, and the flat ink of the number for each. Pure.
+ *
+ * Two palettes. 'classic' is dashboard widget 2's. 'dash' is the new
+ * dashboard's: the same cool-to-hot idea drawn from that dashboard's own
+ * colour family, so the arc, the name in the greeting, the charts and the
+ * check chips are one set of hues. Its middle band is the dashboard's
+ * signature sweep (cyan, indigo, fuchsia); the healthy bands lead with the
+ * emerald of an OK chip and stay cool; the failing bands lead with the amber
+ * of a warning chip and the red of a problem chip. Its light stops are the
+ * 600 weights: every one clears three to one against a white card, and none
+ * is as heavy as the 700s, which read as one dark bar there.
+ *
+ * @param int    $health_score 0-100
+ * @param string $palette      'classic' or 'dash'
+ * @return array ink, ink_text (RGB triples), stops, stops_lt (four hex colours each)
+ */
+function pg_health_gauge_band($health_score, $palette = 'classic')
+{
+    $health_score = (int) $health_score;
+
+    // Under 25, under 50, under 80, under 90, the rest.
+    $bands = ($palette === 'dash')
+        ? array(
+            array('248, 113, 113', '220, 38, 38', array('#fb923c', '#f87171', '#e879f9', '#a78bfa'), array('#ea580c', '#dc2626', '#c026d3', '#7c3aed')),
+            array('251, 146, 60', '194, 65, 12', array('#fbbf24', '#fb923c', '#fb7185', '#e879f9'), array('#d97706', '#ea580c', '#e11d48', '#c026d3')),
+            array('129, 140, 248', '79, 70, 229', array('#22d3ee', '#818cf8', '#c084fc', '#e879f9'), array('#0891b2', '#4f46e5', '#9333ea', '#c026d3')),
+            array('34, 211, 238', '8, 145, 178', array('#2dd4bf', '#22d3ee', '#38bdf8', '#818cf8'), array('#0d9488', '#0891b2', '#0284c7', '#4f46e5')),
+            array('52, 211, 153', '5, 150, 105', array('#34d399', '#2dd4bf', '#22d3ee', '#818cf8'), array('#059669', '#0d9488', '#0891b2', '#4f46e5')))
+        : array(
+            array('236, 72, 153', '190, 24, 93', array('#fb923c', '#f43f5e', '#e879f9', '#a78bfa'), array('#c2410c', '#be123c', '#a21caf', '#6d28d9')),
+            array('251, 146, 60', '180, 83, 9', array('#fde047', '#fb923c', '#fb7185', '#e879f9'), array('#a16207', '#c2410c', '#be123c', '#9333ea')),
+            array('59, 130, 246', '29, 78, 216', array('#22d3ee', '#38bdf8', '#818cf8', '#c084fc'), array('#0e7490', '#1d4ed8', '#6d28d9', '#a21caf')),
+            array('45, 212, 191', '13, 148, 136', array('#4ade80', '#2dd4bf', '#22d3ee', '#818cf8'), array('#0d9488', '#0891b2', '#2563eb', '#6d28d9')),
+            array('52, 211, 153', '4, 120, 87', array('#a3e635', '#34d399', '#22d3ee', '#818cf8'), array('#65a30d', '#059669', '#0891b2', '#3730a3')));
+
+    if ($health_score < 25) {
+        $band = $bands[0];
+    } elseif ($health_score < 50) {
+        $band = $bands[1];
+    } elseif ($health_score < 80) {
+        $band = $bands[2];
+    } elseif ($health_score < 90) {
+        $band = $bands[3];
+    } else {
+        $band = $bands[4];
+    }
+
+    return array('ink' => $band[0], 'ink_text' => $band[1], 'stops' => $band[2], 'stops_lt' => $band[3]);
+}
+
+/**
  * The gauge: the .pg-health block and the script that pauses an off-screen
  * dial. Its SVG ids are fixed, so a page draws one gauge.
  *
- * @param int $health_score 0-100
+ * @param int    $health_score 0-100
+ * @param string $palette      'classic' (widget 2) or 'dash' (the new
+ *                             dashboard), see pg_health_gauge_band()
  * @return string HTML
  */
-function pg_health_gauge($health_score)
+function pg_health_gauge($health_score, $palette = 'classic')
 {
     $health_score = (int) $health_score;
 
@@ -103,32 +157,13 @@ function pg_health_gauge($health_score)
     // The ink is the flat colour the number takes, and it has
     // the same problem: a 32px amber number on white is under
     // three to one against the page.
-    if ($health_score < 25) {
-        $health_ink       = '236, 72, 153';
-        $health_ink_text  = '190, 24, 93';
-        $health_stops     = array('#fb923c', '#f43f5e', '#e879f9', '#a78bfa');
-        $health_stops_lt  = array('#c2410c', '#be123c', '#a21caf', '#6d28d9');
-    } elseif ($health_score < 50) {
-        $health_ink       = '251, 146, 60';
-        $health_ink_text  = '180, 83, 9';
-        $health_stops     = array('#fde047', '#fb923c', '#fb7185', '#e879f9');
-        $health_stops_lt  = array('#a16207', '#c2410c', '#be123c', '#9333ea');
-    } elseif ($health_score < 80) {
-        $health_ink       = '59, 130, 246';
-        $health_ink_text  = '29, 78, 216';
-        $health_stops     = array('#22d3ee', '#38bdf8', '#818cf8', '#c084fc');
-        $health_stops_lt  = array('#0e7490', '#1d4ed8', '#6d28d9', '#a21caf');
-    } elseif ($health_score < 90) {
-        $health_ink       = '45, 212, 191';
-        $health_ink_text  = '13, 148, 136';
-        $health_stops     = array('#4ade80', '#2dd4bf', '#22d3ee', '#818cf8');
-        $health_stops_lt  = array('#0d9488', '#0891b2', '#2563eb', '#6d28d9');
-    } else {
-        $health_ink       = '52, 211, 153';
-        $health_ink_text  = '4, 120, 87';
-        $health_stops     = array('#a3e635', '#34d399', '#22d3ee', '#818cf8');
-        $health_stops_lt  = array('#65a30d', '#059669', '#0891b2', '#3730a3');
-    }
+    //
+    // The values are pg_health_gauge_band()'s, by palette.
+    $health_band      = pg_health_gauge_band($health_score, $palette);
+    $health_ink       = $health_band['ink'];
+    $health_ink_text  = $health_band['ink_text'];
+    $health_stops     = $health_band['stops'];
+    $health_stops_lt  = $health_band['stops_lt'];
 
     // The gradient is laid ALONG the drawn arc, not across the
     // circle's box. Across the box a site at 20% saw only the

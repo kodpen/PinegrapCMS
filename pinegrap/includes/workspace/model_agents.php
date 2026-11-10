@@ -10,7 +10,10 @@
  * ws_ai_step(): the same briefing, tools, proposals and approvals, only the
  * address, the key, the model and the application it writes through are the
  * assistant's. The agent card (agents_settings.php) keeps its row. While one runs, ws_model_running() holds it and the few
- * places of ai.php that reach the gateway or its config read it from there.
+ * places of ai.php that reach the gateway or its config read it from there;
+ * the loop's failure sentences name it (ws_model_loop_sentence()) and its
+ * own row in a channel says whether it is asked there
+ * (ws_model_channel_allowed()).
  *
  * For a model agent the door is the site itself, so no knock goes out;
  * door_url holds the chat API's base address where the provider has no
@@ -421,6 +424,93 @@ function ws_model_http_error($agent, $response)
 }
 
 /**
+ * A failure sentence of the loop the assistant shares with Pinegrap AI
+ * (ws_ai_loop_sentence()), naming the assistant.
+ *
+ * @param array  $agent the raw row
+ * @param string $which unreachable | no_model | undone | unfinished | channel
+ * @return string '' for any other
+ */
+function ws_model_loop_sentence($agent, $which)
+{
+    $name = (string) $agent['name'];
+
+    switch ((string) $which) {
+        case 'unreachable':
+            return lang(array('string' => '{var:1} could not be reached or took too long to answer.', 'vars' => $name));
+
+        case 'no_model':
+            return lang(array('string' => '{var:1} has no model to answer with.', 'vars' => $name));
+
+        case 'undone':
+            return lang(array('string' => '{var:1} could not do it', 'vars' => $name));
+
+        case 'unfinished':
+            return lang(array('string' => '{var:1} could not finish the answer.', 'vars' => $name));
+
+        case 'channel':
+            return lang(array('string' => '{var:1} may not be asked in this channel.', 'vars' => $name));
+    }
+
+    return '';
+}
+
+/**
+ * May a model assistant be asked in a channel, from what is known of the
+ * two? Its own row there decides (ws_channel_agents.allowed), as it decides
+ * an application agent's answer (ws_api_agent_request_place()): the
+ * channel's people added it, so a private channel nobody opened to Pinegrap
+ * AI does not keep it out. A channel closed to Pinegrap AI on purpose
+ * (ai_access 2) does: closing is the channel manager's
+ * (ws_ai_channel_set()), while whoever may post in a channel adds an
+ * assistant to it (ws_channel_agent_add_problem()), so an answer there
+ * would send a closed channel's words to the assistant's provider on a
+ * member's word. Nor is it asked where the assistants never are: a guest's
+ * room, a channel a guest reads along in. Pure.
+ *
+ * @param array|null $channel     the channel; for a discussion, the channel it belongs to
+ * @param bool       $guest_reads it is shared with somebody outside the team (ws_channel_share_open())
+ * @param array|null $row         the assistant's ws_channel_agents row where the request was made
+ * @return bool
+ */
+function ws_model_channel_verdict($channel, $guest_reads, $row)
+{
+    if (!is_array($channel) || (($channel['kind'] ?? '') === 'guest') || $guest_reads) {
+        return false;
+    }
+
+    if ((int) ($channel['ai_access'] ?? 0) === 2) {
+        return false;
+    }
+
+    return is_array($row) && ((int) ($row['allowed'] ?? 0) === 1);
+}
+
+/**
+ * May this model assistant be asked in this channel
+ * (ws_model_channel_verdict())?
+ *
+ * @param array      $agent   the raw row
+ * @param array|null $channel
+ * @return bool
+ */
+function ws_model_channel_allowed($agent, $channel)
+{
+    if (!is_array($channel)) {
+        return false;
+    }
+
+    // A discussion follows its channel (threads.php) in what closes it; the
+    // assistant's row is the one of the channel the request was made in.
+    $thread = (($channel['kind'] ?? '') === 'thread');
+    $place = $thread ? ws_thread_parent_channel($channel) : $channel;
+    $guest_reads = function_exists('ws_channel_share_open')
+        && (ws_channel_share_open($channel) || ($thread && ws_channel_share_open($place)));
+
+    return ws_model_channel_verdict($place, $guest_reads, ws_channel_agent_row((int) $channel['id'], (int) $agent['id']));
+}
+
+/**
  * ws_ai_response_problem() for a model assistant: its failures go on its
  * own row, never on Pinegrap AI's licence or hold.
  *
@@ -633,7 +723,12 @@ function ws_model_agent_run($agent, $budget)
             $row = ws_ai_request_row($row['id']);
         }
 
-        if (ws_ai_step($row) === 'held') {
+        // The answers of this step add their tokens to the request.
+        ws_ai_usage_request((int) $row['id']);
+        $step = ws_ai_step($row);
+        ws_ai_usage_request(0);
+
+        if ($step === 'held') {
             $status = 'held';
             break;
         }

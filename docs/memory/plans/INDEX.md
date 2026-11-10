@@ -4,12 +4,9 @@
 
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, not before 2026.11.0 ships): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
 - agent-activity-usage.md: Plan (owner 2026-11-09): the Agents card shows each agent's requests, failures, next wake and its waiting and failed requests; token counts and a monthly limit for model assistants; steps AU1-AU3
-- agent-channel-flag.md: Plan (owner 2026-11-08): a channel becomes an agent channel with /agent-channel, a column of its own; its decisions stay apart from the other channels' decisions; one step AC
-- agent-channel-questions.md: Plan (owner 2026-11-08): agents ask people with a checklist in an agent channel, read the ticks over the API, wake on a tick or a person's message; one step AQ
 - agent-channel-steps-2.md: Steps A0-A9 of plans/agent-channel.md: registry, doors, wakes, channel memory, model assistants, risk tiers, the canvas as a tool, further doors (Claude Code plugin, per-person sessions, chat box)
-- agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try, the two decided fixes not built yet, and what else the trial found wrong
+- agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
-- channel-export.md: Plan (owner 2026-11-09): a channel's conversation downloads as Markdown or opens as a print page, with its decisions and file list, for a date range; step CE1
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
@@ -17,7 +14,6 @@
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
 - file-picker-search-steps.md: Plan: the file and image pickers that still list every file move to the shared server search (file_picker_search.php, ui/file-picker-search.md); claim as [plan:file-picker-search-steps] <step>
-- flows-failure-reason.md: Plan (owner 2026-11-09): a failed flow box says which value came empty from which box, and offers "When empty, write" or the box itself; step FR1
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
 - image-editor-video-steps.md: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, video layer, timeline, sound, effects, overlays, export, large files, reopening, phone, access; claim as [plan:image-editor-video] V<n>
 - image-editor-video-visuals.md: Screens of plans/image-editor-video.md (V0), 35 to 42 in plans/image-editor/: what each shows and which step builds it
@@ -28,10 +24,9 @@
 - kodpen-vendor-api-client-steps.md: Steps P1-P8 of plans/kodpen-vendor-api-client.md: changes, files, tests, memory, size, order; claim as [plan:kodpen-vendor-api-client] P<n>
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): 2026.11.0 asks api.kodpen.com/v1 for licences and signed updates behind one switch line, no api2 fallback; steps P1-P8 in -steps, contract in platform/vendor-api-*.md
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
+- memory-owner-steps.md: Plan: the two memory steps left for the owner's machine (documentation pages list, private notes) and the rerun of the documentation trial after them; the trial tasks and both runs' figures
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
-- shipping-checkout-rates-steps.md: Steps R1-R5 of plans/shipping-checkout-rates.md: Geliver price list, method link, checkout live rate, label on payment, Sendcloud and Shippo quotes; claim as [plan:shipping-checkout-rates] R<n>
-- shipping-checkout-rates.md: Plan (owner 2026-11-09): a shipping method linked to a carrier label service, its live price at checkout (Geliver, then Sendcloud and Shippo), its label made once the order is paid
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19; design note first, code after 2026.11.0 ships, #3798): public storefront API (cart, checkout, customer auth), base for OpenAI ACP and Google UCP bindings
 - storefront-api-callers.md: Storefront API design note: who calls it (application key + optional cart or customer token), the storefront:* scopes, rate buckets, Idempotency-Key and dry-run rules shared by every route
@@ -41,11 +36,8 @@
 - storefront-api-routes-cart.md: Storefront API design note: the cart routes (create, read, add/update/remove line, coupon, shipping choice), their scopes and the cart code each one calls instead of copying it
 - storefront-api-routes-checkout.md: Storefront API design note: checkout routes (create from cart, totals, payment intent through the payment driver layer, confirm), the totals functions they call, guest checkout
 - storefront-api-routes-customer.md: Storefront API design note: customer routes (sign-in, sign-up, refresh, sign-out, password reset, profile, orders, addresses, returns) with scopes, limits and the website code each one calls
-- tables-bin.md: Plan (owner 2026-11-09): a deleted workflow table or row is kept in a bin for the Recycle Bin's days and can be restored; steps TB1-TB2
 - tables-relational-steps.md: Steps 1-8 of plans/tables-relational.md: row choice, conditions and Read rows, screen query and totals, keys, row links, joined columns, lists, type changes
 - tables-relational.md: Plan (owner 2026-11-09): workflow tables that behave like SQL tables (keys, row links, joined columns, lists, type changes), flows that pick a row or total rows; steps in tables-relational-steps
-- tables-xlsx-import-route.md: Plan (owner 2026-11-09): a workflow table downloads as an Excel file; an API route and MCP tool import a file or a note's table into a table, with a dry run; steps TX1-TX2
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
-- workspace-app-lines-fold.md: Plan (owner 2026-11-09): a run of one-line messages from one application folds into one row with "+N lines" in a channel; each reader chooses folded, all or hidden; step AL1
 - workspace-menu-layout.md: Plan (owner decision 2026-10-30) for a tidier Workspace list in the main menu: search, places, one Channels section, discussions, Tools tiles; channel screen unchanged
 - workspace-scheduling-one-path.md: Plan (owner 2026-11-09): scheduled work set up only on the flow canvas and listed only in the flow table; Run now and the next run for flows that start at a time; one start-a-flow box

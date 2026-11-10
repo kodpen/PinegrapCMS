@@ -185,7 +185,7 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin)
         $rows .= $field('kind', lang('Kind'), $select('kind', array('app' => lang('Works through an application'), 'model' => lang('Runs on a model')), 'app'));
     }
 
-    $rows .= $field('handle', lang('Handle'), $input('handle', $value('handle'), ' maxlength="32" autocomplete="off"' . ($claude ? ' readonly' : '')), lang('Called with @ in the channels: 2 to 32 small letters, digits, - or _.'));
+    $rows .= $field('handle', lang('Handle (@name)'), $input('handle', $value('handle'), ' maxlength="32" autocomplete="off"' . ($claude ? ' readonly' : '')), lang('Called with @ in the channels: 2 to 32 small letters, digits, - or _.'));
     $rows .= $field('name', lang('Name'), $input('name', $value('name'), ' maxlength="100"'));
     $rows .= $field('status', lang('Status'), $select('status', array('active' => lang('Active'), 'paused' => lang('Paused'), 'off' => lang('Off')), $agent ? $agent['status'] : 'active'));
 
@@ -254,9 +254,12 @@ function ws_agents_settings_card($self_url, $viewer)
     $apps = ws_agents_settings_apps();
     $status = array('active' => lang('Active'), 'paused' => lang('Paused'), 'off' => lang('Off'));
     $list = '';
+    $agents = ws_agents_list();
+    $counts = function_exists('ws_agent_activity_read_counts') ? ws_agent_activity_read_counts($agents) : array();
 
-    foreach (ws_agents_list() as $agent) {
-        $door = ($agent['door_kind'] === 'push') ? lang('Push') : lang('Poll');
+    foreach ($agents as $agent) {
+        // Keys of their own: "Poll" is a vote and "Handle" a user name elsewhere.
+        $door = ($agent['door_kind'] === 'push') ? lang('Push door') : lang('Poll door');
         $knock = ($agent['door_last_knock'] > 0) ? lang(array('string' => 'last {var:1}', 'vars' => date('d.m.Y H:i', $agent['door_last_knock']))) : '';
         $error = ($agent['door_error'] !== '') ? '<div class="small fg-danger">' . h($agent['door_error']) . '</div>' : '';
         $schedule = ($agent['wake_every'] > 0) ? ' · ' . h(lang(array('string' => 'every {var:1} min', 'vars' => $agent['wake_every']))) : '';
@@ -269,7 +272,7 @@ function ws_agents_settings_card($self_url, $viewer)
                     <span class="small fg-secondary">' . h($door) . (($knock !== '') ? ', ' . h($knock) : '') . $schedule . '</span>
                     <span class="badge badge-subtle ' . (($agent['status'] === 'active') ? 'theme-success' : 'theme-secondary') . '">' . h($status[$agent['status']] ?? $agent['status']) . '</span>
                 </summary>
-                ' . $error . ws_agents_settings_form($self_url, $agent, $apps, $admin) . '
+                ' . $error . (function_exists('ws_agent_activity_block') ? ws_agent_activity_block($self_url, $viewer, $agent, $counts) : '') . ws_agents_settings_form($self_url, $agent, $apps, $admin) . '
             </details>';
     }
 
@@ -277,9 +280,11 @@ function ws_agents_settings_card($self_url, $viewer)
         $list = '<p class="small fg-secondary mb-0">' . h(lang('No agent yet. An agent is called by its handle in the channels it is added to.')) . '</p>';
     }
 
+    // A key of its own: "Agents" is the real-estate template's estate agents,
+    // worded "Danışmanlar" in Turkish.
     return '
         <div class="card mt-7" id="ws-agents">
-            <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-robot me-1" aria-hidden="true"></i>' . h(lang('Agents')) . '</h2></div>
+            <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-robot me-1" aria-hidden="true"></i>' . h(lang('Workspace agents')) . '</h2></div>
             <div class="card-body">
                 <p class="small fg-secondary">' . h(lang('Agents act as members of the channels they are added to, each through its own application and within the tier the channel\'s manager allows.')) . '</p>
                 ' . $list . '

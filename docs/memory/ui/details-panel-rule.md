@@ -1,6 +1,6 @@
 ---
 name: details-panel-rule
-description: The one structure rule of a list's details panel ("Ayrıntılar"): fixed section order, label/value lines with a fixed label column, empty values left out; how the table driver applies it
+description: The one structure rule of a list's details panel ("Detaylar"): fixed section order, label/value lines with a fixed label column, empty values left out; how the table driver applies it
 module: list_table
 ---
 
@@ -9,7 +9,7 @@ module: list_table
 
 ## What is the rule?
 - Sections, always in this order:
-  1. a header strip: the word "Ayrıntılar" and the close button;
+  1. a header strip: the word "Detaylar" (`lang('Details')`) and the close button;
   2. the record's name as the heading (the list's first column);
   3. its pictures (image columns), without a label;
   4. one line per other column, in the user's column order: a fixed label column (`--pg-list-table-label`, 8rem, small muted text) and the value beside it, a hairline between lines;

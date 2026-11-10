@@ -6,7 +6,7 @@ module: shipping_methods
 
 ## What is stored?
 - Step 11.0.177 (`upgrade_2026_11_0_shipping_method_label_link()`, decided in `workflow/decisions-made-schema-13.md`, #8375): `shipping_methods.label_driver` VARCHAR(32) and `label_service` VARCHAR(64), both `''` by default; `shipping_rates.service` ENUM → VARCHAR(100), old values kept, MODIFY only while not a VARCHAR (rerun is a skip).
-- `label_service` `''` = the cheapest offer. Plan: `plans/shipping-checkout-rates.md` (the quote charged at checkout: `shipping-label-checkout-rate.md`; R4 the automatic label).
+- `label_service` `''` = the cheapest offer. The quote charged at checkout: `shipping-label-checkout-rate.md`; the label once paid: `shipment-label-auto.md`.
 
 ## How does the method screen pick it?
 - "Carrier Service" (`pg_shipping_method_label_field()`, `includes/forms/shipping_method_form.php`) lists the drivers of `pg_shipping_method_label_drivers()`: on, ready, can `create` (`pg_shipment_label_drivers()`), each with its services from `_info()['services']` (code => name, cleaned by `pg_shipping_method_label_services_clean()`). Without a list the option takes a typed "Service Code" box (`label_service_code`, shown by `init_shipping_method_service()` in `backend.src.js`).

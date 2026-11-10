@@ -163,7 +163,7 @@
 
                     remove.disabled = true;
                     h.api('ws_channel_agents_remove', { channel_id: channel.id, agent_id: agent.agent_id })
-                        .then(draw)
+                        .then(changed)
                         .catch(function (problem) {
                             remove.disabled = false;
                             h.fail(problem);
@@ -219,7 +219,7 @@
             add.addEventListener('click', function () {
                 add.disabled = true;
                 h.api('ws_channel_agents_set', { channel_id: channel.id, agent_id: parseInt(pick.value, 10) })
-                    .then(draw)
+                    .then(changed)
                     .catch(function (problem) {
                         add.disabled = false;
                         h.fail(problem);
@@ -230,6 +230,27 @@
             wrap.appendChild(add);
 
             return wrap;
+        }
+
+        // The @ list of the open channel reads channel.apps, which the
+        // screen took with the channel (ws_channel_app_picker()): after an
+        // agent is added or removed it is read again, so the list offers
+        // what the channel now holds without a reload.
+        function refreshApps() {
+            return h.api('ws_channel_get', { channel_id: channel.id }).then(function (data) {
+                if (data && data.channel && (data.channel.id === channel.id)) {
+                    channel.apps = data.channel.apps || [];
+                }
+            }).catch(function () {
+                // The drawer stands as drawn; a reload reads the list.
+            });
+        }
+
+        // Draws what an add or a removal answered, then reads the @ list
+        // again.
+        function changed(state) {
+            draw(state);
+            refreshApps();
         }
 
         function draw(state) {

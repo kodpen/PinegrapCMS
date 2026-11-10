@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-41
-description: Decisions list, product part 41 (2026-11-09 on): Workspace scheduling in one place: no Scheduled flow window, one flow list, one start-a-flow box, Start a flow only where a flow can start
+description: Decisions list, product part 41 (2026-11-09 on): Workspace scheduling in one place (no Scheduled flow window, one flow list); the new dashboard's System Status card: look, lights off, chips in sight
 ---
 
 ## Where are the rules and the earlier parts?
@@ -13,3 +13,10 @@ description: Decisions list, product part 41 (2026-11-09 on): Workspace scheduli
   - The canvas palette offers "Start a flow" only. "Start a scheduled action" boxes already saved keep running and stay editable; the conversion made them from old trigger steps.
   - Add › Start a flow stays, shown only in a channel where the person may start a flow. It is the panel's only way to run a flow with its tasks and its card in that channel.
 - Owner (2026-11-09): the old scheduled actions shipped, but nobody uses them yet. Their useful functions come into flows: the next run and Run now. Nothing is built for the old rows as if they were in use, so they get no mark of their own and no history is moved over; they only keep running.
+
+## How does the new dashboard's System Status card look and behave? (2026-11-10)
+- Owner (2026-11-10, in chat and as a selectable list; `ui/dashboard-v2-status-card-look.md`). The gauge itself stays the one of 2026-11-01 (`decisions-made-product-17.md`).
+  - With "Lights and shadows" off the gauge keeps its twinkle; only the light around it, the shadows and the backdrop go ("animasyonu geri gelsin", "Kapalıyken de oynasın"). Reason: with the switch off the gauge stood still, which read as its animation being gone.
+  - The gauge's colours follow the card style, the dashboard's colour family and the light or dark theme, and the chips with them ("renkleri temaları ile daha uyumlu olsun").
+  - The card's header button reads "Changes" ("detaylar yazan düğmeyi, değişiklikler olarak güncelleyelim"): it opens the Release Notes.
+  - The chips are smaller and only the urgent ones stay in sight ("altındaki chipleri biraz daha küçültelim sadece acil olanlar sürekli görünsünler"): the failed checks; every other check folds behind one chip.

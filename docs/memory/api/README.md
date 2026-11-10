@@ -19,6 +19,10 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - Keep OAuth tokens as `api_devices` rows and outgoing tokens behind `pg_connect_*()`: no token table, file or config column, and never read a refresh token (`api-connected-accounts.md`).
 <!-- key-rules:end -->
 
+## Clusters
+
+- `api-store-*`: 6 files.
+
 ## Files
 
 - `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.

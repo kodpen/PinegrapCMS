@@ -5,7 +5,7 @@ description: Conditions over workflow table rows (wtable_where.php, PR #8400): c
 
 ## What is it for?
 - SQL's WHERE, ORDER BY and its totals for workflow tables (plan `plans/tables-relational.md`, step 2). Pure functions over the rows a read gives (`ws_wtable_rows()`, formulas worked out), since cells are JSON per row and filtering happens in PHP (`workflow-tables.md`).
-- Used by the flow boxes "Read rows of a table" and "Read a row" by match (`workspace-flows-rows-get-box.md`). Step 3 puts the same conditions on the table screen and the rows API.
+- Used by the flow boxes "Read rows of a table" and "Read a row" by match (`workspace-flows-rows-get-box.md`), and by the table screen's query bar and the rows API (`workflow-tables-query.md`).
 
 ## What does a condition look like?
 - `{column, op, value}`, at most `WS_WTABLE_WHERE_MAX` (10) in a list, joined by `all` or `any` (`ws_wtable_where_joins()`, an unknown word is all). No condition keeps every row.

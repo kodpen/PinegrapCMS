@@ -20,5 +20,5 @@ description: How workers take the free steps of the image editor's plans (done b
 - Try it in a browser (`workflow/sandbox-and-environment.md`) at desktop size and on a phone (390x844 and 844x390, touch): draw or type, move, resize, undo and redo, save over a file and as a copy, reopen. The PR body says what was tried on both and what could not be.
 
 ## How is it reviewed?
-- With the checks passing, the worker comments "Ready for review" on its draft PR and waits for the holder (a stated wait, not a stale draft). The holder tries it against the screens on desktop and phone and answers on the PR: changes, or "Reviewed".
-- After "Reviewed" the worker marks the PR ready (CI runs) and adds the `ready` label once green (CLAUDE.md Working mode 2); the merging session merges it.
+- Never on the PR: a comment there reaches nobody (two drafts waited days for a "Reviewed" in November 2026). With the checks green, the worker asks the holder's review as an owner's approval (`workflow/architect-asking.md` "How is the owner's approval of a PR asked?"): it opens an `architect` issue `Approval: #<pr> — <topic>`, writes `Approval: #<issue>` in the PR body, marks the PR ready with the `ready` label and ends.
+- The holder tries it against the screens on desktop and phone; the architect brings the answer and the merging session merges only after it.

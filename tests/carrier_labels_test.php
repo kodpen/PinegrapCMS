@@ -433,3 +433,40 @@ function test_carrier_labels_rate_zone()
 	pg_assert_same('----', pg_label_rate_zone(array(), array('zip' => "-'\"")));
 	pg_assert_same(40, strlen(pg_label_rate_zone(array(), array('country' => 'US', 'zip' => str_repeat('9', 60)))));
 }
+
+function test_carrier_labels_decide_auto_label()
+{
+	carrier_labels_test_register();
+	$fields = pg_label_fields('pgtestship');
+	$values = array('api_key' => 'k', 'mode' => 'test');
+	$post = array('label_pgtestship__present' => '1', 'label_pgtestship__enabled' => '1', 'label_pgtestship__api_key' => 'k', 'label_pgtestship__mode' => 'test', 'label_pgtestship__auto_label' => '1');
+
+	// Turned on: the time it was turned on is kept with it.
+	$on = pg_label_settings_decide('pgtestship', $fields, $post, carrier_labels_test_stored($values, array('api_secret' => 's'), true), 1000);
+	pg_assert_true($on['changed']);
+	pg_assert_same('1', $on['values']['auto_label']);
+	pg_assert_same('1000', $on['values']['auto_label_since']);
+
+	// Left on: the first time stays and nothing changes.
+	$kept = $values + array('auto_label' => '1', 'auto_label_since' => '1000');
+	$again = pg_label_settings_decide('pgtestship', $fields, $post, carrier_labels_test_stored($kept, array('api_secret' => 's'), true), 5000);
+	pg_assert_false($again['changed']);
+	pg_assert_same('1000', $again['values']['auto_label_since']);
+
+	// The driver back on after being off: orders paid meanwhile get none.
+	$back = pg_label_settings_decide('pgtestship', $fields, $post, carrier_labels_test_stored($kept, array('api_secret' => 's'), false), 5000);
+	pg_assert_same('5000', $back['values']['auto_label_since']);
+
+	// Turned off: both values go, and that is a change.
+	unset($post['label_pgtestship__auto_label']);
+	$off = pg_label_settings_decide('pgtestship', $fields, $post, carrier_labels_test_stored($kept, array('api_secret' => 's'), true), 5000);
+	pg_assert_true($off['changed']);
+	pg_assert_false(isset($off['values']['auto_label']));
+	pg_assert_false(isset($off['values']['auto_label_since']));
+
+	// Never on with the driver off.
+	$post['label_pgtestship__auto_label'] = '1';
+	unset($post['label_pgtestship__enabled']);
+	$driver_off = pg_label_settings_decide('pgtestship', $fields, $post, carrier_labels_test_stored($values, array('api_secret' => 's'), true), 5000);
+	pg_assert_false(isset($driver_off['values']['auto_label']));
+}

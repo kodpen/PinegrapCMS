@@ -405,6 +405,14 @@ if ($_POST) {
             $anchor = '#ws-agents';
             break;
 
+        // An agent's request from its activity (includes/workspace/agent_activity.php).
+        case 'agent_request_cancel':
+        case 'agent_request_retry':
+        case 'agent_request_knock':
+            ws_agent_activity_post($viewer, $action, $liveform);
+            $anchor = '#ws-agents';
+            break;
+
         // Bulk changes the assistants propose (includes/workspace/bulk.php).
         case 'bulk':
             ws_bulk_settings_post($viewer, $liveform);

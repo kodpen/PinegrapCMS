@@ -8,7 +8,7 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
 
 - V0 (S) Screens. Done (#7619, screens 35-42, `image-editor-video-visuals.md`).
 
-- V1 (M) Demux and decode. Part `video`. `free`.
+- V1 (M) Demux and decode. Part `video`. Done (#7658, `ui/image-editor-video-decode.md`).
   - Own MP4 (moov, trak, stsd, stts, ctts, stss, stsz, stco/co64) and WebM (EBML, Cluster, SimpleBlock) readers; WebCodecs decoders; a frame cache by time; seeking from the nearest key frame; what the browser cannot decode (HEVC on some) gets a message.
   - Tests: sample tables of small MP4 and WebM fixtures under Node; the seek point for a time.
 
@@ -18,7 +18,7 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
 - V3 (M) Timeline editing.
   - Clip rows on the tracks (AN2): trim the ends, split at the playhead (two layers on one source), move, snap; the document's length follows its clips.
 
-- V4 (M) Sound. `free`. Screens 37-sound, 35-video. Needs no video layer: may run right after V0, before V1-V3 (owner 2026-11-05: sound in an animation's video too).
+- V4 (M) Sound. Done (#7642, `ui/image-editor-sound.md`; from this computer left to V8). Screens 37-sound, 35-video. Needs no video layer: may run right after V0, before V1-V3 (owner 2026-11-05: sound in an animation's video too).
   - An audio layer on any canvas: music and sounds from Files (MP3, AAC, WAV, Ogg), its start, trim, volume, fade in and out, mute; its row with a waveform on the tracks; Web Audio playback in step with the play bar, so an animation gets its music.
   - With V2: a clip's sound as its own row (Detach sound mutes the clip and adds an audio layer on the same source).
 

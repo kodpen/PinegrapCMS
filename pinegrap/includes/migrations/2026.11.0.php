@@ -170,6 +170,8 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_shipping_method_label_link(); // 11.0.177
 	upgrade_2026_11_0_ws_wtable_bin();           // 11.0.178
 	upgrade_2026_11_0_ws_team_replies();         // 11.0.179
+	upgrade_2026_11_0_ws_agent_channel();        // 11.0.180
+	upgrade_2026_11_0_ws_ai_tokens();            // 11.0.181
 
 }
 
@@ -5783,5 +5785,48 @@ function upgrade_2026_11_0_ws_team_replies() {
 	}
 
 	install_add_column('user', 'manage_workspace_replies', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+
+}
+
+// The agent channel switch (11.0.180; includes/workspace/agent_channel.php).
+// A channel a manager turns into an agent channel with /agent-channel keeps
+// its decisions apart: the decisions screen, the dashboard and GET
+// /workspace/decisions leave them out unless asked. Every existing channel
+// starts off, so nothing changes on a running site.
+function upgrade_2026_11_0_ws_agent_channel() {
+
+	if (!install_table_exists('ws_channels')) {
+
+		install_skipped('ws_channels does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_channels', 'agent_channel', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	install_note('Workspace: a channel can be made an agent channel with /agent-channel; its decisions stay apart from the team\'s. Every channel starts as before.');
+
+}
+
+// Token counts of the assistants' requests (11.0.181;
+// includes/workspace/agent_activity.php). The shared loop adds each answer's
+// usage to its request, for Pinegrap AI and the model assistants; the Agents
+// card and the Pinegrap AI card show the sums of 7 and 30 days. Older rows
+// keep 0: nothing counted them.
+function upgrade_2026_11_0_ws_ai_tokens() {
+
+	if (!install_table_exists('ws_ai_requests')) {
+
+		install_skipped('ws_ai_requests does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_ai_requests', 'tokens_in', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_ai_requests', 'tokens_out', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: the tokens each request of Pinegrap AI and of a model assistant uses are counted from now on and shown on the Agents and Pinegrap AI cards.');
 
 }

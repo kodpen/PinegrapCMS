@@ -910,6 +910,203 @@ function ws_wtable_import_rows($viewer, $table, $rows, $map)
 }
 
 /**
+ * What an import would do, without writing: the table or its columns
+ * refused first (ok false, as the store refuses), else the columns it would
+ * make or fill, the rows it would add and every row refused, as
+ * ws_wtable_import_rows() would report them. The panel's import and the
+ * API's import route both ask it before they write.
+ *
+ * @param array      $viewer
+ * @param array|null $table  ws_wtable() with rows added to it, null for a new table
+ * @param array      $read   names (the source's column names), rows (header left out)
+ * @param array      $choice map (source index => column id) for a table; name and plan (list of index, name, type) for a new one
+ * @return array ok, error, field, status; columns (source, column_id, name, type, new), rows, refused, refused_count
+ */
+function ws_wtable_import_check($viewer, $table, $read, $choice)
+{
+    $names = array_values((array) ($read['names'] ?? array()));
+    $rows = array_values((array) ($read['rows'] ?? array()));
+
+    if ($table !== null) {
+        if (!ws_wtable_may(ws_wtable_access($viewer, $table), 'write')) {
+            return ws_wtable_refusal('not_found', '', 404);
+        }
+
+        $columns = ws_wtable_columns((int) $table['id']);
+        $map = array();
+
+        foreach ((array) ($choice['map'] ?? array()) as $index => $column_id) {
+            if (isset($names[(int) $index], $columns[(int) $column_id]) && ws_wtable_type_stores((string) $columns[(int) $column_id]['type']) && !in_array((int) $column_id, $map, true)) {
+                $map[(int) $index] = (int) $column_id;
+            }
+        }
+
+        $room = max(0, ws_wtable_limits()['rows'] - (int) $table['row_count']);
+    } else {
+        $made = ws_wtable_create_check($viewer, array('name' => (string) ($choice['name'] ?? ''), 'description' => ''));
+
+        if (!$made['ok']) {
+            return $made;
+        }
+
+        $columns = array();
+        $map = array();
+        $id = 0;
+
+        foreach ((array) ($choice['plan'] ?? array()) as $column) {
+            $index = (int) ($column['index'] ?? -1);
+
+            if (!isset($names[$index])) {
+                continue;
+            }
+
+            $values = array();
+
+            foreach ($rows as $row) {
+                $values[] = (string) ($row[$index] ?? '');
+            }
+
+            $type = in_array($column['type'] ?? '', ws_wtable_import_types(), true) ? (string) $column['type'] : 'text';
+            $input = array('name' => (string) ($column['name'] ?? ''), 'type' => $type, 'options' => ws_wtable_import_options($type, $values));
+            $checked = ws_wtable_column_input_check($input);
+
+            if (!$checked['ok']) {
+                return $checked + array('column' => (string) $input['name']);
+            }
+
+            // Stand-in ids for the columns not made yet: one per kept column.
+            $id++;
+            $columns[$id] = array('id' => $id, 'name' => $input['name'], 'type' => $type, 'options' => $input['options']);
+            $map[$index] = $id;
+        }
+
+        if (count($columns) > ws_wtable_limits()['columns']) {
+            return ws_wtable_refusal('too_many_columns', '', 409);
+        }
+
+        $room = ws_wtable_limits()['rows'];
+    }
+
+    if (empty($rows)) {
+        return ws_wtable_refusal('no_rows', 'rows');
+    }
+
+    if (empty($map)) {
+        return ws_wtable_refusal('map_empty', 'map');
+    }
+
+    $answer = array('ok' => true, 'error' => '', 'field' => '', 'status' => 200, 'columns' => array());
+
+    foreach ($map as $index => $column_id) {
+        $answer['columns'][] = array(
+            'source'    => (string) $names[$index],
+            'column_id' => ($table !== null) ? (int) $column_id : null,
+            'name'      => (string) $columns[$column_id]['name'],
+            'type'      => (string) $columns[$column_id]['type'],
+            'new'       => ($table === null),
+        );
+    }
+
+    return array_merge($answer, ws_wtable_import_rows_check($columns, $map, $rows, $room, ws_wtable_import_people()));
+}
+
+/**
+ * The rows an import would add and those it would refuse, checked as the
+ * store checks a new row (ws_wtable_row_cells_input()) without writing:
+ * empty rows skipped, the rows past $room refused as too_many_rows. Pure.
+ *
+ * @param array $columns column id => column
+ * @param array $map     source index => column id
+ * @param array $rows    the source's rows, header left out
+ * @param int   $room    rows the table may still take
+ * @param array $people  as ws_wtable_import_cell()
+ * @return array rows, refused (first 100: line, error, errors by column name), refused_count
+ */
+function ws_wtable_import_rows_check($columns, $map, $rows, $room, $people = array())
+{
+    $report = array('rows' => 0, 'refused' => array(), 'refused_count' => 0);
+
+    foreach ($rows as $i => $row) {
+        $cells = ws_wtable_import_row_cells($row, $map, $columns, $people);
+        $filled = array_filter($cells, function ($value) {
+            return ($value !== null) && ($value !== false);
+        });
+
+        if (empty($filled)) {
+            continue;
+        }
+
+        if ($report['rows'] >= $room) {
+            $report['refused_count'] += count($rows) - $i;
+
+            if (count($report['refused']) < 100) {
+                $report['refused'][] = array('line' => $i + 2, 'error' => 'too_many_rows', 'errors' => array());
+            }
+
+            break;
+        }
+
+        $checked = ws_wtable_row_cells_input($columns, $cells);
+
+        if ($checked['ok']) {
+            $report['rows']++;
+            continue;
+        }
+
+        $errors = array();
+
+        foreach ((array) $checked['errors'] as $column_id => $code) {
+            $errors[(string) ($columns[$column_id]['name'] ?? $column_id)] = (string) $code;
+        }
+
+        $report['refused_count']++;
+
+        if (count($report['refused']) < 100) {
+            $report['refused'][] = array('line' => $i + 2, 'error' => 'cells_invalid', 'errors' => $errors);
+        }
+    }
+
+    return $report;
+}
+
+/**
+ * The plan of a new table made from a source: every column kept, under its
+ * name, in the type its values suggest unless $types names another
+ * (ws_wtable_import_types(); '' leaves the column out). Pure.
+ *
+ * @param string[] $names the source's column names
+ * @param array    $rows  the source's rows, header left out
+ * @param array    $types source column name => type
+ * @return array list of index, name, type
+ */
+function ws_wtable_import_plan($names, $rows, $types = array())
+{
+    $plan = array();
+
+    foreach (array_values((array) $names) as $index => $name) {
+        if (array_key_exists($name, (array) $types)) {
+            $type = (string) $types[$name];
+
+            if ($type === '') {
+                continue;
+            }
+        } else {
+            $values = array();
+
+            foreach ((array) $rows as $row) {
+                $values[] = (string) ($row[$index] ?? '');
+            }
+
+            $type = ws_wtable_import_guess($values)['type'];
+        }
+
+        $plan[] = array('index' => $index, 'name' => (string) $name, 'type' => $type);
+    }
+
+    return $plan;
+}
+
+/**
  * Make a table from a file: the table, then a column per kept file column
  * in the type the person chose, then the rows. A refused table or column
  * stops it, and a table made by then is deleted, so nothing half-made

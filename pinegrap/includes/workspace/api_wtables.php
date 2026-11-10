@@ -97,6 +97,27 @@ function ws_wtable_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.tables.import',
+            'method'      => 'POST',
+            'path'        => '/workspace/tables/import',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_wtables_import',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceTableImport',
+            'summary'     => 'Import rows into a workflow table',
+            'description' => 'Brings the rows of a CSV, Excel (xlsx, xls) or OpenDocument file, or of a table inside a note, into a workflow table, as the Tables screen does. The source is file_id (a file of the site the application may read: it also needs files:read, and only the files GET /files lists are reached) or note_id with note_table, the table\'s number in the note counted from 0 (a note the owner may read). Its first row names the columns; at most ' . $limits['columns'] . ' columns and ' . $limits['rows'] . ' rows. The target is table_id (a table the owner may change) or name (a new table of the owner\'s). Into a table, source columns are paired with its columns by name, case and spaces aside, a formula column never; map pairs them instead (source column name => column id, 0 leaving it out). A new table gets a column per source column in the type its values suggest; types names another (source column name => text, number, money, date, status or checkbox, or empty to leave it out). Each row is checked as POST /workspace/tables/{id}/rows checks it: a refused row is reported (line counts the header as 1) and the others are written; no workspace.wtable.row.* event is sent. With dry_run nothing is written and the answer tells the columns it would make or fill, the rows it would add and every row refused. A source without rows or with no column to fill is refused with 422 validation_failed (no_rows, map_empty).' . $errors,
+            'params'      => array(
+                array('name' => 'file_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A file of the site to read: csv, xlsx, xlsm, xls or ods.'),
+                array('name' => 'note_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A note holding the table to read, instead of a file.'),
+                array('name' => 'note_table', 'in' => 'body', 'type' => 'int', 'min' => 0, 'default' => 0, 'description' => 'Which table of the note, counted from 0.'),
+                array('name' => 'table_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The table the rows are added to.'),
+                array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => $limits['name'], 'description' => 'The name of a new table made from the source, instead of table_id.'),
+                array('name' => 'map', 'in' => 'body', 'type' => 'object', 'description' => 'With table_id: source column name => column id (0 leaves it out). Left out, columns pair by name.'),
+                array('name' => 'types', 'in' => 'body', 'type' => 'object', 'description' => 'With name: source column name => the new column\'s type (text, number, money, date, status, checkbox; empty leaves it out). Left out, each type is guessed from the values.'),
+            ),
+        ),
+
+        array(
             'id'           => 'workspace.tables.update',
             'method'       => 'POST',
             'also_accepts' => array('PATCH'),
@@ -120,7 +141,7 @@ function ws_wtable_api_routes()
             'mcp'         => false,
             'returns'     => 'WorkspaceTable',
             'summary'     => 'Delete a workflow table',
-            'description' => 'Deletes a table of the owner\'s own for good, with its columns, rows and shares; the answer is the table as it was. Only its owner may (403 for a person it is shared with). It cannot be undone, so it is no MCP tool. POST /workspace/tables/{id}/delete does the same for servers that refuse DELETE.',
+            'description' => 'Deletes a table of the owner\'s own with its columns, rows and shares; the answer is the table as it was. It goes to the bin for the days the site\'s Recycle Bin keeps (30 unless changed), where its owner restores it whole with POST /workspace/deleted-tables/{id}/restore; then it is deleted for good. Only its owner may (403 for a person it is shared with). It takes a whole table out of everybody\'s reach, so it is no MCP tool. POST /workspace/tables/{id}/delete does the same for servers that refuse DELETE.',
             'params'      => array($id),
         ),
 
@@ -135,6 +156,35 @@ function ws_wtable_api_routes()
             'returns'     => 'WorkspaceTable',
             'summary'     => 'Delete a workflow table, addressed as a POST',
             'description' => 'The same as DELETE /workspace/tables/{id}, for clients and servers that cannot send DELETE.',
+            'params'      => array($id),
+        ),
+
+        // The bin of tables (wtable_bin.php): the owner's alone, and like the
+        // delete no MCP tool.
+        array(
+            'id'          => 'workspace.tables.deleted',
+            'method'      => 'GET',
+            'path'        => '/workspace/deleted-tables',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_wtables_deleted',
+            'mcp'         => false,
+            'returns'     => array('list' => 'WorkspaceDeletedTable'),
+            'summary'     => 'Deleted workflow tables',
+            'description' => 'The tables of the owner of the application in the bin, the latest deleted first: deleted_at says when, expires_at when it is deleted for good. Nobody reaches a deleted table, its shares included, until it is restored.',
+            'params'      => array(),
+        ),
+
+        array(
+            'id'          => 'workspace.tables.restore',
+            'method'      => 'POST',
+            'path'        => '/workspace/deleted-tables/{id}/restore',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_wtables_restore',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceTable',
+            'summary'     => 'Restore a deleted workflow table',
+            'description' => 'Brings a table of the owner\'s own back from the bin whole, with its columns, rows and shares; the answer is the table. A person keeps at most ' . $limits['tables'] . ' tables: a restore past that is refused with 409 too_many_tables.',
             'params'      => array($id),
         ),
 
@@ -202,11 +252,17 @@ function ws_wtable_api_routes()
             'handler'     => 'ws_api_wtable_rows_list',
             'returns'     => array('list' => 'WorkspaceTableRow'),
             'summary'     => 'The rows of a workflow table',
-            'description' => 'The rows of a table the owner reaches, in their order. ' . $cells . ' A formula\'s error is in formula_errors by column id (ref, cycle and the like), its cell null.',
+            'description' => 'The rows of a table the owner reaches, in their order. ' . $cells . ' A formula\'s error is in formula_errors by column id (ref, cycle and the like), its cell null.'
+                . ' With where, only the rows meeting its conditions, joined by join (all or any); with sort, sorted by that column (dir asc or desc), empty cells last. total is then the count of the rows kept, and the cursor pages through them: keep the same where and sort while paging.',
             'params'      => array(
                 $id,
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 100),
                 array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200),
+                array('name' => 'where', 'in' => 'query', 'type' => 'string', 'max_length' => 4000,
+                    'description' => 'A JSON list of at most ' . WS_WTABLE_WHERE_MAX . ' conditions, each {"column": column id, "op": eq|neq|lt|gt|lte|gte|contains|starts|empty|not_empty, "value": text}. A column compares by its type: text without case (contains, starts), number, money and formula by size (money in minor units, 1250 for 12.50), a date as YYYY-MM-DD or YYYY-MM-DD HH:MM, a status by its key, a checkbox as 1 or 0, a person or a linked record by its number. An unfit comparison or value answers 422.'),
+                array('name' => 'join', 'in' => 'query', 'type' => 'enum', 'values' => ws_wtable_where_joins(), 'default' => 'all', 'description' => 'all: every condition holds; any: one does.'),
+                array('name' => 'sort', 'in' => 'query', 'type' => 'int', 'min' => 0, 'default' => 0, 'description' => 'The column id the rows are sorted by; 0 keeps the table\'s order.'),
+                array('name' => 'dir', 'in' => 'query', 'type' => 'enum', 'values' => ws_wtable_sort_directions(), 'default' => 'asc', 'description' => 'desc reverses the order: by no column, the last row first.'),
             ),
         ),
 
@@ -277,7 +333,7 @@ function ws_wtable_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceTableRow',
             'summary'     => 'Delete a row of a workflow table',
-            'description' => 'Deletes a row of a table the owner may change; the answer is the row as it was, and the rows after it move up one. With revision, a row changed since is refused with 409 changed_meanwhile. POST /workspace/tables/{id}/rows/{row_id}/delete does the same for servers that refuse DELETE.',
+            'description' => 'Deletes a row of a table the owner may change; the answer is the row as it was, and the rows after it move up one. The row goes to the table\'s bin for the days the site\'s Recycle Bin keeps (30 unless changed): GET /workspace/tables/{id}/deleted-rows lists it and POST /workspace/tables/{id}/deleted-rows/{bin_id}/restore brings it back. With revision, a row changed since is refused with 409 changed_meanwhile. POST /workspace/tables/{id}/rows/{row_id}/delete does the same for servers that refuse DELETE.',
             'params'      => array($id, $row_id, array('name' => 'revision', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'The revision the row was read at: deleted only when it is still the row\'s.')),
         ),
 
@@ -292,6 +348,33 @@ function ws_wtable_api_routes()
             'summary'     => 'Delete a row of a workflow table, addressed as a POST',
             'description' => 'The same as DELETE /workspace/tables/{id}/rows/{row_id}, for clients and servers that cannot send DELETE.',
             'params'      => array($id, $row_id, array('name' => 'revision', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'The revision the row was read at.')),
+        ),
+
+        // The table's bin of rows (wtable_bin.php): whoever may change the
+        // table sees it and restores a row, as they delete one.
+        array(
+            'id'          => 'workspace.table_rows.deleted',
+            'method'      => 'GET',
+            'path'        => '/workspace/tables/{id}/deleted-rows',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_wtable_rows_deleted',
+            'returns'     => array('list' => 'WorkspaceTableBinRow'),
+            'summary'     => 'Deleted rows of a workflow table',
+            'description' => 'The rows of a table the owner may change that are in its bin, the latest deleted first: bin_id names the entry, id the row\'s id when it was deleted, deleted_by and deleted_at who and when, expires_at when it is deleted for good. A table shared with them at view is refused with 403.',
+            'params'      => array($id),
+        ),
+
+        array(
+            'id'          => 'workspace.table_rows.restore',
+            'method'      => 'POST',
+            'path'        => '/workspace/tables/{id}/deleted-rows/{bin_id}/restore',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_wtable_rows_restore',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceTableRow',
+            'summary'     => 'Restore a deleted row of a workflow table',
+            'description' => 'Brings a row back from the table\'s bin at the end of the table, with its cells and its links to site records; the answer is the row. It keeps its id, unless another row was given that id meanwhile: then it has a new one. A full table refuses it with 409 too_many_rows.',
+            'params'      => array($id, array('name' => 'bin_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)),
         ),
 
         // The shares of a table (wtable_shares.php). Sharing widens who reads
@@ -449,6 +532,62 @@ function ws_api_wtable_row_present($row)
     return ws_wtable_row_present($row);
 }
 
+/**
+ * A row in a table's bin: the row as it was, with its entry.
+ *
+ * @param array $row ws_wtable_bin_rows()
+ * @return array
+ */
+function ws_api_wtable_bin_row_present($row)
+{
+    return ws_wtable_row_present($row) + array(
+        'bin_id'     => (int) $row['bin_id'],
+        'deleted_by' => (int) $row['deleted_by'],
+        'deleted_at' => api_time($row['deleted_at']),
+        'expires_at' => api_time($row['expires_at']),
+    );
+}
+
+// What ws_api_wtable_bin_row_present() returns.
+function ws_api_wtable_bin_row_schema()
+{
+    return ws_api_wtable_row_schema() + array(
+        'bin_id'     => 'integer',
+        'deleted_by' => 'integer',
+        'deleted_at' => 'string?',
+        'expires_at' => 'string?',
+    );
+}
+
+/**
+ * A table in the bin, as its owner sees it.
+ *
+ * @param array $table ws_wtables_binned()
+ * @return array
+ */
+function ws_api_wtable_deleted_present($table)
+{
+    return array(
+        'id'         => (int) $table['id'],
+        'name'       => (string) $table['name'],
+        'row_count'  => (int) $table['row_count'],
+        'deleted_at' => api_time($table['deleted_at']),
+        'expires_at' => api_time($table['expires_at']),
+    );
+}
+
+// What ws_api_wtable_deleted_present() returns.
+function ws_api_wtable_deleted_schema()
+{
+    return array(
+        'id'         => 'integer',
+        'name'       => 'string',
+        'row_count'  => 'integer',
+        'deleted_at' => 'string?',
+        'expires_at' => 'string?',
+    );
+}
+
 // What ws_api_wtable_row_present() returns.
 function ws_api_wtable_row_schema()
 {
@@ -462,6 +601,37 @@ function ws_api_wtable_row_schema()
         'created_at'     => 'string?',
         'updated_by'     => 'integer',
         'updated_at'     => 'string?',
+    );
+}
+
+/**
+ * What an import did: the table, the rows added and those refused.
+ *
+ * @return array
+ */
+function ws_api_wtable_import_schema()
+{
+    return array(
+        'table'         => 'WorkspaceTable',
+        'added'         => 'integer',
+        'refused_count' => 'integer',
+        'refused'       => 'WorkspaceTableImportRefusal[]',
+        'more'          => 'boolean',
+    );
+}
+
+/**
+ * One refused row of an import: its line in the source (the header is 1),
+ * the code, and the refused cells by column name.
+ *
+ * @return array
+ */
+function ws_api_wtable_import_refusal_schema()
+{
+    return array(
+        'line'   => 'integer',
+        'error'  => 'string',
+        'errors' => 'object',
     );
 }
 
@@ -739,6 +909,205 @@ function ws_api_wtables_create($params)
     api_ok(ws_api_wtable_present($table, array()), 201);
 }
 
+/**
+ * The table of a site file the application may read (one GET /files
+ * lists), read as the panel reads an upload, or the API's refusal.
+ *
+ * @param int $file_id
+ * @param int $max lines to keep, header included
+ * @return array ws_wtable_import_file_table()
+ */
+function ws_api_wtable_import_file($file_id, $max)
+{
+    api_require_scope('files:read');
+
+    $row = api_row(api_file_select() . " WHERE files.id = '" . (int) $file_id . "' AND " . api_files_public_clause() . " LIMIT 1");
+    $name = pg_basename((string) ($row['name'] ?? ''));
+    // Through the local copy: the bytes may be kept in object storage.
+    $path = ($row === null) ? '' : pg_file_local_copy((int) $file_id);
+
+    if (($row === null) || ($name === '') || ($path === '') || !is_file($path)) {
+        api_fail_not_found(lang('File'));
+    }
+
+    if ((int) filesize($path) > (int) pg_upload_limits()['file_max']) {
+        api_fail_validation(lang('The file is larger than an upload may be.'), 'file_id');
+    }
+
+    return ws_wtable_import_file_table($path, $name, $max);
+}
+
+/**
+ * The pairing asked for: source index => column id from map (by source
+ * column name), else the columns matched by name.
+ *
+ * @param string[]   $names
+ * @param array      $columns
+ * @param array|null $map source column name => column id
+ * @return array source index => column id
+ */
+function ws_api_wtable_import_map($names, $columns, $map)
+{
+    if (!is_array($map)) {
+        return ws_wtable_import_match($names, $columns)['map'];
+    }
+
+    $pairs = array();
+
+    foreach ($map as $source => $column_id) {
+        $index = array_search((string) $source, $names, true);
+
+        if ($index === false) {
+            api_fail_validation(lang(array('string' => 'The source has no column {var:1}.', 'vars' => (string) $source)), 'map');
+        }
+
+        if (!is_int($column_id) && !(is_string($column_id) && ctype_digit($column_id))) {
+            api_fail_validation(lang(array('string' => 'Refused: {var:1}.', 'vars' => 'column_id')), 'map');
+        }
+
+        if ((int) $column_id === 0) {
+            continue;
+        }
+
+        if (!isset($columns[(int) $column_id]) || !ws_wtable_type_stores((string) $columns[(int) $column_id]['type'])) {
+            api_fail_validation(lang(array('string' => 'Refused: {var:1}.', 'vars' => 'unknown_column ' . (int) $column_id)), 'map');
+        }
+
+        $pairs[(int) $index] = (int) $column_id;
+    }
+
+    return $pairs;
+}
+
+function ws_api_wtables_import($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_wtables_ready();
+
+    $file_id = (int) ($params['file_id'] ?? 0);
+    $note_id = (int) ($params['note_id'] ?? 0);
+    $table_id = (int) ($params['table_id'] ?? 0);
+    $name = trim((string) ($params['name'] ?? ''));
+
+    if (($file_id > 0) === ($note_id > 0)) {
+        api_fail_validation(lang('Send file_id or note_id, one of them.'), 'file_id');
+    }
+
+    if (($table_id > 0) === ($name !== '')) {
+        api_fail_validation(lang('Send table_id or name, one of them.'), 'table_id');
+    }
+
+    if (($table_id > 0) && isset($params['types'])) {
+        api_fail_validation(lang('types goes with name, a new table.'), 'types');
+    }
+
+    if (($name !== '') && isset($params['map'])) {
+        api_fail_validation(lang('map goes with table_id, an existing table.'), 'map');
+    }
+
+    $table = ($table_id > 0) ? ws_api_wtable_writable($viewer, $table_id) : null;
+    $limits = ws_wtable_limits();
+
+    if ($file_id > 0) {
+        $read = ws_api_wtable_import_file($file_id, $limits['rows'] + 1);
+    } else {
+        ws_api_note_or_404($viewer, $note_id);
+        $read = ws_wtable_import_note_read($viewer, $note_id, (int) ($params['note_table'] ?? 0), $limits['rows'] + 1);
+    }
+
+    if (!$read['ok']) {
+        api_fail_validation($read['error'], ($file_id > 0) ? 'file_id' : 'note_table');
+    }
+
+    if (count($read['table']) < 2) {
+        api_fail_validation(ws_api_wtable_message('no_rows'), 'rows');
+    }
+
+    if (count($read['table'][0]) > $limits['columns']) {
+        api_fail(409, 'too_many_columns', ws_api_wtable_message('too_many_columns'));
+    }
+
+    $names = ws_wtable_import_names($read['table'][0]);
+    $kept = array('names' => $names, 'rows' => array_slice($read['table'], 1));
+
+    if ($table !== null) {
+        $choice = array('map' => ws_api_wtable_import_map($names, ws_wtable_columns((int) $table['id']), isset($params['map']) ? (array) $params['map'] : null));
+    } else {
+        $types = isset($params['types']) ? (array) $params['types'] : array();
+
+        foreach ($types as $source => $type) {
+            if (!in_array($source, $names, true)) {
+                api_fail_validation(lang(array('string' => 'The source has no column {var:1}.', 'vars' => (string) $source)), 'types');
+            }
+
+            if (!is_string($type) || (($type !== '') && !in_array($type, ws_wtable_import_types(), true))) {
+                api_fail_validation(ws_api_wtable_message('type_unknown'), 'types');
+            }
+        }
+
+        $choice = array('name' => $name, 'plan' => ws_wtable_import_plan($names, $kept['rows'], $types));
+    }
+
+    $checked = ws_wtable_import_check($viewer, $table, $kept, $choice);
+
+    if (!$checked['ok']) {
+        ws_api_wtable_refused(isset($checked['column']) ? array_merge($checked, array('field' => 'types')) : $checked, lang('Table'));
+    }
+
+    $detail = array(
+        'table_id'      => $table ? (int) $table['id'] : null,
+        'columns'       => $checked['columns'],
+        'rows'          => $checked['rows'],
+        'refused_count' => $checked['refused_count'],
+        'refused'       => ws_api_wtable_import_refused($checked['refused']),
+        'more'          => !empty($read['more']),
+    );
+
+    api_dry_run_stop($table ? 'updated' : 'created', 'workspace_table', $detail);
+
+    @set_time_limit(300);
+
+    $result = ws_api_as_owner(function () use ($viewer, $table, $kept, $choice) {
+        if ($table !== null) {
+            return array('ok' => true, 'table_id' => (int) $table['id'], 'report' => ws_wtable_import_rows($viewer, $table, $kept['rows'], $choice['map']));
+        }
+
+        return ws_wtable_import_create($viewer, $choice['name'], $choice['plan'], $kept['rows']);
+    });
+
+    if (!$result['ok']) {
+        ws_api_wtable_refused($result + array('field' => '', 'status' => 422), lang('Table'));
+    }
+
+    $made = ws_api_wtable_or_404($viewer, (int) $result['table_id']);
+
+    api_ok(array(
+        'table'         => ws_api_wtable_present($made, ws_wtable_columns((int) $made['id'])),
+        'added'         => (int) $result['report']['added'],
+        'refused_count' => (int) $result['report']['refused_count'],
+        'refused'       => ws_api_wtable_import_refused($result['report']['refused']),
+        'more'          => !empty($read['more']),
+    ), $table ? 200 : 201);
+}
+
+/**
+ * Refused rows as the API gives them: errors an object even when empty.
+ *
+ * @param array $refused list of line, error, errors
+ * @return array
+ */
+function ws_api_wtable_import_refused($refused)
+{
+    $out = array();
+
+    foreach ((array) $refused as $line) {
+        $out[] = array('line' => (int) $line['line'], 'error' => (string) $line['error'], 'errors' => (object) $line['errors']);
+    }
+
+    return $out;
+}
+
 function ws_api_wtables_update($params)
 {
     $viewer = ws_api_viewer();
@@ -784,6 +1153,43 @@ function ws_api_wtables_delete($params)
     }
 
     api_ok($before);
+}
+
+function ws_api_wtables_deleted($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_wtables_ready();
+
+    $rows = array_map('ws_api_wtable_deleted_present', ws_wtables_binned($viewer));
+
+    api_ok_list($rows, count($rows));
+}
+
+function ws_api_wtables_restore($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_wtables_ready();
+
+    $table = ws_wtable_binned((int) $params['id']);
+    $checked = ws_wtable_restore_check($viewer, $table);
+
+    if (!$checked['ok']) {
+        ws_api_wtable_refused($checked, lang('Deleted table'));
+    }
+
+    api_dry_run_stop('restored', 'workspace_table', array('id' => (int) $table['id'], 'rows' => (int) $table['row_count']));
+
+    $result = ws_wtable_restore($viewer, $table);
+
+    if (!$result['ok']) {
+        ws_api_wtable_refused($result, lang('Deleted table'));
+    }
+
+    $table = ws_api_wtable_or_404($viewer, $table['id']);
+
+    api_ok(ws_api_wtable_present($table, ws_wtable_columns((int) $table['id'])));
 }
 
 /* ---------------------------------------------------------------------------
@@ -928,11 +1334,55 @@ function ws_api_wtable_rows_list($params)
     }
 
     $limit = (int) ($params['limit'] ?? 100);
-    $page = ws_wtable_rows_page((int) $table['id'], ws_wtable_columns((int) $table['id']), $after, $limit, $after_id);
+    $columns = ws_wtable_columns((int) $table['id']);
+    $query = ws_wtable_query((string) ($params['where'] ?? ''), (string) ($params['join'] ?? 'all'), (int) ($params['sort'] ?? 0), (string) ($params['dir'] ?? 'asc'));
+
+    if (ws_wtable_query_active($query)) {
+        ws_api_wtable_rows_query($table, $columns, $query, $limit, $after, $after_id, isset($cursor));
+
+        return;
+    }
+
+    $page = ws_wtable_rows_page((int) $table['id'], $columns, $after, $limit, $after_id);
     $last = end($page['rows']);
 
     api_ok_list(array_map('ws_api_wtable_row_present', $page['rows']), $limit,
         ($page['next'] !== null) ? api_cursor_encode($page['next'], (int) $last['id']) : null, (int) $table['row_count']);
+}
+
+/**
+ * The rows a query keeps, a page of them: refused with 422 when it does not
+ * fit the table; worked out over every row (a table holds at most 5000), so
+ * the cursor is an offset into the rows kept, its id 0. A cursor of the
+ * plain listing (an id past 0) answers 400.
+ *
+ * @param array $table
+ * @param array $columns
+ * @param array $query     ws_wtable_query()
+ * @param int   $limit
+ * @param int   $from      the cursor's offset
+ * @param int   $cursor_id the cursor's id
+ * @param bool  $paging    a cursor was given
+ * @return void
+ */
+function ws_api_wtable_rows_query($table, $columns, $query, $limit, $from, $cursor_id, $paging)
+{
+    if ($paging && ($cursor_id !== 0)) {
+        api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+    }
+
+    $refusal = ws_wtable_query_refusal($columns, $query);
+
+    if ($refusal !== '') {
+        // The sort is named only when the conditions alone fit.
+        api_fail(422, 'validation_failed', $refusal, (ws_wtable_query_refusal($columns, array('sort' => 0) + $query) === '') ? 'sort' : 'where');
+    }
+
+    $kept = ws_wtable_query_rows($columns, ws_wtable_rows((int) $table['id'], $columns), $query);
+    $page = ws_wtable_query_page($kept, $from, $limit);
+
+    api_ok_list(array_map('ws_api_wtable_row_present', $page['rows']), $limit,
+        ($page['next'] !== null) ? api_cursor_encode($page['next'], 0) : null, count($kept));
 }
 
 function ws_api_wtable_rows_get($params)
@@ -1034,6 +1484,37 @@ function ws_api_wtable_rows_delete($params)
     }
 
     api_ok($before);
+}
+
+function ws_api_wtable_rows_deleted($params)
+{
+    $viewer = ws_api_viewer();
+    $table = ws_api_wtable_writable($viewer, $params['id']);
+    $rows = ws_wtable_bin_rows($viewer, $table);
+
+    api_ok_list(array_map('ws_api_wtable_bin_row_present', (array) $rows), count((array) $rows));
+}
+
+function ws_api_wtable_rows_restore($params)
+{
+    $viewer = ws_api_viewer();
+    $table = ws_api_wtable_writable($viewer, $params['id']);
+    $bin = ws_wtable_bin_row((int) $table['id'], (int) $params['bin_id']);
+    $checked = ws_wtable_row_restore_check($viewer, $table, $bin);
+
+    if (!$checked['ok']) {
+        ws_api_wtable_refused($checked, lang('Deleted row'));
+    }
+
+    api_dry_run_stop('restored', 'workspace_table_row', array('bin_id' => (int) $bin['id'], 'id' => (int) $bin['row_id'], 'table_id' => (int) $table['id']));
+
+    $result = ws_wtable_row_restore($viewer, $table, $bin);
+
+    if (!$result['ok']) {
+        ws_api_wtable_refused($result, lang('Deleted row'));
+    }
+
+    api_ok(ws_api_wtable_row_answer(ws_api_wtable_or_404($viewer, $table['id']), $result['row_id']));
 }
 
 /* ---------------------------------------------------------------------------

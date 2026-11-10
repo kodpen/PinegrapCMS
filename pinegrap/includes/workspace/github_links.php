@@ -146,9 +146,11 @@ function ws_github_link_channels($viewer)
 {
     $channels = array();
 
-    foreach (ws_channels_for($viewer) as $channel) {
-        if (in_array($channel['kind'], array('public', 'private'), true) && ws_can_post_channel($viewer, $channel)) {
-            $channels[] = $channel;
+    // ws_channels_for() gives the sidebar's short form, which has no
+    // archived_at; the access check reads the channel's own row.
+    foreach (ws_channels_for($viewer) as $brief) {
+        if (in_array($brief['kind'], array('public', 'private'), true) && ws_can_post_channel($viewer, ws_channel($brief['id']))) {
+            $channels[] = $brief;
         }
     }
 

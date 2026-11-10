@@ -17,7 +17,7 @@ description: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace chann
 
 - The live trial on dev (owner, 2026-11-09, `workflow/decisions-made-workspace-10.md`): the architect's application is registered as `@mimar` with a poll door and added to the agent channel (wake on a mention, tier 1). The mention and `/wake` were tried on 2026-11-10 (`workspace/agent-doors.md`, `agent-wakes.md`). The agent's side was tried the same day with the application's key (`workspace/agent-key-trial.md`). Left: the tries still open and what the trial found wrong, two of them decided and not built: `agent-channel-trial.md`.
 
-- Beside it: `agent-channel-flag.md` (step AC), `agent-channel-questions.md` (step AQ).
+- Beside it: step AC done (#8440: `workspace/agent-channel-flag.md`), step AQ done (#8438: `workspace/agent-checklist-questions.md`, `workflow/agent-channel-wake.md`).
 
 ## Who holds it, where does it start?
 - One coordinator and its workers; a free slot takes the agent channel's free step before other plans' (owner, 2026-11-07), and design templates are low priority (`workflow/coordinator-no-plans.md`). Claim as `[plan:agent-channel] A<n> — <topic>`; the steps in `agent-channel-steps-2.md` (also what the plan took over from `workspace-agent-handles` and `claude-code-channel`).

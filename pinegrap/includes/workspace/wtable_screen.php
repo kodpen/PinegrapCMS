@@ -35,6 +35,10 @@ function ws_wtable_screen_error_text($code)
             return lang('Only the table\'s owner may do that.');
         case 'not_ready':
             return lang('The database has not been upgraded yet. Run the software update first.');
+        case 'map_empty':
+            return lang('Choose at least one column to fill.');
+        case 'no_rows':
+            return lang('The file has a header row but no rows under it.');
         case 'name_empty':
             return lang('Give it a name.');
         case 'name_too_long':
@@ -666,4 +670,55 @@ function ws_wtable_screen_action_button($data, $label, $icon, $confirm)
 
     return '<button type="button" class="btn btn-sm btn-text theme-danger ws-wt-action"' . $attributes . ' data-confirm="' . h($confirm) . '" title="' . h($label) . '" aria-label="' . h($label) . '">'
         . '<i class="bi ' . h($icon) . '" aria-hidden="true"></i></button>';
+}
+
+/**
+ * A binned row in a line: the first cells that hold something, as
+ * "Column: value", so the person knows which row it was. Pure.
+ *
+ * @param array $columns column id => column
+ * @param array $cells   column id => value, as a row is read
+ * @param array $people  user id => brief (name), for person cells
+ * @param int   $max     the most cells shown
+ * @return string plain text, '' when every cell is empty
+ */
+function ws_wtable_screen_bin_summary($columns, $cells, $people = array(), $max = 3)
+{
+    $parts = array();
+
+    foreach ((array) $columns as $column_id => $column) {
+        if (count($parts) >= max(1, (int) $max)) {
+            break;
+        }
+
+        $text = trim(preg_replace('/\s+/u', ' ', ws_wtable_screen_cell_text($column, $cells[$column_id] ?? null, $people)));
+
+        if ($text !== '') {
+            $parts[] = (string) $column['name'] . ': ' . ((mb_strlen($text) > 60) ? mb_substr($text, 0, 59) . '…' : $text);
+        }
+    }
+
+    return implode(' · ', $parts);
+}
+
+/**
+ * What a delete asks first: how long the bin keeps what is deleted, or, before
+ * the bin's step has run, that it cannot be brought back.
+ *
+ * @param string $what table | row
+ * @param string $name the table's name
+ * @param int    $days the bin's days, 0 when there is no bin
+ * @return string
+ */
+function ws_wtable_screen_delete_confirm($what, $name, $days)
+{
+    if ($what === 'table') {
+        return ((int) $days > 0)
+            ? lang(array('string' => 'Delete the table {var:1}? It stays in Deleted tables for {var:2} days, where you can restore it with its rows and shares.', 'vars' => array($name, (int) $days)))
+            : lang(array('string' => 'Delete the table {var:1} with its rows and shares? It cannot be brought back.', 'vars' => $name));
+    }
+
+    return ((int) $days > 0)
+        ? lang(array('string' => 'Delete this row? It stays in the table\'s deleted rows for {var:1} days, where it can be restored.', 'vars' => (int) $days))
+        : lang('Delete this row?');
 }

@@ -1,6 +1,6 @@
 ---
 name: workflow-tables-bin
-description: The bin of workflow tables (11.0.178, TB1): a deleted row goes to ws_wtable_row_bin, a deleted table gets ws_wtables.deleted_at; restore, purge, privacy and contact readers
+description: The bin of workflow tables (11.0.178, #8412): a deleted row goes to ws_wtable_row_bin, a deleted table gets ws_wtables.deleted_at; restore, purge, privacy and contact readers
 ---
 
 ## Where does a deleted row or table go?
@@ -27,5 +27,9 @@ description: The bin of workflow tables (11.0.178, TB1): a deleted row goes to w
 - Yes, the bin is data the site holds. `pg_privacy_wtable_rows(..., $store = 'bin')` reads `ws_wtable_row_bin` (its `id` the bin entry's, `row_id` the row's). Erasure entry `ws_wtable_bin_cells` (scope `wtable_bin_ids`) empties the same cells there. The export adds the bin's rows and gives each row `deleted_at`: the row's or its binned table's, 0 for neither.
 - The contact merge holder `ws_wtable_bin_cells` re-points contact links in the bin too (`pg_contact_holders_move_wtable_cells(..., $table)`).
 
-## What is left for TB2 and `tables-relational`?
-- TB2: the screens and API routes (`plans/tables-bin.md`). Relational step 5 keeps the cells that linked to a binned row in `links` and puts them back on restore.
+## Where do people see the bin?
+- `workflow-tables-bin-screens.md`: the screen's cards and the API routes.
+
+## What meets `tables-relational`?
+- Its step 4: the row number counter never hands out a number a binned row holds.
+- Its step 5 keeps the cells that linked to a binned row in `links` and puts them back on restore where the cell is still empty.

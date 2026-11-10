@@ -3030,6 +3030,163 @@
   }
 }
 
+/* -- Sound (pg_image_editor_sound.js) -- */
+/* A row per sound under the tracks (the same lanes, a .pgie-tracks of its
+   own): its bar holds the cut part's waveform, the volume's line with the
+   fades and the name; Add sound ends the rows. */
+.pgie-sounds {
+  --pgie-sound: #1f8f84;
+}
+
+.pgie-sndrow {
+  height: 34px;
+}
+
+.pgie-sounds .pgie-trbar.pgie-sndbar {
+  top: 3px;
+  bottom: 3px;
+  overflow: visible;
+  border: 1px solid var(--pgie-sound);
+  background: color-mix(in srgb, var(--pgie-sound) 16%, var(--pgie-surface));
+  color: var(--pgie-sound);
+}
+
+.pgie-trrow.on .pgie-trbar.pgie-sndbar {
+  box-shadow: 0 0 0 2px var(--pgie-sel);
+}
+
+.pgie-sndbar.pgie-sndmuted {
+  opacity: 0.55;
+}
+
+.pgie-sndwave {
+  position: absolute;
+  inset: 2px 0;
+  width: 100%;
+  height: calc(100% - 4px);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.pgie-sndpeaks {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.1;
+  opacity: 0.5;
+}
+
+.pgie-sndenv {
+  fill: none;
+  stroke: var(--pgie-sound);
+  stroke-width: 1.5;
+}
+
+.pgie-sndname {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  max-width: calc(100% - 12px);
+  padding: 0 4px;
+  overflow: hidden;
+  transform: translateY(-50%);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--pgie-surface) 75%, transparent);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 15px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.pgie-sndadd .pgie-trname {
+  color: var(--pgie-ink);
+}
+
+.pgie .pgie-sndfile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 10px;
+  background: var(--pgie-surface);
+  color: var(--pgie-tx);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+
+button.pgie-sndfile:hover {
+  background: var(--pgie-hover);
+}
+
+.pgie-sndfile .pgie-ic {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--pgie-sound, #1f8f84);
+}
+
+.pgie-sndfile span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pgie-sndfile em {
+  flex: none;
+  color: var(--pgie-muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.pgie .pgie-sndhead {
+  margin-bottom: 16px;
+}
+
+.pgie-sndfiles,
+.pgie-sndlist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pgie-sndfiles {
+  max-height: 50vh;
+  margin-top: 12px;
+  overflow-y: auto;
+}
+
+.pgie-sndvolrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pgie-sndvolrow .pgie-range {
+  flex: 1;
+}
+
+.pgie-sndvol .pgie-sndmute.on {
+  background: var(--pgie-pw);
+  color: var(--pgie-ink);
+}
+
+.pgie-sndfades {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.pgie .pgie-sndaddbtn {
+  justify-content: center;
+}
+
 /* -- Keyframes (pg_image_editor_keyframes.js) -- */
 
 /* A diamond per key on the layer's lane, over its bars; the path of the

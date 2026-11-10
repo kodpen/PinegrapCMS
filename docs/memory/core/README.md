@@ -18,6 +18,12 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - Build a module's paths from `PG_FUNCTIONS_DIR`, not `__DIR__`, and start every include with its loader's gate constant (`functions-php-split-rules.md`, `file-placement-rules.md`).
 <!-- key-rules:end -->
 
+## Clusters
+
+- `audit-trail-*`: 9 files.
+- `code-editor-*`: 6 files.
+- `content-translation-*`: 6 files.
+
 ## Files
 
 - `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.

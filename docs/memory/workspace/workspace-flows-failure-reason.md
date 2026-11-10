@@ -18,5 +18,10 @@ description: Why a flow box failed (FR1, PR #8425): data.empty_values, the added
 - `fixEmpty()`: `closeRun('')`, selects the failed box in the draft and clicks its chip whose `tokenBare()` is the token, which opens `askFallback()`. A draft without the box or the chip toasts `fl_reason_gone`.
 - Run card (`workspace.js`): payload `box` (`ws_flow_run_cards_failed_boxes()`, the first failed box by finish time, '' unless failed); a followed run takes it from `steps`. Open goes to `?flow=&run=&box=`; `openAsked()` selects the box after the run shows (`openLastRun()` returns `openRun()`'s promise).
 
+## Why, and what stays as it was?
+- Owner decision 2026-11-09 (`workflow/decisions-made-workspace-10.md`): five runs on dev failed with "Could not write in #genel: The message is empty." after a "Read a row" box found no row, and nothing named the row box.
+- A row read that finds nothing stays done (`found` 0, empty cells; `ws_step_row_get_do()`): a later condition box decides.
+- Left for later: a publish hint for a text that may come empty.
+
 ## Tests?
 - `tests/workspace_flow_failure_reason_test.php`; card payload in `workspace_flow_run_cards_test.php`.

@@ -13,7 +13,7 @@ description: How the panel lists moved from DataTables to the list table driver 
 - A new list goes on the driver; DataTables, `table.chart` and the `datatable-*` classes do not come back.
 
 ## Where is each batch noted?
-- Lists of the first steps: `list-table-driver-lists.md`; printed lists: `list-table-printed.md`; commerce: `list-table-commerce-lists.md`; settings: `list-table-settings-lists.md`; campaigns and system: `list-table-campaign-system-lists.md`; ERP: `list-table-erp-lists.md`; screens with their own DataTables code: `list-table-own-code-screens.md`; product groups (the last `table.chart`): `list-table-variant-sets.md`; server paging: `server-paged-lists.md`.
+- The whole driver and the recipe for a new list: `list-table-overview.md`. Lists of the first steps: `list-table-driver-lists.md`; printed lists: `list-table-printed.md`; commerce: `list-table-commerce-lists.md`; settings: `list-table-settings-lists.md`; campaigns and system: `list-table-campaign-system-lists.md`; ERP: `list-table-erp-lists.md`; screens with their own DataTables code: `list-table-own-code-screens.md`; product groups (the last `table.chart`): `list-table-variant-sets.md`; server paging: `server-paged-lists.md`.
 
 ## What did the removal (TD14b2, #8253) take out?
 - `assets/lib/DataTables/` with its i18n file, `jquery_datatables_checkbox`, their tags in `output_header()`; `clean_up.php` deletes them on upgraded sites.

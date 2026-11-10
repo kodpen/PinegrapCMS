@@ -163,3 +163,22 @@ function test_workspace_agent_undo_open()
 	pg_assert_true(!ws_agent_undo_open(array_merge($row, array('status' => 'undone')), 1000));
 	pg_assert_true(!ws_agent_undo_open(array_merge($row, array('decided_at' => 0)), 1000));
 }
+
+function test_ws_api_agent_key_proposes()
+{
+	$assistants = array(
+		'claude'  => array('key' => 'claude', 'app_id' => 2),
+		'ai'      => array('key' => 'ai', 'app_id' => 3),
+		'agent:7' => array('key' => 'agent:7', 'app_id' => 13),
+		'model:4' => array('key' => 'model:4', 'app_id' => 14),
+		'agent:8' => array('key' => 'agent:8', 'app_id' => 2),
+	);
+
+	pg_assert_true(ws_api_agent_key_proposes($assistants, 13, false), 'an app agent\'s own key proposes in a channel');
+	pg_assert_false(ws_api_agent_key_proposes($assistants, 14, false), 'a model agent answers its requests');
+	pg_assert_false(ws_api_agent_key_proposes($assistants, 3, false), 'Pinegrap AI answers its requests');
+	pg_assert_false(ws_api_agent_key_proposes($assistants, 2, false), 'Claude\'s application, even registered as an agent');
+	pg_assert_false(ws_api_agent_key_proposes($assistants, 13, true), 'a Claude key');
+	pg_assert_false(ws_api_agent_key_proposes($assistants, 99, false), 'no assistant: the ordinary application path');
+	pg_assert_false(ws_api_agent_key_proposes($assistants, 0, false));
+}

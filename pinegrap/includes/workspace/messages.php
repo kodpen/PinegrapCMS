@@ -413,7 +413,18 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'forwards'    => $deleted ? array() : ($extra['forwards'][$id] ?? array()),
         'thread'      => $deleted ? null : ($extra['threads'][$id] ?? null),
         'from_thread' => $deleted ? null : ($extra['copies'][$id] ?? null),
+        // What the browser needs to fold a run of an application's one-line
+        // messages (workspace.js appLineRuns()): set for an application's
+        // message only.
+        'one_line'    => false,
+        'mentions_me' => false,
     );
+
+    if (!$deleted && ($row['sender_kind'] === 'app') && !$agent) {
+        $line = ws_app_line_flags((string) $row['body'], (int) $viewer['id'], ws_app_line_viewer_departments((int) $viewer['id']));
+        $payload['one_line'] = $line['one_line'];
+        $payload['mentions_me'] = $line['mentions_me'];
+    }
 
     if (!$deleted && ((int) $row['file_id'] > 0)) {
         $extension = strtolower((string) pathinfo((string) $row['file_name'], PATHINFO_EXTENSION));
@@ -521,10 +532,77 @@ function ws_app_sender($app_id)
             'avatar_kind' => 'contact',
             'presence' => 'offline',
             'app'      => true,
+            // A registered agent (ws_agents: an app agent or a model
+            // assistant) answers people: its lines never fold.
+            'agent'    => ws_app_is_agent($app_id),
         ) + (function_exists('pg_avatar_letters') ? pg_avatar_letters(pg_initials(($name !== '') ? $name : 'App', ''), 'app' . (int) $app_id) : array());
     }
 
     return $cache[$app_id];
+}
+
+/**
+ * Whether an application writes as a registered agent (ws_agents, any kind:
+ * an app agent or a model assistant).
+ *
+ * @param int $app_id
+ * @return bool
+ */
+function ws_app_is_agent($app_id)
+{
+    if (((int) $app_id <= 0) || !function_exists('ws_agents_ready') || !ws_agents_ready()) {
+        return false;
+    }
+
+    return (bool) db_value("SELECT id FROM ws_agents WHERE app_id = '" . (int) $app_id . "' LIMIT 1");
+}
+
+/**
+ * The departments the reader is in, read once per request, for
+ * ws_app_line_flags().
+ *
+ * @param int $user_id
+ * @return int[]
+ */
+function ws_app_line_viewer_departments($user_id)
+{
+    static $cache = array();
+
+    if (!isset($cache[$user_id])) {
+        $cache[$user_id] = function_exists('ws_user_department_ids') ? ws_user_department_ids($user_id) : array();
+    }
+
+    return $cache[$user_id];
+}
+
+/**
+ * Whether an application's message body is a single line, and whether it
+ * mentions the reader by name or through one of their departments. Pure.
+ *
+ * @param string $body
+ * @param int    $viewer_id
+ * @param int[]  $department_ids the reader's departments
+ * @return array one_line, mentions_me
+ */
+function ws_app_line_flags($body, $viewer_id, $department_ids)
+{
+    $body = trim(str_replace("\r", '', (string) $body));
+    $mentions = false;
+
+    if (preg_match_all('/<@(user|dept):([0-9]{1,10})>/', $body, $matches, PREG_SET_ORDER)) {
+        foreach ($matches as $match) {
+            if ((($match[1] === 'user') && ((int) $match[2] === (int) $viewer_id))
+                || (($match[1] === 'dept') && in_array((int) $match[2], array_map('intval', (array) $department_ids), true))) {
+                $mentions = true;
+                break;
+            }
+        }
+    }
+
+    return array(
+        'one_line'    => ($body !== '') && (strpos($body, "\n") === false),
+        'mentions_me' => $mentions,
+    );
 }
 
 /**
@@ -797,6 +875,12 @@ function ws_message_send($viewer, $channel, $body, $options = array())
         ws_blocks_index('message', $message_id, $body, ($app_id > 0) ? 0 : (int) $viewer['id'], (int) $channel['id']);
     }
     ws_message_notify_mentions($viewer, $channel, $message_id, $tokens, $app_id);
+
+    // An application asking with a checklist rings the people it asks
+    // (interact.php).
+    if (($app_id > 0) && function_exists('ws_question_ring') && ws_checklist_asks($body)) {
+        ws_question_ring($channel, $message_id, $tokens);
+    }
 
     // A decision, a note or a task card of a discussion goes into its
     // channel too, and the bar under the message it talks over counts the

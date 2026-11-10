@@ -29,12 +29,13 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 
 function test_workspace_agent_request_parse()
 {
-	pg_assert_same(array('kind' => 'app', 'id' => 4), ws_agent_request_parse('app:4'));
+	pg_assert_same(array('kind' => 'app', 'id' => 4), ws_agent_request_parse('agent:4'));
+	pg_assert_same(null, ws_agent_request_parse('app:4'), 'app:<n> is an application\'s proposal');
 	pg_assert_same(array('kind' => 'model', 'id' => 12), ws_agent_request_parse('model:12'));
 	pg_assert_same(null, ws_agent_request_parse('claude'));
 	pg_assert_same(null, ws_agent_request_parse('mcp:3'), 'an MCP server is not a registry agent');
-	pg_assert_same(null, ws_agent_request_parse('app:0'));
-	pg_assert_same(null, ws_agent_request_parse('app:4x'));
+	pg_assert_same(null, ws_agent_request_parse('agent:0'));
+	pg_assert_same(null, ws_agent_request_parse('agent:4x'));
 }
 
 function test_workspace_agent_request_label()
