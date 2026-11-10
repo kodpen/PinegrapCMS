@@ -20,6 +20,7 @@ description: The hand-written key-rules block of each memory folder README, what
 ## When does it stop with exit 1?
 - "no single key rules block": a README without exactly one start line followed by one end line, usually an older copy taken during a merge. Take the file from `development` (`git checkout origin/development -- <file>`) and run again, or delete it if the folder has no key rules yet.
 - "a merge conflict inside the key rules": conflict markers inside the block. Settle the block by hand (keep both sides' rules), then run again.
+- "names no memory file": a `[[name]]` or `folder/file.md` (also `docs/memory/folder/file.md`) in a topic file or a decisions part pointing at a memory file that does not exist, often a finished, deleted plan. Correct the link or remove it. Plans are not checked: they name files to come; an embed `![[x]]`, a wildcard or a `<placeholder>` is not a link (`memory_index_broken_links()`).
 - Also, as before: a memory file over 4 KB, missing or invalid frontmatter, `name` not equal to the file name, a file outside a known folder; a `module:` field with a name that is not a file under `pinegrap/includes/fn/`. With `--check` (CI) a README that differs from what the files produce fails too.
 
 ## How is a README conflict settled after a merge?
