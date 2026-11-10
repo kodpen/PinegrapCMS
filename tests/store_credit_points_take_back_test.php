@@ -88,6 +88,15 @@ function test_store_credit_points_take_back_never_less_than_the_conversion_gave(
 	}
 }
 
+function test_store_credit_points_take_back_exact_on_large_values()
+{
+	// 79779 * 100 / 0.29 is exactly 27510000; float division gives
+	// 27510000.000...1, which ceil() raised a minor unit.
+	pg_assert_same(27510000, pg_credit_points_take_back_plan(0, 79779, 0.29)['value'], 'rate 0.29');
+	pg_assert_same(31910000, pg_credit_points_take_back_plan(0, 130831, 0.41)['value'], 'rate 0.41');
+	pg_assert_same(0, pg_credit_points_take_back_plan(0, 7, 0.00001)['value'], 'a rate under the stored precision is off');
+}
+
 function test_store_credit_points_card_cuts_newest_first()
 {
 	$cards = array(

@@ -129,21 +129,24 @@ function pg_credit_points_settings()
 function pg_credit_points_take($points, $rate, $smallest = 0)
 {
     $points = (int) $points;
-    $rate = (float) $rate;
+    // The rate is stored with at most four decimals
+    // (pg_credit_points_parse_rate()), so counted in ten-thousandths it is a
+    // whole number and the division below is exact. Float division puts a
+    // large value (61033 points at 0.28) a minor unit off.
+    $rate = (int) round((float) $rate * 10000);
     $none = array('value' => 0, 'points' => 0);
 
     if (($points <= 0) || ($rate <= 0)) {
         return $none;
     }
 
-    // The small allowance keeps 0.07 * 100 / 0.07 from landing just under 100.
-    $value = (int) floor(($points * 100 / $rate) + 1e-9);
+    $value = intdiv($points * 1000000, $rate);
 
     if ($value < max(1, (int) $smallest)) {
         return $none;
     }
 
-    $spent = (int) ceil(($value * $rate / 100) - 1e-9);
+    $spent = intdiv($value * $rate + 999999, 1000000);
 
     return array('value' => $value, 'points' => max(1, min($points, $spent)));
 }
@@ -430,8 +433,10 @@ function pg_credit_points_take_back_plan($balance, $points, $rate)
     $points = max(0, (int) $points);
     $from_balance = min(max(0, (int) $balance), $points);
     $short = $points - $from_balance;
-    $rate = (float) $rate;
-    $value = (($short > 0) && ($rate > 0)) ? (int) ceil(($short * 100 / $rate) - 1e-9) : 0;
+    // In ten-thousandths of a point, as pg_credit_points_take() counts, so
+    // the rounding up is exact on large values too.
+    $rate = (int) round((float) $rate * 10000);
+    $value = (($short > 0) && ($rate > 0)) ? intdiv($short * 1000000 + $rate - 1, $rate) : 0;
 
     return array('points' => $from_balance, 'short' => $short, 'value' => $value);
 }

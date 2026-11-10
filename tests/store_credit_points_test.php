@@ -98,6 +98,16 @@ function test_store_credit_points_take_never_gives_more_than_the_points_are_wort
 	}
 }
 
+function test_store_credit_points_take_is_exact_on_large_conversions()
+{
+	// 61033 * 100 / 0.28 is exactly 21797500; float division gives
+	// 21797499.999..., which floor() cut a minor unit low.
+	pg_assert_same(array('value' => 21797500, 'points' => 61033), pg_credit_points_take(61033, 0.28, 0), 'rate 0.28');
+	pg_assert_same(array('value' => 105570000, 'points' => 73899), pg_credit_points_take(73899, 0.07, 0), 'rate 0.07');
+	pg_assert_same(array('value' => 25720000, 'points' => 4501), pg_credit_points_take(4501, '0.0175', 0), 'four decimals, as stored');
+	pg_assert_same(array('value' => 0, 'points' => 0), pg_credit_points_take(100, 0.00001, 0), 'a rate under the stored precision is off');
+}
+
 function test_store_credit_points_staff_save_writes_only_a_changed_field()
 {
 	pg_assert_same('', pg_credit_points_staff_sql('120', '120'), 'unchanged: the balance is left alone');
