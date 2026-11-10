@@ -719,7 +719,7 @@ function ws_api_message_threads($viewer, $message_ids)
     return $out;
 }
 
-function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null, $checks = null, $forwards = null)
+function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null, $checks = null, $forwards = null, $group_cards = null)
 {
     // Who ticked its checklist (interact.php).
     if ($checks === null) {
@@ -739,6 +739,11 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
     // The note it shares (notes.php).
     if ($note_cards === null) {
         $note_cards = function_exists('ws_note_cards_map') ? ws_note_cards_map($viewer, array($row['id'])) : array();
+    }
+
+    // The note group it shares (note_group_shares.php).
+    if ($group_cards === null) {
+        $group_cards = function_exists('ws_note_group_cards_map') ? ws_note_group_cards_map($viewer, array($row['id'])) : array();
     }
 
     // The copies it forwards (ws_message_forwards).
@@ -851,6 +856,7 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         'from_thread_id' => $deleted ? null : ($threads['copies'][(int) $row['id']] ?? null),
         'poll'           => (!$deleted && isset($polls[(int) $row['id']])) ? ws_api_poll_present($polls[(int) $row['id']]) : null,
         'note_card'      => ws_api_message_note_card($row, $note_cards),
+        'note_group_card' => ws_api_message_note_group_card($row, $group_cards),
         'checks'         => $deleted ? array() : ws_api_message_checks($row['body'], $checks[(int) $row['id']] ?? array()),
         'mail'           => $deleted ? null : $mail,
         'forwards'       => ws_api_message_forwards($row, $forwards),
@@ -881,6 +887,7 @@ function ws_api_message_schema()
         'from_thread_id' => 'integer?',
         'poll'           => 'WorkspacePoll?',
         'note_card'      => 'WorkspaceMessageNoteCard?',
+        'note_group_card' => 'WorkspaceMessageNoteGroupCard?',
         'checks'         => 'WorkspaceMessageCheck[]',
         'mail'           => 'WorkspaceMessageMail?',
         'forwards'       => array(array(
@@ -998,6 +1005,52 @@ function ws_api_message_note_card($row, $note_cards)
     }
 
     return array('id' => (int) $card['id'], 'name' => (string) $card['name'], 'excerpt' => (string) $card['excerpt']);
+}
+
+function ws_api_message_note_group_card_schema()
+{
+    return array(
+        'group_id' => 'integer',
+        'name'     => 'string',
+        'color'    => 'string',
+        'owner'    => 'WorkspaceMessageSender?',
+        'notes'    => array(array('id' => 'integer', 'name' => 'string', 'updated_at' => 'string?')),
+    );
+}
+
+/**
+ * The note group a message shares, from the page's ws_note_group_cards_map():
+ * the group and the notes of it the channel was given that the reader reads,
+ * in the group's order, as the channel screen draws them. Null when it shares
+ * none (a locked group shares nothing) and on a deleted message.
+ *
+ * @param array $row         ws_messages row
+ * @param array $group_cards ws_note_group_cards_map() by message id
+ * @return array|null
+ */
+function ws_api_message_note_group_card($row, $group_cards)
+{
+    $card = $group_cards[(int) $row['id']] ?? null;
+
+    if (((int) $row['deleted_at'] > 0) || !is_array($card)) {
+        return null;
+    }
+
+    $notes = array();
+
+    foreach ((array) ($card['notes'] ?? array()) as $note) {
+        $notes[] = array('id' => (int) $note['id'], 'name' => (string) $note['name'], 'updated_at' => api_time($note['updated_at'] ?? 0));
+    }
+
+    $owner = is_array($card['owner'] ?? null) ? $card['owner'] : null;
+
+    return array(
+        'group_id' => (int) $card['group_id'],
+        'name'     => (string) $card['name'],
+        'color'    => (string) $card['hex'],
+        'owner'    => $owner ? array('user_id' => ((int) ($owner['id'] ?? 0) > 0) ? (int) $owner['id'] : null, 'name' => (string) $owner['name']) : null,
+        'notes'    => $notes,
+    );
 }
 
 /**
@@ -1275,12 +1328,13 @@ function ws_api_messages_present($viewer, $rows)
     $note_cards = function_exists('ws_note_cards_map') ? ws_note_cards_map($viewer, $ids) : array();
     $checks = ws_checks_map($ids);
     $forwards = ws_api_message_forwards_map($viewer, $ids);
+    $group_cards = function_exists('ws_note_group_cards_map') ? ws_note_group_cards_map($viewer, $ids) : array();
     $out = array();
 
     // A message the person deleted for themselves stays in the page, marked
     // hidden, so that since_id and before_id still page past it.
     foreach ($rows as $row) {
-        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards, $checks, $forwards);
+        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards, $checks, $forwards, $group_cards);
     }
 
     return $out;

@@ -232,6 +232,7 @@ function ws_openapi_objects()
         'WorkspaceMessageVoice'     => 'ws_api_message_voice_schema',
         'WorkspaceMessageThread'    => 'ws_api_message_thread_schema',
         'WorkspaceMessageNoteCard'  => 'ws_api_message_note_card_schema',
+        'WorkspaceMessageNoteGroupCard' => 'ws_api_message_note_group_card_schema',
         'WorkspaceMessageCheck'     => 'ws_api_message_check_schema',
         'WorkspaceApprovalRecord'   => 'ws_api_approval_record_schema',
         'WorkspaceChannelGroupMemberships'  => 'ws_api_channel_group_memberships_schema',
