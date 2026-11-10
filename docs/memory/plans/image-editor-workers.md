@@ -21,4 +21,4 @@ description: How workers take the free steps of the image editor's plans (done b
 
 ## How is it reviewed?
 - Never on the PR: a comment there reaches nobody (two drafts waited days for a "Reviewed" in November 2026). With the checks green, the worker asks the holder's review as an owner's approval (`workflow/architect-asking.md` "How is the owner's approval of a PR asked?"): it opens an `architect` issue `Approval: #<pr> — <topic>`, writes `Approval: #<issue>` in the PR body, marks the PR ready with the `ready` label and ends.
-- The holder tries it against the screens on desktop and phone; the answer comes through the architect. Changes asked are a new task; the merging session merges only after the approval.
+- The holder tries it against the screens on desktop and phone; the architect brings the answer and the merging session merges only after it.
