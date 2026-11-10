@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $liveform->add_notice(h($label['mailed']
             ? lang(array('string' => 'The return label was created. Its return code {var:1} was sent to the customer by e-mail.', 'vars' => array($label['code'])))
-            : lang(array('string' => 'The return label was created with the return code {var:1}, but the e-mail to the customer could not be sent.', 'vars' => array($label['code'])))));
+            : pg_return_mail_failure_text(lang(array('string' => 'The return label was created with the return code {var:1}, but the e-mail to the customer could not be sent.', 'vars' => array($label['code']))), $label['mail_error'])));
         go($here);
     }
 
@@ -129,11 +129,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif (!empty($refunded['credit'])) {
             $done = $refunded['mailed']
                 ? lang(array('string' => 'The refund of {var:1} was given as store credit of {var:2}. The customer was told by e-mail.', 'vars' => array(pg_return_money_text($refunded['amount']), pg_return_money_text($refunded['credit']))))
-                : lang(array('string' => 'The refund of {var:1} was given as store credit of {var:2}, but the e-mail to the customer could not be sent.', 'vars' => array(pg_return_money_text($refunded['amount']), pg_return_money_text($refunded['credit']))));
+                : pg_return_mail_failure_text(lang(array('string' => 'The refund of {var:1} was given as store credit of {var:2}, but the e-mail to the customer could not be sent.', 'vars' => array(pg_return_money_text($refunded['amount']), pg_return_money_text($refunded['credit'])))), $refunded['mail_error']);
         } elseif ($refunded['mailed']) {
             $done = lang(array('string' => 'The refund of {var:1} was recorded. The customer was told by e-mail.', 'vars' => array(pg_return_money_text($refunded['amount']))));
         } else {
-            $done = lang(array('string' => 'The refund of {var:1} was recorded, but the e-mail to the customer could not be sent.', 'vars' => array(pg_return_money_text($refunded['amount']))));
+            $done = pg_return_mail_failure_text(lang(array('string' => 'The refund of {var:1} was recorded, but the e-mail to the customer could not be sent.', 'vars' => array(pg_return_money_text($refunded['amount'])))), $refunded['mail_error']);
         }
 
         // An issued invoice gets its return invoice for the same lines next,
@@ -200,12 +200,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'approved':
             $liveform->add_notice(h($moved['mailed']
                 ? lang('The return was approved. The customer was told by e-mail how to send the goods.')
-                : lang('The return was approved, but the e-mail to the customer could not be sent.')));
+                : pg_return_mail_failure_text(lang('The return was approved, but the e-mail to the customer could not be sent.'), $moved['mail_error'])));
             break;
         case 'rejected':
             $liveform->add_notice(h($moved['mailed']
                 ? lang('The return was rejected. The customer was told by e-mail.')
-                : lang('The return was rejected, but the e-mail to the customer could not be sent.')));
+                : pg_return_mail_failure_text(lang('The return was rejected, but the e-mail to the customer could not be sent.'), $moved['mail_error'])));
             break;
         case 'shipped':
             $liveform->add_notice(h(lang('The parcel was recorded as sent back.')));

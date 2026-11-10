@@ -260,7 +260,8 @@ function test_returns_staff_request_record_follows()
 	pg_assert_true(($repeat !== false) && ($audit !== false) && ($repeat < $audit), 'a repeat returns before anything follows');
 	pg_assert_contains('pg_return_audit_create_fields($row)', $body);
 	pg_assert_contains("log_activity(lang(array('string' => 'Return request {var:1} was recorded for order {var:2} from the panel.'", $body);
-	pg_assert_contains("!empty(\$options['notify']) ? pg_return_send_request_mail(\$id) : null", $body, 'the e-mail only when asked');
+	pg_assert_contains("if (!empty(\$options['notify'])) {", $body, 'the e-mail only when asked');
+	pg_assert_contains("\$mailed = pg_return_send_request_mail(\$id);", $body, 'the e-mail only when asked');
 	pg_assert_false(strpos($body, 'pg_return_notify_staff(') !== false, 'no bell for the person who recorded it');
 	pg_assert_false(strpos($body, 'pg_return_announce(') !== false, 'the event comes from pg_return_create()');
 }

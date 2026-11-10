@@ -4591,6 +4591,7 @@
     "The magic wand cannot read this picture.": "Sihirli değnek bu resmi okuyamıyor.",
     "The mail boat leaves the landing at seven, loaded with letters, groceries, a crate of chickens and one passenger who has paid a small fare to see the river the slow way.": "Posta teknesi saat yedide iskeleden ayrılıyor; mektuplar, erzak, bir kafes tavuk ve nehri yavaş yoldan görmek için küçük bir ücret ödemiş tek bir yolcuyla yüklü.",
     "The mail queue table is not available yet; run the upgrade.": "Posta kuyruğu tablosu henüz yok; yükseltmeyi çalıştırın.",
+    "The mail server said: {var:1}": "Mail sunucusunun yanıtı: {var:1}",
     "The mailbox of this conversation is gone or switched off.": "Bu konuşmanın e-posta kutusu silinmiş ya da kapalı.",
     "The mailbox was saved.": "E-posta kutusu kaydedildi.",
     "The mailbox's channel is missing or in the archive.": "E-posta kutusunun kanalı yok ya da arşivde.",
