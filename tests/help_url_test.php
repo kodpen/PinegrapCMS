@@ -112,3 +112,20 @@ function test_help_url_settings_category_and_system_tools_rows()
 		pg_assert_same('https://pinegrap.com/tr/' . $topic, get_help_url(array('screen' => $screen, 'languageinfo' => 'tr')), $screen . ' in Turkish');
 	}
 }
+
+// Two sections that are not where the screen's name suggests: Connected
+// Accounts is written on the Site Settings page, not the API page, and the
+// calendar subscription section carries the id work-calendar-subscription.
+// A row that names another page or id opens the top of the page instead.
+function test_help_url_connected_accounts_and_calendar_subscription_rows()
+{
+	$rows = array(
+		'connections'             => 'site-settings#connected-accounts',
+		'workspace_calendar_feed' => 'workspace#work-calendar-subscription',
+	);
+
+	foreach ($rows as $screen => $topic) {
+		pg_assert_same('https://pinegrap.com/' . $topic, get_help_url(array('screen' => $screen)), $screen);
+		pg_assert_same('https://pinegrap.com/tr/' . $topic, get_help_url(array('screen' => $screen, 'languageinfo' => 'tr')), $screen . ' in Turkish');
+	}
+}

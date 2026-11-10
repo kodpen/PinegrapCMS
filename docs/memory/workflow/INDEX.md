@@ -130,7 +130,7 @@
 - unit-test-time-limit.md: tools/test.php gives every test the run's own time limit back, because product code sets @set_time_limit(120) and Windows counts it in wall-clock time, which stopped pushes there
 - user-docs-coverage-content.md: pinegrap.com documentation pages for the panel, settings, files, pages and people (/introduction to /chat): what each page covers and the memory folders and clusters it is written from
 - user-docs-coverage-modules.md: pinegrap.com documentation pages for visitors, SEO, design, languages, commerce, ERP, Workspace, API and security: what each page covers and the memory folders and clusters it is written from
-- user-docs-help-anchors.md: Help anchors of get_help_url.php that pinegrap.com lacks (27 of 264 on 2026-11-10): the sections still to write per page, two rows that point beside a section that exists, how the list is made again
+- user-docs-help-anchors.md: Help anchors of get_help_url.php that pinegrap.com lacks (25 of 288 on 2026-11-10): sections to write per page, the Connected accounts and Calendar subscription rows corrected, how the list is made
 - user-docs-pages.md: User documentation on pinegrap.com: the 28 documentation pages by address, the PR each is written up to (all #500, release 2026.4.10), how a mark moves, the site pages, where coverage is listed
 - user-docs-writing.md: How a pinegrap.com documentation page is written and published: English only, the page's structure (sections, anchors, tables, notes), the editor route, Publish is live, release notes on /changelog [decision: here]
 - workflow-lint-and-dependabot.md: The actionlint job (pinned, SHA-256, shellcheck, what its data lacks) and Dependabot for github-actions (read from main, PRs to development, one per major bump)
