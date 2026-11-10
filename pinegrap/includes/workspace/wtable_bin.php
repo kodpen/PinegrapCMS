@@ -189,11 +189,12 @@ function ws_wtable_row_bin_put($row, $actor_id)
         }
     }
 
-    db("INSERT INTO ws_wtable_row_bin (row_id, table_id, position, cells, revision, created_by, created_at, updated_by, updated_at, links, deleted_by, deleted_at)
+    // The row keeps its stable number in the bin, for a restore.
+    db("INSERT INTO ws_wtable_row_bin (row_id, table_id, position, cells, revision, created_by, created_at, updated_by, updated_at, links, deleted_by, deleted_at" . ws_wtable_number_field(0) . ")
         VALUES ('" . (int) $row['id'] . "', '" . (int) $row['table_id'] . "', '" . (int) $row['position'] . "', '" . e((string) ($row['cells'] ?? '{}')) . "',
             '" . (int) $row['revision'] . "', '" . (int) $row['created_by'] . "', '" . (int) $row['created_at'] . "',
             '" . (int) $row['updated_by'] . "', '" . (int) $row['updated_at'] . "', '" . e(ws_wtable_bin_links_encode($refs)) . "',
-            '" . (int) $actor_id . "', '" . time() . "')");
+            '" . (int) $actor_id . "', '" . time() . "'" . ws_wtable_number_value((int) ($row['number'] ?? 0)) . ")");
 
     return (int) mysqli_insert_id(db::$con);
 }
@@ -334,9 +335,13 @@ function ws_wtable_row_restore($viewer, $table, $bin)
     $row_id = (int) $bin['row_id'];
     $revision = (int) $bin['revision'] + 1;
     $position = (int) db_value("SELECT COALESCE(MAX(position), 0) FROM ws_wtable_rows WHERE table_id = '" . $table_id . "'") + 1;
+
+    // A row keeps the number it had; one binned before the numbers were
+    // there (0) takes the table's next one.
+    $number = ((int) ($bin['number'] ?? 0) > 0) ? (int) $bin['number'] : ws_wtable_number_take($table_id);
     $values = "'" . $table_id . "', '" . $position . "', '" . e((string) ($bin['cells'] ?? '{}')) . "', '" . $revision . "',
-        '" . (int) $bin['created_by'] . "', '" . (int) $bin['created_at'] . "', '" . (int) $viewer['id'] . "', '" . $now . "'";
-    $columns = "table_id, position, cells, revision, created_by, created_at, updated_by, updated_at";
+        '" . (int) $bin['created_by'] . "', '" . (int) $bin['created_at'] . "', '" . (int) $viewer['id'] . "', '" . $now . "'" . ws_wtable_number_value($number);
+    $columns = "table_id, position, cells, revision, created_by, created_at, updated_by, updated_at" . ws_wtable_number_field($number);
     $restored = 0;
 
     if (($row_id > 0) && !db_value("SELECT id FROM ws_wtable_rows WHERE id = '" . $row_id . "'")) {
@@ -351,10 +356,10 @@ function ws_wtable_row_restore($viewer, $table, $bin)
 
     if ($restored <= 0) {
         // The row could not be written: it goes back into the bin as it was.
-        db("INSERT INTO ws_wtable_row_bin (id, row_id, table_id, position, cells, revision, created_by, created_at, updated_by, updated_at, links, deleted_by, deleted_at)
+        db("INSERT INTO ws_wtable_row_bin (id, row_id, table_id, position, cells, revision, created_by, created_at, updated_by, updated_at, links, deleted_by, deleted_at" . ws_wtable_number_field($number) . ")
             VALUES ('" . (int) $bin['id'] . "', '" . $row_id . "', '" . $table_id . "', '" . (int) $bin['position'] . "', '" . e((string) ($bin['cells'] ?? '{}')) . "',
                 '" . (int) $bin['revision'] . "', '" . (int) $bin['created_by'] . "', '" . (int) $bin['created_at'] . "', '" . (int) $bin['updated_by'] . "',
-                '" . (int) $bin['updated_at'] . "', '" . e((string) ($bin['links'] ?? '')) . "', '" . (int) $bin['deleted_by'] . "', '" . (int) $bin['deleted_at'] . "')");
+                '" . (int) $bin['updated_at'] . "', '" . e((string) ($bin['links'] ?? '')) . "', '" . (int) $bin['deleted_by'] . "', '" . (int) $bin['deleted_at'] . "'" . ws_wtable_number_value($number) . ")");
         db($uncount);
 
         return ws_wtable_refusal('not_saved', '', 500) + $none;

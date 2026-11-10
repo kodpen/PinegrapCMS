@@ -205,6 +205,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-41.md: Where are the rules and the earlier parts?
 - decisions-made-product-41.md: How is scheduled work set up and listed now that scheduled actions are flows? (2026-11-09)
 - decisions-made-product-41.md: How does the new dashboard's System Status card look and behave? (2026-11-10)
+- decisions-made-product-42.md: Where are the rules and the earlier parts?
+- decisions-made-product-42.md: How is a file or a page chosen across the software? (owner, 2026-11-10)
 - decisions-made-product-5.md: Which outside-account leftovers start in 2026.11.0? (#3180)
 - decisions-made-product-5.md: Do subscriptions start, and who runs the renewals? (#3183)
 - decisions-made-product-5.md: Does a beta site without a build file get the beta build of its own version? (#3204)
@@ -243,6 +245,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-13.md: Which tables and columns were approved?
 - decisions-made-schema-14.md: Where are the rules and the earlier parts?
 - decisions-made-schema-14.md: Which tables and columns were approved?
+- decisions-made-schema-15.md: Where are the rules and the earlier parts?
+- decisions-made-schema-15.md: Which tables and columns were approved?
 - decisions-made-schema-2.md: Where are the rules and the earlier steps?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-28?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-29 and later?
@@ -290,6 +294,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-10.md: What happens to requests an application agent does not read? (owner, 2026-11-10)
 - decisions-made-workspace-11.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-11.md: Who adds an agent to a private channel? (owner, 2026-11-10, #8477)
+- decisions-made-workspace-11.md: Under whose name is a message shown that a connected application writes? (owner, 2026-11-10)
+- decisions-made-workspace-11.md: What keeps a connected application's message from waking more than before? (architect, 2026-11-10)
+- decisions-made-workspace-11.md: Whose session answers "@Claude"? (owner, 2026-11-10)
 - decisions-made-workspace-2.md: What may the channel menu hold?
 - decisions-made-workspace-2.md: Where are records created inside a chat?
 - decisions-made-workspace-2.md: Does the customer channel's "New sales quote" stay in the menu?
@@ -509,6 +516,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/claude-not-channel-agent.md: Claude is no channel agent: never offered in a channel's Agents list, refused with 422 on the add route, its old ws_channel_agents rows unread but removable
 - workspace/mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP chosen (#2444) and when a push endpoint (G9) would come, the eleven answers and their files, defaults, scope, PRs, what stays unverified
 - workspace/model-assistant-channel-rule.md: Where a model assistant is asked (its own ws_channel_agents row; a channel closed to Pinegrap AI on purpose keeps it out too) and how the shared loop's failure sentences name it (PR #8413)
+- workspace/workflow-table-row-numbers.md: The stable # number of workflow table rows (11.0.183, PR #8461): counter in ws_wtables.next_number, the row's number, kept through the bin, shown in #, found by by: number
 - workspace/workspace-ai-call-timeout.md: How long one Pinegrap AI model call may take (500 s, PG_AI_CALL_TIMEOUT 20-600), why it is no longer 55 s, what still cuts a call off, the levers to measure before changing limits
 - workspace/workspace-api-callers.md: Which Workspace API writes the person must make themselves: ws_api_person_only() vs ws_api_own_words_only(), whose name a write carries, refusals, which are no MCP tools
 - workspace/workspace-assistant-keys.md: Create on the Claude and Pinegrap AI cards, Claude's "Reset secret": the row made, scopes, config link, who sees it, one-time window, a key never given a secret

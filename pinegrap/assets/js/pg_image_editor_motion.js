@@ -58,7 +58,7 @@
     // Layers that do not move: a redaction moving away would show what it hides.
     var STILL = ['redact'];
     // Layers whose stroke can be drawn on.
-    var UNDRAWABLE = ['text', 'image', 'sticker', 'redact'];
+    var UNDRAWABLE = ['text', 'image', 'sticker', 'redact', 'video'];
     var PHONE = '(max-width: 599.98px)';
 
     // Rows under the play bar (the tracks part): { key, node, update, note },

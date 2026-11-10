@@ -173,6 +173,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_agent_channel();        // 11.0.180
 	upgrade_2026_11_0_ws_ai_tokens();            // 11.0.181
 	upgrade_2026_11_0_ws_agent_token_limit();     // 11.0.182
+	upgrade_2026_11_0_ws_wtable_numbers();       // 11.0.183
 	upgrade_2026_11_0_ws_agent_sessions();       // 11.0.184
 
 }
@@ -5851,6 +5852,61 @@ function upgrade_2026_11_0_ws_agent_token_limit() {
 	install_add_column('ws_agents', 'token_limit', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Workspace: a model assistant can be given a monthly token limit on its form; none is set on the existing ones.');
+
+}
+
+// The stable row numbers of workflow tables (11.0.183;
+// includes/workspace/wtable_rows.php). Every table numbers its rows 1, 2, 3
+// for good: ws_wtables.next_number is the last number the table gave, a new
+// row takes the next one, and a delete shifts and frees none. A row in the
+// bin keeps its number for a restore. Rows already there are numbered in
+// the order the table lists them (position, then id); a row binned before
+// this step has none (0) and takes the next number when it is restored.
+// Re-runnable: only rows still at 0 are numbered, after the highest given.
+function upgrade_2026_11_0_ws_wtable_numbers() {
+
+	if (!install_table_exists('ws_wtables') || !install_table_exists('ws_wtable_rows')) {
+
+		install_skipped('ws_wtables does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_wtables', 'next_number', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_wtable_rows', 'number', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('ws_wtable_rows', 'idx_number', "KEY idx_number (table_id, number)");
+
+	if (install_table_exists('ws_wtable_row_bin')) {
+
+		install_add_column('ws_wtable_row_bin', 'number', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	}
+
+	$tables = (array) db_values("SELECT DISTINCT table_id FROM ws_wtable_rows WHERE number = 0");
+
+	foreach ($tables as $table_id) {
+
+		$table_id = (int) $table_id;
+		$given = (int) db_value("SELECT GREATEST(
+			COALESCE((SELECT next_number FROM ws_wtables WHERE id = '" . $table_id . "'), 0),
+			COALESCE((SELECT MAX(number) FROM ws_wtable_rows WHERE table_id = '" . $table_id . "'), 0))");
+
+		db("SET @ws_wtable_number = " . $given);
+		db("UPDATE ws_wtable_rows SET number = (@ws_wtable_number := @ws_wtable_number + 1)
+			WHERE table_id = '" . $table_id . "' AND number = 0 ORDER BY position, id");
+
+	}
+
+	// The counter of every table at the highest number it gave.
+	db("UPDATE ws_wtables t SET t.next_number = GREATEST(t.next_number,
+		COALESCE((SELECT MAX(r.number) FROM ws_wtable_rows r WHERE r.table_id = t.id), 0))");
+
+	if (!empty($tables)) {
+
+		install_ran(lang(array('string' => 'workflow table rows numbered in {var:1} tables', 'vars' => count($tables))));
+
+	}
 
 }
 

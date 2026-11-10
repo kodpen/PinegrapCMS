@@ -9289,6 +9289,147 @@
         soundPeaks: soundPeaks, soundType: soundType
     };
 
+    // ---- CLIP (pg_image_editor_clip.js) ----
+
+    // A video layer: { type: 'video', fileId, name, src, length, width,
+    // height, sound, from, to, start, speed, volume, muted, x, y, w, h, rot,
+    // opacity }. Times in ms: length is the file's, from and to are the
+    // source in and out, start places the clip on the document's own
+    // timeline; speed plays the cut faster or slower, so the clip lasts
+    // (to - from) / speed. width and height are the source's pixels, sound
+    // whether it has a sound track.
+    var CLIP_SPEEDS = [0.25, 0.5, 1, 1.5, 2, 4];
+    var CLIP_TYPES = ['mp4', 'm4v', 'webm'];
+    var CLIP_MIN = 100;
+
+    // The layer's timing as the editor uses it: numbers in range, the
+    // speed one of CLIP_SPEEDS (the nearest), at least 0.1 s of source.
+    function clipLayer(l) {
+        var length = soundNumber(l && l.length, 0, 36e5, 0);
+        var from = soundNumber(l && l.from, 0, Math.max(0, length - CLIP_MIN), 0);
+        var to = soundNumber(l && l.to, Math.min(length, from + CLIP_MIN), length, length);
+        var speed = soundNumber(l && l.speed, CLIP_SPEEDS[0], CLIP_SPEEDS[CLIP_SPEEDS.length - 1], 1);
+
+        speed = CLIP_SPEEDS.reduce(function (best, s) { return (Math.abs(s - speed) < Math.abs(best - speed)) ? s : best; }, 1);
+
+        return {
+            length: length, from: from, to: to, start: soundNumber(l && l.start, 0, 36e5, 0), speed: speed,
+            volume: soundNumber(l && l.volume, 0, 1, 1), muted: !!(l && l.muted), sound: !!(l && l.sound)
+        };
+    }
+
+    // Where the clip lies on the document's timeline.
+    function clipSpan(l) {
+        var c = clipLayer(l);
+
+        return { from: c.start, to: c.start + (c.to - c.from) / c.speed };
+    }
+
+    // The source time shown at document time t: at rest (t null) the source
+    // in; null while the clip is not on the timeline at t (before its start,
+    // from its end on), so the layer shows nothing there.
+    function clipAt(l, t) {
+        var c = clipLayer(l), end;
+
+        if ((t === null) || (t === undefined)) {
+            return c.from;
+        }
+
+        end = c.start + (c.to - c.from) / c.speed;
+
+        if ((t < c.start) || (t >= end)) {
+            return null;
+        }
+
+        return Math.min(c.to - 1, c.from + (t - c.start) * c.speed);
+    }
+
+    // A box of the source's ratio inside the box (the canvas or the visible
+    // part of the stage), centred.
+    function clipFit(width, height, box) {
+        var w = Math.max(1, Number(width) || 1), h = Math.max(1, Number(height) || 1), k = Math.min(box.w / w, box.h / h);
+
+        return { x: box.x + (box.w - w * k) / 2, y: box.y + (box.h - h * k) / 2, w: w * k, h: h * k };
+    }
+
+    // A video from Files (or uploaded) as a new layer filling the box, from
+    // start on the timeline; meta is what the source read: length, width,
+    // height, sound. Its id is the caller's (M.newId()).
+    function clipNew(file, meta, box, start) {
+        var place = clipFit(meta.width, meta.height, box), length = Math.max(0, Math.round(Number(meta.length) || 0));
+
+        return {
+            type: 'video', fileId: Number(file.id) || 0, name: String(file.name || ''), src: String(file.url || ''),
+            length: length, width: Math.round(Number(meta.width) || 0), height: Math.round(Number(meta.height) || 0), sound: !!meta.sound,
+            from: 0, to: length, start: Math.max(0, Math.round(Number(start) || 0)), speed: 1, volume: 1, muted: false,
+            x: place.x, y: place.y, w: place.w, h: place.h, rot: 0, opacity: 1
+        };
+    }
+
+    // The fields a new source changes on the layer: its file, length and
+    // size; the cut kept where the new file is long enough; the box keeps
+    // its width and centre, its height the new ratio.
+    function clipReplace(l, file, meta) {
+        var length = Math.max(0, Math.round(Number(meta.length) || 0)), c = clipLayer(Object.assign({}, l, { length: length }));
+        var ratio = (Number(meta.width) > 0) ? (Number(meta.height) || 0) / Number(meta.width) : 0, h = ratio ? l.w * ratio : l.h;
+
+        return {
+            fileId: Number(file.id) || 0, name: String(file.name || ''), src: String(file.url || ''), length: length,
+            width: Math.round(Number(meta.width) || 0), height: Math.round(Number(meta.height) || 0), sound: !!meta.sound,
+            from: c.from, to: c.to, y: l.y + (l.h - h) / 2, h: h
+        };
+    }
+
+    // The latest end of the document's video layers, 0 with none.
+    function clipEnd(doc) {
+        return ((doc && Array.isArray(doc.layers)) ? doc.layers : []).reduce(function (end, l) {
+            return (l && (l.type === 'video')) ? Math.max(end, clipSpan(l).to) : end;
+        }, 0);
+    }
+
+    // The clip's own sound as the sound part plays it (soundPlan()), on the
+    // whole timeline from offset (the open scene's start): silent when the
+    // clip is muted, hidden or has no sound, and off 1× speed, where the
+    // sound would no longer match the pictures.
+    function clipSound(l, offset) {
+        var c = clipLayer(l);
+
+        return {
+            id: 'clip-' + l.id, fileId: Number(l.fileId) || 0, name: String(l.name || ''), src: String(l.src || ''), length: c.length,
+            start: c.start + (Number(offset) || 0), from: c.from, to: c.to, volume: c.volume, fadeIn: 0, fadeOut: 0,
+            muted: c.muted || !c.sound || !!l.hidden || (c.speed !== 1)
+        };
+    }
+
+    // Detach sound: the clip's sound as an entry of doc.sounds with the id
+    // given (soundId()), at full volume when the clip was muted; null when
+    // the clip has no sound or does not play at 1×.
+    function clipDetach(l, id, offset) {
+        var c = clipLayer(l), s;
+
+        if (!c.sound || (c.speed !== 1)) {
+            return null;
+        }
+
+        s = clipSound(l, offset);
+        s.id = id;
+        s.muted = false;
+
+        return s;
+    }
+
+    // A file name's video type, lower case, or '' for another type.
+    function clipType(name) {
+        var m = /\.([a-z0-9]+)$/i.exec(String(name || '')), ext = m ? m[1].toLowerCase() : '';
+
+        return (CLIP_TYPES.indexOf(ext) >= 0) ? ext : '';
+    }
+
+    var CLIP = {
+        CLIP_SPEEDS: CLIP_SPEEDS, CLIP_TYPES: CLIP_TYPES, CLIP_MIN: CLIP_MIN, clipLayer: clipLayer, clipSpan: clipSpan, clipAt: clipAt,
+        clipFit: clipFit, clipNew: clipNew, clipReplace: clipReplace, clipEnd: clipEnd, clipSound: clipSound, clipDetach: clipDetach, clipType: clipType
+    };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -9306,7 +9447,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

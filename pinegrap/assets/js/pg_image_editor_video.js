@@ -84,6 +84,9 @@
         this.duration = d.duration;
         this.width = tr.width;
         this.height = tr.height;
+        // Whether the file has a sound track too (the video layer's mute
+        // and Detach sound).
+        this.sound = !!M.videoTrack(d, 'audio');
         this.config = M.videoConfig(tr);
         this.cache = M.videoCache(M.videoCacheSize(tr.width, tr.height));
         this.byTs = {};
@@ -113,6 +116,29 @@
         this.next = -1;
     };
 
+    // A copy of a decoded frame that holds none of the decoder's buffers:
+    // a hardware decoder has a small pool of output frames (Chrome's H.264
+    // stops after nine held) and stalls while the cache keeps them, so the
+    // decoder's own frame is closed at once. Where a frame cannot be made
+    // from a canvas the decoder's frame is kept.
+    function own(f) {
+        var w = f.displayWidth, h = f.displayHeight, c, copy;
+
+        try {
+            c = (typeof window.OffscreenCanvas === 'function') ? new window.OffscreenCanvas(w, h) : document.createElement('canvas');
+            c.width = w;
+            c.height = h;
+            c.getContext('2d').drawImage(f, 0, 0, w, h);
+            copy = new window.VideoFrame(c, { timestamp: f.timestamp, duration: f.duration || undefined });
+        } catch (err) {
+            return f;
+        }
+
+        f.close();
+
+        return copy;
+    }
+
     // A decoded frame into the cache by its sample, waking who waits.
     Source.prototype.got = function (f) {
         var i = this.byTs[f.timestamp];
@@ -122,7 +148,7 @@
             return;
         }
 
-        this.cache.put(i, f);
+        this.cache.put(i, own(f));
         this.wake(i);
     };
 
