@@ -402,14 +402,8 @@ function pg_order_auto_register($email_address, $contact_id)
 
     pg_set_password_link_issue($user_id);
 
-    if (
-        ($contact_id > 0)
-        && (REGISTRATION_CONTACT_GROUP_ID)
-        && (db_value("SELECT id FROM contact_groups WHERE (id = '" . (int) REGISTRATION_CONTACT_GROUP_ID . "') AND " . pg_audience_hand_sql()))
-    ) {
-        db_q(
-            "INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id)
-            VALUES (?, ?)", array((string) $contact_id, (string) (int) REGISTRATION_CONTACT_GROUP_ID)) or output_error('Query failed.');
+    if (($contact_id > 0) && (REGISTRATION_CONTACT_GROUP_ID)) {
+        pg_audience_door_join($contact_id, (int) REGISTRATION_CONTACT_GROUP_ID);
     }
 
     return array(
@@ -3914,7 +3908,8 @@ function pg_order_complete_rewards($user_id, $contact_id, $reward_points, $order
 
 /**
  * Adds the order's contact to each contact group its lines and the reward
- * program collected, once, skipping a group that no longer exists.
+ * program collected, once, skipping a group that no longer exists, and
+ * announces each join through the door helper.
  *
  * @param int   $contact_id
  * @param array $contact_groups contact group ids
@@ -3923,31 +3918,9 @@ function pg_order_complete_rewards($user_id, $contact_id, $reward_points, $order
 function pg_order_complete_contact_groups($contact_id, array $contact_groups)
 {
     foreach ($contact_groups as $contact_group_id) {
-        // a group filled by rules is never written by a product sale
-        $result = db_q("SELECT id FROM contact_groups WHERE (id = ?) AND " . pg_audience_hand_sql(), array((string) $contact_group_id)) or output_error('Query failed.');
-
-        if (mysqli_num_rows($result) == 0) {
-            continue;
-        }
-
-        $result = db_q(
-            "SELECT contact_id
-            FROM contacts_contact_groups_xref
-            WHERE
-                (contact_id = ?)
-                AND (contact_group_id = ?)",
-            array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
-
-        if (mysqli_num_rows($result) == 0) {
-            db_q(
-                "INSERT INTO contacts_contact_groups_xref (
-                    contact_id,
-                    contact_group_id)
-                VALUES (
-                    ?,
-                    ?)",
-                array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
-        }
+        // skips a group filled by rules and a contact already in it, and
+        // announces the join like every other door
+        pg_audience_door_join($contact_id, (int) $contact_group_id);
     }
 }
 

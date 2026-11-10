@@ -18,7 +18,8 @@ description: External API Idempotency-Key: reservation row before the write, 409
 
 ## How does a route keep a secret out of the record?
 - `'idempotency_redact' => array('url')` on the route: those top-level answer fields are recorded as null (`api_idempotency_redacted()`). `'idempotency_restore' => '<function>'` reads them back on a replay (`api_idempotency_restored()`: handed the record, returns it), so the retry gets the first answer the header promises; it runs before the handler, so it checks again what the handler checks. Without one, a replay answers them null. A param with `'secret' => true` enters the fingerprint as an HMAC keyed with ENCRYPTION_KEY (`api_idempotency_secret_input()`), not a plain SHA-256 a short password is guessed from offline.
-- Why: the row lives a day and a database read needs no key. Used by `POST /design/designs/{id}/prototype-links` (address read back from the link's sealed token, password). Not yet on other one-time secrets (short link `token_url`, webhook secrets).
+- Why: the row lives a day and a database read needs no key. Used by `POST /design/designs/{id}/prototype-links` (address read back from the link's sealed token, password), `POST /cart-quotes` and `POST /cart-quotes/{id}/link` (`link`, null on a retry) and, since PR #8523, `POST /short-links` (`token_url` of a mode=once link, null on a retry: only `token_hash` is kept, so a lost address is replaced by a new one-time link).
+- Webhook secrets stay out of this list: `api_webhooks.secret` is stored readable, since every delivery is signed with it, and the `Webhook` object declares `'secret' => 'string'` (`api_webhook_schema()`); a null on a retry would break that contract while hiding nothing the row does not already hold.
 
 ## What stays as it was?
 - A dry run takes no key. A route run by the MCP endpoint answers through its hook and records nothing; its reservation is given back at shutdown. Rows are purged after a day (`api_maintenance_purge()`).
