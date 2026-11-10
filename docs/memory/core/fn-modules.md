@@ -131,7 +131,7 @@ description: Generated from the module field of the memory files: each includes/
 - `mail_bounces`: [[mail-bounce-verp]], [[mail-bounces]]
 - `mail_domain_health`: [[mail-domain-health]]
 - `mail_parse`: [[mail-parse]]
-- `mail_queue`: [[fn-module-errors-mail-backup-consent]], [[mail-failure-reason]], [[mail-transport-failure]]
+- `mail_queue`: [[fn-module-errors-mail-backup-consent]], [[mail-failure-reason]], [[mail-queue-outcome]], [[mail-transport-failure]]
 - `mail_queue_list`: [[mail-queue-paging]]
 - `mail_transport`: [[mail-transports]], [[smtp-kept-password]]
 - `mail_webhook`: [[mail-transport-webhooks]]

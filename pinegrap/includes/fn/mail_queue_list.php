@@ -49,8 +49,9 @@ function pg_mail_queue_list_statuses()
 function pg_mail_queue_list_types()
 {
     return array(
-        'system'   => lang('System'),
-        'campaign' => lang('Campaign'),
+        'system'    => lang('System'),
+        'campaign'  => lang('Campaign'),
+        'workspace' => lang('Workspace'),
     );
 }
 

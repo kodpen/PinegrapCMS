@@ -442,6 +442,70 @@ function pg_mail_enqueue(array $properties)
     return (int) mysqli_insert_id(db::$con);
 }
 
+// The handlers a queued message may name in 'on_outcome': name =>
+// array('function' => ..., 'file' => a path under includes/, relative to
+// PG_FUNCTIONS_DIR). A row carries only the name and its reference
+// ('outcome_ref'), never a function name. The handler's file loads what it
+// needs itself: the queue runs in job.php, mail_job.php and on the mail
+// queue screen, with no person behind the request.
+function pg_mail_outcome_handlers()
+{
+    return array();
+}
+
+// Tells the handler a queued message names how it ended: 'sent', 'failed'
+// (given up) or 'suppressed' (blocked), called once the row's status is
+// written. The handler gets the row id, the outcome, the row's
+// 'outcome_ref', the error and the sent text, which only a row asking
+// 'keep_mime' gets. An unknown name, a file outside includes/ or missing, or
+// a missing function is skipped; a handler's error is caught and logged, and
+// never stops the run or changes the row.
+//
+// Returns whether a handler was called. $handlers is for the tests.
+function pg_mail_outcome_call($properties, $outbox_id, $outcome, $error, $mime, $handlers = null)
+{
+    $name = (is_array($properties) && isset($properties['on_outcome']) && is_string($properties['on_outcome'])) ? $properties['on_outcome'] : '';
+
+    if ($name === '') {
+        return false;
+    }
+
+    $handlers = is_array($handlers) ? $handlers : pg_mail_outcome_handlers();
+
+    if (!isset($handlers[$name]['function'], $handlers[$name]['file'])) {
+        return false;
+    }
+
+    $file = (string) $handlers[$name]['file'];
+    $function = (string) $handlers[$name]['function'];
+
+    if ((strpos($file, 'includes/') !== 0) || (strpos($file, '..') !== false) || !is_file(PG_FUNCTIONS_DIR . '/' . $file)) {
+        return false;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/' . $file);
+
+    if (!function_exists($function)) {
+        return false;
+    }
+
+    $ref = (isset($properties['outcome_ref']) && is_scalar($properties['outcome_ref'])) ? (string) $properties['outcome_ref'] : '';
+
+    try {
+        call_user_func($function, (int) $outbox_id, (string) $outcome, $ref, (string) $error, empty($properties['keep_mime']) ? '' : (string) $mime);
+    } catch (\Throwable $e) {
+        // Logged only with a database: the Site Log is a table.
+        if (function_exists('log_activity') && class_exists('db', false) && isset(db::$con) && db::$con) {
+            log_activity(pg_log_lang(array(
+                'string' => 'The outcome handler {var:1} of queued e-mail {var:2} failed: {var:3}',
+                'vars'   => array($name, (int) $outbox_id, pg_mail_clip($e->getMessage(), 500)),
+            )), 'UNKNOWN');
+        }
+    }
+
+    return true;
+}
+
 // Send what is due in the queue. Called by job.php on every run and by
 // mail_job.php. Bounded by both a row count and wall-clock time: an SMTP
 // server that has stopped answering costs PHPMailer its whole timeout per
@@ -504,6 +568,9 @@ function pg_mail_queue_run($limit = 25, $seconds = 20, $only_id = 0)
             $result['failed']++;
 
             $given_up[] = array('id' => (int) $row['id'], 'recipient' => $row['recipient'], 'reason' => $update['last_error']);
+
+            // Only a row given up is read whole, for its outcome handler.
+            pg_mail_outcome_call(pg_mail_properties_decode(db_value("SELECT properties FROM mail_outbox WHERE id = '" . (int) $row['id'] . "'")), $row['id'], 'failed', $update['last_error'], '');
         }
     }
 
@@ -587,6 +654,8 @@ function pg_mail_queue_run($limit = 25, $seconds = 20, $only_id = 0)
 
                     $result['suppressed']++;
 
+                    pg_mail_outcome_call($properties, $id, 'suppressed', lang('Not sent: the address bounced or complained.'), '');
+
                     continue;
                 }
 
@@ -610,6 +679,9 @@ function pg_mail_queue_run($limit = 25, $seconds = 20, $only_id = 0)
         }
 
         if (email($properties)) {
+            // Before anything else can call email() and clear it.
+            $sent_mime = pg_mail_last_sent_mime();
+
             db(
                 "UPDATE mail_outbox
                 SET
@@ -621,6 +693,8 @@ function pg_mail_queue_run($limit = 25, $seconds = 20, $only_id = 0)
                 WHERE id = '" . $id . "'");
 
             $result['sent']++;
+
+            pg_mail_outcome_call($properties, $id, 'sent', '', $sent_mime);
 
             continue;
         }
@@ -649,6 +723,8 @@ function pg_mail_queue_run($limit = 25, $seconds = 20, $only_id = 0)
             )), 'UNKNOWN');
 
             $given_up[] = array('id' => $id, 'recipient' => $row['recipient'], 'reason' => $error);
+
+            pg_mail_outcome_call($properties, $id, 'failed', $error, '');
 
         } else {
             db(

@@ -12,6 +12,7 @@ module: errors, mail_queue, backup, consent
 ## What does `mail_queue` (the outgoing mail queue) do?
 - `mail_outbox` write/read: `pg_mail_enqueue()`, `pg_mail_queue_run()`. The queue decision is `pg_mail_job_alive()` (`job` or `mail_job` ran in the last 15 min). Backoff schedule: `pg_mail_backoff()` (the campaign job uses it too). List-Unsubscribe headers live here.
 - Gate: `pg_mail_queue_ready()`. Screen `mail_queue.php`; separate cron entry `mail_job.php` (background only: a web visit goes to `mail_queue.php` and stamps no run, else it faked "job alive" for 15 min).
+- How a queued message ended (sent, given up, blocked) goes to the handler it names: `core/mail-queue-outcome.md` (PR #8607).
 - `email()` property `'secret' => true` (password reset link): `pg_mail_failure_body_shown()` keeps the body out of the failure log and notice; the queue stores it unchanged and re-calls `email()`.
 - A permanent failure (no recipient, empty body, refused address) is given up on its first attempt, and every given-up message is told once on the bell: docs/memory/core/mail-queue-permanent-errors.md.
 
