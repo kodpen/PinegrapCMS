@@ -59,6 +59,7 @@
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-40.md: Decisions list, product part 40 (2026-11-09 on): standing feature rules (legacy stays, global audience, no design variables); workflow tables like SQL tables; a product photo's alt text
 - decisions-made-product-41.md: Decisions list, product part 41 (2026-11-09 on): Workspace scheduling in one place (no Scheduled flow window, one flow list); the new dashboard's System Status card: look, lights off, chips in sight
+- decisions-made-product-42.md: Decisions list, product part 42 (2026-11-10 on): one modern picker for choosing a file or a page across the software (no "Choose from File Manager" button), ready for other records later
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
@@ -70,6 +71,7 @@
 - decisions-made-schema-12.md: Decisions list, schema part 12 (2026-11-07 on): note groups, places, shares and PIN locks for Workspace notes (step N0); the agent registry and channel-agent tables (agent channel A3)
 - decisions-made-schema-13.md: Decisions list, schema part 13 (2026-11-08 on): agent channel switch (AC); channel memory and agent mark (A5); A7 undo; GitHub channel links (G2); carrier service on a shipping method (R2)
 - decisions-made-schema-14.md: Decisions list, schema part 14 (2026-11-09 on): a bundle's own back order choice (bundle_backorder); the workflow table bin and row numbers; the team replies right; agent token counts and limit
+- decisions-made-schema-15.md: Decisions list, schema part 15 (2026-11-10 on): ws_messages.via_client_id (the "via" badge of a connected application's message), ws_ai_requests.claimed_device_id (per-person @Claude sessions)
 - decisions-made-schema-2.md: Decisions list, schema part 2, approved on 2026-10-28: e-mail tables, workflow tables, MCP preamble, secret widths, prompt version, discussion follow; rules in part 1, 2026-10-29 on in part 3
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
@@ -83,7 +85,7 @@
 - decisions-made-waf.md: Decisions list, firewall part: thresholds stay, concurrent refusal no offence, rate bans off the ladder, global limit before session, no lock release, nothing served to a ban, Claude Code unverified.
 - decisions-made-widgets.md: Decisions list, system widget part: conditions and required controls, translated text, equal old blocks (W16), gallery sources (W5), entity values (W8), 2026-10-27 answers, Photo Gallery folder.
 - decisions-made-workspace-10.md: Decisions list, workspace part 10 (2026-11-09 on): application lines fold; agent activity; table bin, Excel, import; flow failure reason; team replies; channel export; agent questions; unread requests
-- decisions-made-workspace-11.md: Decisions list, workspace part 11 (2026-11-10 on): only a channel's manager adds an agent to a private channel
+- decisions-made-workspace-11.md: Decisions list, workspace part 11 (2026-11-10 on): only a channel's manager adds an agent to a private channel; a connected app's message under the person's name ("via" badge); who answers @Claude
 - decisions-made-workspace-2.md: Decisions list, workspace part 2 (2026-10-29 on): the channel menu holds only the channel's own items; creates in a chat go through /oluştur (/create): its rights and kinds; the sales quote stays
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
