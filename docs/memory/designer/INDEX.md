@@ -79,6 +79,7 @@
 - custom-form-mails.md: The e-mails of a submitted custom form in one function (pg_cf_form_mails_send()), held back while a fee is owed and sent when the record is marked paid (FL5b)
 - custom-form-model.md: custom_form widget model: controls are the fields (no field list), column sources, props._cf record, form_source page vs existing.
 - custom-form-options-and-rules.md: custom_form options live on the element, page_type is not the form marker (pg_form_page_sql), validation, confirmation, email body, CAPTCHA, migration, legacy field screens read-only.
+- custom-form-overview.md: Start file for the custom-form-* files: what a designed form is, the decisions that bind it, its parts by the panel label, which file holds what, how a new control or field setting is added [decision: decisions-made-product-19.md]
 - custom-form-payment-staff.md: Paid state of a designed form's record for staff and integrations: the badge, the order link, Record an offline payment, the API fields, form.paid
 - custom-form-payment-step.md: The payment step of a designed form on the site (FL5, #6368): choices, pg_payment_box(), submit, the fee order's completion, 3-D Secure return, the payment alone on retry
 - custom-form-payment.md: Fee of a designed form: the setting's shape and store, pg_form_fee() rules, the fee order, forms.order_id and paid_at [decision: decisions-made-product-19.md]
