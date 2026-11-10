@@ -4,8 +4,8 @@
  *
  * Tests for the invoice status words (erp_invoice_status_labels(),
  * includes/erp/settlement.php): the invoice list, the invoice screen and the
- * receipt screen's allocations print the same translated label, never the
- * stored code ("partially_paid").
+ * receipt screen's allocations and the invoice PDF (includes/erp/document.php)
+ * print the same translated label, never the stored code ("partially_paid").
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -37,7 +37,7 @@ function test_erp_invoice_status_label_falls_back_to_the_code()
 // The screens share the one list instead of keeping their own copies.
 function test_erp_invoice_status_labels_used_by_the_screens()
 {
-	foreach (array('erp_invoices.php', 'edit_erp_invoice.php', 'erp_receipt.php', 'includes/erp/files.php') as $file) {
+	foreach (array('erp_invoices.php', 'edit_erp_invoice.php', 'erp_receipt.php', 'includes/erp/files.php', 'includes/erp/document.php') as $file) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 		pg_assert_false(strpos($source, "'partially_paid' => lang('Partly paid')") !== false, $file . ' keeps no copy of the labels');
 		pg_assert_true(strpos($source, 'erp_invoice_status_label') !== false, $file . ' asks the shared function');
