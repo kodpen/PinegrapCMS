@@ -6,7 +6,7 @@ description: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry an
 ## Which steps are there?
 - S under 400 product lines, M about 1,000; each step with its tests and its topic file `ui/picker-<part>.md`; from the tenth such file on, `ui/picker-overview.md`.
 
-- PKV (S, no product code) The screens. The dialog and the field drawn as pictures in `plans/one-picker/`, desktop and phone: files as a grid and as a list, pages, an empty folder, search results, Upload, a chosen value, a missing or binned value. The owner approves them through an Approval issue (`workflow/architect-asking.md`) before PK2 starts.
+- PKV (S, no product code) The screens. Done in #8511: the dialog and the field drawn as pictures in `plans/one-picker/`, desktop and phone: files as a grid and as a list, pages, an empty folder, search results, Upload, a chosen value, a missing or binned value; what each shows and which step builds it: `one-picker-visuals.md`. The owner approves them through an Approval issue (`workflow/architect-asking.md`) before PK2 starts.
 
 - PK1 (M) Registry and endpoint. `includes/fn/picker.php` and `picker.php`: the kinds `file`, `image`, `public_image`, `site_icon` and `page`; the requests `list`, `search`, `tree` and `resolve`; the access verdict, the folded name match, paging. `file_picker_search.php` answers through it with its contract unchanged. No screen changes. Done (#8515, ui/picker-registry.md)
 
@@ -26,7 +26,7 @@ description: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry an
 
 - PK9 (M) The remaining screens. The product builder's pictures, the contact photo, the image editor's From the site lists, the theme designer's file list, and the Workspace's "from the files" picker with its chat attachment refusal kept (`platform/file-copy-chat-attachments.md`).
 
-- PK10 (S) Close-out. Helpers nothing calls are removed, `ui/picker-overview.md` is current, the PR body names the `[NEW]` changelog line, the three plan files and `plans/one-picker/` are deleted.
+- PK10 (S) Close-out. Helpers nothing calls are removed, `ui/picker-overview.md` is current, the PR body names the `[NEW]` changelog line, the four plan files and `plans/one-picker/` are deleted.
 
 ## What is left out?
 - The later kinds (a product, a quote, a shipping method, a contact) and a `folder` kind for `select_folder()`: a step each when the owner asks, a kind row with its search and its list.
