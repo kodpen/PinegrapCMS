@@ -165,7 +165,7 @@ function ws_api_channel_agent_target($viewer, $params)
     $agent = ws_agent($params['agent_id']);
 
     if (!$agent) {
-        api_fail_not_found(lang('Agent'));
+        api_fail_not_found(lang('The agent'));
     }
 
     return array('channel' => $channel, 'agent' => $agent);
@@ -217,7 +217,7 @@ function ws_api_channel_agents_set($params)
         }
     }
 
-    api_fail_not_found(lang('Agent'));
+    api_fail_not_found(lang('The agent'));
 }
 
 function ws_api_channel_agents_remove($params)

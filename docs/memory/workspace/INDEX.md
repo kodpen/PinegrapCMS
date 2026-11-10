@@ -40,6 +40,7 @@
 - mail-tables.md: Incoming e-mail tables (G1b, step 11.0.82): ws_mail_boxes, ws_mail_conversations, ws_mail_items, sender kind 'mail'; what each column holds and why [decision: decisions-made-schema-2.md]
 - mail-triage.md: Pinegrap AI's one suggestion on a new e-mail conversation (G8, PR #3787, decision #3744 a): the per-box switch, when it runs, the prompt, the message and its draft, what it never does [decision: decisions-made-product-10.md]
 - model-assistant-channel-rule.md: Where a model assistant is asked (its own ws_channel_agents row; a channel closed to Pinegrap AI on purpose keeps it out too) and how the shared loop's failure sentences name it (PR #8413) [decision: decisions-made-workspace-9.md]
+- model-assistant-site-log.md: The Site Log line of a model assistant's answer: "@handle answered a request in #channel (its name)" through ws_ai_log_answered() and ws_ai_log_line(); Pinegrap AI's own lines unchanged (#8454)
 - model-assistants.md: Model assistants (ws_agents kind 'model'): providers and their data terms, the card, how ws_ai_step() answers a model:<id> request with the assistant's address, key, model and application
 - note-media.md: A note line linking only to a file of this site is drawn as the file in the read view (ws_render_body, note_media.php) and as a media card in the writing box (workspace_editor.js)
 - plan-board-grid.md: Plan board (workspace_board.php) grid columns and why .ws-board's min-width equals the grid minimum (#3815)
