@@ -19,7 +19,10 @@ description: Task time over the Workspace API (PR #2288): GET /workspace/time (o
 - Whoever may delete it: their own entry, any for staff (`ws_task_time_is_manager()`); otherwise 403.
 - 422 on `entry_id` for an entry on an ERP invoice draft and for a running timer.
 - Only the fields sent change (`minutes`, `worked_on`, `note`, `billable`); `note` null or `''` clears it; `worked_on` cannot be emptied nor be a day to come.
-- `ws_task_time_update_check()` (task_time.php) holds the rules; `ws_task_time_update()` runs it and writes only while the row is still off any invoice and not running. The panel has no edit yet; it would call the same pair.
+- `ws_task_time_update_check()` (task_time.php) holds the rules; `ws_task_time_update()` runs it and writes only while the row is still off any invoice and not running. The task's time list changes an entry in place (pencil beside the trash, `can_edit`) through the panel action `ws_task_time_update`, which calls the same pair (#PRNUM).
 - Not announced as an event (`workspace.task.time_logged` is for new time only), so the flows parity table has no line for it. Site Log: "time was changed on workspace task (N)".
+
+## How is an entry changed in the panel?
+- `can_edit` (`ws_task_time_present()`) is `can_delete` and not running: the check's 403/422 gates. The pencil turns the row into a form (time as minutes, Date, Note, Billable) filled from the entry; Save sends `text`, read by `ws_task_time_parse()` in `ws_task_time_panel_changes()` (unreadable is 0, refused on `minutes`). Enter saves, Esc or Cancel brings the row back; one row at a time. Answers the fresh `time` like the delete. No Site Log line: the panel's add and delete write none either.
 
 **Why:** a team device client's My day needs the week's own time with the timer across tasks, and a mistyped entry could only be deleted and written again (#2080).

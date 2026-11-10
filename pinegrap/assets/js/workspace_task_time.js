@@ -267,8 +267,132 @@
             return form;
         }
 
+        // One row of the time list turned into a small form in place: the
+        // entry's own time, day, note and billable, saved through the same
+        // check as the API's update route. Only one row is in a form at a time.
+        var editing = null;
+
+        function closeEdit() {
+            if (editing && editing.form.parentNode) {
+                editing.form.parentNode.replaceChild(editing.row, editing.form);
+            }
+
+            editing = null;
+        }
+
+        function editForm(time, entry, row) {
+            closeEdit();
+
+            var form = h.el('div', 'ws-task-time-add row g-3 align-items-end');
+
+            function cell(className, label, control) {
+                var box = h.el('div', className);
+                var caption = h.el('label', 'form-label small mb-1', label);
+
+                control.id = h.nextId('ws-task-time-');
+                caption.htmlFor = control.id;
+                box.appendChild(caption);
+                box.appendChild(control);
+                form.appendChild(box);
+
+                return control;
+            }
+
+            var amount = h.el('input', 'form-control form-control-sm');
+            amount.type = 'text';
+            amount.placeholder = h.t('tt_placeholder');
+            amount.maxLength = 20;
+            amount.value = String(entry.minutes);
+            cell('col-4', h.t('tt_time'), amount);
+
+            var day = h.el('input', 'form-control form-control-sm');
+            h.dateField(day, 'date');
+            day.value = entry.worked_on;
+            day.max = time.today;
+            cell('col-4', h.t('tt_day'), day);
+
+            var note = h.el('input', 'form-control form-control-sm');
+            note.type = 'text';
+            note.maxLength = 255;
+            note.value = entry.note || '';
+            cell('col-4', h.t('tt_note'), note);
+
+            var foot = h.el('div', 'col-12 d-flex align-items-center gap-3');
+            var check = h.el('div', 'form-field mb-0');
+            var billable = h.el('input', 'check');
+            var billableLabel = h.el('label', 'small', h.t('tt_billable'));
+
+            billable.type = 'checkbox';
+            billable.checked = !!entry.billable;
+            billable.id = h.nextId('ws-task-time-bill-');
+            billableLabel.htmlFor = billable.id;
+            check.appendChild(billable);
+            check.appendChild(billableLabel);
+            foot.appendChild(check);
+
+            var cancel = h.button('btn btn-sm btn-text theme-secondary rounded-pill ms-auto', h.t('cancel'));
+            var save = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', h.t('save'), 'bi-check-lg');
+
+            function submit() {
+                if (amount.value.trim() === '') {
+                    amount.focus();
+                    return;
+                }
+
+                save.disabled = true;
+
+                h.api('ws_task_time_update', {
+                    entry_id: entry.id,
+                    text: amount.value.trim(),
+                    worked_on: day.value,
+                    note: note.value.trim(),
+                    billable: billable.checked ? 1 : 0
+                }).then(function (data) {
+                    editing = null;
+                    h.toast(h.t('tt_saved'), 'success');
+                    changed(data.time);
+                }).catch(function (error) {
+                    save.disabled = false;
+                    h.fail(error);
+
+                    if (error.field === 'minutes') {
+                        amount.focus();
+                    } else if (error.field === 'worked_on') {
+                        day.focus();
+                    }
+                });
+            }
+
+            cancel.addEventListener('click', closeEdit);
+            save.addEventListener('click', submit);
+            form.addEventListener('keydown', function (event) {
+                if (event.isComposing) {
+                    return;
+                }
+
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    closeEdit();
+                } else if ((event.key === 'Enter') && (event.target.tagName === 'INPUT') && (event.target.type !== 'checkbox')) {
+                    event.preventDefault();
+                    submit();
+                }
+            });
+            foot.appendChild(cancel);
+            foot.appendChild(save);
+            form.appendChild(foot);
+
+            row.parentNode.replaceChild(form, row);
+            editing = { row: row, form: form };
+            amount.focus();
+            amount.select();
+        }
+
         function entryList(time) {
             var list = h.el('div', 'ws-task-time-list');
+
+            editing = null;
 
             if (!time.entries.length) {
                 list.appendChild(h.el('div', 'small fg-secondary', h.t('tt_none')));
@@ -301,6 +425,14 @@
 
                 row.appendChild(main);
                 row.appendChild(h.el('span', 'ws-task-time-amount' + (entry.running ? ' fg-danger' : ''), entry.label));
+
+                if (entry.can_edit) {
+                    var edit = h.button('btn btn-sm btn-text theme-secondary py-0 px-1', '', 'bi-pencil', h.t('edit'));
+                    edit.addEventListener('click', function () {
+                        editForm(time, entry, row);
+                    });
+                    row.appendChild(edit);
+                }
 
                 if (entry.can_delete) {
                     var remove = h.button('btn btn-sm btn-text theme-secondary py-0 px-1 ws-tool-danger', '', 'bi-trash', h.t('delete'));

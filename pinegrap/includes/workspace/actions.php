@@ -3939,6 +3939,9 @@ function ws_handle_action($action, $request)
                 'time'    => ($task && ws_can_see_task($viewer, $task)) ? ws_task_time_detail($viewer, $task, ws_task_assignee_ids($task['id'])) : null,
             ));
 
+        // A row changed in place from the task's time list, through the
+        // same check as the API's update route, or deleted.
+        case 'ws_task_time_update':
         case 'ws_task_time_delete':
             $entry = ws_task_time_ready() ? ws_task_time_entry((int) ($request['entry_id'] ?? 0)) : null;
             $task = $entry ? ws_task($entry['task_id']) : null;
@@ -3947,10 +3950,18 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('That time entry could not be found.'));
             }
 
-            $result = ws_task_time_delete($viewer, $entry);
+            if ($action === 'ws_task_time_update') {
+                $result = ws_task_time_update($viewer, $entry, ws_task_time_panel_changes($request));
 
-            if (!$result['ok']) {
-                return ws_action_error($result['error']);
+                if (!$result['ok']) {
+                    return ws_action_error($result['error'], $result['field']);
+                }
+            } else {
+                $result = ws_task_time_delete($viewer, $entry);
+
+                if (!$result['ok']) {
+                    return ws_action_error($result['error']);
+                }
             }
 
             return ws_action_ok(array('time' => ws_task_time_detail($viewer, $task, ws_task_assignee_ids($task['id']))));
