@@ -159,6 +159,100 @@ function ws_agent_channel_rows($channel_id)
 }
 
 /**
+ * The rows that reach a discussion: its own allowed rows as they are, and
+ * for an agent with no row of the discussion's own the allowed row of the
+ * channel it is about, read as an ask by name only: rule mention, no
+ * prefix, tier 1, loop guard on, reach_from that channel's id. A row of the
+ * discussion's own decides alone, one not allowed too; an archived or
+ * missing channel gives none. Pure.
+ *
+ * @param array[]    $own          the discussion's allowed rows (ws_agent_channel_rows())
+ * @param int[]      $own_ids      every agent with a row of the discussion's own, allowed or not
+ * @param array|null $parent       the channel the discussion is about
+ * @param array[]    $parent_rows  that channel's allowed rows
+ * @return array[] by agent id
+ */
+function ws_agent_reach_merge($own, $own_ids, $parent, $parent_rows)
+{
+    if (!is_array($parent) || ((int) ($parent['archived_at'] ?? 0) > 0) || empty($parent_rows)) {
+        return $own;
+    }
+
+    $own_ids = array_map('intval', (array) $own_ids);
+    $rows = $own;
+
+    foreach ((array) $parent_rows as $row) {
+        if (in_array((int) $row['id'], $own_ids, true)) {
+            continue;
+        }
+
+        $row['wake_rule'] = 'mention';
+        $row['wake_prefix'] = '';
+        $row['tier'] = 1;
+        $row['loop_guard'] = 1;
+        $row['reach_from'] = (int) $parent['id'];
+        $rows[] = $row;
+    }
+
+    usort($rows, function ($a, $b) {
+        return (int) $a['id'] <=> (int) $b['id'];
+    });
+
+    return $rows;
+}
+
+/**
+ * The agents a channel's messages may reach (ws_agent_channel_rows()); in
+ * a discussion, also those the channel it is about allows, by name only
+ * (ws_agent_reach_merge()). Read live, never copied.
+ *
+ * @param array|null $channel
+ * @return array[]
+ */
+function ws_agent_reach_rows($channel)
+{
+    if (!is_array($channel) || !ws_agents_ready()) {
+        return array();
+    }
+
+    $own = ws_agent_channel_rows((int) $channel['id']);
+    $parent = (function_exists('ws_thread_parent_channel') && ws_channel_is_thread($channel)) ? ws_thread_parent_channel($channel) : null;
+
+    if (!$parent) {
+        return $own;
+    }
+
+    $own_ids = (array) db_values("SELECT agent_id FROM ws_channel_agents WHERE channel_id = '" . (int) $channel['id'] . "'");
+
+    return ws_agent_reach_merge($own, $own_ids, $parent, ws_agent_channel_rows((int) $parent['id']));
+}
+
+/**
+ * The raw ws_channel_agents row that decides for an agent in a channel: its
+ * own; in a discussion with none, the one of the channel it is about while
+ * that channel is not archived (ws_agent_reach_merge()).
+ *
+ * @param array|null $channel
+ * @param int        $agent_id
+ * @return array|null
+ */
+function ws_agent_reach_row($channel, $agent_id)
+{
+    if (!is_array($channel)) {
+        return null;
+    }
+
+    $row = ws_channel_agent_row((int) $channel['id'], (int) $agent_id);
+    $parent = ($row === null) && function_exists('ws_thread_parent_channel') && ws_channel_is_thread($channel) ? ws_thread_parent_channel($channel) : null;
+
+    if ($parent && ((int) ($parent['archived_at'] ?? 0) === 0)) {
+        $row = ws_channel_agent_row((int) $parent['id'], (int) $agent_id);
+    }
+
+    return $row;
+}
+
+/**
  * One message of a reply chain as the depth brake reads it: by_agent when an
  * agent's application wrote it, or when it was written through a person's
  * OAuth connection (via_client_id): such a message is the person's in name
@@ -228,7 +322,8 @@ function ws_agent_after_send($viewer, $channel, $message_id, $body)
         return array();
     }
 
-    $rows = ws_agent_channel_rows((int) $channel['id']);
+    // In a discussion also the agents its channel allows, by name only.
+    $rows = ws_agent_reach_rows($channel);
 
     if (empty($rows)) {
         return array();

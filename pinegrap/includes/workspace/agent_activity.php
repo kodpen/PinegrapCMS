@@ -730,7 +730,7 @@ function ws_agent_activity_cancel($viewer, $row, $agent)
  */
 function ws_agent_activity_retry($viewer, $row, $agent)
 {
-    $rows = ws_agent_channel_rows((int) $row['channel_id']);
+    $rows = ws_agent_reach_rows(ws_channel((int) $row['channel_id']));
     $channel_row = null;
 
     foreach ($rows as $candidate) {

@@ -517,13 +517,14 @@ function ws_model_channel_allowed($agent, $channel)
     }
 
     // A discussion follows its channel (threads.php) in what closes it; the
-    // assistant's row is the one of the channel the request was made in.
+    // assistant's row is the discussion's own, else its channel's
+    // (ws_agent_reach_row()).
     $thread = (($channel['kind'] ?? '') === 'thread');
     $place = $thread ? ws_thread_parent_channel($channel) : $channel;
     $guest_reads = function_exists('ws_channel_share_open')
         && (ws_channel_share_open($channel) || ($thread && ws_channel_share_open($place)));
 
-    return ws_model_channel_verdict($place, $guest_reads, ws_channel_agent_row((int) $channel['id'], (int) $agent['id']));
+    return ws_model_channel_verdict($place, $guest_reads, ws_agent_reach_row($channel, (int) $agent['id']));
 }
 
 /**

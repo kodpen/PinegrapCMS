@@ -1441,10 +1441,11 @@ function ws_message_tell_apps($channel, $message_id, $tokens, $edited = false)
         $told[] = $app_id;
     }
 
-    // A registry agent the channel allows is reached through the registry
-    // (agent_queue.php), whatever its owner reads.
-    $allowed = (function_exists('ws_agent_channel_rows') && function_exists('ws_agents_ready') && ws_agents_ready())
-        ? array_column(ws_agent_channel_rows((int) $channel['id']), 'app_id')
+    // A registry agent the channel allows (in a discussion, the channel it
+    // is about too) is reached through the registry (agent_queue.php),
+    // whatever its owner reads.
+    $allowed = (function_exists('ws_agent_reach_rows') && function_exists('ws_agents_ready') && ws_agents_ready())
+        ? array_column(ws_agent_reach_rows($channel), 'app_id')
         : array();
     $unread = ws_app_mention_unread($ids, $hears, $reads, $allowed);
 
