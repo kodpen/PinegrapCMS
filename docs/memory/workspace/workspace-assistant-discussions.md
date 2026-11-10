@@ -12,6 +12,7 @@ description: An assistant asked in a discussion: what it reads about it (Claude'
 
 ## Where may it be asked?
 - Wherever it may be asked in the discussion's channel (`ws_claude_channel_allowed()`, `ws_ai_channel_allowed()`). Where its app owner is not in the discussion it reads and answers through the person who asked: workspace-assistant-reach.md.
+- A registry agent: by name where the channel allows it and the discussion has no row of its own (#8600): `agent-discussion-reach.md`.
 - Being asked there is kept in `ws_threads.assistants` for the line under the channel message (`ws_thread_assistant_asked()`).
 
 ## Does it answer without its @name?

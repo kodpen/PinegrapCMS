@@ -17,7 +17,7 @@ description: Who adds, changes or removes a channel's agents ("Agents in this ch
 These are the implementation's choices, not owner decisions.
 - A row made before the rule stays and works: nothing reads `added_by`.
 - An agent the channel has: whoever may post still changes what wakes it and takes it out; taken out, it comes back only through a manager. A row that does not allow the agent (`allowed` 0, which nothing writes today) counts as not having it.
-- A discussion follows the channel it is about: its new agent comes from that channel's manager, who must be in the discussion to change its agents at all; from nobody once that channel is gone. The tier there stays with whoever manages the discussion itself (whoever started it, and staff in it).
+- A discussion follows the channel it is about: its new agent comes from that channel's manager, who must be in the discussion to change its agents at all; from nobody once that channel is gone. The tier there stays with whoever manages the discussion itself (whoever started it, and staff in it). With no row of its own, the channel's allowed row reaches it by name only, tier 1 (`agent-discussion-reach.md`, #8600).
 - A public channel and a guest's room take an agent from whoever may post there. Setting an agent's wakes (`ws_agent_wake_problem()`) needs the agent in the channel already, so it asks only `ws_channel_agent_add_problem()`.
 
 ## Where are the doors?

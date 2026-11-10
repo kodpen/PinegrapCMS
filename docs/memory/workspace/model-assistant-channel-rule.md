@@ -4,11 +4,11 @@ description: Where a model assistant is asked (its own ws_channel_agents row; a 
 ---
 
 ## Where may a model assistant be asked?
-- Where its own row in the channel allows it (`ws_channel_agents.allowed`), the measure an application agent's answer has (`ws_api_agent_request_place()`). `ws_model_channel_allowed($agent, $channel)` reads the row of the channel the request was made in and gives `ws_model_channel_verdict()` (pure).
+- Where its own row in the channel allows it (`ws_channel_agents.allowed`), the measure an application agent's answer has (`ws_api_agent_request_place()`). `ws_model_channel_allowed($agent, $channel)` reads that row (in a discussion with none, its channel's: `agent-discussion-reach.md`) and gives `ws_model_channel_verdict()` (pure).
 - With no choice made (`ai_access` 0) the row alone decides, in a private channel too: Pinegrap AI's default there (no) does not keep out an assistant the channel's people added.
 - Not in a channel closed to Pinegrap AI on purpose (`ai_access` 2), whatever the row says (owner, 2026-11-10, `workflow/decisions-made-workspace-9.md`): closing takes the channel's manager (`ws_ai_channel_set()`), while a row can be a member's (in a public channel, or older than `channel-agent-rights.md`), so an answer there would let a member send a closed channel's words to the provider.
 - The menu's switch is drawn only where Pinegrap AI is set up (`ws_ai_channel_state()`) and shows a private channel unchecked for 0 and 2 alike; on a site without Pinegrap AI no channel is closed this way.
-- Not in a guest's room or a channel shared with a guest (`ws_channel_share_open()`), as no assistant is; a discussion follows its channel in all of this.
+- Not in a guest's room or a channel shared with a guest (`ws_channel_share_open()`), as no assistant is; a discussion follows its channel here.
 - Pinegrap AI's own rule is unchanged: `ws_ai_channel_allowed()` (`ai_access`, by kind when 0).
 
 ## Who asks that rule?
