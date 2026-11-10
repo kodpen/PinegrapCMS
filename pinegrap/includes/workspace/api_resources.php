@@ -154,6 +154,7 @@ function ws_api_channel_present($brief)
         'icon'          => (string) ($brief['icon'] ?? ws_channel_kind_icon($brief)),
         'icon_chosen'   => !empty($brief['icon_chosen']),
         'archived'      => (bool) $brief['archived'],
+        'agent_channel' => !empty($brief['agent_channel']),
         'unread'        => (int) $brief['unread'],
         'last_message_at' => ((int) $brief['last_message_at'] > 0) ? api_time($brief['last_message_at']) : null,
     );
@@ -180,6 +181,7 @@ function ws_api_channel_schema()
         'icon'            => 'string',
         'icon_chosen'     => 'boolean',
         'archived'        => 'boolean',
+        'agent_channel'   => 'boolean',
         'unread'          => 'integer',
         'last_message_at' => 'string?',
     );
@@ -4736,6 +4738,7 @@ function ws_api_decisions_list($params)
         'from'          => $days['from'],
         'to'            => $days['to'],
         'search'        => (string) ($params['search'] ?? ''),
+        'agent_channels' => (string) ($params['agent_channels'] ?? ''),
     ));
 
     // The application Claude works through reads only where Claude may be

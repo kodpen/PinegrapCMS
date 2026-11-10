@@ -50,7 +50,8 @@ function ws_timeline_channels($viewer)
 
     $out = array();
 
-    foreach ((array) db_items("SELECT c.id, c.name, c.kind, c.department_id, c.contact_id, c.archived_at, m.user_id AS my_member
+    foreach ((array) db_items("SELECT c.id, c.name, c.kind, c.department_id, c.contact_id, c.archived_at, m.user_id AS my_member, "
+        . (ws_agent_channel_ready() ? 'c.agent_channel' : '0 AS agent_channel') . "
         FROM ws_channels c
         LEFT JOIN ws_channel_members m ON m.channel_id = c.id AND m.user_id = '" . (int) $viewer['id'] . "'
         WHERE c.kind <> 'thread'
@@ -71,7 +72,9 @@ function ws_timeline_channels($viewer)
 /**
  * The filters a timeline request may carry, cleaned.
  *
- * @param array $input notes, channel_id, department_id, person_id, from, to, search
+ * @param array $input notes, channel_id, department_id, person_id, from, to,
+ *                     search, agent_channels (include | only; agent channels
+ *                     are left out otherwise)
  * @return array
  */
 function ws_timeline_filters($input)
@@ -96,6 +99,7 @@ function ws_timeline_filters($input)
         'from'          => $date($input['from'] ?? ''),
         'to'            => $date($input['to'] ?? ''),
         'search'        => trim(mb_substr(preg_replace('/\s+/u', ' ', (string) ($input['search'] ?? '')), 0, 100)),
+        'agent_channels' => ws_agent_channel_mode($input['agent_channels'] ?? ''),
     );
 
     // A range given the wrong way round is read the right way round.
@@ -180,7 +184,9 @@ function ws_timeline_where($channel_ids, $filters, $content = true)
  * @param callable|null $channel_filter keeps a channel when it returns true
  * @return array rows (ws_messages rows with tl_at), next (a cursor or null),
  *               channels (readable, keyed by id), counts (decisions per
- *               channel for the whole filter; first page only)
+ *               channel for the whole filter; first page only),
+ *               agent_channels (how many readable agent channels there are,
+ *               whatever the filter)
  */
 function ws_timeline($viewer, $filters, $cursor = null, $limit = WS_TIMELINE_PAGE, $channel_filter = null)
 {
@@ -190,7 +196,11 @@ function ws_timeline($viewer, $filters, $cursor = null, $limit = WS_TIMELINE_PAG
         $channels = array_filter($channels, $channel_filter);
     }
 
-    $result = array('rows' => array(), 'next' => null, 'channels' => $channels, 'counts' => array());
+    // An agent channel's decisions stay apart unless asked for or named.
+    $agents = count(array_filter($channels, 'ws_agent_channel_is'));
+    $channels = ws_agent_channel_filter($channels, $filters['agent_channels'] ?? '', $filters['channel_id']);
+
+    $result = array('rows' => array(), 'next' => null, 'channels' => $channels, 'counts' => array(), 'agent_channels' => $agents);
     $ids = ws_timeline_channel_ids($channels, $filters);
 
     if (empty($ids)) {
@@ -245,7 +255,8 @@ function ws_timeline_hidden($viewer, $filters)
 
     $channels = array();
 
-    foreach ((array) db_items("SELECT c.id, c.name, c.department_id, c.owner_user_id, c.archived_at
+    foreach ((array) db_items("SELECT c.id, c.name, c.department_id, c.owner_user_id, c.archived_at, "
+        . (ws_agent_channel_ready() ? 'c.agent_channel' : '0 AS agent_channel') . "
         FROM ws_channels c
         LEFT JOIN ws_channel_members me ON me.channel_id = c.id AND me.user_id = '" . (int) $viewer['id'] . "'
         WHERE c.kind = 'private' AND me.user_id IS NULL
@@ -261,6 +272,8 @@ function ws_timeline_hidden($viewer, $filters)
 
         $channels[(int) $row['id']] = $row;
     }
+
+    $channels = ws_agent_channel_filter($channels, $filters['agent_channels'] ?? '');
 
     if (empty($channels)) {
         return array();
@@ -505,6 +518,7 @@ function ws_timeline_page($viewer, $request)
         $page['channels'] = $channels;
         $page['total'] = array_sum($result['counts']);
         $page['hidden'] = ws_timeline_hidden($viewer, $filters);
+        $page['agent_channels'] = (int) $result['agent_channels'];
     }
 
     return $page;
@@ -523,6 +537,8 @@ function ws_timeline_js_strings()
         'tl_from'           => lang('Start date'),
         'tl_to'             => lang('End date'),
         'tl_notes'          => lang('Notes too'),
+        'tl_agents'         => lang('Agent channels'),
+        'tl_agents_help'    => lang('Only the decisions of agent channels; they are left out of the list otherwise.'),
         'tl_search'         => lang('Search the decisions'),
         'tl_empty'          => lang('No decision matches these filters.'),
         'tl_empty_all'      => lang('No decision has been taken yet. A message marked as a decision in a channel shows here.'),

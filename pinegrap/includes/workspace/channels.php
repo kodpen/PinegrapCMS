@@ -108,6 +108,8 @@ function ws_channel_brief($row, $unread = 0, $mentions = 0)
         'kind_icon'  => ws_channel_kind_icon($row),
         'department_id' => (int) $row['department_id'],
         'archived'   => ((int) $row['archived_at'] > 0),
+        // Read only here; /agent-channel sets it (agent_channel.php).
+        'agent_channel' => !empty($row['agent_channel']),
         'unread'     => (int) $unread,
         'mentions'   => (int) $mentions,
         'pinned'     => !empty($row['my_pinned']),

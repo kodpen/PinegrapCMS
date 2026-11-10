@@ -21147,7 +21147,8 @@
             from: dateOf(query.from),
             to: dateOf(query.to),
             search: String(query.q || '').slice(0, 100),
-            notes: query.notes === '1'
+            notes: query.notes === '1',
+            agents: query.agents === '1'
         };
         var next = '';
         var loading = false;
@@ -21242,6 +21243,21 @@
         });
         bar.appendChild(notesToggle);
 
+        // Agent channels' decisions are left out of the list; this shows
+        // theirs alone. It shows once the person may read an agent channel.
+        var agentsToggle = button('btn btn-sm btn-text theme-secondary' + (state.agents ? ' active' : '') + (state.agents ? '' : ' d-none'), t('tl_agents'), 'bi-robot');
+        agentsToggle.title = t('tl_agents_help');
+        agentsToggle.setAttribute('aria-pressed', state.agents ? 'true' : 'false');
+        agentsToggle.addEventListener('click', function () {
+            state.agents = !state.agents;
+            state.channel_id = 0;
+            channelSelect.value = '0';
+            agentsToggle.classList.toggle('active', state.agents);
+            agentsToggle.setAttribute('aria-pressed', state.agents ? 'true' : 'false');
+            load(true);
+        });
+        bar.appendChild(agentsToggle);
+
         var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
         var searchIcon = el('span', 'form-adorn-text');
         searchIcon.setAttribute('aria-hidden', 'true');
@@ -21317,6 +21333,7 @@
             add('to', state.to);
             add('q', state.search);
             add('notes', state.notes ? '1' : '');
+            add('agents', state.agents ? '1' : '');
 
             window.history.replaceState(null, '', CFG.urls.timeline + (parts.length ? '?' + parts.join('&') : ''));
         }
@@ -21624,7 +21641,8 @@
                 from: state.from,
                 to: state.to,
                 search: state.search,
-                notes: state.notes ? 1 : 0
+                notes: state.notes ? 1 : 0,
+                agent_channels: state.agents ? 'only' : ''
             };
 
             if (!reset) {
@@ -21652,6 +21670,7 @@
                     drawSide(data.channels || []);
                     drawSummary(data);
                     drawHidden(data.hidden || []);
+                    agentsToggle.classList.toggle('d-none', !(state.agents || data.agent_channels > 0));
                     list.removeAttribute('aria-busy');
 
                     if (!data.items.length) {
