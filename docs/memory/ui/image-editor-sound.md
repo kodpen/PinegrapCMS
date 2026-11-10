@@ -16,7 +16,7 @@ module: image_editor
 ## How does it play?
 - One `AudioContext` per editor; each file is fetched and decoded once (`soundBufs` by address); a decoded file draws the rows again.
 - The docks' `update()` runs with every playhead move: `soundSync()` plays from the playhead while the play bar plays (not a phase's preview), and again when the sound's clock and the playhead differ by over 150 ms (a loop, a scrub). Each sound is a buffer source from `M.soundPlan()` with its gain ramped between the fades' corners (`M.soundGain()`). Pause, seek, leaving the tool and closing the editor stop it.
-- The frames, GIF, APNG, WebP and the video do not carry it yet: V7.
+- An MP4 or WebM export carries it, mixed and encoded in the browser (`ui/image-editor-mix.md`); GIF, APNG, WebP and PDF do not.
 
 ## What do the rows and the panel do?
 - A `.pgie-tracks` of its own under the tracks (`Editor.motionDocks`, bundled after the tracks), not on a phone (the same media query). Its own ruler when the tracks count one scene or there are none. A bar holds the cut part's waveform (`M.soundPeaks()` of channel 0), the volume's line with the fades, the name. Drag the middle: start; the ends: trim (`M.soundEdit()`, 0.1 s steps, Shift 0.01 s, 0.1 s stays); one change on release.
