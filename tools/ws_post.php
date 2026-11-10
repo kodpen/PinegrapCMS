@@ -103,11 +103,7 @@ function ws_post_main($argv)
 		return WS_CLIENT_EXIT_USAGE;
 	}
 
-	$headers = array();
-
-	if (isset($options['idempotency-key']) && is_string($options['idempotency-key']) && $options['idempotency-key'] !== '') {
-		$headers[] = 'Idempotency-Key: ' . substr(preg_replace('/[^A-Za-z0-9._:-]/', '-', $options['idempotency-key']), 0, 64);
-	}
+	$headers = ws_client_idempotency_headers($options);
 
 	$url = $settings['site'] . '/workspace/channels/' . $settings['channel'] . '/messages';
 	$answer = ws_client_request('POST', $url, $settings, $built['body'], $headers);
