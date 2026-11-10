@@ -707,6 +707,7 @@
     "{var:1} categories": "{var:1} kategori",
     "{var:1} categories are up to date.": "{var:1} kategori güncellendi.",
     "{var:1} categories loaded ({var:2}). Pick one, or type a category yourself.": "{var:1} kategori yüklendi ({var:2}). Listeden seçin veya kendiniz yazın.",
+    "{var:1} cells do not fit the new type:": "{var:1} hücre yeni türe uymuyor:",
     "{var:1} change(s) proposed in #{var:2}": "#{var:2} kanalında {var:1} değişiklik önerildi",
     "{var:1} change(s) proposed on task {var:2}": "{var:2} görevinde {var:1} değişiklik önerildi",
     "{var:1} changed": "{var:1} değiştirildi",

@@ -154,6 +154,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $back .= '#ws-wt-columns';
             break;
 
+        case 'column_retype':
+            $column = ws_wtable_column((int) ($table['id'] ?? 0), (int) ($_POST['wt_column'] ?? 0));
+            $result = ws_wtable_column_retype($viewer, $table, $column, ws_wtable_screen_retype_input($field('to'), $field('decimals'), (array) $column));
+
+            if ($result['ok']) {
+                $liveform->add_notice(h(lang('The column\'s type was changed.')));
+            } else {
+                $refused($result);
+
+                // The cells that do not convert are listed under the column.
+                if (!empty($result['faults'])) {
+                    $_SESSION['software']['ws_wtable_retype'] = array(
+                        'table'  => (int) $table['id'],
+                        'column' => (int) $column['id'],
+                        'count'  => count($result['faults']),
+                        'faults' => array_slice($result['faults'], 0, 100),
+                    );
+                }
+            }
+
+            $back .= '#ws-wt-columns';
+            break;
+
         case 'column_delete':
             $column = ws_wtable_column((int) ($table['id'] ?? 0), (int) ($_POST['wt_column'] ?? 0));
             $result = ws_wtable_column_delete($viewer, $table, $column);
@@ -457,6 +480,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $state = (isset($_SESSION['software']['ws_wtable_row']) && is_array($_SESSION['software']['ws_wtable_row'])) ? $_SESSION['software']['ws_wtable_row'] : null;
 
 unset($_SESSION['software']['ws_wtable_row']);
+
+$retype_state = (isset($_SESSION['software']['ws_wtable_retype']) && is_array($_SESSION['software']['ws_wtable_retype'])) ? $_SESSION['software']['ws_wtable_retype'] : null;
+
+unset($_SESSION['software']['ws_wtable_retype']);
 
 $table_id = (is_string($_GET['id'] ?? null) && ((int) $_GET['id'] > 0)) ? (int) $_GET['id'] : 0;
 $table = ($table_id > 0) ? ws_wtable_for($viewer, $table_id) : null;
@@ -1226,6 +1253,55 @@ if (!$table) {
         return $out;
     };
 
+    // A column's Change type form, and the cells that did not convert when
+    // the last try was refused.
+    $retype_form = function ($column_id, $column, $prefix) use ($self_url, $id, $retype_state) {
+        $choices = ws_wtable_screen_retype_choices($column);
+
+        if (empty($choices)) {
+            return '';
+        }
+
+        $options = '';
+
+        foreach ($choices as $choice => $label) {
+            $options .= '<option value="' . h($choice) . '">' . h($label) . '</option>';
+        }
+
+        $faults = '';
+
+        if ($retype_state && ((int) $retype_state['table'] === $id) && ((int) $retype_state['column'] === (int) $column_id)) {
+            $items = '';
+
+            foreach ((array) $retype_state['faults'] as $fault) {
+                $items .= '<li>' . h(ws_wtable_screen_retype_fault_text($fault)) . '</li>';
+            }
+
+            $more = (int) $retype_state['count'] - count((array) $retype_state['faults']);
+            $faults = '<div class="alert theme-danger small mt-3" role="alert" id="ws-wt-retype-' . (int) $column_id . '">'
+                . '<p class="fw-semibold mb-2">' . h(lang(array('string' => '{var:1} cells do not fit the new type:', 'vars' => (int) $retype_state['count']))) . '</p>'
+                . '<ul class="mb-0">' . $items . '</ul>'
+                . (($more > 0) ? '<p class="mb-0 mt-2">' . h(lang(array('string' => 'And {var:1} more.', 'vars' => $more))) . '</p>' : '')
+                . '</div>';
+        }
+
+        return '<form method="post" action="' . h($self_url) . '" class="disable_shortcut mt-4 pt-3 border-top" data-ws-confirm="' . h(lang(array('string' => 'Change the type of {var:1}? Every cell is converted; if one does not fit, nothing changes and those cells are listed.', 'vars' => $column['name']))) . '">
+                ' . get_token_field() . '
+                <input type="hidden" name="wt_action" value="column_retype">
+                <input type="hidden" name="wt_table" value="' . $id . '">
+                <input type="hidden" name="wt_column" value="' . (int) $column_id . '">
+                <p class="small fw-semibold mb-2">' . h(lang('Change type')) . '</p>
+                <div class="d-flex flex-wrap gap-3 align-items-end">
+                    <div><label class="form-label small mb-1" for="' . $prefix . '_to">' . h(lang('New type')) . '</label>
+                        <select class="form-control form-control-sm" name="to" id="' . $prefix . '_to">' . $options . '</select></div>
+                    <div><label class="form-label small mb-1" for="' . $prefix . '_retype_decimals">' . h(lang('Decimals')) . '</label>
+                        <input type="number" class="form-control form-control-sm" name="decimals" id="' . $prefix . '_retype_decimals" min="0" max="6" placeholder="' . h(lang('Default')) . '"></div>
+                    <button type="submit" class="btn btn-sm btn-outline theme-secondary rounded-pill px-5">' . h(lang('Change type')) . '</button>
+                </div>
+                <div class="form-text">' . h(lang('Decimals count for a number or money only.')) . '</div>
+            </form>' . $faults;
+    };
+
     // The columns.
     $column_list = '';
 
@@ -1243,7 +1319,8 @@ if (!$table) {
 
         if ($can_write) {
             $prefix = 'ws_wt_col_' . (int) $column_id;
-            $line = '<details class="py-3 border-bottom"><summary class="list-unstyled">' . $line . '</summary>
+            $refused_here = $retype_state && ((int) $retype_state['table'] === $id) && ((int) $retype_state['column'] === (int) $column_id);
+            $line = '<details class="py-3 border-bottom"' . ($refused_here ? ' open' : '') . '><summary class="list-unstyled">' . $line . '</summary>
                 <form method="post" action="' . h($self_url) . '" class="disable_shortcut mt-3">
                     ' . get_token_field() . '
                     <input type="hidden" name="wt_action" value="column_update">
@@ -1253,7 +1330,7 @@ if (!$table) {
                         <input type="text" class="form-control form-control-sm" name="name" id="' . $prefix . '_name" value="' . h($column['name']) . '" maxlength="' . (int) ws_wtable_limits()['name'] . '" required></div>
                     ' . $option_fields($column['type'], $column, $prefix) . '
                     <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5">' . h(lang('Save')) . '</button>
-                </form>
+                </form>' . $retype_form($column_id, $column, $prefix) . '
             </details>';
         } else {
             $line = '<div class="py-3 border-bottom">' . $line . '</div>';
@@ -1677,6 +1754,12 @@ $shell . '
 ' . get_date_picker_format() . pg_fields_script() . '
 <script>
 (function () {
+
+    // A type change of a column asks first.
+    document.addEventListener("submit", function (e) {
+        var form = e.target.closest("form[data-ws-confirm]");
+        if (form && !window.confirm(form.dataset.wsConfirm)) { e.preventDefault(); }
+    });
 
     // Deletes and restores post through one form outside the cards and the
     // table rows; a delete asks first.
