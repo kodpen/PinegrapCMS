@@ -113,12 +113,24 @@ function pg_form_item_view_form_variable_items($items)
  * @param array $help    pg_cf_variables_help() result: 'fields', 'standard',
  *                       'mail', 'syntax' ('conditional', 'date', 'checkbox')
  * @param array $options 'mail' false leaves the e-mail links group out;
- *                       'hint' replaces the line under the heading (plain text)
+ *                       'hint' replaces the line under the heading (plain text);
+ *                       'id' the card's id (pg_fiv_variables), its list is
+ *                       '<id>_list'; 'hints' false leaves out the Hints button
+ *                       on a screen without a #hints dialog; 'open' false
+ *                       starts the list folded
  * @return string  HTML
  */
 function pg_form_item_view_form_variables($help, $options = array())
 {
     $hint = (string) ($options['hint'] ?? lang('Click a variable to insert it at the cursor in the layout.'));
+    $id = (string) ($options['id'] ?? 'pg_fiv_variables');
+    $open = (($options['open'] ?? true) !== false);
+
+    $hints = '';
+    if (($options['hints'] ?? true) !== false) {
+        $hints = '
+                                        <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#hints"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('Hints') . '</button>';
+    }
 
     $mail = '';
     if (($options['mail'] ?? true) !== false) {
@@ -147,12 +159,11 @@ function pg_form_item_view_form_variables($help, $options = array())
     }
 
     return '
-                                <div class="card mb-7" id="pg_fiv_variables">
+                                <div class="card mb-7" id="' . h($id) . '">
                                     <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center justify-content-between gap-3 row-gap-1">
-                                        <h2 class="h5 mb-0"><button type="button" class="btn btn-sm btn-text theme-secondary px-1 fw-bold fg-primary text-uppercase" data-bs-toggle="collapse" data-bs-target="#pg_fiv_variables_list" aria-expanded="true" aria-controls="pg_fiv_variables_list"><i class="bi bi-chevron-down me-1" aria-hidden="true"></i>' . lang('Available variables') . '</button></h2>
-                                        <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#hints"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('Hints') . '</button>
+                                        <h2 class="h5 mb-0"><button type="button" class="btn btn-sm btn-text theme-secondary px-1 fw-bold fg-primary text-uppercase" data-bs-toggle="collapse" data-bs-target="#' . h($id) . '_list" aria-expanded="' . ($open ? 'true' : 'false') . '" aria-controls="' . h($id) . '_list"><i class="bi bi-chevron-down me-1" aria-hidden="true"></i>' . lang('Available variables') . '</button></h2>' . $hints . '
                                     </div>
-                                    <div class="card-body pt-0 collapse show" id="pg_fiv_variables_list">
+                                    <div class="card-body pt-0 collapse' . ($open ? ' show' : '') . '" id="' . h($id) . '_list">
                                         <p class="form-text mt-0 mb-3">' . h($hint) . '</p>
                                         <p class="mb-0 forms-color">' . lang('Form Fields') . '</p>
                                         <ul class="list-group overflow-auto pe-1 mb-5" style="min-height:100px;height:220px;max-height:600px;resize:vertical;">
@@ -177,12 +188,28 @@ function pg_form_item_view_form_variables($help, $options = array())
  * it goes into that textarea, as a last resort to the clipboard.
  *
  * @param string $card_id    The card's id (pg_fiv_variables)
- * @param array  $editor_ids Textarea ids of the code editors, the default first
+ * @param array  $editor_ids Textarea ids of the code editors (or plain fields),
+ *                           the default first
+ * @param array  $options    'transient' true for markup that is replaced while
+ *                           the page stays (the designer's page type pane): the
+ *                           focus listener drops itself once the card is gone,
+ *                           so reopening does not pile listeners up
  * @return string  HTML
  */
-function pg_form_item_view_form_insert_script($card_id, $editor_ids)
+function pg_form_item_view_form_insert_script($card_id, $editor_ids, $options = array())
 {
     $flags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
+
+    $listen = '
+        document.addEventListener("focusin", function (event) {';
+    if (!empty($options['transient'])) {
+        $listen = '
+        document.addEventListener("focusin", function onFocus(event) {
+            if (!panel.isConnected) {
+                document.removeEventListener("focusin", onFocus);
+                return;
+            }';
+    }
 
     return '
 <script>
@@ -191,8 +218,7 @@ function pg_form_item_view_form_insert_script($card_id, $editor_ids)
         if (!panel) return;
         var ids = ' . json_encode(array_values(array_map('strval', $editor_ids)), $flags) . ';
         var last = ids[0];
-        var editorOf = function (id) { return window.pgCodeEditors ? window.pgCodeEditors[id] : null; };
-        document.addEventListener("focusin", function (event) {
+        var editorOf = function (id) { return window.pgCodeEditors ? window.pgCodeEditors[id] : null; };' . $listen . '
             for (var i = 0; i < ids.length; i++) {
                 var editor = editorOf(ids[i]);
                 var host = editor && (editor.host || editor.container);

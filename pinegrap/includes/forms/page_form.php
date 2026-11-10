@@ -22,6 +22,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// The variables card of the custom form e-mails' subjects and bodies.
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/form_item_view_form.php');
+
 /**
  * The page type picker and the per-type option rows.
  *
@@ -2109,6 +2112,20 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             $output_viewer_filter_warning = '<div class="form-text alert theme-danger">' . lang('Sorry, not supported with your MySQL version.') . '</div>';
         }
 
+        // The variables the two e-mails' subjects and bodies can use, folded
+        // under the E-mail Administrator row (shown with it for a custom form).
+        // A click types the variable into the subject or body focused last.
+        // The form's own fields are read only when the page is a custom form;
+        // a new page (no id) gets the system fields.
+        $custom_form_mail_variables = '
+                <div class="mt-5">' . pg_form_item_view_form_variables(pg_cf_variables_help(($page_type == 'custom form') ? $page_id : 0), array(
+                    'id' => 'pg_page_form_mail_variables',
+                    'hints' => false,
+                    'open' => false,
+                    'hint' => lang('Click a variable to insert it at the cursor in the e-mail subject or body you last worked in.'),
+                )) . '</div>'
+            . pg_form_item_view_form_insert_script('pg_page_form_mail_variables', array('custom_form_submitter_email_body', 'custom_form_submitter_email_subject', 'custom_form_administrator_email_body', 'custom_form_administrator_email_subject'), array('transient' => true));
+
         $output_forms_page_type_properties .=
             '<div class="col-12 md:col-6 lg:col-4 my-3' . $custom_form_contact_group_id_row_style . '" id="custom_form_contact_group_id_row">
                 <label class="form-label" for="custom_form_contact_group_id">' . lang('Add to Contact Group') . '</label>
@@ -2230,6 +2247,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                         </div>
                     </div>
                 </div>
+                ' . $custom_form_mail_variables . '
             </div>
             <div class="col-12 my-3' . $custom_form_membership_row_style . '" id="custom_form_membership_row">
                 <div class="form-field">
