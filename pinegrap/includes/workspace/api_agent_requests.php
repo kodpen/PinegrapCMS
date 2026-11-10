@@ -246,7 +246,7 @@ function ws_api_agent_request_or_404($agent, $id)
 
 /**
  * Where the answer is written: the request's channel, while the agent is
- * still allowed there, through the person who asked where the owner of the
+ * still allowed there (in a discussion, by the channel it is about too), through the person who asked where the owner of the
  * application is not in the room (ws_assistant_writer()).
  *
  * @param array $viewer
@@ -258,8 +258,8 @@ function ws_api_agent_request_place($viewer, $agent, $row)
 {
     $channel = ws_channel($row['channel_id']);
 
-    if (!$channel || ((int) db_value("SELECT COUNT(*) FROM ws_channel_agents
-            WHERE channel_id = '" . (int) $channel['id'] . "' AND agent_id = '" . (int) $agent['id'] . "' AND allowed = 1") === 0)) {
+    // In a discussion the channel it is about may allow the agent, read now.
+    if (!$channel || !in_array((int) $agent['id'], array_map('intval', array_column(ws_agent_reach_rows($channel), 'id')), true)) {
         return null;
     }
 

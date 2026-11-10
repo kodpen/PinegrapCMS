@@ -273,7 +273,7 @@ function test_workspace_model_loop_asks_about_the_one_answering()
 	pg_assert_true($model < $own, 'the running assistant first');
 
 	$allowed = workspace_model_agents_test_source('ws_model_channel_allowed');
-	pg_assert_contains("ws_channel_agent_row((int) \$channel['id'], (int) \$agent['id'])", $allowed, 'its row in the channel the request was made in');
+	pg_assert_contains("ws_agent_reach_row(\$channel, (int) \$agent['id'])", $allowed, 'its row in the channel the request was made in, in a discussion with none its channel\'s');
 	pg_assert_contains('ws_thread_parent_channel($channel)', $allowed, 'a discussion follows its channel for what closes it');
 	pg_assert_contains('ws_channel_share_open(', $allowed, 'a channel shared with a guest');
 	pg_assert_contains('ws_model_channel_verdict(', $allowed);
