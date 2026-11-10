@@ -49,6 +49,7 @@ $comments = db_items(
         page_id,
         item_id,
         item_type,
+        created_user_id,
         publish_date_and_time
     FROM comments
     WHERE
@@ -73,57 +74,31 @@ foreach ($comments as $comment) {
 
     $comments_published++;
 
-    // If this comment is for a submitted form on a form item view,
-    // then update submitted form info.
-    if ($comment['item_type'] == 'submitted_form') {
-
-        // Get the number of views so we do not lose that data when we delete record below.
-        $number_of_views = db_value(
-            "SELECT number_of_views
-            FROM submitted_form_info
-            WHERE
-                (submitted_form_id = '" . $comment['item_id'] . "')
-                AND (page_id = '" . $comment['page_id'] . "')");
-
-        // Get the number of published comments for this submitted form and page.
-        $number_of_comments = db_value(
-            "SELECT COUNT(*)
-            FROM comments
-            WHERE
-                (page_id = '" . $comment['page_id'] . "')
-                AND (item_id = '" . $comment['item_id'] . "')
-                AND (item_type = 'submitted_form')
-                AND (published = '1')");
-        
-        // Delete the current record if one exists.
-        db(
-            "DELETE FROM submitted_form_info
-            WHERE
-                (submitted_form_id = '" . $comment['item_id'] . "')
-                AND (page_id = '" . $comment['page_id'] . "')");
-        
-        // Insert new record.
-        db(
-            "INSERT INTO submitted_form_info (
-                submitted_form_id,
-                page_id,
-                number_of_views,
-                number_of_comments,
-                newest_comment_id)
-             VALUES (
-                '" . $comment['item_id'] . "',
-                '" . $comment['page_id'] . "',
-                '$number_of_views',
-                '$number_of_comments',
-                '" . $comment['id'] . "')");
-    }
+    // Rebuild the record's counters before the e-mails, whose subjects read
+    // them; a comment that is not about a form record runs no query.
+    pg_comment_refresh_record_info($comment['page_id'], $comment['item_type'], $comment['item_id']);
 
     send_comment_email_to_administrators($comment['id']);
 
-    // If this comment is for a submitted form on a form item view,
-    // then send comment email to custom form submitter.
-    if ($comment['item_type'] == 'submitted_form') {
-        send_comment_email_to_custom_form_submitter($comment['id']);
+    // The record's submitter is mailed only when someone else wrote the
+    // comment, as on Edit Comment and the API.
+    $record_id = pg_comment_record_id($comment['item_type'], $comment['item_id']);
+
+    if ($record_id > 0) {
+        $submitter = db_item(
+            "SELECT
+                page.comments_submitter_email_page_id,
+                forms.user_id AS submitter_user_id
+            FROM page
+            LEFT JOIN forms ON forms.id = '" . $record_id . "'
+            WHERE page.page_id = '" . (int) $comment['page_id'] . "'");
+
+        if (
+            $submitter
+            && pg_comment_submitter_mail_due($comment['item_type'], $comment['item_id'], $submitter['comments_submitter_email_page_id'], (int) $comment['created_user_id'], (int) $submitter['submitter_user_id'])
+        ) {
+            send_comment_email_to_custom_form_submitter($comment['id']);
+        }
     }
 
     send_comment_email_to_watchers($comment['id']);
