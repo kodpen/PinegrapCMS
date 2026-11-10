@@ -723,6 +723,15 @@ function ws_model_agent_run($agent, $budget)
             $row = ws_ai_request_row($row['id']);
         }
 
+        // An assistant that used its month's tokens takes no further step:
+        // the request fails with the sentence that names the limit.
+        $refusal = function_exists('ws_agent_token_refusal') ? ws_agent_token_refusal($agent) : '';
+
+        if ($refusal !== '') {
+            ws_ai_finish_fail($row, $refusal);
+            continue;
+        }
+
         // The answers of this step add their tokens to the request.
         ws_ai_usage_request((int) $row['id']);
         $step = ws_ai_step($row);

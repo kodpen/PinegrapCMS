@@ -7,7 +7,9 @@
  * the push door's failures, and their newest waiting and failed requests
  * with Cancel, Ask again and Knock now. The tokens a request's answers
  * used are counted here too (ws_ai_usage_add()), for Pinegrap AI and the
- * model assistants, and shown as sums of 7 and 30 days.
+ * model assistants, and shown as sums of 7 and 30 days; a model
+ * assistant's monthly token limit is checked here before each of its steps
+ * (ws_agent_token_refusal()).
  *
  * A request is matched to its agent by every value its row may carry
  * (ws_agent_activity_keys()), so older rows are still counted after the
@@ -260,6 +262,84 @@ function ws_ai_tokens_line($tokens)
 }
 
 /**
+ * A monthly token limit as typed on a model assistant's form: empty is 0
+ * (none), otherwise a whole number up to the column's 4,294,967,295. Pure.
+ *
+ * @param mixed $raw
+ * @return array ok, value (int), error
+ */
+function ws_agent_token_limit_check($raw)
+{
+    $text = str_replace(array(' ', '.', ','), '', trim((string) $raw));
+
+    if ($text === '') {
+        return array('ok' => true, 'value' => 0, 'error' => '');
+    }
+
+    if ((preg_match('/^[0-9]{1,10}$/', $text) !== 1) || ((float) $text > 4294967295)) {
+        return array('ok' => false, 'value' => 0, 'error' => lang('Give the monthly token limit as a whole number, or 0 for none.'));
+    }
+
+    return array('ok' => true, 'value' => (int) $text, 'error' => '');
+}
+
+/**
+ * Whether a month's tokens have reached the limit; 0 is no limit. Pure.
+ *
+ * @param int $used
+ * @param int $limit
+ * @return bool
+ */
+function ws_agent_token_limit_reached($used, $limit)
+{
+    return ((int) $limit > 0) && ((int) $used >= (int) $limit);
+}
+
+/**
+ * The first second of the calendar month a time falls in, in the site's
+ * time zone. Pure.
+ *
+ * @param int $now
+ * @return int
+ */
+function ws_agent_month_start($now)
+{
+    return (int) mktime(0, 0, 0, (int) date('n', (int) $now), 1, (int) date('Y', (int) $now));
+}
+
+/**
+ * The sentence a request gets when its assistant has used its month's
+ * tokens: names the assistant and the limit.
+ *
+ * @param string $name
+ * @param int    $limit
+ * @return string
+ */
+function ws_agent_token_limit_sentence($name, $limit)
+{
+    $format = function_exists('pg_format_number') ? pg_format_number((int) $limit, 0) : number_format((int) $limit);
+
+    return lang(array('string' => '{var:1} has used its monthly limit of {var:2} tokens; it answers again next month or when the limit is raised.', 'vars' => array((string) $name, $format)));
+}
+
+/**
+ * This month's tokens of a limit, in words. Pure but for the site's number
+ * separators.
+ *
+ * @param int $used
+ * @param int $limit
+ * @return string
+ */
+function ws_agent_token_limit_text($used, $limit)
+{
+    $format = function ($n) {
+        return function_exists('pg_format_number') ? pg_format_number((int) $n, 0) : number_format((int) $n);
+    };
+
+    return lang(array('string' => 'This month: {var:1} of {var:2} tokens', 'vars' => array($format($used), $format($limit))));
+}
+
+/**
  * Which buttons a request's line offers its reader: Cancel while it waits,
  * Ask again when it failed on a message, Knock now while it waits on a
  * push door. The one who asked and an administrator use them, as an MCP
@@ -411,6 +491,93 @@ function ws_ai_usage_add($response)
     }
 
     db_q("UPDATE ws_ai_requests SET tokens_in = tokens_in + ?, tokens_out = tokens_out + ? WHERE id = ?", array($tokens['in'], $tokens['out'], $request_id));
+}
+
+/**
+ * Whether the schema step that added ws_agents.token_limit has run.
+ *
+ * @return bool
+ */
+function ws_agent_token_limit_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = ws_ai_tokens_ready() && pg_schema_has('ws_agents', 'token_limit');
+    }
+
+    return $ready;
+}
+
+/**
+ * A model assistant's monthly token limit, 0 for none.
+ *
+ * @param int $agent_id
+ * @return int
+ */
+function ws_agent_token_limit($agent_id)
+{
+    if (((int) $agent_id <= 0) || !ws_agent_token_limit_ready()) {
+        return 0;
+    }
+
+    return (int) db_value("SELECT token_limit FROM ws_agents WHERE id = '" . (int) $agent_id . "' AND kind = 'model'");
+}
+
+/**
+ * Stores a model assistant's monthly token limit.
+ *
+ * @param int $agent_id
+ * @param int $limit
+ * @return void
+ */
+function ws_agent_token_limit_save($agent_id, $limit)
+{
+    if (((int) $agent_id <= 0) || !ws_agent_token_limit_ready()) {
+        return;
+    }
+
+    db_q("UPDATE ws_agents SET token_limit = ? WHERE id = ? AND kind = 'model'", array(max(0, (int) $limit), (int) $agent_id));
+}
+
+/**
+ * A model assistant's tokens in the calendar month so far, over its
+ * requests made since the month began.
+ *
+ * @param int $agent_id
+ * @return int
+ */
+function ws_agent_month_tokens($agent_id)
+{
+    if (((int) $agent_id <= 0) || !ws_ai_tokens_ready()) {
+        return 0;
+    }
+
+    return (int) db_value("SELECT COALESCE(SUM(tokens_in + tokens_out), 0) FROM ws_ai_requests
+        WHERE agent = 'model:" . (int) $agent_id . "' AND created_at >= '" . ws_agent_month_start(time()) . "'");
+}
+
+/**
+ * Why a model assistant may not run now for its tokens: the sentence of
+ * ws_agent_token_limit_sentence() once the month's tokens reach its limit,
+ * '' otherwise.
+ *
+ * @param array $agent the raw row: id, name, token_limit
+ * @return string
+ */
+function ws_agent_token_refusal($agent)
+{
+    if (!is_array($agent) || !ws_agent_token_limit_ready()) {
+        return '';
+    }
+
+    $limit = (int) ($agent['token_limit'] ?? 0);
+
+    if (($limit <= 0) || !ws_agent_token_limit_reached(ws_agent_month_tokens((int) $agent['id']), $limit)) {
+        return '';
+    }
+
+    return ws_agent_token_limit_sentence((string) $agent['name'], $limit);
 }
 
 /**
@@ -644,6 +811,12 @@ function ws_agent_activity_block($self_url, $viewer, $agent, $counts)
     if (($agent['kind'] === 'model') && ws_ai_tokens_ready()) {
         $tokens = $mine['tokens'] ?? ws_ai_tokens_periods(array());
         $facts[] = ws_ai_tokens_line($tokens);
+
+        $limit = ws_agent_token_limit((int) $agent['id']);
+
+        if ($limit > 0) {
+            $facts[] = ws_agent_token_limit_text(ws_agent_month_tokens((int) $agent['id']), $limit);
+        }
     }
 
     if ((int) $agent['wake_next_at'] > 0) {

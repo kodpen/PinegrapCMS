@@ -24,4 +24,4 @@ description: The Agents card's activity per app and model agent: counts of 7 and
 - Shown as "Tokens, last 7 days: …; last 30 days: …" (`ws_ai_tokens_line()`): on a model agent's block (summed in the same grouped query, `ws_agent_activity_tokens()`) and on the Pinegrap AI card (`ws_ai_read_tokens()`). Claude and app agents run elsewhere: no figure. Both read only after `ws_ai_tokens_ready()`.
 
 ## What is not done?
-- Not tried on a database or a browser: the grouped count query, the token update, the buttons and the card's look. The monthly limit is AU3 (`plans/agent-activity-usage.md`).
+- Not tried on a database or a browser: the grouped count query, the token update, the buttons and the card's look. The monthly limit: `agent-token-limit.md`. Decisions: `workflow/decisions-made-workspace-10.md`, `workflow/decisions-made-schema-14.md`.
