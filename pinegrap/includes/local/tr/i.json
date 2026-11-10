@@ -1628,6 +1628,7 @@
     "in": "inç",
     "in #{var:1}": "#{var:1} kanalında",
     "in 7 days {var:1}": "7 günde {var:1}",
+    "in every folder": "tüm klasörlerde",
     "in files": "dosyalarda",
     "in the account currency": "cari para biriminde",
     "in the group “{var:1}”": "“{var:1}” grubunda",

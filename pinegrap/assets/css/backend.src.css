@@ -22686,6 +22686,568 @@ select.pg-list-table-field option.private {
   inset: 0;
   background: repeating-linear-gradient(135deg, transparent 0 .75rem, color-mix(in srgb, var(--pg-border-color) 35%, transparent) .75rem 1.5rem);
 }
+
+/* ── The picker dialog (assets/js/pg_picker.js) ─────────────────────────
+   A folder tree beside the open folder as tiles or a list, a toolbar with
+   the way up, the breadcrumb, the search, the sort and the view, and a
+   footer with the pick. Tile and tree sizes follow the File Manager's
+   (explorer-grid-tiles.md). Below 576 px a bottom sheet: the tree gives way
+   to a folder chip that opens a folder list in the pane. */
+.dialog.pg-picker {
+  --bs-dialog-width: 1120px;
+  --pg-picker-tile: 9rem;
+  height: min(50rem, calc(100% - 3.5rem));
+}
+.pg-picker .dialog-header {
+  gap: 0.75rem;
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 0;
+}
+.pg-picker .dialog-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+.pg-picker-types {
+  font-size: 0.8rem;
+  color: var(--pg-fg-2);
+}
+.pg-picker .dialog-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.pg-picker-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 1.25rem 0.75rem;
+  border-bottom: var(--pg-border-width) solid var(--pg-border-color);
+}
+.pg-picker-crumbs {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.pg-picker-crumbs a {
+  color: var(--pg-fg-body);
+  text-decoration: none;
+}
+.pg-picker-crumbs a:hover {
+  text-decoration: underline;
+}
+.pg-picker-crumbs .bi {
+  font-size: 0.7rem;
+  color: var(--pg-fg-3);
+}
+.pg-picker-crumbs strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--pg-fg-emphasis);
+}
+.pg-picker-chip {
+  display: none;
+}
+.pg-picker-search {
+  position: relative;
+  flex: 0 1 16rem;
+}
+.pg-picker-search > .bi-search {
+  position: absolute;
+  top: 50%;
+  left: 0.8rem;
+  transform: translateY(-50%);
+  color: var(--pg-fg-2);
+  pointer-events: none;
+}
+.pg-picker-search .form-control {
+  padding-inline: 2.1rem 2rem;
+  border-radius: var(--pg-radius-pill);
+}
+.pg-picker-search .form-control::-webkit-search-cancel-button {
+  display: none;
+}
+.pg-picker-clear {
+  position: absolute;
+  top: 50%;
+  right: 0.55rem;
+  transform: translateY(-50%);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pg-fg-3);
+  line-height: 1;
+}
+.pg-picker-sort {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0;
+  color: var(--pg-fg-2);
+}
+.pg-picker-sort .form-select {
+  width: auto;
+}
+.pg-picker-views {
+  display: flex;
+  gap: 0.15rem;
+  padding-left: 0.5rem;
+  border-left: var(--pg-border-width) solid var(--pg-border-color);
+}
+.pg-picker-views .btn.active {
+  background: var(--pg-tint-strong);
+  color: var(--pg-fg-emphasis);
+}
+.pg-picker-main {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.pg-picker-tree {
+  flex: 0 0 15rem;
+  padding: 0.6rem 0.5rem;
+  overflow: auto;
+  font-size: 0.875rem;
+  border-right: var(--pg-border-width) solid var(--pg-border-color);
+}
+.pg-picker-section {
+  padding: 0.4rem 0.5rem 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pg-fg-2);
+}
+.pg-picker-tree ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pg-picker-tree ul ul {
+  margin-left: 0.9rem;
+  padding-left: 0.35rem;
+  border-left: var(--pg-border-width) solid var(--pg-border-color-translucent);
+}
+.pg-picker-tree [role=treeitem] {
+  outline: 0;
+}
+.pg-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.45rem 0.25rem 0.2rem;
+  border-radius: var(--pg-radius-lg);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pg-picker-row:hover {
+  background: var(--pg-tint-hover);
+}
+.pg-picker-row.is-open {
+  background: var(--pg-primary-bg-subtle);
+  color: var(--pg-fg-emphasis);
+  font-weight: 600;
+}
+.pg-picker-tree [role=treeitem]:focus-visible > .pg-picker-row {
+  outline: var(--pg-focus-ring-width) solid var(--pg-focus-ring-color);
+  outline-offset: calc(var(--pg-focus-ring-width) * -1);
+}
+.pg-picker-toggle {
+  display: inline-flex;
+  flex: 0 0 1rem;
+  justify-content: center;
+  font-size: 0.65rem;
+  color: var(--pg-fg-2);
+  transition: transform 0.12s ease;
+}
+.pg-picker-toggle.open {
+  transform: rotate(90deg);
+}
+.pg-picker .pg-picker-folder,
+.pg-picker-item.is-folder .pg-picker-thumb .bi {
+  color: var(--pg-warning);
+}
+.pg-picker-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pg-picker-count {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--pg-fg-2);
+}
+.pg-picker-pane {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+.pg-picker-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  min-height: 2.5rem;
+  padding: 0.5rem 1rem 0.25rem;
+  font-size: 0.8rem;
+  color: var(--pg-fg-2);
+}
+.pg-picker-status strong {
+  color: var(--pg-fg-emphasis);
+}
+.pg-picker-note {
+  margin-left: auto;
+}
+.pg-picker-only {
+  border: var(--pg-border-width) solid var(--pg-border-color);
+  border-radius: var(--pg-radius-pill);
+}
+.pg-picker-only.active {
+  border-color: var(--pg-primary-border-subtle);
+  background: var(--pg-primary-bg-subtle);
+}
+.pg-picker-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--pg-picker-tile), 1fr));
+  align-content: start;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0.25rem 1rem 1rem;
+  overflow: auto;
+  outline: 0;
+}
+.pg-picker-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.5rem;
+  border: var(--pg-border-width) solid transparent;
+  border-radius: var(--pg-radius-lg);
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+}
+.pg-picker-item:hover {
+  background: var(--pg-tint-hover);
+}
+.pg-picker-item[aria-selected=true] {
+  border-color: var(--pg-primary-border-subtle);
+  background: var(--pg-primary-bg-subtle);
+}
+.pg-picker-items:focus-visible .pg-picker-item.is-cursor {
+  outline: var(--pg-focus-ring-width) solid var(--pg-focus-ring-color);
+  outline-offset: calc(var(--pg-focus-ring-width) * -1);
+}
+.pg-picker-thumb {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--pg-radius);
+  background: var(--pg-bg-1);
+  font-size: 2.25rem;
+  color: var(--pg-fg-2);
+}
+.pg-picker-item.is-folder .pg-picker-thumb {
+  background: none;
+  font-size: 3rem;
+}
+.pg-picker-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.pg-picker-lock,
+.pg-picker-tick {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  font-size: 0.75rem;
+}
+.pg-picker-lock {
+  right: 0.3rem;
+  bottom: 0.3rem;
+  background: var(--pg-bg-body);
+  color: var(--pg-fg-emphasis);
+  box-shadow: var(--pg-shadow);
+}
+.pg-picker-tick {
+  top: 0.3rem;
+  left: 0.3rem;
+  background: var(--pg-primary);
+  color: var(--pg-bg-body);
+}
+.pg-picker-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  width: 100%;
+}
+.pg-picker-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  color: var(--pg-fg-emphasis);
+}
+.pg-picker-name mark {
+  padding: 0;
+  background: color-mix(in srgb, var(--pg-warning) 35%, transparent);
+  color: inherit;
+}
+.pg-picker-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--pg-fg-2);
+}
+.pg-picker-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  grid-column: 1 / -1;
+  min-height: 16rem;
+  border: var(--pg-border-width) dashed var(--pg-border-color);
+  border-radius: var(--pg-radius-lg);
+  color: var(--pg-fg-2);
+  text-align: center;
+}
+.pg-picker-empty .bi {
+  font-size: 2.5rem;
+}
+.pg-picker-empty strong {
+  color: var(--pg-fg-emphasis);
+}
+.pg-picker-head {
+  display: grid;
+  margin: 0 1rem;
+  border-bottom: var(--pg-border-width) solid var(--pg-border-color);
+}
+.pg-picker-head[hidden] {
+  display: none;
+}
+.pg-picker-is-list .pg-picker-items {
+  grid-template-columns: 1fr;
+  gap: 0;
+  padding-top: 0;
+}
+.pg-picker-is-list :is(.pg-picker-head, .pg-picker-item:not(.pg-picker-folder-row)) {
+  grid-template-columns: minmax(12rem, 3fr) 6rem 6rem 9.5rem minmax(7rem, 1.2fr);
+  align-items: center;
+  column-gap: 0.75rem;
+}
+.pg-picker-is-list .pg-picker-item:not(.pg-picker-folder-row) {
+  display: grid;
+  padding: 0.3rem 0.5rem;
+  border-width: 0 0 var(--pg-border-width);
+  border-bottom-color: var(--pg-border-color);
+  border-radius: 0;
+  text-align: left;
+}
+.pg-picker-is-list .pg-picker-item > .pg-picker-thumb {
+  justify-self: start;
+  width: 2.25rem;
+  font-size: 1.1rem;
+}
+.pg-picker-is-list .pg-picker-item {
+  grid-template-areas: "name type size modified access";
+}
+.pg-picker-is-list .pg-picker-item > .pg-picker-thumb,
+.pg-picker-is-list .pg-picker-item > .pg-picker-text {
+  grid-area: name;
+}
+.pg-picker-is-list .pg-picker-item > .pg-picker-text {
+  padding-left: 2.85rem;
+}
+.pg-picker-is-list .pg-picker-item.is-folder > .pg-picker-thumb {
+  font-size: 1.4rem;
+}
+.pg-picker-is-list .pg-picker-text .pg-picker-meta {
+  display: none;
+}
+.pg-picker-head .pg-picker-col {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  border: 0;
+  background: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--pg-fg-emphasis);
+  text-align: left;
+}
+.pg-picker-item .pg-picker-col {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  color: var(--pg-fg-body);
+}
+.pg-picker-col.pg-picker-num {
+  justify-content: flex-end;
+  text-align: right;
+}
+.pg-picker .dialog-footer {
+  flex-wrap: nowrap;
+  padding: 0.75rem 1.25rem;
+}
+.pg-picker-pick {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+.pg-picker-pick .pg-picker-thumb {
+  flex: 0 0 2.5rem;
+  width: 2.5rem;
+  font-size: 1.25rem;
+}
+.pg-picker-hint {
+  font-size: 0.8rem;
+  color: var(--pg-fg-2);
+  white-space: nowrap;
+}
+.pg-picker-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.pg-picker-field-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.pg-picker-browse {
+  flex: 0 0 auto;
+}
+.pg-picker-folder-row {
+  flex-direction: row;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-width: 0 0 var(--pg-border-width);
+  border-bottom-color: var(--pg-border-color);
+  border-radius: 0;
+  text-align: left;
+}
+.pg-picker-folder-row .bi-folder-fill {
+  font-size: 1.25rem;
+}
+.pg-picker-folders .pg-picker-items {
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+.pg-picker-folders :is(.pg-picker-choose, .pg-picker-cancel, .pg-picker-pick, .pg-picker-search, .pg-picker-sort, .pg-picker-views, .pg-picker-chip, .pg-picker-up) {
+  display: none;
+}
+.pg-picker-sheet.pg-picker-folders .pg-picker-crumbs {
+  display: flex;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-picker-toggle {
+    transition: none;
+  }
+}
+/* The phone: a sheet from the bottom edge, three tiles a row. */
+.dialog.pg-picker.pg-picker-sheet {
+  --bs-dialog-margin: 0;
+  --pg-picker-tile: 6.25rem;
+  width: 100%;
+  max-width: 100%;
+  height: calc(100% - 2.25rem);
+  max-height: none;
+  margin: auto 0 0;
+  border-width: 0;
+  border-radius: var(--pg-radius-xl) var(--pg-radius-xl) 0 0;
+}
+.pg-picker-sheet::before {
+  content: "";
+  align-self: center;
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 0.3rem;
+  margin-top: 0.45rem;
+  border-radius: var(--pg-radius-pill);
+  background: var(--pg-border-color);
+}
+.pg-picker-sheet .dialog-header {
+  padding: 0.5rem 1rem;
+}
+.pg-picker-sheet :is(.pg-picker-types, .pg-picker-tree, .pg-picker-hint, .pg-picker-cancel, .pg-picker-up, .pg-picker-note) {
+  display: none;
+}
+.pg-picker-sheet .pg-picker-bar {
+  flex-wrap: wrap;
+  padding: 0 1rem 0.5rem;
+}
+.pg-picker-sheet .pg-picker-search {
+  flex: 1 0 100%;
+  order: -1;
+}
+.pg-picker-sheet .pg-picker-crumbs {
+  display: none;
+}
+.pg-picker-sheet .pg-picker-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 55%;
+  margin-right: auto;
+  border: var(--pg-border-width) solid var(--pg-border-color);
+  border-radius: var(--pg-radius-pill);
+}
+.pg-picker-sheet .pg-picker-chip .pg-btn-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-picker-sheet .pg-picker-chip .bi-folder-fill {
+  color: var(--pg-warning);
+}
+.pg-picker-sheet .pg-picker-sort .form-select {
+  max-width: 7.5rem;
+}
+.pg-picker-sheet .pg-picker-items {
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem 0.75rem;
+}
+.pg-picker-sheet .pg-picker-item {
+  padding: 0.25rem;
+}
+.pg-picker-sheet.pg-picker-is-list :is(.pg-picker-head, .pg-picker-item:not(.pg-picker-folder-row)) {
+  grid-template-columns: minmax(0, 1fr) 4.5rem;
+  grid-template-areas: "name size";
+}
+.pg-picker-sheet.pg-picker-is-list .pg-picker-head > :not(:first-child, :nth-child(3)),
+.pg-picker-sheet.pg-picker-is-list .pg-picker-item > .pg-picker-col:not(:nth-child(4)) {
+  display: none;
+}
+.pg-picker-sheet .dialog-footer {
+  padding: 0.65rem 1rem;
+}
+.pg-picker-sheet .pg-picker-choose {
+  min-width: 5rem;
+}
 }
 
 /* Unlayered: Bootstrap 6 gives .fixed-top 1020 in its helpers layer, which

@@ -526,7 +526,133 @@ function pg_picker_item($kind, $row)
         'text' => (string) ($row['name'] ?? ''),
         'type' => (string) ($row['type'] ?? ''),
         'folder' => (int) ($row['folder'] ?? 0),
+        'size' => (int) ($row['size'] ?? 0),
+        'width' => (int) ($row['image_width'] ?? 0),
+        'height' => (int) ($row['image_height'] ?? 0),
+        'modified' => (int) ($row['timestamp'] ?? 0),
     );
+}
+
+/**
+ * The folders from the top down to a folder, as the dialog's breadcrumb and
+ * a search result's folder line show them. Pure.
+ *
+ * @param int   $folder_id
+ * @param array $map folder_id => row with folder_name and folder_parent
+ *                   (pg_explorer_folder_map())
+ * @return array [{id, name}], empty for a folder the map does not hold
+ */
+function pg_picker_folder_path($folder_id, $map)
+{
+    $path = array();
+    $seen = array();
+    $id = (int) $folder_id;
+
+    // A parent loop in damaged data must not hang the request.
+    while (($id > 0) && isset($map[$id]) && !isset($seen[$id])) {
+        $seen[$id] = true;
+        array_unshift($path, array('id' => $id, 'name' => (string) $map[$id]['folder_name']));
+        $id = (int) $map[$id]['folder_parent'];
+    }
+
+    return $path;
+}
+
+/**
+ * Whether the dialog draws an item's own picture: a picture kind's raster
+ * or vector file. Pure.
+ *
+ * @param array  $kind one of pg_picker_kinds()
+ * @param string $name the file name
+ * @return bool
+ */
+function pg_picker_has_picture($kind, $name)
+{
+    if (empty($kind['pictures'])) {
+        return false;
+    }
+
+    $extension = strtolower((string) pathinfo((string) $name, PATHINFO_EXTENSION));
+
+    return in_array($extension, array('jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'svg', 'bmp'), true);
+}
+
+/**
+ * File items with what the dialog shows beside the name: the size as text,
+ * the access of the folder (inherited down the tree), the address, the 320
+ * px picture (pg_image_panel_thumb_url()) for a picture kind and, with
+ * $paths, the folders down to the item's own.
+ *
+ * @param array $kind
+ * @param array $items pg_picker_item() of a files kind
+ * @param bool  $paths
+ * @return array
+ */
+function pg_picker_file_details($kind, $items, $paths = false)
+{
+    if ($kind['source'] !== 'files') {
+        return $items;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+
+    $map = $paths ? pg_explorer_folder_map() : array();
+    $access = array();
+
+    foreach ($items as $index => $item) {
+        $folder = (int) $item['folder'];
+
+        if (!isset($access[$folder])) {
+            $access[$folder] = (string) get_access_control_type($folder);
+        }
+
+        $url = PATH . $item['text'];
+        $item['size_label'] = convert_bytes_to_string($item['size'], 'auto');
+        $item['access'] = $access[$folder];
+        $item['url'] = $url;
+        $item['thumb'] = pg_picker_has_picture($kind, $item['text'])
+            ? pg_image_panel_thumb_url($url . ($item['modified'] ? '?v=' . $item['modified'] : ''))
+            : '';
+
+        if ($paths) {
+            $item['path'] = pg_picker_folder_path($folder, $map);
+        }
+
+        $items[$index] = $item;
+    }
+
+    return $items;
+}
+
+/**
+ * How many of a kind's items each folder holds directly, for the tree's
+ * counts. Read once per request.
+ *
+ * @param string $kind_name
+ * @param array  $user
+ * @return int[] folder id => count
+ */
+function pg_picker_folder_counts($kind_name, $user)
+{
+    static $counts = array();
+
+    if (isset($counts[$kind_name])) {
+        return $counts[$kind_name];
+    }
+
+    $kinds = pg_picker_kinds();
+    $kind = $kinds[$kind_name];
+    $column = ($kind['source'] === 'pages') ? 'page.page_folder' : 'folder';
+    $from = ($kind['source'] === 'pages') ? 'page LEFT JOIN folder ON page.page_folder = folder.folder_id' : 'files';
+
+    $rows = db_items("SELECT " . $column . " AS folder_id, COUNT(*) AS items FROM " . $from . " WHERE " . pg_picker_where_for($kind, $user) . " GROUP BY " . $column);
+    $counts[$kind_name] = array();
+
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        $counts[$kind_name][(int) $row['folder_id']] = (int) $row['items'];
+    }
+
+    return $counts[$kind_name];
 }
 
 /**
@@ -584,7 +710,7 @@ function pg_picker_select($kind, $where)
             WHERE " . $where;
     }
 
-    return "SELECT id, name, type, folder FROM files WHERE " . $where;
+    return "SELECT id, name, type, folder, size, image_width, image_height, timestamp FROM files WHERE " . $where;
 }
 
 /**
@@ -654,9 +780,9 @@ function pg_picker_search_answer($request, $user)
     $slice = pg_picker_page_slice($rows, $request['per_page']);
 
     return array(
-        'items' => array_map(function ($row) use ($kind) {
+        'items' => pg_picker_file_details($kind, array_map(function ($row) use ($kind) {
             return pg_picker_item($kind, $row);
-        }, $slice['items']),
+        }, $slice['items']), true),
         'page' => $request['page'],
         'per_page' => $request['per_page'],
         'more' => $slice['more'],
@@ -675,10 +801,21 @@ function pg_picker_list_answer($request, $user)
 {
     $kinds = pg_picker_kinds();
     $kind = $kinds[$request['kind']];
-    $answer = array('folder' => $request['folder'], 'items' => array(), 'page' => $request['page'], 'per_page' => $request['per_page'], 'more' => false);
+    $answer = array('folder' => $request['folder'], 'crumbs' => array(), 'items' => array(), 'page' => $request['page'], 'per_page' => $request['per_page'], 'more' => false);
 
     if (!pg_picker_folder_allowed($request['folder'], pg_recycle_bin_folder_ids(), pg_picker_granted_folders($user))) {
         return $answer;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+
+    // The folders above a role 3 user's own stay unnamed, as in their tree.
+    $granted = pg_picker_granted_folders($user);
+
+    foreach (pg_picker_folder_path($request['folder'], pg_explorer_folder_map()) as $crumb) {
+        if (($granted === null) || in_array($crumb['id'], $granted, true)) {
+            $answer['crumbs'][] = $crumb;
+        }
     }
 
     $column = ($kind['source'] === 'pages') ? 'page.page_name' : 'name';
@@ -690,9 +827,9 @@ function pg_picker_list_answer($request, $user)
 
     $slice = pg_picker_page_slice(is_array($rows) ? $rows : array(), $request['per_page']);
 
-    $answer['items'] = array_map(function ($row) use ($kind) {
+    $answer['items'] = pg_picker_file_details($kind, array_map(function ($row) use ($kind) {
         return pg_picker_item($kind, $row);
-    }, $slice['items']);
+    }, $slice['items']));
     $answer['more'] = $slice['more'];
 
     return $answer;
@@ -738,7 +875,8 @@ function pg_picker_tree_answer($request, $user)
                 $id = (int) $row['folder_id'];
 
                 if (pg_picker_folder_allowed($id, $bin_ids, $granted)) {
-                    $rows[] = pg_explorer_side_folder_row($row, get_access_control_type($id), isset($under[$id]));
+                    $counts = pg_picker_folder_counts($request['kind'], $user);
+                    $rows[] = pg_explorer_side_folder_row($row, get_access_control_type($id), isset($under[$id])) + array('count' => $counts[$id] ?? 0);
                 }
             }
         }
@@ -788,7 +926,7 @@ function pg_picker_resolve_answer($request, $user)
             ? implode(', ', pg_picker_ids($request['values']))
             : "'" . implode("', '", array_map('e', $request['values'])) . "'";
 
-        $rows = db_items("SELECT id, name, type, folder FROM files WHERE (" . $column . " IN (" . $list . ")) AND (attachment = 0) AND (name != '')");
+        $rows = db_items("SELECT id, name, type, folder, size, image_width, image_height, timestamp FROM files WHERE (" . $column . " IN (" . $list . ")) AND (attachment = 0) AND (name != '')");
         $public = !empty($kind['public']) ? pg_public_folder_ids() : array();
 
         foreach ((is_array($rows) ? $rows : array()) as $row) {
@@ -827,6 +965,13 @@ function pg_picker_resolve_answer($request, $user)
         $items[] = $item;
     }
 
+    // Only found items carry a size and a folder to describe.
+    foreach ($items as $index => $item) {
+        if (isset($item['id'])) {
+            $items[$index] = pg_picker_file_details($kind, array($item), true)[0];
+        }
+    }
+
     return array('items' => $items);
 }
 
@@ -853,6 +998,8 @@ function pg_picker_answer($request, $user)
             break;
 
         case 'tree':
+            // The dialog's title line names the kind's file types.
+            $answer['types'] = pg_picker_kind_types($kinds[$request['kind']]);
             $answer += $kinds[$request['kind']]['tree'] ? pg_picker_tree_answer($request, $user) : array('nodes' => array());
             break;
 
@@ -862,4 +1009,67 @@ function pg_picker_answer($request, $user)
     }
 
     return $answer;
+}
+
+/**
+ * The words of the picker dialog (assets/js/pg_picker.js), by the English
+ * text the script asks for.
+ *
+ * @return array
+ */
+function pg_picker_texts()
+{
+    $texts = array();
+
+    foreach (array(
+        'Choose a file', 'Choose a picture', 'Choose a folder', 'Close', 'Up', 'Folders', 'Files', 'Folder', 'Search',
+        'Clear the search', 'Search results', 'Sort', 'View', 'Grid', 'List', 'Name', 'Modified', 'Size', 'Type', 'Access', 'Best match',
+        'Cancel', 'Back', 'Choose', 'Loading…', 'Searching…', 'No results found', 'There is nothing to choose in this folder',
+        'The list could not be loaded.', '1 item', '{n} items', '{folders} folders, {files} files', '{n} results for “{q}”',
+        'in every folder', 'Only in “{folder}”', 'Capital letters and Turkish letters do not matter',
+        'Only the first 2,000 are shown; search to find the rest.', 'Esc clears the search', 'A column heading sorts',
+        'Double-click or Enter chooses', 'Nothing chosen yet', 'Tapping a folder shows its files', 'Folders in {folder}',
+        'Public', 'Private', 'Guest', 'Registration', 'Membership',
+    ) as $text) {
+        $texts[$text] = lang($text);
+    }
+
+    return $texts;
+}
+
+/**
+ * The picker dialog's script and its settings, once per request: the
+ * address of picker.php and the texts as JSON the script reads when it
+ * opens, so the pair also works in markup a screen injects with jQuery.
+ *
+ * @return string
+ */
+function pg_picker_script()
+{
+    static $printed = false;
+
+    if ($printed) {
+        return '';
+    }
+
+    $printed = true;
+
+    $config = array('endpoint' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/picker.php', 'texts' => pg_picker_texts());
+
+    return '<script type="application/json" id="pg_picker_config">' . json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . '</script>'
+        . pg_js_bundle_tags('assets/js/pg_picker.min.js');
+}
+
+/**
+ * The Browse button that opens the picker dialog for a field and writes the
+ * pick into it.
+ *
+ * @param string $kind     a kind of pg_picker_kinds()
+ * @param string $field_id the id of the field (a select or an input)
+ * @param string $title    the dialog's title
+ * @return string
+ */
+function pg_picker_browse_button($kind, $field_id, $title)
+{
+    return '<button type="button" class="btn btn-outline-secondary pg-picker-browse" data-pg-picker-browse data-pg-picker-kind="' . h($kind) . '" data-pg-picker-for="' . h($field_id) . '" data-pg-picker-title="' . h($title) . '" aria-label="' . h(lang('Browse') . ': ' . $title) . '"><span class="bi bi-folder2-open" aria-hidden="true"></span><span class="pg-btn-label">' . lang('Browse') . '</span></button>';
 }

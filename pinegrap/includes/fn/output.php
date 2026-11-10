@@ -7593,6 +7593,9 @@ function pg_js_bundles()
         'assets/js/pg_dash.min.js'                => array('assets/js/pg_dash.js', 'assets/js/pg_dash_cards_visitors.js', 'assets/js/pg_dash_cards_content.js', 'assets/js/pg_dash_cards_security.js', 'assets/js/pg_dash_cards_team.js', 'assets/js/pg_dash_cards_work.js', 'assets/js/pg_dash_edit.js', 'assets/js/pg_dash_panel.js', 'assets/js/pg_dash_cards_personal.js', 'assets/js/pg_dash_cards_shop.js', 'assets/js/pg_dash_cards_assistant.js', 'assets/js/pg_dash_brief.js'),
         // The Visitors overview (visitors.php): its period bar and charts.
         'assets/js/pg_visitors.min.js'            => array('assets/js/pg_visitors.src.js'),
+        // The picker dialog (window.pgPicker, includes/fn/picker.php), printed
+        // by pg_picker_script() on the screens that open it.
+        'assets/js/pg_picker.min.js'              => array('assets/js/pg_picker.js'),
     );
 }
 
