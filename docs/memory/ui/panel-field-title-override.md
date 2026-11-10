@@ -5,7 +5,7 @@ description: A labelled panel field carries no title: Bootstrap 6 copies a popov
 
 ## Why may a labelled field not have a `title`?
 - At ready, `pgBindTitlePopovers()` (`backend.src.js`) binds every `[title]` without `.no-popover` as a hover popover. Bootstrap 6's `Tooltip._fixTitle()` then copies the title into `aria-label` on an element with no `aria-label` and no text (every `input`, an empty `select`), and removes the title.
-- On a field that also has a `<label for>` (or `aria-labelledby`), that `aria-label` replaces the label as its accessible name: a screen reader read "Select/Deselect All" for a "Select All" switch, a hint instead of the field name. The hint also shows only on mouse hover, never on keyboard focus or touch.
+- On a field with a `<label for>` (or `aria-labelledby`) that `aria-label` replaces the label as its name ("Select/Deselect All" for a "Select All" switch), and the hint shows only on mouse hover, never on focus or touch.
 
 ## What replaces the title?
 - A title that repeats the label: drop it (the "Select All" switches of the page, calendar event, organize contacts and user permission lists).
@@ -19,9 +19,9 @@ description: A labelled panel field carries no title: Bootstrap 6 copies a popov
 - `tests/panel_title_label_override_test.php` scans panel PHP and JS (not `lib/`, `vendor/`, `.min.js`) for an input, select or textarea with a title, no `.no-popover`, no `aria-label`, and a `<label for>` on its id (a PHP or JS id expression included) or `aria-labelledby`. Its known list holds the fields not fixed yet, only shrinks and is empty now.
 
 ## What is left?
-- Nothing labelled: the known list is empty since the "Select All" switches of `view_contacts.php` and `view_submitted_forms.php` lost their title (the panel prints that markup; the multiselect library only reads it). The other fields it held got their own `aria-label` in #2668; the Group and Custom Form titles say their own name.
-- Hover-only help on a label or icon (`title` + `data-bs-content`, a " (?)"): Folder, Design File/Theme, menu item Enable Security, Page Name and Catalog Name addresses, Migration URL, Paraşüt ID, the Custom layout reason and the barcode Last Scan help are now `form-text` + `aria-describedby`; an address hint puts the pattern in `<code>` through `h()`, like Short Link. Pinned by `tests/field_hint_visible_test.php`.
-- Unlabelled fields: the image picker's Folder and Access selects had no name (the popover took the title; option text blocks `aria-label`). Since #8502 they and the product group `#select_all` carry `aria-label` + a compact tooltip (test `..._unlabelled_hints_are_tooltips`).
-- Not done: explorer's injected `#select_all`; `style_designer.src.js` selects.
+- Nothing labelled: the known list is empty since the "Select All" switches of `view_contacts.php` and `view_submitted_forms.php` lost their title; the others got their own `aria-label` in #2668.
+- Hover-only help on a label or icon (`title` + `data-bs-content`, a " (?)"): Folder, Design File/Theme, menu item Enable Security, Page Name and Catalog Name addresses, Migration URL, Paraşüt ID, the Custom layout reason and the barcode Last Scan help are now `form-text` + `aria-describedby` (an address pattern in `<code>` via `h()`). Pinned by `tests/field_hint_visible_test.php`.
+- Unlabelled fields: the image picker's Folder and Access selects had no name. Since #8502 they and the product group `#select_all` carry `aria-label` + a compact tooltip (test `..._unlabelled_hints_are_tooltips`); since #8568 so does the explorer's `#select_all`, and the designer's e-mail page select and image Loading attribute select carry their row's name as `aria-label`, the Loading hint a `form-text` + `aria-describedby` (`..._designer_selects_named`).
+- A `form-text` in the designer: its property panels are drawn after ready, so no popover or tooltip binds there.
 
 Related: docs/memory/ui/panel-accessible-names.md, docs/memory/ui/panel-hint-tooltip-or-popover.md

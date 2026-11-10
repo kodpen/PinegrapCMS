@@ -35013,7 +35013,7 @@ const StyleDesigner = (function () {
                             '</div>' +
                             (_cfFS.confirm_email
                                 ? '<input type="text" class="form-control form-control-sm mt-1 sd-cf-s" data-s="confirm_subject" value="' + esc(_cfFS.confirm_subject || '') + '" maxlength="255" placeholder="' + esc(_sdT('We received your message')) + '">' +
-                                  '<select class="form-control form-control-sm mt-1 sd-cf-sn" data-s="confirm_page_id" title="' + esc(_sdT('Page sent as the e-mail')) + '">' +
+                                  '<select class="form-control form-control-sm mt-1 sd-cf-sn no-popover" data-s="confirm_page_id" title="' + esc(_sdT('Page sent as the e-mail')) + '" aria-label="' + esc(_sdT('Page sent as the e-mail')) + '">' +
                                       _swPageOptions(_cfFS.confirm_page_id, _allPagesCache, { none: _sdT('— Plain text: the list of fields —') }) +
                                   '</select>'
                                 : '') +
@@ -47254,12 +47254,15 @@ const StyleDesigner = (function () {
             var _ldCur  = _sdImgLoading(n);
             var _ldOpts = [['', _sdT('Default')], ['lazy', _sdT('Lazy')], ['eager', _sdT('Eager')]];
             if (_ldCur !== '' && _ldCur !== 'lazy' && _ldCur !== 'eager') _ldOpts.push([_ldCur, _ldCur]);
+            // The row's label has no for: the select carries its own name,
+            // and the hint is printed under it so keyboard focus reads it too.
             h += row(_sdT('Loading attribute'),
-                '<select class="form-control form-control-sm" data-img-loading title="' + esc(_sdT('Default: the first image of the page loads first, the others as they come near the screen. Lazy: this image loads when it comes near the screen. Eager: it loads right away.')) + '">' +
+                '<select class="form-control form-control-sm" data-img-loading aria-label="' + esc(_sdT('Loading attribute')) + '" aria-describedby="sd-img-loading-hint">' +
                 _ldOpts.map(function(o) {
                     return '<option value="' + esc(o[0]) + '"' + (o[0] === _ldCur ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
                 }).join('') +
-                '</select>');
+                '</select>' +
+                '<div class="form-text small mb-0 mt-1" id="sd-img-loading-hint">' + esc(_sdT('Default: the first image of the page loads first, the others as they come near the screen. Lazy: this image loads when it comes near the screen. Eager: it loads right away.')) + '</div>');
         }
 
         for (var key in dp) {
