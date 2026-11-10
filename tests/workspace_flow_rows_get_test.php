@@ -83,9 +83,9 @@ function test_workspace_flow_rows_get_kind()
 
 	pg_assert_same(array('all', 'any'), $values['match']);
 	pg_assert_same(array('asc', 'desc'), $values['dir']);
-	pg_assert_same(array('id', 'position', 'last', 'number', 'match'), array_column($catalogue['row_get']['settings'], 'values', 'key')['by']);
-	pg_assert_same(array('id', 'position', 'last', 'number', 'match'), ws_step_row_get_bys());
-	pg_assert_same(array('id', 'position', 'last', 'number'), ws_step_row_bys(), 'a change finds no row by conditions');
+	pg_assert_same(array('id', 'position', 'last', 'number', 'key', 'match'), array_column($catalogue['row_get']['settings'], 'values', 'key')['by']);
+	pg_assert_same(array('id', 'position', 'last', 'number', 'key', 'match'), ws_step_row_get_bys());
+	pg_assert_same(array('id', 'position', 'last', 'number', 'key'), ws_step_row_bys(), 'a change finds no row by conditions');
 	pg_assert_same(50, WS_FLOW_LOOP_ITEMS_MAX, 'the list holds at most what a For each box walks');
 }
 

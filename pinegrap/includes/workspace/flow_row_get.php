@@ -182,6 +182,10 @@ function ws_step_row_get_text($action)
         return lang(array('string' => 'Reads the row {var:1} of the table “{var:2}”.', 'vars' => array($number, $table)));
     }
 
+    if (($by === 'key') && (trim((string) ($action['row'] ?? '')) !== '') && (strpos((string) $action['row'], '{{') === false)) {
+        return lang(array('string' => 'Reads the row with the key “{var:1}” of the table “{var:2}”.', 'vars' => array(mb_substr(trim((string) $action['row']), 0, 60), $table)));
+    }
+
     if (($number > 0) && ($by === 'number')) {
         return lang(array('string' => 'Reads the row #{var:1} of the table “{var:2}”.', 'vars' => array($number, $table)));
     }

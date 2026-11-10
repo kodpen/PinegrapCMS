@@ -593,10 +593,17 @@ function ws_wtable_row_create_check($viewer, $table, $input)
         return ws_wtable_refusal('not_found', '', 404);
     }
 
-    $cells = ws_wtable_row_cells_input(ws_wtable_columns((int) $table['id']), is_array($input) ? ($input['cells'] ?? array()) : null);
+    $columns = ws_wtable_columns((int) $table['id']);
+    $cells = ws_wtable_row_cells_input($columns, is_array($input) ? ($input['cells'] ?? array()) : null);
 
     if (!$cells['ok']) {
         return ws_wtable_cells_refusal($cells['errors']);
+    }
+
+    $key = ws_wtable_key_cells_refusal((int) $table['id'], $columns, ws_wtable_cells_merge($columns, array(), $cells['cells']));
+
+    if ($key !== null) {
+        return $key;
     }
 
     if (!ws_wtable_limit_allows('rows', (int) $table['row_count'])) {
@@ -617,6 +624,25 @@ function ws_wtable_row_create_check($viewer, $table, $input)
  * @return array ok, error, field, status, row_id, revision
  */
 function ws_wtable_row_create($viewer, $table, $input)
+{
+    // Checked and written under the table's key lock when it has a key, so
+    // two writes at once cannot both find a key free.
+    $table_id = is_array($table) ? (int) $table['id'] : 0;
+    $taken = (($table_id > 0) && (ws_wtable_key_column(ws_wtable_columns($table_id)) !== null)) ? ws_wtable_key_lock($table_id) : false;
+
+    try {
+        return ws_wtable_row_create_write($viewer, $table, $input);
+    } finally {
+        ws_wtable_key_unlock($table_id, $taken);
+    }
+}
+
+/**
+ * The write of ws_wtable_row_create(), under its lock.
+ *
+ * @return array
+ */
+function ws_wtable_row_create_write($viewer, $table, $input)
 {
     $check = ws_wtable_row_create_check($viewer, $table, $input);
 
@@ -688,10 +714,18 @@ function ws_wtable_row_update_check($viewer, $table, $row, $input)
         return ws_wtable_refusal('nothing_to_change', 'cells');
     }
 
-    $cells = ws_wtable_row_cells_input(ws_wtable_columns((int) $table['id']), $input['cells']);
+    $columns = ws_wtable_columns((int) $table['id']);
+    $cells = ws_wtable_row_cells_input($columns, $input['cells']);
 
     if (!$cells['ok']) {
         return ws_wtable_cells_refusal($cells['errors']);
+    }
+
+    $key = ws_wtable_key_cells_refusal((int) $table['id'], $columns,
+        ws_wtable_cells_merge($columns, ws_wtable_cells_decode($row['cells'] ?? null), $cells['cells']), (int) $row['id']);
+
+    if ($key !== null) {
+        return $key;
     }
 
     return array('ok' => true, 'cells' => $cells['cells'], 'error' => '', 'field' => '', 'status' => 200);
@@ -708,6 +742,25 @@ function ws_wtable_row_update_check($viewer, $table, $row, $input)
  * @return array ok, error, field, status, revision
  */
 function ws_wtable_row_update($viewer, $table, $row, $input)
+{
+    // Checked and written under the table's key lock when it has a key, so
+    // two writes at once cannot both find a key free.
+    $table_id = is_array($table) ? (int) $table['id'] : 0;
+    $taken = (($table_id > 0) && (ws_wtable_key_column(ws_wtable_columns($table_id)) !== null)) ? ws_wtable_key_lock($table_id) : false;
+
+    try {
+        return ws_wtable_row_update_write($viewer, $table, $row, $input);
+    } finally {
+        ws_wtable_key_unlock($table_id, $taken);
+    }
+}
+
+/**
+ * The write of ws_wtable_row_update(), under its lock.
+ *
+ * @return array
+ */
+function ws_wtable_row_update_write($viewer, $table, $row, $input)
 {
     $check = ws_wtable_row_update_check($viewer, $table, $row, $input);
 

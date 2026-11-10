@@ -888,6 +888,7 @@
     "Only a submitted form brings a customer in.": "Müşteriyi yalnızca gönderilen bir form getirir.",
     "Only a table on InnoDB is rebuilt this way; a table on MyISAM gets a smaller file when it is moved to InnoDB.": "Bu yolla yalnız InnoDB'deki tablo yeniden kurulur; MyISAM'daki tablonun dosyası InnoDB'ye taşınınca küçülür.",
     "Only a text layer takes text, at most 2000 letters.": "Metin yalnızca metin katmanına yazılır, en fazla 2000 harf.",
+    "Only a text or number column can be the key.": "Yalnızca metin ya da sayı sütunu anahtar olabilir.",
     "Only a timed link can be given a new time.": "Yalnız süreli bir linke yeni süre verilebilir.",
     "Only a value that matches one of the options is used (upper and lower case alike).": "Yalnızca seçeneklerden biriyle eşleşen bir değer kullanılır (büyük ve küçük harf fark etmez).",
     "Only a verification hash is stored. If it is lost, issue a new one.": "Sistemde yalnız doğrulama özeti saklanır. Kaybederseniz yenisini üretin.",

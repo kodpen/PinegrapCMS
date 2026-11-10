@@ -1631,6 +1631,7 @@
     "{var:1} rows from the note “{var:2}”": "“{var:2}” notundan {var:1} satır",
     "{var:1} rows from “{var:2}”": "“{var:2}” dosyasından {var:1} satır",
     "{var:1} rows loaded": "{var:1} satır yüklendi",
+    "{var:1} rows were imported and {var:2} rows were changed by their key.": "{var:1} satır içe aktarıldı, {var:2} satır anahtarıyla değiştirildi.",
     "{var:1} rows were imported.": "{var:1} satır içe aktarıldı.",
     "{var:1} rows were refused (the header is row 1):": "{var:1} satır reddedildi (başlık 1. satırdır):",
     "{var:1} rows, {var:2}": "{var:1} satır, {var:2}",

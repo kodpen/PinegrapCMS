@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         return isset($_POST[$name]) && is_string($_POST[$name]) ? $_POST[$name] : '';
     };
     $refused = function ($result) use ($liveform) {
-        $liveform->add_error(h(ws_wtable_screen_error_text($result['error'])));
+        $liveform->add_error(h(ws_wtable_screen_refusal_text($result)));
     };
 
     switch ($action) {
@@ -390,7 +390,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             ws_wtable_import_drop();
             $_SESSION['software']['ws_wtable_import_report'] = array('table' => (int) $result['table_id'], 'more' => $kept['more']) + $result['report'];
-            $liveform->add_notice(h(lang(array('string' => '{var:1} rows were imported.', 'vars' => (int) $result['report']['added']))));
+            $liveform->add_notice(h(ws_wtable_import_report_text($result['report'])));
             $back = $self_url . '?id=' . (int) $result['table_id'] . '#ws-wt-import-report';
             break;
 
@@ -685,7 +685,7 @@ if ($report) {
     $import_card = '
     <div class="card mb-5" id="ws-wt-import-report">
         <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-file-earmark-check me-1" aria-hidden="true"></i>'
-            . h(lang(array('string' => '{var:1} rows were imported.', 'vars' => (int) $report['added']))) . '</h2></div>
+            . h(ws_wtable_import_report_text($report)) . '</h2></div>
         <div class="card-body small">
             ' . ((int) $report['refused_count'] > 0 ? '<p class="fg-danger mb-3">' . h(lang(array('string' => '{var:1} rows were refused (the header is row 1):', 'vars' => (int) $report['refused_count']))) . '</p><ul class="mb-0">' . $lines . '</ul>'
                 . ((int) $report['refused_count'] > count((array) $report['refused']) ? '<p class="fg-secondary mt-3 mb-0">' . h(lang('Only the first 100 are listed.')) . '</p>' : '')
@@ -1217,6 +1217,12 @@ if (!$table) {
                 break;
         }
 
+        // A text or number column may be the table's key.
+        if (in_array($type, ws_wtable_key_types(), true)) {
+            $out .= '<div class="form-field mb-3"><input type="hidden" name="options[key]" value="0"><input class="check" type="checkbox" name="options[key]" id="' . $prefix . '_key" value="1"' . (!empty($options['key']) ? ' checked' : '') . '>'
+                . '<label class="small" for="' . $prefix . '_key">' . h(lang('The table\'s key: filled in and different on every row')) . '</label></div>';
+        }
+
         return $out;
     };
 
@@ -1225,7 +1231,8 @@ if (!$table) {
 
     foreach ($columns as $column_id => $column) {
         $line = '<div class="d-flex align-items-center gap-3">'
-            . '<div class="flex-grow-1 min-w-0"><span class="fw-semibold">' . h($column['name']) . '</span> <span class="small fg-secondary">· ' . h($types[$column['type']] ?? $column['type']) . '</span></div>';
+            . '<div class="flex-grow-1 min-w-0"><span class="fw-semibold">' . h($column['name']) . '</span> <span class="small fg-secondary">· ' . h($types[$column['type']] ?? $column['type']) . '</span>'
+            . (ws_wtable_is_key($column) ? ' <span class="badge theme-secondary fw-normal"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Key')) . '</span>' : '') . '</div>';
 
         if ($can_write) {
             $line .= ws_wtable_screen_action_button(array('action' => 'column_delete', 'column' => (int) $column_id), lang('Delete'), 'bi-trash',

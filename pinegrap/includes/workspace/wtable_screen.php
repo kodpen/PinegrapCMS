@@ -131,6 +131,17 @@ function ws_wtable_screen_error_text($code)
             return lang('Choose what the list holds: texts or numbers.');
         case 'unknown_column':
             return lang('The column was deleted meanwhile.');
+        // The table's key (wtable_keys.php).
+        case 'key_type':
+            return lang('Only a text or number column can be the key.');
+        case 'key_taken':
+            return lang('Another column is already the key: take the key off it first.');
+        case 'key_not_unique':
+            return lang('The column cannot be the key while rows are empty in it or repeat a value.');
+        case 'key_empty':
+            return lang('The key column needs a value on every row.');
+        case 'duplicate_key':
+            return lang('Another row already has this key.');
     }
 
     return lang('That could not be saved.');
@@ -324,6 +335,10 @@ function ws_wtable_screen_options_from_form($type, $form, $old = null, $held = a
                 $options['currency'] = $text('currency');
             }
 
+            if ($type === 'number') {
+                $options['key'] = ($text('key') === '1');
+            }
+
             return $options;
 
         case 'date':
@@ -350,9 +365,37 @@ function ws_wtable_screen_options_from_form($type, $form, $old = null, $held = a
             // What a list holds is fixed once made: a form of a made column
             // does not send it, and the store keeps the one it has.
             return ($text('of') !== '') ? array('of' => $text('of')) : array();
+
+        case 'text':
+            return array('key' => ($text('key') === '1'));
     }
 
     return array();
+}
+
+/**
+ * A refusal in words, the rows named when a column cannot become the key
+ * (#3, #7 and 2 more). Pure but for lang().
+ *
+ * @param array $result a store refusal
+ * @return string
+ */
+function ws_wtable_screen_refusal_text($result)
+{
+    $text = ws_wtable_screen_error_text((string) ($result['error'] ?? ''));
+
+    if (((string) ($result['error'] ?? '') !== 'key_not_unique') || empty($result['rows'])) {
+        return $text;
+    }
+
+    $rows = implode(', ', array_map(function ($label) {
+        return '#' . (int) $label;
+    }, (array) $result['rows']));
+    $more = (int) ($result['rows_count'] ?? 0) - count((array) $result['rows']);
+
+    return $text . ' ' . (($more > 0)
+        ? lang(array('string' => 'Rows: {var:1} and {var:2} more.', 'vars' => array($rows, $more)))
+        : lang(array('string' => 'Rows: {var:1}.', 'vars' => $rows)));
 }
 
 /**

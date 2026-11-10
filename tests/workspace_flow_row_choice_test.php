@@ -34,7 +34,7 @@ function workspace_flow_row_choice_test_source($function)
 // before the choice, then by its number in the table and the last row.
 function test_workspace_flow_row_choice_ways()
 {
-	pg_assert_same(array('id', 'position', 'last', 'number'), ws_step_row_bys());
+	pg_assert_same(array('id', 'position', 'last', 'number', 'key'), ws_step_row_bys());
 	pg_assert_same(ws_step_row_get_bys(), ws_flow_setting_values()['row_get.by'], 'a read also finds the first row that meets conditions');
 	pg_assert_same(ws_step_row_bys(), ws_flow_setting_values()['row_set.by']);
 
@@ -42,7 +42,7 @@ function test_workspace_flow_row_choice_ways()
 
 	pg_assert_same(array('table_id', 'by', 'row', 'match', 'where', 'retry', 'retry_after'), array_column($catalogue['row_get']['settings'], 'key'));
 	pg_assert_same(array('table_id', 'by', 'row', 'cells', 'retry', 'retry_after'), array_column($catalogue['row_set']['settings'], 'key'));
-	pg_assert_same(array('id', 'position', 'last', 'number', 'match'), array_column($catalogue['row_get']['settings'], 'values', 'key')['by']);
+	pg_assert_same(array('id', 'position', 'last', 'number', 'key', 'match'), array_column($catalogue['row_get']['settings'], 'values', 'key')['by']);
 }
 
 // The way is kept; none or an unknown one is by its id, as a box saved
