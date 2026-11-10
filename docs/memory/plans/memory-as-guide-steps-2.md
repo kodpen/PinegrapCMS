@@ -25,7 +25,7 @@ description: Steps MG5-MG10 of plans/memory-as-guide.md: an overview each for fl
 
 - MG8 Designer blocks (done, #8469): `designer/designer-blocks-overview.md` for the 26 `designer-blocks-*` files.
 
-- MG9 Custom forms: `designer/custom-form-overview.md` for the 17 `custom-form-*` files.
+- MG9 Custom forms (done, #8474): `designer/custom-form-overview.md` for the 17 `custom-form-*` files.
 
 - MG10 Order totals: `commerce/order-totals-overview.md`, a subject spread over two folders.
   - Which surfaces work totals out and which read the stored header; where a kurus may differ between the lines and the total, and which of those are decided: `commerce/offer-percent-rounding.md`, `offer-discounted-units.md`, `product-tax-rate.md`, `erp/erp-discounted-order-vat.md`, `erp-vat-per-rate-group.md`, `erp-order-charges-vat.md`.
