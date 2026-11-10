@@ -27,8 +27,8 @@ module: reviews
 
 ## When does the markup carry aggregateRating?
 - `pg_review_aggregate_jsonld()`: only with at least one review and an average of 1-5; never invented (`platform/structured-data-open-graph.md`).
-- Only the legacy catalog detail block of `get_page_content.php` (System region), when the page shows comments with stars (`comments`, `comments_rating`): markup describes only reviews a visitor can read there. Also when the comments widget draws them.
-- `_pg_build_product_jsonld()`: only where its comments widget shows them ([[comments-widget-product-page]]). A catalog detail page with a catalog_item_view widget and no System region gets no Product markup; not covered.
+- The legacy catalog detail block of `get_page_content.php` (System region), when the page shows comments with stars (`comments`, `comments_rating`): markup describes only reviews a visitor can read there. Also when the comments widget draws them.
+- `_pg_build_product_jsonld()`: only where its comments widget shows them ([[comments-widget-product-page]]). It also writes a catalog detail page's Product markup when catalog_item_view draws it without a System region (#8532).
 
 ## Where are the other parts?
 - Store reply: [[product-review-store-reply]]. Order: [[product-review-order]]. Request e-mail: [[product-review-request-email]]. API: `api/api-reviews-and-wishlist.md`. Photo reviews: [[product-review-photos]].
