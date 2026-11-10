@@ -166,3 +166,20 @@ function test_file_withheld_prepare_file_name_asks_the_stored_name()
 	pg_assert_same('dkim_key.txt', prepare_file_name('dkim key.txt'), 'an ordinary name is prepared as before');
 	pg_assert_same('file', prepare_file_name('dkim.key'), 'the name itself');
 }
+
+// The visual designer's managed-file endpoint reads a file's bytes and
+// overwrites them; both ask the rule before they touch the disk.
+function test_file_withheld_is_asked_by_the_designer_file_doors()
+{
+	$designer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/designer.php');
+
+	$between = function ($start, $end) use ($designer) {
+		$from = strpos($designer, $start);
+		$to = ($from === false) ? false : strpos($designer, $end, $from + strlen($start));
+
+		return ($from === false) ? '' : (($to === false) ? substr($designer, $from) : substr($designer, $from, $to - $from));
+	};
+
+	pg_assert_true(file_withheld_test_asks_first($between("case 'read':", "case 'delete':"), 'pg_file_withheld($df_name_safe)', 'file_get_contents('), 'the designer does not read it');
+	pg_assert_true(file_withheld_test_asks_first($between("case 'save':", 'default:'), 'pg_file_withheld($df_name_safe)', 'file_put_contents('), 'the designer does not overwrite it');
+}

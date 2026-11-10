@@ -1299,6 +1299,11 @@ function pg_panel_designer_file($request, $action)
             if (!$df_row && $df_row !== '0') {
                 respond(array('status' => 'error', 'message' => 'File is not registered in files table.'));
             }
+            // The key that signs the site's mail never leaves the server
+            // and only the SMTP settings write it.
+            if (pg_file_withheld($df_name_safe)) {
+                respond(array('status' => 'error', 'message' => lang('Access denied')));
+            }
             $df_path = FILE_DIRECTORY_PATH . '/' . $df_name_safe;
             if (!file_exists($df_path)) {
                 respond(array('status' => 'error', 'message' => 'File missing on disk.'));
@@ -1365,6 +1370,11 @@ function pg_panel_designer_file($request, $action)
             $df_exists = db_value("SELECT COUNT(*) FROM files WHERE name = '" . e($df_name_safe) . "'");
             if (!$df_exists) {
                 respond(array('status' => 'error', 'message' => 'File is not registered in files table.'));
+            }
+            // The key that signs the site's mail never leaves the server
+            // and only the SMTP settings write it.
+            if (pg_file_withheld($df_name_safe)) {
+                respond(array('status' => 'error', 'message' => lang('Access denied')));
             }
             $df_path = FILE_DIRECTORY_PATH . '/' . $df_name_safe;
             $df_written = @file_put_contents($df_path, $df_content);
