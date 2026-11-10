@@ -638,6 +638,8 @@
     "Your author desk": "Yazar masanız",
     "Your baking class": "Fırın atölyeniz",
     "Your baking classes": "Pişirme atölyeleriniz",
+    "Your bank did not approve the payment ({var:1}). Please check your card with your bank or try another card.": "Bankanız ödemeyi onaylamadı ({var:1}). Lütfen kartınızı bankanızla kontrol edin veya başka bir kartla deneyin.",
+    "Your bank did not approve the payment. Please check your card with your bank or try another card.": "Bankanız ödemeyi onaylamadı. Lütfen kartınızı bankanızla kontrol edin veya başka bir kartla deneyin.",
     "Your basket": "Sepetiniz",
     "Your berth requests": "Bağlama talepleriniz",
     "Your berth requests, their status and the harbour office's answers, newest first.": "Bağlama talepleriniz, durumları ve liman ofisinin yanıtları, en yenisi önce.",
