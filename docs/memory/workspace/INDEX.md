@@ -15,6 +15,7 @@
 - agent-questions.md: How an agent asks the people with a poll or an approval, and why the outcome is written in the agent's name (never as the owner's decision)
 - agent-registry.md: The agent registry (ws_agents) and the channel-agent row (ws_channel_agents): fields, Claude's routine as the first push agent, where the membership rules are, the depth and hourly brakes [decision: decisions-made-workspace-7.md, decisions-made-workspace-8.md]
 - agent-risk-tiers.md: Agent risk tiers (agent_tiers.php, A7): the tier of a change, when an application agent's proposal is applied at once, the undo journal in ws_ai_changes (step 11.0.174), who may undo and when
+- agent-sessions.md: The asker's own Claude session over OAuth: @Claude waits 2 min for the asker's online connection, then the routine; claimed_device_id; via_client_id in the depth brake
 - agent-shown.md: How a registry agent shows (A4b2): the line under the message that woke it, its tag and @ picker entry, its ws_assistants() entry kept off tasks, its own message edits
 - agent-token-limit.md: A model assistant's monthly token limit (ws_agents.token_limit): set on its form, checked before each step, the request fails with a sentence naming the limit; the card shows used of limit [decision: decisions-made-schema-14.md]
 - agent-wakes.md: An app agent's scheduled wakes (every N minutes, once at a time) made by the general job, /wake in a channel, the agent-wake API routes, and the brief an app agent reads (A4b1, #8246) [decision: decisions-made-workspace-10.md]

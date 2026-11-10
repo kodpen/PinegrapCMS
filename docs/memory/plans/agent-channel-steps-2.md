@@ -9,7 +9,9 @@ description: Steps A0-A9 of plans/agent-channel.md: registry, doors, wakes, chan
 - Done: A0 #7969, A1 #7970, A2 #7968, A3 #8038, A3b #8189, A3c #8235, A4a #8221, A4b1 #8246, A4b2 #8274, A5 #8187 #8188, A5b #8227, A6 #8191, A6b #8219, A7 #8242, A7b #8313, A9 #8236 #8254 #8252 #8299 #8293. What each built: `workspace/agent-registry.md`, `agent-doors.md`, `agent-wakes.md`, `agent-shown.md`, `channel-memory.md`, `agent-questions.md`, `model-assistants.md`, `agent-risk-tiers.md`, `agent-flows.md`, `agent-canvas-svg.md`; the door experiment `workflow/agent-channel-experiment.md`.
 
 - A8 (M) Further doors. After A4. Cut in three:
-  - A8a (this repository): per-person sessions over OAuth (an `@Claude` ask goes to the asker's own connected session, else the site's) and the "via" badge on what a connection writes (the person's name with the connection's). Both need an owner answer and a schema step first (shelved `claude-code-channel` C4, C5).
+  - A8a (this repository): per-person sessions over OAuth and the "via" badge, owner decision #8490 (1a, 2a). Cut in two:
+    - A8a1 #8489: schema step 11.0.184 (`via_client_id`, `claimed_device_id`), the requests routes serving the asker's own connection with the 2-minute wait, the depth brake counting a via message (`workspace/agent-sessions.md`).
+    - A8a2: a connection's message written as its owner's with `via_client_id` (rate limit, auto-join, read mark; own-words routes stay refused), the API message's `via`, the thread-follow decision reading it as an application's, the "via <client>" badge in workspace.js and backend.src.css; a test that it wakes exactly what the application's message woke. After A8a1.
   - A8b (this repository): a chat box on the dashboard on the same catalogue, beside the Assistant card's job box (`ui/dashboard-v2-ai-card.md`). After A8a.
   - The Claude Code channel plugin in a separate repository (`kodpen/pinegrap-claude-channel`: poll, claim, push the event, tools reply, fail, context, record, react, post), applied to Anthropic's channel list, under the shelved plan's security rules. Waits until that repository is opened.
 
