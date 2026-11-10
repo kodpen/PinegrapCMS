@@ -7,7 +7,7 @@ description: Steps MG1-MG4 and MG11-MG14 of plans/memory-as-guide.md: decision l
 - Claim with a draft `[plan:memory-as-guide] MG<n> — <topic>`. A step that changes only `docs/` or `CLAUDE.md` lands alone.
 - MG1, MG4 and MG11 change `tools/memory_index.php`: one at a time, in that order, each with tests in `tests/memory_index_test.php`, red first, and with every index written again in its PR.
 - The overviews, MG5 to MG10, are in `memory-as-guide-steps-2.md`; they run side by side with these.
-- Where it stands (2026-11-10): MG1, MG2 and MG4 done. Next: MG3 (free now) and MG11 (after MG4's merge); the tool's pure parts are `memory_index_decision_*()` and `memory_index_clusters()`, with their tests.
+- Where it stands (2026-11-10): MG1 to MG11 done; MG12 and MG13 wait for the owner's machine; MG14 under way.
 
 ## Steps
 - MG1 Decision list and marks (done, #8457): the tool writes `workflow/DECISIONS.md`, named in the workflow README as a searched file: one line per entry heading of `workflow/decisions-made*.md` (file, heading) and one per topic file whose own text records a dated owner or architect decision (file, description).
