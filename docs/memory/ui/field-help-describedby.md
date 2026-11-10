@@ -19,10 +19,9 @@ description: pgBindFieldHelp() in backend.src.js ties a panel field's .form-text
 
 ## When does it run?
 - On `DOMContentLoaded` after `pgInjectAriaAndRequiredMarkers()`, never inside it: `output_errors()` calls the injector mid-parse. `data-pg-help-bound` marks a help done, so a second run changes nothing.
-- In `pgInitInjected(scope)` (Site Settings dialog, DataTables draws, product group form, designer page settings) before `pgFields.init`, so `pg_fields.js` copies the field's `aria-describedby` onto the combobox toggle it draws.
+- In `pgInitInjected(scope)` (Site Settings dialog, DataTables draws, product group form, designer page settings) before `pgFields.init`. `pg_fields.js` copies the field's `aria-describedby` onto the combobox toggle and the chips `.form-ghost` it draws; on page load it draws after the binder, so the typing box is linked by that copy (#8505). The copy is taken once per draw: an id added to the field later arrives on the next draw or the binder's next run.
 
 ## What is not covered?
-- A chips box drawn after the binder (page load: `pg_fields.js` draws later and copies no `aria-describedby` to its `.form-ghost`): the hidden input is linked, the typing box is not.
 - Screens without `backend.min.js` (the legacy Page Designer).
 
 Test: `tests/field_help_describedby_test.php` (Node fake document, wiring pins).

@@ -147,7 +147,9 @@ function ws_step_row_get_do($owner, $action)
     return array(
         'ok'     => true,
         'text'   => ($cells !== null)
-            ? lang(array('string' => 'Read the row {var:1} of the table “{var:2}”.', 'vars' => array((int) $read['position'], $name)))
+            ? (((int) $read['number'] > 0)
+                ? lang(array('string' => 'Read the row #{var:1} of the table “{var:2}”.', 'vars' => array((int) $read['number'], $name)))
+                : lang(array('string' => 'Read the row {var:1} of the table “{var:2}”.', 'vars' => array((int) $read['position'], $name))))
             : ws_step_row_missing_text($by, (string) $action['row'], $name) . ' ' . lang('Nothing was read.'),
         'row_id' => (int) $data['row_id'],
         'data'   => $data,
@@ -178,6 +180,10 @@ function ws_step_row_get_text($action)
 
     if (($number > 0) && ($by === 'position')) {
         return lang(array('string' => 'Reads the row {var:1} of the table “{var:2}”.', 'vars' => array($number, $table)));
+    }
+
+    if (($number > 0) && ($by === 'number')) {
+        return lang(array('string' => 'Reads the row #{var:1} of the table “{var:2}”.', 'vars' => array($number, $table)));
     }
 
     if ($number > 0) {

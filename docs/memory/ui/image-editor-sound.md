@@ -6,7 +6,7 @@ module: image_editor
 
 ## What does a document hold?
 - `doc.sounds`: `{ id, fileId, name, src, length, start, from, to, volume, fadeIn, fadeOut, muted }`, times in ms. `length` is the file's, `from`/`to` cut it, `start` places the cut on the whole animation's timeline (every scene back to back, `motionTotal()`), not in a scene: music runs across scenes. No sound drops the key.
-- Not layers on purpose: a sound has no box, so selection, hit tests, Layers, the frames and a still save never meet it. A clip's sound detached (V2) will be an entry here.
+- Not layers on purpose: a sound has no box, so selection, hit tests, Layers, the frames and a still save never meet it. A clip's sound detached (Detach sound, `image-editor-clip.md`) is an entry here; a clip's own sound plays through `soundsMore()`.
 - The model's `SOUND` section reads it through `M.soundList(doc, origin)`: an entry with no id, or an address that is not the site's own (`M.soundSrcOk()`: a root path, or http(s) of the same origin; `//host` refused), is left out, the numbers are put in range, at most 20 (`SOUND_MAX`). So an opened document never makes the editor fetch another host. Every change goes through `soundChange()`, which writes that clean list back: one undo step each, a slider's moves one step by its key.
 
 ## Where do sounds come from?

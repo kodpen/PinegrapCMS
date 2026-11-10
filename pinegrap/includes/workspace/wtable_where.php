@@ -43,6 +43,7 @@ function ws_wtable_where_operators()
         'lte'       => lang('is at most'),
         'gte'       => lang('is at least'),
         'contains'  => lang('contains'),
+        'not_contains' => lang('does not contain'),
         'starts'    => lang('starts with'),
         'empty'     => lang('is empty'),
         'not_empty' => lang('is not empty'),
@@ -52,7 +53,8 @@ function ws_wtable_where_operators()
 /**
  * The comparisons a column of this type takes: sizes for a number, money, a
  * formula and a date; words for a text; what a status, a person and a record
- * link hold; a checkbox ticked or not. None for a type it does not know.
+ * link hold; a checkbox ticked or not; an item a list holds or not. None
+ * for a type it does not know.
  * Pure.
  *
  * @param string $type ws_wtable_column_types()
@@ -79,6 +81,9 @@ function ws_wtable_where_type_operators($type)
 
         case 'checkbox':
             return array('eq', 'neq');
+
+        case 'list':
+            return array('contains', 'not_contains', 'empty', 'not_empty');
     }
 
     return array();
@@ -187,7 +192,8 @@ function ws_wtable_where_list($where)
  * (money is a whole number of minor units, 1250 for 12.50), not_date
  * (YYYY-MM-DD, or YYYY-MM-DD HH:MM), not_status (a status by one of its
  * keys), not_checkbox (1 or 0), not_whole (a person or a record by its
- * number). A text takes any value. Pure.
+ * number); a list of numbers takes a machine figure too. A text and a list
+ * of texts take any value. Pure.
  *
  * @param array  $column type, options
  * @param string $op
@@ -216,6 +222,10 @@ function ws_wtable_where_value_fault($column, $op, $value)
         return (($type === 'money') && !preg_match('/^-?\d{1,15}$/', $value)) ? 'not_minor_units' : '';
     }
 
+    if ($type === 'list') {
+        return 'not_number';
+    }
+
     $faults = array('number' => 'not_number', 'money' => 'not_number', 'formula' => 'not_number', 'date' => 'not_date',
         'status' => 'not_status', 'checkbox' => 'not_checkbox', 'person' => 'not_whole', 'link' => 'not_whole');
 
@@ -226,12 +236,14 @@ function ws_wtable_where_value_fault($column, $op, $value)
  * A cell as a condition and a sort compare it, by its column's type: a
  * number (int or float) for a number, money and a formula; the ISO text of
  * a date; the folded text (ws_fold()) of a text; a status's key; 1 or 0 for
- * a checkbox; a person's or a record's number. null for an empty cell (a
- * checkbox is never empty: unticked is 0). Pure.
+ * a checkbox; a person's or a record's number; a list's items each as a
+ * text or a number of its kind gives them. null for an empty cell (a
+ * checkbox is never empty: unticked is 0; a list without items is empty).
+ * Pure.
  *
  * @param array $column type
  * @param mixed $cell   as a read row holds it (ws_wtable_row_out())
- * @return int|float|string|null
+ * @return int|float|string|array|null
  */
 function ws_wtable_where_cell($column, $cell)
 {
@@ -265,6 +277,20 @@ function ws_wtable_where_cell($column, $cell)
 
         case 'link':
             return (is_array($cell) && isset($cell['id']) && ws_wtable_is_whole($cell['id'])) ? (int) $cell['id'] : null;
+
+        case 'list':
+            $item_column = array('type' => ws_wtable_list_of($column));
+            $items = array();
+
+            foreach ((is_array($cell) ? $cell : array($cell)) as $item) {
+                $item = is_scalar($item) ? ws_wtable_where_cell($item_column, $item) : null;
+
+                if ($item !== null) {
+                    $items[] = $item;
+                }
+            }
+
+            return empty($items) ? null : $items;
     }
 
     return null;
@@ -275,8 +301,9 @@ function ws_wtable_where_cell($column, $cell)
  * or null when it does not fit the column's type: a machine figure for a
  * number, money and a formula; YYYY-MM-DD or YYYY-MM-DD HH:MM for a date; 1
  * or 0 for a checkbox (an empty value is 0, as a read row gives an unticked
- * box); a whole number for a person or a record. A text is folded, a status
- * kept as written (its key). Pure.
+ * box); a whole number for a person or a record; an item of a list as its
+ * kind (a text or a number) takes it. A text is folded, a status kept as
+ * written (its key). Pure.
  *
  * @param array  $column type, options
  * @param string $value
@@ -287,6 +314,9 @@ function ws_wtable_where_value($column, $value)
     $value = trim((string) $value);
 
     switch ((string) ($column['type'] ?? '')) {
+        case 'list':
+            return ws_wtable_where_value(array('type' => ws_wtable_list_of($column)), $value);
+
         case 'number':
         case 'money':
         case 'formula':
@@ -363,6 +393,22 @@ function ws_wtable_where_holds($column, $cell, $op, $value)
 
     if ($wanted === null) {
         return false;
+    }
+
+    // A list holds an item when one of them is the value: a text without
+    // case, a number by size. An empty list holds none.
+    if ($type === 'list') {
+        $of = ws_wtable_list_of($column);
+        $found = false;
+
+        foreach ((array) $here as $item) {
+            if (($of === 'number') ? (ws_wtable_where_order('number', $item, $wanted) === 0) : ((string) $item === (string) $wanted)) {
+                $found = true;
+                break;
+            }
+        }
+
+        return ($op === 'contains') ? $found : (($op === 'not_contains') ? !$found : false);
     }
 
     // A text equal to nothing is an empty one.
@@ -499,7 +545,8 @@ function ws_wtable_rows_where($columns, $rows, $conditions, $join = 'all')
  * not have), the order given, the last row first when descending. A number
  * by size, a date by its ISO text, a text without case and marks
  * (Şeker by S), a status in the order of its choices, a checkbox unticked
- * first, a person or a record by its number. Pure.
+ * first, a person or a record by its number, a list by how many items it
+ * holds. Pure.
  *
  * @param array   $columns   column id => column
  * @param array[] $rows      as read, in the table's order
@@ -548,7 +595,8 @@ function ws_wtable_rows_sorted($columns, $rows, $column_id, $dir = 'asc')
  * A cell as rows are sorted by it, null when empty: the size of a number;
  * a date's ISO text; a text folded and without marks; a status's place
  * among its choices (a key it no longer offers after them); a checkbox 0
- * or 1; a person's or a record's number (a record by its kind first). Pure.
+ * or 1; a person's or a record's number (a record by its kind first); how
+ * many items a list holds. Pure.
  *
  * @param array $column
  * @param mixed $cell
@@ -567,6 +615,10 @@ function ws_wtable_sort_key($column, $cell)
     // keeps Şeker and Seker apart.
     if ($type === 'text') {
         return pg_transliterate_to_ascii((string) $key) . "\x01" . $key;
+    }
+
+    if ($type === 'list') {
+        return count((array) $key);
     }
 
     if ($type === 'status') {

@@ -161,6 +161,11 @@ function test_workspace_flow_row_outputs()
 	pg_assert_same('', ws_flow_row_cell_text(null));
 	pg_assert_same('31', ws_flow_row_cell_text(array('kind' => 'order', 'id' => 31)), 'a record link: the record\'s id');
 	pg_assert_same('', ws_flow_row_cell_text(array('a' => 1)), 'anything else is empty');
+	pg_assert_same('["Şeker","a/b"]', ws_flow_row_cell_text(array('Şeker', 'a/b')), 'a list: its JSON list');
+	pg_assert_same('[1,2.5]', ws_flow_row_cell_text(array(1, 2.5)));
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_loops.php');
+	pg_assert_same(array('Şeker', 'a/b'), ws_flow_loop_items(ws_flow_row_cell_text(array('Şeker', 'a/b')))['items'], 'which a For each box goes through');
 }
 
 function test_workspace_flow_row_trigger_values()

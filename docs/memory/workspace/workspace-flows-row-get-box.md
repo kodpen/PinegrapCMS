@@ -5,7 +5,7 @@ description: The Read a row box of flows (row_get): view reach with the owner's 
 
 ## What is it?
 - Step kind `row_get` ("Read a row of a table") in `ws_step_kinds()` (steps.php), type of its own, outcomes done and failed, retries as every step box. Not in `ws_step_row_kinds()` (those write). Functions in `includes/workspace/flow_row_get.php`. Tests `tests/workspace_flow_row_read_test.php`, canvas `test_workspace_flows_canvas_row_get_box`.
-- Settings (`ws_step_config_normalize('row_get')`): `table_id`, `by` (`id`, `position`, `last` or `match`) and `row`, a number or one value alone, as `row_set` (`workspace-flows-row-choice.md`, PR #8384); `match` and `where`, the conditions of `by: match` (`workspace-flows-rows-get-box.md`, PR #8400). Its texts are `row` and `where`, filled with target `json` like the table boxes.
+- Settings (`ws_step_config_normalize('row_get')`): `table_id`, `by` (`id`, `position`, `last`, `number` or `match`) and `row`, a number or one value alone, as `row_set` (`workspace-flows-row-choice.md`, PR #8384); `match` and `where`, the conditions of `by: match` (`workspace-flows-rows-get-box.md`, PR #8400). Its texts are `row` and `where`, filled with target `json` like the table boxes.
 - Built so a counter line (read a row, raise it, write it back) is one flow (`workflow/decisions-made-product-30.md`).
 
 ## Who may, and when is it checked?

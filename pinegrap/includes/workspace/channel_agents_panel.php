@@ -7,8 +7,8 @@
  * channel's agents with the registered ones it can still take, add one,
  * change what wakes it there and take it out. The same rules as the
  * workspace.channels.agents.* routes (api_agents.php): whoever may post in a
- * channel adds one, in a private channel only a member; the tier is the
- * channel manager's.
+ * channel changes its agents, in a private channel only a member; a new
+ * agent in a private channel and the tier are the channel manager's.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -53,7 +53,8 @@ function ws_channel_agent_panel_row($row)
 
 /**
  * The registered agents a channel does not have yet, for the Add list: only
- * what the list shows, never the door or the key. Pure.
+ * what the list shows, never the door or the key. Claude is no channel agent
+ * (ws_channel_agent_kind_problem()) and is not offered. Pure.
  *
  * @param array[] $agents ws_agent_shape() rows
  * @param int[]   $in     ids of the agents already in the channel
@@ -65,7 +66,7 @@ function ws_channel_agents_addable($agents, $in)
     $out = array();
 
     foreach ((array) $agents as $agent) {
-        if (in_array((int) $agent['id'], $in, true)) {
+        if (in_array((int) $agent['id'], $in, true) || (ws_channel_agent_kind_problem($agent['kind']) !== '')) {
             continue;
         }
 
@@ -165,6 +166,12 @@ function ws_channel_agents_action($action, $request)
         return ws_action_ok(ws_channel_agents_panel_state($viewer, $channel));
     }
 
+    $kind_problem = ws_channel_agent_kind_problem($agent['kind']);
+
+    if ($kind_problem !== '') {
+        return ws_action_error(ws_channel_agent_error_text($kind_problem));
+    }
+
     $input = array();
 
     foreach (array('wake_rule', 'wake_prefix', 'tier', 'loop_guard') as $field) {
@@ -173,7 +180,16 @@ function ws_channel_agents_action($action, $request)
         }
     }
 
-    $check = ws_channel_agent_check($input, ws_channel_agent_row($channel['id'], $agent['id']), ws_can_manage_channel($viewer, $channel));
+    // The settings open only for whoever manages the channel, and a
+    // discussion has none; the request can still be made without them.
+    $current = ws_channel_agent_row($channel['id'], $agent['id']);
+    $problem = ws_channel_agent_enter_problem($viewer, $channel, $current);
+
+    if ($problem !== '') {
+        return ws_action_error(ws_channel_agent_error_text($problem));
+    }
+
+    $check = ws_channel_agent_check($input, $current, ws_can_manage_channel($viewer, $channel));
 
     if (!$check['ok']) {
         return ws_action_error(ws_channel_agent_error_text($check['error']), $check['field']);

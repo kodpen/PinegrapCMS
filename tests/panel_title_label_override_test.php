@@ -156,3 +156,25 @@ function test_panel_title_label_override_title_matches_name()
 		}
 	}
 }
+
+// A field without a visible label is named by its aria-label: the option text
+// would otherwise name a select once the hover title is moved out of the way,
+// and its hint is a compact tooltip that keyboard focus shows too.
+function test_panel_title_label_override_unlabelled_hints_are_tooltips()
+{
+	$cases = array(
+		'editor_select_image.php' => array('select', array('folder_id' => 'Folder', 'access_control_type' => 'Access')),
+		'includes/forms/product_group_form.php' => array('input', array('select_all' => 'Select/Deselect All')),
+	);
+
+	foreach ($cases as $path => $case) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
+
+		foreach ($case[1] as $id => $name) {
+			pg_assert_true((bool) preg_match('/<' . $case[0] . '\s[^>]*id="' . $id . '"[^>]*>/', $source, $match), $path . ': #' . $id . ' found');
+			pg_assert_contains("aria-label=\"' . h(lang('" . $name . "')) . '\"", $match[0], $path . ' #' . $id . ' aria-label');
+			pg_assert_contains('data-bs-toggle="tooltip"', $match[0], $path . ' #' . $id . ' tooltip');
+			pg_assert_true((bool) preg_match('/class="[^"]*\bno-popover\b/', $match[0]), $path . ' #' . $id . ' no-popover');
+		}
+	}
+}

@@ -12,9 +12,9 @@ description: What GET /workspace/flow-runs/{id} gives per box beyond its status 
 - A change box's `record_id` and a start-a-flow box's `run_id`: their `outputs` are `{}`, the rule `ws_step_result_shown()` applies to their sentence. Other kinds' values (message id, task id, status code, counts) go to every reader of the run.
 
 ## Who else reads them?
-- The canvas's panel actions answer with the same presenter (actions.php), so the run view has the fields; nothing draws them yet.
+- The canvas's panel actions answer with the same presenter (actions.php), so the run view has the fields. It draws `outputs`: `runValue()` in `workspace_flow.js` reads `steps[].outputs` for a thread's value (`workspace-flows-run-view.md`); `threads_in` is not drawn.
 
-## What is left of A5?
+## Where are the rest of A5's parts?
 - The run's flag (state and one-line result) is `workspace-flows-run-flag.md` (#2903; the run's result, #2385). Retry and skip were already API routes (F5a, #2098).
 
 ## How is it tested?

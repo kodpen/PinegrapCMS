@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'video', 'mix', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'actions', 'menu');
 }
 
 /**
@@ -3792,10 +3792,13 @@ function pg_image_editor_sound_types()
  * @param array|null $folders   the folder ids a role-3 user may reach; null for every folder
  * @param array      $bin       the Recycle Bin's folder ids
  * @param bool|null  $erp_ready files has erp_doc_type; null looks it up
+ * @param array|null $types     the file types listed; null for the sound types
  * @return string|null
  */
-function pg_image_editor_sound_where($search, $folders, $bin, $erp_ready = null)
+function pg_image_editor_sound_where($search, $folders, $bin, $erp_ready = null, $types = null)
 {
+    $types = ($types === null) ? pg_image_editor_sound_types() : $types;
+
     if ($erp_ready === null) {
         $erp_ready = function_exists('waf_table_has_column') && waf_table_has_column('files', 'erp_doc_type');
     }
@@ -3803,7 +3806,7 @@ function pg_image_editor_sound_where($search, $folders, $bin, $erp_ready = null)
     $ids = function ($list) {
         return implode(', ', array_map(function ($id) { return "'" . (int) $id . "'"; }, $list));
     };
-    $where = "(type IN ('" . implode("', '", pg_image_editor_sound_types()) . "')) AND (name != '')" . ($erp_ready ? " AND (erp_doc_type = '')" : '');
+    $where = "(type IN ('" . implode("', '", array_map('e', $types)) . "')) AND (name != '')" . ($erp_ready ? " AND (erp_doc_type = '')" : '');
 
     if ($folders !== null) {
         $folders = array_values(array_diff(array_map('intval', $folders), array_map('intval', $bin)));
@@ -3829,14 +3832,16 @@ function pg_image_editor_sound_where($search, $folders, $bin, $erp_ready = null)
  *
  * @param array      $rows    files rows (id, name, type, folder, size)
  * @param array|null $folders the folder ids a role-3 user may reach; null for every folder
+ * @param array|null $types   the file types kept; null for the sound types
  * @return array [{ id, name, url, size }]
  */
-function pg_image_editor_sound_rows($rows, $folders)
+function pg_image_editor_sound_rows($rows, $folders, $types = null)
 {
+    $types = ($types === null) ? pg_image_editor_sound_types() : $types;
     $list = array();
 
     foreach ($rows as $row) {
-        if (!in_array(strtolower((string) $row['type']), pg_image_editor_sound_types(), true)) {
+        if (!in_array(strtolower((string) $row['type']), $types, true)) {
             continue;
         }
 
@@ -5285,6 +5290,157 @@ function pg_image_editor_strings_video()
         'videoNoCodecs'   => lang('This browser cannot edit videos. Use a current Chrome, Edge, Safari or Firefox.'),
         'videoCodec'      => lang('This browser cannot play {var:1} video. Save the video as H.264 MP4 or WebM, or open it in another browser.'),
     );
+}
+
+// -- The video layer (pg_image_editor_clip.js) --
+
+/**
+ * The video layer's labels: its panel, the Import menu's item, the videos
+ * from Files and the upload from this computer.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_clip()
+{
+    return array(
+        'layer_video'     => lang('Video'),
+        'clipTab'         => lang('Video clip'),
+        'clipTabMotion'   => lang('Motion'),
+        'clipFrom'        => lang('Source in'),
+        'clipTo'          => lang('Source out'),
+        'clipSpeed'       => lang('Speed'),
+        'clipSpeedMuted'  => lang('The sound of a clip plays only at 1× speed.'),
+        'clipNoSound'     => lang('This video has no sound.'),
+        'clipDetach'      => lang('Detach sound'),
+        'clipDetachNote'  => lang('Mutes the clip and adds its sound as a row of its own'),
+        'clipReplace'     => lang('Replace'),
+        'clipBroken'      => lang('This video could not be opened in this browser.'),
+        'clipNote'        => lang('The video plays with the play bar in the Animate tool. A saved picture shows its frame at the source in.'),
+        'clipImportSite'  => lang('Video from the site'),
+        'clipFiles'       => lang('Videos from Files'),
+        'clipFind'        => lang('Search videos'),
+        'clipFilesNone'   => lang('No videos yet. Upload MP4 or WebM files in the File Manager.'),
+        'clipFilesError'  => lang('The videos could not be loaded.'),
+        'clipLoading'     => lang('Opening the video...'),
+        'clipUploading'   => lang('Uploading the video into Files...'),
+        'clipUploadError' => lang('The video could not be uploaded.'),
+        'clipNeedsFiles'  => lang('A video is added through Files: save this image in the File Manager first.'),
+    );
+}
+
+/**
+ * The video types the editor's video layer reads (the model's CLIP_TYPES).
+ *
+ * @return array lower-case file types
+ */
+function pg_image_editor_clip_types()
+{
+    return array('mp4', 'm4v', 'webm');
+}
+
+/**
+ * A video upload's format told by its bytes, never its name: 'mp4' or
+ * 'webm', '' for anything else (pg_image_editor_animation_type()). Pure.
+ *
+ * @param string $bytes
+ * @return string
+ */
+function pg_image_editor_clip_format($bytes)
+{
+    $format = pg_image_editor_animation_type(substr((string) $bytes, 0, 4096));
+
+    return (($format === 'mp4') || ($format === 'webm')) ? $format : '';
+}
+
+/**
+ * Action video_files: the newest videos in Files, or those whose name holds
+ * the search, for Import's Video from the site and the clip's Replace. Read
+ * only; a role-3 user sees the folders they may edit.
+ *
+ *   { search?: string } -> { status, files: [{ id, name, url, size }] }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_video_files($request, $user)
+{
+    $search = (isset($request['search']) && is_string($request['search'])) ? trim(mb_substr($request['search'], 0, 100)) : '';
+    $folders = ((int) $user['role'] === 3) ? get_folders_that_user_has_access_to($user['id']) : null;
+    $where = pg_image_editor_sound_where($search, $folders, pg_recycle_bin_folder_ids(), null, pg_image_editor_clip_types());
+    $rows = ($where === null) ? array() : db_items(
+        "SELECT id, name, type, folder, size
+        FROM files
+        WHERE $where
+        ORDER BY timestamp DESC
+        LIMIT 60");
+
+    return array(array(
+        'status' => 'success',
+        'files'  => pg_image_editor_sound_rows(is_array($rows) ? $rows : array(), $folders, pg_image_editor_clip_types())), 200);
+}
+
+/**
+ * Action video_upload: a video from this computer into Files, so a clip
+ * names a file of the site. The bytes follow the request's line
+ * (pg_image_editor_binary_body()); the type is told by them. It lands beside
+ * the open file, or in the folder of a canvas not saved yet, under the
+ * folder's edit right, never in the Recycle Bin.
+ *
+ *   { file_id | folder_id, name? } + bytes
+ *       -> { status, id, name, folder, url, size }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_video_upload($request, $user)
+{
+    $bytes = isset($request['binary']) ? (string) $request['binary'] : '';
+    $format = pg_image_editor_clip_format($bytes);
+
+    if ($format === '') {
+        return pg_image_editor_refusal(lang('Only MP4 and WebM videos can be added.'));
+    }
+
+    $limit = pg_image_editor_animation_limit(pg_upload_limits());
+
+    if (($limit > 0) && (strlen($bytes) > $limit)) {
+        return pg_image_editor_refusal(lang(array('string' => 'The video is larger than this server accepts in one request ({var:1}).', 'vars' => convert_bytes_to_string($limit))), 413);
+    }
+
+    $file_id = isset($request['file_id']) ? (int) $request['file_id'] : 0;
+
+    if ($file_id > 0) {
+        $file = pg_image_editor_file($file_id, $user);
+
+        if ($file['refusal']) {
+            return $file['refusal'];
+        }
+
+        $folder = (int) $file['row']['folder'];
+    } else {
+        $folder = isset($request['folder_id']) ? (int) $request['folder_id'] : 0;
+    }
+
+    if ($folder <= 0) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    if (!check_edit_access($folder) || pg_folder_binned($folder)) {
+        return pg_image_editor_refusal(lang('Access denied'), 403);
+    }
+
+    @set_time_limit(120);
+
+    $stem = pg_file_name_stem(trim(isset($request['name']) ? (string) $request['name'] : ''));
+    $name = get_unique_name(array('name' => prepare_file_name((($stem !== '') ? $stem : lang('Video')) . '.' . $format), 'type' => 'file'));
+
+    if (pg_upload_name_blocked($name)) {
+        return pg_image_editor_refusal(pg_upload_blocked_message($name));
+    }
+
+    if (!pg_image_editor_put(FILE_DIRECTORY_PATH . '/' . $name, $bytes)) {
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
+
+    return pg_image_editor_record('new', $name, $folder, $format, null, $user);
 }
 
 // -- An animation's sound in its video (pg_image_editor_mix.js) --

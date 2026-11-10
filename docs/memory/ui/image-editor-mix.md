@@ -29,4 +29,4 @@ module: image_editor
 - Browser pane on a sandbox (2026-11-10): two WAV sounds on a picture saved as MP4 and WebM; `decodeAudioData()` gave 2 channels, 48 kHz, 5.0 s with both sounds, a `<video>` decoded audio bytes; the MP4 had two traks of five chunks. No ffprobe on that machine. 390x844 and 844x390: no sideways scroll, saves worked.
 
 ## What is left?
-- No edit list for AAC's encoder delay (tens of ms). A video layer's sound joins the mix through `doc.sounds` once V2 detaches it.
+- No edit list for AAC's encoder delay (tens of ms). A video layer's own sound is mixed as the play bar hears it (`soundsMore()`), untried in a browser; its frames in the export are still the source in.

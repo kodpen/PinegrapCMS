@@ -122,7 +122,7 @@ if (($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] 
     $output_advanced_filters ='
     <div class="advanced_filters advanced-filter-bar position-fixed-md"  id="advanced_filters" >
         <div class="p-3 m-1 rounded-4 border justify-content-between d-flex flex-wrap header">
-            <p class="m-0"><span class="material-icons pe-1">filter_list</span>' . lang('Filters') . '</p>
+            <p class="m-0"><span class="material-icons pe-1" aria-hidden="true">filter_list</span>' . lang('Filters') . '</p>
             <a class="btn btn-close " title="' . $output_advanced_filters_label . '" href="view_commissions.php?advanced_filters=' . $output_advanced_filters_value . '" ></a>
         </div>
         <form class="advanced-filter-body p-3 pt-0 disable_shortcut" id="search_advanced" action="view_commissions.php" method="get" name="form">
@@ -146,7 +146,7 @@ if (($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] 
                 </fieldset>
                 ' . get_date_picker_format() . pg_fields_script() . '
                 <div class="col-12 text-center position-sticky my-3" style="bottom:.5rem;">
-                    <button type="submit" name="submit_data" value="Update" class="btn btn-solid theme-primary my-1"><i class="material-icons me-3">sync</i>' . lang('Update') . '</button>
+                    <button type="submit" name="submit_data" value="Update" class="btn btn-solid theme-primary my-1"><i class="material-icons me-3" aria-hidden="true">sync</i>' . lang('Update') . '</button>
                 </div>
             </div>
            

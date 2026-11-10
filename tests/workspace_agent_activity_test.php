@@ -163,3 +163,40 @@ function test_workspace_ai_tokens_text()
 
 	pg_assert_true(strpos($text, '5') !== false && strpos($text, '8') !== false, 'both periods in the line');
 }
+
+function test_workspace_agent_token_limit_check()
+{
+	pg_assert_same(array('ok' => true, 'value' => 0, 'error' => ''), ws_agent_token_limit_check(''), 'empty is none');
+	pg_assert_same(0, ws_agent_token_limit_check('0')['value']);
+	pg_assert_same(250000, ws_agent_token_limit_check(' 250.000 ')['value'], 'thousands separators are read');
+	pg_assert_same(4294967295, ws_agent_token_limit_check('4294967295')['value']);
+	pg_assert_true(!ws_agent_token_limit_check('4294967296')['ok'], 'above the column');
+	pg_assert_true(!ws_agent_token_limit_check('-5')['ok'], 'no negative');
+	pg_assert_true(!ws_agent_token_limit_check('1e6')['ok'], 'no exponent');
+	pg_assert_true(!ws_agent_token_limit_check('lots')['ok']);
+}
+
+function test_workspace_agent_token_limit_reached()
+{
+	pg_assert_true(!ws_agent_token_limit_reached(1000000, 0), '0 is no limit');
+	pg_assert_true(!ws_agent_token_limit_reached(999, 1000));
+	pg_assert_true(ws_agent_token_limit_reached(1000, 1000), 'reaching is enough');
+	pg_assert_true(ws_agent_token_limit_reached(1500, 1000));
+}
+
+function test_workspace_agent_month_start()
+{
+	$now = mktime(15, 30, 0, 11, 10, 2026);
+
+	pg_assert_same(mktime(0, 0, 0, 11, 1, 2026), ws_agent_month_start($now));
+	pg_assert_same(mktime(0, 0, 0, 1, 1, 2027), ws_agent_month_start(mktime(0, 0, 0, 1, 1, 2027)), 'the first second is in its own month');
+	pg_assert_same(mktime(0, 0, 0, 12, 1, 2026), ws_agent_month_start(mktime(23, 59, 59, 12, 31, 2026)));
+}
+
+function test_workspace_agent_token_limit_sentence()
+{
+	$sentence = ws_agent_token_limit_sentence('Helper', 5000);
+
+	pg_assert_true(strpos($sentence, 'Helper') !== false, 'names the assistant');
+	pg_assert_true(preg_match('/5[.,]?000/', $sentence) === 1, 'names the limit');
+}

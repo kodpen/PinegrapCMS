@@ -47,8 +47,10 @@
         })).then(function () { return out; });
     }
 
+    // The document's sounds and, as the play bar hears them, the video
+    // layers' own sound (soundsMore() of the clip part).
     Editor.prototype.mixSounds = function () {
-        return this.sounds ? this.sounds() : [];
+        return (this.sounds ? this.sounds() : []).concat(this.soundsMore ? this.soundsMore() : []);
     };
 
     // The sounds heard in the exported animation.

@@ -771,11 +771,11 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
 
                         <span class="esi-divider"></span>
                         <span class="esi-seg-icon bi bi-folder2"></span>
-                        <select title="' . lang('Folder') . '" id="folder_id" name="folder_id" class="form-control esi-field" onchange="submit_form(\'search\')"><option value="all">' . lang('All') . '</option>' . select_folder(($_SESSION['software']['editor_select_image']['folder_id'] ?? '')) . '</select>
+                        <select id="folder_id" aria-label="' . h(lang('Folder')) . '" data-bs-toggle="tooltip" title="' . h(lang('Folder')) . '" name="folder_id" class="form-control esi-field no-popover" onchange="submit_form(\'search\')"><option value="all">' . lang('All') . '</option>' . select_folder(($_SESSION['software']['editor_select_image']['folder_id'] ?? '')) . '</select>
 
                         <span class="esi-divider"></span>
                         <span class="esi-seg-icon bi bi-shield-lock"></span>
-                        <select title="' . lang('Access') . '" id="access_control_type" name="access_control_type" class="form-control esi-field ' . h(($_SESSION['software']['editor_select_image']['access_control_type'] ?? '')) . '" onchange="submit_form(\'search\')"><option value="all" class="all">' . lang('All') . '</option>' . select_access_control_type(($_SESSION['software']['editor_select_image']['access_control_type'] ?? ''), false) . '</select>
+                        <select id="access_control_type" aria-label="' . h(lang('Access')) . '" data-bs-toggle="tooltip" title="' . h(lang('Access')) . '" name="access_control_type" class="form-control esi-field no-popover ' . h(($_SESSION['software']['editor_select_image']['access_control_type'] ?? '')) . '" onchange="submit_form(\'search\')"><option value="all" class="all">' . lang('All') . '</option>' . select_access_control_type(($_SESSION['software']['editor_select_image']['access_control_type'] ?? ''), false) . '</select>
 
                         <span class="esi-divider"></span>
                         <span class="esi-seg-icon bi bi-search"></span>

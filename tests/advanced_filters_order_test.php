@@ -5,7 +5,9 @@
  * Tests for the place of the Advanced Filters panel on the list screens that
  * have one: the panel is printed after the toolbar (#button_bar) and the
  * button that opens it, and before the list, so the Tab and reading order
- * reach the toggle before the panel's own close link and filter boxes.
+ * reach the toggle before the panel's own close link and filter boxes; and the
+ * panel's header icon and its Update button icon are hidden from screen
+ * readers, so their icon words are not read before "Filters" and "Update".
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -63,4 +65,23 @@ function test_advanced_filters_order_site_log_not_before_main()
 	// is a collection there and the panel's date selects were not set.
 	pg_assert_same(false, strpos($source, 'document.form.'), 'the panel script does not read document.form');
 	pg_assert_contains('document.getElementById("search_advanced")', $source, 'the panel script finds its form by id');
+}
+
+function test_advanced_filters_order_panel_icons_silent()
+{
+	foreach (advanced_filters_order_test_screens() as $file) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		foreach (array('filter_list', 'sync') as $word) {
+			pg_assert_same(0, preg_match('/<(span|i) class="material-icons[^"]*">' . $word . '</', $source), $file . ': no ' . $word . ' icon is read aloud');
+		}
+
+		// The icons stay on screen, hidden only from screen readers.
+		if ($file === 'view_orders.php') {
+			pg_assert_contains('<i class="bi bi-funnel me-1" aria-hidden="true"></i>', $source, $file . ': the header icon is hidden');
+			pg_assert_contains('<i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>', $source, $file . ': the Update icon is hidden');
+		} else {
+			pg_assert_contains('aria-hidden="true">filter_list</span>', $source, $file . ': the header icon is hidden');
+			pg_assert_contains('aria-hidden="true">sync</i>', $source, $file . ': the Update icon is hidden');
+		}
+	}
 }

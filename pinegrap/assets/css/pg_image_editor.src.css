@@ -3953,6 +3953,31 @@ button.pgie-sndfile:hover {
   stroke-dasharray: none;
 }
 
+/* -- The video layer (pg_image_editor_clip.js) -- */
+/* A clip's canvas fills its box on the stage, stacked among the layers;
+   presses pass through to the stage, which hit-tests the layer's box. */
+.pgie-clipview {
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.pgie-clipview canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Six speeds on one row, the numbers lined up. */
+.pgie-seg.pgie-clipspeeds {
+  margin-bottom: 0;
+}
+
+.pgie-clipspeeds button {
+  padding: 0 2px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 /* -- An animation's sound in its video (pg_image_editor_mix.js) -- */
 
 /* Under the formats: a muted speaker and the line on the formats that

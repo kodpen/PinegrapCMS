@@ -32,10 +32,11 @@ function ws_wtables_test_cell($type, $value, $options = array())
 	return ws_wtable_cell_check(ws_wtables_test_column($type, $options), $value);
 }
 
-// The nine types, and which of them keep cells.
+// The ten types, and which of them keep cells.
 function test_workspace_wtables_types()
 {
-	pg_assert_same(array('text', 'number', 'money', 'date', 'person', 'status', 'checkbox', 'link', 'formula'), array_keys(ws_wtable_column_types()));
+	pg_assert_same(array('text', 'number', 'money', 'date', 'person', 'status', 'checkbox', 'link', 'list', 'formula'), array_keys(ws_wtable_column_types()));
+	pg_assert_true(ws_wtable_type_stores('list'));
 	pg_assert_true(ws_wtable_type_stores('money'));
 	pg_assert_false(ws_wtable_type_stores('formula'), 'a formula is worked out');
 	pg_assert_false(ws_wtable_type_stores('rating'), 'an unknown type');
@@ -253,6 +254,47 @@ function test_workspace_wtables_column_input()
 	pg_assert_same('type_fixed', ws_wtable_column_input_check(array('type' => 'number'), $old)['error']);
 	pg_assert_true(ws_wtable_column_input_check(array('type' => 'money', 'name' => 'X'), $old)['ok'], 'the same type again is no change of type');
 	pg_assert_same('nothing_to_change', ws_wtable_column_input_check(array(), $old)['error']);
+}
+
+// A list column holds texts or numbers; what it holds is fixed with its type.
+function test_workspace_wtables_list_options_and_input()
+{
+	pg_assert_same(array('of' => 'text'), ws_wtable_column_options_check('list', null)['value'], 'texts by default');
+	pg_assert_same(array('of' => 'number'), ws_wtable_column_options_check('list', array('of' => 'number'))['value']);
+	pg_assert_same('list_of_invalid', ws_wtable_column_options_check('list', array('of' => 'money'))['error']);
+	pg_assert_same('number', ws_wtable_list_of(array('type' => 'list', 'options' => array('of' => 'number'))));
+	pg_assert_same('text', ws_wtable_list_of(array('type' => 'list', 'options' => array())), 'a list saved without it');
+
+	$old = array('id' => 4, 'name' => 'Sizes', 'type' => 'list', 'options' => array('of' => 'number'));
+	pg_assert_same('type_fixed', ws_wtable_column_input_check(array('options' => array('of' => 'text')), $old)['error'], 'texts and numbers are two types');
+	pg_assert_same(array('options' => array('of' => 'number')), ws_wtable_column_input_check(array('options' => array()), $old)['sets'], 'options without it keep it');
+	pg_assert_same(array('name' => 'Size'), ws_wtable_column_input_check(array('name' => 'Size'), $old)['sets']);
+}
+
+// A list cell: a list, its JSON text, or a text with an item per line.
+function test_workspace_wtables_list_cells()
+{
+	pg_assert_same(array('Red', 'Blue'), ws_wtables_test_cell('list', array(' Red ', '', 'Blue'))['value'], 'trimmed, empty items dropped');
+	pg_assert_same(array('Red', 'Blue'), ws_wtables_test_cell('list', "Red\r\n\nBlue\n")['value'], 'one per line');
+	pg_assert_same(array('a', 'b'), ws_wtables_test_cell('list', '["a","b"]')['value'], 'its JSON text');
+	pg_assert_same(array('[a'), ws_wtables_test_cell('list', '[a')['value'], 'a line that is no JSON is an item');
+	pg_assert_same(array('3'), ws_wtables_test_cell('list', 3)['value'], 'a lone value is one item');
+	pg_assert_same(null, ws_wtables_test_cell('list', array('', ' '))['value'], 'no item is an empty cell');
+	pg_assert_same(null, ws_wtables_test_cell('list', '')['value']);
+	pg_assert_same('not_list', ws_wtables_test_cell('list', array('a' => 'x'))['error'], 'an object');
+	pg_assert_same('not_list', ws_wtables_test_cell('list', array(array('x')))['error'], 'a list inside');
+	pg_assert_same('not_list', ws_wtables_test_cell('list', true)['error']);
+	pg_assert_same('item_too_long', ws_wtables_test_cell('list', array(str_repeat('a', 1001)))['error']);
+	pg_assert_true(ws_wtables_test_cell('list', array(str_repeat('ş', 1000)))['ok'], 'characters, not bytes');
+	pg_assert_true(ws_wtables_test_cell('list', range(1, 100))['ok']);
+	pg_assert_same('list_too_long', ws_wtables_test_cell('list', range(1, 101))['error']);
+
+	$numbers = array('of' => 'number');
+	pg_assert_same(array(1, 2.5, -3), ws_wtables_test_cell('list', "1\n2.5\n-3.0", $numbers)['value'], 'whole numbers as ints');
+	pg_assert_same(array(0.333333), ws_wtables_test_cell('list', array(1 / 3), $numbers)['value'], 'six places');
+	pg_assert_same('not_number', ws_wtables_test_cell('list', "1\n1,5", $numbers)['error'], 'machine form only');
+	pg_assert_same('out_of_range', ws_wtables_test_cell('list', array(1e16), $numbers)['error']);
+	pg_assert_same(array(1, 2), ws_wtable_row_cells_check(array('4' => ws_wtables_test_column('list', $numbers)), array('4' => '[1,2]'))['cells']['4']);
 }
 
 function test_workspace_wtables_column_rows()
