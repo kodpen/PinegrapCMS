@@ -643,6 +643,21 @@ if (!$_POST) {
             <span class="badge fg-body fw-light border-2">    ' . $output_date_range . '</span>
         </p>';
     }
+
+    // The window the days are read in the site's own time for
+    // (includes/fn/site_time_sql.php): the date changer's range, or with a
+    // date filter every order kept, from the oldest one through now.
+    if ($order_date_filter_exists == false) {
+        $site_time_from = $start_timestamp;
+        $site_time_to = $stop_timestamp;
+    } else {
+        $site_time_to = time();
+        $site_time_from = (int) db_value("SELECT MIN(order_date) FROM orders WHERE order_date > 0");
+
+        if ($site_time_from <= 0) {
+            $site_time_from = $site_time_to;
+        }
+    }
     
     // start where
     $where = '';
@@ -658,7 +673,7 @@ if (!$_POST) {
         $field_type = '';
         
         switch ($filter['field']) {
-            case 'order_date': $operand_1 = 'FROM_UNIXTIME(orders.order_date, \'%Y-%m-%d\')'; $field_type = 'date'; break;
+            case 'order_date': $operand_1 = pg_site_time_sql('orders.order_date', '%Y-%m-%d', $site_time_from, $site_time_to); $field_type = 'date'; break;
             case 'order_status': $operand_1 = 'orders.status'; $order_status_filter_exists = true; break;
             case 'order_number': $operand_1 = 'orders.order_number'; break;
             case 'transaction_id': $operand_1 = 'orders.transaction_id'; break;
@@ -784,15 +799,15 @@ if (!$_POST) {
     $sql_summarize_by_3 = '';
 
     if ($liveform->get_field_value('summarize_by_1') != '') {
-        $sql_summarize_by_1 = get_summarize_by_column($liveform->get_field_value('summarize_by_1')) . ',';
+        $sql_summarize_by_1 = get_summarize_by_column($liveform->get_field_value('summarize_by_1'), $site_time_from, $site_time_to) . ',';
         $number_of_summarize_bys = 1;
         
         if ($liveform->get_field_value('summarize_by_2') != '') {
-            $sql_summarize_by_2 = get_summarize_by_column($liveform->get_field_value('summarize_by_2')) . ',';
+            $sql_summarize_by_2 = get_summarize_by_column($liveform->get_field_value('summarize_by_2'), $site_time_from, $site_time_to) . ',';
             $number_of_summarize_bys = 2;
             
             if ($liveform->get_field_value('summarize_by_3') != '') {
-                $sql_summarize_by_3 = get_summarize_by_column($liveform->get_field_value('summarize_by_3')) . ',';
+                $sql_summarize_by_3 = get_summarize_by_column($liveform->get_field_value('summarize_by_3'), $site_time_from, $site_time_to) . ',';
                 $number_of_summarize_bys = 3;
             }
         }
@@ -1770,12 +1785,17 @@ if (!$_POST) {
     }
 }
 
-function get_summarize_by_column($summarize_by)
+// The year, month and day are read in the site's own time over the window
+// the report's orders come from (pg_site_time_sql()). $from and $to are
+// optional only because static analysis checks view_visitor_report.php's
+// function of the same name against this signature; without them the
+// session's offset is used.
+function get_summarize_by_column($summarize_by, $from = null, $to = null)
 {
     switch ($summarize_by) {
-        case 'year': return 'FROM_UNIXTIME(orders.order_date, \'%Y\')';
-        case 'month': return 'FROM_UNIXTIME(orders.order_date, \'%m\')';
-        case 'day': return 'FROM_UNIXTIME(orders.order_date, \'%d\')';
+        case 'year': return pg_site_time_sql('orders.order_date', '%Y', $from, $to);
+        case 'month': return pg_site_time_sql('orders.order_date', '%m', $from, $to);
+        case 'day': return pg_site_time_sql('orders.order_date', '%d', $from, $to);
         case 'order_status': return 'orders.status';
         case 'special_offer_code': return 'orders.special_offer_code';
         case 'referral_source_code': return 'orders.referral_source_code';
