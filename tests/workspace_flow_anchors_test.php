@@ -112,9 +112,10 @@ function test_workspace_flow_anchor_wiring()
 	$start = ws_flow_anchors_test_source('ws_flow_anchor_start');
 
 	pg_assert_contains("'sched:' . (int) (\$fill['run_id'] ?? 0)", $start);
+	pg_assert_contains("(string) \$fill['start_key']", $start, 'a Run now names its own key');
 	pg_assert_contains('ws_flow_start_refusal($open, $recent)', $start);
 	pg_assert_contains("AND status = 'live'", $start);
-	pg_assert_contains("ws_flow_anchor_start(\$viewer, \$row, \$fill + array('by_hand' => \$by_hand))", ws_flow_anchors_test_source('ws_scheduled_execute'));
+	pg_assert_contains("ws_flow_anchor_start(\$viewer, \$row, \$fill + array('by_hand' => \$by_hand, 'start_key' => (string) (\$context['start_key'] ?? '')))", ws_flow_anchors_test_source('ws_scheduled_execute'));
 
 	pg_assert_contains('!ws_scheduled_anchor_hidden($row)', ws_flow_anchors_test_source('ws_scheduled_action'));
 	pg_assert_contains('ws_scheduled_anchors_out()', ws_flow_anchors_test_source('ws_scheduled_list'));

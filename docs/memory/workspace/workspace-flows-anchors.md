@@ -23,5 +23,5 @@ description: Flow start boxes at a time, on an event, on a join (F4d, #2006, flo
 ## What do the boxes read of the start?
 - Every step box gets the event, payload, newcomer and channel joined (`ws_step_trigger_context()`, #2205): `{{record}}`, `{{newcomer}}` and the rest fill as in an action (`workspace-flows-steps.md`).
 
-## Left?
-- A manual Run of an anchored flow from Flows is refused ("not started by hand"); converting every row and the edit path for any staff: slice 5b.
+## Can it be started by hand?
+- A flow that starts at a time: Run now on its canvas, through its anchor by hand (`workspace-flows-run-now.md`, #8443). Any other anchored start has no hand start; Run refuses it ("not started by hand"). A converted action also starts by its card's Run now (`workspace-flows-converted-anchor.md`).

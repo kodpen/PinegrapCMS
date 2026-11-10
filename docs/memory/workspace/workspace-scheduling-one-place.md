@@ -10,7 +10,7 @@ description: Scheduled work set up only on the flow canvas (no Scheduled flow wi
 - Scheduled messages (Send later beside the composer's Send, /schedule, their list) are a separate thing for any member and stay as they are.
 
 ## Where is it listed?
-- In the Flows table; its start column says, for the template's default, "Every working day 09:00". The converted actions' own group, the next run in the start column and Run now on the canvas are steps 2 and 3 of the plan. Until then the group "Converted from scheduled actions" is still drawn (`workspace-flows-scheduled-section.md`).
+- In the Flows table; its start column says, for the template's default, "Every working day 09:00". Run now on the canvas of a flow that starts at a time came with step 2 (#8443, `workspace-flows-run-now.md`); the next run in the start column and the end of the converted actions' own group are step 3. Until then the group "Converted from scheduled actions" is still drawn (`workspace-flows-scheduled-section.md`).
 
 ## Which entries does a channel's Add list keep?
 - Start a flow: only where `ws_channel_open` answers `flows_here`. `ws_flows_startable_in()` asks the drawer's own list (`ws_flows_runnable_in()`), only for whoever the Workspace shows Flows to, in a public or private channel, never for a discussion. A run started there opens its tasks in the channel and leaves its card there; the Flows screen's Run uses the flow's home (`workspace-flows-channel-run-card.md`).
