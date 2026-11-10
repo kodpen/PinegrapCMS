@@ -35,7 +35,7 @@
         var sep = X.config().decimal || '.';
 
         if (n < 1024 * 1024) {
-            return Math.max(1, Math.round(n / 1024)) + ' KB';
+            return ((n > 0) ? Math.max(1, Math.round(n / 1024)) : 0) + ' KB';
         }
 
         return (Math.round(n / 104857.6) / 10).toFixed(1).replace('.', sep) + ' MB';
@@ -168,8 +168,11 @@
                 return fresh();
             }
 
+            // Said before the parts' progress, which waits a moment so
+            // it is read.
             if (r.received > 0) {
                 self.showMessage(t('uploadResume').replace('{name}', file.name || '').replace('{done}', bytesText(r.received)));
+                self.uploadHold = Date.now() + 2500;
             }
 
             return { id: id, part: r.part, received: r.received };
@@ -230,6 +233,10 @@
     Editor.prototype.uploadToast = function (name, got, size) {
         var text = t('uploadProgress').replace('{name}', name).replace('{pct}', pct(Math.floor(100 * got / size)))
             + ' · ' + t('uploadSent').replace('{done}', bytesText(got)).replace('{size}', bytesText(size));
+
+        if (this.uploadHold && (Date.now() < this.uploadHold)) {
+            return;
+        }
 
         if (this.toastEl && this.toastEl.parentNode && this.uploadToastEl === this.toastEl) {
             this.toastEl.textContent = text;
