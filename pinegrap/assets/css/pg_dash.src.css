@@ -5166,9 +5166,87 @@
   .pg-dash-ai-status[data-tone="good"] { color: var(--pgd-good); }
   .pg-dash-ai-status[data-tone="bad"] { color: var(--pgd-bad); }
 
+  /* The chat box under the job box: a ruled section, the assistant picker,
+     the conversation's lines (the person's on the right, tinted) and the
+     same field as the job box. */
+  .pg-dash-ai-talk {
+    margin-top: .875rem;
+    padding-top: .75rem;
+    border-top: 1px solid var(--pgd-line);
+  }
+
+  .pg-dash-ai-pick {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .25rem .5rem;
+    margin-bottom: .5rem;
+  }
+
+  .pg-dash-ai-pick-label {
+    margin: 0;
+    font-size: .8125rem;
+    color: var(--pgd-soft);
+  }
+
+  .pg-dash-ai-pick-select {
+    flex: 1 1 12rem;
+    min-width: 0;
+    max-width: 100%;
+    border-color: var(--pgd-line-2);
+    background-color: var(--pgd-field);
+    color: var(--pgd-fg);
+    font-size: .8125rem;
+  }
+
+  .pg-dash-ai-log {
+    display: flex;
+    flex-direction: column;
+    gap: .375rem;
+    max-height: 16rem;
+    margin: 0 0 .5rem;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+  }
+
+  .pg-dash-ai-line {
+    align-self: flex-start;
+    max-width: 90%;
+    padding: .375rem .625rem;
+    border: 1px solid var(--pgd-line);
+    border-radius: .25rem .75rem .75rem .75rem;
+    background: var(--pgd-fill);
+    font-size: .8125rem;
+    color: var(--pgd-fg);
+    overflow-wrap: anywhere;
+  }
+
+  .pg-dash-ai-line[data-mine="1"] {
+    align-self: flex-end;
+    border-color: var(--pgd-line-2);
+    border-radius: .75rem .25rem .75rem .75rem;
+    background: var(--pgd-field);
+  }
+
+  .pg-dash-ai-line-who {
+    display: block;
+    font-size: .75rem;
+    font-weight: 600;
+    color: var(--pgd-soft);
+  }
+
+  .pg-dash-ai-line-open {
+    margin-left: .5rem;
+    font-size: .75rem;
+    white-space: nowrap;
+    color: var(--pgd-accent);
+  }
+
   @media (forced-colors: active) {
     .pg-dash-ai-chip,
-    .pg-dash-ai-bubble { border-color: CanvasText; }
+    .pg-dash-ai-bubble,
+    .pg-dash-ai-line { border-color: CanvasText; }
     .pg-dash .pg-dash-ai-send { border: 1px solid ButtonText; background: ButtonFace; color: ButtonText; box-shadow: none; }
   }
 

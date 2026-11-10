@@ -12,8 +12,14 @@
  * brings, Connect Claude (Workspace settings) and Connections (Application
  * Access) for the people who may open them, and the MCP note.
  *
- * The job is posted through the Workspace's own ws_send action, which checks
- * the channel, the person and Claude's limits again; nothing here writes.
+ * Beside the job box a chat box talks with any assistant of ws_assistants()
+ * that may be asked in a channel the person writes in: its messages are
+ * Workspace messages, a reply chain under the first, and the answers are
+ * read back with ws_sync.
+ *
+ * The job and the chat are posted through the Workspace's own ws_send
+ * action, which checks the channel, the person and the assistant's limits
+ * again; nothing here writes.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -226,18 +232,20 @@ function pg_dashboard_v2_ai_proposals($viewer)
 }
 
 /**
- * The channel a job goes to: the one the person last asked Claude in, else
- * the oldest public channel; either only where they may post and Claude may
- * be asked.
+ * The channels a message from the card may go to, in the order they are
+ * tried: the one the person last asked an assistant in (Claude, when
+ * $claude), then the oldest public ones; only unarchived channels the person
+ * may post in.
  *
  * @param array $viewer ws_viewer()
- * @return array|null id, name
+ * @param bool  $claude the last channel the person asked Claude in
+ * @return array[] ws_channel() rows
  */
-function pg_dashboard_v2_ai_job_channel($viewer)
+function pg_dashboard_v2_ai_channels($viewer, $claude = false)
 {
     $ids = array();
     $last = (int) db_value("SELECT channel_id FROM ws_ai_requests
-        WHERE requested_by = '" . (int) $viewer['id'] . "' AND channel_id > 0" . ws_claude_only() . "
+        WHERE requested_by = '" . (int) $viewer['id'] . "' AND channel_id > 0" . ($claude ? ws_claude_only() : '') . "
         ORDER BY id DESC LIMIT 1");
 
     if ($last > 0) {
@@ -248,15 +256,197 @@ function pg_dashboard_v2_ai_job_channel($viewer)
         $ids[] = (int) $id;
     }
 
+    $channels = array();
+
     foreach (array_unique($ids) as $id) {
         $channel = ws_channel($id);
 
-        if ($channel && ((int) ($channel['archived_at'] ?? 0) === 0) && ws_can_post_channel($viewer, $channel) && ws_claude_channel_allowed($channel)) {
+        if ($channel && ((int) ($channel['archived_at'] ?? 0) === 0) && ws_can_post_channel($viewer, $channel)) {
+            $channels[] = $channel;
+        }
+    }
+
+    return $channels;
+}
+
+/**
+ * The channel a job goes to: the one the person last asked Claude in, else
+ * the oldest public channel; either only where they may post and Claude may
+ * be asked.
+ *
+ * @param array $viewer ws_viewer()
+ * @return array|null id, name
+ */
+function pg_dashboard_v2_ai_job_channel($viewer)
+{
+    foreach (pg_dashboard_v2_ai_channels($viewer, true) as $channel) {
+        if (ws_claude_channel_allowed($channel)) {
             return array('id' => (int) $channel['id'], 'name' => (string) $channel['name']);
         }
     }
 
     return null;
+}
+
+/**
+ * How long the text after an assistant's tag may be: the box's own limit,
+ * or what a message leaves beside the tag when that is less. Pure.
+ *
+ * @param string $prefix      the tag and its space
+ * @param int    $message_max the longest message the Workspace takes
+ * @return int
+ */
+function pg_dashboard_v2_ai_chat_max($prefix, $message_max)
+{
+    return max(0, min(PG_DASHBOARD_V2_AI_JOB_MAX, (int) $message_max - mb_strlen((string) $prefix)));
+}
+
+/**
+ * The assistants the chat box offers, each with the first channel in the
+ * order where it may be asked: those of ws_assistants() with a tag that asks
+ * them, in a channel the person may write in. Pure.
+ *
+ * @param array $assistants  ws_assistants()
+ * @param array $channels    pg_dashboard_v2_ai_channels(): id, name
+ * @param array $askable     key => tag, channels (ids where it may be asked)
+ * @param int   $message_max the longest message the Workspace takes
+ * @return array[] key, name, avatar, channel_id, channel, prefix, max, note, sent
+ */
+function pg_dashboard_v2_ai_chat_options($assistants, $channels, $askable, $message_max)
+{
+    $options = array();
+
+    foreach ((array) $assistants as $key => $assistant) {
+        $tag = (string) ($askable[$key]['tag'] ?? '');
+        $ids = array_map('intval', (array) ($askable[$key]['channels'] ?? array()));
+
+        if ($tag === '') {
+            continue;
+        }
+
+        foreach ((array) $channels as $channel) {
+            if (!in_array((int) $channel['id'], $ids, true)) {
+                continue;
+            }
+
+            $prefix = $tag . ' ';
+            $max = pg_dashboard_v2_ai_chat_max($prefix, $message_max);
+
+            if ($max > 0) {
+                $name = (string) ($assistant['name'] ?? $key);
+                $options[] = array(
+                    'key'        => (string) $key,
+                    'name'       => $name,
+                    'avatar'     => (string) ($assistant['avatar'] ?? ''),
+                    'channel_id' => (int) $channel['id'],
+                    'channel'    => (string) $channel['name'],
+                    'prefix'     => $prefix,
+                    'max'        => $max,
+                    'note'       => lang(array('string' => 'The conversation is kept in the #{var:1} channel of the Workspace, where everybody who reads it sees it.', 'vars' => $channel['name'])),
+                    'sent'       => lang(array('string' => 'Sent to #{var:1}. The answer shows here when it comes.', 'vars' => $channel['name'])),
+                );
+            }
+
+            break;
+        }
+    }
+
+    return $options;
+}
+
+/**
+ * The chat box: the assistants to pick from and its texts, or the line
+ * saying there is nobody to ask. Pure.
+ *
+ * @param array $options pg_dashboard_v2_ai_chat_options()
+ * @return array
+ */
+function pg_dashboard_v2_ai_chat($options)
+{
+    if (empty($options)) {
+        return array(
+            'options' => array(),
+            'none'    => lang('There is no assistant you may ask in a channel you write in.'),
+        );
+    }
+
+    return array(
+        'options'     => array_values($options),
+        'none'        => '',
+        'title'       => lang('Chat with an assistant'),
+        'label'       => lang('Your message'),
+        'pick'        => lang('Assistant'),
+        'placeholder' => lang('Write a message'),
+        'send'        => lang('Send'),
+        'wait'        => lang('Waiting for the answer…'),
+        'late'        => lang('No answer yet. It will be in the channel when it comes.'),
+        'open'        => lang('Open'),
+        'failed'      => lang('That could not be sent. Please try again.'),
+        'you'         => lang('You'),
+    );
+}
+
+/**
+ * What asks each assistant by a message, and the channels of $channels
+ * where it may be asked: Claude and Pinegrap AI by their channel switch, an
+ * MCP alias where Pinegrap AI may be asked, a registry agent where the
+ * channel allows it. ws_send checks all of it again.
+ *
+ * @param array $assistants ws_assistants()
+ * @param array $channels   pg_dashboard_v2_ai_channels()
+ * @return array key => tag, channels
+ */
+function pg_dashboard_v2_ai_chat_askable($assistants, $channels)
+{
+    $claude = ws_claude_ready();
+    $ai = function_exists('ws_ai_ready') && ws_ai_ready();
+    $askable = array();
+    $agents = array();
+
+    foreach ((array) $channels as $channel) {
+        $agents[(int) $channel['id']] = function_exists('ws_agent_channel_rows')
+            ? array_map('intval', array_column(ws_agent_channel_rows((int) $channel['id']), 'id'))
+            : array();
+    }
+
+    foreach ((array) $assistants as $key => $assistant) {
+        $key = (string) $key;
+        $tag = '';
+        $where = null;
+
+        if ($key === 'claude') {
+            $tag = $claude ? ws_claude_tag() : '';
+            $where = 'ws_claude_channel_allowed';
+        } elseif ($key === 'ai') {
+            $tag = $ai ? ws_ai_tag() : '';
+            $where = 'ws_ai_channel_allowed';
+        } elseif (strpos($key, 'mcp:') === 0) {
+            $tag = (string) ($assistant['handle'] ?? '');
+            $where = 'ws_ai_channel_allowed';
+        } elseif (((int) ($assistant['agent_id'] ?? 0) > 0) && ((int) ($assistant['app_id'] ?? 0) > 0)) {
+            $tag = '<@app:' . (int) $assistant['app_id'] . '>';
+        }
+
+        if ($tag === '') {
+            continue;
+        }
+
+        $ids = array();
+
+        foreach ((array) $channels as $channel) {
+            $allowed = ($where !== null)
+                ? $where($channel)
+                : in_array((int) $assistant['agent_id'], $agents[(int) $channel['id']], true);
+
+            if ($allowed) {
+                $ids[] = (int) $channel['id'];
+            }
+        }
+
+        $askable[$key] = array('tag' => $tag, 'channels' => $ids);
+    }
+
+    return $askable;
 }
 
 /**
@@ -379,6 +569,8 @@ function pg_dashboard_v2_card_ai($user, $period, $compare)
 
     $chips = pg_dashboard_v2_ai_proposals($viewer);
     $channel = pg_dashboard_v2_ai_job_channel($viewer);
+    $assistants = ws_assistants();
+    $chat_channels = pg_dashboard_v2_ai_channels($viewer);
     $job = null;
 
     if ($channel) {
@@ -410,5 +602,7 @@ function pg_dashboard_v2_card_ai($user, $period, $compare)
         'summary'   => pg_dashboard_v2_ai_summary($viewer),
         'job'       => $job,
         'no_job'    => $job ? '' : lang('There is no channel where you may ask Claude. Somebody who manages a channel can allow it from the channel menu.'),
+        'chat'      => pg_dashboard_v2_ai_chat(pg_dashboard_v2_ai_chat_options($assistants, $chat_channels,
+            pg_dashboard_v2_ai_chat_askable($assistants, $chat_channels), defined('WS_MESSAGE_MAX') ? WS_MESSAGE_MAX : 4000)),
     ));
 }
