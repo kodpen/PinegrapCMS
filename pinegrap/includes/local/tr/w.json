@@ -2868,6 +2868,7 @@
     "Write my tasks to Google Calendar": "Görevlerimi Google Takvim'e yaz",
     "Write my tasks to {var:1}": "Görevlerimi {var:1} takvimine yaz",
     "Write now": "Şimdi yaz",
+    "Write on or off after /agent-channel, or nothing to see its state.": "/ajan-kanalı komutundan sonra on ya da off yazın; durumu görmek için hiçbir şey yazmayın.",
     "Write on your reservation under My Reservations, or call us. Please tell us a day ahead so someone else can have the table.": "Rezervasyonlarım altında rezervasyonunuza yazın ya da bizi arayın. Masayı başkası alabilsin diye lütfen bir gün önceden haber verin.",
     "Write permission": "Yazma izni",
     "Write permissions repaired from the dashboard ({var:1}).": "Yazma izinleri panodan onarıldı ({var:1}).",

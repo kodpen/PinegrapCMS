@@ -20,6 +20,7 @@
  *   /stock #product 12, +5 or -3                             (also /stok)
  *   /create product Blue mug 149,90 #group                   (also /oluştur, /olustur)
  *   /wake @ci every 30m Look at the queue                (also /uyandır, /uyandir)
+ *   /agent-channel on, off or nothing for the state      (also /ajan-kanalı, /ajan-kanali)
  *   /create group Mugs                                       (grup, group)
  *   /product Blue mug 149,90 #group                          (also /ürün, /urun:
  *                                                            /create product)
@@ -78,6 +79,7 @@ function ws_command_names()
         'fiyat' => 'price', 'price' => 'price',
         'stok' => 'stock', 'stock' => 'stock',
         'uyandır' => 'wake', 'uyandir' => 'wake', 'wake' => 'wake',
+        'ajan-kanalı' => 'agent_channel', 'ajan-kanali' => 'agent_channel', 'agent-channel' => 'agent_channel',
         'yardim' => 'help', 'yardım' => 'help', 'help' => 'help',
     );
 }
@@ -198,6 +200,10 @@ function ws_command_offered($viewer, $command)
 
     if (($command === 'wake') && is_array($viewer)) {
         return function_exists('ws_agents_ready') && ws_agents_ready();
+    }
+
+    if (($command === 'agent_channel') && is_array($viewer)) {
+        return function_exists('ws_agent_channel_ready') && ws_agent_channel_ready();
     }
 
     if (($command === 'timer') && is_array($viewer)) {
@@ -435,6 +441,14 @@ function ws_commands($viewer = null)
                 $arg('agent', 'text', lang('@agent'), false),
                 $arg('when', 'text', lang('every 30m | at 21:00 | off'), true),
                 $arg('note', 'text', lang('note'), true),
+            ),
+        ),
+        array(
+            'key' => 'agent_channel', 'tr' => 'ajan-kanalı', 'en' => 'agent-channel', 'label' => '/agent-channel · /ajan-kanalı',
+            'description' => lang('Makes this an agent channel (on) or a team channel again (off): an agent channel\'s decisions stay apart from the other channels\' decisions. A channel manager switches it; nothing after it says the state.'),
+            'example'     => lang('/agent-channel on'),
+            'args'        => array(
+                $arg('state', 'text', lang('on | off'), true),
             ),
         ),
         array(
@@ -1558,6 +1572,9 @@ function ws_command_run($viewer, $channel, $body, $options = array())
             return $result['ok']
                 ? array('type' => 'done', 'message_id' => $result['message_id'])
                 : array('type' => 'error', 'error' => $result['error']);
+
+        case 'agent_channel':
+            return ws_command_agent_channel($viewer, $channel, $rest);
 
         case 'wake':
             return function_exists('ws_command_wake') ? ws_command_wake($viewer, $channel, $rest) : array('type' => 'error', 'error' => lang('Agents are not set up on this site yet.'));
