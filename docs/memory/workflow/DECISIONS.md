@@ -361,7 +361,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/order-returns-api-timing.md: Returns over the API and the customer's timing rules (owner 2026-10-24): staff-like by default, customer_rules and its 409s, repeat before timing, OrderReturn.withdrawal, pg_return_timing()
 - commerce/order-returns-refund-columns.md: The refund kept on a return (order_returns.refund_*, step 11.0.34, owner 2026-10-24): columns, the one writer, the backfill from audit trail and order_refunds, OrderReturn.refund, panel
 - commerce/order-returns-scope.md: What customer returns cover and leave out (no exchanges; any quantity per line), the Turkish rules they follow, who decided what, and the PRs of the finished returns plan
-- commerce/order-totals-overview.md: Order totals across checkout, order pages and the ERP invoice: who works them out, who reads the header, rounding, where a kurus may differ and what is decided
+- commerce/order-totals-overview.md: Order totals (a coupon's 1 kurus gap) across checkout, order pages and the ERP invoice: who works them out, who reads the header, rounding, where a kurus may differ and what is decided
 - commerce/payment-gateway-secrets.md: Legacy gateway secrets sealed in config (pgenc2, AES-256-GCM since #3058; pgenc1 still read), drawn masked, opened in init.php; plain values still read; the 41-character limit
 - commerce/payment-refunds.md: Money back through payment drivers (PRs #873, #903): the order's driver for the order screen's refund and the cancellation's void, log_name, the outcome lines
 - commerce/place-packs.md: Country place packs (includes/geo/places/<CC>.json): the file format, how a pack is found and matched, which forms suggest from it, how to add a country

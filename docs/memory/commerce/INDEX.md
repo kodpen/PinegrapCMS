@@ -142,7 +142,7 @@
 - offer-gift-lines.md: An offer's gift line ('add product' result): the price it is charged at (never below zero), which recipient it goes to with one or several recipients, the unshipped group 0
 - offer-gift-refusal.md: How a removed offer gift stays out of the cart, and when the refusal is forgotten in recipient-scope offers (#7664)
 - offer-order-discount-ladder.md: Tiered order discount (ladder) and how the order discount is chosen: rungs, nothing below the first rung, every valid order discount weighed against the final subtotal
-- offer-percent-rounding.md: An offer's percentage as a figure (order discount, product, gift, shipping): the exact product rounded half away from zero, pg_percent_of() / pg_percent_off(), on every PHP version (PR #1367)
+- offer-percent-rounding.md: A coupon (offer code) percentage as a figure (order, product, gift, shipping): the exact product rounded half away from zero, pg_percent_of() / pg_percent_off(), any PHP version (PR #1367)
 - offer-rule-gift-lines-not-counted.md: An offer's required products, group condition and up-sell count only lines the shopper added (added_by_offer = 0), so a gift cannot keep its own offer alive
 - order-address-postcode-note.md: The order screen's warning-only note when a Turkish postcode belongs to another province than the address's state (pg_shipping_postcode_province())
 - order-auto-registration-set-password-link.md: An account an order's auto-registration opens has no password and gets the set password link; the receipt e-mail is split so the store's BCC copy never carries the link (PR #1220).
@@ -196,7 +196,7 @@
 - order-screen-toolbar.md: The order screen's toolbar (view_order.php): which buttons stay on the bar, which are rows of the three-dots menu, why menu rows lost their colours
 - order-status-moves.md: pg_order_status_move(), the one order status rule the API and the Workspace follow; cancel only through process_order_cancellation(), restore only through its helper; full refund cancels (PR #1500)
 - order-template-installment-row.md: The built-in order receipt and order view layouts (includes/templates/order_receipt.php, view_order.php) print the instalment rows, so their rows add up to the Total
-- order-totals-overview.md: Order totals across checkout, order pages and the ERP invoice: who works them out, who reads the header, rounding, where a kurus may differ and what is decided [decision: here]
+- order-totals-overview.md: Order totals (a coupon's 1 kurus gap) across checkout, order pages and the ERP invoice: who works them out, who reads the header, rounding, where a kurus may differ and what is decided [decision: here]
 - order-view-legal-documents.md: Order view links to the legal documents and KVKK copy kept with the order: __legal_*_url tokens, has_legal_* flags, starter card, cards added after older layouts, none in the e-mail
 - order-view-screen-rows.md: The panel order screen's card rows (includes/fn/order_view.php): empty rows hidden, address type, country, arrival date and contact named, the provider panel link (#2051, #2050)
 - order-view-surcharge-row.md: The order view's card surcharge row shows only when the order has a surcharge: has_surcharge on the starter row and stamped on saved trees

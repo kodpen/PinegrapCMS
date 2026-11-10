@@ -1,6 +1,6 @@
 ---
 name: offer-percent-rounding
-description: An offer's percentage as a figure (order discount, product, gift, shipping): the exact product rounded half away from zero, pg_percent_of() / pg_percent_off(), on every PHP version (PR #1367)
+description: A coupon (offer code) percentage as a figure (order, product, gift, shipping): the exact product rounded half away from zero, pg_percent_of() / pg_percent_off(), any PHP version (PR #1367)
 ---
 
 ## How does an offer's percentage become a figure?

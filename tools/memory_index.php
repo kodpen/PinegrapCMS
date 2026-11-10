@@ -85,7 +85,8 @@
  *         missing or invalid frontmatter, a memory file is too large or sits
  *         outside a known folder, a module field names no module file, a
  *         folder index has no key rules block or a merge conflict inside it,
- *         or, with --check, an index differs from what the files produce.
+ *         a topic file or decisions part links a memory file that does not
+ *         exist ([[name]] or folder/file.md; plans are exempt), or, with --check, an index differs from what the files produce.
  *
  * Line endings do not count: files are read with CR removed and the indexes
  * are written with LF endings, so a checkout that turned them into CRLF passes.
@@ -232,6 +233,23 @@ foreach (memory_index_files($docs) as $relative) {
 		}
 	} else {
 		$others[$relative] = $description;
+	}
+}
+
+// Links to memory files that do not exist; plans are exempt, they name files to come.
+$existing = array(substr(MODULE_LIST, 7), substr(DECISION_LIST, 7));
+
+foreach ($folders as $folder => $entries) {
+	$existing[] = $folder . '/README.md';
+	$existing[] = $folder . '/INDEX.md';
+	foreach (array_keys($entries) as $entry) {
+		$existing[] = $folder . '/' . $entry;
+	}
+}
+
+foreach ($topics + memory_index_prefixed($decision_parts, 'workflow/') as $relative => $content) {
+	foreach (memory_index_broken_links($content, $existing) as $link) {
+		$errors[] = "docs/memory/$relative: $link names no memory file; correct or remove the link";
 	}
 }
 
@@ -856,4 +874,57 @@ function memory_index_clusters($files) {
 	uksort($clusters, 'strcmp');
 
 	return array_values($clusters);
+}
+
+/**
+ * The references in a memory file's text to memory files that do not exist,
+ * each once, in the order met: a [[name]] link (a file name without .md, in
+ * any folder) and a folder/file.md path whose folder is in FOLDERS, with or
+ * without docs/memory/ in front. A path inside another path (assets/ui/x.md),
+ * a wildcard or placeholder (erp/<name>.md), an Obsidian embed (![[x]])
+ * and a [[name]] quoted alone in backticks as an example are not references.
+ * $existing lists folder/file.md for every file in the memory folders,
+ * generated indexes included.
+ */
+function memory_index_broken_links($content, $existing) {
+
+	$paths = array_flip($existing);
+	$names = array();
+
+	foreach ($existing as $path) {
+		$names[basename($path, '.md')] = true;
+	}
+
+	$folders = implode('|', array_map('preg_quote', array_keys(FOLDERS)));
+	$pattern = '~(?<![\w./<*-])(?:docs/memory/)?((?:' . $folders . ')/[A-Za-z0-9_.-]+\.md)(?![\w*<>-])|(?<![!`])\[\[([a-z0-9-]+)\]\](?!`)~';
+
+	preg_match_all($pattern, $content, $references, PREG_SET_ORDER);
+
+	$broken = array();
+
+	foreach ($references as $reference) {
+		if (isset($reference[2]) && $reference[2] !== '') {
+			if (!isset($names[$reference[2]])) {
+				$broken['[[' . $reference[2] . ']]'] = true;
+			}
+		} elseif (!isset($paths[$reference[1]])) {
+			$broken[$reference[1]] = true;
+		}
+	}
+
+	return array_keys($broken);
+}
+
+/**
+ * The array with $prefix put before each key.
+ */
+function memory_index_prefixed($items, $prefix) {
+
+	$result = array();
+
+	foreach ($items as $key => $value) {
+		$result[$prefix . $key] = $value;
+	}
+
+	return $result;
 }
