@@ -131,6 +131,8 @@ function ws_wtable_screen_error_text($code)
             return lang('Choose what the list holds: texts or numbers.');
         case 'type_same':
             return lang('Choose another type.');
+        case 'key_column':
+            return lang('This column is the key of the table: make it an ordinary column first, then change its type.');
         case 'type_not_changeable':
             return lang('Only text, number, money, date, list and checkbox columns change their type.');
         case 'cells_not_converted':

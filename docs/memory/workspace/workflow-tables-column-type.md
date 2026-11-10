@@ -26,8 +26,8 @@ description: Changing a workflow table column's type (wtable_retype.php, PR #851
 - Table screen: the column's form, "Change type" (`column_retype`): New type (Text, Number, Money, Date, Date with the time of day, List of texts, List of numbers, Checkbox, its own left out; `ws_wtable_screen_retype_choices()`), Decimals (empty: money 2, a number the money's decimals), a confirmation. A refusal opens the column and lists up to 100 cells (`ws_wtable_screen_retype_fault_text()`).
 - API `POST /workspace/tables/{id}/columns/{column_id}/type` (`workspace.table_columns.retype`, MCP tool, `dry_run`): type, options; refusals 422 `validation_failed`, field `type`, the message listing up to 50 cells.
 
-## What is left to a later step?
-- The key column (step 4b) is text or number, filled and unique: a type change of the key column must keep those rules; whichever of the two PRs lands second covers it.
+## And the key column?
+- The key (step 4b, `options['key']`) is text or number, filled and unique: its type does not change (`key_column`, "make it an ordinary column first"), so a type change never breaks those rules.
 
 ## Tests
 - `tests/workspace_wtable_retype_test.php`; routes in `tests/workspace_api_wtables_test.php`.

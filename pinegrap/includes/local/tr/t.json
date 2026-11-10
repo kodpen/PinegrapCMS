@@ -8053,6 +8053,7 @@
     "This class place request could not be found, or it is not yours to see.": "Bu atölye yer talebi bulunamadı ya da onu görme yetkiniz yok.",
     "This code has run out. Show a new one.": "Bu kodun süresi doldu. Yeni bir kod gösterin.",
     "This column cannot be changed here.": "Bu sütun burada değiştirilemez.",
+    "This column is the key of the table: make it an ordinary column first, then change its type.": "Bu sütun tablonun anahtarı: önce sıradan bir sütun yapın, sonra türünü değiştirin.",
     "This common region is a shared component: its content is edited in the visual designer.": "Bu ortak bölge paylaşılan bir bileşendir: içeriği görsel tasarımcıda düzenlenir.",
     "This common region is now a shared component. Edit its content in the visual designer.": "Bu ortak bölge artık bir paylaşılan bileşen. İçeriğini görsel tasarımcıda düzenleyin.",
     "This common region is now the shared component \"{var:1}\". Its content is edited in the visual designer, by managers and by the users granted the component. The region's earlier content is kept and comes back if the component is deleted.": "Bu ortak bölge artık \"{var:1}\" paylaşılan bileşeni. İçeriği görsel tasarımcıda, yöneticiler ve bileşen kendilerine verilen kullanıcılar tarafından düzenlenir. Bölgenin önceki içeriği saklanır ve bileşen silinirse geri gelir.",
