@@ -4,10 +4,11 @@
  *
  * Tests for the screens and passes that write over a stored file: Edit
  * File's code save and SVG conversion (edit_file.php), the refresh of
- * imported style sheets and scripts (update_imported_items.php) and the
+ * imported style sheets and scripts (update_imported_items.php), the
  * visual designer's custom CSS/JS asset files (pg_designer_sync_asset_files()),
- * and each file Import My Site and Import ZIP create (import_design.php,
- * import_zip.php).
+ * each file Import My Site and Import ZIP create (import_design.php,
+ * import_zip.php), and the visual designer's file save, New File and theme
+ * saves (includes/panel/designer.php, pg_design_theme_save_file()).
  * Each writes through pg_file_write_whole(), so a full disk or a folder PHP
  * may not write leaves the old file in place; only a whole new file deletes
  * the old one or changes the record.
@@ -111,4 +112,56 @@ function test_file_replace_keeps_old_import_zip()
 {
 	$branch = file_replace_keeps_old_test_importer('import_zip.php');
 	pg_assert_contains("\$skipped_unread[] = lang(array('string' => '{var:1} could not be written to disk.'", $branch, 'reported as not written');
+}
+
+// The part of $source from $start up to $end (or the end of the source).
+function file_replace_keeps_old_test_section($source, $start, $end)
+{
+	$from = strpos($source, $start);
+	$to = ($from === false) ? false : strpos($source, $end, $from + strlen($start));
+
+	return ($from === false) ? '' : (($to === false) ? substr($source, $from) : substr($source, $from, $to - $from));
+}
+
+// $first comes before $second in $section, and both are there.
+function file_replace_keeps_old_test_before($section, $first, $second)
+{
+	$a = strpos($section, $first);
+	$b = strpos($section, $second);
+
+	return ($a !== false) && ($b !== false) && ($a < $b);
+}
+
+// The visual designer's file save, New File and theme save write as a whole
+// before the row is written or updated.
+function test_file_replace_keeps_old_designer_file_endpoint()
+{
+	$source = file_replace_keeps_old_test_source('includes/panel/designer.php');
+
+	pg_assert_same(false, strpos($source, '@file_put_contents($df_path, $df_content)'), 'no in-place write in save');
+	pg_assert_same(false, strpos($source, "@fopen(\$df_path, 'w')"), 'no truncating fopen() in New File');
+	pg_assert_same(false, strpos($source, "@file_put_contents(FILE_DIRECTORY_PATH . '/' . \$file_name, \$css)"), 'no unchecked theme write');
+
+	$save = file_replace_keeps_old_test_section($source, "case 'save':", 'default:');
+	pg_assert_true(file_replace_keeps_old_test_before($save, 'if (!pg_file_write_whole($df_path, $df_content)) {', 'UPDATE files'), 'save updates the row only after a whole write');
+	pg_assert_contains("'{var:1} could not be written to disk.', 'vars' => \$df_name_safe", $save, 'save names the file it could not write');
+
+	$create = file_replace_keeps_old_test_section($source, "case 'create':", "case 'read':");
+	pg_assert_true(file_replace_keeps_old_test_before($create, 'if (!pg_file_write_whole($df_path, $df_content)) {', 'INSERT INTO files'), 'New File inserts the row only after a whole write');
+	pg_assert_true(file_replace_keeps_old_test_before($create, 'pg_file_write_whole(', 'log_activity('), 'New File logs only after a whole write');
+	pg_assert_contains("'{var:1} could not be written to disk.', 'vars' => \$df_name)", $create, 'New File names the file it could not write');
+
+	$theme = file_replace_keeps_old_test_section($source, "case 'theme_save':", "case 'theme_look_css':");
+	pg_assert_true(file_replace_keeps_old_test_before($theme, "if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . \$file_name, \$css)) {", 'INSERT INTO files'), 'theme_save inserts the row only after a whole write');
+}
+
+// The look and palette builders' save writes the stylesheet as a whole
+// before its row is inserted.
+function test_file_replace_keeps_old_design_theme_save_file()
+{
+	$source = file_replace_keeps_old_test_source('includes/fn/design_themes.php');
+	$body = file_replace_keeps_old_test_section($source, 'function pg_design_theme_save_file(', "\n}\n");
+
+	pg_assert_same(false, strpos($body, 'file_put_contents('), 'no unchecked theme write');
+	pg_assert_true(file_replace_keeps_old_test_before($body, "if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . \$file_name, \$css)) {", 'INSERT INTO files'), 'the row is inserted only after a whole write');
 }

@@ -181,5 +181,5 @@ function test_file_withheld_is_asked_by_the_designer_file_doors()
 	};
 
 	pg_assert_true(file_withheld_test_asks_first($between("case 'read':", "case 'delete':"), 'pg_file_withheld($df_name_safe)', 'file_get_contents('), 'the designer does not read it');
-	pg_assert_true(file_withheld_test_asks_first($between("case 'save':", 'default:'), 'pg_file_withheld($df_name_safe)', 'file_put_contents('), 'the designer does not overwrite it');
+	pg_assert_true(file_withheld_test_asks_first($between("case 'save':", 'default:'), 'pg_file_withheld($df_name_safe)', 'pg_file_write_whole('), 'the designer does not overwrite it');
 }
