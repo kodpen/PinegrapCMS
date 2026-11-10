@@ -30,7 +30,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - `erp-edoc-*`: 9 files.
 - `erp-invoice-*`: 9 files.
 - `erp-order-*`: 7 files.
-- `erp-parasut-*`: 29 files.
+- `erp-parasut-*`: 30 files; start at `erp-parasut-overview.md`.
 
 ## Files
 
