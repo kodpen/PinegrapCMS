@@ -22,6 +22,6 @@ description: A labelled panel field carries no title: Bootstrap 6 copies a popov
 - Nothing labelled: the known list is empty since the "Select All" switches of `view_contacts.php` and `view_submitted_forms.php` lost their title (the panel prints that markup; the multiselect library only reads it). The other fields it held got their own `aria-label` in #2668; the Group and Custom Form titles say their own name.
 - Hover-only help on a label or icon (`title` + `data-bs-content`, a " (?)"): Folder, Design File/Theme, menu item Enable Security, Page Name and Catalog Name addresses, Migration URL, Paraşüt ID, the Custom layout reason and the barcode Last Scan help are now `form-text` + `aria-describedby`; an address hint puts the pattern in `<code>` through `h()`, like Short Link. Pinned by `tests/field_hint_visible_test.php`.
 - Unlabelled fields: the image picker's Folder and Access selects had no name (the popover took the title; option text blocks `aria-label`). Since #8502 they and the product group `#select_all` carry `aria-label` + a compact tooltip (test `..._unlabelled_hints_are_tooltips`).
-- Not done: explorer's injected `#select_all`; similar selects in `style_designer.src.js`.
+- Not done: explorer's injected `#select_all`; `style_designer.src.js` selects.
 
 Related: docs/memory/ui/panel-accessible-names.md, docs/memory/ui/panel-hint-tooltip-or-popover.md
