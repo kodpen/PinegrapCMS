@@ -13,6 +13,10 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - A plan in an older form takes this form when it is next written as a whole, or when the merging session settles a conflict in it.
 <!-- key-rules:end -->
 
+## Clusters
+
+- `storefront-api-*`: 9 files.
+
 ## Files
 
 - `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.

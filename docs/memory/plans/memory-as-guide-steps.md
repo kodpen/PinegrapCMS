@@ -7,6 +7,7 @@ description: Steps MG1-MG4 and MG11-MG14 of plans/memory-as-guide.md: decision l
 - Claim with a draft `[plan:memory-as-guide] MG<n> — <topic>`. A step that changes only `docs/` or `CLAUDE.md` lands alone.
 - MG1, MG4 and MG11 change `tools/memory_index.php`: one at a time, in that order, each with tests in `tests/memory_index_test.php`, red first, and with every index written again in its PR.
 - The overviews, MG5 to MG10, are in `memory-as-guide-steps-2.md`; they run side by side with these.
+- Where it stands (2026-11-10): MG1, MG2 and MG4 done. Next: MG3 (free now) and MG11 (after MG4's merge); the tool's pure parts are `memory_index_decision_*()` and `memory_index_clusters()`, with their tests.
 
 ## Steps
 - MG1 Decision list and marks (done, #8457): the tool writes `workflow/DECISIONS.md`, named in the workflow README as a searched file: one line per entry heading of `workflow/decisions-made*.md` (file, heading) and one per topic file whose own text records a dated owner or architect decision (file, description).
@@ -19,7 +20,7 @@ description: Steps MG1-MG4 and MG11-MG14 of plans/memory-as-guide.md: decision l
   - A cluster of ten files or more has an overview, kept up by its plan's close-out step.
   - Rely on what memory says and check in code what the change depends on. What another account needs goes to `docs/memory` unless it must not be public.
 
-- MG4 Cluster map, after MG1: each folder README lists its clusters (six or more files sharing their first two name tokens, a plural s aside) with the count and the start file, `<prefix>.md` or `<prefix>-overview.md`, when there is one.
+- MG4 Cluster map, after MG1 (done, #8470): each folder README lists its clusters (six or more files sharing their first two name tokens, a plural s aside) with the count and the start file, `<prefix>.md` or `<prefix>-overview.md`, when there is one.
 
 - MG11 Link check, after MG4: `--check` fails on a `[[name]]` or `folder/file.md` reference to a memory file that does not exist; plans are exempt, they name files to come. Corrects the broken ones (about ten).
 

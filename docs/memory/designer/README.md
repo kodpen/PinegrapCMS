@@ -28,6 +28,20 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - Start a new panel's drawing function with `_sdPanelDefer(name)` and debounce per-keystroke panel draws with `_sdPanelsSoon(node)`; the canvas stays live (`designer-panels-on-demand.md`).
 <!-- key-rules:end -->
 
+## Clusters
+
+- `comments-widget-*`: 24 files; start at `comments-widget.md`.
+- `custom-form-*`: 17 files.
+- `design-template-*`: 98 files.
+- `designer-blocks-*`: 34 files.
+- `designer-canvas-*`: 11 files.
+- `designer-code-*`: 6 files.
+- `designer-content-*`: 6 files.
+- `form-list-*`: 7 files.
+- `system-widget-*`: 9 files.
+- `widget-default-*`: 12 files.
+- `widget-lists-*`: 11 files; start at `widget-lists.md`.
+
 ## Files
 
 - `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.

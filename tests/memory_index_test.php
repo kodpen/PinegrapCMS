@@ -143,3 +143,47 @@ function test_memory_index_decision_list()
 	pg_assert_same("\n", substr($list, -1));
 	pg_assert_true(substr($list, -2) !== "\n\n", 'one newline at the end');
 }
+
+function test_memory_index_clusters_found()
+{
+	$files = array();
+	foreach (array('a', 'b', 'c', 'd', 'e') as $x) {
+		$files[] = 'workspace-flows-' . $x . '.md';
+	}
+	$files[] = 'workspace-flow-f.md';
+	$files[] = 'workspace-flows-overview.md';
+	foreach (array('a', 'b', 'c', 'd', 'e') as $x) {
+		$files[] = 'list-table-' . $x . '.md';
+	}
+	$files[] = 'erp-till.md';
+	$files[] = 'readme.md';
+
+	pg_assert_same(array(
+		array('workspace-flows', 7, 'workspace-flows-overview.md'),
+	), memory_index_clusters($files), 'five files are no cluster; a plural s is set aside');
+
+	$files[] = 'list-table.md';
+	pg_assert_same(array(
+		array('list-table', 6, 'list-table.md'),
+		array('workspace-flows', 7, 'workspace-flows-overview.md'),
+	), memory_index_clusters($files), 'the prefix file itself counts and is the start file');
+}
+
+function test_memory_index_clusters_name_and_start()
+{
+	$files = array('custom-forms-a.md', 'custom-form-b.md', 'custom-form-c.md', 'custom-form-d.md', 'custom-form-e.md', 'custom-form-f.md', 'custom-forms-overview.md');
+	pg_assert_same(array(array('custom-form', 7, 'custom-forms-overview.md')), memory_index_clusters($files), 'named by the most used form; the start file in either form');
+
+	$files = array('ab-cd-1.md', 'ab-cd-2.md', 'ab-cd-3.md', 'ab-cds-4.md', 'ab-cds-5.md', 'ab-cds-6.md');
+	pg_assert_same(array(array('ab-cd', 6, null)), memory_index_clusters($files), 'a tie goes to the shorter form; no start file');
+}
+
+function test_memory_index_folder_lists_clusters()
+{
+	$readme = memory_index_folder('ui', '- A rule.', array(array('list-table', 44, 'list-table-overview.md'), array('image-editor', 9, null)));
+
+	pg_assert_contains("\n## Clusters\n\n", $readme);
+	pg_assert_contains("\n- `list-table-*`: 44 files; start at `list-table-overview.md`.\n- `image-editor-*`: 9 files.\n", $readme);
+	pg_assert_true(strpos($readme, '## Clusters') > strpos($readme, KEY_RULES_END), 'after the key rules');
+	pg_assert_true(strpos(memory_index_folder('ui', '', array()), '## Clusters') === false, 'no heading without clusters');
+}

@@ -25,6 +25,16 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - Set up scheduled work only on the flow canvas (its "At a time" start, a gallery template): no window or form of its own makes a scheduled flow, and a kind no new box is made of goes into `ws_flow_kinds_not_offered()`, which the palette and Pinegrap AI's catalogue honour (`workspace-scheduling-one-place.md`).
 <!-- key-rules:end -->
 
+## Clusters
+
+- `workflow-tables-*`: 17 files; start at `workflow-tables.md`.
+- `workspace-api-*`: 11 files.
+- `workspace-channel-*`: 15 files.
+- `workspace-command-*`: 6 files.
+- `workspace-flows-*`: 109 files.
+- `workspace-notes-*`: 28 files; start at `workspace-notes.md`.
+- `workspace-voice-*`: 13 files.
+
 ## Files
 
 - `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.

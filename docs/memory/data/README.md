@@ -18,6 +18,10 @@ Table structures and SQL pitfalls.
 - Bring a URL name to ASCII (`prepare_file_name()`, `pg_transliterate_to_ascii()`), transliterating before `mb_strtolower()`; rename the file on disk before `files.name` (`slug-generation.md`).
 <!-- key-rules:end -->
 
+## Clusters
+
+- `db-q-*`: 28 files.
+
 ## Files
 
 - `INDEX.md` lists the files of this folder, one line each: search it rather than read it whole, then open only the files that match.
