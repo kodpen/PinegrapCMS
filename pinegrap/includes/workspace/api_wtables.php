@@ -593,6 +593,7 @@ function ws_api_wtable_row_schema()
 {
     return array(
         'id'             => 'integer',
+        'number'         => 'integer',
         'position'       => 'integer',
         'revision'       => 'integer',
         'cells'          => 'object',

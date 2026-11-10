@@ -101,8 +101,8 @@ function ws_wtable_board_card($row, $columns, $status_id, $people, $can_edit)
     return array(
         'kind'     => 'row',
         'id'       => (int) $row['id'],
-        'number'   => '#' . (int) $row['position'],
-        'title'    => ($title !== '') ? $title : lang(array('string' => 'Row {var:1}', 'vars' => (int) $row['position'])),
+        'number'   => '#' . ws_wtable_row_label($row),
+        'title'    => ($title !== '') ? $title : lang(array('string' => 'Row {var:1}', 'vars' => ws_wtable_row_label($row))),
         'lines'    => $lines,
         'revision' => (int) $row['revision'],
         'can_edit' => (bool) $can_edit,

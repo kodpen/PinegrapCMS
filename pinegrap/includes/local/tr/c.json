@@ -1063,6 +1063,7 @@
     "Changes you ask for are priced before we make them": "İstediğiniz değişiklikler yapılmadan önce fiyatlandırılır",
     "Changes {var:1} in a row of the table “{var:2}”.": "“{var:2}” tablosundaki bir satırda şunları değiştirir: {var:1}.",
     "Changes {var:1} in the last row of the table “{var:2}”.": "“{var:2}” tablosunun son satırında şunları değiştirir: {var:1}.",
+    "Changes {var:1} in the row #{var:2} of the table “{var:3}”.": "“{var:3}” tablosunun #{var:2} satırında {var:1} değiştirir.",
     "Changes {var:1} in the row {var:2} of the table “{var:3}”.": "“{var:3}” tablosunun {var:2} numaralı satırında şunları değiştirir: {var:1}.",
     "Changes {var:1} proposes": "{var:1} tarafından önerilen değişiklikler",
     "Changing Rooms": "Soyunma Odaları",

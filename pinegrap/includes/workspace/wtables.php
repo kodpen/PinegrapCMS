@@ -846,6 +846,27 @@ function ws_wtables_ready()
 }
 
 /**
+ * Are the stable row numbers there (step 11.0.183): the table's counter,
+ * the row's number and the binned row's number? Before the upgrade runs,
+ * rows have no number and the screen shows their place instead.
+ *
+ * @return bool
+ */
+function ws_wtable_numbers_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = ws_wtables_ready()
+            && pg_schema_has('ws_wtables', 'next_number')
+            && pg_schema_has('ws_wtable_rows', 'number')
+            && (!pg_schema_has('ws_wtable_row_bin') || pg_schema_has('ws_wtable_row_bin', 'number'));
+    }
+
+    return $ready;
+}
+
+/**
  * One table, never one in the bin (ws_wtable_binned() reads those).
  *
  * @param int $table_id
