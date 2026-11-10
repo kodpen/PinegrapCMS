@@ -1,6 +1,6 @@
 ---
 name: workflow-tables-query
-description: The table screen's query bar, sort and totals line, and the rows API's where/join/sort/dir (wtable_query.php, plan tables-relational step 3, PR #8453)
+description: The table screen's query bar, sort and totals line, and the rows API's where/join/sort/dir (wtable_query.php, PR #8453)
 ---
 
 ## What is it?

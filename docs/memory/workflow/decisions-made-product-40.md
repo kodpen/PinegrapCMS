@@ -12,7 +12,7 @@ description: Decisions list, product part 40 (2026-11-09 on): standing feature r
 - Owner (2026-11-06): design variables and classes are not built. Reason: with Bootstrap on the site output they would not pay.
 
 ## How do workflow tables behave like SQL tables? (2026-11-09)
-- Owner (2026-11-09, as a selectable list in PR #8384; plan `plans/tables-relational.md`). The aim: tables that behave like SQL tables; a flow picks a row or works out values over the rows; related tables are read together, as a join reads them. Moving the product forward matters more than development time.
+- Owner (2026-11-09, as a selectable list in PR #8384; plan tables-relational, closed: `workspace/workflow-tables-relational.md`). The aim: tables that behave like SQL tables; a flow picks a row or works out values over the rows; related tables are read together, as a join reads them. Moving the product forward matters more than development time.
   - Row boxes find their row through a choice: the number as the table lists it, the id, or the last row. The ways were left to the session. Reason: the typed "1" was read as a hidden id and found nothing.
   - Values over the rows: the sum, the row count, the average, and the smallest and largest value.
   - A deleted row that other rows link to clears those links; the delete confirmation says how many rows are affected.
