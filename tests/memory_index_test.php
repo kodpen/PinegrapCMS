@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the pure parts of tools/memory_index.php: the module field of a
- * memory file's frontmatter, the size a memory file is measured by and the
- * generated list of includes/fn/ modules.
+ * memory file's frontmatter, the size a memory file is measured by, the
+ * generated list of includes/fn/ modules, the decision marks, the clusters
+ * and the links to memory files that do not exist.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -186,4 +187,27 @@ function test_memory_index_folder_lists_clusters()
 	pg_assert_contains("\n- `list-table-*`: 44 files; start at `list-table-overview.md`.\n- `image-editor-*`: 9 files.\n", $readme);
 	pg_assert_true(strpos($readme, '## Clusters') > strpos($readme, KEY_RULES_END), 'after the key rules');
 	pg_assert_true(strpos(memory_index_folder('ui', '', array()), '## Clusters') === false, 'no heading without clusters');
+}
+
+function test_memory_index_broken_links()
+{
+	$existing = array('core/a-x.md', 'core/README.md', 'erp/erp-y.md', 'plans/p.md', 'workflow/DECISIONS.md');
+
+	pg_assert_same(array(), memory_index_broken_links("See [[a-x]], `erp/erp-y.md`, core/README.md and docs/memory/plans/p.md.\n", $existing));
+	pg_assert_same(
+		array('erp/erp-z.md', '[[gone]]', 'plans/done.md'),
+		memory_index_broken_links("[[a-x]] erp/erp-z.md [[gone]]\nRelated: docs/memory/plans/done.md, docs/memory/erp/erp-z.md, [[gone]]\n", $existing),
+		'each missing file once, in the order met'
+	);
+}
+
+// Only memory paths are references: a code path that ends in a folder name,
+// a wildcard, a placeholder, an Obsidian embed and a [[name]] quoted alone
+// as an example are not.
+function test_memory_index_broken_links_ignore_other_paths()
+{
+	$text = "pinegrap/includes/api/x.md, assets/ui/y.md, `designer/designer-blocks-*.md`, "
+		. "`designer-blocks-<prefix>.md`, `erp/<name>.md`, `![[file]]`, `[[name]]`, [[Name]], tools/z.md, a.md\n";
+
+	pg_assert_same(array(), memory_index_broken_links($text, array()));
 }

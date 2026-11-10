@@ -8,4 +8,4 @@ description: All Orders for Contact (view_orders_for_contact.php): open carts le
 - A Status column (sortable, code `status`) draws `pg_order_list_status_html($row, $paid_at_column_exists)`, the badge of the orders list: cancelled, complete, exported, Awaiting Payment and the Paraşüt mark. The row reads `status`, `payment_method`, `parasut_exported`, `parasut_invoice_id` and, when `pg_schema_has('orders', 'paid_at')`, `paid_at`.
 - Test: `tests/view_orders_for_contact_test.php`.
 
-Related: docs/memory/ui/contact-shared-form.md, docs/memory/commerce/order-status-badge.md
+Related: docs/memory/ui/contact-shared-form.md

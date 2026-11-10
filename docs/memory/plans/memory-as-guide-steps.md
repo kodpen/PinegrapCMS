@@ -22,7 +22,7 @@ description: Steps MG1-MG4 and MG11-MG14 of plans/memory-as-guide.md: decision l
 
 - MG4 Cluster map, after MG1 (done, #8470): each folder README lists its clusters (six or more files sharing their first two name tokens, a plural s aside) with the count and the start file, `<prefix>.md` or `<prefix>-overview.md`, when there is one.
 
-- MG11 Link check, after MG4: `--check` fails on a `[[name]]` or `folder/file.md` reference to a memory file that does not exist; plans are exempt, they name files to come. Corrects the broken ones (about ten).
+- MG11 Link check (done, #8476): `--check` fails on a `[[name]]` or `folder/file.md` reference to a memory file that does not exist; plans are exempt, they name files to come. Corrects the broken ones (about ten).
 
 - MG12 (owner's machine) Documentation pages: `workflow/user-docs-pages.md` with the pinegrap.com pages by address, the clusters each covers and the PR each is written up to; the new rule in `owner-rules.md`; a row for documentation work in the table of `CLAUDE.md`.
 
