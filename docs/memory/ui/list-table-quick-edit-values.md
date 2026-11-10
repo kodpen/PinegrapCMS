@@ -31,7 +31,7 @@ module: list_table_edit
 
 ## Which lists are not done yet?
 - Products: the order receipt message (above).
-- Gift cards: the balance (the driver does not post the value a cell opened with) and store credit (`list-table-quick-edit-gift-cards.md`). Orders: nothing else the order screen saves is a list column (`list-table-quick-edit-orders.md`).
+- Gift cards: the store credit rows keep every cell as text (`list-table-quick-edit-gift-cards.md`). Orders: nothing else the order screen saves is a list column (`list-table-quick-edit-orders.md`).
 - Not a driver list: product groups, in the Catalog Manager (`view_folders.php`): renamed in its grid and tree, the rest on the group's screen.
 
 Related: docs/memory/ui/list-table-quick-edit.md, docs/memory/ui/product-list-paging.md
