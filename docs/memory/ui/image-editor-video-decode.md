@@ -16,6 +16,7 @@ module: image_editor
 
 ## How does a source decode?
 - `X.video.open(data)` (Blob, ArrayBuffer or Uint8Array) → a source after `VideoDecoder.isConfigSupported()`; `frameAt(ms)` gives a copy of the frame (the caller closes it). A cached frame comes at once; a frame still inside the decoder is waited for; one ahead within 30 samples of its key frame is decoded on; else reset and decode from the key frame. Four samples past the frame are fed so a reordering decoder gives it out; when it does not come within 250 ms the decoder is flushed (then it needs a key frame again).
+- The cache keeps a copy of each decoded frame (drawn on an OffscreenCanvas, `own()`) and closes the decoder's at once: Chrome's hardware H.264 decoder stops after nine held output frames, so a 720p MP4 hung at its tenth frame until #8483.
 - Requests run one at a time; one overtaken by a newer request answers from the cache only, so scrubbing decodes where the playhead stops.
 - `X.video.message(e)` gives the label; `editor.videoOpen(data)` shows it as an error toast. A browser with no decoder for the codec (H.265 in Firefox, in Chrome without hardware support) is named in the message.
 

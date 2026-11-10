@@ -70,26 +70,27 @@
 
     // ---- sources and frames ----
 
-    // The source of a clip's address, opened once (a promise); data is the
-    // file when it is at hand (just uploaded). A failure is said once.
-    Editor.prototype.clipSource = function (src, data) {
+    // The source of a clip's address, opened once (a promise; an upload
+    // puts the one it opened here). Only the site's own addresses are
+    // fetched; a failure is said once.
+    Editor.prototype.clipSource = function (src) {
         var self = this, entry = this.clipSources[src];
 
         if (entry) {
             return entry;
         }
 
-        if (!data && !M.soundSrcOk(src, origin())) {
+        if (!M.soundSrcOk(src, origin())) {
             return Promise.reject(new Error('video-format'));
         }
 
-        entry = this.clipSources[src] = (data ? Promise.resolve(data) : fetch(src, { credentials: 'same-origin' }).then(function (r) {
+        entry = this.clipSources[src] = fetch(src, { credentials: 'same-origin' }).then(function (r) {
             if (!r.ok) {
                 throw new Error('video-broken');
             }
 
             return r.arrayBuffer();
-        })).then(function (bytes) {
+        }).then(function (bytes) {
             return X.video.open(bytes);
         });
 
@@ -115,7 +116,7 @@
 
             buf.width = Math.max(2, Math.round((l.width || 640) * k));
             buf.height = Math.max(2, Math.round((l.height || 360) * k));
-            st = this.clipStates[l.id] = { src: l.src, buf: buf, views: [], node: null, want: null, asked: null, shown: null, busy: false };
+            st = this.clipStates[l.id] = { src: l.src, buf: buf, views: [], nodes: [], want: null, asked: null, shown: null, busy: false };
         }
 
         return st;
@@ -193,7 +194,8 @@
         c.height = st.buf.height;
         fo.appendChild(c);
         st.views.push(c);
-        st.node = fo;
+        st.nodes = st.nodes.filter(function (n) { return n.isConnected; });
+        st.nodes.push(fo);
 
         if (st.shown !== null) {
             c.getContext('2d').drawImage(st.buf, 0, 0);
@@ -222,7 +224,15 @@
 
         entry = this.clipRests[key] = { canvas: null };
         entry.promise = this.clipSource(l.src).then(function (source) {
-            return source.frameAt(M.clipLayer(l).from);
+            // A request overtaken by the stage's (the same source) answers
+            // nothing: asked again, a few times.
+            var ask = function (n) {
+                return source.frameAt(M.clipLayer(l).from).then(function (f) {
+                    return (f || (n <= 0)) ? f : ask(n - 1);
+                });
+            };
+
+            return ask(3);
         }).then(function (frame) {
             if (frame) {
                 var c = document.createElement('canvas');
@@ -232,6 +242,9 @@
                 c.getContext('2d').drawImage(frame, 0, 0);
                 frame.close();
                 entry.canvas = c;
+            } else {
+                // The next save tries again.
+                delete self.clipRests[key];
             }
         }, function () {
             // A source that cannot be read draws nothing.
@@ -262,9 +275,10 @@
                 return;
             }
 
-            if (st && st.node) {
-                st.node.style.visibility = (at === null) ? 'hidden' : '';
-            }
+            // Every node of the clip: the stage's and a scene's thumbnail.
+            (st ? st.nodes : []).forEach(function (n) {
+                n.style.visibility = (at === null) ? 'hidden' : '';
+            });
 
             if (at !== null) {
                 self.clipDraw(l, at);
@@ -272,11 +286,14 @@
         });
     };
 
-    // The clips' own sound for the sound part (soundStart()).
+    // The clips' own sound for the sound part (soundStart()); a silent clip
+    // is left out, so its file is never fetched for sound.
     Editor.prototype.soundsMore = function () {
         var offset = this.motionStart(), o = origin();
 
-        return this.clipLayers().filter(function (l) { return M.soundSrcOk(l.src, o); }).map(function (l) { return M.clipSound(l, offset); });
+        return this.clipLayers().filter(function (l) { return M.soundSrcOk(l.src, o); }).map(function (l) {
+            return M.clipSound(l, offset);
+        }).filter(function (s) { return !s.muted; });
     };
 
     // ---- adding ----
@@ -284,12 +301,12 @@
     // The source opened, then one change: the clip at the bottom of the
     // stack, filling the canvas, from the playhead; the document long
     // enough for it (up to its 60 s).
-    Editor.prototype.clipAdd = function (f, data) {
+    Editor.prototype.clipAdd = function (f) {
         var self = this;
 
         this.showMessage(t('clipLoading'));
 
-        return this.clipSource(f.url, data).then(function (source) {
+        return this.clipSource(f.url).then(function (source) {
             var start = (self.time === null) ? 0 : Math.max(0, self.motionNow()), id = null;
             var l = M.clipNew(f, { length: source.duration, width: source.width, height: source.height, sound: source.sound }, self.viewRect(), start);
 
@@ -327,12 +344,15 @@
         }
 
         X.video.open(file).then(function (local) {
-            local.close();
             self.showMessage(t('clipUploading'));
 
             return self.clipUpload(file).then(function (r) {
-                return self.clipAdd({ id: r.id, name: r.name, url: r.url }, file);
+                // The source opened here is the uploaded file's.
+                self.clipSources[r.url] = Promise.resolve(local);
+
+                return self.clipAdd({ id: r.id, name: r.name, url: r.url });
             }, function (e) {
+                local.close();
                 self.showMessage(e.message || t('clipUploadError'), true);
             });
         }, function (e) {
@@ -544,7 +564,7 @@
             var mute = button('pgie-ibtn pgie-sndmute' + (c.muted ? ' on' : ''), t(c.muted ? 'soundUnmute' : 'soundMute'), c.muted ? 'mute' : 'volume', function () {
                 self.clipSet(l.id, { muted: !c.muted });
             });
-            var vol = this.clipSlider(l, 'volume', t('soundVolume'), 0, 100, Math.round(c.volume * 100), function (n) { return Math.round(n) + '%'; });
+            var vol = this.clipSlider(l, 'volume', t('soundVolume'), 0, 100, Math.round(c.volume * 100), function (n) { return X.pct(Math.round(n)); });
 
             mute.setAttribute('aria-pressed', c.muted ? 'true' : 'false');
             vol.classList.add('pgie-sndvol');
@@ -605,8 +625,10 @@
 
         if (this.clipTab === 'motion') {
             motionPanel.call(this, body);
-            // After the play bar a phone puts first.
-            body.insertBefore(tabs, phone ? body.children[1] || null : body.firstChild);
+            // Right after the play bar a phone puts in the panel.
+            var bar = phone ? body.querySelector('.pgie-mbar') : null;
+
+            body.insertBefore(tabs, bar ? bar.nextSibling : body.firstChild);
             return;
         }
 
