@@ -5,6 +5,7 @@
 - agent-channel-experiment.md: Which doors wake a cloud session (A0, 2026-11-07): session webhook refused unsigned, routine /fire with an owner token, ws_wait.php poll; CI [ci]/[ready] lines; A3 door fields
 - agent-channel-wake.md: How a session waits on the agent channel with tools/ws_wait.php (--from, --mention, --changed), the handles typed in it, and who it wakes [decision: here]
 - architect-asking.md: How a session asks a decision question or the owner's approval of screenshots: search first, one architect issue each, a Türkçe özet block, then the session ends
+- architect-no-hand-over.md: The architect session does not hand over to a fresh session at a token count (2026-11-10): auto-compact summarises its context in place; what it reads again after a compaction
 - architect.md: Decision questions (2026-10-27): an architect issue; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (erdal), records it [decision: decisions-made-schema.md, decisions-made.md]
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
