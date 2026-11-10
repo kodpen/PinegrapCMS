@@ -237,6 +237,8 @@ function ws_message_payloads($viewer, $rows, $options = array())
         'proposals'  => function_exists('ws_proposals_by_reply') ? ws_proposals_by_reply($ids) : array(),
         // The mails behind messages a mailbox wrote (mail.php).
         'mail'       => function_exists('ws_mail_items_map') ? ws_mail_items_map($rows) : array(),
+        // The OAuth clients people's messages were written through.
+        'via'        => ws_message_via_names($rows),
     );
 
     // The people the reader mentioned in their own messages who are not in
@@ -343,6 +345,9 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'kind'        => (string) $row['kind'],
         'sender_kind' => $agent ? 'app' : (string) $row['sender_kind'],
         'sender'      => $sender,
+        // The OAuth client a person's message was written through, drawn
+        // as "via <client>" beside their name; '' for none.
+        'via'         => $agent ? '' : (string) ($extra['via'][(int) ($row['via_client_id'] ?? 0)] ?? ''),
         'mine'        => $mine,
         // What a guest wrote is drawn with the few marks a guest may use
         // (guests.php), here as on their own page: a guest adds no table.
@@ -470,6 +475,62 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
     }
 
     return $payload;
+}
+
+/**
+ * Was a message a person's own words: written by a person, not through an
+ * OAuth connection (via_client_id), which speaks in their name as a tool
+ * does. Pure.
+ *
+ * @param array|null $message ws_messages row
+ * @return bool
+ */
+function ws_message_by_person($message)
+{
+    return is_array($message) && ((string) ($message['sender_kind'] ?? '') === 'user') && ((int) ($message['via_client_id'] ?? 0) === 0);
+}
+
+/**
+ * The names of the OAuth clients messages were written through, read once.
+ *
+ * @param array[] $rows ws_messages rows
+ * @return string[] by oauth_clients id
+ */
+function ws_message_via_names($rows)
+{
+    static $cache = array();
+
+    $ids = array();
+
+    foreach ((array) $rows as $row) {
+        $id = (int) ($row['via_client_id'] ?? 0);
+
+        if (($id > 0) && !isset($cache[$id])) {
+            $ids[$id] = $id;
+        }
+    }
+
+    if (!empty($ids)) {
+        foreach ($ids as $id) {
+            $cache[$id] = '';
+        }
+
+        foreach ((array) db_items("SELECT id, name FROM oauth_clients WHERE id IN ('" . implode("', '", $ids) . "')") as $client) {
+            $cache[(int) $client['id']] = (string) $client['name'];
+        }
+    }
+
+    $out = array();
+
+    foreach ((array) $rows as $row) {
+        $id = (int) ($row['via_client_id'] ?? 0);
+
+        if ($id > 0) {
+            $out[$id] = $cache[$id] ?? '';
+        }
+    }
+
+    return $out;
 }
 
 /**
@@ -787,7 +848,8 @@ function ws_message_parent_check($channel, $parent_id)
  * @param string $body
  * @param array  $options kind (message | note | decision | task), task_id, file_id,
  *                        file_name, parent_id, app_id (written by an API application
- *                        acting for $viewer)
+ *                        acting for $viewer), via_client_id (a person's message
+ *                        written through that OAuth client, app_id 0)
  * @return array ok, error, message_id, apps_unread (the tags of the applications
  *               it mentions that may not read the channel, for the writer)
  */
@@ -825,9 +887,12 @@ function ws_message_send($viewer, $channel, $body, $options = array())
     // An application posting a decision marks it as itself, never as the
     // person it acts for (channel_memory.php).
     $app_mark = $marked && ($app_id > 0) && ws_marks_kind_ready();
+    // The OAuth client a person's message came through (the "via" badge).
+    $via = (($app_id === 0) && ((int) ($options['via_client_id'] ?? 0) > 0) && function_exists('ws_claude_sessions_ready') && ws_claude_sessions_ready())
+        ? (int) $options['via_client_id'] : 0;
 
     db("INSERT INTO ws_messages (channel_id, parent_id, sender_kind, sender_id, kind, body, task_id, file_id, file_name,
-            marked_by, marked_at, created_at" . ($app_mark ? ', marked_by_kind' : '') . ")
+            marked_by, marked_at, created_at" . ($app_mark ? ', marked_by_kind' : '') . (($via > 0) ? ', via_client_id' : '') . ")
         VALUES (
             '" . (int) $channel['id'] . "',
             '" . $parent_id . "',
@@ -840,7 +905,7 @@ function ws_message_send($viewer, $channel, $body, $options = array())
             '" . e(mb_substr((string) ($options['file_name'] ?? ''), 0, 255)) . "',
             '" . ($marked ? ($app_mark ? $app_id : (int) $viewer['id']) : 0) . "',
             '" . ($marked ? $now : 0) . "',
-            '" . $now . "'" . ($app_mark ? ", 'app'" : '') . ")");
+            '" . $now . "'" . ($app_mark ? ", 'app'" : '') . (($via > 0) ? ", '" . $via . "'" : '') . ")");
 
     $message_id = (int) mysqli_insert_id(db::$con);
 
@@ -965,7 +1030,7 @@ function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
     if ($follows) {
         $followed = ws_thread_follow_agent($channel['id']);
         $message = ws_message($message_id);
-        $decision = ws_thread_follow_decide($followed, $named, $message && ((string) $message['sender_kind'] === 'user'), ws_thread_body_mentions($body));
+        $decision = ws_thread_follow_decide($followed, $named, ws_message_by_person($message), ws_thread_body_mentions($body));
 
         if ($decision['follow'] !== $followed) {
             ws_thread_follow_set($channel['id'], $decision['follow']);

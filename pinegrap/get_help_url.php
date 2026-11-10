@@ -472,14 +472,14 @@ function get_help_url($properties = array())
         'workspace_flows'         => 'workspace-cont#flows',
         'workspace_wtables'       => 'workspace-cont#workflow-tables',
         'workspace_mail'          => 'workspace-cont#e-mails',
-        'workspace_calendar_feed' => 'workspace#calendar-subscription',
+        'workspace_calendar_feed' => 'workspace#work-calendar-subscription',
         'workspace_mcp'           => 'api#mcp',
 
         // API and integrations
         'api_settings'         => 'api#api-keys',
         'api_docs'             => 'api#api-reference',
         'connected_apps'       => 'api#mcp',
-        'connections'          => 'api#connected-accounts',
+        'connections'          => 'site-settings#connected-accounts',
         'marketplace_settings' => 'api#marketplaces',
         'marketplace_products' => 'api#marketplace-products',
 

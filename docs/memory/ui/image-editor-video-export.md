@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## Which formats and limits?
-- `M.ANIM_FORMATS.mp4` and `.webm` (`video: true`): edges 480-1920 (default 1280, 480 on a small-memory device), 24 or 30 fps, 60 s, even sides (`M.animSize(out, edge, even)`, rounded down, at least 2). No repeat field: a video's loop is its player's. Silent.
+- `M.ANIM_FORMATS.mp4` and `.webm` (`video: true`): edges 480-1920 (default 1280, 480 on a small-memory device), 24 or 30 fps, 60 s, even sides (`M.animSize(out, edge, even)`, rounded down, at least 2). No repeat field: a video's loop is its player's. The document's sound goes in as an AAC or Opus track (`ui/image-editor-mix.md`).
 - Switching from GIF snaps an edge another format lists to the largest video edge under it; the picture's own long edge is kept (`M.animSwitch()`).
 
 ## How does the dialog know what the browser can make?

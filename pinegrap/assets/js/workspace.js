@@ -10262,6 +10262,12 @@
                 meta.appendChild(el('span', 'badge rounded-pill ws-guest-badge', t('guest_badge')));
             }
 
+            // A person's message written through an OAuth connection: their
+            // name, and the client it came through beside it.
+            if (message.via) {
+                meta.appendChild(el('span', 'badge rounded-pill ws-via-badge', t('via_badge', message.via)));
+            }
+
             // An MCP agent's answer, under the agent's own name: who asked and
             // through which tool are on its mark (mcp_agent.php).
             if (message.sender && message.sender.mcp) {

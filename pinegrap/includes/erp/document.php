@@ -431,14 +431,6 @@ function erp_invoice_document_data($invoice_id, $source = null)
         'proforma' => lang('PROFORMA INVOICE'),
     );
 
-    $status_labels = array(
-        'draft' => lang('Draft'),
-        'issued' => lang('Issued'),
-        'partially_paid' => lang('Partly paid'),
-        'paid' => lang('Paid'),
-        'cancelled' => lang('Cancelled'),
-    );
-
     $against_number = '';
     if ($is_return && ((int) $invoice['parent_invoice_id'] > 0)) {
         $against_number = (string) db_value("SELECT full_number FROM erp_invoices WHERE id = '" . (int) $invoice['parent_invoice_id'] . "'");
@@ -479,7 +471,7 @@ function erp_invoice_document_data($invoice_id, $source = null)
         'is_return' => $is_return,
         'title' => (is_array($source) && isset($source['title'])) ? (string) $source['title'] : ($titles[$doc_type] ?? $titles['invoice']),
         'status' => (string) $invoice['status'],
-        'status_label' => $status_labels[$invoice['status']] ?? (string) $invoice['status'],
+        'status_label' => erp_invoice_status_label((string) $invoice['status']),
         'is_cancelled' => ((string) $invoice['status'] === 'cancelled'),
         'order_number' => $order_number,
         'against_number' => $against_number,

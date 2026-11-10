@@ -197,7 +197,10 @@ function api_meta_jobs() {
 
 	}
 
-	$runs = pg_cron_last_runs();
+	// The time each job last finished, not the dispatcher's stamp, which it
+	// writes after every tick, crashed or cut at its budget too
+	// (pg_cron_health_runs()).
+	$runs = pg_cron_health_last_runs();
 
 	// null means the table the answer is read from does not exist, which is an
 	// installation that has not run the upgrade. Reported as "not known" rather

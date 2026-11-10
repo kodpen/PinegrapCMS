@@ -299,6 +299,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-11.md: Under whose name is a message shown that a connected application writes? (owner, 2026-11-10)
 - decisions-made-workspace-11.md: What keeps a connected application's message from waking more than before? (architect, 2026-11-10)
 - decisions-made-workspace-11.md: Whose session answers "@Claude"? (owner, 2026-11-10)
+- decisions-made-workspace-12.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-12.md: With which control does an agent ask a one-answer question in a channel? (owner, 2026-11-10, #8554; the shape: architect)
 - decisions-made-workspace-2.md: What may the channel menu hold?
 - decisions-made-workspace-2.md: Where are records created inside a chat?
 - decisions-made-workspace-2.md: Does the customer channel's "New sales quote" stay in the menu?
@@ -515,7 +517,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/user-docs-writing.md: How a pinegrap.com documentation page is written and published: English only, the page's structure (sections, anchors, tables, notes), the editor route, Publish is live, release notes on /changelog
 - workspace/agent-canvas-svg.md: Agents draw Workspace canvases from SVG (POST channels/{id}/canvases) and read any canvas (GET messages/{id}/canvas): Import port, blank picture, pending, who may
 - workspace/agent-channel-flag.md: Agent channel switch (ws_channels.agent_channel, #8440): /agent-channel on|off, its decisions kept apart on the decisions screen, the dashboard and GET /workspace/decisions
-- workspace/agent-checklist-questions.md: How an agent asks people with a checklist in a channel, reads the ticks over the API (checks), is woken by a tick, and closes the question with a decision; who the question rings (question_asked)
+- workspace/agent-checklist-questions.md: When an agent asks with a checklist (several ticks, or agent to agent) and not a poll; the ticks over the API (checks), the wake on a tick, the closing decision; who a question rings (question_asked)
+- workspace/agent-questions.md: How an agent asks the people with a poll or an approval; a one-answer question as a one-choice poll closed once the vote is read; why the outcome is written in the agent's name
 - workspace/channel-agent-rights.md: Who adds, changes or removes a channel's agents ("Agents in this channel" in Channel settings, workspace.channels.agents.*): who may post; the tier and a private channel's new agent only its manager
 - workspace/channel-memory.md: A channel's memory (ws_channel_memory) and the decision mark by a person or an agent (ws_messages.marked_by_kind): rows, routes, the index in the brief, the Memory tab
 - workspace/claude-not-channel-agent.md: Claude is no channel agent: never offered in a channel's Agents list, refused with 422 on the add route, its old ws_channel_agents rows unread but removable

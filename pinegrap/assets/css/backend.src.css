@@ -14665,6 +14665,13 @@ a.ws-chip:hover {
   font-weight: 600;
   font-size: .7rem;
 }
+/* The OAuth client a person's message was written through ("via Claude Code"). */
+.ws-via-badge {
+  background: var(--pg-secondary-bg-subtle);
+  color: var(--pg-secondary-fg-emphasis);
+  font-weight: 500;
+  font-size: .7rem;
+}
 .ws-guest-room .ws-composer {
   border-color: var(--pg-warning-border-subtle);
 }

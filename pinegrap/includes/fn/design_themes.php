@@ -772,7 +772,7 @@ function pg_design_theme_save_file($kind, $name, $css, $user_id)
     if (check_name_availability(array('name' => $file_name)) == false) {
         return lang(array('string' => 'The Theme ({var:1}) already exists.', 'vars' => $file_name));
     }
-    if (@file_put_contents(FILE_DIRECTORY_PATH . '/' . $file_name, $css) === false) {
+    if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $file_name, $css)) {
         return lang(array('string' => '{var:1} could not be written to disk.', 'vars' => $file_name));
     }
     $folder_id = (int)db_value("SELECT folder_id FROM folder WHERE folder_parent = '0' ORDER BY folder_id LIMIT 1");

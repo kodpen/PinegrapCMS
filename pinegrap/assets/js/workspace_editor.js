@@ -1001,6 +1001,19 @@
         return sub.lines.join(' ').replace(/\s+/g, ' ').trim();
     }
 
+    // The note heading level (1 to 3) of a pasted <h1>-<h6>: <h4> and below
+    // are "###"; a heading of a box (ws-heading, drawn one level down by
+    // headingNode()) keeps its own level.
+    function pasteHeading(node, name) {
+        var level = parseInt(name.charAt(1), 10);
+
+        if ((level > 1) && /(^|\s)ws-heading(\s|$)/.test(String(node.getAttribute('class') || ''))) {
+            level -= 1;
+        }
+
+        return Math.min(level, 3);
+    }
+
     function pasteWalk(node, out, ctx) {
         if (node.nodeType === 3) {
             var raw = String(node.nodeValue || '');
@@ -1030,6 +1043,21 @@
 
         if (name === 'BR') {
             out.runs.push({ text: '\n', solid: true, code: false, href: ctx.href, bold: false, italic: false, strike: false, highlight: false });
+            return;
+        }
+
+        // Only a note's box has headings, and only its own lines: an item, a
+        // quote or a cell walks into an output of its own, where a heading
+        // stays a bold line.
+        if (out.headings && /^H[1-6]$/.test(name)) {
+            pasteFlush(out);
+
+            var title = pasteLine(Array.prototype.slice.call(node.childNodes || []), pasteMarks('', style, ctx));
+
+            if (title !== '') {
+                out.lines.push('###'.slice(0, pasteHeading(node, name)) + ' ' + title);
+            }
+
             return;
         }
 
@@ -1282,8 +1310,10 @@
     // A whole pasted document (its body) as the stored markup: empty lines
     // run together, an empty line after a list that words follow (the
     // server draws a list only where nothing follows it in its paragraph).
-    function pasteMarkup(root) {
+    function pasteMarkup(root, headings) {
         var out = pasteOut();
+
+        out.headings = !!headings;
 
         pasteWalk(root, out, { bold: false, italic: false, strike: false, highlight: false, keep: false, href: '' });
         pasteFlush(out);
@@ -4107,11 +4137,11 @@
     // HTML from the clipboard as the stored markup, read in a detached
     // document: DOMParser runs no script and loads nothing, and the document
     // is never put in the page.
-    function pasteHtml(html) {
+    function pasteHtml(html, headings) {
         try {
             var doc = new DOMParser().parseFromString(html, 'text/html');
 
-            return (doc && doc.body) ? pasteMarkup(doc.body) : '';
+            return (doc && doc.body) ? pasteMarkup(doc.body, headings) : '';
         } catch (error) {
             return '';
         }
@@ -5339,7 +5369,7 @@
                 return true;
             }
 
-            var markup = pasteSheet(text) || (html ? pasteHtml(html) : '');
+            var markup = pasteSheet(text) || (html ? pasteHtml(html, !!this.options.headings) : '');
 
             if (markup === '') {
                 return false;

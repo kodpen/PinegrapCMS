@@ -35,7 +35,7 @@ $liveform = new liveform('view_order');
 // every printed row.
 $print_order_recurring = ((int) db_value("SELECT COUNT(*) FROM order_items WHERE order_id = '" . $id . "' AND recurring_payment_period != ''") > 0);
 $output_recurring_headings = $print_order_recurring
-    ? '<th>' . lang('Payment Period') . '</th><th>' . lang('Number of Payments') . '</th><th>' . lang('Start Date') . '</th>'
+    ? '<th scope="col">' . lang('Payment Period') . '</th><th scope="col">' . lang('Number of Payments') . '</th><th scope="col">' . lang('Start Date') . '</th>'
     : '';
 
 
@@ -603,6 +603,9 @@ while ($row = mysqli_fetch_assoc($result)) {
 // the save and cancel buttons will only be outputted if a real ship to exists
 $output_save_button = '';
 $output_order_details = '';
+// The item heading row of the layout without shipping, kept apart so it
+// prints as a <thead> that repeats on every printed page.
+$output_order_details_heading = '';
 if ($ship_to_exists == true) {
     // get all custom shipping form data for this order
     $query =
@@ -785,47 +788,50 @@ if ($ship_to_exists == true) {
 
         // If the first custom product field is active, then output heading for it.
         if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-            $output_custom_field_1_heading = '<th>' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL) . '</th>';
+            $output_custom_field_1_heading = '<th scope="col">' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL) . '</th>';
         }
 
         $output_custom_field_2_heading = '';
 
         // If the second custom product field is active, then output heading for it.
         if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-            $output_custom_field_2_heading = '<th>' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL) . '</th>';
+            $output_custom_field_2_heading = '<th scope="col">' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL) . '</th>';
         }
 
         $output_custom_field_3_heading = '';
 
         // If the third custom product field is active, then output heading for it.
         if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-            $output_custom_field_3_heading = '<th>' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL) . '</th>';
+            $output_custom_field_3_heading = '<th scope="col">' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL) . '</th>';
         }
 
         $output_custom_field_4_heading = '';
 
         // If the fourth custom product field is active, then output heading for it.
         if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-            $output_custom_field_4_heading = '<th>' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL) . '</th>';
+            $output_custom_field_4_heading = '<th scope="col">' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL) . '</th>';
         }
         
         $output_order_details .=
             '<tr>
                 <td colspan="' . $output_colspan . '"' . $product_list_style . '>
                     <table cellpadding="4" class="order_details table table-bordered w-auto">
-                        <tr >
-                            <th>' . lang('Product ID / SKU') . '</th>
-                            <th>' . lang('Short Description') . '</th>
-                            <th>' . lang('Qty') . '</th>
-                            <th>' . lang('Shipped Qty') . '</th>
-                            <th>' . lang('Price') . '</th>
-                            <th>' . lang('Total') . '</th>
+                        <thead>
+                        <tr>
+                            <th scope="col">' . lang('Product ID / SKU') . '</th>
+                            <th scope="col">' . lang('Short Description') . '</th>
+                            <th scope="col">' . lang('Qty') . '</th>
+                            <th scope="col">' . lang('Shipped Qty') . '</th>
+                            <th scope="col">' . lang('Price') . '</th>
+                            <th scope="col">' . lang('Total') . '</th>
                             ' . $output_recurring_headings . '
                             ' . $output_custom_field_1_heading . '
                             ' . $output_custom_field_2_heading . '
                             ' . $output_custom_field_3_heading . '
                             ' . $output_custom_field_4_heading . '
-                        </tr>';
+                        </tr>
+                        </thead>
+                        <tbody>';
         
         // get all order items in order for this ship to
         $query = "SELECT
@@ -1156,7 +1162,8 @@ if ($ship_to_exists == true) {
                     ' . $output_form_row;
         }
         $output_order_details .=
-                '       </table>
+                '       </tbody>
+                    </table>
                     </td>
                 </tr>';
         
@@ -1179,31 +1186,31 @@ if ($ship_to_exists == true) {
     $output_custom_field_1_heading = '';
     // If the first custom product field is active, then output heading for it.
     if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-        $output_custom_field_1_heading = '<th>' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL) . '</th>';
+        $output_custom_field_1_heading = '<th scope="col">' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL) . '</th>';
     }
     $output_custom_field_2_heading = '';
     // If the second custom product field is active, then output heading for it.
     if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-        $output_custom_field_2_heading = '<th>' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL) . '</th>';
+        $output_custom_field_2_heading = '<th scope="col">' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL) . '</th>';
     }
     $output_custom_field_3_heading = '';
     // If the third custom product field is active, then output heading for it.
     if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-        $output_custom_field_3_heading = '<th>' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL) . '</th>';
+        $output_custom_field_3_heading = '<th scope="col">' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL) . '</th>';
     }
     $output_custom_field_4_heading = '';
     // If the fourth custom product field is active, then output heading for it.
     if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-        $output_custom_field_4_heading = '<th>' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL) . '</th>';
+        $output_custom_field_4_heading = '<th scope="col">' . h(ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL) . '</th>';
     }
 
-    $output_order_details .=
-            '<tr >
-                <th>' . lang('Product ID / SKU') . '</th>
-                <th>' . lang('Short Description') . '</th>
-                <th>' . lang('Qty') . '</th>
-                <th>' . lang('Price') . '</th>
-                <th>' . lang('Total') . '</th>
+    $output_order_details_heading =
+            '<tr>
+                <th scope="col">' . lang('Product ID / SKU') . '</th>
+                <th scope="col">' . lang('Short Description') . '</th>
+                <th scope="col">' . lang('Qty') . '</th>
+                <th scope="col">' . lang('Price') . '</th>
+                <th scope="col">' . lang('Total') . '</th>
                 ' . $output_recurring_headings . '
                 ' . $output_custom_field_1_heading . '
                 ' . $output_custom_field_2_heading . '
@@ -1741,7 +1748,7 @@ legend { font-size: .9em; font-weight: bold; }
 
     <!-- PRODUCTS -->
     <div class="ord-section-title" style="margin-bottom:.3em">' . lang('Products') . '</div>
-    <table cellpadding="4" class="order_details" style="width:100%">' . $output_order_details . '</table>
+    <table cellpadding="4" class="order_details" style="width:100%">' . ($output_order_details_heading != '' ? '<thead>' . $output_order_details_heading . '</thead>' : '') . '<tbody>' . $output_order_details . '</tbody></table>
 
     <!-- TOTALS -->
     <table style="margin-left:auto;margin-top:.5em;border-collapse:collapse">

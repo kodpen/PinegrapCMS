@@ -115,7 +115,7 @@
 - mail-transports.md: API mail transports beside SMTP (Postmark, Mailgun, Brevo, Resend, Amazon SES): the driver contract, where the account is kept, when email() uses one, the SMTP Settings card
 - mailchimp-key-kept.md: Mailchimp API key on the Communication settings card: never printed, empty box keeps it, remove tick, data center checked as a plain host label before any request
 - membership-day-in-get-file.md: Which calendar day ends a membership or private access in get_file.php (site zone set before USER_MEMBER) and in the recurring job (the calendar day before)
-- message-carried-values.md: Values a liveform message carries (records, panel input, service and database texts) go in through h(); the connect flash, upload values, logs and PHP-escaped warnings; what is still left
+- message-carried-values.md: Values a liveform message carries (records, panel input, service and database texts) go in through h(); the connect flash, upload values, logs and PHP-escaped warnings
 - multibyte-trim.md: trim()/rtrim()/ltrim() read their character list byte by byte, so "–", "—", "·" or "“" in it breaks other characters; trim those with a /u regex (pg_ai_write_cut(), #744)
 - output-escaping.md: Escaping output: h() for every value in HTML, liveform values raw, lang() in handlers via json_encode(), raw & in query strings, lang() {var:N} values, form labels as text, _sdT(), PHP tags [decision: decisions-made-product-39.md]
 - page-messages-defuse.md: Liveform messages (errors, notices, warnings) are HTML printed into the page before the page eval and marker expansion; pg_defuse_page_message() on store and on print, and the escaped upload refusal
