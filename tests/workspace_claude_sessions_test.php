@@ -204,3 +204,17 @@ function test_workspace_via_badge_is_drawn()
 	pg_assert_contains('ws-via-badge', file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css'));
 	pg_assert_contains("'via_badge'", file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/claude.php'), 'its words are translated');
 }
+
+function test_workspace_forward_keeps_the_connection()
+{
+	// The options a forward writes its message with, checked and sent alike:
+	// a forward through an OAuth connection keeps the client on the message.
+	pg_assert_same(array('forwards' => 2, 'app_id' => 0, 'via_client_id' => 4), ws_forward_send_options(2, array('app_id' => 0, 'via_client_id' => 4)));
+	pg_assert_same(array('forwards' => 1, 'app_id' => 31, 'via_client_id' => 0), ws_forward_send_options(1, array('app_id' => 31)));
+
+	$reflection = new ReflectionFunction('ws_forward_to_channel');
+	$lines = file($reflection->getFileName());
+	$source = implode('', array_slice($lines, $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+
+	pg_assert_contains('ws_message_send($viewer, $target, (string) $comment, ws_forward_send_options(', $source, 'the message is written with them');
+}
