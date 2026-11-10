@@ -87,7 +87,7 @@
 - decisions-made-widgets.md: Decisions list, system widget part: conditions and required controls, translated text, equal old blocks (W16), gallery sources (W5), entity values (W8), 2026-10-27 answers, Photo Gallery folder.
 - decisions-made-workspace-10.md: Decisions list, workspace part 10 (2026-11-09 on): application lines fold; agent activity; table bin, Excel, import; flow failure reason; team replies; channel export; agent questions; unread requests
 - decisions-made-workspace-11.md: Decisions list, workspace part 11 (2026-11-10 on): only a channel's manager adds an agent to a private channel; a connected app's message under the person's name ("via" badge); who answers @Claude
-- decisions-made-workspace-12.md: Decisions list, workspace part 12 (2026-11-10 on): an agent's one-answer question in a channel is a one-choice poll, closed by the asking agent once the answer is read
+- decisions-made-workspace-12.md: Decisions list, workspace part 12 (2026-11-10 on): an agent's one-answer question is a one-choice poll the asking agent closes; the Workspace mail screen, its send path and schema
 - decisions-made-workspace-2.md: Decisions list, workspace part 2 (2026-10-29 on): the channel menu holds only the channel's own items; creates in a chat go through /oluştur (/create): its rights and kinds; the sales quote stays
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
