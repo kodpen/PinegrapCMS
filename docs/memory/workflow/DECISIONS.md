@@ -301,6 +301,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-11.md: Whose session answers "@Claude"? (owner, 2026-11-10)
 - decisions-made-workspace-12.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-12.md: With which control does an agent ask a one-answer question in a channel? (owner, 2026-11-10, #8554; the shape: architect)
+- decisions-made-workspace-12.md: Where is a channel's agent asked in the channel's discussions? (architect, 2026-11-10)
 - decisions-made-workspace-2.md: What may the channel menu hold?
 - decisions-made-workspace-2.md: Where are records created inside a chat?
 - decisions-made-workspace-2.md: Does the customer channel's "New sales quote" stay in the menu?
