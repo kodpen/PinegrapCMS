@@ -112,7 +112,7 @@
 - dashboard-sales-map-data.md: Dashboard sales map widget 1 data side: files, map assets, adding a country, region-name resolution, matching, opening view, number definition, quantile steps.
 - dashboard-sales-map-panel.md: Dashboard sales map widget 1 panel behavior: corner menu with fixed Popper, card colour, permission gates, link gating, brief line signals, reused id 1.
 - dashboard-scroll-regions.md: Dashboard card lists that scroll inside the square card become named keyboard regions (pg_widget_scroll_regions() in welcome.php)
-- dashboard-system-status-gauge.md: The System Status gauge, check chips and Release Notes dialog shared by dashboard widget 2 and the new dashboard's System Status card: functions, what stays byte for byte, the fixtures test
+- dashboard-system-status-gauge.md: The System Status gauge, check chips and Release Notes dialog shared by dashboard widget 2 and the new dashboard's card: functions, the two palettes, what stays byte for byte, the fixtures test
 - dashboard-v2-ai-card.md: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant.js): connected or not, the proposals waiting for the person, giving Claude a job through ws_send; the daily summary
 - dashboard-v2-brief.md: The old dashboard's brief on the new dashboard (#6431): placement in the greeting card, v2 wording and hour, the phone box, the Top section switch, pg_dash_brief.js
 - dashboard-v2-cards-look.md: The new dashboard's shop and other cards as drawn (pictures 16-19, V5 #8315): what each card draws, the data added for it, the differences kept on purpose
@@ -132,6 +132,7 @@
 - dashboard-v2-share.md: New dashboard role defaults and lock (#4975, removal #6393): Share with the team, dashboard_role_default and its remove, which layout a person sees, why the lock skips roles 0-1
 - dashboard-v2-shop-cards.md: The new dashboard's shop cards (shop, salesmap, ops, orders, offers, fx): where each reads its data, the widget queries they share, money as plain text, the map drawing
 - dashboard-v2-side-panel.md: New dashboard side panel (#4888): gallery.php data, pg_dash_panel.js (work area, gallery, Add card tile, top section, look) and its hooks with the edit script
+- dashboard-v2-status-card-look.md: New dashboard System Status card's look (2026-11-10): dash palette, score in the arc's sweep, light by card style, lights off keeps the twinkle, only failed checks in sight, Changes button
 - dashboard-v2-storage.md: The new dashboard's dashboard_layout table (step 11.0.143), the sign-in upsert, the layout and look JSON, the panel actions, the card function contract, the storage alternatives rejected
 - dashboard-v2-visitmap-card.md: New dashboard Visitor map card (cards/visitmap.php, #6464): data source, home country, abroad share, bubbles by province, country fallback; visit country and CF-IPCity city
 - dashboard-v2-width.md: How wide the new dashboard gets and how many columns its grid takes: the 118rem cap, columns by the dashboard's own width (container queries), edit mode, the fallback

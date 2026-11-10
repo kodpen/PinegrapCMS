@@ -823,11 +823,12 @@
   }
 
   /* ── System Status card ───────────────────────────────────────────────
-     Widget 2's gauge (.pg-health* in backend.src.css, kept as it is) and its
-     checks as the drawings' chips, in a card about 340 px wide beside the
-     greeting on a dashboard 58rem wide (a 1000 px window), under it below
-     that. The checks that are fine fold behind one chip. A greeting alone
-     keeps the whole row. */
+     Widget 2's gauge (.pg-health* in backend.src.css) in this dashboard's
+     own colours, and its checks as the drawings' chips, in a card about
+     340 px wide beside the greeting on a dashboard 58rem wide (a 1000 px
+     window), under it below that. Only the failed checks are always drawn;
+     the rest fold behind one chip. A greeting alone keeps the whole row.
+     How the gauge follows the card style is under Look, below. */
 
   @container pgdash (min-width: 58rem) {
     .pg-dash-top:has(> .pg-dash-status) {
@@ -885,16 +886,38 @@
     color: var(--pgd-strong);
   }
 
+  /* The gauge takes the room the folded chips left: the dial as wide as the
+     card, centred between the heading and the chips, which sit at the foot
+     of a card stretched to the greeting's height. */
   .pg-dash-status .pg-health {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: center;
     padding: .25rem 0 0;
   }
 
   .pg-dash-status .pg-health-dial {
-    max-width: 16rem;
+    max-width: 18rem;
   }
 
-  .pg-dash-status .pg-health-score {
-    font-size: 2.5rem;
+  /* The number takes the arc's own sweep, as the name in the greeting takes
+     the dashboard's: a flat ink of its own was one more colour on the card.
+     Inline, so the sweep is laid across the digits, not across the dial. */
+  .pg-dash .pg-dash-status .pg-health-score {
+    display: inline-block;
+    background: linear-gradient(90deg, var(--pg-health-s1), var(--pg-health-s2), var(--pg-health-s3), var(--pg-health-s4));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-size: 2.75rem;
+  }
+
+  @media (forced-colors: active) {
+    .pg-dash .pg-dash-status .pg-health-score {
+      background: none;
+      color: CanvasText;
+    }
   }
 
   .pg-dash-status .pg-health-label {
@@ -905,19 +928,19 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: .375rem;
+    gap: .3125rem;
     margin: 0;
     padding: 0;
   }
 
   .pg-dash-status .pg-check {
-    gap: .375rem;
-    padding: .125rem .5625rem;
+    gap: .3125rem;
+    padding: .0625rem .5rem;
     border: 1px solid var(--pgd-line-2);
-    border-radius: .5rem;
+    border-radius: .4375rem;
     background: transparent;
-    font-size: .75rem;
-    line-height: 1.5;
+    font-size: .6875rem;
+    line-height: 1.45;
     color: var(--pgd-soft);
   }
 
@@ -949,9 +972,9 @@
     color: var(--pgd-good);
   }
 
-  /* The checks past the eighth: one dashed chip that opens them on a row
-     of their own and stays as the way to fold them again. It takes the tone
-     of the worst check it holds. */
+  /* The checks that have not failed: one dashed chip that opens them on a
+     row of their own and stays as the way to fold them again. It is tinted
+     when a warning is among them, and says so in words. */
   .pg-dash-status-more {
     display: inline-flex;
   }
@@ -961,7 +984,7 @@
     flex: 1 1 100%;
     flex-wrap: wrap;
     justify-content: center;
-    gap: .375rem;
+    gap: .3125rem;
   }
 
   /* The opened checks sit in their own box: the browser lays out what
@@ -972,18 +995,18 @@
     flex: 1 1 100%;
     flex-wrap: wrap;
     justify-content: center;
-    gap: .375rem;
+    gap: .3125rem;
   }
 
   .pg-dash-status-more > summary {
     display: inline-flex;
     align-items: center;
     gap: .25rem;
-    padding: .125rem .5625rem;
+    padding: .0625rem .5rem;
     border: 1px dashed var(--pgd-line-2);
-    border-radius: .5rem;
-    font-size: .75rem;
-    line-height: 1.5;
+    border-radius: .4375rem;
+    font-size: .6875rem;
+    line-height: 1.45;
     color: var(--pgd-soft);
     cursor: pointer;
     list-style: none;
@@ -1010,11 +1033,6 @@
   .pg-dash-status-more > summary[data-tone="warn"] {
     border-color: var(--pgd-warn-line);
     color: var(--pgd-warn);
-  }
-
-  .pg-dash-status-more > summary[data-tone="bad"] {
-    border-color: var(--pgd-bad-line);
-    color: var(--pgd-bad);
   }
 
   .pg-dash-status-more > summary:hover {
@@ -1084,6 +1102,140 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
   }
 
+  /* ── Look: the gauge by card style ────────────────────────────────────
+     The System Status gauge is lit the way its card is. What changes is
+     the light around the bar (the bloom and glow layers of backend.src.css)
+     and the groove; the squares, their twinkle and the colours of the score
+     are the same in all four.
+
+     Flat    a plain card, so the bar is drawn, not lit: no bloom, no glow,
+             only the squares and the faint halo that joins them.
+     Neon    the card glows at its edge, and so does the bar: both layers
+             stronger than widget 2 draws them.
+     Glass   light through frosted glass: both layers softer, and the groove
+             a pale band instead of a channel cut into the card.
+     Aurora  the layers as widget 2 draws them.
+
+     Each strength is the rest value a reduced-motion visitor sees; the
+     breath is literal keyframes either side of it, as in backend.src.css.
+     Light theme: backend.src.css already drops the bloom there and keeps a
+     trace of glow; Flat drops that trace too and Neon doubles it. */
+
+  .pg-dash[data-widget-theme="flat"] .pg-health-layer-bloom,
+  .pg-dash[data-widget-theme="flat"] .pg-health-layer-glow {
+    display: none;
+  }
+
+  html[data-bs-theme="dark"] .pg-dash[data-widget-theme="flat"] .pg-health-cell-glow {
+    opacity: .34;
+  }
+
+  html[data-bs-theme="dark"] .pg-dash[data-widget-theme="neon"] .pg-health-layer-glow {
+    opacity: .68;
+  }
+
+  html[data-bs-theme="dark"] .pg-dash[data-widget-theme="neon"] .pg-health-layer-bloom {
+    opacity: .62;
+  }
+
+  html[data-bs-theme="light"] .pg-dash[data-widget-theme="neon"] .pg-health-layer-glow {
+    opacity: .32;
+  }
+
+  html[data-bs-theme="dark"] .pg-dash[data-widget-theme="glass"] .pg-health-layer-glow {
+    opacity: .44;
+  }
+
+  html[data-bs-theme="dark"] .pg-dash[data-widget-theme="glass"] .pg-health-layer-bloom {
+    opacity: .26;
+  }
+
+  html[data-bs-theme="dark"] .pg-dash[data-widget-theme="glass"] .pg-health-track {
+    stroke: #fff;
+    opacity: .1;
+  }
+
+  html[data-bs-theme="light"] .pg-dash[data-widget-theme="glass"] .pg-health-track {
+    stroke: rgba(15, 23, 42, .1);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html[data-bs-theme="dark"] .pg-dash[data-widget-theme="neon"] .pg-health-layer-glow {
+      animation-name: pg-dash-gauge-glow-neon;
+    }
+
+    html[data-bs-theme="dark"] .pg-dash[data-widget-theme="neon"] .pg-health-layer-bloom {
+      animation-name: pg-dash-gauge-bloom-neon;
+    }
+
+    html[data-bs-theme="light"] .pg-dash[data-widget-theme="neon"] .pg-health-layer-glow {
+      animation-name: pg-dash-gauge-glow-neon-light;
+    }
+
+    html[data-bs-theme="dark"] .pg-dash[data-widget-theme="glass"] .pg-health-layer-glow {
+      animation-name: pg-dash-gauge-glow-glass;
+    }
+
+    html[data-bs-theme="dark"] .pg-dash[data-widget-theme="glass"] .pg-health-layer-bloom {
+      animation-name: pg-dash-gauge-bloom-glass;
+    }
+  }
+
+  @keyframes pg-dash-gauge-glow-neon {
+    0%,
+    100% {
+      opacity: .58;
+    }
+
+    50% {
+      opacity: .78;
+    }
+  }
+
+  @keyframes pg-dash-gauge-bloom-neon {
+    0%,
+    100% {
+      opacity: .5;
+    }
+
+    50% {
+      opacity: .74;
+    }
+  }
+
+  @keyframes pg-dash-gauge-glow-neon-light {
+    0%,
+    100% {
+      opacity: .25;
+    }
+
+    50% {
+      opacity: .39;
+    }
+  }
+
+  @keyframes pg-dash-gauge-glow-glass {
+    0%,
+    100% {
+      opacity: .36;
+    }
+
+    50% {
+      opacity: .52;
+    }
+  }
+
+  @keyframes pg-dash-gauge-bloom-glass {
+    0%,
+    100% {
+      opacity: .2;
+    }
+
+    50% {
+      opacity: .32;
+    }
+  }
+
   /* ── Look: backdrop ───────────────────────────────────────────────────
      The drawings' washes behind the new dashboard, over the old
      dashboard's rules for #content[data-panel-backdrop] in backend.src.css,
@@ -1126,9 +1278,11 @@
 
   /* ── Look: density and lights ─────────────────────────────────────────
      Compact narrows the cards' padding and the grid's gaps; the top row
-     keeps its own, as drawn. Lights off drops the backdrop, shadows, blur
-     and the gauge's glow, and holds its twinkle as an off-screen dial is held:
-     smoother on a weak device. */
+     keeps its own, as drawn. Lights off drops what the switch names, the
+     lights and shadows: the backdrop, shadows, blur and the gauge's bloom
+     and glow, in every card style. The gauge's squares go on twinkling; a
+     visitor who wants no motion says so to the browser, and an off-screen
+     dial is held anyway. */
 
   .pg-dash-compact .pg-dash-card {
     padding: .75rem .875rem;
@@ -1145,11 +1299,6 @@
 
   #content.pg-dash.pg-dash-calm[data-panel-backdrop] {
     background-image: none;
-  }
-
-  .pg-dash-calm .pg-health-cells > rect,
-  .pg-dash-calm .pg-health-layer {
-    animation-play-state: paused;
   }
 
   .pg-dash-calm .pg-health-layer-bloom,
