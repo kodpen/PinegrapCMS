@@ -2166,6 +2166,8 @@ function ws_claude_js_strings()
         'claude_draft_opened'   => lang('The task was opened.'),
         'claude_changes'        => lang('Changes Claude proposes'),
         'proposal_changes'      => ws_js_template('Changes {var:1} proposes', 1),
+        // The OAuth client a person's message was written through.
+        'via_badge'             => ws_js_template('via {var:1}', 1),
         'change_apply'          => lang('Apply'),
         'change_dismiss'        => lang('Set aside'),
         'change_applied'        => ws_js_template('Applied by {var:1} · {var:2}', 2),
