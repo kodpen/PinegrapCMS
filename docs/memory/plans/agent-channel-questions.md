@@ -10,7 +10,7 @@ description: Plan (owner 2026-11-08): agents ask people with a checklist in an a
 - A message whose body is `::: question` then `- [ ] option` lines shows as a titled checklist; whoever may write in the channel ticks it, an application's message too (`ws_render_body()`, ticks in `ws_checks`, `ws_checks_map()`). `GET /workspace/sync` lists a ticked message under `changed`. The API's message carries no ticks: `text` and `body` are as written (`ws_api_message_present()`).
 - An application writes such a message today (`tools/ws_post.php`), and a `decision` message with `parent_id`.
 
-## Step AQ (S, no schema)
+## Step AQ (S, no schema) — in progress
 - Claim as `[plan:agent-channel-questions] AQ — checklist questions`.
 - API: the message (sync `messages` and `changed`, a channel's messages, one message) gets `checks`, one entry per checklist item: `{item, text, checked, by: {user_id, name} | null, at}`, the tick over the written state as the panel shows it; a pure helper beside `ws_api_message_present()`, its schema in `ws_api_message_schema()`, a test. Who may tick is unchanged.
 - Bell (owner, 2026-11-09, `workflow/decisions-made-workspace-10.md`): a checklist question or a poll that an application posts rings the people it mentions, whatever their notify level, and the channel's owners (`ws_channel_members.role`) when it mentions nobody, as `approval_requested` rings approvers. A kind of its own through `ws_notify()` and `ws_inbox_describe()`; `ws_inbox.kind` is a VARCHAR, so no schema. People's own polls and checklists stay as they are.
