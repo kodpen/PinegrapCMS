@@ -6,7 +6,7 @@ description: ^^email_preferences_url^^ and ^^confirm_subscription_url^^ in form 
 ## What do the two variables print?
 - `^^email_preferences_url^^`: the signed `email_preferences.php` address for the recipient (`pg_email_preferences_url()` over the pure `pg_email_preferences_url_build()`, `includes/fn/mail.php`). '' for an empty address or one without "@" (no stricter check: every campaign recipient keeps `List-Unsubscribe`) or without `ENCRYPTION_KEY`.
 - `^^confirm_subscription_url^^`: `pg_cf_confirm_subscription_url()`, the link `pg_fs_hold_submission()` keeps in `pg_fs_pending_url()` when a double opt-in form held the group (`core/form-double-opt-in.md`), only for the contact's own address, normalised (`pg_cf_confirm_subscription_url_for()`); '' otherwise, a resend included. Own HMAC prefix, 7-day expiry.
-- HTML: `%5E%5Ename%5E%5E` the editor stored inside a tag (any hex case) is filled like `^^name^^` (`pg_cf_mail_link_decode_tokens()`, #PR); the recipient got the encoded token before. Text between tags and plain text are typed, so `%5E%5E` there stays.
+- HTML: `%5E%5Ename%5E%5E` the editor stored inside a tag (any hex case) is filled like `^^name^^` (`pg_cf_mail_link_decode_tokens()`, #8592); the recipient got the encoded token before. Text between tags and plain text are typed, so `%5E%5E` there stays.
 - Write them bare or alone in a `[[...||...]]` block: `[[Manage your e-mails: ^^email_preferences_url^^]]`. Not inside `{if ...}` and not in the same block as `^^reference_code^^`: the form item view fills them before those are read, so `{if ^^email_preferences_url^^ == ''}` loses its field.
 
 ## Who gets a link?
