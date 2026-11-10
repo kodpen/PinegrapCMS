@@ -6,7 +6,8 @@
  * (contact_group.joined): one payload per contact the members_changed event
  * added (includes/fn/events.php), the record it is about, the group filter of
  * its rule, the groups' labels and what the flow's box gives
- * (includes/workspace/watch.php, flow_anchors.php). Nothing here reads the
+ * (includes/workspace/watch.php, flow_anchors.php), and the custom form's
+ * group loop announcing the contacts its insert added. Nothing here reads the
  * database.
  *
  * @author      Erdal Güral (Kodpen)
@@ -21,6 +22,33 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/watch.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_anchors.php');
+
+// The custom form's group loop counts the row its insert wrote: one row is
+// the contact joining, none (a failed write) announces nobody.
+function test_audiences_joined_event_form_door_counts_the_written_row()
+{
+	pg_assert_same(array(12), pg_fs_confirm_joined('12', 1), 'one row written');
+	pg_assert_same(array(), pg_fs_confirm_joined(12, 0), 'no row written');
+	pg_assert_same(array(), pg_fs_confirm_joined(12, -1), 'the write failed');
+	pg_assert_same(array(), pg_fs_confirm_joined(0, 1), 'no contact');
+}
+
+// The form door announces through the same seam as every other door, after
+// its insert and only from the branch that inserts.
+function test_audiences_joined_event_form_door_announces_its_insert()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/custom_form.php');
+	$loop = strpos($source, 'foreach ($contact_groups as $contact_group_id)');
+	pg_assert_true($loop !== false, 'the group loop is there');
+
+	$insert = strpos($source, 'INSERT INTO contacts_contact_groups_xref', (int) $loop);
+	$announce = strpos($source, 'pg_announce_contact_group_members(', (int) $loop);
+	pg_assert_true($insert !== false, 'the loop inserts');
+	pg_assert_true(($announce !== false) && ($announce > $insert), 'the loop announces after its insert');
+
+	$between = substr($source, (int) $insert, (int) $announce - (int) $insert);
+	pg_assert_true(strpos($between, 'pg_fs_confirm_joined($contact_id, mysqli_affected_rows(') !== false, 'only the written row is announced');
+}
 
 // One payload for each contact added, none for those taken out.
 function test_audiences_joined_event_one_payload_per_added_contact()

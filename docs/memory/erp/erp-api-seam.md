@@ -22,7 +22,7 @@ description: ERP's only door into the external API, includes/erp/api.php: five h
 
 ## Which permission groups exist?
 - `erp` and `erp_cash` (the till is a separate panel right). Rows carry `label`, `description` (through `lang()`) and `icon`: the application screen prints a module's row as given (`api_settings_group_text()`), "Erp" with an empty line otherwise.
-- Ceiling: `api_load_owner()` carries every permission column (`api_owner_permission_columns()`); `erp_owner_scopes()` gives role < 3 all four; otherwise `erp:read` with `manage_erp`, `erp_cash:read` with `manage_erp_cash` too, each `:write` unless `manage_erp_readonly`. `erp_api_owner()` still reads `manage_erp_cash` itself for the receipt gate.
+- Ceiling: `api_load_owner()` carries every permission column (`api_owner_permission_columns()`); `erp_owner_scopes()` gives role < 3 all four; otherwise `erp:read` with `manage_erp`, `erp_cash:read` with `manage_erp_cash` too, each `:write` unless `manage_erp_readonly`. `erp_api_owner()` takes `manage_erp_cash` from that owner for the receipt gate (#8546).
 
 ## Which error codes and wire rules apply?
 - A non-409 code comes from `api_error_catalogue()`: `validation_failed` (422, with the field), `not_found`, `forbidden`, `invalid_cursor`, `service_unavailable`, and the ERP's `period_locked` / `credit_limit` (422). A new one is a catalogue row in an API file; the checker fails an unexplained one. A 409 is named by its route and explained in the route's description (`invoice_not_draft`, `invoice_at_provider`; api/api-endpoint-rules.md).

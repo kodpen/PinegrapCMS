@@ -10,6 +10,7 @@ module: comments
 
 ## What symptom did this fix?
 - On a designed record page, approving, holding, scheduling or deleting a comment in Comments > Edit Comment or through the API left the list's comment count at 0 or too high, the newest comment and last activity stale, and the piece's author was never mailed on approval. Both paths keyed on page type 'form item view'.
+- A scheduled publish set `newest_comment_id` to the comment it published, and a staff-scheduled comment by the submitter mailed them (#8552).
 
 ## What does moderation rebuild?
 - `pg_comment_refresh_record_info($page_id, $item_type, $item_id)` rebuilds the (record, page) row of `submitted_form_info`: `number_of_comments` (published comments of that thread), `newest_comment_id` (created_timestamp DESC, id DESC; 0 when none), `number_of_views` kept with `MAX()`. Duplicate rows collapse into one; every value is an integer.
@@ -19,7 +20,8 @@ module: comments
 ## Which paths call it, and when?
 - `edit_comment.php`: after the delete, and on every save (publish, hold, schedule, edit) right after the UPDATE.
 - API `POST /comments/{id}`: after an update that sends `published` (not `featured` alone); `POST /comments/{id}/delete`: after the delete.
-- `add_comment.php`, `job.php` (scheduled publish) and `submit_order.php` keep their own copies of the rebuild. `job.php` keys on the row's item type; `add_comment.php` keys on page type, after it sets 'form item view' for a designed record page (`pg_comment_thread_verify()` returned a record); `submit_order.php` maps classic page types only.
+- `job.php` (scheduled publish): after the claim, before the e-mails; submitter mail by the writer rule (#8552).
+- `add_comment.php` and `submit_order.php` keep their own copies of the rebuild. `add_comment.php` keys on page type, after it sets 'form item view' for a designed record page (`pg_comment_thread_verify()` returned a record); `submit_order.php` maps classic page types only.
 
 ## Why before the e-mails?
 - The subjects of the submitter and watcher e-mails (`^^number_of_comments^^`, `^^newest_comment^^`) read that row (`get_variable_submitted_form_data_for_content()`), so they show the count after the change, as on `add_comment.php`.
@@ -34,6 +36,5 @@ module: comments
 
 ## What is left?
 - `includes/api/schema.php` comments.update text: add "unless they wrote it".
-- `job.php`: switch to the helper and gate its submitter mail with the writer rule (today a staff-scheduled comment by the submitter mails them).
 - `includes/fn/mail.php`: the admin e-mail link is built from page type (no `?r=` on a designed page); the submitter mail's From address comes via `form_item_view_pages`, which a designed page lacks.
 - `submit_order.php` product comments; `duplicate_page_f.php` copies no counter rows; a submitter who also watches gets two e-mails.

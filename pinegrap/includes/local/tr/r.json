@@ -2015,6 +2015,8 @@
     "Routine and travel vaccines for adults and children.": "Yetişkinler ve çocuklar için rutin ve seyahat aşıları.",
     "Routing": "Yönlendirme",
     "Row": "Satır",
+    "Row #{var:1}": "Satır #{var:1}",
+    "Row #{var:1} (deleted, in the bin)": "Satır #{var:1} (silinmiş, çöp kutusunda)",
     "Row 1 is the header. A cell that starts with = is worked out: =B2*C2, =SUM(D2:D9) (TOPLA), + - * / and %. Separate the values of a function with ;": "1. satır başlıktır. = ile başlayan hücre hesaplanır: =B2*C2, =TOPLA(D2:D9) (SUM), + - * / ve %. İşlevin değerlerini ; ile ayırın.",
     "Row Actions": "İşlemler",
     "Row ID (order_items.id)": "Satır ID (order_items.id)",

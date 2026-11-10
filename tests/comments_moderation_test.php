@@ -5,7 +5,8 @@
  * Tests for comment moderation in includes/fn/comments.php: which form record
  * a stored comment belongs to, when its first publish mails the record's
  * submitter, and which moderation paths (edit_comment.php, the external API)
- * rebuild the record's comment count and newest comment.
+ * rebuild the record's comment count and newest comment; the scheduled publish
+ * in job.php uses the same rebuild and writer rule.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -151,6 +152,15 @@ function test_comments_moderation_paths()
 	$watchers = ($select !== false) ? strpos($job, 'send_comment_email_to_watchers(', $select) : false;
 	$loop = ($watchers !== false) ? substr($job, $select, $watchers - $select) : '';
 
-	pg_assert_true(strpos($loop, "\$comment['item_type'] == 'submitted_form'") !== false, 'the scheduled-comment block is found');
+	$refresh = strpos($loop, 'pg_comment_refresh_record_info(');
+	$admin = strpos($loop, 'send_comment_email_to_administrators(');
+	$due = strpos($loop, 'pg_comment_submitter_mail_due(');
+	$submitter = strpos($loop, 'send_comment_email_to_custom_form_submitter(');
+
+	pg_assert_true($refresh !== false, 'the scheduled-comment block is found and rebuilds through the helper');
 	pg_assert_false(strpos($loop, 'page_type') !== false, 'and never the page type');
+	pg_assert_false(strpos($loop, 'INSERT INTO submitted_form_info') !== false, 'the scheduled publish keeps no counter copy of its own');
+	pg_assert_true(($refresh !== false) && ($admin !== false) && ($submitter !== false) && ($refresh < $admin) && ($refresh < $submitter), 'it rebuilds before the e-mails');
+	pg_assert_true(($due !== false) && ($submitter !== false) && ($due < $submitter) && (strpos(substr($loop, $due, $submitter - $due), '{') !== false), 'the submitter e-mail sits inside the writer rule');
+	pg_assert_true(($select !== false) && ($from !== false) && (strpos(substr($job, $select, $from - $select), 'created_user_id') !== false), 'the scheduled publish reads the writer');
 }

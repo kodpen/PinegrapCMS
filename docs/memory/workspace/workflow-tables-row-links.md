@@ -32,7 +32,7 @@ description: Row links of workflow tables (type row, "Row link", wtable_links.ph
 - Flows: a link reads as the row id; Read a row by id on the linked table follows it; Add/Change a row take an id. The AI catalogue hints for `row_get`, `row_set` say so; `row_table_unread` is worded for the flow's owner.
 - Import: never guessed or chosen for a new column; into a row column a value is the linked row's text (case aside) or `#N` (`ws_wtable_link_import_rows()`); no match stays text and is refused `not_row`. The download writes the text the screen shows.
 - Privacy: a row cell names nobody (`pg_privacy_wtable_cell_hits()`); a deleted column's leftover int is still read as a person id.
-- A column type change (step 8) is not taught the `row` type in this step.
+- Change type (`wtable_retype.php`) refuses a row link both ways: `type_not_changeable` from it, `type_unknown` to it.
 
 ## Tests
 - `tests/workspace_wtable_links_test.php`, `tests/workspace_flow_row_links_test.php`.

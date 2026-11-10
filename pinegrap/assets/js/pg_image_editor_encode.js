@@ -12,17 +12,23 @@
  * RIFF. APNG and WebP keep each later frame's changed rectangle and merge a
  * frame that repeats the one before into its delay. Video through the
  * platform's VideoEncoder (WebCodecs): H.264 in an MP4 with its index first,
- * or VP9 in a WebM with its cues first, both from their own muxers.
+ * or VP9 in a WebM with its cues first, both from their own muxers. A
+ * video's sound, mixed on the page, goes through the platform's
+ * AudioEncoder (AAC for MP4, Opus for WebM) and is interleaved with the
+ * frames in the same muxers.
  *
  * Runs as a worker (messages below), on the page where a site's policy
  * refuses the worker (window.PgImageEncode), and under Node for the tests
  * (module.exports): the same object in each.
  *
  * Messages in:  { type: 'begin', format, width, height, fps, loop, dither, count,
- *                 bitrate, codecs }   (the last two for video)
+ *                 bitrate, codecs, audio }   (the last three for video;
+ *                 audio { codec, kind, rate, channels, bitrate } or none)
  *               { type: 'sample', data }   (an ArrayBuffer of RGBA)
  *               { type: 'estimate' }       -> { type: 'estimate', header, frame }
  *               { type: 'frame', data }    -> { type: 'framed', index }
+ *               { type: 'audio', data }    (a Float32 ArrayBuffer per channel)
+ *                                          -> { type: 'audioed' }
  *               { type: 'end' }            -> { type: 'file', data, mime }
  * A failure answers { type: 'error', message }.
  *
@@ -937,53 +943,182 @@
     // The unity matrix of mvhd and tkhd.
     var MATRIX = [].concat(u32(0x10000), u32(0), u32(0), u32(0), u32(0x10000), u32(0), u32(0), u32(0), u32(0x40000000));
 
-    // An MP4 of H.264 samples, the index (moov) before the data so a player
-    // starts before the whole file is in: one track, one chunk, a constant
-    // frame duration. samples: { data, key }; avcc: the decoder
-    // configuration record WebCodecs hands with the first chunk.
-    function mp4File(w, h, fps, samples, avcc) {
-        var scale = 90000, delta = Math.round(scale / fps), dur = delta * samples.length, ms = Math.round(dur / 90);
-        var sizes = [], keys = [];
+    function ascii(s) {
+        return s.split('').map(function (c) { return c.charCodeAt(0); });
+    }
 
-        samples.forEach(function (s, i) {
-            sizes = sizes.concat(u32(s.data.length));
+    // Equal neighbours as [count, value] runs (stts, stsc).
+    function runs(list) {
+        var out = [];
 
-            if (s.key) {
-                keys = keys.concat(u32(i + 1));
+        list.forEach(function (v) {
+            var last = out[out.length - 1];
+
+            if (last && (last[1] === v)) {
+                last[0]++;
+            } else {
+                out.push([1, v]);
             }
         });
 
-        var name = 'Pinegrap'.split('').map(function (c) { return c.charCodeAt(0); });
+        return out;
+    }
+
+    // The order of the chunks in mdat: each track's samples (times in
+    // seconds) cut every span seconds, the tracks' chunks of one span side
+    // by side, so a player reading on finds picture and sound together.
+    // Answers [{ track, from, count }] and fills each track's chunks.
+    function interleave(tracks, span) {
+        var order = [], next = tracks.map(function () { return 0; }), k;
+
+        tracks.forEach(function (tr) { tr.chunks = []; });
+
+        for (k = span; ; k += span) {
+            tracks.forEach(function (tr, n) {
+                var first = next[n];
+
+                while ((next[n] < tr.times.length) && (tr.times[next[n]] < k)) {
+                    next[n]++;
+                }
+
+                if (next[n] > first) {
+                    tr.chunks.push(next[n] - first);
+                    order.push({ track: n, from: first, count: next[n] - first });
+                }
+            });
+
+            if (tracks.every(function (tr, n) { return next[n] >= tr.times.length; })) {
+                return order;
+            }
+        }
+    }
+
+    // An MPEG-4 descriptor: tag, a one-byte size, the body.
+    function descriptor(tag, parts) {
+        var body = join(parts);
+
+        return join([[tag, body.length], body]);
+    }
+
+    // AAC-LC's AudioSpecificConfig for a rate and channel count, where the
+    // encoder hands none.
+    function aacConfig(rate, channels) {
+        var idx = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000].indexOf(rate), bits;
+
+        bits = (2 << 11) | ((idx < 0 ? 3 : idx) << 7) | ((channels & 15) << 3);
+
+        return [bits >> 8, bits & 255];
+    }
+
+    // An MP4 of H.264 samples and, with audio, its AAC track: the index
+    // (moov) before the data so a player starts before the whole file is
+    // in, a constant frame duration. Without sound one chunk; with it a
+    // chunk of each track per second, side by side. samples: { data, key };
+    // avcc: the decoder configuration record WebCodecs hands with the first
+    // chunk; audio: { rate, channels, bitrate, chunks: { data, ts, dur }
+    // (microseconds), desc } or none.
+    function mp4File(w, h, fps, samples, avcc, audio) {
+        var scale = 90000, delta = Math.round(scale / fps), name = ascii('Pinegrap');
+        var sound = (audio && audio.chunks && audio.chunks.length) ? audio : null;
         var avc1 = box('avc1', [zeros(6), u16(1), zeros(16), u16(w), u16(h), u32(0x480000), u32(0x480000), u32(0), u16(1),
             [name.length].concat(name), zeros(31 - name.length), u16(0x18), [255, 255], box('avcC', [avcc])]);
+        var tracks = [{
+            id: 1, scale: scale, sound: false, entry: avc1,
+            samples: samples, times: samples.map(function (s, i) { return i / fps; }), durs: samples.map(function () { return delta; })
+        }];
 
-        function moov(offset) {
-            var stbl = box('stbl', [
-                fullBox('stsd', 0, [u32(1), avc1]),
-                fullBox('stts', 0, [u32(1), u32(samples.length), u32(delta)]),
-                fullBox('stss', 0, [u32(keys.length / 4), keys]),
-                fullBox('stsc', 0, [u32(1), u32(1), u32(samples.length), u32(1)]),
-                fullBox('stsz', 0, [u32(0), u32(samples.length), sizes]),
-                fullBox('stco', 0, [u32(1), u32(offset)])
-            ]);
-            var minf = box('minf', [fullBox('vmhd', 1, [zeros(8)]), box('dinf', [fullBox('dref', 0, [u32(1), fullBox('url ', 1, [])])]), stbl]);
-            var mdia = box('mdia', [
-                fullBox('mdhd', 0, [u32(0), u32(0), u32(scale), u32(dur), u16(0x55c4), u16(0)]),
-                fullBox('hdlr', 0, [u32(0), [0x76, 0x69, 0x64, 0x65], zeros(12), name, [0]]),
-                minf
-            ]);
-            var tkhd = fullBox('tkhd', 3, [u32(0), u32(0), u32(1), u32(0), u32(ms), zeros(8), u16(0), u16(0), u16(0), u16(0), MATRIX, u32(w * 65536), u32(h * 65536)]);
+        if (sound) {
+            var asc = (sound.desc && sound.desc.length) ? sound.desc : aacConfig(sound.rate, sound.channels);
+            var esds = fullBox('esds', 0, [descriptor(3, [u16(0), [0],
+                descriptor(4, [[0x40, 0x15, 0, 0, 0], u32(sound.bitrate), u32(sound.bitrate), descriptor(5, [asc])]),
+                descriptor(6, [[2]])])]);
 
-            return box('moov', [
-                fullBox('mvhd', 0, [u32(0), u32(0), u32(1000), u32(ms), u32(0x10000), u16(0x100), zeros(10), MATRIX, zeros(24), u32(2)]),
-                box('trak', [tkhd, mdia])
-            ]);
+            tracks.push({
+                id: 2, scale: sound.rate, sound: true,
+                entry: box('mp4a', [zeros(6), u16(1), zeros(8), u16(sound.channels), u16(16), zeros(4), u32(sound.rate * 65536), esds]),
+                samples: sound.chunks, times: sound.chunks.map(function (c) { return c.ts / 1e6; }),
+                durs: sound.chunks.map(function (c) { return Math.max(1, Math.round(c.dur * sound.rate / 1e6)); })
+            });
         }
 
-        var ftyp = box('ftyp', [[0x69, 0x73, 0x6f, 0x6d], u32(0x200), [0x69, 0x73, 0x6f, 0x6d, 0x69, 0x73, 0x6f, 0x32, 0x61, 0x76, 0x63, 0x31, 0x6d, 0x70, 0x34, 0x31]]);
-        var head = moov(0).length, data = join(samples.map(function (s) { return s.data; }));
+        var order = interleave(tracks, sound ? 1 : Infinity), total = 0;
 
-        return join([ftyp, moov(ftyp.length + head + 8), u32(8 + data.length), [0x6d, 0x64, 0x61, 0x74], data]);
+        tracks.forEach(function (tr) {
+            tr.dur = tr.durs.reduce(function (a, b) { return a + b; }, 0);
+            tr.ms = Math.round(tr.dur * 1000 / tr.scale);
+            total = Math.max(total, tr.ms);
+        });
+
+        function trak(tr, offsets) {
+            var sizes = [], keys = [], stts = runs(tr.durs), stsc = [], at = 0;
+
+            tr.samples.forEach(function (s, i) {
+                sizes = sizes.concat(u32(s.data.length));
+
+                if (!tr.sound && s.key) {
+                    keys = keys.concat(u32(i + 1));
+                }
+            });
+
+            // A row per run of chunks with the same sample count, from its
+            // first chunk.
+            runs(tr.chunks).forEach(function (r) {
+                stsc = stsc.concat(u32(at + 1), u32(r[1]), u32(1));
+                at += r[0];
+            });
+
+            var stbl = box('stbl', [
+                fullBox('stsd', 0, [u32(1), tr.entry]),
+                fullBox('stts', 0, [u32(stts.length)].concat(stts.map(function (r) { return join([u32(r[0]), u32(r[1])]); }))),
+                tr.sound ? [] : fullBox('stss', 0, [u32(keys.length / 4), keys]),
+                fullBox('stsc', 0, [u32(stsc.length / 12), stsc]),
+                fullBox('stsz', 0, [u32(0), u32(tr.samples.length), sizes]),
+                fullBox('stco', 0, [u32(offsets.length)].concat(offsets.map(u32)))
+            ]);
+            var minf = box('minf', [
+                tr.sound ? fullBox('smhd', 0, [u16(0), u16(0)]) : fullBox('vmhd', 1, [zeros(8)]),
+                box('dinf', [fullBox('dref', 0, [u32(1), fullBox('url ', 1, [])])]),
+                stbl
+            ]);
+            var mdia = box('mdia', [
+                fullBox('mdhd', 0, [u32(0), u32(0), u32(tr.scale), u32(tr.dur), u16(0x55c4), u16(0)]),
+                fullBox('hdlr', 0, [u32(0), ascii(tr.sound ? 'soun' : 'vide'), zeros(12), name, [0]]),
+                minf
+            ]);
+            var tkhd = fullBox('tkhd', 3, [u32(0), u32(0), u32(tr.id), u32(0), u32(tr.ms), zeros(8), u16(0), u16(0), u16(tr.sound ? 0x100 : 0), u16(0), MATRIX,
+                u32(tr.sound ? 0 : w * 65536), u32(tr.sound ? 0 : h * 65536)]);
+
+            return box('trak', [tkhd, mdia]);
+        }
+
+        function moov(offsets) {
+            return box('moov', [
+                fullBox('mvhd', 0, [u32(0), u32(0), u32(1000), u32(total), u32(0x10000), u16(0x100), zeros(10), MATRIX, zeros(24), u32(tracks.length + 1)])
+            ].concat(tracks.map(function (tr, n) { return trak(tr, offsets[n]); })));
+        }
+
+        // Each chunk's place in the file once the index's size is known (it
+        // does not depend on the offsets' values).
+        function offsets(start) {
+            var out = tracks.map(function () { return []; }), at = start;
+
+            order.forEach(function (c) {
+                out[c.track].push(at);
+                tracks[c.track].samples.slice(c.from, c.from + c.count).forEach(function (s) { at += s.data.length; });
+            });
+
+            return out;
+        }
+
+        var ftyp = box('ftyp', [ascii('isom'), u32(0x200), ascii('isomiso2avc1mp41')]);
+        var head = moov(offsets(0)).length, data = [];
+
+        order.forEach(function (c) {
+            tracks[c.track].samples.slice(c.from, c.from + c.count).forEach(function (s) { data.push(s.data); });
+        });
+        data = join(data);
+
+        return join([ftyp, moov(offsets(ftyp.length + head + 8)), u32(8 + data.length), ascii('mdat'), data]);
     }
 
     // An EBML number as bytes: an element ID as written, a size as a
@@ -1046,21 +1181,42 @@
         return b;
     }
 
-    // A WebM of VP9 frames: the header, Info, Tracks, the Cues before the
-    // Clusters (each starts at a key frame, at most every 30 s by its
-    // 16-bit block times) so a player seeks without reading to the end.
-    function webmFile(w, h, fps, frames) {
-        var clusters = [], cur = null;
+    // The Opus identification header a WebM's audio track carries: the
+    // encoder's own when it hands one, else one with libopus's usual
+    // pre-skip at 48 kHz.
+    function opusHead(desc, rate, channels) {
+        if (desc && (desc.length >= 19) && (String.fromCharCode.apply(null, Array.prototype.slice.call(desc, 0, 8)) === 'OpusHead')) {
+            return new Uint8Array(desc);
+        }
 
-        frames.forEach(function (f, i) {
-            var ms = Math.round(i * 1000 / fps);
+        return new Uint8Array(ascii('OpusHead').concat([1, channels, 312 & 255, 312 >> 8, rate & 255, (rate >> 8) & 255, (rate >> 16) & 255, (rate >>> 24) & 255, 0, 0, 0]));
+    }
 
-            if (!cur || (f.key && (ms - cur.ms > 0)) || (ms - cur.ms > 30000)) {
-                cur = { ms: ms, blocks: [] };
+    // A WebM of VP9 frames and, with audio, its Opus track: the header,
+    // Info, Tracks, the Cues before the Clusters (each starts at a key
+    // frame, at most every 30 s by its 16-bit block times) so a player
+    // seeks without reading to the end. Sound blocks sit among the frames
+    // in time order. audio as for mp4File().
+    function webmFile(w, h, fps, frames, audio) {
+        var clusters = [], cur = null, sound = (audio && audio.chunks && audio.chunks.length) ? audio : null, end = frames.length * 1000 / fps;
+        var blocks = frames.map(function (f, i) { return { track: 1, ms: Math.round(i * 1000 / fps), key: f.key, data: f.data }; });
+
+        if (sound) {
+            sound.chunks.forEach(function (c) {
+                blocks.push({ track: 2, ms: Math.round(c.ts / 1000), key: true, data: c.data });
+                end = Math.max(end, (c.ts + c.dur) / 1000);
+            });
+            // By time, a frame before the sound of the same millisecond.
+            blocks.sort(function (a, b) { return (a.ms - b.ms) || (a.track - b.track); });
+        }
+
+        blocks.forEach(function (b) {
+            if (!cur || ((b.track === 1) && b.key && (b.ms - cur.ms > 0)) || (b.ms - cur.ms > 30000)) {
+                cur = { ms: b.ms, blocks: [] };
                 clusters.push(cur);
             }
 
-            cur.blocks.push(ebml(0xa3, [[0x81], [((ms - cur.ms) >> 8) & 255, (ms - cur.ms) & 255, f.key ? 0x80 : 0], f.data]));
+            cur.blocks.push(ebml(0xa3, [[0x80 | b.track], [((b.ms - cur.ms) >> 8) & 255, (b.ms - cur.ms) & 255, b.key ? 0x80 : 0], b.data]));
         });
 
         clusters = clusters.map(function (c) {
@@ -1068,9 +1224,20 @@
         });
 
         var header = ebml(0x1a45dfa3, [ebml(0x4286, 1), ebml(0x42f7, 1), ebml(0x42f2, 4), ebml(0x42f3, 8), ebml(0x4282, 'webm'), ebml(0x4287, 4), ebml(0x4285, 2)]);
-        var info = ebml(0x1549a966, [ebml(0x2ad7b1, 1000000), ebml(0x4d80, 'Pinegrap'), ebml(0x5741, 'Pinegrap'), ebml(0x4489, [float64(frames.length * 1000 / fps)])]);
-        var tracks = ebml(0x1654ae6b, [ebml(0xae, [ebml(0xd7, 1), ebml(0x73c5, 1), ebml(0x83, 1), ebml(0x86, 'V_VP9'), ebml(0x23e383, Math.round(1e9 / fps)),
-            ebml(0xe0, [ebml(0xb0, w), ebml(0xba, h)])])]);
+        var info = ebml(0x1549a966, [ebml(0x2ad7b1, 1000000), ebml(0x4d80, 'Pinegrap'), ebml(0x5741, 'Pinegrap'), ebml(0x4489, [float64(end)])]);
+        var entries = [ebml(0xae, [ebml(0xd7, 1), ebml(0x73c5, 1), ebml(0x83, 1), ebml(0x86, 'V_VP9'), ebml(0x23e383, Math.round(1e9 / fps)),
+            ebml(0xe0, [ebml(0xb0, w), ebml(0xba, h)])])];
+
+        if (sound) {
+            var head = opusHead(sound.desc, sound.rate, sound.channels), skip = head[10] | (head[11] << 8);
+
+            // CodecDelay is the pre-skip in ns; SeekPreRoll Opus's 80 ms.
+            entries.push(ebml(0xae, [ebml(0xd7, 2), ebml(0x73c5, 2), ebml(0x83, 2), ebml(0x86, 'A_OPUS'), ebml(0x63a2, [head]),
+                ebml(0x56aa, Math.round(skip * 1e9 / 48000)), ebml(0x56bb, 80000000),
+                ebml(0xe1, [ebml(0xb5, [float64(sound.rate)]), ebml(0x9f, sound.channels)])]));
+        }
+
+        var tracks = ebml(0x1654ae6b, entries);
 
         // Positions from the Segment's data; written at 8 bytes each, the
         // Cues' size does not depend on them.
@@ -1126,6 +1293,13 @@
         this.failure = null;
         this.enc = null;
         this.count = 0;
+        // The sound's settings ({ codec, kind, rate, channels, bitrate }),
+        // its encoder and packets ({ data, ts, dur } in microseconds).
+        this.audio = (opts.audio && opts.audio.codec) ? opts.audio : null;
+        this.AudioEncoder = api.AudioEncoder;
+        this.AudioData = api.AudioData;
+        this.sounds = [];
+        this.soundDesc = null;
     }
 
     VideoEnc.prototype.sample = function () {};
@@ -1212,6 +1386,86 @@
         return new Promise(function (go) { setTimeout(go, 5); }).then(function () { return self.drain(); });
     };
 
+    // The mixed sound (a Float32Array per channel at audio.rate) through
+    // the platform's AudioEncoder, a second at a time, at most a few
+    // pieces queued. Its packets wait for end().
+    VideoEnc.prototype.sound = function (planes) {
+        var self = this, a = this.audio, frames = (planes && planes.length) ? planes[0].length : 0, enc = null, failure = null;
+        var config = a ? { codec: a.codec, sampleRate: a.rate, numberOfChannels: planes.length, bitrate: a.bitrate } : null;
+
+        if (!a || !frames) {
+            return Promise.resolve();
+        }
+
+        if ((typeof this.AudioEncoder !== 'function') || (typeof this.AudioData !== 'function')) {
+            return Promise.reject(new Error('no audio encoder'));
+        }
+
+        function settle() {
+            if (failure) {
+                throw failure;
+            }
+
+            if (enc.encodeQueueSize <= 3) {
+                return Promise.resolve();
+            }
+
+            return new Promise(function (go) { setTimeout(go, 5); }).then(settle);
+        }
+
+        function piece(at) {
+            if (at >= frames) {
+                return enc.flush();
+            }
+
+            var n = Math.min(a.rate, frames - at), data = new Float32Array(n * planes.length);
+
+            planes.forEach(function (p, c) { data.set(p.subarray(at, at + n), c * n); });
+
+            var d = new self.AudioData({ format: 'f32-planar', sampleRate: a.rate, numberOfFrames: n, numberOfChannels: planes.length, timestamp: Math.round(at * 1e6 / a.rate), data: data });
+
+            enc.encode(d);
+            d.close();
+
+            return settle().then(function () { return piece(at + n); });
+        }
+
+        return this.AudioEncoder.isConfigSupported(config).then(function (r) {
+            if (!r || !r.supported) {
+                throw new Error('no audio codec ' + a.codec);
+            }
+
+            // A packet without a duration lasts AAC's 1024 or Opus's 960
+            // samples.
+            var each = Math.round(((a.kind === 'opus') ? 960 : 1024) * 1e6 / a.rate);
+
+            enc = new self.AudioEncoder({
+                output: function (chunk, meta) {
+                    var data = new Uint8Array(chunk.byteLength);
+
+                    chunk.copyTo(data);
+                    self.sounds.push({ data: data, ts: Math.max(0, chunk.timestamp || 0), dur: chunk.duration || each });
+
+                    if (meta && meta.decoderConfig && meta.decoderConfig.description && !self.soundDesc) {
+                        var d = meta.decoderConfig.description;
+
+                        self.soundDesc = new Uint8Array(d.buffer ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : d.slice(0));
+                    }
+                },
+                error: function (err) { failure = err; }
+            });
+            enc.configure(config);
+
+            return piece(0);
+        }).then(function () {
+            enc.close();
+
+            if (failure) {
+                throw failure;
+            }
+        });
+    };
+
     VideoEnc.prototype.end = function () {
         var self = this;
 
@@ -1226,7 +1480,9 @@
                 throw self.failure;
             }
 
-            return (self.format === 'mp4') ? mp4File(self.w, self.h, self.fps, self.chunks, self.desc || new Uint8Array(0)) : webmFile(self.w, self.h, self.fps, self.chunks);
+            var a = self.audio, audio = (a && self.sounds.length) ? { rate: a.rate, channels: a.channels, bitrate: a.bitrate, chunks: self.sounds, desc: self.soundDesc } : null;
+
+            return (self.format === 'mp4') ? mp4File(self.w, self.h, self.fps, self.chunks, self.desc || new Uint8Array(0), audio) : webmFile(self.w, self.h, self.fps, self.chunks, audio);
         });
     };
 
@@ -1361,6 +1617,8 @@
             return Promise.resolve(enc.estimate()).then(function (e) { self.post(Object.assign({ type: 'estimate' }, e)); });
         } else if (m.type === 'frame') {
             return Promise.resolve(enc.frame(new Uint8ClampedArray(m.data))).then(function () { self.post({ type: 'framed', index: enc.count - 1 }); });
+        } else if (m.type === 'audio') {
+            return Promise.resolve(enc.sound ? enc.sound((m.data || []).map(function (b) { return new Float32Array(b); })) : null).then(function () { self.post({ type: 'audioed' }); });
         } else if (m.type === 'end') {
             return Promise.resolve(enc.end()).then(function (bytes) {
                 self.enc = null;
@@ -1391,7 +1649,7 @@
         palette: palette, nearest: nearest, quantize: quantize, changed: changed, delayAt: delayAt, loopCount: loopCount,
         lzw: lzw, GifWriter: GifWriter, Encoder: Encoder, crc32: crc32, pngRows: pngRows, ApngWriter: ApngWriter,
         riffChunks: riffChunks, WebpWriter: WebpWriter, msAt: msAt, TrueEncoder: TrueEncoder,
-        mp4File: mp4File, webmFile: webmFile, flatten: flatten, VideoEnc: VideoEnc,
+        mp4File: mp4File, webmFile: webmFile, flatten: flatten, VideoEnc: VideoEnc, interleave: interleave, aacConfig: aacConfig, opusHead: opusHead,
         create: create,
         session: function (post) { return new Session(post); },
         MIME: MIME

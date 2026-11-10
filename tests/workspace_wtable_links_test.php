@@ -159,6 +159,18 @@ function test_workspace_wtable_links_import()
 	pg_assert_false(in_array('row', ws_wtable_import_types(), true), 'a new column is never a link');
 }
 
+// A type change takes no row link, from it or to it: a row id has no form
+// in another type.
+function test_workspace_wtable_links_type_change_refused()
+{
+	$link = ws_wtable_links_test_column(2, 'row', array('table' => 7));
+	$text = ws_wtable_links_test_column(3, 'text');
+
+	pg_assert_false(in_array('row', ws_wtable_retype_types(), true));
+	pg_assert_same('type_not_changeable', ws_wtable_retype_input_check($link, array('type' => 'text'))['error']);
+	pg_assert_same('type_unknown', ws_wtable_retype_input_check($text, array('type' => 'row', 'options' => array('table' => 7)))['error']);
+}
+
 // The store checks a link on write, clears the links to a deleted row and
 // the screen, the API and the import use them.
 function test_workspace_wtable_links_wired()

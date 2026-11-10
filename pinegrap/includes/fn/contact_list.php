@@ -133,15 +133,17 @@ function pg_contact_list_groups($user)
 
 /**
  * The contact groups a mass delete ran on, for its notice and log line: the
- * picked groups (advanced filters) or the one group of the picker. The
- * notice is printed as HTML, so a name is escaped; an id the user has no
- * access to, or of a group deleted meanwhile, is left out.
+ * picked groups (advanced filters) or the one group of the picker. The names
+ * are plain text: the log line stores them as they are (Site Log escapes
+ * once), and the screen escapes the result where it enters the HTML notice.
+ * An id the user has no access to, or of a group deleted meanwhile, is left
+ * out.
  *
  * @param bool         $advanced     whether the advanced filters are on
  * @param array|string $picked       the advanced filters' picked group ids
  * @param string       $group_filter the picker's group id, [All] or [None]
  * @param array        $groups       the user's groups (pg_contact_list_groups())
- * @return string escaped, comma-separated names
+ * @return string plain-text, comma-separated names
  */
 function pg_contact_list_deleted_groups_label($advanced, $picked, $group_filter, array $groups)
 {
@@ -160,7 +162,7 @@ function pg_contact_list_deleted_groups_label($advanced, $picked, $group_filter,
             return $value;
         }
 
-        return isset($names[$value]) ? h($names[$value]) : '';
+        return isset($names[$value]) ? $names[$value] : '';
     };
 
     if (!$advanced) {
