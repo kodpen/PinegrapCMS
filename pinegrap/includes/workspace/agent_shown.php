@@ -25,16 +25,16 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 /**
  * The registry agent a ws_ai_requests.agent value names. Pure.
  *
- * @param string $value app:<id> | model:<id>
- * @return array|null kind, id; null for any other value
+ * @param string $value agent:<id> | model:<id>; app:<n> is a proposal's
+ * @return array|null kind (app | model), id; null for any other value
  */
 function ws_agent_request_parse($value)
 {
-    if (!preg_match('/^(app|model):([1-9][0-9]*)$/', (string) $value, $match)) {
+    if (!preg_match('/^(agent|model):([1-9][0-9]*)$/', (string) $value, $match)) {
         return null;
     }
 
-    return array('kind' => $match[1], 'id' => (int) $match[2]);
+    return array('kind' => ($match[1] === 'agent') ? 'app' : 'model', 'id' => (int) $match[2]);
 }
 
 /**

@@ -1,11 +1,11 @@
 ---
 name: agent-doors
-description: The agents' request queue: wake rules make one ws_ai_requests row per agent (app:<id>, model:<id>), the brakes, the push knock and its retry, the agent-requests routes (A4a #8221)
+description: The agents' request queue: wake rules make one ws_ai_requests row per agent (agent:<id>, model:<id>), the brakes, the push knock and its retry, the agent-requests routes (A4a #8221)
 ---
 
 ## When does a message make an agent's request?
 - `ws_message_ask_assistants()` calls `ws_agent_after_send()` (`includes/workspace/agent_queue.php`, loaded from ai.php) for every message, a person's or an application's. Each allowed `ws_channel_agents` row of an active `app` or `model` agent is matched by `ws_agent_wake_matches()`: its `@handle` as a word or its application's `<@app:N>` tag under every rule; `all` every non-empty message; `prefix` a message starting with the prefix (any case); `replies` an answer to one of the agent's own messages. Its own message never wakes it.
-- One row per woken agent: `ws_ai_requests.agent` = `app:<agent id>` or `model:<agent id>` (the registry row's id, not the application's), status queued, the channel and message, `requested_by` the writer.
+- One row per woken agent: `ws_ai_requests.agent` = `agent:<agent id>` or `model:<agent id>` (the registry row's id; `app:<n>` is a proposal's, #8410), status queued, the channel and message, `requested_by` the writer.
 - The brakes come first (`ws_agent_brake()`): the reply chain read back through `parent_id` (`ws_agent_chain()`, agent messages counted until a person's) and the agent's requests of the last hour. A braked wake leaves a system line naming the agent.
 - Claude keeps its own queue and routine (`ws_claude_after_send()`); Pinegrap AI and the MCP agents too.
 

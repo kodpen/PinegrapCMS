@@ -100,11 +100,20 @@ function test_workspace_agent_wake_channel_and_state()
 	pg_assert_same(0, ws_agent_wake_channel(array(4, 5)), 'several channels: none');
 	pg_assert_same(0, ws_agent_wake_channel(array()));
 
-	$row = array('agent' => 'app:3', 'message_id' => 0, 'ai_state' => ws_agent_wake_state('every', 'look', 1700000000));
+	$row = array('agent' => 'agent:3', 'message_id' => 0, 'ai_state' => ws_agent_wake_state('every', 'look', 1700000000));
 	pg_assert_same(array('kind' => 'every', 'note' => 'look', 'due' => 1700000000), ws_agent_wake_of($row));
 	pg_assert_same(null, ws_agent_wake_of(array('message_id' => 9) + $row), 'a message\'s request is no wake');
 	pg_assert_same(null, ws_agent_wake_of(array('agent' => 'model:3') + $row), 'only app agents are woken');
 	pg_assert_same(null, ws_agent_wake_of(array('ai_state' => '') + $row));
+	pg_assert_same(null, ws_agent_wake_of(array('agent' => 'app:3') + $row), 'an application\'s proposal is no wake');
+}
+
+function test_workspace_agent_wake_waiting_where()
+{
+	$where = ws_agent_wake_waiting_where('agent:3');
+	pg_assert_contains("agent = 'agent:3'", $where);
+	pg_assert_contains('message_id = 0', $where, 'only a schedule\'s wake holds the next one');
+	pg_assert_contains("status IN ('queued', 'sent')", $where, 'a claimed wake does not');
 }
 
 function test_workspace_agent_brief_parts()

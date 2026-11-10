@@ -255,7 +255,7 @@ function ws_agent_wake_state($kind, $note, $due)
  */
 function ws_agent_wake_of($row)
 {
-    if (((int) ($row['message_id'] ?? 0) > 0) || (strpos((string) ($row['agent'] ?? ''), 'app:') !== 0)) {
+    if (((int) ($row['message_id'] ?? 0) > 0) || (strpos((string) ($row['agent'] ?? ''), 'agent:') !== 0)) {
         return null;
     }
 
@@ -431,7 +431,8 @@ function ws_agent_wakes_due()
 /**
  * Makes the wake requests whose time has come: each agent's schedule is
  * moved on first, by a conditional UPDATE, so two ticks that overlap make
- * one request. The hourly brake holds for wakes as for messages.
+ * one request. A wake of the agent still waiting to be claimed makes none,
+ * and the hourly brake holds for wakes as for messages.
  *
  * @param int|null $now
  * @return int the requests made
@@ -466,6 +467,18 @@ function ws_agent_wakes_run($now = null)
 }
 
 /**
+ * The rows of an agent's wakes still waiting to be claimed: queued or
+ * knocked, made by a schedule (no message). Pure.
+ *
+ * @param string $value ws_agent_request_value()
+ * @return string SQL condition on ws_ai_requests
+ */
+function ws_agent_wake_waiting_where($value)
+{
+    return "agent = '" . e((string) $value) . "' AND message_id = 0 AND status IN ('queued', 'sent')";
+}
+
+/**
  * One wake request for an agent whose schedule is due, and a knock on its
  * push door. requested_by is whoever registered the agent: no person asked.
  *
@@ -478,6 +491,12 @@ function ws_agent_wake_request($agent, $now)
     $value = ws_agent_request_value($agent);
 
     if ($value === '') {
+        return 0;
+    }
+
+    // An earlier wake not yet claimed: the schedule has moved on, and a
+    // second request would only queue behind it.
+    if ((int) db_value("SELECT id FROM ws_ai_requests WHERE " . ws_agent_wake_waiting_where($value) . " LIMIT 1") > 0) {
         return 0;
     }
 

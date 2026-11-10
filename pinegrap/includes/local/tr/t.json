@@ -1985,6 +1985,7 @@
     "The agenda of the next council meeting and the decisions of the last one.": "Bir sonraki meclis toplantısının gündemi ve son toplantının kararları.",
     "The agent": "Ajan",
     "The agent answered.": "Ajan cevap verdi.",
+    "The agent did not take it within a day.": "Ajan bunu bir gün içinde almadı.",
     "The agent gave no answer within {var:1} hours.": "Ajan {var:1} saat içinde cevap vermedi.",
     "The agent gave no answer.": "Ajan cevap vermedi.",
     "The agent was deleted.": "Ajan silindi.",
