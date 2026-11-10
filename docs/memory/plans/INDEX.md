@@ -42,6 +42,5 @@
 - tables-relational-steps.md: Steps 1-8 of plans/tables-relational.md: row choice, conditions and Read rows, screen query and totals, keys, row links, joined columns, lists, type changes
 - tables-relational.md: Plan (owner 2026-11-09): workflow tables that behave like SQL tables (keys, row links, joined columns, lists, type changes), flows that pick a row or total rows; steps in tables-relational-steps
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
-- workspace-app-lines-fold.md: Plan (owner 2026-11-09): a run of one-line messages from one application folds into one row with "+N lines" in a channel; each reader chooses folded, all or hidden; step AL1
 - workspace-menu-layout.md: Plan (owner decision 2026-10-30) for a tidier Workspace list in the main menu: search, places, one Channels section, discussions, Tools tiles; channel screen unchanged
 - workspace-scheduling-one-path.md: Plan (owner 2026-11-09): scheduled work set up only on the flow canvas and listed only in the flow table; Run now and the next run for flows that start at a time; one start-a-flow box
