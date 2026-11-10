@@ -4,7 +4,7 @@ description: Plan (owner 2026-11-10): the Workspace's E-mails screen becomes a m
 ---
 
 ## What is it for?
-- Owner (2026-11-10): mail is written into channels but lands in no one list. Wanted: one list of every e-mail, writing and sending a new e-mail in the Workspace, forwarding a chosen channel message as an e-mail; sent through the systems there are (the mail queue), for the mailboxes entered for channels (`ws_mail_boxes`), not the site's own. Plain text now, HTML later. The decisions were left to the architect.
+- Owner (2026-11-10): mail is written into channels but lands in no one list. Wanted: one list of every e-mail, writing and sending a new e-mail in the Workspace, forwarding a chosen channel message as an e-mail; sent through the systems there are (the mail queue), for the mailboxes entered for channels (`ws_mail_boxes`), not the site's own. Plain text now, HTML later. The decisions were left to the architect (#8604).
 - Sending and the schema: `workspace-mail-screen-sending.md`. Steps: `workspace-mail-screen-steps.md`. The record: `workflow/decisions-made-workspace-13.md`.
 
 ## What is there today?

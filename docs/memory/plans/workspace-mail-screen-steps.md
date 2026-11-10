@@ -5,10 +5,10 @@ description: Steps WM1-WM9 of plans/workspace-mail-screen.md: queue outcome hook
 
 ## Which steps are there?
 - S under 400 product lines, M about 1,000; each step with its tests and its memory topic; the schema step rerun twice on a dev DB.
-- Claim as `[plan:workspace-mail-screen] <step>`. WM1 (the queue, no Workspace file) and WM2 (the schema) can start at once, side by side.
+- Claim as `[plan:workspace-mail-screen] <step>`. WM1 (the queue, no Workspace file) can start at once; WM2 (the schema) after the owner's answer in #8604.
 
 - WM1 (S, core) The queue's outcome hook. `includes/fn/mail_queue.php`: `pg_mail_outcome_handlers()`, the `on_outcome` and reference properties, the call after sent, given up and blocked, `keep_mime` honoured for such a row; type `workspace` in `pg_mail_queue_list_types()`. No Workspace file. Topic `core/mail-queue-outcome.md`.
-- WM2 (S, schema) The step of `workspace-mail-screen-sending.md`: four `ws_mail_items` columns and `ws_mail_reads`, with the idempotent helpers. The PR body names the `[SCHEME]` item. Topic: `workspace/mail-tables.md`.
+- WM2 (S, schema) After the answer in #8604. The step of `workspace-mail-screen-sending.md`: four `ws_mail_items` columns and `ws_mail_reads`, with the idempotent helpers. The PR body names the `[SCHEME]` item. Topic: `workspace/mail-tables.md`.
 - WM3 (M) The send path. After WM1 and WM2. `includes/workspace/mail_send.php`: `ws_mail_send_boxes()` (what a person may send from), `ws_mail_send_check()`, `ws_mail_send()`, `ws_mail_send_outcome()`, Send again, the limits, files by path, the card of a mail that went out. No screen. A test: an answer from any recipient finds the conversation (`ws_mail_find_conversation()`: the subject tag matches only the customer's address, the references anyone's). Topic `workspace/mail-send.md`.
 - WM4 (M) The screen. After WM2. Views, mailbox filter, search, Load more, the reading pane, unread marks with the menu count and Mark all as read (`mail_list.php`, `workspace_mail.js`). Reply still opens today's drawer. Topics `workspace/mail-list.md`, `workspace/mail-screen-pane.md`.
 - WM5 (M) New e-mail. After WM3 and WM4. The form (From, To, Cc, Bcc, Subject, text, files, the channel it is kept in), its panel action, the unsent form kept in the browser, the button on the screen and in a mailbox channel's menu; a mailbox's Signature (plain text in `settings`, no schema) put under the text. Topic `workspace/mail-compose.md`.
@@ -24,4 +24,5 @@ description: Steps WM1-WM9 of plans/workspace-mail-screen.md: queue outcome hook
 - A draft an assistant offers for a new mail (today only the triage's reply draft, `workspace/mail-triage.md`).
 
 ## Which questions are open?
-- None. A step that meets one asks it as an `architect` issue before it builds.
+- The schema of WM2 (four `ws_mail_items` columns, table `ws_mail_reads`): #8604, the owner's. WM2 and the steps after it wait; an answer other than "as planned" changes this plan first.
+- No other. A step that meets one asks it as an `architect` issue before it builds.
