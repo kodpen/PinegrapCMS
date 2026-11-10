@@ -9,7 +9,7 @@ description: The designed forms' Shown-when rules, steps with progress and payme
 ## What binds all three?
 - Designer-only: the legacy form renderers (`includes/fn/content.php`) are untouched.
 - A form without rules, step breaks or a fee renders byte for byte as before (the parity tests in `custom_form_shown_when_test.php` and `custom_form_steps_test.php`); a form without a fee gets no payment step.
-- A form setting or control change goes to both designer twin lists (`_pg_cf_controls()`, `CF_PALETTE`), then `php tools/build_js.php` and `system-widget-change-checklist.md`.
+- A control change goes to both twins of the field read (`_pg_cf_controls()` and `_cfFieldsOf()`; types `_pg_cf_type_by_input()` and `CF_TYPE_BY_INPUT`); a new palette control goes into `CF_PALETTE`, which has no PHP twin. Then `php tools/build_js.php` and `system-widget-change-checklist.md`.
 
 ## Which questions were decided? (#5035)
 1. A hidden field's value is dropped and its checks skipped on the server, not only in the browser (`custom-form-shown-when.md`).
