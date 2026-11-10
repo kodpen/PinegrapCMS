@@ -12,4 +12,5 @@ module: calendar
 
 ## How are the times written?
 - A timed event: local `Ymd\THis` without a zone (floating), as before; a visitor's calendar shows the site's clock time in its own zone. Not changed on purpose: a UTC DTSTART would move a weekly RRULE by an hour across a DST change.
+- DTSTAMP: the event's start in UTC (`gmdate('Ymd\THis\Z')`), as RFC 5545 requires. Before, it was the local time without `Z`, which validators reject and a strict client reads as a wrong stamp (`test_calendar_event_ics_stamp_is_utc`).
 - An all-day event: `DTSTART;VALUE=DATE` on the start's day and `DTEND;VALUE=DATE` the day after the end's day (exclusive end), an end before the start taken as the start. Before, it was written with its stored clock times, so calendars showed it as a timed event (or one day short).

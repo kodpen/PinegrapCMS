@@ -87,3 +87,23 @@ function test_calendar_event_ics_keeps_the_recurrence_rule()
 
 	pg_assert_true(strpos($ics, "\r\nRRULE:FREQ=WEEKLY;COUNT=4\r\nEND:VEVENT\r\n") !== false, 'rrule');
 }
+
+// DTSTAMP is a UTC time (RFC 5545 3.8.7.2): the start read in the site's
+// zone, written with Z, while DTSTART and DTEND keep the local times.
+function test_calendar_event_ics_stamp_is_utc()
+{
+	$zone = date_default_timezone_get();
+	date_default_timezone_set('Europe/Berlin');
+
+	$summer = pg_calendar_event_ics(calendar_event_ics_test_event(array(
+		'start_date_and_time' => '2026-07-15 10:00:00',
+		'end_date_and_time' => '2026-07-15 12:00:00',
+	)), 'example.com', 'Events', '');
+	$winter = pg_calendar_event_ics(calendar_event_ics_test_event(), 'example.com', 'Events', '');
+
+	date_default_timezone_set($zone);
+
+	pg_assert_true(strpos($summer, "\r\nDTSTAMP:20260715T080000Z\r\n") !== false, 'summer stamp in UTC');
+	pg_assert_true(strpos($summer, "\r\nDTSTART:20260715T100000\r\n") !== false, 'start stays local');
+	pg_assert_true(strpos($winter, "\r\nDTSTAMP:20261109T090000Z\r\n") !== false, 'winter stamp in UTC');
+}

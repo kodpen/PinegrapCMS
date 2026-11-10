@@ -143,6 +143,55 @@ function test_booking_settings_hours_grid()
 	pg_assert_same(7, count($fields));
 }
 
+// A time box cannot hold 24:00 (it ends at 23:59), so an end of 00:00 is the
+// day's end: hours until midnight are saved as 24:00 and shown as 00:00, and
+// the grid posts them back unchanged.
+function test_booking_settings_hours_until_midnight()
+{
+	$answer = pg_booking_settings_hours_from_fields(array(
+		'h1a' => '18:00', 'h1b' => '00:00',
+		'h2a' => '00:00', 'h2b' => '00:00',
+		'h3a' => '20:00', 'h3b' => '0:00',
+	));
+
+	pg_assert_same(array(
+		'1' => array(array('18:00', '24:00')),
+		'2' => array(array('00:00', '24:00')),
+		'3' => array(array('20:00', '24:00')),
+	), $answer['hours']);
+	pg_assert_same(array(), $answer['bad']);
+
+	$fields = pg_booking_settings_hours_fields(array('1' => array(array('09:00', '13:00'), array('18:00', '24:00'))));
+
+	pg_assert_same(array('09:00', '13:00', '18:00', '00:00'), $fields[1]);
+
+	$posted = array();
+
+	foreach ($fields as $day => $boxes) {
+		foreach (array('a', 'b', 'c', 'd') as $position => $box) {
+			$posted['h' . $day . $box] = $boxes[$position];
+		}
+	}
+
+	$again = pg_booking_settings_hours_from_fields($posted);
+
+	pg_assert_same(array('1' => array(array('09:00', '13:00'), array('18:00', '24:00'))), $again['hours']);
+	pg_assert_same(array(), $again['bad']);
+}
+
+// An exception row's hours until midnight round-trip the same way.
+function test_booking_settings_exception_until_midnight()
+{
+	$answer = pg_booking_settings_exceptions_from_rows(array('2026-12-31'), array(''), array('20:00'), array('00:00'), '2026-11-03');
+
+	pg_assert_same(array('2026-12-31' => array(array('20:00', '24:00'))), $answer['exceptions']);
+	pg_assert_same(array(), $answer['bad']);
+
+	pg_assert_same(array(
+		array('from' => '2026-12-31', 'to' => '', 'open' => '20:00', 'close' => '00:00'),
+	), pg_booking_settings_exception_rows($answer['exceptions'], '2026-11-03'));
+}
+
 // Exceptions are typed as ranges of days with one range of hours (none: day
 // off), stored day by day, and read back as the same ranges.
 function test_booking_settings_exceptions_round_trip()
