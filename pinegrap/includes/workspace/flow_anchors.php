@@ -26,6 +26,8 @@
  * (flow_mention.php).
  * A box on customers who stopped ordering keeps an hourly rule; each run of
  * its anchor starts the flow once per customer (flow_no_order.php).
+ * A flow that starts at a time is also run now by hand from its canvas
+ * through its anchor (ws_flow_run_now()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -861,12 +863,14 @@ function ws_flow_anchor_context($flow, $trigger, $fill)
  * live, started by the box its anchor was written from, the owner on the
  * staff, the open runs and the starts of the hour within their limits. The
  * anchor's run is the start key (sched:<run id>), so a step carried out
- * twice starts one run. A converted action also starts a flow whose start
- * box is by hand: its card's Run now, or another action's chain.
+ * twice starts one run; a Run now on the canvas hands the key of its
+ * client's token instead (ws_flow_run_now()), so the same token sent again
+ * finds the run. A converted action also starts a flow whose start box is
+ * by hand: its card's Run now, or another action's chain.
  *
  * @param array $viewer the anchor's creator, the flow's owner
  * @param array $row    the anchor, decoded
- * @param array $fill   what ws_scheduled_execute() hands its step, and by_hand
+ * @param array $fill   what ws_scheduled_execute() hands its step, and by_hand, start_key
  * @return array ok, text, message_id, run_id (the run started now, 0 for none)
  */
 function ws_flow_anchor_start($viewer, $row, $fill)
@@ -937,7 +941,7 @@ function ws_flow_anchor_start($viewer, $row, $fill)
     }
 
     $flow_id = (int) $flow['id'];
-    $start_key = 'sched:' . (int) ($fill['run_id'] ?? 0);
+    $start_key = ((string) ($fill['start_key'] ?? '') !== '') ? (string) $fill['start_key'] : 'sched:' . (int) ($fill['run_id'] ?? 0);
 
     if ((int) db_value("SELECT id FROM ws_flow_runs WHERE flow_id = '" . $flow_id . "' AND start_key = '" . e($start_key) . "'") > 0) {
         return array('ok' => true, 'text' => lang('the flow was started already'), 'message_id' => 0, 'run_id' => 0);
@@ -1007,6 +1011,166 @@ function ws_flow_anchor_start_said($kind, $fill)
     }
 
     return lang(array('string' => 'Started on its own: {var:1}.', 'vars' => ws_flow_anchor_kinds()[$kind]['label']));
+}
+
+/**
+ * Why a flow may not be run now by hand, '' when it may: only whoever may
+ * change it, only a live flow whose live version starts at a time (a
+ * schedule box; the starts by an event, a join, a row, a mention, a web
+ * address or customers who stopped ordering wait for what they wait for),
+ * and only while its anchor still runs (active or failed): a paused flow's
+ * anchor is paused, and a flow that starts once and ran has none left.
+ * Pure.
+ *
+ * @param string $access        ws_flow_access()
+ * @param array  $flow          ws_flows row: status, version_id
+ * @param string $trigger_kind  the kind of its live version's start box, '' for none
+ * @param string $anchor_status its anchor's status, '' for no anchor
+ * @return string '' | access | not_live | not_time | over
+ */
+function ws_flow_run_now_refusal($access, $flow, $trigger_kind, $anchor_status)
+{
+    if ((string) $access !== 'edit') {
+        return 'access';
+    }
+
+    if (((string) ($flow['status'] ?? '') !== 'live') || ((int) ($flow['version_id'] ?? 0) <= 0)) {
+        return 'not_live';
+    }
+
+    if ((string) $trigger_kind !== 'schedule') {
+        return 'not_time';
+    }
+
+    return in_array((string) $anchor_status, array('active', 'failed'), true) ? '' : 'over';
+}
+
+/**
+ * The start box of a flow's live version and the status of its anchor, as
+ * ws_flow_run_now_refusal() reads them.
+ *
+ * @param array $flow ws_flows row
+ * @return array trigger_kind ('' for none), anchor (decoded, null for none)
+ */
+function ws_flow_run_now_facts($flow)
+{
+    $version = ((int) ($flow['version_id'] ?? 0) > 0) ? ws_flow_version($flow['version_id']) : null;
+    $trigger = is_array($version) ? ws_flow_trigger_node(ws_flow_graph_of($version)) : null;
+
+    return array(
+        'trigger_kind' => $trigger ? (string) $trigger['kind'] : '',
+        'anchor'       => ws_flow_anchor((int) ($flow['id'] ?? 0)),
+    );
+}
+
+/**
+ * Whether the canvas offers Run now on a flow: asked only of a live flow
+ * that starts at a time and that the person may change, so no other flow
+ * costs a read.
+ *
+ * @param array  $flow  ws_flow_for()
+ * @param string $start how its live version starts (ws_flow_start_kind())
+ * @return bool
+ */
+function ws_flow_run_now_offered($flow, $start)
+{
+    if (((string) $start !== 'time') || ((string) ($flow['access'] ?? '') !== 'edit') || ((string) ($flow['status'] ?? '') !== 'live')) {
+        return false;
+    }
+
+    $facts = ws_flow_run_now_facts($flow);
+
+    return ws_flow_run_now_refusal($flow['access'], $flow, $facts['trigger_kind'], $facts['anchor'] ? (string) $facts['anchor']['status'] : '') === '';
+}
+
+/**
+ * Runs a flow that starts at a time now, by hand: Run now on its canvas.
+ * It goes through the flow's anchor as on its time, the way a converted
+ * action's Run now does (ws_scheduled_execute() by hand): the run is the
+ * owner's, its start box says it was started by hand, and the anchor goes
+ * on as after a run on its time (one that repeats keeps its next time, one
+ * that starts once has had its run). The client's token becomes the run's
+ * start key, so the same token sent again (a second click, an answer that
+ * was lost) answers the run the first one started, while the person reads
+ * it.
+ *
+ * @param array      $viewer
+ * @param array|null $flow
+ * @param array      $data token (optional, ws_flow_start_token_valid())
+ * @return array ok, error, status, field, run_id, started
+ */
+function ws_flow_run_now($viewer, $flow, $data = array())
+{
+    $refuse = function ($error, $status = 409, $field = '') {
+        return array('ok' => false, 'error' => $error, 'status' => $status, 'field' => $field, 'run_id' => 0, 'started' => false);
+    };
+    $answer = function ($run_id, $started) {
+        return array('ok' => true, 'error' => '', 'status' => $started ? 201 : 200, 'field' => '', 'run_id' => (int) $run_id, 'started' => (bool) $started);
+    };
+
+    if (!ws_flows_ready()) {
+        return $refuse(lang('The database has to be updated first.'), 503);
+    }
+
+    $token = $data['token'] ?? '';
+
+    if (($token !== '') && ($token !== null) && !ws_flow_start_token_valid($token)) {
+        return $refuse(lang(array('string' => 'The token of a run is 1-{var:1} letters, digits and . _ : - characters.', 'vars' => WS_FLOW_TOKEN_MAX)), 422, 'token');
+    }
+
+    $flow_id = is_array($flow) ? (int) $flow['id'] : 0;
+    $retried = ws_flow_run_for_token($viewer, $flow_id, $token);
+
+    if ($retried) {
+        return $answer($retried['id'], false);
+    }
+
+    $access = ws_flow_access($viewer, $flow);
+
+    if ($access === '') {
+        return $refuse(lang('That flow could not be found.'), 404);
+    }
+
+    $facts = ws_flow_run_now_facts($flow);
+    $anchor = $facts['anchor'];
+
+    switch (ws_flow_run_now_refusal($access, $flow, $facts['trigger_kind'], $anchor ? (string) $anchor['status'] : '')) {
+        case 'access':
+            return $refuse(lang('Only whoever may change this flow can run it now.'), 403);
+
+        case 'not_live':
+            return $refuse(lang('Only a published flow that is live can be run.'));
+
+        case 'not_time':
+            return $refuse(lang('Only a flow that starts at a time can be run now.'));
+
+        case 'over':
+            return $refuse(lang('It is running already, or it cannot run any more.'));
+    }
+
+    // A start sent without a token gets a key of its own.
+    if (!ws_flow_start_token_valid($token)) {
+        $token = 'now.' . bin2hex(random_bytes(16));
+    }
+
+    $ran = ws_scheduled_execute($anchor['id'], true, array('start_key' => ws_flow_start_key($token)));
+    $run = ws_flow_run_for_token($viewer, $flow_id, $token);
+
+    // Not run: another request holds the anchor (the same token's run is
+    // then answered once it is there), or its rules did not hold or the
+    // flow could not start, said by the anchor's run.
+    if ($run) {
+        return $answer($run['id'], $ran !== '');
+    }
+
+    if ($ran === '') {
+        return $refuse(lang('It is running already, or it cannot run any more.'));
+    }
+
+    $kept = db_item("SELECT detail FROM ws_scheduled_runs WHERE action_id = '" . (int) $anchor['id'] . "' AND by_hand = 1 ORDER BY id DESC LIMIT 1");
+    $said = is_array($kept) ? ws_scheduled_run_summary($kept) : '';
+
+    return $refuse(($said !== '') ? $said : lang('The run could not be started.'));
 }
 
 /**

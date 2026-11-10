@@ -915,6 +915,29 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('run' => ws_action_flow_run_answer($viewer, $result['run_id']), 'started' => (bool) $result['started']));
 
+        // Run now on the canvas of a flow that starts at a time: through its
+        // anchor, by hand (flow_anchors.php); the same token answers the run
+        // it started.
+        case 'ws_flow_run_now':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'view');
+
+            if (!$flow) {
+                return ws_action_error(lang('That flow could not be found.'));
+            }
+
+            $result = ws_flow_run_now($viewer, $flow, ws_action_flow_run_fields(array_intersect_key($request, array('start_token' => true))));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], (string) $result['field']);
+            }
+
+            // run_now: whether it is offered still (a flow that starts once
+            // has had its run).
+            $after = ws_flow_for($viewer, $flow['id'], 'view');
+
+            return ws_action_ok(array('run' => ws_action_flow_run_answer($viewer, $result['run_id']), 'started' => (bool) $result['started'],
+                'run_now' => $after ? ws_flow_run_now_offered($after, 'time') : false));
+
         case 'ws_flow_runs_list':
             $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'view');
 

@@ -2792,6 +2792,9 @@ function ws_flow_detail($viewer, $flow)
         'changed'  => $edit && ($draft !== null) && (($live === null) || ($draft !== $live)),
         'manage'   => ws_flow_share_manager($viewer, $flow),
         'owner_id' => (int) $flow['owner_id'],
+        // Run now for whoever may change a live flow that starts at a time
+        // (flow_anchors.php).
+        'run_now'  => function_exists('ws_flow_run_now_offered') && ws_flow_run_now_offered($flow, $start),
         // The boxes a patch of Pinegrap AI opened here added or changed
         // (flow_draft.php), marked for whoever may change it.
         'ai_marks' => ($edit && ($draft !== null)) ? ws_flow_ai_marks($viewer, $flow, $version, $draft) : null,
@@ -3499,6 +3502,10 @@ function ws_flow_js_strings()
         'fl_run_help'         => lang('Run the live version of this flow'),
         'fl_run_ask'          => ws_js_template('Run “{var:1}” now? Version {var:2} starts, and its first tasks open at once in the name of the owner of the flow.', 2),
         'fl_run_do'           => lang('Start the run'),
+        // Run now of a flow that starts at a time (ws_flow_run_now()).
+        'fl_run_now'          => lang('Run now'),
+        'fl_run_now_help'     => lang('Run this flow now, without waiting for its time'),
+        'fl_run_now_ask'      => ws_js_template('Run “{var:1}” now, before its time? Version {var:2} starts at once in the name of the owner of the flow. A flow that repeats keeps its next time; one that starts only once has then had its run.', 2),
         'fl_run_customer'     => lang('Customer (optional)'),
         'fl_run_customer_help' => lang('Its tasks carry the customer’s name; while a run for them is open, Run opens that run.'),
         'fl_run_customer_none' => lang('No contact found.'),
