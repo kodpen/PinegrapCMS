@@ -503,7 +503,7 @@ function ws_bulk_input($asker, $bulk, $for_proposal = false)
                     return $fail(lang('instruction says what to write for each record.'));
                 }
 
-                if (!function_exists('ws_ai_ready') || !ws_ai_ready()) {
+                if (!ws_bulk_generate_ready()) {
                     return $fail(lang('Writing a text for each record needs Pinegrap AI, which is not ready on this site. Give the values one by one instead.'));
                 }
 
@@ -559,6 +559,35 @@ function ws_bulk_input($asker, $bulk, $for_proposal = false)
     }
 
     return array('ok' => true, 'error' => '', 'spec' => $spec, 'matched' => (int) $match['total'], 'sample' => ws_bulk_sample($asker, $spec, $match['ids']));
+}
+
+/**
+ * Can Pinegrap AI write a generate change's texts: ws_bulk_generate() calls
+ * it when the change is applied, with no model assistant running. Inside a
+ * model assistant's request ws_ai_config() gives the assistant's settings
+ * (switched on, its application), so the assistant is let go around
+ * ws_ai_missing() and Pinegrap AI's own settings are read; ws_ai_ready()'s
+ * static is left alone then, so it never holds an answer made with them.
+ *
+ * @return bool
+ */
+function ws_bulk_generate_ready()
+{
+    if (!function_exists('ws_ai_missing')) {
+        return false;
+    }
+
+    $running = function_exists('ws_model_running') ? ws_model_running() : null;
+
+    if ($running) {
+        ws_model_running(null);
+        $missing = ws_ai_missing();
+        ws_model_running($running);
+
+        return empty($missing);
+    }
+
+    return ws_ai_ready();
 }
 
 /**
