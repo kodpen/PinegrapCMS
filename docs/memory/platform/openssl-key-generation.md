@@ -21,7 +21,8 @@ description: Why openssl_pkey_new()/openssl_pkey_export() fail without an OpenSS
 - None in the product. The tests keep their own copy (`signin_test_pkey_new()`).
 
 ## What does the DKIM screen do when no key can be made?
-- `smtp_settings.php` makes the pair first (`pg_dkim_key_pair()`, RSA 2048) and deletes the old `dkim.key` / `dkim.pub` files and records only once it exists. When OpenSSL makes none it warns "The DKIM key could not be generated on this server…" and the old pair keeps signing.
+- `smtp_settings.php` makes the pair first (`pg_dkim_key_pair()`, RSA 2048). When OpenSSL makes none it warns "The DKIM key could not be generated on this server…" and the old pair keeps signing.
+- Then it writes `dkim.pub` and then `dkim.key` through `pg_file_write_whole()` over the old files (no `unlink`), `@chmod(0600)` right after the key. A failed key write leaves the signing key untouched and puts the old `dkim.pub` back from the bytes read before (removed if there was none); either failure warns "The DKIM key could not be saved. Any existing DKIM key was left unchanged." with no success notice or log line. The `files` rows are deleted and inserted only after both writes (#8565).
 - Symptom fixed in #1696: it deleted first and called `openssl_pkey_new()` and the export without the config, so a Windows/IIS site lost its pair, nothing was written and nothing was shown.
 
 ## Which PEM form does openssl_pkey_export() write for an EC key?
