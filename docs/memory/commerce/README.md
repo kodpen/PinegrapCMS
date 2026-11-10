@@ -7,6 +7,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 ## Key rules
 
 <!-- key-rules:start -->
+- Round money in minor units, half away from zero, on the exact product: a percentage with `pg_percent_of()` / `pg_percent_off()`, a tax rate with `pg_tax_apply_rate()`; never a float `round($p / 100 * $x)` and never an `(int)` cut (`offer-percent-rounding.md`, map: `order-totals-overview.md`).
 - Sum tax per line with `SUM(order_items.tax_total)`, never `tax * quantity`; checkout no longer writes `order_items.tax` (`product-tax-rate.md`).
 - Treat `products.tax_rate` NULL as the zone's rate and `0.000` as zero-rated; go through `get_effective_tax_rate()`, `parse_tax_rate()`, `format_tax_rate()` (`product-tax-rate.md`).
 - Pin `form_type = 'product'` in every product-form query and check an id from `LEFT JOIN products` before use: `''` becomes 0 and matches rows of no product (`form-fields-zero-id-query-trap.md`).

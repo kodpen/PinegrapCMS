@@ -196,6 +196,7 @@
 - order-screen-toolbar.md: The order screen's toolbar (view_order.php): which buttons stay on the bar, which are rows of the three-dots menu, why menu rows lost their colours
 - order-status-moves.md: pg_order_status_move(), the one order status rule the API and the Workspace follow; cancel only through process_order_cancellation(), restore only through its helper; full refund cancels (PR #1500)
 - order-template-installment-row.md: The built-in order receipt and order view layouts (includes/templates/order_receipt.php, view_order.php) print the instalment rows, so their rows add up to the Total
+- order-totals-overview.md: Order totals across checkout, order pages and the ERP invoice: who works them out, who reads the header, rounding, where a kurus may differ and what is decided [decision: here]
 - order-view-legal-documents.md: Order view links to the legal documents and KVKK copy kept with the order: __legal_*_url tokens, has_legal_* flags, starter card, cards added after older layouts, none in the e-mail
 - order-view-screen-rows.md: The panel order screen's card rows (includes/fn/order_view.php): empty rows hidden, address type, country, arrival date and contact named, the provider panel link (#2051, #2050)
 - order-view-surcharge-row.md: The order view's card surcharge row shows only when the order has a surcharge: has_surcharge on the starter row and stamped on saved trees
