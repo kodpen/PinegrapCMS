@@ -10,7 +10,7 @@ module: ecommerce
   - `tax_rate_missing`: "Set the tax rate" with an empty or non-numeric rate, "Enter a tax rate, or choose to follow the tax zone.";
   - `tax_rate_range`: a rate below 0 or above 100 (`pg_tax_rate_problem()`), "Enter a tax rate between 0 and 100.";
   - `zones_overlap`: one zone in both Allow and Disallow Shipping Zones, "A shipping zone cannot be both allowed and disallowed."
-  - `hs_code_missing` / `origin_country_missing`: "Set to" with no value, "Enter an HS code, or choose to clear it." / "Choose a country of origin, or choose to clear it." (#PRN);
+  - `hs_code_missing` / `origin_country_missing`: "Set to" with no value, "Enter an HS code, or choose to clear it." / "Choose a country of origin, or choose to clear it." (#8533);
   - `hs_code_invalid` / `origin_country_invalid`: a value the product screen refuses, with its message (`product-customs-fields.md`).
 - A submit that asks for nothing gets "Select a field to change."; a refused price amount alone keeps only its own error.
 - Before (#5309, #5311) 150 was stored as 100 and -5 as 0 (`parse_tax_rate()` holds to the bound) with an "updated" notice; an empty rate gave an error while every product still got its UPDATE (timestamp, user, audit, marketplace queue); an empty quantity or an empty submit came back without a word; a zone in both cards was added then removed, reported as "shipping zones changed".

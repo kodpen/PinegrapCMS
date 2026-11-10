@@ -17,7 +17,7 @@ module: product_customs
 - Export (`export_products_f.php`): `hs_code`, `origin_country` after `compare_at_price`. Import: same headings; `pg_product_customs_import_row()` normalises the cells, a bad cell leaves the whole row out and names it in its own error ("…HS code or country of origin is not valid"); an empty cell leaves the stored value, as for every column.
 - Labels (C2 #3449): the line query reads both; Shippo declares them with the shop defaults of its settings (`carrier-label-customs.md`); Sendcloud as `parcel_items` (C3 #3474, `carrier-label-sendcloud-customs.md`).
 - External API (#3975): the product object carries `hs_code`/`origin_country` (null for '' or a site before 11.0.130); `POST /products` and `POST /products/{id}` take both (nullable, '' clears) through `api_products_customs_param()`: the screen's parsers, 422 on a bad value, 503 without the columns, read before the dry run. Tests: `tests/api_product_customs_test.php`.
-- Products › Modify Selected (#PRN): both, set or cleared, once the columns exist; a bad or empty "Set to" refuses the submit (`product-mass-edit-checks.md`).
+- Products › Modify Selected (#8533): both, set or cleared, once the columns exist; a bad or empty "Set to" refuses the submit (`product-mass-edit-checks.md`).
 - Not yet: the product list's in-place edit.
 
 ## Why these rules?
