@@ -5129,6 +5129,7 @@
     "The original and the last 10 saves are kept.": "Orijinal ve son 10 kayıt saklanır.",
     "The other %d lessons, the project and the instructor's feedback come with the course.": "Diğer %d ders, proje ve eğitmenin geri bildirimi kursla birlikte gelir.",
     "The other party": "Karşı taraf",
+    "The outcome handler {var:1} of queued e-mail {var:2} failed: {var:3}": "Kuyruktaki {var:2} numaralı e-postanın sonuç işleyicisi {var:1} başarısız oldu: {var:3}",
     "The overdue invoice {{record_title}} is still not collected after seven days.": "Vadesi geçen {{record_title}} faturası yedi gün sonra hâlâ tahsil edilmedi.",
     "The overview's sections are on their way; until then the saved reports and the screens in the Visitors menu show the figures.": "Genel bakışın bölümleri yolda; o zamana kadar rakamları kayıtlı raporlar ve Ziyaretçiler menüsündeki ekranlar gösteriyor.",
     "The owner of Claude's application cannot post in that channel. In a private channel they must be a member.": "Claude'un uygulamasının sahibi o kanala yazamıyor. Özel bir kanalda üye olması gerekir.",
