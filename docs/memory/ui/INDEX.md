@@ -241,7 +241,7 @@
 - image-editor-builder.md: The image editor's Shape builder: pathfinder buttons, the drag that merges or removes overlap regions, and the model's own path booleans (flatten, Martinez-Rueda, refit)
 - image-editor-callers.md: Who opens the image editor and how (#4609): the openImageEditor alias, data-pg-image-edit buttons, the live site's copy into content, Workspace's save.url, the redirect [decision: decisions-made-product-15.md]
 - image-editor-canvas-save.md: How a photo's grown or trimmed canvas and an outward frame are saved (extend step), pictures from the computer as files rows, a canvas file keeping and reopening its document
-- image-editor-clip-timeline.md: Editing video clips on the tracks (V3): one row per source cut, trim the ends, split at the playhead, move, snapping, the clips after a trimmed end following, the document's length following its clips
+- image-editor-clip-timeline.md: Editing video clips on the tracks (V3): one row per source cut, trim the ends, split at the playhead, move, snapping, the clips after a trimmed end following, the document's length following its clips [decision: decisions-made-product-42.md]
 - image-editor-clip.md: The video layer (V2): type video, source in and out, start, speed, the frame at the playhead, its sound, Import of videos, the clip panel, video_files and video_upload
 - image-editor-crop.md: The image editor's crop tool: geometry in the document, the rotated space, cover scale, crop mode with its undo and Cancel, ratios, handles, turns and flips, shape, output size, keys
 - image-editor-draw.md: The image editor's Draw tool: nine kinds and the eraser's size, drawn layers as boxes with their drawing inside, line ends, corner radius, style fields, turns and flips
@@ -538,7 +538,7 @@
 - state-shared-form.md: add_state.php and edit_state.php draw the state/province wide layout (Options card, Summary, save bar) and read its posted values through includes/forms/state_form.php; what each screen keeps
 - status-chart-colour-words.md: Status chips, Payment methods doughnut and Search Console chart tell states apart by words, dashes and shapes; ERP Profit and Search Console series lines and bar edges use the -ink tones
 - step-rail.md: Numbered steps on panel screens: Bootstrap 6 .stepper (edit_offer cards, installer, ERP import), why every edit_offer item is .active, theme-reset on the cards [decision: decisions-made-panel-3.md]
-- stored-choice-kept.md: Selects that drop the stored choice add it back selected and marked (product private folder, Workspace template, select_page(), calendar Next Page, disabled offers)
+- stored-choice-kept.md: Selects that drop the stored choice add it back selected and marked (product private folder, Workspace template, select_page(), calendar Next Page, disabled offers) [decision: decisions-made-product-42.md]
 - stored-times-site-order.md: Subscriptions, Firewall log rows, short link state lines and the Paraşüt connection line print stored times through get_absolute_time(), not date()
 - style-usage-counts.md: How the styles list counts the folders and pages that use each style, inherited desktop and mobile styles included
 - submitted-form-add-delete.md: Add Submitted Form reads the pressed button from the request, its e-mail box, Delete Selected skipping missing forms, and the field filter labels of the Forms screen
