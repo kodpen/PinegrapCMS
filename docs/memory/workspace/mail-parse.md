@@ -17,7 +17,7 @@ module: mail_parse
 
 ## How are headers and the date read?
 - Folded lines are joined with one space; a field folded right after its colon (`Subject:` then ` text`) has no leading space.
-- `pg_mail_parse_date()` drops comments and the day name before `strtotime()`: a day name that does not match the date (`Tue, 10 Nov 99`) used to move it forward to that weekday. RFC 5322's `UT` zone is read as `+0000` (it used to give 0).
+- `pg_mail_parse_date()` drops comments and the day name before `strtotime()`: a day name that does not match the date (`Tue, 10 Nov 99`) used to move it forward to that weekday. RFC 5322's `UT` zone is read as `+0000` (it used to give 0) (#8594).
 
 ## Which charsets?
 - RFC 2047 words (adjacent words of one charset joined before conversion, so a split character survives), RFC 2231 parameters and continuations, encoded words inside quoted parameters.
