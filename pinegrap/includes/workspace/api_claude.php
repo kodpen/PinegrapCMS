@@ -33,9 +33,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * The route rows of the queue and the context.
  *
  * A route whose handler calls ws_api_claude_guard() carries 'mcp' => false:
- * it answers the key of Claude's application alone, never an OAuth
- * connection, and the routine calls it over REST, so as an MCP tool it would
- * refuse every client. The context has no guard and stays a tool.
+ * it answers the key of Claude's application, and on the routes of
+ * ws_api_claude_session_routes() also the asker's own session through its
+ * OAuth connection, both over REST; as an MCP tool it would hand any MCP
+ * client the queue. The context has no guard and stays a tool.
  *
  * @return array
  */
@@ -52,7 +53,7 @@ function ws_claude_api_routes()
             'mcp'         => false,
             'returns'     => array('list' => 'WorkspaceClaudeRequest'),
             'summary'     => 'The requests waiting for Claude',
-            'description' => 'For the application chosen for Claude in the Workspace Settings only. status open (the default) is what is waiting to be claimed, oldest first; all is the latest 50 of every state. message.text is the request with every tag spelled out.',
+            'description' => 'For the application chosen for Claude in the Workspace Settings, and for the asker\'s own session through an OAuth connection: a connection lists only what its owner asked, and a request asked in a message waits two minutes for the asker\'s session while one is online (it called within two minutes) before the routine lists it. status open (the default) is what is waiting to be claimed, oldest first; all is the latest 50 of every state. message.text is the request with every tag spelled out.',
             'params'      => array(
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'running', 'answered', 'failed', 'cancelled', 'all'), 'default' => 'open'),
                 array('name' => 'version', 'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'The version of the prompt pasted into the routine, as the instructions say to send it. Left out, the Workspace Settings say the routine still runs a prompt pasted before it read its instructions from the site.'),
@@ -100,7 +101,7 @@ function ws_claude_api_routes()
             'dry_run' => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Take a request',
-            'description' => 'Marks the request as being worked on and leaves an eye on it in the channel. 409 when another run has taken it or it is closed. 409 instructions_outdated when instructions is not the version of the instructions the site serves now (GET /workspace/claude/instructions): the run has not read them, or read them before they changed, and reads them again; a run that sends none is told so in the channel once and in the Workspace Settings.',
+            'description' => 'Marks the request as being worked on and leaves an eye on it in the channel; claimed through an OAuth connection, the request stays with that connection. 409 when another run has taken it or it is closed; 409 held when it is the other side\'s (waiting for the asker\'s session, or handed to the routine). 409 instructions_outdated when instructions is not the version of the instructions the site serves now (GET /workspace/claude/instructions): the run has not read them, or read them before they changed, and reads them again; a run that sends none is told so in the channel once and in the Workspace Settings.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'instructions', 'in' => 'body', 'type' => 'string', 'max_length' => 40, 'description' => 'The version of the instructions the run follows, as their claim step writes it (instructions_version of GET /workspace/claude/instructions).'),
@@ -195,22 +196,97 @@ function ws_claude_api_routes()
 }
 
 /**
- * The owner of the application Claude works through, or a 403 for any other
- * application.
+ * The routes the asker's own session may call through its OAuth connection
+ * as well as the routine: the queue, the brief, claim, answer and fail, and
+ * the reads a change is checked with. Each serves only the requests the
+ * connection's owner asked and ws_claude_request_holder() gives a session.
+ * The routine's instructions stay its own. Pure.
  *
+ * @return string[] route ids
+ */
+function ws_api_claude_session_routes()
+{
+    return array(
+        'workspace.claude.requests.list',
+        'workspace.claude.requests.brief',
+        'workspace.claude.requests.claim',
+        'workspace.claude.requests.answer',
+        'workspace.claude.requests.fail',
+        'workspace.claude.change_types',
+        'workspace.claude.record',
+    );
+}
+
+/**
+ * The OAuth connection the call comes through, when it is one and the
+ * asker's own session may be served; null for an application key and a
+ * team devices session.
+ *
+ * @return array|null api_devices row
+ */
+function ws_api_claude_session_device()
+{
+    if (!function_exists('ws_claude_sessions_ready') || !ws_claude_sessions_ready() || !function_exists('api_current_device')) {
+        return null;
+    }
+
+    $device = api_current_device();
+
+    return (is_array($device) && ((int) ($device['oauth_client_id'] ?? 0) > 0)) ? $device : null;
+}
+
+/**
+ * The owner of the application Claude works through, or the person signed
+ * in on an OAuth connection on a route of ws_api_claude_session_routes(), or
+ * a 403 for any other caller.
+ *
+ * @param string $route the route's id
  * @return array the viewer
  */
-function ws_api_claude_guard()
+function ws_api_claude_guard($route = '')
 {
     if (!ws_claude_schema_ready() || !ws_claude_config()['enabled']) {
         api_fail(403, 'forbidden', lang('Claude is not switched on on this site.'));
     }
 
-    if (!ws_api_is_claude()) {
+    if (!ws_api_is_claude() && !(in_array((string) $route, ws_api_claude_session_routes(), true) && ws_api_claude_session_device())) {
         api_fail(403, 'forbidden', lang('Only the application Claude works through may use this endpoint.'));
     }
 
     return ws_api_viewer();
+}
+
+/**
+ * A request this caller may work on: the routine on one that is the
+ * routine's, an OAuth connection on one its owner asked that waits for their
+ * session or that this connection claimed (ws_claude_request_holder()).
+ * Another person's request is a 404 to a connection; one held by the other
+ * side a 409.
+ *
+ * @param array $viewer ws_api_claude_guard()
+ * @param int   $id
+ * @return array ws_ai_requests row
+ */
+function ws_api_claude_request_for_caller($viewer, $id)
+{
+    $row = ws_api_claude_request_or_404($id);
+    $device = ws_api_claude_session_device();
+    $device_id = ($device && !ws_api_is_claude()) ? (int) $device['id'] : 0;
+    $owner_id = ($device_id > 0) ? (int) $viewer['id'] : 0;
+
+    if (($device_id > 0) && ((int) $row['requested_by'] !== $owner_id)) {
+        api_fail_not_found(lang('Request'));
+    }
+
+    $holder = ws_claude_request_holders(array($row), time())[(int) $row['id']];
+
+    if (!ws_claude_caller_may($holder, $row, $owner_id, $device_id)) {
+        api_fail(409, 'held', ($device_id > 0)
+            ? lang('This request is no longer waiting for your own session: the site\'s Claude routine takes it.')
+            : lang('This request is waiting for the asker\'s own Claude session.'));
+    }
+
+    return $row;
 }
 
 /**
@@ -610,9 +686,9 @@ function ws_api_claude_asker($row)
 
 function ws_api_claude_change_types($params)
 {
-    ws_api_claude_guard();
+    $viewer = ws_api_claude_guard('workspace.claude.change_types');
 
-    $row = ws_api_claude_request_or_404($params['id']);
+    $row = ws_api_claude_request_for_caller($viewer, $params['id']);
     $asker = ws_api_claude_asker($row);
     $out = array();
 
@@ -627,9 +703,9 @@ function ws_api_claude_change_types($params)
 
 function ws_api_claude_record($params)
 {
-    ws_api_claude_guard();
+    $viewer = ws_api_claude_guard('workspace.claude.record');
 
-    $row = ws_api_claude_request_or_404($params['id']);
+    $row = ws_api_claude_request_for_caller($viewer, $params['id']);
     $asker = ws_api_claude_asker($row);
     $type = (string) $params['type'];
     $record_id = (int) $params['record_id'];
@@ -688,9 +764,9 @@ function ws_api_claude_instructions_schema()
 
 function ws_api_claude_brief($params)
 {
-    ws_api_claude_guard();
+    $viewer = ws_api_claude_guard('workspace.claude.requests.brief');
 
-    $row = ws_api_claude_request_or_404($params['id']);
+    $row = ws_api_claude_request_for_caller($viewer, $params['id']);
     $asker = ws_ai_viewer((int) $row['requested_by']);
 
     if (!$asker) {
@@ -727,29 +803,41 @@ function ws_api_claude_request_or_404($id)
 
 function ws_api_claude_requests_list($params)
 {
-    $viewer = ws_api_claude_guard();
+    $viewer = ws_api_claude_guard('workspace.claude.requests.list');
 
     ws_claude_watchdog();
 
+    // The asker's own session sees only what its owner asked; the routine
+    // reports its prompt's version, a session has none.
+    $device = ws_api_is_claude() ? null : ws_api_claude_session_device();
+    $device_id = $device ? (int) $device['id'] : 0;
+    $owner_id = $device ? (int) $viewer['id'] : 0;
+    $mine = $device ? " AND requested_by = '" . $owner_id . "'" : '';
+
     // A routine that sends no version runs the whole prompt pasted before
     // the instructions came from the site: the settings card says so.
-    if (($params['version'] ?? null) === null) {
+    if (!$device && (($params['version'] ?? null) === null)) {
         ws_claude_note_version(null);
     }
 
     $status = (string) ($params['status'] ?? 'open');
 
     if ($status === 'all') {
-        $rows = (array) db_items("SELECT * FROM ws_ai_requests WHERE 1 = 1" . ws_claude_only() . " ORDER BY id DESC LIMIT 50");
+        $rows = (array) db_items("SELECT * FROM ws_ai_requests WHERE 1 = 1" . $mine . ws_claude_only() . " ORDER BY id DESC LIMIT 50");
     } else {
         $where = ($status === 'open') ? "status IN ('queued', 'sent')" : "status = '" . e($status) . "'";
-        $rows = (array) db_items("SELECT * FROM ws_ai_requests WHERE " . $where . ws_claude_only() . " ORDER BY id ASC LIMIT 50");
+        $rows = (array) db_items("SELECT * FROM ws_ai_requests WHERE " . $where . $mine . ws_claude_only() . " ORDER BY id ASC LIMIT 50");
     }
 
     $out = array();
+    $holders = ws_claude_request_holders($rows, time());
 
+    // Each side lists only what it may take or took: a request waiting for
+    // the asker's session is not the routine's yet.
     foreach ($rows as $row) {
-        $out[] = ws_api_claude_request_present($viewer, $row);
+        if (ws_claude_caller_may($holders[(int) $row['id']], $row, $owner_id, $device_id)) {
+            $out[] = ws_api_claude_request_present($viewer, $row);
+        }
     }
 
     api_ok_list($out, 50);
@@ -757,7 +845,7 @@ function ws_api_claude_requests_list($params)
 
 function ws_api_claude_claim($params)
 {
-    $viewer = ws_api_claude_guard();
+    $viewer = ws_api_claude_guard('workspace.claude.requests.claim');
     $row = ws_api_claude_request_or_404($params['id']);
 
     if ($row['status'] === 'running') {
@@ -768,13 +856,25 @@ function ws_api_claude_claim($params)
         api_fail(409, 'closed', lang('This request is already closed.'));
     }
 
-    ws_api_claude_instructions_check($row, $params['instructions'] ?? null);
+    $row = ws_api_claude_request_for_caller($viewer, $row['id']);
+    $device = ws_api_is_claude() ? null : ws_api_claude_session_device();
+
+    // The instructions are the routine's: the asker's own session follows
+    // its own.
+    if (!$device) {
+        ws_api_claude_instructions_check($row, $params['instructions'] ?? null);
+    }
 
     api_dry_run_stop('claimed', 'workspace_claude_request', array('id' => (int) $row['id']));
 
-    // One run wins when two reach for the same request.
-    db("UPDATE ws_ai_requests SET status = 'running', claimed_at = '" . time() . "', error = ''
-        WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent')");
+    // One run wins when two reach for the same request; the asker's
+    // connection that wins is kept on it (claimed_device_id).
+    $claimed = function_exists('ws_claude_sessions_ready') && ws_claude_sessions_ready()
+        ? ", claimed_device_id = '" . ($device ? (int) $device['id'] : 0) . "'" : '';
+    $unclaimed = ($claimed !== '') ? " AND claimed_device_id = 0" : '';
+
+    db("UPDATE ws_ai_requests SET status = 'running', claimed_at = '" . time() . "', error = ''" . $claimed . "
+        WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent')" . $unclaimed);
 
     if (mysqli_affected_rows(db::$con) < 1) {
         api_fail(409, 'already_claimed', lang('Another run is working on this request.'));
@@ -976,13 +1076,14 @@ function ws_api_claude_close_unanswered($viewer, $row)
 
 function ws_api_claude_answer($params)
 {
-    $viewer = ws_api_claude_guard();
+    $viewer = ws_api_claude_guard('workspace.claude.requests.answer');
     $row = ws_api_claude_request_or_404($params['id']);
 
     if (!in_array($row['status'], array('queued', 'sent', 'running'), true)) {
         api_fail(409, 'closed', lang('This request is already closed.'));
     }
 
+    $row = ws_api_claude_request_for_caller($viewer, $row['id']);
     $origin = ws_api_claude_answer_origin($row);
     $refused = ws_api_claude_answer_input_refusal($origin, $params);
 
@@ -1086,9 +1187,11 @@ function ws_api_claude_answer($params)
         api_fail_validation(lang('The daily summary is answered with text only: no tasks, no changes.'), empty($params['tasks']) ? 'changes' : 'tasks');
     }
 
+    // The routine writes as Claude's application; the asker's own session
+    // as its connection writes (ws_api_writer_app_id()).
     $options = array(
         'parent_id' => (int) $row['message_id'],
-        'app_id'    => ws_api_app_id(),
+        'app_id'    => ws_api_writer_app_id(),
     );
 
     // The checks ws_message_send() makes, made first so that a dry run meets
@@ -1156,13 +1259,14 @@ function ws_api_claude_answer($params)
 
 function ws_api_claude_fail($params)
 {
-    $viewer = ws_api_claude_guard();
+    $viewer = ws_api_claude_guard('workspace.claude.requests.fail');
     $row = ws_api_claude_request_or_404($params['id']);
 
     if (!in_array($row['status'], array('queued', 'sent', 'running'), true)) {
         api_fail(409, 'closed', lang('This request is already closed.'));
     }
 
+    $row = ws_api_claude_request_for_caller($viewer, $row['id']);
     $reason = trim(mb_substr(preg_replace('/\s+/u', ' ', (string) $params['reason']), 0, 250));
     $reply_id = 0;
     $channel = ((int) ($row['note_id'] ?? 0) > 0) ? null : ws_channel($row['channel_id']);
@@ -1181,7 +1285,7 @@ function ws_api_claude_fail($params)
     if ($told) {
         $sent = ws_message_send($writer, $channel, '<@user:' . (int) $row['requested_by'] . '> ' . $reason, array(
             'parent_id' => (int) $row['message_id'],
-            'app_id'    => ws_api_app_id(),
+            'app_id'    => ws_api_writer_app_id(),
         ));
 
         $reply_id = $sent['ok'] ? (int) $sent['message_id'] : 0;
