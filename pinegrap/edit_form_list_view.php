@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/form_item_view_form.php');
 $user = validate_user();
 validate_area_access($user, 'user');
 
@@ -361,7 +362,10 @@ if (!$_POST) {
         $count++;
     }
 
-    $output_available_standard_fields = '';
+    // The form's fields, the standard fields and a sample line per format for
+    // the variables card; each entry types its token in at the cursor of the
+    // header, layout or footer editor last focused.
+    $variables_help = pg_cf_variables_help($custom_form_page_id);
 
     // initialize array for storing field options for filters
     $field_options = array();
@@ -371,7 +375,6 @@ if (!$_POST) {
 
     // loop through all standard fields
     foreach ($standard_fields as $standard_field) {
-        $output_available_standard_fields .= '<li class="list-group-item py-1" >^^' . h($standard_field['value']) . '^^</li>';
         $field_options[] = array('name' => $standard_field['name'], 'value' => $standard_field['value'], 'type' => $standard_field['type']);
         $output_advanced_search_available_standard_fields .= '<li class="list-group-item py-1" >{{name: \'' . h($standard_field['value']) . '\'}}</li>';
     }
@@ -379,12 +382,10 @@ if (!$_POST) {
     $field_options[] = array('name' => '', 'value' => '</optgroup>');
     $field_options[] = array('name' => lang('Form Fields'), 'value' => '<optgroup>');
 
-    $output_available_custom_fields = '';
     $output_advanced_search_available_custom_fields = '';
 
     // loop through all custom fields
     foreach ($custom_fields as $custom_field) {
-        $output_available_custom_fields .= '<li class="list-group-item py-1" >^^' . h($custom_field['name']) . '^^</li>';
         $field_options[] = array('name' => $custom_field['name'], 'value' => $custom_field['id'], 'type' => $custom_field['type']);
         $output_advanced_search_available_custom_fields .= '<li class="list-group-item py-1" >{{name: \'' . h($custom_field['name']) . '\'}}</li>';
     }
@@ -715,6 +716,8 @@ if (!$_POST) {
                                         <p class="mt-3 mb-7 p-5 bg-black rounded-4 fg-white">{if ^^example^^ == \'VALUE\'} ' . lang('Equal') . ' {else} ' . lang('Not Equal') . ' {endif}<br/>{if ^^example^^ == \'VALUE\'} ' . lang('Equal') . ' {endif}</p>
                                         <p>' . lang(array('string'=>'Use the following format to customize the date format for date and date & time fields. The format can either be a {var:1} or "relative" for a relative time (e.g. "2 minutes ago", "2 minutes from now").','vars'=>lang('<a href="http://php.net/manual/en/function.date.php" target="_blank">PHP date format</a>'))) . '</p>
                                         <p class="mt-3 mb-7 p-5 bg-black rounded-4 fg-white">^^submitted_date_and_time^^%%l, F j, Y \a\t g:i A%%<br />^^submitted_date_and_time^^%%relative%%</p>
+                                        <p>' . lang('Use the following format to print one text for a ticked check box and another for an empty one; either text may be left empty.') . '</p>
+                                        <p class="mt-3 mb-7 p-5 bg-black rounded-4 fg-white">' . h('^^example^^%%' . lang('Yes') . '|' . lang('No') . '%%') . '</p>
                                         <p>' . lang('Use the following URL format to link directly to the newest comment') . ':</p>
                                         <p class="mt-3 mb-7 p-5 bg-black rounded-4 fg-white">#c-^^newest_comment_id^^</p>
                                     </div>
@@ -957,22 +960,10 @@ if (!$_POST) {
                                         </dl>
                                     </div>
                                 </div>
-                                <div class="card mb-7">
-                                    <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center justify-content-between gap-3 row-gap-1">
-                                        <h2 class="h5 mb-0 text-uppercase fg-primary fw-bold">' . lang('Available variables') . '</h2>
-                                        <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#hints"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('Hints') . '</button>
-                                    </div>
-                                    <div class="card-body pt-0">
-                                        <p class="mb-0 fg-primary">' . lang('System Fields') . '</p>
-                                        <ul class="list-group overflow-auto pe-1 mb-5" style="min-height:100px;height:220px;max-height:600px;resize:vertical;">
-                                            ' . $output_available_standard_fields . '
-                                        </ul>
-                                        <p class="mb-0 forms-color">' . lang('Form Fields') . '</p>
-                                        <ul class="list-group overflow-auto pe-1" style="min-height:100px;height:220px;max-height:600px;resize:vertical;">
-                                            ' . $output_available_custom_fields . '
-                                        </ul>
-                                    </div>
-                                </div>
+                                ' . pg_form_item_view_form_variables($variables_help, array(
+                                    'mail' => false,
+                                    'hint' => lang('Click a variable to insert it at the cursor in the header, layout or footer you last worked in.'),
+                                )) . '
                             </div>
                         </div>
                         <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
@@ -988,7 +979,7 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    
+    ' . pg_form_item_view_form_insert_script('pg_fiv_variables', array('layout', 'header_content', 'footer_content')) . '
 </main>' .
     output_footer();
 

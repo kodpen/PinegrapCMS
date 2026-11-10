@@ -3224,7 +3224,8 @@ function get_form_list_view($properties) {
                             break;
                         
                         case 'custom':
-                            $data = $form['field_' . $field_id];
+                            // An unticked box has no form_data row: its subquery reads NULL.
+                            $data = $form['field_' . $field_id] ?? '';
 
                             // if this field is a WYSIWYG field, then do not prepare for HTML;
                             // the markup was typed by the submitter, so it is filtered instead
@@ -3236,7 +3237,15 @@ function get_form_list_view($properties) {
                             break;
                     }
 
-                    $data = prepare_form_data_for_output($data, $field_type, $prepare_for_html, $date_format);
+                    // ^^name^^%%Yes|No%% on a check box prints one of the two texts as
+                    // written in the layout instead of the stored value.
+                    $checkbox_text = ($field_type == 'check box') ? pg_cf_checkbox_format_text($data, $variable[3] ?? '') : null;
+
+                    if ($checkbox_text !== null) {
+                        $data = $checkbox_text;
+                    } else {
+                        $data = prepare_form_data_for_output($data, $field_type, $prepare_for_html, $date_format);
+                    }
 
                     // if this is a standard field, then do some extra things for standard fields
                     if ($field_group == 'standard') {

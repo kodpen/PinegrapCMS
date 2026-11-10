@@ -36,9 +36,11 @@ function test_form_list_view_hints_buttons_hide_the_icon_word()
 
 	pg_assert_true(strpos($src, '<span class="material-icons me-1">info</span>') === false, 'no Hints button reads "info"');
 	// The advanced search Hints keep the material icon; the variables card's
-	// Hints in the status column wears a Bootstrap icon.
+	// Hints in the status column is the shared card's, with a Bootstrap icon.
 	pg_assert_true(substr_count($src, '<span class="material-icons me-1" aria-hidden="true">info</span>') === 1, 'the advanced search Hints icon is hidden');
-	pg_assert_true(substr_count($src, '<i class="bi bi-info-circle me-1" aria-hidden="true"></i>') === 1, 'the variables Hints icon is hidden');
+	pg_assert_contains('pg_form_item_view_form_variables(', $src, 'the variables card is the shared one');
+	$card = content_form_group_names_source('includes/forms/form_item_view_form.php');
+	pg_assert_true(substr_count($card, '<i class="bi bi-info-circle me-1" aria-hidden="true"></i>') === 1, 'the variables Hints icon is hidden');
 }
 
 function test_design_file_editor_label_names_the_code_field()

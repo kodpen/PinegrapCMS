@@ -233,37 +233,7 @@ if (!$_POST) {
                 </form>
             </div>
         </div>
-    
-<script>
-    (function () {
-        var panel = document.getElementById("pg_fiv_variables");
-        if (!panel) return;
-        panel.addEventListener("click", function (event) {
-            var button = event.target.closest("[data-pg-insert]");
-            if (!button) return;
-            var text = button.getAttribute("data-pg-insert");
-            var tip = window.pgUI ? pgUI.tooltip.find(button) : null;
-            if (tip) tip.hide();
-            var editor = window.pgCodeEditors && window.pgCodeEditors.layout;
-            if (editor && typeof editor.insertAtCursor === "function") {
-                editor.insertAtCursor(text);
-                return;
-            }
-            var field = document.getElementById("layout");
-            if (field && field.offsetParent !== null && typeof field.setRangeText === "function") {
-                field.setRangeText(text, field.selectionStart, field.selectionEnd, "end");
-                field.dispatchEvent(new Event("input", { bubbles: true }));
-                field.focus();
-                return;
-            }
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text).then(function () {
-                    if (typeof window.pgToast === "function") window.pgToast({ message: ' . json_encode(lang('Copied to clipboard'), JSON_HEX_TAG | JSON_HEX_AMP) . ', variant: "success" });
-                });
-            }
-        });
-    })();
-</script>
+    ' . pg_form_item_view_form_insert_script('pg_fiv_variables', array('layout')) . '
 </main>' .
     output_footer();
 

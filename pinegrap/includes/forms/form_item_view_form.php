@@ -106,14 +106,30 @@ function pg_form_item_view_form_variable_items($items)
 
 /**
  * The variables card: form fields, system fields, e-mail links and format
- * samples, with the Hints button.
+ * samples, with the Hints button. The form list view draws it too, without
+ * the e-mail links: only the e-mail to the person who sent the form fills
+ * them, so a list always prints them empty.
  *
- * @param array $help pg_cf_variables_help() result: 'fields', 'standard',
- *                    'mail', 'syntax' ('conditional', 'date', 'checkbox')
+ * @param array $help    pg_cf_variables_help() result: 'fields', 'standard',
+ *                       'mail', 'syntax' ('conditional', 'date', 'checkbox')
+ * @param array $options 'mail' false leaves the e-mail links group out;
+ *                       'hint' replaces the line under the heading (plain text)
  * @return string  HTML
  */
-function pg_form_item_view_form_variables($help)
+function pg_form_item_view_form_variables($help, $options = array())
 {
+    $hint = (string) ($options['hint'] ?? lang('Click a variable to insert it at the cursor in the layout.'));
+
+    $mail = '';
+    if (($options['mail'] ?? true) !== false) {
+        $mail = '
+                                        <p class="mb-0">' . lang('E-mail links') . '</p>
+                                        <p class="form-text mt-0 mb-1">' . lang('Filled in only in the e-mail to the person who sent the form; empty on the page and in other copies.') . '</p>
+                                        <ul class="list-group mb-5">
+                                            ' . pg_form_item_view_form_variable_items($help['mail']) . '
+                                        </ul>';
+    }
+
     $fields = pg_form_item_view_form_variable_items($help['fields']);
     if ($fields === '') {
         $fields = '<li class="list-group-item py-1 px-3 small fg-secondary">' . h(lang('This form has no fields yet.')) . '</li>';
@@ -137,7 +153,7 @@ function pg_form_item_view_form_variables($help)
                                         <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#hints"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('Hints') . '</button>
                                     </div>
                                     <div class="card-body pt-0 collapse show" id="pg_fiv_variables_list">
-                                        <p class="form-text mt-0 mb-3">' . lang('Click a variable to insert it at the cursor in the layout.') . '</p>
+                                        <p class="form-text mt-0 mb-3">' . h($hint) . '</p>
                                         <p class="mb-0 forms-color">' . lang('Form Fields') . '</p>
                                         <ul class="list-group overflow-auto pe-1 mb-5" style="min-height:100px;height:220px;max-height:600px;resize:vertical;">
                                             ' . $fields . '
@@ -145,18 +161,73 @@ function pg_form_item_view_form_variables($help)
                                         <p class="mb-0 fg-primary">' . lang('System Fields') . '</p>
                                         <ul class="list-group overflow-auto pe-1 mb-5" style="min-height:100px;height:220px;max-height:600px;resize:vertical;">
                                             ' . pg_form_item_view_form_variable_items($help['standard']) . '
-                                        </ul>
-                                        <p class="mb-0">' . lang('E-mail links') . '</p>
-                                        <p class="form-text mt-0 mb-1">' . lang('Filled in only in the e-mail to the person who sent the form; empty on the page and in other copies.') . '</p>
-                                        <ul class="list-group mb-5">
-                                            ' . pg_form_item_view_form_variable_items($help['mail']) . '
-                                        </ul>
+                                        </ul>' . $mail . '
                                         <p class="mb-0">' . lang('Formats') . '</p>
                                         <ul class="list-group">
                                             ' . $formats . '
                                         </ul>
                                     </div>
                                 </div>';
+}
+
+/**
+ * The script behind the variables card: a click on a [data-pg-insert] button
+ * types its text in at the cursor of the code editor last focused among
+ * $editor_ids (the first one until another was focused). Without the editor
+ * it goes into that textarea, as a last resort to the clipboard.
+ *
+ * @param string $card_id    The card's id (pg_fiv_variables)
+ * @param array  $editor_ids Textarea ids of the code editors, the default first
+ * @return string  HTML
+ */
+function pg_form_item_view_form_insert_script($card_id, $editor_ids)
+{
+    $flags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
+
+    return '
+<script>
+    (function () {
+        var panel = document.getElementById(' . json_encode((string) $card_id, $flags) . ');
+        if (!panel) return;
+        var ids = ' . json_encode(array_values(array_map('strval', $editor_ids)), $flags) . ';
+        var last = ids[0];
+        var editorOf = function (id) { return window.pgCodeEditors ? window.pgCodeEditors[id] : null; };
+        document.addEventListener("focusin", function (event) {
+            for (var i = 0; i < ids.length; i++) {
+                var editor = editorOf(ids[i]);
+                var host = editor && (editor.host || editor.container);
+                if (event.target.id === ids[i] || (host && host.contains(event.target))) {
+                    last = ids[i];
+                    return;
+                }
+            }
+        });
+        panel.addEventListener("click", function (event) {
+            var button = event.target.closest("[data-pg-insert]");
+            if (!button) return;
+            var text = button.getAttribute("data-pg-insert");
+            var tip = window.pgUI ? pgUI.tooltip.find(button) : null;
+            if (tip) tip.hide();
+            var editor = editorOf(last);
+            if (editor && typeof editor.insertAtCursor === "function") {
+                editor.insertAtCursor(text);
+                return;
+            }
+            var field = document.getElementById(last);
+            if (field && field.offsetParent !== null && typeof field.setRangeText === "function") {
+                field.setRangeText(text, field.selectionStart, field.selectionEnd, "end");
+                field.dispatchEvent(new Event("input", { bubbles: true }));
+                field.focus();
+                return;
+            }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function () {
+                    if (typeof window.pgToast === "function") window.pgToast({ message: ' . json_encode(lang('Copied to clipboard'), JSON_HEX_TAG | JSON_HEX_AMP) . ', variant: "success" });
+                });
+            }
+        });
+    })();
+</script>';
 }
 
 /**
