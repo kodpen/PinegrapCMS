@@ -18,6 +18,7 @@ description: Lookup columns of workflow tables (type lookup, wtable_lookup.php, 
 
 ## Where is it filled?
 - Screen: the page shown, the row form (read-only field), the board, the Excel download. Columns card: "Lookup · Customer › Phone". New column form: "Column of the linked row", one select `options[pick]` = `link:column`.
+- Every reader calls `ws_wtable_joined_fill()` (lookups, then rollups) and `ws_wtable_joined_targets()`.
 - API and MCP: every row read (one, by key, a page, a query) through `ws_api_wtable_rows_present()`. Not the bin rows and not the delete answer.
 - Flows: Read a row and Read rows (its listed rows) give `cell_<id>`; the AI hints for `row_get` and `rows_get` say it is read, never written.
 
@@ -26,7 +27,7 @@ description: Lookup columns of workflow tables (type lookup, wtable_lookup.php, 
 - Conditions, the query bar, the totals line and sorting do not take it (no operators; sort refused "The rows cannot be sorted by a lookup column."): they run over every row before the page is read, and a lookup is read per page.
 - The row start box gives no lookup (`ws_flow_row_outputs($columns, false)`): its event body is built once for every listener, for no reader. A Read a row box after it gives the value.
 - Import skips it; Change type refuses it both ways (`type_not_changeable`, `type_unknown`).
-- The Add/Change a row canvas form still offers it (`rowWriteColumns()` in workspace_flow.js filters only `formula`); the server refuses the write.
+- The canvas leaves it out of Add/Change a row and of conditions and sorts (`rowWriteColumns()`, `rowQueryColumns()`, `workflow-tables-rollup.md`).
 
 ## Tests
 - `tests/workspace_wtable_lookup_test.php`.

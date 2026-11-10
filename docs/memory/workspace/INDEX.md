@@ -68,6 +68,7 @@
 - workflow-tables-lookup.md: Lookup columns of workflow tables (type lookup, wtable_lookup.php, PR #8574): a column of the linked row, worked out on read for whoever reads, never stored [decision: here]
 - workflow-tables-numbers.md: How workflow tables read and show amounts and numbers (#3391, PR #3507, import PR #3524): ws_calc_number() for typed figures, site separators in file import and on display, machine form stored
 - workflow-tables-query.md: The table screen's query bar, sort and totals line, and the rows API's where/join/sort/dir (wtable_query.php, plan tables-relational step 3, PR #8453)
+- workflow-tables-rollup.md: Rollup columns of workflow tables (type rollup, wtable_rollup.php, PR #8584): count, sum, average, smallest or largest over the rows of another table that link to the row, worked out on read [decision: here]
 - workflow-tables-row-links.md: Row links of workflow tables (type row, "Row link", wtable_links.php, PR #8557): a row id of another table, shown by key or first text, checked on write, cleared on delete [decision: here]
 - workflow-tables-screen.md: The workflow tables screen workspace_wtables.php (T1e, #2966): server-drawn forms over the store, list scopes, rows paged, the row form, column options from the form, shares, nav entry
 - workflow-tables.md: Workflow tables (11.0.110, #2746): the four ws_wtable* tables column by column, ws_wtable_access(), column changes; JSON person/link cells and the privacy reader

@@ -74,7 +74,7 @@
 [NEW] Added MCP tool boxes to Workspace flows: a flow runs a connected server's read-only tool and passes its answer on
 [NEW] Added completing an order from the payment service's message when the visitor does not return from the payment page.
 [NEW] Added the PayTR payment driver: the customer pays in PayTR's payment page, framed in the checkout, and PayTR confirms each payment to the store.
-[NEW] Added workflow tables to the Workspace: tables with typed columns and a board view, shared with people or channels, filled from a spreadsheet or a note's table or started from a ready-made table, and reached through the external API and MCP.
+[NEW] Added workflow tables to the Workspace: tables with typed columns, values looked up and totalled from linked tables and a board view, shared with people or channels, filled from a spreadsheet or a note's table or started from a ready-made table, and reached through the external API and MCP.
 [NEW] Added parts anywhere: a product, form record or event view's read-only elements (price, gallery, breadcrumb, rating, stock line) placed anywhere on its page in the visual designer.
 [NEW] Added carrier labels through Geliver, Basit Kargo, Kargonomi, Aras Kargo, Shippo and Sendcloud (US and European carriers): create, print, cancel and return labels from the order and in bulk, request a carrier pickup for them, follow their parcel statuses and declare the customs data of parcels sent abroad.
 [NEW] Added Notion and OneNote pages as Workspace notes, through the Notion MCP connector and a connected Microsoft account.

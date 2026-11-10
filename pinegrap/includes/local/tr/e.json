@@ -670,6 +670,7 @@
     "Empty canvas": "Boş tuval",
     "Empty cart message": "Boş sepet mesajı",
     "Empty for any kind.": "Her tür için boş bırakın.",
+    "Empty for every linked row; else a JSON list of conditions on the other table's columns, as the tables API takes them.": "Bağlanan her satır için boş bırakın; değilse diğer tablonun sütunlarına koşulların JSON listesi, tablolar API'sinin aldığı gibi.",
     "Empty for no deadline; at most 720 hours (30 days). A request with no decision by then expires.": "Süre sınırı yoksa boş bırakın; en çok 720 saat (30 gün). O zamana kadar karar verilmeyen istek süresi dolmuş sayılır.",
     "Empty for no last day.": "Son gün yoksa boş bırakın.",
     "Empty heading": "Boş başlık",
