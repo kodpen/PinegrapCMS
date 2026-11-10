@@ -1859,7 +1859,7 @@ function pg_chat_render_backend_launcher()
         <style>
             #pg-chat-root .pg-chat-launcher { position: fixed; right: 24px; bottom: 24px; z-index: 1080; width: 58px; height: 58px; border-radius: 50%; border: 0; color: #fff; background: linear-gradient(135deg, var(--pg-primary), #6f42c1); box-shadow: 0 8px 24px color-mix(in srgb, var(--pg-primary) 35%, transparent); font-size: 22px; transition: transform .15s ease, box-shadow .15s ease; }
             #pg-chat-root .pg-chat-launcher:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 12px 28px color-mix(in srgb, var(--pg-primary) 45%, transparent); }
-            #pg-chat-root .pg-chat-launcher:focus-visible { outline: 2px solid color-mix(in srgb, var(--pg-primary) 50%, transparent); outline-offset: 2px; }
+            #pg-chat-root .pg-chat-launcher:focus-visible { outline: 2px solid var(--pg-primary-ink); outline-offset: 2px; }
             #pg-chat-root .pg-chat-badge { box-sizing: border-box; position: absolute; top: -4px; right: -4px; min-width: 1.375rem; height: 1.375rem; border-radius: 999px; background: #dc3545; color: #fff; font-size: 0.6875rem; line-height: 1; padding: 0 5px; display: none; align-items: center; justify-content: center; border: 2px solid var(--pg-bg-body); }
             #pg-chat-root .pg-chat-panel { position: fixed; right: 24px; bottom: 96px; z-index: 1080; width: 23.25rem; max-width: calc(100vw - 32px); height: 34rem; max-height: calc(100vh - 128px); display: none; flex-direction: column; overflow: hidden; border: 0; border-radius: 18px; box-shadow: 0 18px 48px rgba(0,0,0,.35); --bs-card-inner-border-radius: 18px; }
             #pg-chat-root .pg-chat-panel.pg-chat-open { display: flex; animation: pgChatPop .18s ease-out; }

@@ -5291,8 +5291,8 @@ table.monthly_calendar th {
   line-height: 1em;
   padding: 1em;
   vertical-align: top;
-  min-width: 100px;
-  width: 200px;
+  min-width: 6.25rem;
+  width: 12.5rem;
 }
 
 table.monthly_calendar th {
@@ -5303,12 +5303,12 @@ table.monthly_calendar td:not(.inactive) {
   background-color: var(--pg-bg-body);
   border: var(--pg-border-width) solid;
   border-color: inherit;
-  height: 100px;
+  height: 6.25rem;
 }
 
 table.monthly_calendar td.inactive {
   background-color: inherit;
-  height: 100px;
+  height: 6.25rem;
 }
 
 table.monthly_calendar tr.heading {
@@ -5316,15 +5316,15 @@ table.monthly_calendar tr.heading {
 }
 
 table.monthly_calendar .calendar-day-wrapper {
-  font-size: 20px;
+  font-size: 1.25rem;
 }
 
 table.monthly_calendar .calendar-day-wrapper span.today {
   background-color: #ffe1ce;
-  width: 30px;
-  height: 30px;
+  width: 1.875rem;
+  height: 1.875rem;
   display: inline-block;
-  line-height: 30px;
+  line-height: 1.875rem;
   text-align: center;
   border-radius: 50%;
 }
@@ -5369,7 +5369,7 @@ table.monthly_calendar .calendar-event a {
   color: #4c4c4c;
   text-decoration: none;
   white-space: nowrap;
-  max-width: 200px;
+  max-width: 12.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
   display: inline-block;

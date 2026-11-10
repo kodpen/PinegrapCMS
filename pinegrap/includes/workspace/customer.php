@@ -42,13 +42,22 @@ function ws_customer_ready()
 }
 
 /**
- * The kinds of record a customer can be, as the tags name them.
+ * The kinds of record a customer can be, as the tags name them: the kinds
+ * with customer true in ws_record_kinds(), in its order.
  *
  * @return string[]
  */
 function ws_customer_types()
 {
-    return array('contact', 'user_account', 'erp_account');
+    $types = array();
+
+    foreach (ws_record_kinds() as $kind => $entry) {
+        if ($entry['customer']) {
+            $types[] = $kind;
+        }
+    }
+
+    return $types;
 }
 
 /**

@@ -2854,12 +2854,24 @@
         }
     }
 
+    // A live flow whose start box is "At a time": Run now in place of Run,
+    // through that box (ws_flow_run_now()).
+    function timeStarted() {
+        return !!(state.flow && (state.flow.start === 'time'));
+    }
+
     // A flow that may be run now: live, published, and the person's to edit
-    // or to run (ws_flow_run_start_check() decides the rest).
+    // or to run (ws_flow_run_start_check() decides the rest). One that starts
+    // at a time only where the server offers Run now (run_now: whoever may
+    // change it, while its time start still runs).
     function runnable() {
         var flow = state.flow;
 
-        return !!(flow && (flow.status === 'live') && (flow.version > 0) && ((flow.access === 'edit') || (flow.access === 'run')));
+        if (!flow || (flow.status !== 'live') || !(flow.version > 0)) {
+            return false;
+        }
+
+        return timeStarted() ? !!flow.run_now : ((flow.access === 'edit') || (flow.access === 'run'));
     }
 
     // Run starts the live version; primary where "New flow" is not shown.
@@ -2870,9 +2882,10 @@
             return;
         }
 
-        var run = K.button(primary ? 'btn btn-sm btn-solid theme-primary rounded-pill px-5' : 'btn btn-sm btn-outline theme-secondary', t('fl_run'), 'bi-play-fill');
+        var now = timeStarted();
+        var run = K.button(primary ? 'btn btn-sm btn-solid theme-primary rounded-pill px-5' : 'btn btn-sm btn-outline theme-secondary', t(now ? 'fl_run_now' : 'fl_run'), now ? 'bi-lightning' : 'bi-play-fill');
 
-        run.title = t('fl_run_help');
+        run.title = t(now ? 'fl_run_now_help' : 'fl_run_help');
         run.setAttribute('data-refocus', 'run');
         run.disabled = (state.starting === 'send');
         run.addEventListener('click', startRun);
@@ -10363,6 +10376,9 @@
                     flow.status = data.flow.status;
                     flow.version = data.flow.version;
                     flow.graph = data.flow.graph;
+                    // How the live version starts decides Run or Run now.
+                    flow.start = data.flow.start;
+                    flow.run_now = data.flow.run_now;
                     flow.changed = true;
                     listEntry(flow);
                     redrawBar();
@@ -12210,7 +12226,10 @@
     // until the server answers it, so a start sent again after an answer was
     // lost gets the run the first one started instead of a second run. A
     // customer picked makes the run about them: a run for them still open
-    // is answered instead of a second one.
+    // is answered instead of a second one. A flow that starts at a time is
+    // run now through its start box (ws_flow_run_now()), asked the same way
+    // and with no customer; its answer says whether Run now stays (a flow
+    // that starts once has had its run).
     function startRun() {
         var flow = state.flow;
 
@@ -12220,9 +12239,10 @@
 
         state.starting = 'ask';
 
-        var customer = FL.run_customer ? customerPicker() : null;
+        var now = timeStarted();
+        var customer = (FL.run_customer && !now) ? customerPicker() : null;
 
-        K.ask(t('fl_run_ask', flow.name, flow.version), t('fl_run_do'), false, customer ? customer.node : null).then(function (yes) {
+        K.ask(t(now ? 'fl_run_now_ask' : 'fl_run_ask', flow.name, flow.version), t('fl_run_do'), false, customer ? customer.node : null).then(function (yes) {
             if (!yes || (state.flow !== flow)) {
                 state.starting = false;
                 state.refocus = 'run';
@@ -12243,14 +12263,25 @@
             // start_token, not token: K.api() sends the CSRF token as token,
             // and a data key of that name would replace it.
             // contact_id 0: a run about nobody.
-            return K.api('ws_flow_run_start', { flow_id: flow.id, start_token: state.startToken.value, contact_id: customer ? customer.picked.id : 0 }).then(function (data) {
+            var sent = now
+                ? K.api('ws_flow_run_now', { flow_id: flow.id, start_token: state.startToken.value })
+                : K.api('ws_flow_run_start', { flow_id: flow.id, start_token: state.startToken.value, contact_id: customer ? customer.picked.id : 0 });
+
+            return sent.then(function (data) {
                 state.startToken = null;
                 state.starting = false;
+
+                if (now) {
+                    flow.run_now = !!data.run_now;
+                }
+
                 K.toast(data.started ? t('fl_run_started') : t('fl_run_again'), 'success');
 
                 if (data.run && (state.flow === flow)) {
                     state.refocus = 'run-title';
                     showRun(data.run, false);
+                } else if (now && !flow.run_now && (state.flow === flow)) {
+                    drawBar();
                 } else if (ui.runButton) {
                     ui.runButton.disabled = false;
                 }

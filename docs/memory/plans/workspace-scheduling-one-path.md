@@ -11,7 +11,7 @@ description: Plan (owner 2026-11-09): scheduled work set up only on the flow can
 - Decisions: `workflow/decisions-made-product-41.md`. The old actions shipped but nobody uses them yet, so their useful functions come into flows and nothing is built for the old rows.
 
 ## Which steps are done?
-- Done: step 1 #8394 (`workspace/workspace-scheduling-one-place.md`). Next: step 2.
+- Done: step 1 #8394 (`workspace/workspace-scheduling-one-place.md`), step 2 #8443 (`workspace/workspace-flows-run-now.md`). Next: step 3.
 
 ## What holds for every step?
 - No schema, no migration step: converted rows, hidden anchors and refused rows keep running as they do (`ws_scheduled_run()`, `ws_scheduled_execute()`).
@@ -29,7 +29,7 @@ description: Plan (owner 2026-11-09): scheduled work set up only on the flow can
 - Add › Start a flow shows only where `ws_channel_open` says `flows_here`.
 - Texts: the tour's Flows step no longer names scheduled actions; the Scheduled messages screen loses its "Your scheduled actions are in Flows." link.
 
-## Step 2 — Run now for flows that start at a time
+## Step 2 — Run now for flows that start at a time (done, #8443)
 - A live flow whose start box is `schedule` gets Run now on its canvas for whoever may edit it, asked first, as Run is asked.
 - It starts the flow through its anchor row (hidden, or converted), by hand, as `ws_scheduled_run_now` does for a converted row. The start box says it was started by hand, and the run shows in the canvas's runs list.
 - Event, join, row, mention, web and no-order starts get no Run now (owner: time only).

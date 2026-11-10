@@ -69,6 +69,38 @@ $select_options = function ($options) {
                 </div>
                 <div class="form-text" id="tax_rate_value_hint"><?=lang(array('string'=>'Used only when the rate is being set.' ))?></div>
             </div>
+            <?php if (pg_product_customs_ready()): ?>
+            <?php
+            // Customs data (products.hs_code, origin_country): left as it is,
+            // set to the value beside, or cleared to the shop default.
+            $customs_method_options = function ($label) {
+                return array(
+                    lang(array('string' => 'Select to change {var:1}', 'vars' => array($label))) => '',
+                    lang('Set to the value beside') => 'set',
+                    lang('Clear (use the shop default)') => 'clear',
+                );
+            };
+            ?>
+            <div class="col-12 md:col-6">
+                <label for="hs_code_method" class="form-label"><?=h(lang('HS Code'))?></label>
+                <select id="hs_code_method" name="edit_hs_code_method" class="form-control" aria-describedby="customs_hint"<?=$owner?>><?=$select_options($customs_method_options(lang('HS Code')))?></select>
+            </div>
+            <div class="col-12 md:col-6">
+                <label for="hs_code" class="form-label"><?=h(lang('New HS Code'))?></label>
+                <input type="text" id="hs_code" name="edit_hs_code" maxlength="<?=PG_PRODUCT_HS_CODE_MAX?>" inputmode="decimal" pattern="[0-9]+(\.[0-9]+)*" placeholder="6109.10" aria-describedby="customs_hint" class="form-control"<?=$owner?>>
+            </div>
+            <div class="col-12 md:col-6">
+                <label for="origin_country_method" class="form-label"><?=h(lang('Country of Origin'))?></label>
+                <select id="origin_country_method" name="edit_origin_country_method" class="form-control" aria-describedby="customs_hint"<?=$owner?>><?=$select_options($customs_method_options(lang('Country of Origin')))?></select>
+            </div>
+            <div class="col-12 md:col-6">
+                <label for="origin_country" class="form-label"><?=h(lang('New Country of Origin'))?></label>
+                <select id="origin_country" name="edit_origin_country" aria-describedby="customs_hint" class="form-control"<?=$owner?>><?=pg_product_origin_country_options('')?></select>
+            </div>
+            <div class="col-12">
+                <div class="form-text mt-0" id="customs_hint"><?=lang(array('string' => 'Used only when the value is being set. Empty uses the shop default of the label service.'))?></div>
+            </div>
+            <?php endif; ?>
             <div class="col-12 md:col-6">
                 <label for="inventory" class="form-label"><?=lang(array('string'=>'Track Inventory' ))?></label>
                 <select id="inventory" name="edit_inventory" class="form-control"<?=$owner?>><?=$select_options($inventory_options)?></select>
@@ -221,6 +253,24 @@ $select_options = function ($options) {
                 tax_rate_box.required = false;
                 if (!tax_rate_valid) {
                     return;
+                }
+            }
+            // An HS code or a country of origin being set needs a valid
+            // value; Clear stands for the shop default.
+            var customs = [
+                ["hs_code_method", "hs_code", <?=json_encode(lang('Enter an HS code, or choose to clear it.'))?>],
+                ["origin_country_method", "origin_country", <?=json_encode(lang('Choose a country of origin, or choose to clear it.'))?>]
+            ];
+            for (var i = 0; i < customs.length; i++) {
+                var customs_method = field(customs[i][0]);
+                var customs_box = field(customs[i][1]);
+                if (customs_method && (customs_method.value == "set")) {
+                    customs_box.setCustomValidity(customs_box.value.trim() == "" ? customs[i][2] : "");
+                    var customs_valid = customs_box.reportValidity();
+                    customs_box.setCustomValidity("");
+                    if (!customs_valid) {
+                        return;
+                    }
                 }
             }
             if ((field("inventory_quantity_process").value != "") && (field("inventory_quantity").value == "")) {

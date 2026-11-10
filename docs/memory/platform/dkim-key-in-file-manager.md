@@ -14,6 +14,7 @@ description: dkim.key never leaves the server through the panel (no view, archiv
 - No archive: `pg_explorer_zip_add_folder()` skips it, `explorer_zip_create` refuses it with "Access denied for …" (the archive is an ordinary file `get_file.php` serves).
 - No copy and no rename: `explorer_paste` (copy) and `pg_explorer_copy_folder()` refuse or skip it; `explorer_rename`, `explorer_file_save` and `edit_file.php` (Save, Duplicate) refuse a new name with "Access denied". Under another name `get_file.php` would serve it, and the mailer reads it by this name. Moving it to another folder is still allowed (the name stays).
 - No channel copy (#620): the Workspace picker (`includes/workspace/library.php`) lists it with the reason "the key that signs the site's mail stays on the server", and `ws_library_file()` refuses it, so neither the writing box's paperclip nor the file manager's "Send to a channel" posts a copy. A channel keeps its copy under another name, which `get_file.php` serves to the channel.
+- No content and no overwrite: the visual designer's `designer_file` read and save (`includes/panel/designer.php`) refuse it with "Access denied" (#8527).
 - A new door that gives the bytes, archives, copies or renames a file asks `pg_file_withheld($name)` first; `tests/file_withheld_test.php` checks the function and that each door asks it.
 
 ## Who may give a file that name?
@@ -25,5 +26,4 @@ description: dkim.key never leaves the server through the panel (no view, archiv
 ## What is not covered?
 - The explorer's Images/Media/Documents views, its search and the Workspace picker list it by name and size; only the bytes are withheld.
 - A designer can still change the record's design flag or delete it; the SMTP settings screen regenerates the pair.
-- The visual designer's `designer_file` read and save (`includes/panel/designer.php`, roles 0-1) take any registered name without asking `pg_file_withheld()` (read in the source).
 - The Workspace picker follows folder rights only: the file manager's designer-only rule for design files (copy, zip) is not applied there.

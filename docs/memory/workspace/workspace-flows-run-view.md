@@ -4,7 +4,7 @@ description: The run view of the flow canvas (workspace_flow.js, PR #1555): Run,
 ---
 
 ## How is a run started?
-- Run (live, version > 0, edit or run access) asks, then starts once (`state.starting`). Primary only without "New flow".
+- Run (live, version > 0, edit or run access) asks, then starts once (`state.starting`). Primary only without "New flow". A flow that starts at a time shows Run now in its place, for its editors only, through the same `startRun()` (`workspace-flows-run-now.md`).
 - Its token goes as `start_token`: `token` is the CSRF token, which `api()` lets a data key replace (every start was refused). Kept until answered, so a start sent again gets the first one's run.
 
 ## How are the runs listed?

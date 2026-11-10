@@ -589,7 +589,28 @@ if (!$_POST) {
                     'type' => 'file'));
             }
 
-            @file_put_contents(FILE_DIRECTORY_PATH . '/' . $name, $content);
+            // A failed write leaves the old file under its own name and its
+            // row as it was; the item is reported as not imported instead of
+            // a row with a missing or cut-off file.
+            if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $name, $content)) {
+                log_activity(lang(array('string' => '{var:1} could not be written to disk.', 'vars' => $name)));
+
+                // The disk file first, so the row never names a file that is
+                // not there.
+                if (
+                    $old_file_backed_up
+                    && @rename(FILE_DIRECTORY_PATH . '/' . $backup_name, FILE_DIRECTORY_PATH . '/' . $name)
+                ) {
+                    db(
+                        "UPDATE files
+                        SET name = '" . e($name) . "'
+                        WHERE id = '" . $old_file['id'] . "'");
+                }
+
+                $skipped_unread[] = lang(array('string' => '{var:1} could not be written to disk.', 'vars' => h(mb_convert_encoding($archive_item['filename'], 'UTF-8', 'UTF-8'))));
+
+                continue;
+            }
 
             db(
                 "INSERT INTO files (

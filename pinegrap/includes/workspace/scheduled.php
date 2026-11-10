@@ -3549,7 +3549,7 @@ function ws_scheduled_record_run($row, $status, $steps, $context, $message_id, $
  *
  * @param int   $id
  * @param bool  $by_hand run at once, whatever its time
- * @param array $context trigger, depth, source_action_id, source_run_id (a start from a chain)
+ * @param array $context trigger, depth, source_action_id, source_run_id (a start from a chain); start_key (a flow's anchor run now from its canvas)
  * @return string ran | skipped | failed | '' (not run: somebody else has it)
  */
 function ws_scheduled_execute($id, $by_hand = false, $context = array())
@@ -3646,9 +3646,10 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
             $fill['result'] = $hold['reason'];
         } else {
             // A flow's anchor starts a run of its flow (flow_anchors.php);
-            // it is no step a scheduled action takes.
+            // it is no step a scheduled action takes. A Run now on the
+            // canvas names the run's start key (ws_flow_run_now()).
             $done = (((int) ($row['flow_id'] ?? 0) > 0) && function_exists('ws_flow_anchor_start'))
-                ? ws_flow_anchor_start($viewer, $row, $fill + array('by_hand' => $by_hand))
+                ? ws_flow_anchor_start($viewer, $row, $fill + array('by_hand' => $by_hand, 'start_key' => (string) ($context['start_key'] ?? '')))
                 : ws_scheduled_do($viewer, $row, $row['action'], $fill);
             $flow_run = (int) ($done['run_id'] ?? 0);
             $steps[] = array('step' => 'action', 'ok' => $done['ok'], 'text' => $done['text']);

@@ -2210,15 +2210,23 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // functions.php: _pg_find_system_widget_on_page and friends). Kept
     // independent of the per-system-region loop below rather than woven into
     // it, since that loop's shape assumes a legacy whole-page system region.
-    if ($mode != 'edit' && $page_type == 'standard') {
+    // A catalog detail page whose layout has no System region draws its
+    // product only through its catalog_item_view widget, so the widget's
+    // Product block is its only structured data; with a real or synthetic
+    // System region the classic 'catalog detail' case below writes it. Such
+    // a page gets only that block: no feed link (the classic page announces
+    // a feed only for a product group) and no Open Graph override (its Open
+    // Graph comes from get_catalog_item_from_url()).
+    $_pg_sw_detail_only = _pg_catalog_detail_widget_writes_jsonld($page_type, $content);
+    if ($mode != 'edit' && ($page_type == 'standard' || $_pg_sw_detail_only)) {
         $_pg_sw_access_control_type = get_access_control_type($page_folder);
         if ($_pg_sw_access_control_type == 'public') {
             // One feed per page, chosen as get_page.php chooses it for
             // ?rss=true: a form widget (record page over list) before the
             // catalog widgets. The catalog structured data below does not
             // depend on which feed the page announces.
-            $_pg_sw_form_feed      = function_exists('pg_sw_page_form_feed_widget') ? pg_sw_page_form_feed_widget($page_id) : null;
-            $_pg_sw_listing_widget = _pg_find_system_widget_on_page($page_id, 'catalog_listing');
+            $_pg_sw_form_feed      = (!$_pg_sw_detail_only && function_exists('pg_sw_page_form_feed_widget')) ? pg_sw_page_form_feed_widget($page_id) : null;
+            $_pg_sw_listing_widget = $_pg_sw_detail_only ? null : _pg_find_system_widget_on_page($page_id, 'catalog_listing');
             $_pg_sw_item_widget    = $_pg_sw_listing_widget ? null : _pg_find_system_widget_on_page($page_id, 'catalog_item_view');
 
             $_pg_sw_page_full  = isset($_GET['page']) ? (string)$_GET['page'] : '';
@@ -2274,7 +2282,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             } elseif ($_pg_sw_item_widget) {
                 $_pg_sw_canonical_path = OUTPUT_PATH . encode_url_path($page_name) . ($_pg_sw_sub_path !== '' ? '/' . $_pg_sw_sub_path : '');
 
-                if (!$_pg_sw_form_feed) {
+                if (!$_pg_sw_form_feed && !$_pg_sw_detail_only) {
                     $rss_feeds[] = array(
                         'sort'         => 0,
                         'output_title' => $_pg_sw_title,
@@ -2288,8 +2296,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         // Remembered for the Open Graph block far below: a
                         // widget-built product page shares with the product's
                         // picture and og:type=product, like its legacy twin.
-                        $pg_og_sw_product_image_name = (string) ($_pg_sw_product['image_name'] ?? '');
-                        $_pg_sw_canonical_url = is_array($pg_sw_item) ? $canonical_url : URL_SCHEME . HOSTNAME_SETTING . $_pg_sw_canonical_path;
+                        if (!$_pg_sw_detail_only) {
+                            $pg_og_sw_product_image_name = (string) ($_pg_sw_product['image_name'] ?? '');
+                        }
+                        $_pg_sw_canonical_url = (is_array($pg_sw_item) || $_pg_sw_detail_only) ? $canonical_url : URL_SCHEME . HOSTNAME_SETTING . $_pg_sw_canonical_path;
                         $_pg_sw_product_id = isset($_pg_sw_product['id']) ? $_pg_sw_product['id'] : 0;
                         // A product's answered questions, while the page's
                         // questions widget shows them.
@@ -4107,7 +4117,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 $comments_viewer = pg_comments_viewer($edit_access, ($comments_page_type == 'form item view') ? array('form_editor_user_id' => $form_editor_user_id, 'form_editor_username' => $form_editor_username) : null, $comments_for_search_index);
                 $form_editor = $comments_viewer['form_editor'];
 
-                // The comments this visitor reads, oldest first: everyone the
+                // The comments this visitor reads, a product's review thread
+                // newest first and every other thread oldest first: everyone the
                 // published ones and their own of this session, staff and the
                 // form editor every one. While featured comments exist and
                 // ?comments is unset or 'featured', only the featured ones;

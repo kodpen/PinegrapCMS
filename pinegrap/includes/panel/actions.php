@@ -354,7 +354,7 @@ function pg_panel_actions()
         'ws_mcp_connect', 'ws_mcp_disconnect_me',
         'ws_flow_list', 'ws_flow_get', 'ws_flow_create', 'ws_flow_save',
         'ws_flow_publish', 'ws_flow_pause', 'ws_flow_resume', 'ws_flow_bin',
-        'ws_flow_run_start', 'ws_flow_runs_list', 'ws_flow_run_get', 'ws_flow_run_cancel',
+        'ws_flow_run_start', 'ws_flow_run_now', 'ws_flow_runs_list', 'ws_flow_run_get', 'ws_flow_run_cancel',
         'ws_flow_step_mend', 'ws_flow_box_try', 'ws_flow_template_setup',
         'ws_flow_template_save', 'ws_flow_template_update', 'ws_flow_template_bin',
         'ws_flow_ai_sketch',

@@ -1,6 +1,6 @@
 ---
 name: system-widget-test-pages
-description: System widget test URLs (/c /d /e /b/<slug>), the two dev.pinegrap.com backends, legacy page confusion, saved-cart link, stale-output causes.
+description: System widget test URLs (/c /d /e /b/<slug>), the two dev.pinegrap.com backends, legacy page confusion, saved-cart link, stale-output causes, drawing a widget without saving (preview_widgets).
 ---
 
 ## Which URLs are the system widget pages?
@@ -22,5 +22,9 @@ description: System widget test URLs (/c /d /e /b/<slug>), the two dev.pinegrap.
 ## A change does not show on the page: what to check, in order?
 1. Is a SAVED tree in use? New nodes enter only after the default layout is kept (Layout Template: Default, Try, Keep).
 2. opcache: a file change can take ~1 minute to reach the server.
+
+## How is a widget that no page places drawn on a running site?
+- Without saving a design (#8393): from a signed-in panel tab POST `api.php` with `action` `designer`, `sub_action` `preview_widgets`, the token, `page_id` 0 and `widgets` `[{id: <an unused number>, tree_json, system_region_config}]`. `html[<id>]` in the answer is the widget as a signed-out visitor sees it (`designer-live-preview.md`).
+- Page 0 matters: with a page, a renderer that keeps a page row writes it (the order form's `_pg_of_page_settings()`).
 
 Related: docs/memory/designer/system-widget-change-checklist.md

@@ -19,9 +19,10 @@ module: image_editor
 
 ## How does the length follow?
 - `M.clipApply(doc, patches)` puts the patches on the clips and sets `doc.motion.duration` to the last clip's end, a tenth up, 1-60 s (`M.clipLength()`). Every timing change of a clip goes through it: a drag, the panel's source in, out and speed (`clipSet()`), Split, and the panel's Delete. Delete or Backspace (the core's) and the motion panel's length slider do not; the next clip edit sets it again.
+- So a layer whose motion ends after the last clip (an end card, a text after the video) is cut by the next clip edit. Owner (2026-11-10, #8521): a clip edit must never end the document before another layer's motion; step V3b of `plans/image-editor-video-steps.md` changes `M.clipLength()` so.
 
 ## What does the panel add?
 - "From the source" and "On the timeline" (in → out and the length), "Same source" beside the size when another layer plays the same file, Split clip (`M.clipSplit()` at the playhead, 0.1 s of source on both sides, else a message; the second part right above the first, selected; the first keeps the entrance, the second the exit), and in Animate a note on dragging.
 
 ## What is left?
-- The clip's sound as a waveform on its bar, a filmstrip of several frames (one frame is tiled), keys and captions (V11), touch-sized handles and the phone's rows (V10: no tracks under 600 px).
+- The clip's sound as a waveform on its bar and a filmstrip of several frames (one frame is tiled): V3b. Keys and captions (V11), touch-sized handles and the phone's rows (V10: no tracks under 600 px).

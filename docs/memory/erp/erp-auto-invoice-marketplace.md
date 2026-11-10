@@ -9,7 +9,7 @@ description: Marketplace orders (Trendyol, n11) in the automatic invoice: config
 - Off by default: a running site that invoices its marketplace orders elsewhere must not get a second invoice from an update.
 
 ## Where is it drawn and saved?
-- ERP settings card (`includes/settings/commerce.php`, prepared in `prep.php`), a switch under the two filters: "Also invoice marketplace orders (Trendyol, n11)". Drawn only when the column exists; saved in `commerce.save.php` as 0/1 only inside the block that runs when the card posted `erp_auto_invoice_on`.
+- The ERP card of Site Settings › Accounting (`includes/settings/accounting.php`, prepared in `prep.php`), a switch under the two filters: "Also invoice marketplace orders (Trendyol, n11)". Drawn only when the column exists; saved in `accounting.save.php` as 0/1 only inside the block that runs when the card posted `erp_auto_invoice_on`.
 
 ## Where does it fire? (`includes/api/outbound/orders.php`)
 - `order_paid`: `mp_import_claimed()`, after `mp_order_write()` (the order is written with `paid_at` = placed time) and the map row set `imported`, before the status/tracking of the same pass.
