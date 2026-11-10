@@ -96,7 +96,7 @@
 - erp-overdue-reminders.md: ERP overdue receivable reminders (erp_overdue_check): thresholds, one summary per period, delivery channels, scheduling, recipients, Workspace collection follow-up.
 - erp-overdue-second-notice.md: ERP overdue round 2 (migration 4.56): candidate states, second notice at threshold+30, snooze, bell/menu badge, customer e-mail switches and stamps.
 - erp-parasut-accounts.md: Paraşüt's customer and supplier cards in ERP › Account sync (accounts capability): the lists a read pages through, archived and unlisted cards, card shape, writing a card, the linked card on invoices
-- erp-parasut-connect-card.md: The Paraşüt card of the commerce settings: status line, connect steps, secret and password boxes, default product help, what Connect answers, which company it takes
+- erp-parasut-connect-card.md: The Paraşüt part of Settings › Accounting › E-Invoice: status line, connect steps, secret and password boxes, default product help, what Connect answers, which company it takes
 - erp-parasut-connection.md: How Pinegrap connects to Paraşüt (authorization code or password grant), where the token and secrets live, the token's owner stamp, the Connect endpoint
 - erp-parasut-driver-2.md: Paraşüt driver, part 2: how the conversion picks e-Fatura or e-Arşiv (fresh GİB lookup, the card's alias, the scenario, a failed lookup) and its request layer (token lock, retries, throttle)
 - erp-parasut-driver.md: Paraşüt e-document driver (includes/erp/edoc/parasut.php): requests, buyer card, sales invoice, conversion, poll, PDF, cancel; what the live API showed
@@ -117,6 +117,7 @@
 - erp-parasut-legacy-shipment-stock.md: E-Shipment's stock step: every line's product card opened first, then each Paraşüt product made ready once for the order's total; one movement per order line (#1630)
 - erp-parasut-legacy-stale-ids.md: Legacy Paraşüt buttons on an order keeping the id of a record deleted on Paraşüt's screen: read first, a 404 naming it as not found left out and its id cleared, any other answer refused (#1544)
 - erp-parasut-legacy-token-401.md: The order screen's Paraşüt buttons, inbox and VKN lookup renew a token Paraşüt answers 401 for while the cache still holds it: forget, renew once, send again (#7569)
+- erp-parasut-overview.md: Paraşüt as a whole: connection card, the ERP's e-document driver, the order screen's legacy Create Invoice and E-Shipment, inbox, export; its decisions and which erp-parasut-* file holds each part [decision: here]
 - erp-parasut-product-card-not-opened.md: An invoice line whose own Paraşüt card is not opened is refused in Paraşüt's words; the default product/service takes only lines without a product (erp_edoc_parasut_line_product_pick(), #1631)
 - erp-parasut-product-card-opening-stock.md: The stock a tracked Paraşüt product card opens with: Pinegrap's count plus the units the documented sale already took out of it (#1630); what each caller adds, and the orders still counted out twice
 - erp-parasut-product-card.md: The Paraşüt product card of a Pinegrap product (parasut_sync_product()): who opens it, what the create sends, the price's currency (#1631), why no stock_updates follows (#1517)
