@@ -63,6 +63,8 @@ function test_ws_api_wtables_routes()
 		'workspace.tables.update'             => array('POST', '/workspace/tables/{id}', 'workspace:write'),
 		'workspace.tables.delete'             => array('DELETE', '/workspace/tables/{id}', 'workspace:write'),
 		'workspace.tables.delete_post'        => array('POST', '/workspace/tables/{id}/delete', 'workspace:write'),
+		'workspace.tables.deleted'            => array('GET', '/workspace/deleted-tables', 'workspace:read'),
+		'workspace.tables.restore'            => array('POST', '/workspace/deleted-tables/{id}/restore', 'workspace:write'),
 		'workspace.table_columns.create'      => array('POST', '/workspace/tables/{id}/columns', 'workspace:write'),
 		'workspace.table_columns.update'      => array('POST', '/workspace/tables/{id}/columns/{column_id}', 'workspace:write'),
 		'workspace.table_columns.delete'      => array('DELETE', '/workspace/tables/{id}/columns/{column_id}', 'workspace:write'),
@@ -74,6 +76,8 @@ function test_ws_api_wtables_routes()
 		'workspace.table_rows.move'           => array('POST', '/workspace/tables/{id}/rows/{row_id}/move', 'workspace:write'),
 		'workspace.table_rows.delete'         => array('DELETE', '/workspace/tables/{id}/rows/{row_id}', 'workspace:write'),
 		'workspace.table_rows.delete_post'    => array('POST', '/workspace/tables/{id}/rows/{row_id}/delete', 'workspace:write'),
+		'workspace.table_rows.deleted'        => array('GET', '/workspace/tables/{id}/deleted-rows', 'workspace:read'),
+		'workspace.table_rows.restore'        => array('POST', '/workspace/tables/{id}/deleted-rows/{bin_id}/restore', 'workspace:write'),
 		'workspace.table_shares.list'         => array('GET', '/workspace/tables/{id}/shares', 'workspace:read'),
 		'workspace.table_shares.set'          => array('POST', '/workspace/tables/{id}/shares', 'workspace:write'),
 		'workspace.table_shares.delete'       => array('DELETE', '/workspace/tables/{id}/shares/{share_id}', 'workspace:write'),
@@ -99,14 +103,15 @@ function test_ws_api_wtables_routes()
 	}
 }
 
-// Reading and writing tables, columns and rows are tools, as notes are;
-// deleting a table or a column cannot be undone, and sharing is the
-// person's own: those are no tools.
+// Reading and writing tables, columns and rows are tools, as notes are, and
+// so is restoring a deleted row; deleting a table or a column takes it from
+// everybody, the bin of tables is its owner's, and sharing is the person's
+// own: those are no tools.
 function test_ws_api_wtables_mcp_tools()
 {
 	$routes = ws_api_wtables_test_routes();
 	$no_tools = array(
-		'workspace.tables.delete', 'workspace.tables.delete_post',
+		'workspace.tables.delete', 'workspace.tables.delete_post', 'workspace.tables.deleted', 'workspace.tables.restore',
 		'workspace.table_columns.delete', 'workspace.table_columns.delete_post',
 		'workspace.table_shares.set', 'workspace.table_shares.delete', 'workspace.table_shares.delete_post',
 	);
@@ -137,6 +142,8 @@ function test_ws_api_wtables_writes_check_before_the_rehearsal()
 		'ws_api_wtable_rows_update'    => array('ws_wtable_row_update_check(', 'ws_wtable_row_update('),
 		'ws_api_wtable_rows_move'      => array('ws_wtable_row_move_check(', 'ws_wtable_row_move('),
 		'ws_api_wtable_rows_delete'    => array('ws_wtable_row_delete_check(', 'ws_wtable_row_delete('),
+		'ws_api_wtables_restore'       => array('ws_wtable_restore_check(', 'ws_wtable_restore('),
+		'ws_api_wtable_rows_restore'   => array('ws_wtable_row_restore_check(', 'ws_wtable_row_restore('),
 		'ws_api_wtable_shares_set'     => array('ws_wtable_share_set_check(', 'ws_wtable_share_set('),
 		'ws_api_wtable_shares_delete'  => array('ws_wtable_share_remove_check(', 'ws_wtable_share_remove('),
 	);
@@ -238,7 +245,7 @@ function test_ws_api_wtables_objects_declared()
 {
 	$objects = ws_openapi_objects();
 
-	foreach (array('WorkspaceTable', 'WorkspaceTableColumn', 'WorkspaceTableRow', 'WorkspaceTableShare') as $name) {
+	foreach (array('WorkspaceTable', 'WorkspaceTableColumn', 'WorkspaceTableRow', 'WorkspaceTableShare', 'WorkspaceTableBinRow', 'WorkspaceDeletedTable') as $name) {
 		pg_assert_true(isset($objects[$name]) && function_exists($objects[$name]), $name . ' is declared');
 	}
 }

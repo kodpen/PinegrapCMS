@@ -23,6 +23,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_shares.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_bin.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_import.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_starters.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_screen.php');
 require_once(__DIR__ . '/helpers/source_reader.php');
 
 function ws_wtable_bin_test_source($relative)
@@ -145,4 +146,44 @@ function test_ws_wtable_bin_restore_and_purge()
 	pg_assert_contains("ws_wtable_row_announce('restored'", $restore);
 	pg_assert_contains("ws_ref_source_write('wtable_row'", $restore, 'its links come back');
 	pg_assert_contains('ws_wtable_bin_purge();', ws_wtable_bin_test_source('workspace_recurring_job.php'));
+}
+
+// A binned row in a line: the first cells that hold something, under their
+// column names, cut short when long.
+function test_ws_wtable_bin_screen_summary()
+{
+	$columns = array(
+		'1' => array('name' => 'Name', 'type' => 'text', 'options' => array()),
+		'2' => array('name' => 'Note', 'type' => 'text', 'options' => array()),
+		'3' => array('name' => 'City', 'type' => 'text', 'options' => array()),
+		'4' => array('name' => 'Extra', 'type' => 'text', 'options' => array()),
+	);
+
+	pg_assert_same('Name: Ada · City: Paris', ws_wtable_screen_bin_summary($columns, array('1' => 'Ada', '2' => '', '3' => "Paris\n")), 'empty cells skipped, spaces folded');
+	pg_assert_same('Name: A · Note: B', ws_wtable_screen_bin_summary($columns, array('1' => 'A', '2' => 'B', '3' => 'C'), array(), 2), 'at most the cells asked');
+	pg_assert_same('', ws_wtable_screen_bin_summary($columns, array()), 'nothing for an empty row');
+	pg_assert_same('Name: ' . str_repeat('x', 59) . '…', ws_wtable_screen_bin_summary($columns, array('1' => str_repeat('x', 80))), 'a long cell cut');
+}
+
+// A delete says how long the bin keeps it; without the bin, that it is final.
+function test_ws_wtable_bin_screen_delete_confirm()
+{
+	pg_assert_contains('30 days', ws_wtable_screen_delete_confirm('table', 'Leads', 30));
+	pg_assert_contains('Leads', ws_wtable_screen_delete_confirm('table', 'Leads', 30));
+	pg_assert_contains('cannot be brought back', ws_wtable_screen_delete_confirm('table', 'Leads', 0));
+	pg_assert_contains('7 days', ws_wtable_screen_delete_confirm('row', 'Leads', 7));
+	pg_assert_same('Delete this row?', ws_wtable_screen_delete_confirm('row', 'Leads', 0));
+}
+
+// The screen restores through the store and draws both bins.
+function test_ws_wtable_bin_screen_wiring()
+{
+	$screen = ws_wtable_bin_test_source('workspace_wtables.php');
+
+	foreach (array("case 'table_restore':", "case 'row_restore':", "case 'bin_row_delete':", 'ws_wtable_restore($viewer', 'ws_wtable_row_restore($viewer', 'ws_wtable_bin_row_delete($viewer',
+		'ws_wtables_binned($viewer)', 'ws_wtable_bin_rows($viewer, $table)', 'id="ws-wt-deleted"', 'id="ws-wt-deleted-rows"', '<input type="hidden" name="wt_bin" value="">', "'wt_bin'") as $needle) {
+		pg_assert_contains($needle, $screen);
+	}
+
+	pg_assert_true(strpos($screen, 'It cannot be brought back.\', \'vars\'') === false, 'the table delete asks through ws_wtable_screen_delete_confirm()');
 }
