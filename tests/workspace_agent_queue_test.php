@@ -29,11 +29,37 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 
 function test_workspace_agent_request_value()
 {
-	pg_assert_same('app:4', ws_agent_request_value(array('kind' => 'app', 'id' => 4)));
+	pg_assert_same('agent:4', ws_agent_request_value(array('kind' => 'app', 'id' => 4)));
 	pg_assert_same('model:9', ws_agent_request_value(array('kind' => 'model', 'id' => '9')));
 	pg_assert_same('', ws_agent_request_value(array('kind' => 'claude', 'id' => 1)), 'Claude keeps its own queue');
 	pg_assert_same('', ws_agent_request_value(array('kind' => 'app', 'id' => 0)));
 	pg_assert_same(9, ws_model_agent_id_of(ws_agent_request_value(array('kind' => 'model', 'id' => 9))), 'the model loop reads it back');
+}
+
+function test_workspace_agent_request_value_apart_from_proposals()
+{
+	// Agent 5 and application 5: the agent's requests and the application's
+	// proposals never share a value, so neither's readers take the other's.
+	$request = ws_agent_request_value(array('kind' => 'app', 'id' => 5, 'app_id' => 5));
+	$proposal = ws_proposal_agent_key(0, 5);
+
+	pg_assert_same('agent:5', $request);
+	pg_assert_same('app:5', $proposal);
+	pg_assert_true($request !== $proposal);
+	pg_assert_same(array('kind' => 'app', 'id' => 5), ws_agent_request_parse($request), 'the request names agent 5');
+	pg_assert_same(null, ws_agent_request_parse($proposal), 'the proposal names no registry agent');
+	pg_assert_same(array('kind' => 'app', 'id' => 5), ws_proposal_agent_parse($proposal), 'the proposal names application 5');
+	pg_assert_same(null, ws_proposal_agent_parse($request), 'the request is no proposal');
+	pg_assert_true(strlen($request) <= 16, 'it fits ws_ai_requests.agent');
+	pg_assert_same(null, ws_agent_wake_of(array('agent' => $proposal, 'message_id' => 0, 'ai_state' => ws_agent_wake_state('at', '', 1))));
+}
+
+function test_workspace_agent_queue_expired_where()
+{
+	$where = ws_agent_queue_expired_where(1700000000);
+	pg_assert_contains("agent LIKE 'agent:%'", $where, 'only app agents: the others have their own watchdogs');
+	pg_assert_contains("status IN ('queued', 'sent')", $where, 'never one claimed');
+	pg_assert_contains("created_at < '" . (1700000000 - WS_AI_QUEUE_TTL) . "'", $where, 'a day old');
 }
 
 function test_workspace_agent_wake_matches()

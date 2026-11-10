@@ -4,7 +4,7 @@
  *
  * Workspace - the agents' request queue: a person's message that matches a
  * channel-agent row's wake rule makes one ws_ai_requests row for that agent
- * (agent = 'app:<agent id>' or 'model:<agent id>'), within the depth and
+ * (agent = 'agent:<agent id>' or 'model:<agent id>'), within the depth and
  * hourly brakes. A push door is knocked at once with the ids and the site's
  * address only, never the words: the agent reads the request with its own
  * key. A knock that fails is tried again with a growing wait, and the
@@ -22,16 +22,29 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * The value ws_ai_requests.agent holds for a registry agent. Pure.
+ * The value ws_ai_requests.agent holds for a registry agent's request. Pure.
+ *
+ * An app agent's request is agent:<ws_agents.id>, never app:<n>: app:<n>
+ * names an application's proposal (ws_proposal_agent_key()), and an agent
+ * and an application often share a number.
  *
  * @param array $agent kind, id
- * @return string app:<id> | model:<id> | '' for any other kind
+ * @return string agent:<id> | model:<id> | '' for any other kind
  */
 function ws_agent_request_value($agent)
 {
     $kind = (string) ($agent['kind'] ?? '');
+    $id = (int) ($agent['id'] ?? 0);
 
-    return in_array($kind, array('app', 'model'), true) && ((int) ($agent['id'] ?? 0) > 0) ? $kind . ':' . (int) $agent['id'] : '';
+    if ($id <= 0) {
+        return '';
+    }
+
+    if ($kind === 'app') {
+        return 'agent:' . $id;
+    }
+
+    return ($kind === 'model') ? 'model:' . $id : '';
 }
 
 /**
@@ -314,9 +327,36 @@ function ws_agent_knock($agent, $request_id)
 }
 
 /**
- * Knocks again on the push doors that failed and still have requests
- * queued, each once its wait (ws_model_hold_seconds()) is over. Called with
- * the queue's other work, by the screens waiting and the hourly job.
+ * The app agents' requests queued and never claimed within a day. Pure.
+ *
+ * @param int $now
+ * @return string SQL condition on ws_ai_requests
+ */
+function ws_agent_queue_expired_where($now)
+{
+    return "agent LIKE 'agent:%' AND status IN ('queued', 'sent') AND created_at < '" . ((int) $now - WS_AI_QUEUE_TTL) . "'";
+}
+
+/**
+ * Cancels the app agents' requests no one claimed within a day, as the
+ * other assistants' are: under a message the line says so; a wake has no
+ * message and closes silently.
+ *
+ * @param int|null $now
+ */
+function ws_agent_queue_expire($now = null)
+{
+    $now = ($now === null) ? time() : (int) $now;
+
+    db("UPDATE ws_ai_requests SET status = 'cancelled', error = '" . e(lang('The agent did not take it within a day.')) . "'
+        WHERE " . ws_agent_queue_expired_where($now));
+}
+
+/**
+ * Cancels the app agents' requests left unclaimed for a day, then knocks
+ * again on the push doors that failed and still have requests queued, each
+ * once its wait (ws_model_hold_seconds()) is over. Called with the queue's
+ * other work, by the screens waiting and the hourly job.
  */
 function ws_agent_knocks_retry()
 {
@@ -327,6 +367,7 @@ function ws_agent_knocks_retry()
     }
 
     $done = true;
+    ws_agent_queue_expire();
 
     foreach ((array) db_items("SELECT * FROM ws_agents WHERE kind = 'app' AND status = 'active' AND door_kind = 'push' AND door_failures > 0 LIMIT 20") as $agent) {
         if (((int) $agent['door_last_knock'] + ws_model_hold_seconds((int) $agent['door_failures'])) > time()) {
