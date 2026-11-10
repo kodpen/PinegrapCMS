@@ -13,7 +13,7 @@ description: The slice runner of Workspace bulk changes (ws_bulk_step()): status
 ## Why is the state saved before each update or delete?
 - `pos` is counted before the record; saving it before `ws_change_write()` means a request that dies mid-slice resumes after that record. Before, the state was saved at the slice's end only, so a `percent` or `add` change raised up to 40 records twice on resume. Create rows did this already (`workspace-bulk-create.md`).
 
-## Who must be ready for a generate change? (PR #PRNUM)
+## Who must be ready for a generate change? (PR #8580)
 - Pinegrap AI: `ws_bulk_generate()` writes the texts when the change is applied, with no model assistant running. `ws_bulk_input()` refuses a proposal by `ws_bulk_generate_ready()`: while a model assistant runs, it lets the assistant go around `ws_ai_missing()` (Pinegrap AI's own switch, application, licence) and leaves `ws_ai_ready()`'s static alone; otherwise `ws_ai_ready()`.
 - Before (code reading, not reproduced): inside an assistant's request `ws_ai_ready()` could read the assistant's config (`ws_model_config_over()`: on, its application), so a proposal was accepted while Pinegrap AI was off or had no application; on Apply each slice failed three times and "Pinegrap AI did not answer for some of the records." was written.
 
