@@ -7,7 +7,8 @@
  * given, and every reader escapes it once (Site Log, the dashboard Activity
  * card, Edit User's activity list); the File/Catalog Manager toast sets its
  * message with textContent. A name escaped inside the sentence's vars would
- * show "Çay &amp; Kahve" on all of them.
+ * show "Çay &amp; Kahve" on all of them (the contact list's mass delete
+ * included).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -33,6 +34,7 @@ function log_lines_plain_text_test_files()
 		'includes/explorer/handle_recycle.php',
 		'includes/explorer/handle_upload.php',
 		'includes/panel/software.php',
+		'view_contacts.php',
 	);
 }
 
