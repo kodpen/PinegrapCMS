@@ -165,6 +165,7 @@ function test_panel_title_label_override_unlabelled_hints_are_tooltips()
 	$cases = array(
 		'editor_select_image.php' => array('select', array('folder_id' => 'Folder', 'access_control_type' => 'Access')),
 		'includes/forms/product_group_form.php' => array('input', array('select_all' => 'Select/Deselect All')),
+		'includes/panel/explorer.php' => array('input', array('select_all' => 'Select/Deselect All')),
 	);
 
 	foreach ($cases as $path => $case) {
@@ -177,4 +178,22 @@ function test_panel_title_label_override_unlabelled_hints_are_tooltips()
 			pg_assert_true((bool) preg_match('/class="[^"]*\bno-popover\b/', $match[0]), $path . ' #' . $id . ' no-popover');
 		}
 	}
+}
+
+// The designer's property rows print their label without a for, so a select
+// there is named by its own aria-label; a hint the row needs is a form-text
+// under the select that aria-describedby points at, never a hover title.
+function test_panel_title_label_override_designer_selects_named()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+
+	pg_assert_true((bool) preg_match('/<select class="[^"]*\\bsd-cf-sn\\b[^"]*" data-s="confirm_page_id"[^>]*>/', $source, $match), 'confirm page select found');
+	pg_assert_contains("aria-label=\"' + esc(_sdT('Page sent as the e-mail')) + '\"", $match[0], 'confirm page select aria-label');
+	pg_assert_true((bool) preg_match('/class="[^"]*\\bno-popover\\b/', $match[0]), 'confirm page select no-popover');
+
+	pg_assert_true((bool) preg_match('/<select class="[^"]*" data-img-loading[^>]*>/', $source, $match), 'loading select found');
+	pg_assert_contains("aria-label=\"' + esc(_sdT('Loading attribute')) + '\"", $match[0], 'loading select aria-label');
+	pg_assert_contains('aria-describedby="sd-img-loading-hint"', $match[0], 'loading select described by its hint');
+	pg_assert_true(strpos($match[0], 'title=') === false, 'loading select has no title');
+	pg_assert_contains('<div class="form-text small mb-0 mt-1" id="sd-img-loading-hint">', $source, 'loading hint printed under the select');
 }

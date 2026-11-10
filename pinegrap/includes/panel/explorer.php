@@ -827,7 +827,7 @@ function pg_panel_file_explorer($request, $action)
                                 <th></th>
                                 <th class="d-none">
                                     <div class="form-field">
-                                        <div class="switch"><input class="" title="' . lang(array('string' => 'Select/Deselect All')) . '" type="checkbox" id="select_all"></div>
+                                        <div class="switch"><input class="no-popover" data-bs-toggle="tooltip" title="' . h(lang('Select/Deselect All')) . '" aria-label="' . h(lang('Select/Deselect All')) . '" type="checkbox" id="select_all"></div>
                                     </div>
                                 </th>
                                 <th><i class="bi bi-file-earmark" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Type')) . '</span></th>
