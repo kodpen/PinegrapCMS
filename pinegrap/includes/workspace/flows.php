@@ -1658,6 +1658,153 @@ function ws_flows_list_where($filters)
 }
 
 /**
+ * A staff member's flow list with the converted flows added: a flow made
+ * of a scheduled action is owned by whoever made the action and has no
+ * home channel (workspace-flows-converted-anchor), so ws_flows_list() reads
+ * it only for its owner, while ws_flow_access() gives every staff member
+ * edit on it. Only the panel's list adds them; the API's list stays as it
+ * is. Anybody else gets the rows given.
+ *
+ * @param array   $viewer
+ * @param array[] $rows ws_flows_list() rows
+ * @return array[] the rows, the converted flows merged in their order
+ */
+function ws_flows_with_converted($viewer, $rows)
+{
+    if (!ws_flows_ready() || empty($viewer['member']) || !function_exists('ws_can_schedule') || !ws_can_schedule($viewer)
+        || !function_exists('ws_scheduled_anchor_ready') || !ws_scheduled_anchor_ready()) {
+        return $rows;
+    }
+
+    $listed = array_map(function ($row) {
+        return (int) $row['id'];
+    }, $rows);
+
+    $found = (array) db_items("SELECT id, owner_id, channel_id, name, status, draft_rev, version_id, updated_by, created_at, updated_at, binned_at
+        FROM ws_flows
+        WHERE status <> 'binned'
+            AND id IN (SELECT flow_id FROM ws_scheduled_actions WHERE anchor = 'converted' AND flow_id > 0)" . (empty($listed) ? '' : "
+            AND id NOT IN (" . implode(',', $listed) . ")") . "
+        ORDER BY updated_at DESC, id DESC
+        LIMIT 1000");
+
+    if (empty($found)) {
+        return $rows;
+    }
+
+    ws_flow_share_rows_prime(array_map(function ($row) {
+        return (int) $row['id'];
+    }, $found));
+
+    $extra = array();
+
+    foreach ($found as $row) {
+        $access = ws_flow_access($viewer, $row);
+
+        if ($access !== '') {
+            $row['access'] = $access;
+            $extra[] = $row;
+        }
+    }
+
+    return ws_flows_rows_merge($rows, $extra);
+}
+
+/**
+ * Two flow lists as one, each flow once (the first list's row kept), in
+ * the list's order: updated_at DESC, then id DESC. Pure.
+ *
+ * @param array[] $rows
+ * @param array[] $extra
+ * @return array[]
+ */
+function ws_flows_rows_merge($rows, $extra)
+{
+    $out = array();
+
+    foreach (array_merge((array) $rows, (array) $extra) as $row) {
+        if (!isset($out[(int) $row['id']])) {
+            $out[(int) $row['id']] = $row;
+        }
+    }
+
+    $out = array_values($out);
+    usort($out, function ($a, $b) {
+        $time = (int) $b['updated_at'] - (int) $a['updated_at'];
+
+        return ($time !== 0) ? $time : ((int) $b['id'] - (int) $a['id']);
+    });
+
+    return $out;
+}
+
+/**
+ * The flows listed whose next run the start column gives: live ones whose
+ * start is a time (ws_flows_starts() kind time). A paused flow, a draft and
+ * any other start get none. Pure.
+ *
+ * @param array[] $rows   ws_flows rows
+ * @param array   $starts ws_flows_starts()
+ * @return int[] flow ids, in the order given
+ */
+function ws_flows_next_run_ids($rows, $starts)
+{
+    $ids = array();
+
+    foreach ((array) $rows as $row) {
+        if (((string) ($row['status'] ?? '') === 'live') && ((string) ($starts[(int) $row['id']]['kind'] ?? '') === 'time')) {
+            $ids[] = (int) $row['id'];
+        }
+    }
+
+    return $ids;
+}
+
+/**
+ * The next run of each flow given, from its anchor (hidden or converted):
+ * active, with a next time. One read for the list.
+ *
+ * @param int[] $ids ws_flows_next_run_ids()
+ * @return array flow id => unix time
+ */
+function ws_flows_next_runs($ids)
+{
+    $ids = array_values(array_filter(array_map('intval', (array) $ids)));
+
+    if (empty($ids) || !function_exists('ws_scheduled_anchor_ready') || !ws_scheduled_anchor_ready()) {
+        return array();
+    }
+
+    $out = array();
+
+    foreach ((array) db_items("SELECT flow_id, MIN(next_run_at) AS next_run_at FROM ws_scheduled_actions
+        WHERE flow_id IN (" . implode(',', $ids) . ") AND anchor IN ('hidden', 'converted') AND status = 'active' AND next_run_at > 0
+        GROUP BY flow_id") as $row) {
+        $out[(int) $row['flow_id']] = (int) $row['next_run_at'];
+    }
+
+    return $out;
+}
+
+/**
+ * The flow list's start words with the next run, as the cards say it:
+ * "Every day 09:00 · Next: Tomorrow 09:00"; the words alone without a next
+ * run. Pure.
+ *
+ * @param string $text ws_flow_start_sentence()
+ * @param string $next ws_scheduled_moment(), '' for none
+ * @return string
+ */
+function ws_flow_start_with_next($text, $next)
+{
+    if (((string) $text === '') || ((string) $next === '')) {
+        return (string) $text;
+    }
+
+    return lang(array('string' => '{var:1} · Next: {var:2}', 'vars' => array((string) $text, (string) $next)));
+}
+
+/**
  * How a flow starts, by the kind of its start box: at a time, on an event
  * (a row of a workflow table written is one too, a customer who stopped
  * ordering, and a mention of the flow in a channel), when somebody joins a
@@ -2570,31 +2717,26 @@ function ws_flows_scheduled($viewer)
 }
 
 /**
- * The two groups of scheduled actions the flow list ends with: the rows
- * converted into a flow (any state: their history stays readable) and the
- * rows the conversion refused, still run by ws_scheduled_execute() (no
- * flow, no anchor, not cancelled). A cancelled row never converted is in
- * neither (its channel or note card stays), nor is a flow's hidden anchor
- * or a scheduled message. A row from before the kind and anchor columns
- * reads as an action with no anchor. Pure.
+ * The scheduled actions the flow list ends with: the rows the conversion
+ * refused, still run by ws_scheduled_execute() (no flow, no anchor, not
+ * cancelled). A converted row is a flow of the table, a cancelled row never
+ * converted keeps its channel or note card, and a flow's hidden anchor or a
+ * scheduled message is not listed. A row from before the kind and anchor
+ * columns reads as an action with no anchor. Pure.
  *
  * @param array[] $rows ws_scheduled_actions rows (kind, flow_id, anchor, status)
- * @return array converted (rows), refused (rows), each in the order given
+ * @return array refused (rows, in the order given)
  */
 function ws_flows_scheduled_groups($rows)
 {
-    $groups = array('converted' => array(), 'refused' => array());
+    $groups = array('refused' => array());
 
     foreach ((array) $rows as $row) {
         if ((string) ($row['kind'] ?? 'action') !== 'action') {
             continue;
         }
 
-        $anchor = (string) ($row['anchor'] ?? '');
-
-        if (((int) ($row['flow_id'] ?? 0) > 0) && ($anchor === 'converted')) {
-            $groups['converted'][] = $row;
-        } elseif (((int) ($row['flow_id'] ?? 0) === 0) && ($anchor === '') && ((string) ($row['status'] ?? '') !== 'cancelled')) {
+        if (((int) ($row['flow_id'] ?? 0) === 0) && ((string) ($row['anchor'] ?? '') === '') && ((string) ($row['status'] ?? '') !== 'cancelled')) {
             $groups['refused'][] = $row;
         }
     }
@@ -2603,30 +2745,23 @@ function ws_flows_scheduled_groups($rows)
 }
 
 /**
- * The scheduled actions at the end of a staff member's flow list: the
- * converted ones as their cards present them (when, step, state, the flow
- * they run) and how many the conversion refused; that group draws its own
- * cards (ws_scheduled_list() with refused). Nothing for anybody else.
+ * The scheduled actions at the end of a staff member's flow list: how many
+ * the conversion refused; that group draws its own cards
+ * (ws_scheduled_list() with refused). Nothing for anybody else.
  *
  * @param array $viewer
- * @return array|null converted (ws_scheduled_present() items), refused (count)
+ * @return array|null refused (count)
  */
 function ws_flows_scheduled_rows($viewer)
 {
-    if (!ws_flows_scheduled($viewer) || !function_exists('ws_scheduled_present')) {
+    if (!ws_flows_scheduled($viewer)) {
         return null;
     }
 
     $rows = (array) db_items("SELECT * FROM ws_scheduled_actions WHERE 1 = 1" . ws_scheduled_actions_only() . ws_scheduled_anchors_out() . "
-        ORDER BY (status = 'active') DESC, IF(status = 'active' AND next_run_at > 0, next_run_at, 4294967295), id DESC LIMIT 300");
-    $groups = ws_flows_scheduled_groups($rows);
+        ORDER BY id DESC LIMIT 300");
 
-    return array(
-        'converted' => array_map(function ($row) use ($viewer) {
-            return ws_scheduled_present($viewer, ws_scheduled_decode($row));
-        }, $groups['converted']),
-        'refused'   => count($groups['refused']),
-    );
+    return array('refused' => count(ws_flows_scheduled_groups($rows)['refused']));
 }
 
 /**
@@ -2888,9 +3023,6 @@ function ws_flow_js_strings()
         'fl_thread_remove_of' => ws_js_template('Remove the thread: {var:1}', 1),
         'fl_new'              => lang('New flow'),
         'fl_list_search'      => lang('Search flows'),
-        'fl_conv_title'       => ws_js_template('Converted from scheduled actions · {var:1}', 1),
-        'fl_conv_mark'        => lang('Converted'),
-        'fl_open_flow'        => lang('Open flow'),
         'fl_refused_title'    => ws_js_template('Not converted · {var:1}', 1),
         'fl_refused_help'     => lang('These scheduled actions could not become flows and still run as before. Edit tries the conversion again.'),
         'fl_list_filter'      => lang('Filter flows'),
