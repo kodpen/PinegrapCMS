@@ -16,7 +16,7 @@ description: workspace.app.mentioned (PR #809): an app mentioned with <@app:N> i
 - The key is active, not expired (the API refuses it) and holds `workspace:read` or `workspace:write` (`ws_app_hears_mentions()`), and its owner reads the channel as the API lets it (`ws_app_reads_channel()`): public channels; private channels, guest rooms and discussions the owner is in. Never through inspection: `ws_can_read_channel()` is asked with role 3, since an inspection is open in one person's session and the API keeps none.
 - Elsewhere no event at all rather than one without text: the name, existence and writers of a private channel stay inside, and the application could not answer there (404).
 
-- The writer is told, in a line only they see (workspace-app-mention-unread-line.md).
+- The writer is told, in a line only they see (workspace-app-mention-unread-line.md, PR #8494).
 
 ## What does the payload hold?
 `id`, `channel_id` (where to answer; a discussion's own id), `channel`, `channel_kind` (public, private, guest, thread), `thread` (null, or the `channel_id` and `message_id` the discussion is about, as in `WorkspaceThread`), `parent_id`, `sender_id` (0 for an application), `app_id` (the writer, 0 for a person), `mentioned_app_id`, `kind`, `text` (drawn as the owner reads it), `body` (tokens), `task_id`, `edited`; ids are ints, 0 for none (`ws_app_mention_payload()`).

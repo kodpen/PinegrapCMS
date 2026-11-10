@@ -1,10 +1,10 @@
 ---
 name: workspace-app-mention-unread-line
-description: A person who mentions an application that may not read the channel gets a line only they see; the app learns nothing (PR #PRNUM)
+description: A person who mentions an application that may not read the channel gets a line only they see; the app learns nothing (PR #8494)
 ---
 
 ## What does the writer see?
-- A line under the conversation that only they see (`ws-ephemeral`, `mentionNotice()` in workspace.js), from the `notice` of the `ws_send` / `ws_edit` answer: "@Acme cannot read this channel, so it was not told about your message." Several applications: one line listing them. Nothing is posted (PR #PRNUM). Before it the writer got no sign that the mention reached nobody.
+- A line under the conversation that only they see (`ws-ephemeral`, `mentionNotice()` in workspace.js), from the `notice` of the `ws_send` / `ws_edit` answer: "@Acme cannot read this channel, so it was not told about your message." Several applications: one line listing them. Nothing is posted (PR #8494). Before it the writer got no sign that the mention reached nobody.
 - An edit says it only for the applications it newly mentions, as the event itself (workspace-app-mentioned-webhook.md).
 
 ## Which applications are listed?
