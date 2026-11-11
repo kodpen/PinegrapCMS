@@ -46,6 +46,10 @@ if (isset($_POST['id']) && !is_scalar($_POST['id'])) {
 // opens the plain new report, and an id wins over it.
 $ready_report = isset($_GET['id']) ? null : pg_ready_report_requested($_GET['ready'] ?? null, 'order_report');
 
+// A card opens its ready report with its own period (&days=N); a count that
+// is not a whole number from 1 to 366 is ignored and the entry's own applies.
+$ready_days = ($ready_report === null) ? 0 : pg_ready_report_days($_GET['days'] ?? null);
+
 // if an id was passed in the query string, then set id
 if (isset($_GET['id']) == true) {
     $id = $_GET['id'];
@@ -115,7 +119,7 @@ if (!$_POST) {
             }
 
             $liveform->assign_field_value('name', lang($ready_report['title']));
-            $default_filters = pg_ready_report_filters($ready_report);
+            $default_filters = pg_ready_report_filters($ready_report, $ready_days);
         } else {
             // set default values for summarize by fields
             $liveform->assign_field_value('summarize_by_1', 'year');
@@ -244,6 +248,21 @@ if (!$_POST) {
     $summarize_by_options[lang('Tax Status')] = 'tax_status';
     $summarize_by_options['#optgroup-end-4'] = '</optgroup>';
     
+    // The strip of ready reports over the report: those this screen's
+    // levels can give, the one open marked.
+    $output_ready_strip = '';
+    $ready_strip = pg_ready_report_strip('order_report', array_values(array_filter($summarize_by_options, function ($value) {
+        return ($value !== '') && ($value[0] !== '<');
+    })), ($ready_report !== null) ? $ready_report['key'] : '');
+
+    if ($ready_strip) {
+        foreach ($ready_strip as $ready_item) {
+            $output_ready_strip .= '<li><a href="' . h($ready_item['url']) . '" class="btn btn-sm rounded-pill text-nowrap ' . ($ready_item['current'] ? 'btn-solid theme-primary" aria-current="page"' : 'btn-outline theme-secondary"') . '>' . h(lang($ready_item['title'])) . '</a></li>';
+        }
+
+        $output_ready_strip = '<nav class="pg-ready-strip mb-3" aria-label="' . h(lang('Ready reports')) . '"><ul class="list-unstyled d-flex flex-wrap gap-2 mb-0">' . $output_ready_strip . '</ul></nav>';
+    }
+
     $order_by_options = array(
         lang('Alphabetical') => 'alphabet',
         lang('Number of orders') => 'number of orders',
@@ -1173,6 +1192,7 @@ if (!$_POST) {
     ) . '
 <main id="content" class="container-fluid">
     ' . $output_edit_button . '
+    ' . $output_ready_strip . '
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '

@@ -316,10 +316,33 @@ function test_dashboard_v2_cards_send_no_html_money()
 
 function test_dashboard_v2_shop_url_opens_a_screen_the_person_may_open()
 {
-	// The orders list for whoever may open it.
-	pg_assert_same('view_orders.php', pg_dashboard_v2_shop_url(true, true));
-	pg_assert_same('view_orders.php', pg_dashboard_v2_shop_url(true, false));
-	// A user with commerce reports only: the reports, not a refused list.
-	pg_assert_same('view_order_reports.php', pg_dashboard_v2_shop_url(false, true));
-	pg_assert_same('', pg_dashboard_v2_shop_url(false, false));
+	// Whoever may open the order reports: the ready report, the card's days.
+	pg_assert_same('view_order_report.php?ready=sales_over_time&days=7', pg_dashboard_v2_shop_url(true, true, 7));
+	pg_assert_same('view_order_report.php?ready=sales_over_time&days=1', pg_dashboard_v2_shop_url(false, true, 1));
+	pg_assert_same('view_order_report.php?ready=sales_over_time&days=30', pg_dashboard_v2_shop_url(false, true));
+	// The orders list for one who may open only that, as before.
+	pg_assert_same('view_orders.php', pg_dashboard_v2_shop_url(true, false, 7));
+	pg_assert_same('', pg_dashboard_v2_shop_url(false, false, 7));
+}
+
+// The days the card counts, and the report counting the same first day:
+// the card's window starts days - 1 days before today's midnight.
+function test_dashboard_v2_shop_days_match_the_ready_report()
+{
+	pg_assert_same(1, pg_dashboard_v2_shop_days(0));
+	pg_assert_same(7, pg_dashboard_v2_shop_days(1));
+	pg_assert_same(30, pg_dashboard_v2_shop_days(2));
+	pg_assert_same(30, pg_dashboard_v2_shop_days(9));
+
+	$now = strtotime('2026-11-11 15:00:00');
+	$midnight = strtotime(date('Y-m-d', $now));
+
+	foreach (array(0, 1, 2) as $period) {
+		$days = pg_dashboard_v2_shop_days($period);
+		$windows = pg_dashboard_v2_shop_windows($period, 0, $midnight);
+		$filters = pg_ready_report_filters(pg_ready_reports()['sales_over_time'], $days);
+		$date = end($filters);
+
+		pg_assert_same(date('Y-m-d', $windows['now'][0]), pg_report_dynamic_value('days ago', $date['dynamic_value_attribute'], 'date', $now), 'period ' . $period);
+	}
 }
