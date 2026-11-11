@@ -239,7 +239,7 @@ function pg_short_link_form_cards($liveform, $form)
                                                 <label for="tracking_code" class="form-label">' . lang('Tracking Code') . '</label>
                                                 ' . $liveform->output_field(array('type'=>'text', 'name'=>'tracking_code', 'id'=>'tracking_code', 'class'=>'form-control', 'maxlength'=>pg_short_link_form_tracking_code_max())) . '
                                             </div>
-                                            <div class="col-12 md:col-6 lg:col-4 my-3" id="file_row"' . $style['file'] . '>
+                                            <div class="col-12 lg:col-8 my-3" id="file_row"' . $style['file'] . '>
                                                 <label for="file" class="form-label">' . lang('File') . '</label>
                                                 ' . pg_picker_field('file', 'file', $liveform->get_field_value('file'), array('title' => lang('Choose a file'), 'invalid' => $liveform->check_field_error('file'))) . pg_picker_script() . '
                                             </div>

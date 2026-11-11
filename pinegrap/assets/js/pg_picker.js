@@ -2275,7 +2275,10 @@
         this.own = { input: this.input, status: node.querySelector('.pg-pfield-status'), list: node.querySelector('.pg-pfield-list') };
         this.host = this.own;
         // The chosen name, put back when a search is left without a pick.
-        this.text = this.input.value;
+        // Read from the value attribute: the Field is made on its first
+        // event, which can come after the text changed (a paste fires no
+        // keydown before its input event).
+        this.text = this.input.defaultValue;
         this.items = [];
         this.query = '';
         this.active = -1;

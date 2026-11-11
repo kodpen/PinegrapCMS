@@ -502,3 +502,18 @@ function test_picker_field_view_and_markup()
 	pg_assert_false(strpos($html, 'pg_picker_config') !== false, 'the field never prints the script');
 	pg_assert_same('', pg_picker_field('nope', 'x', ''), 'an unknown kind draws nothing');
 }
+
+function test_picker_field_box_and_typed_state()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	$start = strpos($css, '.pg-pfield-box {');
+	$box = substr($css, $start, strpos($css, '}', $start) - $start);
+	pg_assert_contains('background-color: var(--bs-btn-input-bg);', $box, 'the box has the input background');
+	pg_assert_contains('border: var(--bs-border-width) solid var(--bs-border-color);', $box, 'and the input border');
+	pg_assert_contains('.pg-pfield-input:focus-visible {', $css, 'one focus ring, drawn by the box');
+	pg_assert_contains('.collapse.show:has(.pg-pfield.is-open) {', $css, 'an open list is not clipped by a collapse');
+
+	// A paste fires no keydown before its input event, so the Field may be
+	// made after the text changed: the chosen name comes from the attribute.
+	pg_assert_contains('this.text = this.input.defaultValue;', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_picker.js'));
+}

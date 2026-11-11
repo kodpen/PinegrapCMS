@@ -1,6 +1,6 @@
 ---
 name: bootstrap-6-collapse-switcher
-description: Sections behind a panel switch (input.collapse-switcher) on Bootstrap 6: why they stayed 0 px high, the .show that pgCollapseSwitcherShow() adds with the display, why switch callouts lost their arrow
+description: Bootstrap 6 .collapse traps: sections behind a panel switch stayed 0 px high (pgCollapseSwitcherShow() adds .show), callouts lost their arrow, a picker field's list was clipped
 ---
 
 ## Why did sections behind a switch never open?
@@ -22,3 +22,7 @@ description: Sections behind a panel switch (input.collapse-switcher) on Bootstr
 - Computed style in headless Chromium with the v6 dist and `backend.src.css`: `.collapse` with inline `display:block` 0px high, with `.show` 24px; the callout `overflow-y` visible after the fix. The switch screens themselves were not opened in a browser. Pinned as strings by `tests/bs6_collapse_switcher_test.php`.
 
 Related: docs/memory/ui/bootstrap-6.md, docs/memory/ui/panel-layout-pitfalls.md, docs/memory/ui/bootstrap-6-sibling-toggles-fullscreen.md
+
+## Why was a picker field's list cut off inside an open section?
+- The same unlayered `.collapse{overflow-y:clip}` clips anything absolutely placed inside a shown section, such as the search list of a picker field (`.pg-pfield`; the Add Short Link File field sits in the destination section).
+- `assets/css/backend.src.css` lifts it with a layered `!important` only while a list is open: `.collapse.show:has(.pg-pfield.is-open){overflow:visible !important}`. Copy that pattern for any other dropdown inside a collapse.
