@@ -17,7 +17,8 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 // The channel menu holds only the channel's own settings and actions, plus a
-// customer channel's sales quote (it is about the channel's own customer) and,
+// customer channel's sales quote (it is about the channel's own customer), a
+// mailbox channel's New e-mail (the mail is kept in that channel) and,
 // where the header is narrow, the header's own buttons (the tour among them),
 // and the reader's own choices for the channel in this browser (answers read
 // aloud, how an application's one-line messages read).
@@ -28,7 +29,7 @@ function workspace_channel_menu_test_allowed()
 {
 	return array(
 		'channel_info', 'members', 'channel_search', 'tour_start',
-		'edit_channel', 'sales_quote_new',
+		'edit_channel', 'sales_quote_new', 'mail_new',
 		'notify_all', 'notify_mentions', 'notify_none',
 		'apl_folded', 'apl_all', 'apl_hidden',
 		'voice_speak', 'claude_allow', 'ai_allow', 'voice_allow',

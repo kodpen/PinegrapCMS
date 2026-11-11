@@ -76,7 +76,7 @@ function test_workspace_mail_compose_signature_under_the_text()
 	$without = ws_mail_send_properties($item, $box, $route);
 	pg_assert_same("Your order left today.\n\n-- \nAyşe\nSupport", $without['body'], 'without one the box name stays');
 
-	pg_assert_contains('ws_mail_box_signature($box)', workspace_mail_compose_test_source('includes/workspace/mail_reply.php'), 'an answer carries the same signature');
+	pg_assert_contains('ws_mail_signature_line($box)', workspace_mail_compose_test_source('includes/workspace/mail_reply.php'), 'an answer carries the same signature');
 }
 
 function test_workspace_mail_compose_box_form_keeps_the_signature()
@@ -251,7 +251,7 @@ function test_workspace_mail_compose_draft_kept_in_the_browser()
 
 	pg_assert_same('ws-mail-new:/pg/api.php|5', $result[0] ?? null, 'one slot per site and person');
 	pg_assert_same(array('box' => 1, 'channel' => 10, 'to' => 'ali@example.com', 'cc' => '', 'bcc' => '', 'subject' => 'Hi', 'text' => 'Hello'), $result[1] ?? null, 'a fresh form, only its own fields');
-	pg_assert_same(null, $result[2] ?? 'missing', 'older than two weeks is gone');
-	pg_assert_same(null, $result[3] ?? 'missing', 'a broken value is nothing');
-	pg_assert_same(null, $result[4] ?? 'missing', 'an empty form is nothing');
+	pg_assert_same(null, array_key_exists(2, $result) ? $result[2] : 'missing', 'older than two weeks is gone');
+	pg_assert_same(null, array_key_exists(3, $result) ? $result[3] : 'missing', 'a broken value is nothing');
+	pg_assert_same(null, array_key_exists(4, $result) ? $result[4] : 'missing', 'an empty form is nothing');
 }

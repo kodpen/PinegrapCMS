@@ -458,7 +458,7 @@ function ws_mail_reply_send($viewer, $conversation_id, $text)
     $message_id = ws_mail_reply_message_id($conversation_id, bin2hex(random_bytes(8)), $host);
     $headers = ws_mail_reply_headers($answered, $message_id);
     $subject = ws_mail_reply_subject($answered ? (string) $answered['subject'] : (string) $conversation['subject'], $conversation_id);
-    $body = ws_mail_reply_body(trim((string) $text), $writer, (string) $box['name'], $answered);
+    $body = ws_mail_reply_body(trim((string) $text), $writer, ws_mail_signature_line($box), $answered);
 
     $properties = array(
         'to'                 => (string) $conversation['customer_email'],

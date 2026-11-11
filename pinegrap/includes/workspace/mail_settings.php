@@ -75,7 +75,7 @@ function ws_mail_providers()
  *                     provider, host, port, user, password, folder,
  *                     after_fetch, move_folder, smtp_host, smtp_port,
  *                     reply_via, sent_copy, sent_folder, connection_id,
- *                     reads_bounces
+ *                     reads_bounces, signature
  * @return array ok, error, values (the same keys; password as typed, '' to keep)
  */
 function ws_mail_box_input($input)
@@ -120,6 +120,8 @@ function ws_mail_box_input($input)
         'sent_folder' => $line('sent_folder'),
         'connection_id' => $connection_id,
         'reads_bounces' => !empty($input['reads_bounces']) ? 1 : 0,
+        // Plain text under the writer's name in every mail the box sends.
+        'signature'   => ws_mail_signature_clean($input['signature'] ?? ''),
     );
     $fail = function ($error) use ($values) {
         return array('ok' => false, 'error' => $error, 'values' => $values);
@@ -660,7 +662,7 @@ function ws_mail_settings_post($viewer, $action, $liveform)
         unset($settings['secret']);
     }
 
-    foreach (array('auth_server', 'provider', 'host', 'port', 'user', 'move_folder', 'smtp_host', 'smtp_port', 'sent_copy', 'sent_folder', 'connection_id', 'reads_bounces') as $key) {
+    foreach (array('auth_server', 'provider', 'host', 'port', 'user', 'move_folder', 'smtp_host', 'smtp_port', 'sent_copy', 'sent_folder', 'connection_id', 'reads_bounces', 'signature') as $key) {
         $settings[$key] = $values[$key];
     }
 
@@ -731,6 +733,11 @@ function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false)
                     <label class="form-label" for="' . $prefix . 'auth">' . h(lang('Checking server')) . '</label>
                     <input class="form-control form-control-sm font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="auth_server" id="' . $prefix . 'auth" maxlength="255" value="' . h((string) ($settings['auth_server'] ?? '')) . '" placeholder="mx.google.com" autocomplete="off">
                     <div class="form-text">' . h(lang('The server that receives this mailbox\'s mail and writes Authentication-Results. Only its verdict is believed; left empty, every sender stays unverified and no mail is tied to a customer.')) . '</div>
+                </div>
+                <div class="md:col-12">
+                    <label class="form-label" for="' . $prefix . 'signature">' . h(lang('Signature')) . '</label>
+                    <textarea class="form-control form-control-sm" name="signature" id="' . $prefix . 'signature" rows="3" maxlength="' . WS_MAIL_SIGNATURE_MAX . '">' . h(ws_mail_box_signature($box)) . '</textarea>
+                    <div class="form-text">' . h(lang('Plain text under the writer\'s name in every e-mail sent from this mailbox, such as the team\'s name and phone number. Left empty, the mailbox\'s name stands there.')) . '</div>
                 </div>
                 ' . ws_mail_route_fields($prefix, $box, $channels) . '
                 ' . ws_mail_box_server_fields($prefix, $box, $settings) . '

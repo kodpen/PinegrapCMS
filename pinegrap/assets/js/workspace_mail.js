@@ -7,7 +7,9 @@
  * assets/js/workspace_replies.js, put in as plain text), and the
  * conversation's status and holder, given to anybody of the channel
  * (includes/workspace/mail_status.php). On the E-mails screen the list,
- * its reading pane and the unread marks (screen()).
+ * its reading pane and the unread marks (screen()). New e-mail (write()),
+ * from the screen's toolbar and a mailbox channel's menu, with its unsent
+ * form kept in this browser (includes/workspace/mail_compose.php).
  *
  * assets/js/workspace.js draws the conversation and calls in here with its
  * own helpers. Whether a card may be answered is decided by the server
@@ -26,6 +28,44 @@
 
 (function () {
     'use strict';
+
+    // The unsent New e-mail form: one slot per site and person, its own
+    // fields only, gone after DRAFT_DAYS days. Files are not kept.
+    var DRAFT_DAYS = 14;
+    var DRAFT_FIELDS = ['box', 'channel', 'to', 'cc', 'bcc', 'subject', 'text'];
+
+    function draftKey(cfg) {
+        return 'ws-mail-new:' + String(cfg.api_url || '') + '|' + String(cfg.me || 0);
+    }
+
+    // The kept form, or null when it is too old, broken or empty.
+    function draftRead(raw, now) {
+        var data = null;
+        var draft = {};
+        var filled = false;
+
+        try {
+            data = JSON.parse(raw);
+        } catch (error) {
+            return null;
+        }
+
+        if (!data || (typeof data !== 'object') || !(Number(data.at) > now - DRAFT_DAYS * 86400000)) {
+            return null;
+        }
+
+        DRAFT_FIELDS.forEach(function (key) {
+            if ((key === 'box') || (key === 'channel')) {
+                draft[key] = parseInt(data[key], 10) || 0;
+                return;
+            }
+
+            draft[key] = (typeof data[key] === 'string') ? data[key] : '';
+            filled = filled || (draft[key].trim() !== '');
+        });
+
+        return filled ? draft : null;
+    }
 
     // The drawer: who it goes to, the answer, Send. A draft fills the
     // answer; nothing leaves before the member presses Send.
@@ -526,7 +566,7 @@
         }
 
         root.addEventListener('click', function (event) {
-            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-row]');
+            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-row], [data-ws-mail-new]');
 
             // A new tab or window keeps the link's own way.
             if (!target || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
@@ -537,6 +577,15 @@
 
             if (target.hasAttribute('data-ws-mail-more')) {
                 more(target);
+            } else if (target.hasAttribute('data-ws-mail-new')) {
+                // The sent mail's conversation opens in the pane.
+                write(h, {
+                    onSent: function (data) {
+                        if (data.conversation_id) {
+                            open(data.conversation_id);
+                        }
+                    }
+                });
             } else if (target.hasAttribute('data-ws-mail-row')) {
                 open(parseInt(target.getAttribute('data-ws-mail-row'), 10));
             } else {
@@ -561,10 +610,354 @@
         }
     }
 
+    // The New e-mail drawer (includes/workspace/mail_compose.php): From,
+    // the channel the mail is kept in, To, Cc, Bcc, Subject, the text with
+    // the mailbox's signature under it, and files. options.channel_id
+    // picks the channel a channel's menu opened it from; options.onSent
+    // runs with the answer of ws_mail_new. The unsent form stays in this
+    // browser (draftKey()); its files do not.
+    function write(h, options) {
+        var opts = options || {};
+
+        h.api('ws_mail_compose', { channel_id: opts.channel_id || 0 }).then(function (offer) {
+            if (!offer.boxes || !offer.boxes.length) {
+                h.toast(h.t('mail_new_none'), 'warning');
+                return;
+            }
+
+            writeForm(offer, h, opts);
+        }).catch(h.fail);
+    }
+
+    function writeForm(offer, h, opts) {
+        var t = h.t;
+        var el = h.el;
+        var limits = offer.limits || {};
+        var key = draftKey(h.cfg || {});
+        var kept = null;
+
+        try {
+            kept = draftRead(window.localStorage.getItem(key), Date.now());
+        } catch (error) {
+            kept = null;
+        }
+
+        var node = h.offcanvas('ws-mail-new', t('mail_new'));
+        var body = h.clear(node.querySelector('.drawer-body'));
+        var footer = h.clear(node.querySelector('.drawer-footer'));
+        var files = [];
+        var done = false;
+        var timer = 0;
+
+        node.querySelector('.drawer-title').textContent = t('mail_new');
+        node.style.width = 'min(40rem, 100vw)';
+        footer.classList.remove('d-none');
+
+        function boxById(id) {
+            return offer.boxes.filter(function (item) { return item.id === id; })[0] || null;
+        }
+
+        function boxOfChannel(id) {
+            return offer.boxes.filter(function (item) {
+                return item.channels.some(function (channel) { return channel.id === id; });
+            })[0] || null;
+        }
+
+        // A channel menu's channel comes first, then the kept form's, then
+        // the server's default.
+        var box = boxById(offer.box_id) || offer.boxes[0];
+        var channelId = offer.channel_id;
+
+        if (!opts.channel_id && kept && boxById(kept.box) && (boxOfChannel(kept.channel) === boxById(kept.box))) {
+            box = boxById(kept.box);
+            channelId = kept.channel;
+        }
+
+        function input(max, value) {
+            var field = el('input', 'form-control form-control-sm');
+
+            field.type = 'text';
+            field.maxLength = max;
+            field.value = value || '';
+            field.autocomplete = 'off';
+
+            return field;
+        }
+
+        var from = h.select(offer.boxes.map(function (item) {
+            return [item.id, item.address ? item.name + ' <' + item.address + '>' : item.name];
+        }), box.id);
+        var channel = el('select', 'form-control form-control-sm');
+        var to = input(2000, kept ? kept.to : '');
+        var cc = input(2000, kept ? kept.cc : '');
+        var bcc = input(2000, kept ? kept.bcc : '');
+        var subject = input(200, kept ? kept.subject : '');
+        var text = el('textarea', 'form-control');
+        var sign = el('div', 'small fg-secondary');
+        var picker = el('input', 'form-control form-control-sm');
+        var list = el('ul', 'list-unstyled small mb-0 mt-2');
+
+        [to, cc, bcc].forEach(function (field) {
+            field.inputMode = 'email';
+            field.spellcheck = false;
+        });
+
+        text.rows = 10;
+        text.maxLength = limits.text || 50000;
+        text.value = kept ? kept.text : '';
+        sign.style.whiteSpace = 'pre-wrap';
+        picker.type = 'file';
+        picker.multiple = true;
+
+        function channels() {
+            h.clear(channel);
+
+            if (!box.channels.some(function (item) { return item.id === channelId; })) {
+                channelId = box.channels[0].id;
+            }
+
+            box.channels.forEach(function (item) {
+                var option = el('option', '', item.name);
+
+                option.value = String(item.id);
+                option.selected = (item.id === channelId);
+                channel.appendChild(option);
+            });
+        }
+
+        // What the server puts under the text (ws_mail_reply_body()).
+        function signature() {
+            sign.textContent = '-- \n' + (offer.writer || '') + '\n' + (box.signature || box.name);
+        }
+
+        function save() {
+            clearTimeout(timer);
+            timer = 0;
+
+            if (done) {
+                return;
+            }
+
+            try {
+                if (![to, cc, bcc, subject, text].some(function (field) { return field.value.trim() !== ''; })) {
+                    window.localStorage.removeItem(key);
+                    return;
+                }
+
+                window.localStorage.setItem(key, JSON.stringify({
+                    box: box.id, channel: channelId, to: to.value, cc: cc.value, bcc: bcc.value,
+                    subject: subject.value, text: text.value, at: Date.now()
+                }));
+            } catch (error) {
+                // A full or closed storage keeps nothing; the form still works.
+            }
+        }
+
+        function later() {
+            clearTimeout(timer);
+            timer = setTimeout(save, 400);
+        }
+
+        function forget() {
+            done = true;
+            clearTimeout(timer);
+
+            try {
+                window.localStorage.removeItem(key);
+            } catch (error) {
+                // Nothing was kept.
+            }
+        }
+
+        function mb(bytes) {
+            return Math.round(bytes / 104857.6) / 10;
+        }
+
+        function drawFiles() {
+            h.clear(list);
+            files.forEach(function (file, index) {
+                var row = el('li', 'd-flex align-items-center gap-2 py-1');
+                var remove = h.button('btn btn-sm btn-text theme-secondary ms-auto', '', 'bi-x-lg', t('mail_new_file_remove', file.name));
+
+                row.appendChild(h.icon('bi-paperclip', 'fg-secondary'));
+                row.appendChild(el('span', 'text-truncate', file.name));
+                row.appendChild(el('span', 'fg-secondary text-nowrap', mb(file.size) + ' MB'));
+                remove.addEventListener('click', function () {
+                    files.splice(index, 1);
+                    drawFiles();
+                    picker.focus();
+                });
+                row.appendChild(remove);
+                list.appendChild(row);
+            });
+        }
+
+        // The server checks them again (ws_mail_send()).
+        picker.addEventListener('change', function () {
+            var total = files.reduce(function (sum, file) { return sum + file.size; }, 0);
+
+            Array.prototype.forEach.call(picker.files || [], function (file) {
+                if (files.length >= limits.files) {
+                    h.toast(t('mail_new_files_many', limits.files), 'warning');
+                } else if (limits.file && (file.size > limits.file)) {
+                    h.toast(t('mail_new_file_large', file.name, mb(limits.file)), 'warning');
+                } else if (total + file.size > limits.bytes) {
+                    h.toast(t('mail_new_files_large', mb(limits.bytes)), 'warning');
+                } else {
+                    total += file.size;
+                    files.push(file);
+                }
+            });
+            picker.value = '';
+            drawFiles();
+        });
+
+        from.addEventListener('change', function () {
+            box = boxById(parseInt(from.value, 10)) || box;
+            channels();
+            signature();
+            later();
+        });
+        channel.addEventListener('change', function () {
+            channelId = parseInt(channel.value, 10) || channelId;
+            later();
+        });
+        [to, cc, bcc, subject, text].forEach(function (field) {
+            field.addEventListener('input', later);
+        });
+
+        if (kept) {
+            body.appendChild(el('div', 'alert theme-secondary small py-3', t('mail_new_restored')));
+        }
+
+        var textBox = el('div', 'ws-mail-reply-box position-relative');
+        var fileBox = el('div', '');
+
+        textBox.appendChild(text);
+        fileBox.appendChild(picker);
+        fileBox.appendChild(list);
+
+        body.appendChild(h.formRow(t('mail_new_from'), from));
+        body.appendChild(h.formRow(t('mail_new_channel'), channel, t('mail_new_channel_hint')));
+        body.appendChild(h.formRow(t('mail_new_to'), to, t('mail_new_to_hint', limits.addresses)));
+        body.appendChild(h.formRow(t('mail_new_cc'), cc));
+        body.appendChild(h.formRow(t('mail_new_bcc'), bcc));
+        body.appendChild(h.formRow(t('mail_new_subject'), subject));
+        body.appendChild(h.formRow(t('mail_new_text'), textBox));
+        body.appendChild(h.formRow(t('mail_new_signature'), sign));
+        body.appendChild(h.formRow(t('mail_new_files'), fileBox, t('mail_new_files_hint', limits.files, mb(limits.bytes))));
+        channels();
+        signature();
+        savedReplies(text, textBox, { channel: { id: channelId } }, h);
+
+        var discard = h.button('btn btn-text theme-secondary', t('mail_new_discard'), 'bi-trash');
+        var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_new_send'), 'bi-send');
+        var fields = { to: to, subject: subject, text: text, files: picker, box: from, channel: channel };
+
+        discard.addEventListener('click', function () {
+            h.ask(t('mail_new_discard_ask'), t('mail_new_discard'), true).then(function (yes) {
+                if (yes) {
+                    forget();
+                    h.hideOffcanvas(node);
+                }
+            });
+        });
+
+        send.addEventListener('click', function () {
+            if (!to.value.trim()) {
+                to.focus();
+                return;
+            }
+
+            if (!subject.value.trim()) {
+                subject.focus();
+                return;
+            }
+
+            var form = new FormData();
+
+            send.disabled = true;
+            save();
+            form.append('action', 'ws_mail_new');
+            form.append('token', h.cfg.token);
+            form.append('box_id', String(box.id));
+            form.append('channel_id', String(channelId));
+            form.append('to', to.value);
+            form.append('cc', cc.value);
+            form.append('bcc', bcc.value);
+            form.append('subject', subject.value);
+            form.append('text', text.value);
+            files.forEach(function (file) {
+                form.append('files[]', file, file.name);
+            });
+
+            post(form, h).then(function (data) {
+                var states = { queued: ['mail_new_queued', 'success'], sent: ['mail_new_sent', 'success'], failed: ['mail_new_failed', 'warning'] };
+                var told = states[data.state] || states.queued;
+
+                forget();
+                h.hideOffcanvas(node);
+                h.toast(t(told[0]), told[1]);
+
+                if (data.refused && data.refused.length) {
+                    h.toast(t('mail_new_refused_files', data.refused.join(', ')), 'warning');
+                }
+
+                if (opts.onSent) {
+                    opts.onSent(data);
+                }
+            }).catch(function (error) {
+                send.disabled = false;
+                h.fail(error);
+
+                if (error.field && fields[error.field]) {
+                    fields[error.field].focus();
+                }
+            });
+        });
+
+        // Closing the drawer keeps what was written at once; the listener
+        // goes on once, the drawer itself is kept for the next form.
+        node.wsMailNewSave = save;
+
+        if (!node.wsMailNewHooked) {
+            node.wsMailNewHooked = true;
+            window.pgUI.drawer.on(node, 'hidden', function () {
+                node.wsMailNewSave();
+            });
+        }
+
+        footer.appendChild(discard);
+        footer.appendChild(send);
+        h.showOffcanvas(node);
+        (to.value ? (subject.value ? text : subject) : to).focus();
+    }
+
+    // The form with its files as parts, its answer read as workspace.js's
+    // api() reads one; a web server that refused the body before PHP saw
+    // it answers 413 (nginx) or 404 (IIS 404.13).
+    function post(form, h) {
+        return fetch(h.cfg.api_url, { method: 'POST', credentials: 'same-origin', body: form }).then(function (response) {
+            return response.json().catch(function () {
+                throw new Error(((response.status === 413) || (response.status === 404)) ? h.t('upload_too_large_server') : h.t('error_generic'));
+            });
+        }).then(function (json) {
+            if (!json || json.status !== 'success') {
+                var error = new Error((json && json.message) ? json.message : h.t('error_generic'));
+
+                error.field = (json && json.field) ? json.field : '';
+                throw error;
+            }
+
+            return json.data || {};
+        });
+    }
+
     window.PGWsMail = {
         node: node,
         draft: draftNode,
         plain: plain,
-        screen: screen
+        screen: screen,
+        write: write
     };
 })();

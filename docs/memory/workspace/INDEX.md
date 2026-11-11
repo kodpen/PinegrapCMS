@@ -32,6 +32,7 @@
 - contact-group-joined-event.md: Flow event contact_group.joined: one ws_events_in row per contact added to a group, from pg_announce_contact_group_members(); payload, group filter kept as status, outputs [decision: decisions-made-product-27.md]
 - mail-api.md: Workspace e-mail conversations in the external API and MCP (api_mail.php, G7): routes, which are tools, who may answer, errors, the workspace.mail.received webhook, a mail message's mail object
 - mail-card.md: How a mail is drawn in a Workspace channel (ws_mail_card_html(), sender like a guest) and the Mailboxes card of Workspace settings with the .eml upload (mail_settings.php)
+- mail-compose.md: The Workspace's New e-mail form (WM5): where it opens, its fields, actions ws_mail_compose and ws_mail_new, files as form parts, the unsent form in the browser, the mailbox Signature [decision: here]
 - mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP chosen (#2444) and when a push endpoint (G9) would come, the eleven answers and their files, defaults, scope, PRs, what stays unverified [decision: decisions-made-product-10.md, decisions-made-workspace-13.md]
 - mail-fetch.md: Reading Workspace mailboxes over IMAP (ws_mail_fetch(), inline in job.php): what is searched, the UID position, held mail, limits, after-fetch, what the box records, the System status tile
 - mail-imap-client.md: The socket IMAP client pg_imap_*() (includes/fn/imap_client.php, G2a of incoming e-mail): why no imap extension, TLS and address check, sign-in, commands, error codes, limits, tests

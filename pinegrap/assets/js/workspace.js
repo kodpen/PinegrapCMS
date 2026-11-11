@@ -9242,6 +9242,20 @@
             // only when the customer is or is tied to such an account.
             if (channel.sales_quote_url) {
                 item(t('sales_quote_new'), 'bi-file-earmark-plus', function () { window.location.href = channel.sales_quote_url; });
+            }
+
+            // An e-mail from a mailbox that writes into this channel, kept
+            // here (workspace_mail.js). The server offers it to whoever may
+            // post in the channel and send from such a mailbox.
+            var mailNew = !!(channel.mail_new && window.PGWsMail);
+
+            if (mailNew) {
+                item(t('mail_new'), 'bi-envelope-plus', function () {
+                    window.PGWsMail.write(featureHelpers(), { channel_id: channel.id, onSent: function () { self.sync(); } });
+                });
+            }
+
+            if (channel.sales_quote_url || mailNew) {
                 divider();
             }
 

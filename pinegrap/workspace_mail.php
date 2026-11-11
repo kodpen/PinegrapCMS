@@ -46,7 +46,7 @@ echo pg_page_shell(array(
 <div class="ws-shell">
 <div class="ws-shell-main">
     <div id="ws-root" class="ws-mail-screen">
-        ' . ws_mail_list_filters_html($filters, ws_mail_list_boxes($viewer)) . '
+        ' . ws_mail_list_filters_html($filters, ws_mail_list_boxes($viewer), ws_mail_can_send($viewer)) . '
         <div class="ws-mail-columns">
             <div class="ws-mail-list">' . ws_mail_list_html($list, $filters, $base, $now) . '</div>
             <section class="ws-mail-pane" data-ws-mail-pane aria-label="' . h(lang('E-mail conversation')) . '" hidden></section>

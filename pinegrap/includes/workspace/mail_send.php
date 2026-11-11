@@ -544,7 +544,8 @@ function ws_mail_send_properties($item, $box, $route)
         'from_name'          => (string) $box['name'],
         'from_email_address' => (string) $box['address'],
         'subject'            => (string) $item['subject'],
-        'body'               => ws_mail_reply_body((string) $item['body_text'], (string) $item['from_name'], (string) $box['name'], null),
+        // The box's signature stands under the writer, or its name without one.
+        'body'               => ws_mail_reply_body((string) $item['body_text'], (string) $item['from_name'], ws_mail_signature_line($box), null),
         'headers'            => ws_mail_reply_headers(null, (string) $item['rfc_message_id']),
         'type'               => 'workspace',
         // The text stays out of failure notices and the Site Log; the writer

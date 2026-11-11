@@ -9,7 +9,7 @@ description: The Workspace E-mails list (workspace_mail.php, mail_list.php): whi
 
 ## Which views and filters?
 - Address words, `ws_mail_list_filters()`: `view` incoming (default; `last_in_at > 0`) | sent (an outgoing item with `send_state` '' or sent) | unsent (an outgoing item queued or failed) | all (the API only); `status` open (default in Incoming, else all) | waiting | closed | all; `holder` all | me | none; `overdue=1`; `box` (a mailbox id); `q`; `before`. Unknown words fall back.
-- The toolbar (`ws_mail_list_filters_html()`): Incoming / Sent / Not sent buttons, status and holder selects, a Mailbox select when more than one box has conversations the reader sees (`ws_mail_list_boxes()`), the overdue toggle, the search field and Mark all as read. `ws_mail_list_query()` builds each link's address and drops the defaults.
+- The toolbar (`ws_mail_list_filters_html()`): Incoming / Sent / Not sent buttons, status and holder selects, a Mailbox select when more than one box has conversations the reader sees (`ws_mail_list_boxes()`), the overdue toggle, the search field, Mark all as read and New e-mail for whoever can send (`mail-compose.md`). `ws_mail_list_query()` builds each link's address and drops the defaults.
 - Search (`q`, at most `WS_MAIL_LIST_QUERY_MAX` 100 characters, folded through `ws_search_like_sql()`): the conversation's subject, customer name and address, or any item's sender, To, Cc or text.
 - `ws_mail_list_where()` is the pure SQL part. Overdue depends on each box's target, so the query takes five pages of unanswered, not closed rows and `ws_mail_first_reply_overdue()` keeps the late ones.
 

@@ -465,13 +465,15 @@ function ws_mail_list_more_html($filters, $next)
 /**
  * The screen toolbar: the views, Status, Held by and Mailbox as selects
  * (each keeping the other words), "First answer overdue" as a toggle, the
- * search and Mark all as read.
+ * search, Mark all as read and, for a person who can send from a mailbox,
+ * New e-mail.
  *
- * @param array $filters ws_mail_list_filters()
- * @param array $boxes   ws_mail_list_boxes()
+ * @param array $filters  ws_mail_list_filters()
+ * @param array $boxes    ws_mail_list_boxes()
+ * @param bool  $can_send ws_mail_can_send(): the New e-mail button shows
  * @return string HTML
  */
-function ws_mail_list_filters_html($filters, $boxes = array())
+function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false)
 {
     $statuses = ws_mail_statuses() + array('all' => lang('All'));
     $holders = array('all' => lang('Anybody'), 'me' => lang('Held by me'), 'none' => lang('Held by nobody'));
@@ -517,7 +519,12 @@ function ws_mail_list_filters_html($filters, $boxes = array())
             . ' href="workspace_mail.php' . (($query !== '') ? '?' . h($query) : '') . '"><i class="bi bi-' . $label[1] . ' me-1" aria-hidden="true"></i>' . h($label[0]) . '</a>';
     }
 
+    $new = $can_send
+        ? '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-ws-mail-new><i class="bi bi-envelope-plus me-2" aria-hidden="true"></i>' . h(lang('New e-mail')) . '</button>'
+        : '';
+
     return pg_screen_toolbar(array(
+        'primary'   => $new,
         'secondary' => '<button type="button" class="btn btn-sm btn-text theme-secondary" data-ws-mail-read-all><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang('Mark all as read')) . '</button>',
         'search'    => $search,
         'view'      => '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">' . $views . '</div>',

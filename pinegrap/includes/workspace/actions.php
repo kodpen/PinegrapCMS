@@ -2488,6 +2488,55 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('state' => $result['state']));
 
+        // The New e-mail form: what it offers this person, and the mail it
+        // sends, its files as form parts (mail_compose.php, mail_send.php).
+        case 'ws_mail_compose':
+            if (!function_exists('ws_mail_compose_offer') || !ws_mail_send_ready()) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            return ws_action_ok(ws_mail_compose_offer($viewer, (int) ($request['channel_id'] ?? 0)));
+
+        case 'ws_mail_new':
+            if (!function_exists('ws_mail_compose_request_files') || !ws_mail_send_ready()) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            $files = ws_mail_compose_request_files();
+
+            if (!$files['ok']) {
+                return ws_action_error(ws_mail_send_error_text($files['error'], $files['detail']), 'files');
+            }
+
+            $field = function ($key) use ($request) {
+                return is_scalar($request[$key] ?? '') ? (string) ($request[$key] ?? '') : '';
+            };
+            $result = ws_mail_send($viewer, array(
+                'box_id'     => (int) $field('box_id'),
+                'channel_id' => (int) $field('channel_id'),
+                'to'         => $field('to'),
+                'cc'         => $field('cc'),
+                'bcc'        => $field('bcc'),
+                'subject'    => $field('subject'),
+                'text'       => $field('text'),
+                'files'      => $files['files'],
+            ));
+
+            if (!$result['ok']) {
+                return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']), ws_mail_compose_error_field($result['error']));
+            }
+
+            // A file the channel could not keep went without the mail.
+            $refused = (string) db_value("SELECT refused_files FROM ws_mail_items WHERE id = '" . (int) $result['item_id'] . "'");
+
+            return ws_action_ok(array(
+                'conversation_id' => $result['conversation_id'],
+                'message_id'      => $result['message_id'],
+                'channel_id'      => (int) $field('channel_id'),
+                'state'           => $result['state'],
+                'refused'         => array_values(array_filter(explode("\n", $refused), 'strlen')),
+            ));
+
         // A conversation's status or holder (mail_status.php).
         case 'ws_mail_conversation':
             if (!function_exists('ws_mail_conversation_set') || !ws_mail_ready()) {

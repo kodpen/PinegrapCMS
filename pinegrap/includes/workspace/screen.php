@@ -879,8 +879,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
     $strings = array_merge($strings, ws_task_time_js_strings(), ws_task_links_js_strings());
     // Approval requests, the people outside the team they ask, read
     // receipts and answers by e-mail (approvals.php, approval_guests.php,
-    // acks.php, mail_reply.php, mail_send.php).
-    $strings = array_merge($strings, ws_approvals_js_strings(), ws_approval_guests_js_strings(), ws_acks_js_strings(), ws_mail_js_strings(), ws_mail_status_js_strings(), ws_mail_send_js_strings());
+    // acks.php, mail_reply.php, mail_send.php, mail_compose.php).
+    $strings = array_merge($strings, ws_approvals_js_strings(), ws_approval_guests_js_strings(), ws_acks_js_strings(), ws_mail_js_strings(), ws_mail_status_js_strings(), ws_mail_send_js_strings(), ws_mail_compose_js_strings());
     // Voice messages: the recording row and the player (voice.php,
     // assets/js/workspace_voice.js).
     $strings = array_merge($strings, ws_voice_js_strings());
