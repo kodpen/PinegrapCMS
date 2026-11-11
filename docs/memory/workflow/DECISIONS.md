@@ -38,6 +38,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-3.md: What opens from a card inside the Site Settings dialog? (owner, 2026-11-11)
 - decisions-made-panel-4.md: Where are the rules and the earlier parts?
 - decisions-made-panel-4.md: What does a bell row look like? (owner, 2026-11-11, #8670)
+- decisions-made-panel-4.md: How does the bell's panel open, and how is a row laid out in it? (owner, 2026-11-11, #8754)
 - decisions-made-panel-4.md: Which filters does the bell have? (owner, 2026-11-11, #8670)
 - decisions-made-panel-4.md: What does a bell row's button do? (owner, 2026-11-11, #8670)
 - decisions-made-panel-4.md: When is a notification read? (owner, 2026-11-11, #8670)
