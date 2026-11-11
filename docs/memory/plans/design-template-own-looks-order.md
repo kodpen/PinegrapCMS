@@ -21,39 +21,72 @@ description: Order of the polishing round after Launch: every shipped template's
 
 ## Where does each template stand?
 - Travel: `-1` #8337 done.
+
 - Gym: `-1` #8339 done.
+
 - Clinic: `-1` #8346 done.
-- Bakery: `-1`, `-2` open.
-- Brewery: `-1`, `-2` open.
-- Carrental: `-1`, `-2` open.
-- Filmstudio: `-1`, `-2` open.
-- Florist: `-1`, `-2` open.
-- Homeservices: `-1`, `-2` open.
-- Library: `-1`, `-2` open.
-- Podcast: `-1`, `-2` open.
-- Recruitment: `-1`, `-2` open.
-- Restaurant: `-1`, `-2` open.
-- Theatre: `-1`, `-2` open.
-- Veterinary: `-1`, `-2` open.
-- Gallery: `-1`, `-2` open.
-- Skiresort: `-1` #8050 done; it needs no `-2`.
-- Wedding: `-1` #8167, `-2` #8196 done.
-- Photo: `-1` #8232, `-2` #8255 done.
-- School: `-1` #8233, `-2` #8257 done.
-- Architecture: `-1` #8264, `-2` #8280 done.
-- Campsite: `-1` #8269, `-2` #8301 done.
-- Cityhall: `-1` #8291, `-2` #8308 done.
-- Construction: `-1` #8292, `-2` #8324 done.
-- Museum: `-1` #8306, `-2` #8326 done.
-- Hotel: `-1` #8325, `-2` #8336 done.
-- Music: `-1` #8338, `-2` #8347 done.
-- Coworking: `-1` #8113, `-2` #8127 done.
-- Drivingschool: `-1` #8117, `-2` #8138 done.
-- Ferry: `-1` #8123, `-2` #8142 done.
-- Sportsclub: `-1` #8140, `-2` #8175 done.
-- Pharmacy: `-1` #8160, `-2` #8181 done.
-- Marina: `-1` #8159, `-2` #8185 done.
+
 - Dealership: `-1` #8640 (family, `cta-sticky`, home); `-2` open.
+
+- Bakery: `-1`, `-2` open.
+
+- Brewery: `-1`, `-2` open.
+
+- Carrental: `-1`, `-2` open.
+
+- Filmstudio: `-1`, `-2` open.
+
+- Florist: `-1`, `-2` open.
+
+- Homeservices: `-1`, `-2` open.
+
+- Library: `-1`, `-2` open.
+
+- Podcast: `-1`, `-2` open.
+
+- Recruitment: `-1`, `-2` open.
+
+- Restaurant: `-1`, `-2` open.
+
+- Theatre: `-1`, `-2` open.
+
+- Veterinary: `-1`, `-2` open.
+
+- Gallery: `-1`, `-2` open.
+
+- Skiresort: `-1` #8050 done; it needs no `-2`.
+
+- Wedding: `-1` #8167, `-2` #8196 done.
+
+- Photo: `-1` #8232, `-2` #8255 done.
+
+- School: `-1` #8233, `-2` #8257 done.
+
+- Architecture: `-1` #8264, `-2` #8280 done.
+
+- Campsite: `-1` #8269, `-2` #8301 done.
+
+- Cityhall: `-1` #8291, `-2` #8308 done.
+
+- Construction: `-1` #8292, `-2` #8324 done.
+
+- Museum: `-1` #8306, `-2` #8326 done.
+
+- Hotel: `-1` #8325, `-2` #8336 done.
+
+- Music: `-1` #8338, `-2` #8347 done.
+
+- Coworking: `-1` #8113, `-2` #8127 done.
+
+- Drivingschool: `-1` #8117, `-2` #8138 done.
+
+- Ferry: `-1` #8123, `-2` #8142 done.
+
+- Sportsclub: `-1` #8140, `-2` #8175 done.
+
+- Pharmacy: `-1` #8160, `-2` #8181 done.
+
+- Marina: `-1` #8159, `-2` #8185 done.
 
 ## Who claims what?
 - Any worker, in the order above, one step per PR; a step whose template still has an open PR on its files waits.
