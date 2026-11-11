@@ -103,6 +103,7 @@
 - design-template-bakery.md: Bakery template (pinegrap-bakery): daily bake and cakes as page content, cake orders and wholesale enquiries as requests, baking classes collection, pickup shop, pbk- look, tests.
 - design-template-blog-cover.md: A design template's blog or article Cover Image input takes image/* and carries _cf.kind = image; templates whose $file helper defaults to documents pass it explicitly (#7513)
 - design-template-bookshop-events.md: Bookshop template (1.3.0) events as records of a collection form, the Café way: New Event page, sample events dated from today, home and events lists from today on, no fixed dates [decision: here]
+- design-template-brewery-pages.md: Craft Brewery template 2.0.0: home, taproom and beer page on the Brewery blocks, motion on about: the builders, each page's composition, what could not be done, the test
 - design-template-brewery.md: Craft Brewery template (pinegrap-brewery): beers and taproom events as collections, tour booking requests, private tastings booked online, packs and Beer Club terms in the shop, pbw- look, tests.
 - design-template-cafe.md: Cafe and Clinic templates: event weekdays, price hint, rating numbers, guests pattern, consent privacy link, subject dates, booking links that fill the form.
 - design-template-campsite-pages.md: Campsite template 2.0.0: home, places to stay and the tent pitches page on the Campsite blocks: the builders, each page's composition, motion, the test

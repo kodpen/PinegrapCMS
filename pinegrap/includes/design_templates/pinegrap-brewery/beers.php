@@ -216,9 +216,21 @@ $beer_fact = function ($icon_name, $label, $token, $sample) use ($el, $icon, $sp
     ));
 };
 
-// One beer: the picture, the style, the name, the strength and the
-// bitterness, the summary, how long it stays, the malts and hops, the
-// tasting notes and the food pairing.
+// A figure of the beer page, the Fresh Release's fact: its label over the
+// record's value; the fact leaves when the record has none.
+$beer_figure = function ($n, $label, $token, $sample) use ($el, $span, $bind) {
+    return $el('div', 'pg-hide-if-empty col border-top border-2 pt-3', str_replace('{var}', $n, lang('Fact {var}')), array(
+        $el('dt', 'small fw-normal text-body-secondary mb-1', lang('Fact Label'), array($span($label, '', lang('Label')))),
+        $el('dd', 'pg-brewery-figure fs-4 fw-bold lh-sm mb-0', lang('Fact Figure'), array($span($sample, 'pg-field-value', lang('Value'), $bind($token)))),
+    ));
+};
+
+// One beer, drawn on the editor's Brewery Release block: the picture with
+// the sticker that says how long the beer stays, moving slower than the
+// page; the name very large, the summary, the style and the strength as
+// the release's figures, the malts and hops, the tasting notes and the
+// food pairing. The picture's stage leaves with the sticker when the
+// record has no picture, so the sticker never hangs over the toolbar.
 $beer_sample_key = 'lighthouse';
 $beer_sample = $beers[$beer_sample_key];
 $beer_avail = $availabilities[$beer_sample['availability']];
@@ -239,27 +251,35 @@ $beer_widgets['beer_detail'] = array(
                 $bw_toolbar('beers', lang('All Beers')),
                 $row(array(
                     $col(array(
-                        $optional_image('picture', 'name', 'w-100 h-100 object-fit-cover rounded-4 shadow-sm', 'ratio ratio-4x3',
-                            $photo('beer-' . $beer_sample_key, 1200, 900), $beer_sample['name']),
+                        $fx($el('div', 'pg-hide-if-empty px-4 px-lg-0 mb-4 mb-lg-0', lang('Picture Stage'), array(
+                            $fx($el('span', 'pg-field-value d-block', lang('Picture Frame'), array(
+                                $image($photo('beer-' . $beer_sample_key, 960, 1200), $beer_sample['name'], 'pg-brewery-photo w-100 object-fit-cover rounded-4 shadow',
+                                    array('_bindings' => array('src' => 'picture', 'alt' => 'name'))),
+                            )), array('effect' => 'fade', 'trigger' => 'load', 'duration' => 1200, 'delay' => 200)),
+                            $el('div', 'pg-hide-if-empty pg-brewery-sticker text-bg-primary small fw-bold text-uppercase shadow', lang('Sticker'), array(
+                                $span($beer_avail['title'], 'pg-field-value', lang('Beer Availability'), $bind('availability')),
+                            )),
+                        )), array('effect' => 'parallax', 'speed' => 15)),
                     ), '', '5'),
                     $col(array(
-                        $span($styles[$beer_sample['style']]['title'], 'pbw-eyebrow d-block small text-uppercase fw-semibold text-primary mb-1', lang('Beer Style'), $bind('style')),
-                        $heading('h1', $beer_sample['name'], 'pbw-display display-5 mb-2', $bind('name')),
-                        $para($strength_text($beer_sample_key), 'pbw-abv fw-semibold mb-3', $bind('strength')),
-                        $para($beer_sample['summary'], 'lead text-body-secondary mb-3', $bind('summary')),
-                        $el('div', 'mb-4', lang('Beer Availability'), array(
-                            $span($beer_avail['title'], 'badge rounded-pill ' . $beer_avail['badge'], lang('Beer Availability'), $bind('availability')),
-                        )),
+                        $fx($heading('h1', $beer_sample['name'], 'display-2 fw-bold text-uppercase text-break lh-1 mb-3', $bind('name')),
+                            array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 900)),
+                        $fx($para($beer_sample['summary'], 'lead text-body-secondary mb-4', $bind('summary')),
+                            array('effect' => 'fade', 'trigger' => 'load', 'duration' => 800, 'delay' => 400)),
+                        $fx($el('dl', 'row row-cols-1 row-cols-sm-2 g-3 mb-4', lang('Release Facts'), array(
+                            $beer_figure(1, lang('Beer Style'), 'style', $styles[$beer_sample['style']]['title']),
+                            $beer_figure(2, lang('Strength and bitterness'), 'strength', $strength_text($beer_sample_key)),
+                        )), array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 600, 'stagger' => 120)),
                         $beer_fact('bi-flower1', lang('Malts and Hops'), 'grain', $beer_sample['grain']),
-                        $el('div', 'mt-4', lang('Tasting'), array(
+                        $fx($el('div', 'mt-4', lang('Tasting'), array(
                             $bw_long_field(lang('Tasting Notes'), 'notes', $beer_sample['notes']),
                             $bw_long_field(lang('Food Pairing'), 'pairing', $beer_sample['pairing']),
-                        )),
+                        )), $fade_in),
                         $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
                             $link(lang('Visit the Taproom'), '{{page:taproom}}', 'btn btn-primary rounded-pill px-4'),
                             $link(lang('Book a Tour'), '{{page:tour_booking}}', 'btn btn-outline-primary rounded-pill px-4'),
                         )),
-                    ), '', '7'),
+                    ), '', '6', '', '12', 'offset-lg-1'),
                 ), '4', '', 'g-lg-5'),
             ), $show_when('record_found')),
         ), 'py-5'),
