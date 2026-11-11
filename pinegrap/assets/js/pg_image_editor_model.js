@@ -4324,7 +4324,61 @@
         return (made && made.replace && (made.format === (ANIM_FORMATS[format] || ANIM_FORMATS.gif).ext)) ? 'replace' : 'new';
     }
 
-    var ANIMSAVE = { animFits: animFits, animSmaller: animSmaller, animSaveMode: animSaveMode };
+    // The layers of a document: the open scene's and each closed scene's
+    // (a canvas's scenes keep theirs in their entry).
+    function docLayerLists(doc) {
+        var lists = (doc && Array.isArray(doc.layers)) ? [doc.layers] : [];
+
+        ((doc && Array.isArray(doc.scenes)) ? doc.scenes : []).forEach(function (s) {
+            if (s && Array.isArray(s.layers)) {
+                lists.push(s.layers);
+            }
+        });
+
+        return lists;
+    }
+
+    // Pictures from this computer (a PNG or JPEG data: address, no file
+    // yet) in every scene: a save into Files sends them along to be kept
+    // as files, so the document its version keeps holds no pixels.
+    function animPictures(doc) {
+        var list = [];
+
+        docLayerLists(doc).forEach(function (layers) {
+            layers.forEach(function (l) {
+                if (l && (l.type === 'image') && !l.fileId && /^data:image\/(png|jpeg);base64,/.test(l.src || '')) {
+                    list.push({ id: l.id, data: l.src, name: l.fileName || '' });
+                }
+            });
+        });
+
+        return list;
+    }
+
+    // The files a save kept ({ layer id: { id, url } }): their layers, in
+    // every scene, point at them from now on. How many changed.
+    function picturesTaken(doc, saved) {
+        var n = 0;
+
+        if (!saved || (typeof saved !== 'object')) {
+            return 0;
+        }
+
+        docLayerLists(doc).forEach(function (layers) {
+            layers.forEach(function (l) {
+                if (l && Object.prototype.hasOwnProperty.call(saved, l.id) && saved[l.id]) {
+                    l.src = saved[l.id].url;
+                    l.fileId = saved[l.id].id;
+                    delete l.fileName;
+                    n++;
+                }
+            });
+        });
+
+        return n;
+    }
+
+    var ANIMSAVE = { animFits: animFits, animSmaller: animSmaller, animSaveMode: animSaveMode, animPictures: animPictures, picturesTaken: picturesTaken };
 
     // -- motion in a saved SVG (pg_image_editor_svg.js) --
 

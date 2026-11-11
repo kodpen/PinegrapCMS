@@ -15037,7 +15037,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 '<span class="bi ' + icon + ' me-1"></span>' + esc(label) + '</button>';
         }
 
-        if ((kind === 'image') && file.on_disk && (file.type !== 'svg')) {
+        // A video the image editor saved opens again as its project.
+        if (((kind === 'image') && file.on_disk && (file.type !== 'svg')) || ((kind === 'video') && file.editor_project)) {
             html += tool('image_editor', 'bi-brush', L.image_editor);
         }
 
@@ -15511,7 +15512,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     // Back in this window with the new pixels, and the
                     // listing behind it brought up to date.
                     var preview = document.getElementById('file_edit_preview');
-                    if (preview) { preview.innerHTML = filePreviewHtml(file, 'image'); }
+                    if (preview) { preview.innerHTML = filePreviewHtml(file, fileEditKind(file)); }
                     reload();
                 });
                 break;
