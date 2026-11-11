@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The report screens' shared view: from a report's result (its first
+ * The report screens' shared view (the order and visitor reports): from a report's result (its first
  * summarize-by level, the groups of that level, the grand total) the
  * summary figures and the chart the screen draws with the dashboard's
  * drawing (assets/js/pg_dash.js, assets/js/pg_report_view.js). The table
@@ -161,6 +161,42 @@ function pg_report_view_figures($grand, $charge_columns, $symbol)
 }
 
 /**
+ * The visitor report's summary figures, each the text of its cell in the
+ * table's Grand Total row: visitors, page views, the share of visitors who
+ * submitted a form and, with e-commerce, the share who completed an order,
+ * the order total and the average order amount. Pure.
+ *
+ * @param array  $grand     count, page_views, custom_form_submitted,
+ *                          order_completed, order_total (minor units)
+ * @param bool   $ecommerce whether the table shows its order columns
+ * @param string $symbol    the base currency's stored symbol
+ * @return array of label, text
+ */
+function pg_report_view_visitor_figures($grand, $ecommerce, $symbol)
+{
+    $count = (int) ($grand['count'] ?? 0);
+    $percent = function ($part) use ($count) {
+        return lang(array('string' => '{var:1}%', 'vars' => pg_format_number(($count > 0) ? $part / $count * 100 : 0, 2)));
+    };
+
+    $figures = array(
+        array('label' => lang('Visitors'), 'text' => pg_format_number($count, 0)),
+        array('label' => lang('Page Views'), 'text' => pg_format_number((int) ($grand['page_views'] ?? 0), 0)),
+        array('label' => lang('Custom Form Submitted') . ' %', 'text' => $percent((int) ($grand['custom_form_submitted'] ?? 0))),
+    );
+
+    if ($ecommerce) {
+        $total = (float) ($grand['order_total'] ?? 0);
+
+        $figures[] = array('label' => lang('Order Completed') . ' %', 'text' => $percent((int) ($grand['order_completed'] ?? 0)));
+        $figures[] = array('label' => lang('Order Total'), 'text' => pg_report_view_money($total, $symbol));
+        $figures[] = array('label' => lang('Average Order Amount'), 'text' => pg_money_text((($count > 0) ? $total / $count : 0) / 100, $symbol));
+    }
+
+    return $figures;
+}
+
+/**
  * What the figure box says over one group: its name, its total and its
  * order count. Pure.
  *
@@ -223,19 +259,75 @@ function pg_report_view_steps($totals)
  */
 function pg_report_view_chart($kind, $groups, $names, $label, $symbol, $codes = array())
 {
+    return pg_report_view_chart_by($kind, $groups, $names, lang(array('string' => 'Total by {var:1}', 'vars' => $label)), array(
+        'raw' => function ($group) {
+            return (float) ($group['total'] ?? 0);
+        },
+        'value' => function ($raw) {
+            return round($raw / 100, 2);
+        },
+        'note' => function ($raw) use ($symbol) {
+            return pg_report_view_money($raw, $symbol);
+        },
+        'tip' => function ($name, $group) use ($symbol) {
+            return pg_report_view_tip($name, $group, $symbol);
+        },
+    ), $codes);
+}
+
+/**
+ * The visitor report's chart: the same kinds, measured in visitors (the
+ * group's count), with no money. Pure.
+ *
+ * @param string $kind   pg_report_view_chart_kind()
+ * @param array  $groups the first level's groups, each with its 'count'
+ * @param array  $names  their names as the table prints them, same keys
+ * @param string $label  the level's label ("Country")
+ * @param array  $codes  map: each group's country code, same keys
+ * @return array|null null when there is nothing to draw
+ */
+function pg_report_view_visitor_chart($kind, $groups, $names, $label, $codes = array())
+{
+    return pg_report_view_chart_by($kind, $groups, $names, lang(array('string' => 'Visitors by {var:1}', 'vars' => $label)), array(
+        'raw' => function ($group) {
+            return (int) ($group['count'] ?? 0);
+        },
+        'value' => function ($raw) {
+            return (int) $raw;
+        },
+        'note' => function ($raw) {
+            return pg_format_number($raw, 0);
+        },
+        'tip' => function ($name, $group) {
+            $count = (int) ($group['count'] ?? 0);
+
+            return $name . ': ' . lang(array('string' => '{var:1} visitor{suffix:1}', 'vars' => pg_format_number($count, 0), 'suffix' => ($count == 1) ? '' : 's'));
+        },
+    ), $codes);
+}
+
+/**
+ * The chart's data by one measure. Pure. $measure holds four callables:
+ * 'raw' (group => the number ranked and shaded), 'value' (raw => the number
+ * drawn), 'note' (raw => its text in a row) and 'tip' (name, group => the
+ * text over a point or a place). A map place sums its groups' 'total' and
+ * 'count', so both measures read it as a group.
+ */
+function pg_report_view_chart_by($kind, $groups, $names, $title, $measure, $codes = array())
+{
     if (($kind === 'none') || empty($groups)) {
         return null;
     }
 
-    $chart = array('kind' => $kind, 'label' => lang(array('string' => 'Total by {var:1}', 'vars' => $label)));
+    $chart = array('kind' => $kind, 'label' => $title);
 
     if ($kind === 'line') {
         $chart['values'] = array();
         $chart['tips'] = array();
 
         foreach ($groups as $key => $group) {
-            $chart['values'][] = round((float) ($group['total'] ?? 0) / 100, 2);
-            $chart['tips'][] = pg_report_view_tip((string) $names[$key], $group, $symbol);
+            $chart['values'][] = $measure['value']($measure['raw']($group));
+            $chart['tips'][] = $measure['tip']((string) $names[$key], $group);
         }
 
         $chart['first'] = (string) reset($names);
@@ -247,7 +339,7 @@ function pg_report_view_chart($kind, $groups, $names, $label, $symbol, $codes = 
     $totals = array();
 
     foreach ($groups as $key => $group) {
-        $totals[$key] = (float) ($group['total'] ?? 0);
+        $totals[$key] = $measure['raw']($group);
     }
 
     arsort($totals);
@@ -256,8 +348,8 @@ function pg_report_view_chart($kind, $groups, $names, $label, $symbol, $codes = 
     foreach (array_slice(array_keys($totals), 0, PG_REPORT_VIEW_ROWS) as $key) {
         $chart['rows'][] = array(
             'text' => (string) $names[$key],
-            'value' => round($totals[$key] / 100, 2),
-            'note' => pg_report_view_money($totals[$key], $symbol),
+            'value' => $measure['value']($totals[$key]),
+            'note' => $measure['note']($totals[$key]),
         );
     }
 
@@ -281,13 +373,13 @@ function pg_report_view_chart($kind, $groups, $names, $label, $symbol, $codes = 
         }
 
         $chart['map'] = 'world-countries.svg';
-        $chart['shades'] = (object) pg_report_view_steps(array_map(function ($place) {
-            return $place['total'];
+        $chart['shades'] = (object) pg_report_view_steps(array_map(function ($place) use ($measure) {
+            return $measure['raw']($place);
         }, $places));
         $chart['places'] = array();
 
         foreach ($places as $code => $place) {
-            $chart['places'][] = array('id' => (string) $code, 'text' => pg_report_view_tip($place['name'], $place, $symbol));
+            $chart['places'][] = array('id' => (string) $code, 'text' => $measure['tip']($place['name'], $place));
         }
     }
 
