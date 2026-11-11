@@ -8820,13 +8820,18 @@
             // menu. The purpose is in the info (showMembers()) and on the
             // name's tooltip. On a phone the line keeps the way back, the
             // name and the menu, which then holds the rest.
+            //
+            // The header, the bars under it and the tabs are one card; the
+            // channel's colour is set on the card so every row of it (the
+            // tabs too) sees it: its border, a wash from the sign's side,
+            // the icon tile and the open tab.
+            var card = el('div', 'ws-channel-card');
             var head = el('div', 'ws-head ws-head-channel');
             head.appendChild(channelsToggle());
 
-            // The channel's colour on its icon tile and a thin stripe.
             if (channel.hex) {
-                head.style.setProperty('--ws-ch', channel.hex);
-                head.setAttribute('data-ws-colored', '1');
+                card.style.setProperty('--ws-ch', channel.hex);
+                card.setAttribute('data-ws-colored', '1');
             }
 
             head.appendChild(self.headTitle(channel));
@@ -8863,7 +8868,8 @@
 
             actions.appendChild(self.channelMenu());
             head.appendChild(actions);
-            center.appendChild(head);
+            card.appendChild(head);
+            center.appendChild(card);
 
             // The info beside it follows the channel shown (drawInfo()).
             if (self.infoOpen) {
@@ -8874,7 +8880,7 @@
                 var auditBar = el('div', 'alert theme-warning rounded-0 m-0 py-3 small');
                 auditBar.appendChild(icon('bi-shield-lock', 'me-1'));
                 auditBar.appendChild(document.createTextNode(t('audit_bar')));
-                center.appendChild(auditBar);
+                card.appendChild(auditBar);
             } else if (!channel.joined && channel.kind === 'public' && !self.era) {
                 var joinBar = el('div', 'alert theme-info rounded-0 m-0 py-3 small d-flex align-items-center gap-3');
                 joinBar.appendChild(el('span', 'flex-grow-1', t('not_joined')));
@@ -8883,7 +8889,7 @@
                     api('ws_channel_join', { channel_id: channel.id }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
                 });
                 joinBar.appendChild(join);
-                center.appendChild(joinBar);
+                card.appendChild(joinBar);
             }
 
             // A room a guest reads: who, where their link stands, and the
@@ -8891,12 +8897,12 @@
             center.classList.toggle('ws-guest-room', !!channel.guest && !channel.guest.ended);
 
             if (channel.guest) {
-                center.appendChild(self.guestBar(channel));
+                card.appendChild(self.guestBar(channel));
             }
 
             // A channel of the team that people outside it read.
             if (channel.shares) {
-                center.appendChild(self.shareBar(channel));
+                card.appendChild(self.shareBar(channel));
             }
 
             // An earlier version of the conversation: read as it was, with
@@ -8908,7 +8914,7 @@
                 var eraBack = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('era_back'), 'bi-arrow-return-left');
                 eraBack.addEventListener('click', function () { self.open(channel.id, 0); });
                 eraBar.appendChild(eraBack);
-                center.appendChild(eraBar);
+                card.appendChild(eraBar);
             }
 
             var tabs = el('div', 'ws-tabs');
@@ -8986,7 +8992,7 @@
                 }
             });
 
-            center.appendChild(tabs);
+            card.appendChild(tabs);
             self.drawTabMarks();
 
             window.requestAnimationFrame(function () {
@@ -9881,14 +9887,15 @@
             }
 
             var head = actions.closest('.ws-head-channel');
+            var card = head.closest('.ws-channel-card');
             var title = head.querySelector(':scope > .ws-head-title');
 
-            if (channel.hex) {
-                head.style.setProperty('--ws-ch', channel.hex);
-                head.setAttribute('data-ws-colored', '1');
-            } else {
-                head.style.removeProperty('--ws-ch');
-                head.removeAttribute('data-ws-colored');
+            if (card && channel.hex) {
+                card.style.setProperty('--ws-ch', channel.hex);
+                card.setAttribute('data-ws-colored', '1');
+            } else if (card) {
+                card.style.removeProperty('--ws-ch');
+                card.removeAttribute('data-ws-colored');
             }
 
             if (title) {

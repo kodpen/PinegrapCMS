@@ -13085,14 +13085,11 @@ html[data-bs-theme="dark"] .ws-group-icon {
   font-size: .95rem;
   font-weight: 400;
 }
-.ws-head[data-ws-colored] {
-  box-shadow: inset 0 3px 0 var(--ws-ch);
-}
-.ws-head[data-ws-colored] .ws-head-icon {
+.ws-channel-card[data-ws-colored] .ws-head-icon {
   background: color-mix(in srgb, var(--ws-ch) 16%, transparent);
   color: var(--ws-ch);
 }
-html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
+html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-head-icon {
   background: color-mix(in srgb, var(--ws-ch) 26%, transparent);
 }
 .ws-head-title .ws-topic {
@@ -13194,6 +13191,88 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   overscroll-behavior: contain;
   padding: var(--ws-space-3, .75rem) var(--ws-space-4, 1rem);
 }
+/* The channel's shell (drawCenter()): the header, the bars under it (audit
+   or join, guest, share, era) and the tabs are one card, with no rule
+   between its rows. A channel with a colour (--ws-ch, set on the card so
+   the tabs see it too) tints the border and lays a soft wash from the side
+   its sign stands on; one without keeps a plain card. The strengths are
+   custom properties so the dark theme and right to left change only them. */
+.ws-channel-card {
+  flex-shrink: 0;
+  margin: var(--ws-space-3, .75rem) var(--ws-space-3, .75rem) 0;
+  border: 1px solid var(--pg-border-color);
+  border-radius: .875rem;
+  background: var(--pg-card-bg);
+}
+.ws-channel-card[data-ws-colored] {
+  --ws-wash-from: to right;
+  --ws-wash: 15%;
+  --ws-wash-mid: 5%;
+  --ws-edge: 26%;
+  border-color: color-mix(in srgb, var(--ws-ch) var(--ws-edge), var(--pg-border-color));
+  background:
+    linear-gradient(var(--ws-wash-from), color-mix(in srgb, var(--ws-ch) var(--ws-wash), transparent) 0%, color-mix(in srgb, var(--ws-ch) var(--ws-wash-mid), transparent) 38%, transparent 70%),
+    var(--pg-card-bg);
+}
+[dir="rtl"] .ws-channel-card[data-ws-colored] {
+  --ws-wash-from: to left;
+}
+html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] {
+  --ws-wash: 22%;
+  --ws-wash-mid: 8%;
+  --ws-edge: 40%;
+}
+.ws-channel-card > .ws-head {
+  border-bottom: 0;
+}
+/* A bar is a tinted row of the card: no border of its own. */
+.ws-channel-card > .alert {
+  border: 0;
+}
+.ws-channel-card > .ws-tabs {
+  gap: .3rem;
+  padding: .45rem 1rem .6rem;
+  border-bottom: 0;
+}
+.ws-channel-card > .ws-head + .ws-tabs {
+  padding-top: 0;
+}
+/* Tabs are pills; the open one is filled, in the channel's colour when it
+   has one. */
+.ws-channel-card .ws-tabs button {
+  padding: .3rem .75rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: .8125rem;
+  line-height: 1.4;
+}
+.ws-channel-card .ws-tabs button:hover {
+  background: var(--pg-bg-2);
+}
+.ws-channel-card .ws-tabs button.active {
+  --ws-tab-fill: 14%;
+  border-color: rgba(var(--ws-accent-rgb), .35);
+  background: rgba(var(--ws-accent-rgb), .14);
+  color: var(--pg-fg-emphasis);
+}
+.ws-channel-card[data-ws-colored] .ws-tabs button.active {
+  border-color: color-mix(in srgb, var(--ws-ch) 45%, transparent);
+  background: color-mix(in srgb, var(--ws-ch) var(--ws-tab-fill), transparent);
+}
+html[data-bs-theme="dark"] .ws-channel-card .ws-tabs button.active {
+  --ws-tab-fill: 26%;
+  border-color: rgba(var(--ws-accent-rgb), .5);
+  background: rgba(var(--ws-accent-rgb), .26);
+}
+html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.active {
+  border-color: color-mix(in srgb, var(--ws-ch) 60%, transparent);
+  background: color-mix(in srgb, var(--ws-ch) var(--ws-tab-fill), transparent);
+}
+/* The strip scrolls sideways and would clip a ring drawn outside a pill. */
+.ws-channel-card .ws-tabs button:focus-visible {
+  outline: 2px solid var(--ws-accent);
+  outline-offset: -2px;
+}
 /* Only the pane gives way when the screen is short: the header, the tabs and
    the composer keep their height (the tabs scroll sideways, so without this
    they were squeezed to a sliver). */
@@ -13218,20 +13297,18 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 .ws-pane-messages {
   padding-bottom: .25rem;
 }
+/* The day a conversation turns to: a chip in the middle, not a rule across
+   the pane. */
 .ws-day {
-  display: flex;
-  align-items: center;
-  gap: .75rem;
-  margin: .9rem 0 .4rem;
+  display: block;
+  width: fit-content;
+  margin: .9rem auto .4rem;
+  padding: .15rem .7rem;
+  border-radius: 999px;
+  background: var(--pg-bg-2);
   font-size: .75rem;
   font-weight: 600;
   color: var(--pg-fg-2);
-}
-.ws-day::before,
-.ws-day::after {
-  content: "";
-  flex: 1 1 auto;
-  border-top: 1px solid var(--pg-border-color-translucent);
 }
 .ws-msg {
   position: relative;
@@ -14763,7 +14840,7 @@ a.ws-chip:hover {
 .ws-composer {
   border: 1px solid var(--pg-border-color);
   border-radius: var(--ws-radius);
-  background: var(--pg-bg-body);
+  background: var(--pg-card-bg);
   padding: .45rem .55rem .35rem;
   box-shadow: var(--ws-shadow);
   transition: border-color .15s ease, box-shadow .15s ease;
@@ -17660,6 +17737,17 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     padding: .55rem .6rem;
     font-size: .84rem;
   }
+  .ws-channel-card {
+    margin: .35rem .35rem 0;
+    border-radius: var(--ws-radius-sm);
+  }
+  .ws-channel-card > .ws-tabs {
+    gap: .2rem;
+    padding: .3rem .4rem .4rem;
+  }
+  .ws-channel-card .ws-tabs button {
+    padding: .35rem .7rem;
+  }
   .ws-pane {
     padding: .5rem .65rem;
   }
@@ -17870,7 +17958,8 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   }
   /* While the keyboard is up the tabs wait too: the conversation keeps
      the height between the header and the box. */
-  body.ws-keyboard .ws-center > :is(.ws-strip, .ws-tabs) {
+  body.ws-keyboard .ws-center > :is(.ws-strip, .ws-tabs),
+  body.ws-keyboard .ws-channel-card > .ws-tabs {
     display: none;
   }
 }
