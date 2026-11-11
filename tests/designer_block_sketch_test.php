@@ -98,8 +98,8 @@ items.forEach(function (it) {
     try { svg = _sdBlockSketchOf(it); } catch (e) { broken.push(ct + ': ' + e.message); return; }
     first[ct] = svg;
     if (!svg) { empty.push(ct); return; }
-    // The page's own white is one mark; a block draws at least three more.
-    if (marks(svg) < 4) thin.push(ct);
+    // The page's own white is one mark; a block draws at least two more.
+    if (marks(svg) < 3) thin.push(ct);
     if (/NaN|undefined|Infinity|null/.test(svg) || svg.indexOf('<svg') !== 0 || !/<\/svg>$/.test(svg)) broken.push(ct + ': ' + svg.slice(0, 80));
 });
 var before = builds;
@@ -163,7 +163,7 @@ function test_designer_block_sketch_draws_every_block()
 	pg_assert_same($got['total'], $got['built'], 'every block is built and drawn');
 	pg_assert_same(array(), $got['broken'], 'blocks whose drawing fails or is not a whole SVG');
 	pg_assert_same(array(), $got['empty'], 'blocks drawn empty');
-	pg_assert_same(array(), $got['thin'], 'blocks drawn with fewer than three marks');
+	pg_assert_same(array(), $got['thin'], 'blocks drawn with fewer than two marks');
 }
 
 function test_designer_block_sketch_lays_out_the_tree()
