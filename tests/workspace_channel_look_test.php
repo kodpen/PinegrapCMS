@@ -135,3 +135,66 @@ function test_workspace_channel_look_day_mark_is_a_chip()
 	$composer = workspace_channel_look_block($css, '.ws-composer');
 	pg_assert_contains('background: var(--pg-card-bg);', $composer, 'the writing box is a card');
 }
+
+// The Tasks, Decisions and Files panes of the channel as cards. My tasks and
+// a record's window keep their rows: they draw through the same taskRows().
+function test_workspace_channel_panes_tasks_are_cards_in_a_grid()
+{
+	$tasks = workspace_channel_look_method('drawTasks');
+
+	pg_assert_contains("var list = el('div', 'ws-task-grid');", $tasks, 'the channel\'s tasks are drawn into a grid');
+	pg_assert_contains("el('div', 'pg-toolbar ws-pane-toolbar mb-3')", $tasks, 'under a quiet toolbar');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	pg_assert_contains("var row = el('div', 'ws-list-row' + (task.open ? '' : ' ws-row-done'));", $js, 'each task stays one ws-list-row, so My tasks and the record window keep their rows');
+	pg_assert_same(1, substr_count($js, "'ws-task-grid'"), 'only the channel\'s tab draws the grid');
+
+	$css = workspace_channel_look_css();
+	$grid = workspace_channel_look_block($css, '.ws-task-grid');
+	pg_assert_contains('display: grid;', $grid, 'the tasks are a grid');
+	pg_assert_contains('minmax(min(100%, ', $grid, 'one column on a phone');
+
+	$card = workspace_channel_look_block($css, '.ws-task-grid > .ws-list-row');
+	pg_assert_contains('border: 1px solid', $card, 'a task is a card');
+	pg_assert_contains('border-radius:', $card, 'with round corners');
+	pg_assert_false(strpos($card, 'border-bottom') !== false, 'and no rule under it');
+	pg_assert_false(strpos($grid . $card, 'max-width') !== false, 'the grid fills the pane');
+}
+
+function test_workspace_channel_panes_decisions_are_a_card_grid()
+{
+	$css = workspace_channel_look_css();
+	$pane = workspace_channel_look_block($css, '.ws-pane-decisions');
+
+	pg_assert_contains('display: grid;', $pane, 'the decisions are a grid');
+	pg_assert_contains('minmax(min(100%, ', $pane, 'one column on a phone');
+	pg_assert_contains('.ws-pane-decisions > :is(.ws-empty, .ws-skeleton) {', $css, 'the empty state and the skeleton span the grid');
+
+	$card = workspace_channel_look_block($css, '.ws-pane-decisions > .ws-msg');
+	pg_assert_contains('border: 1px solid', $card, 'each decision is a card');
+	pg_assert_contains('border-inline-start: 3px solid var(--pg-success);', workspace_channel_look_block($css, '.ws-pane-decisions > .ws-msg-decision,' . "\n" . '.ws-pane-decisions > .ws-msg-note'), 'a decision keeps its green edge on the reading side');
+	pg_assert_contains(".ws-pane-decisions > .ws-msg-note {\n  border-inline-start-color: var(--pg-info);\n}", $css, 'a note its blue one');
+
+	preg_match('/\n        loadList: function \(action, emptyText\) \{\n(.*?)\n        \},\n/s', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'), $match);
+	$list = $match[1] ?? '';
+	pg_assert_contains("var node = self.messageNode(message, null);", $list, 'a decision is still drawn as the conversation draws it');
+	pg_assert_contains("t('show_in_conversation')", $list, 'with its way back to the conversation');
+}
+
+function test_workspace_channel_panes_file_groups_are_cards()
+{
+	preg_match('/\n        drawFiles: function \(\) \{\n(.*?)\n        \},\n/s', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'), $match);
+	$files = $match[1] ?? '';
+
+	pg_assert_same(3, substr_count($files, "el('section', 'ws-file-group')"), 'pictures, videos and the file lists are each drawn in a group card');
+	pg_assert_false(strpos($files, "pane.appendChild(el('div', 'ws-section-title'") !== false, 'no group title sits loose in the pane');
+
+	$css = workspace_channel_look_css();
+	$group = workspace_channel_look_block($css, '.ws-file-group');
+	pg_assert_contains('border: 1px solid', $group, 'a group is a card');
+	pg_assert_contains('background: var(--pg-card-bg);', $group, 'on the card background');
+
+	$rows = workspace_channel_look_block($css, '.ws-file-group .ws-file-row');
+	pg_assert_contains('border-bottom: 0;', $rows, 'its file rows have no rule between them');
+	pg_assert_contains('border: 0;', workspace_channel_look_block($css, '.ws-file-group .ws-file-list'), 'and the list no frame of its own');
+}

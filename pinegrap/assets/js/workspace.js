@@ -17069,8 +17069,11 @@
                     return items;
                 };
 
+                // Each kind of file is a card of its own: its title with the
+                // count, then the gallery or the list.
                 if (images.length) {
-                    pane.appendChild(el('div', 'ws-section-title', t('images') + ' · ' + images.length));
+                    var pictures = el('section', 'ws-file-group');
+                    pictures.appendChild(el('div', 'ws-section-title', t('images') + ' · ' + images.length));
                     var grid = el('div', 'ws-gallery');
 
                     images.forEach(function (message, index) {
@@ -17094,11 +17097,13 @@
                         grid.appendChild(tile);
                     });
 
-                    pane.appendChild(grid);
+                    pictures.appendChild(grid);
+                    pane.appendChild(pictures);
                 }
 
                 if (videos.length) {
-                    pane.appendChild(el('div', 'ws-section-title', t('videos') + ' · ' + videos.length));
+                    var films = el('section', 'ws-file-group');
+                    films.appendChild(el('div', 'ws-section-title', t('videos') + ' · ' + videos.length));
                     var reel = el('div', 'ws-gallery');
 
                     videos.forEach(function (message) {
@@ -17123,7 +17128,8 @@
                         reel.appendChild(tile);
                     });
 
-                    pane.appendChild(reel);
+                    films.appendChild(reel);
+                    pane.appendChild(films);
                 }
 
                 // A titled list of file rows: the sounds, then the documents.
@@ -17132,7 +17138,8 @@
                         return;
                     }
 
-                    pane.appendChild(el('div', 'ws-section-title', title + ' · ' + rows.length));
+                    var group = el('section', 'ws-file-group');
+                    group.appendChild(el('div', 'ws-section-title', title + ' · ' + rows.length));
                     var list = el('div', 'ws-file-list');
 
                     rows.forEach(function (message) {
@@ -17174,7 +17181,8 @@
                         list.appendChild(row);
                     });
 
-                    pane.appendChild(list);
+                    group.appendChild(list);
+                    pane.appendChild(group);
                 };
 
                 fileRows(t('voice_and_audio'), audios);
@@ -17185,7 +17193,7 @@
         drawTasks: function () {
             var self = this;
             var pane = self.pane;
-            var bar = el('div', 'pg-toolbar mb-3');
+            var bar = el('div', 'pg-toolbar ws-pane-toolbar mb-3');
             var status = select([['open', t('open_tasks')], ['closed', t('closed_tasks')], ['all', t('all_tasks')]], self.taskStatus || 'open');
             status.classList.add('w-auto');
             status.setAttribute('aria-label', t('task_status_filter'));
@@ -17202,7 +17210,9 @@
             bar.appendChild(add);
             pane.appendChild(bar);
 
-            var list = el('div');
+            // The channel's tasks are cards in a grid (CSS on .ws-task-grid);
+            // My tasks and a record's window draw the same rows as a list.
+            var list = el('div', 'ws-task-grid');
             pane.appendChild(list);
 
             api('ws_channel_tasks', { channel_id: self.channel.id, status: self.taskStatus || 'open' }).then(function (data) {

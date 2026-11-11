@@ -13464,28 +13464,32 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   background: color-mix(in srgb, var(--pg-info) 15%, transparent);
   color: var(--pg-info-fg-emphasis);
 }
-.ws-pane-decisions > .ws-msg-decision,
-.ws-pane-decisions > .ws-msg-note {
-  border-left: 3px solid var(--pg-success);
-}
-.ws-pane-decisions > .ws-msg-note {
-  border-left-color: var(--pg-info);
-}
-/* On the Decisions tab each one is a card of its own, apart from the next:
-   in the conversation they keep the rhythm of the messages around them. */
+/* On the Decisions tab each one is a card of its own in a grid that fills
+   the pane (one column on a phone): in the conversation they keep the rhythm
+   of the messages around them. A decision keeps its green edge and a note
+   its blue one, on the side reading starts from. */
 .ws-pane-decisions {
-  display: flex;
-  flex-direction: column;
-  gap: .6rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  align-items: start;
+  gap: .75rem;
+}
+.ws-pane-decisions > :is(.ws-empty, .ws-skeleton) {
+  grid-column: 1 / -1;
 }
 .ws-pane-decisions > .ws-msg {
   margin: 0;
-  padding: .65rem .85rem;
-  border-top: 1px solid var(--pg-border-color-translucent);
-  border-right: 1px solid var(--pg-border-color-translucent);
-  border-bottom: 1px solid var(--pg-border-color-translucent);
-  border-radius: var(--ws-radius);
-  background: var(--pg-bg-body);
+  padding: .7rem .9rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: .875rem;
+  background: var(--pg-card-bg);
+}
+.ws-pane-decisions > .ws-msg-decision,
+.ws-pane-decisions > .ws-msg-note {
+  border-inline-start: 3px solid var(--pg-success);
+}
+.ws-pane-decisions > .ws-msg-note {
+  border-inline-start-color: var(--pg-info);
 }
 /* ── Workspace: status updates and check-ins (assets/js/workspace_status.js) ── */
 .ws-msg-status {
@@ -16084,6 +16088,37 @@ a.ws-chip:hover {
   text-decoration: line-through;
   color: var(--pg-fg-2);
 }
+/* The channel's Tasks tab (drawTasks()): a quiet toolbar row, then each
+   task a card in a grid that fills the pane, one column on a phone. My tasks
+   and a record's window draw the same .ws-list-row as a list and keep it. */
+.ws-pane-toolbar {
+  padding: 0;
+  border-bottom: 0;
+}
+.ws-task-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  align-items: start;
+  gap: .75rem;
+}
+.ws-task-grid > .ws-empty {
+  grid-column: 1 / -1;
+}
+.ws-task-grid > .ws-list-row {
+  gap: .6rem;
+  min-width: 0;
+  padding: .7rem .85rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: .875rem;
+  background: var(--pg-card-bg);
+}
+.ws-task-grid > .ws-list-row:hover {
+  border-color: rgba(var(--ws-accent-rgb), .45);
+  background: var(--pg-card-bg);
+}
+.ws-task-grid > .ws-list-row.ws-row-done {
+  opacity: .75;
+}
 .ws-status-dot {
   width: .65rem;
   height: .65rem;
@@ -16733,6 +16768,38 @@ a.ws-chip:hover {
 .ws-file-row audio {
   height: 2rem;
   max-width: 16rem;
+}
+/* The Files tab (drawFiles()): pictures, videos, sounds and documents each
+   a card with its title and count at the top; inside, the gallery or the
+   rows, with no rule between rows. */
+.ws-pane-files {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+.ws-file-group {
+  padding: .75rem .9rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: .875rem;
+  background: var(--pg-card-bg);
+}
+.ws-file-group > .ws-section-title {
+  margin-top: 0;
+}
+.ws-file-group > .ws-gallery {
+  margin-bottom: 0;
+}
+.ws-file-group .ws-file-list {
+  border: 0;
+  border-radius: 0;
+}
+.ws-file-group .ws-file-row {
+  padding: .4rem .5rem;
+  border-bottom: 0;
+  border-radius: var(--ws-radius-xs);
+}
+.ws-file-group .ws-file-row:hover {
+  background: var(--pg-bg-2);
 }
 .ws-preview-modal .dialog-body {
   background: #111;
