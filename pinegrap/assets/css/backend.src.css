@@ -13484,6 +13484,12 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   border-radius: .875rem;
   background: var(--pg-card-bg);
 }
+/* A card is narrower than the conversation: its name, time, tag and the
+   way back to the conversation wrap rather than run past the edge. */
+.ws-pane-decisions > .ws-msg .ws-msg-meta {
+  flex-wrap: wrap;
+  row-gap: .15rem;
+}
 .ws-pane-decisions > .ws-msg-decision,
 .ws-pane-decisions > .ws-msg-note {
   border-inline-start: 3px solid var(--pg-success);
