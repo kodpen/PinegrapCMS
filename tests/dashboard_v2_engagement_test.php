@@ -64,7 +64,7 @@ function dashboard_v2_engagement_function($name)
 	$start = strpos($source, "\nfunction " . $name . '(');
 	pg_assert_true($start !== false, 'found: ' . $name);
 	$end = strpos($source, "\nfunction ", (int) $start + 10);
-	return (string) substr($source, (int) $start, ($end === false) ? null : ($end - $start));
+	return (string) substr($source, (int) $start, (($end === false) ? strlen($source) : $end) - (int) $start);
 }
 
 function test_dashboard_v2_engagement_last_visits_read_is_bounded_from_the_newest_ids()
