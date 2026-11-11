@@ -75,7 +75,7 @@ function ws_mail_providers()
  *                     provider, host, port, user, password, folder,
  *                     after_fetch, move_folder, smtp_host, smtp_port,
  *                     reply_via, sent_copy, sent_folder, connection_id,
- *                     reads_bounces
+ *                     reads_bounces, signature (ws_mail_signature_input())
  * @return array ok, error, values (the same keys; password as typed, '' to keep)
  */
 function ws_mail_box_input($input)
@@ -98,6 +98,7 @@ function ws_mail_box_input($input)
     $connection_id = max(0, (int) ($input['connection_id'] ?? 0));
     $reply_via = in_array(($input['reply_via'] ?? ''), array('site', 'connection'), true) ? (string) $input['reply_via'] : 'box';
     $smtp_host = ($reply_via === 'box') ? strtolower($line('smtp_host', $preset['smtp_host'])) : '';
+    $signature = ws_mail_signature_input($input['signature'] ?? '');
     $values = array(
         'name'        => $line('name'),
         'address'     => strtolower($line('address')),
@@ -120,6 +121,7 @@ function ws_mail_box_input($input)
         'sent_folder' => $line('sent_folder'),
         'connection_id' => $connection_id,
         'reads_bounces' => !empty($input['reads_bounces']) ? 1 : 0,
+        'signature'   => $signature['signature'],
     );
     $fail = function ($error) use ($values) {
         return array('ok' => false, 'error' => $error, 'values' => $values);
@@ -135,6 +137,10 @@ function ws_mail_box_input($input)
 
     if ($values['channel_id'] <= 0) {
         return $fail(lang('Choose the channel its mail goes to.'));
+    }
+
+    if (!$signature['ok']) {
+        return $fail($signature['error']);
     }
 
     if (($auth_server !== '') && ((strlen($auth_server) > 255) || !preg_match('/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/', $auth_server))) {
@@ -660,7 +666,7 @@ function ws_mail_settings_post($viewer, $action, $liveform)
         unset($settings['secret']);
     }
 
-    foreach (array('auth_server', 'provider', 'host', 'port', 'user', 'move_folder', 'smtp_host', 'smtp_port', 'sent_copy', 'sent_folder', 'connection_id', 'reads_bounces') as $key) {
+    foreach (array('auth_server', 'provider', 'host', 'port', 'user', 'move_folder', 'smtp_host', 'smtp_port', 'sent_copy', 'sent_folder', 'connection_id', 'reads_bounces', 'signature') as $key) {
         $settings[$key] = $values[$key];
     }
 
@@ -734,6 +740,11 @@ function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false)
                 </div>
                 ' . ws_mail_route_fields($prefix, $box, $channels) . '
                 ' . ws_mail_box_server_fields($prefix, $box, $settings) . '
+                <div class="md:col-12">
+                    <label class="form-label" for="' . $prefix . 'signature">' . h(lang('Signature')) . '</label>
+                    <textarea class="form-control form-control-sm" name="signature" id="' . $prefix . 'signature" rows="3" maxlength="' . WS_MAIL_SIGNATURE_MAX . '">' . h(ws_mail_box_signature($box)) . '</textarea>
+                    <div class="form-text">' . h(lang('Plain text put under a new e-mail sent from this mailbox, after the writer\'s name. Left empty, the mailbox\'s name is put there.')) . '</div>
+                </div>
                 ' . ws_mail_first_reply_field($prefix, $box) . '
                 ' . ws_mail_auto_reply_fields($prefix, $box) . '
                 ' . ws_mail_triage_field($prefix, $box, $ai_ready) . '

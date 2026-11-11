@@ -9242,6 +9242,17 @@
             // only when the customer is or is tied to such an account.
             if (channel.sales_quote_url) {
                 item(t('sales_quote_new'), 'bi-file-earmark-plus', function () { window.location.href = channel.sales_quote_url; });
+            }
+
+            // A new e-mail from a mailbox that keeps its mail in this channel
+            // (assets/js/workspace_mail.js); the server says whether one does.
+            if (channel.mail_new && window.PGWsMail) {
+                item(t('mail_new'), 'bi-envelope-plus', function () {
+                    window.PGWsMail.compose(featureHelpers(), { channel: channel.id, sent: function () { self.sync(); } });
+                });
+            }
+
+            if (channel.sales_quote_url || (channel.mail_new && window.PGWsMail)) {
                 divider();
             }
 

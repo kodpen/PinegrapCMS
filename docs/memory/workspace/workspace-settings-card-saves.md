@@ -22,6 +22,6 @@ description: Workspace Settings card saves: list allow-list, refused form refill
 - Team lead or Own department ticked makes the person a member on save (members ∪ leads ∪ primary, within the team); the page script ticks In the department with them and unticking it clears both.
 
 ## Which mailbox fields depend on others?
-- Name, address and channel are `required`. Folder to move to shows only with After reading = Move; SMTP server and port only with Send through = the mailbox's sending server (`data-ws-mail-when="name=value"`, `d-none`, a script in `ws_mail_settings_card()`); the connected account is required with Send through = the connected account (its None option is now value "").
+- Name, address and channel are `required`. Folder to move to shows only with After reading = Move; SMTP server and port only with Send through = the mailbox's sending server (`data-ws-mail-when="name=value"`, `d-none`, a script in `ws_mail_settings_card()`); the connected account is required with Send through = the connected account (its None option is now value ""). Signature (plain text in `settings.signature`, `mail-compose.md`) is checked before the server fields, so a box without servers refuses a too long one too.
 
 Tests: `tests/workspace_settings_input_test.php`, `tests/workspace_settings_lists_test.php`, `tests/workspace_mail_connection_test.php`.
