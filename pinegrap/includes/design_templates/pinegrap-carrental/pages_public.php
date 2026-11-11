@@ -566,7 +566,7 @@ $public_pages[] = array(
         $page_header(lang('Rental Terms'), lang('The rules of every rental in plain words; the contract you sign at the desk says the same.')),
         $el('section', 'py-5', lang('Terms'), array(
             $container(array(
-                $rise($row($term_items, '5'), 70),
+                $rise($row($term_items, '4', '', 'g-lg-5'), 70),
             )),
         )),
         $el('section', 'py-5 bg-body-tertiary', lang('What to Bring'), array(

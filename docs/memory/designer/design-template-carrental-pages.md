@@ -4,14 +4,14 @@ description: Car Rental template 2.0.0: home and extras on the Car Rental blocks
 ---
 
 ## Which builders draw the blocks?
-- Version 2.0.0 (`carrental-1` #8669 family, then its pages, `carrental-2`): the home and the extras page place the Car Rental blocks ([[designer-blocks-carrental]]); their rules ship through `pg_design_template_user_styles(array('carrental-hero', 'carrental-lineup', 'carrental-cover', 'carrental-quote'), $carrental_css)`, ahead of the `pcr-` rules.
+- Version 2.0.0 (`carrental-1` #8669 family, then its pages, #8747): the home and the extras page place the Car Rental blocks ([[designer-blocks-carrental]]); their rules ship through `pg_design_template_user_styles(array('carrental-hero', 'carrental-lineup', 'carrental-cover', 'carrental-quote'), $carrental_css)`, ahead of the `pcr-` rules.
 - `parts.php`: `$fx`, `$rise($node, $stagger = 90)` (slide-up on view), `$fade_in` (fade on view, 700 ms, for section headings), `$times($prices, $n)`, `$covers` (basic, plus, full), and for the tile `$tick`, `$model_line`, `$day_rate`, `$class_car`. `$class_tile` is now the line-up's card (picture, class, model "or similar", seats, bags, gearbox, day rate, deposit); `$class_rate` is gone.
 - `pages_public.php`: `$hero()` (the only `h1`), `$lineup()` (classes cheapest first), `$cover_band($more, $extra)` (dark band; `$more` adds All extras, `$extra` the search anchor), `$quote_band()`.
 
 ## What does each page hold?
 - Home: hero, line-up (`cr-home-classes`), sample quote (`cr-home-quote`), Featured Cars, cover levels with All extras, desks, deals, testimonials with Google reviews, the journal, the booking band. Figures, How It Works and the extras grid left the home.
 - Extras: the cover levels first (`cr-cover`), then the extras (`cr-extras`) under a heading, Good to Know.
-- Locations, deals, terms, about: rows rise on view, section headings fade in; the FAQ's accordion fades in. No sideways slide on page rows: only the hero (`overflow-hidden`) and the rail (it scrolls) move sideways.
+- Locations, deals, terms, about: rows rise on view, section headings fade in; the FAQ's accordion fades in. No sideways slide on page rows: only the hero (`overflow-hidden`) and the rail (it scrolls) move sideways. The terms row is `g-4 g-lg-5`: a `g-5` row in a container ran 12 px past a phone screen.
 
 ## Why these covers and figures?
 - Full Cover is the bookable extra (`$extras['cover']`), so it is marked Most chosen on the template (the block marks Plus): Basic comes with every rental, Plus is asked for in the request's notes or at the desk.
