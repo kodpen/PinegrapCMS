@@ -122,8 +122,9 @@
 - dashboard-v2-edit-mode.md: New dashboard edit mode (#4856): presets.php, dashboard_layout_save and its clean-up, pg_dash_edit.js (bar, grip, drag, card tools and settings, greeting and status parts), what Cancel and Save do
 - dashboard-v2-flows-card.md: New dashboard Flows card (cards/flows.php, renderer in pg_dash_cards_work.js): tiles, the run going on now as a path of boxes, last runs with Approve and Try again through the Workspace actions
 - dashboard-v2-looks.md: The new dashboard's looks as drawn (pictures 12-14, V4 #8241): card faces, backdrops over the old dashboard's washes, compact density, lights off
+- dashboard-v2-notes-card.md: The new dashboard's My notes card as a shortcut to My Notes (PR #8693): the add box, the latest notes, who is offered it, the one move of the old card's text
 - dashboard-v2-overview.md: The new dashboard as a whole: the per-person switch beside the untouched old dashboard, welcome.php's page branch, its files and bundles, SVG charts, refresh rules, string card ids [decision: decisions-made-product-17.md]
-- dashboard-v2-personal-cards.md: New dashboard cards goals, notes (#4981), pins, perf (N12b): where goals, pins and notes are kept and saved, what a goal counts, what a pin opens, perf's helpers shared with widget 23
+- dashboard-v2-personal-cards.md: New dashboard cards goals, pins, perf (N12b): where goals and pins are kept and saved, what a goal counts, what a pin opens, perf's helpers shared with widget 23; the notes card has its own file
 - dashboard-v2-phone-keyboard.md: New dashboard on phones and from the keyboard (#6145): the edit bar keeps its row, the grid is no live region, Save buttons are solid, the shortcut remove cross is 24 px
 - dashboard-v2-phone-look.md: The new dashboard on a phone as drawn (picture 20, V6 #8350): the edit bar band, Edit dashboard at the left, card tools on two lines, the switch resting in edit mode, the differences kept
 - dashboard-v2-pipeline-card.md: New dashboard pipeline card (cards/pipeline.php, renderer in pg_dash_cards_work.js): the line per preset, the eight spans, where each step reads its data, gates, flags and links

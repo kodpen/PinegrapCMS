@@ -49,7 +49,7 @@ function pg_dashboard_v2_gallery_cards()
         'activity'   => $g(lang('Content, form, team and security events on a timeline'), 0, 'timeline'),
         'flows'      => $g(lang('Running flows, steps waiting for approval, failed runs'), 1, 'flow'),
         'pins'       => $g(lang('The pages and screens you open often, box by box'), 1, 'boxes'),
-        'notes'      => $g(lang('Short notes to yourself'), 1, 'note'),
+        'notes'      => $g(lang('A note added to My Notes, your latest notes one click away'), 1, 'note'),
         'content'    => $g(lang('Pages edited lately, drafts, scheduled ones'), 1, 'boxes'),
         'comments'   => $g(lang('Comments waiting for approval, like a chat'), 0, 'chat'),
         'files'      => $g(lang('Storage ring and the files uploaded lately'), 0, 'rings'),

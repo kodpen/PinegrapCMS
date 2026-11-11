@@ -7,9 +7,9 @@ description: Plan (owner 2026-11-11, #8672): what the owner asked for on the new
 - The owner looked at the new dashboard on dev (2026-11-11) and asked for changes on three cards. His words: below, #8672, `workflow/decisions-made-panel-5.md`. A further finding of his on a dashboard card becomes a step here.
 
 ## Which steps are there?
-- DL1 (M) The notes card becomes a My Notes shortcut.
+- DL1 (M) The notes card becomes a My Notes shortcut. Done: PR #8693.
   - Owner: "bu widget notlarıma bir kısayol olabilir miş. en üstünde eklenen not ta yine notlarımdan erişilmesi lazımmış / not ekle daha kısa olsun input gibi tıklayınca genişlesin ve yazacak kadar alan olsun yeni not olarak eklensin. / altında diğer notlar sadece başlık ve tarihleri ile dursun tıklanınca notlarımı sayfasında açsın. bu şekilde güncellensin buraya özel bir not uygun olmamış".
-  - Today the card keeps one plain text of 2,000 characters in the person's layout (`ui/dashboard-v2-personal-cards.md`; `dashboard_personal_save`, `pgDash.renderers.notes`).
+  - Built as `ui/dashboard-v2-notes-card.md` describes.
   - The card: an "Add note" box one line high that grows when clicked; saving adds a note to My Notes (`workspace/workspace-notes.md`) through the notes' own save path and rights. Under it the person's latest notes, title and date only; a row opens that note on the My Notes screen. A locked note shows as the notes list shows it (`workspace/workspace-note-lock-readers.md`).
   - The card's text of before is moved once into My Notes as that person's note and only then cleared from the layout; an empty text makes no note. Data only.
   - The card is offered only to a person who can use My Notes (`ws_notes_ready()` and the notes' right).
