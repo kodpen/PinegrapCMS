@@ -75,7 +75,7 @@ function test_dashboard_v2_engagement_last_visits_read_is_bounded_from_the_newes
 	pg_assert_contains('WHERE id > " . max(0, $top - PG_DASHBOARD_V2_LAST_VISITS_WINDOW) . " AND id <= " . $top', $read, 'a range of ids below it');
 	pg_assert_false(stripos($read, 'COUNT(') !== false, 'nothing is counted');
 	pg_assert_false(stripos($read, 'ORDER BY') !== false, 'no sort over the table; the window is sorted in PHP');
-	pg_assert_contains("'type' => 'time', 'timezone_type' => 'site'", $read, 'the clock in the site\'s time');
+	pg_assert_contains("'type' => 'time', 'timezone_type' => 'site', 'format' => 'plain_text'", $read, 'the clock in the site\'s time, as plain text');
 	pg_assert_contains("'format' => 'plain_text'", $read, 'how long ago, as plain text');
 	pg_assert_true(PG_DASHBOARD_V2_LAST_VISITS_WINDOW <= 500, 'a small window');
 }

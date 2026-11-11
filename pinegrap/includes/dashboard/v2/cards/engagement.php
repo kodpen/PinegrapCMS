@@ -128,7 +128,7 @@ function pg_dashboard_v2_last_visits()
             : '';
     }, function ($timestamp) {
         return function_exists('get_absolute_time')
-            ? get_absolute_time(array('timestamp' => (int) $timestamp, 'type' => 'time', 'timezone_type' => 'site'))
+            ? get_absolute_time(array('timestamp' => (int) $timestamp, 'type' => 'time', 'timezone_type' => 'site', 'format' => 'plain_text'))
             : '';
     });
 }

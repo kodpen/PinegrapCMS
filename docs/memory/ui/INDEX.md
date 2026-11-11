@@ -121,6 +121,7 @@
 - dashboard-v2-content-cards.md: New dashboard cards gsearch, ga, content, comments, files, activity: data sources, helpers shared with widgets 7, 18, 25, what was left out
 - dashboard-v2-drawn-look.md: The new dashboard's drawn look (visual pass V): the --pgd-* palette every part reads, the frame and faces, the drawn Assistant and goals, the differences kept on purpose [decision: here]
 - dashboard-v2-edit-mode.md: New dashboard edit mode (#4856): presets.php, dashboard_layout_save and its clean-up, pg_dash_edit.js (bar, grip, drag, card tools and settings, greeting and status parts), what Cancel and Save do
+- dashboard-v2-engagement-card.md: New dashboard's Online Engagement card (engagement): what it shows when nobody is on the site (the last visits, Last visits list), the time used, the bounded read, when it sends empty [decision: here]
 - dashboard-v2-flows-card.md: New dashboard Flows card (cards/flows.php, renderer in pg_dash_cards_work.js): tiles, the run going on now as a path of boxes, last runs with Approve and Try again through the Workspace actions
 - dashboard-v2-looks.md: The new dashboard's looks as drawn (pictures 12-14, V4 #8241): card faces, backdrops over the old dashboard's washes, compact density, lights off
 - dashboard-v2-overview.md: The new dashboard as a whole: the per-person switch beside the untouched old dashboard, welcome.php's page branch, its files and bundles, SVG charts, refresh rules, string card ids [decision: decisions-made-product-17.md]

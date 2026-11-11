@@ -14,11 +14,11 @@ description: Plan (owner 2026-11-11, #8672): what the owner asked for on the new
   - The card's text of before is moved once into My Notes as that person's note and only then cleared from the layout; an empty text makes no note. Data only.
   - The card is offered only to a person who can use My Notes (`ws_notes_ready()` and the notes' right).
   - Tests: the one-time move (not for an empty text, not twice), who is offered the card. Topics: `ui/dashboard-v2-personal-cards.md` corrected; `workspace/workspace-notes.md` names the card's path.
-- DL2 (S) Online Engagement shows the last visits when nobody is on the site.
+- DL2 (S) Online Engagement shows the last visits when nobody is on the site. Done: #8697.
   - Owner: "bu widget ta en azından en son çevrim içi  olma zamanlarını gösterebilirdi."
   - Today one line, "Nobody is on the site right now." (`includes/dashboard/v2/cards/engagement.php`, `pg_dashboard_v2_card_engagement()`).
   - When nobody is on: the line stays as the heading; under it the last visits, each with its time (how long ago, then the clock in the site's time) and its landing page. The read is bounded from the newest ids, never a scan (`visitors/high-volume-counter-rules.md`).
-  - Tests: the rows' shape and the bound. Topic: a new `ui/dashboard-v2-engagement-card.md`.
+  - Tests: the rows' shape and the bound. Topic: `ui/dashboard-v2-engagement-card.md`.
 - DL3 (M) The Visitor map draws the world map without city names.
   - Owner: "bu widget ta eğer şehir isimlerini göremiyorsa dünya haritası üzerinde görünmeli".
   - Today a map only when the home country has a region map and a city matches; otherwise "Countries" bars and no map (`ui/dashboard-v2-visitmap-card.md`, `includes/dashboard/v2/cards/visitmap.php`).
