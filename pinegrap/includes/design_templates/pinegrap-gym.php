@@ -56,6 +56,12 @@
  * See includes/design_templates/hello-pinegrap.php for widgets, shared
  * components, 'catalog' and 'requires'.
  *
+ * The home, the group classes and the timetable place the palette's Gym
+ * blocks (Free Pass Hero, Class Finder) and two general ones (Booking:
+ * Weekly Timetable, Hero: Image Background) with the gym's own data; their
+ * rules ship in User Styles from the block source, and their motion is node
+ * interactions (props._fx) only: the template carries no script.
+ *
  * The version follows the template, not the software: raise it whenever the
  * pages change, so a design records which edition it started from.
  *
@@ -168,11 +174,18 @@ $gym_css = implode("\n", array(
     '.pgy-lift{transition:transform .2s ease,box-shadow .2s ease}',
     '.pgy-lift:hover,.pgy-lift:focus-visible,.pgy-lift:focus-within{transform:translateY(-3px);box-shadow:var(--bs-box-shadow)}',
     '@media (prefers-reduced-motion:reduce){.pgy-lift{transition:none}.pgy-lift:hover,.pgy-lift:focus-visible,.pgy-lift:focus-within{transform:none}}',
+    // A focus section of the class page stops under the focus pills that
+    // stay at the top, so its heading is not hidden behind them.
+    '.pgy-anchor{scroll-margin-top:4.5rem}',
+    // The picture layer of the home's personal training band: taller than
+    // the band by a fifth above and below, so it never shows an edge while
+    // its parallax (speed 12) moves it.
+    '.pgy-depth{position:absolute;top:-20%;bottom:-20%;left:0;right:0;background-size:cover;background-position:center}',
 ));
 
 return array(
     'name'        => lang('Gym'),
-    'version'     => '1.0.0',
+    'version'     => '1.1.0',
     'framework'   => 'bootstrap5',
     'order'       => 79,
     'icon'        => 'bi-lightning-charge',
@@ -230,10 +243,10 @@ return array(
         'email_footer' => array('name' => lang('Gym E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pgy- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the rules of the blocks its pages place and
+    // its pgy- rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $gym_css),
+        'css'   => pg_design_template_user_styles(array('gym-hero', 'gym-classes', 'booking-week', 'hero-image-bg'), $gym_css),
         'fonts' => json_encode($gym_fonts),
     ),
 );

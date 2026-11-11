@@ -225,3 +225,77 @@ function test_gym_assembly_google_reviews()
 		pg_assert_true(strpos($home, '"templateWidget":"' . $w . '"') !== false, 'the home places ' . $w);
 	}
 }
+
+// Home, classes and timetable place the palette's blocks (Gym: Free Pass
+// Hero and Class Finder, Booking: Weekly Timetable, Hero: Image Background):
+// the rule of every pg- class they use ships in the template's User Styles;
+// every interaction is one pg_fx_normalize() keeps as written; the motion is
+// where it belongs (the hero on load, the parallax band and the sticky floor
+// on the home, the sticky focus pills on the class page, the week's days on
+// view); every class card has its intensity meter, and the week has its
+// seven days in a scrolling region a keyboard can reach.
+function test_gym_assembly_home_classes_timetable_on_blocks()
+{
+	$tpl = _test_gy_asm_tpl();
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	$source = _pg_designer_block_css_source();
+	$want = array(
+		'home'      => array('slide-up/load', 'fade/load', 'parallax', 'sticky', 'slide-up/view', 'slide-right/view', 'slide-left/view', 'fade/view'),
+		'classes'   => array('sticky', 'slide-up/view', 'fade/view', 'scale/view'),
+		'timetable' => array('slide-up/view'),
+	);
+	foreach ($tpl['pages'] as $p) {
+		if (!isset($want[$p['key']])) continue;
+		$key = $p['key'];
+		$nodes = array();
+		_test_gy_asm_nodes($p['tree'], $nodes);
+		$effects = array();
+		$classes = '';
+		$cards = 0;
+		$meters = 0;
+		$week = null;
+		foreach ($nodes as $n) {
+			$class = isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '';
+			$classes .= ' ' . $class;
+			if (isset($n['props']['_fx'])) {
+				$kept = pg_fx_normalize($n['props']['_fx']);
+				pg_assert_true(is_array($kept), "$key: " . json_encode($n['props']['_fx']) . ' is an interaction');
+				foreach ($n['props']['_fx'] as $field => $value) {
+					pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, "$key: $field is kept as written");
+				}
+				$effects[] = $n['props']['_fx']['effect'] . (isset($n['props']['_fx']['trigger']) ? '/' . $n['props']['_fx']['trigger'] : '');
+			}
+			if (isset($n['props']['_label']) && $n['props']['_label'] === lang('Class Card')) $cards++;
+			if (preg_match('/(^|\s)pg-gym-meter(\s|$)/', $class)) {
+				$meters++;
+				pg_assert_same(5, count($n['children']), "$key: a meter has five steps");
+			}
+			if (preg_match('/(^|\s)pg-week(\s|$)/', $class)) $week = $n;
+		}
+		preg_match_all('/(?<![\w-])pg-[a-z0-9-]+/', $classes, $m);
+		pg_assert_true(!empty($m[0]), "$key: places palette blocks");
+		foreach (array_unique($m[0]) as $class) {
+			// The class's own rule, else the first that names it (a part
+			// such as pg-week-slot lives in its block's rule).
+			$rule = isset($source['rules'][$class]) ? $source['rules'][$class] : '';
+			foreach ($rule === '' ? $source['rules'] : array() as $text) {
+				if (preg_match('/\.' . preg_quote($class, '/') . '(?![\w-])/', $text)) {
+					$rule = $text;
+					break;
+				}
+			}
+			pg_assert_true($rule !== '' && strpos($css, $rule) !== false, "$key: the rule of $class ships with the template");
+		}
+		foreach ($want[$key] as $e) pg_assert_true(in_array($e, $effects, true), "$key moves: $e");
+		pg_assert_same($cards, $meters, "$key: an intensity meter per class card");
+		if ($key === 'classes') pg_assert_true($cards >= 7, 'classes: every class has its card');
+		if ($key === 'timetable') {
+			pg_assert_true($week !== null, 'timetable: the week');
+			$attrs = array();
+			foreach ($week['props']['_attrs'] as $a) $attrs[$a['name']] = $a['value'];
+			pg_assert_same(array('role' => 'region', 'aria-label' => lang('Class Timetable'), 'tabindex' => '0'), $attrs, 'timetable: a named region a keyboard can scroll');
+			pg_assert_same(7, count($week['children'][0]['children']), 'timetable: seven days');
+		}
+	}
+}
