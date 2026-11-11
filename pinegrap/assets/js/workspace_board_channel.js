@@ -201,12 +201,12 @@
 
         // The choices are chips: the grouping, the urgency, the person and
         // the two switches, each a pill that is filled while it is on.
-        var groups = k.el('div', 'ws-chip-group');
+        var groups = k.el('div', 'ws-cb-chips');
         groups.setAttribute('role', 'group');
         groups.setAttribute('aria-label', t('cb_group'));
 
         GROUPS.forEach(function (key) {
-            var item = k.button('btn btn-sm ws-chip' + (prefs.group === key ? ' active' : ''), t('cb_by_' + key));
+            var item = k.button('btn btn-sm ws-cb-chip' + (prefs.group === key ? ' active' : ''), t('cb_by_' + key));
             item.setAttribute('aria-pressed', prefs.group === key ? 'true' : 'false');
             item.addEventListener('click', function () {
                 if (prefs.group !== key) {
@@ -226,7 +226,7 @@
             prefs.priority = value;
             load(self);
         });
-        urgency.classList.add('ws-chip-select');
+        urgency.classList.add('ws-cb-chip-select');
         bar.appendChild(urgency);
 
         var people = [[0, t('cb_all_people')], [-1, t('cb_nobody')]];
@@ -236,7 +236,7 @@
         });
 
         var who = k.select(people, self.person);
-        who.classList.add('w-auto', 'ws-chip-select');
+        who.classList.add('w-auto', 'ws-cb-chip-select');
         who.setAttribute('aria-label', t('who'));
         who.addEventListener('change', function () {
             self.person = parseInt(who.value, 10) || 0;
@@ -275,21 +275,21 @@
     // A switch of the toolbar as a chip: a button that says whether it is on.
     function toggle(self, id, label, on, set) {
         var k = kit();
-        var chip = k.button('btn btn-sm ws-chip' + (on ? ' active' : ''), label, on ? 'bi-check2' : '');
+        var chip = k.button('btn btn-sm ws-cb-chip' + (on ? ' active' : ''), label, on ? 'bi-check2' : '');
         chip.id = id;
         chip.setAttribute('aria-pressed', on ? 'true' : 'false');
 
+        // The chip pressed last keeps focus once load() has drawn the
+        // toolbar again with the new state.
+        if (self.refocus === id) {
+            self.refocus = '';
+            window.requestAnimationFrame(function () { chip.focus(); });
+        }
+
         chip.addEventListener('click', function () {
             set(chip.getAttribute('aria-pressed') !== 'true');
-            draw(self);
+            self.refocus = id;
             load(self);
-
-            // The toolbar is drawn again: the chip just pressed keeps focus.
-            var again = document.getElementById(id);
-
-            if (again) {
-                again.focus();
-            }
         });
 
         return chip;

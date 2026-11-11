@@ -11,7 +11,8 @@ description: The channel's Summary, Board and Memory tabs as cards and the chann
 - Time spent's three figures (`.ws-task-time-stat`) are tiles: border, small radius, a 3% tint, `auto-fit` columns of at least 7rem. The customer and Time spent cards lost `mt-7`: the layout's gap places them (a utility would beat the panel's layer).
 
 ## How does the Board tab look?
-- `toolbar()` in workspace_board_channel.js draws chips: the grouping as `.ws-chip` buttons in `.ws-chip-group` (aria-pressed, `active`), the urgency and person selects as pills (`.ws-chip-select`), Only mine and Show cancelled as `.ws-chip` buttons with aria-pressed (they were switches; ids `ws-cb-mine`, `ws-cb-cancelled` kept, focus returns after the redraw). The search box is unchanged.
+- `toolbar()` in workspace_board_channel.js draws chips: the grouping as `.ws-cb-chip` buttons in `.ws-cb-chips` (aria-pressed, `active`), the urgency and person selects as pills (`.ws-cb-chip-select`), Only mine and Show cancelled as `.ws-cb-chip` buttons with aria-pressed (they were switches; ids `ws-cb-mine`, `ws-cb-cancelled` kept; a press calls `load()` once, which draws the board, and the chip gets focus back). The search box is unchanged.
+- Not `.ws-chip`: that is the message's @person, #task and department chip, and an unscoped rule of that name repainted every reference chip.
 - On `.ws-pane-board` a column is a card (1px border, `.875rem`, `--pg-card-bg`); drop, no-drop, the current column and the phone picker work as before.
 - The workflow table's board (`mountSource()`, `.ws-wt-board`) keeps its columns (`.ws-cb-col`, 2px transparent border, `--pg-bg-1`): it is not the channel screen. An empty column keeps `ws-cb-empty` without a dashed card: the column is already a card.
 

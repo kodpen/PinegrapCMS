@@ -229,13 +229,16 @@ function test_workspace_channel_panes_board_toolbar_is_chips_and_columns_cards()
 {
 	$board = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_board_channel.js');
 
-	pg_assert_contains("k.el('div', 'ws-chip-group')", $board, 'the grouping is a row of chips');
-	pg_assert_contains("k.button('btn btn-sm ws-chip' + (prefs.group === key ? ' active' : '')", $board, 'each grouping a chip');
-	pg_assert_contains("var chip = k.button('btn btn-sm ws-chip' + (on ? ' active' : '')", $board, 'the switches are chips');
+	pg_assert_contains("k.el('div', 'ws-cb-chips')", $board, 'the grouping is a row of chips');
+	pg_assert_contains("k.button('btn btn-sm ws-cb-chip' + (prefs.group === key ? ' active' : '')", $board, 'each grouping a chip');
+	pg_assert_contains("var chip = k.button('btn btn-sm ws-cb-chip' + (on ? ' active' : '')", $board, 'the switches are chips');
 	pg_assert_contains("chip.setAttribute('aria-pressed', on ? 'true' : 'false');", $board, 'that say whether they are on');
 	pg_assert_false(strpos($board, "'btn-group btn-group-sm'") !== false, 'no button group left');
+	pg_assert_false((bool) preg_match('/[\'\s]ws-chip[\'\s]/', $board), 'not the message reference chip\'s class');
+	pg_assert_false(strpos($board, "draw(self);\n            load(self);") !== false, 'a switch draws the board once, through load()');
 
 	$css = workspace_channel_look_css();
+	pg_assert_same(1, preg_match_all('/\n\.ws-chip(:hover|\.active|:focus-visible)? \{/', $css), 'the message reference chip is the only top-level .ws-chip rule');
 	$col = workspace_channel_look_block($css, '.ws-pane-board .ws-cb-col');
 	pg_assert_contains('border: 1px solid', $col, 'a column of the channel\'s board is a card');
 	pg_assert_contains('background: var(--pg-card-bg);', $col, 'on the card background');
