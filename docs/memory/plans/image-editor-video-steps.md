@@ -12,7 +12,7 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
   - Own MP4 (moov, trak, stsd, stts, ctts, stss, stsz, stco/co64) and WebM (EBML, Cluster, SimpleBlock) readers; WebCodecs decoders; a frame cache by time; seeking from the nearest key frame; what the browser cannot decode (HEVC on some) gets a message.
   - Tests: sample tables of small MP4 and WebM fixtures under Node; the seek point for a time.
 
-- V2 (M) The video layer. Part `clip`. Done (#8483, `ui/image-editor-clip.md`; with V4's Detach sound; the export's frames at each moment still open after V7).
+- V2 (M) The video layer. Part `clip`. Done (#8483, `ui/image-editor-clip.md`; with V4's Detach sound; the export's frames at each moment in V7b, #8629).
   - `type: 'video'` with its file, source in and out, place on the timeline, speed, volume, muted. Drawn at the playhead under or over other layers; playing in step with the play bar; added from Files or this computer through E31's Import menu (`ui/image-editor-import.md`).
 
 - V3 (M) Timeline editing. Done (#8510, `ui/image-editor-clip-timeline.md`).
