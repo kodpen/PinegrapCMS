@@ -9960,6 +9960,24 @@
         return { at: null, state: null };
     }
 
+    // A clip's frame for picture in picture: rounded corners (radius in the
+    // layer's units, at most half the shorter side) and a border in one of
+    // CLIP_BORDERS, drawn inside the box, its width a share of the shorter
+    // side. The stage and a save draw from these numbers.
+    var CLIP_BORDERS = ['#ffffff', '#000000', '#e53935', '#1e88e5'];
+
+    function clipFrame(l) {
+        var side = Math.min(Math.abs(Number(l && l.w) || 0), Math.abs(Number(l && l.h) || 0));
+        var radius = Math.round(clamp(Number(l && l.radius) || 0, 0, side / 2));
+        var border = (l && (CLIP_BORDERS.indexOf(l.border) >= 0)) ? l.border : '';
+
+        return { radius: radius, border: border, width: border ? Math.max(2, Math.round(side * 0.015)) : 0 };
+    }
+
+    // The clip panel's transition tiles, in the screen's order; the scenes
+    // keep SCENE_TRANSITIONS.
+    var CLIP_TRANSITIONS = ['none', 'fade', 'slide', 'wipe', 'zoom'];
+
     var CLIP = {
         CLIP_SPEEDS: CLIP_SPEEDS, CLIP_TYPES: CLIP_TYPES, CLIP_MIN: CLIP_MIN, clipLayer: clipLayer, clipSpan: clipSpan, clipAt: clipAt,
         clipFit: clipFit, clipNew: clipNew, clipReplace: clipReplace, clipEnd: clipEnd, clipSound: clipSound, clipDetach: clipDetach, clipType: clipType,
@@ -9967,7 +9985,7 @@
         clipApply: clipApply, clipPart: clipPart, clipJoins: clipJoins, clipMotionNeed: clipMotionNeed, CLIP_STRIP_MAX: CLIP_STRIP_MAX, clipStripTimes: clipStripTimes,
         clipFramesAt: clipFramesAt, CLIP_FX: CLIP_FX, clipFx: clipFx, clipFxOn: clipFxOn, clipFxColor: clipFxColor, clipFxBlur: clipFxBlur,
         clipFxVignette: clipFxVignette, clipTransition: clipTransition, clipTouching: clipTouching, clipTransitionMs: clipTransitionMs,
-        clipTransitionStates: clipTransitionStates, clipShowAt: clipShowAt
+        clipTransitionStates: clipTransitionStates, clipShowAt: clipShowAt, CLIP_BORDERS: CLIP_BORDERS, clipFrame: clipFrame, CLIP_TRANSITIONS: CLIP_TRANSITIONS
     };
 
     // ---- MIX (pg_image_editor_mix.js) ----
