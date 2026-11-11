@@ -1200,6 +1200,7 @@
     "Only {var:1} in stock; lower the quantity.": "Stokta {var:1} adet var; miktarı düşürün.",
     "Only {var:1} in stock; no more can be added.": "Stokta {var:1} adet var; daha fazla eklenemez.",
     "Onur Çetin": "Onur Çetin",
+    "Onyx": "Oniks",
     "Opacity": "Saydamlık",
     "Open": "Açık",
     "Open #{var:1} for inspection? A line saying you opened it is written into the channel and the log.": "#{var:1} denetim için açılsın mı? Kanala ve kayıtlara açtığınızı belirten bir satır yazılır.",

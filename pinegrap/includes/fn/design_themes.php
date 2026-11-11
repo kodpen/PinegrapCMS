@@ -118,6 +118,16 @@ function pg_design_looks()
             'description' => lang('Large corners, pill buttons, no outlines, deep layered shadows, grotesque headings.'),
             'preview'     => array('radius' => 14, 'btn_radius' => 99, 'shadow' => 'deep', 'border' => 0, 'heading' => 'grotesk', 'weight' => 600, 'caps' => false),
         ),
+        'display' => array(
+            'name'        => lang('Display Headlines'),
+            'description' => lang('Very light, large headings with tight letter spacing, large corners and soft depth.'),
+            'preview'     => array('radius' => 20, 'btn_radius' => 99, 'shadow' => 'soft', 'border' => 0, 'heading' => 'sans', 'weight' => 200, 'caps' => false),
+        ),
+        'precision' => array(
+            'name'        => lang('Precision'),
+            'description' => lang('Flat and square: no shadows, thin type, widely spaced capitals on the buttons.'),
+            'preview'     => array('radius' => 0, 'btn_radius' => 0, 'shadow' => 'none', 'border' => 1, 'heading' => 'sans', 'weight' => 300, 'caps' => true),
+        ),
     );
 }
 
@@ -129,7 +139,7 @@ function pg_design_default_look()
 
 // Every built-in palette: a primary and a secondary colour. Chosen so white
 // text on either reads at 4.5:1 or better, except where the generator turns
-// the text dark (amber).
+// the text dark (amber, silver).
 function pg_design_palettes()
 {
     return array(
@@ -152,6 +162,9 @@ function pg_design_palettes()
         'sage'       => array('name' => lang('Sage'),            'primary' => '#4a6b53', 'secondary' => '#9a3412'),
         'cocoa'      => array('name' => lang('Cocoa'),           'primary' => '#6f4e37', 'secondary' => '#0f766e'),
         'steel'      => array('name' => lang('Steel'),           'primary' => '#3e5c76', 'secondary' => '#0f766e'),
+        'onyx'       => array('name' => lang('Onyx'),            'primary' => '#0b0b0f', 'secondary' => '#0062ff'),
+        'silver'     => array('name' => lang('Silver'),          'primary' => '#c4c8d0', 'secondary' => '#16171c'),
+        'electric'   => array('name' => lang('Electric Blue'),   'primary' => '#0062ff', 'secondary' => '#a1a6b0'),
     );
 }
 
