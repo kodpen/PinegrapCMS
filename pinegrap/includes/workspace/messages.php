@@ -392,6 +392,8 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'ack'         => $deleted ? null : ($extra['acks'][$id] ?? null),
         // The conversation a mail card answers by e-mail (mail_reply.php), 0 for none.
         'mail_reply'  => ($mail && !$deleted && function_exists('ws_mail_reply_offer')) ? ws_mail_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post) : 0,
+        // An outgoing mail that could not leave, offered to send again (mail_send.php), 0 for none.
+        'mail_resend' => ($mail && !$deleted && function_exists('ws_mail_resend_offer')) ? ws_mail_resend_offer($extra['mail'][(int) $row['sender_id']] ?? null, $can_post, $viewer) : 0,
         // Its status and holder, for the same reader (mail_status.php), null for none.
         'mail_state'  => ($mail && !$deleted && function_exists('ws_mail_state_offer'))
             ? ws_mail_state_offer($extra['mail'][(int) $row['sender_id']] ?? null, ws_mail_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post), (int) $viewer['id']) : null,

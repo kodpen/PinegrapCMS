@@ -324,3 +324,32 @@ function test_image_editor_clip_strip_times()
 	pg_assert_same($r['max'], $r['many'], 'at most CLIP_STRIP_MAX frames');
 	pg_assert_same(array(1300, 1400), $r['odd'], 'on a 0.1 s grid');
 }
+
+// An animation's frame at a moment asks each visible clip for its source
+// time there: the trim and the speed, nothing off its span; a still asks
+// for none (each clip paints its source in).
+function test_image_editor_clip_frames_at()
+{
+	$r = image_editor_clip_node(
+		'var doc = { layers: [clip(), clip({ id: "l2", from: 0, to: 4000, start: 0, speed: 2 }), clip({ id: "l3", hidden: true }), { id: "l4", type: "image", src: "/a.png" }] };' . "\n"
+		. 'console.log(JSON.stringify({ frames: [0, 1000 / 30, 1500, 1999, 2000, 4999, 5000].map(function (t) { return M.clipFramesAt(doc, t); }),' . "\n"
+		. ' still: M.clipFramesAt(doc, null), none: M.clipFramesAt({ layers: [] }, 1000) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(
+		array('l1' => null, 'l2' => 0),
+		array('l1' => null, 'l2' => 67),
+		array('l1' => 2500, 'l2' => 3000),
+		array('l1' => 2999, 'l2' => 3998),
+		array('l1' => 3000, 'l2' => null),
+		array('l1' => 5999, 'l2' => null),
+		array('l1' => null, 'l2' => null),
+	), $r['frames'], 'the trim and the speed by the clip, null off its span, whole milliseconds; hidden clips and pictures left out');
+	pg_assert_same(array(), $r['still'], 'a still waits for no frame');
+	pg_assert_same(array(), $r['none'], 'no clips, no frames');
+}

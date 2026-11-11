@@ -7,10 +7,11 @@
  * as the server draws it without its layers, action base, fetched once per
  * dialog; an artboard's background), the picture's move, then each layer
  * through paintLayers() with the time (M.motionAt(): transform, opacity,
- * wipe, typed letters, a stroke drawn on) and the frame on top. Frames are
- * drawn here (text needs the page's fonts) and encoded in the worker
- * pg_image_editor_encode.js; where a site's policy refuses the worker the
- * same encoder runs on the page.
+ * wipe, typed letters, a stroke drawn on; a video layer's own frame of
+ * that moment, clipFramesAt() of the clip part) and the frame on top.
+ * Frames are drawn here (text needs the page's fonts) and encoded in the
+ * worker pg_image_editor_encode.js; where a site's policy refuses the
+ * worker the same encoder runs on the page.
  *
  * A part of window.PgImageEditor, bundled after pg_image_editor.js
  * (pg_js_bundles()); it hangs its code on the editor through
@@ -176,7 +177,8 @@
 
     // One moment of the animation drawn at w x h on canvas (a new one when
     // none is given); answers the canvas. doc, when given, is drawn in place
-    // of the editor's (a scene, M.sceneView()).
+    // of the editor's (a scene, M.sceneView()). It waits for the strokes
+    // being drawn on and for each video layer's frame of that moment.
     Editor.prototype.renderFrame = function (time, w, h, canvas, doc) {
         var self = this, live = this.doc, cutting;
 
@@ -186,11 +188,11 @@
 
         canvas = canvas || document.createElement('canvas');
         this.doc = doc;
-        cutting = this.frameCutsAt(time, k);
+        cutting = Promise.all([this.frameCutsAt(time, k), this.clipFramesAt ? this.clipFramesAt(time) : null]);
         this.doc = live;
 
-        return cutting.then(function (cuts) {
-            var g = canvas.getContext('2d'), keep = self.doc;
+        return cutting.then(function (got) {
+            var g = canvas.getContext('2d'), keep = self.doc, cuts = got[0], frames = got[1];
 
             if ((canvas.width !== w) || (canvas.height !== h)) {
                 canvas.width = w;
@@ -205,6 +207,7 @@
             try {
                 self.paintBase(g, time, w / out.w, h / out.h);
                 self.frameCuts = cuts;
+                self.clipFrames = frames;
                 self.paintLayers(g, box, w, h, time);
 
                 if (self.paintFrame) {
@@ -212,7 +215,14 @@
                 }
             } finally {
                 self.frameCuts = null;
+                self.clipFrames = null;
                 self.doc = keep;
+
+                Object.keys(frames || {}).forEach(function (id) {
+                    if (frames[id]) {
+                        frames[id].close();
+                    }
+                });
             }
 
             return canvas;

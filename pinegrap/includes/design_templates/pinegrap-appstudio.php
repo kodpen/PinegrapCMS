@@ -175,7 +175,7 @@ $appstudio_css = implode("\n", array(
 
 return array(
     'name'        => lang('Mobile App Developer'),
-    'version'     => '1.0.0',
+    'version'     => '1.1.0',
     'framework'   => 'bootstrap5',
     'order'       => 73,
     'icon'        => 'bi-phone',
@@ -232,7 +232,7 @@ return array(
     // The template's own look: its pma- rules in one User Styles entry, and
     // its three fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $appstudio_css),
+        'css'   => pg_design_template_user_styles(array('appstudio-hero', 'appstudio-switch', 'appstudio-release', 'appstudio-platforms'), $appstudio_css),
         'fonts' => json_encode($appstudio_fonts),
     ),
 );

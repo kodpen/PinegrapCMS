@@ -2474,6 +2474,20 @@ function ws_handle_action($action, $request)
                 'copy_note'  => ($result['copy'] === 'failed') ? lang('The e-mail was sent, but no copy could be put into the mailbox\'s sent folder.') : '',
             ));
 
+        // Send again: an outgoing mail that could not leave (mail_send.php).
+        case 'ws_mail_resend':
+            if (!function_exists('ws_mail_resend') || !ws_mail_send_ready()) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            $result = ws_mail_resend($viewer, (int) ($request['item_id'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']));
+            }
+
+            return ws_action_ok(array('state' => $result['state']));
+
         // A conversation's status or holder (mail_status.php).
         case 'ws_mail_conversation':
             if (!function_exists('ws_mail_conversation_set') || !ws_mail_ready()) {
