@@ -30,7 +30,7 @@ description: Order of the polishing round after Launch: every shipped template's
 
 - Brewery: `-1`, `-2` open.
 
-- Carrental: `-1`, `-2` open.
+- Carrental: `-1` #8669 done, `-2` open.
 
 - Filmstudio: `-1`, `-2` open.
 
