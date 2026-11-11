@@ -113,7 +113,8 @@ PR that gives its reason (Fixed rules 6). Details: `workflow/working-mode.md`,
 6. **On to the next step when it lands**, under the queue limit; at most
    three steps in a row, then hand over through the plan file and end.
    Design template plans are paused: no step of theirs and no new template
-   (`workflow/coordinator-no-plans.md`).
+   (`workflow/coordinator-no-plans.md`), but for the owner's own line
+   (`workflow/design-template-owner-line.md`).
 7. **Shared hot files.** A PR never edits `changelog.txt`: its body names the
    `[NEW]` line or the `[SCHEME]` item. Translation keys only with
    `php tools/tr_add.php`. Generated indexes and `.min.js` bundles: append
