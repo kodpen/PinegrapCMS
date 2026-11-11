@@ -24,6 +24,7 @@ module: file_picker_search
 ## Which screens use it?
 - Short link list quick edit File cell (#8424): the list table driver's `search` type, kind `file` (`list-table-quick-edit-search.md`); `get_file_options()` is gone.
 - Settings › Commerce PEM File: a short list, so a local `data-pg-combobox`; a stored name no pem file carries stays, marked (`pg_stored_file_option()`).
-- The five Settings pictures (Site Icon, Application Icon, Default Share Image, Organization Logo, Fediverse Avatar) and the short link File field on Add/Edit Short Link and in the File Manager wizard are picker fields since #8751 (`picker-field.md`, F3 of this plan): they search through `picker.php`. `pg_file_picker_attributes()`, `pg_file_picker_field_attributes()`, `pg_file_picker_public_options()` and `pg_file_picker_id_options()` have no screen left; PK10 of `plans/one-picker.md` removes them.
+- The five Settings pictures (Site Icon, Application Icon, Default Share Image, Organization Logo, Fediverse Avatar) and the short link File field on Add/Edit Short Link and in the File Manager wizard are picker fields since #8751 (`picker-field.md`, F3 of this plan): they search through `picker.php`.
+- `pg_file_picker_attributes()`, `pg_file_picker_field_attributes()`, `pg_file_picker_public_options()` and `pg_file_picker_id_options()` have no screen left; PK10 of `plans/one-picker.md` removes them.
 
 Tests: `tests/file_picker_search_test.php`, `tests/settings_public_image_test.php`, `tests/short_link_requests_test.php`.
