@@ -19,7 +19,7 @@ description: Plan (owner 2026-11-10, handed to workers 2026-11-11): the Workspac
   - CL1 shows a channel with a colour, one without, and one with the share and era bars; CL2 and CL3 each pane they change.
 
 ## Which steps are there?
-- CL1 (M, no schema) The shell.
+- CL1 (M, no schema) The shell. Done (#8678): `workspace/workspace-channel-identity-motion.md`.
   - The header and the tabs are one card: a border and a wash of the channel's colour (`--ws-ch`) from the side the sign stands on, no top stripe; a channel without a colour keeps a plain card. The share and era bars between them are rows of the same card.
   - Tabs are pills, the open one filled (in the channel's colour when it has one); counts keep their marks. The day mark is a chip without rules. The writing box is a card.
   - Files: the Workspace block of `backend.src.css`, `drawCenter()` in `workspace.js` (the colour on the card, not only on the header), tests, `workspace/workspace-channel-identity-motion.md`.

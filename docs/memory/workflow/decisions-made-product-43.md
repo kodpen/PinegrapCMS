@@ -1,24 +1,27 @@
 ---
 name: decisions-made-product-43
-description: Decisions list, product part 43 (2026-11-11 on): a muted, looping hero video may play by itself, with a pause button; a colour mode (light, dark, follow the system) for a whole design
+description: Decisions list, product part 43 (2026-11-11 on): classic styles sharing a CSS/JS set move as one "Legacy" design, its badge "Legacy" / "Eski", what follows the move (#8671)
 ---
 
 ## Where are the rules and the earlier parts?
 - `decisions-made.md`; the generated `DECISIONS.md` lists every part's entries.
+- The owner's request and his two answers below are on #8671 (the `Karar:` comment).
 
-## May a hero video play by itself? (owner, 2026-11-11)
-- Owner (2026-11-11): yes, on the terms put to him ("Evet, bu koşullarla"). A muted, looping video in a hero, a page's opening section, may play by itself; it has a pause button, and it does not play when the visitor prefers reduced motion.
-- Only that video: the question was put as an exception to "no block plays by itself". Until then no block played a video, the marquee bands were the only motion that starts by itself, and no carousel autoplays (`designer/designer-block-motion.md`); all of that stays.
-- Why: the owner ordered bolder pages with motion the same day (the template line, recorded in workflow's design-template-owner-line file), and such a page opens on a moving picture. The pause button and the stop under reduced motion keep WCAG 2.2.2, the reason behind the motion rules.
-- The other answer, not taken: "Hayır, oynamasın" (no video plays by itself).
-- Not built yet: step B9 of `plans/designer-bold-pages-steps-2.md`.
+## How do classic styles that share CSS and JS move to the visual designer? (owner, 2026-11-11, #8671)
+- As one group: the styles that use the same CSS and JS files become one design of a kind of its own, shown as "Legacy" in the Visual Designs list.
+- Owner (2026-11-11): "legacy sayfaları yeni görsel tasarımcıda açmayı sağlayacak plan ne durumda kontrol et, bu planı hızlandıralım. aynı css ve js leri paylaşan sayfalar bir grup halinde (gorsel tasarımlar listesinde legacy diye belirtilir.) özel tasarım olarak eklenebilir. olursa planda bir sıçrama yapacaktır ve sonrası içinde plan yapalım bugün bir tanesini düzenleyince css ve js uyumsuz olarak açıyor".
+- Reason: a style moved alone opened with CSS and JS that did not fit, and a site's classic styles mostly share one set (49 styles, 7 sets on the starting site).
+- What stays (#6006, #6251; `decisions-made-product-21.md`, `decisions-made-product-23.md`): nothing classic is removed; the classic `style` rows and their code stay; a move starts only from a designer, after the dry run.
+- Not a duplicate to clean up: several frame components (`classic_style:<style_id>`) in one Legacy design, and a classic style still standing beside the design its pages moved to.
+- Built by `plans/legacy-group-design.md`.
 
-## Can a whole design be light, dark or follow the system? (owner, 2026-11-11)
-- Owner (2026-11-11): yes ("Evet, eklensin"). The Theme pane gets a colour mode for the whole design: light, dark or follow the system.
-- The terms put to him with the question:
-  - A visitor's own theme switcher still wins over the design's mode.
-  - The default is today's behaviour, so a running site does not change until its designer picks a mode.
-  - The mode is kept in a new `style` column beside the look and the palette, added by a migration step: `decisions-made-schema-15.md`.
-- Why: without it a design that is dark from top to bottom (a showroom, a product page) is made by hand, band by band; today only a visitor's theme switcher turns a whole page dark (`designer/design-theme-look-and-palette.md`).
-- The other answer, not taken: "Hayır, gerek yok" (no mode).
-- Not built yet: step B11 of `plans/designer-bold-pages-steps-2.md`.
+## What does the badge of a Legacy design read? (owner, 2026-11-11, #8671)
+- "Legacy", Turkish "Eski". Owner (2026-11-11): "Legacy / Eski (Önerilen)". Not chosen: "Classic / Klasik" and an untranslated "Legacy".
+- Architect (2026-11-11, #8671): only this kind of design is named Legacy; the panel's other texts keep "classic" where they say it today.
+
+## What follows the group move? (owner, 2026-11-11, #8671)
+- Owner (2026-11-11): "İçerik sayfada düzenlensin (Önerilen),Klasiğe geri al düğmesi,Bootstrap 5.3.8'e geçiş yardımcısı".
+- Page content edited in the page: the one frame split into a top and a bottom shared component, the page's own content in the page's tree.
+- A "back to classic" button for a moved group or a single page; safe, as the classic style stays in place.
+- A helper that turns a Legacy design towards Bootstrap 5.3.8 and a theme: a plan of its own.
+- Not chosen: joining the designs converted one by one earlier to their set's Legacy design. Do not propose that merge as a cleanup.

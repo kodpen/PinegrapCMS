@@ -27,6 +27,6 @@ description: Plan: what the Visual Page Editor needs for bold product pages (scr
 - Motion: about 20 templates use `_fx`, mostly view entrances; none moves with the scroll.
 
 ## What did the owner decide?
-- Owner (2026-11-11), both in `workflow/decisions-made-product-43.md`; no question waits.
+- Owner (2026-11-11), both in `workflow/decisions-made-product-44.md`; no question waits.
 - B9: a muted, looping hero video may play by itself, with a pause button, not when the visitor prefers reduced motion.
 - B11: a design gets a colour mode (light, dark, follow the system) in the Theme pane; its new `style` column is approved (`workflow/decisions-made-schema-15.md`).

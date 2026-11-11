@@ -42,6 +42,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-4.md: What does a bell row's button do? (owner, 2026-11-11, #8670)
 - decisions-made-panel-4.md: When is a notification read? (owner, 2026-11-11, #8670)
 - decisions-made-panel-4.md: Where is it built?
+- decisions-made-panel-5.md: Where are the rules and the earlier parts?
+- decisions-made-panel-5.md: Why does the dashboard's notes card keep no note of its own? (owner, 2026-11-11, #8672)
+- decisions-made-panel-5.md: What does the Online Engagement card show when nobody is on the site? (owner, 2026-11-11, #8672)
+- decisions-made-panel-5.md: What does the Visitor map card draw without city names? (owner, 2026-11-11, #8672)
+- decisions-made-panel-5.md: Which report screens are renewed, and how do they look? (owner, 2026-11-11, #8673)
+- decisions-made-panel-5.md: Are there ready reports on a report screen? (owner, 2026-11-11, #8673)
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?
 - decisions-made-panel.md: Which date-and-time picker does the software use? (#2693, 2026-10-28)
@@ -217,8 +223,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-42.md: Are the picker's drawn screens approved? (owner, 2026-11-10)
 - decisions-made-product-42.md: When does a clip edit change the image editor document's length? (owner, 2026-11-10)
 - decisions-made-product-43.md: Where are the rules and the earlier parts?
-- decisions-made-product-43.md: May a hero video play by itself? (owner, 2026-11-11)
-- decisions-made-product-43.md: Can a whole design be light, dark or follow the system? (owner, 2026-11-11)
+- decisions-made-product-43.md: How do classic styles that share CSS and JS move to the visual designer? (owner, 2026-11-11, #8671)
+- decisions-made-product-43.md: What does the badge of a Legacy design read? (owner, 2026-11-11, #8671)
+- decisions-made-product-43.md: What follows the group move? (owner, 2026-11-11, #8671)
+- decisions-made-product-44.md: Where are the rules and the earlier parts?
+- decisions-made-product-44.md: May a hero video play by itself? (owner, 2026-11-11)
+- decisions-made-product-44.md: Can a whole design be light, dark or follow the system? (owner, 2026-11-11)
 - decisions-made-product-5.md: Which outside-account leftovers start in 2026.11.0? (#3180)
 - decisions-made-product-5.md: Do subscriptions start, and who runs the renewals? (#3183)
 - decisions-made-product-5.md: Does a beta site without a build file get the beta build of its own version? (#3204)
@@ -563,6 +573,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-channel-composer.md: The channel's writing box in one row (C5 of workspace-channel-screen.md): no hint line, marks behind Aa; a phone's one row with the tools switch, the keyboard rules
 - workspace/workspace-channel-decisions-tab.md: The channel's Decisions tab draws each decision as a card of its own with a gap between them, not stacked like the conversation's messages
 - workspace/workspace-channel-head.md: The channel header in one line (C1 of workspace-channel-screen.md, tour #6281): name and tags, people, search, info, task, tour, menu; a phone keeps back, name, ⋯; the purpose in the info drawer
+- workspace/workspace-channel-identity-motion.md: Workspace channel shell as one card in the channel colour (wash, pill tabs), day chip, writing box card (CL1 #8678); group colour chips; send pop, bounce, slide-in (#2094)
 - workspace/workspace-channel-messages.md: The channel's messages as drawn (C4 of workspace-channel-screen.md): grouped lines with their time on hover, the short hover bar, the decision tag, the discussion line, Convert to text
 - workspace/workspace-channel-panels.md: The side panels as drawn (C6 of workspace-channel-screen.md): the channel info beside the conversation in the discussion's place, its parts, the discussion's head and follow line
 - workspace/workspace-command-live-line.md: The live line under a /task and a /status (ws_command_suggest: "Will create: …", warnings), a typed @username assigning, and what the parser reads: next week, datives, 14:00, "1.5 saat" as an estimate
