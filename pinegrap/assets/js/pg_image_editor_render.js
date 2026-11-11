@@ -988,15 +988,23 @@
     // when it is larger than one (uploadSend(), pg_image_editor_upload.js):
     // beside the picture, in the canvas's folder, or over the animation the
     // editor opened.
+    // Pictures from this computer go along and come back as files
+    // (pictures), so its version keeps the document and the project opens
+    // again.
     Editor.prototype.saveAnimationFile = function (blob, mode, name) {
-        var self = this, head = {
+        var self = this, pictures = M.animPictures(this.doc), head = {
             action: 'animation', mode: mode, doc: this.doc, base: this.versionBase || 0,
             file_id: this.opts.fileId || 0, folder_id: (this.opts.save && this.opts.save.folderId) || 0,
             name: (this.opts.save && this.opts.save.name) || name,
             target: (mode === 'replace') ? this.animFile.id : 0
         };
 
+        if (pictures.length) {
+            head.pictures = pictures;
+        }
+
         return this.uploadSend(blob, 'animation', head, { error: t('animSaveError'), progress: this.uploadInto(this.animEls && this.animEls.caption) }).then(function (r) {
+            M.picturesTaken(self.doc, r.pictures);
             // The next save replaces this file, as when it was opened.
             self.animFile = { id: r.id, name: r.name, format: r.format, replace: true };
 

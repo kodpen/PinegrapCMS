@@ -439,18 +439,9 @@
     });
 
     // The files a save kept: their layers point at them from now on.
+    // A closed scene's layers too (M.picturesTaken()).
     Editor.prototype.takePictures = function (saved) {
-        if (!saved || (typeof saved !== 'object')) {
-            return;
-        }
-
-        this.doc.layers.forEach(function (l) {
-            if (Object.prototype.hasOwnProperty.call(saved, l.id) && saved[l.id]) {
-                l.src = saved[l.id].url;
-                l.fileId = saved[l.id].id;
-                delete l.fileName;
-            }
-        });
+        M.picturesTaken(this.doc, saved);
     };
 
     // Select with nothing selected on a canvas: the canvas first, then the

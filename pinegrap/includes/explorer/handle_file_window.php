@@ -65,6 +65,10 @@ function pg_explorer_handle_file_get($type, $request, $user)
     $payload['content'] = null;
     $payload['content_too_large'] = false;
     $payload['on_disk'] = is_file($path);
+    // An MP4 or WebM the image editor saved opens again as its project
+    // (pg_image_editor_animation_open()); any other video has nothing to edit.
+    $payload['editor_project'] = $payload['on_disk'] && in_array($extension, pg_image_editor_clip_types(), true)
+        && pg_file_versions_ready() && pg_image_editor_video_project(pg_file_versions_newest((int) $file['id']));
 
     if ($payload['viewable'] && $payload['on_disk']) {
 

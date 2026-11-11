@@ -1842,6 +1842,14 @@ function save_system_style($data)
         $sql_theme_field = 'style_look, style_palette,';
         $sql_theme_value = "'$_look', '$_palette',";
     }
+    // The colour mode (2026.11.0, 11.0.186), on the same terms.
+    if (function_exists('pg_design_color_mode_ready') && pg_design_color_mode_ready()
+        && array_key_exists('color_mode', $data)) {
+        $_mode = e(pg_design_color_mode_key($data['color_mode']));
+        $sql_theme_set   .= " style_color_mode = '$_mode',";
+        $sql_theme_field .= ' style_color_mode,';
+        $sql_theme_value .= " '$_mode',";
+    }
 
     // The design's meta tags (includes/fn/meta_tags.php): written when the
     // column exists and the caller supplied them, so a caller that knows
@@ -4447,9 +4455,12 @@ function pg_theme_switcher_inject($content)
     if (strpos($content, 'data-pg-theme-switcher') === false) return $content;
     if (strpos($content, '/assets/js/pg_theme_switcher.js') !== false) return $content;
 
-    // The resolution pg_theme_switcher.js makes, inline: "auto" or nothing
-    // stored follows the system.
+    // The resolution pg_theme_switcher.js makes, inline: the visitor's
+    // stored choice; with nothing stored, the design's colour mode
+    // (data-pg-color-mode, pg_design_color_mode_apply()) or, without one,
+    // the system; "auto" follows the system.
     $early = '<script>(function(){try{var t=localStorage.getItem("pg-theme");'
+           . 'if(!t){t=document.documentElement.getAttribute("data-pg-color-mode");}'
            . 'if(!t||t==="auto"){t=(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";}'
            . 'document.documentElement.setAttribute("data-bs-theme",t);}catch(e){}})();</script>' . "\n";
     $file  = '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_theme_switcher.js?v='

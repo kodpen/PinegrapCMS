@@ -8,7 +8,6 @@
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
 - bell-panel-steps.md: Steps of plans/bell-panel.md: BP1 a row is read when opened, BP2 the row drawn as the dashboard's Next up row, BP3 the filters and the search, BP4 the in-place actions and the close-out
 - bell-panel.md: Plan (owner 2026-11-11): the bell's rows drawn as the dashboard's Next up rows, module chips, unread only, asked of me, search, day headings; a row is read when it is opened; steps BP1-BP4
-- dashboard-owner-look.md: Plan (owner 2026-11-11, #8672): what the owner asked for on the new dashboard's cards: the notes card as a My Notes shortcut, last online times, the world map without city names; steps DL1-DL3
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
@@ -32,6 +31,7 @@
 - legacy-group-design-steps.md: Steps of plans/legacy-group-design.md: LG1 the theme, LG2 {path} addresses, LG3 the legacy key and badge, LG4 sets in the report and dry run, LG5 the run, LG6 the frame split, LG7 back to classic
 - legacy-group-design.md: Plan (owner 2026-11-11, #8671): classic styles that share a CSS/JS set move as one "Legacy" design that opens right in the visual designer; the theme and {path} fixes first; steps LG1-LG7
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
+- memory-rule-checks.md: Plan: the tool refuses a new memory line over 500 characters and a cluster of ten files with no start file; the nine missing cluster overviews; steps MR1-MR5
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - one-picker-inventory.md: What chooses a file, a picture, a page or a folder in the software today (2026-11-10, with call counts): what the one picker takes over, and the record searches that model its later kinds
 - one-picker-steps.md: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry and endpoint, dialog, upload, pages, the field, page fields, editor and designer bridges, remaining screens, close-out; open questions

@@ -503,6 +503,8 @@ function pg_designer_screen_render($ctx)
                 <!-- The look and the colour palette (Settings, Design). -->
                 <input type="hidden" name="style_look" id="sd-style-look" value="' . h(isset($style['look']) ? pg_design_look_key($style['look']) : '') . '">
                 <input type="hidden" name="style_palette" id="sd-style-palette" value="' . h(isset($style['palette']) ? pg_design_palette_key($style['palette']) : '') . '">
+                <!-- The colour mode (Settings, Theme): light, dark, auto or empty. -->
+                <input type="hidden" name="style_color_mode" id="sd-style-color-mode" value="' . h(isset($style['color_mode']) ? pg_design_color_mode_key($style['color_mode']) : '') . '">
 
                 <div class="sd-wrapper">
                     <!-- One toolbar. Left: what you do to pages (add, settings,
@@ -3214,6 +3216,11 @@ function pg_designer_screen_post($ctx)
         'look'                              => isset($_POST['style_look']) ? (string)$_POST['style_look'] : '',
         'palette'                           => isset($_POST['style_palette']) ? (string)$_POST['style_palette'] : '',
     );
+    // The colour mode: an editor loaded before the column existed posts
+    // none, and save_system_style() then leaves the stored mode alone.
+    if (isset($_POST['style_color_mode'])) {
+        $style_data['color_mode'] = (string)$_POST['style_color_mode'];
+    }
     // The design's meta tags: the hidden input exists only where the column
     // does (pg_designer_meta_tags_group()), and save_system_style() leaves
     // the stored list alone when the key is missing.

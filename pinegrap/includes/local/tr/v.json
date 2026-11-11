@@ -490,6 +490,7 @@
     "Visits before {var:1} come from the daily summary: the totals are exact, values outside a day's top {var:2} are grouped as \"(other values)\", and the visitors themselves are no longer listed.": "{var:1} öncesindeki ziyaretler günlük özetten geliyor: toplamlar kesin, bir günün ilk {var:2} değeri dışında kalanlar \"(diğer değerler)\" altında toplanır ve ziyaretçilerin kendisi artık listelenmez.",
     "Visits by channel": "Kanala göre ziyaretler",
     "Visits by city in {var:1}": "{var:1} ülkesinde şehirlere göre ziyaretler",
+    "Visits by country": "Ülkelere göre ziyaretler",
     "Visits fell by {var:1} %: {var:2} against {var:3} in the period before.": "Ziyaretler %{var:1} düştü: önceki dönemde {var:3}, şimdi {var:2}.",
     "Visits from AI Assistants": "Yapay Zekâ Asistanlarından Gelen Ziyaretler",
     "Visits from AI assistants": "Yapay zekâ asistanlarından gelen ziyaretler",

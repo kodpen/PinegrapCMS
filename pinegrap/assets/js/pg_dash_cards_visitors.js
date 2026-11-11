@@ -98,6 +98,63 @@
         });
     }
 
+    // No city to place: the world map with each visited country shaded in
+    // one of four steps. Every country names itself and its visits on hover
+    // and focus (the map is one tab stop, the arrows step through the
+    // countries) and in the bars below, so the shade never carries the
+    // figure alone. A country the file has no outline for keeps its bar.
+    function worldMap(figure, map, data) {
+        var el = pgDash.el;
+        var svg = document.createElementNS(SVG, "svg");
+        svg.setAttribute("viewBox", map.viewBox);
+        svg.setAttribute("role", "img");
+        svg.setAttribute("aria-label", data.map_label);
+        var shades = data.shades || {};
+        var paths = {};
+        map.shapes.forEach(function (shape) {
+            var path = document.createElementNS(SVG, "path");
+            path.setAttribute("d", shape.d);
+            if (shades[shape.id]) {
+                path.setAttribute("data-step", String(shades[shape.id]));
+            }
+            paths[shape.id] = path;
+            svg.appendChild(path);
+        });
+        var places = (data.places || []).filter(function (place) {
+            return paths[place.id];
+        });
+        var ring = document.createElementNS(SVG, "path");
+        ring.setAttribute("class", "pg-dash-map-ring");
+        svg.appendChild(ring);
+        figure.appendChild(svg);
+
+        pgDash.chartTips(svg, places.map(function (place) {
+            return place.text;
+        }), {
+            parts: places.map(function (place) {
+                return paths[place.id];
+            }),
+            start: 0,
+            mark: function (i) {
+                if (i < 0) {
+                    ring.removeAttribute("d");
+                } else {
+                    ring.setAttribute("d", paths[places[i].id].getAttribute("d"));
+                }
+            }
+        });
+
+        var legend = el("figcaption", "pg-dash-map-legend");
+        legend.appendChild(el("span", "", (data.legend || [])[0]));
+        [1, 2, 3, 4].forEach(function (step) {
+            var swatch = el("span", "pg-dash-map-step");
+            swatch.setAttribute("data-step", String(step));
+            legend.appendChild(swatch);
+        });
+        legend.appendChild(el("span", "", (data.legend || [])[1]));
+        figure.appendChild(legend);
+    }
+
     pgDash.renderers.visitmap = function (body, data, card, config) {
         var el = pgDash.el;
 
@@ -107,10 +164,14 @@
         body.appendChild(head);
 
         if (data.map_url && pgDash.mapShapes) {
-            var figure = el("figure", "pg-dash-chart pg-dash-map");
+            var figure = el("figure", "pg-dash-chart pg-dash-map" + ((data.map === "world") ? " pg-dash-map-world" : ""));
             body.appendChild(figure);
             pgDash.mapShapes(data.map_url).then(function (map) {
-                bubbleMap(figure, map, data);
+                if (data.map === "world") {
+                    worldMap(figure, map, data);
+                } else {
+                    bubbleMap(figure, map, data);
+                }
             }).catch(function () {
                 figure.remove();
             });
