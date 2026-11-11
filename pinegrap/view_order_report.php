@@ -41,6 +41,11 @@ if (isset($_POST['id']) && !is_scalar($_POST['id'])) {
     unset($_POST['id']);
 }
 
+// A ready report (?ready=<key>, includes/fn/ready_reports.php) opens as a
+// new, unsaved report with its own levels, filters and name; an unknown key
+// opens the plain new report, and an id wins over it.
+$ready_report = isset($_GET['id']) ? null : pg_ready_report_requested($_GET['ready'] ?? null, 'order_report');
+
 // if an id was passed in the query string, then set id
 if (isset($_GET['id']) == true) {
     $id = $_GET['id'];
@@ -103,19 +108,35 @@ if (!$_POST) {
 
     // if an order report is being created and this screen has not already been submitted, then set default values for form fields
     if ((isset($_GET['id']) == false) && !$form_submitted) {
-        // set default values for summarize by fields
-        $liveform->assign_field_value('summarize_by_1', 'year');
-        $liveform->assign_field_value('summarize_by_2', 'month');
-        $liveform->assign_field_value('summarize_by_3', 'day');
-        
-        // A new report sums placed sales only: carts and cancelled orders left out.
+        if ($ready_report !== null) {
+            // The ready report's levels (a level it does not name is none),
+            // its name for a save, its filters and period.
+            for ($level = 1; $level <= 3; $level++) {
+                $liveform->assign_field_value('summarize_by_' . $level, $ready_report['levels'][$level - 1]['by'] ?? '');
+                $liveform->assign_field_value('order_by_' . $level, $ready_report['levels'][$level - 1]['order'] ?? '');
+            }
+
+            $liveform->assign_field_value('name', lang($ready_report['title']));
+            $default_filters = pg_ready_report_filters($ready_report);
+        } else {
+            // set default values for summarize by fields
+            $liveform->assign_field_value('summarize_by_1', 'year');
+            $liveform->assign_field_value('summarize_by_2', 'month');
+            $liveform->assign_field_value('summarize_by_3', 'day');
+
+            // A new report sums placed sales only: carts and cancelled orders left out.
+            $default_filters = pg_order_report_default_filters();
+        }
+
         $default_filter_number = 0;
 
-        foreach (pg_order_report_default_filters() as $default_filter) {
+        foreach ($default_filters as $default_filter) {
             $default_filter_number++;
             $liveform->assign_field_value('filter_' . $default_filter_number . '_field', $default_filter['field']);
             $liveform->assign_field_value('filter_' . $default_filter_number . '_operator', $default_filter['operator']);
             $liveform->assign_field_value('filter_' . $default_filter_number . '_value', $default_filter['value']);
+            $liveform->assign_field_value('filter_' . $default_filter_number . '_dynamic_value', $default_filter['dynamic_value'] ?? '');
+            $liveform->assign_field_value('filter_' . $default_filter_number . '_dynamic_value_attribute', $default_filter['dynamic_value_attribute'] ?? '');
         }
 
         $liveform->assign_field_value('last_filter_number', (string) $default_filter_number);
@@ -151,6 +172,10 @@ if (!$_POST) {
     // if an order report is being created, then prepare screen name
     if (isset($_GET['id']) == false) {
         $output_screen_name = lang('Create Order Report');
+
+        if ($ready_report !== null) {
+            $output_screen_name .= ': ' . lang($ready_report['title']);
+        }
         
     // else an order report is being viewed, so prepare screen name
     } else {

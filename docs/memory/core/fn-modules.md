@@ -172,6 +172,7 @@ description: Generated from the module field of the memory files: each includes/
 - `prototype`: [[designer-prototype-viewer]]
 - `prototype_links`: [[designer-prototype-share-links]]
 - `prototype_map`: [[prototype-map-read]]
+- `ready_reports`: [[order-report-ready-reports]]
 - `record_revisions`: [[collection-history]], [[collection-revisions]]
 - `referral_source_list_edit`: [[list-table-quick-edit-referral-sources]]
 - `region_list`: [[list-table-region-lists]]
