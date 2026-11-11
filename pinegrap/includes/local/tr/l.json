@@ -226,6 +226,7 @@
     "Last used (relative time)": "Son kullanım (göreli zaman)",
     "Last used (relative time, else \"Never\")": "Son kullanım (göreli zaman, yoksa \"Hiç\")",
     "Last used {var:1}.": "Son kullanım {var:1}.",
+    "Last visits": "Son ziyaretler",
     "Last year": "Geçen yıl",
     "Last {var:1} days": "Son {var:1} gün",
     "Last {var:1} left": "Son {var:1} adet kaldı",

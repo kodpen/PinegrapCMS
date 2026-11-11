@@ -1891,6 +1891,29 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Nobody on the site: the last visits, each with a muted dot, the time
+     first and the landing page at the end. */
+  .pg-dash-live-last .pg-dash-live-page::before {
+    background: var(--pgd-muted);
+  }
+
+  .pg-dash-live-when {
+    display: flex;
+    flex: 0 0 auto;
+    gap: .375rem;
+    color: var(--pgd-fg);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pg-dash-live-clock {
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-live-last .pg-dash-live-path {
+    text-align: end;
+    color: var(--pgd-muted);
+  }
+
   @media (forced-colors: active) {
     .pg-dash-line .pg-dash-line-main,
     .pg-dash-line .pg-dash-line-compare { stroke: CanvasText; }

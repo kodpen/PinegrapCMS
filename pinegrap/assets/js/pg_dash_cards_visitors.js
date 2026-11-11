@@ -129,6 +129,40 @@
     pgDash.renderers.engagement = function (body, data, card, config) {
         var el = pgDash.el;
 
+        // Nobody on the site: the line as the heading, then when the last
+        // visitors were online (how long ago, the clock in the site's time)
+        // and the page each came in on.
+        if (data.nobody) {
+            body.appendChild(el("p", "pg-dash-card-empty pg-dash-live-nobody", data.nobody));
+
+            if ((data.last || []).length) {
+                body.appendChild(el("h3", "pg-dash-rows-title", data.last_title));
+                var last = el("ul", "pg-dash-live-pages pg-dash-live-last");
+                data.last.forEach(function (row) {
+                    var item = el("li", "pg-dash-live-page");
+                    var time = el("span", "pg-dash-live-when");
+                    time.appendChild(el("span", "pg-dash-live-ago", row.ago));
+                    time.appendChild(el("span", "pg-dash-live-clock", row.clock));
+                    item.appendChild(time);
+                    if (row.page) {
+                        item.appendChild(el("span", "pg-dash-live-path", row.page));
+                    }
+                    last.appendChild(item);
+                });
+                body.appendChild(last);
+            }
+
+            if ((data.bars || []).some(function (n) { return n > 0; })) {
+                var recent = el("figure", "pg-dash-chart pg-dash-live-bars");
+                recent.appendChild(pgDash.bars(data.bars, data.bars_label, data.tips));
+                body.appendChild(recent);
+                body.appendChild(el("p", "pg-dash-live-note", data.note));
+            }
+
+            more(body, data.url, config);
+            return;
+        }
+
         var head = el("div", "pg-dash-live");
         var round = el("span", "pg-dash-live-figure", data.figure);
         round.setAttribute("aria-hidden", "true");

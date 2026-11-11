@@ -4,7 +4,7 @@
  *
  * The Online engagement card: people on the site now, the visits of the
  * last 30 minutes as one bar a minute, and the pages those visits came in
- * on. The window and the role rule are widget 4's, so both dashboards
+ * on; with nobody on the site, when the last visitors were online. The window and the role rule are widget 4's, so both dashboards
  * count the same people.
  *
  * @author      Erdal Güral (Kodpen)
@@ -103,6 +103,36 @@ function pg_dashboard_v2_last_visit_rows($visits, $limit, $ago, $clock)
     return $out;
 }
 
+/**
+ * The last visits from the newest visit ids: MAX(id) on the primary key,
+ * then a range of PG_DASHBOARD_V2_LAST_VISITS_WINDOW ids below it, sorted
+ * in PHP. The raw visitors table is never scanned or counted.
+ *
+ * @return array[] pg_dashboard_v2_last_visit_rows()
+ */
+function pg_dashboard_v2_last_visits()
+{
+    $top = (int) db_value("SELECT MAX(id) FROM visitors");
+
+    if ($top < 1) {
+        return array();
+    }
+
+    $visits = db_items(
+        "SELECT id, landing_page_name, start_timestamp, stop_timestamp FROM visitors
+         WHERE id > " . max(0, $top - PG_DASHBOARD_V2_LAST_VISITS_WINDOW) . " AND id <= " . $top);
+
+    return pg_dashboard_v2_last_visit_rows($visits, PG_DASHBOARD_V2_LAST_VISITS, function ($timestamp) {
+        return function_exists('get_relative_time')
+            ? get_relative_time(array('timestamp' => (int) $timestamp, 'format' => 'plain_text'))
+            : '';
+    }, function ($timestamp) {
+        return function_exists('get_absolute_time')
+            ? get_absolute_time(array('timestamp' => (int) $timestamp, 'type' => 'time', 'timezone_type' => 'site'))
+            : '';
+    });
+}
+
 function pg_dashboard_v2_card_engagement($user, $period, $compare)
 {
     if ((int) $user['role'] >= 3) {
@@ -132,6 +162,10 @@ function pg_dashboard_v2_card_engagement($user, $period, $compare)
 
     $recent = array_sum($bars);
 
+    // Nobody on the site: the card says so and lists when visitors were
+    // last online, so it is not one bare line.
+    $last = ($active === 0) ? pg_dashboard_v2_last_visits() : array();
+
     // Bar 0 is the oldest minute.
     require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/tips.php');
     $ago = array();
@@ -154,7 +188,12 @@ function pg_dashboard_v2_card_engagement($user, $period, $compare)
         'tips'       => $tips,
         'rows_title' => lang('Pages they came in on'),
         'rows'       => $rows,
-        'empty'      => (($active === 0) && ($recent === 0)) ? lang('Nobody is on the site right now.') : '',
+        // Only when there is nothing at all to draw: with last visits the
+        // line is the renderer's heading (nobody), above the list.
+        'empty'      => (($active === 0) && ($recent === 0) && !$last) ? lang('Nobody is on the site right now.') : '',
+        'nobody'     => ($active === 0) ? lang('Nobody is on the site right now.') : '',
+        'last_title' => lang('Last visits'),
+        'last'       => $last,
         'url'        => 'view_visitor_reports.php',
     ));
 }

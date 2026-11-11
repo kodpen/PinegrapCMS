@@ -56,3 +56,44 @@ function test_dashboard_v2_engagement_last_visits_latest_first_and_capped()
 	pg_assert_same(array(), dashboard_v2_engagement_rows(array()), 'no visits, no rows');
 	pg_assert_same(5, PG_DASHBOARD_V2_LAST_VISITS, 'five rows on the card');
 }
+
+// The source of one function in the card file, up to the next one.
+function dashboard_v2_engagement_function($name)
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/engagement.php');
+	$start = strpos($source, "\nfunction " . $name . '(');
+	pg_assert_true($start !== false, 'found: ' . $name);
+	$end = strpos($source, "\nfunction ", (int) $start + 10);
+	return (string) substr($source, (int) $start, ($end === false) ? null : ($end - $start));
+}
+
+function test_dashboard_v2_engagement_last_visits_read_is_bounded_from_the_newest_ids()
+{
+	$read = dashboard_v2_engagement_function('pg_dashboard_v2_last_visits');
+
+	pg_assert_contains('SELECT MAX(id) FROM visitors', $read, 'the newest id from the primary key');
+	pg_assert_contains('WHERE id > " . max(0, $top - PG_DASHBOARD_V2_LAST_VISITS_WINDOW) . " AND id <= " . $top', $read, 'a range of ids below it');
+	pg_assert_false(stripos($read, 'COUNT(') !== false, 'nothing is counted');
+	pg_assert_false(stripos($read, 'ORDER BY') !== false, 'no sort over the table; the window is sorted in PHP');
+	pg_assert_contains("'type' => 'time', 'timezone_type' => 'site'", $read, 'the clock in the site\'s time');
+	pg_assert_contains("'format' => 'plain_text'", $read, 'how long ago, as plain text');
+	pg_assert_true(PG_DASHBOARD_V2_LAST_VISITS_WINDOW <= 500, 'a small window');
+}
+
+function test_dashboard_v2_engagement_empty_only_without_last_visits()
+{
+	$card = dashboard_v2_engagement_function('pg_dashboard_v2_card_engagement');
+
+	pg_assert_contains('$last = ($active === 0) ? pg_dashboard_v2_last_visits() : array();', $card, 'the last visits only while nobody is on');
+	pg_assert_contains("'empty'      => ((\$active === 0) && (\$recent === 0) && !\$last) ? lang('Nobody is on the site right now.') : '',", $card, 'empty is sent only when there is nothing to draw');
+	pg_assert_contains("'nobody'     => (\$active === 0) ? lang('Nobody is on the site right now.') : '',", $card, 'the line stays as the heading');
+	pg_assert_contains("'last'       => \$last,", $card, 'the rows go to the renderer');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_dash_cards_visitors.js');
+	pg_assert_contains('if (data.nobody) {', $js, 'the renderer draws the heading');
+	pg_assert_contains('el("h3", "pg-dash-rows-title", data.last_title)', $js, 'the list is titled');
+	pg_assert_contains('row.ago', $js, 'how long ago');
+	pg_assert_contains('row.clock', $js, 'the clock');
+	pg_assert_contains('row.page', $js, 'the landing page');
+
+}
