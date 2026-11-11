@@ -29,7 +29,9 @@ function panel_link_roles_source($path)
 // Cancel Edit brings it back to Edit.
 function test_report_edit_and_add_filter_are_buttons()
 {
-	foreach (array('view_order_report.php', 'view_visitor_report.php') as $file) {
+	// The order report opens its settings in a drawer instead
+	// (tests/order_report_screen_layout_test.php).
+	foreach (array('view_visitor_report.php') as $file) {
 		$source = panel_link_roles_source($file);
 
 		pg_assert_false(strpos($source, 'href="#" id="edit_button"') !== false, $file . ': Edit is a link');

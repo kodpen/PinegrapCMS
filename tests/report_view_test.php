@@ -140,3 +140,36 @@ function test_report_view_nothing_to_draw()
 	pg_assert_same(null, pg_report_view_chart('none', array(pg_test_report_view_bucket('a', 1, 1)), array('a'), 'x', '$'));
 	pg_assert_same(null, pg_report_view_chart('line', array(), array(), 'x', '$'));
 }
+
+// Year, month and day draw the days, named by all three; the order kept.
+function test_report_view_time_groups_take_the_finest_date_level()
+{
+	$day = function ($name, $total) {
+		return pg_test_report_view_bucket($name, 1, $total);
+	};
+	$results = array(
+		0 => array_merge(pg_test_report_view_bucket('2026', 3, 600), array('results' => array(
+			0 => array_merge(pg_test_report_view_bucket('10', 2, 500), array('results' => array(0 => $day('30', 200), 1 => $day('31', 300)))),
+			1 => array_merge(pg_test_report_view_bucket('11', 1, 100), array('results' => array(0 => $day('01', 100)))),
+		))),
+	);
+	$name = function ($raw, $level) {
+		return ($level === 'month') ? 'M' . $raw : $raw;
+	};
+
+	list($groups, $names, $level) = pg_report_view_time_groups($results, array('year', 'month', 'day'), $name);
+
+	pg_assert_same(array('2026 M10 30', '2026 M10 31', '2026 M11 01'), $names);
+	pg_assert_same(array(200, 300, 100), array_column($groups, 'total'));
+	pg_assert_same('day', $level);
+
+	list($groups, $names, $level) = pg_report_view_time_groups($results, array('year', 'payment_method'), $name);
+
+	pg_assert_same(array('2026'), $names, 'a named level after the year stops the walk');
+	pg_assert_same('year', $level);
+
+	list($groups, $names, $level) = pg_report_view_time_groups($results, array('order_status'), $name);
+
+	pg_assert_same(array(), $groups);
+	pg_assert_same('', $level);
+}

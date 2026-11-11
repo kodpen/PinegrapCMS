@@ -64,6 +64,56 @@ function pg_report_view_chart_kind($level)
 }
 
 /**
+ * The groups a line is drawn over: the finest of the date levels the report
+ * starts with (year, then month, then day), in the query's order, each
+ * named by its levels joined ("2026 October 11"). A report by year alone
+ * draws its years; one by year, month and day draws its days, so a single
+ * year is not a line of one point. Pure.
+ *
+ * @param array    $results the report's first level, each group holding
+ *                          its next level in 'results'
+ * @param array    $levels  the summarize-by values in order
+ * @param callable $name    (raw name, level) => the name the table prints
+ * @return array array(groups, names, the date level drawn), keys 0..n-1;
+ *               the level is '' when the report starts with no date level
+ */
+function pg_report_view_time_groups($results, $levels, $name)
+{
+    $depth = 0;
+
+    $levels = array_values((array) $levels);
+
+    foreach ($levels as $level) {
+        if (!in_array((string) $level, array('year', 'month', 'day'), true)) {
+            break;
+        }
+
+        $depth++;
+    }
+
+    $groups = array();
+    $names = array();
+    $walk = function ($level_groups, $index, $prefix) use (&$walk, &$groups, &$names, $levels, $depth, $name) {
+        foreach ((array) $level_groups as $group) {
+            $text = trim($prefix . ' ' . call_user_func($name, $group['name'] ?? '', $levels[$index]));
+
+            if (($index + 1 < $depth) && !empty($group['results'])) {
+                $walk($group['results'], $index + 1, $text);
+            } else {
+                $groups[] = $group;
+                $names[] = $text;
+            }
+        }
+    };
+
+    if ($depth > 0) {
+        $walk($results, 0, '');
+    }
+
+    return array($groups, $names, ($depth > 0) ? (string) $levels[$depth - 1] : '');
+}
+
+/**
  * Money in minor units as plain text, the base currency's symbol decoded
  * for textContent. Pure.
  *
