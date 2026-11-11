@@ -66,7 +66,7 @@ $process_list = function ($class = 'list-unstyled mb-0') use ($el, $heading, $pa
             $el('div', '', lang('Text'), array(
                 $el('div', 'd-flex flex-wrap align-items-baseline gap-2 mb-1', lang('Step Title'), array(
                     $heading('h3', ($n + 1) . '. ' . $p['title'], 'h6 fw-bold mb-0'),
-                    $span($p['time'], 'badge rounded-pill text-bg-light border', lang('Time')),
+                    $span($p['time'], 'badge rounded-pill bg-body text-body-emphasis border', lang('Time')),
                 )),
                 $para($p['text'], 'text-body-secondary mb-0'),
             )),
@@ -85,7 +85,7 @@ $phone_shot = function ($seed, $alt, $class = '') use ($el, $image, $attr, $phot
 
 // The tools the apps are made with, as badges (the services and about pages).
 $tool_list = array();
-foreach ($tools as $t) $tool_list[] = $span($t, 'badge rounded-pill text-bg-light border fw-normal pma-mono', lang('Tool'));
+foreach ($tools as $t) $tool_list[] = $span($t, 'badge rounded-pill bg-body text-body-emphasis border fw-normal pma-mono', lang('Tool'));
 
 $package_cards = array();
 foreach (array_keys($packages) as $key) $package_cards[] = $package_card($key);
@@ -148,7 +148,7 @@ $home_hero = $el('section', 'pt-5 bg-body text-body text-center overflow-hidden 
             $para($developer['bio'], 'lead text-body-secondary mx-auto mb-4 col-lg-8'),
             $el('div', 'd-flex flex-wrap justify-content-center gap-3 mb-3', lang('Buttons'), array(
                 $link(lang('See My Apps'), '{{page:apps}}', 'btn btn-primary btn-lg rounded-pill px-4'),
-                $link(lang('Start a Project'), '{{page:hire}}', 'btn btn-outline-primary btn-lg rounded-pill px-4'),
+                $link(lang('Start a Project'), '{{page:hire}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
             )),
             $el('p', 'd-flex justify-content-center align-items-center gap-2 small text-body-secondary mb-0', lang('Availability'), array(
                 $icon('bi-circle-fill', 'text-success small'),
@@ -225,7 +225,7 @@ $kind_links = array($span(lang('Browse by kind'), 'small text-body-secondary me-
 foreach ($categories as $c) {
     $kind_links[] = $link($c['title'], '{{page:apps}}?' . $query(array('category' => $c['title'])), 'btn btn-sm btn-outline-secondary rounded-pill');
 }
-$home_switch = $el('section', 'py-5 bg-body-tertiary text-center pg-appstudio-switch', lang('App Switch'), array(
+$home_switch = $el('section', 'py-5 text-center pg-appstudio-switch', lang('App Switch'), array(
     $container(array(
         $fx($as_header(lang('Pick an app'), lang('One idea per app.'), lang('Each app does one thing and does it well. Choose one to see it on the phone.')),
             array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 700)),
@@ -257,11 +257,11 @@ $home_release = $el('section', 'py-5 bg-body text-body overflow-hidden', lang('R
                 $fx($el('ul', 'list-unstyled mb-4', lang('Changes'), array(
                     $change(lang('New'), 'text-bg-primary', lang('Interval runs with a voice that counts you through each one.')),
                     $change(lang('Improved'), 'bg-primary-subtle text-primary-emphasis', lang('A calmer summary after every run, with only what matters.')),
-                    $change(lang('Fixed'), 'bg-body-secondary text-body-emphasis border', lang('Runs from the watch come in again after a system update.')),
+                    $change(lang('Bug fix'), 'bg-body-secondary text-body-emphasis border', lang('Runs from the watch come in again after a system update.')),
                 )), array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 600, 'stagger' => 120)),
                 $el('div', 'd-flex flex-wrap gap-3', lang('Buttons'), array(
                     $link(lang('All release notes'), '{{page:releases}}', 'btn btn-primary btn-lg rounded-pill px-4'),
-                    $link(lang('Join the Beta'), '{{page:beta}}', 'btn btn-outline-primary btn-lg rounded-pill px-4'),
+                    $link(lang('Join the Beta'), '{{page:beta}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
                 )),
             ), '', '6', '', '12', 'order-2 order-lg-1'),
             $col(array(

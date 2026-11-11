@@ -9,7 +9,7 @@ description: The App Studio block family (appstudio- prefix, own palette group):
 ## Which blocks does it hold?
 - `appstudio-hero` (h1): a dark band (`data-bs-theme="dark"`, `bg-body text-body`), eyebrow, a very large line, a lead, two buttons, fading in on load; under them `pg-appstudio-fan`, three `pg-appstudio-phone` frames (the middle `pg-appstudio-lead` larger) rising on load (stagger 150), cut by the band's edge over the `pg-appstudio-floor` wash.
 - `appstudio-switch`: a `fieldset` of three radio inputs (`btn-check pg-appstudio-pick-N`, one name, a visually hidden `legend`) drawn as pill buttons; the checked one shows its phone screen and its words (`pg-appstudio-shows-N`, stacked in a `pg-appstudio-stage` grid cell) by CSS `:has()`, no script. Header rises, phone stage scales on view.
-- `appstudio-release`: a dark chapter: eyebrow, the app and version very large (`pg-appstudio-figure`), the notes, `h3` What changed with three changes tagged New / Improved / Fixed rising (stagger 120); the phone beside it has parallax (speed 15).
+- `appstudio-release`: a dark chapter: eyebrow, the app and version very large (`pg-appstudio-figure`), the notes, `h3` What changed with three changes tagged New / Improved / Bug fix ("Fixed" reads Sabit, stationary, in Turkish) rising (stagger 120); the phone beside it has parallax (speed 15).
 - `appstudio-platforms`: header, then two `bg-body-tertiary` cards (Apple, Android) with their tools as badges and a phone peeking out of the card's bottom (`pg-appstudio-peek`); the row rises on view (stagger 150).
 
 ## Why not the Product Launch blocks?

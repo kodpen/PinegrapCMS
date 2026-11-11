@@ -74,7 +74,7 @@ function test_designer_blocks_appstudio_blocks_draw_sound_trees()
 	pg_assert_same(3, count(array_keys($switch['classes'], 'btn-check', true)), 'the choices are radio buttons drawn as buttons');
 
 	$release = $got['blocks']['appstudio-release'];
-	foreach (array('New', 'Improved', 'Fixed', 'What changed', 'Update now') as $text) {
+	foreach (array('New', 'Improved', 'Bug fix', 'What changed', 'Update now') as $text) {
 		pg_assert_true(in_array($text, $release['texts'], true), 'the release says ' . $text);
 	}
 

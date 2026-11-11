@@ -190,7 +190,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
                                 fx(kit.tag('ul', 'list-unstyled mb-4', _sdT('Changes'), [
                                     _arChange(1, _sdT('New'), 'text-bg-primary', _sdT('Interval runs with a voice that counts you through each one.')),
                                     _arChange(2, _sdT('Improved'), 'bg-primary-subtle text-primary-emphasis', _sdT('A calmer summary after every run, with only what matters.')),
-                                    _arChange(3, _sdT('Fixed'), 'bg-body-secondary text-body-emphasis border', _sdT('Runs from the watch come in again after a system update.'))
+                                    _arChange(3, _sdT('Bug fix'), 'bg-body-secondary text-body-emphasis border', _sdT('Runs from the watch come in again after a system update.'))
                                 ]), { effect: 'slide-up', trigger: 'view', duration: 600, stagger: 120 }),
                                 kit.div('d-flex flex-wrap gap-3', _sdT('Release Buttons'), [
                                     kit.btn(_sdT('Update now'), 'primary', 'lg'),
