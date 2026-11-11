@@ -153,18 +153,18 @@ function pg_legacy_style_css_after_theme($style_code)
 }
 
 /**
- * Whether a visual design came from a classic style: a custom design
- * (style_framework 'custom') whose frame component, made when the style was
- * opened in the visual designer or moved in bulk, still exists.
+ * Whether a visual design came from a classic style: its framework key
+ * carries the legacy flag. Saving a style opened in the visual designer and
+ * the bulk move write that key; the 2026.11.0 step gave it to the styles
+ * moved before it. A copy of such a design keeps the key, and its pages
+ * keep the same frame, so it loads the same theme.
  *
  * @param int    $style_id
  * @param string $framework  the design's pg_design_frameworks() key
  */
 function pg_legacy_design_from_classic($style_id, $framework)
 {
-    if ((int)$style_id <= 0 || (string)$framework !== 'custom') return false;
-    return (bool)db_value("SELECT id FROM shared_components
-        WHERE category = '" . e(pg_classic_style_component_category($style_id)) . "' LIMIT 1");
+    return (int)$style_id > 0 && pg_design_framework_has($framework, 'legacy');
 }
 
 /**

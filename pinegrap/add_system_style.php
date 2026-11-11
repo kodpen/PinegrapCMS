@@ -60,6 +60,9 @@ if ($start === 'template') {
 }
 $framework = $template ? $template['framework']
                        : pg_design_framework_key(isset($_GET['framework']) ? $_GET['framework'] : '');
+// The legacy key is given only by moving a classic style into the editor,
+// never chosen for a blank design.
+if (!$template && pg_design_framework_has($framework, 'legacy')) $framework = 'bootstrap5';
 
 // The look and the palette chosen with the template (the template dialog
 // sends them; ?look= may be empty for plain Bootstrap). A template opened

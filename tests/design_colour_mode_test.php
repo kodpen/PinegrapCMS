@@ -123,6 +123,9 @@ function test_colour_mode_migration_step()
 	pg_assert_contains('upgrade_2026_11_0_design_color_mode();       // 11.0.186', $m, 'the step is in the call list');
 	pg_assert_contains("install_add_column('style', 'style_color_mode', \"VARCHAR(8) NOT NULL DEFAULT ''\");", $m, 'one short column, empty by default');
 	$body = substr($m, strpos($m, 'function upgrade_2026_11_0_design_color_mode()'));
+	// Only this step's own body: later steps follow it in the file.
+	$next = strpos($body, "\nfunction ", 1);
+	if ($next !== false) $body = substr($body, 0, $next);
 	pg_assert_false((bool) preg_match('~UPDATE\s+style~i', $body), 'no backfill');
 }
 
