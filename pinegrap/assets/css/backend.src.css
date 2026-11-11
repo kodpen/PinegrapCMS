@@ -13480,7 +13480,10 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 .ws-pane-decisions > .ws-msg {
   margin: 0;
   padding: .7rem .9rem;
-  border: 1px solid var(--pg-border-color);
+  /* The start edge is left to the kind of message (decision, note, status
+     update), which draws it in its colour. */
+  border-block: 1px solid var(--pg-border-color);
+  border-inline-end: 1px solid var(--pg-border-color);
   border-radius: .875rem;
   background: var(--pg-card-bg);
 }

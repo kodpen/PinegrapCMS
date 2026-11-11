@@ -171,7 +171,9 @@ function test_workspace_channel_panes_decisions_are_a_card_grid()
 	pg_assert_contains('.ws-pane-decisions > :is(.ws-empty, .ws-skeleton) {', $css, 'the empty state and the skeleton span the grid');
 
 	$card = workspace_channel_look_block($css, '.ws-pane-decisions > .ws-msg');
-	pg_assert_contains('border: 1px solid', $card, 'each decision is a card');
+	pg_assert_contains('border-block: 1px solid', $card, 'each decision is a card');
+	pg_assert_contains('border-inline-end: 1px solid', $card, 'framed on three sides');
+	pg_assert_false(strpos($card, 'border: ') !== false, 'the start edge stays the colour of its kind');
 	pg_assert_contains('border-inline-start: 3px solid var(--pg-success);', workspace_channel_look_block($css, '.ws-pane-decisions > .ws-msg-decision,' . "\n" . '.ws-pane-decisions > .ws-msg-note'), 'a decision keeps its green edge on the reading side');
 	pg_assert_contains(".ws-pane-decisions > .ws-msg-note {\n  border-inline-start-color: var(--pg-info);\n}", $css, 'a note its blue one');
 
