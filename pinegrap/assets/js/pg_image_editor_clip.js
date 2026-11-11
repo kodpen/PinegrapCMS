@@ -34,6 +34,8 @@
     // The stage's canvas of a clip is at most this long on its long edge:
     // the preview needs no more, a save draws the full-size frame.
     var PREVIEW_EDGE = 1280;
+    // A filmstrip's frame is kept at most this long on its long edge.
+    var THUMB_EDGE = 160;
 
     X.icons.video = 'M3.5 6.5h12v11h-12zM15.5 10.5l5-3v9l-5-3';
     X.icons.replace = 'M4 12a8 8 0 0 1 13.7-5.6L20 8.5M20 4.5v4h-4M20 12a8 8 0 0 1-13.7 5.6L4 15.5M4 19.5v-4h4';
@@ -166,9 +168,13 @@
         st.views.forEach(function (c) {
             c.getContext('2d').drawImage(st.buf, 0, 0, c.width, c.height);
         });
-        // The bars on the tracks show the frame too.
+        // A bar's frames not decoded yet show the stage's.
         st.strips = (st.strips || []).filter(function (c) { return c.isConnected; });
-        st.strips.forEach(function (c) { clipStrip(c, st.buf); });
+        st.strips.forEach(function (c) {
+            if (!c.pgieDone) {
+                clipStripPaint(c);
+            }
+        });
     };
 
     // A clip on the stage: a canvas in the layer's box (a foreignObject, so
@@ -554,26 +560,35 @@
         return name + ' · ' + clock(c.from) + ' → ' + clock(c.to);
     };
 
-    // One clip's bar: a strip of its frame, its label, grips at both ends
-    // when it is the one selected.
+    // One clip's bar: a filmstrip of its cut, its sound as a waveform under
+    // the frames, its label, grips at both ends when it is the one selected.
     Editor.prototype.clipBar = function (l, end, lane, bars) {
         var self = this, c = M.clipLayer(l), sp = M.clipSpan(l), on = (this.sel.length === 1) && (this.sel[0] === l.id), st = this.clipState(l);
-        var strip = el('canvas', { class: 'pgie-clipstrip', 'aria-hidden': 'true' }), label = this.clipLabel(l, c);
-        var bar = el('span', { class: 'pgie-trbar pgie-clipbar' + (on ? ' on' : '') + ((c.muted || !c.sound) ? ' pgie-clipquiet' : ''), style: 'left: ' + pct(sp.from, end) + '; width: ' + pct(sp.to - sp.from, end), title: label, role: 'img', 'aria-label': label }, [
-            strip, el('span', { class: 'pgie-clipname', text: label })
+        var strip = el('canvas', { class: 'pgie-clipstrip', 'aria-hidden': 'true' }), label = this.clipLabel(l, c), wave = this.clipWave(l);
+        var bar = el('span', { class: 'pgie-trbar pgie-clipbar' + (on ? ' on' : '') + ((c.muted || !c.sound) ? ' pgie-clipquiet' : '') + (wave ? ' pgie-clipsounded' : ''), style: 'left: ' + pct(sp.from, end) + '; width: ' + pct(sp.to - sp.from, end), title: label, role: 'img', 'aria-label': label }, [
+            strip, wave, el('span', { class: 'pgie-clipname', text: label })
         ]);
 
         strip.width = 240;
         strip.height = 30;
+        strip.pgieState = st;
         st.strips = (st.strips || []).filter(function (s) { return s.isConnected; });
         st.strips.push(strip);
 
         if (st.shown !== null) {
-            clipStrip(strip, st.buf);
+            clipStripPaint(strip);
         } else if (this.time === null) {
-            // At rest nothing asked for a frame yet: the source in.
+            // At rest nothing asked for a frame yet: the source in, shown
+            // until the strip's own frames are decoded.
             this.clipDraw(l, c.from);
         }
+
+        // Sized once the bar is laid out.
+        window.requestAnimationFrame(function () {
+            if (strip.isConnected && !self.finished) {
+                self.clipStripFill(l, strip);
+            }
+        });
 
         bar.addEventListener('pointerdown', function (e) { self.clipDown(e, l, 'move', bar, lane, bars); });
 
@@ -592,16 +607,146 @@
         return bar;
     };
 
-    // The frame side by side along a bar's strip.
-    function clipStrip(strip, buf) {
-        var g = strip.getContext('2d'), w = Math.max(1, Math.round(buf.width * strip.height / Math.max(1, buf.height))), x;
+    // ---- the filmstrip and the waveform ----
 
-        g.clearRect(0, 0, strip.width, strip.height);
+    // The bars' frames of a source: a second source on the same bytes, so
+    // their seeks never overtake the stage's (a source answers only its
+    // newest request), asked one at a time in time order.
+    Editor.prototype.clipThumbs = function (src) {
+        var th = this.clipThumbSets[src];
 
-        for (x = 0; x < strip.width; x += w) {
-            g.drawImage(buf, x, 0, w, strip.height);
+        if (!th) {
+            th = this.clipThumbSets[src] = { frames: {}, want: [], busy: false, strips: [], source: null };
+            th.source = this.clipSource(src).then(function (s) { return X.video.open(s.bytes); });
+            th.source.then(null, function () {});
         }
+
+        return th;
+    };
+
+    // A bar's filmstrip: as many frames as fit its width side by side, each
+    // the source at the middle of its part of the cut (M.clipStripTimes()).
+    Editor.prototype.clipStripFill = function (l, strip) {
+        var th = this.clipThumbs(l.src), k = Math.min(2, window.devicePixelRatio || 1), w = strip.clientWidth, h = strip.clientHeight, ratio;
+
+        if (!w || !h) {
+            return;
+        }
+
+        strip.width = Math.round(w * k);
+        strip.height = Math.round(h * k);
+        ratio = (Number(l.width) || 16) / Math.max(1, Number(l.height) || 9);
+        strip.pgieThumbs = th;
+        strip.pgieTimes = M.clipStripTimes(l, Math.ceil(strip.width / Math.max(1, strip.height * ratio)));
+        strip.pgieTimes.forEach(function (ms) {
+            if (!(ms in th.frames) && (th.want.indexOf(ms) < 0)) {
+                th.want.push(ms);
+            }
+        });
+        th.want.sort(function (a, b) { return a - b; });
+        th.strips = th.strips.filter(function (s) { return s.isConnected; });
+        th.strips.push(strip);
+        clipStripPaint(strip);
+        this.clipThumbNext(th);
+    };
+
+    Editor.prototype.clipThumbNext = function (th) {
+        var self = this, ms;
+
+        if (th.busy || !th.want.length || this.finished) {
+            return;
+        }
+
+        ms = th.want.shift();
+        th.busy = true;
+        th.source.then(function (source) {
+            return source.frameAt(ms);
+        }).then(function (frame) {
+            var c = null, k;
+
+            if (frame) {
+                k = Math.min(1, THUMB_EDGE / Math.max(1, frame.displayWidth, frame.displayHeight));
+                c = document.createElement('canvas');
+                c.width = Math.max(1, Math.round(frame.displayWidth * k));
+                c.height = Math.max(1, Math.round(frame.displayHeight * k));
+                c.getContext('2d').drawImage(frame, 0, 0, c.width, c.height);
+                frame.close();
+            }
+
+            // null: not asked for again.
+            th.frames[ms] = c;
+            th.strips = th.strips.filter(function (s) { return s.isConnected; });
+            th.strips.forEach(function (s) {
+                if (s.pgieTimes.indexOf(ms) >= 0) {
+                    clipStripPaint(s);
+                }
+            });
+        }).then(null, function () {
+            // A source that cannot be opened twice keeps the stage's frame.
+            th.want = [];
+        }).then(function () {
+            th.busy = false;
+            self.clipThumbNext(th);
+        });
+    };
+
+    // The strip's frames side by side, each cropped to its part; a frame
+    // not decoded yet shows the stage's last one.
+    function clipStripPaint(strip) {
+        var th = strip.pgieThumbs, st = strip.pgieState, times = strip.pgieTimes || [], g = strip.getContext('2d'), tw, done = true;
+
+        if (!times.length) {
+            if (st && (st.shown !== null)) {
+                clipCover(g, st.buf, 0, 0, strip.width, strip.height);
+            }
+
+            return;
+        }
+
+        tw = strip.width / times.length;
+        g.clearRect(0, 0, strip.width, strip.height);
+        times.forEach(function (ms, i) {
+            var f = th.frames[ms] || null;
+
+            if (!f) {
+                done = false;
+                f = (st && (st.shown !== null)) ? st.buf : null;
+            }
+
+            if (f) {
+                clipCover(g, f, Math.round(i * tw), 0, Math.round((i + 1) * tw) - Math.round(i * tw), strip.height);
+            }
+        });
+        strip.pgieDone = done;
     }
+
+    function clipCover(g, img, x, y, w, h) {
+        var s = Math.max(w / Math.max(1, img.width), h / Math.max(1, img.height)), sw = w / s, sh = h / s;
+
+        g.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, x, y, w, h);
+    }
+
+    // The clip's sound under its frames, as a sound row draws it (the sound
+    // part's soundWave() over the cut); faded while it does not play. The
+    // sound part decodes the file once and draws the rows again then.
+    // null for a clip without a sound track.
+    Editor.prototype.clipWave = function (l) {
+        var snd, box;
+
+        if (!M.clipLayer(l).sound || !this.soundWave || !this.soundBufs) {
+            return null;
+        }
+
+        if (!this.soundBufs[l.src]) {
+            this.soundLoad(l.src);
+        }
+
+        snd = M.clipSound(l, 0);
+        box = this.soundWave(snd);
+        box.setAttribute('class', 'pgie-sndwave pgie-clipwave' + (snd.muted ? ' pgie-clipwave-off' : ''));
+
+        return box;
+    };
 
     // The times a dragged clip snaps to: the other layers' bars, the other
     // clips' ends, the playhead.
@@ -821,7 +966,9 @@
         }
 
         this.clipKeyNow = JSON.stringify(this.clipLayers().map(function (l) {
-            return [l.id, l.from, l.to, l.start, l.speed, l.row || '', l.name, l.muted ? 1 : 0, self.sel.indexOf(l.id) >= 0 ? 1 : 0];
+            var snd = self.soundBufs && self.soundBufs[l.src];
+
+            return [l.id, l.from, l.to, l.start, l.speed, l.row || '', l.name, l.muted ? 1 : 0, self.sel.indexOf(l.id) >= 0 ? 1 : 0, snd ? snd.state : ''];
         }));
 
         return this.clipKeyNow;
@@ -1009,11 +1156,15 @@
     var finish = Editor.prototype.finish;
 
     Editor.prototype.finish = function () {
-        var sources = this.clipSources;
+        var sources = this.clipSources, thumbs = this.clipThumbSets;
 
         this.clipSources = {};
+        this.clipThumbSets = {};
         Object.keys(sources).forEach(function (src) {
             sources[src].then(function (s) { s.close(); }, function () {});
+        });
+        Object.keys(thumbs).forEach(function (src) {
+            thumbs[src].source.then(function (s) { s.close(); }, function () {});
         });
 
         return finish.apply(this, arguments);
@@ -1024,6 +1175,7 @@
         this.clipFailed = {};
         this.clipStates = {};
         this.clipRests = {};
+        this.clipThumbSets = {};
         this.clipTab = 'clip';
         this.clipDragging = false;
         this.clipKeyNow = '';

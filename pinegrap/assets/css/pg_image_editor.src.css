@@ -3984,7 +3984,7 @@ button.pgie-sndfile:hover {
    a dragged end snaps; the pill over the stage naming a dragged end's
    source time. */
 .pgie-trrow.pgie-cliprow {
-  height: 46px;
+  height: 52px;
 }
 
 .pgie-trbar.pgie-clipbar {
@@ -4016,6 +4016,32 @@ button.pgie-sndfile:hover {
 
 .pgie-clipquiet .pgie-clipstrip {
   opacity: 0.8;
+}
+
+/* A clip with a sound track: its frames over a thin band with the
+   waveform of its cut, faded while the sound does not play. */
+.pgie-clipsounded .pgie-clipstrip {
+  height: calc(100% - 12px);
+  border-radius: 3px 3px 0 0;
+}
+
+.pgie-sndwave.pgie-clipwave {
+  inset: auto 0 0;
+  height: 12px;
+  background: color-mix(in srgb, var(--pgie-primary) 55%, #0b1a33);
+  color: #fff;
+}
+
+.pgie-clipwave .pgie-sndpeaks {
+  opacity: 0.75;
+}
+
+.pgie-clipwave .pgie-sndenv {
+  display: none;
+}
+
+.pgie-clipwave.pgie-clipwave-off .pgie-sndpeaks {
+  opacity: 0.3;
 }
 
 .pgie-clipname {

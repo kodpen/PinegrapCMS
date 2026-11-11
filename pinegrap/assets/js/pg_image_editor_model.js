@@ -9301,6 +9301,8 @@
     var CLIP_SPEEDS = [0.25, 0.5, 1, 1.5, 2, 4];
     var CLIP_TYPES = ['mp4', 'm4v', 'webm'];
     var CLIP_MIN = 100;
+    // The most frames a clip bar's filmstrip asks for.
+    var CLIP_STRIP_MAX = 24;
 
     // The layer's timing as the editor uses it: numbers in range, the
     // speed one of CLIP_SPEEDS (the nearest), at least 0.1 s of source.
@@ -9622,12 +9624,57 @@
         return { left: left, right: right };
     }
 
-    // The document's length that follows its clips: the last clip's end, a
-    // tenth of a second up, inside MOTION_MIN-MOTION_MAX; null with none.
-    function clipLength(doc) {
-        var has = ((doc && Array.isArray(doc.layers)) ? doc.layers : []).some(function (l) { return l && (l.type === 'video'); });
+    // The shortest document that keeps a layer's motion whole: its
+    // entrance, the loop's delay and a tenth for it to run, then its exit
+    // with its delay, in a row (the exit runs back from the end,
+    // motionSpans()); 0 for a layer with none.
+    function clipMotionNeed(l) {
+        var a = (l && l.anim) || {}, need = 0;
 
-        return has ? clamp(Math.ceil(clipEnd(doc) / 100) * 100, MOTION_MIN, MOTION_MAX) : null;
+        if (a['in'] && a['in'].kind) {
+            need += motionDelay(a['in']) + motionMs(a['in'], 800);
+        }
+
+        if (a.loop && a.loop.kind) {
+            need += motionDelay(a.loop) + TRACK_MIN;
+        }
+
+        if (a.out && a.out.kind) {
+            need += motionDelay(a.out) + motionMs(a.out, 800);
+        }
+
+        return need;
+    }
+
+    // The document's length that follows its clips: the last clip's end,
+    // never before the motion of a shown layer that is not a clip (an end
+    // card after the video), a tenth of a second up, inside
+    // MOTION_MIN-MOTION_MAX; null with no clip.
+    function clipLength(doc) {
+        var layers = (doc && Array.isArray(doc.layers)) ? doc.layers : [], end;
+
+        if (!layers.some(function (l) { return l && (l.type === 'video'); })) {
+            return null;
+        }
+
+        end = layers.reduce(function (n, l) {
+            return (l && (l.type !== 'video') && !l.hidden) ? Math.max(n, clipMotionNeed(l)) : n;
+        }, clipEnd(doc));
+
+        return clamp(Math.ceil(end / 100) * 100, MOTION_MIN, MOTION_MAX);
+    }
+
+    // The source times of a clip bar's n frames: the middles of n equal
+    // parts of its cut, on a 0.1 s grid so a redraw finds them decoded; at
+    // least one, at most CLIP_STRIP_MAX.
+    function clipStripTimes(l, n) {
+        var c = clipLayer(l), k = clamp(Math.round(Number(n) || 0), 1, CLIP_STRIP_MAX), out = [], i;
+
+        for (i = 0; i < k; i++) {
+            out.push(Math.floor((c.from + (c.to - c.from) * (i + 0.5) / k) / 100) * 100);
+        }
+
+        return out;
     }
 
     // The patches ([{ id, patch }]) put on doc's clips in place (inside an
@@ -9689,7 +9736,7 @@
         CLIP_SPEEDS: CLIP_SPEEDS, CLIP_TYPES: CLIP_TYPES, CLIP_MIN: CLIP_MIN, clipLayer: clipLayer, clipSpan: clipSpan, clipAt: clipAt,
         clipFit: clipFit, clipNew: clipNew, clipReplace: clipReplace, clipEnd: clipEnd, clipSound: clipSound, clipDetach: clipDetach, clipType: clipType,
         clipRowKey: clipRowKey, clipRow: clipRow, clipRipple: clipRipple, clipTrim: clipTrim, clipMove: clipMove, clipSplit: clipSplit, clipLength: clipLength,
-        clipApply: clipApply, clipPart: clipPart, clipJoins: clipJoins
+        clipApply: clipApply, clipPart: clipPart, clipJoins: clipJoins, clipMotionNeed: clipMotionNeed, CLIP_STRIP_MAX: CLIP_STRIP_MAX, clipStripTimes: clipStripTimes
     };
 
     // ---- MIX (pg_image_editor_mix.js) ----
