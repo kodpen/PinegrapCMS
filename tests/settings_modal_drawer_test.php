@@ -89,7 +89,50 @@ function test_settings_modal_drawer_trigger_is_taken_from_bootstrap()
 	// the top layer and hides the dialog the trigger sits in.
 	pg_assert_same(false, strpos($html, 'data-bs-toggle="drawer"'), 'no drawer toggle Bootstrap answers to');
 	pg_assert_contains('<button type="button" data-pgdrawer="open" data-bs-target="#cron_jobs">', $html, 'the dialog\'s own name');
-	pg_assert_contains('data-pgdialog="modal"', $html, 'a card dialog still renamed');
+	pg_assert_same(false, strpos($html, 'data-pgdialog'), 'no second-dialog path left');
+}
+
+// What a card hands over to $pg_settings_modals[]: a drawer, or a hidden
+// Connect form a button submits by its form attribute. Never a dialog.
+function test_settings_modal_drawer_cards_hand_over_no_second_dialog()
+{
+	$dir = PG_FUNCTIONS_DIR . '/includes/settings';
+	$entries = 0;
+
+	foreach (glob($dir . '/*.php') as $path) {
+		$name = basename($path);
+
+		if (in_array($name, array('modal.php', 'drawer.php', 'fragment.php', 'screen.php'), true)) {
+			continue;
+		}
+
+		$src = (string) file_get_contents($path);
+
+		pg_assert_same(false, stripos($src, 'data-bs-toggle="dialog"'), $name . ': no card opens a dialog');
+		pg_assert_same(0, preg_match('/<dialog[\s>]/i', $src), $name . ': no card prints a dialog');
+
+		if (!preg_match_all('/\$pg_settings_modals\[\]\s*=\s*(.{0,200})/s', $src, $m)) {
+			continue;
+		}
+
+		foreach ($m[1] as $entry) {
+			$entries++;
+			$drawer = (strpos($entry, 'pg_settings_drawer(') === 0);
+			$form = (bool) preg_match('/^\'\s*<form method="post" action="connect\.php" id="pgset_[a-z_]+(\' \. \$[a-z_]+ \. \')?" class="disable_shortcut d-none">/', $entry);
+			pg_assert_true($drawer || $form, $name . ': a drawer or a hidden Connect form, got ' . substr($entry, 0, 60));
+		}
+	}
+
+	pg_assert_same(4, $entries, 'Cron Jobs and the three Connect forms');
+}
+
+function test_settings_modal_drawer_second_dialog_path_is_gone()
+{
+	$js = settings_modal_drawer_test_source('assets/js/backend.src.js');
+
+	pg_assert_same(false, strpos($js, 'data-pgdialog'), 'no click handler for a card dialog');
+	pg_assert_same(false, strpos(settings_modal_drawer_test_function('clearExtras'), 'pgUI.dialog.dispose'), 'no card dialog to dispose');
+	pg_assert_same(false, strpos(settings_modal_drawer_test_source('includes/settings/fragment.php'), 'data-pgdialog'), 'no dialog trigger renamed');
 }
 
 function test_settings_modal_drawer_cron_jobs_is_its_first_user()
