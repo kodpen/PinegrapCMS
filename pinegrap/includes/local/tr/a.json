@@ -6993,6 +6993,7 @@
     "At most {var:1} conditions.": "En fazla {var:1} koşul.",
     "At most {var:1} customers can be asked to approve.": "En çok {var:1} müşteriden onay istenebilir.",
     "At most {var:1} files can be attached.": "En fazla {var:1} dosya eklenebilir.",
+    "At most {var:1} files, {var:2} MB together.": "En fazla {var:1} dosya, toplam {var:2} MB.",
     "At most {var:1} messages can be chosen together.": "En fazla {var:1} mesaj birlikte seçilebilir.",
     "At most {var:1} operations at once.": "Bir seferde en fazla {var:1} işlem.",
     "At most {var:1} people can be asked to approve.": "En fazla {var:1} kişiden onay istenebilir.",

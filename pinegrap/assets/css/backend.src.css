@@ -15655,6 +15655,23 @@ a.ws-chip:hover {
   margin-top: .5rem;
   overflow-wrap: anywhere;
 }
+/* New e-mail (workspace_mail.js newForm()): the Signature as the mail
+   carries it, its lines kept; the chosen files under the picker. */
+.ws-mail-new-signature {
+  margin-top: .5rem;
+}
+.ws-mail-new-signature-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding-inline-start: .75rem;
+  border-inline-start: 2px solid var(--pg-border-color);
+}
+.ws-mail-new-cc-toggle {
+  margin: -.75rem 0 1rem;
+}
+.ws-mail-new-files .text-truncate {
+  min-width: 0;
+}
 @media (max-width: 767.98px) {
   .ws-mail-reading .ws-mail-columns {
     grid-template-columns: minmax(0, 1fr);
