@@ -234,8 +234,12 @@ function test_picker_items_and_states()
 	$kinds = pg_picker_kinds();
 
 	pg_assert_same(
-		array('id' => 7, 'value' => 7, 'text' => 'a.pdf', 'type' => 'pdf', 'folder' => 3),
+		array('id' => 7, 'value' => 7, 'text' => 'a.pdf', 'type' => 'pdf', 'folder' => 3, 'size' => 0, 'width' => 0, 'height' => 0, 'modified' => 0),
 		pg_picker_item($kinds['file'], array('id' => '7', 'name' => 'a.pdf', 'type' => 'pdf', 'folder' => '3')));
+	pg_assert_same(
+		array('size' => 2048, 'width' => 1200, 'height' => 900, 'modified' => 1762700000),
+		array_intersect_key(pg_picker_item($kinds['image'], array('id' => '8', 'name' => 'mug.jpg', 'type' => 'jpg', 'folder' => '3', 'size' => '2048', 'image_width' => '1200', 'image_height' => '900', 'timestamp' => '1762700000')), array_flip(array('size', 'width', 'height', 'modified'))),
+		'a file item carries what the dialog shows beside the name');
 	pg_assert_same('logo.png', pg_picker_item($kinds['image'], array('id' => '7', 'name' => 'logo.png', 'type' => 'png', 'folder' => '3'))['value'], 'a name kind stores the name');
 	pg_assert_same(
 		array('id' => 12, 'value' => 12, 'text' => 'Home', 'type' => 'standard', 'folder' => 1),
@@ -267,4 +271,75 @@ function test_picker_endpoint_wired()
 	pg_assert_contains("e(pg_picker_like_term(\$query))", $module, 'the typed text is escaped');
 	pg_assert_contains("array_map('e', \$request['values'])", $module, 'resolved names are escaped');
 	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/fn/picker.php');", picker_test_source('includes/fn/file_picker_search.php'));
+}
+
+// The breadcrumb and a search result's folder line, from the top down.
+function test_picker_folder_path()
+{
+	$map = array(
+		1 => array('folder_name' => 'Files', 'folder_parent' => 0),
+		4 => array('folder_name' => 'Pictures', 'folder_parent' => 1),
+		9 => array('folder_name' => 'Products', 'folder_parent' => 4),
+		20 => array('folder_name' => 'Loop A', 'folder_parent' => 21),
+		21 => array('folder_name' => 'Loop B', 'folder_parent' => 20),
+	);
+
+	pg_assert_same(array(array('id' => 1, 'name' => 'Files'), array('id' => 4, 'name' => 'Pictures'), array('id' => 9, 'name' => 'Products')), pg_picker_folder_path(9, $map));
+	pg_assert_same(array(array('id' => 1, 'name' => 'Files')), pg_picker_folder_path('1', $map));
+	pg_assert_same(array(), pg_picker_folder_path(0, $map), 'the top has no crumb');
+	pg_assert_same(array(), pg_picker_folder_path(77, $map), 'a folder the map lacks');
+	pg_assert_same(2, count(pg_picker_folder_path(20, $map)), 'a parent loop ends');
+}
+
+function test_picker_has_picture()
+{
+	$kinds = pg_picker_kinds();
+
+	pg_assert_true(pg_picker_has_picture($kinds['site_icon'], 'icon.PNG'));
+	pg_assert_true(pg_picker_has_picture($kinds['image'], 'logo.svg'));
+	pg_assert_true(!pg_picker_has_picture($kinds['image'], 'notes.pdf'), 'only pictures are drawn');
+	pg_assert_true(!pg_picker_has_picture($kinds['file'], 'photo.jpg'), 'a kind without pictures draws icons');
+	pg_assert_true(!pg_picker_has_picture($kinds['image'], 'noextension'));
+}
+
+// Every word the dialog asks for is in the texts it gets, translated by
+// lang(); the script and its settings are printed once.
+function test_picker_dialog_texts_and_script()
+{
+	$script = picker_test_source('assets/js/pg_picker.js');
+	$texts = pg_picker_texts();
+
+	preg_match_all("/\\bt\\('([^']*)'/u", $script, $found);
+
+	foreach (array_unique($found[1]) as $text) {
+		pg_assert_true(array_key_exists($text, $texts), 'pg_picker_texts() holds ' . $text);
+	}
+
+	pg_assert_true(count($found[1]) > 30, 'the script reads its words through t()');
+
+	$module = picker_test_source('includes/fn/picker.php');
+	pg_assert_contains("'assets/js/pg_picker.min.js'              => array('assets/js/pg_picker.js')", picker_test_source('includes/fn/output.php'));
+	pg_assert_contains('id="pg_picker_config"', $module);
+	pg_assert_contains('JSON_HEX_TAG', $module, 'the settings cannot close their script tag');
+	pg_assert_contains("pg_picker_browse_button('site_icon', 'site_icon'", picker_test_source('includes/settings/prep.php'));
+	pg_assert_contains('pgUI.dialog.hide(self.root)', $script);
+	pg_assert_contains("root.pgUI.on(picker.root, 'dialog', 'hidden'", $script, 'the pick is handed over once the dialog has closed');
+}
+
+// A branch's count holds the folders under it.
+function test_picker_subtree_counts()
+{
+	$map = array(
+		1 => array('folder_parent' => 0),
+		4 => array('folder_parent' => 1),
+		9 => array('folder_parent' => 4),
+		5 => array('folder_parent' => 1),
+		20 => array('folder_parent' => 21),
+		21 => array('folder_parent' => 20),
+	);
+
+	pg_assert_same(array(9 => 3, 4 => 5, 1 => 6, 5 => 1), pg_picker_subtree_counts(array(9 => 3, 4 => 2, 5 => 1), $map));
+	pg_assert_same(array(), pg_picker_subtree_counts(array(), $map));
+	pg_assert_same(array(20 => 2, 21 => 2), pg_picker_subtree_counts(array(20 => 2), $map), 'a parent loop ends');
+	pg_assert_same(array(77 => 1), pg_picker_subtree_counts(array(77 => 1), $map), 'a folder the map lacks keeps its own count');
 }

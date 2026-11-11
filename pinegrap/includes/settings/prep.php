@@ -768,7 +768,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $output_site_icon_picker = '
                                         <div class="pg-f-md">
                                             <label for="site_icon" class="form-label">' . lang('Site Icon') . '</label>
-                                            <select name="site_icon" id="site_icon" class="form-control"' . pg_file_picker_attributes('site_icon') . '>' . $site_icon_options . '</select>
+                                            <div class="pg-picker-field">
+                                                <div class="pg-picker-field-input"><select name="site_icon" id="site_icon" class="form-control"' . pg_file_picker_attributes('site_icon') . '>' . $site_icon_options . '</select></div>
+                                                ' . pg_picker_browse_button('site_icon', 'site_icon', lang('Choose a site icon')) . pg_picker_script() . '
+                                            </div>
                                             <div class="form-text">' . lang('Shown in browser tabs, in search results and on home screens. Choose a square PNG of at least 512x512 (the smaller sizes are made from it) or an SVG. Leave it empty to keep the design\'s own icon.') . '</div>
                                         </div>';
     }

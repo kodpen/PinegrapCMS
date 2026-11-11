@@ -1031,6 +1031,7 @@
     "Folders cannot be copied. You can move them, or use Duplicate.": "Klasörler kopyalanamaz. Taşıyabilir veya Çoğalt seçeneğini kullanabilirsiniz.",
     "Folders could not be retrieved from the source site, so the migration was aborted.": "Klasörler kaynak siteden alınamadı, bu nedenle taşıma iptal edildi.",
     "Folders decide who sees what": "Kimin neyi göreceğine klasörler karar verir",
+    "Folders in {folder}": "{folder} içindeki klasörler",
     "Folders the User may view and edit": "Kullanıcının görüntüleyip düzenleyebileceği klasörler",
     "Folding stools to borrow": "Ödünç alınabilen katlanır tabureler",
     "Follow Depth is required.": "Tarama derinliği gereklidir.",

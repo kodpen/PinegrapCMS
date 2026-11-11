@@ -159,7 +159,7 @@ description: Generated from the module field of the memory files: each includes/
 - `parasut`: [[erp-parasut-legacy-buyer-number]], [[erp-parasut-legacy-press-claim]], [[erp-parasut-legacy-token-401]], [[erp-parasut-overview]]
 - `payments`: [[card-brand-switches]], [[gateway-masked-keys]], [[order-refunded-amount-writes]], [[payment-driver-paytr-installments]], [[payment-gateway-secrets]]
 - `pdf_merge`: [[shipment-label-bulk]]
-- `picker`: [[picker-registry]]
+- `picker`: [[picker-dialog]], [[picker-registry]]
 - `places`: [[place-packs]], [[tr-place-list]]
 - `preorder`: [[product-preorder]]
 - `price_history`: [[widget-currency-symbol-once]]
