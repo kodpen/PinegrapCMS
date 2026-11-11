@@ -460,6 +460,7 @@ function pg_design_theme_catalog()
     }
     return array(
         'ready'          => pg_design_look_ready(),
+        'colorModeReady' => pg_design_color_mode_ready(),
         'bridge'         => pg_design_theme_url('bridge.css'),
         'base'           => pg_design_theme_url('base.css'),
         'looks'          => $looks,
