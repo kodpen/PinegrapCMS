@@ -45,6 +45,7 @@ include_once('liveform.class.php');
 define('PG_SETTINGS_ENTRY', true);
 
 include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+include_once(PG_FUNCTIONS_DIR . '/includes/settings/drawer.php');
 
 $pg_settings_key      = (string) PG_SETTINGS_KEY;
 $pg_settings_category = pg_settings_category($pg_settings_key);
@@ -59,6 +60,9 @@ $pg_settings_cards       = array();
 $pg_settings_modals      = array();
 $pg_settings_scripts     = array();
 $pg_settings_head        = '';
+
+// No outer dialog on this page: a card's drawer is Bootstrap's (drawer.php).
+$pg_settings_in_dialog = false;
 
 // Where this screen posts to and returns to. Built from the key rather than
 // from the request, so nothing a visitor sends can steer it.

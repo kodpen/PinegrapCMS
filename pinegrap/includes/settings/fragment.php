@@ -48,6 +48,9 @@ function pg_settings_fragment($key, $user, $liveform)
     $pg_settings_scripts = array();
     $pg_settings_head    = '';
 
+    // A card's drawer is a panel of the dialog here (drawer.php).
+    $pg_settings_in_dialog = true;
+
     include(PG_FUNCTIONS_DIR . '/includes/settings/prep.php');
     include(PG_FUNCTIONS_DIR . '/includes/settings/' . $key . '.php');
 

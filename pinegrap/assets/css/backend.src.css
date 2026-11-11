@@ -10785,6 +10785,87 @@ body.pg-side-panel-open .pg-chat-launcher {
   .pg-sm-progress::after { animation: none; }
 }
 
+/* ── a card's drawer ───────────────────────────────────────────────────────
+   A panel of the dialog (includes/settings/drawer.php), not a second dialog:
+   it slides in from the dialog's right edge over the pane, which keeps its
+   values under it. The dialog is fixed in the top layer, so it is the box the
+   drawer is placed in, and its overflow clips the drawer while it is out.
+   Visibility is not timed on the way in, so the focus can land at once. */
+.pg-sm-drawer {
+  position: absolute;
+  z-index: 5;
+  inset-block: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(42rem, 100%);
+  min-height: 0;
+  border-left: var(--pg-border-width) solid var(--pg-border-color);
+  background: var(--pg-bg-body);
+  box-shadow: var(--pg-shadow-lg);
+  transform: translateX(100%);
+  transition: transform .2s ease-out, visibility 0s linear .2s;
+  visibility: hidden;
+}
+.pg-sm-drawer.is-open {
+  transform: none;
+  transition: transform .2s ease-out, visibility 0s linear 0s;
+  visibility: visible;
+}
+.pg-sm-drawer:focus { outline: 0; }
+.pg-sm-drawer-head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: 1rem 1.25rem .75rem;
+  border-bottom: var(--pg-border-width) solid var(--pg-border-color-translucent);
+}
+.pg-sm-drawer-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+/* Scrolls on its own; a long command wraps or scrolls inside its field. */
+.pg-sm-drawer-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 1.25rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+}
+/* Tapping beside the drawer closes it; the pane shows dimmed through. */
+.pg-sm-dscrim {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  background: color-mix(in srgb, #000 30%, transparent);
+  opacity: 0;
+  transition: opacity .2s linear;
+  pointer-events: none;
+}
+.pg-sm.is-drawer-open .pg-sm-dscrim {
+  opacity: 1;
+  pointer-events: auto;
+}
+@media (max-width: 575.98px) {
+  .pg-sm-drawer { width: 100%; }
+  .pg-sm-drawer-head { padding-inline: .875rem; }
+  .pg-sm-drawer-body { padding: 1rem .875rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-sm-drawer,
+  .pg-sm-dscrim { transition: none; }
+}
+/* The same content in Bootstrap's drawer on the page path
+   (settings_maintenance.php and the like, with no settings dialog around it). */
+.pg-set-drawer { --pg-drawer-width: min(42rem, 100vw); }
+
 /* ── Dashboard sales map (widget 1) ─────────────────────────────────────────
    The left panel of a two-track card: a period head and the outlines, with the
    period and map switches in a menu in the corner of them. The right panel is a

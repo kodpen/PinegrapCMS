@@ -10952,6 +10952,94 @@ var pgSettingsModal = (function () {
     }
 
 
+    /**
+     * A card's drawer.
+     *
+     * A card that needs more room than a card has (a list of examples, a
+     * long form) carries a panel of its own, which slides in from the
+     * dialog's right edge over the pane (includes/settings/drawer.php). It
+     * is moved into the dialog's own host when the pane arrives, so it is a
+     * part of this dialog and never a second layer above it.
+     *
+     * The pane under it is only covered: its values, its unsaved mark and
+     * its scroll stay as they were. While the drawer is open the list and
+     * the pane are inert, so Tab stays inside the drawer; Escape and Close
+     * shut it and hand the focus back to the button that opened it.
+     */
+    var opener = null;
+
+
+    function cardDrawer() {
+        return el ? el.querySelector('#pg_settings_modal_drawers > .pg-sm-drawer.is-open') : null;
+    }
+
+
+    function underCardDrawer(state) {
+
+        state = !!state;
+
+        el.classList.toggle('is-drawer-open', state);
+
+        [byId('pg_settings_modal_side'), byId('pg_settings_modal_scrim'), el.querySelector('.pg-sm-main')].forEach(function (node) {
+            if (node) {
+                node.toggleAttribute('inert', state);
+            }
+        });
+    }
+
+
+    function openCardDrawer(target, button) {
+
+        if (!target || !target.parentNode || (target.parentNode.id !== 'pg_settings_modal_drawers')) {
+            return;
+        }
+
+        var open = cardDrawer();
+
+        if (open && (open !== target)) {
+            open.classList.remove('is-open');
+        }
+
+        // The phone list and a card's drawer never stand open together.
+        drawer(false);
+
+        if (button) {
+            button.setAttribute('aria-expanded', 'true');
+        }
+
+        opener = button || null;
+
+        target.classList.add('is-open');
+        underCardDrawer(true);
+        target.focus({ preventScroll: true });
+    }
+
+
+    function closeCardDrawer(giveBack) {
+
+        var open = cardDrawer();
+
+        if (open) {
+            open.classList.remove('is-open');
+        }
+
+        underCardDrawer(false);
+
+        var back = opener;
+
+        opener = null;
+
+        if (back) {
+            back.setAttribute('aria-expanded', 'false');
+        }
+
+        // Not when the pane is being thrown away: the button goes with it.
+        if ((giveBack !== false) && back && document.contains(back)) {
+            back.focus({ preventScroll: true });
+        }
+    }
+
+
     function wire() {
 
         // The chat launcher is fixed at a higher z-index than any modal, so it
@@ -11080,22 +11168,63 @@ var pgSettingsModal = (function () {
             }
         });
 
-        // Escape closes the drawer before it closes the dialog. Bound to the
-        // document in the capture phase because Bootstrap's own Escape handler
-        // sits on the dialog element and was registered first.
+        // Escape closes a card's drawer, then the phone list, before it
+        // closes the dialog. Bound to the document in the capture phase
+        // because Bootstrap's own Escape handler sits on the dialog element
+        // and was registered first.
         document.addEventListener('keydown', function (event) {
 
-            if ((event.key !== 'Escape') || !pgUI.dialog.isOpen(el) || !drawerOpen()) {
+            if ((event.key !== 'Escape') || !pgUI.dialog.isOpen(el)) {
                 return;
             }
 
-            // A native <dialog> closes on Escape as the key's default
-            // action, which stopping the event alone does not cancel.
+            // An Escape meant for another dialog in front of this one (a
+            // confirmation, a card's own dialog) is that dialog's.
+            var layer = (event.target && event.target.closest) ? event.target.closest('dialog[open]') : null;
+
+            if (layer && (layer !== el)) {
+                return;
+            }
+
+            if (cardDrawer()) {
+
+                // A native <dialog> closes on Escape as the key's default
+                // action, which stopping the event alone does not cancel.
+                event.preventDefault();
+                event.stopPropagation();
+                closeCardDrawer();
+                return;
+            }
+
+            if (!drawerOpen()) {
+                return;
+            }
+
             event.preventDefault();
             event.stopPropagation();
             drawer(false);
 
         }, true);
+
+        // A card's drawer slides in over the pane; its trigger is renamed by
+        // the server for the reason given below for dialogs
+        // (pg_settings_own_dialog_triggers()).
+        $(el).on('click', '#pg_settings_modal_pane [data-pgdrawer="open"]', function (event) {
+
+            var target = byId((this.getAttribute('data-bs-target') || '').replace(/^#/, ''));
+
+            if (!target) {
+                return;
+            }
+
+            event.preventDefault();
+
+            openCardDrawer(target, this);
+        });
+
+        $(el).on('click', '[data-pgdrawer-close], #pg_settings_modal_dscrim', function () {
+            closeCardDrawer();
+        });
 
         $(el).on('click', '#pg_settings_modal_save', function () {
             save();
@@ -11871,7 +12000,17 @@ var pgSettingsModal = (function () {
      */
     function clearExtras() {
 
-        // The code fields of a card's own dialog (the cron commands) go with it.
+        // A card's drawer goes with the pane that brought it, and so do its
+        // code fields (the cron commands). The focus is not handed back: the
+        // button that opened it is on its way out too.
+        closeCardDrawer(false);
+
+        window.pgReleaseEditors(byId('pg_settings_modal_drawers'));
+        window.pgReleaseFields(byId('pg_settings_modal_drawers'));
+
+        $('#pg_settings_modal_drawers').empty();
+
+        // The code fields of a card's own dialog go with it.
         window.pgReleaseEditors(byId('pg_settings_modal_extras'));
 
         $('#pg_settings_modal_extras .dialog').each(function () {
@@ -12334,6 +12473,13 @@ window.pgCodeEditorReady = function (markup, done) {
         // share the outer backdrop and are drawn behind it.
         if (response.modals) {
             $('#pg_settings_modal_extras').html(response.modals);
+
+            // A card's drawer is the other way round: it belongs inside the
+            // dialog, over the pane, and is moved into the dialog's host
+            // once its scripts have run (includes/settings/drawer.php).
+            $('#pg_settings_modal_extras').children('.pg-sm-drawer').appendTo('#pg_settings_modal_drawers');
+
+            pgInitInjected($('#pg_settings_modal_drawers'));
         }
 
         // The scripts a card publishes separately. Appended into the pane, not
