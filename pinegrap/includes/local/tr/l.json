@@ -635,6 +635,7 @@
     "Left out for safety: {1}": "Güvenlik için çıkarıldı: {1}",
     "Left out for safety: {list}": "Güvenlik için çıkarıldı: {list}",
     "Left out of the widget, still drawn by the region: {var}": "Widget'a alınmadı, bölge çizmeye devam ediyor: {var}",
+    "Left out, over the limits of an e-mail: {var:1}": "Bir e-postanın sınırlarını aştığı için alınmadı: {var:1}",
     "Left out: {var:1}.": "Dışarıda kalan: {var:1}.",
     "Left over": "Kalan",
     "Left the beta": "Betadan ayrıldı",

@@ -976,6 +976,7 @@
     "Messages are read in opening hours. Running late for a booking today? Call us instead.": "Mesajlar çalışma saatlerinde okunur. Bugünkü randevunuza geç mi kalıyorsunuz? Bizi arayın.",
     "Messages are sent by the Webhook delivery job, which has to be selected under Cron Jobs. The test button sends at once.": "Mesajları Webhook gönderimi görevi gönderir; bu görev Cron işleri altında seçili olmalıdır. Test düğmesi hemen gönderir.",
     "Messages cannot be forwarded into a room with a guest.": "Misafirin bulunduğu odaya mesaj iletilemez.",
+    "Messages from #{var:1}": "#{var:1} kanalından mesajlar",
     "Messages from {var:1} on": "{var:1} tarihinden itibaren mesajlar",
     "Messages sent from the contact page are collected in the panel, ready to answer.": "İletişim sayfasından gönderilen mesajlar panelde toplanır, yanıtlamaya hazır bekler.",
     "Messages set to be sent later, on their own.": "Daha sonra kendiliğinden gönderilecek mesajlar.",

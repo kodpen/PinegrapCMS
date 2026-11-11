@@ -252,6 +252,6 @@ function test_workspace_mail_list_wiring()
 
 	pg_assert_contains("window.PGWsMail.screen(root, featureHelpers());", $boot, 'the screen starts the list');
 	pg_assert_contains("h.api('ws_mail_pane', { conversation_id: id })", $script);
-	pg_assert_contains("compose(message, view, h);", $script, 'Reply still opens the drawer');
+	pg_assert_contains("replyForm(message, view, h);", $script, 'Reply still opens the drawer');
 	pg_assert_contains('node.appendChild(countBadge(item.count, false));', $side, 'the tile draws the number');
 }

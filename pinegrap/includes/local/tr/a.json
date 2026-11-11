@@ -1471,6 +1471,7 @@
     "A message can be at most {var:1} characters long.": "Bir mesaj en fazla {var:1} karakter olabilir.",
     "A message can be scheduled at most a year ahead.": "Bir mesaj en çok bir yıl sonrasına zamanlanabilir.",
     "A message for the editors": "Editörlere bir mesaj",
+    "A message from #{var:1}": "#{var:1} kanalından bir mesaj",
     "A message from the contact page opens a conversation that members follow and answer in their inbox.": "İletişim sayfasından gelen her mesaj bir görüşme başlatır; üyeler onu gelen kutularından izler ve yanıtlar.",
     "A message in a channel can become a task from its right-click menu.": "Kanaldaki bir mesaj, sağ tık menüsünden göreve dönüştürülebilir.",
     "A message to residents": "Vatandaşlara mesaj",

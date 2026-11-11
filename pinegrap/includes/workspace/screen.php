@@ -879,8 +879,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
     $strings = array_merge($strings, ws_task_time_js_strings(), ws_task_links_js_strings());
     // Approval requests, the people outside the team they ask, read
     // receipts and answers by e-mail (approvals.php, approval_guests.php,
-    // acks.php, mail_reply.php, mail_send.php).
-    $strings = array_merge($strings, ws_approvals_js_strings(), ws_approval_guests_js_strings(), ws_acks_js_strings(), ws_mail_js_strings(), ws_mail_status_js_strings(), ws_mail_send_js_strings(), ws_mail_compose_js_strings());
+    // acks.php, mail_reply.php, mail_send.php, mail_compose.php, mail_forward.php).
+    $strings = array_merge($strings, ws_approvals_js_strings(), ws_approval_guests_js_strings(), ws_acks_js_strings(), ws_mail_js_strings(), ws_mail_status_js_strings(), ws_mail_send_js_strings(), ws_mail_compose_js_strings(), ws_mail_forward_js_strings());
     // Voice messages: the recording row and the player (voice.php,
     // assets/js/workspace_voice.js).
     $strings = array_merge($strings, ws_voice_js_strings());
@@ -1000,6 +1000,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'delegation'   => ws_delegation_js_config(),
         'guests'       => function_exists('ws_guests_js_config') ? ws_guests_js_config($viewer) : array('can_host' => false, 'durations' => array()),
         'forwards'     => ws_forwards_ready() ? array('max' => WS_FORWARD_MAX) : null,
+        // Forward as e-mail on the channel screen (mail_forward.php).
+        'mail_forward' => ($mode === 'channels') && function_exists('ws_mail_forward_may') && ws_mail_forward_may($viewer),
         'flows'        => ws_flow_js_config($viewer, (string) $mode),
         'tour'         => (($mode === 'channels') && function_exists('ws_tour_js_config')) ? ws_tour_js_config($viewer) : null,
     ), $extra);
