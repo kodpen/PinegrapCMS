@@ -9,6 +9,7 @@
  * defined once and placed; placeholders name pages and folders; the
  * contact page's search sections; the pbk- classes and their rules match;
  * the comment threads and the reply e-mail card; the home page's lists;
+ * the home and the celebration cakes on the palette's blocks, with motion;
  * the sample classes and the shop's products kept.
  *
  * @author      Erdal Güral (Kodpen)
@@ -259,4 +260,118 @@ function test_bakery_assembly_home()
 	foreach (array('home_classes', 'home_posts') as $w) {
 		pg_assert_true(strpos($home, '"templateWidget":"' . $w . '"') !== false, 'the home places ' . $w);
 	}
+}
+
+// The home and the celebration cakes stand on the palette's blocks: every
+// pg- class's rule ships in the template's User Styles, every interaction
+// is one pg_fx keeps as written, and each page moves the way it is meant
+// to. The hero's times are machine-readable, the counter's tabs open
+// their own panes and list every bake once, the hours card greys the
+// closed day, and every cake size is drawn.
+function test_bakery_assembly_home_and_cakes_on_blocks()
+{
+	$tpl = _test_bk_asm_tpl();
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	$source = _pg_designer_block_css_source();
+	$want = array(
+		'home'  => array('slide-up/load', 'scale/load', 'slide-left/load', 'fade/view', 'slide-up/view', 'scale/view', 'slide-right/view', 'slide-left/view'),
+		'cakes' => array('scale/view', 'fade/view', 'slide-up/view', 'slide-left/view'),
+		'bakes' => array('slide-up/view'),
+	);
+	$bake_names = 0;
+	$pages = array();
+	foreach ($tpl['pages'] as $p) {
+		$pages[$p['key']] = $p;
+		if ($p['key'] !== 'bakes') continue;
+		$nodes = array();
+		_test_bk_asm_nodes($p['tree'], $nodes);
+		foreach ($nodes as $n) if (($n['props']['_label'] ?? '') === lang('Bake Name')) $bake_names++;
+	}
+	pg_assert_true($bake_names > 0, 'the daily bake names its bakes');
+	foreach ($want as $key => $effects_wanted) {
+		$nodes = array();
+		_test_bk_asm_nodes($pages[$key]['tree'], $nodes);
+		$effects = array();
+		$classes = '';
+		foreach ($nodes as $n) {
+			$classes .= ' ' . ($n['props']['cssClass'] ?? '');
+			if (!isset($n['props']['_fx'])) continue;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			pg_assert_true(is_array($kept), "$key: " . json_encode($n['props']['_fx']) . ' is an interaction');
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, "$key: $field is kept as written");
+			}
+			$effects[] = $n['props']['_fx']['effect'] . '/' . $n['props']['_fx']['trigger'];
+		}
+		foreach ($effects_wanted as $e) pg_assert_true(in_array($e, $effects, true), "$key moves: $e");
+		preg_match_all('/(?<![\w-])pg-[a-z0-9-]+/', $classes, $m);
+		if ($key !== 'bakes') pg_assert_true(!empty($m[0]), "$key: places palette blocks");
+		foreach (array_unique($m[0]) as $class) {
+			$rule = isset($source['rules'][$class]) ? $source['rules'][$class] : '';
+			foreach ($rule === '' ? $source['rules'] : array() as $text) {
+				if (preg_match('/\.' . preg_quote($class, '/') . '(?![\w-])/', $text)) {
+					$rule = $text;
+					break;
+				}
+			}
+			pg_assert_true($rule !== '' && strpos($css, $rule) !== false, "$key: the rule of $class ships with the template");
+		}
+	}
+
+	// The hero: three batches, every time a time of the day with its
+	// datetime; no figures row on the home.
+	$nodes = array();
+	_test_bk_asm_nodes($pages['home']['tree'], $nodes);
+	$attrs = function ($n) {
+		$out = array();
+		foreach ($n['props']['_attrs'] ?? array() as $a) $out[$a['name']] = $a['value'];
+		return $out;
+	};
+	$times = 0;
+	$targets = array();
+	$panes = array();
+	$active = array();
+	$items = 0;
+	$hours = array();
+	foreach ($nodes as $n) {
+		$class = ' ' . ($n['props']['cssClass'] ?? '') . ' ';
+		$label = $n['props']['_label'] ?? '';
+		pg_assert_false($label === lang('Figures'), 'home: no stock figures row');
+		if (($n['props']['tag'] ?? '') === 'time') {
+			$times++;
+			pg_assert_true((bool)preg_match('/^\d{2}:\d{2}$/', $n['props']['text']), 'home: a time of the day');
+			pg_assert_same($n['props']['text'], $attrs($n)['datetime'] ?? null, 'home: the time is machine-readable');
+		}
+		if (strpos($class, ' pg-bakery-oven ') !== false) pg_assert_same(3, count($n['children']), 'home: three batches');
+		if (strpos($class, ' nav-link ') !== false && ($n['props']['tag'] ?? '') === 'button') {
+			$a = $attrs($n);
+			pg_assert_same('#' . $a['aria-controls'], $a['data-bs-target'], 'home: a tab names its pane');
+			$targets[] = $a['aria-controls'];
+			if (strpos($class, ' active ') !== false) $active[] = $a['aria-controls'];
+		}
+		if (strpos($class, ' tab-pane ') !== false) {
+			$panes[] = $n['props']['id'];
+			pg_assert_same('tabpanel', $attrs($n)['role'] ?? null, 'home: a pane is a tab panel');
+			if (strpos($class, ' show active ') !== false) pg_assert_same(array($n['props']['id']), $active, 'home: the first tab shows its pane');
+		}
+		if ($label === lang('Item Head')) $items++;
+		if (strpos($class, ' list-group-item ') !== false && $label !== '') $hours[$label] = strpos($class, ' text-body-secondary ') !== false;
+	}
+	pg_assert_same(5, $times, 'home: the lighting, three batches, the last order');
+	pg_assert_same($targets, $panes, 'home: a pane per tab, in order');
+	pg_assert_same(1, count($active), 'home: one tab open');
+	pg_assert_same($bake_names, $items, 'home: the counter lists every bake once');
+	pg_assert_same(array(false, false, true), array_values($hours), 'home: the closed day is greyed');
+
+	// The cakes page: four sizes, each drawn; the two tiers in two layers.
+	$nodes = array();
+	_test_bk_asm_nodes($pages['cakes']['tree'], $nodes);
+	$drawings = array();
+	foreach ($nodes as $n) {
+		if (strpos(' ' . ($n['props']['cssClass'] ?? '') . ' ', ' pg-bakery-cake ') === false) continue;
+		pg_assert_same(array('aria-hidden' => 'true'), $attrs($n), 'cakes: the drawing is hidden from a screen reader');
+		$drawings[] = count($n['children']);
+	}
+	pg_assert_same(array(1, 1, 1, 2), $drawings, 'cakes: every size drawn');
 }
