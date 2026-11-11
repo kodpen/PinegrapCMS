@@ -4,7 +4,7 @@ description: The memory index tool refuses a cluster of ten memory files or more
 ---
 
 ## What does the tool refuse?
-- `tools/memory_index.php` (every run, `--check` included, so `git push` and CI too) stops when a folder has a cluster of `MIN_OVERVIEW_FILES` (ten) files or more and no start file. The error names the folder, the prefix, the count and the file to add (#<this PR>).
+- `tools/memory_index.php` (every run, `--check` included, so `git push` and CI too) stops when a folder has a cluster of `MIN_OVERVIEW_FILES` (ten) files or more and no start file. The error names the folder, the prefix, the count and the file to add (#8760).
 - A cluster is what the folder README lists under "Clusters": files sharing their first two name tokens, a plural s aside (`memory_index_clusters()`, at least `MIN_CLUSTER_FILES`).
 - The check is `memory_index_cluster_errors($folder, $clusters)` (pure, `tests/memory_index_test.php`).
 
