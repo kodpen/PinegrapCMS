@@ -135,6 +135,7 @@
 - design-template-forum-replies.md: Forum template on the Comments widget (1.1.0, board list 1.2.0): seven comments widgets, why explicit trees, pages that keep the block, e-mails, page settings, older sites, quirks, checks
 - design-template-forum.md: Community Forum & Docs template (pinegrap-forum): what it ships, its three forms, the live rules, archives and feeds, replies on the Comments widget and their names, Turkish words.
 - design-template-gallery.md: Art Gallery template (pinegrap-gallery): artists, exhibitions and works as collections, work enquiries and private viewing requests, editions in the shop, the Journal, pgl- look, tests.
+- design-template-gym-home.md: Gym template's home, classes and timetable pages on the Gym blocks (1.1.0, #8655): sections, motion, the parallax picture layer, pgy-anchor and pgy-depth, what the editor cannot do yet, tests
 - design-template-gym.md: Gym template (pinegrap-gym): classes and a timetable, trainers, plans, class booking and join requests, memberships in the shop with a members' area, pgy- look, tests.
 - design-template-hello.md: Hello template 2.6.0: threads and the reply e-mail card on the Comments widget, product reviews, the Favourites page and its shop-only links, Google Reviews beside the testimonials [decision: decisions-made-product-16.md]
 - design-template-homeservices.md: Home Services template (pinegrap-homeservices): services and team as collections, visit bookings and estimate requests, service areas, price guide, care plans in the shop, phs- look, tests.
@@ -184,6 +185,7 @@
 - design-template-text-contrast.md: Text colours and names in the hello-pinegrap and pinegrap-playground templates: no faded text, no primary text on grey sections, one owner name, Parola wording.
 - design-template-theatre.md: Theatre template (pinegrap-theatre): productions and performances as collections, hire, school group and youth place requests, tickets, friends and vouchers in the shop, pth- look, tests.
 - design-template-threads.md: Café, Clinic, Playground and Salon 1.1.0 comment threads on the Comments widget, the comment e-mail cards before the System region, Google Reviews beside the sample testimonials [decision: here]
+- design-template-travel-pages.md: Travel Agency template 2.0.0: home, tour page and destination page on the Travel blocks, motion on about, travel information, deals and FAQ: the builders, each page's composition, what left, the test
 - design-template-travel.md: Travel Agency template (pinegrap-travel): tours and destinations as collections, reviews, booking requests and tailor-made enquiries, deposits and gift cards in the shop, ptv- look, tests.
 - design-template-veterinary.md: Veterinary template (pinegrap-veterinary): services, pets, emergencies, vets as a collection, online booking, appointment and health plan requests, plans in the shop, pvt- look, tests.
 - design-template-wedding-pages.md: Wedding template 2.0.0: home, timeline, packages and venue on the Wedding blocks: the builders, each page's composition, motion, what left, the test
@@ -213,6 +215,7 @@
 - designer-block-theme-surfaces.md: How a ready-made designer block writes a dark navbar, a hero on a photo, buttons and links on tinted or primary surfaces, and carousel slides so they pass contrast in every look, palette and mode.
 - designer-blocks-appstudio.md: The App Studio block family (appstudio- prefix, own palette group): phone fan hero, app switch, release chapter, two platforms; why not launch-; rules, motion, test
 - designer-blocks-architecture.md: The Architecture block family (architecture- prefix, own palette group): plate hero, project sheet, material board; general blocks placed instead; rules, test
+- designer-blocks-bakery.md: The Bakery block family (bakery- prefix, own palette group): fresh-from-the-oven hero with oven times and an order tag, cake size guide drawn to scale; blocks placed instead; test
 - designer-blocks-bikeshop.md: The Bike Shop block family (bikeshop- prefix, its own palette group): the four blocks, what each draws, the blocks reused instead, its pg-bike-* rules, motion and test
 - designer-blocks-campsite.md: The Campsite block family (campsite- prefix, own palette group): hero with a kind-of-stay chooser, comfort scale, pitch drawing; general and other blocks placed instead; rules, test
 - designer-blocks-carrental.md: The Car Rental block family (carrental- prefix, own palette group): trip hero, class line-up, cover levels, sample quote; the driving car, the excess meter; general blocks placed instead; test
@@ -299,7 +302,7 @@
 - designer-page-names.md: Which names a visual-editor page may take: other pages, files, short links, site root entries, sitemap.xml/robots.txt, site language codes; why check_name_availability() is not used on the save path.
 - designer-page-pickers.md: How widget page pickers are built (_swPageOptions/_swPageVal, tab:<key>, tabs without the widget), how unsaved-tab references resolve on save, and why a page may reach the save without its tree.
 - designer-page-workspace-tasks.md: The visual designer tab menu's "Workspace tasks" item: the Workspace record drawer of page:<id> (tasks, open one, new task tagged with the page), its gates and wiring
-- designer-palette-tabs-and-blocks.md: Designer palette has two tabs (Bileşenler building blocks, Bloklar ready sections): adding a block, shared list plumbing, recents strip, tab strip width.
+- designer-palette-tabs-and-blocks.md: Designer palette Components tab with a Components / Blocks list switch (building blocks vs ready sections): adding a block, shared list plumbing, recents strip, tab strip width. [decision: here]
 - designer-panel-element-identity.md: Designer panel must identify the selected element correctly: propsSemantic() tag groups, HTML defaults, attribute rows, panel refresh, canvas selection.
 - designer-panel-popover-and-rows.md: Bootstrap popover vs dropdown toggles with [title], and the options panel row()/sect()/as() layout rules in the designer.
 - designer-panels-on-demand.md: The designer draws only the panels that can be seen, debounces them while a field is typed into, and redraws one node's Layers rows (D3, PR #8075)

@@ -102,10 +102,6 @@ $facility_tiles = array();
 foreach ($facilities as $f) $facility_tiles[] = $feature_tile($f['icon'], $f['title'], $f['text']);
 $plan_cards_row = array();
 foreach (array_keys($plans) as $key) $plan_cards_row[] = $plan_card($key);
-$testimonial_cols = array();
-foreach (array_keys($testimonials) as $n) $testimonial_cols[] = $testimonial_card($n);
-$class_cards_all = array();
-foreach (array_keys($classes) as $key) $class_cards_all[] = $class_card($key);
 // One tile per focus, linking the trainers who coach it.
 $focus_tiles = array();
 foreach ($focuses as $f) {
@@ -114,7 +110,161 @@ foreach ($focuses as $f) {
     ));
 }
 
+// The home, the group classes and the timetable place the palette's blocks
+// with the gym's own data: Gym: Free Pass Hero and Gym: Class Finder
+// (assets/js/style_designer_blocks_gym.js), Booking: Weekly Timetable
+// (style_designer_blocks_booking.js) and Hero: Image Background
+// (style_designer.js). Their rules ship in User Styles from the block source
+// (pinegrap-gym.php); every motion is a node interaction ($fx).
+
+// A section's heading coming into view.
+$fade_in = array('effect' => 'fade', 'trigger' => 'view', 'duration' => 800);
+// The links of the three focuses, as pills; $href gives each one's address.
+$focus_pills = function ($href, $class = '', $more = array()) use ($el, $link, $focuses) {
+    $items = array();
+    foreach ($focuses as $fkey => $f) {
+        $items[] = $el('li', 'nav-item', $f['title'], array($link($f['title'], $href($fkey), 'nav-link border text-nowrap')));
+    }
+    foreach ($more as $m) $items[] = $el('li', 'nav-item', lang('Nav Item'), array($m));
+    return $el('ul', trim('nav nav-pills gap-2 ' . $class), lang('Focus'), $items);
+};
+$trial_href = '{{page:join}}?' . $query(array('plan' => lang('Free trial pass')));
+
 // ── Home ────────────────────────────────────────────────────────────────
+
+// Gym: Free Pass Hero on a dark stage: a weekday's hours, the title, the two
+// ways on, and a picture with the free trial pass over its corner. The words
+// rise in on load, the picture fades in and the pass follows it.
+$weekday = $days['mon'];
+$home_hero = $el('section', 'pgy-hero py-5 overflow-hidden bg-body text-body', lang('Hero'), array(
+    $container(array(
+        $row(array(
+            $fx($col(array(
+                $el('div', 'badge rounded-pill bg-primary-subtle text-primary-emphasis d-inline-flex align-items-center gap-1 mb-3', lang('Opening Hours'), array(
+                    $icon('bi-clock'),
+                    $span($opening_hours[0]['days'], '', lang('Days')),
+                    $el('time', '', lang('Opening Time'), array(), array('text' => $weekday['open'], '_attrs' => array($attr('datetime', $weekday['open'])))),
+                    $span('–', '', lang('Text')),
+                    $el('time', '', lang('Closing Time'), array(), array('text' => $weekday['close'], '_attrs' => array($attr('datetime', $weekday['close'])))),
+                )),
+                $heading('h1', lang('Stronger every week'), 'pgy-display display-3 mb-3'),
+                $para($gym['tagline'] . '.', 'lead text-body-secondary mb-4'),
+                $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
+                    $link(lang('Get a Free Pass'), $trial_href, 'btn btn-primary btn-lg px-4'),
+                    $link(lang('See the timetable'), '{{page:timetable}}', 'btn btn-outline-secondary btn-lg px-4'),
+                )),
+            ), '', '6'), array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 700)),
+            $col(array(
+                $el('div', 'pg-gym-photo ms-md-4', lang('Picture Frame'), array(
+                    $fx($el('div', 'ratio rounded-4 overflow-hidden bg-body-tertiary shadow', lang('Picture'), array(
+                        $image($photo('hero-pass', 960, 1200), lang('A member lifts a barbell on the weights floor while a coach watches'), 'object-fit-cover'),
+                    )), array('effect' => 'fade', 'trigger' => 'load', 'duration' => 1000, 'delay' => 200)),
+                    $fx($el('div', 'pg-gym-pass mt-3 mt-md-0', lang('Trial Pass'), array(
+                        $para(lang('Free trial pass'), 'pgy-eyebrow text-uppercase fw-semibold text-primary mb-1'),
+                        $para(lang('One class and a day on the floor'), 'fw-bold mb-3'),
+                        $check_list(array(lang('Any class on the timetable'), lang('The weights floor and the studios that day'), lang('Meet the coaches')), 'list-unstyled small mb-3'),
+                        $para(lang('Nothing to pay and nothing to sign.'), 'small text-body-secondary mb-0'),
+                    )), array('effect' => 'slide-up', 'trigger' => 'load', 'delay' => 500)),
+                )),
+            ), '', '6'),
+        ), '4', '', 'g-lg-5 align-items-center'),
+    ), 'py-lg-4'),
+), array('_attrs' => array($attr('data-bs-theme', 'dark'))));
+
+// Gym: Class Finder: a class of each focus with its intensity, the pills to
+// the focuses on the class page and the way to every class.
+$home_classes = $el('section', 'py-5', lang('Group Classes'), array(
+    $container(array(
+        $fx($row(array(
+            $col(array(
+                $para(lang('Train together'), 'pgy-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+                $heading('h2', lang('Find your class'), 'pgy-display h2 mb-3'),
+                $para(lang('Every class shows how long it lasts, who it suits and how hard it is, so you know what to expect before you come.'), 'text-body-secondary mb-0'),
+            ), '', '7'),
+            $col(array($focus_pills(function ($fkey) { return '{{page:classes}}#gy-classes-' . $fkey; }, 'justify-content-lg-end')), '', '5'),
+        ), '4', '', 'align-items-end mb-4'), $fade_in),
+        $class_list(array('barbell', 'hiit', 'yoga')),
+        $el('div', 'text-center mt-4', lang('Buttons'), array(
+            $link(lang('All classes'), '{{page:classes}}', 'btn btn-outline-primary px-4'),
+        )),
+    )),
+), $searchable('gy-home-classes', lang('class, workout, session, group training')));
+
+// Hero: Image Background for personal training. The picture is a layer of
+// its own, taller than the band, that moves slower than the page; the words
+// sit on the shared scrim.
+$home_pt = $el('section', 'd-flex position-relative overflow-hidden pg-hero-tall', lang('Personal Training'), array(
+    $fx($el('div', 'pgy-depth', lang('Picture'), array(), array('_attrs' => array(
+        $attr('style', 'background-image: url(' . $photo('home-pt', 1600, 1200) . ');'),
+        $attr('role', 'img'),
+        $attr('aria-label', lang('A coach spotting a member on the bench press')),
+    ))), array('effect' => 'parallax', 'speed' => 12)),
+    $el('div', 'd-flex flex-column justify-content-end w-100 py-5 text-body pg-shade-bottom position-relative', lang('Overlay'), array(
+        $container(array(
+            $fx($el('div', 'col-lg-7', lang('Hero Body'), array(
+                $para(lang('Personal Training'), 'pgy-eyebrow text-uppercase fw-semibold mb-2'),
+                $heading('h2', lang('One coach, one plan, your goal'), 'pgy-display display-4 mb-3'),
+                $para(lang('An hour with a coach who watches every rep and writes the next step for you. Pick a free time online and come as you are.'), 'lead mb-4'),
+                $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
+                    $link(lang('Book a session'), '{{page:book_online}}', 'btn btn-primary btn-lg px-4'),
+                    $link(lang('Meet the coaches'), '{{page:trainers}}', 'btn btn-secondary btn-lg px-4'),
+                )),
+            )), array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 800)),
+        ), 'py-lg-5'),
+    ), array('_attrs' => array($attr('data-bs-theme', 'dark')))),
+), $searchable('gy-home-pt'));
+
+// The floor: the words and the figures stay in place from lg up while the
+// facilities pass beside them.
+$floor_figures = array();
+foreach ($figures as $f) {
+    $floor_figures[] = $col(array(
+        $para($f['value'], 'pgy-display display-5 text-primary mb-0'),
+        $para($f['label'], 'small text-body-secondary mb-0'),
+    ), '', '', '', '6');
+}
+$floor_tiles = array();
+foreach ($facilities as $f) $floor_tiles[] = $feature_tile($f['icon'], $f['title'], $f['text'], '6');
+$home_floor = $el('section', 'py-5 border-top', lang('The Gym Floor'), array(
+    $container(array(
+        $row(array(
+            $col(array(
+                $fx($el('div', 'pb-4', lang('Section Title'), array(
+                    $para(lang('Inside'), 'pgy-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+                    $heading('h2', lang('Room to train your way'), 'pgy-display display-6 mb-3'),
+                    $para($gym['region'] . '.', 'text-body-secondary mb-4'),
+                    $row($floor_figures, '4', '', 'mb-4'),
+                    $link(lang('See the gym'), '{{page:facilities}}', 'btn btn-outline-primary px-4'),
+                )), array('effect' => 'sticky', 'offset' => 48)),
+            ), '', '5'),
+            $col(array(
+                $fx($row($floor_tiles, '4'), array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => 100)),
+            ), '', '7'),
+        ), '4', '', 'g-lg-5'),
+    )),
+), $searchable('gy-home-facilities', lang('weights, studios, sauna, showers, lockers, equipment')));
+
+// What members say: one quote large, two beside it, and the gym's own Google
+// reviews under them once Google Reviews is set up under Site Settings.
+$home_words = $el('section', 'py-5 border-top overflow-hidden', lang('Member Stories'), array(
+    $container(array(
+        $fx($section_header(lang('Our members'), lang('What members say')), $fade_in),
+        $row(array(
+            $col(array(
+                $fx($el('figure', 'mb-0', lang('Member Quote'), array(
+                    $icon('bi-quote', 'd-block display-3 text-primary lh-1'),
+                    $el('blockquote', 'mb-4', lang('Quote'), array($para($testimonials[0]['quote'], 'h3 fw-normal lh-base mb-0'))),
+                    $quote_author(0, 56),
+                )), array('effect' => 'slide-right', 'trigger' => 'view', 'duration' => 800)),
+            ), '', '7'),
+            $col(array(
+                $fx($el('div', 'd-flex flex-column gap-4', lang('Member Quotes'), array($testimonial_card(1), $testimonial_card(2))),
+                    array('effect' => 'slide-left', 'trigger' => 'view', 'stagger' => 150)),
+            ), '', '5'),
+        ), '4', '', 'g-lg-5 align-items-center mb-5'),
+        $widget('google_reviews'),
+    )),
+));
 
 $public_pages[] = array(
     'key'              => 'home',
@@ -123,80 +273,32 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('A neighbourhood gym with a weights floor, three studios, group classes every day, personal training and a free trial pass.'),
     'tree'             => $page(array(
-        // The way in: the gym in a sentence, the two ways on and a photo
-        // of a class.
-        $el('section', 'pgy-hero py-5 overflow-hidden', lang('Hero'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para($gym['region'], 'pgy-eyebrow text-uppercase fw-semibold text-primary mb-3'),
-                        $heading('h1', lang('Stronger every week'), 'pgy-display display-3 mb-3'),
-                        $para($gym['tagline'] . '.', 'lead text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('Get a Free Pass'), '{{page:join}}?' . $query(array('plan' => lang('Free trial pass'))), 'btn btn-primary btn-lg px-4'),
-                            $link(lang('See the timetable'), '{{page:timetable}}', 'btn btn-outline-primary btn-lg px-4'),
-                        )),
-                    ), '', '5'),
-                    $col(array(
-                        $framed($photo('hero', 1400, 1050), lang('A group class lifting kettlebells together in the main studio'), '4x3', false),
-                    ), '', '7'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        )),
-
-        $el('section', 'py-4 border-top border-bottom bg-body-tertiary', lang('Figures'), array(
-            $container(array($figure_row())),
-        )),
-
-        $el('section', 'py-5', lang('Group Classes'), array(
-            $container(array(
-                $section_header(lang('Train together'), lang('Classes for every goal'), lang('All classes'), '{{page:classes}}'),
-                $row($class_cards_all, '4'),
-            )),
-        )),
+        $home_hero,
+        $home_classes,
 
         // The trainers, read from the Trainers collection.
-        $el('section', 'py-5 bg-body-tertiary', lang('Our Trainers'), array(
+        $el('section', 'py-5 border-top', lang('Our Trainers'), array(
             $container(array(
-                $section_header(lang('The team'), lang('Coaches who know your name'), lang('All trainers'), '{{page:trainers}}'),
+                $fx($section_header(lang('The team'), lang('Coaches who know your name'), lang('All trainers'), '{{page:trainers}}'), $fade_in),
                 $widget('home_trainers'),
             )),
         )),
 
-        $el('section', 'py-5', lang('Membership Plans'), array(
+        $home_pt,
+        $home_floor,
+
+        $el('section', 'py-5 border-top', lang('Membership Plans'), array(
             $container(array(
-                $section_header(lang('Membership'), lang('A plan for how you train'), lang('Compare the plans'), '{{page:plans}}'),
-                $row($plan_cards_row, '4'),
+                $fx($section_header(lang('Membership'), lang('A plan for how you train'), lang('Compare the plans'), '{{page:plans}}'), $fade_in),
+                $fx($row($plan_cards_row, '4'), array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => 120)),
             )),
         )),
 
-        $story_band('gy-home-pt', lang('Personal Training'), lang('One coach, one plan, your goal'),
-            array(lang('An hour with a coach who watches every rep and writes the next step for you. Pick a free time online and come as you are.')),
-            $photo('home-pt', 1200, 900), lang('A coach spotting a member on the bench press'), true,
-            array($link(lang('Book a session'), '{{page:book_online}}', 'btn btn-outline-primary px-4')),
-            '', 'py-5 bg-body-tertiary'),
+        $home_words,
 
-        $el('section', 'py-5', lang('The Gym Floor'), array(
+        $el('section', 'py-5 border-top', lang('From Training Notes'), array(
             $container(array(
-                $section_header(lang('Inside'), lang('Room to train your way'), lang('See the gym'), '{{page:facilities}}'),
-                $row($facility_tiles, '4'),
-            )),
-        ), $searchable('gy-home-facilities', lang('weights, studios, sauna, showers, lockers, equipment'))),
-
-        // What members say: sample words for the gym to replace, and beside
-        // them its own Google reviews, which show once Google Reviews is set
-        // up under Site Settings.
-        $el('section', 'py-5 bg-body-tertiary', lang('Member Stories'), array(
-            $container(array(
-                $section_header(lang('Our members'), lang('What members say')),
-                $row($testimonial_cols, '4'),
-                $widget('google_reviews'),
-            )),
-        )),
-
-        $el('section', 'py-5', lang('From Training Notes'), array(
-            $container(array(
-                $section_header(lang('Training Notes'), lang('Tips from the coaches'), lang('All notes'), '{{page:blog}}'),
+                $fx($section_header(lang('Training Notes'), lang('Tips from the coaches'), lang('All notes'), '{{page:blog}}'), $fade_in),
                 $widget('home_posts'),
             )),
         )),
@@ -204,19 +306,20 @@ $public_pages[] = array(
 );
 
 // ── Group classes ───────────────────────────────────────────────────────
-// A section per focus with its classes, then how a class works.
+// The focuses as pills that stay at the top while the page scrolls, a
+// section per focus with its classes, then how a class works.
 $focus_sections = array();
 $n = 0;
 foreach ($focuses as $fkey => $f) {
-    $cards = array();
+    $keys = array();
     foreach ($classes as $ckey => $c) {
-        if ($c['focus'] === $fkey) $cards[] = $class_card($ckey);
+        if ($c['focus'] === $fkey) $keys[] = $ckey;
     }
-    $focus_sections[] = $el('section', 'py-5' . ($n % 2 ? ' bg-body-tertiary' : ''), $f['title'], array(
+    $focus_sections[] = $el('section', 'py-5 pgy-anchor' . ($n ? ' border-top' : ''), $f['title'], array(
         $container(array(
-            $section_header(lang('Focus'), $f['title'], lang('Meet the coaches'), '{{page:trainers}}?' . $query(array('focus' => $f['title']))),
+            $fx($section_header(lang('Focus'), $f['title'], lang('Meet the coaches'), '{{page:trainers}}?' . $query(array('focus' => $f['title']))), $fade_in),
             $para($f['text'], 'text-body-secondary mb-4'),
-            $row($cards, '4'),
+            $class_list($keys),
         )),
     ), $searchable('gy-classes-' . $fkey, lang('class, workout, session, group training')));
     $n++;
@@ -229,27 +332,34 @@ $public_pages[] = array(
     'title'            => lang('Group Classes'),
     'meta_description' => lang('HIIT, cycling, boxing, barbell and kettlebell strength, yoga and Pilates: group classes for every level, every day of the week.'),
     'tree'             => $page(array_merge(
-        array($page_header(lang('Group Classes'), lang('Strength, cardio and calmer classes for every level. Book your place, come ten minutes early and bring water.'), array(
-            $link(lang('See the timetable'), '{{page:timetable}}', 'btn btn-primary px-4 mt-3'),
-        ))),
+        array(
+            $page_header(lang('Group Classes'), lang('Strength, cardio and calmer classes for every level. Book your place, come ten minutes early and bring water.')),
+            $fx($el('nav', 'bg-body border-bottom py-2 z-3', lang('Focus Links'), array(
+                $container(array(
+                    $focus_pills(function ($fkey) { return '#gy-classes-' . $fkey; }, 'flex-nowrap overflow-x-auto py-1', array(
+                        $link(lang('See the timetable'), '{{page:timetable}}', 'nav-link text-nowrap'),
+                    )),
+                )),
+            ), array('_attrs' => array($attr('aria-label', lang('Class focus'))))), array('effect' => 'sticky', 'offset' => 0)),
+        ),
         $focus_sections,
-        array($el('section', 'py-5', lang('How It Works'), array(
+        array($el('section', 'py-5 border-top', lang('How It Works'), array(
             $container(array(
                 $row(array(
                     $col(array(
                         $heading('h2', lang('How a class works'), 'pgy-display h3 mb-4'),
-                        $el('ol', 'list-unstyled mb-0', lang('Steps'), array(
+                        $fx($el('ol', 'list-unstyled mb-0', lang('Steps'), array(
                             $step(1, lang('Pick a class and a time'), lang('From the timetable or a class above; the request opens with your choice made.')),
                             $step(2, lang('We confirm your place'), lang('The front desk answers the same day; you read the answer under My Class Bookings.')),
                             $step(3, lang('Come ten minutes early'), lang('Bring water and a towel; the coach sets up the room and shows each move.')),
-                        )),
+                        )), array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => 150)),
                     ), '', '6'),
                     $col(array(
-                        $el('div', 'p-4 p-lg-5 rounded-3 bg-primary-subtle', lang('Text'), array(
+                        $fx($el('div', 'p-4 p-lg-5 rounded-3 bg-primary-subtle', lang('Text'), array(
                             $heading('h2', lang('Never been to a class?'), 'pgy-display h4 mb-2'),
                             $para(lang('Your first class is on us. Ask for a free trial pass and tell us which class you would like to try.'), 'mb-3'),
-                            $link(lang('Get a Free Pass'), '{{page:join}}?' . $query(array('plan' => lang('Free trial pass'))), 'btn btn-primary px-4'),
-                        )),
+                            $link(lang('Get a Free Pass'), $trial_href, 'btn btn-primary px-4'),
+                        )), array('effect' => 'scale', 'trigger' => 'view')),
                     ), '', '6'),
                 ), '4', '', 'g-lg-5 align-items-center'),
             )),
@@ -258,10 +368,12 @@ $public_pages[] = array(
 );
 
 // ── Timetable ───────────────────────────────────────────────────────────
-// The week day by day, Monday first; each class opens the booking request
-// with the class, the day and the time chosen.
-$day_cols = array();
-foreach (array_keys($days) as $day) $day_cols[] = $col(array($timetable_day($day)), '6', '4', '', '12', 'mb-0');
+// Booking: Weekly Timetable: the week in seven columns from md up (the
+// region scrolls sideways where they do not fit), one under the other on a
+// phone; the days rise in one after another. Each class opens the booking
+// request with the class, the day and the time chosen.
+$week_days = array();
+foreach (array_keys($days) as $day) $week_days[] = $timetable_day($day);
 
 $public_pages[] = array(
     'key'              => 'timetable',
@@ -273,7 +385,9 @@ $public_pages[] = array(
         $page_header(lang('Class Timetable'), lang('Every class of the week with its coach and studio. Choose Book to ask for your place.')),
         $el('section', 'py-5', lang('The Week'), array(
             $container(array(
-                $row($day_cols, '4'),
+                $el('div', 'pg-week', lang('Week'), array(
+                    $fx($el('ol', '', lang('Days'), $week_days), array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => 80)),
+                ), array('_attrs' => array($attr('role', 'region'), $attr('aria-label', lang('Class Timetable')), $attr('tabindex', '0')))),
             )),
         ), $searchable('gy-timetable', lang('schedule, times, week, calendar, when'))),
         $el('section', 'py-5 bg-body-tertiary', lang('Good to Know'), array(

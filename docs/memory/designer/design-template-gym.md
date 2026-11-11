@@ -5,7 +5,7 @@ description: Gym template (pinegrap-gym): classes and a timetable, trainers, pla
 
 ## What does it ship?
 - Home (`home_trainers`, `google_reviews`, `home_posts`), `classes`, `timetable`, `plans`, `facilities`, `about`, `faq`, `location`; `trainers`, the `trainer` record page, `trainer_new` (staff), `book_online`; `class_booking`, `booking_view`, `my_bookings`, `staff_bookings`, `join`, `join_view`, `staff_joins`, `privacy`, `email_reply`; shop pages (`memberships`, product, cart, checkout, order, `email_order`) and the members' area (`members`, `workouts`); the standard pages with the blog called Training Notes and the help page Member Help ([[design-templates-standard-pages]]); sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`; the e-mail pages.
-- Built in #7472, #7487, #7546, #7571, #7629, #7661, #7715 and #7760 (assembly).
+- Built in #7472, #7487, #7546, #7571, #7629, #7661, #7715 and #7760 (assembly); home, classes and timetable on the Gym blocks in #8655 ([[design-template-gym-home]]).
 
 ## Why a main file plus a folder?
 - As Hotel ([[design-template-hotel]]): `pinegrap-gym.php` includes `parts.php`, `mail.php`, then `pages_public.php`, `trainers.php`, `classes.php`, `members.php`, `standard.php`, `account.php` in one scope, each return kept as `$…_part`.
