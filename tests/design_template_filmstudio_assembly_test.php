@@ -10,8 +10,9 @@
  * and page placeholder names something the template defines, the contact
  * page's parts are search sections, the pfm- classes equal their rules,
  * the comment threads run on the Comments widget with the reply e-mail's
- * card, and the sample services, projects, spaces, crew and crew calls
- * survive the assembly.
+ * card, the sample services, projects, spaces, crew and crew calls
+ * survive the assembly, and the home, the services and the project page
+ * stand on the Film Studio blocks with their rules and their motion.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -49,7 +50,7 @@ function test_filmstudio_assembly_template_offered()
 	pg_assert_true(isset($all['pinegrap-filmstudio']), 'the template is offered');
 	pg_assert_true(!isset($all['parts']) && !isset($all['projects']) && !isset($all['enquiries']), 'the parts folder is not read as a template');
 	$tpl = _test_fm_asm_tpl();
-	pg_assert_true(version_compare($tpl['version'], '1.0.0', '>='), 'a version');
+	pg_assert_true(version_compare($tpl['version'], '2.0.0', '>='), 'the edition on the Film Studio blocks');
 	pg_assert_same('bootstrap5', $tpl['framework']);
 	pg_assert_same('bi-film', $tpl['icon']);
 	pg_assert_same(127, $tpl['order']);
@@ -241,5 +242,73 @@ function test_filmstudio_assembly_google_reviews()
 	pg_assert_true(strpos($home, '"templateWidget":"google_reviews"') !== false, 'the home places the Google reviews');
 	foreach (array('home_projects', 'home_posts') as $key) {
 		pg_assert_true(strpos($home, '"templateWidget":"' . $key . '"') !== false, 'the home places ' . $key);
+	}
+}
+
+// The home, the services page and the project page stand on the palette's
+// Film Studio blocks and the general horizontal timeline: every pg- class
+// they use ships its rule in the template's User Styles, every interaction
+// is one the editor's Interactions section keeps as written, and each page
+// moves as it was drawn. The showreel waits for the visitor, and the
+// project page's play mark is its one link to the film.
+function test_filmstudio_assembly_home_services_project_on_blocks()
+{
+	$tpl = _test_fm_asm_tpl();
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	$source = _pg_designer_block_css_source();
+	$want = array(
+		'home'           => array('effects' => array('slide-up/load', 'scale/load', 'scale/view', 'slide-up/view', 'fade/view'),
+			'blocks' => array('pg-filmstudio-screen', 'pg-filmstudio-chapters', 'pg-filmstudio-scope', 'pg-filmstudio-play', 'pg-filmstudio-roll', 'pg-circle-60')),
+		'services'       => array('effects' => array('scale/view', 'slide-up/view', 'fade/view'),
+			'blocks' => array('pg-filmstudio-frame', 'pg-filmstudio-r239', 'pg-filmstudio-r169', 'pg-filmstudio-r45', 'pg-filmstudio-r916')),
+		'project_detail' => array('effects' => array('fade/load', 'scale/load', 'slide-up/view'),
+			'blocks' => array('pg-filmstudio-scope', 'pg-filmstudio-play')),
+	);
+	$trees = array();
+	foreach ($tpl['pages'] as $p) if (isset($want[$p['key']])) $trees[$p['key']] = $p['tree'];
+	$trees['project_detail'] = $tpl['widgets']['project_detail']['tree'];
+	pg_assert_same(3, count($trees), 'the home, the services page and the project page');
+	foreach ($trees as $key => $tree) {
+		$nodes = array();
+		_test_fm_asm_tpl_nodes($tree, $nodes);
+		$effects = array();
+		$classes = '';
+		foreach ($nodes as $n) {
+			$classes .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			if (!isset($n['props']['_fx'])) continue;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			pg_assert_true(is_array($kept), "$key: " . json_encode($n['props']['_fx']) . ' is an interaction');
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, "$key: $field is kept as written");
+			}
+			$effects[] = $n['props']['_fx']['effect'] . '/' . $n['props']['_fx']['trigger'];
+		}
+		preg_match_all('/(?<![\w-])pg-[a-z0-9-]+/', $classes, $m);
+		$used = array_unique($m[0]);
+		foreach ($want[$key]['blocks'] as $class) pg_assert_true(in_array($class, $used, true), "$key places $class");
+		foreach ($used as $class) {
+			if ($class === 'pg-hide-if-empty' || $class === 'pg-field-value') continue;
+			// The class's own rule, else the first that names it (a part
+			// such as pg-filmstudio-play lives in its block's rule).
+			$rule = isset($source['rules'][$class]) ? $source['rules'][$class] : '';
+			foreach ($rule === '' ? $source['rules'] : array() as $text) {
+				if (preg_match('/\.' . preg_quote($class, '/') . '(?![\w-])/', $text)) {
+					$rule = $text;
+					break;
+				}
+			}
+			pg_assert_true($rule !== '' && strpos($css, $rule) !== false, "$key: the rule of $class ships with the template");
+		}
+		foreach ($want[$key]['effects'] as $e) pg_assert_true(in_array($e, $effects, true), "$key moves: $e");
+	}
+
+	$home = json_encode($trees['home'], JSON_UNESCAPED_UNICODE);
+	pg_assert_false(strpos($home, '"autoplay"') !== false, 'home: the showreel waits for the visitor');
+	$nodes = array();
+	_test_fm_asm_tpl_nodes($trees['project_detail'], $nodes);
+	foreach ($nodes as $n) {
+		if (strpos(isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '', 'pg-filmstudio-play') === false) continue;
+		pg_assert_same('film_url', isset($n['props']['_bindings']['href']) ? $n['props']['_bindings']['href'] : '', 'project_detail: the play mark opens the film');
 	}
 }

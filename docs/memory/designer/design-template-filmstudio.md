@@ -4,12 +4,13 @@ description: Film Studio template (pinegrap-filmstudio): showreel, services, pro
 ---
 
 ## What does it ship?
-- Public: `home` (the showreel, `home_projects`, `home_posts`, `google_reviews` under Testimonials), `services` and one `service_<key>` per service, `process`, `studio`, `crew`, `about`, `faq`; `projects` (`?industry=`, `?service=`), `project`, `project_new`; `enquiry` (`?service=`), `enquiry_view`, `my_enquiries`, `staff_enquiries`; `studio_hire` (`?space=`), `studio_hire_view`, `my_studio_hires`, `staff_studio_hires`; `privacy`, `email_reply` and the request e-mails; `careers`, `job`, `job_new`, `application` (`?job=`), `application_view`, `my_applications`, `staff_applications`; the standard pages with the Journal as the blog, account and staff pages. The full list is `_test_fm_page_keys()`.
+- Public: `home`, `services`, a `service_<key>` each, `process`, `studio`, `crew`, `about`, `faq`; `projects` (`?industry=`, `?service=`), `project`, `project_new`; `enquiry` (`?service=`) with its view, own and staff lists; `studio_hire` (`?space=`) likewise; `privacy`, `email_reply`.
+- `careers`, `job`, `job_new`, `application` (`?job=`) with its view, own and staff lists; the standard pages with the Journal as the blog, account and staff pages. Full list: `_test_fm_page_keys()`.
 - No shop and no catalog: only `address_book` carries `requires => ecommerce`, as Law and Construction.
-- Shared: account_bar, notice, header, footer, staff_bar, enquiry_band, email_header/footer. Order 127, icon `bi-film`, look `bold`, palette `midnight`. Contact group `newsletter` (Film Studio Newsletter). Built in #7652 to #8126 and the assembly.
+- Shared: account_bar, notice, header, footer, staff_bar, enquiry_band, email_header/footer. Order 127, icon `bi-film`, look `bold`, palette `midnight`. Contact group `newsletter` (Film Studio Newsletter). Built in #7652 to #8126; 2.0.0 puts the home, services and project page on the Film Studio blocks ([[design-template-filmstudio-pages]]).
 
 ## Why a main file plus a folder?
-- As Hotel ([[design-template-hotel]]): `pinegrap-filmstudio.php` includes `parts.php`, `mail.php`, then `pages_public`, `projects`, `enquiries`, `careers`, `standard`, `account` in one scope, returns kept as `$…_part` (`$services`, `$projects`, `$spaces`, `$crew`, `$jobs`, `$testimonials` are parts.php's data).
+- As Hotel: `pinegrap-filmstudio.php` includes `parts.php`, `mail.php`, then `pages_public`, `projects`, `enquiries`, `careers`, `standard`, `account` in one scope, returns kept as `$…_part` (`$services`, `$projects`, `$spaces`, `$crew`, `$jobs`, `$testimonials` are parts.php's data).
 
 ## How does it work without new product behaviour?
 - The showreel is a `video` element with a poster (the Courses lesson player); the studio puts its own file in, or swaps it for its host's embed.
@@ -19,9 +20,9 @@ description: Film Studio template (pinegrap-filmstudio): showreel, services, pro
 - Not built: a client review area with time-coded notes, master delivery, a live studio calendar, a cost calculator, embedding a film from a record's address.
 
 ## What is the pfm- look?
-- `pfm-brand`, `pfm-display` (condensed capitals), `pfm-eyebrow`, `pfm-hero` (a radial primary wash), `pfm-lift`, `pfm-play` (the play mark over a still, grows on the card's hover), `pfm-quote`, `pfm-stat` (tabular figures); Oswald headings, Inter body. Field and section ids `fm-` (never `fs-`). Wide 16:9 stills, the running time beside each project; no fixed date or year in the sample; no `opacity-*` on text.
+- `pfm-brand`, `pfm-display` (condensed capitals, never on a typed name), `pfm-eyebrow`, `pfm-hero` (a radial primary wash), `pfm-lift`, `pfm-play` (the play mark over a still, grows on the card's hover), `pfm-quote`, `pfm-stat` (tabular figures); Oswald headings, Inter body. Field and section ids `fm-` (never `fs-`). 16:9 card stills, the running time on each card; no fixed date or year in the sample; no `opacity-*` on text.
 - Turkish: "proje", "hizmet", "proje talebi", "stüdyo kiralama", "ekip", "ekip ilanı", "başvuru", "tanıtım filmi", "Günce"; the template is "Film Stüdyosu".
 
 ## Which tests cover it?
-- `design_template_filmstudio_test.php` (data, shared parts, `_test_fm_page_keys()`) and the per-part tests; `…_assembly_test.php`: page order equal to the plan's pages, widgets placed once, placeholders, `requires`, search sections, `pfm-` rules, five comment threads and the reply card, samples, Google reviews.
+- `design_template_filmstudio_test.php` (data, shared parts, `_test_fm_page_keys()`) and the per-part tests; `…_assembly_test.php`: page order equal to the plan's pages, widgets placed once, placeholders, `requires`, search sections, `pfm-` rules, comment threads, samples, Google reviews, the blocks' rules and motion.
 - In the shared lists of the collection-form (`blog_new`, `job_new`, `project_new`, `staff_entry`), account-email, submitter-name, consent-privacy (`fm-enq-consent`, `fm-hire-consent`, `fm-app-consent`), faded-text and custom-form-rules (`fm-hire-date`) tests; the url-params test covers every template on its own.

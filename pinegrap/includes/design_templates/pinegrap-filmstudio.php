@@ -55,6 +55,12 @@
  * See includes/design_templates/hello-pinegrap.php for widgets, shared
  * components, 'catalog' and 'requires'.
  *
+ * The home, the services and the project page place the palette's Film
+ * Studio blocks (Showreel Hero, Title Card and Credits, Cuts for Every
+ * Screen) and the general Timeline: Horizontal with the studio's own data;
+ * their rules ship in User Styles from the block source, and their motion
+ * is node interactions (props._fx) only: the template carries no script.
+ *
  * The version follows the template, not the software: raise it whenever the
  * pages change, so a design records which edition it started from.
  *
@@ -145,17 +151,20 @@ $filmstudio_fonts = array(
 );
 
 // The template's own CSS in User Styles. Every class is named pfm- (the
-// field ids are fm-); no block rule's class is named here. Selectors use
-// descendants and pseudo-classes only, so they hold on the editor's canvas
-// too. Colours are tokens only, so they follow any palette in both themes.
+// field ids are fm-); no block rule's class is named here: the blocks'
+// rules come from the block source. Selectors use descendants and
+// pseudo-classes only, so they hold on the editor's canvas too. Colours are
+// tokens only, so they follow any palette in both themes.
 $filmstudio_css = implode("\n", array(
     ':root,[data-bs-theme]{--pg-font-heading:"Oswald","Arial Narrow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;'
         . '--pg-font-body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;'
         . '--pg-heading-weight:600;--pg-display-weight:700;--pg-heading-tracking:.01em;--pg-heading-line-height:1.1}',
     'h1,h2,h3,h4,h5,h6,.h1,.h2,.h3,.h4,.h5,.h6,.display-1,.display-2,.display-3,.display-4,.display-5,.display-6{font-family:var(--pg-font-heading)}',
     'body{font-family:var(--pg-font-body)}',
-    // Titles, project and service names: the condensed heading face in
-    // capitals, a title card's line.
+    // Page and section titles and service names: the condensed heading face
+    // in capitals, a title card's line. A name typed into a record (a
+    // project, a person, a crew call) keeps the case it was typed in: under
+    // a Turkish page capitals would print a dotted capital I in it.
     '.pfm-display{font-family:var(--pg-font-heading);font-weight:600;text-transform:uppercase;letter-spacing:.02em}',
     // The small line over a title: widely spaced capitals.
     '.pfm-eyebrow{letter-spacing:.18em;font-size:.75rem}',
@@ -181,7 +190,7 @@ $filmstudio_css = implode("\n", array(
 
 return array(
     'name'        => lang('Film Studio'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 127,
     'icon'        => 'bi-film',
@@ -234,10 +243,10 @@ return array(
         'email_footer' => array('name' => lang('Film Studio E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pfm- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the rules of the blocks its pages place and
+    // its pfm- rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $filmstudio_css),
+        'css'   => pg_design_template_user_styles(array('filmstudio-reel', 'filmstudio-credits', 'filmstudio-formats', 'timeline-horizontal'), $filmstudio_css),
         'fonts' => json_encode($filmstudio_fonts),
     ),
 );
