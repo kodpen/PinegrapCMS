@@ -2788,8 +2788,23 @@ function pg_image_editor_pictures_saved($record, &$request, $folder, $user)
 
     $doc = isset($request['doc_object']) ? $request['doc_object'] : null;
 
+    // The open scene's layers and a closed scene's (a canvas's scenes).
+    $rows = array();
+
     if ($saved && is_object($doc) && isset($doc->layers) && is_array($doc->layers)) {
-        foreach ($doc->layers as $layer) {
+        $rows[] = $doc->layers;
+    }
+
+    if ($saved && is_object($doc) && isset($doc->scenes) && is_array($doc->scenes)) {
+        foreach ($doc->scenes as $scene) {
+            if (is_object($scene) && isset($scene->layers) && is_array($scene->layers)) {
+                $rows[] = $scene->layers;
+            }
+        }
+    }
+
+    foreach ($rows as $layers) {
+        foreach ($layers as $layer) {
             if (is_object($layer) && isset($layer->id) && is_string($layer->id) && isset($saved[$layer->id])) {
                 $layer->src = $saved[$layer->id]['url'];
                 $layer->fileId = $saved[$layer->id]['id'];
@@ -4262,6 +4277,10 @@ function pg_image_editor_animation_open($file_id, $user)
         return null;
     }
 
+    // A clip or sound whose file was renamed since the save plays from its
+    // address now.
+    $made['doc'] = pg_image_editor_doc_media_fresh($made['doc'], $user);
+
     $animation = array(
         'id'      => (int) $row['id'],
         'name'    => (string) $row['name'],
@@ -4329,6 +4348,144 @@ function pg_image_editor_animation_open($file_id, $user)
         'base'      => $base,
         'canvas'    => false,
         'animation' => $animation), 200);
+}
+
+/**
+ * The clips and sounds of a document that name a file of the site: each
+ * video layer (in doc.layers and in a closed scene's layers) and each entry
+ * of doc.sounds with a fileId. Pure.
+ *
+ * @param mixed $doc the object decode of a document
+ * @return array the objects, as they are in $doc (src and fileId set)
+ */
+function pg_image_editor_doc_media($doc)
+{
+    $list = array();
+
+    if (!is_object($doc)) {
+        return $list;
+    }
+
+    $rows = array();
+
+    if (isset($doc->layers) && is_array($doc->layers)) {
+        $rows[] = $doc->layers;
+    }
+
+    if (isset($doc->scenes) && is_array($doc->scenes)) {
+        foreach ($doc->scenes as $scene) {
+            if (is_object($scene) && isset($scene->layers) && is_array($scene->layers)) {
+                $rows[] = $scene->layers;
+            }
+        }
+    }
+
+    foreach ($rows as $layers) {
+        foreach ($layers as $layer) {
+            if (is_object($layer) && isset($layer->type) && ($layer->type === 'video')) {
+                $list[] = $layer;
+            }
+        }
+    }
+
+    if (isset($doc->sounds) && is_array($doc->sounds)) {
+        foreach ($doc->sounds as $sound) {
+            if (is_object($sound)) {
+                $list[] = $sound;
+            }
+        }
+    }
+
+    return array_values(array_filter($list, function ($item) {
+        return isset($item->fileId, $item->src) && is_numeric($item->fileId) && ((int) $item->fileId > 0) && is_string($item->src);
+    }));
+}
+
+/**
+ * A document's clips and sounds pointed at their files by fileId: the
+ * address and name they have now, so a source renamed in Files after the
+ * save keeps playing, under its new name, when the project opens again. A
+ * file not in $files keeps what it was saved with. Changes $doc. Pure.
+ *
+ * @param mixed $doc   the object decode of a document
+ * @param array $files file id => {url, name} (pg_image_editor_sound_rows())
+ * @return int how many addresses changed
+ */
+function pg_image_editor_doc_media_named($doc, $files)
+{
+    $changed = 0;
+
+    foreach (pg_image_editor_doc_media($doc) as $item) {
+        $id = (int) $item->fileId;
+        $url = (isset($files[$id]['url']) && is_string($files[$id]['url'])) ? $files[$id]['url'] : '';
+
+        if (($url === '') || ($item->src === $url)) {
+            continue;
+        }
+
+        $item->src = $url;
+        $changed++;
+
+        if (isset($files[$id]['name']) && is_string($files[$id]['name']) && ($files[$id]['name'] !== '')) {
+            $item->name = $files[$id]['name'];
+        }
+    }
+
+    return $changed;
+}
+
+/**
+ * The addresses of a reopened document's clips and sounds, read again from
+ * Files: only video and sound files the opener could pick in the editor
+ * (pg_image_editor_sound_where(): not in the Recycle Bin, no ERP document,
+ * a role-3 user's folders). One query for the whole document.
+ *
+ * @param mixed $doc changed in place
+ * @return mixed $doc
+ */
+function pg_image_editor_doc_media_fresh($doc, $user)
+{
+    $ids = array_values(array_unique(array_map(function ($item) { return (int) $item->fileId; }, pg_image_editor_doc_media($doc))));
+
+    if (!$ids) {
+        return $doc;
+    }
+
+    $types = array_merge(pg_image_editor_clip_types(), pg_image_editor_sound_types());
+    $folders = ((int) $user['role'] === 3) ? get_folders_that_user_has_access_to($user['id']) : null;
+    $where = pg_image_editor_sound_where('', $folders, pg_recycle_bin_folder_ids(), null, $types);
+    $rows = ($where === null) ? array() : db_items(
+        "SELECT id, name, type, folder, size
+        FROM files
+        WHERE $where AND (id IN ('" . implode("', '", $ids) . "'))");
+    $files = array();
+
+    foreach (pg_image_editor_sound_rows(is_array($rows) ? $rows : array(), $folders, $types) as $file) {
+        $files[$file['id']] = $file;
+    }
+
+    pg_image_editor_doc_media_named($doc, $files);
+
+    return $doc;
+}
+
+/**
+ * Whether a file's newest version is a video project the editor saved: a
+ * row action animation wrote (its server-side source) whose document names
+ * an MP4 or WebM. The File Manager offers Image Editor on such a video; the
+ * open itself checks the bytes too (pg_image_editor_animation_file()). Pure.
+ *
+ * @param array|null $newest pg_file_versions_newest()
+ */
+function pg_image_editor_video_project($newest)
+{
+    if (!is_array($newest) || !isset($newest['source'], $newest['doc_json']) || ((string) $newest['source'] !== pg_image_editor_animation_source())) {
+        return false;
+    }
+
+    $animation = pg_image_editor_animation_of($newest['doc_json']);
+
+    return $animation && in_array($animation['format'], array('mp4', 'webm'), true);
 }
 
 /**
@@ -4404,21 +4561,36 @@ function pg_image_editor_action_animation($request, $user)
         }
 
     } elseif ($file_id > 0) {
-        // A saved canvas, with the same checks as opening it (the bin, an
-        // ERP document, edit access).
-        $file = pg_image_editor_file($file_id, $user);
-
-        if ($file['refusal']) {
-            return $file['refusal'];
-        }
-
-        $folder = (int) $file['row']['folder'];
-        $stem = (string) $file['row']['name'];
-        // The animation names its canvas, so only an animation of this
-        // canvas is replaced from it; one opened as its own canvas (its
-        // canvas gone) keeps the canvas it names.
+        // An animation opened as its own canvas (its canvas gone, or never
+        // saved) names itself: an MP4 or WebM is no picture, so it skips
+        // the picture check of pg_image_editor_file(); the bin and edit
+        // access are checked on its folder below.
         $self = pg_image_editor_animation_file($file_id);
-        $source_id = $self ? (int) $self['animation']['source'] : $file_id;
+
+        if ($self && pg_image_editor_canvas_is_doc($self['doc'])) {
+            if (pg_files_include_erp_document(array($file_id))) {
+                return pg_image_editor_refusal(lang('ERP documents are read-only in the file manager.'), 403);
+            }
+
+            $folder = (int) $self['row']['folder'];
+            $stem = (string) $self['row']['name'];
+            $source_id = (int) $self['animation']['source'];
+        } else {
+            // A saved canvas, with the same checks as opening it (the bin,
+            // an ERP document, edit access).
+            $file = pg_image_editor_file($file_id, $user);
+
+            if ($file['refusal']) {
+                return $file['refusal'];
+            }
+
+            $folder = (int) $file['row']['folder'];
+            $stem = (string) $file['row']['name'];
+            // The animation names its canvas, so only an animation of this
+            // canvas is replaced from it; one opened as its own canvas keeps
+            // the canvas it names.
+            $source_id = $self ? (int) $self['animation']['source'] : $file_id;
+        }
 
     } else {
         $folder = isset($request['folder_id']) ? (int) $request['folder_id'] : 0;
@@ -4480,6 +4652,9 @@ function pg_image_editor_action_animation($request, $user)
         return $record;
     }
 
+    // Pictures from this computer become files beside it and their layers
+    // point at them, so the document holds no pixels and can be kept.
+    $record = pg_image_editor_pictures_saved($record, $request, $folder, $user);
     $json = pg_file_versions_ready() ? pg_image_editor_animation_doc_json($doc, $source_id, $base_no, $format) : '';
 
     if ($json !== '') {
