@@ -11187,7 +11187,9 @@ var pgSettingsModal = (function () {
         // button (modal.php), which clears it. A click whose default was
         // cancelled -- an inline confirm() answered with Cancel -- submits
         // nothing, so it is not remembered for the next save either.
-        $(el).on('click', '#pg_settings_modal_form [type="submit"]', function (event) {
+        // A button in a card's drawer joins the form by its form attribute
+        // (the drawer sits outside it) and counts the same.
+        $(el).on('click', '#pg_settings_modal_form [type="submit"], #pg_settings_modal_drawers [type="submit"][form="pg_settings_modal_form"]', function (event) {
 
             pressed = (!event.isDefaultPrevented() && this.name && !this.disabled)
                 ? { name: this.name, value: this.value }
@@ -12136,14 +12138,15 @@ var pgSettingsModal = (function () {
      */
     function markable(name) {
 
-        var box = byId('pg_settings_modal_pane');
-
-        if (!box || !name) {
+        if (!el || !name) {
             return null;
         }
 
+        // The pane, then a card's drawer: a drawer's fields join the form too.
         var esc = (window.CSS && CSS.escape) ? CSS.escape : function (text) { return String(text).replace(/["\\]/g, '\\$&'); };
-        var found = box.querySelectorAll('[name="' + esc(name) + '"], [name="' + esc(name + '[]') + '"], [name^="' + esc(name + '[') + '"]');
+        var found = el.querySelectorAll(['#pg_settings_modal_pane', '#pg_settings_modal_drawers'].map(function (box) {
+            return box + ' [name="' + esc(name) + '"], ' + box + ' [name="' + esc(name + '[]') + '"], ' + box + ' [name^="' + esc(name + '[') + '"]';
+        }).join(', '));
 
         for (var i = 0; i < found.length; i++) {
 
@@ -12161,7 +12164,7 @@ var pgSettingsModal = (function () {
      */
     function unmark() {
 
-        $('#pg_settings_modal_pane [data-pg-sm-marked]').each(function () {
+        $('#pg_settings_modal_pane [data-pg-sm-marked], #pg_settings_modal_drawers [data-pg-sm-marked]').each(function () {
             this.removeAttribute('data-pg-sm-marked');
             window.pgFieldInvalid(this, false);
         });

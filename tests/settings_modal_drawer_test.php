@@ -111,19 +111,21 @@ function test_settings_modal_drawer_cards_hand_over_no_second_dialog()
 		pg_assert_same(false, stripos($src, 'data-bs-toggle="dialog"'), $name . ': no card opens a dialog');
 		pg_assert_same(0, preg_match('/<dialog[\s>]/i', $src), $name . ': no card prints a dialog');
 
-		if (!preg_match_all('/\$pg_settings_modals\[\]\s*=\s*(.{0,200})/s', $src, $m)) {
+		if (!preg_match_all('/\$pg_settings_modals\[\]\s*=\s*([^;]{0,200})/s', $src, $m)) {
 			continue;
 		}
 
 		foreach ($m[1] as $entry) {
 			$entries++;
-			$drawer = (strpos($entry, 'pg_settings_drawer(') === 0);
+			// pg_settings_drawer(), or a card's helper that returns one
+			// (ws_settings_department_drawer()).
+			$drawer = (bool) preg_match('/^(pg_settings_drawer|ws_settings_[a-z_]+_drawer)\(/', $entry);
 			$form = (bool) preg_match('/^\'\s*<form method="post" action="connect\.php" id="pgset_[a-z_]+(\' \. \$[a-z_]+ \. \')?" class="disable_shortcut d-none">/', $entry);
 			pg_assert_true($drawer || $form, $name . ': a drawer or a hidden Connect form, got ' . substr($entry, 0, 60));
 		}
 	}
 
-	pg_assert_same(4, $entries, 'Cron Jobs and the three Connect forms');
+	pg_assert_same(6, $entries, 'Cron Jobs, the three Connect forms and the two department drawers');
 }
 
 function test_settings_modal_drawer_second_dialog_path_is_gone()

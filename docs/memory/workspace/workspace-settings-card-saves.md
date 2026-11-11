@@ -11,6 +11,9 @@ description: Workspace Settings card saves: list allow-list, refused form refill
 - The redirect keeps the card's anchor, but the error used to sit only at the top of the page and the form came back from the database. Now, when the liveform holds an error after the switch, `ws_settings_refused_fields($_POST)` (`includes/workspace/screen.php`, pure) is kept in `$_SESSION['software']['ws_settings_refused']` for one page: field name => value (`name[]` for a list, `name[key]` for a row), never the token, a password, a secret or a key.
 - `ws_settings_refused_script()` finds the form by `ws_action` and `box_id` / `department_id` / `feed_id` (not a `d-inline` row form), fills it, opens its collapse and moves the `.software_error` alert into it (or into the card the anchor names) and scrolls to it. A mailbox password is typed again. Without JavaScript the error stays at the top.
 
+## Where are the department and team member saves?
+- In `includes/workspace/team_settings.php`, shared with the Site Settings dialog: [[workspace-team-settings]].
+
 ## Whose team row may a person change?
 - `ws_settings_may_edit_person($viewer_role, $person_role)` (`includes/workspace/people.php`): only a row of the same or a lower rank (Administrator 0 above Designer 1 above Manager 2 above a basic user 3). A higher rank's row is drawn disabled and a posted one is skipped. Before, a Manager or a basic user with the settings right could tick Not in the team on an administrator, who then got Access denied on every Workspace screen, this one included.
 

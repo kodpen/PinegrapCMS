@@ -365,6 +365,7 @@
 - workspace-task-filters.md: My Tasks, planning board and Work Calendar filters (workspace.js): named department selects, scope buttons that follow a department pick, pressed week buttons, the announced task count
 - workspace-task-reminders.md: Task reminders, overdue and meeting notices (reminders.php): who is told, the per-recipient mail and its channel line, claims against double sending, time zone and DST
 - workspace-task-zero-dates.md: A task's start or due date of 0000-00-00 is no date when the board or /postpone moves it and when the start-after-due check runs (ws_task_move_dates(), ws_task_starts_after_due())
+- workspace-team-settings.md: Departments and Team members in Site Settings (Team and working hours) and on Workspace Settings: shared checks and writes, field names, old anchors, Who is in the team
 - workspace-text-fold.md: Turkish-aware case-insensitive search of the workspace (ws_fold(), ws_text_position(), ws_text_contains(), SQL helpers in commands.php): what folds, who calls it, why not mb_stripos() [decision: decisions-made-product-10.md]
 - workspace-text-headings.md: Headings "#" to "###" and "---" rules in Workspace notes only (#2649): server rule and fast path, plain text, editor twins, tools, Enter/Backspace, "# " autoformat, the import
 - workspace-text-highlight.md: ==x== as a highlight (<mark>): the pair rule, old shapes that stay text, server and editor twins, plain text, guest page, notes import, sums, table cells
