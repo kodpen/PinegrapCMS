@@ -13,7 +13,7 @@
  * settings_<key>.php page has no outer dialog, so there the same content is
  * Bootstrap's own drawer, opened by its data-api.
  *
- * A card hands its drawer over as it hands over a dialog of its own:
+ * A card hands its drawer over with the markup it prints beside the pane:
  *
  *     $pg_settings_modals[] = pg_settings_drawer('cron_jobs', $title, $body, !empty($pg_settings_in_dialog));
  *

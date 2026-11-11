@@ -9,8 +9,6 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
 - V0 (S) Screens. Done (#7619, screens 35-42, `image-editor-video-visuals.md`).
 
 - V1 (M) Demux and decode. Part `video`. Done (#7658, `ui/image-editor-video-decode.md`).
-  - Own MP4 (moov, trak, stsd, stts, ctts, stss, stsz, stco/co64) and WebM (EBML, Cluster, SimpleBlock) readers; WebCodecs decoders; a frame cache by time; seeking from the nearest key frame; what the browser cannot decode (HEVC on some) gets a message.
-  - Tests: sample tables of small MP4 and WebM fixtures under Node; the seek point for a time.
 
 - V2 (M) The video layer. Part `clip`. Done (#8483, `ui/image-editor-clip.md`; with V4's Detach sound; the export's frames at each moment in V7b, #8629).
   - `type: 'video'` with its file, source in and out, place on the timeline, speed, volume, muted. Drawn at the playhead under or over other layers; playing in step with the play bar; added from Files or this computer through E31's Import menu (`ui/image-editor-import.md`).
@@ -43,3 +41,4 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
 
 - V11 (S) Access and close-out. The holder.
   - Keys (J, K, L, I, O), names, captions of the controls; lasting decisions to topic files; these plan files, `image-editor-workers.md`, `image-editor-visuals.md` and `plans/image-editor/` (the screens and the prototype) deleted, the image editor's own plan files having gone in E20 (#7695).
+  - The rail's Turkish labels "Animasyon" and "Katmanlar" break inside the word in the sandbox's font at 1440 × 900 (#8705's pictures); the built rule is to break, not to run over (`ui/image-editor-modal.md`). V11 looks at the rail in Turkish and keeps a one-word label on one line.

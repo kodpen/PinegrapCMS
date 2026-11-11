@@ -231,6 +231,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     $pg_theme_links = ($style_layout === 'visual_designer' && function_exists('pg_design_theme_links'))
         ? pg_design_theme_links($row['style_look'] ?? '', $row['style_palette'] ?? '', $row['style_framework'] ?? '')
         : '';
+    // The design's colour mode (2026.11.0, 11.0.186): light, dark or the
+    // visitor's system on <html>; '' (and a database before the column)
+    // leaves the page as it was.
+    $pg_color_mode = ($style_layout === 'visual_designer' && function_exists('pg_design_color_mode_key'))
+        ? pg_design_color_mode_key($row['style_color_mode'] ?? '')
+        : '';
     $style_theme_id = $row['theme_id'] ?? '';
     $style_theme_name = $row['style_theme_name'] ?? '';
 
@@ -630,6 +636,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // placed on the page (pg_theme_switcher_inject()). Not in an e-mail.
     if (!$email && strpos($content, 'data-pg-theme-switcher') !== false && function_exists('pg_theme_switcher_inject')) {
         $content = pg_theme_switcher_inject($content);
+    }
+
+    // ── Colour mode ─────────────────────────────────────────────────────────────
+    // The design's mode on <html>, with the few lines in <head> that let a
+    // visitor's stored theme choice win (pg_design_color_mode_apply()). Not
+    // in an e-mail.
+    if (!$email && $pg_color_mode !== '') {
+        $content = pg_design_color_mode_apply($content, $pg_color_mode);
     }
 
     // ── Sideways rows ───────────────────────────────────────────────────────────

@@ -66,7 +66,9 @@ function test_screen_lone_controls_disk_usage_is_in_the_toolbar()
 
 function test_screen_lone_controls_reports_keep_the_bar_id()
 {
-	foreach (array('view_order_report.php', 'view_visitor_report.php') as $file) {
+	// The order report opens its settings in a drawer instead
+	// (tests/order_report_screen_layout_test.php).
+	foreach (array('view_visitor_report.php') as $file) {
 		$source = screen_lone_controls_source($file);
 		// Edit hides the bar and Cancel Edit shows it again, both by its id;
 		// the helper draws nav#button_bar.

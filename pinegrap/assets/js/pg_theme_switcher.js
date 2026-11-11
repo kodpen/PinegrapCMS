@@ -49,15 +49,23 @@
         memory = (root.getAttribute('data-bs-theme') === 'dark') ? 'dark' : 'light';
     }
 
+    // The design's colour mode (data-pg-color-mode on <html>, written by
+    // the server: pg_design_color_mode_apply()) when the visitor has stored
+    // no choice; a page without one follows the system, as before.
+    function designMode() {
+        var m = root.getAttribute('data-pg-color-mode');
+        return (m === 'light' || m === 'dark' || m === 'auto') ? m : 'auto';
+    }
+
     function stored() {
         if (noStore) {
             return memory;
         }
 
         try {
-            return window.localStorage.getItem(KEY) || 'auto';
+            return window.localStorage.getItem(KEY) || designMode();
         } catch (e) {
-            return memory || 'auto';
+            return memory || designMode();
         }
     }
 

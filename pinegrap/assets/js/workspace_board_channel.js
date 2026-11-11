@@ -199,12 +199,14 @@
         var k = kit();
         var bar = k.el('div', 'pg-toolbar ws-cb-bar');
 
-        var groups = k.el('div', 'btn-group btn-group-sm');
+        // The choices are chips: the grouping, the urgency, the person and
+        // the two switches, each a pill that is filled while it is on.
+        var groups = k.el('div', 'ws-cb-chips');
         groups.setAttribute('role', 'group');
         groups.setAttribute('aria-label', t('cb_group'));
 
         GROUPS.forEach(function (key) {
-            var item = k.button('btn btn-text theme-secondary' + (prefs.group === key ? ' active' : ''), t('cb_by_' + key));
+            var item = k.button('btn btn-sm ws-cb-chip' + (prefs.group === key ? ' active' : ''), t('cb_by_' + key));
             item.setAttribute('aria-pressed', prefs.group === key ? 'true' : 'false');
             item.addEventListener('click', function () {
                 if (prefs.group !== key) {
@@ -220,10 +222,12 @@
         bar.appendChild(groups);
 
         // The same urgency choice as the planning board and the task lists.
-        bar.appendChild(k.priorityFilter(prefs.priority, function (value) {
+        var urgency = k.priorityFilter(prefs.priority, function (value) {
             prefs.priority = value;
             load(self);
-        }));
+        });
+        urgency.classList.add('ws-cb-chip-select');
+        bar.appendChild(urgency);
 
         var people = [[0, t('cb_all_people')], [-1, t('cb_nobody')]];
 
@@ -232,7 +236,7 @@
         });
 
         var who = k.select(people, self.person);
-        who.classList.add('w-auto');
+        who.classList.add('w-auto', 'ws-cb-chip-select');
         who.setAttribute('aria-label', t('who'));
         who.addEventListener('change', function () {
             self.person = parseInt(who.value, 10) || 0;
@@ -268,26 +272,27 @@
         return bar;
     }
 
+    // A switch of the toolbar as a chip: a button that says whether it is on.
     function toggle(self, id, label, on, set) {
         var k = kit();
-        var wrap = k.el('div', 'form-field mb-0');
-        var input = k.el('input', '');
-        input.type = 'checkbox';
-        input.id = id;
-        input.checked = !!on;
+        var chip = k.button('btn btn-sm ws-cb-chip' + (on ? ' active' : ''), label, on ? 'bi-check2' : '');
+        chip.id = id;
+        chip.setAttribute('aria-pressed', on ? 'true' : 'false');
 
-        var text = k.el('label', 'small', label);
-        text.htmlFor = id;
+        // The chip pressed last keeps focus once load() has drawn the
+        // toolbar again with the new state.
+        if (self.refocus === id) {
+            self.refocus = '';
+            window.requestAnimationFrame(function () { chip.focus(); });
+        }
 
-        input.addEventListener('change', function () {
-            set(input.checked);
+        chip.addEventListener('click', function () {
+            set(chip.getAttribute('aria-pressed') !== 'true');
+            self.refocus = id;
             load(self);
         });
 
-        wrap.appendChild(k.el('div', 'switch')).appendChild(input);
-        wrap.appendChild(text);
-
-        return wrap;
+        return chip;
     }
 
     function draw(self) {

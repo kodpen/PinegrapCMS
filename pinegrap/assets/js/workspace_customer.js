@@ -365,7 +365,7 @@
     }
 
     function card(channel, h) {
-        var node = h.el('div', 'card ws-customer-card mt-7');
+        var node = h.el('div', 'card ws-customer-card');
         var header = h.el('div', 'card-header d-flex flex-wrap justify-content-between align-items-center gap-3');
         var actions = h.el('div', 'd-flex flex-wrap justify-content-end gap-3');
         var body = h.el('div', 'card-body');
