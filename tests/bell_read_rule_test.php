@@ -110,13 +110,14 @@ function test_bell_read_rule_the_script_reads_on_open()
 	pg_assert_contains("lang('Mark all as read')", $get, 'its label');
 	pg_assert_true(strpos($get, 'pg-bell-mark-all') < strpos($get, 'notification-remove-btn'), 'Mark all as read stands before Delete All');
 	pg_assert_true(strpos($get, 'notification-remove-btn') < strpos($get, '<ul class="list-group'), 'both stand above the list');
-	pg_assert_contains('pg_bell_read_button(', $get, 'every row has the read box');
+	pg_assert_contains('pg_bell_row(', $get, 'every row is drawn by pg_bell_row()');
+	pg_assert_contains('pg_bell_read_button(', bell_read_rule_js_function('pg_bell_row'), 'every row has the unread dot');
 	pg_assert_contains('var load = ++pgBellLoad;', $get, 'each list request is numbered');
 	pg_assert_contains('if (load !== pgBellLoad) {', $get, 'only the latest answer is drawn, so one opening draws the list once');
 
 	$box = bell_read_rule_js_function('pg_bell_read_button');
 	pg_assert_contains("lang('Mark as read')", $box, 'an unread row offers Mark as read');
-	pg_assert_contains("lang('Mark as unread')", $box, 'a read row offers Mark as unread');
+	pg_assert_contains("lang('Mark as unread')", bell_read_rule_js_function('pg_bell_row'), 'a read row offers Mark as unread in its menu');
 
 	$open = bell_read_rule_js_function('pg_bell_open_row');
 	pg_assert_contains("edit_notification(notification_id, 'mark_read'", $open, 'opening a row reads it first');

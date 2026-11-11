@@ -58,6 +58,70 @@ function test_ready_report_requested_reads_the_parameter()
 	pg_assert_same(null, pg_ready_report_requested('sales_by_region', 'visitor_report'), 'another screen');
 }
 
+// Every entry's levels are levels the order report offers.
+function test_ready_reports_levels_exist_on_the_screen()
+{
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order_report.php');
+
+	foreach (pg_ready_reports() as $key => $report) {
+		foreach ($report['levels'] as $level) {
+			pg_assert_true(strpos($screen, "] = '" . $level['by'] . "';") !== false, $key . ': ' . $level['by'] . ' is a level of the screen');
+		}
+
+		pg_assert_same(pg_order_report_default_filters(), $report['filters'], $key . ': the orders the shop cards sum');
+	}
+
+	pg_assert_same(array('sales_by_region', 'sales_over_time', 'sales_by_payment_method', 'sales_by_source'), array_keys(pg_ready_reports()));
+	pg_assert_same(array('year', 'month', 'day'), array_column(pg_ready_reports()['sales_over_time']['levels'], 'by'));
+	pg_assert_same(array('payment_method'), array_column(pg_ready_reports()['sales_by_payment_method']['levels'], 'by'));
+	pg_assert_same(array('utm_source'), array_column(pg_ready_reports()['sales_by_source']['levels'], 'by'));
+}
+
+// A period from the address: digits only, 1 to 366; anything else is the
+// entry's own.
+function test_ready_report_days_reads_only_a_day_count()
+{
+	pg_assert_same(1, pg_ready_report_days('1'));
+	pg_assert_same(7, pg_ready_report_days('7'));
+	pg_assert_same(366, pg_ready_report_days('366'));
+	pg_assert_same(7, pg_ready_report_days(7));
+
+	foreach (array(null, '', '0', '367', '-7', '7.5', ' 7', '7 ', '1e2', '0x1', '0007', array('7'), true, 7.0) as $bad) {
+		pg_assert_same(0, pg_ready_report_days($bad), var_export($bad, true));
+	}
+}
+
+// The days given replace the entry's period in the date filter.
+function test_ready_report_filters_take_the_days_given()
+{
+	$report = pg_ready_reports()['sales_over_time'];
+
+	$today = pg_ready_report_filters($report, 1);
+	$week = pg_ready_report_filters($report, 7);
+	$own = pg_ready_report_filters($report, 0);
+
+	pg_assert_same('0', end($today)['dynamic_value_attribute'], 'today: 0 days ago');
+	pg_assert_same('6', end($week)['dynamic_value_attribute']);
+	pg_assert_same('29', end($own)['dynamic_value_attribute'], 'its own 30 days');
+}
+
+// The strip lists the screen's ready reports whose levels it offers.
+function test_ready_report_strip()
+{
+	$levels = array('year', 'month', 'day', 'billing_country', 'billing_state', 'payment_method', 'utm_source');
+	$strip = pg_ready_report_strip('order_report', $levels, 'sales_by_source');
+
+	pg_assert_same(array('sales_by_region', 'sales_over_time', 'sales_by_payment_method', 'sales_by_source'), array_column($strip, 'key'));
+	pg_assert_same(array(false, false, false, true), array_column($strip, 'current'));
+	pg_assert_same('view_order_report.php?ready=sales_by_payment_method', $strip[2]['url']);
+	pg_assert_same('Sales by payment method', $strip[2]['title']);
+
+	$without = pg_ready_report_strip('order_report', array('year', 'month', 'day', 'payment_method'));
+
+	pg_assert_same(array('sales_over_time', 'sales_by_payment_method'), array_column($without, 'key'), 'only those the levels can give');
+	pg_assert_same(array(), pg_ready_report_strip('visitor_report', $levels), 'another screen');
+}
+
 // Sales by region: billing country, then billing state, both by total, so
 // both of the card's views (its home country's regions, or its countries)
 // are in the report; the billing state level exists on the screen already.
@@ -164,6 +228,8 @@ function test_ready_report_without_a_period_adds_no_date()
 function test_ready_report_url()
 {
 	pg_assert_same('view_order_report.php?ready=sales_by_region', pg_ready_report_url('sales_by_region'));
+	pg_assert_same('view_order_report.php?ready=sales_over_time&days=7', pg_ready_report_url('sales_over_time', 7));
+	pg_assert_same('view_order_report.php?ready=sales_over_time', pg_ready_report_url('sales_over_time', 0));
 }
 
 // The screen reads ?ready= only for a new report and fills its form from the
@@ -184,7 +250,7 @@ function test_order_report_screen_opens_a_ready_report()
 	pg_assert_contains('if ($ready_report !== null) {', $block);
 	pg_assert_contains("\$liveform->assign_field_value('summarize_by_' . \$level, \$ready_report['levels'][\$level - 1]['by'] ?? '');", $block, 'levels');
 	pg_assert_contains("\$liveform->assign_field_value('order_by_' . \$level, \$ready_report['levels'][\$level - 1]['order'] ?? '');", $block, 'order by');
-	pg_assert_contains('$default_filters = pg_ready_report_filters($ready_report);', $block, 'filters and period');
+	pg_assert_contains('$default_filters = pg_ready_report_filters($ready_report, $ready_days);', $block, 'filters and period');
 	pg_assert_contains('$default_filters = pg_order_report_default_filters();', $block, 'the plain new report keeps its defaults');
 	pg_assert_contains("\$liveform->assign_field_value('summarize_by_1', 'year');", $block, 'the plain new report keeps year, month, day');
 	pg_assert_contains("'_dynamic_value', \$default_filter['dynamic_value'] ?? '');", $block, 'dynamic value');
@@ -201,4 +267,26 @@ function test_sales_map_card_see_all_opens_sales_by_region()
 	pg_assert_same(0, substr_count($source, "'view_order_report.php'"), 'no plain new report link');
 	pg_assert_contains('pg_sales_map_orders_url(', $source, 'places keep their orders link');
 	pg_assert_true(isset(pg_ready_reports()['sales_by_region']), 'the key exists');
+}
+
+// The screen reads the day count only with a ready report, draws the strip
+// over the report, and a Save of a ready report inserts a new report: the
+// form posts no id and no ready key, and the saved report opens by its id.
+function test_order_report_screen_strip_days_and_save()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order_report.php');
+
+	pg_assert_contains("\$ready_days = (\$ready_report === null) ? 0 : pg_ready_report_days(\$_GET['days'] ?? null);", $source);
+	pg_assert_contains('$default_filters = pg_ready_report_filters($ready_report, $ready_days);', $source);
+	pg_assert_contains("\$ready_strip = pg_ready_report_strip('order_report', array_values(array_filter(\$summarize_by_options, function (\$value) {", $source);
+	pg_assert_contains('btn-solid theme-primary" aria-current="page"', $source, 'the open one is marked');
+	pg_assert_contains('<nav class="pg-ready-strip mb-3" aria-label="\' . h(lang(\'Ready reports\')) . \'"><ul class="list-unstyled d-flex flex-wrap gap-2 mb-0">', $source, 'a named list that wraps on a phone');
+
+	$toolbar = strpos($source, "    ' . \$output_edit_button . '\n    ' . \$output_ready_strip . '\n");
+	pg_assert_true($toolbar !== false, 'the strip sits under the toolbar');
+
+	pg_assert_contains('<form name="form" id="edit_form" action="view_order_report.php" method="post">', $source, 'no ready key in the form address');
+	pg_assert_false(strpos($source, "'name'=>'ready'") !== false, 'no ready field in the form');
+	pg_assert_contains("\$output_hidden_id_field = \$liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>\$_GET['id']));", $source, 'the id is posted only for a saved report');
+	pg_assert_contains("if (\$liveform->field_in_session('id') == false) {\n            \$query =\n                \"INSERT INTO order_reports (", $source, 'without an id a Save inserts a new report');
 }

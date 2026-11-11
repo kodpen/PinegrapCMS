@@ -28,6 +28,7 @@ StyleDesigner.definePart('theme', function (K) {
     var _sdThemes = K._sdThemes;
     var _sdThemeFind = K._sdThemeFind;
     var _sdThemeValue = K._sdThemeValue;
+    var _sdLookDrawingOf = K._sdLookDrawingOf;
     var _sdOpenThemeSettings = K._sdOpenThemeSettings;
 
     // The assets panel's host, handed to every call: the user-styles
@@ -308,7 +309,7 @@ StyleDesigner.definePart('theme', function (K) {
             var _pl = _sdThemeFind('palette', _sdThemeValue('palette'));
             var lookRow = (_sdUsesBootstrap() && _sdThemes())
                 ? '<div class="sd-theme-head-row">' +
-                      '<span class="bi bi-brush sd-theme-head-icon"></span>' +
+                      '<span class="sd-theme-head-look">' + _sdLookDrawingOf(_sdThemeValue('look')) + '</span>' +
                       '<span class="sd-theme-head-txt"><strong>' + esc(_lk ? _lk.name : _sdT('Plain Bootstrap')) + '</strong> · ' + esc(_pl ? _pl.name : _sdT('Bootstrap')) +
                           '<br><span class="sd-theme-head-hint">' + esc(_sdT('Look and colour palette of the design')) + '</span></span>' +
                       '<button type="button" class="sd-theme-head-btn" data-act="look" title="' + esc(_sdT('Change the look and the palette')) + '"><span class="bi bi-sliders"></span></button>' +
