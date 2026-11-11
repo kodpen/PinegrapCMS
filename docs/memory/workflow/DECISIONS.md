@@ -36,6 +36,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-3.md: Which Bootstrap 6 components did the owner name? (2026-10-25)
 - decisions-made-panel-3.md: What does an old browser get in the panel? (owner, 2026-10-25)
 - decisions-made-panel-3.md: What opens from a card inside the Site Settings dialog? (owner, 2026-11-11)
+- decisions-made-panel-4.md: Where are the rules and the earlier parts?
+- decisions-made-panel-4.md: What does a bell row look like? (owner, 2026-11-11)
+- decisions-made-panel-4.md: Which filters does the bell have? (owner, 2026-11-11)
+- decisions-made-panel-4.md: What does a bell row's button do? (owner, 2026-11-11)
+- decisions-made-panel-4.md: When is a notification read? (owner, 2026-11-11)
+- decisions-made-panel-4.md: Where is it built?
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?
 - decisions-made-panel.md: Which date-and-time picker does the software use? (#2693, 2026-10-28)
@@ -526,6 +532,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/agent-canvas-svg.md: Agents draw Workspace canvases from SVG (POST channels/{id}/canvases) and read any canvas (GET messages/{id}/canvas): Import port, blank picture, pending, who may
 - workspace/agent-channel-flag.md: Agent channel switch (ws_channels.agent_channel, #8440): /agent-channel on|off, its decisions kept apart on the decisions screen, the dashboard and GET /workspace/decisions
 - workspace/agent-checklist-questions.md: When an agent asks with a checklist (several ticks, or agent to agent) and not a poll; the ticks over the API (checks), the wake on a tick, the closing decision; who a question rings (question_asked)
+- workspace/agent-key-trial-memory.md: Channel memory written live on dev (2026-11-11) with an application agent's key: create, read, list, update and delete by POST, dry runs, refusals, the entry's line in the brief
 - workspace/agent-questions.md: How an agent asks the people with a poll or an approval; a one-answer question as a one-choice poll closed once the vote is read; why the outcome is written in the agent's name
 - workspace/channel-agent-rights.md: Who adds, changes or removes a channel's agents ("Agents in this channel" in Channel settings, workspace.channels.agents.*): who may post; the tier and a private channel's new agent only its manager
 - workspace/channel-memory.md: A channel's memory (ws_channel_memory) and the decision mark by a person or an agent (ws_messages.marked_by_kind): rows, routes, the index in the brief, the Memory tab
