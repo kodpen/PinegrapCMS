@@ -28,6 +28,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/designer_import.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_design_theme.php');
 
 /**
  * Why a style row cannot be opened in the visual designer, or '' when it
@@ -97,34 +98,6 @@ function pg_classic_style_frame($style_code, $lookup = null)
 }
 
 /**
- * The file name a classic style's link to one of the site's own files
- * names ({path}custom.css, or the same under the site's output path), or ''
- * for any other reference: a CDN, a software file ({software_directory}), a
- * path below a folder (files are stored flat, by name).
- *
- * Pure: no query, no file.
- *
- * @param string $ref          the link's href or the script's src
- * @param string $output_path  OUTPUT_PATH ('' to skip that form)
- */
-function pg_classic_style_site_file_name($ref, $output_path)
-{
-    $ref = trim((string)$ref);
-    $rest = null;
-    if (stripos($ref, '{path}') === 0) {
-        $rest = (string)substr($ref, 6);
-    } elseif ($output_path !== '' && $output_path !== '/' && strpos($ref, (string)$output_path) === 0) {
-        $rest = (string)substr($ref, strlen($output_path));
-    } elseif ($output_path === '/' && $ref !== '' && $ref[0] === '/' && substr($ref, 0, 2) !== '//') {
-        $rest = (string)substr($ref, 1);
-    }
-    if ($rest === null || $rest === '' || stripos($rest, '{software_directory}') !== false) return '';
-    $rest = (string)preg_replace('/[?#].*$/s', '', $rest);
-    if ($rest === '' || strpos($rest, '/') !== false || strpos($rest, '\\') !== false) return '';
-    return rawurldecode($rest);
-}
-
-/**
  * The style's own CSS/JS files made managed file entries of the design
  * (the shape designer_file/create writes): the assets panel opens them as
  * editable tabs (designer_file/read, save) once the page designer is gone.
@@ -168,12 +141,6 @@ function pg_classic_style_page_tree($root_props, $shared_id, $shared_name)
     $ref = pg_di_mk('shared_ref', array('sharedId' => (int)$shared_id, 'sharedName' => (string)$shared_name));
     $ref['_id'] = 'sd_frame';
     return pg_di_root(array($ref), is_array($root_props) ? $root_props : array());
-}
-
-// The category that marks the shared component made from a classic style.
-function pg_classic_style_component_category($style_id)
-{
-    return 'classic_style:' . (int)$style_id;
 }
 
 /**

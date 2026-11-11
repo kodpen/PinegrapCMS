@@ -121,6 +121,31 @@ const StyleDesigner = (function () {
         return (_design && _design.iconsUrl) ? _design.iconsUrl
             : 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css';
     }
+    // The theme file the design loads: the one chosen in Settings → Theme
+    // file, else, for a design moved from a classic style, the activated
+    // theme of the site its classic head printed (sdDesign.themeFile, from
+    // pg_legacy_design_theme_js()). { id, name, url, inherited } or null.
+    function _sdThemeInUse() {
+        var sel = document.querySelector('select[name="theme_id"]');
+        var opt = (sel && sel.selectedIndex >= 0) ? sel.options[sel.selectedIndex] : null;
+        if (opt && opt.value) {
+            var name = opt.text.trim();
+            return { id: opt.value, name: name, url: (window.OUTPUT_PATH || '/') + name, inherited: false };
+        }
+        var t = (_design && _design.themeFile) ? _design.themeFile : null;
+        return (t && t.name) ? { id: String(t.id), name: String(t.name), url: String(t.url), inherited: true } : null;
+    }
+    // Under Settings → Theme file: the theme a moved design loads while no
+    // file is chosen there.
+    function _sdThemeFileHint() {
+        var box = document.getElementById('sd-theme-file-status');
+        if (!box) return;
+        var t = (_design && _design.themeFile && _design.themeFile.name) ? String(_design.themeFile.name) : '';
+        var th = _sdThemeInUse();
+        if (!t) box.textContent = '';
+        else if (th && th.inherited) box.textContent = _sdT('In use: {var}, the activated theme of the site, as on the classic style this design came from.', t);
+        else box.textContent = _sdT('With no file chosen here the design loads {var}, the activated theme of the site, as its classic style did.', t);
+    }
     // How a page names itself in an asset row's `pages`: its id once saved,
     // `tab:<key>` until then (the save swaps it for the id). The server's
     // twin is pg_design_asset_on_page().
@@ -7280,10 +7305,10 @@ const StyleDesigner = (function () {
         var themeSel = document.querySelector('select[name="theme_id"]');
         var syncTheme = window._sdSyncTheme = function() {
             if (!themeSel) return;
-            var themeStr = themeSel.options[themeSel.selectedIndex].text.trim();
+            var th = _sdThemeInUse();
             // CSS
             var themeLink = canvasDoc.getElementById('sd-custom-theme');
-            if (themeStr && themeStr.indexOf('.css') !== -1) {
+            if (th && th.name.indexOf('.css') !== -1) {
                 if (!themeLink) {
                     themeLink = canvasDoc.createElement('link');
                     themeLink.id = 'sd-custom-theme';
@@ -7291,10 +7316,11 @@ const StyleDesigner = (function () {
                     canvasDoc.head.appendChild(themeLink);
                 }
                 // Theme files are addressed from the site root, which is not "/" on a subfolder install.
-                themeLink.href = (window.OUTPUT_PATH || '/') + themeStr + '?t=' + new Date().getTime();
+                themeLink.href = th.url + '?t=' + new Date().getTime();
             } else if (themeLink) {
                 themeLink.remove();
             }
+            _sdThemeFileHint();
             renderHtmlTree();
         };
         if (themeSel) {
@@ -28235,10 +28261,9 @@ const StyleDesigner = (function () {
             if (f.content) inlineNames.push(f.name || '');
         });
         if (!themeDone && themeRows.length) themeRows.forEach(function (r) { head.push(r); });
-        // The classic theme file (style.theme_id), when the design has one.
-        var themeSel = document.querySelector('select[name="theme_id"]');
-        var themeStr = themeSel ? themeSel.options[themeSel.selectedIndex].text.trim() : '';
-        if (themeStr && themeStr.indexOf('.css') !== -1) head.push(row('link', [['rel', 'stylesheet'], ['href', '/' + themeStr]]));
+        // The theme file (style.theme_id, or a moved design's classic theme).
+        var themeFile = _sdThemeInUse();
+        if (themeFile && themeFile.name.indexOf('.css') !== -1) head.push(row('link', [['rel', 'stylesheet'], ['href', themeFile.url]]));
         if (inlineNames.length) head.push(row('style', [['id', 'pg-page-css']], '/* ' + inlineNames.join(', ') + ' */', true));
         if (userStyles) head.push(row('style', [['id', 'pg-user-styles']], '…', true));
 
@@ -52924,7 +52949,9 @@ const StyleDesigner = (function () {
                 if (th) {
                     var trow = document.createElement('div');
                     trow.className = 'sd-as-item sd-as-item-locked sd-as-item-theme';
-                    trow.title = _sdT('The theme file chosen in Settings → Theme. Loads last, so it overrides the stylesheets above.');
+                    trow.title = th.inherited
+                        ? _sdT('The activated theme of the site, loaded as on the classic style this design came from while no theme file is chosen in Settings → Theme. Loads last, so it overrides the stylesheets above.')
+                        : _sdT('The theme file chosen in Settings → Theme. Loads last, so it overrides the stylesheets above.');
                     trow.innerHTML = '<span class="bi bi-palette2 sd-as-item-icon"></span><span class="sd-as-item-name">' + esc(th.name) + '</span>' +
                                      '<span class="sd-as-badge-theme">' + esc(_sdT('theme')) + '</span>' +
                                      '<span class="sd-as-badge-lock" title="' + esc(_sdT('Change it in Settings → Theme')) + '"><span class="bi bi-lock-fill"></span></span>';
@@ -52934,13 +52961,11 @@ const StyleDesigner = (function () {
             }
         }
 
-        // The theme currently selected for the design: { id, name } or null.
+        // The theme the design loads: the one selected for it, else a moved
+        // design's classic theme (_sdThemeInUse()). { id, name, url,
+        // inherited } or null.
         function _sdActiveTheme() {
-            var sel = document.querySelector('select[name="theme_id"]');
-            if (!sel || sel.selectedIndex < 0) return null;
-            var opt = sel.options[sel.selectedIndex];
-            if (!opt || !opt.value) return null;
-            return { id: opt.value, name: opt.text.trim() };
+            return _sdThemeInUse();
         }
         function _sdOpenDesignSettings() {
             _sdOpenSettingsPane('theme', 'sd-theme-file-row');

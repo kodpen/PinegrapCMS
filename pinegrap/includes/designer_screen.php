@@ -230,6 +230,7 @@ function pg_designer_screen_render($ctx)
     $sd_proto_share = pg_page_draft_ready() && pg_proto_links_ready();
 
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_design_theme.php');
 
     // The order and groups of the tabs, for the pages listed above.
     $tab_page_ids = array();
@@ -372,6 +373,11 @@ function pg_designer_screen_render($ctx)
         // loads the framework's files into the canvas and offers the
         // Bootstrap palette only when the framework is Bootstrap.
         'framework'     => $sd_framework['key'],
+        // A design moved from a classic style loads the theme its classic
+        // head printed (pg_legacy_design_classic_theme()) while no Theme
+        // file is chosen: the canvas loads it and the hint under "Theme
+        // file" names it. Null for any other design.
+        'themeFile'     => pg_legacy_design_theme_js($style_id, $sd_framework['key'], isset($style['style_custom_css']) ? $style['style_custom_css'] : ''),
         'frameworkInfo' => array(
             'label'     => $sd_framework['label'],
             'css'       => $sd_framework['css'],
@@ -2336,7 +2342,8 @@ function pg_designer_settings_modal($ctx)
             <h3 class="sd-settings-group-title">' . lang('Theme file') . '</h3>
             ' . pg_designer_setting(lang('Theme file'),
                 lang('A stylesheet from the file manager, loaded after everything else so it wins over the look and the palette. Shown in the Styles list and the Themes panel.'),
-                $liveform->output_field(array('type'=>'select', 'name'=>'theme_id', 'id'=>'sd-style-theme-file', 'options'=>$theme_options, 'class'=>'form-control form-control-sm')),
+                $liveform->output_field(array('type'=>'select', 'name'=>'theme_id', 'id'=>'sd-style-theme-file', 'options'=>$theme_options, 'class'=>'form-control form-control-sm')) . '
+                <div class="sd-set-status" id="sd-theme-file-status" aria-live="polite"></div>',
                 array('for' => 'sd-style-theme-file', 'id' => 'sd-theme-file-row')) . '
         </section>';
 

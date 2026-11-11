@@ -18,7 +18,7 @@ description: The designer's code view: range map from one emitter, the document 
 - The locked lines carry the HTML tree's lock icon in the gutter (`lockGutter: true`): closed when nothing on the line may change, open when the line has an island; the tooltip and the refused-keystroke toast share `_sdCodeLockTitle(tag, partly)`. Free lines carry none.
 
 ## Where do head and foot rows come from?
-- `_sdPageFrameRows()` (rows `{tag, attrs, void, inner, comment}`): charset, title, meta from `pageSettings.meta`, without Bootstrap rows the framework + theme + icons, Google Fonts, linked styles (theme after the Bootstrap row), classic theme file, `pg-page-css`, `pg-user-styles`; foot scripts linked, JSON, classic, modules. The tree draws them with `_sdFrameRowHtml()`, the code view prints them with `_sdFrameRowText()` (`_sdAttrEsc()` escapes quotes); the preview keeps its own copy because it needs absolute URLs.
+- `_sdPageFrameRows()` (rows `{tag, attrs, void, inner, comment}`): charset, title, meta from `pageSettings.meta`, without Bootstrap rows the framework + theme + icons, Google Fonts, linked styles (theme after the Bootstrap row), theme file, `pg-page-css`, `pg-user-styles`; foot scripts linked, JSON, classic, modules. The tree draws them with `_sdFrameRowHtml()`, the code view prints them with `_sdFrameRowText()` (`_sdAttrEsc()` escapes quotes); the preview keeps its own copy because it needs absolute URLs.
 
 ## What stays in style_designer.js, what goes to the facade?
 - Facade (`pg_code_editor.js`): engine, theme, keymap, search, completion sources registry, lock filter, range marks, tabs. No `_sdT()`: labels are passed in by the caller.
