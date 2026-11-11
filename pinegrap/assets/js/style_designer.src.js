@@ -28026,8 +28026,10 @@ const StyleDesigner = (function () {
     }
 
     // The same with the editor's values: the site's path and the software's
-    // folder the screen was given.
+    // folder the screen was given. Text without a brace is returned before
+    // the editor's values are read.
     function _sdSitePath(s) {
+        if (typeof s === 'string' && s.indexOf('{') === -1) return s;
         return _sdPathFill(s, window.OUTPUT_PATH || '/',
             typeof software_directory !== 'undefined' ? software_directory : 'pinegrap');
     }
