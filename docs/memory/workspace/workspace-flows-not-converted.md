@@ -13,5 +13,5 @@ description: The "Not converted · N" group at the end of the Flows list (V5 #32
 - "Not converted · N" and a help line, then `K.scheduledList()` (workspace.js's list, cards by `scheduledCard()` with their buttons, Run now and History among them; Edit retries the conversion, #2753). Where Flows lists them, the `ws_scheduled_list` action keeps only rows with no `flow` and not cancelled (actions.php), and CSS hides the list's state chips in this group. `scheduledCard()` is not in `PGWsKit`; exporting it would let the group draw cards without the list's wrapper.
 - "Show on canvas" on such a card: `ws_scheduled_get` answers `graph` (pure `ws_scheduled_graph()`); `showAction()` draws it read-only in place of the list (only while the list is shown); Back returns to the list with the group's heading focused; Edit converts it first.
 
-## Which CSS is left over?
-- `.wsf-sched-row`, `.wsf-sched-head`, `.wsf-sched-mark`, `.wsf-sched-tools` and `.wsf-sched-name` in backend.src.css drew the converted rows and are no longer used; they are removed once backend.src.css is free of other open work.
+## Which CSS draws the group?
+- backend.src.css: `.wsf-sched-group`, `.wsf-sched-title` and its `:focus`, and `.wsf-sched-refused .ws-sa-filters`, which hides the list's state chips. The rules of the converted rows (`.wsf-sched-row`, `-head`, `-mark`, `-tools`) were removed in PR #PRNUM: since #8573 a converted action is a row of the flow table.
