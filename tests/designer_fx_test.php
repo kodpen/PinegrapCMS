@@ -586,6 +586,7 @@ function test_designer_fx_script_scroll_effects()
 	$nodes = <<<'JS'
 var zoom = box({ 'data-pg-fx': 'scroll-zoom', 'data-pg-fx-from': '60' }, 600, 200);
 zoom.style.transform = 'rotate(2deg)';
+zoom.style.transition = 'box-shadow .3s';
 var rise = box({ 'data-pg-fx': 'scroll-rise' }, 1000, 200);
 var shown = box({ 'data-pg-fx': 'scroll-fade' }, 100, 200);
 var far = box({ 'data-pg-fx': 'scroll-fade' }, 5000, 200);
@@ -602,7 +603,7 @@ out.again = [zoom.style.transform, rise.style.transform];
 [zoom, rise, shown, far, halfSeen].forEach(function (n) { n.rect.top -= 450; });
 window.pageYOffset = 450;
 winOn.scroll();
-out.scrolled = [zoom.style.transform, rise.style.transform, halfSeen.style.opacity];
+out.scrolled = [zoom.style.transform, rise.style.transform, halfSeen.style.opacity, zoom.style.transition];
 var last = box({ 'data-pg-fx': 'scroll-fade', 'data-pg-fx-from': '20' }, 1100, 200);
 nodes.push(last);
 document.documentElement.scrollHeight = 1750;
@@ -638,7 +639,7 @@ JS;
 	// halfSeen: half way, opacity 20 % + 80 % * 0.5 = 60 % of its own 0.5.
 	pg_assert_same(array('rotate(2deg) scale(0.76)', 'none', 'translate3d(0,80px,0)', '', '', '0.3'), $got['start'], 'the start states at load');
 	pg_assert_same(array('rotate(2deg) scale(0.76)', 'translate3d(0,80px,0)'), $got['again'], 'measured without its own scale and shift');
-	pg_assert_same(array('rotate(2deg)', 'translate3d(0,40px,0)', '0.5'), $got['scrolled'], 'past the middle the node\'s own state');
+	pg_assert_same(array('rotate(2deg)', 'translate3d(0,40px,0)', '0.5', 'box-shadow .3s'), $got['scrolled'], 'past the middle the node\'s own state and transition');
 	pg_assert_same('0.2', $got['lastBefore'], 'a node in the last strip starts below the window');
 	pg_assert_same('', $got['lastEnd'], 'and is whole at the page\'s end');
 	pg_assert_same('translate3d(0,40px,0)', $got['mid'], 'back half way');
