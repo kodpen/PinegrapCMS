@@ -23,7 +23,7 @@ description: Plan (owner 2026-11-10, handed to workers 2026-11-11): the Workspac
 - CL2 (M, no schema) Tasks, Decisions and Files as cards. Done (#8688): `workspace/workspace-channel-panes.md`. After CL1. Rows lose their rules: a task is a card in a grid (status, title, due line, people, done), the toolbar a quiet row; decisions a card grid; files their groups as cards.
 - CL3 (M, no schema) Summary, Board and Memory. Done (#8703): `workspace/workspace-channel-summary-board-memory.md`. After CL2. The summary as a card with its Edit button in the head, Time spent beside it as tiles; the board's toolbar as chips and its columns in the card manner; memory's hint, New record and records as cards. Empty states sit inside a dashed card.
 
-- CL4 (M, no schema, CSS only) Decisions, Tasks and Board use the width. After CL3. Owner (2026-11-11), on the Decisions tab on dev (six narrow cards a row, each with a green start edge): cards up to twice as wide and one under the other, the green gone, a modern card; Tasks and Board the same.
+- CL4 (M, no schema, CSS only) Decisions, Tasks and Board use the width. Done (#8759). After CL3. Owner (2026-11-11), on the Decisions tab on dev (six narrow cards a row, each with a green start edge): cards up to twice as wide and one under the other, the green gone, a modern card; Tasks and Board the same.
   - Decisions and Tasks flow in columns; no coloured start edge on the Decisions tab (the tag names the kind); framed cards with a soft shadow; Board columns grow up to twice their width. `.ws-wt-board`, My tasks and a record's window unchanged. Files: `backend.src.css`, `tests/workspace_channel_look_test.php`, the four `workspace/workspace-channel-*` pane files.
 
 ## What is not in it?
