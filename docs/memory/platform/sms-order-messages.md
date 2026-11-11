@@ -23,7 +23,7 @@ description: Order SMS (received, shipped, delivered) and back in stock: templat
 - `connect_apps` row `sms_templates`, `options` = `{"events":{"<event>":{"on":bool,"text":""}}}`; not sealed (no secret), no schema step. Apart from the provider accounts, so forgetting or switching a provider keeps them.
 - An empty text is the built-in one (`lang()`, so the site's language when queued); the built-in text sent back unchanged is stored empty.
 - Fields `^^store^^` (ORGANIZATION_NAME), `^^name^^` (billing first name), `^^order_number^^`, `^^total^^` (received), `^^carrier^^`, `^^tracking_number^^` (all of the address's numbers in the save), `^^tracking_url^^` (first parcel's, `pg_shipment_view()`). A field the event lacks is refused on save; an empty value leaves no double space (`pg_sms_message_render()`). Templates at most 480 characters.
-- A save writes only a change, compared strictly (`!==`): loosely, a text changed to another spelling of the same number ("100" to "0100") was never written.
+- A save writes only a change, compared strictly (`!==`): loosely, a text changed to another spelling of the same number ("100" to "0100") was never written (#8618).
 
 ## How was it verified?
 - `tests/sms_messages_test.php` (render, normalize, the card's decision). Not run on a sandbox: the hooks are one call each after paths the shipment and order tests already pin; Netgsm was not reached.

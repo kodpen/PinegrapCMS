@@ -5,7 +5,7 @@ description: The marketing SMS kind (PR #3820, #3570): sender identity and type 
 
 ## Where are the identity and the label set?
 - Settings › Communication › SMS Messages, "Marketing Messages": trade name, MERSİS number (16 digits, spaces/dots/dashes dropped), type label. Stored in `connect_apps` `sms_templates` under `options.marketing` beside `options.events`: no schema. `pg_sms_marketing_settings()` reads, `pg_sms_marketing_settings_decide()` (pure) decides, `pg_sms_message_settings_check()` / `_save()` merge it with the templates.
-- A change is detected strictly (`!==`), as for the templates ([[sms-order-messages]]).
+- A change is detected strictly (`!==`), as for the templates ([[sms-order-messages]], #8618).
 - An empty label (or the built-in one sent back unchanged) is the built-in `pg_sms_marketing_label_default()` in the site's language ("Tanıtım, kampanya ve bilgilendirme mesajıdır.").
 
 ## What does a marketing text look like?
