@@ -58,6 +58,70 @@ function test_ready_report_requested_reads_the_parameter()
 	pg_assert_same(null, pg_ready_report_requested('sales_by_region', 'visitor_report'), 'another screen');
 }
 
+// Every entry's levels are levels the order report offers.
+function test_ready_reports_levels_exist_on_the_screen()
+{
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order_report.php');
+
+	foreach (pg_ready_reports() as $key => $report) {
+		foreach ($report['levels'] as $level) {
+			pg_assert_true(strpos($screen, "] = '" . $level['by'] . "';") !== false, $key . ': ' . $level['by'] . ' is a level of the screen');
+		}
+
+		pg_assert_same(pg_order_report_default_filters(), $report['filters'], $key . ': the orders the shop cards sum');
+	}
+
+	pg_assert_same(array('sales_by_region', 'sales_over_time', 'sales_by_payment_method', 'sales_by_source'), array_keys(pg_ready_reports()));
+	pg_assert_same(array('year', 'month', 'day'), array_column(pg_ready_reports()['sales_over_time']['levels'], 'by'));
+	pg_assert_same(array('payment_method'), array_column(pg_ready_reports()['sales_by_payment_method']['levels'], 'by'));
+	pg_assert_same(array('utm_source'), array_column(pg_ready_reports()['sales_by_source']['levels'], 'by'));
+}
+
+// A period from the address: digits only, 1 to 366; anything else is the
+// entry's own.
+function test_ready_report_days_reads_only_a_day_count()
+{
+	pg_assert_same(1, pg_ready_report_days('1'));
+	pg_assert_same(7, pg_ready_report_days('7'));
+	pg_assert_same(366, pg_ready_report_days('366'));
+	pg_assert_same(7, pg_ready_report_days(7));
+
+	foreach (array(null, '', '0', '367', '-7', '7.5', ' 7', '7 ', '1e2', '0x1', '0007', array('7'), true, 7.0) as $bad) {
+		pg_assert_same(0, pg_ready_report_days($bad), var_export($bad, true));
+	}
+}
+
+// The days given replace the entry's period in the date filter.
+function test_ready_report_filters_take_the_days_given()
+{
+	$report = pg_ready_reports()['sales_over_time'];
+
+	$today = pg_ready_report_filters($report, 1);
+	$week = pg_ready_report_filters($report, 7);
+	$own = pg_ready_report_filters($report, 0);
+
+	pg_assert_same('0', end($today)['dynamic_value_attribute'], 'today: 0 days ago');
+	pg_assert_same('6', end($week)['dynamic_value_attribute']);
+	pg_assert_same('29', end($own)['dynamic_value_attribute'], 'its own 30 days');
+}
+
+// The strip lists the screen's ready reports whose levels it offers.
+function test_ready_report_strip()
+{
+	$levels = array('year', 'month', 'day', 'billing_country', 'billing_state', 'payment_method', 'utm_source');
+	$strip = pg_ready_report_strip('order_report', $levels, 'sales_by_source');
+
+	pg_assert_same(array('sales_by_region', 'sales_over_time', 'sales_by_payment_method', 'sales_by_source'), array_column($strip, 'key'));
+	pg_assert_same(array(false, false, false, true), array_column($strip, 'current'));
+	pg_assert_same('view_order_report.php?ready=sales_by_payment_method', $strip[2]['url']);
+	pg_assert_same('Sales by payment method', $strip[2]['title']);
+
+	$without = pg_ready_report_strip('order_report', array('year', 'month', 'day', 'payment_method'));
+
+	pg_assert_same(array('sales_over_time', 'sales_by_payment_method'), array_column($without, 'key'), 'only those the levels can give');
+	pg_assert_same(array(), pg_ready_report_strip('visitor_report', $levels), 'another screen');
+}
+
 // Sales by region: billing country, then billing state, both by total, so
 // both of the card's views (its home country's regions, or its countries)
 // are in the report; the billing state level exists on the screen already.
@@ -164,6 +228,8 @@ function test_ready_report_without_a_period_adds_no_date()
 function test_ready_report_url()
 {
 	pg_assert_same('view_order_report.php?ready=sales_by_region', pg_ready_report_url('sales_by_region'));
+	pg_assert_same('view_order_report.php?ready=sales_over_time&days=7', pg_ready_report_url('sales_over_time', 7));
+	pg_assert_same('view_order_report.php?ready=sales_over_time', pg_ready_report_url('sales_over_time', 0));
 }
 
 // The screen reads ?ready= only for a new report and fills its form from the
