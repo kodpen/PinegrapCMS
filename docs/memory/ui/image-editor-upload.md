@@ -1,6 +1,6 @@
 ---
 name: image-editor-upload
-description: Large files in the image editor (V8): video, sound and saved animation sent in parts and resumed, type by bytes, pg_image_editor_upload_limits(), parts in data/temp
+description: Large files in the image editor (V8, V8b): video, sound and saved animation sent in parts and resumed, type by bytes, pg_image_editor_upload_limits(), parts in data/temp
 module: image_editor
 ---
 
@@ -24,12 +24,13 @@ module: image_editor
 - `data/temp/image_editor_uploads/<id>.part` and `<id>.json` (user, kind, size): no table. Uploads untouched for a day go at the next start (`pg_image_editor_upload_sweep()`); Clean Up empties `data/temp` too.
 
 ## Which bounds apply?
-- `pg_image_editor_upload_limits()` reads them all: `part` = one request (`pg_image_editor_animation_limit()`) less room for its line, 16 KB to 8 MB; `max` = PHP's `upload_max_filesize`, never below one request. The config's `animationLimit` is `max` now, so Save to Files takes files over one request.
+- `pg_image_editor_upload_limits()` reads them all: `part` = one request (`pg_image_editor_animation_limit()`) less room for its line, 16 KB to 8 MB; `max` = the MB setting when above 0, else PHP's `upload_max_filesize`, never below one request. The config's `animationLimit` is `max`, so Save to Files takes files over one request.
+- The largest file as a setting (V8b): `image-editor-upload-setting.md`.
 - Signed in, parts skip the firewall's global rate limit (`waf_handle_rate_global()`).
 
 ## What does a sound from this computer do?
 - From this computer, first in Sound from Files: a sound told by its bytes into the open file's or the canvas's folder (`pg_image_editor_upload_place()`, as `video_upload`), then `addSound()` at the playhead. Not shown for a callback save.
 
 ## What is left?
-- The size setting (#8587, a `config` column on Settings → Features): a schema change waits for the owner; the answer adds the column and its field and reads it in `pg_image_editor_upload_limits()`. Decoding still reads the whole video into memory (`image-editor-video-decode.md`).
+- Decoding still reads the whole video into memory (`image-editor-video-decode.md`).
 - Not tried in a browser (#8585): the browser's offline switch (drops were scripted), the real file picker, Apache or nginx.

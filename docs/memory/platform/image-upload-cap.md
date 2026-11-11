@@ -19,7 +19,7 @@ module: image
 - Not applied: design files (`add_design_file.php`), the old TinyMCE 3 plugin, Workspace, form and ERP attachments.
 
 ## Where is it shown?
-- Site Settings › Features › Image Optimization ("Shrink Pictures On Upload Above"), hidden until the column exists (`pg_schema_has()`).
+- Site Settings › Features › Image Optimization ("Shrink Pictures On Upload Above"), hidden until the column exists (`pg_schema_has()`). The image editor's largest upload in MB follows it on the card (`ui/image-editor-upload-setting.md`).
 - The dashboard's file widget (`widget_18.php`) says whether it is on and links to the card, for roles that may open Settings (≤ 2).
 
 Related: image-settings-and-product-upload.md, image-processing-engine.md

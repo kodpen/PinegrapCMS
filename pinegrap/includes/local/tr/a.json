@@ -3139,6 +3139,7 @@
     "A vet who came for one summer and stayed to turn the old garden into a conservation zoo.": "Bir yaz için gelip eski bahçeyi bir koruma hayvanat bahçesine dönüştürmek için kalan bir veteriner.",
     "A video is added through Files: save this image in the File Manager first.": "Video Dosyalar üzerinden eklenir: önce bu görseli Dosya Yöneticisi'nde kaydedin.",
     "A video of a song from the release. Leave empty to hide the button.": "Yayından bir parçanın videosu. Düğmeyi gizlemek için boş bırakın.",
+    "A video or sound uploaded in the image editor, and an animation it saves to Files, may be up to this size; it is sent in parts, so it may be larger than the upload limit of PHP. 0 keeps that limit ({var:1}). At most {var:2} MB.": "Görsel düzenleyicide yüklenen bir video veya ses ve düzenleyicinin Dosyalar'a kaydettiği bir animasyon bu boyuta kadar olabilir; parça parça gönderildiği için PHP'nin yükleme sınırından büyük olabilir. 0 bu sınırı korur ({var:1}). En fazla {var:2} MB.",
     "A video visit for questions that do not need an exam.": "Muayene gerektirmeyen sorular için görüntülü görüşme.",
     "A view of three valleys from the top": "Tepeden üç vadinin manzarası",
     "A view that takes its time": "Acele etmeyen bir manzara",

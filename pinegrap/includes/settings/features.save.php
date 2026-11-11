@@ -96,6 +96,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             $sql_image_settings .=
                 "image_upload_max_dimension = " . pg_image_upload_cap_clamp(pg_parse_whole_number(post_value('image_upload_max_dimension'), 20000)) . ",";
         }
+
+        // The image editor's largest upload in MB, a config_text row: 0 (or an
+        // empty box) keeps PHP's upload_max_filesize.
+        pg_image_editor_upload_max_mb_save(pg_parse_whole_number(post_value('image_editor_upload_max_mb'), pg_image_editor_upload_max_mb_most()));
     }
 
     // How pictures are delivered (2026.11.0). Clamped by the function
