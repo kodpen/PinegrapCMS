@@ -95,6 +95,8 @@ $style = array(
     // Absent before 2026.4.5 (5.3): plain Bootstrap.
     'look'                              => pg_design_look_key(isset($row['style_look']) ? $row['style_look'] : ''),
     'palette'                           => pg_design_palette_key(isset($row['style_palette']) ? $row['style_palette'] : ''),
+    // Absent before 2026.11.0 (11.0.186): no colour mode.
+    'color_mode'                        => pg_design_color_mode_key(isset($row['style_color_mode']) ? $row['style_color_mode'] : ''),
     // Absent before 2026.4.8 (8.19): the tabs follow page_id.
     'tab_layout'                        => isset($row['style_tab_layout']) ? (string)$row['style_tab_layout'] : '',
     // Absent before 2026.11.0 (11.0.3): the design adds no meta tags.

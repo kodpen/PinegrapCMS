@@ -121,10 +121,10 @@
 - dashboard-v2-content-cards.md: New dashboard cards gsearch, ga, content, comments, files, activity: data sources, helpers shared with widgets 7, 18, 25, what was left out
 - dashboard-v2-drawn-look.md: The new dashboard's drawn look (visual pass V): the --pgd-* palette every part reads, the frame and faces, the drawn Assistant and goals, the differences kept on purpose [decision: here]
 - dashboard-v2-edit-mode.md: New dashboard edit mode (#4856): presets.php, dashboard_layout_save and its clean-up, pg_dash_edit.js (bar, grip, drag, card tools and settings, greeting and status parts), what Cancel and Save do
-- dashboard-v2-engagement-card.md: New dashboard's Online Engagement card (engagement): what it shows when nobody is on the site (the last visits, Last visits list), the time used, the bounded read, when it sends empty [decision: here]
+- dashboard-v2-engagement-card.md: New dashboard's Online Engagement card (engagement): what it shows when nobody is on the site (the last visits, Last visits list), the time used, the bounded read, when it sends empty [decision: decisions-made-panel-5.md]
 - dashboard-v2-flows-card.md: New dashboard Flows card (cards/flows.php, renderer in pg_dash_cards_work.js): tiles, the run going on now as a path of boxes, last runs with Approve and Try again through the Workspace actions
 - dashboard-v2-looks.md: The new dashboard's looks as drawn (pictures 12-14, V4 #8241): card faces, backdrops over the old dashboard's washes, compact density, lights off
-- dashboard-v2-notes-card.md: The new dashboard's My notes card as a shortcut to My Notes (PR #8693): the add box, the latest notes, who is offered it, the one move of the old card's text
+- dashboard-v2-notes-card.md: The new dashboard's My notes card as a shortcut to My Notes (PR #8693): the add box, the latest notes, who is offered it, the one move of the old card's text [decision: decisions-made-panel-5.md]
 - dashboard-v2-overview.md: The new dashboard as a whole: the per-person switch beside the untouched old dashboard, welcome.php's page branch, its files and bundles, SVG charts, refresh rules, string card ids [decision: decisions-made-product-17.md]
 - dashboard-v2-personal-cards.md: New dashboard cards goals, pins, perf (N12b): where goals and pins are kept and saved, what a goal counts, what a pin opens, perf's helpers shared with widget 23; the notes card has its own file
 - dashboard-v2-phone-keyboard.md: New dashboard on phones and from the keyboard (#6145): the edit bar keeps its row, the grid is no live region, Save buttons are solid, the shortcut remove cross is 24 px
@@ -137,7 +137,8 @@
 - dashboard-v2-side-panel.md: New dashboard side panel (#4888): gallery.php data, pg_dash_panel.js (work area, gallery, Add card tile, top section, look) and its hooks with the edit script
 - dashboard-v2-status-card-look.md: New dashboard System Status card's look (2026-11-10): dash palette, score in the arc's sweep, light by card style, lights off keeps the twinkle, only failed checks in sight, Changes button [decision: decisions-made-product-41.md]
 - dashboard-v2-storage.md: The new dashboard's dashboard_layout table (step 11.0.143), the sign-in upsert, the layout and look JSON, the panel actions, the card function contract, the storage alternatives rejected
-- dashboard-v2-visitmap-card.md: New dashboard Visitor map card (cards/visitmap.php, #6464): data source, home country, abroad share, bubbles by province, country fallback; visit country and CF-IPCity city
+- dashboard-v2-visitmap-card.md: New dashboard Visitor map card (cards/visitmap.php, #6464): data source, home country, abroad share, bubbles by province, the world map without cities; visit country and CF-IPCity city [decision: decisions-made-panel-5.md]
+- dashboard-v2-visitmap-world.md: The Visitor map card's world map when no city can be placed (#8713): countries shaded in four steps, why shading, tips and keys, the card's hue, countries the map file has no outline for [decision: decisions-made-panel-5.md]
 - dashboard-v2-width.md: How wide the new dashboard gets and how many columns its grid takes: the 118rem cap, columns by the dashboard's own width (container queries), edit mode, the fallback
 - dashboard-visitor-head-wrap.md: Visitor Summaries card head on a narrow card: the legend wraps below the figures, the figure lines keep to one line
 - dashboard-welcome-card.md: The dashboard top card (welcome.php, .pg-clockbar): greeting on the left, time and date on the right in one full-width card; phone stacking, themes, ids the scripts read [decision: here]
@@ -486,6 +487,7 @@
 - report-dynamic-date-filter.md: Order and Visitor reports: a 'Day(s) Ago' filter on a date field compares a bare Y-m-d date through pg_report_dynamic_value() (#3725)
 - report-screen-controls.md: Report and panel controls on Bootstrap 6: period changers, named arrows, labelled layout and date selects (#2716), calendar controls, comment rating, accessibility tables (#2900)
 - report-table-rows.md: Order, visitor and shipping report tables: group names and Grand Total as row headers, detail rows and product names as links, percent figures through '{var:1}%' (Search Console too), named yes marks
+- report-view.md: The report screens' shared view (report_view.php, pg_report_view.js): figures and a chart over the table drawn with pg_dash.js, the chart per level, the settings drawer (#8709)
 - required-boxes-and-seo-counter.md: Boxes the server refuses blank carry required (Delete in the same form gets formnovalidate); the SEO character counter is the field's description and says count, target and state in words
 - return-key-default-button.md: Return in a drawer form or SMTP Settings saves through a hidden first submit button; Enter in the guided tour leaves a focused Skip or Back button alone
 - rich-text-editor-files.md: Who the rich text editor (CKEditor 4) offers file browsing and uploading to; the upload addresses carry the session token
@@ -516,7 +518,7 @@
 - settings-modal-architecture.md: Site Settings dialog: file map, the 18 categories under 5 headings, where moved cards went, moving a card, adding a category. [decision: decisions-made-product-14.md]
 - settings-modal-autofill-lock.md: Settings dialog autofill prevention: readonly latch/unlatch of text fields, stamped autocomplete attributes, no fake password field in the dialog.
 - settings-modal-autofill-restore.md: Settings dialog defence against password-manager fills: hold()/review() restore, gesture-clock ownership, patrol() polling, three-restore limit.
-- settings-modal-card-dialogs.md: Rules for a settings card that opens its own dialog inside the settings modal: extras box, data-pgdialog rename, the dialog-open scroll lock, dispose.
+- settings-modal-card-extras.md: What a Site Settings card hands over beside its markup (PR #8710): its drawer or a hidden Connect form, never a dialog; the extras box and the CSS left from the old dialog path
 - settings-modal-dirty-tracking.md: How the settings dialog decides "unsaved changes": two-question criterion, snapshot(), baseline in paint(), hand gesture triggering its own review.
 - settings-modal-drawer.md: A settings card's drawer: a panel that slides in from the Site Settings dialog's right edge over the pane, never a second dialog; markup, hand-over, Escape, focus, page path (PR #8658).
 - settings-modal-endpoint.md: settings_pane.php rules: always JSON, pg_error_throws, access gate, manual CSRF, remove_form, re-read after save, reload on a language change, Safe Mode scheme change.

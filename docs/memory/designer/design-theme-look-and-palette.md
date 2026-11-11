@@ -24,8 +24,6 @@ description: A visual design's look and colour palette (style.style_look / style
 - Never by hand: `php tools/build_theme_palettes.php` writes `palettes/<key>.css` from `pg_design_palettes()` with the generator a custom palette uses (`pg_design_palette_css()`); `--check` reports stale files.
 
 ## Can a whole design be dark?
-- Not yet: a design sets no colour mode; only a visitor's theme switcher turns a whole page dark.
-- Owner (2026-11-11): the Theme pane gets a colour mode for the whole design (light, dark, follow the system), kept in a new `style` column; empty is today's behaviour and a visitor's switcher still wins (`workflow/decisions-made-product-44.md`).
-- Step B11 of `plans/designer-bold-pages-steps-2.md` builds it; the column is approved in `workflow/decisions-made-schema-15.md`.
+- Yes, from 2026.11.0 (#8711): Settings, Theme, "Colour mode" (light, dark, follow the system), kept in `style.style_color_mode`; a visitor's stored switcher choice still wins: [[design-colour-mode]].
 
 Related: docs/memory/designer/design-framework.md
