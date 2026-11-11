@@ -4,9 +4,10 @@
  *
  * Tests for the word the Workspace calls an agent by where it has no name or
  * handle to show: the @ picker and the tag of an agent with no name, the
- * line under a message whose agent is gone and the agent routes' not-found
- * text. They ask for "The agent" ("Ajan" in Turkish), never for a key of the
- * real-estate template's estate agents ("Danışman").
+ * line under a message whose agent is gone, the Agent field of the flow
+ * canvas's Ask an agent box and the agent routes' not-found text. They ask
+ * for "The agent" ("Ajan" in Turkish), never for a key of the real-estate
+ * template's estate agents ("Danışman").
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -72,6 +73,15 @@ function test_workspace_agent_word_for_an_agent_that_is_gone()
 		'waiting');
 }
 
+// The Agent field of the flow canvas's Ask an agent box.
+function test_workspace_agent_word_on_the_flow_canvas()
+{
+	$strings = ws_flow_js_strings();
+
+	pg_assert_same(lang('The agent'), $strings['fl_agent'] ?? null);
+	pg_assert_same(lang('Ask an agent'), $strings['fl_kind_agent'] ?? null, 'the box it is the field of');
+}
+
 // The agent routes say what was not found with it: an agent that is not
 // there, and a row that cannot be read back after it was written.
 function test_workspace_agent_word_in_the_routes_not_found_text()
@@ -83,17 +93,11 @@ function test_workspace_agent_word_in_the_routes_not_found_text()
 
 // No Workspace file asks for a key of the template's estate agents, in
 // lang()'s plain form, its array form or a text handed to the scripts.
-// flows.php is not scanned: the Agent field of its Ask an agent box
-// (fl_agent) still asks for the template's key.
 function test_workspace_agent_word_is_never_the_estate_agents_key()
 {
 	$found = array();
 
 	foreach ((array) glob(PG_FUNCTIONS_DIR . '/includes/workspace/*.php') as $path) {
-		if (basename($path) === 'flows.php') {
-			continue;
-		}
-
 		if (preg_match_all("/(?:\\b(?:lang|ws_js_template)\\(\\s*|'string'\\s*=>\\s*)'(Agent|Agents|Agent Card|Our Agents)'/", (string) file_get_contents($path), $matches)) {
 			$found[] = basename($path) . ': ' . implode(', ', array_unique($matches[1]));
 		}

@@ -3317,7 +3317,7 @@ function ws_flow_js_strings()
         'fl_ai_closes'        => lang('Hours to wait for the answer'),
         'fl_ai_closes_help'   => lang('1 to 720 hours. Pinegrap AI is asked again every hour until it answers; with no answer by then the box leaves on failed.'),
         'fl_kind_agent'       => lang('Ask an agent'),
-        'fl_agent'            => lang('Agent'),
+        'fl_agent'            => lang('The agent'),
         'fl_agent_pick'       => lang('Choose an agent'),
         'fl_agent_help'       => lang('The agents allowed in a channel the flow\'s owner may write in. The agent changes records within the tier it is allowed there.'),
         'fl_agent_channel'    => lang('Channel it is asked in'),
