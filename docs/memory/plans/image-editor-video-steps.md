@@ -24,7 +24,7 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
   - An audio layer on any canvas: music and sounds from Files (MP3, AAC, WAV, Ogg), its start, trim, volume, fade in and out, mute; its row with a waveform on the tracks; Web Audio playback in step with the play bar, so an animation gets its music.
   - With V2: a clip's sound as its own row (Detach sound mutes the clip and adds an audio layer on the same source).
 
-- V5 (M) Effects and transitions. `free` after V3.
+- V5 (M) Effects and transitions. In progress.
   - The Adjust filters per clip (brightness, contrast, saturation, warmth, blur, vignette) drawn per frame; transitions between clips (AN7's fade, slide, wipe); speed 0.25-4× (sound muted off 1×).
 
 - V6 (S) Pictures and animations over video. After V5.
