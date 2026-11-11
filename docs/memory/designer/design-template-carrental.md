@@ -5,7 +5,7 @@ description: Car Rental template (pinegrap-carrental): the fleet as a collection
 
 ## What does it ship?
 - Home (`home_cars`, `google_reviews` under the renters' words, `home_posts`), `locations`, `extras`, `deals`, `terms`, `about`, `faq`; `fleet` (`?class=`, `?gearbox=` on field `transmission`, `?fuel=`), the `car` record page, `car_new` (staff); `book`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`, `email_booking_new`, `email_booking_received`; `business`, `business_enquiry`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, two enquiry e-mails; contact, inbox, conversation, newsletter, `blog` (the Road Trip Journal), `blog_post`, `search`, `error`; sign-in and account pages, `staff_directory`, `staff`, `blog_new`, `staff_entry`, the account e-mails.
-- Built in #7646, #7903, #7933, #8062, #8084, #8101, #8134 and the assembly.
+- Built in #7646, #7903, #7933, #8062, #8084, #8101, #8134 and the assembly. 2.0.0 draws the home and extras on the Car Rental blocks: [[design-template-carrental-pages]].
 
 ## Why a main file plus a folder?
 - `pinegrap-carrental.php` includes `parts.php`, `pages_public.php` (returns its pages only; its home widgets come from `fleet.php` and `standard.php`), `fleet.php`, `mail.php`, `bookings.php`, then `business.php` and `standard.php` (both reuse `bookings.php`'s pieces) and `account.php`, in one scope, each return kept as `$…_part`; `$classes`, `$cars`, `$locations`, `$extras`, `$deals` are parts.php's data.

@@ -111,6 +111,7 @@
 - design-template-cafe.md: Cafe and Clinic templates: event weekdays, price hint, rating numbers, guests pattern, consent privacy link, subject dates, booking links that fill the form.
 - design-template-campsite-pages.md: Campsite template 2.0.0: home, places to stay and the tent pitches page on the Campsite blocks: the builders, each page's composition, motion, the test
 - design-template-campsite.md: Campsite template (pinegrap-campsite): kinds of stay, Pitches and Cabins collection, prices as words, stay requests and group enquiries, no shop, pcp- look, tests.
+- design-template-carrental-pages.md: Car Rental template 2.0.0: home and extras on the Car Rental blocks, motion on the other public pages: the builders, each page's composition, the cover data, what could not be done, the test
 - design-template-carrental.md: Car Rental template (pinegrap-carrental): the fleet as a collection, booking requests with extras and deals, business rentals, desks, extras, deals and terms as fixed content, pcr- look, tests.
 - design-template-charity.md: Charity template (pinegrap-charity): causes and campaigns with progress, gifts as donation products, pledges and volunteers followed from the account, events, reports, News, pch- look, tests.
 - design-template-cityhall-pages.md: City Hall template 2.0.0: home, council and the service-area pages on the City Hall blocks: the builders, each page's composition, motion, what left, the test
