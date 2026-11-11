@@ -9,7 +9,7 @@ description: Plan (owner 2026-11-10, handed to workers 2026-11-11): the Workspac
 ## Where does it stand?
 - Free to build. The owner was shown `plans/workspace-channel-look/01-before-after.jpg` on 2026-11-10 (the conversation, Tasks and Summary tabs now and proposed, the header card in the light theme). On 2026-11-11 he asked that another session take the work over and complete it (`workflow/decisions-made-workspace-13.md`).
 - Coordinators hand the steps out like any plan's; claim as `[plan:workspace-channel-look] CL<n> — <topic>`. They are built in the order written: each waits for the one before it.
-- The picture was made on dev with a style sheet put into the page, nothing in the code: `workspace-channel-look-prototype.md` holds CL1's part. The Tasks and Summary panes were arranged by hand for the picture: CL2 and CL3 follow it, and their PRs show each pane before and after.
+- The picture was made on dev with a style sheet put into the page (`workspace-channel-look-prototype.md` holds CL1's part); CL2 and CL3 follow it.
 
 ## What does every step keep?
 - `workspace/workspace-channel-screen.md`: every feature, access, keyboard use, reduced motion, the panel's colour tokens in light and dark, the phone rules (one short header line, the writing box on the keyboard, the list's height).
@@ -19,16 +19,12 @@ description: Plan (owner 2026-11-10, handed to workers 2026-11-11): the Workspac
   - CL1 shows a channel with a colour, one without, and one with the share and era bars; CL2 and CL3 each pane they change.
 
 ## Which steps are there?
-- CL1 (M, no schema) The shell. Done (#8678): `workspace/workspace-channel-identity-motion.md`.
-  - The header and the tabs are one card: a border and a wash of the channel's colour (`--ws-ch`) from the side the sign stands on, no top stripe; a channel without a colour keeps a plain card. The share and era bars between them are rows of the same card.
-  - Tabs are pills, the open one filled (in the channel's colour when it has one); counts keep their marks. The day mark is a chip without rules. The writing box is a card.
-  - Files: the Workspace block of `backend.src.css`, `drawCenter()` in `workspace.js` (the colour on the card, not only on the header), tests, `workspace/workspace-channel-identity-motion.md`.
+- CL1 (M, no schema) The shell: the header and the tabs one card washed in the channel's colour, pill tabs. Done (#8678): `workspace/workspace-channel-identity-motion.md`.
 - CL2 (M, no schema) Tasks, Decisions and Files as cards. Done (#8688): `workspace/workspace-channel-panes.md`. After CL1. Rows lose their rules: a task is a card in a grid (status, title, due line, people, done), the toolbar a quiet row; decisions a card grid; files their groups as cards.
 - CL3 (M, no schema) Summary, Board and Memory. Done (#8703): `workspace/workspace-channel-summary-board-memory.md`. After CL2. The summary as a card with its Edit button in the head, Time spent beside it as tiles; the board's toolbar as chips and its columns in the card manner; memory's hint, New record and records as cards. Empty states sit inside a dashed card.
 
-- CL4 (M, no schema, CSS only) Decisions, Tasks and Board use the width. After CL3. Owner (2026-11-11), looking at the Decisions tab on dev (six narrow cards a row, a green edge at each card's start): the cards up to twice as wide and one under the other, the green at their start gone, the card made modern; Tasks and Board the same, the room better used.
-  - Decisions and Tasks flow in columns (top to bottom, no gap under a short card); the start edge of a decision, note or status update goes on the Decisions tab (its tag names the kind); a framed card with a soft shadow. Board columns grow up to twice their width; `.ws-wt-board`, My tasks and a record's window keep theirs.
-  - Files: the Workspace block of `backend.src.css`, `tests/workspace_channel_look_test.php`, `workspace/workspace-channel-panes.md`, `workspace-channel-decisions-tab.md`, `workspace-channel-messages.md`, `workspace-channel-summary-board-memory.md`.
+- CL4 (M, no schema, CSS only) Decisions, Tasks and Board use the width. After CL3. Owner (2026-11-11), on the Decisions tab on dev (six narrow cards a row, each with a green start edge): cards up to twice as wide and one under the other, the green gone, a modern card; Tasks and Board the same.
+  - Decisions and Tasks flow in columns; no coloured start edge on the Decisions tab (the tag names the kind); framed cards with a soft shadow; Board columns grow up to twice their width. `.ws-wt-board`, My tasks and a record's window unchanged. Files: `backend.src.css`, `tests/workspace_channel_look_test.php`, the four `workspace/workspace-channel-*` pane files.
 
 ## What is not in it?
 - The conversation's messages (C4) and the side panels (C6) keep their drawing.
