@@ -1367,7 +1367,7 @@
         var reset = el('button', { type: 'button', class: 'pgie-link', text: t('clipFxReset'), onclick: function () { self.clipSet(l.id, { fx: null }); } });
 
         reset.disabled = !M.clipFxOn(l) || !!l.locked;
-        body.appendChild(el('div', { class: 'pgie-clipfxhead' }, [el('h3', { text: t('clipTabFx') }), reset]));
+        body.appendChild(el('div', { class: 'pgie-clipfxhead' }, [reset]));
 
         M.CLIP_FX.forEach(function (d) {
             var key = d[0], shown = el('span', { class: 'pgie-val', text: signed(fx[key], d[1] < 0) });

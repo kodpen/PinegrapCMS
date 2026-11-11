@@ -4130,11 +4130,10 @@ button.pgie-sndfile:hover {
   height: 14px;
 }
 
-/* The Effects tab: its heading with Reset, the six sliders two a row. */
+/* The Effects tab: Reset on the right, the six sliders two a row. */
 .pgie-clipfxhead {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  justify-content: flex-end;
 }
 
 .pgie-clipfx {
