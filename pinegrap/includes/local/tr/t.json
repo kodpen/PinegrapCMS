@@ -9568,6 +9568,7 @@
     "Total Sales Amount from local sales": "Yerel satışlardan elde edilen Toplam Satış Tutarı",
     "Total Visits": "Toplam Ziyaret",
     "Total before VAT": "KDV hariç toplam",
+    "Total by {var:1}": "{var:1} bazında toplam",
     "Total cholesterol from a fingertip test, with advice on food and exercise that keeps it in check.": "Parmak ucu testiyle toplam kolesterol ve onu dengede tutan beslenme ve egzersiz önerileri.",
     "Total in Active Tills": "Aktif Kasalar Toplamı",
     "Total in the base currency, empty for a base-currency document": "Ana para birimindeki toplam; ana para birimindeki belgede boş",
