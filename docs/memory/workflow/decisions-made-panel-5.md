@@ -17,7 +17,7 @@ description: Decisions list, panel part 5 (2026-11-11 on): the dashboard's notes
 
 ## What does the Visitor map card draw without city names? (owner, 2026-11-11, #8672)
 - The world map with the visitors' countries; the "Countries" bars stay. Owner (2026-11-11): "bu widget ta eğer şehir isimlerini göremiyorsa dünya haritası üzerinde görünmeli".
-- The three cards are built by `plans/dashboard-owner-look.md`.
+- Built as `ui/dashboard-v2-notes-card.md`, `ui/dashboard-v2-engagement-card.md`, `ui/dashboard-v2-visitmap-card.md` and `ui/dashboard-v2-visitmap-world.md` describe.
 
 ## Which report screens are renewed, and how do they look? (owner, 2026-11-11, #8673)
 - Owner (2026-11-11), on the Sales map card: "bu widget tümünü gör diyince https://dev.pinegrap.com/pinegrap/view_order_report.php sayfasını açıyor ancak burası uygun şekilde rapor sunmuyor. bu rapor sayfalarını da moderize edelim".
