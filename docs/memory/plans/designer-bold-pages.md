@@ -26,6 +26,7 @@ description: Plan: what the Visual Page Editor needs for bold product pages (scr
 - The call-to-action band is `bg-primary text-white` in 39 template folders, a pair the block rules forbid (amber palettes put dark text on primary).
 - Motion: about 20 templates use `_fx`, mostly view entrances; none moves with the scroll.
 
-## Which questions wait for the owner?
-- B9: may a muted, looping hero video play by itself, with a pause button and stopped under reduced motion?
-- B11: a design-wide colour mode (light, dark, follow the system) in the Theme pane: a new `style` column.
+## What did the owner decide?
+- Owner (2026-11-11), both in `workflow/decisions-made-product-44.md`; no question waits.
+- B9: a muted, looping hero video may play by itself, with a pause button, not when the visitor prefers reduced motion.
+- B11: a design gets a colour mode (light, dark, follow the system) in the Theme pane; its new `style` column is approved (`workflow/decisions-made-schema-15.md`).

@@ -20,3 +20,6 @@ description: Decisions list, schema part 15 (2026-11-10 on): ws_messages.via_cli
   - 0 is PHP's `upload_max_filesize`, the bound before the setting: a running site does not change until an administrator raises it.
   - One bound for an uploaded video or sound and a saved animation, answered by `pg_image_editor_upload_limits()`. The field "Largest Video Or Sound In The Image Editor (MB)" stands in Settings, Features, beside "Shrink Pictures On Upload Above".
   - Refused: a second column for the saved animation (the export and the source land in the same Files and disk); no setting (a host with a small `upload_max_filesize` could not raise the bound).
+- A design's colour mode (owner, 2026-11-11: "Evet, eklensin"; step B11 of `plans/designer-bold-pages-steps-2.md`; the behaviour: `decisions-made-product-44.md`): one short text column on `style` beside `style_look` and `style_palette`, empty by default, by `install_add_column()` in a re-runnable step of the open version.
+  - Empty is today's behaviour: no backfill, a running design does not change.
+  - The step names the column and picks its type (`data/config-table-no-varchar.md`); nothing else on `style` changes.
