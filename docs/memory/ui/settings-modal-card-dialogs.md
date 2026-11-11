@@ -3,6 +3,9 @@ name: settings-modal-card-dialogs
 description: Rules for a settings card that opens its own dialog inside the settings modal: extras box, data-pgdialog rename, the dialog-open scroll lock, dispose.
 ---
 
+## Dialog or drawer?
+- A card's extra content now goes into a drawer inside the dialog (`ui/settings-modal-drawer.md`, Cron Jobs first, PR #8658); the dialogs below are the older path, which the plan moves into the drawer (SD2).
+
 ## Where do a card's own dialogs go?
 - Not into the pane but into `#pg_settings_modal_extras` (`includes/settings/modal.php`): a sibling box after the settings `<dialog>`, filled from the endpoint's `modals` and cleared when the pane changes. The pane's markup is replaced on every pane change; the dialogs live outside it.
 - Stacking is the browser's top layer: the dialog opened last is drawn on top, whatever the DOM order or z-index.
