@@ -16065,6 +16065,82 @@ a.ws-chip:hover {
   max-width: 52rem;
   line-height: 1.6;
 }
+/* The Summary tab (drawSummary()): the summary a card with Edit in its head,
+   the customer and the time spent in a column beside it while the pane is
+   wide enough, under it when it is not. The card fills its column; the text
+   inside keeps the 52rem reading width of .ws-summary-view. */
+.ws-pane-summary {
+  container-type: inline-size;
+}
+.ws-summary-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  align-items: start;
+  gap: .75rem;
+}
+.ws-summary-layout.ws-summary-alone {
+  grid-template-columns: minmax(0, 1fr);
+}
+@container (max-width: 48rem) {
+  .ws-summary-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.ws-summary-side {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  min-width: 0;
+}
+.ws-summary-layout .card {
+  border-radius: .875rem;
+}
+/* The Memory tab (workspace_memory.js): the hint with New record is one
+   card, the records cards in a grid that fills the pane. */
+.ws-memory {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+.ws-memory-intro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .75rem .9rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: .875rem;
+  background: var(--pg-card-bg);
+}
+.ws-memory-intro > p {
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+.ws-memory-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  align-items: start;
+  gap: .75rem;
+}
+.ws-memory-list > .ws-empty {
+  grid-column: 1 / -1;
+}
+.ws-memory-entry {
+  min-width: 0;
+  padding: .75rem .9rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: .875rem;
+  background: var(--pg-card-bg);
+}
+/* An empty channel pane (Tasks, Decisions, Files, Summary, Board, Memory)
+   shows its empty state in a dashed card. Other screens' .ws-empty (Today,
+   My tasks, the kit's panels) keep their own look. */
+.ws-pane:is(.ws-pane-tasks, .ws-pane-decisions, .ws-pane-files, .ws-pane-summary, .ws-pane-board, .ws-pane-memory) .ws-empty {
+  border: 1px dashed var(--pg-border-color);
+  border-radius: .875rem;
+  background: var(--pg-card-bg);
+}
 .ws-list-row {
   display: flex;
   align-items: center;
@@ -20153,8 +20229,43 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
 .ws-cb-bar {
     margin-bottom: .6rem;
 }
-.ws-cb-bar > .btn-group {
+/* The board's choices as chips (toolbar() in workspace_board_channel.js):
+   a pill that is filled while it is on; the two selects take the pill's
+   shape. */
+.ws-cb-chips {
+    display: flex;
     flex-wrap: wrap;
+    gap: .3rem;
+}
+.ws-cb-chip {
+    padding: .2rem .75rem;
+    border: 1px solid var(--pg-border-color);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--pg-fg-2);
+    font-size: .8125rem;
+    line-height: 1.4;
+}
+.ws-cb-chip:hover {
+    background: var(--pg-bg-2);
+    color: var(--pg-fg-emphasis);
+}
+.ws-cb-chip.active {
+    border-color: rgba(var(--ws-accent-rgb), .45);
+    background: rgba(var(--ws-accent-rgb), .14);
+    color: var(--pg-fg-emphasis);
+}
+html[data-bs-theme="dark"] .ws-cb-chip.active {
+    border-color: rgba(var(--ws-accent-rgb), .6);
+    background: rgba(var(--ws-accent-rgb), .26);
+}
+.ws-cb-chip:focus-visible {
+    outline: 2px solid var(--ws-accent);
+    outline-offset: 1px;
+}
+.ws-cb-chip-select {
+    border-radius: 999px;
+    font-size: .8125rem;
 }
 .ws-pane .ws-cb-picker,
 .ws-wt-board .ws-cb-picker {
@@ -20177,6 +20288,17 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
     background: var(--pg-bg-1);
 }
 .ws-cb-col.ws-cb-drop {
+    border-color: rgba(var(--ws-accent-rgb), .55);
+    background: rgba(var(--ws-accent-rgb), .07);
+}
+/* On the channel's Board tab a column is a card like the panes' others; the
+   workflow table's board (.ws-wt-board) keeps its own columns. */
+.ws-pane-board .ws-cb-col {
+    border: 1px solid var(--pg-border-color);
+    border-radius: .875rem;
+    background: var(--pg-card-bg);
+}
+.ws-pane-board .ws-cb-col.ws-cb-drop {
     border-color: rgba(var(--ws-accent-rgb), .55);
     background: rgba(var(--ws-accent-rgb), .07);
 }
@@ -20616,8 +20738,16 @@ a.ws-tag-card-head:hover span {
 }
 .ws-task-time-stats {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: .75rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr));
+    gap: .5rem;
+}
+/* Each figure of the Time spent card is a tile. */
+.ws-task-time-stat {
+    min-width: 0;
+    padding: .55rem .7rem;
+    border: 1px solid var(--pg-border-color);
+    border-radius: var(--ws-radius-sm);
+    background: color-mix(in srgb, var(--pg-fg-emphasis) 3%, transparent);
 }
 .ws-task-time-week {
     display: flex;

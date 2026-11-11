@@ -176,6 +176,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_wtable_numbers();       // 11.0.183
 	upgrade_2026_11_0_ws_agent_sessions();       // 11.0.184
 	upgrade_2026_11_0_ws_mail_send();            // 11.0.185
+	upgrade_2026_11_0_design_color_mode();       // 11.0.186
 
 }
 
@@ -5968,5 +5969,19 @@ function upgrade_2026_11_0_ws_mail_send() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace mail: sent mail can record whether it went out, its Bcc and who has read it; existing mail is unchanged and answers sent earlier count as sent.');
+
+}
+
+// A design's colour mode (2026.11.0, 11.0.186; includes/fn/design_themes.php):
+// '' (none: the page sets no mode, as before), light, dark or auto (follow
+// the visitor's system), written on the published page's <html> as
+// data-bs-theme. A short VARCHAR beside style_look and style_palette: style
+// is not the config table, and the four keys never grow past eight. No
+// backfill: every design made before this step keeps today's behaviour.
+function upgrade_2026_11_0_design_color_mode() {
+
+	install_add_column('style', 'style_color_mode', "VARCHAR(8) NOT NULL DEFAULT ''");
+
+	install_note('Visual Page Editor: a design can be light, dark or follow the visitor\'s system, chosen under Settings, Theme; existing designs are unchanged.');
 
 }

@@ -17,7 +17,7 @@ module: order_report
 - `SUM(ship_tos.shipping_cost)` over the cart's recipients that hold an active line, merged by `pg_order_report_carts()`. `order_items.shipping` is only a line's own rate per unit, rounded: `SUM(shipping * quantity)` left out the method and zone base rates and the shipping offer, so a cart's Shipping and Total differed from what checkout charged (#7248). Placed orders read `orders.shipping`.
 
 ## What survives a save that comes back with an error?
-- "Submitted" is `field_in_session('last_filter_number')` (the hidden field is posted with every save; there is no `submit` field). Defaults and the stored filters are loaded only when it is not set, so the levels and filters typed before the error stay. An existing report's form opens again on an error, and the heading reads the stored name from `order_reports`, not the typed one (#5760).
+- "Submitted" is `field_in_session('last_filter_number')` (the hidden field is posted with every save; there is no `submit` field). Defaults and the stored filters are loaded only when it is not set, so the levels and filters typed before the error stay. The settings drawer opens again on an error (`ui/report-view.md`), and the heading reads the stored name from `order_reports`, not the typed one (#5760).
 
 ## How is an order date filter read and stored?
 - Through `pg_date_input_iso()` (21.10.2026 included), stored as `YYYY-MM-DD`; a value that does not read as a date is rejected with "Please enter a valid date.". A "day(s) ago" count must pass `pg_order_report_days_ago_valid()` (whole number, 0 to INT UNSIGNED). The screen prints `get_date_picker_format() . pg_fields_script()` so the `data-pg-date` box gets the picker (#5761).
