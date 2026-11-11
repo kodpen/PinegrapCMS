@@ -3692,6 +3692,10 @@ function check_unread_notifications(refresh_type) {
     }
 };
 var notification_scrollTop = 0;
+// The latest list request: the bell's click and its shown event both ask
+// for the list on one opening, and only the last answer is drawn, so the
+// list (and the buttons above it) is never drawn twice.
+var pgBellLoad = 0;
 
 // What a refused or failed bell request says: the server's own sentence (a
 // translated refusal such as an ended session) or the generic failure line.
@@ -3795,6 +3799,7 @@ function get_notifications(keep_place) {
     };
 
     var spinner = $('#notifications .spinner');
+    var load = ++pgBellLoad;
 
     // A refused or failed load: a list the reader opened shows why it is
     // empty in place of the spinner. A keep_place redraw keeps the list it
@@ -3819,6 +3824,10 @@ function get_notifications(keep_place) {
         }),
         type: 'POST',
         success: function (response) {
+
+            if (load !== pgBellLoad) {
+                return;
+            }
 
             // if we get response and its response.status is "success" than we get all notifications json encoded from api.php.
             $status = response.status;
@@ -3981,7 +3990,9 @@ function get_notifications(keep_place) {
             }
         },
         error: function (xhr) {
-            load_failed(null, xhr);
+            if (load === pgBellLoad) {
+                load_failed(null, xhr);
+            }
         }
     });
 };

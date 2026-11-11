@@ -20,9 +20,10 @@ description: When a bell row is read: not on opening the bell; its link or Mark 
 
 ## What does the script do?
 - `get_notifications(keep_place)` (`backend.src.js`): no `read_mark`; the badge is left as it is.
+- Each list request is numbered (`pgBellLoad`) and only the latest answer is drawn: the bell's click and its shown event both ask on one opening, and the list (with the buttons above it) was drawn twice (#8682).
 - Above the list: "Mark all as read" (`.pg-bell-mark-all`, hidden while nothing is unread) beside "Delete All Notifications" (shown under All only, more than one row). Mark all turns the rows' classes in place, no redraw.
 - Every row, custom ones too, has the box `pg_bell_read_button()`: "Mark as read" on an unread row, "Mark as unread" on a read one; it turns the row's `new`/`viewed` classes and itself (`pg_bell_row_state()`). BP2 replaces it with the dot.
 - "Go to the relevant page" and "Join" go through `pg_bell_open_row()`: an unread row sends `mark_read` and the page opens when the answer comes, success or not (`complete`); Join opens its tab at once (a popup must follow the click).
 - A refused read puts the row back and shows the bell's toast (`ui/bell-refusals.md`); after every answer `check_unread_notifications('editcallback_check')` sets the badge.
 
-Pinned in `tests/bell_read_rule_test.php`; the poll rule in `ui/notifications-menu.md`.
+Pinned in `tests/bell_read_rule_test.php`; the poll rule in `ui/notifications-menu.md`. Built in #8682 (plan step BP1).
