@@ -11,6 +11,7 @@ description: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace chann
 - Agents use the site's MCP server, the API's routes under their scopes, no second catalogue (`api/api-mcp-server.md`). The decisions behind it: `workflow/decisions-made-workspace-7.md` to `-10.md`.
 
 ## What is left?
+- A10, an agent waits while the message that asked it is being edited (owner 2026-11-11, #8723), and A11, the brief stays bounded: both `free` (`agent-channel-steps-3.md`).
 - A8, the Claude Code channel plugin: it waits for its repository, which the owner opens (`agent-channel-steps-2.md`). The rest of A8 is built.
 
 - The coordinators move their check-in chains to the channel: a coordinator is a member like any agent (`@koordinator-a`, an `app` agent with an application of its own, door push or poll: the registry keeps one `claude` row, and scheduled wakes serve `app` agents only), the owner directs it from the channel, and its wake comes from the site's cron, which is always on, while a session's own chain breaks on restart.
