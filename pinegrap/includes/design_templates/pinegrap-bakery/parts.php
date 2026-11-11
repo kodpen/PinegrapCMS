@@ -147,7 +147,20 @@ $bakery = array(
 $opening_hours = array(
     array('days' => lang('Tuesday to Friday'), 'hours' => '07:00–19:00'),
     array('days' => lang('Saturday and Sunday'), 'hours' => '08:00–16:00'),
-    array('days' => lang('Monday'), 'hours' => lang('Closed, the ovens rest')),
+    array('days' => lang('Monday'), 'hours' => lang('Closed, the ovens rest'), 'closed' => true),
+);
+
+// The oven's morning (the home's hero): when the ovens are lit, when each
+// of the day's batches comes out and the last order for the next day (the
+// cut-off of $pickup['bakes']). Times of the day only, never a date.
+$oven = array(
+    'lit'        => '04:00',
+    'batches'    => array(
+        array('time' => '07:00', 'name' => lang('Sourdough and rye')),
+        array('time' => '08:30', 'name' => lang('Croissants and cardamom buns')),
+        array('time' => '11:00', 'name' => lang('Focaccia and the cakes of the day')),
+    ),
+    'last_order' => '14:00',
 );
 
 // When an order is collected: the pickup windows the bakery keeps and how
@@ -221,13 +234,17 @@ $occasions = array(
     'corporate'   => lang('Company event'),
 );
 
-// The sizes of a celebration cake and how many it serves; the price of a
-// cake is the price of its smallest size.
+// The sizes of a celebration cake, how many it serves and the price the
+// size starts at, the plainest cake's (the size guide of the cakes page).
 $cake_sizes = array(
-    'small'  => array('title' => lang('15 cm round'), 'servings' => lang('8 to 10 slices')),
-    'medium' => array('title' => lang('20 cm round'), 'servings' => lang('14 to 18 slices')),
-    'large'  => array('title' => lang('25 cm round'), 'servings' => lang('24 to 30 slices')),
-    'tiered' => array('title' => lang('Two tiers'), 'servings' => lang('40 to 60 slices')),
+    'small'  => array('title' => lang('15 cm round'), 'servings' => lang('8 to 10 slices'),
+        'price' => array('USD' => 45, 'EUR' => 42, 'GBP' => 36, 'TRY' => 1600)),
+    'medium' => array('title' => lang('20 cm round'), 'servings' => lang('14 to 18 slices'),
+        'price' => array('USD' => 65, 'EUR' => 60, 'GBP' => 52, 'TRY' => 2300)),
+    'large'  => array('title' => lang('25 cm round'), 'servings' => lang('24 to 30 slices'),
+        'price' => array('USD' => 80, 'EUR' => 74, 'GBP' => 64, 'TRY' => 2850)),
+    'tiered' => array('title' => lang('Two tiers'), 'servings' => lang('40 to 60 slices'),
+        'price' => array('USD' => 240, 'EUR' => 220, 'GBP' => 190, 'TRY' => 8500)),
 );
 
 // The sponges and the fillings a cake order chooses from.
@@ -298,7 +315,7 @@ $wholesale_ranges = array(
 
 // The bakery in four figures (the home and about pages).
 $figures = array(
-    array('value' => '04:00', 'label' => lang('When the ovens are lit')),
+    array('value' => $oven['lit'], 'label' => lang('When the ovens are lit')),
     array('value' => '48', 'label' => lang('Hours a sourdough takes')),
     array('value' => '20+', 'label' => lang('Cafés and restaurants we bake for')),
     array('value' => '3', 'label' => lang('Bakers on the team')),

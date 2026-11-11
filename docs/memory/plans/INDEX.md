@@ -4,6 +4,7 @@
 
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, not before 2026.11.0 ships): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
 - agent-channel-steps-2.md: Steps A0-A9 of plans/agent-channel.md: registry, doors, wakes, channel memory, model assistants, risk tiers, the canvas as a tool, further doors (Claude Code plugin, per-person sessions, chat box)
+- agent-channel-steps-3.md: Steps A10 and A11 of plans/agent-channel.md: an agent waits while the message that asked it is being edited (owner, #8723), the brief's decisions list stays bounded
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
 - bell-panel-steps.md: Steps of plans/bell-panel.md: BP1 a row is read when opened, BP2 the row drawn as the dashboard's Next up row, BP3 the filters and the search, BP4 the in-place actions and the close-out
@@ -55,6 +56,7 @@
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - workspace-channel-look-prototype.md: The style sheet tried on dev for step CL1 of plans/workspace-channel-look.md (one header card, colour wash, pill tabs, day chip, writing box card); a browser trial, not in the code
 - workspace-channel-look.md: Plan (owner 2026-11-10, handed to workers 2026-11-11): the Workspace channel screen in the dashboard's manner (one header card, colour wash, pill tabs, panes as cards); steps CL1-CL3 in order
+- workspace-channel-sound.md: Plan (owner 2026-11-11, #8720): a short sound in Workspace when something for the person arrives while that conversation is not in front of them; one step, CS1
 - workspace-mail-screen-sending.md: How the Workspace mail plan sends: one send path through the mail queue with an outcome hook, the item's send state, the schema step, limits, files, what a forward carries
 - workspace-mail-screen-steps.md: Steps WM1-WM9 of plans/workspace-mail-screen.md: queue outcome hook, schema, send path, the screen with views and pane, New e-mail, Forward as e-mail, the answer on the same path, API, close-out
 - workspace-mail-screen.md: Plan (owner 2026-11-10): the Workspace's E-mails screen becomes a mail screen for the Workspace mailboxes: Incoming, Sent, Not sent, a reading pane, New e-mail, Forward as e-mail, the mail queue

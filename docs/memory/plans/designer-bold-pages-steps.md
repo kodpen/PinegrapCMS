@@ -15,7 +15,7 @@ description: Steps B1 to B6 of the designer bold pages plan: full-bleed and gian
 - B2 (M, done #8696): scroll-linked effects. `_fx` effects `scroll-zoom` (scale from a start percent to 100 while the node crosses the window), `scroll-fade`, `scroll-rise`, each with a `from` field, played by the parallax loop once per frame; reduced motion or no script: the final state.
 - B2 files: `includes/fn/designer_fx.php`, `assets/js/pg_fx.src.js`, the editor twins and panel. Tests: `tests/designer_fx_test.php` (normalizer, attributes, the script under Node).
 
-- B3 (S, free): numbers that count. A `count` effect on text nodes, trigger view: the real number stays in the markup; the script counts from zero once seen, keeping separators, prefix and suffix; reduced motion: no counting. Files and tests as B2, no wait on it.
+- B3 (S, done #8728): numbers that count. A `count` effect on text nodes, trigger view: the real number stays in the markup; the script counts from zero once seen, keeping separators, prefix and suffix; reduced motion: no counting. Files and tests as B2, no wait on it.
 
 - B4 (M, free): a general variant picker. `launch-colours` becomes the general block "Variant Picker" (Marketing): colour dots or text pills, two to six choices, a picture each, radios and `:has()` as now; Launch places it, no copy left behind.
 - B4 files: `style_designer_blocks_launch.js`, the core palette, the launch home builder. Tests: `tests/designer_block_families_test.php`, `tests/design_template_launch_assembly_test.php`.

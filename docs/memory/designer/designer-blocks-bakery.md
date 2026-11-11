@@ -4,7 +4,7 @@ description: The Bakery block family (bakery- prefix, own palette group): fresh-
 ---
 
 ## Where does it live?
-- `assets/js/style_designer_blocks_bakery.js`, one `StyleDesigner.registerBlockFamily()` call ([[designer-block-family-files]]); prefix `bakery-`, palette group "Bakery" (`bi-cake2`). Built for the Bakery template's polishing round ([[design-template-bakery]], `plans/design-template-own-looks-order.md`, `bakery-1`, owner's line of 2026-11-11: [[design-template-owner-line]]); a patisserie or a cake shop places the same blocks.
+- `assets/js/style_designer_blocks_bakery.js`, one `StyleDesigner.registerBlockFamily()` call ([[designer-block-family-files]]); prefix `bakery-`, palette group "Bakery" (`bi-cake2`). Built for the Bakery template's polishing round ([[design-template-bakery]], `plans/design-template-own-looks-order.md`, `bakery-1`, owner's line of 2026-11-11: [[design-template-owner-line]]); a patisserie or a cake shop places the same blocks. The template places both since `bakery-2` ([[design-template-bakery-home]]).
 
 ## Which blocks does it hold?
 - `bakery-hero`: the way in. A badge (icon, "Ovens lit at", a `<time>`), the `h1`, a line, two buttons; "Out of the oven today" (`h2`) over an `ol.pg-bakery-oven` of three batches (`<time>` + `h3`). Beside it a 4:5 picture (`pg-bakery-photo`) with the order tag (`pg-bakery-tag`: a punched card, the last order `<time>`, "Last orders for the next day") over its corner from md up, under it below md.

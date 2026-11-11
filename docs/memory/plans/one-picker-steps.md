@@ -14,7 +14,7 @@ description: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry an
 
 - PK3 (M) Upload, Recent and several picks. Upload by drop or by choice into the open folder under the folder's edit right; a person's recent picks, kept in the browser; `multiple` for the product pictures. Done in #8630 (`ui/picker-upload.md`).
 
-- PK4 (M) Pages in the dialog. Kind `page`: folders, the page type filter, search, archived and binned marks (neither can be chosen, owner 2026-11-10, #8514), and extra entries a caller hands in (the designer's unsaved tabs, `tab:<key>`).
+- PK4 (M) Pages in the dialog. Kind `page`: folders, the page type filter, search, archived and binned marks (neither can be chosen, owner 2026-11-10, #8514), and extra entries a caller hands in (the designer's unsaved tabs, `tab:<key>`). Done in #8727 (`ui/picker-pages.md`).
 
 - PK5 (M) The field. `pg_picker_field()`: the combobox with Browse and the chosen value with its picture; the Settings pictures and the short link File fields move to it. This delivers what F3 of the search plan asked for.
 

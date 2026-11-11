@@ -11,6 +11,7 @@ Table structures and SQL pitfalls.
 - Escape every value with `e()`; in LIKE write `e(escape_like($v))` (`escape_like()` alone escapes no quote: SQL injection); a search box's "contains" pattern is `pg_list_like_pattern($term)`, so `%` and `_` stay plain (`db-helpers-and-error-contract.md`).
 - Never compare an INT column with `''` (every row that belongs to nothing matches) or a DATE column with `''` (use `'0000-00-00'`); check a LEFT JOIN id first (`sql-silent-wrong-results.md`).
 - Read with a one-shape helper (`db_value`, `db_values`, `db_item`, `db_items`): `db()`'s answer changes with the row count, so a loop over it breaks on one row (`db-helpers-and-error-contract.md`).
+- Alias no column or table with a bare word MySQL 8 reserves (`stored`, `rank`, `row`, `groups`…): MariaDB runs it, MySQL 8 answers a syntax error; `tests/sql_reserved_alias_test.php` guards it (`sql-mysql8-reserved-words.md`).
 - Probe a table or column a migration adds with `pg_schema_has()` behind a readiness function before reading it (`sql-silent-wrong-results.md`).
 - Write `orders` with `generate_order_reference_code()`, an ENUM-valid `payment_method` and an `order_date`; run nothing between the `next_order_number` lock and unlock (`orders-table-write-traps.md`).
 - Validate first, write after, when a write spans tables: any table may still be MyISAM, which has no transactions and survives a rollback (`table-engines-and-row-size.md`).

@@ -134,7 +134,8 @@ function test_brewery_public_pages_show_the_data()
 	$taproom = _test_bwp_texts($pages['taproom']['tree']);
 	foreach ($d['beers'] as $key => $b) {
 		pg_assert_true(in_array($b['name'], $taproom, true), "taproom: beer $key on tap");
-		pg_assert_true(in_array(call_user_func($d['strength_text'], $key), $taproom, true), "taproom: beer $key strength");
+		pg_assert_true(in_array($b['abv'], $taproom, true), "taproom: beer $key strength");
+		pg_assert_true(in_array(str_replace('{var}', $b['ibu'], lang('{var} IBU')), $taproom, true), "taproom: beer $key bitterness");
 	}
 	foreach ($d['food'] as $n => $f) {
 		pg_assert_true(in_array($f['title'], $taproom, true), "taproom: dish $n");
