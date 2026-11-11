@@ -28,8 +28,7 @@ module: image_editor
 
 ## What does the panel show?
 - Select's panel (the type's `panel()`): the file (size, length), Source in, Source out, Start on the timeline (sliders), the speed chips, volume with mute (or "no sound"), Detach sound, Replace (another video from Files, its box keeps width and centre).
-- Animate with one clip selected: tabs Video clip and Motion (the entrance, loop and exit as for any layer); the clip tab adds Duplicate and Delete. Draw on is off for a clip.
+- Animate with one clip selected: tabs Video clip, Effects and Motion; the clip tab adds Duplicate and Delete. Draw on is off for a clip.
 
-## What is left to later steps?
-- Clip rows, trim, split, move and snapping came in V3 (`image-editor-clip-timeline.md`).
-- Effects and transitions (V5); uploads in parts came in V8.
+## Which steps added more?
+- Clip rows, trim, split, move and snapping came in V3 (`image-editor-clip-timeline.md`); effects and transitions in V5 (`image-editor-clip-effects.md`); uploads in parts in V8.

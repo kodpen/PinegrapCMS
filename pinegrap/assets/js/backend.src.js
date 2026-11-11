@@ -1846,7 +1846,7 @@ $(document).ready(function () {
     //#notifications
     $('#notification_toggle').on('click', function () {
         if (pgUI.menu.isOpen(this)) {
-            get_notifications(true);
+            get_notifications();
         } else {
             $('#notifications').scrollTop(0);
         }
@@ -1855,7 +1855,7 @@ $(document).ready(function () {
     //shown #notifications
     pgUI.menu.on('#notification_toggle', 'shown', function () {
         $('#notification_toggle').addClass('show');
-        get_notifications(true);
+        get_notifications();
     });
     //hidden #notifications
     pgUI.menu.on('#notification_toggle', 'hidden', function () {
@@ -3616,8 +3616,8 @@ function pg_push_message($text) {
 }
 
 //::::::::::::::::::NOTIFICATION::::::::::::::::::
-// The unread count the open list was last drawn for. It survives across
-// polls and drops to 0 when the list marks everything read, so a poll
+// The unread count the open list shows. It survives across polls and is set
+// by every drawing of the list (opening the bell reads nothing), so a poll
 // redraws the open list only when the count really rises.
 var $unreadsCallback = 0;
 
@@ -3657,10 +3657,10 @@ function check_unread_notifications(refresh_type) {
                     // if there is at least 1 unreaded notification that user is accessable than prepare for output notification badge.
                     // this check system dont get notifications we dont wanna more traffic.
                     if ($unreads > 0) {
-                        // if notification view menu is active than we also get notifications and update all but we dont set notifications readed, because maybe sceen is forgetten and user close and go we be sure to readed.
+                        // An open list is redrawn when something new came in; drawing it reads nothing.
                         if (pgUI.menu.isOpen('#notification_toggle')) {
                             if ($unreads > $unreadsCallback && refresh_type != 'editcallback_check') {
-                                get_notifications(false, true);
+                                get_notifications(true);
                             }
                         }
                         $output_unreads = 0;
@@ -3692,6 +3692,10 @@ function check_unread_notifications(refresh_type) {
     }
 };
 var notification_scrollTop = 0;
+// The latest list request: the bell's click and its shown event both ask
+// for the list on one opening, and only the last answer is drawn, so the
+// list (and the buttons above it) is never drawn twice.
+var pgBellLoad = 0;
 
 // What a refused or failed bell request says: the server's own sentence (a
 // translated refusal such as an ended session) or the generic failure line.
@@ -3747,7 +3751,7 @@ function remove_all_notifications() {
 // keep_place: a redraw the reader did not ask for (the unread poll) keeps the
 // old list until the new one arrives, then puts back its scroll position and
 // the focus on the same notification row.
-function get_notifications($read_mark, keep_place) {
+function get_notifications(keep_place) {
     const notifications = $('#notifications');
     const notifications_body = $('#notifications .menu-scroll-area');
     const notifications_content = $('#notifications .menu-scroll-area *');
@@ -3757,10 +3761,6 @@ function get_notifications($read_mark, keep_place) {
     var kept_scroll_outer = 0;
     var kept_row = '';
     var kept_index = -1;
-
-    if ($read_mark) {
-        $unreadsCallback = 0;
-    }
 
     if (keep_place) {
         kept_scroll = scroll_area.scrollTop();
@@ -3799,19 +3799,12 @@ function get_notifications($read_mark, keep_place) {
     };
 
     var spinner = $('#notifications .spinner');
-    var kept_badge = $('#notification_toggle .has-notification-icon').html();
-    var kept_badge_on = $('#notification_toggle').hasClass('fg-success');
-    // we will get new notifications that user can access and this notifications will set readed so we remove badges from notification button.
-    $('#notification_toggle .has-notification-icon').html('');
-    $('#notification_toggle').removeClass('fg-success');
+    var load = ++pgBellLoad;
 
-    // A refused or failed load: the unread badge comes back (nothing was
-    // marked read) and a list the reader opened shows why it is empty in
-    // place of the spinner. A keep_place redraw keeps the list it had.
+    // A refused or failed load: a list the reader opened shows why it is
+    // empty in place of the spinner. A keep_place redraw keeps the list it
+    // had. The unread badge is never touched: drawing the list reads nothing.
     var load_failed = function (response, xhr) {
-        $('#notification_toggle .has-notification-icon').html(kept_badge);
-        $('#notification_toggle').toggleClass('fg-success', kept_badge_on);
-
         if (keep_place) {
             return;
         }
@@ -3827,11 +3820,14 @@ function get_notifications($read_mark, keep_place) {
         url: 'api.php',
         data: JSON.stringify({
             action: 'get_notifications',
-            read_mark: $read_mark, // if this is true all notifications will be readed that user can access.
             token: software_token // token is important.
         }),
         type: 'POST',
         success: function (response) {
+
+            if (load !== pgBellLoad) {
+                return;
+            }
 
             // if we get response and its response.status is "success" than we get all notifications json encoded from api.php.
             $status = response.status;
@@ -3840,6 +3836,13 @@ function get_notifications($read_mark, keep_place) {
 
                 // there is at least 1 notifications, so we will output it.
                 var data_length = response.data.length;
+
+                // The poll redraws this list only when the count rises
+                // above what it shows.
+                var shown_unread = response.data.filter(function (row) {
+                    return row.readed != 1;
+                }).length;
+                $unreadsCallback = shown_unread;
 
                 var output_notifications = '';
                 if (keep_place) {
@@ -3850,8 +3853,16 @@ function get_notifications($read_mark, keep_place) {
                     // notification loading spinner remove
                     spinner.remove();
 
+                    // Above the list: "Mark all as read" beside "Delete All
+                    // Notifications" (pg_bell_filter_apply() shows each when
+                    // it applies).
+                    output_notifications = '<div class="pg-bell-actions d-flex flex-wrap border-bottom">'
+                        + '<button type="button" class="menu-item w-auto flex-fill pg-bell-mark-all fg-emphasis-primary"><span class="bi bi-check2-all me-3" aria-hidden="true"></span>' + lang('Mark all as read') + '</button>'
+                        + ((data_length > 1) ? '<button type="button" onclick="remove_all_notifications();" class="menu-item w-auto flex-fill notification-remove-btn fg-danger"><span class="bi bi-trash me-3" aria-hidden="true"></span>' + lang('Delete All Notifications') + '</button>' : '')
+                        + '</div>';
+
                     // than we create notification by data.
-                    output_notifications = '<ul class="list-group list-group-flush">';
+                    output_notifications += '<ul class="list-group list-group-flush">';
 
                     var output_button_bar = '';
                     // title, description and details arrive from the server as
@@ -3869,6 +3880,7 @@ function get_notifications($read_mark, keep_place) {
                     var notification_time;
                     var notification_type;
                     var notification_readed;
+                    var notification_unread;
                     var notification_group;
                     var notification_fold_head;
                     var notification_fold_count;
@@ -3897,11 +3909,12 @@ function get_notifications($read_mark, keep_place) {
 
                         response.data[i].description = '<div class="notification-description bg-2" style="--bs-bg-opacity: 0.2;">' + response.data[i].description + '</div>';
                         response.data[i].details = '<div notification-details>' + response.data[i].details + '</div>';
+                        notification_unread = (response.data[i].readed != 1);
+
                         if (response.data[i].action != 'custom') {
                             output_button_bar = '<button type="button" class="menu-item bi bi-link bi-me-2 fg-emphasis-primary notification-go" data-url="' + h(String(response.data[i].url || '')) + '">' + lang('Go to the relevant page') + '</button>';
 
-
-                            output_button_bar += '<button type="button" class="fs-smaller menu-item bi bi-check-square bi-me-2 fg-emphasis-secondary" onclick="edit_notification(\'' + notification_id + '\', \'mark_unread\'); this.remove();">' + lang('Mark as unread') + '</button>';
+                            output_button_bar += pg_bell_read_button(notification_id, notification_unread);
 
                             // A meeting about to start: its call, one tap away.
                             if (notification_join !== '') {
@@ -3915,10 +3928,12 @@ function get_notifications($read_mark, keep_place) {
                             output_data_title = '<small class="notification-title text-wrap text-break w-100">' + ((notification_glyph !== '') ? '<span class="bi ' + notification_glyph + ' pg-bell-glyph" aria-hidden="true"></span>' : '') + response.data[i].title + '</small>';
                         } else {
                             output_data_title = '<div class="notification-title text-wrap w-100">' + response.data[i].title + '</div>';
+                            // A custom row has no link, but it is read or
+                            // unread like every other.
+                            output_button_bar = pg_bell_read_button(notification_id, notification_unread);
                         }
 
-
-                        if (response.data[i].readed != 1) {
+                        if (notification_unread) {
                             notification_readed = 'new';
                         } else {
                             notification_readed = '';
@@ -3954,10 +3969,6 @@ function get_notifications($read_mark, keep_place) {
                     }
                     output_notifications += '</ul>';
 
-                    if (data_length > 1) {
-                        output_notifications += '<a href="#!" onclick="remove_all_notifications();" title="' + lang('Delete All Notifications') + '" class="menu-item notification-remove-btn fg-danger border-top"><span class="bi bi-trash me-3"></span>' + lang('Delete All Notifications') + '</a></li>';
-                    }
-
                     notifications_body.append(output_notifications);
                     pg_bell_filter_apply();
                     if (keep_place) {
@@ -3979,7 +3990,9 @@ function get_notifications($read_mark, keep_place) {
             }
         },
         error: function (xhr) {
-            load_failed(null, xhr);
+            if (load === pgBellLoad) {
+                load_failed(null, xhr);
+            }
         }
     });
 };
@@ -4054,8 +4067,40 @@ function pg_bell_filter_apply() {
         $(box).find('.notifications_empty').toggleClass('d-none', shown > 0);
     }
 
-    // Deleting everything is offered only while everything is shown.
+    // Deleting everything is offered only while everything is shown;
+    // marking everything read only while something is unread.
     $(box).find('.notification-remove-btn').toggleClass('d-none', filter !== 'all');
+    $(box).find('.pg-bell-mark-all').toggleClass('d-none', counts.all === 0);
+}
+
+// A row's read box: "Mark as read" on an unread row, "Mark as unread" on a
+// read one. It turns the row and itself (pg_bell_row_state()).
+function pg_bell_read_button(notification_id, unread) {
+    return '<button type="button" class="fs-smaller menu-item bi ' + (unread ? 'bi-check-square' : 'bi-square') + ' bi-me-2 fg-emphasis-secondary pg-bell-read" data-pg-bell-read="' + (parseInt(notification_id, 10) || 0) + '">'
+        + (unread ? lang('Mark as read') : lang('Mark as unread')) + '</button>';
+}
+
+// Draws a row read or unread: its classes and its read box.
+function pg_bell_row_state($row, unread) {
+    $row.toggleClass('new', unread).toggleClass('viewed', !unread);
+    $row.find('.pg-bell-read').each(function () {
+        $(this).replaceWith(pg_bell_read_button($(this).attr('data-pg-bell-read'), unread));
+    });
+}
+
+// Opens a row: an unread row is read first and open() runs once the server
+// answered, either way, so the read is not lost to the page change and a
+// refusal never keeps the reader from the page.
+function pg_bell_open_row($button, open) {
+    var $row = $button.closest('li[notification-id]');
+    var notification_id = parseInt($row.attr('notification-id'), 10) || 0;
+
+    if (!$row.hasClass('new') || notification_id < 1) {
+        open();
+        return;
+    }
+
+    edit_notification(notification_id, 'mark_read', open);
 }
 
 // The way to a flow's older runs folded under its newest, and back.
@@ -4119,7 +4164,8 @@ $(document).on('click', '#notifications .pg-bell-more', function () {
     pg_bell_filter_apply();
 });
 
-// A meeting's call opens in a tab of its own, cut off from the panel.
+// A meeting's call opens in a tab of its own, cut off from the panel. The
+// tab opens at once (a popup must follow the click) and the row is read.
 $(document).on('click', '#notifications .pg-bell-join', function () {
     var url = String($(this).attr('data-url') || '');
 
@@ -4132,6 +4178,22 @@ $(document).on('click', '#notifications .pg-bell-join', function () {
     if (opened) {
         opened.opener = null;
     }
+
+    pg_bell_open_row($(this), function () {});
+});
+
+// The row's read box turns it both ways.
+$(document).on('click', '#notifications .pg-bell-read', function () {
+    var notification_id = parseInt($(this).attr('data-pg-bell-read'), 10) || 0;
+    var unread = $(this).closest('li[notification-id]').hasClass('new');
+
+    edit_notification(notification_id, unread ? 'mark_read' : 'mark_unread');
+    $('#notifications .pg-bell-read[data-pg-bell-read="' + notification_id + '"]').trigger('focus');
+});
+
+// "Mark all as read" above the list: every row the reader sees.
+$(document).on('click', '#notifications .pg-bell-mark-all', function () {
+    edit_notification(0, 'mark_all_read');
 });
 
 // Opens the page a notification points to. The URL sits in a data attribute
@@ -4146,40 +4208,64 @@ $(document).on('click', '#notifications .notification-go', function () {
         return;
     }
 
-    if (window.location.href.indexOf('toolbar.php') > -1) {
-        parent.document.location.href = url;
-    } else {
-        location.href = url;
-    }
+    // The row is read first, then its page opens.
+    pg_bell_open_row($(this), function () {
+        if (window.location.href.indexOf('toolbar.php') > -1) {
+            parent.document.location.href = url;
+        } else {
+            location.href = url;
+        }
+    });
 });
 
-function edit_notification(notification_id, do_action) {
+// do_action: remove, mark_read, mark_unread (one row) or mark_all_read
+// (every row the reader sees; notification_id is 0). done, when given, runs
+// once the server answered, whatever it said (pg_bell_open_row()).
+function edit_notification(notification_id, do_action, done) {
 
-    var $target = $('#notifications li[notification-id="' + String(notification_id).replace(/["\\]/g, '') + '"]');
-    var was_new = $target.hasClass('new');
-    var was_viewed = $target.hasClass('viewed');
+    var all = (do_action === 'mark_all_read');
+    var $target = all
+        ? $('#notifications li.software_notification')
+        : $('#notifications li[notification-id="' + String(notification_id).replace(/["\\]/g, '') + '"]');
+    var runs = [];
+    var kept = [];
+
+    // A fold's head is read with the runs drawn under it.
+    if (do_action === 'mark_read') {
+        $('#notifications li[data-pg-bell-fold="' + (parseInt(notification_id, 10) || 0) + '"]').each(function () {
+            if ($(this).hasClass('new')) {
+                runs.push(parseInt($(this).attr('notification-id'), 10) || 0);
+                $target = $target.add(this);
+            }
+        });
+    }
+
+    $target.each(function () {
+        kept.push({ row: $(this), unread: $(this).hasClass('new') });
+    });
 
     // The row changes at once, but it is removed only once the server has
-    // deleted it: a refused edit puts the row back as it was, so the list
-    // never hides a notification that is still on the server.
+    // deleted it: a refused edit puts the rows back as they were, so the
+    // list never shows a state the server does not hold.
     var put_back = function () {
-        $target.stop(true, true).show();
-        $target.toggleClass('new', was_new).toggleClass('viewed', was_viewed);
-
-        // The 'Mark as unread' button removed itself on the click; a quiet
-        // redraw brings it back with the row's state as the server holds it.
-        if (do_action === 'mark_unread') {
-            get_notifications(false, true);
-        }
+        kept.forEach(function (entry) {
+            entry.row.stop(true, true).show();
+            pg_bell_row_state(entry.row, entry.unread);
+        });
+        pg_bell_filter_apply();
     };
 
     if (do_action === 'remove') {
         $target.hide('slow');
+    } else if ((do_action === 'mark_read') || all) {
+        $target.each(function () {
+            pg_bell_row_state($(this), false);
+        });
     } else if (do_action === 'mark_unread') {
-        $target.addClass('new');
-        $target.removeClass('viewed');
-
+        pg_bell_row_state($target, true);
     }
+    pg_bell_filter_apply();
+
     // we check notifications from api.php with ajax.
     $.ajax({
         contentType: 'application/json',
@@ -4188,6 +4274,7 @@ function edit_notification(notification_id, do_action) {
             action: 'edit_notifications',
             do_action: do_action,
             id: notification_id,
+            runs: runs,
             token: software_token // token is important.
         }),
         type: 'POST',
@@ -4210,6 +4297,11 @@ function edit_notification(notification_id, do_action) {
         error: function (xhr) {
             put_back();
             pg_bell_refused(null, xhr);
+        },
+        complete: function () {
+            if (typeof done === 'function') {
+                done();
+            }
         }
     });
 };
