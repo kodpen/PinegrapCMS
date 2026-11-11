@@ -65354,6 +65354,65 @@ const StyleDesigner = (function () {
                '</span>';
     }
 
+    // The `preview` row of "Plain Bootstrap" (twin of
+    // pg_design_plain_look_preview()).
+    var _SD_PLAIN_LOOK_PREVIEW = { radius: 6, btn_radius: 6, shadow: 'none', border: 1, heading: 'sans', weight: 500, caps: false };
+
+    // A small drawing of a look, 48×32, from its `preview` row: the card's
+    // corner, outline and shadow, the heading's weight, the button's corner
+    // and capitals, in currentColor. Twin of pg_design_look_drawing() in
+    // includes/fn/design_themes.php: both give the same SVG.
+    function _sdLookDrawing(pv) {
+        pv = pv || _SD_PLAIN_LOOK_PREVIEW;
+        var n = function (v) { v = Math.round(v * 100) / 100; return v === 0 ? '0' : String(v); };
+        var half = function (v) { return Math.round(v * 2) / 2; };
+        var int = function (v, def) { v = parseInt(v, 10); return isNaN(v) ? def : v; };
+        var radius = Math.max(0, int(pv.radius, 0)), btnRadius = Math.max(0, int(pv.btn_radius, 0));
+        var border = Math.min(3, Math.max(0, int(pv.border, 1))), weight = Math.min(900, Math.max(100, int(pv.weight, 500)));
+        var heading = pv.heading == null ? 'sans' : String(pv.heading), caps = !!pv.caps;
+        var shadows = {
+            none:  '',
+            crisp: '<rect x="5" y="27" width="38" height="1" fill="currentColor" fill-opacity=".45"/>',
+            soft:  '<rect x="6" y="27" width="36" height="2" rx="1" fill="currentColor" fill-opacity=".2"/>',
+            glow:  '<rect x="8" y="27" width="32" height="3" rx="1.5" fill="currentColor" fill-opacity=".32"/>',
+            deep:  '<rect x="5" y="27" width="38" height="2" fill="currentColor" fill-opacity=".32"/><rect x="8" y="29" width="32" height="2" rx="1" fill="currentColor" fill-opacity=".15"/>',
+            hard:  '<path d="M44 5h2v24H6v-2h38z" fill="currentColor"/>'
+        };
+        var svg = '<svg class="pg-look-drawing" viewBox="0 0 48 32" width="48" height="32" aria-hidden="true" focusable="false">';
+        svg += Object.prototype.hasOwnProperty.call(shadows, pv.shadow) ? shadows[pv.shadow] : '';
+        var card = '<rect x="4" y="3" width="40" height="24" rx="' + n(half(Math.min(radius, 24) / 4)) + '" fill="currentColor" fill-opacity=".1"';
+        if (border > 0) card += ' stroke="currentColor" stroke-width="' + border + '" stroke-opacity="' + (border > 1 ? '1' : '.5') + '"';
+        svg += card + '/>';
+        var hh = half(weight / 200);
+        if (heading === 'mono') {
+            [9, 13.5, 18, 22.5].forEach(function (x) { svg += '<rect x="' + n(x) + '" y="8" width="3.5" height="' + n(hh) + '" fill="currentColor"/>'; });
+        } else {
+            svg += '<rect x="9" y="8" width="18" height="' + n(hh) + '"' + (heading === 'rounded' ? ' rx="' + n(hh / 2) + '"' : '') + ' fill="currentColor"/>';
+            if (heading === 'serif') svg += '<rect x="8" y="' + n(8 + hh - 0.5) + '" width="20" height=".5" fill="currentColor"/>';
+        }
+        svg += '<rect x="9" y="15" width="26" height="1" fill="currentColor" fill-opacity=".4"/>';
+        var br = btnRadius >= 99 ? 2.5 : Math.min(2.5, half(btnRadius / 6));
+        var rect = function (x, y, w, h, r) {
+            if (r <= 0) return 'M' + n(x) + ' ' + n(y) + 'h' + n(w) + 'v' + n(h) + 'h-' + n(w) + 'z';
+            var a = 'a' + n(r) + ' ' + n(r) + ' 0 0 1 ', side = h - 2 * r;
+            return 'M' + n(x + r) + ' ' + n(y) + 'h' + n(w - 2 * r) + a + n(r) + ' ' + n(r) +
+                   (side > 0 ? 'v' + n(side) : '') + a + '-' + n(r) + ' ' + n(r) +
+                   'h-' + n(w - 2 * r) + a + '-' + n(r) + ' -' + n(r) +
+                   (side > 0 ? 'v-' + n(side) : '') + a + n(r) + ' -' + n(r) + 'z';
+        };
+        var label = caps ? 'M12 20.75h2v1.5h-2zM15.5 20.75h2v1.5h-2zM19 20.75h2v1.5h-2z' : 'M12.5 21h8v1h-8z';
+        svg += '<path d="' + rect(9, 19, 15, 5, br) + label + '" fill="currentColor" fill-rule="evenodd"/>';
+        return svg + '</svg>';
+    }
+
+    // The drawing of a look by its key: a custom look draws the look it is
+    // based on, no look (or an unknown one) draws Plain Bootstrap.
+    function _sdLookDrawingOf(key) {
+        var l = _sdThemeFind('look', key);
+        if (l && !l.preview && l.base) l = _sdThemeFind('look', l.base);
+        return _sdLookDrawing(l && l.preview ? l.preview : null);
+    }
+
     // The colours the cards are drawn in: the palette chosen (or tried).
     function _sdThemeColors() {
         var th = _sdThemes();
@@ -65406,7 +65465,7 @@ const StyleDesigner = (function () {
                        (desc ? '<span class="sd-th-look-desc">' + esc(desc) + '</span>' : '') +
                    '</button>';
         };
-        h += lookCard('', _sdT('Plain Bootstrap'), _sdT('Plain Bootstrap 5.3, as it comes.'), { radius: 6, btn_radius: 6, shadow: 'none', border: 1, heading: 'sans', weight: 500 });
+        h += lookCard('', _sdT('Plain Bootstrap'), _sdT('Plain Bootstrap 5.3, as it comes.'), _SD_PLAIN_LOOK_PREVIEW);
         (th.looks || []).forEach(function (l) { h += lookCard(l.key, l.name, l.description, l.preview); });
         (th.customLooks || []).forEach(function (l) {
             var base = _sdThemeFind('look', l.base);
@@ -77422,6 +77481,7 @@ const StyleDesigner = (function () {
             _sdThemes: _sdThemes,
             _sdThemeFind: _sdThemeFind,
             _sdThemeValue: _sdThemeValue,
+            _sdLookDrawingOf: _sdLookDrawingOf,
             _sdOpenThemeSettings: _sdOpenThemeSettings,
             applyAssetsToIframe: applyAssetsToIframe,
             _SD_CODE_KEY: _SD_CODE_KEY,

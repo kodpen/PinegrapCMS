@@ -69,7 +69,7 @@ description: Generated from the module field of the memory files: each includes/
 - `custom_form_steps`: [[custom-form-steps]]
 - `design_file_list_edit`: [[list-table-quick-edit-design-files]]
 - `design_previews`: [[design-live-pictures]], [[design-preview-address]], [[designer-home-pictures]]
-- `design_themes`: [[design-theme-product-looks]]
+- `design_themes`: [[design-theme-look-drawing]], [[design-theme-product-looks]]
 - `designer`: [[bound-media-src]], [[design-asset-path-placeholders]]
 - `designer_fx`: [[designer-interactions]]
 - `designer_vocab`: [[designer-bootstrap-vocabulary]]
