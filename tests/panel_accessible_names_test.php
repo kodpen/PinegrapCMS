@@ -93,8 +93,9 @@ function test_panel_accessible_names_marketplace_bulk_layer()
 
 function test_panel_accessible_names_dialogs_named_by_their_title()
 {
+	// The Cron Jobs setup examples are a drawer named by its title:
+	// settings_modal_drawer_test.php.
 	$expect = array(
-		'includes/settings/maintenance.php' => array('cron_jobs'),
 		'edit_form_item_view.php' => array('hints'),
 		'edit_form_list_view.php' => array('hints', 'hints_for_advanced_search'),
 		'includes/forms/product_group_form.php' => array('image_code'),
