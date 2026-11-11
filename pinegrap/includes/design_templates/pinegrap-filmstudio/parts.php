@@ -104,6 +104,23 @@ $searchable = function ($id, $topics = '') {
     if ($topics !== '') $props['searchKeywords'] = $topics;
     return $props;
 };
+// A node's interaction (props._fx), changed or removed in the editor's
+// Interactions section; pg_fx keeps the node still under reduced motion.
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+// A row of cards or a list whose items rise into view one after another
+// (the stagger moves the children, not the row).
+$rise = function ($node, $stagger = 90) use ($fx) {
+    return $fx($node, array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 700, 'stagger' => $stagger));
+};
+// A heading or a band that fades in as it comes into view.
+$fade_in = function ($node, $delay = 0) use ($fx) {
+    $effect = array('effect' => 'fade', 'trigger' => 'view', 'duration' => 800);
+    if ($delay > 0) $effect['delay'] = $delay;
+    return $fx($node, $effect);
+};
 // The language switcher button: the server draws it for each request and
 // leaves it out while the site has a single language.
 $lang_switcher = function ($class = '', $variant = 'secondary') {
@@ -114,8 +131,6 @@ $lang_switcher = function ($class = '', $variant = 'secondary') {
         'cssClass' => $class,
     ), 'children' => array());
 };
-
-// A sample picture with a fixed seed, so the same picture comes back on
 
 // A sample picture with a fixed seed, so the same still comes back on
 // every opening until the studio puts its own frames in its place.
@@ -708,9 +723,11 @@ $enquiry_band = function () use ($el, $heading, $para, $link, $container, $row, 
 // The showreel: a player with the still as its poster. The studio puts its
 // own file in its place (or swaps the player for its video host's embed);
 // until then the poster shows.
-$showreel = function ($seed = 'showreel', $title = '') use ($el, $attr, $para, $photo) {
+// $frame is the frame's class: on the home's cinema screen the screen
+// rounds and fills it (pg-filmstudio-screen).
+$showreel = function ($seed = 'showreel', $title = '', $frame = 'ratio ratio-16x9 rounded-3 overflow-hidden bg-dark') use ($el, $attr, $para, $photo) {
     if ($title === '') $title = lang('Showreel');
-    return $el('div', 'ratio ratio-16x9 rounded-3 overflow-hidden bg-dark', lang('Video Frame'), array(
+    return $el('div', $frame, lang('Video Frame'), array(
         $el('video', 'w-100 h-100 object-fit-cover', lang('Video'), array(
             $para(lang('Your browser cannot play this video.'), 'text-white p-3'),
         ), array('_attrs' => array(
@@ -771,7 +788,7 @@ $project_card = function ($sample_key = 'night_drive') use ($el, $para, $span, $
             )),
             $el('div', 'card-body d-flex flex-column p-4', lang('Card Body'), array(
                 $span($industries[$p['industry']]['title'], 'pfm-eyebrow small text-uppercase fw-semibold text-primary mb-1', lang('Industry'), $bind('industry')),
-                $el('h3', 'pfm-display h5 position-static mb-1', lang('Project Name'), array(
+                $el('h3', 'h5 position-static mb-1', lang('Project Name'), array(
                     $link($p['name'], '#', 'stretched-link link-body-emphasis text-decoration-none', array(),
                         array('_bindings' => array('text' => 'name', 'href' => 'form_item_view'))),
                 )),
@@ -837,7 +854,7 @@ $crew_card = function ($n) use ($el, $heading, $para, $image, $col, $attr, $port
     return $col(array(
         $el('article', 'card h-100 border-0 shadow-sm rounded-3 text-center p-4', lang('Crew Member'), array(
             $image($portrait($t['name'], 240), $t['name'], 'rounded-circle mx-auto mb-3', array('_attrs' => array($attr('width', '120'), $attr('height', '120'), $attr('loading', 'lazy')))),
-            $heading('h3', $t['name'], 'pfm-display h5 mb-1'),
+            $heading('h3', $t['name'], 'h5 mb-1'),
             $para($t['role'], 'small fw-semibold text-primary mb-2'),
             $para($t['bio'], 'small text-body-secondary mb-0'),
         )),
@@ -871,7 +888,7 @@ $job_card = function ($sample_key = 'production_assistant') use ($el, $para, $sp
         $el('div', 'card-body d-flex flex-column flex-md-row align-items-md-center gap-3 p-4', lang('Card Body'), array(
             $el('div', 'flex-grow-1', lang('Job'), array(
                 $span($departments[$j['department']], 'pfm-eyebrow small text-uppercase fw-semibold text-primary', lang('Department'), $bind('department')),
-                $el('h3', 'pfm-display h5 position-static my-1', lang('Job Title'), array(
+                $el('h3', 'h5 position-static my-1', lang('Job Title'), array(
                     $link($j['title'], '#', 'stretched-link link-body-emphasis text-decoration-none', array(),
                         array('_bindings' => array('text' => 'title', 'href' => 'form_item_view'))),
                 )),

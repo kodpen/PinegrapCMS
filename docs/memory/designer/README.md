@@ -32,7 +32,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 
 - `comments-widget-*`: 24 files; start at `comments-widget.md`.
 - `custom-form-*`: 18 files; start at `custom-form-overview.md`.
-- `design-template-*`: 104 files; start at `design-template-overview.md`.
+- `design-template-*`: 105 files; start at `design-template-overview.md`.
 - `designer-blocks-*`: 43 files; start at `designer-blocks-overview.md`.
 - `designer-canvas-*`: 12 files; start at `designer-canvas-overview.md`.
 - `designer-code-*`: 6 files.

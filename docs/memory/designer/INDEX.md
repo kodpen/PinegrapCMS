@@ -129,6 +129,7 @@
 - design-template-events.md: Events and Conferences template (pinegrap-events): its parts folder, events and registrations as form records, tickets as shop products, what is not built, the pev- look, tests.
 - design-template-ferry-pages.md: Ferry template 2.0.0: home, routes, route pages, timetables and fares on the Ferry blocks: the builders, each page's composition, motion, what left, the test
 - design-template-ferry.md: Ferry template (pinegrap-ferry, 2.0.0): routes with a page each, ports, timetables and fares as words, Travel Notices collection, booking requests, group enquiries, no shop, pfy- look, tests.
+- design-template-filmstudio-pages.md: Film Studio template 2.0.0: home, services and project page on the Film Studio blocks, motion elsewhere, names in their own case; builders, pages, limits, test
 - design-template-filmstudio.md: Film Studio template (pinegrap-filmstudio): showreel, services, projects as a collection by industry and service, studio hire, crew, project enquiries, crew calls, no shop, pfm- look, tests.
 - design-template-florist.md: Florist template (pinegrap-florist): bouquets, occasions, subscriptions, event flowers, delivery, Our Work collection, order requests from the account, consultations, shop catalog, pfl- look, tests.
 - design-template-form-fees.md: Fees and branches of the template forms (FL7): hidden fee products in the catalog, {{product:<key>}}, the Events optional fee, Cafe deposit, Courses enrolment fee, Cafe and Clinic shown_when
