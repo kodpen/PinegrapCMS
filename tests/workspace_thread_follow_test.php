@@ -275,3 +275,32 @@ function test_workspace_thread_follow_ask_registry()
 	pg_assert_contains('ws_thread_follow_reaches(', workspace_thread_follow_test_source('ws_thread_follow_agent'));
 	pg_assert_contains('ws_thread_follow_reaches(', workspace_thread_follow_test_source('ws_thread_follow_last'));
 }
+
+// A discussion started from a registry agent's answer follows that agent
+// while a row reaches the discussion; otherwise nobody.
+function test_workspace_thread_follow_answer_agent()
+{
+	$rows = array(array('id' => 12, 'kind' => 'app', 'handle' => 'mimar', 'app_id' => 40), array('id' => 3, 'kind' => 'model', 'handle' => 'muhasebe', 'app_id' => 0));
+
+	pg_assert_same('agent:12', ws_thread_answer_agent('agent:12', $rows));
+	pg_assert_same('model:3', ws_thread_answer_agent(' model:3 ', $rows), 'a model assistant');
+	pg_assert_same('', ws_thread_answer_agent('agent:9', $rows), 'no row reaches the discussion');
+	pg_assert_same('', ws_thread_answer_agent('agent:12', array()), 'taken out of the channel');
+	pg_assert_same('', ws_thread_answer_agent('claude', $rows), 'not a registry agent');
+	pg_assert_same('', ws_thread_answer_agent('', $rows));
+}
+
+// The start and Follow again read the message's agent with the discussion,
+// so a registry agent counts there only while it reaches it.
+function test_workspace_thread_follow_start_registry()
+{
+	$agent = workspace_thread_follow_test_source('ws_thread_message_agent');
+
+	pg_assert_contains('ws_thread_answer_agent(', $agent, 'a registry agent\'s answer');
+	pg_assert_contains("reply_message_id = '", $agent);
+	pg_assert_contains('ws_thread_agents_asked(ws_tokens_normalise(trim((string) $message[\'body\'])), (int) $message[\'id\'], $channel)', $agent, 'named ones with the discussion');
+	pg_assert_true(strpos($agent, 'ws_thread_answer_agent(') < strpos($agent, "=== 'app'"), 'its answer is looked up before the application branch');
+
+	pg_assert_contains('ws_thread_message_agent($message, ws_channel($thread_id))', workspace_thread_follow_test_source('ws_thread_start'));
+	pg_assert_contains('ws_thread_message_agent($message, $channel)', workspace_thread_follow_test_source('ws_thread_follow_last'));
+}

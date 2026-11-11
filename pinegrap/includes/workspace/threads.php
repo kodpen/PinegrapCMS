@@ -331,7 +331,7 @@ function ws_thread_start($viewer, $message, $title = '')
     // Started from an assistant's answer or a request to one: that
     // assistant follows the discussion.
     if (ws_thread_follow_ready()) {
-        ws_thread_follow_set($thread_id, ws_thread_message_agent($message));
+        ws_thread_follow_set($thread_id, ws_thread_message_agent($message, ws_channel($thread_id)));
     }
 
     ws_channel_membership_forget();
@@ -702,6 +702,7 @@ function ws_thread_follow_handle($agent, $channel = null)
 function ws_thread_follow_last($thread)
 {
     $mcp = function_exists('ws_mcp_agent_ready') && ws_mcp_agent_ready();
+    $channel = ws_channel((int) $thread['channel_id']);
     $row = db_item("SELECT agent" . ($mcp ? ", mcp_server_id" : "") . " FROM ws_ai_requests
         WHERE channel_id = '" . (int) $thread['channel_id'] . "' ORDER BY id DESC LIMIT 1");
 
@@ -710,13 +711,14 @@ function ws_thread_follow_last($thread)
         $agent = ws_thread_follow_clean($agent);
 
         // A registry agent comes back only while it reaches the discussion.
-        if (($agent !== '') && (!ws_thread_follow_is_registry($agent) || ws_thread_follow_reaches(ws_channel((int) $thread['channel_id']), $agent))) {
+        if (($agent !== '') && (!ws_thread_follow_is_registry($agent) || ws_thread_follow_reaches($channel, $agent))) {
             return $agent;
         }
     }
 
     $message = ws_message((int) $thread['message_id']);
-    $agent = $message ? ws_thread_message_agent($message) : '';
+    // A registry agent counts only while it reaches the discussion.
+    $agent = $message ? ws_thread_message_agent($message, $channel) : '';
 
     if ($agent !== '') {
         return $agent;
@@ -864,14 +866,44 @@ function ws_thread_agents_asked($body, $message_id, $channel = null)
 }
 
 /**
- * The agent a message belongs to as a discussion started from it sees it:
- * the one that wrote it as an answer, or the last one it asks.
+ * A registry agent's key as a discussion takes it from an answer: kept
+ * while one of the rows reaching the discussion is the agent's, else ''.
+ * Pure.
  *
- * @param array $message
+ * @param string  $value the answered request's ws_ai_requests.agent
+ * @param array[] $rows  ws_agent_reach_rows() of the discussion
+ * @return string agent:<id> | model:<id> | ''
+ */
+function ws_thread_answer_agent($value, $rows)
+{
+    $agent = ws_thread_follow_clean($value);
+
+    return (ws_thread_follow_is_registry($agent) && (ws_thread_follow_reach_pick($rows, $agent) !== null)) ? $agent : '';
+}
+
+/**
+ * The agent a message belongs to as a discussion started from it sees it:
+ * the one that wrote it as an answer, or the last one it asks. Given the
+ * discussion, a registry agent counts too, while a row reaches it.
+ *
+ * @param array      $message
+ * @param array|null $channel the discussion; null leaves registry agents out
  * @return string agent key, '' for none
  */
-function ws_thread_message_agent($message)
+function ws_thread_message_agent($message, $channel = null)
 {
+    // A registry agent's or model assistant's answer, found by the request
+    // it answered; one that does not reach the discussion is nobody's.
+    if (is_array($channel) && function_exists('ws_agents_ready') && ws_agents_ready() && function_exists('ws_agent_reach_rows')) {
+        $answered = (string) db_value("SELECT agent FROM ws_ai_requests
+            WHERE reply_message_id = '" . (int) $message['id'] . "' AND status = 'answered'
+                AND (agent LIKE 'agent:%' OR agent LIKE 'model:%') ORDER BY id DESC LIMIT 1");
+
+        if ($answered !== '') {
+            return ws_thread_answer_agent($answered, ws_agent_reach_rows($channel));
+        }
+    }
+
     if ((string) $message['sender_kind'] === 'app') {
         $app_id = (int) $message['sender_id'];
 
@@ -896,7 +928,7 @@ function ws_thread_message_agent($message)
         }
     }
 
-    $asked = ws_thread_agents_asked(ws_tokens_normalise(trim((string) $message['body'])), (int) $message['id']);
+    $asked = ws_thread_agents_asked(ws_tokens_normalise(trim((string) $message['body'])), (int) $message['id'], $channel);
 
     return empty($asked) ? '' : (string) end($asked);
 }
