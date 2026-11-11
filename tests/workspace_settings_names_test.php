@@ -30,7 +30,7 @@ function test_workspace_settings_names_person_rows()
 		pg_assert_true(strpos($source, "'vars' => array(lang('" . $label . "'), \$person['name'])") !== false, $label . ': row field does not name its person');
 	}
 
-	pg_assert_true(strpos($source, "function ws_settings_days_html(\$name, \$mask, \$id_prefix, \$label = ''") !== false, 'working days group takes no label');
+	pg_assert_true(strpos(workspace_settings_names_source('includes/workspace/workdays.php'), "function ws_settings_days_html(\$name, \$mask, \$id_prefix, \$label = ''") !== false, 'working days group takes no label');
 	pg_assert_true(strpos($source, "'vars' => array(lang('Working days'), \$person['name'])") !== false, 'working days group does not name its person');
 }
 
@@ -44,7 +44,7 @@ function test_workspace_settings_names_department_buttons()
 
 function test_workspace_settings_names_hours_separator()
 {
-	$source = workspace_settings_names_source('workspace_settings.php');
+	$source = workspace_settings_names_source('includes/workspace/workdays.php');
 
 	pg_assert_true(strpos($source, "return rtrim(rtrim(number_format(\$hours, 2, '.', ''), '0'), '.');") === false, 'hours written with a fixed point');
 	pg_assert_true(strpos($source, "return str_replace('.', pg_number_separators()['decimal'], \$text);") !== false, 'hours not written with the panel separator');

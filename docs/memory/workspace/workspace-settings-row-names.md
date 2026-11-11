@@ -5,7 +5,7 @@ description: Workspace Settings rows name their person or department, hours boxe
 
 ## How are the row controls of Workspace Settings named?
 - Every per-person field (Team members: Job title, Hours a day, Working days group, Not in the team; department form: Team lead, Own department) has `aria-label` `'{var:1}: {var:2}'` with the field's label and the person's name: the first cell is a `<td>`, so without it a screen reader hears the same name on every row.
-- `ws_settings_days_html()` takes an optional fourth `$label`; empty means "Working days" (the Defaults card).
+- `ws_settings_days_html()` (`includes/workspace/workdays.php`, with `ws_settings_hours()` and `ws_settings_mask()`) takes an optional fourth `$label`; empty means "Working days" (the Defaults card, in Site Settings > Team and working hours since #8675).
 - A department row's Edit button reads "Edit: <department>" and its icon-only archive button "Move to the archive: <department>" / "Bring it back: <department>".
 
 ## Which decimal separator do the hours boxes use?

@@ -102,11 +102,12 @@ function settings_search_test_palette_hits($query, $terms)
 function test_settings_search_groups_in_order()
 {
 	pg_assert_same(
-		array('site', 'security', 'selling', 'running'),
+		array('site', 'security', 'selling', 'running', 'workspace'),
 		array_keys(pg_settings_groups()),
-		'the four headings, in the order of the list');
+		'the five headings, in the order of the list');
 
-	pg_assert_same('Running the site', pg_settings_groups()['running'], 'the last heading');
+	pg_assert_same('Running the site', pg_settings_groups()['running'], 'the managers\' last heading');
+	pg_assert_same('Workspace', pg_settings_groups()['workspace'], 'the Workspace\'s own heading');
 }
 
 function test_settings_search_every_category_names_its_group()
@@ -127,6 +128,9 @@ function test_settings_search_every_category_names_its_group()
 		'api'         => 'running',
 		'fediverse'   => 'running',
 		'maintenance' => 'running',
+		'workspace_team'       => 'workspace',
+		'workspace_assistants' => 'workspace',
+		'workspace_channels'   => 'workspace',
 	), settings_search_test_registry_groups(), 'each category under its heading, in today\'s order');
 }
 
@@ -153,7 +157,7 @@ function test_settings_search_grouped_puts_an_unnamed_group_last()
 		'general' => array('label' => 'General', 'group' => 'site'),
 	));
 
-	pg_assert_same(array('site', 'running'), array_keys($grouped), 'a category without a group goes with the last heading');
+	pg_assert_same(array('site', 'running'), array_keys($grouped), 'a category without a group goes under Running the site, never under Workspace');
 	pg_assert_same(array('extra'), $grouped['running']['categories'], 'under Running the site');
 }
 

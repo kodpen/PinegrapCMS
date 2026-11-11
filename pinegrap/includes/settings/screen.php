@@ -32,11 +32,7 @@ if (!defined('PG_SETTINGS_KEY')) {
     exit;
 }
 
-// The gate the whole screen has always used: role <= 2 (Administrator,
-// Designer, Manager). It stays on this side of the include, so every category
-// is protected whether or not the hub chose to draw its tile.
 $user = validate_user();
-validate_area_access($user, 'manager');
 
 include_once('liveform.class.php');
 
@@ -53,6 +49,22 @@ $pg_settings_category = pg_settings_category($pg_settings_key);
 if ($pg_settings_category === null) {
     output_error(lang('Page not found.'));
 }
+
+// The gate, asked on this side of the include, so every category is protected
+// whether or not a list chose to draw its link: a Workspace category opens for
+// a holder of the Workspace settings right, every other one for role <= 2
+// (Administrator, Designer, Manager).
+if (!pg_settings_may_open($pg_settings_key, $user)) {
+
+    if (pg_settings_category_is_workspace($pg_settings_category)) {
+        log_activity(lang('access denied to the workspace settings'), $_SESSION['sessionusername'] ?? '');
+        output_error(lang('Access denied') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
+    validate_area_access($user, 'manager');
+}
+
+$pg_settings_workspace = pg_settings_category_is_workspace($pg_settings_category);
 
 $liveform = new liveform('settings');
 
@@ -71,8 +83,11 @@ $pg_settings_self = pg_settings_url($pg_settings_key);
 
 if (!$_POST) {
 
-    // Every value the cards read, prepared exactly as before the split.
-    include(PG_FUNCTIONS_DIR . '/includes/settings/prep.php');
+    // Every value the cards read, prepared exactly as before the split. A
+    // Workspace category reads none of it, and its reader may be no manager.
+    if (!$pg_settings_workspace) {
+        include(PG_FUNCTIONS_DIR . '/includes/settings/prep.php');
+    }
 
     // The cards themselves.
     include(PG_FUNCTIONS_DIR . '/includes/settings/' . $pg_settings_key . '.php');
@@ -104,7 +119,10 @@ if (!$_POST) {
     // link to a settings screen into "open the dialog" over this page.
     $pg_settings_switcher = '';
 
-    foreach (pg_settings_categories() as $pg_settings_other_key => $pg_settings_other) {
+    // The categories this reader may open, and no others.
+    $pg_settings_open = pg_settings_categories_for($user);
+
+    foreach ($pg_settings_open as $pg_settings_other_key => $pg_settings_other) {
 
         $pg_settings_switcher .=
             '<li><a class="menu-item' . (($pg_settings_other_key === $pg_settings_key) ? ' active" aria-current="page' : '') . '"'
@@ -115,7 +133,7 @@ if (!$_POST) {
 
     // Previous and next, so a category can be read through without going back
     // to the hub between each one.
-    $pg_settings_keys  = array_keys(pg_settings_categories());
+    $pg_settings_keys  = array_keys($pg_settings_open);
     $pg_settings_index = array_search($pg_settings_key, $pg_settings_keys, true);
 
     $pg_settings_prev = ($pg_settings_index > 0) ? $pg_settings_keys[$pg_settings_index - 1] : '';

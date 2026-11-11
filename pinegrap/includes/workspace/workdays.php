@@ -251,6 +251,108 @@ function ws_settings_minutes($value, $min, $max)
     return ($minutes > $max) ? null : max($min, $minutes);
 }
 
+/**
+ * The ticked weekdays (1 = Monday) as the bit mask the board reads.
+ *
+ * @param mixed $days
+ * @return int
+ */
+function ws_settings_mask($days)
+{
+    $mask = 0;
+
+    foreach ((array) $days as $day) {
+        $day = (int) $day;
+
+        if (($day >= 1) && ($day <= 7)) {
+            $mask |= (1 << ($day - 1));
+        }
+    }
+
+    return $mask;
+}
+
+/**
+ * Seven small toggles for the working days.
+ *
+ * @param string $name  the field name, [] is added
+ * @param int    $mask
+ * @param string $id_prefix
+ * @param string $label  the group's accessible name, "Working days" when empty
+ * @param bool   $disabled  shown but not changeable
+ * @return string
+ */
+function ws_settings_days_html($name, $mask, $id_prefix, $label = '', $disabled = false)
+{
+    $output = '<div class="btn-group btn-group-sm ws-days" role="group" aria-label="' . h(($label !== '') ? $label : lang('Working days')) . '">';
+
+    foreach (ws_weekday_short_names() as $day => $label) {
+        $id = $id_prefix . '_' . $day;
+
+        $output .= '<input type="checkbox" class="btn-check" name="' . h($name) . '[]" value="' . $day . '" id="' . h($id) . '" autocomplete="off"'
+            . (($mask & (1 << ($day - 1))) ? ' checked' : '') . ($disabled ? ' disabled' : '') . '>'
+            . '<label class="btn btn-outline theme-secondary" for="' . h($id) . '">' . h($label) . '</label>';
+    }
+
+    return $output . '</div>';
+}
+
+/**
+ * Minutes as the hours a field shows: "8", "7.5" (with the panel's decimal
+ * separator, which ws_settings_minutes() reads back).
+ *
+ * @param int $minutes
+ * @return string
+ */
+function ws_settings_hours($minutes)
+{
+    $hours = round(((int) $minutes) / 60, 2);
+    $text = rtrim(rtrim(number_format($hours, 2, '.', ''), '0'), '.');
+
+    return str_replace('.', pg_number_separators()['decimal'], $text);
+}
+
+/**
+ * Saves the Workspace defaults: the hours of a working day, the working week
+ * and the hours a task with no estimate counts as. Asked by the Defaults card
+ * of the Site Settings dialog (Team and working hours) and by a form still
+ * open on Workspace Settings. Unreadable or out-of-range hours are refused,
+ * not turned into something else, and nothing is written then.
+ *
+ * @param mixed $day_hours
+ * @param mixed $workdays  the ticked weekdays, 1 = Monday
+ * @param mixed $default_task_hours
+ * @return array the refused fields, day_hours and default_task_hours, each
+ *               with its sentence; empty when the defaults were written
+ */
+function ws_settings_defaults_save($day_hours, $workdays, $default_task_hours)
+{
+    $day = ws_settings_minutes($day_hours, 30, 1440);
+    $mask = ws_settings_mask($workdays);
+    $default = ws_settings_minutes($default_task_hours, 5, 2400);
+
+    $refused = array();
+
+    if ($day === null) {
+        $refused['day_hours'] = lang(array('string' => '{var:1}: enter the hours as a number from 0 to {var:2}.', 'vars' => array(h(lang('Hours in a working day')), 24)));
+    }
+
+    if ($default === null) {
+        $refused['default_task_hours'] = lang(array('string' => '{var:1}: enter the hours as a number from 0 to {var:2}.', 'vars' => array(h(lang('A task with no estimate counts as (hours)')), 40)));
+    }
+
+    if ($refused) {
+        return $refused;
+    }
+
+    db("UPDATE config SET
+        ws_day_minutes = '" . (($day > 0) ? $day : 480) . "',
+        ws_workdays = '" . (($mask > 0) ? $mask : 31) . "',
+        ws_default_task_minutes = '" . (($default > 0) ? $default : 60) . "'");
+
+    return array();
+}
+
 // ── Days off kept by hand ───────────────────────────────────────────────
 
 /**

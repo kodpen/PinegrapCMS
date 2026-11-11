@@ -18,6 +18,41 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * A card of the Site Settings dialog linking the Workspace cards still kept
+ * on the Workspace Settings screen. Each card that moves into the dialog
+ * takes its link out; the last one takes the card.
+ *
+ * @param string $section_id the card's id, a section of its category
+ * @param array  $links      array(anchor on workspace_settings.php, icon, label)
+ * @return string one grid column
+ */
+function ws_settings_screen_links_card($section_id, $links)
+{
+    $screen = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_settings.php';
+    $items = '';
+
+    foreach ($links as $link) {
+        $items .= '
+                    <a class="list-group-item list-group-item-action d-flex align-items-center gap-3" href="' . h($screen . '#' . $link[0]) . '">'
+            . '<i class="bi ' . h($link[1]) . '" aria-hidden="true"></i><span>' . h($link[2]) . '</span></a>';
+    }
+
+    return '
+    <div id="' . h($section_id) . '" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . h(lang('On the Workspace Settings screen')) . '
+            </div>
+            <div class="card-body">
+                <p class="fg-secondary small">' . h(lang('These cards have not moved here yet. Each opens on the Workspace Settings screen.')) . '</p>
+                <div class="list-group">' . $items . '
+                </div>
+            </div>
+        </div>
+    </div>';
+}
+
+/**
  * A text with numbered holes the script fills: {1}, {2}.
  *
  * @param string $string the English text with {var:N}

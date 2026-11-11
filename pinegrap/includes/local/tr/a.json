@@ -6927,6 +6927,7 @@
     "Assistant: {var:1}": "Asistan: {var:1}",
     "Assistants ({var:1}): let in by the firewall.": "Asistanlar ({var:1}): güvenlik duvarı içeri alıyor.",
     "Assistants ({var:1}): turned away by the firewall.": "Asistanlar ({var:1}): güvenlik duvarı geri çeviriyor.",
+    "Assistants and agents": "Asistanlar ve ajanlar",
     "Assistants answer a voice message by voice": "Asistanlar sesli mesaja sesle yanıt verir",
     "Assistants in the channels": "Kanallarda asistanlar",
     "Assistants will not hear this recording: voice message transcripts are switched off.": "Asistanlar bu kaydı duymayacak: sesli mesaj dökümleri kapalı.",

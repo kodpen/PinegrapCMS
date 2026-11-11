@@ -41,6 +41,12 @@ function pg_settings_fragment($key, $user, $liveform)
         output_error(lang('Page not found.'));
     }
 
+    // Asked again here, so no caller draws a category for a reader outside
+    // its gate (pg_settings_category_open()).
+    if (!pg_settings_may_open($key, $user)) {
+        output_error(lang('Access denied') . '.');
+    }
+
     $row = pg_settings_config_row();
 
     $pg_settings_cards   = array();
@@ -51,7 +57,12 @@ function pg_settings_fragment($key, $user, $liveform)
     // A card's drawer is a panel of the dialog here (drawer.php).
     $pg_settings_in_dialog = true;
 
-    include(PG_FUNCTIONS_DIR . '/includes/settings/prep.php');
+    // A Workspace category reads none of what prep.php prepares, and its
+    // reader may be no manager.
+    if (!pg_settings_category_is_workspace($category)) {
+        include(PG_FUNCTIONS_DIR . '/includes/settings/prep.php');
+    }
+
     include(PG_FUNCTIONS_DIR . '/includes/settings/' . $key . '.php');
 
     return array(
@@ -173,6 +184,12 @@ function pg_settings_apply($key, $user, $liveform)
 {
     if (pg_settings_category($key) === null) {
         output_error(lang('Page not found.'));
+    }
+
+    // Asked again here, so no caller writes a category for a reader outside
+    // its gate.
+    if (!pg_settings_may_open($key, $user)) {
+        output_error(lang('Access denied') . '.');
     }
 
     // A list where the cards draw one value refuses the whole save before the

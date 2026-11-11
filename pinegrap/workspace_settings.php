@@ -35,67 +35,6 @@ $liveform = new liveform('workspace_settings');
 
 $self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_settings.php';
 
-/**
- * The ticked weekdays (1 = Monday) as the bit mask the board reads.
- *
- * @param mixed $days
- * @return int
- */
-function ws_settings_mask($days)
-{
-    $mask = 0;
-
-    foreach ((array) $days as $day) {
-        $day = (int) $day;
-
-        if (($day >= 1) && ($day <= 7)) {
-            $mask |= (1 << ($day - 1));
-        }
-    }
-
-    return $mask;
-}
-
-/**
- * Seven small toggles for the working days.
- *
- * @param string $name  the field name, [] is added
- * @param int    $mask
- * @param string $id_prefix
- * @param string $label  the group's accessible name, "Working days" when empty
- * @param bool   $disabled  shown but not changeable
- * @return string
- */
-function ws_settings_days_html($name, $mask, $id_prefix, $label = '', $disabled = false)
-{
-    $output = '<div class="btn-group btn-group-sm ws-days" role="group" aria-label="' . h(($label !== '') ? $label : lang('Working days')) . '">';
-
-    foreach (ws_weekday_short_names() as $day => $label) {
-        $id = $id_prefix . '_' . $day;
-
-        $output .= '<input type="checkbox" class="btn-check" name="' . h($name) . '[]" value="' . $day . '" id="' . h($id) . '" autocomplete="off"'
-            . (($mask & (1 << ($day - 1))) ? ' checked' : '') . ($disabled ? ' disabled' : '') . '>'
-            . '<label class="btn btn-outline theme-secondary" for="' . h($id) . '">' . h($label) . '</label>';
-    }
-
-    return $output . '</div>';
-}
-
-/**
- * Minutes as the hours a field shows: "8", "7.5" (with the panel's decimal
- * separator, which ws_settings_minutes() reads back).
- *
- * @param int $minutes
- * @return string
- */
-function ws_settings_hours($minutes)
-{
-    $hours = round(((int) $minutes) / 60, 2);
-    $text = rtrim(rtrim(number_format($hours, 2, '.', ''), '0'), '.');
-
-    return str_replace('.', pg_number_separators()['decimal'], $text);
-}
-
 // Everybody who could be in the team, the ones taken out of it included, so
 // they can be brought back.
 $candidates = array();
@@ -154,29 +93,20 @@ if ($_POST) {
     switch ($action) {
 
         case 'defaults':
-            $day = ws_settings_minutes($_POST['day_hours'] ?? '', 30, 1440);
-            $mask = ws_settings_mask($_POST['workdays'] ?? array());
-            $default = ws_settings_minutes($_POST['default_task_hours'] ?? '', 5, 2400);
             $anchor = '#ws-defaults';
 
-            // Unreadable or out-of-range hours are refused, not turned into
-            // something else.
-            if ($day === null) {
-                $liveform->add_error(lang(array('string' => '{var:1}: enter the hours as a number from 0 to {var:2}.', 'vars' => array(h(lang('Hours in a working day')), 24))));
+            // The Defaults card is in the Site Settings dialog now (Team and
+            // working hours); a form still open on this screen saves the same
+            // way, through the same checks.
+            $refused = ws_settings_defaults_save($_POST['day_hours'] ?? '', $_POST['workdays'] ?? array(), $_POST['default_task_hours'] ?? '');
+
+            foreach ($refused as $sentence) {
+                $liveform->add_error($sentence);
             }
 
-            if ($default === null) {
-                $liveform->add_error(lang(array('string' => '{var:1}: enter the hours as a number from 0 to {var:2}.', 'vars' => array(h(lang('A task with no estimate counts as (hours)')), 40))));
-            }
-
-            if (($day === null) || ($default === null)) {
+            if ($refused) {
                 break;
             }
-
-            db("UPDATE config SET
-                ws_day_minutes = '" . (($day > 0) ? $day : 480) . "',
-                ws_workdays = '" . (($mask > 0) ? $mask : 31) . "',
-                ws_default_task_minutes = '" . (($default > 0) ? $default : 60) . "'");
 
             log_activity(lang('the workspace defaults were changed'), $username);
             $liveform->add_notice(lang('The defaults were saved.'));
@@ -891,28 +821,13 @@ pg_page_shell([
         </div>
 
         <div class="xl:col-4">
-            <form method="post" action="' . h($self_url) . '" class="card mb-7" id="ws-defaults">
-                ' . get_token_field() . '
-                <input type="hidden" name="ws_action" value="defaults">
+            <div class="card mb-7" id="ws-defaults">
                 <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-sliders me-1" aria-hidden="true"></i>' . h(lang('Defaults')) . '</h2></div>
-                <div class="card-body">
-                    <div class="mb-5">
-                        <label class="form-label" for="ws_day_hours">' . h(lang('Hours in a working day')) . '</label>
-                        <input class="form-control form-control-sm" type="text" inputmode="decimal" name="day_hours" id="ws_day_hours" value="' . h(ws_settings_hours(WS_DAY_MINUTES)) . '">
-                    </div>
-                    <div class="mb-5">
-                        <div class="form-label">' . h(lang('Working days')) . '</div>
-                        ' . ws_settings_days_html('workdays', (int) WS_WORKDAYS, 'ws_default_day') . '
-                        <div class="form-text"><a href="#ws-calendar">' . h(lang('The days off are kept in the Working calendar card.')) . '</a></div>
-                    </div>
-                    <div class="mb-5">
-                        <label class="form-label" for="ws_default_task_hours">' . h(lang('A task with no estimate counts as (hours)')) . '</label>
-                        <input class="form-control form-control-sm" type="text" inputmode="decimal" name="default_task_hours" id="ws_default_task_hours" value="' . h(ws_settings_hours(WS_DEFAULT_TASK_MINUTES)) . '">
-                        <div class="form-text">' . h(lang('The board spreads a task\'s estimate over the working days between its start and its due date, and warns when a day goes over.')) . '</div>
-                    </div>
-                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>
+                <div class="card-body small">
+                    <p>' . h(lang('The hours of a working day, the working week and the hours of a task with no estimate are kept in the Site Settings now.')) . '</p>
+                    <a class="btn btn-sm btn-outline theme-secondary" href="' . h(pg_settings_link('workspace_team', 'pgset-ws-defaults')) . '"><i class="bi bi-gear me-1" aria-hidden="true"></i>' . h(lang('Open the defaults')) . '</a>
                 </div>
-            </form>
+            </div>
 
             ' . ws_bulk_settings_card($self_url, $viewer) . '
 
