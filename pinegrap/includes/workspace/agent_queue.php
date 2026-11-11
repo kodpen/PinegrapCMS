@@ -650,7 +650,7 @@ function ws_agent_brief($agent, $row, $scopes)
 
         if ($message && ((int) $message['deleted_at'] === 0)) {
             $request = ws_plain_text($asker, (string) $message['body']);
-            $lines[] = 'Read more of it with GET /workspace/channels/' . (int) $row['channel_id'] . '/context.';
+            $lines[] = 'Read more of it with GET /workspace/channels/' . (int) $row['channel_id'] . '/context?limit=<n>: ask for only as many messages as the request needs.';
         }
     }
 
