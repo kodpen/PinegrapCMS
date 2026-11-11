@@ -23300,6 +23300,204 @@ select.pg-list-table-field option.private {
     transition: none;
   }
 }
+/* Recent above the folders; Upload at the bar's end. */
+.pg-picker-recent {
+  width: 100%;
+  margin-bottom: 0.35rem;
+  padding-left: 0.45rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.pg-picker-recent:focus-visible {
+  outline: var(--pg-focus-ring-width) solid var(--pg-focus-ring-color);
+  outline-offset: calc(var(--pg-focus-ring-width) * -1);
+}
+.pg-picker-upload {
+  flex: 0 0 auto;
+}
+.pg-picker-upload:disabled {
+  pointer-events: auto;
+  cursor: not-allowed;
+}
+.pg-picker-folders .pg-picker-upload {
+  display: none;
+}
+/* Files dragged over the pane: the folder they go into, or why not. */
+.pg-picker-pane {
+  position: relative;
+}
+.pg-picker-drop {
+  position: absolute;
+  inset: 0.5rem;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 1rem;
+  border: 2px dashed var(--pg-primary);
+  border-radius: var(--pg-radius-lg);
+  background: color-mix(in srgb, var(--pg-primary-bg-subtle) 92%, transparent);
+  color: var(--pg-fg-emphasis);
+  text-align: center;
+  pointer-events: none;
+}
+.pg-picker-drop .bi {
+  font-size: 2.5rem;
+  color: var(--pg-primary);
+}
+.pg-picker-drop span {
+  font-size: 0.85rem;
+  color: var(--pg-fg-2);
+}
+.pg-picker-drop.is-refused {
+  border-color: var(--pg-danger);
+  background: color-mix(in srgb, var(--pg-danger-bg-subtle) 92%, transparent);
+}
+.pg-picker-drop.is-refused .bi {
+  color: var(--pg-danger);
+}
+.pg-picker-drop[hidden],
+.pg-picker-uploads[hidden] {
+  display: none;
+}
+/* The files being sent, one row each. */
+.pg-picker-uploads {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  width: min(22rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  border: var(--pg-border-width) solid var(--pg-border-color);
+  border-radius: var(--pg-radius-lg);
+  background: var(--pg-bg-body);
+  box-shadow: var(--pg-shadow-lg);
+}
+.pg-picker-uploads-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-bottom: var(--pg-border-width) solid var(--pg-border-color);
+  font-size: 0.875rem;
+}
+.pg-picker-uploads-head strong {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.pg-picker-uploads-folder {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  margin-right: auto;
+  font-size: 0.8rem;
+  color: var(--pg-fg-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-picker-uploads-list {
+  margin: 0;
+  padding: 0.25rem 0;
+  overflow: auto;
+  list-style: none;
+}
+.pg-picker-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.75rem;
+}
+.pg-picker-upload-row .pg-picker-thumb {
+  flex: 0 0 2.25rem;
+  width: 2.25rem;
+  font-size: 1.1rem;
+}
+.pg-picker-upload-row .pg-picker-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.pg-picker-upload-row .pg-picker-name {
+  overflow: hidden;
+  font-size: 0.85rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-picker-upload-row .pg-picker-meta {
+  white-space: normal;
+}
+.pg-picker-progress {
+  display: block;
+  height: 0.25rem;
+  overflow: hidden;
+  border-radius: var(--pg-radius-pill);
+  background: var(--pg-border-color);
+}
+.pg-picker-progress > span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--pg-primary);
+  transition: width 0.15s linear;
+}
+.pg-picker-progress[hidden] {
+  display: none;
+}
+.pg-picker-upload-state {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  color: var(--pg-fg-2);
+}
+.pg-picker-upload-row.is-done .pg-picker-upload-state {
+  color: var(--pg-success);
+}
+.pg-picker-upload-row.is-refused .pg-picker-upload-state,
+.pg-picker-upload-row.is-refused .pg-picker-meta,
+.pg-picker-upload-row.is-refused .pg-picker-thumb {
+  color: var(--pg-danger);
+}
+/* An empty folder: what Upload does, and its buttons. */
+.pg-picker-empty p {
+  max-width: 26rem;
+  margin: 0;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+}
+.pg-picker-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+/* Several picks: their pictures overlap in the footer. */
+.pg-picker-strip {
+  display: flex;
+  flex: 0 0 auto;
+}
+.pg-picker-strip .pg-picker-thumb {
+  flex: 0 0 2.25rem;
+  width: 2.25rem;
+  font-size: 1rem;
+  border: 2px solid var(--pg-bg-body);
+}
+.pg-picker-strip .pg-picker-thumb + .pg-picker-thumb {
+  margin-left: -0.75rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-picker-progress > span {
+    transition: none;
+  }
+}
 /* The phone: a sheet from the bottom edge, three tiles a row. */
 .dialog.pg-picker.pg-picker-sheet {
   --bs-dialog-margin: 0;
@@ -23386,6 +23584,23 @@ select.pg-list-table-field option.private {
 }
 .pg-picker-sheet .pg-picker-choose {
   min-width: 5rem;
+}
+.pg-picker-sheet .pg-picker-upload {
+  order: -1;
+}
+.pg-picker-sheet .pg-picker-bar:has(.pg-picker-upload:not([hidden])) .pg-picker-search {
+  flex-basis: calc(100% - 3rem);
+}
+.pg-picker-sheet .pg-picker-upload .pg-btn-label {
+  display: none;
+}
+.pg-picker-sheet .pg-picker-uploads {
+  right: 0.75rem;
+  bottom: 0.75rem;
+  width: calc(100% - 1.5rem);
+}
+.pg-picker-sheet .pg-picker-strip .pg-picker-thumb:nth-child(n+3) {
+  display: none;
 }
 }
 

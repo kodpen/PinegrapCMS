@@ -7073,6 +7073,7 @@
     "The upgrade stopped before it finished.": "Yükseltme bitmeden durdu.",
     "The upload could not be written.": "Yüklenen dosya yazılamadı.",
     "The upload did not finish.": "Yükleme tamamlanmadı.",
+    "The upload failed.": "Yükleme başarısız oldu.",
     "The upload has expired. Start again.": "Yüklemenin süresi doldu. Yeniden başlayın.",
     "The upload is larger than this server accepts in one request.": "Yükleme, bu sunucunun tek istekte kabul ettiğinden büyük.",
     "The upload is larger than {var:1} MB.": "Yüklenen dosyalar {var:1} MB'tan büyük.",
