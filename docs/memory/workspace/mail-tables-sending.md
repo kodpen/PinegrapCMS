@@ -1,10 +1,10 @@
 ---
 name: mail-tables-sending
-description: What step 11.0.185 (WM2, #NNNN) adds for sending and reading Workspace mail: ws_mail_items bcc_list, send_state, send_error, outbox_id and table ws_mail_reads; types and why
+description: What step 11.0.185 (WM2, #8634) adds for sending and reading Workspace mail: ws_mail_items bcc_list, send_state, send_error, outbox_id and table ws_mail_reads; types and why
 ---
 
 ## Which step adds them?
-- `upgrade_2026_11_0_ws_mail_send()` (label 11.0.185) in `includes/migrations/2026.11.0.php`, PR #NNNN; `ws_mail_reads` is in `get_tables()`. Skipped when `ws_mail_items` is missing.
+- `upgrade_2026_11_0_ws_mail_send()` (label 11.0.185) in `includes/migrations/2026.11.0.php`, PR #8634; `ws_mail_reads` is in `get_tables()`. Skipped when `ws_mail_items` is missing.
 - The schema is the owner's (2026-11-11, #8604, "A: dört sütun + tablo."; `workflow/decisions-made-schema-15.md`). The plan wants a send path (WM3) and an unread mark per person (WM4): `plans/workspace-mail-screen-sending.md`.
 - Run twice on a sandbox DB (MariaDB, CLI `install/index.php automated_upgrade` from 2026.4.10): the first run executed the five statements, the second found all 327 of the version in place. `tests/workspace_mail_send_schema_test.php` runs it twice against an in-memory schema.
 
