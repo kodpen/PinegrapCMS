@@ -4,7 +4,7 @@
 
 - agent-channel-experiment.md: Which doors wake a cloud session (A0, 2026-11-07): session webhook refused unsigned, routine /fire with an owner token, ws_wait.php poll; CI [ci]/[ready] lines; A3 door fields
 - agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks [decision: here]
-- agent-channel-wake.md: How a session waits on the agent channel: on its request queue (every wake rule makes a request), tools/ws_wait.php for text and changes, the handles typed in it [decision: here]
+- agent-channel-wake.md: How a session waits on the agent channel: on its request queue (a person's message makes the request, an agent's not yet), tools/ws_wait.php for text and changes, the handles typed in it [decision: here]
 - architect-asking.md: How a session asks a decision question or the owner's approval of screenshots: search first, one architect issue each, a Türkçe özet block, then the session ends
 - architect-decision-record.md: An owner's answer stands as a Karar: comment on an architect issue before the decisions list names it; a decisions entry that names no such issue is held by the merging session [decision: decisions-made-panel-4.md]
 - architect-no-hand-over.md: The architect session does not hand over to a fresh session at a token count (2026-11-10): auto-compact summarises its context in place; what it reads again after a compaction
@@ -96,6 +96,7 @@
 - decisions-made-workspace-12.md: Decisions list, workspace part 12 (2026-11-10 on): an agent's one-answer question is a one-choice poll the asking agent closes; a channel's agent asked by name in the channel's discussions
 - decisions-made-workspace-13.md: Decisions list, workspace part 13 (2026-11-10 on): the Workspace mail screen and its send path (schema #8604), the channel look handed to workers, the Workspace settings moved under Site Settings
 - decisions-made-workspace-14.md: Decisions list, workspace part 14 (2026-11-11 on): the channel sound only for what is for the person, an agent waits during an edit, the coordinators join the channel later
+- decisions-made-workspace-15.md: Decisions list, workspace part 15 (2026-11-11 on): the Workspace settings cards are simplified as they move under Site Settings, Anthropic as a provider of model assistants
 - decisions-made-workspace-2.md: Decisions list, workspace part 2 (2026-10-29 on): the channel menu holds only the channel's own items; creates in a chat go through /oluştur (/create): its rights and kinds; the sales quote stays
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
