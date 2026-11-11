@@ -39,6 +39,70 @@ function pg_dashboard_v2_minute_bars($rows, $minutes)
     return $bars;
 }
 
+// How many of the last visits the card lists while nobody is on the site,
+// and how many of the newest visit ids it looks through to find them: the
+// read walks the primary key down from MAX(id), never the whole table.
+define('PG_DASHBOARD_V2_LAST_VISITS', 5);
+define('PG_DASHBOARD_V2_LAST_VISITS_WINDOW', 200);
+
+/**
+ * The card's "last visits" rows, latest first: when the visitor was last
+ * seen (how long ago, then the clock in the site's time) and the page the
+ * visit came in on.
+ *
+ * A visit was last seen at its stop_timestamp, the last request it made;
+ * a visit that never recorded one counts from its start.
+ *
+ * @param array    $visits rows of id, landing_page_name, start_timestamp, stop_timestamp
+ * @param int      $limit
+ * @param callable $ago    timestamp => "5 hours ago"
+ * @param callable $clock  timestamp => "14:05"
+ * @return array[] rows of when, ago, clock, page
+ */
+function pg_dashboard_v2_last_visit_rows($visits, $limit, $ago, $clock)
+{
+    $rows = array();
+
+    foreach ((array) $visits as $visit) {
+        $seen = (int) ($visit['stop_timestamp'] ?? 0);
+
+        if ($seen <= 0) {
+            $seen = (int) ($visit['start_timestamp'] ?? 0);
+        }
+
+        if ($seen <= 0) {
+            continue;
+        }
+
+        $rows[] = array(
+            'when'  => $seen,
+            'id'    => (int) ($visit['id'] ?? 0),
+            'page'  => trim((string) ($visit['landing_page_name'] ?? '')),
+        );
+    }
+
+    usort($rows, function ($a, $b) {
+        if ($a['when'] !== $b['when']) {
+            return ($a['when'] < $b['when']) ? 1 : -1;
+        }
+
+        return ($a['id'] < $b['id']) ? 1 : (($a['id'] > $b['id']) ? -1 : 0);
+    });
+
+    $out = array();
+
+    foreach (array_slice($rows, 0, max(0, (int) $limit)) as $row) {
+        $out[] = array(
+            'when'  => $row['when'],
+            'ago'   => (string) $ago($row['when']),
+            'clock' => (string) $clock($row['when']),
+            'page'  => $row['page'],
+        );
+    }
+
+    return $out;
+}
+
 function pg_dashboard_v2_card_engagement($user, $period, $compare)
 {
     if ((int) $user['role'] >= 3) {
