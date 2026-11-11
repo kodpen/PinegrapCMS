@@ -10,6 +10,7 @@ description: How a memory file is written so the next task finds it: labels as o
 ## How is a file found?
 - Its description names a screen, box or button by its English label on screen ("the Wait box", not only "the delay kind"), with the code name beside it. A session searches the words a person uses; a trial asked for a Wait box spent 51 calls finding it was kind `delay`.
 - A line stays under 500 characters, the description included: the search tool shows a longer line as "[Omitted long matching line]", so its words are never read.
+- `tools/memory_index.php` refuses a new or rewritten line over 500 characters, in `git push` and CI too; old ones pass until their file is edited ([[memory-long-lines]]).
 
 ## Where does a value live?
 - One file owns a value (a limit, a default, a rule); the others point to that file and do not repeat the number.
