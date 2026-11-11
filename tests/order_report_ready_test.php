@@ -165,3 +165,40 @@ function test_ready_report_url()
 {
 	pg_assert_same('view_order_report.php?ready=sales_by_region', pg_ready_report_url('sales_by_region'));
 }
+
+// The screen reads ?ready= only for a new report and fills its form from the
+// entry, filters with their dynamic values; otherwise the plain defaults.
+function test_order_report_screen_opens_a_ready_report()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order_report.php');
+
+	pg_assert_contains("\$ready_report = isset(\$_GET['id']) ? null : pg_ready_report_requested(\$_GET['ready'] ?? null, 'order_report');", $source, 'read once, an id wins');
+
+	$start = strpos($source, "if ((isset(\$_GET['id']) == false) && !\$form_submitted) {");
+	$end = strpos($source, "\$liveform->assign_field_value('last_filter_number', (string) \$default_filter_number);");
+
+	pg_assert_true(($start !== false) && ($end !== false) && ($start < $end), 'the new report block');
+
+	$block = substr($source, $start, $end - $start);
+
+	pg_assert_contains('if ($ready_report !== null) {', $block);
+	pg_assert_contains("\$liveform->assign_field_value('summarize_by_' . \$level, \$ready_report['levels'][\$level - 1]['by'] ?? '');", $block, 'levels');
+	pg_assert_contains("\$liveform->assign_field_value('order_by_' . \$level, \$ready_report['levels'][\$level - 1]['order'] ?? '');", $block, 'order by');
+	pg_assert_contains('$default_filters = pg_ready_report_filters($ready_report);', $block, 'filters and period');
+	pg_assert_contains('$default_filters = pg_order_report_default_filters();', $block, 'the plain new report keeps its defaults');
+	pg_assert_contains("\$liveform->assign_field_value('summarize_by_1', 'year');", $block, 'the plain new report keeps year, month, day');
+	pg_assert_contains("'_dynamic_value', \$default_filter['dynamic_value'] ?? '');", $block, 'dynamic value');
+	pg_assert_contains("'_dynamic_value_attribute', \$default_filter['dynamic_value_attribute'] ?? '');", $block, 'day count');
+}
+
+// The Sales map card's "See all" names the ready report; each place's own
+// link still opens the orders list.
+function test_sales_map_card_see_all_opens_sales_by_region()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/salesmap.php');
+
+	pg_assert_contains("'url'        => pg_ready_report_url('sales_by_region'),", $source);
+	pg_assert_same(0, substr_count($source, "'view_order_report.php'"), 'no plain new report link');
+	pg_assert_contains('pg_sales_map_orders_url(', $source, 'places keep their orders link');
+	pg_assert_true(isset(pg_ready_reports()['sales_by_region']), 'the key exists');
+}
