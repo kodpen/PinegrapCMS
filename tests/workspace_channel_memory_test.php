@@ -71,6 +71,61 @@ function test_workspace_memory_digest()
 	pg_assert_same($heading . "\n- #4 Pin\n\n(3 more not shown: list them with workspace.memory.list and workspace.decisions.list.)", $small);
 }
 
+// The brief lists the newest decisions only, then one line with how many
+// more the channel holds; the character bound still closes it with a
+// single count of everything left out.
+function test_workspace_memory_digest_bounds_the_decisions()
+{
+	pg_assert_same(10, WS_MEMORY_BRIEF_DECISIONS);
+
+	$forty = array();
+
+	for ($i = 40; $i >= 1; $i--) {
+		$forty[] = array('body' => 'Decision ' . $i, 'marked_at' => $i);
+	}
+
+	$heading = 'Decisions in this channel:';
+	$newest = array();
+
+	for ($i = 40; $i >= 31; $i--) {
+		$newest[] = '- Decision ' . $i;
+	}
+
+	$count = '(30 older decisions not shown: list them with workspace.decisions.list.)';
+
+	// Forty given: the newest ten, then the count.
+	pg_assert_same($heading . "\n" . implode("\n", $newest) . "\n\n" . $count, ws_memory_digest(array(), $forty, 100));
+
+	// The newest ten given with the channel's total, as ws_memory_brief() passes them.
+	pg_assert_same($heading . "\n" . implode("\n", $newest) . "\n\n" . $count,
+		ws_memory_digest(array(), array_slice($forty, 0, 10), 100, WS_MEMORY_DIGEST_MAX, 40));
+
+	// Ten or fewer: no count line.
+	$ten = ws_memory_digest(array(), array_slice($forty, 0, 10), 100, WS_MEMORY_DIGEST_MAX, 10);
+	pg_assert_same($heading . "\n" . implode("\n", $newest), $ten);
+	pg_assert_false(strpos(ws_memory_digest(array(), array_slice($forty, 0, 3), 100), 'not shown') !== false, 'three decisions, no count');
+
+	// The character bound cuts first: one closing line counts the lines it
+	// left out and the older decisions together, never two counts.
+	$cut = ws_memory_digest(array(), $forty, 100, mb_strlen($heading) + 2 + 3 * 14);
+	pg_assert_same($heading . "\n- Decision 40\n- Decision 39\n- Decision 38\n\n(37 more not shown: list them with workspace.memory.list and workspace.decisions.list.)", $cut);
+	pg_assert_same(1, substr_count($cut, 'not shown'));
+}
+
+// The lines that tell an agent how to read more of a channel name the
+// limit and ask for only as many messages as the request needs; the
+// route's own default and most stay.
+function test_workspace_memory_read_more_names_the_limit()
+{
+	$queue = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/agent_queue.php');
+	$ai = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/ai.php');
+	$sentence = 'ask for only as many messages as the request needs';
+
+	pg_assert_contains("'/context?limit=<n>: " . $sentence . ".'", $queue, 'the app agent\'s brief');
+	pg_assert_false(strpos($queue, "'/context.'") !== false, 'no read without a limit');
+	pg_assert_contains("'GET /workspace/channels/{id}/context?limit=<n> reads them; " . $sentence . "'", $ai, 'Claude\'s brief');
+}
+
 function test_workspace_memory_entry_fault_names_the_field()
 {
 	pg_assert_same(null, ws_memory_entry_fault(array('title' => 'x'), 1000));
