@@ -419,7 +419,7 @@ function pg_ltd_run_design($state, $row, $user)
     }
     if ($classes !== '') db("UPDATE style SET additional_body_classes = '' WHERE style_id = '$style_id' LIMIT 1");
 
-    pg_classic_style_mark_design($style_id, 'custom', (string)$user['username']);
+    pg_classic_style_mark_design($style_id, 'legacy', (string)$user['username']);
     return pg_ltd_state_line($state, 'made', lang('The style is now a visual design.'), 'styles');
 }
 

@@ -4025,7 +4025,8 @@ function pg_design_ai_ops_guide()
  */
 function pg_design_ai_framework_line($page)
 {
-    if ($page['framework'] === 'custom') {
+    // A design without Bootstrap (custom, or a moved classic style).
+    if (!pg_design_framework_has($page['framework'], 'bootstrap')) {
         return 'The page is a custom design without a CSS framework: Bootstrap classes do nothing there, so style it with the css operation and your own class names.';
     }
 
@@ -4821,7 +4822,7 @@ function pg_design_ai_looks_left($row, $state)
  */
 function pg_design_ai_known_class($word, $framework, $vocab_file = '')
 {
-    if ($framework === 'custom') {
+    if (!pg_design_framework_has($framework, 'bootstrap')) {
         return false;
     }
 

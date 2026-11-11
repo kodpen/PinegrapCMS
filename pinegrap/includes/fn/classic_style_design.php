@@ -274,9 +274,11 @@ function pg_classic_style_design_open($style_id, $user)
 
 /**
  * A classic style made a visual design: style_type 'system', style_layout
- * 'visual_designer', the framework it was opened with ('custom': the
- * theme keeps its own Bootstrap and scripts; an update never changes a
- * design's framework otherwise) and one log line. style_code stays: the
+ * 'visual_designer', the framework it was opened with ('legacy': no
+ * framework files, the theme keeps its own Bootstrap and scripts, and the
+ * key marks a moved classic style; an update changes a design's framework
+ * only in the 2026.11.0 step that gave the earlier moves this key) and one
+ * log line. style_code stays: the
  * fallback of a page with no tree. The editor's Save of a converted style
  * (pg_designer_screen_post()) and the bulk move call it.
  *

@@ -748,6 +748,7 @@ function pg_designer_list_designs()
         $fw = pg_design_framework(isset($fw_by_id[(int)$r['style_id']]) ? $fw_by_id[(int)$r['style_id']] : '');
         $rows[$i]['framework_label'] = $fw['label'];
         $rows[$i]['framework_bootstrap'] = !empty($fw['bootstrap']);
+        $rows[$i]['framework_legacy'] = !empty($fw['legacy']);
         $rows[$i]['template'] = '';
         $rows[$i]['look'] = '';
         $rows[$i]['palette'] = '';
@@ -1057,7 +1058,7 @@ function pg_designer_home_drawing($kind, $templates = array())
         foreach ((array)$templates as $tpl) {
             if (count($minis) >= 3) break;
             $s = pg_design_template_summary($tpl);
-            if ($s['framework'] !== 'bootstrap5' || !function_exists('pg_design_thumb_svg')) continue;
+            if (!pg_design_framework_has($s['framework'], 'bootstrap') || !function_exists('pg_design_thumb_svg')) continue;
             // The template's home page in its own theme; its drawing until
             // the page arrives, or alone when the page cannot be drawn.
             $drawing = pg_design_thumb_svg(($s['look'] !== null) ? $s['look'] : $look0, (string)$s['palette'], '', '', $s['thumb']);
@@ -1246,7 +1247,10 @@ function pg_designer_home_design_card($d, $pages, $ctx)
              .     '<span class="sdh-browser-bar"><i></i><i></i><i></i><span class="sdh-browser-url">' . h($address) . '</span></span>'
              .     '<span class="sdh-browser-view">' . pg_designer_list_thumb($d, $open) . '</span>'
              . '</a>';
-    $title = '<a href="' . h($edit_url) . '"><span class="sdh-name-text">' . $name . '</span></a>';
+    // A moved classic style says so beside its name (the legacy framework
+    // key); the featured card also lists it under Framework.
+    $title = '<a href="' . h($edit_url) . '"><span class="sdh-name-text">' . $name . '</span></a>'
+           . (!empty($d['framework_legacy']) ? '<span class="badge theme-secondary sdh-legacy">' . h(lang('Legacy')) . '</span>' : '');
     // Markup of its own (a <time> element), so it is not escaped again.
     $when  = get_relative_time(array('timestamp' => (int)$d['last_modified_timestamp']));
 
@@ -1939,7 +1943,7 @@ function pg_designer_template_modal($templates, $from_pages)
         $theme = pg_designer_template_card_theme($s, '@template', '@template');
         $picture_src = pg_designer_template_picture_src($tpl, $theme['look'], $theme['palette']);
         $tour_src = ($picture_src !== '') ? pg_design_preview_address('panel', array('template' => $s['id'], 'tour' => true)) : '';
-        $drawing = ($s['framework'] === 'bootstrap5' && function_exists('pg_design_thumb_svg'))
+        $drawing = (pg_design_framework_has($s['framework'], 'bootstrap') && function_exists('pg_design_thumb_svg'))
             ? pg_design_thumb_svg(($s['look'] !== null) ? $s['look'] : $look0, (string)$s['palette'], 'sd-tpl-thumb-svg', '', $s['thumb'])
             : '';
         $label = lang(array('string' => 'Preview of {var:1}', 'vars' => $s['name']));
