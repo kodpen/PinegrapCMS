@@ -6653,6 +6653,7 @@
     "The style's frame component made before is used.": "Stilin daha önce yapılmış çerçeve bileşeni kullanılır.",
     "The style's frame could not be saved as a shared component.": "Stilin çerçevesi ortak bileşen olarak kaydedilemedi.",
     "The style's frame is made a shared component.": "Stilin çerçevesi paylaşılan bileşen yapılır.",
+    "The style's head loads stylesheets after its theme {var:1}. The design loads the theme after all of its stylesheets, so where both set the same rule the theme now wins.": "Stilin head bölümü, {var:1} temasından sonra stil dosyaları yüklüyor. Tasarım temayı tüm stil dosyalarından sonra yükler; ikisi aynı kuralı belirlediğinde artık tema kazanır.",
     "The stylesheet is too large.": "Stil dosyası çok büyük.",
     "The stylists, nail artist and skin therapist of the salon, what each does best and the days they are in.": "Salonun kuaförleri, tırnak uzmanı ve cilt bakım uzmanı; her birinin en iyi yaptığı iş ve çalıştığı günler.",
     "The stylists, therapists and front desk of the salon, and how to reach them.": "Salonun kuaförleri, terapistleri ve resepsiyonu; onlara nasıl ulaşılır.",
