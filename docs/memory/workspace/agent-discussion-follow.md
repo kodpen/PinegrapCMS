@@ -16,7 +16,7 @@ description: A discussion that follows a registry agent (A4b4 #8608): the agent:
 ## What starts the follow?
 - In the discussion only a name: `@handle` as a word or `<@app:N>` (`ws_thread_agents_named()`, the mention part of `ws_agent_wake_matches()`). The `all`, `prefix` and `replies` rules, the channel's or the discussion's own, never start it.
 - `ws_thread_agents_asked($body, $message_id, $channel)` lists Claude, then the MCP agent or Pinegrap AI, then the named registry agents by id; the last is followed.
-- At the start (#2419 answer 5, #NNNN): a discussion about a registry agent's or model assistant's answer, found by `ws_ai_requests.reply_message_id` with an `agent:`/`model:` value, or about a message naming one, follows it (`ws_thread_message_agent($message, $channel)`, `ws_thread_answer_agent()`), while a row reaches the discussion; else nobody. Follow again reads it the same way.
+- At the start (#2419 answer 5, #8611): a discussion about a registry agent's or model assistant's answer, found by `ws_ai_requests.reply_message_id` with an `agent:`/`model:` value, or about a message naming one, follows it (`ws_thread_message_agent($message, $channel)`, `ws_thread_answer_agent()`), while a row reaches the discussion; else nobody. Follow again reads it the same way.
 
 ## How is it asked?
 - `ws_thread_follow_ask()` sends a registry key to `ws_agent_after_send(..., $followed)`, never to `ws_ai_after_send()`. Followed mode reads only that agent's row and skips only the name check: own-message rule, depth and hourly brakes (with their system line) and the push knock stay. The pile-up rule (`ws_thread_follow_pending_plan()`) holds as for the others.
