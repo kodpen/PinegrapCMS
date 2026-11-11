@@ -281,6 +281,8 @@
     "Upcoming": "Yaklaşan",
     "Upcoming Events": "Yaklaşan Etkinlikler",
     "Upcoming events": "Yaklaşan etkinlikler",
+    "Upcoming events as picture cards with a date tag, a kind badge, the time and place and a reservation button.": "Görselli kartlarda yaklaşan etkinlikler: tarih etiketi, tür rozeti, saat ve yer, rezervasyon düğmesi.",
+    "Upcoming events in rows: a date block, the name, the day, time and place, and a reservation button.": "Satırlarda yaklaşan etkinlikler: tarih kutusu, ad, gün, saat ve yer, rezervasyon düğmesi.",
     "Update": "Güncelle",
     "Update Address Book": "Adres Defterini Güncelle",
     "Update Bot IP Lists": "Bot IP Listelerini Güncelle",
