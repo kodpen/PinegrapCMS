@@ -6,7 +6,7 @@ description: Open steps of plans/kodpen-vendor-api-client.md: P2 and P5c before 
 ## Which steps are there?
 - S under 400, M about 1,000 product lines; lines of 2026-10-29. Every step: tests red first; PHP 7.1 syntax, optional APIs behind `function_exists()`; `tr_add`; memory (`platform/` unless named) in the PR. Done: `P<n> done (#n): <topic file>`.
 
-- Done: P1 #3203, P3 #3255, P4 #4381, P5a #3282, P5b #3632, P6 #3755, P7 #4395, P8 #P8PR.
+- Done: P1 #3203, P3 #3255, P4 #4381, P5a #3282, P5b #3632, P6 #3755, P7 #4395, P8 #8653.
 - P8's PR body names its changelog line for the merging session: `[NEW] Added signed software updates and a new license check that shows the license type and its site rights.`
 
 - P2 (S, `.github/`, owner's machine) Release packages: `release-packages.yml` (`-design-update.md`); `docker-publish.yml` skips pre-releases. Test: actionlint; a local `v2026.4.10` build equal to the vendor's. Before the 2026.11.0 release branch.

@@ -4,7 +4,7 @@ description: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8); le
 ---
 
 ## Where does it stand?
-- 2026.11.0 asks `api.kodpen.com/v1` for licences and signed updates: the client in `includes/fn/vendor_api.php` is on since P8 (#P8PR). Contract: `platform/vendor-api-client.md` and its siblings; the open parts in `-design-update.md`.
+- 2026.11.0 asks `api.kodpen.com/v1` for licences and signed updates: the client in `includes/fn/vendor_api.php` is on since P8 (#8653). Contract: `platform/vendor-api-client.md` and its siblings; the open parts in `-design-update.md`.
 - The api2 client branches are still in the code but no longer reached; setting the switch to false is the only way back to them, until P9 removes them.
 
 ## What is decided?

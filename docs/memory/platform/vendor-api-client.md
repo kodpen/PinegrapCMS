@@ -8,7 +8,7 @@ module: vendor_api
 - What every call to `api.kodpen.com/v1` is built from; the licence check and the update put their v1 branches on it (`plans/kodpen-vendor-api-client.md`). Loaded by `functions.php`.
 
 ## What does the switch do?
-- `define('PG_VENDOR_API_V1', true);` alone on its line, on since #P8PR (2026-11-11): licence check and update ask only `api.kodpen.com/v1`. The hosting platform reads the file as text (`/^[ \t]*define\('PG_VENDOR_API_V1', true\);[ \t]*\r?$/m`), so the on form is on that line only (comments too), the off form nowhere; `vendor_api_test.php` pins it.
+- `define('PG_VENDOR_API_V1', true);` alone on its line, on since #8653 (2026-11-11): licence check and update ask only `api.kodpen.com/v1`. The hosting platform reads the file as text (`/^[ \t]*define\('PG_VENDOR_API_V1', true\);[ \t]*\r?$/m`), so the on form is on that line only (comments too), the off form nowhere; `vendor_api_test.php` pins it.
 - The line stays after the api2 branches go (plan step P9): the platform reads it.
 - `false` is only the way back until P9: `pg_vendor_api_request()` refuses before cURL (errno 0) and api2 answers as before.
 
