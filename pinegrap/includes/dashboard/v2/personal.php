@@ -4,10 +4,12 @@
  *
  * The new dashboard's personal parts of a layout: the goals, the pins and
  * the notes. The edit mode never changes them (pg_dashboard_v2_layout_clean()
- * keeps the stored ones); their own cards save them one part at a time
- * through api.php's dashboard_personal_save action. This file cleans what a
- * card sends, writes it into the person's stored layout and turns a goal
- * into progress.
+ * keeps the stored ones); their own cards save goals and pins one part at a
+ * time through api.php's dashboard_personal_save action. This file cleans
+ * what a card sends, writes it into the person's stored layout and turns a
+ * goal into progress. The notes card writes into My Notes instead; the text
+ * an older notes card kept in the layout is moved there once
+ * (pg_dashboard_v2_notes_move_stored()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -267,6 +269,127 @@ function pg_dashboard_v2_notes_clean($text)
 }
 
 /**
+ * The text an older notes card kept in a stored layout, cleaned. Pure.
+ *
+ * @param string $json the stored layout
+ * @return string '' when there is none
+ */
+function pg_dashboard_v2_notes_stored($json)
+{
+    $layout = json_decode((string) $json, true);
+
+    return (is_array($layout) && isset($layout['notes'])) ? pg_dashboard_v2_notes_clean($layout['notes']) : '';
+}
+
+/**
+ * A stored layout with the old card's text taken out and every other part
+ * left as it was. Pure.
+ *
+ * @param string $json
+ * @return string|null null when the layout cannot be read
+ */
+function pg_dashboard_v2_notes_cleared($json)
+{
+    $layout = json_decode((string) $json, true);
+
+    if (!is_array($layout)) {
+        return null;
+    }
+
+    $layout['notes'] = '';
+    $out = json_encode($layout, JSON_UNESCAPED_UNICODE);
+
+    return ($out === false) ? null : $out;
+}
+
+/**
+ * Moves the old card's text into My Notes: it becomes one note, and only
+ * once that note is written is the text taken out of the layout. An empty
+ * text makes no note, and a text of blanks is cleared without one; a note
+ * that could not be written leaves the text for the next visit. Once
+ * cleared there is nothing left to move, so a second run writes nothing.
+ * Pure but for the three callables.
+ *
+ * @param callable $read  () => string, the text as stored now
+ * @param callable $save  (string $body) => int, the new note's id, 0 on failure
+ * @param callable $clear () => bool, takes the text out of the layout
+ * @return int the new note's id, 0 when nothing was moved
+ */
+function pg_dashboard_v2_notes_move($read, $save, $clear)
+{
+    $text = (string) $read();
+
+    if ($text === '') {
+        return 0;
+    }
+
+    if (trim($text) === '') {
+        $clear();
+        return 0;
+    }
+
+    $note_id = (int) $save($text);
+
+    if ($note_id <= 0) {
+        return 0;
+    }
+
+    $clear();
+
+    return $note_id;
+}
+
+/**
+ * The move of pg_dashboard_v2_notes_move() on the person's stored layout,
+ * through the notes' own save (ws_note_save(), with its rights and limits).
+ * A named lock holds it to one request at a time, and the text is read
+ * again inside it, so two cards drawn at once never write two notes; a
+ * request that finds the lock taken leaves the move to the one holding it.
+ *
+ * @param array $user
+ * @param array $viewer ws_viewer() of the person
+ * @return int the new note's id, 0 when nothing was moved
+ */
+function pg_dashboard_v2_notes_move_stored($user, $viewer)
+{
+    $user_id = (int) $user['id'];
+    $row = pg_dashboard_v2_row($user_id);
+
+    // Nothing stored: no lock taken on most visits.
+    if (($user_id <= 0) || !function_exists('ws_note_save') || (pg_dashboard_v2_notes_stored($row['layout'] ?? '') === '')) {
+        return 0;
+    }
+
+    // GET_LOCK names belong to the whole server, so the database is part
+    // of the name.
+    $lock = "CONCAT('pg_dash_notes.', MD5(CONCAT(DATABASE(), '." . $user_id . "')))";
+
+    if ((int) db_value("SELECT GET_LOCK(" . $lock . ", 0)") !== 1) {
+        return 0;
+    }
+
+    $note_id = pg_dashboard_v2_notes_move(
+        function () use ($user_id) {
+            $row = pg_dashboard_v2_row($user_id);
+            return pg_dashboard_v2_notes_stored($row['layout'] ?? '');
+        },
+        function ($body) use ($viewer) {
+            $saved = ws_note_save($viewer, array('note_id' => 0, 'title' => '', 'body' => $body));
+            return !empty($saved['ok']) ? (int) $saved['note_id'] : 0;
+        },
+        function () use ($user_id) {
+            $row = pg_dashboard_v2_row($user_id);
+            $json = pg_dashboard_v2_notes_cleared($row['layout'] ?? '');
+            return ($json !== null) && pg_dashboard_v2_layout_write($user_id, $json);
+        }
+    );
+
+    db_value("SELECT RELEASE_LOCK(" . $lock . ")");
+
+    return $note_id;
+}
+
+/**
  * When a goal's span began and ends: Monday 00:00 to the next Monday, or
  * the first of the month to the first of the next, in the site's time.
  * Pure.
@@ -351,10 +474,10 @@ function pg_dashboard_v2_personal_base($own, $effective, $fallback)
 /**
  * Write one personal part into the person's stored layout. With nothing
  * stored yet the layout starts as the page draws it (the role default, else
- * the first preset), so saving a note never changes or empties the grid.
+ * the first preset), so saving a pin never changes or empties the grid.
  *
  * @param array  $user
- * @param string $part  goals, pins or notes
+ * @param string $part  goals or pins
  * @param mixed  $value what the card sent
  * @return array|null the cleaned part, null when it could not be written
  */
@@ -369,9 +492,8 @@ function pg_dashboard_v2_personal_save($user, $part, $value)
         case 'pins':
             $clean = pg_dashboard_v2_pins_clean($value);
             break;
-        case 'notes':
-            $clean = pg_dashboard_v2_notes_clean($value);
-            break;
+        // The notes card writes into My Notes; the layout's old text is
+        // only ever cleared (pg_dashboard_v2_notes_move_stored()).
         default:
             return null;
     }
