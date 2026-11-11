@@ -5484,27 +5484,87 @@ function pg_image_editor_upload_kinds()
 }
 
 /**
- * The bounds of a file sent in parts, from pg_upload_limits() and PHP's own
- * upload_max_filesize. Pure.
+ * The highest value of the image editor's largest upload, in MB (the field
+ * "Largest Video Or Sound In The Image Editor (MB)"): 10 GB, far above what
+ * a browser tab decodes or encodes, so the field never holds the editor back
+ * while a typo of an extra digit is still refused.
+ *
+ * @return int
+ */
+function pg_image_editor_upload_max_mb_most()
+{
+    return 10240;
+}
+
+/**
+ * The largest upload as stored (the config_text row
+ * image_editor_upload_max_mb), held between 0 and
+ * pg_image_editor_upload_max_mb_most(). Pure.
+ *
+ * @param mixed $value
+ * @return int 0: PHP's upload_max_filesize
+ */
+function pg_image_editor_upload_max_mb_clamp($value)
+{
+    $value = is_numeric($value) ? (int) $value : 0;
+
+    return max(0, min(pg_image_editor_upload_max_mb_most(), $value));
+}
+
+/**
+ * The largest upload set under Site Settings, Features, in MB, kept as the
+ * config_text row image_editor_upload_max_mb (the config row has no room for
+ * a column); 0 without the row, the table or a value.
+ *
+ * @return int
+ */
+function pg_image_editor_upload_max_mb()
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
+
+    return pg_image_editor_upload_max_mb_clamp(pg_config_text('image_editor_upload_max_mb'));
+}
+
+/**
+ * Stores the largest upload in MB, clamped; 0 keeps PHP's upload_max_filesize.
+ *
+ * @param mixed $value
+ * @return bool false without the config_text table or on a failed write
+ */
+function pg_image_editor_upload_max_mb_save($value)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
+
+    return pg_config_text_save('image_editor_upload_max_mb', (string) pg_image_editor_upload_max_mb_clamp($value));
+}
+
+/**
+ * The bounds of a file sent in parts, from pg_upload_limits(), PHP's own
+ * upload_max_filesize and the setting. Pure.
  *
  *   part     the bytes one part carries: one request's bound
  *            (pg_image_editor_animation_limit()) less room for the request's
  *            line, at most 8 MB so a dropped connection loses little
  *   request  one request's bound (0: none known)
- *   max      the largest file: upload_max_filesize, which a host sets for a
- *            file whatever the request's size, never below one request (0:
- *            none known)
+ *   max      the largest file: the setting when above 0, else
+ *            upload_max_filesize, which a host sets for a file whatever the
+ *            request's size; never below one request (0: none known)
+ *
+ * The setting may stand above upload_max_filesize: each part is one request's
+ * raw body, which that ini value does not bound.
  *
  * @param array $limits pg_upload_limits()
  * @param int $file_max upload_max_filesize in bytes
+ * @param int $setting_mb pg_image_editor_upload_max_mb() (0: none)
  * @return array part, request, max
  */
-function pg_image_editor_upload_limits_of($limits, $file_max)
+function pg_image_editor_upload_limits_of($limits, $file_max, $setting_mb = 0)
 {
     $request = pg_image_editor_animation_limit($limits);
     $most = 8 * 1024 * 1024;
     $part = ($request > 0) ? min($most, max(16384, $request - min(65536, (int) floor($request / 2)))) : $most;
-    $file_max = max(0, (int) $file_max);
+    $setting_mb = pg_image_editor_upload_max_mb_clamp($setting_mb);
+    $file_max = ($setting_mb > 0) ? $setting_mb * 1024 * 1024 : max(0, (int) $file_max);
     $max = ($file_max > 0) ? (($request > 0) ? max($file_max, $request) : $file_max) : $request;
 
     return array('part' => $part, 'request' => $request, 'max' => $max);
@@ -5521,7 +5581,7 @@ function pg_image_editor_upload_limits()
     static $limits = null;
 
     if ($limits === null) {
-        $limits = pg_image_editor_upload_limits_of(pg_upload_limits(), pg_ini_bytes(@ini_get('upload_max_filesize')));
+        $limits = pg_image_editor_upload_limits_of(pg_upload_limits(), pg_ini_bytes(@ini_get('upload_max_filesize')), pg_image_editor_upload_max_mb());
     }
 
     return $limits;
