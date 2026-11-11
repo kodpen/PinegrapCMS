@@ -72,6 +72,7 @@
     "Mail queue worked: {var:1} sent, {var:2} not sent.": "E-posta kuyruğu çalıştı: {var:1} gönderildi, {var:2} gönderilemedi.",
     "Mail service": "Posta hizmeti",
     "Mail to it is stopped": "Bu adrese posta durduruldu",
+    "Mail to {var:1} bounced or was refused, so it is not sent there.": "{var:1} adresine giden posta geri döndü ya da reddedildi; bu yüzden oraya gönderilmez.",
     "MailChimp": "MailChimp",
     "MailChimp Error": "MailChimp Hatası",
     "MailChimp Settings": "MailChimp Ayarları",
