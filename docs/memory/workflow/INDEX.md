@@ -72,7 +72,7 @@
 - decisions-made-schema-12.md: Decisions list, schema part 12 (2026-11-07 on): note groups, places, shares and PIN locks for Workspace notes (step N0); the agent registry and channel-agent tables (agent channel A3)
 - decisions-made-schema-13.md: Decisions list, schema part 13 (2026-11-08 on): agent channel switch (AC); channel memory and agent mark (A5); A7 undo; GitHub channel links (G2); carrier service on a shipping method (R2)
 - decisions-made-schema-14.md: Decisions list, schema part 14 (2026-11-09 on): a bundle's own back order choice (bundle_backorder); the workflow table bin and row numbers; the team replies right; agent token counts and limit
-- decisions-made-schema-15.md: Decisions list, schema part 15 (2026-11-10 on): ws_messages.via_client_id (the "via" badge of a connected application's message), ws_ai_requests.claimed_device_id (per-person @Claude sessions)
+- decisions-made-schema-15.md: Decisions list, schema part 15 (2026-11-10 on): ws_messages.via_client_id, ws_ai_requests.claimed_device_id, the Workspace mail screen's columns and ws_mail_reads, config.image_editor_upload_max_mb
 - decisions-made-schema-2.md: Decisions list, schema part 2, approved on 2026-10-28: e-mail tables, workflow tables, MCP preamble, secret widths, prompt version, discussion follow; rules in part 1, 2026-10-29 on in part 3
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
@@ -88,7 +88,7 @@
 - decisions-made-workspace-10.md: Decisions list, workspace part 10 (2026-11-09 on): application lines fold; agent activity; table bin, Excel, import; flow failure reason; team replies; channel export; agent questions; unread requests
 - decisions-made-workspace-11.md: Decisions list, workspace part 11 (2026-11-10 on): only a channel's manager adds an agent to a private channel; a connected app's message under the person's name ("via" badge); who answers @Claude
 - decisions-made-workspace-12.md: Decisions list, workspace part 12 (2026-11-10 on): an agent's one-answer question is a one-choice poll the asking agent closes; a channel's agent asked by name in the channel's discussions
-- decisions-made-workspace-13.md: Decisions list, workspace part 13 (2026-11-10 on): the Workspace mail screen (one list of every e-mail, New e-mail, Forward as e-mail), its send path through the mail queue; schema asked in #8604
+- decisions-made-workspace-13.md: Decisions list, workspace part 13 (2026-11-10 on): the Workspace mail screen (one list of every e-mail, New e-mail, Forward as e-mail), its send path through the mail queue; schema approved (#8604)
 - decisions-made-workspace-2.md: Decisions list, workspace part 2 (2026-10-29 on): the channel menu holds only the channel's own items; creates in a chat go through /oluştur (/create): its rights and kinds; the sales quote stays
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
