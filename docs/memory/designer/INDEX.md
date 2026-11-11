@@ -238,8 +238,10 @@
 - designer-blocks-drivingschool.md: The Driving School block family (drivingschool- prefix, its own palette group): the three blocks, the general blocks it reuses instead, its pg-drv-* rules, its test
 - designer-blocks-ferry.md: The Ferry block family (ferry- prefix, its own palette group): departure board, route timetable, crossing strip, fares by vehicle; the general blocks a ferry site places instead; rules and test
 - designer-blocks-filmstudio.md: The Film Studio block family (filmstudio- prefix, own palette group): showreel hero, title card with end credits, cuts for every screen drawn to scale; blocks placed instead; test
-- designer-blocks-general.md: General sections the sector templates share: the existing block that covers each, and the ones added in general family files (hours-seasons, locations-spaces, locations-floors, booking-week)
+- designer-blocks-general-booking.md: The general booking family (booking- prefix, Services & Booking group): weekly class timetable and arrival windows, what each draws, its rules and test
+- designer-blocks-general.md: General sections the sector templates share: the existing block that covers each, and the ones added in general family files (hours, locations, booking)
 - designer-blocks-gym.md: The Gym block family (gym- prefix, own palette group): free pass hero, class finder with an intensity meter; the weekly timetable as a general block; general blocks placed instead; rules, test
+- designer-blocks-homeservices.md: The Home Services block family (homeservices- prefix, own palette group): hero with a job sheet, emergency line; the general arrival windows; blocks placed instead; test
 - designer-blocks-hotel.md: The Hotel block family (hotel- prefix, own palette group): room showcase, stay clock; general blocks placed instead; rules, test
 - designer-blocks-launch.md: The launch- block family (Product Launch): seven blocks, their interactions, the CSS colour switch, bento-features reused, the sticky spec head
 - designer-blocks-marina.md: The Marina block family (marina- prefix, its own palette group): the pontoon plan and the arrival by sea, the blocks a marina places instead of adding, its pg-marina-* rules, its test
