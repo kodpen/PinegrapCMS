@@ -127,6 +127,19 @@ $portrait = function ($name, $size = 480) {
     return 'https://placehold.co/' . (int)$size . 'x' . (int)$size . '/451a03/fef3c7?text=' . rawurlencode($initials !== '' ? $initials : 'B');
 };
 
+// Motion from the interactions on the nodes (pg_fx; nothing moves under
+// reduced motion): $fx gives a node one effect, $rise brings the children
+// of a row or a list in one after another as they scroll into view, and
+// $fade_in is the way a section's heading comes in.
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+$rise = function ($node, $stagger = 90) use ($fx) {
+    return $fx($node, array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => $stagger));
+};
+$fade_in = array('effect' => 'fade', 'trigger' => 'view', 'duration' => 700);
+
 
 // ── The brewery: the beers, the taproom, the tours and the shop ─────────
 
