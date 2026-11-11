@@ -367,6 +367,7 @@
 - layout-form-converter-editor.md: W22b "Convert to design elements" on a custom form page's system region: the button, the layout_code convert action, the widget placed after the region, toasts, rows the sync keeps
 - layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing [decision: here]
 - layout-widget-offer.md: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, the panel buttons that place it and remove the region, why no 301
+- legacy-design-theme.md: The theme file of a design moved from a classic style: the activated theme the classic head printed, on the site, the canvas and the Theme file hint; the dry run's warning (LG1, #8694)
 - legacy-region-preview.md: The canvas preview of a classic page's system region drawn by its custom layout (designer/legacy_region_preview): who sees it, the markers, the background render, read only, when it is asked again
 - legacy-to-designer-bulk-run.md: The bulk move of classic styles to the visual designer (LD2): the decision, the dry run on the report screen, the server twins of the editor steps the run uses [decision: decisions-made-product-23.md]
 - legacy-to-designer-report.md: The "Move to the visual designer" readiness report (LD1, #6219): what it lists per classic style, its state, the "What stays classic" card (#6488), the rules the whole move keeps [decision: decisions-made-product-21.md, decisions-made-product-3.md]

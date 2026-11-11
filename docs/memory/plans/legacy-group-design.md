@@ -8,8 +8,8 @@ description: Plan (owner 2026-11-11, #8671): classic styles that share a CSS/JS 
 - Today (LD1-LD4 done; `designer/legacy-to-designer-report.md`, `legacy-to-designer-run.md`): a designer moves classic styles one by one; each becomes its own `custom` design, its whole page one shared frame. Memory says "classic" for the owner's "legacy".
 
 ## Why does a moved design open wrong today?
-- Read in the code, not yet run in a browser: LG1 starts by showing it on the starting site.
-- The theme is lost: the classic head's `<stylesheet></stylesheet>` gets the style's theme, else the site's activated theme (`get_page_content.php`); the importer drops the tag (`designer/classic-style-import.md`), the move sets no theme, the canvas shows only the chosen Theme file (`_sdActiveTheme()`).
+- Seen in a sandbox on home-1 (#8694), the head's other files missing too.
+- The theme was lost (LG1 fixed it): the classic head's `<stylesheet></stylesheet>` gets the style's theme, else the site's activated theme (`get_page_content.php`); the importer drops the tag (`designer/classic-style-import.md`), the move sets no theme, the canvas shows only the chosen Theme file (`_sdActiveTheme()`).
 - `{path}` and `{software_directory}`: an asset row kept as written fails the renderer's address check unless it became a managed file (`designer/classic-style-design-files.md`); the canvas never fills them, in asset links, inline CSS or a node's `src` / `href`.
 - The load order differs when CSS stood after the `<stylesheet>` tag.
 

@@ -6,11 +6,7 @@ description: Steps of plans/legacy-group-design.md: LG1 the theme, LG2 {path} ad
 ## Which steps are there?
 - S under 400 product lines, M about 1,000; no schema; each step its tests and its memory topic. They are built in the order written: each waits for the one before it.
 
-- LG1 (M) The theme of a moved design.
-  - First the proof: one classic style of the starting site moved in the sandbox, classic and moved page side by side, site and canvas; the PR lists what differs (theme, missing files, order).
-  - A pure function names a design's theme file: its own Theme file; else, for a design that came from a classic style (until LG3: `custom` with a `classic_style:<style_id>` frame), the site's activated theme, desktop or mobile as the classic head chose; none when an asset row already names that file.
-  - `get_page_content.php` prints it where the classic head printed `<stylesheet>`; `sdDesign` carries its address, `_sdActiveTheme()` uses it while no Theme file is chosen; a hint under "Theme file" names the theme in use.
-  - The dry run (`pg_ltd_plan()`) warns when the classic head had CSS after the `<stylesheet>` tag. Topic `designer/legacy-design-theme.md`.
+- LG1 (M) The theme of a moved design. Done (#8694): `designer/legacy-design-theme.md`. Its sandbox move found that the bulk run writes no stylesheet or script rows, so every other file of the classic head is missing; no step below names it yet.
 - LG2 (M) `{path}` and `{software_directory}` in addresses, for every design.
   - One pure function expands the two in an asset row's address before the renderer's address check (the CSS and JS rows of `get_page_content.php`); storage keeps rows as written (`tests/classic_style_design_test.php` stays green).
   - A script twin fills them on the canvas: asset links, inline CSS (`url({path}…)`), a node's `src` / `href`; what is saved keeps the placeholders.

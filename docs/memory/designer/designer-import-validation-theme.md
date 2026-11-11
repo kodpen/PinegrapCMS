@@ -20,7 +20,7 @@ description: Designer HTML/ZIP import rules, SEO validation badges (client twin)
 - Empty link/button, image alt, form submit and empty heading rules (what counts as a name, an alt decision, a submit, a heading): docs/memory/designer/designer-audit-tree-rules.md.
 
 ## How is the theme stored?
-- A theme is a `files` row (`design=1`). The "theme" row in the Styles list does not enter `cssFiles`; it is read from `select[name=theme_id]` (`_sdActiveTheme`).
+- A theme is a `files` row (`design=1`). The "theme" row in the Styles list does not enter `cssFiles`; it is read from `select[name=theme_id]` (`_sdActiveTheme`), else, for a design moved from a classic style, from `sdDesign.themeFile` (`legacy-design-theme.md`).
 - "Save as theme" -> `api.php designer/theme_save`.
 
 ## Canvas CSS rules
