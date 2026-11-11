@@ -16,7 +16,7 @@ description: Plan: the tool refuses a new memory line over 500 characters and a 
   - Where the base cannot be read (no git, a shallow CI checkout) the check does not pass in silence: the CI job fetches what the compare needs.
   - An open PR that adds a long line fails once MR1 has landed: its session splits the line.
   - Tests in `tests/memory_index_test.php`, the compare as a pure function: added, rewritten, unchanged, new file, a line of exactly 500. `memory-writing.md` names the check.
-- MR2 Workspace: `workspace/workspace-channel-overview.md` (17 files), `workspace-voice-overview.md` (13), `workspace-api-overview.md` (11). The first to go: the documentation pages are written from overviews (`workflow/user-docs-pages.md`).
+- MR2 Workspace (done, #8738): `workspace/workspace-channel-overview.md` (17 files), `workspace-voice-overview.md` (13), `workspace-api-overview.md` (11). The first to go: the documentation pages are written from overviews (`workflow/user-docs-pages.md`).
 - MR3 `commerce/carrier-label-overview.md` (13), `ui/settings-modal-overview.md` (12), `data/db-q-overview.md` (28).
 - MR4 Designer: `designer/designer-canvas-overview.md` (11), `widget-default-overview.md` (12), `design-template-overview.md` (100; an overview is no template step, the pause of the template plans does not hold it).
   - Done in #8743.
