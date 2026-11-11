@@ -23845,6 +23845,50 @@ select.pg-list-table-field option.private {
   justify-content: flex-end;
   text-align: right;
 }
+/* Pages: rows of name, address, type and date; a chip per page type group;
+   a page in an archived folder or in the Recycle Bin greyed with its mark. */
+.pg-picker-is-pages.pg-picker-is-list :is(.pg-picker-head, .pg-picker-item:not(.pg-picker-folder-row)) {
+  grid-template-columns: minmax(12rem, 3fr) minmax(8rem, 2fr) minmax(7rem, 1.2fr) 9.5rem;
+}
+.pg-picker-is-pages.pg-picker-is-list .pg-picker-item {
+  grid-template-areas: "name address type modified";
+}
+.pg-picker-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0 1rem 0.5rem;
+}
+.pg-picker-chips[hidden] {
+  display: none;
+}
+.pg-picker-name-line {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.pg-picker-mark {
+  flex: 0 0 auto;
+  padding: 0.05rem 0.45rem;
+  border-radius: var(--pg-radius-pill);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+.pg-picker-mark.is-archived {
+  background: var(--pg-warning-bg-subtle);
+  color: var(--pg-warning-fg-emphasis);
+}
+.pg-picker-mark.is-binned {
+  background: var(--pg-danger-bg-subtle);
+  color: var(--pg-danger-fg-emphasis);
+}
+.pg-picker-item.is-marked {
+  cursor: default;
+}
+.pg-picker-item.is-marked :is(.pg-picker-thumb, .pg-picker-name, .pg-picker-col) {
+  opacity: 0.6;
+}
 .pg-picker .dialog-footer {
   flex-wrap: nowrap;
   padding: 0.75rem 1.25rem;
@@ -24186,6 +24230,23 @@ select.pg-list-table-field option.private {
 .pg-picker-sheet.pg-picker-is-list .pg-picker-head > :not(:first-child, :nth-child(3)),
 .pg-picker-sheet.pg-picker-is-list .pg-picker-item > .pg-picker-col:not(:nth-child(4)) {
   display: none;
+}
+/* A page row on the phone is its name over its address and type. */
+.pg-picker-sheet.pg-picker-is-pages.pg-picker-is-list :is(.pg-picker-head, .pg-picker-item:not(.pg-picker-folder-row)) {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "name";
+}
+.pg-picker-sheet.pg-picker-is-pages.pg-picker-is-list .pg-picker-head > :not(:first-child),
+.pg-picker-sheet.pg-picker-is-pages.pg-picker-is-list .pg-picker-item > .pg-picker-col {
+  display: none;
+}
+.pg-picker-sheet.pg-picker-is-pages.pg-picker-is-list .pg-picker-item .pg-picker-meta {
+  display: block;
+}
+.pg-picker-sheet .pg-picker-chips {
+  flex-wrap: nowrap;
+  padding: 0 0.75rem 0.5rem;
+  overflow-x: auto;
 }
 .pg-picker-sheet .dialog-footer {
   padding: 0.65rem 1rem;
