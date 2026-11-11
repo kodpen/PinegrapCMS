@@ -4332,6 +4332,137 @@ function pg_image_editor_animation_open($file_id, $user)
 }
 
 /**
+ * The clips and sounds of a document that name a file of the site: each
+ * video layer (in doc.layers and in a closed scene's layers) and each entry
+ * of doc.sounds with a fileId. Pure.
+ *
+ * @param mixed $doc the object decode of a document
+ * @return array the objects, as they are in $doc (src and fileId set)
+ */
+function pg_image_editor_doc_media($doc)
+{
+    $list = array();
+
+    if (!is_object($doc)) {
+        return $list;
+    }
+
+    $rows = array();
+
+    if (isset($doc->layers) && is_array($doc->layers)) {
+        $rows[] = $doc->layers;
+    }
+
+    if (isset($doc->scenes) && is_array($doc->scenes)) {
+        foreach ($doc->scenes as $scene) {
+            if (is_object($scene) && isset($scene->layers) && is_array($scene->layers)) {
+                $rows[] = $scene->layers;
+            }
+        }
+    }
+
+    foreach ($rows as $layers) {
+        foreach ($layers as $layer) {
+            if (is_object($layer) && isset($layer->type) && ($layer->type === 'video')) {
+                $list[] = $layer;
+            }
+        }
+    }
+
+    if (isset($doc->sounds) && is_array($doc->sounds)) {
+        foreach ($doc->sounds as $sound) {
+            if (is_object($sound)) {
+                $list[] = $sound;
+            }
+        }
+    }
+
+    return array_values(array_filter($list, function ($item) {
+        return isset($item->fileId, $item->src) && is_numeric($item->fileId) && ((int) $item->fileId > 0) && is_string($item->src);
+    }));
+}
+
+/**
+ * A document's clips and sounds pointed at their files' addresses now, by
+ * fileId: a source renamed in Files after the save keeps playing when the
+ * project opens again. A file not in $urls keeps the address it was saved
+ * with. Changes $doc. Pure.
+ *
+ * @param mixed $doc  the object decode of a document
+ * @param array $urls file id => its address (pg_image_editor_sound_rows()'s url)
+ * @return int how many addresses changed
+ */
+function pg_image_editor_doc_media_named($doc, $urls)
+{
+    $changed = 0;
+
+    foreach (pg_image_editor_doc_media($doc) as $item) {
+        $id = (int) $item->fileId;
+
+        if (isset($urls[$id]) && is_string($urls[$id]) && ($urls[$id] !== '') && ($item->src !== $urls[$id])) {
+            $item->src = $urls[$id];
+            $changed++;
+        }
+    }
+
+    return $changed;
+}
+
+/**
+ * The addresses of a reopened document's clips and sounds, read again from
+ * Files: only video and sound files the opener could pick in the editor
+ * (pg_image_editor_sound_where(): not in the Recycle Bin, no ERP document,
+ * a role-3 user's folders). One query for the whole document.
+ *
+ * @param mixed $doc changed in place
+ * @return mixed $doc
+ */
+function pg_image_editor_doc_media_fresh($doc, $user)
+{
+    $ids = array_values(array_unique(array_map(function ($item) { return (int) $item->fileId; }, pg_image_editor_doc_media($doc))));
+
+    if (!$ids) {
+        return $doc;
+    }
+
+    $types = array_merge(pg_image_editor_clip_types(), pg_image_editor_sound_types());
+    $folders = ((int) $user['role'] === 3) ? get_folders_that_user_has_access_to($user['id']) : null;
+    $where = pg_image_editor_sound_where('', $folders, pg_recycle_bin_folder_ids(), null, $types);
+    $rows = ($where === null) ? array() : db_items(
+        "SELECT id, name, type, folder, size
+        FROM files
+        WHERE $where AND (id IN ('" . implode("', '", $ids) . "'))");
+    $urls = array();
+
+    foreach (pg_image_editor_sound_rows(is_array($rows) ? $rows : array(), $folders, $types) as $file) {
+        $urls[$file['id']] = $file['url'];
+    }
+
+    pg_image_editor_doc_media_named($doc, $urls);
+
+    return $doc;
+}
+
+/**
+ * Whether a file's newest version is a video project the editor saved: a
+ * row action animation wrote (its server-side source) whose document names
+ * an MP4 or WebM. The File Manager offers Image Editor on such a video; the
+ * open itself checks the bytes too (pg_image_editor_animation_file()). Pure.
+ *
+ * @param array|null $newest pg_file_versions_newest()
+ */
+function pg_image_editor_video_project($newest)
+{
+    if (!is_array($newest) || !isset($newest['source'], $newest['doc_json']) || ((string) $newest['source'] !== pg_image_editor_animation_source())) {
+        return false;
+    }
+
+    $animation = pg_image_editor_animation_of($newest['doc_json']);
+
+    return $animation && in_array($animation['format'], array('mp4', 'webm'), true);
+}
+
+/**
  * Action animation: the file the browser encoded, sent after the request's
  * line as it is (pg_image_editor_binary_body()), saved into Files.
  *
