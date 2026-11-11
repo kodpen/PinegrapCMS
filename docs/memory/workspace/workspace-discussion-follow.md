@@ -8,7 +8,7 @@ description: The assistant a discussion follows (ws_threads.follow_agent, step 1
 - Pinegrap AI asked with an MCP server's tools is followed as `ai`: later messages ask it without the server's tools.
 
 ## When is it set?
-- `ws_thread_start()`: the discussion is about an assistant's answer (its app, or an MCP agent's answer found by `reply_message_id`) or a request to one (`ws_thread_message_agent()`). Answer 5 of #2419.
+- `ws_thread_start()`: the discussion is about an assistant's answer (its app, an MCP agent's or a registry agent's answer found by `reply_message_id`) or a request to one (`ws_thread_message_agent()`). Answer 5 of #2419.
 - `ws_message_ask_assistants()`: an agent asked by name or by replying to its answer becomes the followed one; of several, the last (`ws_thread_agents_asked()`, order Claude, then MCP agent or Pinegrap AI, then registry agents by id). Answer 3a.
 - Anybody in the discussion may stop it or bring it back (answer 4a, PR #2997): workspace-discussion-follow-screen.md.
 - Channels never follow: there only `@name`, `/name` or a reply to an answer asks an assistant (owner, 2026-10-21, Slack's way).
