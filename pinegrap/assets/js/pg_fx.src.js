@@ -22,10 +22,15 @@
  *     and stays there; a node that cannot get that far (the page's last
  *     strip) gets there at the page's end. Played with parallax, once per
  *     frame; without the script the node simply shows as it is.
+ *   • count: the first number in the node's text shows as zero until the
+ *     node is seen, then counts up to the number the markup holds over the
+ *     duration, after the delay, keeping its group and decimal separators,
+ *     its decimals and the words around it; at the end the text is the
+ *     markup's again. Without the script the number simply shows.
  *
  * CSS transitions only. Under prefers-reduced-motion nothing moves (sticky
- * still sticks, a scroll effect shows its own state); turned on while the
- * page is open, every node is put back.
+ * still sticks, a scroll effect shows its own state, a number does not
+ * count); turned on while the page is open, every node is put back.
  * The node's own opacity, transform and transition are kept and restored.
  *
  * window.pgFxBind(root) binds the nodes under root that are not bound yet
@@ -36,7 +41,9 @@
  * The editor's canvas loads the same file with window.pgFxEditing set: it
  * redraws its body on every change, and only the nodes there when the file
  * starts play their entrance; a node drawn again later shows in place
- * (the Interactions section's Play button replays it). A paused canvas
+ * (the Interactions section's Play button replays it), and a press on a
+ * counting number shows it at once, so an edit never takes a number half
+ * counted. A paused canvas
  * answers prefers-reduced-motion with "reduce", so nothing moves there. Plain ES5 and no jQuery:
  * it has to work whatever the design loads.
  *
@@ -56,7 +63,7 @@
 
     // The same names, ranges and defaults as pg_fx_normalize().
     var EFFECTS  = ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
-        'scroll-zoom', 'scroll-fade', 'scroll-rise'];
+        'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count'];
     var TRIGGERS = ['view', 'load', 'hover', 'click'];
     var EASINGS  = ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'];
     var NUMBERS  = {
@@ -65,6 +72,8 @@
     };
     // The start of a scroll-linked effect, as pg_fx_scroll_from().
     var FROM = { 'scroll-zoom': [25, 200, 80], 'scroll-fade': [0, 100, 0], 'scroll-rise': [0, 400, 80] };
+    // The duration and delay of a count, as pg_fx_count_numbers().
+    var COUNT = { duration: [100, 5000, 2000], delay: [0, 5000, 0] };
 
     // The options of a node from its attributes; get(name) answers an
     // attribute's value or null. null when the effect is unknown.
@@ -79,6 +88,12 @@
         if (effect === 'sticky') { o.offset = num('offset'); return o; }
         if (effect === 'parallax') { o.speed = num('speed'); return o; }
         if (FROM[effect]) { o.from = num('from', FROM[effect]); o.scroll = true; return o; }
+        if (effect === 'count') {
+            o.count = true;
+            o.duration = num('duration', COUNT.duration);
+            o.delay = num('delay', COUNT.delay);
+            return o;
+        }
         var trigger = String(get('data-pg-fx-trigger') || '').toLowerCase();
         var easing = String(get('data-pg-fx-easing') || '').toLowerCase();
         o.trigger  = TRIGGERS.indexOf(trigger) !== -1 ? trigger : TRIGGERS[0];
@@ -155,9 +170,72 @@
         return s;
     }
 
+    // The first number in a text as its figures show it, or null: the run
+    // of digits with the separators between them, which tell a group mark
+    // from a decimal mark. Two kinds of mark: the last is the decimal one.
+    // One kind more than once, a space or an apostrophe: groups. One point
+    // or comma once: a decimal mark, unless three digits follow it and one
+    // to three digits but a lone 0 come before it (12,500 but 4.9, 0.125
+    // and 1234.567). Groups are three digits, or two above the last three
+    // (12,50,000); separators that make no number (1.2.3) give none.
+    // `text` is the whole text, kept for the end of the count.
+    function number(text) {
+        var m = /\d(?:[\d.,\u00a0\u202f'\u2019]*\d)?/.exec(text);
+        if (!m) return null;
+        var raw = m[0], marks = raw.replace(/\d+/g, ''), parts = raw.split(/\D/);
+        var point = '', group = '', last = marks.charAt(marks.length - 1);
+        if (parts.indexOf('') !== -1) return null;
+        var kinds = marks.split('').filter(function (c, i) { return marks.indexOf(c) === i; });
+        if (kinds.length > 2) return null;
+        if (kinds.length === 2) {
+            if (marks.indexOf(last) !== marks.length - 1 || /[\u00a0\u202f'\u2019]/.test(last)) return null;
+            point = last;
+            group = kinds[0] === last ? kinds[1] : kinds[0];
+        } else if (kinds.length === 1) {
+            if (marks.length > 1 || /[\u00a0\u202f'\u2019]/.test(last) || (parts[1].length === 3 && parts[0] !== '0' && parts[0].length <= 3)) group = last;
+            else point = last;
+        }
+        var fraction = point ? parts.pop() : '';
+        var groups = parts, sizes = [3, 3];
+        if (group) {
+            if (groups.length > 2) sizes[1] = groups[1].length;
+            if (sizes[1] < 2 || sizes[1] > 3 || groups[groups.length - 1].length !== 3 || groups[0].length > sizes[1]) return null;
+            for (var i = 1; i < groups.length - 1; i++) {
+                if (groups[i].length !== sizes[1]) return null;
+            }
+        }
+        var whole = groups.join('');
+        return {
+            text: text, prefix: text.slice(0, m.index), suffix: text.slice(m.index + raw.length),
+            value: parseFloat(whole + '.' + (fraction || '0')), decimals: fraction.length,
+            point: point, group: group, sizes: sizes,
+            // A number written with leading zeros (007) keeps its width.
+            width: whole.length > 1 && whole.charAt(0) === '0' ? whole.length : 0
+        };
+    }
+
+    // The text of a counting number at p (0 to 1) of its duration: its value
+    // eased out (fast, then slowing to the end), written as the number is;
+    // the text itself once p reaches 1.
+    function countText(n, p) {
+        if (p >= 1) return n.text;
+        var eased = 1 - Math.pow(1 - Math.max(0, p), 3);
+        var digits = (n.value * eased).toFixed(n.decimals).split('.');
+        var whole = digits[0], out = '', size = n.sizes[0];
+        while (whole.length < n.width) whole = '0' + whole;
+        if (n.group) {
+            while (whole.length > size) {
+                out = n.group + whole.slice(-size) + out;
+                whole = whole.slice(0, -size);
+                size = n.sizes[1];
+            }
+        }
+        return n.prefix + whole + out + (n.decimals ? n.point + digits[1] : '') + n.suffix;
+    }
+
     window.pgFx = {
         read: read, shift: shift, transition: transition, parallax: parallax,
-        progress: progress, scrollState: scrollState
+        progress: progress, scrollState: scrollState, number: number, countText: countText
     };
 
     if (typeof document === 'undefined') {
@@ -237,11 +315,58 @@
         });
     }
 
+    // The first number in the text under a node, in document order, with
+    // the text node that holds it (count), or null.
+    function firstNumber(node) {
+        for (var c = node.firstChild; c; c = c.nextSibling) {
+            if (c.nodeType === 3) {
+                var n = number(c.data);
+                if (n) { n.node = c; return n; }
+            } else if (c.nodeType === 1 && !/^(script|style|template)$/i.test(c.nodeName)) {
+                var inner = firstNumber(c);
+                if (inner) return inner;
+            }
+        }
+        return null;
+    }
+
+    function write(node, text) {
+        if (node.data !== text) node.data = text;
+    }
+
+    // The number back as the markup holds it; a frame still queued stops.
+    function finish(rec) {
+        if (!rec.count) return;
+        rec.run = (rec.run || 0) + 1;
+        write(rec.count.node, rec.count.text);
+    }
+
+    // Counts a node's number up from zero, one write per frame, after its
+    // delay. `force` counts whatever the motion setting (replay()); else
+    // reduced motion turned on midway shows the number at once.
+    function countUp(rec, force) {
+        var c = rec.count, o = rec.o, run = rec.run = (rec.run || 0) + 1, from = Date.now() + o.delay;
+        var frame = window.requestAnimationFrame || window.setTimeout;
+        var step = function () {
+            if (rec.run !== run) return;
+            if (!force && reduced()) { finish(rec); return; }
+            var p = (Date.now() - from) / o.duration;
+            if (p >= 1) { finish(rec); return; }
+            write(c.node, countText(c, p));
+            frame(step);
+        };
+        write(c.node, countText(c, 0));
+        frame(step);
+    }
+
     function onSeen(entries) {
         entries.forEach(function (e) {
             var rec = e.target.pgFx;
             if (!rec || reduced()) return;
-            if (e.isIntersecting) {
+            if (e.isIntersecting && rec.o.count) {
+                countUp(rec);
+                seen.unobserve(e.target);
+            } else if (e.isIntersecting) {
                 play(rec);
                 if (!rec.o.repeat) seen.unobserve(e.target);
             } else if (rec.o.repeat) {
@@ -317,6 +442,25 @@
             floatSoon();
             return;
         }
+        if (o.count) {
+            // A node drawn again by a later render in the editor shows its
+            // number; the Play button counts it.
+            if (later) return;
+            rec.count = firstNumber(el);
+            if (!rec.count) return;
+            // On the canvas a press shows the number, so an edit begun on
+            // it never takes a number half counted. Not on the page, where
+            // a finger that scrolls over the number would end its count.
+            if (window.pgFxEditing) {
+                el.addEventListener('pointerdown', function () { finish(rec); });
+                el.addEventListener('focusin', function () { finish(rec); });
+            }
+            // Zero until seen: the frame that first shows it never shows
+            // the number before the count.
+            write(rec.count.node, countText(rec.count, 0));
+            if (seen) seen.observe(el); else countUp(rec);
+            return;
+        }
         if (o.entrance && later) {
             el.classList.add('pg-fx-armed');
             return;
@@ -381,6 +525,7 @@
             rec.el.classList.remove('pg-fx-on');
             rec.y = 0;
             rec.last = null;
+            finish(rec);
             if (rec.o.effect !== 'sticky') rec.targets.forEach(restore);
         });
     }
@@ -389,10 +534,19 @@
     // or click effect there and back. The transitions are written as
     // important, so a stylesheet that stops motion (the editor's paused
     // canvas) does not cut them short; the node's own transition comes
-    // back when it is over. false when the node has no moving effect.
+    // back when it is over. A count counts from zero once more. false when
+    // the node has no moving effect or no number to count.
     function replay(el) {
         if (el && !el.pgFx) bind(el.parentNode || document);
         var rec = el && el.pgFx;
+        if (rec && rec.o.count) {
+            // A node bound by a later render has not read its number yet;
+            // its text is the markup's.
+            if (!rec.count) rec.count = firstNumber(el);
+            if (!rec.count) return false;
+            countUp(rec, true);
+            return true;
+        }
         if (!rec || !rec.o.trigger) return false;
         var o = rec.o, ts = o.entrance ? rec.targets : [el];
         var still = { opacity: '', transform: '' };

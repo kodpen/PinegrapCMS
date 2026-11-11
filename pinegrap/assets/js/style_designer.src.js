@@ -64928,18 +64928,20 @@ const StyleDesigner = (function () {
     // The lists are first-is-default; a number is [min, max, default].
     // `from` is the start of a scroll-linked effect, its range per effect
     // (pg_fx_scroll_from()): a scale or an opacity in percent, a distance
-    // in px.
+    // in px. `count` holds the duration and delay of a count, its only
+    // fields (pg_fx_count_numbers()).
     function _sdFxSpec() {
         return {
             effects: ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
-                'scroll-zoom', 'scroll-fade', 'scroll-rise'],
+                'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count'],
             triggers: ['view', 'load', 'hover', 'click'],
             easings: ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'],
             numbers: {
                 duration: [100, 5000, 600], delay: [0, 5000, 0], stagger: [0, 1000, 0],
                 distance: [0, 400, 0], offset: [0, 1000, 0], speed: [5, 100, 20]
             },
-            from: { 'scroll-zoom': [25, 200, 80], 'scroll-fade': [0, 100, 0], 'scroll-rise': [0, 400, 80] }
+            from: { 'scroll-zoom': [25, 200, 80], 'scroll-fade': [0, 100, 0], 'scroll-rise': [0, 400, 80] },
+            count: { duration: [100, 5000, 2000], delay: [0, 5000, 0] }
         };
     }
     function _sdFxNormalize(fx) {
@@ -64947,7 +64949,7 @@ const StyleDesigner = (function () {
         var spec = _sdFxSpec(), effect = fx.effect.toLowerCase();
         if (spec.effects.indexOf(effect) === -1) return null;
         var num = function (name) {
-            var r = name === 'from' ? spec.from[effect] : spec.numbers[name], v = fx[name];
+            var r = name === 'from' ? spec.from[effect] : (effect === 'count' && spec.count[name]) || spec.numbers[name], v = fx[name];
             if ((typeof v !== 'number' && typeof v !== 'string') || String(v).trim() === '' || !isFinite(Number(v))) return r[2];
             // PHP's round() rounds halves away from zero.
             v = Number(v);
@@ -64958,6 +64960,7 @@ const StyleDesigner = (function () {
         if (effect === 'sticky') { out.offset = num('offset'); return out; }
         if (effect === 'parallax') { out.speed = num('speed'); return out; }
         if (spec.from[effect]) { out.from = num('from'); return out; }
+        if (effect === 'count') { out.duration = num('duration'); out.delay = num('delay'); return out; }
         var trigger = typeof fx.trigger === 'string' ? fx.trigger.toLowerCase() : '';
         var easing = typeof fx.easing === 'string' ? fx.easing.toLowerCase() : '';
         out.trigger = spec.triggers.indexOf(trigger) !== -1 ? trigger : spec.triggers[0];
@@ -64984,7 +64987,8 @@ const StyleDesigner = (function () {
                 if (fx.easing !== spec.easings[0]) out += ' data-pg-fx-easing="' + fx.easing + '"';
                 return;
             }
-            if (fx[name] !== spec.numbers[name][2]) out += ' data-pg-fx-' + name + '="' + fx[name] + '"';
+            var def = (fx.effect === 'count' && spec.count[name]) || spec.numbers[name];
+            if (fx[name] !== def[2]) out += ' data-pg-fx-' + name + '="' + fx[name] + '"';
         });
         if (fx.from !== undefined && fx.from !== spec.from[fx.effect][2]) out += ' data-pg-fx-from="' + fx.from + '"';
         if (fx.repeat) out += ' data-pg-fx-repeat';
