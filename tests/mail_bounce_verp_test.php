@@ -232,5 +232,5 @@ function test_mail_verp_wiring()
 
 	$settings = file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail_settings.php');
 	pg_assert_contains("'reads_bounces' => !empty(\$input['reads_bounces']) ? 1 : 0", $settings);
-	pg_assert_contains("'connection_id', 'reads_bounces') as \$key", $settings);
+	pg_assert_contains("'connection_id', 'reads_bounces', 'signature') as \$key", $settings);
 }
