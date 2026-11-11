@@ -132,8 +132,6 @@ $lang_switcher = function ($class = '', $variant = 'secondary') {
     ), 'children' => array());
 };
 
-// A sample picture with a fixed seed, so the same picture comes back on
-
 // A sample picture with a fixed seed, so the same still comes back on
 // every opening until the studio puts its own frames in its place.
 $photo = function ($seed, $width, $height) {

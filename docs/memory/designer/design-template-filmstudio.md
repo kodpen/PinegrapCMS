@@ -20,7 +20,7 @@ description: Film Studio template (pinegrap-filmstudio): showreel, services, pro
 - Not built: a client review area with time-coded notes, master delivery, a live studio calendar, a cost calculator, embedding a film from a record's address.
 
 ## What is the pfm- look?
-- `pfm-brand`, `pfm-display` (condensed capitals, never on a typed name), `pfm-eyebrow`, `pfm-hero` (a radial primary wash), `pfm-lift`, `pfm-play` (the play mark over a still, grows on the card's hover), `pfm-quote`, `pfm-stat` (tabular figures); Oswald headings, Inter body. Field and section ids `fm-` (never `fs-`). 16:9 card stills, the running time on each card; no fixed date or year in the sample; no `opacity-*` on text.
+- `pfm-brand` (the name in its typed case), `pfm-display` (condensed capitals, never on a typed name), `pfm-eyebrow`, `pfm-hero` (a radial primary wash), `pfm-lift`, `pfm-play` (the play mark over a still, grows on the card's hover), `pfm-quote`, `pfm-stat` (tabular figures); Oswald headings, Inter body. Field and section ids `fm-` (never `fs-`). 16:9 card stills, the running time on each card; no fixed date or year in the sample; no `opacity-*` on text.
 - Turkish: "proje", "hizmet", "proje talebi", "stüdyo kiralama", "ekip", "ekip ilanı", "başvuru", "tanıtım filmi", "Günce"; the template is "Film Stüdyosu".
 
 ## Which tests cover it?

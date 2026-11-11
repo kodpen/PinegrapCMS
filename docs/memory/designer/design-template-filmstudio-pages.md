@@ -16,7 +16,7 @@ description: Film Studio template 2.0.0: home, services and project page on the 
 - Process, studio, crew, about, a service's steps: rows and lists rise on view; section headings fade in.
 
 ## Why do names keep their own case?
-- `pfm-display` and `text-uppercase` set capitals, and a Turkish page uppercases "i" to "İ" ([[designer-inline-text-editing]]): an English film name read "NİGHT DRİVE". So a name typed into a record or a person's name (project, crew, crew call, post, enquiry, account) carries no capitals class; a translated title or eyebrow may.
+- `pfm-display` and `text-uppercase` set capitals, and a Turkish page uppercases "i" to "İ" ([[designer-inline-text-editing]]): an English film name read "NİGHT DRİVE". So a name typed into a record or a person's name (project, crew, crew call, post, enquiry, account) carries no capitals class; a translated title or eyebrow may. The header's and footer's `pfm-brand` sets no capitals either (2.0.0): the studio's name from Site Settings keeps its typed case.
 
 ## What could the editor not do?
 - A record's credits are one long text ("Role: Name" lines), so the project page cannot draw them as `dl.pg-filmstudio-roll`: only the home's featured film rolls.

@@ -168,8 +168,10 @@ $filmstudio_css = implode("\n", array(
     '.pfm-display{font-family:var(--pg-font-heading);font-weight:600;text-transform:uppercase;letter-spacing:.02em}',
     // The small line over a title: widely spaced capitals.
     '.pfm-eyebrow{letter-spacing:.18em;font-size:.75rem}',
-    // The studio's name in the header and the footer.
-    '.pfm-brand{font-family:var(--pg-font-heading);font-weight:700;text-transform:uppercase;letter-spacing:.08em}',
+    // The studio's name in the header and the footer, in the case it was
+    // typed in Site Settings: capitals would print a dotted capital I in an
+    // English name under a Turkish page.
+    '.pfm-brand{font-family:var(--pg-font-heading);font-weight:700;letter-spacing:.02em}',
     // The home's opening band and the enquiry band: a wash of the
     // palette's subtle tones from the top corner, like a lit set.
     '.pfm-hero{background:radial-gradient(ellipse at top left,var(--bs-primary-bg-subtle),var(--bs-body-bg) 70%)}',
