@@ -198,6 +198,7 @@
         c.height = st.buf.height;
         fo.appendChild(box);
         this.clipFxStage(box, l);
+        clipFrameStage(box, l);
         st.views.push(c);
         st.nodes = st.nodes.filter(function (n) { return n.isConnected; });
         st.nodes.push(fo);
@@ -251,6 +252,32 @@
             }).join(', ') + ')' }));
         }
     };
+
+    // Picture in picture on the stage, from the numbers a save paints with
+    // (M.clipFrame()): the box rounded and cut to its corners, the border
+    // inside it, over the frame and the vignette.
+    function clipFrameStage(box, l) {
+        var f = M.clipFrame(l);
+
+        box.style.borderRadius = f.radius ? f.radius + 'px' : '';
+        box.style.overflow = f.radius ? 'hidden' : '';
+
+        if (f.border) {
+            box.appendChild(el('div', { class: 'pgie-clipedge', style: 'border: ' + f.width + 'px solid ' + f.border + '; border-radius: ' + f.radius + 'px' }));
+        }
+    }
+
+    // A rounded rectangle's path (arcTo, which every canvas has).
+    function roundPath(g, x, y, w, h, r) {
+        r = Math.max(0, Math.min(r, w / 2, h / 2));
+        g.beginPath();
+        g.moveTo(x + r, y);
+        g.arcTo(x + w, y, x + w, y + h, r);
+        g.arcTo(x + w, y + h, x, y + h, r);
+        g.arcTo(x, y + h, x, y, r);
+        g.arcTo(x, y, x + w, y, r);
+        g.closePath();
+    }
 
     // Where a stage node stands at a moment (M.clipShowAt()): hidden with
     // nothing to show; turned around its centre; while a transition runs
@@ -352,7 +379,28 @@
             }
         }
 
-        clipFxPaint(g, l, img);
+        var f = M.clipFrame(l), w = Math.abs(l.w), h = Math.abs(l.h);
+
+        // Corners cut the frame as the stage's box does; the border is drawn
+        // inside the box, as a CSS border is.
+        if (f.radius) {
+            g.save();
+            roundPath(g, -w / 2, -h / 2, w, h, f.radius);
+            g.clip();
+            clipFxPaint(g, l, img);
+            g.restore();
+        } else {
+            clipFxPaint(g, l, img);
+        }
+
+        if (f.border) {
+            g.save();
+            g.lineWidth = f.width;
+            g.strokeStyle = f.border;
+            roundPath(g, -w / 2 + f.width / 2, -h / 2 + f.width / 2, w - f.width, h - f.width, Math.max(0, f.radius - f.width / 2));
+            g.stroke();
+            g.restore();
+        }
     }
 
     // The frame with the clip's effects, centred on the origin: the colour
@@ -1203,7 +1251,7 @@
 
     Editor.prototype.clipSlider = function (l, field, label, min, max, value, show) {
         var self = this, shown = el('span', { class: 'pgie-val', text: show(value) });
-        var slider = el('input', { type: 'range', class: 'pgie-range', min: String(min), max: String(Math.max(min, max)), step: (field === 'volume') ? '1' : '100', value: String(value), 'aria-label': label });
+        var slider = el('input', { type: 'range', class: 'pgie-range', min: String(min), max: String(Math.max(min, max)), step: ((field === 'volume') || (field === 'radius')) ? '1' : '100', value: String(value), 'aria-label': label });
 
         slider.addEventListener('input', function () {
             var n = Number(slider.value), c = M.clipLayer(l), patch = {};
@@ -1252,6 +1300,7 @@
         body.appendChild(this.clipSlider(l, 'from', t('clipFrom'), 0, c.length, c.from, clock));
         body.appendChild(this.clipSlider(l, 'to', t('clipTo'), 0, c.length, c.to, clock));
         body.appendChild(this.clipSlider(l, 'start', t('soundStart'), 0, Math.max(this.motionEnd(), c.start), c.start, seconds));
+        this.clipFramePanel(body, l);
 
         var speeds = el('div', { class: 'pgie-seg pgie-clipspeeds', role: 'group', 'aria-label': t('clipSpeed') });
 
@@ -1312,6 +1361,27 @@
         }
     };
 
+    // Picture in picture: Corners (0 to half the shorter side) and Border
+    // (white, black, red, blue; the chosen one again takes it off).
+    Editor.prototype.clipFramePanel = function (body, l) {
+        var self = this, f = M.clipFrame(l), side = Math.floor(Math.min(Math.abs(l.w), Math.abs(l.h)) / 2);
+        var corners = this.clipSlider(l, 'radius', t('clipCorners'), 0, Math.max(1, side), f.radius, function (n) { return Math.round(n) + ' px'; });
+        var swatches = el('div', { class: 'pgie-swatches pgie-clipborders', role: 'group', 'aria-label': t('clipBorder') });
+
+        M.CLIP_BORDERS.forEach(function (color, i) {
+            var on = (f.border === color);
+            var b = el('button', { type: 'button', class: 'pgie-swatch' + (on ? ' on' : ''), style: 'background: ' + color, 'aria-pressed': on ? 'true' : 'false', title: t('clipBorder_' + i), 'aria-label': t('clipBorder_' + i), onclick: function () {
+                self.clipSet(l.id, { border: on ? '' : color });
+            } });
+
+            b.disabled = !!l.locked;
+            swatches.appendChild(b);
+        });
+
+        body.appendChild(corners);
+        body.appendChild(section(t('clipBorder'), swatches));
+    };
+
     // The Animate tool with one clip selected: tabs Clip and Motion (the
     // entrance, loop and exit as for any layer).
     var motionPanel = Editor.panels.motion;
@@ -1363,7 +1433,7 @@
     // the next clip on the row (or a note when no clip meets this one).
     Editor.prototype.clipFxPanel = function (body, l) {
         var self = this, fx = M.clipFx(l), grid = el('div', { class: 'pgie-clipfx' }), next = M.clipTouching(this.doc.layers, l, 1);
-        var labels = { brightness: t('adj_brightness'), contrast: t('adj_contrast'), saturation: t('adj_saturation'), temperature: t('adj_temperature'), blur: t('clipFxBlur'), vignette: t('adj_vignette') };
+        var labels = { brightness: t('adj_brightness'), contrast: t('adj_contrast'), saturation: t('adj_saturation'), temperature: t('adj_temperature'), blur: t('clipFxBlurLabel'), vignette: t('adj_vignette') };
         var reset = el('button', { type: 'button', class: 'pgie-link', text: t('clipFxReset'), onclick: function () { self.clipSet(l.id, { fx: null }); } });
 
         reset.disabled = !M.clipFxOn(l) || !!l.locked;
@@ -1396,8 +1466,8 @@
             var tr = M.sceneTransition(l.transition), kind = M.clipTransition(l) ? tr.kind : 'none';
             var kinds = el('div', { class: 'pgie-tiles pgie-skinds', role: 'radiogroup', 'aria-label': t('clipTransition') });
 
-            M.SCENE_TRANSITIONS.forEach(function (k) {
-                var on = (kind === k), b = tile('m_' + k, t('motion_' + k), function () {
+            M.CLIP_TRANSITIONS.forEach(function (k) {
+                var on = (kind === k), b = tile('m_' + k, (k === 'none') ? t('clipTransitionOff') : t('motion_' + k), function () {
                     self.clipSet(l.id, { transition: (k === 'none') ? null : { kind: k, ms: tr.ms } });
                 });
 
@@ -1426,7 +1496,7 @@
             }
         }
 
-        body.appendChild(el('p', { class: 'pgie-note', text: t('clipFxNote') }));
+        body.appendChild(el('p', { class: 'pgie-note', text: t('clipFxNote') + ' ' + t('clipFxNoteSound') }));
     };
 
     function signed(n, sign) {

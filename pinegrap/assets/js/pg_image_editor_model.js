@@ -3490,6 +3490,24 @@
         return (d > 0) ? d : 0;
     }
 
+    // Where a layer's exit ends when it has its own end on the timeline
+    // (out.at, ms, written by a drag of the exit's bar): the layer is gone
+    // from then on, and a document grown or cut by a clip edit leaves it
+    // where it is. null for an exit counted back from the document's end.
+    function motionAt0(a) {
+        var at = Number(a && a.out && a.out.kind && a.out.at);
+
+        return (at > 0) ? at : null;
+    }
+
+    // The time a layer is last drawn on a timeline of end ms: its own end
+    // (inside the timeline), else the end.
+    function layerUntil(l, end) {
+        var at = motionAt0(l && l.anim);
+
+        return (at === null) ? end : Math.min(at, end);
+    }
+
     // When each phase runs on a timeline of end ms; null for a phase the
     // layer does not have.
     function motionSpans(l, end) {
@@ -3501,7 +3519,7 @@
         }
 
         if (a.out && a.out.kind) {
-            sp.outEnd = Math.max(0, end - motionDelay(a.out));
+            sp.outEnd = (motionAt0(a) === null) ? Math.max(0, end - motionDelay(a.out)) : layerUntil(l, end);
             sp.outStart = Math.max(0, sp.outEnd - motionMs(a.out, 800));
         }
 
@@ -3616,6 +3634,11 @@
 
         sp = motionSpans(l, end);
 
+        // Past its own end a layer is not drawn.
+        if ((motionAt0(a) !== null) && (t >= sp.outEnd)) {
+            return Object.assign(st, { opacity: 0 });
+        }
+
         if ((sp.inStart !== null) && (t < sp.inEnd)) {
             p = (t - sp.inStart) / (sp.inEnd - sp.inStart);
             st = motionCompose(st, motionEnter(l, a['in'].kind, easeAt(a['in'].ease, p), a['in'].dir, t > sp.inStart));
@@ -3682,7 +3705,7 @@
 
     var MOTION = {
         MOTION_IN: MOTION_IN, MOTION_LOOP: MOTION_LOOP, MOTION_DIRS: MOTION_DIRS, MOTION_EASES: MOTION_EASES, MOTION_BASES: MOTION_BASES,
-        MOTION_MIN: MOTION_MIN, MOTION_MAX: MOTION_MAX, easeAt: easeAt, newMotion: newMotion, motionSpans: motionSpans, motionAt: motionAt,
+        MOTION_MIN: MOTION_MIN, MOTION_MAX: MOTION_MAX, easeAt: easeAt, newMotion: newMotion, motionSpans: motionSpans, motionAt: motionAt, layerUntil: layerUntil,
         docMotion: docMotion, baseAt: baseAt, hasMotion: hasMotion
     };
 
@@ -4135,7 +4158,9 @@
             return { delay: Math.round(nf), ms: Math.round(nt - nf) };
         }
 
-        return { delay: Math.round(end - nt), ms: Math.round(nt - nf) };
+        // The exit keeps where it was dropped (its own end, out.at): a clip
+        // edit that changes the document's length no longer moves it.
+        return { delay: Math.round(end - nt), ms: Math.round(nt - nf), at: Math.round(nt) };
     }
 
     var TRACKS = { TRACK_STEP: TRACK_STEP, trackBars: trackBars, trackTargets: trackTargets, trackSnap: trackSnap, trackEdit: trackEdit };
@@ -9697,6 +9722,11 @@
 
         if (a.loop && a.loop.kind) {
             need += motionDelay(a.loop) + TRACK_MIN;
+        }
+
+        // An exit with its own end needs the timeline up to there.
+        if (motionAt0(a) !== null) {
+            return Math.max(need, motionAt0(a));
         }
 
         if (a.out && a.out.kind) {

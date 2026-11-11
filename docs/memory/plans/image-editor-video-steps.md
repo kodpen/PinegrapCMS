@@ -24,7 +24,7 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
 
 - V5 (M) Effects and transitions. Done (#8667, `ui/image-editor-clip-effects.md`).
 
-- V6 (S) Pictures and animations over video. `free`.
+- V6 (S) Pictures and animations over video. Done (#8733, `ui/image-editor-clip-over.md`).
   - Layers keep their start and end on the timeline; picture in picture (a second video layer, its size and corners).
   - Also V5's Effects tab as screen 38 has it (owner 2026-11-11, #8676: "Onay; farklar sonra düzeltilsin"): the labels "Bulanıklık" and "Yok" (built: "Bulanıklaştır", "Hiçbiri"), the tiles' order (none, fade, slide, wipe, zoom), the slider rows' spacing, the note's second sentence, on the sound at a speed off 1×.
 
