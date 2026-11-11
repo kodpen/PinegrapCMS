@@ -3092,6 +3092,8 @@
     "Number: how 1234.56 is written in this language, for example 1.234,56. Date: PHP date letters (j day, n month, Y year; d and m with a leading zero). og:locale: language_COUNTRY, for example tr_TR; any other shape is cleared on save. An empty number or date box uses the language's own format.": "Sayı: 1234.56 bu dilde nasıl yazılır, örneğin 1.234,56. Tarih: PHP tarih harfleri (j gün, n ay, Y yıl; d ve m başında sıfırla). og:locale: dil_ÜLKE, örneğin tr_TR; başka bir biçim kaydederken silinir. Boş bırakılan sayı veya tarih kutusu dilin kendi biçimini kullanır.",
     "Numbered list": "Numaralı liste",
     "Numbered steps in one column": "Tek sütunda numaralı adımlar",
+    "Numbered steps in one row from left to right, each with a title and a short text.": "Soldan sağa tek sırada numaralı adımlar; her biri başlık ve kısa metin ile.",
+    "Numbered steps side by side, each with an icon, a title and a short text.": "Yan yana numaralı adımlar; her biri simge, başlık ve kısa metin ile.",
     "Numbering, default accounts and the Parasut connection.": "Numaralandırma, varsayılan hesaplar ve Paraşüt bağlantısı.",
     "Numbering, default accounts, automatic invoicing and the Parasut connection.": "Numaralandırma, varsayılan hesaplar, otomatik faturalama ve Paraşüt bağlantısı.",
     "Numbers": "Rakamlar",

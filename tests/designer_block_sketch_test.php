@@ -9,8 +9,8 @@
  * without Node); every core and family block is built as a drag builds it
  * and drawn from that tree, and none comes out empty; a row's columns are
  * drawn side by side; the drawing is kept per componentType; the hover card
- * of a block shows it, a component keeps its own drawing and an item with
- * neither shows no card.
+ * of a block shows it with the block's description line, a component keeps
+ * its own drawing and an item with neither shows no card.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -132,7 +132,8 @@ console.log(JSON.stringify({
     nullTree: _sdBlockSketch(null),
     bareTree: _sdBlockSketch({ type: 'semantic', props: { tag: 'div' }, children: [] }),
     bars: bars,
-    tipBlock: [tipBlock.indexOf(first[block.extra.componentType]) !== -1, tipBlock.indexOf('sd-pal-tip-name') !== -1],
+    tipBlock: [tipBlock.indexOf(first[block.extra.componentType]) !== -1, tipBlock.indexOf('sd-pal-tip-name') !== -1,
+               !!_sdBlockDesc(block) && tipBlock.indexOf('<div class="sd-pal-tip-desc">' + esc(_sdBlockDesc(block)) + '</div>') !== -1],
     tipCard: [tipCard.indexOf(_sdPalDrawing('card')) !== -1, tipCard.indexOf('sd-pal-tip-desc') !== -1],
     tipNone: tipNone
 }));
@@ -190,7 +191,7 @@ function test_designer_block_sketch_cache_and_hover_card()
 		return;
 	}
 	pg_assert_true($got['cached'], 'a second hover draws from the cache without building the block again');
-	pg_assert_same(array(true, true), $got['tipBlock'], 'a block\'s hover card shows its drawing and its name');
+	pg_assert_same(array(true, true, true), $got['tipBlock'], 'a block\'s hover card shows its drawing, its name and its description line');
 	pg_assert_same(array(true, true), $got['tipCard'], 'a component keeps its own drawing and description');
 	pg_assert_same('', $got['tipNone'], 'an item with neither a description nor a block drawing shows no card');
 }
