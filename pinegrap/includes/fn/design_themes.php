@@ -53,6 +53,75 @@ function pg_design_look_ready($recheck = false)
     return $cached;
 }
 
+// ── Colour mode ────────────────────────────────────────────────────────────
+//
+// A design's colour mode (style.style_color_mode, 2026.11.0, 11.0.186):
+//   ''     none: the page sets no mode and looks as it always did
+//   light  data-bs-theme="light" on <html>
+//   dark   data-bs-theme="dark" on <html>
+//   auto   the visitor's system (prefers-color-scheme), resolved in <head>
+// A visitor's own choice, made with a theme switcher and stored under
+// "pg-theme" (assets/js/pg_theme_switcher.js), wins over the design's mode;
+// the mode only fills in where the visitor has stored nothing.
+
+// The column exists (2026.11.0, 11.0.186).
+function pg_design_color_mode_ready($recheck = false)
+{
+    static $cached = null;
+    if ($cached !== null && !$recheck) return $cached;
+    $cached = function_exists('pg_schema_has') && pg_schema_has('style', 'style_color_mode');
+    return $cached;
+}
+
+// A stored or posted mode as one of the four keys; anything else is ''.
+function pg_design_color_mode_key($value)
+{
+    $value = is_scalar($value) ? strtolower(trim((string)$value)) : '';
+    return in_array($value, array('light', 'dark', 'auto'), true) ? $value : '';
+}
+
+// The inline script that puts the mode on <html> before the page paints:
+// the visitor's stored choice first, then the design's mode from
+// data-pg-color-mode; "auto" resolves to the system's and keeps following
+// it while the page is open, unless a theme switcher's engine runs on the
+// page (window.pgThemeInit): the engine follows the system itself and
+// knows when the visitor has picked a mode since.
+function pg_design_color_mode_script()
+{
+    return '<script>(function(){var d=document.documentElement,t=null,'
+         . 'm=window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)"):null;'
+         . 'try{t=localStorage.getItem("pg-theme");}catch(e){}'
+         . 'if(t!=="light"&&t!=="dark"&&t!=="auto"){t=d.getAttribute("data-pg-color-mode");}'
+         . 'if(t==="auto"){var f=function(){d.setAttribute("data-bs-theme",(m&&m.matches)?"dark":"light");},'
+         . 'g=function(){if(!window.pgThemeInit){f();}};f();'
+         . 'if(m){if(m.addEventListener){m.addEventListener("change",g);}else if(m.addListener){m.addListener(g);}}}'
+         . 'else if(t==="light"||t==="dark"){d.setAttribute("data-bs-theme",t);}})();</script>';
+}
+
+// A published page in the design's colour mode: the mode on the first
+// <html> (data-pg-color-mode, and data-bs-theme for light and dark, so the
+// page reads right without script) and the script above before </head>.
+// An empty mode, or markup without <html>, comes back unchanged.
+function pg_design_color_mode_apply($content, $mode)
+{
+    $mode = pg_design_color_mode_key($mode);
+    if ($mode === '' || !is_string($content)) return $content;
+    if (!preg_match('~<html\b[^>]*>~i', $content, $m, PREG_OFFSET_CAPTURE)) return $content;
+
+    $tag = $m[0][0];
+    // The design's mode replaces a data-bs-theme the design's own markup
+    // put on <html>.
+    $new = preg_replace('~\s+data-(?:bs-theme|pg-color-mode)\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)~i', '', $tag);
+    $attrs = ' data-pg-color-mode="' . $mode . '"';
+    if ($mode !== 'auto') $attrs .= ' data-bs-theme="' . $mode . '"';
+    $new = preg_replace('~^<html\b~i', '<html' . $attrs, $new);
+    $content = substr_replace($content, $new, $m[0][1], strlen($tag));
+
+    $script = pg_design_color_mode_script() . "\n";
+    $head = stripos($content, '</head>');
+    return ($head !== false) ? substr_replace($content, $script, $head, 0) : $content;
+}
+
 // Every built-in look, in the order they are offered. `preview` feeds the
 // small sample the editor draws on the look's card.
 function pg_design_looks()
