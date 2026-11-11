@@ -69,8 +69,10 @@ StyleDesigner.registerBlockFamily(function (kit) {
     };
     // The week strip is decoration: the words under it say it.
     var hidden = [{ name: 'aria-hidden', value: 'true' }];
-    var eyebrow = function (text) {
-        return kit.h('span', text, 'd-block mb-3 small fw-semibold text-uppercase text-primary');
+    // Small primary text keeps its contrast on bg-body only; on a tinted
+    // band the eyebrow takes another colour.
+    var eyebrow = function (text, cls) {
+        return kit.h('span', text, 'd-block mb-3 small fw-semibold text-uppercase ' + (cls || 'text-primary'));
     };
     // A line with an icon in front.
     var tick = function (icon, text, cls) {
@@ -187,7 +189,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
                             ], '5'),
                             kit.col(_sdT('Text'), [
                                 fx(kit.div('', _sdT('Body'), [
-                                    eyebrow(_sdT('The card')),
+                                    eyebrow(_sdT('The card'), 'text-body-secondary'),
                                     kit.h('h2', _sdT('Every bouquet comes with a card, written by hand'), 'display-6 fw-bold mb-3'),
                                     kit.p(_sdT('Type your message when you order: we write it out in ink and tuck the card into the flowers.'), 'lead text-body-secondary mb-4'),
                                     kit.tag('ul', 'list-unstyled d-flex flex-wrap gap-3 gap-lg-4 small mb-0', _sdT('Facts'), [
@@ -225,6 +227,11 @@ StyleDesigner.registerBlockFamily(function (kit) {
                             : kit.div('pg-florist-week bg-body-secondary', _sdT('Week'), []));
                     }
                     var head = [ kit.h('h3', name, 'h4 fw-bold mb-0') ];
+                    // The three buttons share their words; the label starts
+                    // with them and names the plan, so a list of links
+                    // tells them apart.
+                    var start = kit.btn(_sdT('Start this plan'), chosen ? 'primary' : 'outline-primary', '');
+                    start.props._attrs = [{ name: 'aria-label', value: _sdT('Start this plan: {var}', name) }];
                     if (chosen) head.push(kit.h('span', _sdT('Most chosen'), 'badge rounded-pill text-bg-primary text-wrap'));
                     return kit.tag('li', 'col', _sdT('Plan {var}', n), [
                         kit.tag('article', 'card h-100 p-4 ' + (chosen ? 'border-primary border-2 shadow-lg' : 'border-0 shadow-sm'), _sdT('Card'), [
@@ -242,9 +249,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
                             kit.tag('ul', 'list-unstyled small mb-4', _sdT('Includes'), lines.map(function (line) {
                                 return tick('bi-check2', line, 'mb-2');
                             })),
-                            kit.div('mt-auto', _sdT('Buttons'), [
-                                kit.btn(_sdT('Start this plan'), chosen ? 'primary' : 'outline-primary', '')
-                            ])
+                            kit.div('mt-auto', _sdT('Buttons'), [ start ])
                         ])
                     ]);
                 };

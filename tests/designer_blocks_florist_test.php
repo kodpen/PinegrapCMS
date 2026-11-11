@@ -129,6 +129,10 @@ function test_designer_blocks_florist_markup_from_the_file()
 	pg_assert_true(strpos($js, "kit.createNode('semantic', { tag: 'a', cssClass: 'btn btn-outline-primary rounded-pill") !== false, 'an occasion is a link');
 	pg_assert_true(strpos($js, "kit.time('14:00', '14:00', ") !== false, 'the last order time is a <time> element');
 	pg_assert_true(strpos($js, "kit.tag('ul', 'list-unstyled row row-cols-1 row-cols-lg-3 g-4 mb-0'") !== false, 'the plans are a list');
+	pg_assert_true(strpos($js, "{ name: 'aria-label', value: _sdT('Start this plan: {var}', name) }") !== false, 'each plan\'s button names its plan, so the three are told apart in a list of links');
+	// Small primary text measured under 4.5:1 on bg-body-tertiary, the card
+	// band's surface: its eyebrow takes the body's secondary colour.
+	pg_assert_true(strpos($js, "eyebrow(_sdT('The card'), 'text-body-secondary')") !== false, 'the card band\'s eyebrow is not primary text on a tinted surface');
 	pg_assert_same(0, preg_match('/autoplay|<script|setInterval|data-bs-ride/i', $js), 'nothing plays by itself');
 }
 
