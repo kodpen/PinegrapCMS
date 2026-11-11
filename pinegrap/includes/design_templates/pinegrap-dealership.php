@@ -131,9 +131,10 @@ foreach ($pages as $i => $p) {
 
 // ── The template's own look ─────────────────────────────────────────────
 // Two fonts: a firm, slightly narrow sans for the headings and the
-// prices, a clear sans for the rest.
+// prices (its light weight for the showroom's large thin type), a clear
+// sans for the rest.
 $dealership_fonts = array(
-    array('family' => 'Barlow', 'weights' => array('600', '700'), 'enabled' => true),
+    array('family' => 'Barlow', 'weights' => array('300', '600', '700'), 'enabled' => true),
     array('family' => 'Inter', 'weights' => array('400', '500', '600'), 'enabled' => true),
 );
 
@@ -155,8 +156,6 @@ $dealership_css = implode("\n", array(
     '.pdl-brand{font-family:var(--pg-font-heading);font-weight:700;letter-spacing:.02em}',
     // A price: the heading font with figures of one width.
     '.pdl-price{font-family:var(--pg-font-heading);font-variant-numeric:tabular-nums}',
-    // The home page's way in: a soft fade from the tertiary background.
-    '.pdl-hero{background-image:linear-gradient(180deg,var(--bs-tertiary-bg),var(--bs-body-bg))}',
     // Vehicle cards and body style tiles rise a little under the pointer.
     '.pdl-lift{transition:transform .2s ease,box-shadow .2s ease}',
     '.pdl-lift:hover,.pdl-lift:focus-visible,.pdl-lift:focus-within{transform:translateY(-3px);box-shadow:var(--bs-box-shadow)}',
@@ -165,7 +164,7 @@ $dealership_css = implode("\n", array(
 
 return array(
     'name'        => lang('Car Dealership'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 75,
     'icon'        => 'bi-car-front',
@@ -219,10 +218,11 @@ return array(
         'email_footer'    => array('name' => lang('Dealership E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pdl- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the rules of the palette blocks the home is
+    // built on (the Car Dealership family and CTA: Sticky Bar), then its
+    // pdl- rules, in one User Styles entry; and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $dealership_css),
+        'css'   => pg_design_template_user_styles(array('dealership-showroom', 'dealership-finder', 'dealership-ways', 'cta-sticky'), $dealership_css),
         'fonts' => json_encode($dealership_fonts),
     ),
 );
