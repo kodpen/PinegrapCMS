@@ -1,12 +1,13 @@
 ---
 name: agent-channel-wake
-description: How a session waits on the agent channel: on its request queue (every wake rule makes a request), tools/ws_wait.php for text and changes, the handles typed in it
+description: How a session waits on the agent channel: on its request queue (a person's message makes the request, an agent's not yet), tools/ws_wait.php for text and changes, the handles typed in it
 ---
 
 ## How does a session wake on the channel? (architect, 2026-11-11)
-- On its request queue. Every wake rule makes a request for the agent (`workspace/agent-doors.md`): a mention, an answer to one of its messages (rule "Replies to its messages"), a scheduled wake. Only a mention carries the `@handle`, so a waiter on the message text misses the rest: on 2026-11-11 the owner's reply to the architect was queued and shown as "Waiting for `@mimar`" while the session slept.
+- On its request queue. When a person writes, every wake rule makes a request for the agent (`workspace/agent-doors.md`): a mention, an answer to one of its messages (rule "Replies to its messages"), a scheduled wake. Only a mention carries the `@handle`, so a waiter on the message text misses the rest: on 2026-11-11 the owner's reply to the architect was queued and shown as "Waiting for `@mimar`" while the session slept.
 - `tools/ws_wait.php` has no request mode yet; step A12 of `plans/agent-channel-steps-3.md` adds it. Until it lands every check-in reads `GET /workspace/agent-requests`, and between check-ins a background loop over `tools/ws_client.php` may read the same route every 15 s (the architect's does).
 - A message to all (`@hepsi`) is no agent's handle and makes no request: for it a waiter on the text, `php tools/ws_wait.php --from=person --regex='/@hepsi\b/i' --timeout=7000`.
+- Another agent's message makes no request yet, whatever it names or answers: on 2026-11-11 the architect's message naming `@prmerge` and the merging session's reply were each seen only because someone looked. Step A14 of `plans/agent-channel-steps-4.md` changes it; until then a session that expects an agent's words also runs `php tools/ws_wait.php --from=app --regex='/@<handle>\b/i' --timeout=7000`.
 - A waiter runs with Bash `run_in_background` (timeout 7200000). It exits on a match and so wakes the session, which answers and starts it again (the text waiter with `--after-id=<last id>`); exit 3 (timeout) starts it again; each check-in makes sure they run. Waiting costs no tokens; each wake is one turn.
 - A request is answered through its own routes (brief, claim, answer), never as a plain message. The architect asks owner questions here as one-choice polls (`workspace/agent-questions.md`) and keeps its window for the rest (`architect.md`).
 
@@ -19,7 +20,7 @@ description: How a session waits on the agent channel: on its request queue (eve
 - `tools/ws_poll.php ask` / `close <poll id>` asks a one-answer question as a poll and locks it once the vote is read; wait on its message with `--changed=<message id>` (`workspace/agent-questions.md`, #8564).
 
 ## Which handles are typed?
-- `@mimar`, `@birlestirici`, `@koordinator-<account>`, `@test`, `@hepsi` (all); a text rule matches them by `--regex`. CI writes its lines into the same agent channel (owner, 2026-11-08); such a line wakes nobody until the merging session moves its cadence to the channel.
+- `@mimar`, `@prmerge` (the merging session), `@koordinator-<account>`, `@test`, `@hepsi` (all); a text rule matches them by `--regex`. CI writes its lines into the same agent channel (owner, 2026-11-08); such a line wakes nobody until the merging session moves its cadence to the channel.
 
 ## What does a session need?
-- The four `PG_WS_*` variables of its cloud environment (`agent-channel-experiment.md`), an application per account (`ADNAN Mimar` today).
+- The four `PG_WS_*` variables of its cloud environment (`agent-channel-experiment.md`), an application per session that joins (`ADNAN Mimar`, `PR Merge` today).

@@ -5,10 +5,11 @@
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, not before 2026.11.0 ships): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
 - agent-channel-steps-2.md: Steps A0-A9 of plans/agent-channel.md: registry, doors, wakes, channel memory, model assistants, risk tiers, the canvas as a tool, further doors (Claude Code plugin, per-person sessions, chat box)
 - agent-channel-steps-3.md: Steps A10 and A11 of plans/agent-channel.md: an agent waits while the message that asked it is being edited (owner, #8723), the brief's decisions list stays bounded
+- agent-channel-steps-4.md: Steps A13-A16 of plans/agent-channel.md: two applications' lines are two groups, an agent's message wakes the agents it names, the train's green without the channel report, Anthropic as a provider
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
-- bell-panel-steps.md: Steps of plans/bell-panel.md: BP1 a row is read when opened, BP2 the row drawn as the dashboard's Next up row, BP3 the filters and the search, BP4 the in-place actions and the close-out
-- bell-panel.md: Plan (owner 2026-11-11): the bell's rows drawn as the dashboard's Next up rows, module chips, unread only, asked of me, search, day headings; a row is read when it is opened; steps BP1-BP4
+- bell-panel-steps.md: Steps of plans/bell-panel.md: BP1 read when opened, BP2 the dashboard's row, BP2b the drawer and the row that fits it, BP3 the filters and the search, BP4 the in-place actions and the close-out
+- bell-panel.md: Plan (owner 2026-11-11): the bell as a drawer from the right, its rows after the dashboard's Next up rows, module chips, unread only, asked of me, search, day headings; read when opened; steps BP1-BP4
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands

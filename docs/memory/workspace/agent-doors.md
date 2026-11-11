@@ -4,7 +4,8 @@ description: The agents' request queue: wake rules make one ws_ai_requests row p
 ---
 
 ## When does a message make an agent's request?
-- `ws_message_ask_assistants()` calls `ws_agent_after_send()` (`agent_queue.php`) for every message, a person's or an application's. Each allowed `ws_channel_agents` row of an active `app` or `model` agent is matched by `ws_agent_wake_matches()`: its `@handle` as a word or its application's `<@app:N>` tag under every rule; `all` every non-empty message; `prefix` a message starting with the prefix (any case); `replies` an answer to one of the agent's own messages. Its own message never wakes it. A discussion with no own row: the channel's, by name only (`agent-discussion-reach.md`).
+- `ws_message_ask_assistants()` calls `ws_agent_after_send()` (`agent_queue.php`) for a person's message; an application's API message asks nobody (`ws_api_message_asks_assistants()`, until A14).
+- Each allowed `ws_channel_agents` row of an active `app` or `model` agent is matched by `ws_agent_wake_matches()`: its `@handle` as a word or its application's `<@app:N>` tag under every rule; `all` every non-empty message; `prefix` a message starting with the prefix (any case); `replies` an answer to one of the agent's own messages. Its own message never wakes it. A discussion with no own row: the channel's, by name only (`agent-discussion-reach.md`).
 - One row per woken agent: `ws_ai_requests.agent` = `agent:<agent id>` or `model:<agent id>` (the registry row's id; `app:<n>` is a proposal's, #8410), status queued, the channel and message, `requested_by` the writer.
 - The brakes come first (`ws_agent_brake()`): the reply chain read back through `parent_id` (`ws_agent_chain()`, agent messages counted until a person's; a message written through an OAuth connection counts as an agent's, `agent-sessions.md`) and the agent's requests of the last hour. A braked wake leaves a system line naming the agent.
 - Claude keeps its own queue and routine (`ws_claude_after_send()`); Pinegrap AI and the MCP agents too.
@@ -19,6 +20,6 @@ description: The agents' request queue: wake rules make one ws_ai_requests row p
 - A model agent's request is answered by the site (`model-assistants.md`); the screen and `ws_api_assistants_carry_on()` carry it on as Pinegrap AI's (`models` in the ask's result).
 
 ## What did the live trial show? (dev, 2026-11-10)
-- `@mimar` (application 13, registry id 2, poll door) in channel 25, row mention, tier 1. A mention picked from the @ list (stored `<@app:13>`) and `@mimar` typed as text each made one row at once: `agent` `app:2`, queued, the channel, the message, `requested_by` the writer. Under the message: "Waiting for @mimar". No knock (`door_last_knock` 0). The system line `/wake` writes names `@mimar` and woke nothing.
+- `@mimar` (application 13, registry id 2, poll door) in channel 25, row mention, tier 1. A mention picked from the @ list (stored `<@app:13>`) and `@mimar` typed as text each made one queued row at once (`agent` `app:2`). Under the message: "Waiting for @mimar". No knock (`door_last_knock` 0). The system line `/wake` writes names `@mimar` and woke nothing.
 - No watchdog closes a queued `app:` request (Claude's and a model assistant's are cancelled after a day): it waits until it is claimed.
-- The routes answered as written here when called with the agent's own key: `agent-key-trial.md`. Not tried: a knock against a real receiver. How an agent shows: `agent-shown.md`.
+- The routes answered as written here with the agent's own key: `agent-key-trial.md`. Not tried: a knock against a real receiver. How an agent shows: `agent-shown.md`.
