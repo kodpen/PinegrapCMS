@@ -47,9 +47,12 @@ StyleDesigner.registerBlockFamily(function (kit) {
         // A cake drawn from the side on a plate line: layers of sponge under
         // a band of icing; the widths follow the diameters (15, 20 and 25 cm
         // as 60, 80 and 100 per cent), so the sizes compare at a glance.
-        'pg-bakery-cake':  '.pg-bakery-cake { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 7.5rem; ' +
+        // Each layer centres itself with auto margins: a container that
+        // centred its items would shrink the editor's wrapper around a layer
+        // to nothing, and the percentage width with it.
+        'pg-bakery-cake':  '.pg-bakery-cake { display: flex; flex-direction: column; justify-content: flex-end; height: 7.5rem; ' +
                            'padding-bottom: .375rem; border-bottom: 4px solid var(--bs-border-color); } ' +
-                           '.pg-bakery-cake .pg-bakery-layer { height: 3.25rem; border-top: .625rem solid var(--bs-primary); border-radius: .75rem .75rem .25rem .25rem; ' +
+                           '.pg-bakery-cake .pg-bakery-layer { height: 3.25rem; margin-inline: auto; border-top: .625rem solid var(--bs-primary); border-radius: .75rem .75rem .25rem .25rem; ' +
                            'background-color: var(--bs-primary-bg-subtle); box-shadow: inset 0 -.5rem 0 var(--bs-secondary-bg); } ' +
                            '.pg-bakery-cake .pg-bakery-d15 { width: 60%; } .pg-bakery-cake .pg-bakery-d20 { width: 80%; } .pg-bakery-cake .pg-bakery-d25 { width: 100%; }'
     };

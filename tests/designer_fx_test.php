@@ -50,6 +50,10 @@ function _test_fx_cases()
 		'scroll rise clamped' => array('effect' => 'scroll-rise', 'from' => 9999, 'distance' => 40),
 		'scroll rise not a number' => array('effect' => 'scroll-rise', 'from' => 'far'),
 		'from on an entrance' => array('effect' => 'fade', 'from' => 50),
+		'count' => array('effect' => 'count'),
+		'count with timing' => array('effect' => 'Count', 'duration' => '1500', 'delay' => 250, 'trigger' => 'hover', 'easing' => 'linear', 'from' => 5, 'repeat' => true, 'distance' => 9),
+		'count clamped' => array('effect' => 'count', 'duration' => 99999, 'delay' => -1),
+		'count at a transition\'s duration' => array('effect' => 'count', 'duration' => 600),
 	);
 }
 
@@ -102,6 +106,73 @@ function test_designer_fx_scroll_effects()
 	pg_assert_same(' data-pg-fx="fade" data-pg-fx-trigger="view"', pg_fx_attrs(array('_fx' => array('effect' => 'fade', 'from' => 50))), 'no from on an entrance');
 	pg_assert_true(in_array('scroll-zoom', pg_fx_effects(), true) && in_array('scroll-fade', pg_fx_effects(), true) && in_array('scroll-rise', pg_fx_effects(), true), 'the effects are known');
 	pg_assert_true(strpos(pg_fx_head_style(), 'scroll') === false, 'the head style hides no scroll effect');
+}
+
+// The count effect keeps its duration (a count runs longer than a
+// transition: 2000 ms by default) and its delay, nothing else, and writes
+// no trigger, so the head style never hides the number: without the script,
+// or under reduced motion, the page shows the number its markup holds.
+function test_designer_fx_count()
+{
+	pg_assert_same(array('effect' => 'count', 'duration' => 2000, 'delay' => 0), pg_fx_normalize(array('effect' => 'count')), 'the defaults');
+	pg_assert_same(array('effect' => 'count', 'duration' => 1500, 'delay' => 250), pg_fx_normalize(array('effect' => 'Count', 'duration' => '1500', 'delay' => 250, 'trigger' => 'hover', 'easing' => 'linear', 'from' => 5, 'repeat' => true, 'distance' => 9)), 'no trigger, easing, start, repeat or distance');
+	pg_assert_same(array('effect' => 'count', 'duration' => 5000, 'delay' => 0), pg_fx_normalize(array('effect' => 'count', 'duration' => 99999, 'delay' => -1)), 'clamped');
+	pg_assert_same(' data-pg-fx="count"', pg_fx_attrs(array('_fx' => array('effect' => 'count', 'duration' => 2000))), 'the default duration is not written');
+	pg_assert_same(' data-pg-fx="count" data-pg-fx-duration="600"', pg_fx_attrs(array('_fx' => array('effect' => 'count', 'duration' => 600))), 'a transition\'s default is a count\'s own value');
+	pg_assert_same(' data-pg-fx="count" data-pg-fx-duration="1500" data-pg-fx-delay="250"', pg_fx_attrs(array('_fx' => array('effect' => 'count', 'duration' => 1500, 'delay' => 250, 'trigger' => 'hover'))));
+	pg_assert_same(' data-pg-fx="fade" data-pg-fx-trigger="view"', pg_fx_attrs(array('_fx' => array('effect' => 'fade', 'duration' => 600))), 'an entrance keeps its own default');
+	pg_assert_true(in_array('count', pg_fx_effects(), true), 'the effect is known');
+	pg_assert_true(strpos(pg_fx_head_style(), 'count') === false, 'the head style hides no number');
+}
+
+// The first number of a text as its figures show it, and the text at a
+// point of the count: zero at the start, eased (0.875 of the number half
+// way), the text itself at the end, with the group and decimal separators,
+// the decimals and the words around the number kept.
+function test_designer_fx_count_numbers()
+{
+	$texts = array(
+		'grouped with points' => '10.000+',
+		'decimal comma, prefix' => '%99,9',
+		'both separators' => '$1,234.56',
+		'grouped, a suffix' => "1.250.000 \u{20BA}",
+		'lakh groups' => '12,50,000',
+		'decimal point, a suffix' => '4.9/5',
+		'below one' => '0.125',
+		'no-break space groups' => "1\u{00A0}250 km",
+		'the first number' => '24/7',
+		'words before' => 'Since 2010',
+		'leading zeros' => '007',
+		'one comma, two digits' => '1,25',
+		'a version' => '1.2.3',
+		'two decimal marks' => '1,234.5,6',
+		'no number' => 'Many',
+	);
+	$script = 'var window = {};' . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_fx.src.js')
+		. 'var fx = window.pgFx, texts = ' . json_encode($texts) . ', out = {};'
+		. 'Object.keys(texts).forEach(function (k) { var n = fx.number(texts[k]);'
+		. ' out[k] = n ? [fx.countText(n, 0), fx.countText(n, 0.5), fx.countText(n, 1), fx.countText(n, 2)] : null; });'
+		. 'console.log(JSON.stringify(out));';
+	$got = _test_fx_node($script);
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(array('0+', '8.750+', '10.000+', '10.000+'), $got['grouped with points']);
+	pg_assert_same(array('%0,0', '%87,4', '%99,9', '%99,9'), $got['decimal comma, prefix']);
+	pg_assert_same(array('$0.00', '$1,080.24', '$1,234.56', '$1,234.56'), $got['both separators']);
+	pg_assert_same(array("0 \u{20BA}", "1.093.750 \u{20BA}", "1.250.000 \u{20BA}", "1.250.000 \u{20BA}"), $got['grouped, a suffix']);
+	pg_assert_same(array('0', '10,93,750', '12,50,000', '12,50,000'), $got['lakh groups'], 'groups of two above the last three');
+	pg_assert_same(array('0.0/5', '4.3/5', '4.9/5', '4.9/5'), $got['decimal point, a suffix']);
+	pg_assert_same(array('0.000', '0.109', '0.125', '0.125'), $got['below one'], 'a zero before the point makes it a decimal');
+	pg_assert_same(array('0 km', "1\u{00A0}094 km", "1\u{00A0}250 km", "1\u{00A0}250 km"), $got['no-break space groups']);
+	pg_assert_same(array('0/7', '21/7', '24/7', '24/7'), $got['the first number']);
+	pg_assert_same(array('Since 0', 'Since 1759', 'Since 2010', 'Since 2010'), $got['words before']);
+	pg_assert_same(array('000', '006', '007', '007'), $got['leading zeros'], 'its width kept');
+	pg_assert_same(array('0,00', '1,09', '1,25', '1,25'), $got['one comma, two digits'], 'not three digits after it: a decimal');
+	pg_assert_same(null, $got['a version'], 'separators that make no number: no count');
+	pg_assert_same(null, $got['two decimal marks']);
+	pg_assert_same(null, $got['no number']);
 }
 
 // Content, semantic and grid nodes carry the interaction after the title;
@@ -392,8 +463,15 @@ function test_designer_fx_panel()
 		. '  _sdFxSet({ effect: "fade" }, "duration", "99999"),'
 		. '  _sdFxSet({ effect: "fade" }, "repeat", true),'
 		. '  _sdFxSet({ effect: "scroll-zoom", from: 150 }, "effect", "scroll-fade"),'
-		. '  _sdFxSet({ effect: "scroll-zoom" }, "from", "150")'
-		. ' ]'
+		. '  _sdFxSet({ effect: "scroll-zoom" }, "from", "150"),'
+		. '  _sdFxSet({ effect: "fade", duration: 900, delay: 100 }, "effect", "count"),'
+		. '  _sdFxSet({ effect: "count", duration: 3000, delay: 100 }, "effect", "fade"),'
+		. '  _sdFxSet({ effect: "count" }, "duration", "1200")'
+		. ' ],'
+		. ' count: rows(propsInteractions(c("content", { contentType: "heading", _fx: { effect: "count" } }))),'
+		. ' countHtml: propsInteractions(c("content", { contentType: "paragraph", _fx: { effect: "count", duration: 1500 } })),'
+		. ' offered: [c("content", { contentType: "heading" }), c("content", { contentType: "span" }), c("content", { contentType: "link" }), c("content", { contentType: "image" }), c("semantic", {}), c("component", { componentType: "btn" }), c("semantic", { _fx: { effect: "count" } })].map(function (n) {'
+		. '  return propsInteractions(n).indexOf(\'<option value="count"\') !== -1; })'
 		. '};'
 		. 'console.log(JSON.stringify(out));';
 	$got = _test_fx_node($script);
@@ -435,6 +513,15 @@ function test_designer_fx_panel()
 	pg_assert_false(strpos($got['zoomInHtml'], 'Overflow') !== false, 'one that starts smaller does not');
 	pg_assert_same(array('effect' => 'scroll-fade', 'from' => 0), $got['set'][7], 'another scroll effect starts at its own default');
 	pg_assert_same(array('effect' => 'scroll-zoom', 'from' => 150), $got['set'][8], 'a typed start');
+	pg_assert_same(array('effect' => 'count', 'duration' => 2000, 'delay' => 100), $got['set'][9], 'a count counts for its own duration, the delay kept');
+	pg_assert_same(pg_fx_normalize(array('effect' => 'fade', 'delay' => 100)), $got['set'][10], 'and back to a transition\'s duration');
+	pg_assert_same(array('effect' => 'count', 'duration' => 1200, 'delay' => 0), $got['set'][11], 'a typed duration');
+	pg_assert_same(array('Effect', 'Duration', 'Delay'), $got['count'], 'a count: its duration and delay');
+	pg_assert_contains('data-fx="duration" min="100" max="5000" step="1" value="1500"', $got['countHtml']);
+	pg_assert_contains('<option value="count" selected>Count up</option>', $got['countHtml']);
+	pg_assert_contains('data-fx-play', $got['countHtml'], 'a count can be played on the canvas');
+	pg_assert_contains('first number in the text', $got['countHtml'], 'a note on what it counts');
+	pg_assert_same(array(true, true, true, false, false, false, true), $got['offered'], 'offered on text, kept where it is set');
 
 	pg_assert_contains("optHtml += propsInteractions(selectedNode);", $js, 'the panel shows the section');
 	pg_assert_contains("_sdFxBind(selectedNode);", $js, 'and binds it');
@@ -646,4 +733,116 @@ JS;
 	pg_assert_same(array('', true), $got['calm'], 'reduced motion: the node as it is');
 	pg_assert_same('translate3d(0,40px,0)', $got['frozen'], 'reduced motion: no frame moves a node');
 	pg_assert_same(array('rotate(2deg)', '', '', '0.5'), $got['back'], 'turned on while open: every node back to its own state');
+}
+
+// The count effect on a fake page: a number is set to zero when the script
+// binds it and counts up once it is seen, after its delay, frame by frame
+// to the text the markup holds; a node without a number is left alone; on
+// the editor's canvas a node drawn by a later render shows its number, a
+// press on a counting node shows it at once, and the Play button counts it
+// again, a press or focus during Play stopping it too (one listener per
+// node); reduced motion turned on puts every number back, and a node bound
+// under it never counts but for Play.
+function test_designer_fx_script_counts()
+{
+	$nodes = <<<'JS'
+var clock = 1000, frames = [], seenCb = null;
+Date.now = function () { return clock; };
+window.requestAnimationFrame = function (f) { frames.push(f); };
+window.IntersectionObserver = function (cb) {
+	seenCb = cb;
+	this.observe = function (e) { observed.push(e); };
+	this.unobserve = function (e) { unobserved.push(e); };
+};
+function tick(ms) { clock += ms; var f = frames; frames = []; f.forEach(function (g) { g(); }); }
+function text(s, next) { return { nodeType: 3, data: s, nextSibling: next || null }; }
+function counting(attrs, first) { var e = new El(attrs); e.nodeType = 1; e.nodeName = 'DIV'; e.firstChild = first; return e; }
+var big = counting({ 'data-pg-fx': 'count' }, text('10.000+'));
+var late = counting({ 'data-pg-fx': 'count', 'data-pg-fx-duration': '1000', 'data-pg-fx-delay': '500' }, text('%99,9'));
+var inner = text('$1,234.56');
+var nested = counting({ 'data-pg-fx': 'count' }, text('Up to ', { nodeType: 1, nodeName: 'STRONG', firstChild: inner, nextSibling: text(' saved') }));
+var words = counting({ 'data-pg-fx': 'count' }, text('Many'));
+var waiting = counting({ 'data-pg-fx': 'count' }, text('250'));
+nodes.push(big, late, nested, words, waiting);
+
+JS;
+	$steps = <<<'JS'
+var out = {};
+out.armed = [big.firstChild.data, late.firstChild.data, inner.data, words.firstChild.data, waiting.firstChild.data];
+out.observed = [big, late, nested, words, waiting].map(function (e) { return observed.indexOf(e) !== -1; });
+seenCb([{ target: big, isIntersecting: true }, { target: late, isIntersecting: true }, { target: nested, isIntersecting: true }]);
+out.unobserved = [unobserved.indexOf(big) !== -1, unobserved.indexOf(late) !== -1];
+tick(0);
+out.first = [big.firstChild.data, late.firstChild.data, inner.data];
+tick(500);
+out.delayed = late.firstChild.data;
+tick(500);
+out.half = [big.firstChild.data, late.firstChild.data, inner.data];
+tick(1000);
+out.end = [big.firstChild.data, late.firstChild.data, inner.data, frames.length];
+waiting.listeners.pointerdown[0]();
+out.pressed = waiting.firstChild.data;
+var redrawn = counting({ 'data-pg-fx': 'count' }, text('3.500'));
+nodes.push(redrawn);
+window.pgFxBind(document);
+out.redrawn = [redrawn.firstChild.data, observed.indexOf(redrawn) === -1];
+out.replay = window.pgFx.replay(redrawn);
+tick(0);
+out.replayStart = redrawn.firstChild.data;
+tick(2000);
+out.replayEnd = redrawn.firstChild.data;
+window.pgFx.replay(redrawn);
+window.pgFx.replay(redrawn);
+tick(500);
+out.replayListeners = (redrawn.listeners.pointerdown || []).length;
+if (out.replayListeners) redrawn.listeners.pointerdown[0]();
+tick(16);
+out.replayPressed = [redrawn.firstChild.data, frames.length];
+var other = counting({ 'data-pg-fx': 'count' }, text('1.250.000'));
+nodes = [other];
+window.pgFx.replay(other);
+tick(0);
+out.otherStart = other.firstChild.data;
+reducedNow = true;
+mmChange();
+out.reduced = other.firstChild.data;
+tick(16);
+out.reducedAfter = [other.firstChild.data, frames.length];
+var calm = counting({ 'data-pg-fx': 'count' }, text('42'));
+nodes.push(calm);
+window.pgFxBind(document);
+out.calm = [calm.firstChild.data, observed.indexOf(calm) === -1];
+window.pgFx.replay(calm);
+tick(0);
+out.calmPlay = calm.firstChild.data;
+if ((calm.listeners.focusin || []).length) calm.listeners.focusin[0]();
+tick(16);
+out.calmPressed = [calm.firstChild.data, frames.length];
+console.log(JSON.stringify(out));
+JS;
+	$got = _test_fx_node(_test_fx_fake_dom() . $nodes . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_fx.src.js') . $steps);
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(array('0+', '%0,0', '$0.00', 'Many', '0'), $got['armed'], 'zero until seen, the words around kept');
+	pg_assert_same(array(true, true, true, false, true), $got['observed'], 'a node without a number is not watched');
+	pg_assert_same(array(true, true), $got['unobserved'], 'counted once');
+	pg_assert_same(array('0+', '%0,0', '$0.00'), $got['first'], 'from zero');
+	pg_assert_same('%0,0', $got['delayed'], 'the delay waits');
+	pg_assert_same(array('8.750+', '%87,4', '$1,080.24'), $got['half'], 'half way, eased');
+	pg_assert_same(array('10.000+', '%99,9', '$1,234.56', 0), $got['end'], 'the number the markup holds, no frame left');
+	pg_assert_same('250', $got['pressed'], 'a press on the canvas shows the number');
+	pg_assert_same(array('3.500', true), $got['redrawn'], 'drawn by a later render: the number, not watched');
+	pg_assert_true($got['replay'], 'the Play button counts it');
+	pg_assert_same('0', $got['replayStart']);
+	pg_assert_same('3.500', $got['replayEnd']);
+	pg_assert_same(1, $got['replayListeners'], 'Play listens for a press once, however often it is pressed');
+	pg_assert_same(array('3.500', 0), $got['replayPressed'], 'a press during Play shows the number and stops the count');
+	pg_assert_same('0', $got['otherStart']);
+	pg_assert_same('1.250.000', $got['reduced'], 'reduced motion turned on: the number back');
+	pg_assert_same(array('1.250.000', 0), $got['reducedAfter'], 'and no frame writes it again');
+	pg_assert_same(array('42', true), $got['calm'], 'bound under reduced motion: never counts');
+	pg_assert_same('0', $got['calmPlay'], 'the Play button counts it still');
+	pg_assert_same(array('42', 0), $got['calmPressed'], 'and a focus on it shows the number');
 }

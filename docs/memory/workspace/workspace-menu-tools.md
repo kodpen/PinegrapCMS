@@ -19,5 +19,5 @@ description: Tools tiles and More in the Workspace list (#3817, #6281): places (
 - Owner (2026-10-30, "Menü çok karışık"; `workflow/decisions-made-workspace-5.md`): seven sections became four; the screens of a working day at a glance, the rest one click away. Owner (2026-11-03, `workflow/decisions-made-workspace-6.md`): My Tasks with the other tools, Today alone at the top.
 
 ## What was planned for the list and never built?
-- A count of overdue and today's tasks on the My Tasks tile (one more query in `ws_side_payload()`), and compact rows in the bell (the title as the link, in place of two full-width buttons under each row).
-- Owner (2026-11-11): the menu's plan is closed as built ("o plan kapanabilir"). Either of the two is a new request, not a step left over.
+- A count of overdue and today's tasks on the My Tasks tile (one more query in `ws_side_payload()`).
+- Owner (2026-11-11): the menu's plan is closed as built ("o plan kapanabilir"). The count is a new request, not a step left over.

@@ -28,9 +28,9 @@ description: Order of the polishing round after Launch: every shipped template's
 
 - Dealership: `-1` #8640 done; `-2` open.
 
-- Bakery: `-1` #8665 done; `-2` open.
+- Bakery: `-1` #8665, `-2` #8715 done.
 
-- Brewery: `-1` #8666 done, `-2` open.
+- Brewery: `-1` #8666, `-2` #8714 done.
 
 - Carrental: `-1` #8669, `-2` #8747 done.
 

@@ -163,9 +163,9 @@ function test_panel_text_size_calendar_card_bell_and_sales_map_in_rem()
 		pg_assert_same(0, preg_match('/font-size:\s*[0-9.]+px/', $rule), 'no px font-size in ' . trim(strtok($rule, '{')));
 	}
 
-	$description = panel_text_size_test_rule($css, '#notifications .list-group-item .notification-description');
-	pg_assert_contains('line-height: 0.9375rem;', $description);
-	pg_assert_contains('font-size: 0.8125rem;', $description);
+	// A bell row's title and its second line (pg_bell_row()).
+	pg_assert_contains('font-size: 0.8125rem;', panel_text_size_test_rule($css, '#notifications .pg-bell-title'));
+	pg_assert_contains('font-size: 0.75rem;', panel_text_size_test_rule($css, '#notifications .pg-bell-sub'));
 	// The one inbox is wider than the old 350px, still in rem.
 	pg_assert_contains('width: 26rem;', panel_text_size_test_rule($css, '#notifications'));
 }

@@ -3,9 +3,11 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Design template "Craft Brewery": a craft brewery with a taproom. A home
- * page with the beers, the coming taproom events, the tours and the news;
- * the beers by style with a page each and the drinkers' notes with stars,
- * the taproom with its hours, tap list and food, the about page and the
+ * page on the editor's Brewery blocks (a hero whose glass pours on load,
+ * the fresh release, the tap board and the tasting flight) with the beers,
+ * the coming taproom events, the tours and the news; the beers by style
+ * with a page each and the drinkers' notes with stars, the taproom with
+ * its tap board, hours, food and tasting flight, the about page and the
  * questions; taproom events from today on and the past ones; brewery tour
  * bookings the visitor follows from their account, with the status and
  * the brewery's answers, and private tastings booked at a free time; beer
@@ -180,7 +182,7 @@ $brewery_css = implode("\n", array(
 
 return array(
     'name'        => lang('Craft Brewery'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 129,
     'icon'        => 'bi-cup-straw',
@@ -238,10 +240,12 @@ return array(
         'email_footer' => array('name' => lang('Brewery E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pbw- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look in one User Styles entry: the rules of the
+    // Brewery blocks its home, taproom and beer page are drawn on (the
+    // glasses, the tap board, the flight's paddle, the release's sticker),
+    // then its pbw- rules; and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $brewery_css),
+        'css'   => pg_design_template_user_styles(array('brewery-hero', 'brewery-taps', 'brewery-flight', 'brewery-release'), $brewery_css),
         'fonts' => json_encode($brewery_fonts),
     ),
 );
