@@ -1,6 +1,6 @@
 ---
 name: picker-registry
-description: The picker's registry pg_picker_kinds() and endpoint picker.php (list, search, tree, resolve): kinds, request checks, paging, access rule, value states
+description: The picker's registry pg_picker_kinds() and endpoint picker.php (list, search, tree, resolve, upload): kinds, request checks, paging, access rule, value states
 module: picker
 ---
 
@@ -11,7 +11,7 @@ module: picker
 - `pg_file_picker_kinds()` is the registry's `site_icon`, `public_image` and `file` under their names; any other name stays 404 on `file_picker_search.php`, so its contract does not grow.
 
 ## What does picker.php answer?
-- GET `kind` and `request`: `list` (`folder`, `page`, `per_page`: one folder's items by name), `search` (`q`, folded match across allowed folders, paged), `tree` (`node_ids[]`, 0 the top: `{nodes:[{id, rows}]}`, rows as `pg_explorer_side_folder_row()`), `resolve` (`values[]`: each stored value with `state`).
+- GET `kind` and `request`: `list` (`folder`, `page`, `per_page`: one folder's items by name), `search` (`q`, folded match across allowed folders, paged), `tree` (`node_ids[]`, 0 the top: `{nodes:[{id, rows}]}`, rows as `pg_explorer_side_folder_row()`), `resolve` (`values[]`: each stored value with `state`). A list of a files kind also says `upload: {ok, reason}`. `upload` is a POST: `picker-upload.md`.
 - Item: `{id, value, text, type, folder}`; `value` is what a pick stores; a file item also has size, picture size, modified, access, address and picture (`picker-dialog.md`). Paged answers carry `page`, `per_page`, `more` (read one row past the page).
 - `pg_picker_request($_GET)` checks: unknown kind 404, unknown request 400 (`Invalid request.`); page size default 50, held at 100; page held at 1000; at most 25 branches and 50 values; ids whole numbers only, names up to 255 characters.
 - No session: 403 JSON before `validate_user()`. Read only, so no CSRF token (as `file_picker_search.php`); the session lock is released before answering.
