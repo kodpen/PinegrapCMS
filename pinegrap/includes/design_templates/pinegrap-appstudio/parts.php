@@ -527,7 +527,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2 fw-bold', lang('Brand'), array(
-                    $el('span', 'd-inline-flex p-2 rounded-3 bg-primary text-white lh-1', lang('Icon Box'), array($icon('bi-phone', 'fs-5'))),
+                    $el('span', 'd-inline-flex p-2 rounded-3 text-bg-primary lh-1', lang('Icon Box'), array($icon('bi-phone', 'fs-5'))),
                     $span('{{site_name}}', 'pma-brand fs-4', lang('Name')),
                 ), array('href' => '{{page:home}}')),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
@@ -637,7 +637,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $categorie
 // way to start a client project. Shared, so every page that ends with it
 // carries the same offer.
 $project_band = function () use ($el, $heading, $para, $link, $container, $row, $col) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -646,8 +646,8 @@ $project_band = function () use ($el, $heading, $para, $link, $container, $row, 
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Start a Project'), '{{page:hire}}', 'btn btn-light btn-lg rounded-pill px-4'),
-                        $link(lang('See My Apps'), '{{page:apps}}', 'btn btn-outline-light btn-lg rounded-pill px-4'),
+                        $link(lang('Start a Project'), '{{page:hire}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
+                        $link(lang('See My Apps'), '{{page:apps}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),
@@ -704,8 +704,8 @@ $app_card = function ($sample_key = 'tally') use ($el, $para, $span, $link, $ima
                 )),
                 $para($s['summary'], 'small mb-3', $bind('summary')),
                 $el('div', 'd-flex flex-wrap align-items-center gap-2 small mt-auto', lang('Meta'), array(
-                    $span($categories[$s['category']]['title'], 'badge rounded-pill text-bg-light border', lang('Category'), $bind('category')),
-                    $span($platform_title($s['platforms']), 'badge rounded-pill text-bg-light border', lang('Platforms'), $bind('platforms')),
+                    $span($categories[$s['category']]['title'], 'badge rounded-pill bg-body text-body-emphasis border', lang('Category'), $bind('category')),
+                    $span($platform_title($s['platforms']), 'badge rounded-pill bg-body text-body-emphasis border', lang('Platforms'), $bind('platforms')),
                     $el('span', 'd-inline-flex align-items-center gap-1 ms-auto', lang('Rating'), array(
                         $icon('bi-star-fill', 'text-warning'),
                         $span(number_format($s['rating'], 1), 'fw-semibold', lang('Value'), $bind('rating')),

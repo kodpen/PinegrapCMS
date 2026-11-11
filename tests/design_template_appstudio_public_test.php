@@ -211,3 +211,65 @@ function test_appstudio_press_kit_lists_every_app()
 	foreach ($d['apps'] as $key => $a) pg_assert_true(in_array($a['name'], $names, true), "press kit: $key");
 	pg_assert_same(count($d['apps']), $downloads, 'an icon to download per app');
 }
+
+// The home is built on the designer's App Studio blocks: the local bar
+// held at the top, one h1, the block classes whose rules the template
+// ships, interactions the normalizer keeps as written, and a switch whose
+// labels each point at one of its radio inputs.
+function test_appstudio_home_on_the_app_studio_blocks()
+{
+	require_once PG_FUNCTIONS_DIR . '/includes/fn/designer_fx.php';
+	$home = _test_map_load()['pages']['home'];
+	$nodes = array();
+	_test_map_nodes($home['tree'], $nodes);
+
+	$main = null;
+	foreach ($nodes as $n) if (isset($n['props']['tag']) && $n['props']['tag'] === 'main') { $main = $n; break; }
+	pg_assert_true($main !== null, 'the home has its main');
+	$bar = $main['children'][0];
+	pg_assert_same('nav', $bar['props']['tag'], 'the local bar comes first');
+	pg_assert_same(array('effect' => 'sticky', 'offset' => 0), $bar['props']['_fx'], 'and stays at the top of the window');
+
+	$classes = array();
+	$h1 = 0;
+	$fx = 0;
+	$ids = array();
+	$fors = array();
+	foreach ($nodes as $n) {
+		$p = $n['props'];
+		foreach (preg_split('/\s+/', isset($p['cssClass']) ? $p['cssClass'] : '', -1, PREG_SPLIT_NO_EMPTY) as $c) $classes[$c] = true;
+		if (isset($p['contentType'], $p['tag']) && $p['contentType'] === 'heading' && $p['tag'] === 'h1') $h1++;
+		if (isset($p['_fx'])) {
+			$fx++;
+			$norm = pg_fx_normalize($p['_fx']);
+			pg_assert_true(is_array($norm), 'a known interaction: ' . json_encode($p['_fx']));
+			foreach ($p['_fx'] as $k => $v) pg_assert_same($v, $norm[$k], 'the normalizer keeps ' . $k . ' of ' . $p['_fx']['effect']);
+		}
+		if (isset($p['_attrs'])) {
+			foreach ($p['_attrs'] as $a) {
+				if ($a['name'] === 'id' && isset($p['tag']) && $p['tag'] === 'input') $ids[] = $a['value'];
+				if ($a['name'] === 'for') $fors[] = $a['value'];
+			}
+		}
+	}
+	pg_assert_same(1, $h1, 'one h1');
+	pg_assert_true($fx >= 8, 'the home moves: ' . $fx . ' interactions');
+	pg_assert_same(3, count(array_unique($ids)), 'three app choices');
+	pg_assert_same($ids, $fors, 'each label points at its choice');
+
+	$used = array_keys($classes);
+	$block_classes = array_values(preg_grep('/^pg-appstudio-/', $used));
+	foreach (array('pg-appstudio-phone', 'pg-appstudio-tight', 'pg-appstudio-fan', 'pg-appstudio-switch', 'pg-appstudio-peek', 'pg-appstudio-figure') as $c) {
+		pg_assert_true(in_array($c, $block_classes, true), 'the home uses ' . $c);
+	}
+	pg_assert_true(!isset($classes['launch-hero']) && !preg_grep('/^pg-launch-/', $used), 'nothing of the Product Launch template');
+
+	// The template ships the rules of the blocks it names.
+	$template = file_get_contents(PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-appstudio.php');
+	pg_assert_true((bool)preg_match("/pg_design_template_user_styles\(array\(([^)]*)\)/", $template, $m), 'the template names its blocks');
+	$names = array_map(function ($s) { return trim($s, " '"); }, explode(',', $m[1]));
+	$css = pg_designer_block_css($names);
+	foreach ($block_classes as $c) {
+		pg_assert_true((bool)preg_match('/\.' . preg_quote($c, '/') . '(?![\w-])/', $css), 'the template ships a rule for ' . $c);
+	}
+}
