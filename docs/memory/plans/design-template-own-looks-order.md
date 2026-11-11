@@ -86,5 +86,7 @@ description: Order of the polishing round after Launch: every shipped template's
 
 - Marina: `-1` #8159, `-2` #8185 done.
 
+- Appstudio: `-1` in progress (owner order of 2026-11-11: bold pages in the manner of a phone maker's product page).
+
 ## Who claims what?
 - Any worker, in the order above, one step per PR; a step whose template still has an open PR on its files waits.
