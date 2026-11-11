@@ -9,7 +9,7 @@ module: designer_fx
 
 ## Where is a node's interaction kept?
 - In `props._fx` (next to `_attrs`): one effect per node. `pg_fx_normalize()` (`includes/fn/designer_fx.php`) and its twin `_sdFxNormalize()` keep the known fields in range and drop those that do not apply (no trigger or timing for sticky, parallax and the scroll-linked effects, `stagger` only for load/view, `repeat` only for view, no `distance` for fade). An unknown effect is no interaction.
-- Scroll-linked effects (B2): `scroll-zoom`, `scroll-fade`, `scroll-rise`, with only `from`, the start, whose range is per effect (`pg_fx_scroll_from()`, `_sdFxSpec().from`): scale 25–200 % (default 80), opacity 0–100 % (0), distance 0–400 px below (80).
+- Scroll-linked effects (B2 #8696): `scroll-zoom`, `scroll-fade`, `scroll-rise`, with only `from`, the start, whose range is per effect (`pg_fx_scroll_from()`, `_sdFxSpec().from`): scale 25–200 % (default 80), opacity 0–100 % (0), distance 0–400 px below (80).
 
 ## What does the page write?
 - `pg_fx_attrs()` / `_sdFxAttrs()`: `data-pg-fx="<effect>"`, `data-pg-fx-trigger`, then only values that differ from the defaults (duration 600, delay 0, easing ease-out, stagger 0, distance 0 = the script's own, offset 0, speed 20), `data-pg-fx-from` when not its effect's default, then `data-pg-fx-repeat`.

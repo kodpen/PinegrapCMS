@@ -8,7 +8,7 @@ description: What pg_fx.src.js does: entrance start states and the observer, sta
 - The node's own opacity, transform and transition are kept (`pgFxBase`) and composed with. Reduced motion: nothing moves; switched on while open, every node is put back. `window.pgFxBind(root)` binds unbound nodes; `window.pgFx` holds the pure helpers.
 
 ## How do the scroll-linked effects play?
-- scroll-zoom / scroll-fade / scroll-rise (B2 #PRNUM) run in the parallax loop `float()`, once per frame, on scroll, resize and `load`; it measures every box before writing any. Progress (`pgFx.progress()`) is 0 while the node's top is below the window and 1 once its middle reaches the window's middle; then the node keeps its own state.
+- scroll-zoom / scroll-fade / scroll-rise (B2 #8696) run in the parallax loop `float()`, once per frame, on scroll, resize and `load`; it measures every box before writing any. Progress (`pgFx.progress()`) is 0 while the node's top is below the window and 1 once its middle reaches the window's middle; then the node keeps its own state.
 - The end is never below the node's top with the page scrolled to its end (`floor` = top less the scroll left), so a node in the page's last strip finishes at the page's end instead of staying half played (the #1922 trap); one that never comes into the window counts as whole.
 - The box is measured without the scale or rise it already has (layout height, middle less the rise). A fade is a part of the node's own opacity. At its own state the node gets its own transition back, so a hover effect still eases. Reduced motion: the node shows its own state; switched on while open, it is put back.
 
