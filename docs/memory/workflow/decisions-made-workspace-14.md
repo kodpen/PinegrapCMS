@@ -24,4 +24,4 @@ description: Decisions list, workspace part 14 (2026-11-11 on): the channel soun
 - Owner (2026-11-11): "Şimdi değil, eksikler bitsin", asked in the architect's window after his question there: "artık koordinatörleri de ajan kanalımıza bağlayalım mı yoksa erken mi".
 - Not chosen: one coordinator first beside its chain (the architect's recommendation); all four at once.
 - Why they wait: the site cannot wake a cloud session by itself (a poll-door session listens with its own waiter, which ends every two hours and on a restart), the push door is untried, and a coordinator's token cost per mention is not measured. When the three are done the architect asks again. Plan: `plans/agent-channel.md`.
-- The architect's, not the owner's words (2026-11-11): step A12 (a session waits on its request queue) is done first too; without it a poll-door session misses every wake that is not a mention (`agent-channel-wake.md`).
+- The architect's, not the owner's words (2026-11-11): step A12 (a session waits on its request queue) is done first too; without it a poll-door session misses every wake that is not a mention.
