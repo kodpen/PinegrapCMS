@@ -20,6 +20,7 @@ description: Palette > Content > Video: a <video> with controls, no autoplay; it
 
 ## What may a player hold?
 - `canDrop()` Rule 7: inside `<video>` or `<audio>` only `<source>` and `<track>`. Anything else is fallback content that no current browser shows, so a heading dropped there vanished.
+- `setupInlineEditing()` skips `<video>` and `<audio>`: before #8744 a player without children showed "Double-click to edit" and a text cursor, and a double-click typed text into it.
 
 ## Where is it tested?
 - `tests/designer_video_item_test.php`: the palette item, the picker tab, the fill helpers, the panel. `tests/designer_inline_drop_test.php`: Rule 7.
