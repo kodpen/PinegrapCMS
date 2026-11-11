@@ -21,6 +21,7 @@ description: A visual design's look and colour palette (style.style_look / style
 
 ## How are palette files made?
 - The looks and palettes for product pages (`display`, `precision`, `onyx`, `silver`, `electric`): [[design-theme-product-looks]].
+- A look's small drawing in the Themes tab and on Choose a Template is drawn from its `preview` row: [[design-theme-look-drawing]].
 - Never by hand: `php tools/build_theme_palettes.php` writes `palettes/<key>.css` from `pg_design_palettes()` with the generator a custom palette uses (`pg_design_palette_css()`); `--check` reports stale files.
 
 ## Can a whole design be dark?

@@ -817,7 +817,8 @@ function pg_notification_seed_user($user_id)
 // that ended the same way, ws_bell_fold_key()) under the newest of them: that
 // line carries how many there are (fold_count) and the older ones follow it
 // right after, each with the id of the line it folds under (fold_head), drawn
-// once that line is opened. Everything else keeps its place, newest first.
+// once that line is opened, and under that line's day heading (day). Everything
+// else keeps its place, newest first.
 function pg_notification_fold($items)
 {
 	$heads = array();
@@ -842,6 +843,10 @@ function pg_notification_fold($items)
 
 		$items[$heads[$key]]['fold_count']++;
 		$items[$index]['fold_head'] = (int) $items[$heads[$key]]['id'];
+
+		if (isset($items[$heads[$key]]['day'])) {
+			$items[$index]['day'] = $items[$heads[$key]]['day'];
+		}
 		$members[$heads[$key]][] = $index;
 	}
 
@@ -860,4 +865,103 @@ function pg_notification_fold($items)
 	}
 
 	return $folded;
+}
+
+// The module a bell row belongs to, from its action: the tag at the row's left
+// and, with the dashboard's Next up rows, its colour. Shop: what the shop's
+// customers did; Accounting: the ERP's notices; Content: forms and comments;
+// Team: what the Workspace told the person; System: updates, mail, operations,
+// a custom row and anything else.
+function pg_notification_module($action)
+{
+	$action = (string) $action;
+
+	if (in_array($action, array('new_order', 'order_return', 'out_stock', 'booking_refused'), true)) {
+		return 'shop';
+	}
+
+	if (strpos($action, 'erp_') === 0) {
+		return 'erp';
+	}
+
+	if (in_array($action, array('form_submited', 'new_comment'), true)) {
+		return 'content';
+	}
+
+	if ($action === 'workspace') {
+		return 'team';
+	}
+
+	return 'system';
+}
+
+// The day heading a bell row stands under: today, yesterday or earlier, read
+// in the site's time zone (the default one when none is given). A time after
+// now counts as today. Pure: now is passed in.
+function pg_notification_day($timestamp, $now, $timezone = '')
+{
+	$timezone = (string) $timezone;
+
+	try {
+		$zone = new DateTimeZone(($timezone !== '') ? $timezone : date_default_timezone_get());
+	} catch (Exception $error) {
+		$zone = new DateTimeZone('UTC');
+	}
+
+	$day = function ($time) use ($zone) {
+		$date = new DateTime('@' . (int) $time);
+		$date->setTimezone($zone);
+
+		return $date;
+	};
+
+	$that = $day($timestamp)->format('Y-m-d');
+	$today = $day($now);
+
+	if ($that >= $today->format('Y-m-d')) {
+		return 'today';
+	}
+
+	// Noon keeps the step back on the day before when the clock moves.
+	$today->setTime(12, 0);
+	$today->modify('-1 day');
+
+	return ($that === $today->format('Y-m-d')) ? 'yesterday' : 'earlier';
+}
+
+// The one button at a bell row's right, named by the job it opens: reply to a
+// message or a comment, approve what waits on the reader, join a meeting about
+// to start (only when it has a call), show everything else. A custom row has
+// no page to open and no button (''). kind is the Workspace row's own
+// (ws_bell_describe()), join the meeting's call.
+function pg_notification_button($action, $kind = '', $join = '')
+{
+	$action = (string) $action;
+	$kind = (string) $kind;
+
+	if (($action === 'custom') || ($action === '')) {
+		return '';
+	}
+
+	if ($action === 'new_comment') {
+		return 'reply';
+	}
+
+	if ($action !== 'workspace') {
+		return 'show';
+	}
+
+	if ($kind === 'meeting_soon') {
+		return ((string) $join !== '') ? 'join' : 'show';
+	}
+
+	if (in_array($kind, array('approval_requested', 'approval_reminder'), true)) {
+		return 'approve';
+	}
+
+	if (in_array($kind, array('mention', 'thread', 'guest_message', 'question_asked', 'mail_assigned', 'mail_customer'), true)) {
+		return 'reply';
+	}
+
+	return 'show';
 }
