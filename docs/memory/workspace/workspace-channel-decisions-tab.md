@@ -4,7 +4,7 @@ description: The channel's Decisions tab draws each decision as a card of its ow
 ---
 
 ## How does the Decisions tab draw its list?
-- `loadList('ws_channel_decisions')` (workspace.js) draws each message with `messageNode()` plus Show in the conversation; `.ws-pane-decisions` is a column with a .6rem gap and each `.ws-msg` a card (border, radius, padding) whose left edge keeps the decision's or the status update's colour (`.ws-msg-decision`, `.ws-msg-status-*`).
+- `loadList('ws_channel_decisions')` (workspace.js) draws each message with `messageNode()` plus Show in the conversation; `.ws-pane-decisions` is a grid of cards (#8688, `workspace-channel-panes.md`): each `.ws-msg` a card whose start edge keeps the decision's, note's or status update's colour.
 - In the conversation the same messages keep the rhythm of the ones around them.
 
 ## Why?
