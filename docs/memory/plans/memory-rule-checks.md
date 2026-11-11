@@ -10,7 +10,7 @@ description: Plan: the tool refuses a new memory line over 500 characters and a 
 
 ## Which steps are there?
 - All S. MR1 and MR5 edit a tool and its test; MR2-MR4 are memory only (no draft claim; the open-PR check holds).
-- MR1 The tool refuses a new long line: `tools/memory_index.php`, the run and `--check`.
+- MR1 (done #8734) The tool refuses a new long line: `tools/memory_index.php`, the run and `--check`.
   - A line over 500 characters (characters, not bytes) that the branch adds or rewrites in a file under `docs/memory/` is an error naming the file and the line. A line standing word for word in the same file at the point the branch left `origin/development` (as `tools/pre_push.sh` finds it) is let through; a new or renamed file has none.
   - Generated lines are not counted; a README's hand-written key-rules block is.
   - Where the base cannot be read (no git, a shallow CI checkout) the check does not pass in silence: the CI job fetches what the compare needs.

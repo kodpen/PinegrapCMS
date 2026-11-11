@@ -155,6 +155,28 @@ $repository = dirname(__DIR__);
 $docs = $repository . '/docs';
 
 $errors = array();
+
+// The base the long-line rule compares with: --base=<commit> (tools/pre_push.sh
+// passes where the pushed branch left development), else where HEAD left
+// origin/development. Only the memory files changed since then are read.
+$base_given = '';
+foreach (array_slice($argv, 1) as $arg) {
+	if (strncmp($arg, '--base=', 7) === 0) {
+		$base_given = substr($arg, 7);
+	}
+}
+$base = memory_index_base($repository, $base_given, $base_error);
+$changed = ($base === null) ? array() : memory_index_changed_files($repository, $base);
+
+if ($base === null) {
+	$base_note = "the long-line check cannot read the base ($base_error): fetch origin/development"
+		. ' (git fetch origin development) or pass --base=<commit>';
+	if ($check) {
+		$errors[] = $base_note;
+	} else {
+		fwrite(STDERR, "Warning: $base_note; long lines were not checked.\n");
+	}
+}
 $folders = array();
 $others = array();
 $names = array();
@@ -207,6 +229,11 @@ foreach (memory_index_files($docs) as $relative) {
 			}
 			$modules[$stem] = $listed;
 		}
+	}
+
+	if ($in_memory && isset($changed['docs/' . $relative])) {
+		$errors = array_merge($errors, memory_index_long_line_errors('docs/' . $relative,
+			memory_index_long_lines($content, memory_index_git_file($repository, $base, 'docs/' . $relative))));
 	}
 
 	if ($in_memory) {
@@ -298,6 +325,13 @@ foreach ($folders as $folder => $entries) {
 
 	$relative = "memory/$folder/README.md";
 	$rules = memory_index_key_rules($docs . '/' . $relative, $error);
+
+	// Its hand-written key rules follow the long-line rule; the generated
+	// part does not.
+	if (isset($changed['docs/' . $relative]) && is_file($docs . '/' . $relative)) {
+		$errors = array_merge($errors, memory_index_long_line_errors('docs/' . $relative, memory_index_readme_long_lines(
+			(string) file_get_contents($docs . '/' . $relative), memory_index_git_file($repository, $base, 'docs/' . $relative))));
+	}
 
 	if ($rules === null) {
 		$errors[] = "docs/$relative: $error";
@@ -999,4 +1033,109 @@ function memory_index_readme_long_lines($content, $base) {
 	}
 
 	return $long;
+}
+
+/**
+ * The error lines for the long lines of one file: its path, the line
+ * number, the length and the line's start, so the line is found.
+ */
+function memory_index_long_line_errors($path, $long) {
+
+	$errors = array();
+
+	foreach ($long as $found) {
+		$errors[] = $path . ':' . $found[0] . ': a line of ' . mb_strlen($found[1], 'UTF-8') . ' characters, more than '
+			. MAX_LINE_CHARS . '; split it ("' . mb_substr($found[1], 0, 60, 'UTF-8') . '...")';
+	}
+
+	return $errors;
+}
+
+/**
+ * Runs git in $repository; its standard output (null when git is missing or
+ * fails), with every byte kept.
+ */
+function memory_index_git($repository, $args) {
+
+	$command = 'git -C ' . escapeshellarg($repository);
+	foreach ($args as $arg) {
+		$command .= ' ' . escapeshellarg($arg);
+	}
+
+	if (!function_exists('proc_open')) {
+		return null;
+	}
+
+	$process = @proc_open($command, array(1 => array('pipe', 'w'), 2 => array('pipe', 'w')), $pipes);
+
+	if (!is_resource($process)) {
+		return null;
+	}
+
+	$out = stream_get_contents($pipes[1]);
+	stream_get_contents($pipes[2]);
+	fclose($pipes[1]);
+	fclose($pipes[2]);
+
+	return (proc_close($process) === 0) ? (string) $out : null;
+}
+
+/**
+ * The commit the long-line rule compares with: $given when set, else where
+ * HEAD left origin/development. null, with $error set, when there is none
+ * (no git, no origin/development, a shallow clone without the fork point).
+ */
+function memory_index_base($repository, $given, &$error) {
+
+	$error = '';
+
+	if ($given !== '') {
+		$sha = memory_index_git($repository, array('rev-parse', '--verify', '--quiet', $given . '^{commit}'));
+		if ($sha === null || trim($sha) === '') {
+			$error = "no commit $given here";
+			return null;
+		}
+		return trim($sha);
+	}
+
+	$sha = memory_index_git($repository, array('merge-base', 'HEAD', 'origin/development'));
+
+	if ($sha === null || trim($sha) === '') {
+		$error = 'no git, or no common commit with origin/development';
+		return null;
+	}
+
+	return trim($sha);
+}
+
+/**
+ * The files changed under docs/memory since $base, committed or not, new
+ * ones included, as path => true (paths from the repository root).
+ */
+function memory_index_changed_files($repository, $base) {
+
+	$changed = array();
+	$lists = array(
+		memory_index_git($repository, array('-c', 'core.quotePath=false', 'diff', '-z', '--name-only', '--no-renames', $base, '--', 'docs/memory')),
+		memory_index_git($repository, array('-c', 'core.quotePath=false', 'ls-files', '-z', '--others', '--exclude-standard', '--', 'docs/memory')),
+	);
+
+	foreach ($lists as $list) {
+		foreach (explode("\0", (string) $list) as $path) {
+			if ($path !== '') {
+				$changed[$path] = true;
+			}
+		}
+	}
+
+	return $changed;
+}
+
+/**
+ * A file as it stood at $base, null when it did not exist there (a new or
+ * renamed file).
+ */
+function memory_index_git_file($repository, $base, $path) {
+
+	return memory_index_git($repository, array('show', $base . ':' . $path));
 }
