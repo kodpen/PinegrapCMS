@@ -86,7 +86,7 @@ description: Order of the polishing round after Launch: every shipped template's
 
 - Marina: `-1` #8159, `-2` #8185 done.
 
-- Appstudio: `-1`, `-2` open.
+- Appstudio: `-1`+`-2` #8642.
 
 ## Who claims what?
 - Any worker, in the order above, one step per PR; a step whose template still has an open PR on its files waits.
