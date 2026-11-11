@@ -8,8 +8,12 @@
  * builders and the bakery's data); returns array('pages' => ...,
  * 'widgets' => ...).
  *
- * Every figure comes from parts.php ($bakery, $opening_hours, $pickup,
- * $categories, $bakes, $cakes, $cake_sizes, $flavours, $fillings,
+ * The home and the celebration cakes are built from the palette's blocks
+ * (Bakery: Fresh from the Oven Hero, Menu: Tabs, Hours: Card, Bakery: Cake
+ * Sizes) and move through node interactions only.
+ *
+ * Every figure comes from parts.php ($bakery, $oven, $opening_hours,
+ * $pickup, $categories, $bakes, $cakes, $cake_sizes, $flavours, $fillings,
  * $wholesale_ranges, $figures, $testimonials), so a change made there
  * reaches every page here. No page here links a shop page: the template
  * stands on a site without the shop, and a cake is ordered through the
@@ -125,7 +129,200 @@ foreach ($categories as $key => $c) {
     ));
 }
 
+// The home and the celebration cakes place the palette's blocks with the
+// bakery's own data: Bakery: Fresh from the Oven Hero and Bakery: Cake
+// Sizes (assets/js/style_designer_blocks_bakery.js), Menu: Tabs and Hours:
+// Card (style_designer.js). The Bakery rules ship in User Styles from the
+// block source (pinegrap-bakery.php). Every motion is a node interaction
+// (props._fx, played by pg_fx on the site and on the canvas; nothing moves
+// under reduced motion): the template carries no script.
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+// The children of a row or a list come in one after another as they
+// scroll into view.
+$rise = function ($node, $stagger = 120) use ($fx) {
+    return $fx($node, array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => $stagger));
+};
+// A section's heading coming into view.
+$fade_in = array('effect' => 'fade', 'trigger' => 'view', 'duration' => 800);
+// A time of the day; datetime keeps the value a machine reads.
+$time = function ($value, $class, $name) use ($el, $attr) {
+    return $el('time', $class, $name, array(), array('text' => $value, '_attrs' => array($attr('datetime', $value))));
+};
+
 // ── Home ────────────────────────────────────────────────────────────────
+
+// Bakery: Fresh from the Oven Hero: when the ovens are lit, the title, the
+// two ways on and today's batches beside a tall picture of the bread, with
+// the next day's last order on a tag hung over its corner. The words rise
+// on load, the picture grows, the batches follow one by one and the tag
+// slides in last; it hangs at a slant and straightens under the pointer.
+$batches = array();
+foreach ($oven['batches'] as $b) {
+    $batches[] = $el('li', 'col', $b['name'], array(
+        $time($b['time'], 'd-block fs-4 fw-bold lh-1 mb-2', lang('Out of the Oven')),
+        $heading('h3', $b['name'], 'h6 fw-semibold mb-0'),
+    ));
+}
+$home_hero = $el('section', 'pbk-hero py-5 overflow-hidden', lang('Bakery (Fresh from the Oven Hero)'), array(
+    $container(array(
+        $row(array(
+            $col(array(
+                $fx($el('div', 'mb-5', lang('Hero Text'), array(
+                    $el('div', 'badge rounded-pill bg-primary-subtle text-primary-emphasis d-inline-flex align-items-center gap-1 mb-3', lang('Ovens Lit'), array(
+                        $icon('bi-fire'),
+                        $span(lang('Ovens lit at'), '', lang('Text')),
+                        $time($oven['lit'], '', lang('Lighting Time')),
+                    )),
+                    $heading('h1', lang('Fresh from the oven, every morning'), 'pbk-display display-3 mb-3'),
+                    $para($bakery['tagline'] . '.', 'lead text-body-secondary mb-4'),
+                    $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
+                        $link(lang('See the daily bake'), '{{page:bakes}}', 'btn btn-primary btn-lg rounded-pill px-4'),
+                        $link(lang('Order a Cake'), '{{page:cake_order}}', 'btn btn-outline-primary btn-lg rounded-pill px-4'),
+                    )),
+                )), array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 700)),
+                $el('div', '', lang('Oven Times'), array(
+                    $heading('h2', lang('Out of the oven today'), 'h6 text-uppercase fw-semibold text-body-secondary mb-3'),
+                    $fx($el('ol', 'pg-bakery-oven list-unstyled row row-cols-3 g-3 mb-0', lang('Batches'), $batches),
+                        array('effect' => 'slide-up', 'trigger' => 'load', 'delay' => 400, 'stagger' => 120)),
+                )),
+            ), '', '6'),
+            $col(array(
+                $el('div', 'pg-bakery-photo ms-lg-4', lang('Picture Frame'), array(
+                    $fx($el('div', 'ratio rounded-4 overflow-hidden shadow-lg', lang('Picture'), array(
+                        $image($photo('hero', 960, 1200), lang('Loaves of sourdough cooling on a rack beside the stone oven'), 'object-fit-cover'),
+                    )), array('effect' => 'scale', 'trigger' => 'load', 'duration' => 1000)),
+                    $fx($el('div', 'pg-bakery-hang mx-auto mt-4 mt-md-0', lang('Tag Holder'), array(
+                        $el('div', 'pg-bakery-tag text-center', lang('Tag'), array(
+                            $para(lang('Order ahead'), 'pbk-eyebrow text-uppercase fw-semibold text-primary mb-1'),
+                            $time($oven['last_order'], 'd-block display-6 fw-bold lh-1 mb-1', lang('Last Order Time')),
+                            $para(lang('Last orders for the next day'), 'fw-semibold mb-2'),
+                            $para(lang('Collected at the counter, with your name on the bag.'), 'small text-body-secondary mb-0'),
+                        )),
+                    )), array('effect' => 'slide-left', 'trigger' => 'load', 'duration' => 800, 'delay' => 700)),
+                )),
+            ), '', '6'),
+        ), '4', '', 'g-lg-5 align-items-center'),
+    )),
+));
+
+// Menu: Tabs for the counter: a tab per kind of bake with its bakes, their
+// badges and the price of one, two columns to a tab, and the way to the
+// kind's section of the daily bake. The tabs are buttons, so a bake's
+// name sits right under the section's h2.
+$counter_item = function ($b) use ($el, $heading, $para, $span, $diet_tags, $money) {
+    $kids = array(
+        $el('div', 'd-flex align-items-baseline gap-2', lang('Item Head'), array(
+            $heading('h3', $b['name'], 'h6 fw-semibold mb-0'),
+            $el('div', 'flex-grow-1 border-bottom border-secondary-subtle', lang('Leader')),
+            $span($money($b['price']), 'pbk-price fw-semibold text-nowrap', lang('Price')),
+        )),
+        $para($b['summary'], 'small text-body-secondary mb-0 mt-1'),
+    );
+    $badges = array();
+    foreach ($b['tags'] as $t) $badges[] = $span($diet_tags[$t], 'badge rounded-pill text-bg-light border', lang('Badge'));
+    if ($badges) $kids[] = $el('div', 'd-flex flex-wrap gap-1 mt-2', lang('Tags'), $badges);
+    return $el('div', 'py-2', $b['name'], $kids);
+};
+$counter_tabs = array();
+$counter_panes = array();
+$n = 0;
+foreach ($categories as $key => $c) {
+    $items = array();
+    foreach ($bakes as $b) {
+        if ($b['category'] === $key) $items[] = $counter_item($b);
+    }
+    $half = (int)ceil(count($items) / 2);
+    $pane = 'bky-counter-' . $key;
+    $counter_tabs[] = $el('li', 'nav-item', $c['title'], array(
+        $el('button', 'nav-link d-flex align-items-center gap-2' . ($n === 0 ? ' active' : ''), lang('Tab Button'), array(
+            $icon($c['icon']),
+            $span($c['title'], '', lang('Text')),
+        ), array('_attrs' => array($attr('type', 'button'), $attr('data-bs-toggle', 'pill'), $attr('data-bs-target', '#' . $pane),
+            $attr('role', 'tab'), $attr('aria-controls', $pane), $attr('aria-selected', $n === 0 ? 'true' : 'false')))),
+    ), array('_attrs' => array($attr('role', 'presentation'))));
+    $counter_panes[] = $el('div', 'tab-pane fade' . ($n === 0 ? ' show active' : ''), $c['title'], array(
+        $row(array(
+            $col(array_slice($items, 0, $half), '6'),
+            $col(array_slice($items, $half), '6'),
+        ), '4', '', 'g-lg-5'),
+        $link(lang('See what is baked'), '{{page:bakes}}#bky-cat-' . $key, 'd-inline-block small fw-semibold link-primary mt-3'),
+    ), array('id' => $pane, '_attrs' => array($attr('role', 'tabpanel'), $attr('tabindex', '0'))));
+    $n++;
+}
+$home_counter = $el('section', 'py-5', lang('Menu (Tabs)'), array(
+    $container(array(
+        $fx($el('div', 'text-center mb-4', lang('Section Header'), array(
+            $para(lang('Baked today'), 'pbk-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+            $heading('h2', lang('From the oven to the counter'), 'pbk-display h2 mb-2'),
+            $para(lang('What comes out of the oven every morning. Come early for the buns, or order ahead and collect.'), 'lead text-body-secondary mb-0'),
+        )), $fade_in),
+        $rise($el('ul', 'nav nav-pills justify-content-center flex-wrap gap-2 mb-5', lang('Menu Tabs'), $counter_tabs,
+            array('_attrs' => array($attr('role', 'tablist')))), 80),
+        $el('div', 'tab-content', lang('Menu Panes'), $counter_panes),
+        $el('div', 'text-center mt-4', lang('Buttons'), array(
+            $link(lang('The whole daily bake'), '{{page:bakes}}', 'btn btn-outline-primary rounded-pill px-4'),
+        )),
+    )),
+), $searchable('bky-home-bakes', lang('bread, sourdough, croissant, pastries, cakes, menu, prices')));
+
+// Ordering ahead beside Hours: Card: the cut-off and the way it works on
+// the left, the opening hours with the pickup window under them on the
+// right; the trade's line closes the section.
+$hours_items = array();
+foreach ($opening_hours as $h) {
+    $closed = !empty($h['closed']);
+    $hours_items[] = $el('li', 'list-group-item d-flex justify-content-between gap-3' . ($closed ? ' text-body-secondary' : ''), $h['days'], array(
+        $span($h['days'], '', lang('Days')),
+        $span($h['hours'], $closed ? 'text-end' : 'pbk-price fw-semibold text-end', lang('Hours')),
+    ));
+}
+// The hours card slides in from the right; the section clips it until it
+// arrives, so a phone never scrolls sideways.
+$home_order = $el('section', 'py-5 bg-body-tertiary overflow-hidden', lang('Order and Collect'), array(
+    $container(array(
+        $row(array(
+            $fx($col(array(
+                $para(lang('Order and Collect'), 'pbk-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+                $heading('h2', lang('Order ahead, collect it warm'), 'pbk-display display-6 mb-3'),
+                $para($pickup['bakes'], 'lead mb-2'),
+                $para($pickup['cakes'] . ' ' . $pickup['custom'], 'text-body-secondary mb-4'),
+                $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
+                    $link(lang('How Ordering Works'), '{{page:how_to_order}}', 'btn btn-primary rounded-pill px-4'),
+                    $link(lang('Visit the Bakery'), '{{page:visit}}', 'btn btn-outline-primary rounded-pill px-4'),
+                )),
+            ), '', '7'), array('effect' => 'slide-right', 'trigger' => 'view', 'duration' => 800)),
+            $fx($col(array(
+                $el('div', 'card border-0 shadow-sm', lang('Hours Card'), array(
+                    $el('div', 'card-header bg-transparent d-flex align-items-center gap-2 py-3', lang('Card Header'), array(
+                        $icon('bi-clock', 'text-primary'),
+                        $heading('h3', lang('Opening hours'), 'h5 fw-bold mb-0'),
+                    )),
+                    $el('ul', 'list-group list-group-flush', lang('Hours List'), $hours_items),
+                    $el('div', 'card-footer bg-transparent small text-body-secondary py-3', lang('Card Footer'), array(
+                        $para($pickup['window'], 'mb-0'),
+                    )),
+                )),
+            ), '', '5'), array('effect' => 'slide-left', 'trigger' => 'view', 'duration' => 800, 'delay' => 150)),
+        ), '4', '', 'g-lg-5 align-items-center'),
+    )),
+), $searchable('bky-home-order', lang('pickup, collect, pre-order, order ahead')));
+
+// The trade's line: a slim band, not a story of its own.
+$home_trade = $el('section', 'py-5', lang('Wholesale'), array(
+    $container(array(
+        $fx($el('div', 'd-flex flex-column flex-md-row align-items-md-center gap-4 p-4 p-lg-5 rounded-4 border', lang('Note'), array(
+            $icon_tile('bi-truck', 'align-self-start align-self-md-center flex-shrink-0'),
+            $el('div', 'flex-grow-1', lang('Text'), array(
+                $heading('h2', lang('Bread for your café or restaurant'), 'pbk-display h4 mb-1'),
+                $para(lang('More than twenty cafés and restaurants serve our bread and pastries, delivered every morning before they open.'), 'text-body-secondary mb-0'),
+            )),
+            $link(lang('Wholesale for businesses'), '{{page:wholesale}}', 'btn btn-outline-primary rounded-pill px-4 flex-shrink-0'),
+        )), array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 700)),
+    )),
+), $searchable('bky-home-wholesale', lang('trade, business, supply, cafés, restaurants')));
 
 $public_pages[] = array(
     'key'              => 'home',
@@ -134,79 +331,42 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('A neighbourhood bakery and patisserie: sourdough and pastries every morning, celebration cakes to order, baking classes and wholesale.'),
     'tree'             => $page(array(
-        // The way in: the bakery in a sentence, the two ways on and a photo
-        // of the morning's bread.
-        $el('section', 'pbk-hero py-5 overflow-hidden', lang('Hero'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para($bakery['region'], 'pbk-eyebrow text-uppercase fw-semibold text-primary mb-3'),
-                        $heading('h1', lang('Fresh from the oven, every morning'), 'pbk-display display-3 mb-3'),
-                        $para($bakery['tagline'] . '.', 'lead text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('See the daily bake'), '{{page:bakes}}', 'btn btn-primary btn-lg rounded-pill px-4'),
-                            $link(lang('Order a Cake'), '{{page:cake_order}}', 'btn btn-outline-primary btn-lg rounded-pill px-4'),
-                        )),
-                    ), '', '5'),
-                    $col(array(
-                        $framed($photo('hero', 1400, 1050), lang('Loaves of sourdough cooling on a rack beside the stone oven'), '4x3', false),
-                    ), '', '7'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        )),
+        $home_hero,
+        $home_counter,
 
-        $el('section', 'py-4 border-top border-bottom bg-body-tertiary', lang('Figures'), array(
-            $container(array($figure_row())),
-        )),
-
-        $el('section', 'py-5', lang('The Daily Bake'), array(
-            $container(array(
-                $section_header(lang('Baked today'), lang('From the oven to the counter'), lang('The whole daily bake'), '{{page:bakes}}'),
-                $row($category_tiles, '4'),
-            )),
-        ), $searchable('bky-home-bakes', lang('bread, sourdough, croissant, pastries, cakes, menu, prices'))),
-
+        // The cakes grow in one after another.
         $el('section', 'py-5 bg-body-tertiary', lang('Celebration Cakes'), array(
             $container(array(
-                $section_header(lang('Made to order'), lang('Cakes for the days that matter'), lang('All celebration cakes'), '{{page:cakes}}'),
-                $row($cake_cards_all, '4'),
+                $fx($section_header(lang('Made to order'), lang('Cakes for the days that matter'), lang('All celebration cakes'), '{{page:cakes}}'), $fade_in),
+                $fx($row($cake_cards_all, '4'), array('effect' => 'scale', 'trigger' => 'view', 'duration' => 700, 'stagger' => 150)),
             )),
         )),
 
         // The classes, read from the Baking Classes collection.
         $el('section', 'py-5', lang('Baking Classes'), array(
             $container(array(
-                $section_header(lang('Learn with us'), lang('Bake at the long table'), lang('All baking classes'), '{{page:classes}}'),
+                $fx($section_header(lang('Learn with us'), lang('Bake at the long table'), lang('All baking classes'), '{{page:classes}}'), $fade_in),
                 $widget('home_classes'),
             )),
         )),
 
-        $story_band('bky-home-order', lang('Order and Collect'), lang('Order ahead, collect it warm'),
-            array($pickup['bakes'] . ' ' . $pickup['window']),
-            $photo('home-order', 1200, 900), lang('Paper bags of pastries waiting at the counter with names on them'), true,
-            array($link(lang('How Ordering Works'), '{{page:how_to_order}}', 'btn btn-outline-primary rounded-pill px-4')),
-            lang('pickup, collect, pre-order, order ahead'), 'py-5 bg-body-tertiary'),
-
-        $story_band('bky-home-wholesale', lang('Wholesale'), lang('Bread for your café or restaurant'),
-            array(lang('More than twenty cafés and restaurants serve our bread and pastries, delivered every morning before they open.')),
-            $photo('home-wholesale', 1200, 900), lang('Crates of loaves stacked by the door, ready for the morning round'), false,
-            array($link(lang('Wholesale for businesses'), '{{page:wholesale}}', 'btn btn-outline-primary rounded-pill px-4')),
-            lang('trade, business, supply, cafés, restaurants')),
+        $home_order,
+        $home_trade,
 
         // What customers say: sample words for the bakery to replace, and
         // beside them its own Google reviews, which show once Google Reviews
         // is set up under Site Settings.
         $el('section', 'py-5 bg-body-tertiary', lang('Customer Stories'), array(
             $container(array(
-                $section_header(lang('Our customers'), lang('What our customers say')),
-                $row($testimonial_cols, '4'),
+                $fx($section_header(lang('Our customers'), lang('What our customers say')), $fade_in),
+                $rise($row($testimonial_cols, '4')),
                 $widget('google_reviews'),
             )),
         )),
 
         $el('section', 'py-5', lang('From the Bakery'), array(
             $container(array(
-                $section_header(lang('Journal'), lang('Notes from the bakehouse'), lang('All notes'), '{{page:blog}}'),
+                $fx($section_header(lang('Journal'), lang('Notes from the bakehouse'), lang('All notes'), '{{page:blog}}'), $fade_in),
                 $widget('home_posts'),
             )),
         )),
@@ -233,7 +393,7 @@ $public_pages[] = array(
         )),
         $el('section', 'py-5', lang('Bakes'), array(
             $container(array(
-                $row($bake_cols, '4'),
+                $rise($row($bake_cols, '4'), 150),
             )),
         )),
         $el('section', 'py-5 bg-body-tertiary', lang('Good to Know'), array(
@@ -256,15 +416,44 @@ $public_pages[] = array(
 );
 
 // ── Celebration cakes ───────────────────────────────────────────────────
-// The cakes, each opening the cake order with it chosen; the sizes, the
-// sponges and the fillings a cake order chooses from.
-$size_rows = array();
-foreach ($cake_sizes as $s) {
-    $size_rows[] = $el('li', 'd-flex justify-content-between gap-3 py-2 border-bottom', $s['title'], array(
-        $span($s['title'], 'fw-semibold', lang('Size')),
-        $span($s['servings'], 'text-body-secondary text-end', lang('Servings')),
+// The cakes, each opening the cake order with it chosen; then Bakery: Cake
+// Sizes: each size drawn to scale with how many it serves and the price it
+// starts at, the sponges and the fillings a cake order chooses from, and
+// how far ahead to ask. The cakes grow in one by one, so do the sizes.
+// The layers of each size's drawing, from the top down.
+$size_layers = array(
+    'small'  => array('pg-bakery-d15'),
+    'medium' => array('pg-bakery-d20'),
+    'large'  => array('pg-bakery-d25'),
+    'tiered' => array('pg-bakery-d15', 'pg-bakery-d25'),
+);
+$size_items = array();
+foreach ($cake_sizes as $key => $s) {
+    $layers = array();
+    foreach ($size_layers[$key] as $w) $layers[] = $el('div', 'pg-bakery-layer ' . $w, lang('Cake Layer'));
+    $size_items[] = $el('li', 'col', $s['title'], array(
+        $el('div', 'h-100 p-4 rounded-4 bg-body-tertiary', lang('Size Card'), array(
+            $el('div', 'pg-bakery-cake mb-3', lang('Drawing'), $layers, array('_attrs' => array($attr('aria-hidden', 'true')))),
+            $heading('h3', $s['title'], 'h5 fw-bold mb-1'),
+            $el('div', 'd-flex align-items-center gap-2 text-body-secondary mb-3', lang('Servings'), array(
+                $icon('bi-people'),
+                $span($s['servings'], '', lang('Text')),
+            )),
+            $el('div', 'd-flex flex-wrap align-items-baseline gap-2', lang('Price'), array(
+                $span(lang('Starting from'), 'small text-body-secondary', lang('Text')),
+                $span($money($s['price']), 'pbk-price fs-4 fw-bold', lang('Price')),
+            )),
+        )),
     ));
 }
+$choice_col = function ($title, $items) use ($el, $heading, $span, $col) {
+    $pills = array();
+    foreach ($items as $text) $pills[] = $el('li', 'rounded-pill border px-3 py-1', $text, array($span($text, '', lang('Text'))));
+    return $col(array(
+        $heading('h3', $title, 'h5 fw-bold mb-3'),
+        $el('ul', 'list-unstyled d-flex flex-wrap gap-2 mb-0', lang('Choices'), $pills),
+    ), '', '6');
+};
 
 $public_pages[] = array(
     'key'              => 'cakes',
@@ -278,44 +467,53 @@ $public_pages[] = array(
         )),
         $el('section', 'py-5', lang('Our Cakes'), array(
             $container(array(
-                $row($cake_cards_all, '4'),
+                $fx($row($cake_cards_all, '4'), array('effect' => 'scale', 'trigger' => 'view', 'duration' => 700, 'stagger' => 150)),
             )),
         ), $searchable('bky-cakes', lang('birthday cake, wedding cake, custom cake, prices'))),
-        $el('section', 'py-5 bg-body-tertiary', lang('Sizes and Flavours'), array(
+        $el('section', 'py-5 border-top', lang('Bakery (Cake Sizes)'), array(
             $container(array(
-                $row(array(
+                $fx($row(array(
                     $col(array(
-                        $heading('h2', lang('Sizes'), 'pbk-display h4 mb-3'),
-                        $el('ul', 'list-unstyled mb-0', lang('Sizes'), $size_rows),
-                    ), '6', '4'),
+                        $para(lang('Sizes'), 'pbk-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+                        $heading('h2', lang('How big should the cake be?'), 'pbk-display display-5 mb-0'),
+                    ), '', '7'),
                     $col(array(
-                        $heading('h2', lang('Sponges'), 'pbk-display h4 mb-3'),
-                        $check_list($flavours),
-                    ), '6', '4'),
-                    $col(array(
-                        $heading('h2', lang('Fillings'), 'pbk-display h4 mb-3'),
-                        $check_list($fillings),
-                    ), '6', '4'),
-                ), '4', '', 'g-lg-5'),
+                        $para(lang('Choose the size by how many it should serve, then the sponge and the filling. Every cake is baked for its day.'), 'lead text-body-secondary mb-0'),
+                    ), '', '5'),
+                ), '4', '', 'align-items-end mb-5'), $fade_in),
+                $fx($el('ol', 'list-unstyled row row-cols-2 row-cols-lg-4 g-3 g-lg-4 mb-5', lang('Sizes'), $size_items),
+                    array('effect' => 'scale', 'trigger' => 'view', 'duration' => 700, 'stagger' => 150)),
+                $fx($el('div', '', lang('Choices and Order'), array(
+                    $row(array(
+                        $choice_col(lang('Sponges'), $flavours),
+                        $choice_col(lang('Fillings'), $fillings),
+                    ), '4', '', 'mb-4'),
+                    $el('div', 'd-flex flex-column flex-md-row align-items-md-center gap-3 p-4 rounded-4 border', lang('Note'), array(
+                        $icon_tile('bi-calendar-heart', 'align-self-start align-self-md-center flex-shrink-0'),
+                        $para($pickup['custom'], 'flex-grow-1 mb-0'),
+                        $link(lang('Order a Cake'), '{{page:cake_order}}', 'btn btn-primary rounded-pill px-4 flex-shrink-0'),
+                    )),
+                )), array('effect' => 'fade', 'trigger' => 'view', 'duration' => 800, 'delay' => 200)),
             )),
         ), $searchable('bky-cake-options', lang('servings, portions, flavours, fillings, buttercream, vegan cake'))),
-        $el('section', 'py-5', lang('How It Works'), array(
+        // Clipped while the lead-time card slides in from the right.
+        $el('section', 'py-5 bg-body-tertiary overflow-hidden', lang('How It Works'), array(
             $container(array(
                 $row(array(
                     $col(array(
-                        $heading('h2', lang('How a cake order works'), 'pbk-display h3 mb-4'),
-                        $el('ol', 'list-unstyled mb-0', lang('Steps'), array(
+                        $fx($heading('h2', lang('How a cake order works'), 'pbk-display h3 mb-4'), $fade_in),
+                        $rise($el('ol', 'list-unstyled mb-0', lang('Steps'), array(
                             $step(1, lang('Tell us about the cake'), lang('The occasion, the day, how many it should serve and a picture or sketch if you have one.')),
                             $step(2, lang('We send a design and a price'), lang('Within a day, under My Cake Orders; write back there to change anything.')),
                             $step(3, lang('Collect it on the day'), lang('Or ask us to deliver it; a wedding cake is always delivered and set up by us.')),
-                        )),
+                        )), 150),
                     ), '', '6'),
-                    $col(array(
+                    $fx($col(array(
                         $el('div', 'p-4 p-lg-5 rounded-4 bg-primary-subtle', lang('Text'), array(
                             $heading('h2', lang('How far ahead?'), 'pbk-display h4 mb-3'),
                             $lead_times(),
                         )),
-                    ), '', '6'),
+                    ), '', '6'), array('effect' => 'slide-left', 'trigger' => 'view', 'duration' => 800, 'delay' => 150)),
                 ), '4', '', 'g-lg-5 align-items-center'),
             )),
         ), $searchable('bky-cakes-how', lang('order a cake, deposit, delivery, tasting, lead time'))),

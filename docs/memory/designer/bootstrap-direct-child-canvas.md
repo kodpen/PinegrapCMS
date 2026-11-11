@@ -18,6 +18,7 @@ The canvas needs BOTH:
 
 - In (2) never copy a size rule (`width`/`max-width`/`flex`) at that specificity: `X > .sd-wrap > *` beats `.col-md-6` and would override column widths. Copy it with zero specificity (`:where(.row > .sd-wrap > …)`) or skip elements with a `col-*` class (the row-cols widths); designer-canvas-page-parity.md.
 - A size taken from the parent (`h-100`, an inline `height:100%`) breaks the same way: the wrapper has no height, so the percentage resolves to auto (round panels in a square box collapsed to ovals on the canvas). The canvas passes the height on with `.sd-wrap:has(> .h-100) { height:100% }` (an `_SD_BX` rule in `style_designer.js`); the front end is never changed for it.
+- A block's own flex container that centres its items (`align-items:center`) shrinks each wrapper to its content, so a child sized in per cent of the container is 0 wide on the canvas (the Bakery cake drawings were empty, #8715). The block's rule stretches the items and centres the child with `margin-inline:auto` instead; the page looks the same.
 - NEVER give a `<td>`/`<th>` `display:flex`: the cell leaves table layout and `colspan` is cancelled. Put the flexbox on a `<div>` inside the cell.
 
 ## Why does a selected close button keep its place?

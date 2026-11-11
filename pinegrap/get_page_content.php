@@ -384,11 +384,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     }
 
                     if ($_ctype === 'external-css') {
-                        $_url = trim(isset($_cf['content']) ? $_cf['content'] : '');
-                        // Accept absolute URLs (http/https) and root-relative URLs (/) —
-                        // OUTPUT_PATH is a root-relative path like "/" so file picker URLs
-                        // come back as "/filename.css" which filter_var rejects.
-                        if ($_url !== '' && (filter_var($_url, FILTER_VALIDATE_URL) || strpos($_url, '/') === 0)) {
+                        // {path} and {software_directory} filled in, then checked.
+                        $_url = pg_design_asset_address(isset($_cf['content']) ? $_cf['content'] : '', PATH, SOFTWARE_DIRECTORY);
+                        if ($_url !== '') {
                             $_css_links .= '<link rel="stylesheet" href="' . htmlspecialchars($_url, ENT_QUOTES, 'UTF-8') . '">' . "\n";
                         }
                     } else {
@@ -472,11 +470,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     }
 
                     if ($_jtype === 'external-js') {
-                        $_url = trim(isset($_jf['content']) ? $_jf['content'] : '');
-                        // Accept absolute URLs (http/https) and root-relative URLs (/) —
-                        // OUTPUT_PATH is a root-relative path like "/" so file picker URLs
-                        // come back as "/filename.js" which filter_var rejects.
-                        if ($_url !== '' && (filter_var($_url, FILTER_VALIDATE_URL) || strpos($_url, '/') === 0)) {
+                        // {path} and {software_directory} filled in, then checked.
+                        $_url = pg_design_asset_address(isset($_jf['content']) ? $_jf['content'] : '', PATH, SOFTWARE_DIRECTORY);
+                        if ($_url !== '') {
                             $_js_srcs .= '<script' . (!empty($_jf['module']) ? ' type="module"' : '') . ' src="' . htmlspecialchars($_url, ENT_QUOTES, 'UTF-8') . '"></script>' . "\n";
                         }
                     } elseif ($_jtype === 'json') {

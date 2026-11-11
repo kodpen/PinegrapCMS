@@ -529,8 +529,22 @@ function test_designer_image_size_canvas_matches_page()
 		'a unit that is not a percentage' => array(array('width' => '12rem'), false),
 		'no size' => array(array(), false),
 	);
+	// _sdApplyNodeAttrs() fills {path} in the style attribute. These two are
+	// cut at their closing line: a '{' in a string would mislead the brace
+	// count of designer_image_size_test_cut().
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$path_fns = '';
+
+	foreach (array('_sdPathFill', '_sdSitePath') as $name) {
+		$from = strpos($source, "\n    function " . $name . '(');
+		$to = ($from === false) ? false : strpos($source, "\n    }\n", $from);
+		pg_assert_true($to !== false, $name . '() is in the designer');
+		$path_fns .= ($to === false) ? '' : substr($source, $from, $to - $from + 6) . "\n";
+	}
+
 	$result = designer_image_size_test_js(
-		designer_image_size_test_dom_stub()
+		$path_fns
+		. designer_image_size_test_dom_stub()
 		. 'var cases = ' . json_encode($cases) . ', wrappers = ' . json_encode($wrappers) . ';'
 		. 'Object.keys(cases).forEach(function (k) {'
 		. '  var p = Object.assign({ contentType: "image", src: "https://example.com/a.jpg", alt: "A" }, JSON.parse(JSON.stringify(cases[k])));'

@@ -5,7 +5,8 @@
  * Interactions of visual editor nodes: one effect per node, kept in the
  * node's props as `_fx`, written on the page as data-pg-fx-* attributes and
  * played by assets/js/pg_fx.src.js (CSS transitions and IntersectionObserver,
- * scroll-linked effects once per frame, nothing under prefers-reduced-motion).
+ * scroll-linked effects once per frame, a number that counts up once seen,
+ * nothing under prefers-reduced-motion).
  *
  * pg_fx_normalize() keeps the known fields in their ranges and drops the
  * rest; pg_fx_attrs() writes the effect, its trigger and only the values
@@ -33,7 +34,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 function pg_fx_effects()
 {
     return array('fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
-        'scroll-zoom', 'scroll-fade', 'scroll-rise');
+        'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count');
 }
 
 /**
@@ -56,8 +57,24 @@ function pg_fx_scroll_from()
 }
 
 /**
- * The triggers of a moving effect; sticky, parallax and the scroll-linked
- * effects have none.
+ * The fields of the count effect: name => array(min, max, default). The
+ * page holds the number itself; once the node is seen the script counts up
+ * to it from zero for `duration` ms after `delay` ms. A count runs longer
+ * than a transition, so its duration has its own default.
+ *
+ * @return array
+ */
+function pg_fx_count_numbers()
+{
+    return array(
+        'duration' => array(100, 5000, 2000),
+        'delay'    => array(0, 5000, 0),
+    );
+}
+
+/**
+ * The triggers of a moving effect; sticky, parallax, the scroll-linked
+ * effects and count have none.
  *
  * @return array trigger names, the default first
  */
@@ -105,7 +122,8 @@ function pg_fx_numbers()
  * `stagger` outside load and view, `repeat` outside view, `offset` outside
  * sticky, `speed` outside parallax, `from` outside the scroll-linked
  * effects, `distance` for fade, sticky, parallax and the scroll-linked
- * effects.
+ * effects. Count keeps its duration and delay alone, in its own ranges
+ * (pg_fx_count_numbers()).
  *
  * @param mixed $fx props._fx
  * @return array|null
@@ -120,6 +138,7 @@ function pg_fx_normalize($fx)
     $nums = pg_fx_numbers();
     $scroll = pg_fx_scroll_from();
     if (isset($scroll[$effect])) $nums['from'] = $scroll[$effect];
+    if ($effect === 'count') $nums = pg_fx_count_numbers() + $nums;
     $num = function ($name) use ($fx, $nums) {
         list($min, $max, $def) = $nums[$name];
         if (!isset($fx[$name]) || !is_numeric($fx[$name])) return $def;
@@ -136,6 +155,11 @@ function pg_fx_normalize($fx)
     }
     if (isset($scroll[$effect])) {
         $out['from'] = $num('from');
+        return $out;
+    }
+    if ($effect === 'count') {
+        $out['duration'] = $num('duration');
+        $out['delay'] = $num('delay');
         return $out;
     }
 
@@ -158,7 +182,8 @@ function pg_fx_normalize($fx)
 /**
  * The data-pg-fx-* attributes of a node's interaction, '' without one.
  * Order: effect, trigger, then the non-default values in a fixed order;
- * `from` against its effect's own default.
+ * `from` against its effect's own default, a count's duration against
+ * its own.
  *
  * @param array $props the node's props
  * @return string attributes, each with a leading space
@@ -172,6 +197,7 @@ function pg_fx_attrs($props)
     if (isset($fx['trigger'])) $out .= ' data-pg-fx-trigger="' . $fx['trigger'] . '"';
 
     $nums = pg_fx_numbers();
+    if ($fx['effect'] === 'count') $nums = pg_fx_count_numbers() + $nums;
     foreach (array('duration', 'delay', 'easing', 'stagger', 'distance', 'offset', 'speed') as $name) {
         if (!isset($fx[$name])) continue;
         if ($name === 'easing') {

@@ -748,6 +748,14 @@ button.sdh-page:hover {
   --bs-btn-font-size: .8125rem;
 }
 
+/* A look's drawing before its name, in the button's text colour. */
+.sd-tpl-look .pg-look-drawing {
+  width: 36px;
+  height: 24px;
+  margin: -.125rem .375rem -.125rem -.25rem;
+  vertical-align: middle;
+}
+
 .sd-tpl-pal {
   display: inline-flex;
   width: 28px;

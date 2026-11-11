@@ -28,7 +28,12 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * sales_by_region counts what the dashboard's Sales map card counts
  * (includes/dashboard/v2/cards/salesmap.php, pg_sales_map_collect()): placed
  * orders by their billing country, then billing state, over the last 30
- * days from today's midnight in the site's time.
+ * days from today's midnight in the site's time. sales_over_time counts what
+ * the Ecommerce summary card sums (includes/dashboard/v2/cards/shop.php: the
+ * same complete and exported orders), day by day; the card opens it with its
+ * own period (pg_ready_report_url($key, $days)). sales_by_payment_method and
+ * sales_by_source (the UTM source) are the strip's other entries. The order
+ * report has no product level, so there is no sales by product.
  *
  * @return array
  */
@@ -48,7 +53,99 @@ function pg_ready_reports()
             'filters' => pg_order_report_default_filters(),
             'period' => 30,
         ),
+        'sales_over_time' => array(
+            'key' => 'sales_over_time',
+            'screen' => 'order_report',
+            'title' => 'Sales over time',
+            'levels' => array(
+                array('by' => 'year', 'order' => 'alphabet'),
+                array('by' => 'month', 'order' => 'alphabet'),
+                array('by' => 'day', 'order' => 'alphabet'),
+            ),
+            'filters' => pg_order_report_default_filters(),
+            'period' => 30,
+        ),
+        'sales_by_payment_method' => array(
+            'key' => 'sales_by_payment_method',
+            'screen' => 'order_report',
+            'title' => 'Sales by payment method',
+            'levels' => array(
+                array('by' => 'payment_method', 'order' => 'total'),
+            ),
+            'filters' => pg_order_report_default_filters(),
+            'period' => 30,
+        ),
+        'sales_by_source' => array(
+            'key' => 'sales_by_source',
+            'screen' => 'order_report',
+            'title' => 'Sales by source',
+            'levels' => array(
+                array('by' => 'utm_source', 'order' => 'total'),
+            ),
+            'filters' => pg_order_report_default_filters(),
+            'period' => 30,
+        ),
     );
+}
+
+/**
+ * The number of days an address asks a ready report to count instead of
+ * its own period, or 0 for its own: a whole number from 1 to 366 written
+ * in digits only; anything else is ignored. Pure.
+ *
+ * @param mixed $value the parameter as sent ($_GET['days'] ?? null)
+ * @return int
+ */
+function pg_ready_report_days($value)
+{
+    if (!is_string($value) && !is_int($value)) {
+        return 0;
+    }
+
+    $value = (string) $value;
+
+    if (!ctype_digit($value) || (strlen($value) > 3)) {
+        return 0;
+    }
+
+    $days = (int) $value;
+
+    return (($days >= 1) && ($days <= 366)) ? $days : 0;
+}
+
+/**
+ * The strip of a screen's ready reports: each one whose levels the screen
+ * offers, with its address and whether it is the one open. Pure.
+ *
+ * @param string $screen  the screen ('order_report')
+ * @param array  $levels  the summarize-by values the screen offers
+ * @param string $current the key of the ready report open, '' for none
+ * @return array of key, title (English), url, current
+ */
+function pg_ready_report_strip($screen, $levels, $current = '')
+{
+    $strip = array();
+
+    foreach (pg_ready_reports() as $key => $report) {
+        if ($report['screen'] !== $screen) {
+            continue;
+        }
+
+        foreach ($report['levels'] as $level) {
+            if (!in_array($level['by'], $levels, true)) {
+                continue 2;
+            }
+        }
+
+        $strip[] = array(
+            'key' => $key,
+            'title' => $report['title'],
+            'url' => pg_ready_report_url($key),
+            'current' => ($key === (string) $current),
+        );
+    }
+
+    return $strip;
 }
 
 /**
@@ -81,10 +178,12 @@ function pg_ready_report_requested($value, $screen)
  * less than the days counted, so today is the last of them. Pure.
  *
  * @param array $report an entry of pg_ready_reports()
+ * @param int   $days   days to count instead of its period (0: its own;
+ *                      pg_ready_report_days())
  * @return array field, operator, value, dynamic_value and
  *               dynamic_value_attribute of each filter
  */
-function pg_ready_report_filters($report)
+function pg_ready_report_filters($report, $days = 0)
 {
     $filters = array();
 
@@ -98,7 +197,7 @@ function pg_ready_report_filters($report)
         );
     }
 
-    $days = (int) ($report['period'] ?? 0);
+    $days = ((int) $days > 0) ? (int) $days : (int) ($report['period'] ?? 0);
 
     if ($days > 0) {
         $filters[] = array(
@@ -116,10 +215,17 @@ function pg_ready_report_filters($report)
 /**
  * The address that opens a ready report on its screen. Pure.
  *
- * @param string $key a key of pg_ready_reports()
+ * @param string $key  a key of pg_ready_reports()
+ * @param int    $days days to count instead of its period (0: its own)
  * @return string relative to the software directory
  */
-function pg_ready_report_url($key)
+function pg_ready_report_url($key, $days = 0)
 {
-    return 'view_order_report.php?ready=' . rawurlencode((string) $key);
+    $url = 'view_order_report.php?ready=' . rawurlencode((string) $key);
+
+    if ((int) $days > 0) {
+        $url .= '&days=' . (int) $days;
+    }
+
+    return $url;
 }

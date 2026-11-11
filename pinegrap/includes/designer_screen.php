@@ -2108,7 +2108,10 @@ function pg_designer_template_theme_picker()
     $n = 0;
     foreach ($looks as $key => $l) {
         $id = 'sd-tpl-look-' . (++$n);
-        $icon = ($key === '@template') ? '<i class="bi bi-stars me-1" aria-hidden="true"></i>' : '';
+        // Each look is drawn small before its name (pg_design_look_drawing()).
+        $icon = ($key === '@template')
+            ? '<i class="bi bi-stars me-1" aria-hidden="true"></i>'
+            : pg_design_look_drawing($key === '' ? null : $l['preview']);
         $look_btns .= '<input type="radio" class="btn-check" name="sd_tpl_look" id="' . $id . '" value="' . h($key) . '"' . ($key === '@template' ? ' checked' : '') . ' autocomplete="off">'
                     . '<label class="btn btn-outline theme-secondary rounded-pill no-popover" for="' . $id . '" data-bs-toggle="tooltip" title="' . h($l['description']) . '">' . $icon . h($l['name']) . '</label>';
     }
