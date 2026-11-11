@@ -450,7 +450,9 @@ function pg_audience_text($value)
         return '';
     }
 
-    $text = trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', (string) $value));
+    // preg_replace() with /u gives null for bytes that are not UTF-8: that is
+    // no text, so it becomes '' rather than null reaching trim().
+    $text = trim((string) preg_replace('/[\x00-\x1F\x7F]+/u', ' ', (string) $value));
 
     if (function_exists('mb_substr')) {
         return mb_substr($text, 0, PG_AUDIENCE_MAX_TEXT, 'UTF-8');

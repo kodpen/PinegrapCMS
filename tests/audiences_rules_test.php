@@ -307,6 +307,16 @@ function test_audiences_clean_shape_and_bounds()
 	pg_assert_same($clean, pg_audience_rules_clean($clean), 'cleaning a clean set changes nothing');
 }
 
+// Bytes that are not UTF-8 (a Latin-1 "é") are no text: '' without the
+// PHP 8.1 deprecation of trim(null), which the runner turns into an error.
+function test_audiences_text_that_is_not_utf8_is_empty()
+{
+	pg_assert_same('', pg_audience_text("Mus\xE9e"), 'Latin-1 byte');
+	pg_assert_same(array(), pg_audience_rules_clean(array('conditions' => array(array('key' => 'city', 'op' => 'eq', 'value' => "Mus\xE9e"))))['conditions'], 'condition dropped');
+	pg_assert_same(array(), pg_audience_picker_search('product', "\xE9"), 'picker search finds nothing');
+	pg_assert_same('Müze a b', pg_audience_text(" Müze\ta\x00b "), 'UTF-8 text kept, control characters spaced');
+}
+
 function test_audiences_upgrade_step()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
