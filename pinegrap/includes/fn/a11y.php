@@ -528,14 +528,24 @@ function pg_a11y_rule_link_generic($xpath)
         return array();
     }
 
-    $generic = array_flip(pg_seo_generic_anchor_texts());
+    // Both sides folded with the Turkish dotted and dotless i made one letter
+    // (fold_keyword_for_duplicates()): mb_strtolower() turns I into i and İ
+    // into i plus a combining dot, so TIKLA or İNCELE never met tıkla or
+    // incele in the list.
+    $generic = array();
+
+    foreach (pg_seo_generic_anchor_texts() as $text) {
+        $generic[fold_keyword_for_duplicates($text)] = true;
+    }
+
     $examples = array();
 
     foreach ($xpath->query('//a[@href]') as $link) {
 
-        $name = mb_strtolower(trim(pg_a11y_name($xpath, $link), " \t\n.…:»›>→"));
+        $text = trim(pg_a11y_name($xpath, $link), " \t\n.…:»›>→");
+        $name = mb_strtolower($text);
 
-        if (($name !== '') && isset($generic[$name]) && !pg_a11y_hidden($link)) {
+        if (($name !== '') && isset($generic[fold_keyword_for_duplicates($text)]) && !pg_a11y_hidden($link)) {
             $examples[] = pg_a11y_example($link, $name);
         }
     }

@@ -30,3 +30,13 @@ function test_seo_first_image_skips_addresses_that_are_not_web_addresses()
 		pg_first_image_url_from_html('<img src="data:image/gif;base64,R0lGOD="><img alt="" src="https://example.com//cover.jpg">'),
 		'the first picture with a web address');
 }
+
+function test_seo_first_image_skips_custom_elements_named_like_img()
+{
+	pg_assert_same(
+		'https://example.com/cover.jpg',
+		pg_first_image_url_from_html('<img-box src="https://example.com/frame.svg"></img-box><imgur-embed src="https://example.com/x.js"></imgur-embed><IMG alt="" SRC="https://example.com/cover.jpg">'),
+		'a custom element is no picture');
+	pg_assert_same('https://example.com/a.jpg', pg_first_image_url_from_html("<img\nsrc='https://example.com/a.jpg'>"), 'a line break after the tag name');
+	pg_assert_same('', pg_first_image_url_from_html('<img-box src="https://example.com/frame.svg"></img-box>'), 'only a custom element');
+}

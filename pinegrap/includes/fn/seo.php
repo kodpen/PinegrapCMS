@@ -1202,7 +1202,9 @@ function pg_first_image_url_from_html($html)
 {
     $html = html_entity_decode((string) $html, ENT_QUOTES, 'UTF-8');
 
-    if (!preg_match_all('/<img[^>]+src\s*=\s*["\']([^"\']+)/i', $html, $matches)) {
+    // The tag name ends at white space or a slash, so a custom element whose
+    // name starts with img (<img-box>, <imgur-embed>) is not read as one.
+    if (!preg_match_all('/<img[\s\/][^>]*src\s*=\s*["\']([^"\']+)/i', $html, $matches)) {
         return '';
     }
 
