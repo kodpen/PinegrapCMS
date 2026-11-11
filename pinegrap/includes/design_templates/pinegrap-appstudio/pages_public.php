@@ -37,21 +37,6 @@ $figure_row = function ($class = '') use ($el, $para, $row, $col, $figures) {
     return $el('div', $class, lang('Figures'), array($row($cols, '4')));
 };
 
-// A kind of app, linked to the app list with that kind chosen (?category=
-// in the words of the Category list).
-$category_card = function ($key) use ($el, $heading, $para, $col, $icon_tile, $categories, $query) {
-    $c = $categories[$key];
-    return $col(array(
-        $el('a', 'card h-100 border-0 shadow-sm rounded-4 pma-lift text-decoration-none link-body-emphasis', $c['title'], array(
-            $el('div', 'card-body p-4', lang('Card Body'), array(
-                $icon_tile($c['icon'], 'mb-3'),
-                $heading('h3', $c['title'], 'h6 fw-bold mb-2'),
-                $para($c['text'], 'small text-body-secondary mb-0'),
-            )),
-        ), array('href' => '{{page:apps}}?' . $query(array('category' => $c['title'])))),
-    ), '6', '', '', '12', 'col-lg');
-};
-
 // A service card: what the developer does, its points and the way to ask
 // for it (the project request with the kind of project chosen, ?type=).
 $service_card = function ($key, $lg = '4') use ($el, $heading, $para, $link, $icon_tile, $check_list, $col, $searchable, $services, $project_types, $query) {
@@ -81,7 +66,7 @@ $process_list = function ($class = 'list-unstyled mb-0') use ($el, $heading, $pa
             $el('div', '', lang('Text'), array(
                 $el('div', 'd-flex flex-wrap align-items-baseline gap-2 mb-1', lang('Step Title'), array(
                     $heading('h3', ($n + 1) . '. ' . $p['title'], 'h6 fw-bold mb-0'),
-                    $span($p['time'], 'badge rounded-pill text-bg-light border', lang('Time')),
+                    $span($p['time'], 'badge rounded-pill bg-body text-body-emphasis border', lang('Time')),
                 )),
                 $para($p['text'], 'text-body-secondary mb-0'),
             )),
@@ -100,16 +85,220 @@ $phone_shot = function ($seed, $alt, $class = '') use ($el, $image, $attr, $phot
 
 // The tools the apps are made with, as badges (the services and about pages).
 $tool_list = array();
-foreach ($tools as $t) $tool_list[] = $span($t, 'badge rounded-pill text-bg-light border fw-normal pma-mono', lang('Tool'));
+foreach ($tools as $t) $tool_list[] = $span($t, 'badge rounded-pill bg-body text-body-emphasis border fw-normal pma-mono', lang('Tool'));
 
-$category_cards = array();
-foreach (array_keys($categories) as $key) $category_cards[] = $category_card($key);
 $package_cards = array();
 foreach (array_keys($packages) as $key) $package_cards[] = $package_card($key);
 $testimonial_cards = array();
 foreach (array_keys($testimonials) as $n) $testimonial_cards[] = $testimonial_card($n);
 
 // ── Home ────────────────────────────────────────────────────────────────
+// Built on the designer's App Studio blocks (style_designer_blocks_appstudio.js,
+// the same classes and interactions): the phone fan hero, the app switch,
+// the release chapter and the two platforms; the figures as the Creative
+// group's bento tiles. Motion is the nodes' interactions (props._fx).
+
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+$dark = array('_attrs' => array($attr('data-bs-theme', 'dark')));
+
+// A phone frame around a sample screen (9:19.5, the frame's own ratio).
+// The hero's phones load at once, the others when they come near.
+$as_phone = function ($seed, $alt, $class = '', $lazy = true) use ($el, $image, $attr, $photo) {
+    $attrs = array($attr('width', '540'), $attr('height', '1170'));
+    if ($lazy) $attrs[] = $attr('loading', 'lazy');
+    return $el('div', trim('pg-appstudio-phone ' . $class), lang('Phone Frame'), array(
+        $image($photo($seed, 540, 1170), $alt, '', array('_attrs' => $attrs)),
+    ));
+};
+$as_eyebrow = function ($text, $class = 'mb-3') use ($para) {
+    return $para($text, trim('pma-eyebrow small fw-semibold text-uppercase text-primary ' . $class));
+};
+// A section's head, centred: the line above, a very large title, a lead.
+$as_header = function ($eyebrow, $title, $lead) use ($el, $heading, $para, $as_eyebrow) {
+    return $el('div', 'text-center mb-5', lang('Section Header'), array(
+        $as_eyebrow($eyebrow),
+        $heading('h2', $title, 'pma-display pg-appstudio-tight fw-bold mb-3'),
+        $para($lead, 'lead text-body-secondary mx-auto mb-0 col-lg-7'),
+    ));
+};
+
+// The local bar: the developer's name, the parts of the site and the call
+// to action, held at the top of the window while the home scrolls.
+$local_bar = $fx($el('nav', 'bg-body border-bottom z-3', lang('Local Bar'), array(
+    $container(array(
+        $el('div', 'd-flex align-items-center gap-3 py-2', lang('Bar Row'), array(
+            $span($developer['name'], 'fw-semibold me-auto', lang('Name')),
+            $link(lang('Apps'), '{{page:apps}}', 'd-none d-md-inline small link-body-emphasis text-decoration-none'),
+            $link(lang('Releases'), '{{page:releases}}', 'd-none d-md-inline small link-body-emphasis text-decoration-none'),
+            $link(lang('Services'), '{{page:services}}', 'd-none d-md-inline small link-body-emphasis text-decoration-none'),
+            $link(lang('Start a Project'), '{{page:hire}}', 'btn btn-primary btn-sm rounded-pill px-3'),
+        )),
+    )),
+), array('_attrs' => array($attr('aria-label', lang('Home sections'))))), array('effect' => 'sticky', 'offset' => 0));
+
+// The hero: a dark band, one very large line, three phones rising in a fan.
+$home_hero = $el('section', 'pt-5 bg-body text-body text-center overflow-hidden pg-appstudio-floor', lang('Hero'), array(
+    $container(array(
+        $fx($el('div', 'mx-auto col-lg-10', lang('Hero Text'), array(
+            $as_eyebrow($developer['role']),
+            $heading('h1', lang('Apps that do one thing, and do it well'), 'pma-display pg-appstudio-tight fw-bold mb-4'),
+            $para($developer['bio'], 'lead text-body-secondary mx-auto mb-4 col-lg-8'),
+            $el('div', 'd-flex flex-wrap justify-content-center gap-3 mb-3', lang('Buttons'), array(
+                $link(lang('See My Apps'), '{{page:apps}}', 'btn btn-primary btn-lg rounded-pill px-4'),
+                $link(lang('Start a Project'), '{{page:hire}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
+            )),
+            $el('p', 'd-flex justify-content-center align-items-center gap-2 small text-body-secondary mb-0', lang('Availability'), array(
+                $icon('bi-circle-fill', 'text-success small'),
+                $span($developer['available'], '', lang('Text')),
+            )),
+        )), array('effect' => 'fade', 'trigger' => 'load', 'duration' => 900)),
+    ), 'pt-lg-5'),
+    $fx($el('div', 'pg-appstudio-fan', lang('Phone Fan'), array(
+        $as_phone('fan-tally', $apps['tally']['name'] . ': ' . $apps['tally']['tagline'], '', false),
+        $as_phone('fan-stride', $apps['stride']['name'] . ': ' . $apps['stride']['tagline'], 'pg-appstudio-lead', false),
+        $as_phone('fan-wayfarer', $apps['wayfarer']['name'] . ': ' . $apps['wayfarer']['tagline'], '', false),
+    )), array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 1000, 'delay' => 200, 'stagger' => 150, 'distance' => 120)),
+), $dark);
+
+// The figures as bento tiles of different sizes, rising one after another.
+$bento_tile = function ($md, $lg, $class, $children, $extra = array()) use ($el, $col) {
+    return $col(array($el('div', 'h-100 p-4 rounded-4 ' . $class, lang('Tile Body'), $children, $extra)), $md, $lg);
+};
+$home_bento = $el('section', 'py-5', lang('Figures'), array(
+    $container(array(
+        $as_header(lang('In numbers'), lang('A small studio, a long reach.'), $developer['city']),
+        $fx($row(array(
+            $bento_tile('12', '7', 'd-flex flex-column p-lg-5 text-bg-primary', array(
+                $icon('bi-phone', 'fs-2 mb-3'),
+                $heading('h3', $figures[0]['value'] . ' ' . $figures[0]['label'], 'h4 fw-bold mb-2'),
+                $para($apps['tally']['summary'], 'mb-4'),
+                $link(lang('All apps'), '{{page:apps}}', 'align-self-start mt-auto fw-semibold text-reset'),
+            )),
+            $bento_tile('12', '5', 'd-flex flex-column justify-content-between bg-body-tertiary', array(
+                $span($figures[1]['label'], 'mb-3 small fw-semibold text-uppercase text-body-secondary', lang('Label')),
+                $para($figures[1]['value'], 'pma-display pg-appstudio-figure display-3 fw-bold lh-1 text-primary mb-0'),
+            )),
+            $bento_tile('6', '4', 'bg-body border', array(
+                $icon_tile('bi-star-fill', 'mb-3'),
+                $heading('h3', $figures[2]['value'], 'pg-appstudio-figure h2 fw-bold mb-1'),
+                $para($figures[2]['label'], 'mb-0 text-body-secondary'),
+            )),
+            $bento_tile('6', '4', 'bg-body text-body border', array(
+                $icon('bi-briefcase', 'd-block mb-3 fs-2 text-primary'),
+                $heading('h3', $figures[3]['value'], 'pg-appstudio-figure h2 fw-bold mb-1'),
+                $para($figures[3]['label'], 'mb-0 text-body-secondary'),
+            ), $dark),
+            $bento_tile('12', '4', 'bg-body border', array(
+                $icon_tile('bi-shield-lock', 'mb-3'),
+                $heading('h3', lang('Your data stays yours'), 'h5 fw-bold mb-2'),
+                $para($apps['tally']['privacy'], 'mb-0 small text-body-secondary'),
+            )),
+        ), '4'), array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 700, 'stagger' => 120)),
+    )),
+));
+
+// The app switch: the checked app puts its screen on the phone and its
+// line under it (CSS :has(), no script); the kinds of app link the list.
+$switch_tabs = array($el('legend', 'visually-hidden', lang('Choices Legend'), array($span(lang('App'), '', lang('Text')))));
+$switch_screens = array();
+$switch_notes = array();
+foreach (array('tally', 'stride', 'wayfarer') as $n => $key) {
+    $i = $n + 1;
+    $id = 'pma-app-pick-' . $i;
+    $input_attrs = array($attr('type', 'radio'), $attr('name', 'pma-app-pick'), $attr('id', $id), $attr('autocomplete', 'off'));
+    if ($i === 1) $input_attrs[] = $attr('checked', 'checked');
+    $switch_tabs[] = $el('div', 'pg-appstudio-tab', lang('App Choice'), array(
+        $el('input', 'btn-check pg-appstudio-pick-' . $i, lang('Choice'), array(), array('_attrs' => $input_attrs)),
+        $el('label', 'btn btn-outline-primary rounded-pill px-4', lang('Choice Label'), array($span($apps[$key]['name'], '', lang('Text'))),
+            array('_attrs' => array($attr('for', $id)))),
+    ));
+    $switch_screens[] = $as_phone('switch-' . $key, $apps[$key]['name'] . ': ' . $apps[$key]['tagline'], 'pg-appstudio-screen pg-appstudio-shows-' . $i);
+    $switch_notes[] = $el('div', 'pg-appstudio-note pg-appstudio-shows-' . $i, lang('App Words'), array(
+        $heading('h3', $apps[$key]['name'], 'h4 fw-bold mb-1'),
+        $para($apps[$key]['summary'], 'text-body-secondary mb-0'),
+    ));
+}
+$kind_links = array($span(lang('Browse by kind'), 'small text-body-secondary me-1', lang('Text')));
+foreach ($categories as $c) {
+    $kind_links[] = $link($c['title'], '{{page:apps}}?' . $query(array('category' => $c['title'])), 'btn btn-sm btn-outline-secondary rounded-pill');
+}
+$home_switch = $el('section', 'py-5 text-center pg-appstudio-switch', lang('App Switch'), array(
+    $container(array(
+        $fx($as_header(lang('Pick an app'), lang('One idea per app.'), lang('Each app does one thing and does it well. Choose one to see it on the phone.')),
+            array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 700)),
+        $el('fieldset', 'd-flex justify-content-center flex-wrap gap-2 border-0 p-0 mb-5', lang('App Choices'), $switch_tabs),
+        $fx($el('div', 'pg-appstudio-stage mb-4', lang('Phone Stage'), $switch_screens), array('effect' => 'scale', 'trigger' => 'view', 'duration' => 800)),
+        $el('div', 'pg-appstudio-stage mx-auto col-lg-6', lang('Words Stage'), $switch_notes),
+        $el('div', 'd-flex flex-wrap justify-content-center align-items-center gap-2 mt-5', lang('Kinds of App'), $kind_links),
+    )),
+));
+
+// The newest release as a dark chapter: its version very large, what
+// changed rising one after another, the phone moving slower than the page.
+$release = $releases[0];
+$release_app = $apps[$release['app']];
+$change = function ($tag, $tag_class, $text) use ($el, $span) {
+    return $el('li', 'd-flex align-items-start gap-3 mb-3', lang('Change'), array(
+        $span($tag, 'badge rounded-pill flex-shrink-0 mt-1 ' . $tag_class, lang('Tag')),
+        $span($text, 'text-body', lang('Text')),
+    ));
+};
+$home_release = $el('section', 'py-5 bg-body text-body overflow-hidden', lang('Release Chapter'), array(
+    $container(array(
+        $row(array(
+            $col(array(
+                $as_eyebrow(lang('Just released')),
+                $heading('h2', $release_app['name'] . ' ' . $release['version'], 'pma-display pg-appstudio-tight pg-appstudio-figure fw-bold mb-3'),
+                $para($release['notes'], 'lead text-body-secondary mb-4'),
+                $heading('h3', lang('What changed'), 'h6 fw-semibold text-uppercase text-body-secondary mb-3'),
+                $fx($el('ul', 'list-unstyled mb-4', lang('Changes'), array(
+                    $change(lang('New'), 'text-bg-primary', lang('Interval runs with a voice that counts you through each one.')),
+                    $change(lang('Improved'), 'bg-primary-subtle text-primary-emphasis', lang('A calmer summary after every run, with only what matters.')),
+                    $change(lang('Bug fix'), 'bg-body-secondary text-body-emphasis border', lang('Runs from the watch come in again after a system update.')),
+                )), array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 600, 'stagger' => 120)),
+                $el('div', 'd-flex flex-wrap gap-3', lang('Buttons'), array(
+                    $link(lang('All release notes'), '{{page:releases}}', 'btn btn-primary btn-lg rounded-pill px-4'),
+                    $link(lang('Join the Beta'), '{{page:beta}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
+                )),
+            ), '', '6', '', '12', 'order-2 order-lg-1'),
+            $col(array(
+                $fx($el('div', 'px-5 px-lg-0', lang('Phone Stage'), array(
+                    $as_phone('release-' . $release['app'], $release_app['name'] . ': ' . $release_app['tagline'], 'col-lg-8'),
+                )), array('effect' => 'parallax', 'speed' => 15)),
+            ), '', '5', '', '12', 'order-1 order-lg-2 offset-lg-1'),
+        ), '4', '', 'g-lg-5 align-items-center'),
+    ), 'py-lg-5'),
+), $dark);
+
+// The two platforms side by side, each with its tools and a phone peeking
+// out of the card.
+$platform_card = function ($icon_name, $title, $text, $tool_names, $seed, $alt) use ($el, $heading, $para, $span, $icon, $col, $as_phone) {
+    $tool_items = array();
+    foreach ($tool_names as $t) $tool_items[] = $el('li', 'badge rounded-pill bg-body text-body-emphasis border fw-normal pma-mono', lang('Tool'), array($span($t, '', lang('Text'))));
+    return $col(array(
+        $el('div', 'h-100 d-flex flex-column align-items-center pt-5 px-4 text-center bg-body-tertiary rounded-4 overflow-hidden', lang('Platform Card'), array(
+            $icon($icon_name, 'fs-1 mb-3 text-body-emphasis'),
+            $heading('h3', $title, 'h3 fw-bold mb-2'),
+            $para($text, 'text-body-secondary mb-3'),
+            $el('ul', 'list-unstyled d-flex flex-wrap justify-content-center gap-2 mb-5', lang('Tools'), $tool_items),
+            $as_phone($seed, $alt, 'pg-appstudio-peek mt-auto'),
+        )),
+    ), '6');
+};
+$home_platforms = $el('section', 'py-5', lang('Platforms'), array(
+    $container(array(
+        $as_header(lang('Native on both'), lang('Made for the phone in your hand.'), lang('Written in each platform\'s own language, so every app feels at home and stays fast.')),
+        $fx($row(array(
+            $platform_card('bi-apple', lang('iPhone, iPad and Apple Watch'), lang('Widgets, Live Activities and a watch app that works on its own.'),
+                array($tools[0], $tools[1], $tools[4]), 'platform-ios', lang('An app on an iPhone')),
+            $platform_card('bi-android2', lang('Android phones, tablets and Wear OS'), lang('Material You colours, home screen widgets and offline sync.'),
+                array($tools[2], $tools[3], $tools[5]), 'platform-android', lang('An app on an Android phone')),
+        ), '4'), array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 700, 'stagger' => 150)),
+    )),
+));
 
 $public_pages[] = array(
     'key'              => 'home',
@@ -118,36 +307,10 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('Small, calm apps for iPhone and Android, the notes of every release, and apps built for companies with the same care.'),
     'tree'             => $page(array(
-        // The way in: who makes the apps, and two phones with their screens.
-        $el('section', 'py-5 overflow-hidden', lang('Hero'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para($developer['role'], 'pma-eyebrow text-uppercase fw-semibold text-primary mb-3'),
-                        $heading('h1', lang('Apps that do one thing, and do it well'), 'pma-display display-4 fw-bold mb-3'),
-                        $para($developer['bio'], 'lead text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2 mb-4', lang('Buttons'), array(
-                            $link(lang('See My Apps'), '{{page:apps}}', 'btn btn-primary btn-lg rounded-pill px-4'),
-                            $link(lang('Start a Project'), '{{page:hire}}', 'btn btn-outline-primary btn-lg rounded-pill px-4'),
-                        )),
-                        $el('p', 'd-flex align-items-center gap-2 small text-body-secondary mb-0', lang('Availability'), array(
-                            $icon('bi-circle-fill', 'text-success small'),
-                            $span($developer['available'], '', lang('Text')),
-                        )),
-                    ), '', '6'),
-                    $col(array(
-                        $row(array(
-                            $col(array($phone_shot('home-1', $apps['tally']['name'])), '', '', '', '6'),
-                            $col(array($phone_shot('home-2', $apps['stride']['name'], 'mt-5')), '', '', '', '6'),
-                        ), '3', 'center'),
-                    ), '', '5', '', '12', 'offset-lg-1'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        )),
-
-        $el('section', 'py-4 border-top border-bottom bg-body-tertiary', lang('Figures'), array(
-            $container(array($figure_row())),
-        )),
+        $local_bar,
+        $home_hero,
+        $home_bento,
+        $home_switch,
 
         $el('section', 'py-5', lang('Featured Apps'), array(
             $container(array(
@@ -156,29 +319,16 @@ $public_pages[] = array(
             )),
         )),
 
-        $el('section', 'py-5 bg-body-tertiary', lang('Kinds of App'), array(
-            $container(array(
-                $section_header(lang('Browse'), lang('Apps by kind')),
-                $row($category_cards, '4'),
-            )),
-        )),
+        $home_release,
 
         $el('section', 'py-5', lang('Latest Releases'), array(
             $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('What\'s new'), 'pma-eyebrow text-uppercase fw-semibold text-primary mb-1'),
-                        $heading('h2', lang('Every update, in plain words'), 'h3 fw-semibold mb-3'),
-                        $para(lang('Each release says what changed and what was fixed. Want the next one before the store has it? Join the beta.'), 'text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('All release notes'), '{{page:releases}}', 'btn btn-outline-primary rounded-pill px-4'),
-                            $link(lang('Join the Beta'), '{{page:beta}}', 'btn btn-link link-body-emphasis'),
-                        )),
-                    ), '', '4'),
-                    $col(array($widget('home_releases')), '', '8'),
-                ), '4', '', 'g-lg-5'),
+                $section_header(lang('What\'s new'), lang('Every update, in plain words'), lang('All release notes'), '{{page:releases}}'),
+                $widget('home_releases'),
             )),
         )),
+
+        $home_platforms,
 
         $el('section', 'py-5 bg-body-tertiary', lang('Services'), array(
             $container(array(

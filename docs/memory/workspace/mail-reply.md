@@ -11,7 +11,7 @@ description: Answering a Workspace e-mail conversation by e-mail (mail_reply.php
 ## Where does a person answer, and where is it set up?
 - Payload `mail_reply` = `ws_mail_reply_offer()`: the conversation id on a conversation's card for a reader who may post, else 0. `assets/js/workspace_mail.js` (`PGWsMail`, in the workspace bundle) draws "Reply by e-mail" under it; the drawer posts `ws_mail_reply` (`actions.php`), which answers with the reason and the server's words on failure. Texts `ws_mail_js_strings()`.
 - Box form "Sending answers": `reply_via` box | site, `smtp_host` / `smtp_port` in `settings` (a service fills its own, e.g. smtp.gmail.com 465). A new sending server asks for the password again, so a kept password never goes to a server it was not typed for.
-- An outgoing item is drawn under its writer (`ws_mail_sender()`), badge "Sent by e-mail" and "To <address>".
+- An outgoing item is drawn under its writer (`ws_mail_sender()`), its badge by send state (`mail-send.md`) and "To <address>".
 
 ## Which headers and subject?
 - Message-ID `pg.c<conversation>.<16 hex>@<pg_mail_hostname()>` (the box's domain without one). In-Reply-To the newest incoming mail, References its references plus it, the last 20.
@@ -22,6 +22,7 @@ description: Answering a Workspace e-mail conversation by e-mail (mail_reply.php
 - A thread message under the card (`sender_kind = mail`), `last_out_at` and `first_reply_at` (once). Status changes are G5's.
 
 ## What did email() gain?
+- `cc`: an address or a list, as `bcc` (#8646), in the failure log too.
 - `headers`: only Message-ID, In-Reply-To, References, each `<id@host>` tokens (`pg_mail_thread_headers()`; anything else dropped).
 - `smtp`: host, port, user, `secret` sealed with `pg_connect_seal()` (a queued row never holds the password); before the connected account and the site SMTP; 15 s timeout; an unreadable secret is a permanent failure.
 - Every mail carries `X-Pinegrap-Mail: <pg_mail_site_mark()>`, 16 hex of an HMAC with the site's key. The loop gate (`ws_mail_loop_reason()`) refuses only this site's mark, so another Pinegrap site's mail (a shop to its supplier's support box) comes in.

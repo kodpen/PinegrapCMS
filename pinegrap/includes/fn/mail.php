@@ -1939,6 +1939,8 @@ function email($properties)
     $to = isset($properties['to']) ? $properties['to'] : '';
     $to_name = isset($properties['to_name']) ? $properties['to_name'] : '';
     $bcc = isset($properties['bcc']) ? $properties['bcc'] : '';
+    // 'cc': an address or a list of them, as 'bcc'; carried through the queue too.
+    $cc = isset($properties['cc']) ? $properties['cc'] : '';
     $from_name = isset($properties['from_name']) ? $properties['from_name'] : '';
     $from_email_address = isset($properties['from_email_address']) ? $properties['from_email_address'] : '';
     $reply_to = isset($properties['reply_to']) ? $properties['reply_to'] : '';
@@ -2112,6 +2114,14 @@ function email($properties)
             }
         } else {
             $mail->addAddress($to, $to_name);
+        }
+
+        if (is_array($cc)) {
+            foreach ($cc as $ccAddr) {
+                $mail->addCC($ccAddr);
+            }
+        } elseif (!empty($cc)) {
+            $mail->addCC($cc);
         }
 
         if (is_array($bcc)) {
@@ -2303,6 +2313,10 @@ function email($properties)
         $log .= pg_log_lang(array('string' => 'Error')) . ': ' . $error . "\n\n";
         $log .= pg_log_lang(array('string' => 'Subject')) . ': ' . $subject . "\n";
         $log .= pg_log_lang(array('string' => 'To')) . ': ' . (is_array($to) ? implode(', ', $to) : $to) . "\n";
+
+        if ($cc) {
+            $log .= pg_log_lang(array('string' => 'CC')) . ': ' . (is_array($cc) ? implode(', ', $cc) : $cc) . "\n";
+        }
 
         if ($bcc) {
             $log .= pg_log_lang(array('string' => 'BCC')) . ': ' . (is_array($bcc) ? implode(', ', $bcc) : $bcc) . "\n";
