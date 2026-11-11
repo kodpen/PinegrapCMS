@@ -19,6 +19,7 @@ description: Plan: the tool refuses a new memory line over 500 characters and a 
 - MR2 Workspace: `workspace/workspace-channel-overview.md` (17 files), `workspace-voice-overview.md` (13), `workspace-api-overview.md` (11). The first to go: the documentation pages are written from overviews (`workflow/user-docs-pages.md`).
 - MR3 `commerce/carrier-label-overview.md` (13), `ui/settings-modal-overview.md` (12), `data/db-q-overview.md` (28).
 - MR4 Designer: `designer/designer-canvas-overview.md` (11), `widget-default-overview.md` (12), `design-template-overview.md` (100; an overview is no template step, the pause of the template plans does not hold it).
+  - Done in #8743.
 - MR5 Close-out: the tool refuses a cluster of ten files or more with no start file.
   - After MR1-MR4. A cluster that reached ten meanwhile gets its overview in this step.
   - A start file named `<prefix>.md` counts, as the tool reads it today (eight clusters have one): no rename, the links stay. `memory-writing.md` says so and names both checks; this file is deleted.
