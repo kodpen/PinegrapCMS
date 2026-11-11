@@ -125,7 +125,7 @@ function test_settings_modal_drawer_cards_hand_over_no_second_dialog()
 		}
 	}
 
-	pg_assert_same(6, $entries, 'Cron Jobs, the three Connect forms and the two department drawers');
+	pg_assert_same(9, $entries, 'Cron Jobs, the three Connect forms, the two department drawers and the Working calendar\'s three');
 }
 
 function test_settings_modal_drawer_second_dialog_path_is_gone()
