@@ -21,7 +21,7 @@ description: Header notifications panel (#notifications, bell #notification_togg
 
 ## Why does a bell title wrap instead of ending in "…"?
 - At the old 350px (26rem since #3817, `notifications-one-inbox.md`) `.notification-title` carried `nowrap` + `ellipsis` in `backend.src.css`; titles of 44–50 characters ("Congratulations! There is a new successful order.") were cut even on desktop, the full text only in a hover `title`.
-- The non-custom title is now `<small class="notification-title text-wrap text-break w-100">` with no `title`, like the custom branch (`text-wrap w-100`). Bootstrap 6 utilities sit in a later `@layer` than `custom`, so `text-wrap` beats the panel rule's `white-space: nowrap` and the ellipsis never shows. The server sends titles already escaped (`pg_notification_display()`: `h()` on stored text, `lang()` literals), so the script inserts them as they come.
+- The title is now `.pg-bell-title` of `pg_bell_row()` (`bell-row.md`, #8722) with no `title`; its rule has `white-space: normal` and `overflow-wrap: anywhere`, and the old `nowrap` + `ellipsis` rule is gone. The server sends titles already escaped (`pg_notification_display()`: `h()` on stored text, `lang()` literals), so the script inserts them as they come.
 - Mail queue (`mail_queue.php`): the e-mail and SMS "Last error" cells and the SMS body print the whole text (an error is stored up to 500 characters), no 80-character `truncate()` and no hover `title`; the 28rem limit sits on an inner block (`ui/mail-queue-paging.md`). `tests/mail_queue_full_text_test.php` pins the bell title.
 
 ## Why does a device push banner decode its title?
