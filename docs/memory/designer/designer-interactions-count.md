@@ -5,7 +5,7 @@ module: designer_fx
 ---
 
 ## What is Count up?
-- `_fx` effect `count` (B3 #<PR>): the first number in a text node's text counts up from zero once the node is seen. The markup holds the real number, so a page without the script, a search engine and a screen reader read it as it is.
+- `_fx` effect `count` (B3 #8728): the first number in a text node's text counts up from zero once the node is seen. The markup holds the real number, so a page without the script, a search engine and a screen reader read it as it is.
 - Fields: `duration` (100–5000 ms, own default 2000, `pg_fx_count_numbers()`, `_sdFxSpec().count`) and `delay` (0–5000, default 0). No trigger, so the head style never hides the node; trigger, easing, stagger, repeat and the others drop out. `pg_fx_attrs()` writes the duration only when it is not 2000.
 
 ## How does the script find the number?
