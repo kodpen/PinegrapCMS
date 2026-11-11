@@ -135,6 +135,7 @@
 - design-template-forum-replies.md: Forum template on the Comments widget (1.1.0, board list 1.2.0): seven comments widgets, why explicit trees, pages that keep the block, e-mails, page settings, older sites, quirks, checks
 - design-template-forum.md: Community Forum & Docs template (pinegrap-forum): what it ships, its three forms, the live rules, archives and feeds, replies on the Comments widget and their names, Turkish words.
 - design-template-gallery.md: Art Gallery template (pinegrap-gallery): artists, exhibitions and works as collections, work enquiries and private viewing requests, editions in the shop, the Journal, pgl- look, tests.
+- design-template-gym-home.md: Gym template's home, classes and timetable pages on the Gym blocks (1.1.0, #8655): sections, motion, the parallax picture layer, pgy-anchor and pgy-depth, what the editor cannot do yet, tests
 - design-template-gym.md: Gym template (pinegrap-gym): classes and a timetable, trainers, plans, class booking and join requests, memberships in the shop with a members' area, pgy- look, tests.
 - design-template-hello.md: Hello template 2.6.0: threads and the reply e-mail card on the Comments widget, product reviews, the Favourites page and its shop-only links, Google Reviews beside the testimonials [decision: decisions-made-product-16.md]
 - design-template-homeservices.md: Home Services template (pinegrap-homeservices): services and team as collections, visit bookings and estimate requests, service areas, price guide, care plans in the shop, phs- look, tests.
