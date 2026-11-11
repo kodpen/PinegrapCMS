@@ -9,7 +9,8 @@ description: How a parcel's carrier, name and tracking link are found (pg_shippi
 
 ## How is the carrier of a parcel found?
 - `pg_shipping_carrier($number, $method, $default)` (`includes/fn/ecommerce.php`), in this order: (1) the whole `ship_tos.shipping_method_code` against each carrier's key and aliases, (2) the code a word at a time ("UPS-5GUN", "MNG Ertesi Gün"), (3) the site's default carrier, (4) the number's shape (`patterns`).
-- The default comes before the shape (#601): the UPS/FedEx/USPS patterns also match Turkish plain digits, so an 11-digit Yurtiçi number under "Standart Teslimat" used to link to UPS.
+- The shape: as typed, then in capitals without spaces (as `pg_shipment_number_warning()`); a lower-case UPS number had no link.
+- The default comes before the shape (#601): UPS/FedEx/USPS patterns also match Turkish plain digits (an 11-digit Yurtiçi number linked to UPS).
 - Every name is compared through `pg_shipping_carrier_text()`: `İ`→`i`, `I`→`ı`, lower case, then folded to ASCII (`pg_transliterate_to_ascii()`), so "YURTİÇİ KARGO", "YURTICI KARGO" and "yurtıcı" all match. Before #601 "YURTİÇİ KARGO" matched nothing (`mb_strtolower('İ')` adds a combining dot).
 
 ## Where does the default come from?
@@ -18,11 +19,11 @@ description: How a parcel's carrier, name and tracking link are found (pg_shippi
 - System Status's "Default Shipping Carrier" tile: unknown → warning, known → the name.
 
 ## Which carriers are known?
-- `yurtici`, `surat`, `aras`, `mng`, `ptt`, `kolaygelsin` (no number patterns: they all issue plain digits), `ups`, `fedex`, `usps`, `dhl`, `deutschepost`, `dpd`, `royalmail` (#3192, `carrier-label-shippo.md`). Each entry: `name`, `aliases`, `url` with `{code}`, `patterns`; order matters (FedEx before USPS).
+- `yurtici`, `surat`, `aras`, `mng`, `ptt`, `kolaygelsin` (no patterns: all plain digits), `ups`, `fedex`, `usps`, `dhl`, `deutschepost`, `dpd`, `royalmail` (#3192, `carrier-label-shippo.md`). Each entry: `name`, `aliases`, `url` with `{code}`, `patterns`; order matters (FedEx before USPS).
 
 ## How do I add a carrier?
 - One entry in `pg_shipping_carriers()`, with a tracking address checked on the carrier's own site; `tests/shipping_test.php` requires `{code}` in it. Add the key to the accepted values in `data/config(default).php`.
-- Not yet added for want of a verified address (their sites refuse cloud fetches); n11's `HLZ` (Horoz), `CEVA` and `BL` (Borusan) become aliases once their carriers exist. Candidates, all unchecked: HepsiJET `https://www.hepsijet.com/gonderi-takibi/{code}` (answers 403 to a cloud fetch); CEVA `https://etracking.cevalogistics.com/eTrackResultsMulti.aspx?sv={code}` (CEVA Trak; Turkish parcels unknown); Trendyol Express `https://kargotakip.trendyol.com/?orderNumber=` takes Trendyol's order number, not a tracking number; Sendeo (`sendeo.com.tr/tracking`) and Horoz (an API at developer.horoz.com.tr) showed no link pattern.
+- Not yet added, no verified address (sites refuse cloud fetches); n11's `HLZ` (Horoz), `CEVA` and `BL` (Borusan) become aliases once their carriers exist. Candidates, all unchecked: HepsiJET `https://www.hepsijet.com/gonderi-takibi/{code}` (403 to a cloud fetch); CEVA `https://etracking.cevalogistics.com/eTrackResultsMulti.aspx?sv={code}` (CEVA Trak; Turkish parcels unknown); Trendyol Express `https://kargotakip.trendyol.com/?orderNumber=` takes Trendyol's order number, not a tracking number; Sendeo (`sendeo.com.tr/tracking`) and Horoz (API at developer.horoz.com.tr) show no link pattern.
 
 ## How was Kolay Gelsin checked?
-- `tracking?q={code}` fills the page's search box in the served HTML (2026-11-04); the lookup is behind a Turnstile captcha, so the customer presses the button. No shape check (`pg_shipment_number_shapes()`): its number format is unconfirmed.
+- `tracking?q={code}` fills the page's search box in the served HTML (2026-11-04); the lookup is behind a Turnstile captcha (the customer presses the button). No shape check (`pg_shipment_number_shapes()`): its number format is unconfirmed.

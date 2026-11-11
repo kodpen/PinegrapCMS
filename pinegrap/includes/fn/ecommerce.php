@@ -9702,10 +9702,24 @@ function pg_shipping_carrier($number, $method, $default = '')
     }
 
     // No method code, or one this list does not know: the number's own shape.
-    foreach ($carriers as $carrier => $entry) {
-        foreach ($entry['patterns'] as $pattern) {
-            if (preg_match($pattern, $number) == 1) {
-                return $carrier;
+    // The patterns are written for capitals and mostly without spaces, so a
+    // number typed in lower case or in the groups the label prints is tried
+    // again in capitals without spaces, as pg_shipment_number_warning() does;
+    // only after the number as typed matched no carrier, so a number read
+    // today keeps its carrier.
+    $forms = array($number);
+    $plain = strtoupper(str_replace(' ', '', $number));
+
+    if ($plain !== $number) {
+        $forms[] = $plain;
+    }
+
+    foreach ($forms as $form) {
+        foreach ($carriers as $carrier => $entry) {
+            foreach ($entry['patterns'] as $pattern) {
+                if (preg_match($pattern, $form) == 1) {
+                    return $carrier;
+                }
             }
         }
     }
