@@ -6,7 +6,7 @@ module: a11y
 
 ## What does the report check?
 - `pg_a11y_rules()` lists every check with its severity, WCAG 2.2 criterion and level (Level A, plus contrast 1.4.3 and target size 2.5.8 of AA); `pg_a11y_rule_<code without a11y_>()` is its function over the parsed page, one example per occurrence. `alt=""` is decoration; a placeholder is no label.
-- Generic link text: name and list both pass `fold_keyword_for_duplicates()` (I, İ, ı as i): TIKLA counts.
+- Generic link text: name and list both pass `fold_keyword_for_duplicates()` (I, İ, ı as i): TIKLA counts (#8621).
 - Contrast and target size only where written inline (both colours, `_pg_theme_contrast()`; width and height in px); an unsure colour skips the text. The designer measures both on the canvas (`designer/designer-audit-contrast.md`).
 - Title, lang and main run only when the output holds `<html`: a page may answer JSON or a fragment (`visitors/seo-structure-non-html-output.md`).
 - Hidden markup (`hidden`, `aria-hidden`, inline `display:none`) is left out.
