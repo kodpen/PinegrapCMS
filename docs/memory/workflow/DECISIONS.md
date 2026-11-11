@@ -329,6 +329,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-14.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-14.md: When does a Workspace channel make a sound for a person? (owner, 2026-11-11, #8720)
 - decisions-made-workspace-14.md: What does an agent do while the message that asked it is being edited? (owner, 2026-11-11, #8723)
+- decisions-made-workspace-14.md: When are the coordinators connected to the agent channel? (owner, 2026-11-11, #8726)
 - decisions-made-workspace-2.md: What may the channel menu hold?
 - decisions-made-workspace-2.md: Where are records created inside a chat?
 - decisions-made-workspace-2.md: Does the customer channel's "New sales quote" stay in the menu?

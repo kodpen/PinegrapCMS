@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-14
-description: Decisions list, workspace part 14 (2026-11-11 on): the channel sound only for what is for the person, an agent waits while the message that asked it is being edited
+description: Decisions list, workspace part 14 (2026-11-11 on): the channel sound only for what is for the person, an agent waits during an edit, the coordinators join the channel later
 ---
 
 ## Where are the rules and the earlier parts?
@@ -18,3 +18,9 @@ description: Decisions list, workspace part 14 (2026-11-11 on): the channel soun
 - It holds in every channel kind and for every agent kind.
 - Not chosen: only a saved edit counts, with no hold; a short wait on every mention.
 - Why: before it, the request was made at once on send and an edit reached neither the queue nor the brief, so an agent could answer the words of before. Plan step: A10 of `plans/agent-channel-steps-3.md`.
+
+## When are the coordinators connected to the agent channel? (owner, 2026-11-11, #8726)
+- Not now. First step A10 (an agent waits during an edit), step A11 (the brief stays bounded) and the push door's knock against a real receiver. Until then the coordinators keep the chain of `coordinator.md` and none is registered as an agent.
+- Owner (2026-11-11): "Şimdi değil, eksikler bitsin", asked in the architect's window after his question there: "artık koordinatörleri de ajan kanalımıza bağlayalım mı yoksa erken mi".
+- Not chosen: one coordinator first beside its chain (the architect's recommendation); all four at once.
+- Why they wait: the site cannot wake a cloud session by itself (a poll-door session listens with its own waiter, which ends every two hours and on a restart), the push door is untried, and a coordinator's token cost per mention is not measured. When the three are done the architect asks again. Plan: `plans/agent-channel.md`.
