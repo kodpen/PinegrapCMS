@@ -94,7 +94,7 @@ function pg_dashboard_v2_cards()
         'activity'   => $card(lang('Activity'), 'bi-activity', 'general', 'S', null, 'all'),
         'flows'      => $card(lang('Flows'), 'bi-diagram-3', 'general', 'S', null, 'workspace'),
         'pins'       => $card(lang('Pinned'), 'bi-pin-angle', 'general', 'S', null, 'all'),
-        'notes'      => $card(lang('My notes'), 'bi-journal-text', 'general', 'S', null, 'all'),
+        'notes'      => $card(lang('My notes'), 'bi-journal-text', 'general', 'S', null, 'notes'),
         // Content
         'content'    => $card(lang('Content and design'), 'bi-layout-text-window', 'content', 'M', null, 'files'),
         'comments'   => $card(lang('Comment Moderation'), 'bi-chat-square-quote', 'content', 'S', null, 'files'),
@@ -154,7 +154,22 @@ function pg_dashboard_v2_card_timing()
  */
 function pg_dashboard_v2_gates()
 {
-    return array('all', 'staff', 'designer', 'files', 'visitors', 'gsearch', 'ga', 'workspace', 'team', 'calendars', 'shop', 'shop_summary', 'shop_reports', 'perf');
+    return array('all', 'staff', 'designer', 'files', 'visitors', 'gsearch', 'ga', 'workspace', 'team', 'notes', 'calendars', 'shop', 'shop_summary', 'shop_reports', 'perf');
+}
+
+/**
+ * May the person keep notes in My Notes: a member of the team (the rights
+ * pg_dashboard_workspace_rights() returns, null outside the team) while the
+ * notes' tables are there. The notes card adds to My Notes and lists it, so
+ * it stands behind this. Pure.
+ *
+ * @param array|null $rights
+ * @param bool       $ready  ws_notes_ready()
+ * @return bool
+ */
+function pg_dashboard_v2_notes_gate($rights, $ready)
+{
+    return is_array($rights) && !empty($rights['member']) && (bool) $ready;
 }
 
 /**
@@ -197,6 +212,10 @@ function pg_dashboard_v2_gate($gate, $user)
                 return false;
             }
             return ($gate === 'workspace') || !empty($rights['board']) || !empty(ws_led_people($rights['id']));
+        case 'notes':
+            require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets.php');
+            $rights = pg_dashboard_workspace_rights($user);
+            return pg_dashboard_v2_notes_gate($rights, ($rights !== null) && function_exists('ws_notes_ready') && ws_notes_ready());
         case 'calendars':
             return defined('CALENDARS') && (CALENDARS === true) && (validate_calendars_access($user, true) != false);
         case 'shop':

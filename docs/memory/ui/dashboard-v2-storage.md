@@ -15,7 +15,7 @@ description: The new dashboard's dashboard_layout table (step 11.0.143), the sig
 ## Which panel actions? (`includes/panel/dashboard.php`)
 - `dashboard_switch` {on} and `dashboard_layout_save` {layout, look}: exempt from the general gate, token, the caller's own row; the save is refused while the role is locked.
 - `dashboard_cards` {cards: [{id, per, cmp}]}: up to 40 cards in one answer (`run.php`), exempt, read only.
-- `dashboard_role_default` {role, locked, layout, look} and `dashboard_role_default_remove`: general gate, roles 0-1 (`dashboard-v2-share.md`). `dashboard_personal_save`: goals, pins, notes (`dashboard-v2-personal-cards.md`).
+- `dashboard_role_default` {role, locked, layout, look} and `dashboard_role_default_remove`: general gate, roles 0-1 (`dashboard-v2-share.md`). `dashboard_personal_save`: goals and pins (`dashboard-v2-personal-cards.md`); the notes card writes into My Notes.
 
 ## What does a card function return?
 - `cards/<id>.php` defines `pg_dashboard_v2_card_<id>($user, $period, $compare)`: `array('status' => 'success'|'denied'|'error', 'data' => array(...))` with figures, rows (text, note, tone, url), points, labels; never HTML, texts already through `lang()`. It checks its own gate, never echoes or exits. `pg_dashboard_v2_card_run()` answers `denied` for a closed gate and `error` for a missing file, a throw or a bad shape, so one card never breaks the batch.
