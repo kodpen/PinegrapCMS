@@ -785,9 +785,11 @@ function pg_sms_marketing_settings_decide($post, $before)
         }
     }
 
+    // Strict: a loose comparison reads two numeric-looking values ("0100" and
+    // "100") as the same number.
     return array(
         'marketing' => $marketing,
-        'changed'   => ($marketing != pg_sms_marketing_normalize($before)),
+        'changed'   => ($marketing !== pg_sms_marketing_normalize($before)),
         'marks'     => $marks,
     );
 }

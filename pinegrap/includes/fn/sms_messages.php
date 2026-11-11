@@ -273,9 +273,12 @@ function pg_sms_message_settings_decide($post, $before)
         }
     }
 
+    // Strict: a loose comparison reads two numeric-looking texts ("0100" and
+    // "100") as the same number. Both sides have the keys of
+    // pg_sms_message_normalize() in the same order.
     return array(
         'events'  => $events,
-        'changed' => ($events != $before),
+        'changed' => ($events !== $before),
         'marks'   => $marks,
     );
 }
