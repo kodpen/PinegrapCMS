@@ -5,7 +5,8 @@ description: Live trial of the agent channel on dev (2026-11-10): what is still 
 
 ## What was done, what is left?
 - Done on dev.pinegrap.com: application 13 "ADNAN Mimar" is registry agent 2, `@mimar`, poll door, in channel 25 (mention, tier 1). Through the panel a mention and `/wake` (`workspace/agent-doors.md`, `agent-wakes.md`); with the application's key the agent's own side (`workspace/agent-key-trial.md`): requests 37-41 were listed, briefed, claimed, answered or failed, and none waits.
-- Left to try: a push door's knock against a real receiver, an agent in several channels, the Agents card's schedule field, a text answer to a wake, `POST /workspace/agent-wake`, the agent's edits of its own messages. The key (`PG_WS_SITE`, `PG_WS_KEY`, `PG_WS_SECRET`, Basic auth) is in the architect's session, not on the owner's machine.
+- Tried on 2026-11-11 with the key: `POST /workspace/agent-wake`, a text answer to a wake, the agent's edit of its own message (`workspace/agent-key-trial-2.md`).
+- Left, each needing the owner's hand in the panel: a push door's knock against a real receiver, an agent in a second channel, the Agents card's schedule field. The key (`PG_WS_SITE`, `PG_WS_KEY`, `PG_WS_SECRET`, Basic auth) is in the architect's session, not on the owner's machine.
 
 ## What did the trial find wrong?
 1. Done (#8442; decided #8410): `ws_ai_requests.agent` `app:<n>` is the registry agent's id for an agent's request (`agent_queue.php`) and the application's id for a proposal (`proposals.php`), so agent n's list, brief and hourly brake take application n's proposals, and the proposals' readers take agent n's requests. An `app` agent's request moves to `agent:<ws_agents.id>` (`ws_agent_request_value()`, `ws_agent_request_parse()`, the `strpos` in `ws_agent_wake_of()`); `model:<id>` and the proposals' `app:<n>` stay. No schema (it fits `VARCHAR(16)`), no data step; a test with an agent and an application of one id.

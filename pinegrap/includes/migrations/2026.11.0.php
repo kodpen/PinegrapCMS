@@ -175,6 +175,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_agent_token_limit();     // 11.0.182
 	upgrade_2026_11_0_ws_wtable_numbers();       // 11.0.183
 	upgrade_2026_11_0_ws_agent_sessions();       // 11.0.184
+	upgrade_2026_11_0_ws_mail_send();            // 11.0.185
 
 }
 
@@ -5931,5 +5932,41 @@ function upgrade_2026_11_0_ws_agent_sessions() {
 	install_add_column('ws_ai_requests', 'claimed_device_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Workspace: a request to Claude can be taken by the asker\'s own connected session; existing messages and requests are unchanged.');
+
+}
+
+// Workspace mail learns how a mail it sends went out, its Bcc and each
+// person's read marks (11.0.185; the send path and the mail screen).
+// ws_mail_items.send_state is '' for mail that came in and for answers
+// written before it (read as sent), else queued, sent or failed; a VARCHAR,
+// so a later state needs no MODIFY. send_error keeps the queue's reason
+// (clipped to 500 there), outbox_id the mail_outbox row while the mail
+// waits. ws_mail_reads holds the newest item of a conversation a person has
+// read; conversation 0 is the person's floor. A table of its own: the only
+// read mark is one position per channel, and opening one mail would mark
+// the whole channel read. Additions only: nothing is rewritten.
+function upgrade_2026_11_0_ws_mail_send() {
+
+	if (!install_table_exists('ws_mail_items')) {
+
+		install_skipped('ws_mail_items does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_mail_items', 'bcc_list', "TEXT NULL");
+	install_add_column('ws_mail_items', 'send_state', "VARCHAR(8) NOT NULL DEFAULT ''");
+	install_add_column('ws_mail_items', 'send_error', "VARCHAR(500) NOT NULL DEFAULT ''");
+	install_add_column('ws_mail_items', 'outbox_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_create_table('ws_mail_reads', "CREATE TABLE ws_mail_reads (
+		conversation_id INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		item_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (conversation_id, user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace mail: sent mail can record whether it went out, its Bcc and who has read it; existing mail is unchanged and answers sent earlier count as sent.');
 
 }

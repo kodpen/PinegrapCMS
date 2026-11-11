@@ -14,7 +14,7 @@ description: How the Workspace mail plan sends: one send path through the mail q
 - A bounce later is today's "Not delivered" line.
 
 ## What does the schema step add?
-- Proposed, asked in #8604 (owner); WM2 waits. One step of the open version: `ws_mail_items.bcc_list` (text), `send_state` (empty for mail that came in and for earlier answers, else `queued`, `sent`, `failed`), `send_error`, `outbox_id` (the queue row while it waits); table `ws_mail_reads` (`conversation_id`, `user_id`, `item_id`; primary key the first two).
+- Owner (2026-11-11, #8604): as planned. One step of the open version: `ws_mail_items.bcc_list` (text), `send_state` (empty for mail that came in and for earlier answers, else `queued`, `sent`, `failed`), `send_error`, `outbox_id` (the queue row while it waits); table `ws_mail_reads` (`conversation_id`, `user_id`, `item_id`; primary key the first two).
 - A `ws_mail_reads` row with conversation 0 is the person's floor: everything up to that item is read. It is written at the newest item when the person's count is first asked for, and by Mark all as read, so nobody starts with a backlog.
 - Running sites: additions only, nothing rewritten; an earlier out item reads as sent.
 - Why a table: the only read mark is one position per channel (`ws_channel_members.last_read_id`); opening one mail would mark the whole channel read.
