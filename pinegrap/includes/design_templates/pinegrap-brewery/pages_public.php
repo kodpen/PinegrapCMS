@@ -237,7 +237,7 @@ $bw_release = $el('section', 'py-5 bg-body-tertiary overflow-hidden', lang('Brew
             ), '', '5'),
             $col(array(
                 $bw_eyebrow(lang('Fresh release'), 'text-body-emphasis'),
-                $heading('h2', $bw_release_beer['name'], 'display-2 fw-bold text-uppercase lh-1 mb-3'),
+                $heading('h2', $bw_release_beer['name'], 'display-2 fw-bold lh-1 mb-3'),
                 $para($bw_release_beer['summary'], 'lead text-body-secondary mb-4'),
                 $fx($el('dl', 'row row-cols-3 g-3 mb-4', lang('Release Facts'), array(
                     $bw_release_fact(1, lang('Alcohol'), $bw_release_beer['abv']),
@@ -262,10 +262,11 @@ foreach ($beers as $b) {
     $bw_tap_n++;
     $bw_tap_title = array($heading('h3', $b['name'], 'h5 fw-bold mb-0'));
     if ($b['availability'] !== 'core') {
-        $bw_tap_title[] = $span($availabilities[$b['availability']]['title'], 'badge rounded-pill ' . $availabilities[$b['availability']]['badge'], lang('Beer Availability'));
+        // The badge may wrap, or a long one would hold the row wider than a phone.
+        $bw_tap_title[] = $span($availabilities[$b['availability']]['title'], 'badge rounded-pill text-wrap text-start ' . $availabilities[$b['availability']]['badge'], lang('Beer Availability'));
     }
     $bw_taps[] = $el('li', 'col', str_replace('{var}', $bw_tap_n, lang('Tap {var}')), array(
-        $el('div', 'd-flex align-items-center gap-3 py-3 border-bottom', lang('Tap Row'), array(
+        $el('div', 'd-flex align-items-center gap-2 gap-sm-3 py-3 border-bottom', lang('Tap Row'), array(
             $span(sprintf('%02d', $bw_tap_n), 'pg-brewery-tap text-primary fw-bold', lang('Tap')),
             $bw_glass($bw_tones[$b['style']], 'pg-brewery-mini'),
             $el('div', 'flex-grow-1', lang('Beer'), array(

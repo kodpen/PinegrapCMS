@@ -14,6 +14,7 @@ description: Craft Brewery template 2.0.0: home, taproom and beer page on the Br
 - Taproom: header, the tap board (`bw-taproom-taps`), opening hours beside the address (`bw-taproom-visit`), food, getting there, the flight (`bw-taproom-flight`, links `{{page:book_online}}`), the ask band. Its reviews left (the home keeps them).
 - Beer page: the picture stage (parallax, the picture fades in on load) with the availability sticker; the `h1` and summary come in on load; Release Facts bind style and strength in `pg-brewery-figure`; malts and hops, tasting notes, buttons. The stage is `pg-hide-if-empty`, judged by its picture, so the sticker leaves with it.
 - About: the story band fades in, figures, steps and team rise.
+- Beer names are never `text-uppercase`: the Turkish site would print LOW TİDE SOUR ([[uppercase-heading-brand-names]]). A tap's availability badge is `text-wrap`, or a long one holds the row wider than a 320 px phone.
 
 ## What could the editor not do?
 - A glass colour of its own per beer: the tone is one of four, picked by style; a tone bound to a record field would follow the beer record.

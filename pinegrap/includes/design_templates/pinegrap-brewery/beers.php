@@ -262,7 +262,7 @@ $beer_widgets['beer_detail'] = array(
                         )), array('effect' => 'parallax', 'speed' => 15)),
                     ), '', '5'),
                     $col(array(
-                        $fx($heading('h1', $beer_sample['name'], 'display-2 fw-bold text-uppercase text-break lh-1 mb-3', $bind('name')),
+                        $fx($heading('h1', $beer_sample['name'], 'display-2 fw-bold text-break lh-1 mb-3', $bind('name')),
                             array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 900)),
                         $fx($para($beer_sample['summary'], 'lead text-body-secondary mb-4', $bind('summary')),
                             array('effect' => 'fade', 'trigger' => 'load', 'duration' => 800, 'delay' => 400)),
