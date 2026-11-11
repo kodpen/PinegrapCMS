@@ -142,7 +142,8 @@
             if (key === 'size' || key === 'modified') {
                 out = (Number(a.item[key]) || 0) - (Number(b.item[key]) || 0);
             } else if (key === 'type') {
-                out = compareText(String(a.item.type || ''), String(b.item.type || ''), collator);
+                // A page's type goes by the label shown, not its inner key.
+                out = compareText(String(a.item.type_label || a.item.type || ''), String(b.item.type_label || b.item.type || ''), collator);
             } else if (key !== 'best') {
                 out = compareText(String(a.item.text || ''), String(b.item.text || ''), collator);
             }
@@ -512,6 +513,18 @@
         return (conf().page_groups || []).map(function (group) { return group.key; });
     }
 
+    // A render rebuilds the chips and the column heads: the button pressed
+    // gets the focus back, or it would fall to the page under the dialog.
+    function refocus(box, attr, value) {
+        var nodes = box.querySelectorAll('[' + attr + ']');
+        for (var i = 0; i < nodes.length; i++) {
+            if (nodes[i].getAttribute(attr) === value && !box.hidden) {
+                nodes[i].focus();
+                return;
+            }
+        }
+    }
+
     function groupLabel(key) {
         var groups = conf().page_groups || [];
         for (var i = 0; i < groups.length; i++) {
@@ -728,6 +741,7 @@
                 var key = chip.getAttribute('data-group');
                 self.group = (key === self.group) ? '' : key;
                 self.render(true);
+                refocus(self.chipBox, 'data-group', key);
             }
         });
 
@@ -843,6 +857,7 @@
             if (node) {
                 var key = node.getAttribute('data-sort');
                 self.setSort(key, (self.sort === key) ? (self.dir === 'asc' ? 'desc' : 'asc') : defaultDir(key));
+                refocus(self.head, 'data-sort', key);
             }
         });
         this.crumbNav.addEventListener('click', function (event) {
@@ -1733,6 +1748,7 @@
             self.renderCrumbs();
             self.status.textContent = '';
             self.head.hidden = true;
+            self.chipBox.hidden = true;
             self.itemsBox.textContent = '';
             self.hint.textContent = t('Tapping a folder shows its files');
             var recent = el('div', 'pg-picker-item pg-picker-folder-row' + (self.recentOn ? ' is-cursor' : ''));

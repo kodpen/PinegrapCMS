@@ -21,6 +21,7 @@ module: picker
 ## How does the type filter work?
 - Chips above the list: All, then one per group present in the view (Standard, Forms, Catalog, Calendars, Cart and checkout, Search Results, Sign-in and account, Other), from `pg_picker_page_type_group()` and `pg_picker_page_groups()` (config `page_groups`).
 - Client side: `groupChips()` and `inGroup()`; folders always stay; the chips hide below two groups unless one is chosen. A page type no group names is Other (a test checks every `get_page_type_names()` type has a chip).
+- The chips hide on the phone's folder list too (`showFolderList()`); a chip or a column heading pressed keeps the focus after the redraw (`refocus()`), or it fell to the page under the dialog. The Type sort goes by `type_label` ("Özel Form" after "Giriş Yap"), not the inner key (#8727's browser check).
 
 ## How does a caller hand in its own entries?
 - `pgPicker.open({kind: 'page', extra: [{value, text, type, type_group, note}], extraLabel})`: the designer's unsaved tabs (`tab:<key>`), shown under a tree row (default "Not saved yet"), first in search results (`extraMatches()`), never resolved and never kept in Recent.

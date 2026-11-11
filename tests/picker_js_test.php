@@ -90,6 +90,11 @@ function test_picker_js_sort()
 			modified: names(P.sortItems(items, "modified", "desc", c)),
 			type: names(P.sortItems(items, "type", "asc", c)),
 			best: names(P.sortItems(items, "best", "asc", c)),
+			labels: names(P.sortItems([
+				{text: "A", type: "standard", type_label: "Standart"},
+				{text: "B", type: "custom form", type_label: "Özel Form"},
+				{text: "C", type: "login", type_label: "Giriş Yap"}
+			], "type", "asc", c)),
 			dirs: [P.defaultDir("name"), P.defaultDir("size"), P.defaultDir("modified"), P.defaultDir("type")]
 		};');
 
@@ -103,6 +108,7 @@ function test_picker_js_sort()
 	pg_assert_same('Kupalar', $out['modified'][0]);
 	pg_assert_same(array('Kupalar', 'Zeytin.jpg', 'çanta.png', 'Armut.jpg', 'resim10.jpg', 'resim9.jpg'), $out['best'], 'best keeps the server order after the folders');
 	pg_assert_same('çanta.png', end($out['type']));
+	pg_assert_same(array('C', 'B', 'A'), $out['labels'], 'pages sort by the type label shown, not the inner key');
 	pg_assert_same(array('asc', 'desc', 'desc', 'asc'), $out['dirs']);
 }
 
