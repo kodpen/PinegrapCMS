@@ -17117,6 +17117,13 @@ const StyleDesigner = (function () {
             return srcTag === 'td' || srcTag === 'th';
         }
 
+        // Rule 7: a player holds only its <source> and <track> elements:
+        // anything else inside <video> or <audio> is fallback content that no
+        // current browser shows, so a heading dropped there would vanish.
+        if (tgtTag === 'video' || tgtTag === 'audio') {
+            return srcTag === 'source' || srcTag === 'track';
+        }
+
         // ────────────────────────────────────────────────────────────────────
 
         // ── loop_area scope guard — can't escape its system widget ───────────
