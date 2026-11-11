@@ -151,6 +151,7 @@ function pg_panel_get_notifications($request, $action)
     // Drawing the list reads nothing: a row is read when it is opened
     // (edit_notifications, mark_read / mark_all_read).
     $notifications = db_items("SELECT * FROM notifications ORDER BY timestamp DESC");
+    $now = time();
 
     foreach ($notifications as $notification) {
 
@@ -176,7 +177,12 @@ function pg_panel_get_notifications($request, $action)
             'group' => ((($notification['action'] ?? '') === 'workspace') ? 'workspace' : 'site'),
             'glyph' => $display['glyph'],
             'join' => $display['join'],
-            'fold' => $display['fold']
+            'fold' => $display['fold'],
+            // Drawn as the dashboard's Next up row: the module's tag, the
+            // day heading it stands under and the one button's job.
+            'module' => pg_notification_module($notification['action'] ?? ''),
+            'day' => pg_notification_day((int) $notification['timestamp'], $now),
+            'button' => pg_notification_button($display['action'], $display['kind'], $display['join'])
         );
 
         array_push($array, $item);

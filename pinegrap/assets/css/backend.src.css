@@ -932,6 +932,20 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --pg-tint-hover: rgba(128, 128, 128, 0.18);
   --pg-tint-soft: rgba(128, 128, 128, 0.06);
   --pg-rule: rgba(128, 128, 128, 0.16);
+
+  /* A bell row's module tag (pg_bell_row()): the hues of the dashboard's
+     Next up tags (.pg-dash-queue-tag[data-module] in pg_dash.src.css), held
+     equal by tests/bell_row_test.php. System is the dashboard's neutral. */
+  --pg-bell-tag-shop-bg: rgba(251, 191, 36, .16);
+  --pg-bell-tag-shop-fg: #b45309;
+  --pg-bell-tag-erp-bg: rgba(248, 113, 113, .14);
+  --pg-bell-tag-erp-fg: #b91c1c;
+  --pg-bell-tag-content-bg: rgba(217, 70, 239, .14);
+  --pg-bell-tag-content-fg: #a21caf;
+  --pg-bell-tag-team-bg: rgba(167, 139, 250, .18);
+  --pg-bell-tag-team-fg: #6d28d9;
+  --pg-bell-tag-system-bg: rgba(148, 163, 184, .16);
+  --pg-bell-tag-system-fg: var(--pg-fg-2);
   --pg-rule-strong: rgba(128, 128, 128, 0.18);
   --pg-rule-dashed: rgba(128, 128, 128, 0.35);
   --pg-scrollbar-thumb: #939393;
@@ -1000,6 +1014,12 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --pg-tint-hover: rgba(255, 255, 255, 0.1);
   --pg-tint-soft: rgba(255, 255, 255, 0.04);
   --pg-scrollbar-thumb: #5e5e5e;
+
+  /* The bell's module tags: the dashboard's dark ink on the same fills. */
+  --pg-bell-tag-shop-fg: #fde68a;
+  --pg-bell-tag-erp-fg: #fecaca;
+  --pg-bell-tag-content-fg: #f0abfc;
+  --pg-bell-tag-team-fg: #c4b5fd;
 
   --pg-body-bg-rgb: 16, 17, 20;
   --pg-navbar-bg-rgb: 14, 14, 14;
@@ -4399,70 +4419,12 @@ a.link-top-row {
   min-height: 6rem;
 }
 
-#notifications .list-group-item .notification-description {
-  line-height: 0.9375rem;
-  font-size: 0.8125rem;
-  padding: 0 5px;
-  margin: 0;
-  margin-bottom: 0.3rem;
-  border-radius: var(--pg-radius-sm);
-  display: -webkit-box;
-  max-width: 100%;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-#notifications .list-group-item .notification-title {
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-#notifications .list-group-item.success .notification-title,
-#notifications .list-group-item.new.success .notification-title,
-#notifications .list-group-item.new .notification-title {
-  color: var(--pg-success-fg-emphasis);
-}
-
-#notifications .list-group-item.warning .notification-title,
-#notifications .list-group-item.new.warning .notification-title {
+#notifications .list-group-item.warning .notification-title {
   color: var(--pg-warning-fg-emphasis);
 }
 
-#notifications .list-group-item.error .notification-title,
-#notifications .list-group-item.new.error .notification-title {
+#notifications .list-group-item.error .notification-title {
   color: var(--pg-danger-fg-emphasis);
-}
-
-#notifications .notification-card {
-  position: relative;
-}
-
-#notifications .list-group-item.new .notification-card:before,
-#notifications .list-group-item.new.warning .notification-card:before,
-#notifications .list-group-item.new.error .notification-card:before {
-  content: "";
-  width: 5px;
-  height: 1rem;
-  background-color: var(--pg-success);
-  display: block;
-  position: absolute;
-  top: 1rem;
-  border-radius: var(--pg-radius-sm);
-  left: 2px;
-}
-
-#notifications .list-group-item.new.warning .notification-card:before {
-  background-color: var(--pg-warning);
-}
-
-#notifications .list-group-item.new.error .notification-card:before {
-  background-color: var(--pg-danger);
-}
-
-#notifications .list-group-item.new.viewed .notification-card:before {
-  opacity: 0.3;
 }
 
 /*Material-icons*/
@@ -4566,8 +4528,258 @@ a.link-top-row {
 }
 /* An older run hangs under its newest. */
 #notifications .software_notification[data-pg-bell-fold] .notification-card {
-  margin-left: 0.75rem;
+  margin-left: 0.875rem;
+  padding-left: 0.75rem;
   border-left: 2px solid var(--pg-border-color-translucent);
+}
+
+/* A bell row drawn as the dashboard's Next up row (pg_bell_row()): the
+   module's tag, the title over one second line, then the one button, the
+   unread dot and the row's menu. Day headings stand over the rows. */
+#notifications .pg-bell-list {
+  padding-bottom: 0.25rem;
+}
+#notifications .pg-bell-day {
+  padding: 0.75rem 0.875rem 0.25rem;
+  color: var(--pg-fg-3);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  list-style: none;
+}
+#notifications .pg-bell-day.pg-bell-off {
+  display: none;
+}
+#notifications .pg-bell-row {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--pg-fg-body);
+}
+#notifications .pg-bell-row + .pg-bell-row .pg-bell-card {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+#notifications .pg-bell-card {
+  display: grid;
+  grid-template-columns: 3.75rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.5rem 0.625rem 0.875rem;
+}
+#notifications .pg-bell-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.125rem;
+  padding: 0 0.25rem;
+  overflow: hidden;
+  border-radius: 0.625rem;
+  background: var(--pg-bell-tag-system-bg);
+  color: var(--pg-bell-tag-system-fg);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#notifications .pg-bell-tag[data-module="shop"] {
+  background: var(--pg-bell-tag-shop-bg);
+  color: var(--pg-bell-tag-shop-fg);
+}
+#notifications .pg-bell-tag[data-module="erp"] {
+  background: var(--pg-bell-tag-erp-bg);
+  color: var(--pg-bell-tag-erp-fg);
+}
+#notifications .pg-bell-tag[data-module="content"] {
+  background: var(--pg-bell-tag-content-bg);
+  color: var(--pg-bell-tag-content-fg);
+}
+#notifications .pg-bell-tag[data-module="team"] {
+  background: var(--pg-bell-tag-team-bg);
+  color: var(--pg-bell-tag-team-fg);
+}
+#notifications .pg-bell-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+#notifications .pg-bell-title {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pg-fg-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+#notifications .pg-bell-row.new .pg-bell-title {
+  font-weight: 700;
+}
+#notifications button.pg-bell-title:hover {
+  text-decoration: underline;
+}
+#notifications .pg-bell-sub {
+  display: flex;
+  gap: 0.375rem;
+  max-width: 100%;
+  color: var(--pg-fg-3);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+#notifications .pg-bell-excerpt {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#notifications .pg-bell-time {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+#notifications .pg-bell-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.125rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pg-primary-fg-emphasis);
+  font-size: 0.75rem;
+}
+#notifications .pg-bell-side {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+#notifications .pg-bell-act {
+  display: inline-flex;
+  align-items: center;
+  height: 2.125rem;
+  margin-right: 0.25rem;
+  padding: 0 0.625rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: 0.5625rem;
+  background: var(--pg-tint);
+  color: var(--pg-fg-body);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+#notifications .pg-bell-act:hover {
+  border-color: var(--pg-primary);
+  background: var(--pg-tint-hover);
+}
+/* The unread dot is a button ("Mark as read"); a read row keeps its place. */
+#notifications .pg-bell-dot {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 2.125rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.5rem;
+  background: none;
+}
+#notifications button.pg-bell-dot::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--pg-primary);
+}
+#notifications button.pg-bell-dot:hover {
+  background: var(--pg-tint-hover);
+}
+#notifications .pg-bell-row.warning button.pg-bell-dot::before {
+  background: var(--pg-warning);
+}
+#notifications .pg-bell-row.error button.pg-bell-dot::before {
+  background: var(--pg-danger);
+}
+#notifications .pg-bell-menu-wrap {
+  position: relative;
+}
+#notifications .pg-bell-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2.125rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.5rem;
+  background: none;
+  color: var(--pg-fg-3);
+}
+#notifications .pg-bell-menu-toggle:hover,
+#notifications .pg-bell-menu-toggle[aria-expanded="true"] {
+  background: var(--pg-tint-hover);
+  color: var(--pg-fg-body);
+}
+#notifications .pg-bell-menu {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  z-index: 5;
+  min-width: 11rem;
+  padding: 0.25rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: 0.625rem;
+  background: var(--pg-bg-body);
+  box-shadow: var(--pg-shadow);
+}
+#notifications .pg-bell-menu.pg-bell-menu-up {
+  top: auto;
+  bottom: calc(100% + 0.25rem);
+}
+#notifications .pg-bell-menu[hidden],
+#notifications .pg-bell-menu-item[hidden] {
+  display: none;
+}
+#notifications .pg-bell-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.375rem 0.625rem;
+  border: 0;
+  border-radius: 0.375rem;
+  background: none;
+  color: var(--pg-fg-body);
+  font-size: 0.8125rem;
+  text-align: start;
+  white-space: nowrap;
+}
+#notifications .pg-bell-menu-item:hover {
+  background: var(--pg-tint-hover);
+}
+#notifications .pg-bell-menu-item.pg-bell-delete {
+  color: var(--pg-danger-fg-emphasis);
+}
+#notifications :is(.pg-bell-title, .pg-bell-act, .pg-bell-dot, .pg-bell-menu-toggle, .pg-bell-menu-item, .pg-bell-more):focus-visible {
+  outline: 2px solid var(--pg-primary);
+  outline-offset: 1px;
+}
+/* A phone: the tag stands over the text, as on the dashboard. */
+@media (max-width: 639.98px) {
+  #notifications .pg-bell-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 0.375rem;
+  }
+  #notifications .pg-bell-tag {
+    grid-column: 1 / -1;
+    justify-self: start;
+    height: 1.5rem;
+    padding: 0 0.5rem;
+  }
 }
 /* A workspace row's icon, in the workspace's colour. */
 #notifications .pg-bell-glyph {
@@ -22540,6 +22752,15 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   .btn-close {
     forced-color-adjust: none;
     background-color: ButtonText;
+  }
+  /* A bell row's module tag and its unread dot (pg_bell_row()). */
+  #notifications .pg-bell-tag,
+  #notifications .pg-bell-menu {
+    border: 1px solid CanvasText;
+  }
+  #notifications button.pg-bell-dot::before {
+    forced-color-adjust: none;
+    background-color: Highlight;
   }
 
   /* The current or pressed item, shown elsewhere only by a fill, a tint or a
