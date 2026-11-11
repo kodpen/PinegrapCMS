@@ -206,6 +206,22 @@ function test_panel_actions_exempt_matches_pinned_list()
 	pg_assert_same($pinned, $exempt);
 }
 
+// Every action the Workspace module answers has a row: a ws_* name the table
+// does not know passes the gate but ends in "Invalid action.".
+function test_panel_actions_list_every_workspace_case()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	preg_match_all("/^\\s*case '(ws_[a-z0-9_]+)':/m", $source, $matches);
+	$cases = array_unique($matches[1]);
+
+	pg_assert_true(count($cases) > 100, 'the cases are found');
+
+	foreach ($cases as $action) {
+		$entry = pg_panel_action($action);
+		pg_assert_true(($entry !== null) && ($entry['handler'] === 'pg_panel_ws'), $action);
+	}
+}
+
 // What the general gate asks of each kind of action.
 function test_panel_gate_answers()
 {
