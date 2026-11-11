@@ -740,8 +740,9 @@ JS;
 // to the text the markup holds; a node without a number is left alone; on
 // the editor's canvas a node drawn by a later render shows its number, a
 // press on a counting node shows it at once, and the Play button counts it
-// again; reduced motion turned on puts every number back, and a node bound
-// under it never counts.
+// again, a press or focus during Play stopping it too (one listener per
+// node); reduced motion turned on puts every number back, and a node bound
+// under it never counts but for Play.
 function test_designer_fx_script_counts()
 {
 	$nodes = <<<'JS'
@@ -790,6 +791,13 @@ tick(0);
 out.replayStart = redrawn.firstChild.data;
 tick(2000);
 out.replayEnd = redrawn.firstChild.data;
+window.pgFx.replay(redrawn);
+window.pgFx.replay(redrawn);
+tick(500);
+out.replayListeners = (redrawn.listeners.pointerdown || []).length;
+if (out.replayListeners) redrawn.listeners.pointerdown[0]();
+tick(16);
+out.replayPressed = [redrawn.firstChild.data, frames.length];
 var other = counting({ 'data-pg-fx': 'count' }, text('1.250.000'));
 nodes = [other];
 window.pgFx.replay(other);
@@ -804,6 +812,12 @@ var calm = counting({ 'data-pg-fx': 'count' }, text('42'));
 nodes.push(calm);
 window.pgFxBind(document);
 out.calm = [calm.firstChild.data, observed.indexOf(calm) === -1];
+window.pgFx.replay(calm);
+tick(0);
+out.calmPlay = calm.firstChild.data;
+if ((calm.listeners.focusin || []).length) calm.listeners.focusin[0]();
+tick(16);
+out.calmPressed = [calm.firstChild.data, frames.length];
 console.log(JSON.stringify(out));
 JS;
 	$got = _test_fx_node(_test_fx_fake_dom() . $nodes . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_fx.src.js') . $steps);
@@ -823,8 +837,12 @@ JS;
 	pg_assert_true($got['replay'], 'the Play button counts it');
 	pg_assert_same('0', $got['replayStart']);
 	pg_assert_same('3.500', $got['replayEnd']);
+	pg_assert_same(1, $got['replayListeners'], 'Play listens for a press once, however often it is pressed');
+	pg_assert_same(array('3.500', 0), $got['replayPressed'], 'a press during Play shows the number and stops the count');
 	pg_assert_same('0', $got['otherStart']);
 	pg_assert_same('1.250.000', $got['reduced'], 'reduced motion turned on: the number back');
 	pg_assert_same(array('1.250.000', 0), $got['reducedAfter'], 'and no frame writes it again');
 	pg_assert_same(array('42', true), $got['calm'], 'bound under reduced motion: never counts');
+	pg_assert_same('0', $got['calmPlay'], 'the Play button counts it still');
+	pg_assert_same(array('42', 0), $got['calmPressed'], 'and a focus on it shows the number');
 }

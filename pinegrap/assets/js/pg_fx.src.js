@@ -341,6 +341,17 @@
         write(rec.count.node, rec.count.text);
     }
 
+    // On the canvas a press or focus shows a counting number at once, so an
+    // edit begun on it never takes a number half counted. Once per node:
+    // the first bind and the Play button both ask. Not on the page, where a
+    // finger that scrolls over the number would end its count.
+    function holdOnPress(rec) {
+        if (!window.pgFxEditing || rec.held) return;
+        rec.held = true;
+        rec.el.addEventListener('pointerdown', function () { finish(rec); });
+        rec.el.addEventListener('focusin', function () { finish(rec); });
+    }
+
     // Counts a node's number up from zero, one write per frame, after its
     // delay. `force` counts whatever the motion setting (replay()); else
     // reduced motion turned on midway shows the number at once.
@@ -448,13 +459,7 @@
             if (later) return;
             rec.count = firstNumber(el);
             if (!rec.count) return;
-            // On the canvas a press shows the number, so an edit begun on
-            // it never takes a number half counted. Not on the page, where
-            // a finger that scrolls over the number would end its count.
-            if (window.pgFxEditing) {
-                el.addEventListener('pointerdown', function () { finish(rec); });
-                el.addEventListener('focusin', function () { finish(rec); });
-            }
+            holdOnPress(rec);
             // Zero until seen: the frame that first shows it never shows
             // the number before the count.
             write(rec.count.node, countText(rec.count, 0));
@@ -544,6 +549,9 @@
             // its text is the markup's.
             if (!rec.count) rec.count = firstNumber(el);
             if (!rec.count) return false;
+            // A node bound under the paused canvas or by a later render
+            // has no press to stop it yet.
+            holdOnPress(rec);
             countUp(rec, true);
             return true;
         }
