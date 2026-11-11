@@ -9,7 +9,10 @@
  * The core's Locations: Cards keeps the branch cards (address, hours,
  * phone). The floor directory: a building's floors from the top down, each
  * with its level, what is on it and who may go up, for a coworking house,
- * a hotel, a museum or a shopping arcade.
+ * a hotel, a museum or a shopping arcade. Delivery zones: the rings around
+ * a shop drawn beside each zone's places, when an order arrives and its
+ * fee, then the delivery times and the last order time for the same day,
+ * for a florist, a bakery, a market, a pharmacy or a restaurant.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -23,12 +26,24 @@ StyleDesigner.registerBlockFamily(function (kit) {
     var _SD_BLOCK_CSS = {
         'pg-space-facts': '.pg-space-facts { font-variant-numeric: tabular-nums; }',
         // A floor's level: a square of one size whatever its figure or word.
-        'pg-floor-level': '.pg-floor-level { display: inline-flex; align-items: center; justify-content: center; width: 4rem; height: 4rem; flex-shrink: 0; font-variant-numeric: tabular-nums; }'
+        'pg-floor-level': '.pg-floor-level { display: inline-flex; align-items: center; justify-content: center; width: 4rem; height: 4rem; flex-shrink: 0; font-variant-numeric: tabular-nums; }',
+        // The zones as rings around the shop, each inside the next: a ring
+        // keeps its round shape from its width, and its padding is the
+        // band the zone covers, so no ring is placed by position.
+        'pg-delivery-map': '.pg-delivery-map { max-width: 22rem; margin-inline: auto; } ' +
+                           '.pg-delivery-map .pg-delivery-ring { aspect-ratio: 1 / 1; padding: 15%; border-radius: 50%; } ' +
+                           '.pg-delivery-map .pg-delivery-z1 { display: flex; align-items: center; justify-content: center; padding: 0; }',
+        // A zone's key in the list, drawn like its ring; the outer zone's
+        // line is dashed (the border utilities read the style from it).
+        'pg-delivery-key': '.pg-delivery-key { width: 1.25rem; height: 1.25rem; flex-shrink: 0; margin-top: .25rem; border-radius: 50%; } ' +
+                           '.pg-delivery-z3 { --bs-border-style: dashed; } ' +
+                           '.pg-delivery-zones { font-variant-numeric: tabular-nums; }'
     };
 
     var _SD_BLOCK_CSS_NEEDS = {
         'locations-spaces': ['pg-ratio-16x9', 'pg-space-facts'],
-        'locations-floors': ['pg-floor-level']
+        'locations-floors': ['pg-floor-level'],
+        'locations-delivery': ['pg-delivery-map', 'pg-delivery-key']
     };
 
     // ── Spaces to hire ──────────────────────────────────────────────────
@@ -125,15 +140,100 @@ StyleDesigner.registerBlockFamily(function (kit) {
         ]);
     };
 
+    // ── Delivery zones ──────────────────────────────────────────────────
+    // The colours of a zone's ring and of its key in the list, from the
+    // shop outwards; the outer zone is drawn with a dashed line.
+    var rings = {
+        1: 'text-bg-primary',
+        2: 'bg-primary-subtle border border-2 border-primary-subtle',
+        3: 'pg-delivery-z3 border border-2 border-primary'
+    };
+    // A zone: its key (hidden from a screen reader, which reads the name),
+    // its name and fee, the places it covers and when an order arrives.
+    var zone = function (n, name, text, when, today, fee) {
+        return kit.tag('li', 'd-flex gap-3 py-3 border-bottom', _sdT('Zone {var}', n), [
+            kit.div('pg-delivery-key ' + rings[n], _sdT('Zone Mark'), [], [{ name: 'aria-hidden', value: 'true' }]),
+            kit.div('flex-grow-1', _sdT('Zone Text'), [
+                kit.div('d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-1', _sdT('Title'), [
+                    kit.h('h3', name, 'h5 fw-bold mb-0'),
+                    kit.div('', _sdT('Delivery fee'), [
+                        kit.h('span', _sdT('Delivery fee'), 'small text-body-secondary me-1'),
+                        kit.h('span', fee, 'fw-bold')
+                    ])
+                ]),
+                kit.p(text, 'small text-body-secondary mb-2'),
+                kit.h('span', when, 'badge rounded-pill text-wrap ' + (today ? 'text-bg-primary' : 'bg-body-secondary text-body-emphasis'))
+            ])
+        ]);
+    };
+    // A delivery time: its name and the hours it runs.
+    var slot = function (icon, name, from, to) {
+        return kit.tag('li', 'col', name, [
+            kit.div('h-100 p-3 rounded-3 border text-center', _sdT('Delivery Time'), [
+                kit.icon(icon, 'd-block text-primary fs-4 mb-1'),
+                kit.h('span', name, 'd-block fw-semibold'),
+                kit.div('small text-body-secondary', _sdT('Hours'), [
+                    kit.time(from, from, '', _sdT('Start Time')),
+                    kit.h('span', '–', 'mx-1'),
+                    kit.time(to, to, '', _sdT('End Time'))
+                ])
+            ])
+        ]);
+    };
+    var buildDelivery = function () {
+        var map = kit.div('pg-delivery-map', _sdT('Zone Drawing'), [
+            kit.div('pg-delivery-ring ' + rings[3], _sdT('Zone {var}', 3), [
+                kit.div('pg-delivery-ring ' + rings[2], _sdT('Zone {var}', 2), [
+                    kit.div('pg-delivery-ring pg-delivery-z1 ' + rings[1], _sdT('Zone {var}', 1), [
+                        kit.icon('bi-shop', 'fs-3')
+                    ])
+                ])
+            ])
+        ], [{ name: 'aria-hidden', value: 'true' }]);
+        var row = kit.row(_sdT('Delivery Row'), [
+            kit.col(_sdT('Zone Drawing'), [ map ], '5'),
+            kit.col(_sdT('Zones'), [
+                kit.tag('ul', 'pg-delivery-zones list-unstyled mb-4 border-top', _sdT('Zones'), [
+                    zone(1, _sdT('Town Centre'), _sdT('The streets within three kilometres of the shop.'), _sdT('Same day'), true, _sdT('$5')),
+                    zone(2, _sdT('Rest of the City'), _sdT('Every neighbourhood inside the ring road.'), _sdT('Same day'), true, _sdT('$9')),
+                    zone(3, _sdT('Nearby Towns'), _sdT('Towns within an hour of the shop.'), _sdT('Next day'), false, _sdT('$15'))
+                ]),
+                kit.h('h3', _sdT('Delivery times'), 'h6 fw-semibold text-uppercase text-body-secondary mb-3'),
+                kit.tag('ul', 'pg-delivery-zones list-unstyled row row-cols-1 row-cols-sm-3 g-3 mb-4', _sdT('Delivery Times'), [
+                    slot('bi-sunrise', _sdT('Morning'), '09:00', '12:00'),
+                    slot('bi-sun', _sdT('Afternoon'), '12:00', '17:00'),
+                    slot('bi-sunset', _sdT('Evening'), '17:00', '20:00')
+                ]),
+                kit.div('pg-delivery-zones d-flex align-items-center gap-3 p-3 rounded-3 bg-primary-subtle text-primary-emphasis', _sdT('Last Order Time'), [
+                    kit.icon('bi-clock-history', 'fs-3'),
+                    kit.div('', _sdT('Text'), [
+                        kit.div('d-flex flex-wrap align-items-baseline gap-2', _sdT('Title'), [
+                            kit.h('span', _sdT('Same-day orders until'), 'fw-semibold'),
+                            kit.time('14:00', '14:00', 'fs-5 fw-bold', _sdT('Last Order Time'))
+                        ]),
+                        kit.p(_sdT('Orders after this time go out the next morning.'), 'small mb-0')
+                    ])
+                ])
+            ], '7')
+        ], 'align-items-center g-4 g-lg-5');
+        row.props._fx = { effect: 'slide-up', trigger: 'view', stagger: 150 };
+        return kit.section('py-5', _sdT('Locations (Delivery Zones)'), [
+            kit.intro(_sdT('Where we deliver'), _sdT('Three zones around the shop: the nearer you are, the sooner it comes and the less it costs.')),
+            row
+        ]);
+    };
+
     return {
         prefix: 'locations-',
         items: [
             { label: _sdT('Locations: Spaces to Hire'), type: 'component', icon: 'bi-door-open', extra: { componentType: 'locations-spaces' } },
-            { label: _sdT('Locations: Floor Directory'), type: 'component', icon: 'bi-building', extra: { componentType: 'locations-floors' } }
+            { label: _sdT('Locations: Floor Directory'), type: 'component', icon: 'bi-building', extra: { componentType: 'locations-floors' } },
+            { label: _sdT('Locations: Delivery Zones'), type: 'component', icon: 'bi-truck', extra: { componentType: 'locations-delivery' } }
         ],
         build: function (ctype) {
             if (ctype === 'locations-spaces') return buildSpaces();
             if (ctype === 'locations-floors') return buildFloors();
+            if (ctype === 'locations-delivery') return buildDelivery();
             return null;
         },
         css: _SD_BLOCK_CSS,
