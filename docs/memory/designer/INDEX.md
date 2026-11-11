@@ -198,6 +198,7 @@
 - design-templates-rows.md: Rows a template or import makes on opening: origin markers, pagehide discard, 12-hour reuse read in one pass, page names freed on the first save, testing Publish inside them.
 - design-templates-standard-pages.md: What every design template carries: account, inbox, staff and blog pages under fixed keys, sample records, the support-center search sections, e-mail pages, settings keys checked against the renderer.
 - design-theme-look-and-palette.md: A visual design's look and colour palette (style.style_look / style_palette, 2026.4.5): values, the stylesheets and their load order on site, canvas and preview, tokens for new component styles. [decision: decisions-made-product-44.md]
+- design-theme-product-looks.md: The looks and palettes for bold product pages (display, precision; onyx, silver, electric): values, why the names, the catalog test
 - designed-page-comment-names.md: Which name a signed-in member's comment gets: the contact's display name (else Member) on visual-designer pages, the username on legacy pages; the name select's choices and forged values [decision: here]
 - designer-ai-known-class.md: How the designer AI decides a class is one the framework ships (pg_design_ai_known_class()): the Bootstrap 5 vocabulary, state/pg-*/Bootstrap Icons classes, custom designs, the class-family fallback
 - designer-audit-contrast-opacity.md: How the designer audit's contrast check (PgContrast.check(), assets/js/pg_contrast.js) counts opacity on the text and its ancestors, and why
