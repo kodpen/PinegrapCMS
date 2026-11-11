@@ -17519,16 +17519,19 @@ const StyleDesigner = (function () {
 
                 // Hero: Full-Screen Media — one screen tall and edge to edge, the
                 // picture as the section's background (the Background panel's
-                // store), a giant headline at the bottom on the shared scrim.
+                // store), a giant headline at the bottom on the shared scrim
+                // over an even tint: giant type reaches the photo's upper half,
+                // where the gradient alone is too light. The eyebrow is bold
+                // at 20 px, large text, so it needs 3:1 there and not 4.5:1.
                 // Same shape as hero-image-bg: the scrim is the only, in-flow
                 // child, so a long translation grows the band instead of being cut.
                 if (ctype === 'spotlight-media') {
                     return createNode('semantic', { tag: 'section', cssClass: 'd-flex overflow-hidden pg-screen pg-bleed', customName: _sdT('Hero (Full-Screen Media)'),
                         _attrs: [{ name: 'style', value: 'background-image: url(https://picsum.photos/id/1036/1920/1280); background-size: cover; background-position: center;' }] }, [
-                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-column justify-content-end w-100 pt-5 text-body pg-shade-bottom', customName: _sdT('Overlay'),
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-column justify-content-end w-100 pt-5 text-body pg-shade-bottom pg-shade-tint', customName: _sdT('Overlay'),
                             _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                             createNode('container', { fluid: false, cssClass: 'py-5' }, [
-                                createNode('content', { contentType: 'paragraph', text: _sdT('New season'), cssClass: 'text-uppercase fw-semibold mb-3' }),
+                                createNode('content', { contentType: 'paragraph', text: _sdT('New season'), cssClass: 'fs-5 fw-bold text-uppercase mb-3' }),
                                 createNode('content', { contentType: 'heading', tag: 'h1', text: _sdT('Made for the outdoors'), cssClass: 'pg-display-xxl mb-4' }),
                                 createNode('semantic', { tag: 'div', cssClass: 'col-lg-7 px-0', customName: _sdT('Hero Body') }, [
                                     createNode('content', { contentType: 'paragraph', text: _sdT('Light, warm and ready for any weather: meet the collection built for long days outside.'), cssClass: 'lead mb-4' }),
@@ -73612,6 +73615,10 @@ const StyleDesigner = (function () {
         // Dark scrim under text placed on a photo; the box also carries
         // data-bs-theme="dark", so the text colour never depends on the photo.
         'pg-shade-bottom': '.pg-shade-bottom { background-image: linear-gradient(to top, rgba(0, 0, 0, .85), rgba(0, 0, 0, .45) 50%, rgba(0, 0, 0, 0)); }',
+        // An even dark tint under pg-shade-bottom's gradient, for text that
+        // reaches the upper half of a photo (giant type on a full-screen
+        // picture): light text stays at 3:1 or more there even on a white photo.
+        'pg-shade-tint':   '.pg-shade-tint { background-color: rgba(0, 0, 0, .55); }',
         // A spinner-grow used as a decorative pulse (dark maintenance band,
         // live badge): under reduced motion it stands still and stays
         // visible (a resting .spinner-grow is transparent).
@@ -73658,7 +73665,7 @@ const StyleDesigner = (function () {
     // block is one line in each, and a block that needs nothing says nothing.
     var _SD_BLOCK_CSS_NEEDS = {
         'hero-image-bg':        ['pg-hero-tall', 'pg-shade-bottom'],
-        'spotlight-media':      ['pg-screen', 'pg-bleed', 'pg-shade-bottom', 'pg-display-xxl'],
+        'spotlight-media':      ['pg-screen', 'pg-bleed', 'pg-shade-bottom', 'pg-shade-tint', 'pg-display-xxl'],
         'testimonial-carousel': ['pg-carousel-ink'],
         'image-carousel':       ['pg-shade-bottom', 'pg-carousel-photo'],
         'image-grid':           ['pg-ratio-1x1'],
