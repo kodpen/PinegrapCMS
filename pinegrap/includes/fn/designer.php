@@ -6184,6 +6184,22 @@ function _pg_svg_read_tag($s, $p)
 }
 
 // Render a content node as HTML
+/**
+ * A media address a Video item may print (twin: _sdMediaUrl() in
+ * style_designer.js): the address trimmed, '' for one that would run or
+ * embed code (javascript:, vbscript:, livescript:, data:), control
+ * characters and spaces inside the scheme included.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function pg_designer_media_url($value)
+{
+    $value = is_scalar($value) ? preg_replace('/^[\x00-\x20]+|[\x00-\x20]+$/', '', (string)$value) : '';
+    if (preg_match('/^(?:javascript|vbscript|livescript|data):/i', preg_replace('/[\x00-\x20]+/', '', $value))) return '';
+    return $value;
+}
+
 function _render_content_html($props, $pad, $kids = '')
 {
     // Apply data bindings first — system widget feed tokens override literal values.
@@ -6407,6 +6423,22 @@ function _render_content_html($props, $pad, $kids = '')
             } else {
                 $html .= $pad . ($_sources ? pg_img_picture($img_tag, $_sources, $_sizes, $pad) : $img_tag) . "\n";
             }
+            break;
+
+        case 'video':
+            // A video from the file manager (twin: CONTENT.video in
+            // style_designer.js): the browser's own controls, never autoplay
+            // (a video plays only when the visitor presses play), only its
+            // size read until then (preload="metadata"). No address, or one
+            // that is not a file or web address, writes no player at all.
+            $v_src = pg_designer_media_url(isset($props['src']) ? $props['src'] : '');
+            if ($v_src === '') break;
+            $v_poster    = pg_designer_media_url(isset($props['poster']) ? $props['poster'] : '');
+            $cls         = !empty($props['cssClass']) ? ' class="' . h($props['cssClass']) . '"' : '';
+            $style_attr  = _compose_inline_style($props, '', $sz_style);
+            $extra_attrs = _render_extra_attrs($props, array('src', 'poster', 'controls', 'autoplay', 'preload'), true);
+            $html .= $pad . '<video src="' . h($v_src) . '"' . ($v_poster !== '' ? ' poster="' . h($v_poster) . '"' : '')
+                . ' controls preload="metadata" playsinline' . $cls . $style_attr . $extra_attrs . '></video>' . "\n";
             break;
 
         case 'divider':

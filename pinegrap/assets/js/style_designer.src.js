@@ -5489,6 +5489,16 @@ const StyleDesigner = (function () {
     };
 
     // ========================= CONTENT REGISTRY =========================
+    // A media address the page may print (pg_designer_media_url()): the
+    // address trimmed, '' for one that would run or embed code
+    // (javascript:, vbscript:, livescript:, data:), control characters
+    // and spaces inside the scheme included.
+    function _sdMediaUrl(v) {
+        v = (v == null) ? '' : String(v).replace(/^[\x00-\x20]+|[\x00-\x20]+$/g, '');
+        if (/^(?:javascript|vbscript|livescript|data):/i.test(v.replace(/[\x00-\x20]+/g, ''))) return '';
+        return v;
+    }
+
     /* @pg-site-output */
     var CONTENT = {
         heading: {
@@ -5641,6 +5651,41 @@ const StyleDesigner = (function () {
                     return pad + '<div class="' + wrapClsExp + '">\n' + pad + '    ' + imgTag + '\n' + pad + '</div>\n';
                 }
                 return pad + imgTag + '\n';
+            }
+        },
+        // A video from the file manager (_render_content_html() 'video'):
+        // the browser's own controls, never autoplay (a video plays only
+        // when the visitor presses play: designer-block-motion), only its
+        // size read until then (preload="metadata"). No address, or one that
+        // is not a file or web address (_sdMediaUrl()), writes nothing; the
+        // canvas draws a placeholder to double-click instead.
+        video: {
+            label: _sdT('Video'), icon: 'bi-camera-video',
+            defaultProps: { src: '', poster: '', cssClass: 'd-block w-100 h-auto' },
+            render: function (doc, p) {
+                var src = _sdMediaUrl(p.src);
+                if (!src) {
+                    var ph = doc.createElement('div');
+                    ph.className = 'sd-img-placeholder sd-video-placeholder';
+                    ph.innerHTML = '<span class="bi bi-camera-video"></span><span class="sd-img-ph-hint">' + esc(_sdT('Double-click to select a video')) + '</span>';
+                    return ph;
+                }
+                var v = doc.createElement('video');
+                v.setAttribute('src', src);
+                var poster = _sdMediaUrl(p.poster);
+                if (poster) v.setAttribute('poster', poster);
+                v.setAttribute('controls', '');
+                v.setAttribute('preload', 'metadata');
+                v.setAttribute('playsinline', '');
+                if (p.cssClass) v.className = p.cssClass;
+                return v;
+            },
+            toHTML: function (p, pad) {
+                var src = _sdMediaUrl(p.src);
+                if (!src) return '';
+                var poster = _sdMediaUrl(p.poster);
+                return pad + '<video src="' + esc(src) + '"' + (poster ? ' poster="' + esc(poster) + '"' : '') +
+                    ' controls preload="metadata" playsinline' + (p.cssClass ? ' class="' + esc(p.cssClass) + '"' : '') + '></video>\n';
             }
         },
         divider: {
@@ -6280,6 +6325,12 @@ const StyleDesigner = (function () {
         '.sd-img-placeholder .bi-image { font-size:2.5rem; color:rgba(0,0,0,.25); }',
         '.sd-img-ph-hint { font-size:.72rem; color:rgba(0,0,0,.35); }',
         '.sd-wrap[data-content-type="image"] > .sd-img-placeholder { display:flex; }',
+        // The Video item's placeholder, and its wrapper inside a band that
+        // lays a video under its content (pg-media-cover): the wrapper is
+        // not the video's box there, the band is.
+        '.sd-img-placeholder .bi-camera-video { font-size:2.5rem; color:rgba(0,0,0,.25); }',
+        '.sd-wrap[data-content-type="video"] > .sd-img-placeholder { display:flex; }',
+        '.pg-media-cover .sd-wrap[data-content-type="video"]:has(> video) { position:static !important; min-height:0 !important; }',
         // Inline components (btn, badge) must not fill the block. They sit on
         // the text line as on the page: no vertical margin (the content and
         // component wrappers' 3px made each line 6px taller), a button
@@ -12808,6 +12859,7 @@ const StyleDesigner = (function () {
         var ct = p.contentType || '';
         if (ct === 'link' || ct === 'custom_html' || ct === 'carousel' || ct === 'variant_attr') return true;
         if (ct === 'image') return !!(p.src || p.url);
+        if (ct === 'video') return !!_sdMediaUrl(p.src);
         var tag = String(p.tag || '').toLowerCase();
         if (/^(a|button|input|select|textarea|video|audio|iframe|object|embed|svg|canvas)$/.test(tag)) return true;
         if (tag === 'img') return !!(p.src || p.url);
@@ -13835,7 +13887,7 @@ const StyleDesigner = (function () {
 
         // Structural nodes can have children; void content types (img, hr, icon, spacer) and
         // semantic nodes whose HTML tag is a void element cannot hold children.
-        var voidContentTypes = ['image', 'divider', 'icon', 'spacer', 'svg'];
+        var voidContentTypes = ['image', 'video', 'divider', 'icon', 'spacer', 'svg'];
         var _isVoidSemantic = node.type === 'semantic' && node.props && node.props.tag &&
             ['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr']
                 .indexOf(node.props.tag.toLowerCase()) !== -1;
@@ -15867,6 +15919,19 @@ const StyleDesigner = (function () {
             return;
         }
 
+        // Video: double-click opens the File Manager for the video file
+        // (the Properties panel's Video file field takes the choice).
+        if (node.type === 'content' && node.props.contentType === 'video') {
+            innerEl.addEventListener('dblclick', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (selectedNode !== node) { selectedNode = node; renderTree(); }
+                renderProperties();
+                if (typeof window.sdOpenFilePicker === 'function') window.sdOpenFilePicker('sd-prop-video-src', 'src');
+            });
+            return;
+        }
+
         // Image Picker implementation
         if (node.type === 'content' && node.props.contentType === 'image') {
             innerEl.addEventListener('dblclick', function(e) {
@@ -17037,7 +17102,7 @@ const StyleDesigner = (function () {
 
         // Void content types cannot receive any children
         if (target.type === 'content') {
-            var voidTypes = ['image', 'divider', 'icon', 'spacer', 'svg'];
+            var voidTypes = ['image', 'video', 'divider', 'icon', 'spacer', 'svg'];
             if (voidTypes.indexOf(target.props.contentType) !== -1) return false;
         }
 
@@ -17558,7 +17623,7 @@ const StyleDesigner = (function () {
                 // Same shape as hero-image-bg: the scrim is the only, in-flow
                 // child, so a long translation grows the band instead of being cut.
                 if (ctype === 'spotlight-media') {
-                    return createNode('semantic', { tag: 'section', cssClass: 'd-flex overflow-hidden pg-screen pg-bleed', customName: _sdT('Hero (Full-Screen Media)'),
+                    return createNode('semantic', { tag: 'section', cssClass: 'd-flex overflow-hidden pg-screen pg-bleed pg-media-cover', customName: _sdT('Hero (Full-Screen Media)'),
                         _attrs: [{ name: 'style', value: 'background-image: url(https://picsum.photos/id/1036/1920/1280); background-size: cover; background-position: center;' }] }, [
                         createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-column justify-content-end w-100 pt-5 text-body pg-shade-bottom pg-shade-tint', customName: _sdT('Overlay'),
                             _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
@@ -27253,6 +27318,7 @@ const StyleDesigner = (function () {
                     case 'heading': return (n.props.tag || 'h2') + id;
                     case 'paragraph': return 'p' + id;
                     case 'image': return 'img' + id;
+                    case 'video': return 'video' + id;
                     case 'button': return 'a.btn' + id;
                     case 'icon': return 'i.bi' + id;
                     case 'divider': return 'hr' + id;
@@ -27401,7 +27467,7 @@ const StyleDesigner = (function () {
     // and _render_extra_attrs()). The others print their markup as it is on
     // the page (Custom HTML, a PHP block) or are drawn by the server
     // (carousel, messages, breadcrumb, variant picker, applied offers).
-    var _SD_CONTENT_GLOBAL_ATTRS = { heading: 1, paragraph: 1, span: 1, text: 1, link: 1, icon: 1, image: 1, divider: 1, spacer: 1, svg: 1 };
+    var _SD_CONTENT_GLOBAL_ATTRS = { heading: 1, paragraph: 1, span: 1, text: 1, link: 1, icon: 1, image: 1, video: 1, divider: 1, spacer: 1, svg: 1 };
 
     // The node the Display & Sizing style of a content node is read from:
     // a spacer's height is the element's own prop. An image's width and
@@ -27485,6 +27551,9 @@ const StyleDesigner = (function () {
         // relationship its props set.
         var skip = [];
         if (ct === 'image') skip = ['src', 'alt', 'width', 'height', 'onerror'];
+        // A video writes its own address, controls and preload, and never
+        // plays by itself (_render_content_html()).
+        if (ct === 'video') skip = ['src', 'poster', 'controls', 'autoplay', 'preload'];
         if (ct === 'link') skip = ['href', 'target', 'rel'].filter(function (k) { return names.indexOf(k) !== -1; });
         open += _sdNodeExtraAttrs(p, list, skip);
         var out = htmlStr.slice(0, start) + open + close + htmlStr.slice(end);
@@ -27858,6 +27927,7 @@ const StyleDesigner = (function () {
                     case 'button':     tag = 'a';  cls = 'btn btn-' + (cp.outline ? 'outline-' : '') + (cp.variant || 'primary') + (cp.size ? ' btn-' + cp.size : '') + (cp.cssClass ? ' ' + cp.cssClass : ''); preview = cp.text || ''; break;
                     case 'image':      tag = 'img'; cls = (cp.fluid ? 'img-fluid' : '') + (cp.cssClass ? ' ' + cp.cssClass : ''); selfClose = true; break;
                     case 'divider':    tag = 'hr';  selfClose = true; break;
+                    case 'video':      tag = 'video'; cls = cp.cssClass || ''; break;
                     case 'spacer':     tag = 'div'; cls = cp.cssClass || ''; break;
                     case 'icon':       tag = 'i';   cls = 'bi ' + (cp.iconName || 'bi-star') + (cp.cssClass ? ' ' + cp.cssClass : ''); break;
                     case 'link':       tag = 'a';   cls = cp.cssClass || ''; preview = cp.text || 'Link'; break;
@@ -47406,6 +47476,21 @@ const StyleDesigner = (function () {
                         '<input type="text" class="form-control form-control-sm" id="sd-prop-img-src" data-prop="src" value="' + esc(String(val)) + '" placeholder="' + esc(_sdT('Image URL')) + '">' +
                         '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" onclick="window.sdOpenImagePicker(\'sd-prop-img-src\')">' + esc(_sdT('Select')) + '</button>' +
                         '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" title="' + esc(_sdT('Edit the image')) + '" onclick="window.sdOpenImageEditor(\'sd-prop-img-src\')"><i class="bi bi-brush"></i></button>' +
+                    '</div>');
+            } else if (ct === 'video' && key === 'src') {
+                // A video file from the File Manager; the controls always
+                // show, since the video never plays by itself.
+                h += row(_sdT('Video file'),
+                    '<div class="sd-pick-group">' +
+                        '<input type="text" class="form-control form-control-sm" id="sd-prop-video-src" data-prop="src" value="' + esc(String(val)) + '" placeholder="' + esc(_sdT('Video URL')) + '">' +
+                        '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-video-src\',\'src\')">' + esc(_sdT('Select')) + '</button>' +
+                    '</div>' +
+                    '<div class="form-text small">' + esc(_sdT('The video plays when the visitor presses play; its controls always show.')) + '</div>');
+            } else if (ct === 'video' && key === 'poster') {
+                h += row(_sdT('Poster image'),
+                    '<div class="sd-pick-group">' +
+                        '<input type="text" class="form-control form-control-sm" id="sd-prop-video-poster" data-prop="poster" value="' + esc(String(val)) + '" placeholder="' + esc(_sdT('Image URL')) + '">' +
+                        '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" onclick="window.sdOpenImagePicker(\'sd-prop-video-poster\')">' + esc(_sdT('Select')) + '</button>' +
                     '</div>');
             } else if (ct === 'image' && key === 'alt') {
                 // The alt text, with "Write with AI" under it where the
@@ -73716,6 +73801,15 @@ const StyleDesigner = (function () {
         // reaches the upper half of a photo (giant type on a full-screen
         // picture): light text stays at 3:1 or more there even on a white photo.
         'pg-shade-tint':   '.pg-shade-tint { background-color: rgba(0, 0, 0, .55); }',
+        // A band that lays a Video item under its content: the video fills
+        // the band (cover) over the band's background picture and under its
+        // overlay, which lets clicks through to the video's controls except
+        // on its own links and buttons. Descendant selectors only: the
+        // canvas wraps every node.
+        'pg-media-cover':  '.pg-media-cover { position: relative; isolation: isolate; }\n' +
+                           '.pg-media-cover video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }\n' +
+                           '.pg-media-cover:has(video) .pg-shade-bottom { pointer-events: none; }\n' +
+                           '.pg-media-cover .pg-shade-bottom a, .pg-media-cover .pg-shade-bottom button, .pg-media-cover .pg-shade-bottom input, .pg-media-cover .pg-shade-bottom select, .pg-media-cover .pg-shade-bottom textarea, .pg-media-cover .pg-shade-bottom label, .pg-media-cover .pg-shade-bottom [tabindex] { pointer-events: auto; }',
         // A spinner-grow used as a decorative pulse (dark maintenance band,
         // live badge): under reduced motion it stands still and stays
         // visible (a resting .spinner-grow is transparent).
@@ -73762,7 +73856,7 @@ const StyleDesigner = (function () {
     // block is one line in each, and a block that needs nothing says nothing.
     var _SD_BLOCK_CSS_NEEDS = {
         'hero-image-bg':        ['pg-hero-tall', 'pg-shade-bottom'],
-        'spotlight-media':      ['pg-screen', 'pg-bleed', 'pg-shade-bottom', 'pg-shade-tint', 'pg-display-xxl'],
+        'spotlight-media':      ['pg-screen', 'pg-bleed', 'pg-shade-bottom', 'pg-shade-tint', 'pg-display-xxl', 'pg-media-cover'],
         'testimonial-carousel': ['pg-carousel-ink'],
         'image-carousel':       ['pg-shade-bottom', 'pg-carousel-photo'],
         'image-grid':           ['pg-ratio-1x1'],
@@ -73984,6 +74078,8 @@ const StyleDesigner = (function () {
                                     d: _sdT('A piece of text within a line, for styling a word or a phrase.') },
             't:image':            { h: '<img>', k: 'image img picture photo graphic',
                                     d: _sdT('A picture from the file manager or from an address.') },
+            't:video':            { h: '<video>', k: 'video movie film clip mp4 webm player',
+                                    d: _sdT('A video file from the file manager, with a poster picture and play controls.') },
             't:divider':          { h: '<hr>', k: 'divider hr line separator rule',
                                     d: _sdT('A horizontal line.') },
             't:spacer':           { k: 'spacer gap space margin blank',

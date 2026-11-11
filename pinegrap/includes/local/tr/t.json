@@ -7177,6 +7177,7 @@
     "The vets, the nurses and the reception team, what each of them looks after and how to reach them.": "Veteriner hekimler, hemşireler ve resepsiyon ekibi: her birinin neyle ilgilendiği ve onlara nasıl ulaşılacağı.",
     "The video could not be uploaded.": "Video yüklenemedi.",
     "The video is larger than this server accepts in one request ({var:1}).": "Video, bu sunucunun tek istekte kabul ettiğinden büyük ({var:1}).",
+    "The video plays when the visitor presses play; its controls always show.": "Video, ziyaretçi oynat düğmesine basınca oynar; denetimleri her zaman görünür.",
     "The video plays with the play bar in the Animate tool. A saved picture shows its frame at the source in.": "Video, Canlandır aracında oynatma çubuğuyla birlikte oynar. Kaydedilen görsel, kaynak başındaki kareyi gösterir.",
     "The videos could not be loaded.": "Videolar yüklenemedi.",
     "The view can be stepped through (monthly or weekly)": "Görünümde ileri-geri gidilebiliyor (aylık ya da haftalık)",

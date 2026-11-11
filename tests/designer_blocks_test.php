@@ -1380,8 +1380,9 @@ function test_designer_blocks_full_screen_media_hero()
 	pg_assert_same('Marketing', _test_blocks_group_of($ctype), $ctype . ' sits in the Marketing group');
 	pg_assert_same('Page Header', _test_blocks_group_of('hero-image-bg'), 'the group lookup reads the groups in order');
 	$needs = _test_blocks_css_needs();
-	pg_assert_same(array('pg-screen', 'pg-bleed', 'pg-shade-bottom', 'pg-shade-tint', 'pg-display-xxl'), isset($needs[$ctype]) ? $needs[$ctype] : array(), $ctype . ' needs its four rules');
+	pg_assert_same(array('pg-screen', 'pg-bleed', 'pg-shade-bottom', 'pg-shade-tint', 'pg-display-xxl', 'pg-media-cover'), isset($needs[$ctype]) ? $needs[$ctype] : array(), $ctype . ' needs its rules');
 	pg_assert_true(_test_blocks_builder_has_classes($ctype, array('d-flex', 'overflow-hidden', 'pg-screen', 'pg-bleed')), 'the section is one screen tall and edge to edge');
+	pg_assert_true(_test_blocks_builder_has_classes($ctype, array('pg-media-cover')), 'a Video item dropped in the section lies under the overlay');
 	pg_assert_true(_test_blocks_builder_has_classes($ctype, array('text-body', 'pg-shade-bottom', 'pg-shade-tint')), 'the text sits on the scrim and its tint');
 	pg_assert_true(_test_blocks_builder_has_classes($ctype, array('pg-display-xxl')), 'the headline is giant type');
 	$strings = _test_blocks_builder_strings($ctype);
