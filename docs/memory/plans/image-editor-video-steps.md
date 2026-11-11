@@ -24,15 +24,15 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
   - An audio layer on any canvas: music and sounds from Files (MP3, AAC, WAV, Ogg), its start, trim, volume, fade in and out, mute; its row with a waveform on the tracks; Web Audio playback in step with the play bar, so an animation gets its music.
   - With V2: a clip's sound as its own row (Detach sound mutes the clip and adds an audio layer on the same source).
 
-- V5 (M) Effects and transitions. Done #8667.
-  - The Adjust filters per clip (brightness, contrast, saturation, warmth, blur, vignette) drawn per frame; transitions between clips (AN7's fade, slide, wipe); speed 0.25-4× (sound muted off 1×).
+- V5 (M) Effects and transitions. Done (#8667, `ui/image-editor-clip-effects.md`).
 
-- V6 (S) Pictures and animations over video. After V5.
+- V6 (S) Pictures and animations over video. `free`.
   - Layers keep their start and end on the timeline; picture in picture (a second video layer, its size and corners).
+  - Also V5's Effects tab as screen 38 has it (owner 2026-11-11, #8676: "Onay; farklar sonra düzeltilsin"): the labels "Bulanıklık" and "Yok" (built: "Bulanıklaştır", "Hiçbiri"), the tiles' order (none, fade, slide, wipe, zoom), the slider rows' spacing, the note's second sentence, on the sound at a speed off 1×.
 
 - V7 (M) Export with sound. Done (#8484, `ui/image-editor-mix.md`: MP4 with AAC, WebM with Opus; the other formats carry none).
 
-- V8 (M) Large files. Done (#8585, `ui/image-editor-upload.md`). Left: the size setting, a `config` column only the owner may add (#8587); until then the largest file is `upload_max_filesize`.
+- V8 (M) Large files. Done (#8585, `ui/image-editor-upload.md`; the size setting in V8b, #8635).
   - Chunked, resumable upload of a source video into Files; chunked save of the export (AN4's action in parts); type told by its bytes (AN4); the size limits as settings.
 
 - V9 (S) Save and open again. `free` after V8 and V3.
