@@ -57,10 +57,11 @@ function ws_mail_pane($viewer, $conversation_id)
 
     $at = array_flip($ids);
 
+    // MySQL 8 reserves STORED: the stored name is aliased stored_name.
     if ($ids) {
-        foreach ((array) db_items("SELECT m.sender_id, m.file_name, f.name AS stored FROM ws_messages m INNER JOIN files f ON f.id = m.file_id
+        foreach ((array) db_items("SELECT m.sender_id, m.file_name, f.name AS stored_name FROM ws_messages m INNER JOIN files f ON f.id = m.file_id
             WHERE m.sender_kind = 'mail' AND m.sender_id IN (" . implode(',', $ids) . ") AND m.file_id > 0 AND m.deleted_at = 0 ORDER BY m.id") as $file) {
-            $items[$at[(int) $file['sender_id']]]['files'][] = array('name' => (string) $file['file_name'], 'url' => PATH . encode_url_path((string) $file['stored']));
+            $items[$at[(int) $file['sender_id']]]['files'][] = array('name' => (string) $file['file_name'], 'url' => PATH . encode_url_path((string) $file['stored_name']));
         }
     }
 

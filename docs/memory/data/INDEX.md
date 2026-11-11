@@ -48,6 +48,7 @@
 - menu-tree-queries.md: Classic menus (get_menu_content(), get_menu_sequence()) read a menu once per request through pg_menu_tree(): two queries, printing order, children counted across menus, what the output must keep
 - orders-table-write-traps.md: Traps when INSERTing into orders, the next_order_number lock and where it is taken, when the Commerce settings save writes the next number, and the orders.type values.
 - slug-generation.md: Which function builds address/slug names for forms, products, files and pages, the two transliteration tables, the lowercase-order rule, and the files.name invariant.
+- sql-mysql8-reserved-words.md: A column or table alias that MySQL 8 reserves (stored, rank, row, groups…) runs on MariaDB and is a syntax error on MySQL 8; the guard test, the two Workspace queries it broke.
 - sql-silent-wrong-results.md: SQL that runs without an error but reads or writes the wrong thing: an INT or DATE compared to '', SET order, SELECT * replaced by a column list, columns a migration adds, table-specific traps.
 - submitted-form-delete-thread.md: What deleting a submitted form removes besides forms/form_data (comments, attachments, notifications, watchers, counters), the shared helper and the three delete paths.
 - table-engines-and-row-size.md: Table engines since 2026.4.8 (InnoDB, MyISAM left over the limits), why a write over several tables validates first, InnoDB's 8126-byte row rule, pg_innodb_row_estimate(), maintenance code.
