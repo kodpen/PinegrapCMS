@@ -653,12 +653,12 @@ function pg_notification_is_read($notification, $user_id)
 	return isset($read[(int) $notification['id']]);
 }
 
-// Marks notifications read for one person. Takes the whole list the dropdown
-// drew rather than one id at a time: opening the bell on a busy site would
-// otherwise be one round trip per row.
+// Marks notifications read for one person. Takes a list rather than one id
+// at a time: "Mark all as read" and a fold's head with its runs are one
+// write each.
 //
-// INSERT IGNORE against the composite primary key is what makes a second tab
-// opening the same dropdown a no-op instead of a duplicate key error.
+// INSERT IGNORE against the composite primary key is what makes reading a
+// row that is already read a no-op instead of a duplicate key error.
 function pg_notification_mark_read($notification_ids, $user_id)
 {
 	$user_id = (int) $user_id;
@@ -705,6 +705,57 @@ function pg_notification_mark_read($notification_ids, $user_id)
 				AND id IN (" . implode(',', array_map('intval', $references)) . ")");
 		}
 	}
+}
+
+// The runs a fold's head sends with it (the rows the bell drew under it):
+// whole positive ids, each once, never the head itself, at most 500 so one
+// request cannot ask about the whole table. Anything but a list is nothing.
+function pg_notification_run_ids($runs, $head_id)
+{
+	$head_id = (int) $head_id;
+	$ids = array();
+
+	if (!is_array($runs)) {
+		return $ids;
+	}
+
+	foreach ($runs as $run) {
+		if (!is_int($run) && !(is_string($run) && ctype_digit($run))) {
+			continue;
+		}
+
+		$run = (int) $run;
+
+		if (($run > 0) && ($run !== $head_id) && !in_array($run, $ids, true)) {
+			$ids[] = $run;
+
+			if (count($ids) >= 500) {
+				break;
+			}
+		}
+	}
+
+	return $ids;
+}
+
+// The ids of the rows the caller may see, in their order: the only rows a
+// read request may touch. $sees answers for one row (the panel passes
+// pg_notification_visible_to() for the signed-in person).
+function pg_notification_readable_ids($rows, $sees)
+{
+	$ids = array();
+
+	foreach ($rows as $row) {
+		if (!is_array($row) || ((int) ($row['id'] ?? 0) < 1)) {
+			continue;
+		}
+
+		if ($sees($row)) {
+			$ids[] = (int) $row['id'];
+		}
+	}
+
+	return $ids;
 }
 
 // Back to unread, for this person only. No row means unread, so there is

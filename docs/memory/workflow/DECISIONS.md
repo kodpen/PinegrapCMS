@@ -488,6 +488,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/admin-screen-toolbar.md: Panel screen basics (frame, notices, fields, width, icons, help), the one-toolbar principle with view_folders.php as reference, slot order, classes and the pg_screen_toolbar() helper.
 - ui/ai-write-decisions.md: Why "Write with AI" is built the way it is (decided 2026-10-19/20): one endpoint, the models, daily cap, brand voice, the panel, labelling and the marks, translation, alt text on the browser's model
 - ui/back-arrow-no-copies.md: The way back to a parent or list screen is only the back arrow and the breadcrumb; which back-to-list copies were removed and where the screens now go back
+- ui/bell-read-rule.md: When a bell row is read: not on opening the bell; its link or Mark as read box reads it, a fold head its runs; Mark all as read reads only rows the caller sees
 - ui/brand-logo.md: The Pinegrap logo (the squirrel's space window, the single-line wordmark): its files, which shape goes where, the panel's moving loop, the still frames, private label
 - ui/dashboard-system-status-gauge.md: The System Status gauge, check chips and Release Notes dialog shared by dashboard widget 2 and the new dashboard's card: functions, the two palettes, what stays byte for byte, the fixtures test
 - ui/dashboard-v2-brief.md: The old dashboard's brief on the new dashboard (#6431): placement in the greeting card, v2 wording and hour, the phone box, the Top section switch, pg_dash_brief.js

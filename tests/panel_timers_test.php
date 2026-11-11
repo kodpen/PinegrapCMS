@@ -5,7 +5,8 @@
  * Source pins for two panel timers in backend.src.js: error and warning
  * toasts (pgToast) stay until they are closed and are not stacked twice,
  * and the 20 s unread poll rebuilds the open notifications list only when
- * the unread count really rises, keeping its scroll and focused row.
+ * the unread count really rises above the count the open list shows,
+ * keeping its scroll and focused row.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -49,10 +50,12 @@ function test_panel_notification_poll_keeps_the_open_list()
 
 	pg_assert_false(strpos($check, '$unreadsCallback = 0;') !== false, 'the poll does not reset the last seen count');
 	pg_assert_contains('var $unreadsCallback = 0;', $js, 'the last seen count is declared once');
-	pg_assert_contains('get_notifications(false, true);', $check, 'a poll-driven rebuild keeps scroll and focus');
+	pg_assert_contains('get_notifications(true);', $check, 'a poll-driven rebuild keeps scroll and focus');
+	pg_assert_contains('$unreads > $unreadsCallback', $check, 'the open list is redrawn only on a rise');
 
-	$get = panel_timers_slice($js, 'function get_notifications($read_mark, keep_place)', '// Opens the page a notification points to.');
-	pg_assert_contains('$unreadsCallback = 0;', $get, 'marking all read resets the last seen count');
+	$get = panel_timers_slice($js, 'function get_notifications(keep_place)', '// Opens the page a notification points to.');
+	pg_assert_false(strpos($get, '$unreadsCallback = 0;') !== false, 'opening the bell reads nothing, so the count does not drop to 0');
+	pg_assert_contains('$unreadsCallback = shown_unread;', $get, 'the last seen count is the one the open list shows');
 	pg_assert_contains("closest('li[notification-id]')", $get, 'the focused row is remembered');
 	pg_assert_contains('.trigger(\'focus\')', $get, 'focus goes back to the same row');
 	pg_assert_contains('scroll_area.scrollTop(kept_scroll)', $get, 'the list keeps its scroll position');
