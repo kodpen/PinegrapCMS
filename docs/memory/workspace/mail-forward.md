@@ -9,7 +9,7 @@ description: Forward as e-mail in the Workspace (WM6): the buttons, the filled N
 
 ## What opens?
 - The New e-mail drawer (`newForm()` in `assets/js/workspace_mail.js`, `mail-compose.md`), titled "Forward as e-mail", filled by `ws_mail_forward` (`ws_mail_forward_fill()`): the subject, the text with two empty lines above the quote and the caret there, the files carried (each can be taken out) and an alert naming files left out. Focus is on To.
-- Channel messages: subject "A message from #channel" or "Messages from #channel"; the quote is the same heading, then each message as writer · `d.m.Y H:i`, its plain text (`ws_plain_text()`) and "File: name".
+- Channel messages: subject "A message from #channel" or "Messages from #channel"; the quote is the same heading, then each message as writer · `d.m.Y H:i`, its plain text line by line (`ws_mail_forward_plain()`: `ws_plain_text()` folds lines into one) and "File: name".
 - A mail: subject "Fwd: " once (an existing Fwd:/FW: kept) with the `[#T…]` tag dropped; the quote is "---------- Forwarded message ----------", From, Date (sent time, else received), Subject, To, Cc (never Bcc), a blank line and `body_text`.
 - The quote is cut at 45,000 characters (`WS_MAIL_FORWARD_QUOTE_MAX`), "[…]" where it was cut, to leave room in the 50,000 of a mail.
 - Kept in: the box keeping mail in the source's channel, else the first. The unsent form is kept apart (`ws-mail-new:…|fwd`), brought back only for the same source; carried files taken out are not kept. The Signature goes under the whole text, quote included, when the mail leaves (`ws_mail_send_body()`).
@@ -23,10 +23,10 @@ description: Forward as e-mail in the Workspace (WM6): the buttons, the filled N
 
 ## What is the line under a forwarded mail?
 - A `ws_messages` row of the new out item (`sender_kind` mail, empty body, no file) under the source conversation's card, else under the mail's own message; `ws_message_touch()` on that card. Not written into an archived channel or one the person does not read.
-- `ws_mail_card_html()` draws it (`ws_mail_forward_is_line()`: an out item's message that is neither its text nor a file) as the send badge, "Forwarded this e-mail to …" and "Open the e-mail" to `workspace.php?channel=…&message=<new card>`.
+- `ws_mail_card_html()` draws it (`ws_mail_forward_is_line()`: an out item's message that is neither its text nor a file) as "Forwarded this e-mail to …", the send badge under it (so a failed send's reason stays apart) and "Open the e-mail" to `workspace.php?channel=…&message=<new card>`.
 
 ## Why is the reply drawer `replyForm()`?
-- WM5 (#8719) added New e-mail's `compose(h, options)` in the same scope as the reply drawer's `compose(message, view, h, draft)`; the later one replaced both, so "Reply by e-mail" on the card, in the pane and on Pinegrap AI's draft failed. WM6 renamed the drawer; a test keeps one `function compose(`.
+- WM5 (#8719) added New e-mail's `compose(h, options)` in the same scope as the reply drawer's `compose(message, view, h, draft)`; the later one won, so "Reply by e-mail" (card, pane, Pinegrap AI's draft) failed. WM6 renamed the drawer; a test keeps one `function compose(`.
 
 ## Tests?
 - `tests/workspace_mail_forward_test.php` (pure parts, Node, wiring by source).

@@ -119,6 +119,34 @@ function ws_mail_forward_quote_mail($item)
 }
 
 /**
+ * A message's words for a forward: plain as ws_plain_text() makes them, but
+ * line by line, so the lines its writer typed stay lines in the mail, where
+ * ws_plain_text() folds running text into one. At most one blank line in a
+ * row.
+ *
+ * @param array      $viewer
+ * @param string     $body
+ * @param array|null $refs resolved already (ws_refs_resolve()), to spare the queries
+ * @return string
+ */
+function ws_mail_forward_plain($viewer, $body, $refs = null)
+{
+    $body = (string) $body;
+
+    if ($refs === null) {
+        $refs = ws_refs_resolve($viewer, ws_tokens($body));
+    }
+
+    $lines = array();
+
+    foreach (preg_split('/\r\n|\r|\n/', $body) as $line) {
+        $lines[] = (trim($line) === '') ? '' : ws_plain_text($viewer, $line, $refs);
+    }
+
+    return trim(preg_replace("/\n{3,}/", "\n\n", implode("\n", $lines)));
+}
+
+/**
  * Channel messages quoted: a heading naming the channel, then each message
  * as its writer and time, its plain text and the name of its file. Pure but
  * for the words.
@@ -259,7 +287,7 @@ function ws_mail_forward_source($viewer, $kind, $ids)
             $messages[] = array(
                 'name'      => $sender ? (string) $sender['name'] : lang('Someone'),
                 'time'      => (int) $row['created_at'],
-                'text'      => ws_plain_text($viewer, (string) $row['body']),
+                'text'      => ws_mail_forward_plain($viewer, (string) $row['body']),
                 'file_name' => (string) $row['file_name'],
             );
         }
@@ -437,8 +465,10 @@ function ws_mail_forward_line_html($item)
     $conversation = $item['conversation'] ?? null;
     $url = 'workspace.php?channel=' . (is_array($conversation) ? (int) $conversation['channel_id'] : 0) . '&message=' . (int) $item['message_id'];
 
-    return '<div class="ws-mail-card ws-mail-forward-line"><div class="small fg-secondary">' . ws_mail_send_badge_html($item)
-        . ' <span class="ms-1">' . h(lang(array('string' => 'Forwarded this e-mail to {var:1}', 'vars' => (string) $item['to_list']))) . '</span></div>'
+    // The sentence first: a failed send's badge carries the server's words,
+    // which would run into it.
+    return '<div class="ws-mail-card ws-mail-forward-line"><div class="small">' . h(lang(array('string' => 'Forwarded this e-mail to {var:1}', 'vars' => (string) $item['to_list']))) . '</div>'
+        . '<div class="small fg-secondary mt-1">' . ws_mail_send_badge_html($item) . '</div>'
         . '<a class="small" href="' . h($url) . '"><i class="bi bi-envelope-arrow-up me-1" aria-hidden="true"></i>' . h(lang('Open the e-mail')) . '</a></div>';
 }
 

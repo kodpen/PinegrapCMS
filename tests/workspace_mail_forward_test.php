@@ -118,6 +118,16 @@ function test_workspace_mail_forward_quotes()
 		. lang(array('string' => 'File: {var:1}', 'vars' => 'photo.jpg')), $messages, 'each message as its writer, time, text and file');
 }
 
+function test_workspace_mail_forward_plain_keeps_lines()
+{
+	$viewer = array('id' => 1, 'role' => 0);
+
+	pg_assert_same("Price list\nattached", ws_mail_forward_plain($viewer, "Price list\r\nattached", array()), 'a line the writer typed stays a line');
+	pg_assert_same("Bold start\n\nafter a gap", ws_mail_forward_plain($viewer, "**Bold** start\n\n\n\nafter a gap", array()), 'marks come off, one blank line kept');
+	pg_assert_same("☐ milk\n☑ bread", ws_mail_forward_plain($viewer, "- [ ] milk\n- [x] bread", array()), 'a checklist line by line');
+	pg_assert_same('', ws_mail_forward_plain($viewer, "\n  \n", array()), 'nothing for blank lines');
+}
+
 function test_workspace_mail_forward_fill_and_request()
 {
 	$fill = ws_mail_forward_fill(array('ok' => true, 'kind' => 'mail', 'ids' => array(7), 'source' => 'mail:7', 'subject' => 'Fwd: Order 42', 'text' => 'quote',
