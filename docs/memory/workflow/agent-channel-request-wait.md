@@ -3,7 +3,7 @@ name: agent-channel-request-wait
 description: tools/ws_wait.php --requests, a session's waiter on its own request queue (GET /workspace/agent-requests): which request wakes it, the printed line, the interval, exits, restarting
 ---
 
-## What does it do? (PR #A12N)
+## What does it do? (PR #8767)
 - `php tools/ws_wait.php --requests --timeout=7000` reads `GET /workspace/agent-requests` with the application's key every `--interval` seconds (15 by default, at least 5: the queue has no ETag and is read whole) and exits 0 on the oldest request whose status is `queued`.
 - A `sent` or `running` request is already handed out and wakes nobody. The route lists `queued` and `sent` (`workspace/agent-doors.md`); the tool keeps the queued ones itself.
 - Why: an answer to the agent's message and a scheduled wake make a request without the `@handle`, so a waiter on the text misses them ([[agent-channel-wake]]).
