@@ -12,6 +12,7 @@ description: Bakery template's home and celebration cakes on the Bakery blocks (
 - The figures row and the two picture story bands left the home; the about page keeps both.
 - Cakes: header, the cake cards (`bky-cakes`), Cake Sizes (`bky-cake-options`: four sizes drawn to scale, servings, the price each starts at, sponge and filling pills, the lead-time note), How It Works (`bky-cakes-how`).
 - Daily bake: unchanged but for the kinds' cards rising one by one.
+- A section holding a column that slides in from the side (`bky-home-order`, `bky-cakes-how`) carries `overflow-hidden`: the armed column sits 24 px beside its place, and a 375 px phone scrolled sideways until it arrived (seen in the sandbox, #8715).
 
 ## Where do the figures come from?
 - `parts.php`: `$oven` (lit, the batches with their times and names, the last order; times of the day only, never a date), `$cake_sizes[...]['price']` (the plainest cake's price in that size, USD/EUR/GBP/TRY), `$opening_hours[...]['closed']` greys Monday on the hours card.
@@ -22,6 +23,6 @@ description: Bakery template's home and celebration cakes on the Bakery blocks (
 - Not seen on the canvas: the tag's slant and hover, the tabs switching, the size drawings in dark mode.
 
 ## How is it tested?
-- `test_bakery_assembly_home_and_cakes_on_blocks` (`tests/design_template_bakery_assembly_test.php`): each `pg-` class's rule ships in User Styles, every interaction kept by `pg_fx_normalize()`, the motion per page (home, cakes, bakes), five machine-readable times, a pane per tab with one open, every bake once on the counter, the closed day greyed, four sizes drawn (two layers for the tiers).
+- `test_bakery_assembly_home_and_cakes_on_blocks` (`tests/design_template_bakery_assembly_test.php`): each `pg-` class's rule ships in User Styles, every interaction kept by `pg_fx_normalize()`, the motion per page (home, cakes, bakes), five machine-readable times, a pane per tab with one open, every bake once on the counter, the closed day greyed, four sizes drawn (two layers for the tiers); `test_bakery_assembly_side_entrances_clipped`: every slide-left or slide-right on the two pages sits in a clipped section.
 
 Related: docs/memory/designer/design-template-bakery.md, docs/memory/designer/designer-blocks-bakery.md

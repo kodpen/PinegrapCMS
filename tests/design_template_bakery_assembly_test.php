@@ -9,7 +9,8 @@
  * defined once and placed; placeholders name pages and folders; the
  * contact page's search sections; the pbk- classes and their rules match;
  * the comment threads and the reply e-mail card; the home page's lists;
- * the home and the celebration cakes on the palette's blocks, with motion;
+ * the home and the celebration cakes on the palette's blocks, with motion,
+ * and their side entrances clipped;
  * the sample classes and the shop's products kept.
  *
  * @author      Erdal Güral (Kodpen)
@@ -374,4 +375,28 @@ function test_bakery_assembly_home_and_cakes_on_blocks()
 		$drawings[] = count($n['children']);
 	}
 	pg_assert_same(array(1, 1, 1, 2), $drawings, 'cakes: every size drawn');
+}
+
+// A column that slides in from the side starts beside its place, so a
+// section holding one clips it (overflow-hidden); otherwise a phone
+// scrolls sideways until the column arrives.
+function test_bakery_assembly_side_entrances_clipped()
+{
+	$tpl = _test_bk_asm_tpl();
+	$walk = function ($node, $clipped, $page, &$count) use (&$walk) {
+		if (!is_array($node)) return;
+		$class = ' ' . ($node['props']['cssClass'] ?? '') . ' ';
+		$clipped = $clipped || strpos($class, ' overflow-hidden ') !== false;
+		$effect = $node['props']['_fx']['effect'] ?? '';
+		if ($effect === 'slide-left' || $effect === 'slide-right') {
+			$count++;
+			pg_assert_true($clipped, "$page: the " . ($node['props']['_label'] ?? $effect) . ' entrance is clipped');
+		}
+		foreach (($node['children'] ?? array()) as $child) $walk($child, $clipped, $page, $count);
+	};
+	$count = 0;
+	foreach ($tpl['pages'] as $p) {
+		if ($p['key'] === 'home' || $p['key'] === 'cakes') $walk($p['tree'], false, $p['key'], $count);
+	}
+	pg_assert_true($count >= 3, 'the home and the cakes page slide columns in from the side');
 }

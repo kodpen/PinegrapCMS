@@ -279,7 +279,9 @@ foreach ($opening_hours as $h) {
         $span($h['hours'], $closed ? 'text-end' : 'pbk-price fw-semibold text-end', lang('Hours')),
     ));
 }
-$home_order = $el('section', 'py-5 bg-body-tertiary', lang('Order and Collect'), array(
+// The hours card slides in from the right; the section clips it until it
+// arrives, so a phone never scrolls sideways.
+$home_order = $el('section', 'py-5 bg-body-tertiary overflow-hidden', lang('Order and Collect'), array(
     $container(array(
         $row(array(
             $fx($col(array(
@@ -494,7 +496,8 @@ $public_pages[] = array(
                 )), array('effect' => 'fade', 'trigger' => 'view', 'duration' => 800, 'delay' => 200)),
             )),
         ), $searchable('bky-cake-options', lang('servings, portions, flavours, fillings, buttercream, vegan cake'))),
-        $el('section', 'py-5 bg-body-tertiary', lang('How It Works'), array(
+        // Clipped while the lead-time card slides in from the right.
+        $el('section', 'py-5 bg-body-tertiary overflow-hidden', lang('How It Works'), array(
             $container(array(
                 $row(array(
                     $col(array(
