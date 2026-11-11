@@ -6275,9 +6275,25 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     } else {
         // For system styles, do NOT fall back to the globally activated theme —
         // system styles are expected to be self-contained. Leaving $stylesheet
-        // empty means no theme CSS is injected.
+        // empty means no theme CSS is injected. A design moved from a
+        // classic style is the exception below.
         if ($style_type == 'system') {
             $stylesheet = '';
+
+            // A visual design moved from a classic style keeps the activated
+            // theme its classic head printed here, unless one of its
+            // stylesheet rows links that file already.
+            if ($style_layout == 'visual_designer') {
+                require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_design_theme.php');
+                $pg_classic_theme = pg_legacy_design_classic_theme($style_id, $pg_design_fw['key'], $device_type, $page_custom_css, $page_id);
+                if ($pg_classic_theme) {
+                    $theme_id = $pg_classic_theme['id'];
+                    $theme_name = $pg_classic_theme['name'];
+                    $stylesheet =
+                        '<link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . h($theme_name) .
+                            '?v=' . @filemtime(FILE_DIRECTORY_PATH . '/' . $theme_name) . '">';
+                }
+            }
 
         // For custom (and any legacy) styles, preserve the original behavior:
         // fall back to the activated desktop/mobile theme so existing sites

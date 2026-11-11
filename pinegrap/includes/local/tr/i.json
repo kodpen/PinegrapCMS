@@ -749,6 +749,7 @@
     "In use": "Kullanımda",
     "In use: PHP has no certificate store of its own on this server.": "Kullanımda: bu sunucuda PHP'nin kendine ait bir sertifika deposu yok.",
     "In use: the server's own certificate store failed the last probe.": "Kullanımda: sunucunun kendi sertifika deposu son yoklamada başarısız oldu.",
+    "In use: {var}, the activated theme of the site, as on the classic style this design came from.": "Kullanılan: {var}, sitenin etkin teması; bu tasarımın geldiği klasik stilde olduğu gibi.",
     "In winter we work with amaryllis, hellebores, evergreen branches and dried flowers, which last for weeks in a warm room.": "Kışın amarilis, çöpleme, her dem yeşil dallar ve sıcak bir odada haftalarca dayanan kuru çiçeklerle çalışırız.",
     "In words, for example %s.": "Yazıyla, örneğin %s.",
     "In words, for example %s. We answer with a time.": "Sözcüklerle, örneğin %s. Bir saatle yanıt veririz.",

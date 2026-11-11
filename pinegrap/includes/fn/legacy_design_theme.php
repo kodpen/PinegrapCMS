@@ -208,3 +208,27 @@ function pg_legacy_design_classic_theme($style_id, $framework, $device_type, $cs
         'page_id'     => $page_id,
     ));
 }
+
+/**
+ * The theme a moved design loads, as the visual designer reads it
+ * (sdDesign.themeFile): its id, its file name and its address, or null when
+ * the design was not moved from a classic style, no theme is activated or a
+ * stylesheet row links it already. The editor shows the desktop theme, and
+ * a row kept to some pages counts as linking it, as the editor names one
+ * theme for the whole design.
+ *
+ * @param int    $style_id
+ * @param string $framework The design's framework key.
+ * @param mixed  $css_rows  style_custom_css: JSON or the decoded list.
+ * @return array|null array('id' => int, 'name' => string, 'url' => string)
+ */
+function pg_legacy_design_theme_js($style_id, $framework, $css_rows)
+{
+    $theme = pg_legacy_design_classic_theme($style_id, $framework, 'desktop', $css_rows, null);
+    if (!$theme) return null;
+    return array(
+        'id'   => (int)$theme['id'],
+        'name' => (string)$theme['name'],
+        'url'  => (defined('OUTPUT_PATH') ? (string)OUTPUT_PATH : '/') . $theme['name'],
+    );
+}
