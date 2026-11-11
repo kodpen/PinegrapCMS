@@ -129,6 +129,11 @@ function pg_settings_stamp_autocomplete($html)
  * looks for not to be there; the pane's own handler answers to this one
  * instead (see the settings modal in assets/js/backend.src.js).
  *
+ * A drawer's trigger is renamed for the same reason: Bootstrap would open its
+ * drawer in the top layer and hide the dialog the trigger sits in. The pane's
+ * handler slides the card's drawer in inside the dialog instead
+ * (includes/settings/drawer.php).
+ *
  * Only the cards are rewritten. The dialogs stay as they are: the close
  * buttons inside them are Bootstrap's to handle and they find the dialog they
  * sit in, and the page flow in screen.php prints the cards untouched, where
@@ -139,7 +144,10 @@ function pg_settings_stamp_autocomplete($html)
  */
 function pg_settings_own_dialog_triggers($html)
 {
-    return str_ireplace('data-bs-toggle="dialog"', 'data-pgdialog="modal"', $html);
+    return str_ireplace(
+        array('data-bs-toggle="dialog"', 'data-bs-toggle="drawer"'),
+        array('data-pgdialog="modal"', 'data-pgdrawer="open"'),
+        $html);
 }
 
 /**
