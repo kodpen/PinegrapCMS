@@ -58,6 +58,11 @@
  * See includes/design_templates/hello-pinegrap.php for widgets, shared
  * components, 'catalog' and 'requires'.
  *
+ * The home and the celebration cakes place the palette's Bakery blocks
+ * (Fresh from the Oven Hero, Cake Sizes) with the bakery's own data; their
+ * rules ship in User Styles from the block source, and their motion is node
+ * interactions (props._fx) only: the template carries no script.
+ *
  * The version follows the template, not the software: raise it whenever the
  * pages change, so a design records which edition it started from.
  *
@@ -178,7 +183,7 @@ $bakery_css = implode("\n", array(
 
 return array(
     'name'        => lang('Bakery'),
-    'version'     => '1.0.0',
+    'version'     => '1.1.0',
     'framework'   => 'bootstrap5',
     'order'       => 139,
     'icon'        => 'bi-cake2',
@@ -235,10 +240,10 @@ return array(
         'email_footer' => array('name' => lang('Bakery E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pbk- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the rules of the blocks its pages place and
+    // its pbk- rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $bakery_css),
+        'css'   => pg_design_template_user_styles(array('bakery-hero', 'bakery-cakes'), $bakery_css),
         'fonts' => json_encode($bakery_fonts),
     ),
 );
