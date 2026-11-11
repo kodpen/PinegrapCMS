@@ -13,3 +13,4 @@ description: Plan (owner 2026-11-07): block families in their own source files (
 ## Where does it start?
 - The polishing round: take the first step of [[design-template-own-looks-order]] that no open PR holds (a `<id>-1` first; its `-2` waits for it).
 - The owner's line of 2026-11-11 ([[design-template-owner-line]]) takes `appstudio` and `dealership` first, ahead of the order file, as bolder pages with motion.
+- Since 2026-11-11 two workers of one more coordinator take the next steps of the order file (same record).
