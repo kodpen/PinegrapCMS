@@ -9,7 +9,7 @@ description: A Workspace channel screen as a whole: header, catch-up and pinned 
 
 ## Which decisions bind it?
 - The redraw, the phone rules and who changes the design: `workflow/decisions-made-workspace-5.md`, kept in `workspace-channel-screen.md`; the card look and who builds it: `workflow/decisions-made-workspace-13.md` (`plans/workspace-channel-look.md`).
-- What the channel menu may hold: `workflow/decisions-made-workspace-2.md` (the README's key rule). The tour on the header: `workflow/decisions-made-workspace-6.md`. Export: `workflow/decisions-made-workspace-10.md`.
+- What the channel menu may hold: `workflow/decisions-made-workspace-2.md` (a key rule). The tour: `workflow/decisions-made-workspace-6.md`. Export: `workflow/decisions-made-workspace-10.md`. When a channel makes a sound: `workflow/decisions-made-workspace-14.md`.
 - Owner lines of their own: catch-up, composer, Decisions tab, messages, panels, panes, look, Summary/Board/Memory.
 
 ## Which parts are there? (label on screen, code name)
@@ -22,7 +22,7 @@ description: A Workspace channel screen as a whole: header, catch-up and pinned 
 - The card, its colour wash, pill tabs, the day chip and the send, bounce and slide-in motions: `workspace-channel-identity-motion.md`.
 - A channel's icon, chosen in the channel form (`workspace-channel-icon.md`), and what a template gives it (`workspace-channel-icon-templates.md`).
 - Export in the channel menu: Markdown or a print page (`workspace-channel-export.md`).
-- Webhook events about channel groups (no screen): `workspace-channel-group-events.md`.
+- Channel group webhook events: `workspace-channel-group-events.md`.
 
 ## Where is each part?
 - Screen code: `assets/js/workspace.js` (`drawCenter()`, `messageNode()`, `composer()`, `showMembers()`, `draw<Tab>()`); Board `workspace_board_channel.js`, Memory `workspace_memory.js`; styles `backend.src.css`.
