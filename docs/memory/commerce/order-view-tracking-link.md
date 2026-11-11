@@ -9,7 +9,7 @@ description: How a parcel's carrier, name and tracking link are found (pg_shippi
 
 ## How is the carrier of a parcel found?
 - `pg_shipping_carrier($number, $method, $default)` (`includes/fn/ecommerce.php`), in this order: (1) the whole `ship_tos.shipping_method_code` against each carrier's key and aliases, (2) the code a word at a time ("UPS-5GUN", "MNG Ertesi Gün"), (3) the site's default carrier, (4) the number's shape (`patterns`).
-- The shape: as typed, then in capitals without spaces (as `pg_shipment_number_warning()`); a lower-case UPS number had no link.
+- The shape: as typed, then in capitals without spaces (as `pg_shipment_number_warning()`); a lower-case UPS number had no link (#8616).
 - The default comes before the shape (#601): UPS/FedEx/USPS patterns also match Turkish plain digits (an 11-digit Yurtiçi number linked to UPS).
 - Every name is compared through `pg_shipping_carrier_text()`: `İ`→`i`, `I`→`ı`, lower case, then folded to ASCII (`pg_transliterate_to_ascii()`), so "YURTİÇİ KARGO", "YURTICI KARGO" and "yurtıcı" all match. Before #601 "YURTİÇİ KARGO" matched nothing (`mb_strtolower('İ')` adds a combining dot).
 
