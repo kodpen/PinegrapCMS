@@ -23,7 +23,9 @@ function workspace_settings_names_source($path)
 
 function test_workspace_settings_names_person_rows()
 {
-	$source = workspace_settings_names_source('workspace_settings.php');
+	// The rows and the department form are drawn once, for the old screen and
+	// the Site Settings dialog alike.
+	$source = workspace_settings_names_source('includes/workspace/team_settings.php');
 
 	foreach (array('Job title', 'Hours a day', 'Not in the team', 'Team lead', 'Own department') as $label) {
 		pg_assert_true(strpos($source, "aria-label=\"' . h(lang('" . $label . "'))") === false, $label . ': row field named without its person');

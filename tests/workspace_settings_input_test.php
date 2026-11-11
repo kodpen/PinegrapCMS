@@ -55,7 +55,7 @@ function test_workspace_settings_may_edit_person()
 
 function test_workspace_settings_people_rank_checked()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_settings.php');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/team_settings.php');
 
 	pg_assert_true(strpos($source, "if (!ws_settings_may_edit_person(\$viewer['role'], \$candidates[\$person_id]['role'])) {") !== false, 'the people save does not check the rank');
 	pg_assert_true(strpos($source, "\$locked = !ws_settings_may_edit_person(\$viewer['role'], \$person['role']);") !== false, 'a higher rank\'s row is not drawn read-only');
