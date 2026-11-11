@@ -22,7 +22,7 @@ description: Order of the polishing round after Launch: every shipped template's
 ## Where does each template stand?
 - Travel: `-1` #8337 done.
 
-- Gym: `-1` #8339 done.
+- Gym: `-1` #8339 done; `-2` being built.
 
 - Clinic: `-1` #8346 done.
 
