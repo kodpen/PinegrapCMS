@@ -5,13 +5,13 @@ module: image_editor
 ---
 
 ## What does the dialog add?
-- Save to Files beside Download (`pg_image_editor_render.js`). Under the estimate the server's limit (`animationLimit` in the config, `pg_image_editor_animation_limit()`: the smallest of upload, request and memory bounds, the body held twice); over it Save to Files waits and `M.animSmaller()` offers the largest smaller edge or rate that fits with a tenth spare (the size scales with area and frame count). Download still works.
+- Save to Files beside Download (`pg_image_editor_render.js`). Under the estimate the server's limit (`animationLimit` in the config: the largest file, `pg_image_editor_upload_limits()`; a file over one request goes in parts, `image-editor-upload.md`); over it Save to Files waits and `M.animSmaller()` offers the largest smaller edge or rate that fits with a tenth spare (the size scales with area and frame count). Download still works.
 - An animation the editor opened (the open answer's `animation`) is replaced when the format matches and it may be written over (`M.animSaveMode()`), behind a checked "Replace {name}" box; else a new file. After a new save the next one replaces it.
 - While the file is sent Cancel and Escape wait: it is written whatever the dialog does.
 
 ## How is the file sent?
-- One body: the request as one line of JSON, a line end, the file's bytes (`pg_image_editor_binary_body()`); `pg_image_editor_api()` splits only when the whole body is no JSON, and hands the bytes in `$request['binary']`. No base64.
-- Action `animation` (`pg_image_editor_action_animation()`): the format from the bytes (`pg_image_editor_animation_type()`: GIF, APNG by an acTL before IDAT, animated WebP by VP8X's flag, MP4 `ftyp`, WebM by its EBML doctype, PDF), never the name; refused over the limit (413).
+- One body (a file over one request: in parts first, then the request with its upload id, `image-editor-upload.md`): the request as one line of JSON, a line end, the file's bytes (`pg_image_editor_binary_body()`); `pg_image_editor_api()` splits only when the whole body is no JSON, and hands the bytes in `$request['binary']`. No base64.
+- Action `animation` (`pg_image_editor_action_animation()`): the format from the bytes (`pg_image_editor_animation_type()`: GIF, APNG by an acTL before IDAT, animated WebP by VP8X's flag, MP4 `ftyp`, WebM by its EBML doctype, PDF), never the name; one body over one request is refused (413).
 - New: beside the source in its folder (its stem, the format's extension, unique name), or a canvas's folder (a saved canvas through `pg_image_editor_file()`'s checks, or `save.folderId`); the bin and folder 0 refused. Replace: only an animation the editor made, from the same source (a saved canvas is its source), in the same format. The document passes `pg_image_edit_validate()` first.
 - `files.type` is the extension; `.webm` and `.mp4` were already in `get_file.php`'s MIME map, which answers ranges.
 

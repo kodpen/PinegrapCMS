@@ -20,7 +20,7 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
 - V3b (S) Length rule and clip bar. `free`, one at a time with V5 and V10 (the `clip` part). Owner 2026-11-10, #8521.
   - A clip edit never ends the document before another layer's motion. The clip bar of screen 35: a filmstrip of several frames, the clip's sound as a waveform.
 
-- V4 (M) Sound. Done (#7642, `ui/image-editor-sound.md`; from this computer left to V8). Screens 37-sound, 35-video. Needs no video layer: may run right after V0, before V1-V3 (owner 2026-11-05: sound in an animation's video too).
+- V4 (M) Sound. Done (#7642, `ui/image-editor-sound.md`; from this computer in V8). Screens 37-sound, 35-video. Needs no video layer: may run right after V0, before V1-V3 (owner 2026-11-05: sound in an animation's video too).
   - An audio layer on any canvas: music and sounds from Files (MP3, AAC, WAV, Ogg), its start, trim, volume, fade in and out, mute; its row with a waveform on the tracks; Web Audio playback in step with the play bar, so an animation gets its music.
   - With V2: a clip's sound as its own row (Detach sound mutes the clip and adds an audio layer on the same source).
 
@@ -32,7 +32,7 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
 
 - V7 (M) Export with sound. Done (#8484, `ui/image-editor-mix.md`: MP4 with AAC, WebM with Opus; the other formats carry none).
 
-- V8 (M) Large files. `free` after V7 and V2. One at a time with the save-path steps.
+- V8 (M) Large files. Done (#8585, `ui/image-editor-upload.md`). Left: the size setting, a `config` column only the owner may add (#8587); until then the largest file is `upload_max_filesize`.
   - Chunked, resumable upload of a source video into Files; chunked save of the export (AN4's action in parts); type told by its bytes (AN4); the size limits as settings.
 
 - V9 (S) Save and open again. `free` after V8 and V3.

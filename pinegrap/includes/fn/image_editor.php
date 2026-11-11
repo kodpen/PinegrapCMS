@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'actions', 'menu');
 }
 
 /**
@@ -187,8 +187,10 @@ function pg_image_editor_config()
         'encoder' => pg_js_bundle_urls('assets/js/pg_image_editor_encode.min.js'),
         // Select subject's cut, started as a worker.
         'subject' => pg_js_bundle_urls('assets/js/pg_image_editor_subject.min.js'),
-        // The largest animation Save to Files takes (0: no limit known).
-        'animationLimit' => pg_image_editor_animation_limit(pg_upload_limits()),
+        // The largest file Save to Files and an upload take (0: no limit
+        // known); a file larger than one part is sent in parts.
+        'animationLimit' => pg_image_editor_upload_limits()['max'],
+        'uploadPart'     => pg_image_editor_upload_limits()['part'],
     );
 }
 
@@ -4346,7 +4348,13 @@ function pg_image_editor_animation_open($file_id, $user)
  */
 function pg_image_editor_action_animation($request, $user)
 {
-    $bytes = isset($request['binary']) ? (string) $request['binary'] : '';
+    // One request's bytes, or a file sent in parts (pg_image_editor_upload_take()).
+    list($refusal, $bytes, , $upload) = pg_image_editor_upload_take($request, $user, 'animation');
+
+    if ($refusal) {
+        return $refusal;
+    }
+
     $format = pg_image_editor_animation_type($bytes);
     $mode = isset($request['mode']) ? (string) $request['mode'] : '';
     $doc = isset($request['doc_object']) ? $request['doc_object'] : null;
@@ -4361,12 +4369,6 @@ function pg_image_editor_action_animation($request, $user)
 
     if ($check['error'] !== '') {
         return pg_image_editor_refusal(lang('Invalid request.'));
-    }
-
-    $limit = pg_image_editor_animation_limit(pg_upload_limits());
-
-    if (($limit > 0) && (strlen($bytes) > $limit)) {
-        return pg_image_editor_refusal(lang(array('string' => 'The image is larger than this server accepts in one request ({var:1}).', 'vars' => convert_bytes_to_string($limit))), 413);
     }
 
     @set_time_limit(120);
@@ -4468,7 +4470,7 @@ function pg_image_editor_action_animation($request, $user)
 
     $path = FILE_DIRECTORY_PATH . '/' . $name;
 
-    if (!pg_image_editor_put($path, $bytes)) {
+    if (!pg_image_editor_upload_put($path, $bytes, $upload)) {
         return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
     }
 
@@ -5391,66 +5393,30 @@ function pg_image_editor_action_video_files($request, $user)
 /**
  * Action video_upload: a video from this computer into Files, so a clip
  * names a file of the site. The bytes follow the request's line
- * (pg_image_editor_binary_body()); the type is told by them. It lands beside
- * the open file, or in the folder of a canvas not saved yet, under the
- * folder's edit right, never in the Recycle Bin.
+ * (pg_image_editor_binary_body()), or came in parts (its upload member,
+ * pg_image_editor_upload_take()); the type is told by them. It lands as
+ * pg_image_editor_upload_place() says.
  *
- *   { file_id | folder_id, name? } + bytes
+ *   { file_id | folder_id, name?, upload? } + bytes
  *       -> { status, id, name, folder, url, size }
  *
  * @return array array(payload, HTTP status)
  */
 function pg_image_editor_action_video_upload($request, $user)
 {
-    $bytes = isset($request['binary']) ? (string) $request['binary'] : '';
-    $format = pg_image_editor_clip_format($bytes);
+    list($refusal, $head, , $id) = pg_image_editor_upload_take($request, $user, 'video');
+
+    if ($refusal) {
+        return $refusal;
+    }
+
+    $format = pg_image_editor_clip_format($head);
 
     if ($format === '') {
         return pg_image_editor_refusal(lang('Only MP4 and WebM videos can be added.'));
     }
 
-    $limit = pg_image_editor_animation_limit(pg_upload_limits());
-
-    if (($limit > 0) && (strlen($bytes) > $limit)) {
-        return pg_image_editor_refusal(lang(array('string' => 'The video is larger than this server accepts in one request ({var:1}).', 'vars' => convert_bytes_to_string($limit))), 413);
-    }
-
-    $file_id = isset($request['file_id']) ? (int) $request['file_id'] : 0;
-
-    if ($file_id > 0) {
-        $file = pg_image_editor_file($file_id, $user);
-
-        if ($file['refusal']) {
-            return $file['refusal'];
-        }
-
-        $folder = (int) $file['row']['folder'];
-    } else {
-        $folder = isset($request['folder_id']) ? (int) $request['folder_id'] : 0;
-    }
-
-    if ($folder <= 0) {
-        return pg_image_editor_refusal(lang('Invalid request.'));
-    }
-
-    if (!check_edit_access($folder) || pg_folder_binned($folder)) {
-        return pg_image_editor_refusal(lang('Access denied'), 403);
-    }
-
-    @set_time_limit(120);
-
-    $stem = pg_file_name_stem(trim(isset($request['name']) ? (string) $request['name'] : ''));
-    $name = get_unique_name(array('name' => prepare_file_name((($stem !== '') ? $stem : lang('Video')) . '.' . $format), 'type' => 'file'));
-
-    if (pg_upload_name_blocked($name)) {
-        return pg_image_editor_refusal(pg_upload_blocked_message($name));
-    }
-
-    if (!pg_image_editor_put(FILE_DIRECTORY_PATH . '/' . $name, $bytes)) {
-        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
-    }
-
-    return pg_image_editor_record('new', $name, $folder, $format, null, $user);
+    return pg_image_editor_upload_place($request, $user, $format, lang('Video'), $head, $id);
 }
 
 // -- An animation's sound in its video (pg_image_editor_mix.js) --
@@ -5479,4 +5445,561 @@ function pg_image_editor_strings_mix()
         'mixFileError'   => lang('The sound {name} could not be read.'),
         'mixError'       => lang('This browser cannot mix the sound.'),
     );
+}
+
+// -- Large files (pg_image_editor_upload.js) --
+
+/**
+ * The upload part's labels: a file sent in parts, its progress, a broken
+ * connection, the resume, and a sound from this computer. {name}, {done},
+ * {size} and {pct} are filled in by the script.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_upload()
+{
+    return array(
+        'uploadSent'      => lang('{done} of {size} sent'),
+        'uploadProgress'  => lang('Uploading {name}: {pct}'),
+        'uploadResume'    => lang('Going on with {name} from {done}.'),
+        'uploadWaiting'   => lang('The connection dropped: the upload goes on when it is back.'),
+        'uploadBroken'    => lang('The upload stopped. Pick the same file again to go on from where it stopped.'),
+        'uploadTooLarge'  => lang('The file is larger than the {size} Files take here.'),
+        'uploadError'     => lang('The file could not be uploaded.'),
+        'soundComputer'   => lang('From this computer'),
+        'soundUploading'  => lang('Uploading the sound into Files...'),
+        'soundNeedsFiles' => lang('A sound is added through Files: save this image in the File Manager first.'),
+    );
+}
+
+/**
+ * The kinds of file the editor sends in parts, each with the action that
+ * takes the finished upload (its upload member names it).
+ *
+ * @return array kind => action
+ */
+function pg_image_editor_upload_kinds()
+{
+    return array('video' => 'video_upload', 'sound' => 'sound_upload', 'animation' => 'animation');
+}
+
+/**
+ * The bounds of a file sent in parts, from pg_upload_limits() and PHP's own
+ * upload_max_filesize. Pure.
+ *
+ *   part     the bytes one part carries: one request's bound
+ *            (pg_image_editor_animation_limit()) less room for the request's
+ *            line, at most 8 MB so a dropped connection loses little
+ *   request  one request's bound (0: none known)
+ *   max      the largest file: upload_max_filesize, which a host sets for a
+ *            file whatever the request's size, never below one request (0:
+ *            none known)
+ *
+ * @param array $limits pg_upload_limits()
+ * @param int $file_max upload_max_filesize in bytes
+ * @return array part, request, max
+ */
+function pg_image_editor_upload_limits_of($limits, $file_max)
+{
+    $request = pg_image_editor_animation_limit($limits);
+    $most = 8 * 1024 * 1024;
+    $part = ($request > 0) ? min($most, max(16384, $request - min(65536, (int) floor($request / 2)))) : $most;
+    $file_max = max(0, (int) $file_max);
+    $max = ($file_max > 0) ? (($request > 0) ? max($file_max, $request) : $file_max) : $request;
+
+    return array('part' => $part, 'request' => $request, 'max' => $max);
+}
+
+/**
+ * This server's bounds (pg_image_editor_upload_limits_of()): every limit of
+ * a large file is read here.
+ *
+ * @return array part, request, max
+ */
+function pg_image_editor_upload_limits()
+{
+    static $limits = null;
+
+    if ($limits === null) {
+        $limits = pg_image_editor_upload_limits_of(pg_upload_limits(), pg_ini_bytes(@ini_get('upload_max_filesize')));
+    }
+
+    return $limits;
+}
+
+// Unfinished uploads are scratch files: data/temp is never served and the
+// Clean Up screen empties it.
+function pg_image_editor_upload_dir()
+{
+    return PG_FUNCTIONS_DIR . '/data/temp/image_editor_uploads';
+}
+
+// An upload nothing was added to for a day is gone.
+function pg_image_editor_upload_ttl()
+{
+    return 86400;
+}
+
+/**
+ * An upload's id as the browser sends it: 32 lower-case hex digits. Pure.
+ *
+ * @param mixed $id
+ * @return bool
+ */
+function pg_image_editor_upload_id_ok($id)
+{
+    return is_string($id) && (preg_match('/^[a-f0-9]{32}$/', $id) === 1);
+}
+
+/**
+ * Whether a kept upload may go on for this user now. Pure.
+ *
+ * @param mixed $meta the upload's decoded .json (user, kind, size)
+ * @param int $user_id
+ * @param int $touched when its bytes were last written (Unix time)
+ * @param int $now
+ * @param int $ttl seconds
+ * @return string '' it may, 'gone' no such upload, 'foreign' another
+ *                user's, 'stale' nothing added for $ttl seconds
+ */
+function pg_image_editor_upload_state($meta, $user_id, $touched, $now, $ttl)
+{
+    $kinds = pg_image_editor_upload_kinds();
+
+    if (!is_array($meta) || !isset($meta['user'], $meta['kind'], $meta['size']) || !is_int($meta['user']) || !is_int($meta['size'])
+        || !is_string($meta['kind']) || !isset($kinds[$meta['kind']]) || ($meta['size'] <= 0)) {
+        return 'gone';
+    }
+
+    if ($meta['user'] !== (int) $user_id) {
+        return 'foreign';
+    }
+
+    return (((int) $now - (int) $touched) > (int) $ttl) ? 'stale' : '';
+}
+
+/**
+ * Whether a part may be added: it starts where the server's bytes end, is
+ * no longer than a part and does not run past the file's size. Pure.
+ *
+ * @return string '' it may, 'offset' it starts elsewhere (the browser goes
+ *                on from the server's count), 'size' too long or empty
+ */
+function pg_image_editor_upload_part_check($size, $received, $offset, $length, $part)
+{
+    if ((int) $offset !== (int) $received) {
+        return 'offset';
+    }
+
+    if (((int) $length <= 0) || ((int) $length > (int) $part) || ((int) $received + (int) $length > (int) $size)) {
+        return 'size';
+    }
+
+    return '';
+}
+
+/**
+ * A sound's format told by its bytes, never its name: one of
+ * pg_image_editor_sound_types(), '' for anything else. Pure.
+ *
+ * @param string $bytes the file's first bytes
+ * @return string
+ */
+function pg_image_editor_sound_format($bytes)
+{
+    $head = substr((string) $bytes, 0, 4096);
+
+    if (strlen($head) < 12) {
+        return '';
+    }
+
+    if (strncmp($head, 'ID3', 3) === 0) {
+        return 'mp3';
+    }
+
+    // A frame sync: AAC's ADTS has the layer bits 00, MPEG audio 01-11.
+    if ((ord($head[0]) === 0xff) && ((ord($head[1]) & 0xe0) === 0xe0)) {
+        if ((ord($head[1]) & 0xf6) === 0xf0) {
+            return 'aac';
+        }
+
+        return ((ord($head[1]) & 0x06) !== 0) ? 'mp3' : '';
+    }
+
+    if ((strncmp($head, 'RIFF', 4) === 0) && (substr($head, 8, 4) === 'WAVE')) {
+        return 'wav';
+    }
+
+    if (strncmp($head, 'OggS', 4) === 0) {
+        return (strpos(substr($head, 0, 128), 'OpusHead') !== false) ? 'opus' : 'ogg';
+    }
+
+    return (substr($head, 4, 4) === 'ftyp') ? 'm4a' : '';
+}
+
+/**
+ * The format of a kind's file told by its first bytes. Pure.
+ *
+ * @return string '' when the bytes are not that kind's
+ */
+function pg_image_editor_upload_format($kind, $head)
+{
+    if ($kind === 'video') {
+        return pg_image_editor_clip_format($head);
+    }
+
+    if ($kind === 'sound') {
+        return pg_image_editor_sound_format($head);
+    }
+
+    return ($kind === 'animation') ? pg_image_editor_animation_type($head) : '';
+}
+
+// The two files of an upload: its bytes so far and what it is.
+function pg_image_editor_upload_paths($id)
+{
+    $base = pg_image_editor_upload_dir() . '/' . $id;
+
+    return array($base . '.part', $base . '.json');
+}
+
+function pg_image_editor_upload_drop($id)
+{
+    if (pg_image_editor_upload_id_ok($id)) {
+        foreach (pg_image_editor_upload_paths($id) as $path) {
+            @unlink($path);
+        }
+    }
+}
+
+/**
+ * A kept upload of this user, or the refusal that answers for it.
+ *
+ * @return array array(refusal|null, meta, path of its bytes, bytes received)
+ */
+function pg_image_editor_upload_load($id, $user)
+{
+    if (!pg_image_editor_upload_id_ok($id)) {
+        return array(pg_image_editor_refusal(lang('Invalid request.')), null, '', 0);
+    }
+
+    list($part, $json) = pg_image_editor_upload_paths($id);
+    @clearstatcache(true, $part);
+    $there = is_file($part) && is_file($json);
+    $meta = $there ? json_decode((string) @file_get_contents($json), true) : null;
+    $state = pg_image_editor_upload_state($meta, (int) $user['id'], $there ? (int) @filemtime($part) : 0, time(), pg_image_editor_upload_ttl());
+
+    if ($state === 'foreign') {
+        return array(pg_image_editor_refusal(lang('Access denied'), 403), null, '', 0);
+    }
+
+    if ($state !== '') {
+        if ($state === 'stale') {
+            pg_image_editor_upload_drop($id);
+        }
+
+        return array(pg_image_editor_refusal(lang('This upload is no longer on the server. Pick the file again to start over.'), 410, 'upload_gone'), null, '', 0);
+    }
+
+    return array(null, $meta, $part, (int) @filesize($part));
+}
+
+// Uploads nothing was added to for a day go, so a broken one leaves
+// nothing behind.
+function pg_image_editor_upload_sweep()
+{
+    $now = time();
+
+    foreach ((array) @glob(pg_image_editor_upload_dir() . '/*.json') as $json) {
+        $id = basename((string) $json, '.json');
+        list($part) = pg_image_editor_upload_paths($id);
+        $touched = is_file($part) ? (int) @filemtime($part) : (int) @filemtime($json);
+
+        if (($now - $touched) > pg_image_editor_upload_ttl()) {
+            pg_image_editor_upload_drop($id);
+        }
+    }
+}
+
+/**
+ * Action upload_start: a file to send in parts. Its size is checked against
+ * the largest file (pg_image_editor_upload_limits()) and the disk's room;
+ * where it lands is checked by the action that takes it.
+ *
+ *   { kind: video|sound|animation, size } -> { status, upload, part, received: 0, size }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_upload_start($request, $user)
+{
+    $kind = isset($request['kind']) ? (string) $request['kind'] : '';
+    $size = (isset($request['size']) && is_int($request['size'])) ? $request['size'] : 0;
+    $kinds = pg_image_editor_upload_kinds();
+    $limits = pg_image_editor_upload_limits();
+
+    if (!isset($kinds[$kind]) || ($size <= 0)) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    if (($limits['max'] > 0) && ($size > $limits['max'])) {
+        return pg_image_editor_refusal(lang(array('string' => 'The file is larger than this server accepts ({var:1}).', 'vars' => convert_bytes_to_string($limits['max']))), 413);
+    }
+
+    $dir = pg_image_editor_upload_dir();
+
+    if ((!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) || !pg_dir_writable($dir)) {
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
+
+    pg_image_editor_upload_sweep();
+
+    // The file lands in Files and may be copied once more as a version.
+    $free = function_exists('disk_free_space') ? @disk_free_space($dir) : false;
+
+    if (($free !== false) && ($free < (2 * $size) + (64 * 1024 * 1024))) {
+        return pg_image_editor_refusal(lang('There is not enough room on the server for this file.'), 507);
+    }
+
+    $id = bin2hex(random_bytes(16));
+    list($part, $json) = pg_image_editor_upload_paths($id);
+
+    if ((@file_put_contents($part, '') === false) || (@file_put_contents($json, json_encode(array('user' => (int) $user['id'], 'kind' => $kind, 'size' => $size))) === false)) {
+        pg_image_editor_upload_drop($id);
+
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
+
+    return array(array('status' => 'success', 'upload' => $id, 'part' => $limits['part'], 'received' => 0, 'size' => $size), 200);
+}
+
+/**
+ * Action upload_status: how many bytes of an upload the server holds, so a
+ * broken upload goes on from there.
+ *
+ *   { upload } -> { status, upload, kind, received, size, part }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_upload_status($request, $user)
+{
+    $id = isset($request['upload']) ? $request['upload'] : '';
+    list($refusal, $meta, , $received) = pg_image_editor_upload_load($id, $user);
+
+    if ($refusal) {
+        return $refusal;
+    }
+
+    $limits = pg_image_editor_upload_limits();
+
+    return array(array('status' => 'success', 'upload' => $id, 'kind' => $meta['kind'], 'received' => $received, 'size' => $meta['size'], 'part' => $limits['part']), 200);
+}
+
+/**
+ * Action upload_part: the next part's bytes after the request's line
+ * (pg_image_editor_binary_body()). A part that starts elsewhere is refused
+ * with the server's count (409), so a part sent twice is written once; the
+ * first part tells the kind's format by its bytes.
+ *
+ *   { upload, offset } + bytes -> { status, received, size }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_upload_part($request, $user)
+{
+    $id = isset($request['upload']) ? $request['upload'] : '';
+    $offset = (isset($request['offset']) && is_int($request['offset'])) ? $request['offset'] : -1;
+    $bytes = isset($request['binary']) ? (string) $request['binary'] : '';
+    list($refusal, $meta, $part) = pg_image_editor_upload_load($id, $user);
+
+    if ($refusal) {
+        return $refusal;
+    }
+
+    $limits = pg_image_editor_upload_limits();
+    $handle = @fopen($part, 'ab');
+
+    if (!$handle || !@flock($handle, LOCK_EX)) {
+        if ($handle) {
+            fclose($handle);
+        }
+
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
+
+    // Counted under the lock: a part sent again while the first try is
+    // still being written waits, then finds it there.
+    @clearstatcache(true, $part);
+    $received = (int) @filesize($part);
+    $check = pg_image_editor_upload_part_check($meta['size'], $received, $offset, strlen($bytes), $limits['part']);
+    $written = false;
+
+    if (($check === '') && ($received === 0) && (pg_image_editor_upload_format($meta['kind'], $bytes) === '')) {
+        $check = 'format';
+    }
+
+    if ($check === '') {
+        $written = (@fwrite($handle, $bytes) === strlen($bytes));
+        @fflush($handle);
+    }
+
+    @clearstatcache(true, $part);
+    $received = (int) @filesize($part);
+    flock($handle, LOCK_UN);
+    fclose($handle);
+
+    if ($check === 'format') {
+        pg_image_editor_upload_drop($id);
+
+        return pg_image_editor_refusal(($meta['kind'] === 'sound') ? lang('Only MP3, AAC, M4A, WAV and Ogg sounds can be added.') : (($meta['kind'] === 'video') ? lang('Only MP4 and WebM videos can be added.') : lang('Invalid request.')));
+    }
+
+    if ($check !== '') {
+        $out = pg_image_editor_refusal(lang('Invalid request.'), ($check === 'offset') ? 409 : 400, 'upload_' . $check);
+        $out[0]['received'] = $received;
+
+        return $out;
+    }
+
+    if (!$written) {
+        // A short write leaves bytes no next part can follow.
+        pg_image_editor_upload_drop($id);
+
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
+
+    return array(array('status' => 'success', 'received' => $received, 'size' => $meta['size']), 200);
+}
+
+/**
+ * The bytes an action places in Files: those after its request's line (one
+ * request's bound), or a finished upload of the kind (its upload member).
+ *
+ * @return array array(refusal|null, the bytes or an upload's first 64 KB,
+ *               size, upload id or '')
+ */
+function pg_image_editor_upload_take($request, $user, $kind)
+{
+    $id = isset($request['upload']) ? $request['upload'] : '';
+
+    if ($id === '') {
+        $bytes = isset($request['binary']) ? (string) $request['binary'] : '';
+        $limit = pg_image_editor_animation_limit(pg_upload_limits());
+
+        if (($limit > 0) && (strlen($bytes) > $limit)) {
+            return array(pg_image_editor_refusal(lang(array('string' => 'The file is larger than this server accepts in one request ({var:1}).', 'vars' => convert_bytes_to_string($limit))), 413), '', 0, '');
+        }
+
+        return array(null, $bytes, strlen($bytes), '');
+    }
+
+    list($refusal, $meta, $part, $received) = pg_image_editor_upload_load($id, $user);
+
+    if ($refusal) {
+        return array($refusal, '', 0, '');
+    }
+
+    if (($meta['kind'] !== $kind) || ($received !== $meta['size'])) {
+        return array(pg_image_editor_refusal(lang('The upload is not finished yet.'), 409, 'upload_open'), '', 0, '');
+    }
+
+    return array(null, (string) @file_get_contents($part, false, null, 0, 65536), $received, $id);
+}
+
+/**
+ * Writes what pg_image_editor_upload_take() took at $path: an upload's file
+ * is moved there, never read into memory.
+ *
+ * @return bool
+ */
+function pg_image_editor_upload_put($path, $bytes, $id)
+{
+    if ($id === '') {
+        return pg_image_editor_put($path, $bytes);
+    }
+
+    list($part) = pg_image_editor_upload_paths($id);
+
+    if (!@rename($part, $path) && (!@copy($part, $path) || !@unlink($part))) {
+        @unlink($path);
+
+        return false;
+    }
+
+    pg_image_editor_upload_drop($id);
+    @clearstatcache(true, $path);
+
+    return true;
+}
+
+/**
+ * Where a video or sound from this computer lands: beside the open file, or
+ * in the folder of a canvas not saved yet, under the folder's edit right,
+ * never in the Recycle Bin; a unique name with its format's extension.
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_upload_place($request, $user, $format, $stem_default, $bytes, $id)
+{
+    $file_id = isset($request['file_id']) ? (int) $request['file_id'] : 0;
+
+    if ($file_id > 0) {
+        $file = pg_image_editor_file($file_id, $user);
+
+        if ($file['refusal']) {
+            return $file['refusal'];
+        }
+
+        $folder = (int) $file['row']['folder'];
+    } else {
+        $folder = isset($request['folder_id']) ? (int) $request['folder_id'] : 0;
+    }
+
+    if ($folder <= 0) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    if (!check_edit_access($folder) || pg_folder_binned($folder)) {
+        return pg_image_editor_refusal(lang('Access denied'), 403);
+    }
+
+    @set_time_limit(120);
+
+    $stem = pg_file_name_stem(trim(isset($request['name']) ? (string) $request['name'] : ''));
+    $name = get_unique_name(array('name' => prepare_file_name((($stem !== '') ? $stem : $stem_default) . '.' . $format), 'type' => 'file'));
+
+    if (pg_upload_name_blocked($name)) {
+        return pg_image_editor_refusal(pg_upload_blocked_message($name));
+    }
+
+    if (!pg_image_editor_upload_put(FILE_DIRECTORY_PATH . '/' . $name, $bytes, $id)) {
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
+
+    return pg_image_editor_record('new', $name, $folder, $format, null, $user);
+}
+
+/**
+ * Action sound_upload: a sound from this computer into Files, as
+ * video_upload puts a video there; its type is told by its bytes.
+ *
+ *   { file_id | folder_id, name?, upload? } + bytes
+ *       -> { status, id, name, folder, url, size }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_sound_upload($request, $user)
+{
+    list($refusal, $head, , $id) = pg_image_editor_upload_take($request, $user, 'sound');
+
+    if ($refusal) {
+        return $refusal;
+    }
+
+    $format = pg_image_editor_sound_format($head);
+
+    if ($format === '') {
+        return pg_image_editor_refusal(lang('Only MP3, AAC, M4A, WAV and Ogg sounds can be added.'));
+    }
+
+    return pg_image_editor_upload_place($request, $user, $format, lang('Sound'), $head, $id);
 }

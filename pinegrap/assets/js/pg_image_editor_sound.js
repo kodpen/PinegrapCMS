@@ -511,6 +511,8 @@
         this.confirmBox = el('div', { class: 'pgie-confirm', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pgie-sound-title' }, [
             el('div', { class: 'pgie-confirm-box pgie-importbox' }, [
                 el('div', { class: 'pgie-importhead' }, [el('h2', { id: 'pgie-sound-title', text: t('soundFiles') }), button('pgie-ibtn', t('close'), 'close', function () { self.closeConfirm(); })]),
+                // From this computer (pg_image_editor_upload.js).
+                this.soundComputerButton ? this.soundComputerButton() : null,
                 find,
                 st.list
             ])

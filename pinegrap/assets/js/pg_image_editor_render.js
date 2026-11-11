@@ -970,29 +970,19 @@
         }
     };
 
-    // The finished file into Files, after the request's line as it is
-    // (pg_image_editor_binary_body()): beside the picture, in the canvas's
-    // folder, or over the animation the editor opened.
+    // The finished file into Files, after the request's line or in parts
+    // when it is larger than one (uploadSend(), pg_image_editor_upload.js):
+    // beside the picture, in the canvas's folder, or over the animation the
+    // editor opened.
     Editor.prototype.saveAnimationFile = function (blob, mode, name) {
-        var self = this, cfg = config(), head = {
-            token: cfg.token || '', action: 'animation', mode: mode, doc: this.doc, base: this.versionBase || 0,
+        var self = this, head = {
+            action: 'animation', mode: mode, doc: this.doc, base: this.versionBase || 0,
             file_id: this.opts.fileId || 0, folder_id: (this.opts.save && this.opts.save.folderId) || 0,
             name: (this.opts.save && this.opts.save.name) || name,
             target: (mode === 'replace') ? this.animFile.id : 0
         };
 
-        return fetch(cfg.api, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/octet-stream', Accept: 'application/json' },
-            body: new Blob([JSON.stringify(head) + '\n', blob])
-        }).then(function (res) {
-            return res.json().catch(function () { return null; });
-        }).then(function (r) {
-            if (!r || (r.status !== 'success')) {
-                throw new Error((r && r.message) || t('animSaveError'));
-            }
-
+        return this.uploadSend(blob, 'animation', head, { error: t('animSaveError'), progress: this.uploadInto(this.animEls && this.animEls.caption) }).then(function (r) {
             // The next save replaces this file, as when it was opened.
             self.animFile = { id: r.id, name: r.name, format: r.format, replace: true };
 
