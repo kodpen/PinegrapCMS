@@ -500,6 +500,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/dashboard-v2-drawn-look.md: The new dashboard's drawn look (visual pass V): the --pgd-* palette every part reads, the frame and faces, the drawn Assistant and goals, the differences kept on purpose
 - ui/dashboard-v2-engagement-card.md: New dashboard's Online Engagement card (engagement): what it shows when nobody is on the site (the last visits, Last visits list), the time used, the bounded read, when it sends empty
 - ui/dashboard-v2-overview.md: The new dashboard as a whole: the per-person switch beside the untouched old dashboard, welcome.php's page branch, its files and bundles, SVG charts, refresh rules, string card ids
+- ui/dashboard-v2-visitmap-world.md: The Visitor map card's world map when no city can be placed (#8713): countries shaded in four steps, why shading, tips and keys, the card's hue, countries the map file has no outline for
 - ui/dashboard-welcome-card.md: The dashboard top card (welcome.php, .pg-clockbar): greeting on the left, time and date on the right in one full-width card; phone stacking, themes, ids the scripts read
 - ui/details-panel-rule.md: The one structure rule of a list's details panel ("Detaylar"): fixed section order, label/value lines with a fixed label column, empty values left out; how the table driver applies it
 - ui/dialog-result-after-close.md: A Bootstrap 6 dialog or drawer hands its result to the page only once closed; the writing box's + menu windows put in nothing before that (#4196); the caret after a card

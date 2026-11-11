@@ -8,7 +8,6 @@
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
 - bell-panel-steps.md: Steps of plans/bell-panel.md: BP1 a row is read when opened, BP2 the row drawn as the dashboard's Next up row, BP3 the filters and the search, BP4 the in-place actions and the close-out
 - bell-panel.md: Plan (owner 2026-11-11): the bell's rows drawn as the dashboard's Next up rows, module chips, unread only, asked of me, search, day headings; a row is read when it is opened; steps BP1-BP4
-- dashboard-owner-look.md: Plan (owner 2026-11-11, #8672): what the owner asked for on the new dashboard's cards: the notes card as a My Notes shortcut, last online times, the world map without city names; steps DL1-DL3
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
