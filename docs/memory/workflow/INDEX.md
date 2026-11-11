@@ -23,7 +23,7 @@
 - decisions-made-marketplace.md: Decisions list, marketplace part: n11 orders of products shipped from the n11 warehouse are not imported.
 - decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS, the cash-on-delivery code's orders, the member's SMS sign-in code.
 - decisions-made-panel-2.md: Decisions list, panel part 2 (2026-11-02 on): no Site Settings menu row; two-colour menu icons; no alert boxes on app-like screens; rights trees keep Workspace; a local change in the Bootstrap 6 dist
-- decisions-made-panel-3.md: Decisions list, panel part 3: Bootstrap 6 choices of 2026-10-25: jquery-multiselect-checkbox kept, the liked screens, Stepper, Avatar, the password meter, the old browser notice
+- decisions-made-panel-3.md: Decisions list, panel part 3: Bootstrap 6 choices of 2026-10-25 (multiselect kept, liked screens, Stepper, Avatar, password meter, old browser notice); the Site Settings dialog's drawer (2026-11-11)
 - decisions-made-panel.md: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose; the one date-and-time picker; the main menu in category headings; navigator screens; the front-end editing button box
 - decisions-made-product-10.md: Decisions list, product part 10 (2026-10-30 evening on): Turkish i-fold in panel lists, public invoice PDF address, e-mail triage suggestion, Workspace uploads, no collection schedule columns
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log
@@ -88,7 +88,7 @@
 - decisions-made-workspace-10.md: Decisions list, workspace part 10 (2026-11-09 on): application lines fold; agent activity; table bin, Excel, import; flow failure reason; team replies; channel export; agent questions; unread requests
 - decisions-made-workspace-11.md: Decisions list, workspace part 11 (2026-11-10 on): only a channel's manager adds an agent to a private channel; a connected app's message under the person's name ("via" badge); who answers @Claude
 - decisions-made-workspace-12.md: Decisions list, workspace part 12 (2026-11-10 on): an agent's one-answer question is a one-choice poll the asking agent closes; a channel's agent asked by name in the channel's discussions
-- decisions-made-workspace-13.md: Decisions list, workspace part 13 (2026-11-10 on): the Workspace mail screen (one list of every e-mail, New e-mail, Forward as e-mail), its send path through the mail queue; schema approved (#8604)
+- decisions-made-workspace-13.md: Decisions list, workspace part 13 (2026-11-10 on): the Workspace mail screen and its send path (schema #8604), the channel look handed to workers, the Workspace settings moved under Site Settings
 - decisions-made-workspace-2.md: Decisions list, workspace part 2 (2026-10-29 on): the channel menu holds only the channel's own items; creates in a chat go through /oluştur (/create): its rights and kinds; the sales quote stays
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
