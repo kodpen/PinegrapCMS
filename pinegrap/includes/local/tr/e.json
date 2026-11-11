@@ -56,6 +56,7 @@
     "E-mail campaigns, how far sending has got and who they go to; writing holds, releases, cancels, corrects or removes one, not putting one together": "E-posta kampanyaları, gönderimin ne kadar ilerlediği ve kime gittikleri; yazma bir kampanyayı bekletir, serbest bırakır, iptal eder, düzeltir ya da siler, yeni kampanya oluşturmaz",
     "E-mail campaigns, live chat and MailChimp.": "E-posta kampanyaları, canlı sohbet ve MailChimp.",
     "E-mail campaigns, live chat, MailChimp and SMS.": "E-posta kampanyaları, canlı sohbet, MailChimp ve SMS.",
+    "E-mail conversation": "E-posta konuşması",
     "E-mail custom form submitter when a comment is published": "Bir yorum yayınlandığında özel form göndericisine e-posta gönder",
     "E-mail each issued invoice to the customer": "Kesilen her faturayı müşteriye e-postala",
     "E-mail each person their tasks ({var:1}{var:2}) · {var:3}": "Herkese kendi görevlerini e-postayla gönder ({var:1}{var:2}) · {var:3}",

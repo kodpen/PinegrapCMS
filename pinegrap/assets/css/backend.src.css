@@ -15435,6 +15435,148 @@ a.ws-chip:hover {
   left: 0;
   width: min(26rem, 100%);
 }
+/* The E-mails screen (workspace_mail.php): the list, and the reading pane
+   beside it once a row is open; on a phone the pane takes the list's
+   place. */
+.ws-mail-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ws-space-3);
+  align-items: start;
+}
+.ws-mail-reading .ws-mail-columns {
+  grid-template-columns: minmax(18rem, 2fr) minmax(0, 3fr);
+}
+.ws-mail-rows {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius-sm);
+  overflow: hidden;
+}
+.ws-mail-row {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+  padding: .55rem .75rem;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+  color: var(--pg-fg-body);
+  text-decoration: none;
+}
+.ws-mail-row:last-child {
+  border-bottom: 0;
+}
+.ws-mail-row:hover {
+  background: var(--pg-bg-1);
+}
+.ws-mail-row[aria-current] {
+  background: var(--ws-soft);
+}
+.ws-mail-row-head {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-width: 0;
+}
+.ws-mail-who,
+.ws-mail-subject,
+.ws-mail-snippet {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-mail-who {
+  flex: 1 1 auto;
+}
+.ws-mail-row .ws-mail-time {
+  flex: 0 0 auto;
+  font-size: .78rem;
+  color: var(--pg-fg-2);
+}
+.ws-mail-snippet,
+.ws-mail-row-meta {
+  font-size: .8rem;
+  color: var(--pg-fg-2);
+}
+.ws-mail-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem .6rem;
+}
+/* Unread: the name and subject in bold, and a bar in the accent. */
+.ws-mail-unread {
+  box-shadow: inset 3px 0 0 var(--ws-accent);
+}
+.ws-mail-unread .ws-mail-who,
+.ws-mail-unread .ws-mail-subject {
+  font-weight: 600;
+  color: var(--pg-fg-emphasis);
+}
+.ws-mail-overdue .ws-mail-time {
+  color: var(--pg-danger);
+}
+.ws-mail-more {
+  padding: .75rem 0;
+  text-align: center;
+}
+.ws-mail-pane {
+  position: sticky;
+  top: var(--ws-space-3);
+  max-height: calc(100vh - 8rem);
+  overflow: auto;
+  padding: .75rem 1rem;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius-sm);
+  background: var(--pg-bg-body);
+}
+.ws-mail-pane-head {
+  margin-bottom: .75rem;
+  padding-bottom: .5rem;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mail-pane-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem;
+  margin-top: .5rem;
+}
+.ws-mail-item {
+  margin-bottom: .6rem;
+  padding: .6rem .75rem;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius-sm);
+}
+.ws-mail-item.ws-mail-out {
+  background: var(--pg-bg-1);
+}
+.ws-mail-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .35rem;
+}
+.ws-mail-item-head .ws-mail-time {
+  margin-inline-start: auto;
+}
+.ws-mail-text {
+  margin-top: .5rem;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 767.98px) {
+  .ws-mail-reading .ws-mail-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ws-mail-reading .ws-mail-list {
+    display: none;
+  }
+  .ws-mail-pane {
+    position: static;
+    max-height: none;
+  }
+}
 /* The "/" list of a note's inserts, under the caret. */
 .ws-picker.ws-slash {
   position: fixed;

@@ -6,7 +6,8 @@
  * drawer the answer is written in (with the ; list of saved replies of
  * assets/js/workspace_replies.js, put in as plain text), and the
  * conversation's status and holder, given to anybody of the channel
- * (includes/workspace/mail_status.php).
+ * (includes/workspace/mail_status.php). On the E-mails screen the list,
+ * its reading pane and the unread marks (screen()).
  *
  * assets/js/workspace.js draws the conversation and calls in here with its
  * own helpers. Whether a card may be answered is decided by the server
@@ -342,9 +343,228 @@
         return row;
     }
 
+    // The E-mails screen (workspace_mail.php): a row opens its conversation
+    // in the reading pane beside the list, Load more reads the next page
+    // under the rows, Mark all as read clears the marks and the menu's
+    // number. Without the script a row opens its card in the channel. The
+    // pane's HTML is the server's, its texts escaped there
+    // (includes/workspace/mail_pane.php).
+    function screen(root, h) {
+        var words = (h.cfg && h.cfg.mail && h.cfg.mail.strings) || {};
+        var pane = root.querySelector('[data-ws-mail-pane]');
+        var current = 0;
+
+        function w(key) {
+            return words[key] || key;
+        }
+
+        function each(selector, callback) {
+            Array.prototype.forEach.call(document.querySelectorAll(selector), callback);
+        }
+
+        // The E-mails tile of the menu (workspace_side.js) shows the number.
+        function badge(count) {
+            each('[data-ws-nav="mail"]', function (tile) {
+                var node = tile.querySelector('.ws-count');
+
+                if (!count) {
+                    if (node) {
+                        node.parentNode.removeChild(node);
+                    }
+
+                    return;
+                }
+
+                if (!node) {
+                    node = h.el('span', 'ws-count');
+                    tile.appendChild(node);
+                }
+
+                node.textContent = (count > 99) ? '99+' : String(count);
+            });
+        }
+
+        function read(row) {
+            var hidden = row.querySelector('.ws-mail-who + .visually-hidden');
+
+            row.classList.remove('ws-mail-unread');
+
+            if (hidden) {
+                hidden.parentNode.removeChild(hidden);
+            }
+        }
+
+        // The open conversation stays in the address, for a reload.
+        function address(id) {
+            if (!window.history || !window.URL) {
+                return;
+            }
+
+            var url = new URL(window.location.href);
+
+            if (id) {
+                url.searchParams.set('conversation', String(id));
+            } else {
+                url.searchParams.delete('conversation');
+            }
+
+            window.history.replaceState(window.history.state, '', url.toString());
+        }
+
+        function mark(row) {
+            each('.ws-mail-row[aria-current]', function (node) {
+                node.removeAttribute('aria-current');
+            });
+
+            if (row) {
+                row.setAttribute('aria-current', 'true');
+            }
+        }
+
+        function close() {
+            current = 0;
+            pane.hidden = true;
+            h.clear(pane);
+            root.classList.remove('ws-mail-reading');
+            mark(null);
+            address(0);
+        }
+
+        // The answer and the status controls, for whoever may write in the
+        // conversation's channel; a change draws the pane again.
+        function tools(data) {
+            var place = pane.querySelector('.ws-mail-pane-tools');
+            var shut = h.button('btn btn-sm btn-text theme-secondary', w('close'), 'bi-x-lg');
+
+            shut.addEventListener('click', close);
+            place.appendChild(shut);
+
+            if (!data.reply) {
+                return;
+            }
+
+            var message = { mail_reply: data.reply, sender: { title: data.to }, mail_state: data.state };
+            var view = {
+                channel: { id: data.channel_id, members: data.members || [] },
+                sync: function () {
+                    open(data.reply);
+                }
+            };
+            var answer = h.button('btn btn-sm btn-outline theme-primary', h.t('mail_reply'), 'bi-reply');
+
+            answer.addEventListener('click', function () {
+                compose(message, view, h);
+            });
+            place.insertBefore(answer, place.firstChild);
+
+            if (data.state) {
+                state(place, message, view, h);
+            }
+        }
+
+        function open(id) {
+            var row = root.querySelector('[data-ws-mail-row="' + id + '"]');
+            var again = (current === id);
+
+            current = id;
+            mark(row);
+            pane.hidden = false;
+            root.classList.add('ws-mail-reading');
+
+            if (!again) {
+                h.clear(pane).appendChild(h.el('div', 'ws-empty', w('loading')));
+            }
+
+            h.api('ws_mail_pane', { conversation_id: id }).then(function (data) {
+                if (current !== id) {
+                    return;
+                }
+
+                pane.innerHTML = data.html;
+                tools(data);
+                address(id);
+                badge(data.unread || 0);
+
+                if (row) {
+                    read(row);
+                }
+
+                if (!again) {
+                    pane.scrollTop = 0;
+                    pane.querySelector('h2').focus();
+                }
+            }).catch(function (error) {
+                if (current === id) {
+                    close();
+                }
+
+                h.fail(error);
+            });
+        }
+
+        function more(link) {
+            var data = {};
+
+            new URLSearchParams(link.search).forEach(function (value, key) {
+                data[key] = value;
+            });
+
+            link.classList.add('disabled');
+            link.setAttribute('aria-disabled', 'true');
+
+            h.api('ws_mail_rows', data).then(function (result) {
+                var holder = link.parentNode;
+
+                root.querySelector('[data-ws-mail-rows]').insertAdjacentHTML('beforeend', result.html);
+                holder.insertAdjacentHTML('afterend', result.more || '');
+                holder.parentNode.removeChild(holder);
+            }).catch(function (error) {
+                link.classList.remove('disabled');
+                link.removeAttribute('aria-disabled');
+                h.fail(error);
+            });
+        }
+
+        root.addEventListener('click', function (event) {
+            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-row]');
+
+            // A new tab or window keeps the link's own way.
+            if (!target || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
+                return;
+            }
+
+            event.preventDefault();
+
+            if (target.hasAttribute('data-ws-mail-more')) {
+                more(target);
+            } else if (target.hasAttribute('data-ws-mail-row')) {
+                open(parseInt(target.getAttribute('data-ws-mail-row'), 10));
+            } else {
+                target.disabled = true;
+
+                h.api('ws_mail_read_all').then(function () {
+                    target.disabled = false;
+                    each('.ws-mail-unread', read);
+                    badge(0);
+                    h.toast(w('read_all'), 'success');
+                }).catch(function (error) {
+                    target.disabled = false;
+                    h.fail(error);
+                });
+            }
+        });
+
+        var start = parseInt(new URLSearchParams(window.location.search).get('conversation') || '0', 10);
+
+        if (start > 0) {
+            open(start);
+        }
+    }
+
     window.PGWsMail = {
         node: node,
         draft: draftNode,
-        plain: plain
+        plain: plain,
+        screen: screen
     };
 })();
