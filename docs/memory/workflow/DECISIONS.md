@@ -42,6 +42,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-4.md: What does a bell row's button do? (owner, 2026-11-11, #8670)
 - decisions-made-panel-4.md: When is a notification read? (owner, 2026-11-11, #8670)
 - decisions-made-panel-4.md: Where is it built?
+- decisions-made-panel-5.md: Where are the rules and the earlier parts?
+- decisions-made-panel-5.md: Why does the dashboard's notes card keep no note of its own? (owner, 2026-11-11, #8672)
+- decisions-made-panel-5.md: What does the Online Engagement card show when nobody is on the site? (owner, 2026-11-11, #8672)
+- decisions-made-panel-5.md: What does the Visitor map card draw without city names? (owner, 2026-11-11, #8672)
+- decisions-made-panel-5.md: Which report screens are renewed, and how do they look? (owner, 2026-11-11, #8673)
+- decisions-made-panel-5.md: Are there ready reports on a report screen? (owner, 2026-11-11, #8673)
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?
 - decisions-made-panel.md: Which date-and-time picker does the software use? (#2693, 2026-10-28)
@@ -216,6 +222,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-42.md: How is a file or a page chosen across the software? (owner, 2026-11-10)
 - decisions-made-product-42.md: Are the picker's drawn screens approved? (owner, 2026-11-10)
 - decisions-made-product-42.md: When does a clip edit change the image editor document's length? (owner, 2026-11-10)
+- decisions-made-product-43.md: Where are the rules and the earlier parts?
+- decisions-made-product-43.md: How do classic styles that share CSS and JS move to the visual designer? (owner, 2026-11-11, #8671)
+- decisions-made-product-43.md: What does the badge of a Legacy design read? (owner, 2026-11-11, #8671)
+- decisions-made-product-43.md: What follows the group move? (owner, 2026-11-11, #8671)
 - decisions-made-product-5.md: Which outside-account leftovers start in 2026.11.0? (#3180)
 - decisions-made-product-5.md: Do subscriptions start, and who runs the renewals? (#3183)
 - decisions-made-product-5.md: Does a beta site without a build file get the beta build of its own version? (#3204)
