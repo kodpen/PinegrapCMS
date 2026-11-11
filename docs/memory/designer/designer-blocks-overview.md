@@ -12,7 +12,7 @@ description: Start file for the designer-blocks-* files: what a block family is,
 - Design template plans are paused (`workflow/coordinator-no-plans.md`): no new family is started for a template now.
 
 ## Which families are there?
-- Own palette group, by its label: App Studio (`appstudio-`), Architecture, Bike Shop, Campsite, City Hall, Clinic, Construction, Coworking, Driving School, Ferry, Gym, Hotel, Product Launch (`launch-`), Marina, Museum, Music, Pharmacy, Photo, Planetarium, School, Ski Resort, Sports Club, Travel, Wedding, Zoo. File `designer-blocks-<prefix>.md`, the prefix without spaces (`drivingschool-`, `skiresort-`, `sportsclub-`, `cityhall-`, `bikeshop-`).
+- Own palette group, by its label: App Studio (`appstudio-`), Architecture, Bike Shop, Brewery, Campsite, City Hall, Clinic, Construction, Coworking, Driving School, Ferry, Gym, Hotel, Product Launch (`launch-`), Marina, Museum, Music, Pharmacy, Photo, Planetarium, School, Ski Resort, Sports Club, Travel, Wedding, Zoo. File `designer-blocks-<prefix>.md`, the prefix without spaces (`drivingschool-`, `skiresort-`, `sportsclub-`, `cityhall-`, `bikeshop-`).
 - General sections in core groups: `hours-seasons`, `locations-spaces`, `locations-floors` (Hours & Locations) and `booking-week` (Services & Booking): `designer-blocks-general.md`, which also lists the existing block for each shared section (feature split, stats, steps, pricing, team, logos, timeline, venues, hours, booking call).
 - In the core file: Maintenance & Launch, News & Magazine, Creative: `designer-blocks-news-maintenance-creative.md`.
 
