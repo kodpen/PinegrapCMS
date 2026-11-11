@@ -7787,6 +7787,25 @@ function pg_design_asset_on_page($entry, $page_id)
     return false;
 }
 
+// The address a linked asset row (external-css / external-js) loads on the
+// page, '' when it is none the page prints. {path} and {software_directory}
+// are filled in first, with the raw PATH and SOFTWARE_DIRECTORY (the caller
+// escapes the address once when it prints it): a classic style's files are
+// written "{path}name", which is neither an http(s) address nor root-relative,
+// so the check below refused them before the page filled them in. The row
+// itself keeps the placeholders.
+function pg_design_asset_address($content, $path, $software_directory)
+{
+    $url = trim((string) $content);
+    if ($url === '') return '';
+    $url = trim(pg_designer_resolve_output_placeholders($url, (string) $path, (string) $software_directory));
+    if ($url === '') return '';
+    // Absolute URLs (http/https) and root-relative ones: the file picker
+    // gives "/filename.css" (OUTPUT_PATH is a root-relative path such as
+    // "/"), which FILTER_VALIDATE_URL refuses.
+    return (filter_var($url, FILTER_VALIDATE_URL) || strpos($url, '/') === 0) ? $url : '';
+}
+
 // The design's asset list (style_custom_css / style_custom_js JSON) with its
 // page references moved to new pages: `$prefix<key>` becomes the page id
 // $ids[<key>]. The editor's save turns `tab:<key>` into the ids it has just
