@@ -106,6 +106,11 @@ if (PHP_SAPI !== 'cli') {
 const MAX_MEMORY_BYTES = 4096;
 const MAX_DESCRIPTION_CHARS = 200;
 
+// The longest memory line, in characters: the search tool shows a longer one
+// as "[Omitted long matching line]" (workflow/memory-writing.md). Only a line
+// the branch adds or rewrites is refused; one already at the base passes.
+const MAX_LINE_CHARS = 500;
+
 // The lines around the hand-written key rules of a folder index.
 const KEY_RULES_START = '<!-- key-rules:start -->';
 const KEY_RULES_END = '<!-- key-rules:end -->';
@@ -927,4 +932,71 @@ function memory_index_prefixed($items, $prefix) {
 	}
 
 	return $result;
+}
+
+/**
+ * The lines of $content over MAX_LINE_CHARS characters that do not stand
+ * word for word in $base, the same file where the branch left development
+ * (null: a new or renamed file, every long line counts). A line written
+ * more often than at the base counts for each extra copy. Returns
+ * array(array(line number, line), ...), in file order.
+ */
+function memory_index_long_lines($content, $base) {
+
+	$known = array();
+
+	if ($base !== null) {
+		foreach (explode("\n", str_replace("\r", '', (string) $base)) as $line) {
+			$known[$line] = isset($known[$line]) ? $known[$line] + 1 : 1;
+		}
+	}
+
+	$long = array();
+
+	foreach (explode("\n", str_replace("\r", '', (string) $content)) as $i => $line) {
+		if (mb_strlen($line, 'UTF-8') <= MAX_LINE_CHARS) {
+			continue;
+		}
+		if (!empty($known[$line])) {
+			$known[$line]--;
+			continue;
+		}
+		$long[] = array($i + 1, $line);
+	}
+
+	return $long;
+}
+
+/**
+ * The long lines of a folder README's hand-written key rules block, as
+ * memory_index_long_lines() finds them, numbered in the README; the
+ * generated part is not counted. $base is the README at the base, null
+ * when there was none.
+ */
+function memory_index_readme_long_lines($content, $base) {
+
+	$block = function ($text) {
+		$lines = explode("\n", str_replace("\r", '', (string) $text));
+		$starts = array_keys(array_map('trim', $lines), KEY_RULES_START, true);
+		$ends = array_keys(array_map('trim', $lines), KEY_RULES_END, true);
+		if (count($starts) !== 1 || count($ends) !== 1 || $ends[0] < $starts[0]) {
+			return null;
+		}
+		return array($starts[0] + 1, array_slice($lines, $starts[0] + 1, $ends[0] - $starts[0] - 1));
+	};
+
+	$now = $block($content);
+
+	if ($now === null) {
+		return array();
+	}
+
+	$then = ($base === null) ? null : $block($base);
+	$long = array();
+
+	foreach (memory_index_long_lines(implode("\n", $now[1]), ($then === null) ? null : implode("\n", $then[1])) as $found) {
+		$long[] = array($found[0] + $now[0], $found[1]);
+	}
+
+	return $long;
 }
