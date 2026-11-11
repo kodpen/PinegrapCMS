@@ -42,6 +42,14 @@ function _test_fx_cases()
 		'sticky default' => array('effect' => 'sticky'),
 		'parallax' => array('effect' => 'parallax', 'speed' => 35, 'trigger' => 'hover'),
 		'parallax clamped' => array('effect' => 'parallax', 'speed' => 1),
+		'scroll zoom' => array('effect' => 'scroll-zoom', 'from' => 60, 'trigger' => 'view', 'duration' => 900),
+		'scroll zoom clamped' => array('effect' => 'scroll-zoom', 'from' => 1),
+		'scroll zoom larger' => array('effect' => 'Scroll-Zoom', 'from' => '150'),
+		'scroll fade' => array('effect' => 'scroll-fade'),
+		'scroll fade rounded' => array('effect' => 'scroll-fade', 'from' => '30.5', 'speed' => 50),
+		'scroll rise clamped' => array('effect' => 'scroll-rise', 'from' => 9999, 'distance' => 40),
+		'scroll rise not a number' => array('effect' => 'scroll-rise', 'from' => 'far'),
+		'from on an entrance' => array('effect' => 'fade', 'from' => 50),
 	);
 }
 
@@ -68,6 +76,32 @@ function test_designer_fx_attrs()
 	pg_assert_true((bool) preg_match(pg_fx_pattern(), pg_fx_attrs(array('_fx' => array('effect' => 'fade')))), 'the marker is found');
 	pg_assert_false((bool) preg_match(pg_fx_pattern(), '<div data-pg-fx-trigger="view">'), 'a longer name is no marker');
 	pg_assert_false((bool) preg_match(pg_fx_pattern(), '<p>data-pg-fx</p>'), 'the word as text');
+}
+
+// The scroll-linked effects keep only their start (`from`, in the effect's
+// own range and unit) and write no trigger, so the head style never hides
+// them: without the script, or under reduced motion, the node shows as it is.
+function test_designer_fx_scroll_effects()
+{
+	pg_assert_same(array('effect' => 'scroll-zoom', 'from' => 80), pg_fx_normalize(array('effect' => 'scroll-zoom')), 'zoom starts at 80 %');
+	pg_assert_same(array('effect' => 'scroll-fade', 'from' => 0), pg_fx_normalize(array('effect' => 'scroll-fade')), 'fade starts unseen');
+	pg_assert_same(array('effect' => 'scroll-rise', 'from' => 80), pg_fx_normalize(array('effect' => 'scroll-rise')), 'rise starts 80 px lower');
+	pg_assert_same(array('effect' => 'scroll-zoom', 'from' => 60), pg_fx_normalize(_test_fx_cases()['scroll zoom']), 'no trigger or timing');
+	pg_assert_same(25, pg_fx_normalize(array('effect' => 'scroll-zoom', 'from' => 1))['from'], 'zoom from at least 25 %');
+	pg_assert_same(200, pg_fx_normalize(array('effect' => 'scroll-zoom', 'from' => 900))['from'], 'zoom from at most 200 %');
+	pg_assert_same(100, pg_fx_normalize(array('effect' => 'scroll-fade', 'from' => 101))['from'], 'fade from at most 100 %');
+	pg_assert_same(31, pg_fx_normalize(array('effect' => 'scroll-fade', 'from' => '30.5'))['from'], 'a half rounds up');
+	pg_assert_same(array('effect' => 'scroll-rise', 'from' => 400), pg_fx_normalize(array('effect' => 'scroll-rise', 'from' => 9999, 'distance' => 40)), 'rise from at most 400 px, no distance');
+	pg_assert_false(array_key_exists('from', pg_fx_normalize(array('effect' => 'fade', 'from' => 50))), 'an entrance has no from');
+	pg_assert_false(array_key_exists('from', pg_fx_normalize(array('effect' => 'parallax', 'from' => 50))), 'parallax has no from');
+
+	pg_assert_same(' data-pg-fx="scroll-zoom"', pg_fx_attrs(array('_fx' => array('effect' => 'scroll-zoom', 'from' => 80))), 'the default start is not written');
+	pg_assert_same(' data-pg-fx="scroll-zoom" data-pg-fx-from="60"', pg_fx_attrs(array('_fx' => _test_fx_cases()['scroll zoom'])));
+	pg_assert_same(' data-pg-fx="scroll-fade" data-pg-fx-from="20"', pg_fx_attrs(array('_fx' => array('effect' => 'scroll-fade', 'from' => 20))));
+	pg_assert_same(' data-pg-fx="scroll-rise" data-pg-fx-from="0"', pg_fx_attrs(array('_fx' => array('effect' => 'scroll-rise', 'from' => 0))), 'zero differs from the rise default');
+	pg_assert_same(' data-pg-fx="fade" data-pg-fx-trigger="view"', pg_fx_attrs(array('_fx' => array('effect' => 'fade', 'from' => 50))), 'no from on an entrance');
+	pg_assert_true(in_array('scroll-zoom', pg_fx_effects(), true) && in_array('scroll-fade', pg_fx_effects(), true) && in_array('scroll-rise', pg_fx_effects(), true), 'the effects are known');
+	pg_assert_true(strpos(pg_fx_head_style(), 'scroll') === false, 'the head style hides no scroll effect');
 }
 
 // Content, semantic and grid nodes carry the interaction after the title;
@@ -251,6 +285,9 @@ function test_designer_fx_script_reads_the_page()
 		. 'out._transition = fx.transition({ duration: 600, easing: "ease-out" }, 150);'
 		. 'out._parallax = [fx.parallax(400, 200, 1000, 20), fx.parallax(0, 100, 800, 50), fx.parallax(100, 100, 1000, 20)];'
 		. 'out._unknown = fx.read(function (n) { return n === "data-pg-fx" ? "spin" : null; });'
+		. 'out._progress = [fx.progress(800, 200, 800, -5000), fx.progress(550, 200, 800, -5000), fx.progress(300, 200, 800, -5000), fx.progress(900, 200, 800, -5000), fx.progress(700, 200, 800, 600), fx.progress(900, 100, 800, 850), fx.progress(0, 1600, 800, -5000)];'
+		. 'out._scrollState = [["scroll-zoom", 80, 0], ["scroll-zoom", 80, 0.5], ["scroll-zoom", 150, 0.5], ["scroll-zoom", 60, 1], ["scroll-fade", 0, 0.25], ["scroll-rise", 80, 0.5], ["scroll-rise", 80, 0]].map(function (c) {'
+		. ' return fx.scrollState({ effect: c[0], from: c[1] }, c[2]); });'
 		. 'console.log(JSON.stringify(out));';
 	$got = _test_fx_node($script);
 	if ($got === null) {
@@ -282,6 +319,18 @@ function test_designer_fx_script_reads_the_page()
 	pg_assert_same('opacity 600ms ease-out 150ms,transform 600ms ease-out 150ms', $got['_transition']);
 	pg_assert_same(array(0, 175, 70), $got["_parallax"], "parallax offsets");
 	pg_assert_same(null, $got['_unknown'], 'an unknown effect is not read');
+	// 0 while the box is below the window, 1 once its middle reaches the
+	// window's middle, or at the page's end for a box that cannot get there.
+	pg_assert_same(array(0, 0.5, 1, 0, 0.5, 1, 0.667), $got['_progress'], 'scroll progress');
+	pg_assert_same(array(
+		array('opacity' => '', 'transform' => 'scale(0.8)'),
+		array('opacity' => '', 'transform' => 'scale(0.9)'),
+		array('opacity' => '', 'transform' => 'scale(1.25)'),
+		array('opacity' => '', 'transform' => ''),
+		array('opacity' => '0.25', 'transform' => ''),
+		array('opacity' => '', 'transform' => 'translate3d(0,40px,0)'),
+		array('opacity' => '', 'transform' => 'translate3d(0,80px,0)'),
+	), $got['_scrollState'], 'scroll states, the node\'s own at the end');
 }
 
 // The Interactions section: offered where the page writes the attributes,
@@ -329,6 +378,11 @@ function test_designer_fx_panel()
 		. '  _sdFxIntoFirstTag("text", { _fx: { effect: "fade" } })'
 		. ' ],'
 		. ' slideHtml: propsInteractions(c("semantic", { _fx: { effect: "slide-left", trigger: "hover" } })),'
+		. ' zoom: rows(propsInteractions(c("semantic", { _fx: { effect: "scroll-zoom" } }))),'
+		. ' fadeScroll: rows(propsInteractions(c("semantic", { _fx: { effect: "scroll-fade" } }))),'
+		. ' rise: rows(propsInteractions(c("semantic", { _fx: { effect: "scroll-rise", from: 120 } }))),'
+		. ' zoomHtml: propsInteractions(c("semantic", { _fx: { effect: "scroll-zoom", from: 150 } })),'
+		. ' zoomInHtml: propsInteractions(c("semantic", { _fx: { effect: "scroll-zoom" } })),'
 		. ' set: ['
 		. '  _sdFxSet(null, "effect", "fade"),'
 		. '  _sdFxSet({ effect: "fade", duration: 900 }, "effect", "slide-up"),'
@@ -336,7 +390,9 @@ function test_designer_fx_panel()
 		. '  _sdFxSet({ effect: "fade", delay: 100 }, "effect", "sticky"),'
 		. '  _sdFxSet({ effect: "fade" }, "effect", ""),'
 		. '  _sdFxSet({ effect: "fade" }, "duration", "99999"),'
-		. '  _sdFxSet({ effect: "fade" }, "repeat", true)'
+		. '  _sdFxSet({ effect: "fade" }, "repeat", true),'
+		. '  _sdFxSet({ effect: "scroll-zoom", from: 150 }, "effect", "scroll-fade"),'
+		. '  _sdFxSet({ effect: "scroll-zoom" }, "from", "150")'
 		. ' ]'
 		. '};'
 		. 'console.log(JSON.stringify(out));';
@@ -369,6 +425,16 @@ function test_designer_fx_panel()
 	pg_assert_same(null, $got['set'][4], 'cleared');
 	pg_assert_same(5000, $got['set'][5]['duration'], 'clamped');
 	pg_assert_same(true, $got['set'][6]['repeat']);
+	pg_assert_same(array('Effect', 'Start scale'), $got['zoom'], 'a scroll zoom: its start alone');
+	pg_assert_same(array('Effect', 'Start opacity'), $got['fadeScroll']);
+	pg_assert_same(array('Effect', 'Start offset'), $got['rise']);
+	pg_assert_contains('data-fx="from" min="25" max="200" step="1" value="150"', $got['zoomHtml'], 'the start in the range of its effect');
+	pg_assert_contains('<option value="scroll-zoom" selected>Zoom on scroll</option>', $got['zoomHtml']);
+	pg_assert_false(strpos($got['zoomHtml'], 'data-fx-play') !== false, 'a scroll effect has nothing to play');
+	pg_assert_contains('set Overflow to Hidden', $got['zoomHtml'], 'a zoom that starts larger asks for a clipping parent');
+	pg_assert_false(strpos($got['zoomInHtml'], 'Overflow') !== false, 'one that starts smaller does not');
+	pg_assert_same(array('effect' => 'scroll-fade', 'from' => 0), $got['set'][7], 'another scroll effect starts at its own default');
+	pg_assert_same(array('effect' => 'scroll-zoom', 'from' => 150), $got['set'][8], 'a typed start');
 
 	pg_assert_contains("optHtml += propsInteractions(selectedNode);", $js, 'the panel shows the section');
 	pg_assert_contains("_sdFxBind(selectedNode);", $js, 'and binds it');
@@ -379,19 +445,21 @@ function test_designer_fx_panel()
 	pg_assert_contains("var _fxAttrs = _sdFxAttrs(node.props);", $js, 'canvas elements carry the attributes');
 }
 
-// pg_fx.src.js on a small fake document: the editor's canvas (pgFxEditing)
-// plays the entrances there when the file starts and shows a node drawn by
-// a later render in place, a node taken out is forgotten, replay() plays
-// an effect with important transitions and gives the node back, sticky
-// gets its position where no head style gave it one.
-function test_designer_fx_script_on_the_canvas()
+// A small fake document for pg_fx.src.js under Node: elements with
+// attributes, classes, inline style and a box (`rect`, drawn with the
+// shift and scale their transform holds, as a browser measures it), a
+// window that scrolls (`winOn.scroll()` runs the scroll listener) and a
+// motion setting the test switches (`reducedNow`, `mmChange()`). The nodes
+// the script finds are those in `nodes`.
+function _test_fx_fake_dom()
 {
-	$fake = <<<'JS'
-var timers = [], observed = [], unobserved = [];
+	return <<<'JS'
+var timers = [], observed = [], unobserved = [], winOn = {}, reducedNow = false, mmChange = null;
 function El(attrs) {
 	var el = this;
 	this.attrs = attrs; this.children = []; this.parentNode = null; this.offsetWidth = 200; this.offsetHeight = 100;
 	this.listeners = {};
+	this.rect = { top: 0, height: 100 };
 	var cls = {};
 	this.classList = {
 		add: function (c) { cls[c] = 1; }, remove: function (c) { delete cls[c]; },
@@ -407,25 +475,52 @@ function El(attrs) {
 	};
 	this.getAttribute = function (n) { return Object.prototype.hasOwnProperty.call(el.attrs, n) ? el.attrs[n] : null; };
 	this.addEventListener = function (t, f) { (el.listeners[t] = el.listeners[t] || []).push(f); };
+	this.getBoundingClientRect = function () {
+		var t = el.style.transform, y = 0, k = 1, m;
+		if ((m = /translate3d\(0,(-?[\d.]+)px,0\)/.exec(t))) y = Number(m[1]);
+		if ((m = /scale\(([\d.]+)\)/.exec(t))) k = Number(m[1]);
+		var top = el.rect.top + y + el.rect.height * (1 - k) / 2, h = el.rect.height * k;
+		return { top: top, height: h, bottom: top + h };
+	};
+}
+function box(attrs, top, height) {
+	var e = new El(attrs);
+	e.rect = { top: top, height: height };
+	e.offsetHeight = height;
+	return e;
 }
 var nodes = [];
 var document = {
 	readyState: 'complete',
 	querySelectorAll: function () { return nodes.filter(function (n) { return n.attrs['data-pg-fx'] !== undefined; }); },
-	documentElement: { contains: function (el) { return nodes.indexOf(el) !== -1; }, clientHeight: 800 },
+	documentElement: { contains: function (el) { return nodes.indexOf(el) !== -1; }, clientHeight: 800, scrollHeight: 10000 },
 	addEventListener: function () {}
 };
+var mm = { addEventListener: function (t, f) { mmChange = f; } };
+Object.defineProperty(mm, 'matches', { get: function () { return reducedNow; } });
 var window = {
-	pgFxEditing: true, innerHeight: 800,
-	matchMedia: function () { return { matches: false }; },
+	pgFxEditing: true, innerHeight: 800, pageYOffset: 0,
+	matchMedia: function () { return mm; },
 	getComputedStyle: function (el) { return { display: 'block', position: el.style.position || 'static' }; },
 	IntersectionObserver: function () { this.observe = function (e) { observed.push(e); }; this.unobserve = function (e) { unobserved.push(e); }; },
 	requestAnimationFrame: function (f) { f(); },
 	setTimeout: function (f) { timers.push(f); },
-	addEventListener: function () {}
+	addEventListener: function (t, f) { winOn[t] = f; }
 };
 function setTimeout(f) { timers.push(f); }
 function clearTimeout() {}
+
+JS;
+}
+
+// pg_fx.src.js on a small fake document: the editor's canvas (pgFxEditing)
+// plays the entrances there when the file starts and shows a node drawn by
+// a later render in place, a node taken out is forgotten, replay() plays
+// an effect with important transitions and gives the node back, sticky
+// gets its position where no head style gave it one.
+function test_designer_fx_script_on_the_canvas()
+{
+	$fake = _test_fx_fake_dom() . <<<'JS'
 var first = new El({ 'data-pg-fx': 'fade', 'data-pg-fx-trigger': 'load' });
 var sticky = new El({ 'data-pg-fx': 'sticky', 'data-pg-fx-offset': '12' });
 var viewed = new El({ 'data-pg-fx': 'slide-up', 'data-pg-fx-trigger': 'view' });
@@ -477,4 +572,78 @@ JS;
 	pg_assert_true($got['replayEntrance']);
 	pg_assert_same(array('', 'important'), $got['entranceDuring'], 'an entrance plays to its own state');
 	pg_assert_false($got['stickyReplay'], 'sticky has nothing to replay');
+}
+
+// The scroll-linked effects on a fake page 800 px high: each frame puts
+// the node at its point between the start and its own state, measured
+// without the shift or scale it already has (no drift on a scroll that
+// moves nothing); a node far below is left alone until it comes near; a
+// node in the page's last strip ends in its own state at the page's end;
+// under reduced motion a node shows as it is, and turning it on while the
+// page is open puts every node back.
+function test_designer_fx_script_scroll_effects()
+{
+	$nodes = <<<'JS'
+var zoom = box({ 'data-pg-fx': 'scroll-zoom', 'data-pg-fx-from': '60' }, 600, 200);
+zoom.style.transform = 'rotate(2deg)';
+zoom.style.transition = 'box-shadow .3s';
+var rise = box({ 'data-pg-fx': 'scroll-rise' }, 1000, 200);
+var shown = box({ 'data-pg-fx': 'scroll-fade' }, 100, 200);
+var far = box({ 'data-pg-fx': 'scroll-fade' }, 5000, 200);
+var halfSeen = box({ 'data-pg-fx': 'scroll-fade', 'data-pg-fx-from': '20' }, 550, 200);
+halfSeen.style.opacity = '0.5';
+nodes.push(zoom, rise, shown, far, halfSeen);
+
+JS;
+	$steps = <<<'JS'
+var out = {};
+out.start = [zoom.style.transform, zoom.style.transition, rise.style.transform, shown.style.opacity, far.style.opacity, halfSeen.style.opacity];
+winOn.scroll();
+out.again = [zoom.style.transform, rise.style.transform];
+[zoom, rise, shown, far, halfSeen].forEach(function (n) { n.rect.top -= 450; });
+window.pageYOffset = 450;
+winOn.scroll();
+out.scrolled = [zoom.style.transform, rise.style.transform, halfSeen.style.opacity, zoom.style.transition];
+var last = box({ 'data-pg-fx': 'scroll-fade', 'data-pg-fx-from': '20' }, 1100, 200);
+nodes.push(last);
+document.documentElement.scrollHeight = 1750;
+window.pgFxBind(document);
+out.lastBefore = last.style.opacity;
+[zoom, rise, shown, far, halfSeen, last].forEach(function (n) { n.rect.top -= 500; });
+window.pageYOffset = 950;
+winOn.scroll();
+out.lastEnd = last.style.opacity;
+rise.rect.top = 550;
+document.documentElement.scrollHeight = 10000;
+winOn.scroll();
+out.mid = rise.style.transform;
+reducedNow = true;
+var calm = box({ 'data-pg-fx': 'scroll-zoom' }, 700, 100);
+nodes.push(calm);
+window.pgFxBind(document);
+out.calm = [calm.style.transform, calm.classList.contains('pg-fx-armed')];
+rise.rect.top = 300;
+winOn.scroll();
+out.frozen = rise.style.transform;
+mmChange();
+out.back = [zoom.style.transform, rise.style.transform, rise.style.transition, halfSeen.style.opacity];
+console.log(JSON.stringify(out));
+JS;
+	$got = _test_fx_node(_test_fx_fake_dom() . $nodes . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_fx.src.js') . $steps);
+	if ($got === null) {
+		return;
+	}
+
+	// zoom: top 600 of 800, its middle reaches the window's middle at top
+	// 300, so 0.4 of the way: 60 + 40 * 0.4 = 76 %, after its own rotation.
+	// halfSeen: half way, opacity 20 % + 80 % * 0.5 = 60 % of its own 0.5.
+	pg_assert_same(array('rotate(2deg) scale(0.76)', 'none', 'translate3d(0,80px,0)', '', '', '0.3'), $got['start'], 'the start states at load');
+	pg_assert_same(array('rotate(2deg) scale(0.76)', 'translate3d(0,80px,0)'), $got['again'], 'measured without its own scale and shift');
+	pg_assert_same(array('rotate(2deg)', 'translate3d(0,40px,0)', '0.5', 'box-shadow .3s'), $got['scrolled'], 'past the middle the node\'s own state and transition');
+	pg_assert_same('0.2', $got['lastBefore'], 'a node in the last strip starts below the window');
+	pg_assert_same('', $got['lastEnd'], 'and is whole at the page\'s end');
+	pg_assert_same('translate3d(0,40px,0)', $got['mid'], 'back half way');
+	pg_assert_same(array('', true), $got['calm'], 'reduced motion: the node as it is');
+	pg_assert_same('translate3d(0,40px,0)', $got['frozen'], 'reduced motion: no frame moves a node');
+	pg_assert_same(array('rotate(2deg)', '', '', '0.5'), $got['back'], 'turned on while open: every node back to its own state');
 }

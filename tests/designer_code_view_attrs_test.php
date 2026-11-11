@@ -190,7 +190,10 @@ function test_designer_code_view_interaction()
 		. '_sdCodeSetAttr(m, "data-pg-fx", undefined, "fade", {});'
 		. 'var added = printed(m).attrs;'
 		. '_sdCodeSetAttr(m, "data-pg-fx", "fade", "spin", {});'
-		. 'console.log(JSON.stringify([was, changed, stray, added, m.props._fx === undefined, JSON.stringify(m.props._attrs)]));'
+		. 'var z = { type: "semantic", props: { tag: "div", _fx: { effect: "scroll-zoom" } } };'
+		. '_sdCodeSetAttr(z, "data-pg-fx-from", undefined, "50", {});'
+		. 'var zoom = [JSON.stringify(z.props._fx), printed(z).attrs, z.props._attrs || null];'
+		. 'console.log(JSON.stringify([was, changed, stray, added, m.props._fx === undefined, JSON.stringify(m.props._attrs), zoom]));'
 	);
 
 	if ($answer === null) {
@@ -205,4 +208,5 @@ function test_designer_code_view_interaction()
 	pg_assert_same(' data-pg-fx="fade" data-pg-fx-trigger="view"', $answer[3], 'a typed effect starts an interaction; the stray value is left out');
 	pg_assert_true($answer[4], 'an unknown effect ends it');
 	pg_assert_same('[{"name":"data-pg-fx-delay","value":"200"}]', $answer[5]);
+	pg_assert_same(array('{"effect":"scroll-zoom","from":50}', ' data-pg-fx="scroll-zoom" data-pg-fx-from="50"', null), $answer[6], 'the start of a scroll effect goes back to the interaction');
 }

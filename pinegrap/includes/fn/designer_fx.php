@@ -5,7 +5,7 @@
  * Interactions of visual editor nodes: one effect per node, kept in the
  * node's props as `_fx`, written on the page as data-pg-fx-* attributes and
  * played by assets/js/pg_fx.src.js (CSS transitions and IntersectionObserver,
- * nothing under prefers-reduced-motion).
+ * scroll-linked effects once per frame, nothing under prefers-reduced-motion).
  *
  * pg_fx_normalize() keeps the known fields in their ranges and drops the
  * rest; pg_fx_attrs() writes the effect, its trigger and only the values
@@ -32,11 +32,32 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_fx_effects()
 {
-    return array('fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax');
+    return array('fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
+        'scroll-zoom', 'scroll-fade', 'scroll-rise');
 }
 
 /**
- * The triggers of a moving effect; sticky and parallax have none.
+ * The scroll-linked effects and the range of their one field, `from`: the
+ * state the node starts in while it is below the window, from which it
+ * goes to its own as its middle comes up to the window's middle.
+ * effect => array(min, max, default): scroll-zoom a scale in percent,
+ * scroll-fade an opacity in percent, scroll-rise a distance in px below
+ * its place.
+ *
+ * @return array
+ */
+function pg_fx_scroll_from()
+{
+    return array(
+        'scroll-zoom' => array(25, 200, 80),
+        'scroll-fade' => array(0, 100, 0),
+        'scroll-rise' => array(0, 400, 80),
+    );
+}
+
+/**
+ * The triggers of a moving effect; sticky, parallax and the scroll-linked
+ * effects have none.
  *
  * @return array trigger names, the default first
  */
@@ -80,9 +101,11 @@ function pg_fx_numbers()
  * it has none (no array, no known effect).
  *
  * Fields that do not apply to the effect or trigger are dropped: a trigger,
- * timing and easing for sticky and parallax, `stagger` outside load and
- * view, `repeat` outside view, `offset` outside sticky, `speed` outside
- * parallax, `distance` for fade, sticky and parallax.
+ * timing and easing for sticky, parallax and the scroll-linked effects,
+ * `stagger` outside load and view, `repeat` outside view, `offset` outside
+ * sticky, `speed` outside parallax, `from` outside the scroll-linked
+ * effects, `distance` for fade, sticky, parallax and the scroll-linked
+ * effects.
  *
  * @param mixed $fx props._fx
  * @return array|null
@@ -95,6 +118,8 @@ function pg_fx_normalize($fx)
 
     $out = array('effect' => $effect);
     $nums = pg_fx_numbers();
+    $scroll = pg_fx_scroll_from();
+    if (isset($scroll[$effect])) $nums['from'] = $scroll[$effect];
     $num = function ($name) use ($fx, $nums) {
         list($min, $max, $def) = $nums[$name];
         if (!isset($fx[$name]) || !is_numeric($fx[$name])) return $def;
@@ -107,6 +132,10 @@ function pg_fx_normalize($fx)
     }
     if ($effect === 'parallax') {
         $out['speed'] = $num('speed');
+        return $out;
+    }
+    if (isset($scroll[$effect])) {
+        $out['from'] = $num('from');
         return $out;
     }
 
@@ -128,7 +157,8 @@ function pg_fx_normalize($fx)
 
 /**
  * The data-pg-fx-* attributes of a node's interaction, '' without one.
- * Order: effect, trigger, then the non-default values in a fixed order.
+ * Order: effect, trigger, then the non-default values in a fixed order;
+ * `from` against its effect's own default.
  *
  * @param array $props the node's props
  * @return string attributes, each with a leading space
@@ -150,6 +180,10 @@ function pg_fx_attrs($props)
             continue;
         }
         if ($fx[$name] !== $nums[$name][2]) $out .= ' data-pg-fx-' . $name . '="' . $fx[$name] . '"';
+    }
+    if (isset($fx['from'])) {
+        $scroll = pg_fx_scroll_from();
+        if ($fx['from'] !== $scroll[$fx['effect']][2]) $out .= ' data-pg-fx-from="' . $fx['from'] . '"';
     }
     if (!empty($fx['repeat'])) $out .= ' data-pg-fx-repeat';
 

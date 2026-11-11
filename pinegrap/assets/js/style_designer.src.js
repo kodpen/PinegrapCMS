@@ -31535,8 +31535,8 @@ const StyleDesigner = (function () {
         // Search and SERP: the part of the page a site search result points at.
         optHtml += propsSearchSection(selectedNode);
 
-        // Interactions: the node's entrance, hover, click, sticky or
-        // parallax effect (props._fx).
+        // Interactions: the node's entrance, hover, click, sticky,
+        // parallax or scroll-linked effect (props._fx).
         optHtml += propsInteractions(selectedNode);
 
         // Data binding section — shown ONLY when selectedNode is inside a system widget.
@@ -64901,15 +64901,20 @@ const StyleDesigner = (function () {
     // range, or null without one. Twin of pg_fx_normalize()
     // (includes/fn/designer_fx.php): the same fields, ranges and defaults.
     // The lists are first-is-default; a number is [min, max, default].
+    // `from` is the start of a scroll-linked effect, its range per effect
+    // (pg_fx_scroll_from()): a scale or an opacity in percent, a distance
+    // in px.
     function _sdFxSpec() {
         return {
-            effects: ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax'],
+            effects: ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
+                'scroll-zoom', 'scroll-fade', 'scroll-rise'],
             triggers: ['view', 'load', 'hover', 'click'],
             easings: ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'],
             numbers: {
                 duration: [100, 5000, 600], delay: [0, 5000, 0], stagger: [0, 1000, 0],
                 distance: [0, 400, 0], offset: [0, 1000, 0], speed: [5, 100, 20]
-            }
+            },
+            from: { 'scroll-zoom': [25, 200, 80], 'scroll-fade': [0, 100, 0], 'scroll-rise': [0, 400, 80] }
         };
     }
     function _sdFxNormalize(fx) {
@@ -64917,7 +64922,7 @@ const StyleDesigner = (function () {
         var spec = _sdFxSpec(), effect = fx.effect.toLowerCase();
         if (spec.effects.indexOf(effect) === -1) return null;
         var num = function (name) {
-            var r = spec.numbers[name], v = fx[name];
+            var r = name === 'from' ? spec.from[effect] : spec.numbers[name], v = fx[name];
             if ((typeof v !== 'number' && typeof v !== 'string') || String(v).trim() === '' || !isFinite(Number(v))) return r[2];
             // PHP's round() rounds halves away from zero.
             v = Number(v);
@@ -64927,6 +64932,7 @@ const StyleDesigner = (function () {
         var out = { effect: effect };
         if (effect === 'sticky') { out.offset = num('offset'); return out; }
         if (effect === 'parallax') { out.speed = num('speed'); return out; }
+        if (spec.from[effect]) { out.from = num('from'); return out; }
         var trigger = typeof fx.trigger === 'string' ? fx.trigger.toLowerCase() : '';
         var easing = typeof fx.easing === 'string' ? fx.easing.toLowerCase() : '';
         out.trigger = spec.triggers.indexOf(trigger) !== -1 ? trigger : spec.triggers[0];
@@ -64955,6 +64961,7 @@ const StyleDesigner = (function () {
             }
             if (fx[name] !== spec.numbers[name][2]) out += ' data-pg-fx-' + name + '="' + fx[name] + '"';
         });
+        if (fx.from !== undefined && fx.from !== spec.from[fx.effect][2]) out += ' data-pg-fx-from="' + fx.from + '"';
         if (fx.repeat) out += ' data-pg-fx-repeat';
         return out;
     }

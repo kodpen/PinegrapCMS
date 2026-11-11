@@ -3,7 +3,8 @@
  *
  * Visual Page Editor - the interactions part: the rows of the properties
  * panel's Interactions section (the effect, its trigger and timing, the
- * sticky offset, the parallax speed), the fields that write a node's
+ * sticky offset, the parallax speed, the start of a scroll-linked effect),
+ * the fields that write a node's
  * props._fx and the "Play on the canvas" button. Not needed to open a
  * page: the core draws the section with an empty body and runs this file
  * the first time an open section is shown (_sdPartLoad(),
@@ -29,11 +30,14 @@ StyleDesigner.definePart('interactions', function (K) {
     // The node's interaction after one field of the panel changed: the
     // stored one with `field` set to `value`, normalized; null when the
     // effect is cleared. Fields that no longer apply drop out; switching
-    // the effect keeps the timing.
+    // the effect keeps the timing. A scroll-linked effect's start is a
+    // scale, an opacity or a distance, so another effect starts at its own
+    // default.
     function _sdFxSet(fx, field, value) {
         if (field === 'effect' && !value) return null;
         var cur = _sdFxNormalize(fx) || {}, next = {};
         for (var k in cur) if (Object.prototype.hasOwnProperty.call(cur, k)) next[k] = cur[k];
+        if (field === 'effect' && value !== cur.effect) delete next.from;
         next[field] = value;
         return _sdFxNormalize(next);
     }
@@ -49,7 +53,7 @@ StyleDesigner.definePart('interactions', function (K) {
             }).join('') + '</select>';
         };
         var number = function (field, unit, placeholder) {
-            var r = spec.numbers[field];
+            var r = field === 'from' ? spec.from[fx.effect] : spec.numbers[field];
             var v = (field === 'distance' && !fx.distance) ? '' : fx[field];
             return '<div class="input-group input-group-sm">' +
                 '<input type="number" class="form-control form-control-sm" data-fx="' + field + '" min="' + r[0] + '" max="' + r[1] + '" step="1" value="' + esc(String(v)) + '"' +
@@ -60,7 +64,8 @@ StyleDesigner.definePart('interactions', function (K) {
             ['', _sdT('None')], ['fade', _sdT('Fade in')],
             ['slide-up', _sdT('Slide up')], ['slide-down', _sdT('Slide down')],
             ['slide-left', _sdT('Slide left')], ['slide-right', _sdT('Slide right')],
-            ['scale', _sdT('Scale')], ['sticky', _sdT('Sticky')], ['parallax', _sdT('Parallax')]
+            ['scale', _sdT('Scale')], ['sticky', _sdT('Sticky')], ['parallax', _sdT('Parallax')],
+            ['scroll-zoom', _sdT('Zoom on scroll')], ['scroll-fade', _sdT('Fade on scroll')], ['scroll-rise', _sdT('Rise on scroll')]
         ]));
         if (fx.trigger) {
             var entrance = fx.trigger === 'load' || fx.trigger === 'view';
@@ -80,6 +85,17 @@ StyleDesigner.definePart('interactions', function (K) {
         }
         if (fx.effect === 'sticky') h += row(_sdT('Top offset'), number('offset', 'px'));
         if (fx.effect === 'parallax') h += row(_sdT('Speed'), number('speed', '%'));
+        if (fx.effect === 'scroll-zoom') h += row(_sdT('Start scale'), number('from', '%'));
+        if (fx.effect === 'scroll-fade') h += row(_sdT('Start opacity'), number('from', '%'));
+        if (fx.effect === 'scroll-rise') h += row(_sdT('Start offset'), number('from', 'px'));
+        if (spec.from[fx.effect]) {
+            h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
+                esc(_sdT('Follows the scroll from below the window until the element reaches its middle.')) +
+                (fx.effect === 'scroll-zoom' && fx.from > 100
+                    ? ' ' + esc(_sdT('Larger than its place at the start: set Overflow to Hidden on the element around it, or the page scrolls sideways.'))
+                    : '') +
+                '</div></div>';
+        }
         if (fx.trigger) {
             h += row('', '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-fx-play>' +
                 '<span class="bi bi-play-fill"></span> ' + esc(_sdT('Play on the canvas')) + '</button>');
