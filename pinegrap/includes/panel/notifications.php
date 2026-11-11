@@ -5,10 +5,10 @@
  * Panel actions - the notification bell and browser push notifications.
  *
  *   check_unread_notifications  the bell's unread count
- *   edit_notifications          deletes or marks unread the chosen
- *                               notifications
- *   get_notifications           the bell's list, marking what it shows as
- *                               read
+ *   edit_notifications          deletes, marks read or unread the chosen
+ *                               notification, or marks read every one
+ *                               the caller sees
+ *   get_notifications           the bell's list; it marks nothing read
  *   remove_notifications        deletes every notification the caller can
  *                               see
  *   push_config                 the VAPID public key a browser subscribes
@@ -84,6 +84,22 @@ function pg_panel_edit_notifications($request, $action)
     $user = validate_user();
     include_once(PG_FUNCTIONS_DIR . '/includes/notifications.php');
 
+    // A row is read when it is opened or ticked, never by drawing the
+    // list. Both reading jobs touch only the rows the caller may see.
+    $sees = function ($row) use ($user) {
+        return pg_notification_visible_to($row, $user);
+    };
+
+    if ($do_action === 'mark_all_read') {
+        $rows = db_items("SELECT " . pg_notification_ladder_columns() . " FROM notifications");
+        pg_notification_mark_read(pg_notification_readable_ids($rows, $sees), $user['id']);
+
+        respond(array(
+            'status' => 'success',
+            'message' => 'Mark All Read Success'
+        ));
+    }
+
     $notification = db_item("SELECT " . pg_notification_ladder_columns() . " FROM notifications WHERE id = '" . $id . "'");
 
     // Acting on a notification requires being allowed to see it. The
@@ -96,6 +112,18 @@ function pg_panel_edit_notifications($request, $action)
             pg_notification_delete($id);
         } elseif ($do_action == 'mark_unread') {
             pg_notification_mark_unread($id, $user['id']);
+        } elseif ($do_action === 'mark_read') {
+            // A fold's head reads the runs drawn under it; each one is
+            // asked about like the head.
+            $rows = array($notification);
+            $runs = pg_notification_run_ids($request['runs'] ?? array(), $id);
+
+            if ($runs) {
+                $rows = array_merge($rows, db_items("SELECT " . pg_notification_ladder_columns() . " FROM notifications
+                    WHERE id IN (" . implode(',', $runs) . ")"));
+            }
+
+            pg_notification_mark_read(pg_notification_readable_ids($rows, $sees), $user['id']);
         }
     }
 
@@ -115,13 +143,13 @@ function pg_panel_get_notifications($request, $action)
     global $user;
 
     $array = array();
-    $read_mark = $request['read_mark'] ?? '';
 
     validate_token();
     $user = validate_user();
     include_once(PG_FUNCTIONS_DIR . '/includes/notifications.php');
 
-    $mark_read = array();
+    // Drawing the list reads nothing: a row is read when it is opened
+    // (edit_notifications, mark_read / mark_all_read).
     $notifications = db_items("SELECT * FROM notifications ORDER BY timestamp DESC");
 
     foreach ($notifications as $notification) {
@@ -152,18 +180,10 @@ function pg_panel_get_notifications($request, $action)
         );
 
         array_push($array, $item);
-        $mark_read[] = $notification['id'];
     }
 
     // The runs of one flow are one line, opened on a click.
     $array = pg_notification_fold($array);
-
-    // One write for the whole list. Marking each row as it was drawn cost a
-    // query per notification, and on a site with more than one operator it
-    // marked the row read for all of them at once.
-    if (($read_mark == true) && ($mark_read)) {
-        pg_notification_mark_read($mark_read, $user['id']);
-    }
 
     //return success json output
     $response = array(

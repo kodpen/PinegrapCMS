@@ -311,5 +311,7 @@ function test_bs6_toasts_and_notifications_menu()
 	pg_assert_false(strpos($js, 'pgUI.menu.toggle(notifications)') !== false, 'no second Menu on the .menu box');
 	pg_assert_false(strpos($js, "pgUI.menu.on('#notifications'") !== false, 'menu events heard on the toggle');
 	pg_assert_false(strpos($js, "pgUI.menu.isOpen('#notifications')") !== false, 'open state read from the toggle');
-	pg_assert_same(2, substr_count($js, 'get_notifications(true);'), 'only the bell click and the shown handler refresh the list');
+	pg_assert_contains("if (pgUI.menu.isOpen(this)) {\n            get_notifications();", $js, 'the bell click refreshes the list');
+	pg_assert_contains("\$('#notification_toggle').addClass('show');\n        get_notifications();", $js, 'the shown handler refreshes the list');
+	pg_assert_same(0, substr_count($js, 'get_notifications(true, '), 'no list request asks to mark read');
 }

@@ -11,13 +11,13 @@ description: Header notifications panel (#notifications, bell #notification_togg
 - Under v6 that made a second Menu with the `.menu` box as its toggle: it ignored the bell's static display, ran Floating UI and wrote inline position, left, top and margin that nothing cleared, so the panel stayed misplaced (for the bell too) until a reload, and its `aria-expanded` on the box went stale.
 
 ## Where are the menu events heard?
-- v6 fires `shown/hidden.bs.menu` on the toggle, not on the box: the shown/hidden listeners (`get_notifications(true)`, `pg_push_refresh()`, the bell's `show` class) sit on `#notification_toggle`, and the refresh checks in the unread poll read `pgUI.menu.isOpen('#notification_toggle')` (`aria-expanded`).
+- v6 fires `shown/hidden.bs.menu` on the toggle, not on the box: the shown/hidden listeners (`get_notifications()`, `pg_push_refresh()`, the bell's `show` class) sit on `#notification_toggle`, and the refresh checks in the unread poll read `pgUI.menu.isOpen('#notification_toggle')` (`aria-expanded`).
 - One list refresh per open (the shown handler); the bell's click handler refreshes when it closes the panel. `tests/bs6_inline_feedback_test.php` pins both.
 
 ## When does the 20 s unread poll redraw the open list?
-- Only when the unread count rises above `$unreadsCallback`, a top-level count that survives across polls and drops to 0 when `get_notifications(true)` marks everything read.
+- Only when the unread count rises above `$unreadsCallback`, a top-level count that survives across polls and holds the count the open list shows: every drawing of the list sets it to its unread rows, every poll to the server's count. Opening the bell reads nothing (`bell-read-rule.md`), so it no longer drops to 0 on an open; with a 0 there, every poll while anything was unread would redraw the list.
 - It used to be reset to 0 at the start of every poll, so with anything unread (one 'Mark as unread' is enough, read state is per person) the open list was emptied, showed a spinner, scrolled to the top and lost the focused row every 20 s.
-- The poll calls `get_notifications(false, true)`: the old list stays until the new one arrives, then the scroll position and the focus on the same `li[notification-id]` row come back. `tests/panel_timers_test.php` pins it.
+- The poll calls `get_notifications(true)` (`keep_place`): the old list stays until the new one arrives, then the scroll position and the focus on the same `li[notification-id]` row come back. `tests/panel_timers_test.php` pins it.
 
 ## Why does a bell title wrap instead of ending in "…"?
 - At the old 350px (26rem since #3817, `notifications-one-inbox.md`) `.notification-title` carried `nowrap` + `ellipsis` in `backend.src.css`; titles of 44–50 characters ("Congratulations! There is a new successful order.") were cut even on desktop, the full text only in a hover `title`.
