@@ -88,23 +88,6 @@ function ws_mail_pane($viewer, $conversation_id)
 }
 
 /**
- * Whether an answer shows as not sent or as waiting to be sent. Pure.
- *
- * @param array $item ws_mail_items row
- * @return string '' | unsent | waiting
- */
-function ws_mail_item_send_mark($item)
-{
-    if ((string) ($item['direction'] ?? '') !== 'out') {
-        return '';
-    }
-
-    $state = (string) ($item['send_state'] ?? '');
-
-    return ($state === 'failed') ? 'unsent' : (($state === 'queued') ? 'waiting' : '');
-}
-
-/**
  * The pane: the conversation's heading and its mails. Pure but for the
  * words and the time labels.
  *
@@ -146,7 +129,6 @@ function ws_mail_pane_item_html($item)
 {
     $out = ((string) $item['direction'] === 'out');
     $name = (trim((string) $item['from_name']) !== '') ? (string) $item['from_name'] : (string) $item['from_email'];
-    $mark = ws_mail_item_send_mark($item);
     $time = ((int) $item['sent_at'] > 0) ? (int) $item['sent_at'] : (int) $item['created_at'];
     $lines = array('To' => lang('To'), 'Cc' => lang('Cc'));
     $lists = array('To' => (string) $item['to_list'], 'Cc' => (string) $item['cc_list']);
@@ -162,11 +144,10 @@ function ws_mail_pane_item_html($item)
         }
     }
 
-    if ($mark === 'unsent') {
-        $html .= '<div class="mt-1"><span class="badge theme-danger">' . h(lang('Not sent')) . '</span>'
-            . ((trim((string) ($item['send_error'] ?? '')) !== '') ? ' <span class="small">' . h((string) $item['send_error']) . '</span>' : '') . '</div>';
-    } elseif ($mark === 'waiting') {
-        $html .= '<div class="mt-1"><span class="badge theme-secondary">' . h(lang('Waiting to be sent')) . '</span></div>';
+    // A mail that left needs no word here; one that waits or failed gets
+    // the card's badge (includes/workspace/mail_send.php).
+    if (in_array(ws_mail_send_state($item), array('queued', 'failed'), true)) {
+        $html .= '<div class="mt-1 small">' . ws_mail_send_badge_html($item) . '</div>';
     }
 
     if (ws_mail_item_is_auto_reply($item)) {

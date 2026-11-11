@@ -177,11 +177,6 @@ function test_workspace_mail_unread_rule()
 
 function test_workspace_mail_pane_html()
 {
-	pg_assert_same('', ws_mail_item_send_mark(array('direction' => 'in', 'send_state' => 'failed')), 'an incoming mail is never unsent');
-	pg_assert_same('unsent', ws_mail_item_send_mark(array('direction' => 'out', 'send_state' => 'failed')));
-	pg_assert_same('waiting', ws_mail_item_send_mark(array('direction' => 'out', 'send_state' => 'queued')));
-	pg_assert_same('', ws_mail_item_send_mark(array('direction' => 'out', 'send_state' => 'sent')));
-
 	$item = array('id' => 1, 'direction' => 'in', 'from_name' => 'Ayşe', 'from_email' => 'ayse@example.com', 'to_list' => 'support@example.com', 'cc_list' => '',
 		'body_text' => "Hello <b>\nthere", 'refused_files' => "virus.exe", 'user_id' => 0, 'sent_at' => 0, 'created_at' => 100, 'send_state' => '', 'send_error' => '',
 		'files' => array(array('name' => 'bill.pdf', 'url' => '/files/bill.pdf')), 'bounces' => array());
@@ -193,7 +188,8 @@ function test_workspace_mail_pane_html()
 		'channel'      => array('id' => 3, 'name' => 'support'),
 		'box_name'     => 'Support',
 		'can_post'     => true,
-		'items'        => array($item, $out, array_merge($out, array('id' => 3, 'user_id' => 0, 'send_state' => 'queued', 'bounces' => array()))),
+		'items'        => array($item, $out, array_merge($out, array('id' => 3, 'user_id' => 0, 'send_state' => 'queued', 'bounces' => array())),
+			array_merge($out, array('id' => 5, 'send_state' => 'sent', 'send_error' => '', 'bounces' => array()))),
 		'last_id'      => 3,
 	);
 	$html = ws_mail_pane_html($pane, '/pg/');
@@ -207,7 +203,8 @@ function test_workspace_mail_pane_html()
 	pg_assert_contains('<a href="/files/bill.pdf" target="_blank" rel="noopener">bill.pdf</a>', $html, 'its files');
 	pg_assert_contains(h(lang(array('string' => 'Not taken in: {var:1}', 'vars' => 'virus.exe'))), $html, 'the files not taken in');
 	pg_assert_contains(h(lang('Cc')) . ': boss@example.com', $html);
-	pg_assert_contains('<span class="badge theme-danger">' . h(lang('Not sent')) . '</span> <span class="small">Mailbox full</span>', $html, 'why it was not sent');
+	pg_assert_contains(h(lang('Not sent')) . '</span> <span class="ms-1">Mailbox full</span>', $html, 'why it was not sent');
+	pg_assert_same(false, strpos($html, h(lang('Sent by e-mail'))), 'a mail that left gets no badge');
 	pg_assert_contains(h(lang(array('string' => 'Not delivered to {var:1}.', 'vars' => 'ayse@example.com'))) . ' 5.2.2 full', $html, 'the delivery failure under its answer');
 	pg_assert_contains(h(lang('Waiting to be sent')), $html);
 	pg_assert_contains(h(lang('Automatic answer')), $html, 'the box\'s own answer');
