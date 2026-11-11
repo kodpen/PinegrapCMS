@@ -797,6 +797,95 @@ function pg_design_theme_save_file($kind, $name, $css, $user_id)
                  'url' => (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . $file_name . '?v=' . time());
 }
 
+// ── Look drawings ──────────────────────────────────────────────────────────
+
+// The `preview` row of "Plain Bootstrap" (no look).
+function pg_design_plain_look_preview()
+{
+    return array('radius' => 6, 'btn_radius' => 6, 'shadow' => 'none', 'border' => 1, 'heading' => 'sans', 'weight' => 500, 'caps' => false);
+}
+
+// A number as the drawing writes it: at most two decimals, no trailing zero
+// (twin of the formatting in _sdLookDrawing()).
+function _pg_look_drawing_num($v)
+{
+    $s = rtrim(rtrim(number_format((float)$v, 2, '.', ''), '0'), '.');
+    return ($s === '-0' || $s === '') ? '0' : $s;
+}
+
+// A rounded rectangle as a path, so a label can be cut out of it.
+function _pg_look_drawing_rect($x, $y, $w, $h, $r)
+{
+    $n = '_pg_look_drawing_num';
+    if ($r <= 0) return 'M' . $n($x) . ' ' . $n($y) . 'h' . $n($w) . 'v' . $n($h) . 'h-' . $n($w) . 'z';
+    $a = 'a' . $n($r) . ' ' . $n($r) . ' 0 0 1 ';
+    // A pill has no straight side: no zero-length segment.
+    $side = $h - 2 * $r;
+    return 'M' . $n($x + $r) . ' ' . $n($y) . 'h' . $n($w - 2 * $r) . $a . $n($r) . ' ' . $n($r)
+         . ($side > 0 ? 'v' . $n($side) : '') . $a . '-' . $n($r) . ' ' . $n($r)
+         . 'h-' . $n($w - 2 * $r) . $a . '-' . $n($r) . ' -' . $n($r)
+         . ($side > 0 ? 'v-' . $n($side) : '') . $a . $n($r) . ' -' . $n($r) . 'z';
+}
+
+// A small drawing of a look, 48×32, from its `preview` row
+// (pg_design_looks()): a card in the look's corner, outline and shadow, a
+// heading bar as heavy as the look's headings, a text line and a button in
+// its button corner, with its label in capitals or not. Drawn in
+// currentColor only, so it takes the colour of the text around it; the
+// palette is shown by its own swatches. null draws Plain Bootstrap.
+// Twin of _sdLookDrawing() in style_designer.src.js: both give the same SVG.
+function pg_design_look_drawing($preview = null)
+{
+    $pv = is_array($preview) ? $preview : pg_design_plain_look_preview();
+    $n = '_pg_look_drawing_num';
+    $half = function ($v) { return round($v * 2) / 2; };
+    $radius = isset($pv['radius']) ? max(0, (int)$pv['radius']) : 0;
+    $btn_radius = isset($pv['btn_radius']) ? max(0, (int)$pv['btn_radius']) : 0;
+    $border = isset($pv['border']) ? min(3, max(0, (int)$pv['border'])) : 1;
+    $weight = isset($pv['weight']) ? min(900, max(100, (int)$pv['weight'])) : 500;
+    $shadow = isset($pv['shadow']) ? (string)$pv['shadow'] : 'none';
+    $heading = isset($pv['heading']) ? (string)$pv['heading'] : 'sans';
+    $caps = !empty($pv['caps']);
+
+    $shadows = array(
+        'none'  => '',
+        'crisp' => '<rect x="5" y="27" width="38" height="1" fill="currentColor" fill-opacity=".45"/>',
+        'soft'  => '<rect x="6" y="27" width="36" height="2" rx="1" fill="currentColor" fill-opacity=".2"/>',
+        'glow'  => '<rect x="8" y="27" width="32" height="3" rx="1.5" fill="currentColor" fill-opacity=".32"/>',
+        'deep'  => '<rect x="5" y="27" width="38" height="2" fill="currentColor" fill-opacity=".32"/><rect x="8" y="29" width="32" height="2" rx="1" fill="currentColor" fill-opacity=".15"/>',
+        'hard'  => '<path d="M44 5h2v24H6v-2h38z" fill="currentColor"/>',
+    );
+    $svg = '<svg class="pg-look-drawing" viewBox="0 0 48 32" width="48" height="32" aria-hidden="true" focusable="false">';
+    $svg .= isset($shadows[$shadow]) ? $shadows[$shadow] : '';
+
+    // The card: its corner a quarter of the look's, its outline as thick.
+    $card = '<rect x="4" y="3" width="40" height="24" rx="' . $n($half(min($radius, 24) / 4)) . '" fill="currentColor" fill-opacity=".1"';
+    if ($border > 0) $card .= ' stroke="currentColor" stroke-width="' . $border . '" stroke-opacity="' . ($border > 1 ? '1' : '.5') . '"';
+    $svg .= $card . '/>';
+
+    // The heading: half a unit of height per 100 of weight.
+    $hh = $half($weight / 200);
+    if ($heading === 'mono') {
+        foreach (array(9, 13.5, 18, 22.5) as $x) {
+            $svg .= '<rect x="' . $n($x) . '" y="8" width="3.5" height="' . $n($hh) . '" fill="currentColor"/>';
+        }
+    } else {
+        $svg .= '<rect x="9" y="8" width="18" height="' . $n($hh) . '"' . ($heading === 'rounded' ? ' rx="' . $n($hh / 2) . '"' : '') . ' fill="currentColor"/>';
+        if ($heading === 'serif') {
+            $svg .= '<rect x="8" y="' . $n(8 + $hh - .5) . '" width="20" height=".5" fill="currentColor"/>';
+        }
+    }
+    $svg .= '<rect x="9" y="15" width="26" height="1" fill="currentColor" fill-opacity=".4"/>';
+
+    // The button, its label cut out: one line, or spaced capitals.
+    $br = $btn_radius >= 99 ? 2.5 : min(2.5, $half($btn_radius / 6));
+    $label = $caps
+        ? 'M12 20.75h2v1.5h-2zM15.5 20.75h2v1.5h-2zM19 20.75h2v1.5h-2z'
+        : 'M12.5 21h8v1h-8z';
+    $svg .= '<path d="' . _pg_look_drawing_rect(9, 19, 15, 5, $br) . $label . '" fill="currentColor" fill-rule="evenodd"/>';
+    return $svg . '</svg>';
+}
+
 // ── Thumbnails ─────────────────────────────────────────────────────────────
 
 // The CSS variables a design thumbnail is drawn with: the palette's colours
