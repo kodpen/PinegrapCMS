@@ -210,6 +210,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-42.md: How is a file or a page chosen across the software? (owner, 2026-11-10)
 - decisions-made-product-42.md: Are the picker's drawn screens approved? (owner, 2026-11-10)
 - decisions-made-product-42.md: When does a clip edit change the image editor document's length? (owner, 2026-11-10)
+- decisions-made-product-43.md: Where are the rules and the earlier parts?
+- decisions-made-product-43.md: Does the Kodpen API client go on before its release keys exist? (owner, 2026-11-11)
 - decisions-made-product-5.md: Which outside-account leftovers start in 2026.11.0? (#3180)
 - decisions-made-product-5.md: Do subscriptions start, and who runs the renewals? (#3183)
 - decisions-made-product-5.md: Does a beta site without a build file get the beta build of its own version? (#3204)

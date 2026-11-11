@@ -2,12 +2,17 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Repair Software: writes the current release package of this site's channel
- * over every software file, then sends the browser to the upgrade screen. The
- * three steps are the update's own (the software_update panel action with
- * repair set, includes/panel/software.php); they are refused while update
- * checks are off in data/config.php and when the update server offers no
- * version or an older one (pg_update_repair_decision()).
+ * Repair Software: writes the package of the signed release the Kodpen API
+ * offers this site's channel over every software file, then sends the browser
+ * to the upgrade screen. The four steps are the update's own (the
+ * software_update panel action with repair set, includes/panel/software.php):
+ * the check step pins the release (pg_vendor_release_check(),
+ * pg_vendor_release_offer()) and the download step verifies its signature
+ * before any software file is written. They are refused while update checks
+ * are off in data/config.php and when the server offers no release or an
+ * older version.
+ * Only with PG_VENDOR_API_V1 false does the old api2 server's package come
+ * instead, its version judged by pg_update_repair_decision().
  *
  * The second card runs the database upgrade steps again from a chosen 2026
  * version: config.version is set back to it and the upgrade screen applies

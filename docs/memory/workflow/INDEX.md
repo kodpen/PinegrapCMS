@@ -61,6 +61,7 @@
 - decisions-made-product-40.md: Decisions list, product part 40 (2026-11-09 on): standing feature rules (legacy stays, global audience, no design variables); workflow tables like SQL tables; a product photo's alt text
 - decisions-made-product-41.md: Decisions list, product part 41 (2026-11-09 on): Workspace scheduling in one place (no Scheduled flow window, one flow list); the new dashboard's System Status card: look, lights off, chips in sight
 - decisions-made-product-42.md: Decisions list, product part 42 (2026-11-10 on): one modern picker for a file or a page (no "Choose from File Manager" button), its screens, archived pages; the image editor's clip timeline and length
+- decisions-made-product-43.md: Decisions list, product part 43 (2026-11-11 on): the Kodpen API client (PG_VENDOR_API_V1) goes on in 2026.11.0 before its release keys exist; the api2 client branches leave in the next open version
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path

@@ -1,6 +1,6 @@
 ---
 name: vendor-api-client
-description: Kodpen API client base (includes/fn/vendor_api.php, PR #3255): the PG_VENDOR_API_V1 switch line, base and PG_VENDOR_API_URL, headers, timeouts, problem reader, canonical site name, vector sums
+description: Kodpen API client base (includes/fn/vendor_api.php, PR #3255): the PG_VENDOR_API_V1 switch line (on), base and PG_VENDOR_API_URL, headers, timeouts, problem reader, canonical site name, vector sums
 module: vendor_api
 ---
 
@@ -8,14 +8,16 @@ module: vendor_api
 - What every call to `api.kodpen.com/v1` is built from; the licence check and the update put their v1 branches on it (`plans/kodpen-vendor-api-client.md`). Loaded by `functions.php`.
 
 ## What does the switch do?
-- `define('PG_VENDOR_API_V1', false);` alone on its line; `true` only in the plan's last step. While off, `pg_vendor_api_request()` refuses before cURL runs (errno 0) and api2 answers as before. The hosting platform reads the file as text (`/^[ \t]*define\('PG_VENDOR_API_V1', true\);[ \t]*\r?$/m`), so the on form is nowhere else in it, comments included; `vendor_api_test.php` pins the line.
+- `define('PG_VENDOR_API_V1', true);` alone on its line, on since #P8PR (2026-11-11): licence check and update ask only `api.kodpen.com/v1`. The hosting platform reads the file as text (`/^[ \t]*define\('PG_VENDOR_API_V1', true\);[ \t]*\r?$/m`), so the on form is on that line only (comments too), the off form nowhere; `vendor_api_test.php` pins it.
+- The line stays after the api2 branches go (plan step P9): the platform reads it.
+- `false` is only the way back until P9: `pg_vendor_api_request()` refuses before cURL (errno 0) and api2 answers as before.
 
 ## Does an api2 call send a key?
-- No, since #4395: api2 answers the same without the fixed `API` key, so the update check (`includes/fn/update.php`, `software_update_check.php`) and the licence check (`includes/fn/output.php`) ask `api2?REQUEST=…`. `vendor_api_test.php` pins no `api2?API=` in `pinegrap/`; the root `download_assistant.php` keeps its key.
+- No, since #4395: api2 answers the same without the fixed `API` key, so the api2 branches of the update check (`includes/fn/update.php`, `software_update_check.php`) and the licence check (`includes/fn/output.php`) ask `api2?REQUEST=…` (not reached while on). `vendor_api_test.php` pins no `api2?API=` in `pinegrap/`; the root `download_assistant.php` keeps its key.
 
 ## Where does a call go?
 - `pg_vendor_api_base()`: `https://api.kodpen.com/v1`, or `PG_VENDOR_API_URL` (`data/config.php`, a test server): https, host, optional port and path, ending in `/v1`, no user, query or blank. Any other value gives '' and no call, never production. `pg_vendor_api_url($path)` appends the path.
-- P8's docker try: `PG_VENDOR_API_URL` is the docker `api.base_url` (the https layer's origin), its CA given through `CURL_CA_BUNDLE`.
+- The vendor's docker API: `PG_VENDOR_API_URL` is its `api.base_url` (the https origin), its CA in `CURL_CA_BUNDLE`.
 
 ## What does every call carry?
 - `pg_vendor_api_request($method, $url, $options)`: `pg_curl_run()` with `pg_vendor_api_options()`: no redirect, connect 4 s, total 8 s (`timeout`; the package passes 120), body cap 64 KB (`cap`), `X-Pinegrap-Site`, `X-Pinegrap-Env`. A JSON call (default) sends `Accept: application/json, application/problem+json`, a `body` `Content-Type: application/json`; `json` false (signature, package) drops the Accept line; `sink` writes the body to a file; `site_required` (the licence check) calls nothing when the site name cannot go out.
@@ -31,4 +33,4 @@ module: vendor_api
 
 ## Which vectors and tests?
 - sha256 of `tests/fixtures/vendor_api/`: `licence_mapping.json` 82bf0e49…, `site_host.json` c6f8e9ca…, `update_steps.json` 4116b706…; `vendor_api_test.php` pins them in full.
-- `tests/vendor_api_test.php`; the cap and sink in `curl_run_test.php` (`curl-run-wrapper.md`).
+- `tests/vendor_api_test.php` (on-form pin, refusals before cURL); the cap and sink in `curl_run_test.php` (`curl-run-wrapper.md`).
