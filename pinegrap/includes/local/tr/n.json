@@ -2650,6 +2650,7 @@
     "Not translated": "Çevrilmedi",
     "Not translated yet: the source text is shown on the page.": "Henüz çevrilmedi: sayfada kaynak metin gösterilir.",
     "Not tried again: sending it again would fail the same way.": "Yeniden denenmez: tekrar gönderilse de aynı şekilde başarısız olur.",
+    "Not uploaded": "Yüklenmedi",
     "Not uploaded, files of that type are not allowed: {var:1}": "Yüklenmedi, bu türden dosyalara izin verilmiyor: {var:1}",
     "Not uploaded, these are not image files: {files}": "Yüklenmedi, bunlar görsel dosyası değil: {files}",
     "Not used": "Kullanılmıyor",

@@ -16,7 +16,7 @@ module: picker
 - Tree counts are the kind's files in a folder and every folder under it (`pg_picker_subtree_counts()`).
 - Search: results from every folder with their folder line, the match highlighted, Best match first (the server's order); a chip keeps them to the open folder and the folders under it.
 - A folder path leaves out the top folder once there is one below it (`pathText()`), as the screens draw "Görseller / Ürünler".
-- Not yet: Upload, Recent and several picks (PK3), pages (PK4).
+- Upload, Recently used and several picks (`multiple`): `picker-upload.md` (PK3). Not yet: pages (PK4).
 
 ## How do the keys work?
 - In the items: arrows move over the grid (columns measured from the tiles) or the list, Home, End, PageUp/Down; the cursor on a file is the pick; Enter chooses a file or opens a folder; Backspace and Alt+↑ go up; letters jump by name (type-ahead).
