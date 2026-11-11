@@ -37,10 +37,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-3.md: What does an old browser get in the panel? (owner, 2026-10-25)
 - decisions-made-panel-3.md: What opens from a card inside the Site Settings dialog? (owner, 2026-11-11)
 - decisions-made-panel-4.md: Where are the rules and the earlier parts?
-- decisions-made-panel-4.md: What does a bell row look like? (owner, 2026-11-11)
-- decisions-made-panel-4.md: Which filters does the bell have? (owner, 2026-11-11)
-- decisions-made-panel-4.md: What does a bell row's button do? (owner, 2026-11-11)
-- decisions-made-panel-4.md: When is a notification read? (owner, 2026-11-11)
+- decisions-made-panel-4.md: What does a bell row look like? (owner, 2026-11-11, #8670)
+- decisions-made-panel-4.md: Which filters does the bell have? (owner, 2026-11-11, #8670)
+- decisions-made-panel-4.md: What does a bell row's button do? (owner, 2026-11-11, #8670)
+- decisions-made-panel-4.md: When is a notification read? (owner, 2026-11-11, #8670)
 - decisions-made-panel-4.md: Where is it built?
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?

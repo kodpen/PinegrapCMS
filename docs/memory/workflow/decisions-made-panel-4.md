@@ -5,22 +5,23 @@ description: Decisions list, panel part 4: the notifications bell (owner 2026-11
 
 ## Where are the rules and the earlier parts?
 - `decisions-made.md`; its Parts line lists the files. Entries name the date and the reason.
+- The owner's request and his four answers are on #8670 (the `Karar:` comment).
 
-## What does a bell row look like? (owner, 2026-11-11)
+## What does a bell row look like? (owner, 2026-11-11, #8670)
 - Owner (2026-11-11): "bildirim panelini geliştirelim daha fazla filtre ekleyelim ve bildirim kartlarını daha kullanışlı hale sokalım. bildirim kart görünümü yeni pano ile eşleşsin istiyorum 2. görsel sadece örnek" (image 2: the new dashboard's Next up card).
 - His answer: "Pano satırı gibi." A module tag at the left, the title and one second line, one button at the right named by the job (Reply, Show, Join, Approve), the read state as a small dot that reads the row when pressed, delete in the row's menu, day headings (Today, Yesterday, Earlier).
 - Reason: today's row is tall, with two full-width lines under every notification. Refused: only the colours changed; a two-line row with small icons.
 
-## Which filters does the bell have? (owner, 2026-11-11)
+## Which filters does the bell have? (owner, 2026-11-11, #8670)
 - He chose all four offered: "Modül çipleri", "Yalnızca okunmamışlar", "Bana sorulanlar ve anmalar", "Arama kutusu".
 - Module chips in place of Site: Shop, Accounting, Content, Team, System, named and coloured as the dashboard's tags, a chip only for a module with rows, each with its unread count.
 - "Unread only" is a switch that works together with the chosen chip. "Asked of me" shows the rows that mention the person or ask them something, from a person or an agent. The search box searches the title and the excerpt.
 
-## What does a bell row's button do? (owner, 2026-11-11)
+## What does a bell row's button do? (owner, 2026-11-11, #8670)
 - "Aç + hazır işlemler." The button opens the related place; what the dashboard already does in place is done from the row too: approve a flow or try it again, complete a task, join a meeting. No new kind of action is written.
 - Refused: a button that only opens; a quick reply box on the row.
 
-## When is a notification read? (owner, 2026-11-11)
+## When is a notification read? (owner, 2026-11-11, #8670)
 - "Kart açılınca okunur." Opening the bell marks nothing read. A row is read when it is opened or its dot is pressed; "Mark all as read" stands at the top; the bell's count stays until the person has dealt with the rows.
 - Refused: as before, everything read on opening the bell. That earlier rule was never a recorded decision.
 
