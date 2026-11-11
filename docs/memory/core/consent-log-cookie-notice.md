@@ -9,7 +9,7 @@ description: How the cookie notice's answers reach consent_log: consent_answer.p
 
 ## How is "changed" decided?
 - `pg_consent_answer_changes($before, $answer)` (`includes/fn/consent.php`, pure): one row per category whose answer differs from the value before; a category the answer leaves out is no change; an unreadable value before counts as no answer. The baseline is the visitor's own cookie, not the log: an anonymous visitor has no rows to compare with, and each browser answers for itself (a signed-in person accepting on a second device gets rows again).
-- The answer must be a value the script writes (`pg_consent_answer_valid()`: `1`, then known letters once each with 0 or 1); anything else is 400 and writes nothing.
+- The answer must be a value the script writes (`pg_consent_answer_valid()`: `1`, then known letters once each with 0 or 1); anything else is 400 and writes nothing. The pattern has the `D` modifier, so a value ending in a line break (`1.a1\n`) is refused too; before, `$` matched ahead of it and a granted row was written.
 
 ## Who is the person on a row?
 - Anonymous: none (only ip and user agent, as `pg_consent_log_record()` takes them from the request). Signed in: `USER_ID` and the person token of `USER_EMAIL_ADDRESS` (`initialize_user()`, loaded by id, so a rename does not lose it). While staff ghost a customer the row has no person: the answer is the staff member's.

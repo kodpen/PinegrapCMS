@@ -131,7 +131,7 @@ function pg_consent_parse($raw)
 function pg_consent_answer_valid($raw)
 {
     if (!is_string($raw) || (strlen($raw) > PG_CONSENT_ANSWER_MAX_LENGTH)
-        || (preg_match('/^1((?:\.[a-z][01])*)$/', $raw, $match) !== 1)) {
+        || (preg_match('/^1((?:\.[a-z][01])*)$/D', $raw, $match) !== 1)) {
         return false;
     }
 
