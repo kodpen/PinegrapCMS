@@ -220,6 +220,7 @@
 - designer-blocks-bikeshop.md: The Bike Shop block family (bikeshop- prefix, its own palette group): the four blocks, what each draws, the blocks reused instead, its pg-bike-* rules, motion and test
 - designer-blocks-brewery.md: The Brewery block family (brewery- prefix, own palette group): pour hero, tap board, tasting flight, fresh release; the palette-toned glass; general blocks placed instead; rules, test
 - designer-blocks-campsite.md: The Campsite block family (campsite- prefix, own palette group): hero with a kind-of-stay chooser, comfort scale, pitch drawing; general and other blocks placed instead; rules, test
+- designer-blocks-carrental.md: The Car Rental block family (carrental- prefix, own palette group): trip hero, class line-up, cover levels, sample quote; the driving car, the excess meter; general blocks placed instead; test
 - designer-blocks-cityhall.md: The City Hall block family (cityhall- prefix, own palette group): task hero, service guide, council agenda; general blocks placed instead; rules, test
 - designer-blocks-clinic.md: The Clinic block family (clinic- prefix, own palette group): doctors' week, care guide; general blocks placed instead; rules, test
 - designer-blocks-construction.md: The Construction block family (construction- prefix, own palette group): site board hero, project progress, neighbour notice; general blocks placed instead; rules, test
