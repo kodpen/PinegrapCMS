@@ -27,7 +27,8 @@
 - back-arrow-no-copies.md: The way back to a parent or list screen is only the back arrow and the breadcrumb; which back-to-list copies were removed and where the screens now go back [decision: decisions-made-product-14.md]
 - back-arrow-targets.md: The back arrow of a panel screen (pg_page_shell 'cancel') goes where its Save goes, send_to first; the screens fixed for it and the ones that keep another target
 - barcode-scanner-detection.md: Barcode stock screens and Create Order: the scanner listener ignores fields, dialogs and blank codes; Last Scans rows built as text; the stock screens' wide layout
-- bell-refusals.md: What the bell panel shows when loading, marking unread or Delete All Notifications is refused or fails (no endless spinner, refused rows put back)
+- bell-read-rule.md: When a bell row is read: not on opening the bell; its link or Mark as read box reads it, a fold head its runs; Mark all as read reads only rows the caller sees [decision: here]
+- bell-refusals.md: What the bell panel shows when loading, marking read or unread or Delete All Notifications is refused or fails (no endless spinner, refused rows put back)
 - booking-agenda.md: Booking agenda (view_bookings.php, edit_booking.php, #6231): views, who sees what, staff-made bookings, status moves, cancel reason, audit, search
 - booking-edit-form-fields.md: The booking screen (edit_booking.php, new and existing) draws every field as a labelled form-field box; the help texts are form-text the fields name (step B11)
 - booking-settings.md: Settings › Bookings (category bookings): services, staff hours grid and exceptions, booking rules and widget texts in config_text; what the save writes and refuses
