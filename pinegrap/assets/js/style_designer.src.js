@@ -23590,7 +23590,14 @@ const StyleDesigner = (function () {
             }).map(function (k) {
                 var c = CONTENT[k];
                 return { label: c.label, type: 'content', icon: c.icon, extra: { contentType: k } };
-            })},
+            }).concat([
+                // A <video> with the player's own controls; the Video panel
+                // (propsVideoOptions()) picks its file and poster. preload
+                // "metadata" loads the first frame and the length, not the
+                // film; playsinline keeps it in the page on a phone.
+                { label: _sdT('Video'), type: 'semantic', icon: 'bi-camera-video', extra: { tag: 'video', cssClass: 'd-block w-100 h-auto',
+                    customName: _sdT('Video'), _attrs: [{ name: 'controls', value: '' }, { name: 'preload', value: 'metadata' }, { name: 'playsinline', value: '' }] } }
+            ])},
             // Plain form controls. Each lands as <div class="mb-5"><label><control>
             // (a group as <fieldset><legend>…) with a Turkish default label
             // and a seeded name. Inside a custom form widget the block is a
@@ -45014,6 +45021,7 @@ const StyleDesigner = (function () {
                (isTable ? propsTableOptions(n) : '') +
                (isTableRow ? propsTableRowOptions(n) : '') +
                (isTableCell ? propsTableCellOptions(n) : '') +
+               (String(n.props.tag || '').toLowerCase() === 'video' ? propsVideoOptions(n) : '') +
                rowSection +
                colSection +
                stateSection +
@@ -45174,6 +45182,100 @@ const StyleDesigner = (function () {
             row(_sdT('Novalidate'),       swAttr('data-form-bool-attr="novalidate"',              ha('novalidate'))) +
             row('needs-validation', swAttr('data-util-toggle="needs-validation"',           cls.indexOf('needs-validation') !== -1)) +
             row('was-validated',    swAttr('data-util-toggle="was-validated"',              cls.indexOf('was-validated') !== -1))
+        );
+    }
+
+    // ── Video Options ─────────────────────────────────────────────────────────
+    // The classes that lay a video over the whole of its box, behind the
+    // box's content, the way a background picture sits: absolutely placed,
+    // cropped to cover, one layer under the content (z-n1). Its box gets
+    // position-relative and z-0 (_sdVideoFillHostClass()), so the layer is
+    // the box's own and the video paints above the box's background.
+    /* @pg-site-output */
+    var _SD_VIDEO_FILL = ['position-absolute', 'top-0', 'start-0', 'w-100', 'h-100', 'object-fit-cover', 'z-n1'];
+
+    // Whether a video's class list `cls` lays it over its box.
+    function _sdVideoFills(cls) {
+        var have = String(cls || '').split(/\s+/);
+        return _SD_VIDEO_FILL.every(function (c) { return have.indexOf(c) !== -1; });
+    }
+
+    // A video's class list `cls` with the fill turned on or off. On, a class
+    // of the same family (another position, size, inset, fit or layer)
+    // gives way, as h-auto would beat h-100 in the stylesheet. Off, the
+    // video goes back to the palette item's own size: the column's width at
+    // the film's own height.
+    /* @pg-site-output */
+    function _sdVideoFillClass(cls, on) {
+        var list = String(cls || '').split(/\s+/).filter(Boolean);
+        var family = /^(position-|top-|bottom-|start-|end-|w-|h-|object-fit-|z-)/;
+        if (on) {
+            list = list.filter(function (c) { return !family.test(c); }).concat(_SD_VIDEO_FILL);
+        } else {
+            list = list.filter(function (c) { return _SD_VIDEO_FILL.indexOf(c) === -1; });
+            ['w-100', 'h-auto'].forEach(function (c) { if (list.indexOf(c) === -1) list.push(c); });
+        }
+        return list.join(' ');
+    }
+
+    // The class list `cls` of the box a filling video sits in: placed
+    // (position-relative unless a position class already places it) and a
+    // layer of its own (z-0 unless a z class gives one). Without the
+    // layer the video's z-n1 would drop it behind the box's background.
+    /* @pg-site-output */
+    function _sdVideoFillHostClass(cls) {
+        var list = String(cls || '').split(/\s+/).filter(Boolean);
+        var placed = /^(position-(relative|absolute|fixed|sticky)|fixed-(top|bottom)|sticky-(top|bottom))$/;
+        if (!list.some(function (c) { return placed.test(c); })) {
+            list = list.filter(function (c) { return c !== 'position-static'; });
+            list.push('position-relative');
+        }
+        if (!list.some(function (c) { return /^z-(n1|[0-9])$/.test(c); })) list.push('z-0');
+        return list.join(' ');
+    }
+
+    // The Video panel of a <video> node: its file and poster from the
+    // file manager, the player's switches and how much of the file the
+    // browser loads up front. No autoplay row: a video that plays by
+    // itself is the hero's job, with a pause button and off under reduced
+    // motion. A src or poster bound to a record field is edited in the
+    // Data panel, so its row only says so.
+    function propsVideoOptions(n) {
+        var b = n.props._bindings || {};
+        function ga(nm) { return getNodeAttr(n, nm); }
+        function fInp(id, dAttr, ph) {
+            return '<input type="text" class="form-control form-control-sm"' + (id ? ' id="' + id + '"' : '') +
+                ' data-form-input-attr="' + dAttr + '" value="' + esc(ga(dAttr)) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + '>';
+        }
+        function bound() {
+            return '<span class="sd-prop-static" style="color:#888">' + esc(_sdT('From a record field')) + '</span>';
+        }
+        function pick(id, dAttr, ph, onclick) {
+            return '<div class="sd-pick-group">' + fInp(id, dAttr, ph) +
+                '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" onclick="' + onclick + '">' + esc(_sdT('Select')) + '</button>' +
+                '</div>';
+        }
+        var fills = _sdVideoFills(n.props.cssClass);
+        var pre = ga('preload');
+        var preOpts = [['', _sdT('Browser default')], ['none', _sdT('None')], ['metadata', _sdT('Metadata only')], ['auto', _sdT('Whole file')]];
+        var preSel = '<select class="form-control form-control-sm" data-form-input-attr="preload">';
+        preOpts.forEach(function (o) { preSel += '<option value="' + o[0] + '"' + (o[0] === pre ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; });
+        preSel += '</select>';
+
+        return sect('bi-camera-video', _sdT('Video'),
+            row(_sdT('Video file'), b.src ? bound()
+                : pick('sd-prop-video-src', 'src', '/film.mp4', "window.sdOpenFilePicker('sd-prop-video-src','src','file')")) +
+            row(_sdT('Poster image'), b.poster ? bound()
+                : pick('sd-prop-video-poster', 'poster', '', "window.sdOpenImagePicker('sd-prop-video-poster')")) +
+            row(_sdT('Title'), fInp('', 'title', '')) +
+            (fills ? '' : row(_sdT('Controls'), swAttr('data-form-bool-attr="controls"', hasNodeBoolAttr(n, 'controls')))) +
+            row(_sdT('Loop'), swAttr('data-form-bool-attr="loop"', hasNodeBoolAttr(n, 'loop'))) +
+            row(_sdT('Muted'), swAttr('data-form-bool-attr="muted"', hasNodeBoolAttr(n, 'muted'))) +
+            row(_sdT('Preload'), preSel) +
+            row(_sdT('Fill its box'), swAttr('data-video-fill', fills) +
+                '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
+                esc(_sdT('Covers the box it sits in, behind the content of the box, like a background picture. Its controls go off, as the content would cover them.')) +
+                '</div>')
         );
     }
 
@@ -51460,6 +51562,29 @@ const StyleDesigner = (function () {
                 // Re-render properties so type-dependent rows update
                 renderCanvas(); renderProperties(); renderAttrsPanel(); renderHtmlTree();
             });
+        });
+
+        // ── Video: fill its box (propsVideoOptions()) ──
+        // The video lays itself over its box and the box becomes the place
+        // and the layer it is laid in. Its controls go off with it: the
+        // box's content covers them. A box that is the page itself or a
+        // placed component has no class of its own to take.
+        var _vfIn = document.querySelector('#sd-properties input[data-video-fill]');
+        if (_vfIn) _vfIn.addEventListener('change', function () {
+            if (!selectedNode) return;
+            saveState();
+            var on = this.checked;
+            selectedNode.props.cssClass = _sdVideoFillClass(selectedNode.props.cssClass, on);
+            setNodeBoolAttr(selectedNode, 'controls', !on);
+            if (on) {
+                var _vfP = _sdAnyParent(selectedNode);
+                var host = _vfP && _vfP.parent;
+                if (host && host.props && ['semantic', 'container', 'row', 'col'].indexOf(host.type) !== -1) {
+                    host.props.cssClass = _sdVideoFillHostClass(host.props.cssClass);
+                    _sdSharedMarkEdited(host);
+                }
+            }
+            renderCanvas(); renderProperties(); renderAttrsPanel(); renderHtmlTree();
         });
 
         // ── Input ID field (data-form-input-id: sets both _attrs.id and node.props.id) ──
@@ -73991,6 +74116,8 @@ const StyleDesigner = (function () {
                                     d: _sdT('A piece of text within a line, for styling a word or a phrase.') },
             't:image':            { h: '<img>', k: 'image img picture photo graphic',
                                     d: _sdT('A picture from the file manager or from an address.') },
+            's:video':            { h: '<video controls>', k: 'video movie film clip mp4 webm player media',
+                                    d: _sdT('A video from the file manager, with a poster and playback controls. It does not play by itself.') },
             't:divider':          { h: '<hr>', k: 'divider hr line separator rule',
                                     d: _sdT('A horizontal line.') },
             't:spacer':           { k: 'spacer gap space margin blank',
@@ -76647,7 +76774,9 @@ const StyleDesigner = (function () {
     // Without touching the PHP, we install a fake CKEDITOR object on this window
     // to capture the URL.
     var _sdPickerFuncNum = 0;
-    window.sdOpenFilePicker = function (fieldId, propName) {
+    // kind ('page' | 'file') opens the picker on that tab; without it the
+    // picker keeps the tab it showed last.
+    window.sdOpenFilePicker = function (fieldId, propName, kind) {
         var inp = document.getElementById(fieldId);
         if (!inp) return;
 
@@ -76672,7 +76801,8 @@ const StyleDesigner = (function () {
         };
 
         window.open(
-            'editor_select_page_or_file.php?CKEditorFuncNum=' + funcNum,
+            'editor_select_page_or_file.php?CKEditorFuncNum=' + funcNum +
+                (kind === 'page' || kind === 'file' ? '&type=' + kind : ''),
             'sdPicker_' + funcNum,
             'width=820,height=640,resizable=1,scrollbars=1'
         );
