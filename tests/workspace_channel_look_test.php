@@ -100,7 +100,8 @@ function test_workspace_channel_look_colour_is_on_the_card()
 	$colored = workspace_channel_look_block($css, '.ws-channel-card[data-ws-colored]');
 
 	pg_assert_contains('var(--ws-ch)', $colored, 'a coloured card takes the colour on its border and wash');
-	pg_assert_contains('linear-gradient(to right', $colored, 'the wash starts on the sign\'s side');
+	pg_assert_contains('--ws-wash-from: to right;', $colored, 'the wash starts on the sign\'s side');
+	pg_assert_contains('linear-gradient(var(--ws-wash-from)', $colored, 'and fades across the card');
 	pg_assert_contains('[dir="rtl"] .ws-channel-card[data-ws-colored] {', $css, 'and from the other side right to left');
 	pg_assert_contains('html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] {', $css, 'the dark theme has its own strengths');
 }
