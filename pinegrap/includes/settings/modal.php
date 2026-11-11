@@ -281,12 +281,12 @@ function pg_settings_modal_markup($user)
 </dialog>
 
 <!--
-    Where a card\'s own dialog goes. A Bootstrap modal nested inside another
-    shares the outer one\'s backdrop and is drawn behind it, so such dialogs
-    are moved out here -- after the settings modal, which is what puts them in
-    front of it -- and are cleared when the pane changes. A card\'s drawer
-    arrives here too, for its scripts to run, and is moved into the dialog
-    straight after.
+    What a card hands over beside its markup: a hidden Connect form, which a
+    button in the pane submits by its form attribute (forms cannot be nested),
+    and a card\'s drawer, which arrives here for its scripts to run and is
+    moved into the dialog straight after. Cleared when the pane changes. A
+    card opens no dialog of its own: a second layer could leave the settings
+    unsaved.
 -->
 <div id="pg_settings_modal_extras"></div>';
 }

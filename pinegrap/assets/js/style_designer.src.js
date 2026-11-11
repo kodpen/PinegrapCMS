@@ -7392,6 +7392,12 @@ const StyleDesigner = (function () {
         var _bodyCls = [];
         if (_sdMotionPaused()) _bodyCls.push('sd-motion-paused');
         if (canvasOutlineGrid) _bodyCls.push('sd-outline-grid');
+        // The canvas opens in the design's colour mode, once per editor:
+        // after that the toolbar's view is the editor's own.
+        if (!_sdColorModeOpened) {
+            _sdColorModeOpened = true;
+            if (_sdColorModeDark() !== canvasDarkTheme) applyCanvasTheme(_sdColorModeDark() ? 'dark' : 'light', { source: 'design' });
+        }
         // The editor's view of the design sits on <html>, where the theme
         // switchers' engine writes it too (applyCanvasTheme()).
         doc.write('<!DOCTYPE html><html lang="' + esc(_sdDocLang()) + '"' + (canvasDarkTheme ? ' data-bs-theme="dark"' : '') + '><head><meta charset="utf-8"><base href="' + _canvasBase + '">' +
@@ -65125,6 +65131,7 @@ const StyleDesigner = (function () {
     // and try the stylesheet it answers with on the canvas; saving writes it
     // to the file manager, where every design can pick it.
     var _sdThemeTry = { look: '', palette: '' };   // builder output being tried on the canvas
+    var _sdColorModeOpened = false;                // the canvas took the design's mode once
     var _sdThemeTryTimer = { look: 0, palette: 0 };
     var _sdThemeTrySeq = { look: 0, palette: 0 };
 
@@ -65132,6 +65139,34 @@ const StyleDesigner = (function () {
     function _thAttr(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
     function _sdThemeInput(kind) { return document.getElementById(kind === 'look' ? 'sd-style-look' : 'sd-style-palette'); }
     function _sdThemeValue(kind) { var el = _sdThemeInput(kind); return el ? el.value : ''; }
+
+    // The design's colour mode (hidden input style_color_mode): '' (not
+    // set: the page sets no mode, as before), light, dark or auto (the
+    // visitor's system). The server writes it on the published page's
+    // <html> (pg_design_color_mode_apply()); a visitor's stored theme
+    // switcher choice still wins there.
+    function _sdColorMode() {
+        var el = document.getElementById('sd-style-color-mode');
+        var v = el ? el.value : '';
+        return (v === 'light' || v === 'dark' || v === 'auto') ? v : '';
+    }
+    // Whether the design's mode shows dark here: auto takes the editor's
+    // own system setting.
+    function _sdColorModeDark() {
+        var m = _sdColorMode();
+        if (m === 'auto') return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        return m === 'dark';
+    }
+    function _sdColorModeChoose(mode) {
+        var el = document.getElementById('sd-style-color-mode');
+        if (!el) return;
+        el.value = mode || '';
+        // The canvas and the Preview show the mode picked; "Not set" leaves
+        // the editor's view as it is.
+        if (el.value !== '') applyCanvasTheme(_sdColorModeDark() ? 'dark' : 'light', { source: 'design' });
+        _sdThemeRender();
+        document.dispatchEvent(new CustomEvent('pg-design-theme-change'));
+    }
 
     function _sdThemeFind(kind, key) {
         var th = _sdThemes();
@@ -65364,6 +65399,33 @@ const StyleDesigner = (function () {
         if (buildingPal) h += _sdThemePaletteBuilderHtml();
         h += '</div>';
 
+        // ── Colour mode ──
+        var mode = _sdColorMode();
+        h += '<div class="sd-th-sec">' +
+                '<div class="sd-th-head"><span class="sd-th-title">' + esc(_sdT('Colour mode')) + '</span>' +
+                '<span class="sd-th-sub">' + esc(_sdT('Light or dark for every page of the design. A visitor who picks a theme with a theme switcher still sees their choice.')) + '</span></div>';
+        if (th.ready && !th.colorModeReady) {
+            h += '<div class="sd-th-warn"><span class="bi bi-exclamation-triangle me-1"></span>' +
+                 esc(_sdT('The database has not been updated yet: the colour mode is saved once the 2026.11.0 update has run.')) + '</div>';
+        }
+        h += '<div class="btn-group btn-group-sm flex-wrap" role="radiogroup" aria-label="' + _thAttr(_sdT('Colour mode')) + '">';
+        [
+            ['', _sdT('Not set'), 'bi-dash-circle'],
+            ['light', _sdT('Light'), 'bi-sun'],
+            ['dark', _sdT('Dark'), 'bi-moon-stars'],
+            ['auto', _sdT('Follow the system'), 'bi-circle-half']
+        ].forEach(function (o) {
+            var on = (mode === o[0]);
+            h += '<button type="button" class="btn btn-outline-light' + (on ? ' active' : '') + '" role="radio" aria-checked="' + (on ? 'true' : 'false') + '" data-th-mode="' + _thAttr(o[0]) + '">' +
+                     '<span class="bi ' + o[2] + ' me-1" aria-hidden="true"></span>' + esc(o[1]) +
+                 '</button>';
+        });
+        h += '</div>';
+        if (mode === '') {
+            h += '<p class="sd-th-hint mt-2">' + esc(_sdT('Not set: the pages set no mode, as before, and a theme switcher follows the system.')) + '</p>';
+        }
+        h += '</div>';
+
         h += '<p class="sd-th-note"><span class="bi bi-info-circle me-1"></span>' +
              esc(_sdT('The look and the palette apply to every page of the design and never change the pages themselves: switch as often as you like. The site shows the choice after you publish.')) + '</p>';
         host.innerHTML = h;
@@ -65462,6 +65524,9 @@ const StyleDesigner = (function () {
     }
 
     function _sdThemeBind(host) {
+        host.querySelectorAll('[data-th-mode]').forEach(function (b) {
+            b.addEventListener('click', function () { _sdColorModeChoose(b.getAttribute('data-th-mode')); });
+        });
         host.querySelectorAll('[data-th-look]').forEach(function (b) {
             b.addEventListener('click', function () {
                 _sdThemeBuilderState.look = null;
@@ -68298,7 +68363,7 @@ const StyleDesigner = (function () {
         var names = ['name', 'theme_id', 'collection', 'additional_body_classes',
                      'social_networking_position', 'style_head',
                      'style_custom_css', 'style_custom_js', 'style_custom_fonts',
-                     'style_look', 'style_palette', 'style_meta_tags'];
+                     'style_look', 'style_palette', 'style_color_mode', 'style_meta_tags'];
         var o = {};
         names.forEach(function (n) {
             var el = f.querySelector('[name="' + n + '"]');

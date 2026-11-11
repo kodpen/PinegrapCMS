@@ -11271,7 +11271,7 @@ var pgSettingsModal = (function () {
             }
 
             // An Escape meant for another dialog in front of this one (a
-            // confirmation, a card's own dialog) is that dialog's.
+            // confirmation, the file picker) is that dialog's.
             var layer = (event.target && event.target.closest) ? event.target.closest('dialog[open]') : null;
 
             if (layer && (layer !== el)) {
@@ -11298,9 +11298,11 @@ var pgSettingsModal = (function () {
 
         }, true);
 
-        // A card's drawer slides in over the pane; its trigger is renamed by
-        // the server for the reason given below for dialogs
-        // (pg_settings_own_dialog_triggers()).
+        // A card's drawer slides in over the pane. Bootstrap's own data-api
+        // would open it in the top layer and hide the settings, and cannot be
+        // headed off -- its delegated listeners sit on the document in the
+        // capture phase -- so the server hands us the trigger under a name of
+        // our own; see pg_settings_own_dialog_triggers().
         $(el).on('click', '#pg_settings_modal_pane [data-pgdrawer="open"]', function (event) {
 
             var target = byId((this.getAttribute('data-bs-target') || '').replace(/^#/, ''));
@@ -11322,31 +11324,10 @@ var pgSettingsModal = (function () {
             save();
         });
 
-        // A dialog a card brings with it opens ON TOP of the settings, not
-        // instead of them. Bootstrap's own data-api would close the settings
-        // first and cannot be headed off -- its delegated listeners sit on the
-        // document in the capture phase -- so the server hands us the trigger
-        // under a name of our own; see pg_settings_own_dialog_triggers().
-        $(el).on('click', '#pg_settings_modal_pane [data-pgdialog="modal"]', function (event) {
-
-            var target = document.querySelector(
-                this.getAttribute('data-bs-target') || this.getAttribute('href') || '');
-
-            if (!target) {
-                return;
-            }
-
-            event.preventDefault();
-
-
-            pgUI.dialog.show(target);
-        });
-
         // When a person last did something. Bound to the document and in the
-        // capture phase, not to the dialog: a card's own sub-dialog sits in the
-        // box BESIDE the dialog, and the file picker it opens is somewhere else
-        // again -- a press in either of those is still the operator working on
-        // this pane.
+        // capture phase, not to the dialog: the file picker a card opens sits
+        // outside it -- a press there is still the operator working on this
+        // pane.
         //
         // The time is all that is kept. Which control was pressed says nothing
         // useful: the operator presses "Generate" and the value appears in a
@@ -12084,11 +12065,8 @@ var pgSettingsModal = (function () {
 
 
     /**
-     * Let go of the dialogs the pane on screen brought with it.
-     *
-     * Disposed rather than dropped: an instance whose element is torn out from
-     * under it leaves its backdrop on the page, over a screen with nothing to
-     * close it.
+     * Let go of what the pane on screen brought with it: its drawer and the
+     * hidden forms beside the dialog.
      */
     function clearExtras() {
 
@@ -12101,14 +12079,6 @@ var pgSettingsModal = (function () {
         window.pgReleaseFields(byId('pg_settings_modal_drawers'));
 
         $('#pg_settings_modal_drawers').empty();
-
-        // The code fields of a card's own dialog go with it.
-        window.pgReleaseEditors(byId('pg_settings_modal_extras'));
-
-        $('#pg_settings_modal_extras .dialog').each(function () {
-
-            pgUI.dialog.dispose(this);
-        });
 
         $('#pg_settings_modal_extras').empty();
     }
@@ -12561,8 +12531,8 @@ window.pgCodeEditorReady = function (markup, done) {
         // the code editors and the tag fields, and .html() runs them.
         $pane.html(response.html || '');
 
-        // A card's own dialog cannot stay inside this one -- nested modals
-        // share the outer backdrop and are drawn behind it.
+        // What a card hands over beside its markup: hidden Connect forms stay
+        // in the box after the dialog, outside the settings form.
         if (response.modals) {
             $('#pg_settings_modal_extras').html(response.modals);
 

@@ -178,6 +178,7 @@ description: Generated from the module field of the memory files: each includes/
 - `record_revisions`: [[collection-history]], [[collection-revisions]]
 - `referral_source_list_edit`: [[list-table-quick-edit-referral-sources]]
 - `region_list`: [[list-table-region-lists]]
+- `report_view`: [[report-view]]
 - `request_scheme`: [[proxy-https-trust]], [[secure-mode-proxy-offer]]
 - `reseal`: [[encryption-key-reseal-registry]]
 - `returns`: [[api-returns]], [[bootstrap-6-runtime-markup]], [[order-returns-refund-cancelled-order]]
