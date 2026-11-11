@@ -9,7 +9,7 @@ description: Steps of plans/settings-workspace-move.md: SD1-SD2 the drawer insid
 - SD1 (M) The drawer, tried with Cron Jobs. Done (#8658): `ui/settings-modal-drawer.md`.
 - SW1 (M) The Workspace heading and its gate, with the Defaults card as the proof. Done (#8675, `ui/settings-workspace-gate.md`): three categories under a Workspace heading, opened by the Workspace settings right alone.
 - SD1b The owner's look on dev. Done (2026-11-11, #8677): "Yeniledim, açılıyor", no change asked (`workflow/decisions-made-panel-3.md`).
-- SD2 (S) The other card dialogs of the Site Settings dialog move into the drawer: the second dialog of `maintenance.php`, the Connect forms of `commerce_merchant.php` and `privacy_analytics.php`, every other `$pg_settings_modals[]` entry. The second-dialog path goes once nothing uses it.
+- SD2 (S) The other card dialogs of the Site Settings dialog move into the drawer. Done (#8710, `ui/settings-modal-card-extras.md`): none was left (Cron Jobs was SD1; the Connect entries are hidden forms, kept beside the pane); the second-dialog path is gone.
 - SW2 (M) Team and working hours, the rest: Departments (add, edit, archive), Team members, Who is in the team, Holidays and calendar feeds (`ws_holidays_settings_card()`, its dialogs into the drawer).
 - SW3 (M) Claude (`ws_claude_settings_card()`: settings, test, key create and reset, its dialogs into the drawer) and Bulk changes.
 - SW4 (M) Agents (save, delete, test; the request rows' cancel, retry, knock) and Pinegrap AI (settings, test, key).

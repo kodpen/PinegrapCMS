@@ -480,7 +480,7 @@
     // ── A channel's Summary tab ────────────────────────────────────────
 
     function channelCard(channel, h) {
-        var card = h.el('div', 'card ws-task-time-card mt-7');
+        var card = h.el('div', 'card ws-task-time-card');
         var header = h.el('div', 'card-header d-flex justify-content-between align-items-center');
         var body = h.el('div', 'card-body');
 
