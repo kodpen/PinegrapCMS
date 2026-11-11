@@ -1384,7 +1384,7 @@ StyleDesigner.definePart('code', function (K) {
         _sdFxAttrs(p).replace(/\s(data-pg-fx[a-z-]*)(?:="([^"]*)")?/g, function (all, n, v) { attrs[n] = v === undefined ? '' : v; return all; });
         if (now === undefined) delete attrs[name]; else attrs[name] = now;
         var fx = { effect: attrs['data-pg-fx'] };
-        ['trigger', 'duration', 'delay', 'easing', 'stagger', 'distance', 'offset', 'speed'].forEach(function (f) {
+        ['trigger', 'duration', 'delay', 'easing', 'stagger', 'distance', 'offset', 'speed', 'from'].forEach(function (f) {
             if (attrs['data-pg-fx-' + f] !== undefined) fx[f] = attrs['data-pg-fx-' + f];
         });
         fx.repeat = attrs['data-pg-fx-repeat'] !== undefined;

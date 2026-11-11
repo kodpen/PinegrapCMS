@@ -1117,3 +1117,167 @@ $ai_summary = function () use ($el, $link, $icon, $span, $attr, $bind, $show_whe
     ), $show_when('has_ai_links'));
 };
 
+// ── The dealership blocks ───────────────────────────────────────────────
+// The structure of the Car Dealership blocks
+// (assets/js/style_designer_blocks_dealership.js) and of CTA: Sticky Bar
+// (style_designer_blocks_cta.js), with the dealer's own data: the same
+// nodes and classes, so the palette's rules (shipped in the User Styles)
+// draw them and the operator edits them as the blocks they are.
+
+// A node with an interaction (props._fx, played by pg_fx; reduced motion
+// keeps it still).
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+
+// The three figures each showroom panel shows at its foot: the label, the
+// number and its unit. Power and mileage come from the sample vehicle.
+$panel_figures = array(
+    'velo-volt'  => array(
+        array(lang('Range'), '520', 'km'),
+        array(lang('Charge 10–80%'), '28', lang('min')),
+        array(lang('Power'), (string)$vehicles['velo-volt']['power'], lang('hp')),
+    ),
+    'kestrel-gt' => array(
+        array(lang('Power'), (string)$vehicles['kestrel-gt']['power'], lang('hp')),
+        array(lang('Mileage'), number_format($vehicles['kestrel-gt']['mileage']), 'km'),
+        array(lang('Warranty'), '24', lang('months')),
+    ),
+    'norda-tour' => array(
+        array(lang('Boot'), '640', 'L'),
+        array(lang('Mileage'), number_format($vehicles['norda-tour']['mileage']), 'km'),
+        array(lang('Warranty'), '12', lang('months')),
+    ),
+);
+
+// Showroom Panel: one sample vehicle a window tall, its photo edge to edge
+// (in the style attribute, where Background edits it), the condition and
+// body, the name as $tag, the cash price, a test drive with the car chosen
+// and the stock of its body style, and its three figures at the foot. The
+// head fades and the figures rise on view, or on load for the page's h1.
+$showroom_panel = function ($key, $tag = 'h2') use ($el, $heading, $para, $link, $container, $fx, $attr, $searchable, $query, $photo, $vehicles, $vehicle_title, $bodies, $conditions, $panel_figures) {
+    $v = $vehicles[$key];
+    $title = $vehicle_title($key);
+    $trigger = $tag === 'h1' ? 'load' : 'view';
+    $figures = array();
+    foreach ($panel_figures[$key] as $f) {
+        $figures[] = $el('div', 'pg-dl-figure', $f[0], array(
+            $heading('dt', $f[0], ''),
+            $el('dd', '', lang('Value'), array(
+                $heading('span', $f[1], ''),
+                $heading('span', ' ' . $f[2], 'fs-6 fw-normal'),
+            )),
+        ));
+    }
+    $style = 'background-image: url(' . $photo('panel-' . $key, 1920, 1080) . '); background-size: cover; background-position: center;';
+    return $el('section', 'pg-dl-panel d-flex overflow-hidden', $title, array(
+        $el('div', 'pg-dl-veil d-flex flex-column justify-content-between w-100 py-5 text-body text-center', lang('Overlay'), array(
+            $container(array(
+                $fx($el('div', 'col-lg-8 mx-auto', lang('Panel Head'), array(
+                    $para($conditions[$v['condition']] . ' · ' . $bodies[$v['body']]['title'], 'pg-dl-kicker small text-uppercase fw-semibold mb-2'),
+                    $heading($tag, $title, 'pg-dl-type display-3 mb-2'),
+                    $el('p', 'lead mb-4', lang('Price'), array(
+                        $heading('span', lang('Cash price'), 'text-body-secondary me-2'),
+                        $heading('span', $v['price_label'], 'fw-medium'),
+                    )),
+                    $el('div', 'd-flex flex-wrap justify-content-center gap-2', lang('Buttons'), array(
+                        $link(lang('Book a Test Drive'), '{{page:test_drive}}?' . $query(array('vehicle' => $title)), 'btn btn-primary btn-lg px-5'),
+                        $link(lang('More Like This'), '{{page:vehicles}}?' . $query(array('body' => $bodies[$v['body']]['title'])), 'btn btn-secondary btn-lg px-5'),
+                    )),
+                )), array('effect' => 'fade', 'trigger' => $trigger, 'duration' => 900)),
+            ), 'pt-lg-4'),
+            $container(array(
+                $fx($el('dl', 'pg-dl-figures col-lg-8 mx-auto', lang('Figures'), $figures),
+                    array('effect' => 'slide-up', 'trigger' => $trigger, 'stagger' => 120)),
+            ), 'pt-5'),
+        ), array('_attrs' => array($attr('data-bs-theme', 'dark')))),
+    ), array_merge($searchable('car-' . $key), array('_attrs' => array($attr('style', $style)))));
+};
+
+// Stock Finder: the way into the stock by condition, by body style (a row
+// of large icons between two hairlines) and by make. The header fades and
+// the body styles rise on view.
+$stock_finder = function () use ($el, $heading, $para, $link, $icon, $container, $fx, $searchable, $query, $makes, $bodies) {
+    $shapes = array();
+    foreach ($bodies as $b) {
+        $shapes[] = $el('li', '', $b['title'], array(
+            $el('a', 'pg-dl-shape', $b['title'], array(
+                $icon($b['icon']),
+                $heading('span', $b['title'], 'fw-medium'),
+            ), array('href' => '{{page:vehicles}}?' . $query(array('body' => $b['title'])))),
+        ));
+    }
+    $make_links = array($heading('span', lang('Makes'), 'small text-body-secondary'));
+    foreach ($makes as $m) {
+        $make_links[] = $link($m['title'], '{{page:vehicles}}?' . $query(array('make' => $m['title'])), 'link-body-emphasis fw-medium');
+    }
+    return $el('section', 'py-5 my-lg-4', lang('Stock Finder'), array(
+        $container(array(
+            $fx($el('div', 'text-center col-lg-8 mx-auto mb-5', lang('Section Header'), array(
+                $para(lang('The stock'), 'pg-dl-kicker small text-uppercase fw-semibold text-primary mb-2'),
+                $heading('h2', lang('Find yours in the stock'), 'pg-dl-type display-5 mb-3'),
+                $para(lang('Every car we have, new and used, with its photos, its history and its price.'), 'lead text-body-secondary mb-4'),
+                $el('div', 'd-flex flex-wrap justify-content-center gap-2', lang('Condition'), array(
+                    $link(lang('New Cars'), '{{page:new_cars}}', 'btn btn-primary rounded-pill px-4'),
+                    $link(lang('Used Cars'), '{{page:used_cars}}', 'btn btn-outline-secondary rounded-pill px-4'),
+                    $link(lang('All Cars'), '{{page:vehicles}}', 'btn btn-link link-body-emphasis'),
+                )),
+            )), array('effect' => 'fade', 'trigger' => 'view', 'duration' => 700)),
+            $fx($el('ul', 'pg-dl-shapes', lang('Body Styles'), $shapes),
+                array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => 80)),
+            $el('div', 'd-flex flex-wrap justify-content-center align-items-center gap-3 gap-md-4 mt-4', lang('Makes'), $make_links),
+        )),
+    ), $searchable('stock', lang('new cars, used cars, body style, make, filter')));
+};
+
+// Three Ways In: test drive, trade-in and finance as tall picture tiles
+// side by side, each with its kind, a heading, a line and the request's
+// action. The tiles rise one after another on view.
+$three_ways = function () use ($el, $heading, $para, $link, $container, $fx, $attr, $searchable, $photo) {
+    $way = function ($seed, $kind, $title, $text, $action, $href, $variant) use ($el, $heading, $para, $link, $attr, $photo) {
+        return $el('article', 'pg-dl-way d-flex', $kind, array(
+            $el('div', 'd-flex flex-column justify-content-end align-items-start w-100 p-4 p-lg-5 text-body pg-shade-bottom', lang('Overlay'), array(
+                $para($kind, 'pg-dl-kicker small text-uppercase fw-semibold mb-2'),
+                $heading('h3', $title, 'pg-dl-type h2 mb-2'),
+                $para($text, 'mb-4'),
+                $link($action, $href, 'btn ' . $variant . ' px-4'),
+            ), array('_attrs' => array($attr('data-bs-theme', 'dark')))),
+        ), array('_attrs' => array($attr('style', 'background-image: url(' . $photo('way-' . $seed, 1200, 1500) . '); background-size: cover; background-position: center;'))));
+    };
+    return $el('section', 'py-5', lang('Three Ways In'), array(
+        $container(array(
+            $fx($el('div', 'text-center col-lg-8 mx-auto mb-5', lang('Section Header'), array(
+                $heading('h2', lang('Before you sign'), 'pg-dl-type display-5 mb-3'),
+                $para(lang('Drive the car, know what yours is worth and see the monthly figure, all before you decide.'), 'lead text-body-secondary mb-0'),
+            )), array('effect' => 'fade', 'trigger' => 'view', 'duration' => 700)),
+        )),
+        $fx($el('div', 'pg-dl-ways', lang('Ways'), array(
+            $way('drive', lang('Test drive'), lang('Drive it on your own roads'),
+                lang('Choose a day and a time of day; we confirm within one working day.'), lang('Book a Test Drive'), '{{page:test_drive}}', 'btn-primary'),
+            $way('tradein', lang('Trade-in'), lang('Your car, valued while you drive'),
+                lang('Bring the car you drive now; the offer comes in writing.'), lang('Value My Car'), '{{page:tradein}}', 'btn-secondary'),
+            $way('finance', lang('Finance'), lang('The monthly figure before you sign'),
+                lang('Hire purchase, a contract with three choices at the end, or cash: each figure explained.'), lang('Ways to Pay'), '{{page:finance}}', 'btn-secondary'),
+        )), array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => 150)),
+    ), $searchable('ways', lang('test drive, trade-in, part exchange, valuation, finance, monthly payment')));
+};
+
+// CTA: Sticky Bar: a slim band that stays at the top of the window while
+// the visitor scrolls the element it sits in, with a title, a line and two
+// actions.
+$sticky_bar = function ($title, $line, $primary, $secondary) use ($el, $heading, $para, $link, $container, $fx) {
+    return $fx($el('section', 'pg-sticky-bar border-bottom py-2', lang('Sticky Bar'), array(
+        $container(array(
+            $el('div', 'd-flex flex-wrap align-items-center gap-2 gap-md-3', lang('Bar'), array(
+                $heading('h2', $title, 'h6 mb-0 me-auto'),
+                $para($line, 'small text-body-secondary mb-0 d-none d-md-block'),
+                $el('div', 'd-flex gap-2', lang('Buttons'), array(
+                    $link($primary[0], $primary[1], 'btn btn-primary btn-sm px-3'),
+                    $link($secondary[0], $secondary[1], 'btn btn-outline-secondary btn-sm px-3'),
+                )),
+            )),
+        )),
+    )), array('effect' => 'sticky'));
+};
+

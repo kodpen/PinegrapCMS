@@ -8820,13 +8820,18 @@
             // menu. The purpose is in the info (showMembers()) and on the
             // name's tooltip. On a phone the line keeps the way back, the
             // name and the menu, which then holds the rest.
+            //
+            // The header, the bars under it and the tabs are one card; the
+            // channel's colour is set on the card so every row of it (the
+            // tabs too) sees it: its border, a wash from the sign's side,
+            // the icon tile and the open tab.
+            var card = el('div', 'ws-channel-card');
             var head = el('div', 'ws-head ws-head-channel');
             head.appendChild(channelsToggle());
 
-            // The channel's colour on its icon tile and a thin stripe.
             if (channel.hex) {
-                head.style.setProperty('--ws-ch', channel.hex);
-                head.setAttribute('data-ws-colored', '1');
+                card.style.setProperty('--ws-ch', channel.hex);
+                card.setAttribute('data-ws-colored', '1');
             }
 
             head.appendChild(self.headTitle(channel));
@@ -8863,7 +8868,8 @@
 
             actions.appendChild(self.channelMenu());
             head.appendChild(actions);
-            center.appendChild(head);
+            card.appendChild(head);
+            center.appendChild(card);
 
             // The info beside it follows the channel shown (drawInfo()).
             if (self.infoOpen) {
@@ -8874,7 +8880,7 @@
                 var auditBar = el('div', 'alert theme-warning rounded-0 m-0 py-3 small');
                 auditBar.appendChild(icon('bi-shield-lock', 'me-1'));
                 auditBar.appendChild(document.createTextNode(t('audit_bar')));
-                center.appendChild(auditBar);
+                card.appendChild(auditBar);
             } else if (!channel.joined && channel.kind === 'public' && !self.era) {
                 var joinBar = el('div', 'alert theme-info rounded-0 m-0 py-3 small d-flex align-items-center gap-3');
                 joinBar.appendChild(el('span', 'flex-grow-1', t('not_joined')));
@@ -8883,7 +8889,7 @@
                     api('ws_channel_join', { channel_id: channel.id }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
                 });
                 joinBar.appendChild(join);
-                center.appendChild(joinBar);
+                card.appendChild(joinBar);
             }
 
             // A room a guest reads: who, where their link stands, and the
@@ -8891,12 +8897,12 @@
             center.classList.toggle('ws-guest-room', !!channel.guest && !channel.guest.ended);
 
             if (channel.guest) {
-                center.appendChild(self.guestBar(channel));
+                card.appendChild(self.guestBar(channel));
             }
 
             // A channel of the team that people outside it read.
             if (channel.shares) {
-                center.appendChild(self.shareBar(channel));
+                card.appendChild(self.shareBar(channel));
             }
 
             // An earlier version of the conversation: read as it was, with
@@ -8908,7 +8914,7 @@
                 var eraBack = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('era_back'), 'bi-arrow-return-left');
                 eraBack.addEventListener('click', function () { self.open(channel.id, 0); });
                 eraBar.appendChild(eraBack);
-                center.appendChild(eraBar);
+                card.appendChild(eraBar);
             }
 
             var tabs = el('div', 'ws-tabs');
@@ -8986,7 +8992,7 @@
                 }
             });
 
-            center.appendChild(tabs);
+            card.appendChild(tabs);
             self.drawTabMarks();
 
             window.requestAnimationFrame(function () {
@@ -9236,6 +9242,17 @@
             // only when the customer is or is tied to such an account.
             if (channel.sales_quote_url) {
                 item(t('sales_quote_new'), 'bi-file-earmark-plus', function () { window.location.href = channel.sales_quote_url; });
+            }
+
+            // A new e-mail from a mailbox that keeps its mail in this channel
+            // (assets/js/workspace_mail.js); the server says whether one does.
+            if (channel.mail_new && window.PGWsMail) {
+                item(t('mail_new'), 'bi-envelope-plus', function () {
+                    window.PGWsMail.compose(featureHelpers(), { channel: channel.id, sent: function () { self.sync(); } });
+                });
+            }
+
+            if (channel.sales_quote_url || (channel.mail_new && window.PGWsMail)) {
                 divider();
             }
 
@@ -9881,14 +9898,15 @@
             }
 
             var head = actions.closest('.ws-head-channel');
+            var card = head.closest('.ws-channel-card');
             var title = head.querySelector(':scope > .ws-head-title');
 
-            if (channel.hex) {
-                head.style.setProperty('--ws-ch', channel.hex);
-                head.setAttribute('data-ws-colored', '1');
-            } else {
-                head.style.removeProperty('--ws-ch');
-                head.removeAttribute('data-ws-colored');
+            if (card && channel.hex) {
+                card.style.setProperty('--ws-ch', channel.hex);
+                card.setAttribute('data-ws-colored', '1');
+            } else if (card) {
+                card.style.removeProperty('--ws-ch');
+                card.removeAttribute('data-ws-colored');
             }
 
             if (title) {
@@ -17062,8 +17080,11 @@
                     return items;
                 };
 
+                // Each kind of file is a card of its own: its title with the
+                // count, then the gallery or the list.
                 if (images.length) {
-                    pane.appendChild(el('div', 'ws-section-title', t('images') + ' · ' + images.length));
+                    var pictures = el('section', 'ws-file-group');
+                    pictures.appendChild(el('div', 'ws-section-title', t('images') + ' · ' + images.length));
                     var grid = el('div', 'ws-gallery');
 
                     images.forEach(function (message, index) {
@@ -17087,11 +17108,13 @@
                         grid.appendChild(tile);
                     });
 
-                    pane.appendChild(grid);
+                    pictures.appendChild(grid);
+                    pane.appendChild(pictures);
                 }
 
                 if (videos.length) {
-                    pane.appendChild(el('div', 'ws-section-title', t('videos') + ' · ' + videos.length));
+                    var films = el('section', 'ws-file-group');
+                    films.appendChild(el('div', 'ws-section-title', t('videos') + ' · ' + videos.length));
                     var reel = el('div', 'ws-gallery');
 
                     videos.forEach(function (message) {
@@ -17116,7 +17139,8 @@
                         reel.appendChild(tile);
                     });
 
-                    pane.appendChild(reel);
+                    films.appendChild(reel);
+                    pane.appendChild(films);
                 }
 
                 // A titled list of file rows: the sounds, then the documents.
@@ -17125,7 +17149,8 @@
                         return;
                     }
 
-                    pane.appendChild(el('div', 'ws-section-title', title + ' · ' + rows.length));
+                    var group = el('section', 'ws-file-group');
+                    group.appendChild(el('div', 'ws-section-title', title + ' · ' + rows.length));
                     var list = el('div', 'ws-file-list');
 
                     rows.forEach(function (message) {
@@ -17167,7 +17192,8 @@
                         list.appendChild(row);
                     });
 
-                    pane.appendChild(list);
+                    group.appendChild(list);
+                    pane.appendChild(group);
                 };
 
                 fileRows(t('voice_and_audio'), audios);
@@ -17178,7 +17204,7 @@
         drawTasks: function () {
             var self = this;
             var pane = self.pane;
-            var bar = el('div', 'pg-toolbar mb-3');
+            var bar = el('div', 'pg-toolbar ws-pane-toolbar mb-3');
             var status = select([['open', t('open_tasks')], ['closed', t('closed_tasks')], ['all', t('all_tasks')]], self.taskStatus || 'open');
             status.classList.add('w-auto');
             status.setAttribute('aria-label', t('task_status_filter'));
@@ -17195,7 +17221,9 @@
             bar.appendChild(add);
             pane.appendChild(bar);
 
-            var list = el('div');
+            // The channel's tasks are cards in a grid (CSS on .ws-task-grid);
+            // My tasks and a record's window draw the same rows as a list.
+            var list = el('div', 'ws-task-grid');
             pane.appendChild(list);
 
             api('ws_channel_tasks', { channel_id: self.channel.id, status: self.taskStatus || 'open' }).then(function (data) {
@@ -17207,6 +17235,20 @@
             var self = this;
             var pane = self.pane;
             var channel = self.channel;
+
+            // The summary is a card with Edit in its head; the customer and
+            // the time spent stand beside it on a wide screen, under it on a
+            // narrow one (.ws-summary-layout).
+            var layout = el('div', 'ws-summary-layout');
+            var card = el('section', 'card ws-summary-card');
+            var header = el('div', 'card-header d-flex align-items-center gap-3');
+            var heading = el('h3', 'h6 mb-0 me-auto');
+            heading.appendChild(icon('bi-journal-text', 'me-1'));
+            heading.appendChild(document.createTextNode(t('tab_summary')));
+            header.appendChild(heading);
+            card.appendChild(header);
+
+            var body = el('div', 'card-body');
             var view = el('div', 'ws-summary-view');
 
             if (channel.summary) {
@@ -17218,17 +17260,23 @@
                 view.appendChild(empty);
             }
 
-            pane.appendChild(view);
+            body.appendChild(view);
 
             if (channel.summary_updated) {
-                pane.appendChild(el('div', 'small fg-secondary mt-3', channel.summary_updated));
+                body.appendChild(el('div', 'small fg-secondary mt-3', channel.summary_updated));
             }
 
+            card.appendChild(body);
+            layout.appendChild(card);
+            pane.appendChild(layout);
+
             if (channel.can_post) {
-                var edit = button('btn btn-sm btn-outline theme-secondary mt-5', t('edit_summary'), 'bi-pencil');
+                var edit = button('btn btn-sm btn-outline theme-secondary', t('edit_summary'), 'bi-pencil');
                 edit.addEventListener('click', function () {
-                    clear(pane);
-                    pane.appendChild(el('p', 'small fg-secondary', t('summary_help')));
+                    // The editor opens inside the card, in place of the text.
+                    clear(body);
+                    edit.remove();
+                    body.appendChild(el('p', 'small fg-secondary', t('summary_help')));
 
                     // The formatted box the notes use: @ and # open the
                     // pickers, tags are chips, lists and tables are cards.
@@ -17247,7 +17295,7 @@
                         wrap.appendChild(area);
                     }
 
-                    pane.appendChild(wrap);
+                    body.appendChild(wrap);
 
                     var actions = el('div', 'd-flex gap-3 mt-3');
                     var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('save'), 'bi-check2');
@@ -17262,22 +17310,30 @@
                     cancel.addEventListener('click', function () { self.drawCenter(); });
                     actions.appendChild(save);
                     actions.appendChild(cancel);
-                    pane.appendChild(actions);
+                    body.appendChild(actions);
                     (rich ? rich.input : area).focus();
                 });
-                pane.appendChild(edit);
+                header.appendChild(edit);
             }
+
+            var side = el('div', 'ws-summary-side');
 
             // The customer the channel is about and where they stand, loaded
             // when the tab is opened (workspace_customer.js).
             if (window.PGWsCustomer && channel.customer) {
-                pane.appendChild(window.PGWsCustomer.card(channel, partHelpers()));
+                side.appendChild(window.PGWsCustomer.card(channel, partHelpers()));
             }
 
             // The time spent on the channel's tasks, loaded when the tab is
             // opened (workspace_task_time.js).
             if (window.PGWsTaskTime && CFG.task_time && CFG.task_time.ready) {
-                pane.appendChild(window.PGWsTaskTime.channelCard(channel, partHelpers()));
+                side.appendChild(window.PGWsTaskTime.channelCard(channel, partHelpers()));
+            }
+
+            if (side.firstChild) {
+                layout.appendChild(side);
+            } else {
+                layout.classList.add('ws-summary-alone');
             }
         },
 
@@ -26125,6 +26181,9 @@
                 startTimeline(root);
             } else if (CFG.mode === 'notes' && root) {
                 startNotes(root);
+            } else if (CFG.mode === 'mail' && root && window.PGWsMail) {
+                // The E-mails list and its reading pane (workspace_mail.js).
+                window.PGWsMail.screen(root, featureHelpers());
             } else if (CFG.mode === 'flows' && root) {
                 // The canvas lives in workspace_flow.js; it takes the team
                 // from here for its people picker.

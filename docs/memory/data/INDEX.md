@@ -9,7 +9,7 @@
 - comments-author-index.md: comments.idx_author (created_user_id, created_timestamp), 2026.11.0 step 11.0.36: why it exists, what reads it, how the step pauses, how it was checked
 - comments-table.md: The comments table: thread key, 2026.11.0 columns (reviews 11.0.14, parent_id 11.0.31), indexes and their readers, copy cost on MyISAM, code that copies or exports rows.
 - common-region-queries.md: Classic pages read <cregion> rows through pg_common_regions(): one query per nesting level per request, how a name finds its row (collation, lowest id), what the output must keep
-- config-table-no-varchar.md: The config table takes no new column since 11.0.145 (before that no VARCHAR, TEXT only): the InnoDB row-size reasons, the test that enforces it, config_text for new settings. [decision: decisions-made-schema-8.md]
+- config-table-no-varchar.md: The config table takes no new column since 11.0.145 (before that no VARCHAR, TEXT only): the InnoDB row-size reasons, the test that enforces it, config_text for new settings. [decision: decisions-made-schema-15.md, decisions-made-schema-8.md]
 - content-tables.md: Columns, joins and edit-screen URLs for page, pregion, cregion, dregion, forms/form_data, style, ads and comments; the form_data.id vs forms.id trap.
 - date-column-empty-comparison.md: Why DATE columns (ship_date, expiration_date, arrival_date) must be compared to '0000-00-00' and never to '', and what happens under strict mode and PHP 8.1.
 - db-helpers-and-error-contract.md: The db helpers (db, db_value, db_values, db_item, db_items, e, escape_like) and what a failed query does: helpers end the request, raw mysqli_query() and db_q() return false. [decision: decisions-made-product-39.md]
@@ -48,6 +48,7 @@
 - menu-tree-queries.md: Classic menus (get_menu_content(), get_menu_sequence()) read a menu once per request through pg_menu_tree(): two queries, printing order, children counted across menus, what the output must keep
 - orders-table-write-traps.md: Traps when INSERTing into orders, the next_order_number lock and where it is taken, when the Commerce settings save writes the next number, and the orders.type values.
 - slug-generation.md: Which function builds address/slug names for forms, products, files and pages, the two transliteration tables, the lowercase-order rule, and the files.name invariant.
+- sql-mysql8-reserved-words.md: A column or table alias that MySQL 8 reserves (stored, rank, row, groups…) runs on MariaDB and is a syntax error on MySQL 8; the guard test, the two Workspace queries it broke.
 - sql-silent-wrong-results.md: SQL that runs without an error but reads or writes the wrong thing: an INT or DATE compared to '', SET order, SELECT * replaced by a column list, columns a migration adds, table-specific traps.
 - submitted-form-delete-thread.md: What deleting a submitted form removes besides forms/form_data (comments, attachments, notifications, watchers, counters), the shared helper and the three delete paths.
 - table-engines-and-row-size.md: Table engines since 2026.4.8 (InnoDB, MyISAM left over the limits), why a write over several tables validates first, InnoDB's 8126-byte row rule, pg_innodb_row_estimate(), maintenance code.

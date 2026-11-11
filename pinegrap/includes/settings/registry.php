@@ -446,6 +446,63 @@ function pg_settings_categories()
             ),
         ),
 
+        // The Workspace's own settings, gated by the Workspace settings right
+        // rather than the manager role (pg_settings_category_open()). The
+        // cards come over from workspace_settings.php one at a time; until
+        // then each category links the ones still kept there.
+        'workspace_team' => array(
+            'label' => lang('Team and working hours'),
+            'group' => 'workspace',
+            'gate'  => 'workspace',
+            'icon'  => 'bi-people',
+            'description' => lang('The departments, the team, the working day and week, and the days off.'),
+            'sections' => array(
+                'pgset-ws-departments' => lang('Departments'),
+                'pgset-ws-people'      => lang('Team members'),
+                'pgset-ws-defaults'    => lang('Defaults'),
+                'pgset-ws-team-screen' => lang('On the Workspace Settings screen'),
+            ),
+            'keywords' => array(
+                'pgset-ws-departments' => pg_settings_keywords(lang('workspace, department, departments, team lead, own department, channel, archive')),
+                'pgset-ws-people'      => pg_settings_keywords(lang('workspace, team, team members, job title, hours a day, working days, not in the team')),
+                'pgset-ws-defaults'    => pg_settings_keywords(lang('workspace, working day, working days, hours, week, estimate, planning board, default')),
+                'pgset-ws-team-screen' => pg_settings_keywords(lang('workspace, holiday, holidays, days off, working calendar, calendar feed')),
+            ),
+            'lists' => array(
+                'ws_workdays' => 1,
+                'ws_people'   => 3,
+                'ws_dept'     => 3,
+            ),
+        ),
+
+        'workspace_assistants' => array(
+            'label' => lang('Assistants and agents'),
+            'group' => 'workspace',
+            'gate'  => 'workspace',
+            'icon'  => 'bi-robot',
+            'description' => lang('Claude, the agents, Pinegrap AI, the MCP servers and bulk changes.'),
+            'sections' => array(
+                'pgset-ws-assistants-screen' => lang('On the Workspace Settings screen'),
+            ),
+            'keywords' => array(
+                'pgset-ws-assistants-screen' => pg_settings_keywords(lang('workspace, claude, agent, agents, assistant, pinegrap ai, mcp, mcp server, bulk changes')),
+            ),
+        ),
+
+        'workspace_channels' => array(
+            'label' => lang('Channels, mail and voice'),
+            'group' => 'workspace',
+            'gate'  => 'workspace',
+            'icon'  => 'bi-chat-square-text',
+            'description' => lang('Channel templates, mailboxes, voice transcripts and GitHub links.'),
+            'sections' => array(
+                'pgset-ws-channels-screen' => lang('On the Workspace Settings screen'),
+            ),
+            'keywords' => array(
+                'pgset-ws-channels-screen' => pg_settings_keywords(lang('workspace, channel template, templates, mailbox, mailboxes, e-mail, voice, transcript, github')),
+            ),
+        ),
+
     );
 
     // The e-invoice card carries Turkish e-document providers only, and the
@@ -497,7 +554,108 @@ function pg_settings_groups()
         'security' => lang('Security'),
         'selling'  => lang('Selling'),
         'running'  => lang('Running the site'),
+        'workspace' => lang('Workspace'),
     );
+}
+
+
+/**
+ * Whether a reader may open a category.
+ *
+ * A category gated 'workspace' opens for a holder of the Workspace settings
+ * right and for nobody else: a manager kept out of the team is refused it,
+ * and a basic user holding the right opens it without being a manager. Every
+ * other category opens for a manager (role 0-2) alone. The dialog's list, its
+ * search, the page path and both save paths ask this one question. Pure.
+ *
+ * @param array $category an entry of pg_settings_categories()
+ * @param array $reader   pg_settings_reader(): manager, workspace (bool)
+ * @return bool
+ */
+function pg_settings_category_open($category, $reader)
+{
+    if (pg_settings_category_is_workspace($category)) {
+        return !empty($reader['workspace']);
+    }
+
+    return !empty($reader['manager']);
+}
+
+
+/**
+ * What decides which categories a reader opens: the manager role and the
+ * Workspace settings right (pg_settings_workspace_settings_allowed()).
+ *
+ * @param array $user the row validate_user() returned
+ * @return array manager, workspace (bool)
+ */
+function pg_settings_reader($user)
+{
+    return array(
+        'manager'   => isset($user['role']) && ((int) $user['role'] <= 2),
+        'workspace' => is_array($user) && pg_settings_workspace_settings_allowed($user),
+    );
+}
+
+
+/**
+ * The categories a reader may open, in their order.
+ *
+ * @param array      $user       the row validate_user() returned
+ * @param array|null $reader     pg_settings_reader(), read from $user when not given
+ * @param array|null $categories pg_settings_categories(), read when not given
+ * @return array key => category, as pg_settings_categories() returns them
+ */
+function pg_settings_categories_for($user, $reader = null, $categories = null)
+{
+    if (!is_array($reader)) {
+        $reader = pg_settings_reader($user);
+    }
+
+    $open = array();
+
+    foreach ((is_array($categories) ? $categories : pg_settings_categories()) as $key => $category) {
+
+        if (pg_settings_category_open($category, $reader)) {
+            $open[$key] = $category;
+        }
+    }
+
+    return $open;
+}
+
+
+/**
+ * Whether a reader may open one category; false for a key that is not one.
+ *
+ * @param string     $key
+ * @param array      $user   the row validate_user() returned
+ * @param array|null $reader pg_settings_reader(), read from $user when not given
+ * @return bool
+ */
+function pg_settings_may_open($key, $user, $reader = null)
+{
+    $category = pg_settings_category($key);
+
+    if ($category === null) {
+        return false;
+    }
+
+    return pg_settings_category_open($category, is_array($reader) ? $reader : pg_settings_reader($user));
+}
+
+
+/**
+ * Whether a category is one of the Workspace's, which reads nothing of the
+ * site settings' preparation (includes/settings/prep.php) and is refused in
+ * the Workspace's words. Pure.
+ *
+ * @param array|null $category an entry of pg_settings_categories()
+ * @return bool
+ */
+function pg_settings_category_is_workspace($category)
+{
+    return is_array($category) && isset($category['gate']) && ($category['gate'] === 'workspace');
 }
 
 
@@ -506,7 +664,8 @@ function pg_settings_groups()
  *
  * A heading with no category the reader may open is left out; one with a
  * single category keeps its heading. A category that names no known group
- * goes under the last heading rather than out of the list.
+ * goes under Running the site rather than out of the list: the Workspace
+ * heading holds the Workspace's own categories alone.
  *
  * @param array $categories as pg_settings_categories() returns them
  * @return array group key => array(label, categories: list of category keys)
@@ -514,8 +673,6 @@ function pg_settings_groups()
 function pg_settings_grouped($categories)
 {
     $groups = pg_settings_groups();
-    $keys = array_keys($groups);
-    $last = end($keys);
     $grouped = array();
 
     foreach ($groups as $group => $label) {
@@ -523,7 +680,7 @@ function pg_settings_grouped($categories)
     }
 
     foreach ($categories as $key => $category) {
-        $group = (isset($category['group']) && isset($groups[$category['group']])) ? $category['group'] : $last;
+        $group = (isset($category['group']) && isset($groups[$category['group']])) ? $category['group'] : 'running';
         $grouped[$group]['categories'][] = $key;
     }
 
@@ -753,6 +910,10 @@ function pg_settings_legacy_anchors()
         'pgset-maintenance' => array('maintenance', 'pgset-maintenance'),
         'pgset-backup'     => array('maintenance', 'pgset-backup'),
         'pgset-google-reviews' => array('api',    'pgset-google-reviews'),
+        // Workspace Settings cards moved into Team and working hours.
+        'ws-departments'   => array('workspace_team', 'pgset-ws-departments'),
+        'ws-people'        => array('workspace_team', 'pgset-ws-people'),
+        'ws-defaults'      => array('workspace_team', 'pgset-ws-defaults'),
     );
 }
 

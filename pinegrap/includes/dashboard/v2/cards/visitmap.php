@@ -5,8 +5,9 @@
  * The Visitor map card: where the period's visits came from. The home
  * country (the one most visits came from) drawn by province with a bubble
  * per place sized by its visits, when a map of it ships and its visits carry
- * cities (Cloudflare's CF-IPCity, includes/geo.php); otherwise the countries
- * as bars. The headline says how many visits came from abroad.
+ * cities (Cloudflare's CF-IPCity, includes/geo.php); otherwise the world map
+ * with the visitors' countries shaded by their share, the countries as bars
+ * under it. The headline says how many visits came from abroad.
  *
  * Read through pg_visitor_breakdown() (includes/fn/visitor_figures.php): the
  * country and city dimensions of the daily summary for whole past days, the
@@ -24,6 +25,40 @@ if (!defined('PG_DASHBOARD_V2')) {
 
 // How deep each list is read: the summary keeps a day's top 100 values.
 define('PG_DASHBOARD_V2_VISITMAP_DEPTH', 100);
+
+// The world map the card draws when no city can be placed.
+define('PG_DASHBOARD_V2_VISITMAP_WORLD', 'world-countries.svg');
+
+/**
+ * The world map's marks: each country with visits in one of four steps
+ * (pg_sales_map_steps(), quantiles, so one busy country does not leave the
+ * rest in the palest step) and its tip, "<country>: N visits". A country
+ * the map has no outline for keeps its bar and gets no mark (the renderer
+ * skips an id it cannot find). Pure apart from the country names.
+ *
+ * @param array    $by_country code => visits, most first
+ * @param callable $count      visits => "N visits"
+ * @return array shades (code => 1..4), places (id, text)
+ */
+function pg_dashboard_v2_visitmap_world($by_country, $count)
+{
+    $entries = array();
+
+    foreach ((array) $by_country as $code => $n) {
+        $entries[(string) $code] = array('total' => (int) $n);
+    }
+
+    $shades = array();
+    $places = array();
+
+    foreach (pg_sales_map_steps($entries) as $code => $step) {
+        $code = (string) $code;
+        $shades[$code] = (int) $step;
+        $places[] = array('id' => $code, 'text' => pg_geo_country_name($code) . ': ' . $count($entries[$code]['total']));
+    }
+
+    return array('shades' => $shades, 'places' => $places);
+}
 
 /**
  * Visits per country, keyed by the code the maps know it by. A value no
@@ -136,12 +171,30 @@ function pg_dashboard_v2_visitmap_data($countries, $cities, $period, $maps_url, 
 
     $home_name = ($home !== '') ? pg_geo_country_name($home) : '';
 
+    // No city to place but known countries: the world map, shaded.
+    $world = (!$bubbles && $known) ? pg_dashboard_v2_visitmap_world($by_country, $count) : array('shades' => array(), 'places' => array());
+
+    if ($bubbles) {
+        $map_url = $maps_url . $maps[$home]['file'];
+        $map_label = lang(array('string' => 'Visits by city in {var:1}', 'vars' => $home_name));
+    } elseif ($world['shades']) {
+        $map_url = $maps_url . PG_DASHBOARD_V2_VISITMAP_WORLD;
+        $map_label = lang('Visits by country');
+    } else {
+        $map_url = '';
+        $map_label = '';
+    }
+
     return array(
         'figure'     => pg_format_number($visits, 0),
         'sub'        => implode(' · ', $sub),
-        'map_url'    => $bubbles ? $maps_url . $maps[$home]['file'] : '',
-        'map_label'  => $bubbles ? lang(array('string' => 'Visits by city in {var:1}', 'vars' => $home_name)) : '',
+        'map'        => $bubbles ? 'region' : ($world['shades'] ? 'world' : ''),
+        'map_url'    => $map_url,
+        'map_label'  => $map_label,
         'bubbles'    => $bubbles,
+        'shades'     => (object) $world['shades'],
+        'places'     => $world['places'],
+        'legend'     => $world['shades'] ? array(lang('Few'), lang('Many')) : array(),
         'rows_title' => $bubbles ? lang('Cities') : lang('Countries'),
         'rows'       => $rows,
         'none'       => $known ? '' : lang('No visit in this period has a known location.'),

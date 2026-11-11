@@ -231,6 +231,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     $pg_theme_links = ($style_layout === 'visual_designer' && function_exists('pg_design_theme_links'))
         ? pg_design_theme_links($row['style_look'] ?? '', $row['style_palette'] ?? '', $row['style_framework'] ?? '')
         : '';
+    // The design's colour mode (2026.11.0, 11.0.186): light, dark or the
+    // visitor's system on <html>; '' (and a database before the column)
+    // leaves the page as it was.
+    $pg_color_mode = ($style_layout === 'visual_designer' && function_exists('pg_design_color_mode_key'))
+        ? pg_design_color_mode_key($row['style_color_mode'] ?? '')
+        : '';
     $style_theme_id = $row['theme_id'] ?? '';
     $style_theme_name = $row['style_theme_name'] ?? '';
 
@@ -378,11 +384,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     }
 
                     if ($_ctype === 'external-css') {
-                        $_url = trim(isset($_cf['content']) ? $_cf['content'] : '');
-                        // Accept absolute URLs (http/https) and root-relative URLs (/) —
-                        // OUTPUT_PATH is a root-relative path like "/" so file picker URLs
-                        // come back as "/filename.css" which filter_var rejects.
-                        if ($_url !== '' && (filter_var($_url, FILTER_VALIDATE_URL) || strpos($_url, '/') === 0)) {
+                        // {path} and {software_directory} filled in, then checked.
+                        $_url = pg_design_asset_address(isset($_cf['content']) ? $_cf['content'] : '', PATH, SOFTWARE_DIRECTORY);
+                        if ($_url !== '') {
                             $_css_links .= '<link rel="stylesheet" href="' . htmlspecialchars($_url, ENT_QUOTES, 'UTF-8') . '">' . "\n";
                         }
                     } else {
@@ -466,11 +470,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     }
 
                     if ($_jtype === 'external-js') {
-                        $_url = trim(isset($_jf['content']) ? $_jf['content'] : '');
-                        // Accept absolute URLs (http/https) and root-relative URLs (/) —
-                        // OUTPUT_PATH is a root-relative path like "/" so file picker URLs
-                        // come back as "/filename.js" which filter_var rejects.
-                        if ($_url !== '' && (filter_var($_url, FILTER_VALIDATE_URL) || strpos($_url, '/') === 0)) {
+                        // {path} and {software_directory} filled in, then checked.
+                        $_url = pg_design_asset_address(isset($_jf['content']) ? $_jf['content'] : '', PATH, SOFTWARE_DIRECTORY);
+                        if ($_url !== '') {
                             $_js_srcs .= '<script' . (!empty($_jf['module']) ? ' type="module"' : '') . ' src="' . htmlspecialchars($_url, ENT_QUOTES, 'UTF-8') . '"></script>' . "\n";
                         }
                     } elseif ($_jtype === 'json') {
@@ -634,6 +636,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // placed on the page (pg_theme_switcher_inject()). Not in an e-mail.
     if (!$email && strpos($content, 'data-pg-theme-switcher') !== false && function_exists('pg_theme_switcher_inject')) {
         $content = pg_theme_switcher_inject($content);
+    }
+
+    // ── Colour mode ─────────────────────────────────────────────────────────────
+    // The design's mode on <html>, with the few lines in <head> that let a
+    // visitor's stored theme choice win (pg_design_color_mode_apply()). Not
+    // in an e-mail.
+    if (!$email && $pg_color_mode !== '') {
+        $content = pg_design_color_mode_apply($content, $pg_color_mode);
     }
 
     // ── Sideways rows ───────────────────────────────────────────────────────────
@@ -6275,9 +6285,25 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     } else {
         // For system styles, do NOT fall back to the globally activated theme —
         // system styles are expected to be self-contained. Leaving $stylesheet
-        // empty means no theme CSS is injected.
+        // empty means no theme CSS is injected. A design moved from a
+        // classic style is the exception below.
         if ($style_type == 'system') {
             $stylesheet = '';
+
+            // A visual design moved from a classic style keeps the activated
+            // theme its classic head printed here, unless one of its
+            // stylesheet rows links that file already.
+            if ($style_layout == 'visual_designer') {
+                require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_design_theme.php');
+                $pg_classic_theme = pg_legacy_design_classic_theme($style_id, $pg_design_fw['key'], $device_type, $page_custom_css, $page_id);
+                if ($pg_classic_theme) {
+                    $theme_id = $pg_classic_theme['id'];
+                    $theme_name = $pg_classic_theme['name'];
+                    $stylesheet =
+                        '<link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . h($theme_name) .
+                            '?v=' . @filemtime(FILE_DIRECTORY_PATH . '/' . $theme_name) . '">';
+                }
+            }
 
         // For custom (and any legacy) styles, preserve the original behavior:
         // fall back to the activated desktop/mobile theme so existing sites

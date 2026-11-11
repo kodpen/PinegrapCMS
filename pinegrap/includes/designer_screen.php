@@ -230,6 +230,7 @@ function pg_designer_screen_render($ctx)
     $sd_proto_share = pg_page_draft_ready() && pg_proto_links_ready();
 
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_design_theme.php');
 
     // The order and groups of the tabs, for the pages listed above.
     $tab_page_ids = array();
@@ -372,6 +373,11 @@ function pg_designer_screen_render($ctx)
         // loads the framework's files into the canvas and offers the
         // Bootstrap palette only when the framework is Bootstrap.
         'framework'     => $sd_framework['key'],
+        // A design moved from a classic style loads the theme its classic
+        // head printed (pg_legacy_design_classic_theme()) while no Theme
+        // file is chosen: the canvas loads it and the hint under "Theme
+        // file" names it. Null for any other design.
+        'themeFile'     => pg_legacy_design_theme_js($style_id, $sd_framework['key'], isset($style['style_custom_css']) ? $style['style_custom_css'] : ''),
         'frameworkInfo' => array(
             'label'     => $sd_framework['label'],
             'css'       => $sd_framework['css'],
@@ -497,6 +503,8 @@ function pg_designer_screen_render($ctx)
                 <!-- The look and the colour palette (Settings, Design). -->
                 <input type="hidden" name="style_look" id="sd-style-look" value="' . h(isset($style['look']) ? pg_design_look_key($style['look']) : '') . '">
                 <input type="hidden" name="style_palette" id="sd-style-palette" value="' . h(isset($style['palette']) ? pg_design_palette_key($style['palette']) : '') . '">
+                <!-- The colour mode (Settings, Theme): light, dark, auto or empty. -->
+                <input type="hidden" name="style_color_mode" id="sd-style-color-mode" value="' . h(isset($style['color_mode']) ? pg_design_color_mode_key($style['color_mode']) : '') . '">
 
                 <div class="sd-wrapper">
                     <!-- One toolbar. Left: what you do to pages (add, settings,
@@ -2100,7 +2108,10 @@ function pg_designer_template_theme_picker()
     $n = 0;
     foreach ($looks as $key => $l) {
         $id = 'sd-tpl-look-' . (++$n);
-        $icon = ($key === '@template') ? '<i class="bi bi-stars me-1" aria-hidden="true"></i>' : '';
+        // Each look is drawn small before its name (pg_design_look_drawing()).
+        $icon = ($key === '@template')
+            ? '<i class="bi bi-stars me-1" aria-hidden="true"></i>'
+            : pg_design_look_drawing($key === '' ? null : $l['preview']);
         $look_btns .= '<input type="radio" class="btn-check" name="sd_tpl_look" id="' . $id . '" value="' . h($key) . '"' . ($key === '@template' ? ' checked' : '') . ' autocomplete="off">'
                     . '<label class="btn btn-outline theme-secondary rounded-pill no-popover" for="' . $id . '" data-bs-toggle="tooltip" title="' . h($l['description']) . '">' . $icon . h($l['name']) . '</label>';
     }
@@ -2336,7 +2347,8 @@ function pg_designer_settings_modal($ctx)
             <h3 class="sd-settings-group-title">' . lang('Theme file') . '</h3>
             ' . pg_designer_setting(lang('Theme file'),
                 lang('A stylesheet from the file manager, loaded after everything else so it wins over the look and the palette. Shown in the Styles list and the Themes panel.'),
-                $liveform->output_field(array('type'=>'select', 'name'=>'theme_id', 'id'=>'sd-style-theme-file', 'options'=>$theme_options, 'class'=>'form-control form-control-sm')),
+                $liveform->output_field(array('type'=>'select', 'name'=>'theme_id', 'id'=>'sd-style-theme-file', 'options'=>$theme_options, 'class'=>'form-control form-control-sm')) . '
+                <div class="sd-set-status" id="sd-theme-file-status" aria-live="polite"></div>',
                 array('for' => 'sd-style-theme-file', 'id' => 'sd-theme-file-row')) . '
         </section>';
 
@@ -3207,6 +3219,11 @@ function pg_designer_screen_post($ctx)
         'look'                              => isset($_POST['style_look']) ? (string)$_POST['style_look'] : '',
         'palette'                           => isset($_POST['style_palette']) ? (string)$_POST['style_palette'] : '',
     );
+    // The colour mode: an editor loaded before the column existed posts
+    // none, and save_system_style() then leaves the stored mode alone.
+    if (isset($_POST['style_color_mode'])) {
+        $style_data['color_mode'] = (string)$_POST['style_color_mode'];
+    }
     // The design's meta tags: the hidden input exists only where the column
     // does (pg_designer_meta_tags_group()), and save_system_style() leaves
     // the stored list alone when the key is missing.

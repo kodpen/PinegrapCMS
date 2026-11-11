@@ -932,6 +932,20 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --pg-tint-hover: rgba(128, 128, 128, 0.18);
   --pg-tint-soft: rgba(128, 128, 128, 0.06);
   --pg-rule: rgba(128, 128, 128, 0.16);
+
+  /* A bell row's module tag (pg_bell_row()): the hues of the dashboard's
+     Next up tags (.pg-dash-queue-tag[data-module] in pg_dash.src.css), held
+     equal by tests/bell_row_test.php. System is the dashboard's neutral. */
+  --pg-bell-tag-shop-bg: rgba(251, 191, 36, .16);
+  --pg-bell-tag-shop-fg: #b45309;
+  --pg-bell-tag-erp-bg: rgba(248, 113, 113, .14);
+  --pg-bell-tag-erp-fg: #b91c1c;
+  --pg-bell-tag-content-bg: rgba(217, 70, 239, .14);
+  --pg-bell-tag-content-fg: #a21caf;
+  --pg-bell-tag-team-bg: rgba(167, 139, 250, .18);
+  --pg-bell-tag-team-fg: #6d28d9;
+  --pg-bell-tag-system-bg: rgba(148, 163, 184, .16);
+  --pg-bell-tag-system-fg: var(--pg-fg-2);
   --pg-rule-strong: rgba(128, 128, 128, 0.18);
   --pg-rule-dashed: rgba(128, 128, 128, 0.35);
   --pg-scrollbar-thumb: #939393;
@@ -1000,6 +1014,12 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --pg-tint-hover: rgba(255, 255, 255, 0.1);
   --pg-tint-soft: rgba(255, 255, 255, 0.04);
   --pg-scrollbar-thumb: #5e5e5e;
+
+  /* The bell's module tags: the dashboard's dark ink on the same fills. */
+  --pg-bell-tag-shop-fg: #fde68a;
+  --pg-bell-tag-erp-fg: #fecaca;
+  --pg-bell-tag-content-fg: #f0abfc;
+  --pg-bell-tag-team-fg: #c4b5fd;
 
   --pg-body-bg-rgb: 16, 17, 20;
   --pg-navbar-bg-rgb: 14, 14, 14;
@@ -4399,70 +4419,12 @@ a.link-top-row {
   min-height: 6rem;
 }
 
-#notifications .list-group-item .notification-description {
-  line-height: 0.9375rem;
-  font-size: 0.8125rem;
-  padding: 0 5px;
-  margin: 0;
-  margin-bottom: 0.3rem;
-  border-radius: var(--pg-radius-sm);
-  display: -webkit-box;
-  max-width: 100%;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-#notifications .list-group-item .notification-title {
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-#notifications .list-group-item.success .notification-title,
-#notifications .list-group-item.new.success .notification-title,
-#notifications .list-group-item.new .notification-title {
-  color: var(--pg-success-fg-emphasis);
-}
-
-#notifications .list-group-item.warning .notification-title,
-#notifications .list-group-item.new.warning .notification-title {
+#notifications .list-group-item.warning .notification-title {
   color: var(--pg-warning-fg-emphasis);
 }
 
-#notifications .list-group-item.error .notification-title,
-#notifications .list-group-item.new.error .notification-title {
+#notifications .list-group-item.error .notification-title {
   color: var(--pg-danger-fg-emphasis);
-}
-
-#notifications .notification-card {
-  position: relative;
-}
-
-#notifications .list-group-item.new .notification-card:before,
-#notifications .list-group-item.new.warning .notification-card:before,
-#notifications .list-group-item.new.error .notification-card:before {
-  content: "";
-  width: 5px;
-  height: 1rem;
-  background-color: var(--pg-success);
-  display: block;
-  position: absolute;
-  top: 1rem;
-  border-radius: var(--pg-radius-sm);
-  left: 2px;
-}
-
-#notifications .list-group-item.new.warning .notification-card:before {
-  background-color: var(--pg-warning);
-}
-
-#notifications .list-group-item.new.error .notification-card:before {
-  background-color: var(--pg-danger);
-}
-
-#notifications .list-group-item.new.viewed .notification-card:before {
-  opacity: 0.3;
 }
 
 /*Material-icons*/
@@ -4566,8 +4528,252 @@ a.link-top-row {
 }
 /* An older run hangs under its newest. */
 #notifications .software_notification[data-pg-bell-fold] .notification-card {
-  margin-left: 0.75rem;
+  margin-left: 0.875rem;
+  padding-left: 0.75rem;
   border-left: 2px solid var(--pg-border-color-translucent);
+}
+
+/* A bell row drawn as the dashboard's Next up row (pg_bell_row()): the
+   module's tag, the title over one second line, then the one button, the
+   unread dot and the row's menu. Day headings stand over the rows. */
+#notifications .pg-bell-list {
+  padding-bottom: 0.25rem;
+}
+#notifications .pg-bell-day {
+  padding: 0.75rem 0.875rem 0.25rem;
+  color: var(--pg-fg-3);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  list-style: none;
+}
+#notifications .pg-bell-day.pg-bell-off {
+  display: none;
+}
+#notifications .pg-bell-row {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--pg-fg-body);
+}
+#notifications .pg-bell-row + .pg-bell-row .pg-bell-card {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+#notifications .pg-bell-card {
+  display: grid;
+  grid-template-columns: 3.75rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.5rem 0.625rem 0.875rem;
+}
+#notifications .pg-bell-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.125rem;
+  padding: 0 0.25rem;
+  overflow: hidden;
+  border-radius: 0.625rem;
+  background: var(--pg-bell-tag-system-bg);
+  color: var(--pg-bell-tag-system-fg);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#notifications .pg-bell-tag[data-module="shop"] {
+  background: var(--pg-bell-tag-shop-bg);
+  color: var(--pg-bell-tag-shop-fg);
+}
+#notifications .pg-bell-tag[data-module="erp"] {
+  background: var(--pg-bell-tag-erp-bg);
+  color: var(--pg-bell-tag-erp-fg);
+}
+#notifications .pg-bell-tag[data-module="content"] {
+  background: var(--pg-bell-tag-content-bg);
+  color: var(--pg-bell-tag-content-fg);
+}
+#notifications .pg-bell-tag[data-module="team"] {
+  background: var(--pg-bell-tag-team-bg);
+  color: var(--pg-bell-tag-team-fg);
+}
+#notifications .pg-bell-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+#notifications .pg-bell-title {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pg-fg-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+#notifications .pg-bell-row.new .pg-bell-title {
+  font-weight: 700;
+}
+#notifications button.pg-bell-title:hover {
+  text-decoration: underline;
+}
+/* The second line wraps like the title: an order's number and total stay
+   readable in the narrow bell instead of ending in an ellipsis. */
+#notifications .pg-bell-sub {
+  max-width: 100%;
+  color: var(--pg-fg-3);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+#notifications .pg-bell-time {
+  white-space: nowrap;
+}
+#notifications .pg-bell-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.125rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pg-primary-fg-emphasis);
+  font-size: 0.75rem;
+}
+#notifications .pg-bell-side {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+#notifications .pg-bell-act {
+  display: inline-flex;
+  align-items: center;
+  height: 2.125rem;
+  margin-right: 0.25rem;
+  padding: 0 0.625rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: 0.5625rem;
+  background: var(--pg-tint);
+  color: var(--pg-fg-body);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+#notifications .pg-bell-act:hover {
+  border-color: var(--pg-primary);
+  background: var(--pg-tint-hover);
+}
+/* The unread dot is a button ("Mark as read"); a read row keeps its place. */
+#notifications .pg-bell-dot {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 2.125rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.5rem;
+  background: none;
+}
+#notifications button.pg-bell-dot::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--pg-primary);
+}
+#notifications button.pg-bell-dot:hover {
+  background: var(--pg-tint-hover);
+}
+#notifications .pg-bell-row.warning button.pg-bell-dot::before {
+  background: var(--pg-warning);
+}
+#notifications .pg-bell-row.error button.pg-bell-dot::before {
+  background: var(--pg-danger);
+}
+#notifications .pg-bell-menu-wrap {
+  position: relative;
+}
+#notifications .pg-bell-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2.125rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.5rem;
+  background: none;
+  color: var(--pg-fg-3);
+}
+#notifications .pg-bell-menu-toggle:hover,
+#notifications .pg-bell-menu-toggle[aria-expanded="true"] {
+  background: var(--pg-tint-hover);
+  color: var(--pg-fg-body);
+}
+#notifications .pg-bell-menu {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  z-index: 5;
+  min-width: 11rem;
+  padding: 0.25rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: 0.625rem;
+  background: var(--pg-bg-body);
+  box-shadow: var(--pg-shadow);
+}
+#notifications .pg-bell-menu.pg-bell-menu-up {
+  top: auto;
+  bottom: calc(100% + 0.25rem);
+}
+#notifications .pg-bell-menu[hidden],
+#notifications .pg-bell-menu-item[hidden] {
+  display: none;
+}
+#notifications .pg-bell-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.375rem 0.625rem;
+  border: 0;
+  border-radius: 0.375rem;
+  background: none;
+  color: var(--pg-fg-body);
+  font-size: 0.8125rem;
+  text-align: start;
+  white-space: nowrap;
+}
+#notifications .pg-bell-menu-item:hover {
+  background: var(--pg-tint-hover);
+}
+#notifications .pg-bell-menu-item.pg-bell-delete {
+  color: var(--pg-danger-fg-emphasis);
+}
+#notifications :is(.pg-bell-title, .pg-bell-act, .pg-bell-dot, .pg-bell-menu-toggle, .pg-bell-menu-item, .pg-bell-more):focus-visible {
+  outline: 2px solid var(--pg-primary);
+  outline-offset: 1px;
+}
+/* A phone: the tag stands over the text, as on the dashboard. */
+@media (max-width: 639.98px) {
+  #notifications .pg-bell-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 0.375rem;
+  }
+  #notifications .pg-bell-tag {
+    grid-column: 1 / -1;
+    justify-self: start;
+    height: 1.5rem;
+    padding: 0 0.5rem;
+  }
 }
 /* A workspace row's icon, in the workspace's colour. */
 #notifications .pg-bell-glyph {
@@ -10785,6 +10991,87 @@ body.pg-side-panel-open .pg-chat-launcher {
   .pg-sm-progress::after { animation: none; }
 }
 
+/* ── a card's drawer ───────────────────────────────────────────────────────
+   A panel of the dialog (includes/settings/drawer.php), not a second dialog:
+   it slides in from the dialog's right edge over the pane, which keeps its
+   values under it. The dialog is fixed in the top layer, so it is the box the
+   drawer is placed in, and its overflow clips the drawer while it is out.
+   Visibility is not timed on the way in, so the focus can land at once. */
+.pg-sm-drawer {
+  position: absolute;
+  z-index: 5;
+  inset-block: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(42rem, 100%);
+  min-height: 0;
+  border-left: var(--pg-border-width) solid var(--pg-border-color);
+  background: var(--pg-bg-body);
+  box-shadow: var(--pg-shadow-lg);
+  transform: translateX(100%);
+  transition: transform .2s ease-out, visibility 0s linear .2s;
+  visibility: hidden;
+}
+.pg-sm-drawer.is-open {
+  transform: none;
+  transition: transform .2s ease-out, visibility 0s linear 0s;
+  visibility: visible;
+}
+.pg-sm-drawer:focus { outline: 0; }
+.pg-sm-drawer-head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: 1rem 1.25rem .75rem;
+  border-bottom: var(--pg-border-width) solid var(--pg-border-color-translucent);
+}
+.pg-sm-drawer-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+/* Scrolls on its own; a long command wraps or scrolls inside its field. */
+.pg-sm-drawer-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 1.25rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+}
+/* Tapping beside the drawer closes it; the pane shows dimmed through. */
+.pg-sm-dscrim {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  background: color-mix(in srgb, #000 30%, transparent);
+  opacity: 0;
+  transition: opacity .2s linear;
+  pointer-events: none;
+}
+.pg-sm.is-drawer-open .pg-sm-dscrim {
+  opacity: 1;
+  pointer-events: auto;
+}
+@media (max-width: 575.98px) {
+  .pg-sm-drawer { width: 100%; }
+  .pg-sm-drawer-head { padding-inline: .875rem; }
+  .pg-sm-drawer-body { padding: 1rem .875rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-sm-drawer,
+  .pg-sm-dscrim { transition: none; }
+}
+/* The same content in Bootstrap's drawer on the page path
+   (settings_maintenance.php and the like, with no settings dialog around it). */
+.pg-set-drawer { --pg-drawer-width: min(42rem, 100vw); }
+
 /* ── Dashboard sales map (widget 1) ─────────────────────────────────────────
    The left panel of a two-track card: a period head and the outlines, with the
    period and map switches in a menu in the corner of them. The right panel is a
@@ -13004,14 +13291,11 @@ html[data-bs-theme="dark"] .ws-group-icon {
   font-size: .95rem;
   font-weight: 400;
 }
-.ws-head[data-ws-colored] {
-  box-shadow: inset 0 3px 0 var(--ws-ch);
-}
-.ws-head[data-ws-colored] .ws-head-icon {
+.ws-channel-card[data-ws-colored] .ws-head-icon {
   background: color-mix(in srgb, var(--ws-ch) 16%, transparent);
   color: var(--ws-ch);
 }
-html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
+html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-head-icon {
   background: color-mix(in srgb, var(--ws-ch) 26%, transparent);
 }
 .ws-head-title .ws-topic {
@@ -13113,6 +13397,88 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   overscroll-behavior: contain;
   padding: var(--ws-space-3, .75rem) var(--ws-space-4, 1rem);
 }
+/* The channel's shell (drawCenter()): the header, the bars under it (audit
+   or join, guest, share, era) and the tabs are one card, with no rule
+   between its rows. A channel with a colour (--ws-ch, set on the card so
+   the tabs see it too) tints the border and lays a soft wash from the side
+   its sign stands on; one without keeps a plain card. The strengths are
+   custom properties so the dark theme and right to left change only them. */
+.ws-channel-card {
+  flex-shrink: 0;
+  margin: var(--ws-space-3, .75rem) var(--ws-space-3, .75rem) 0;
+  border: 1px solid var(--pg-border-color);
+  border-radius: .875rem;
+  background: var(--pg-card-bg);
+}
+.ws-channel-card[data-ws-colored] {
+  --ws-wash-from: to right;
+  --ws-wash: 15%;
+  --ws-wash-mid: 5%;
+  --ws-edge: 26%;
+  border-color: color-mix(in srgb, var(--ws-ch) var(--ws-edge), var(--pg-border-color));
+  background:
+    linear-gradient(var(--ws-wash-from), color-mix(in srgb, var(--ws-ch) var(--ws-wash), transparent) 0%, color-mix(in srgb, var(--ws-ch) var(--ws-wash-mid), transparent) 38%, transparent 70%),
+    var(--pg-card-bg);
+}
+[dir="rtl"] .ws-channel-card[data-ws-colored] {
+  --ws-wash-from: to left;
+}
+html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] {
+  --ws-wash: 22%;
+  --ws-wash-mid: 8%;
+  --ws-edge: 40%;
+}
+.ws-channel-card > .ws-head {
+  border-bottom: 0;
+}
+/* A bar is a tinted row of the card: no border of its own. */
+.ws-channel-card > .alert {
+  border: 0;
+}
+.ws-channel-card > .ws-tabs {
+  gap: .3rem;
+  padding: .45rem 1rem .6rem;
+  border-bottom: 0;
+}
+.ws-channel-card > .ws-head + .ws-tabs {
+  padding-top: 0;
+}
+/* Tabs are pills; the open one is filled, in the channel's colour when it
+   has one. */
+.ws-channel-card .ws-tabs button {
+  padding: .3rem .75rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: .8125rem;
+  line-height: 1.4;
+}
+.ws-channel-card .ws-tabs button:hover {
+  background: var(--pg-bg-2);
+}
+.ws-channel-card .ws-tabs button.active {
+  --ws-tab-fill: 14%;
+  border-color: rgba(var(--ws-accent-rgb), .35);
+  background: rgba(var(--ws-accent-rgb), .14);
+  color: var(--pg-fg-emphasis);
+}
+.ws-channel-card[data-ws-colored] .ws-tabs button.active {
+  border-color: color-mix(in srgb, var(--ws-ch) 45%, transparent);
+  background: color-mix(in srgb, var(--ws-ch) var(--ws-tab-fill), transparent);
+}
+html[data-bs-theme="dark"] .ws-channel-card .ws-tabs button.active {
+  --ws-tab-fill: 26%;
+  border-color: rgba(var(--ws-accent-rgb), .5);
+  background: rgba(var(--ws-accent-rgb), .26);
+}
+html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.active {
+  border-color: color-mix(in srgb, var(--ws-ch) 60%, transparent);
+  background: color-mix(in srgb, var(--ws-ch) var(--ws-tab-fill), transparent);
+}
+/* The strip scrolls sideways and would clip a ring drawn outside a pill. */
+.ws-channel-card .ws-tabs button:focus-visible {
+  outline: 2px solid var(--ws-accent);
+  outline-offset: -2px;
+}
 /* Only the pane gives way when the screen is short: the header, the tabs and
    the composer keep their height (the tabs scroll sideways, so without this
    they were squeezed to a sliver). */
@@ -13137,20 +13503,18 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 .ws-pane-messages {
   padding-bottom: .25rem;
 }
+/* The day a conversation turns to: a chip in the middle, not a rule across
+   the pane. */
 .ws-day {
-  display: flex;
-  align-items: center;
-  gap: .75rem;
-  margin: .9rem 0 .4rem;
+  display: block;
+  width: fit-content;
+  margin: .9rem auto .4rem;
+  padding: .15rem .7rem;
+  border-radius: 999px;
+  background: var(--pg-bg-2);
   font-size: .75rem;
   font-weight: 600;
   color: var(--pg-fg-2);
-}
-.ws-day::before,
-.ws-day::after {
-  content: "";
-  flex: 1 1 auto;
-  border-top: 1px solid var(--pg-border-color-translucent);
 }
 .ws-msg {
   position: relative;
@@ -13306,28 +13670,41 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   background: color-mix(in srgb, var(--pg-info) 15%, transparent);
   color: var(--pg-info-fg-emphasis);
 }
-.ws-pane-decisions > .ws-msg-decision,
-.ws-pane-decisions > .ws-msg-note {
-  border-left: 3px solid var(--pg-success);
-}
-.ws-pane-decisions > .ws-msg-note {
-  border-left-color: var(--pg-info);
-}
-/* On the Decisions tab each one is a card of its own, apart from the next:
-   in the conversation they keep the rhythm of the messages around them. */
+/* On the Decisions tab each one is a card of its own in a grid that fills
+   the pane (one column on a phone): in the conversation they keep the rhythm
+   of the messages around them. A decision keeps its green edge and a note
+   its blue one, on the side reading starts from. */
 .ws-pane-decisions {
-  display: flex;
-  flex-direction: column;
-  gap: .6rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  align-items: start;
+  gap: .75rem;
+}
+.ws-pane-decisions > :is(.ws-empty, .ws-skeleton) {
+  grid-column: 1 / -1;
 }
 .ws-pane-decisions > .ws-msg {
   margin: 0;
-  padding: .65rem .85rem;
-  border-top: 1px solid var(--pg-border-color-translucent);
-  border-right: 1px solid var(--pg-border-color-translucent);
-  border-bottom: 1px solid var(--pg-border-color-translucent);
-  border-radius: var(--ws-radius);
-  background: var(--pg-bg-body);
+  padding: .7rem .9rem;
+  /* The start edge is left to the kind of message (decision, note, status
+     update), which draws it in its colour. */
+  border-block: 1px solid var(--pg-border-color);
+  border-inline-end: 1px solid var(--pg-border-color);
+  border-radius: .875rem;
+  background: var(--pg-card-bg);
+}
+/* A card is narrower than the conversation: its name, time, tag and the
+   way back to the conversation wrap rather than run past the edge. */
+.ws-pane-decisions > .ws-msg .ws-msg-meta {
+  flex-wrap: wrap;
+  row-gap: .15rem;
+}
+.ws-pane-decisions > .ws-msg-decision,
+.ws-pane-decisions > .ws-msg-note {
+  border-inline-start: 3px solid var(--pg-success);
+}
+.ws-pane-decisions > .ws-msg-note {
+  border-inline-start-color: var(--pg-info);
 }
 /* ── Workspace: status updates and check-ins (assets/js/workspace_status.js) ── */
 .ws-msg-status {
@@ -14682,7 +15059,7 @@ a.ws-chip:hover {
 .ws-composer {
   border: 1px solid var(--pg-border-color);
   border-radius: var(--ws-radius);
-  background: var(--pg-bg-body);
+  background: var(--pg-card-bg);
   padding: .45rem .55rem .35rem;
   box-shadow: var(--ws-shadow);
   transition: border-color .15s ease, box-shadow .15s ease;
@@ -15354,6 +15731,165 @@ a.ws-chip:hover {
   left: 0;
   width: min(26rem, 100%);
 }
+/* The E-mails screen (workspace_mail.php): the list, and the reading pane
+   beside it once a row is open; on a phone the pane takes the list's
+   place. */
+.ws-mail-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ws-space-3);
+  align-items: start;
+}
+.ws-mail-reading .ws-mail-columns {
+  grid-template-columns: minmax(18rem, 2fr) minmax(0, 3fr);
+}
+.ws-mail-rows {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius-sm);
+  overflow: hidden;
+}
+.ws-mail-row {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+  padding: .55rem .75rem;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+  color: var(--pg-fg-body);
+  text-decoration: none;
+}
+.ws-mail-row:last-child {
+  border-bottom: 0;
+}
+.ws-mail-row:hover {
+  background: var(--pg-bg-1);
+}
+.ws-mail-row[aria-current] {
+  background: var(--ws-soft);
+}
+.ws-mail-row-head {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-width: 0;
+}
+.ws-mail-who,
+.ws-mail-subject,
+.ws-mail-snippet {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-mail-who {
+  flex: 1 1 auto;
+}
+.ws-mail-row .ws-mail-time {
+  flex: 0 0 auto;
+  font-size: .78rem;
+  color: var(--pg-fg-2);
+}
+.ws-mail-snippet,
+.ws-mail-row-meta {
+  font-size: .8rem;
+  color: var(--pg-fg-2);
+}
+.ws-mail-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem .6rem;
+}
+/* Unread: the name and subject in bold, and a bar in the accent. */
+.ws-mail-unread {
+  box-shadow: inset 3px 0 0 var(--ws-accent);
+}
+.ws-mail-unread .ws-mail-who,
+.ws-mail-unread .ws-mail-subject {
+  font-weight: 600;
+  color: var(--pg-fg-emphasis);
+}
+.ws-mail-overdue .ws-mail-time {
+  color: var(--pg-danger);
+}
+.ws-mail-more {
+  padding: .75rem 0;
+  text-align: center;
+}
+.ws-mail-pane {
+  position: sticky;
+  top: var(--ws-space-3);
+  max-height: calc(100vh - 8rem);
+  overflow: auto;
+  padding: .75rem 1rem;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius-sm);
+  background: var(--pg-bg-body);
+}
+.ws-mail-pane-head {
+  margin-bottom: .75rem;
+  padding-bottom: .5rem;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mail-pane-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem;
+  margin-top: .5rem;
+}
+.ws-mail-item {
+  margin-bottom: .6rem;
+  padding: .6rem .75rem;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius-sm);
+}
+.ws-mail-item.ws-mail-out {
+  background: var(--pg-bg-1);
+}
+.ws-mail-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .35rem;
+}
+.ws-mail-item-head .ws-mail-time {
+  margin-inline-start: auto;
+}
+.ws-mail-text {
+  margin-top: .5rem;
+  overflow-wrap: anywhere;
+}
+/* New e-mail (workspace_mail.js newForm()): the Signature as the mail
+   carries it, its lines kept; the chosen files under the picker. */
+.ws-mail-new-signature {
+  margin-top: .5rem;
+}
+.ws-mail-new-signature-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding-inline-start: .75rem;
+  border-inline-start: 2px solid var(--pg-border-color);
+}
+.ws-mail-new-cc-toggle {
+  margin: -.75rem 0 1rem;
+}
+.ws-mail-new-files .text-truncate {
+  min-width: 0;
+}
+@media (max-width: 767.98px) {
+  .ws-mail-reading .ws-mail-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ws-mail-reading .ws-mail-list {
+    display: none;
+  }
+  .ws-mail-pane {
+    position: static;
+    max-height: none;
+  }
+}
 /* The "/" list of a note's inserts, under the caret. */
 .ws-picker.ws-slash {
   position: fixed;
@@ -15752,6 +16288,82 @@ a.ws-chip:hover {
   max-width: 52rem;
   line-height: 1.6;
 }
+/* The Summary tab (drawSummary()): the summary a card with Edit in its head,
+   the customer and the time spent in a column beside it while the pane is
+   wide enough, under it when it is not. The card fills its column; the text
+   inside keeps the 52rem reading width of .ws-summary-view. */
+.ws-pane-summary {
+  container-type: inline-size;
+}
+.ws-summary-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  align-items: start;
+  gap: .75rem;
+}
+.ws-summary-layout.ws-summary-alone {
+  grid-template-columns: minmax(0, 1fr);
+}
+@container (max-width: 48rem) {
+  .ws-summary-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.ws-summary-side {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  min-width: 0;
+}
+.ws-summary-layout .card {
+  border-radius: .875rem;
+}
+/* The Memory tab (workspace_memory.js): the hint with New record is one
+   card, the records cards in a grid that fills the pane. */
+.ws-memory {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+.ws-memory-intro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .75rem .9rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: .875rem;
+  background: var(--pg-card-bg);
+}
+.ws-memory-intro > p {
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+.ws-memory-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  align-items: start;
+  gap: .75rem;
+}
+.ws-memory-list > .ws-empty {
+  grid-column: 1 / -1;
+}
+.ws-memory-entry {
+  min-width: 0;
+  padding: .75rem .9rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: .875rem;
+  background: var(--pg-card-bg);
+}
+/* An empty channel pane (Tasks, Decisions, Files, Summary, Board, Memory)
+   shows its empty state in a dashed card. Other screens' .ws-empty (Today,
+   My tasks, the kit's panels) keep their own look. */
+.ws-pane:is(.ws-pane-tasks, .ws-pane-decisions, .ws-pane-files, .ws-pane-summary, .ws-pane-board, .ws-pane-memory) .ws-empty {
+  border: 1px dashed var(--pg-border-color);
+  border-radius: .875rem;
+  background: var(--pg-card-bg);
+}
 .ws-list-row {
   display: flex;
   align-items: center;
@@ -15783,6 +16395,37 @@ a.ws-chip:hover {
 .ws-list-row.ws-row-done .ws-row-title {
   text-decoration: line-through;
   color: var(--pg-fg-2);
+}
+/* The channel's Tasks tab (drawTasks()): a quiet toolbar row, then each
+   task a card in a grid that fills the pane, one column on a phone. My tasks
+   and a record's window draw the same .ws-list-row as a list and keep it. */
+.ws-pane-toolbar {
+  padding: 0;
+  border-bottom: 0;
+}
+.ws-task-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  align-items: start;
+  gap: .75rem;
+}
+.ws-task-grid > .ws-empty {
+  grid-column: 1 / -1;
+}
+.ws-task-grid > .ws-list-row {
+  gap: .6rem;
+  min-width: 0;
+  padding: .7rem .85rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: .875rem;
+  background: var(--pg-card-bg);
+}
+.ws-task-grid > .ws-list-row:hover {
+  border-color: rgba(var(--ws-accent-rgb), .45);
+  background: var(--pg-card-bg);
+}
+.ws-task-grid > .ws-list-row.ws-row-done {
+  opacity: .75;
 }
 .ws-status-dot {
   width: .65rem;
@@ -16433,6 +17076,38 @@ a.ws-chip:hover {
 .ws-file-row audio {
   height: 2rem;
   max-width: 16rem;
+}
+/* The Files tab (drawFiles()): pictures, videos, sounds and documents each
+   a card with its title and count at the top; inside, the gallery or the
+   rows, with no rule between rows. */
+.ws-pane-files {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+.ws-file-group {
+  padding: .75rem .9rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: .875rem;
+  background: var(--pg-card-bg);
+}
+.ws-file-group > .ws-section-title {
+  margin-top: 0;
+}
+.ws-file-group > .ws-gallery {
+  margin-bottom: 0;
+}
+.ws-file-group .ws-file-list {
+  border: 0;
+  border-radius: 0;
+}
+.ws-file-group .ws-file-row {
+  padding: .4rem .5rem;
+  border-bottom: 0;
+  border-radius: var(--ws-radius-xs);
+}
+.ws-file-group .ws-file-row:hover {
+  background: var(--pg-bg-2);
 }
 .ws-preview-modal .dialog-body {
   background: #111;
@@ -17437,6 +18112,17 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     padding: .55rem .6rem;
     font-size: .84rem;
   }
+  .ws-channel-card {
+    margin: .35rem .35rem 0;
+    border-radius: var(--ws-radius-sm);
+  }
+  .ws-channel-card > .ws-tabs {
+    gap: .2rem;
+    padding: .3rem .4rem .4rem;
+  }
+  .ws-channel-card .ws-tabs button {
+    padding: .35rem .7rem;
+  }
   .ws-pane {
     padding: .5rem .65rem;
   }
@@ -17647,7 +18333,8 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   }
   /* While the keyboard is up the tabs wait too: the conversation keeps
      the height between the header and the box. */
-  body.ws-keyboard .ws-center > :is(.ws-strip, .ws-tabs) {
+  body.ws-keyboard .ws-center > :is(.ws-strip, .ws-tabs),
+  body.ws-keyboard .ws-channel-card > .ws-tabs {
     display: none;
   }
 }
@@ -19765,8 +20452,43 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
 .ws-cb-bar {
     margin-bottom: .6rem;
 }
-.ws-cb-bar > .btn-group {
+/* The board's choices as chips (toolbar() in workspace_board_channel.js):
+   a pill that is filled while it is on; the two selects take the pill's
+   shape. */
+.ws-cb-chips {
+    display: flex;
     flex-wrap: wrap;
+    gap: .3rem;
+}
+.ws-cb-chip {
+    padding: .2rem .75rem;
+    border: 1px solid var(--pg-border-color);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--pg-fg-2);
+    font-size: .8125rem;
+    line-height: 1.4;
+}
+.ws-cb-chip:hover {
+    background: var(--pg-bg-2);
+    color: var(--pg-fg-emphasis);
+}
+.ws-cb-chip.active {
+    border-color: rgba(var(--ws-accent-rgb), .45);
+    background: rgba(var(--ws-accent-rgb), .14);
+    color: var(--pg-fg-emphasis);
+}
+html[data-bs-theme="dark"] .ws-cb-chip.active {
+    border-color: rgba(var(--ws-accent-rgb), .6);
+    background: rgba(var(--ws-accent-rgb), .26);
+}
+.ws-cb-chip:focus-visible {
+    outline: 2px solid var(--ws-accent);
+    outline-offset: 1px;
+}
+.ws-cb-chip-select {
+    border-radius: 999px;
+    font-size: .8125rem;
 }
 .ws-pane .ws-cb-picker,
 .ws-wt-board .ws-cb-picker {
@@ -19789,6 +20511,17 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
     background: var(--pg-bg-1);
 }
 .ws-cb-col.ws-cb-drop {
+    border-color: rgba(var(--ws-accent-rgb), .55);
+    background: rgba(var(--ws-accent-rgb), .07);
+}
+/* On the channel's Board tab a column is a card like the panes' others; the
+   workflow table's board (.ws-wt-board) keeps its own columns. */
+.ws-pane-board .ws-cb-col {
+    border: 1px solid var(--pg-border-color);
+    border-radius: .875rem;
+    background: var(--pg-card-bg);
+}
+.ws-pane-board .ws-cb-col.ws-cb-drop {
     border-color: rgba(var(--ws-accent-rgb), .55);
     background: rgba(var(--ws-accent-rgb), .07);
 }
@@ -20228,8 +20961,16 @@ a.ws-tag-card-head:hover span {
 }
 .ws-task-time-stats {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: .75rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr));
+    gap: .5rem;
+}
+/* Each figure of the Time spent card is a tile. */
+.ws-task-time-stat {
+    min-width: 0;
+    padding: .55rem .7rem;
+    border: 1px solid var(--pg-border-color);
+    border-radius: var(--ws-radius-sm);
+    background: color-mix(in srgb, var(--pg-fg-emphasis) 3%, transparent);
 }
 .ws-task-time-week {
     display: flex;
@@ -22023,6 +22764,15 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     forced-color-adjust: none;
     background-color: ButtonText;
   }
+  /* A bell row's module tag and its unread dot (pg_bell_row()). */
+  #notifications .pg-bell-tag,
+  #notifications .pg-bell-menu {
+    border: 1px solid CanvasText;
+  }
+  #notifications button.pg-bell-dot::before {
+    forced-color-adjust: none;
+    background-color: Highlight;
+  }
 
   /* The current or pressed item, shown elsewhere only by a fill, a tint or a
      shadow. :is() takes its most specific selector, so this beats every
@@ -23095,6 +23845,50 @@ select.pg-list-table-field option.private {
   justify-content: flex-end;
   text-align: right;
 }
+/* Pages: rows of name, address, type and date; a chip per page type group;
+   a page in an archived folder or in the Recycle Bin greyed with its mark. */
+.pg-picker-is-pages.pg-picker-is-list :is(.pg-picker-head, .pg-picker-item:not(.pg-picker-folder-row)) {
+  grid-template-columns: minmax(12rem, 3fr) minmax(8rem, 2fr) minmax(7rem, 1.2fr) 9.5rem;
+}
+.pg-picker-is-pages.pg-picker-is-list .pg-picker-item {
+  grid-template-areas: "name address type modified";
+}
+.pg-picker-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0 1rem 0.5rem;
+}
+.pg-picker-chips[hidden] {
+  display: none;
+}
+.pg-picker-name-line {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.pg-picker-mark {
+  flex: 0 0 auto;
+  padding: 0.05rem 0.45rem;
+  border-radius: var(--pg-radius-pill);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+.pg-picker-mark.is-archived {
+  background: var(--pg-warning-bg-subtle);
+  color: var(--pg-warning-fg-emphasis);
+}
+.pg-picker-mark.is-binned {
+  background: var(--pg-danger-bg-subtle);
+  color: var(--pg-danger-fg-emphasis);
+}
+.pg-picker-item.is-marked {
+  cursor: default;
+}
+.pg-picker-item.is-marked :is(.pg-picker-thumb, .pg-picker-name, .pg-picker-col) {
+  opacity: 0.6;
+}
 .pg-picker .dialog-footer {
   flex-wrap: nowrap;
   padding: 0.75rem 1.25rem;
@@ -23155,6 +23949,204 @@ select.pg-list-table-field option.private {
 }
 @media (prefers-reduced-motion: reduce) {
   .pg-picker-toggle {
+    transition: none;
+  }
+}
+/* Recent above the folders; Upload at the bar's end. */
+.pg-picker-recent {
+  width: 100%;
+  margin-bottom: 0.35rem;
+  padding-left: 0.45rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.pg-picker-recent:focus-visible {
+  outline: var(--pg-focus-ring-width) solid var(--pg-focus-ring-color);
+  outline-offset: calc(var(--pg-focus-ring-width) * -1);
+}
+.pg-picker-upload {
+  flex: 0 0 auto;
+}
+.pg-picker-upload:disabled {
+  pointer-events: auto;
+  cursor: not-allowed;
+}
+.pg-picker-folders .pg-picker-upload {
+  display: none;
+}
+/* Files dragged over the pane: the folder they go into, or why not. */
+.pg-picker-pane {
+  position: relative;
+}
+.pg-picker-drop {
+  position: absolute;
+  inset: 0.5rem;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 1rem;
+  border: 2px dashed var(--pg-primary);
+  border-radius: var(--pg-radius-lg);
+  background: color-mix(in srgb, var(--pg-primary-bg-subtle) 92%, transparent);
+  color: var(--pg-fg-emphasis);
+  text-align: center;
+  pointer-events: none;
+}
+.pg-picker-drop .bi {
+  font-size: 2.5rem;
+  color: var(--pg-primary);
+}
+.pg-picker-drop span {
+  font-size: 0.85rem;
+  color: var(--pg-fg-2);
+}
+.pg-picker-drop.is-refused {
+  border-color: var(--pg-danger);
+  background: color-mix(in srgb, var(--pg-danger-bg-subtle) 92%, transparent);
+}
+.pg-picker-drop.is-refused .bi {
+  color: var(--pg-danger);
+}
+.pg-picker-drop[hidden],
+.pg-picker-uploads[hidden] {
+  display: none;
+}
+/* The files being sent, one row each. */
+.pg-picker-uploads {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  width: min(22rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  border: var(--pg-border-width) solid var(--pg-border-color);
+  border-radius: var(--pg-radius-lg);
+  background: var(--pg-bg-body);
+  box-shadow: var(--pg-shadow-lg);
+}
+.pg-picker-uploads-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-bottom: var(--pg-border-width) solid var(--pg-border-color);
+  font-size: 0.875rem;
+}
+.pg-picker-uploads-head strong {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.pg-picker-uploads-folder {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  margin-right: auto;
+  font-size: 0.8rem;
+  color: var(--pg-fg-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-picker-uploads-list {
+  margin: 0;
+  padding: 0.25rem 0;
+  overflow: auto;
+  list-style: none;
+}
+.pg-picker-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.75rem;
+}
+.pg-picker-upload-row .pg-picker-thumb {
+  flex: 0 0 2.25rem;
+  width: 2.25rem;
+  font-size: 1.1rem;
+}
+.pg-picker-upload-row .pg-picker-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.pg-picker-upload-row .pg-picker-name {
+  overflow: hidden;
+  font-size: 0.85rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-picker-upload-row .pg-picker-meta {
+  white-space: normal;
+}
+.pg-picker-progress {
+  display: block;
+  height: 0.25rem;
+  overflow: hidden;
+  border-radius: var(--pg-radius-pill);
+  background: var(--pg-border-color);
+}
+.pg-picker-progress > span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--pg-primary);
+  transition: width 0.15s linear;
+}
+.pg-picker-progress[hidden] {
+  display: none;
+}
+.pg-picker-upload-state {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  color: var(--pg-fg-2);
+}
+.pg-picker-upload-row.is-done .pg-picker-upload-state {
+  color: var(--pg-success);
+}
+.pg-picker-upload-row.is-refused .pg-picker-upload-state,
+.pg-picker-upload-row.is-refused .pg-picker-meta,
+.pg-picker-upload-row.is-refused .pg-picker-thumb {
+  color: var(--pg-danger);
+}
+/* An empty folder: what Upload does, and its buttons. */
+.pg-picker-empty p {
+  max-width: 26rem;
+  margin: 0;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+}
+.pg-picker-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+/* Several picks: their pictures overlap in the footer. */
+.pg-picker-strip {
+  display: flex;
+  flex: 0 0 auto;
+}
+.pg-picker-strip .pg-picker-thumb {
+  flex: 0 0 2.25rem;
+  width: 2.25rem;
+  font-size: 1rem;
+  border: 2px solid var(--pg-bg-body);
+}
+.pg-picker-strip .pg-picker-thumb + .pg-picker-thumb {
+  margin-left: -0.75rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-picker-progress > span {
     transition: none;
   }
 }
@@ -23239,11 +24231,45 @@ select.pg-list-table-field option.private {
 .pg-picker-sheet.pg-picker-is-list .pg-picker-item > .pg-picker-col:not(:nth-child(4)) {
   display: none;
 }
+/* A page row on the phone is its name over its address and type. */
+.pg-picker-sheet.pg-picker-is-pages.pg-picker-is-list :is(.pg-picker-head, .pg-picker-item:not(.pg-picker-folder-row)) {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "name";
+}
+.pg-picker-sheet.pg-picker-is-pages.pg-picker-is-list .pg-picker-head > :not(:first-child),
+.pg-picker-sheet.pg-picker-is-pages.pg-picker-is-list .pg-picker-item > .pg-picker-col {
+  display: none;
+}
+.pg-picker-sheet.pg-picker-is-pages.pg-picker-is-list .pg-picker-item .pg-picker-meta {
+  display: block;
+}
+.pg-picker-sheet .pg-picker-chips {
+  flex-wrap: nowrap;
+  padding: 0 0.75rem 0.5rem;
+  overflow-x: auto;
+}
 .pg-picker-sheet .dialog-footer {
   padding: 0.65rem 1rem;
 }
 .pg-picker-sheet .pg-picker-choose {
   min-width: 5rem;
+}
+.pg-picker-sheet .pg-picker-upload {
+  order: -1;
+}
+.pg-picker-sheet .pg-picker-bar:has(.pg-picker-upload:not([hidden])) .pg-picker-search {
+  flex-basis: calc(100% - 3rem);
+}
+.pg-picker-sheet .pg-picker-upload .pg-btn-label {
+  display: none;
+}
+.pg-picker-sheet .pg-picker-uploads {
+  right: 0.75rem;
+  bottom: 0.75rem;
+  width: calc(100% - 1.5rem);
+}
+.pg-picker-sheet .pg-picker-strip .pg-picker-thumb:nth-child(n+3) {
+  display: none;
 }
 }
 

@@ -6,7 +6,8 @@
  * drawer the answer is written in (with the ; list of saved replies of
  * assets/js/workspace_replies.js, put in as plain text), and the
  * conversation's status and holder, given to anybody of the channel
- * (includes/workspace/mail_status.php).
+ * (includes/workspace/mail_status.php). On the E-mails screen the list,
+ * its reading pane and the unread marks (screen()).
  *
  * assets/js/workspace.js draws the conversation and calls in here with its
  * own helpers. Whether a card may be answered is decided by the server
@@ -237,11 +238,36 @@
 
         row.appendChild(open);
 
+        if (message.mail_resend) {
+            row.appendChild(resend(message, view, h));
+        }
+
         if (message.mail_state) {
             state(row, message, view, h);
         }
 
         return row;
+    }
+
+    // Send again, under a mail that could not leave: pressed once, the
+    // button stays off until the screen draws the card again.
+    function resend(message, view, h) {
+        var again = h.button('btn btn-sm btn-outline theme-danger py-0 ms-2', h.t('mail_send_again'), 'bi-arrow-repeat');
+
+        again.addEventListener('click', function (event) {
+            event.stopPropagation();
+            again.disabled = true;
+
+            h.api('ws_mail_resend', { item_id: message.mail_resend }).then(function () {
+                h.toast(h.t('mail_send_again_done'), 'success');
+                view.sync();
+            }).catch(function (error) {
+                again.disabled = false;
+                h.fail(error);
+            });
+        });
+
+        return again;
     }
 
     // The conversation's status and holder, changed at once.
@@ -317,9 +343,615 @@
         return row;
     }
 
+    // The E-mails screen (workspace_mail.php): a row opens its conversation
+    // in the reading pane beside the list, Load more reads the next page
+    // under the rows, Mark all as read clears the marks and the menu's
+    // number. Without the script a row opens its card in the channel. The
+    // pane's HTML is the server's, its texts escaped there
+    // (includes/workspace/mail_pane.php).
+    function screen(root, h) {
+        var words = (h.cfg && h.cfg.mail && h.cfg.mail.strings) || {};
+        var pane = root.querySelector('[data-ws-mail-pane]');
+        var current = 0;
+
+        function w(key) {
+            return words[key] || key;
+        }
+
+        function each(selector, callback) {
+            Array.prototype.forEach.call(document.querySelectorAll(selector), callback);
+        }
+
+        // The E-mails tile of the menu (workspace_side.js) shows the number.
+        function badge(count) {
+            each('[data-ws-nav="mail"]', function (tile) {
+                var node = tile.querySelector('.ws-count');
+
+                if (!count) {
+                    if (node) {
+                        node.parentNode.removeChild(node);
+                    }
+
+                    return;
+                }
+
+                if (!node) {
+                    node = h.el('span', 'ws-count');
+                    tile.appendChild(node);
+                }
+
+                node.textContent = (count > 99) ? '99+' : String(count);
+            });
+        }
+
+        function read(row) {
+            var hidden = row.querySelector('.ws-mail-who + .visually-hidden');
+
+            row.classList.remove('ws-mail-unread');
+
+            if (hidden) {
+                hidden.parentNode.removeChild(hidden);
+            }
+        }
+
+        // The open conversation stays in the address, for a reload.
+        function address(id) {
+            if (!window.history || !window.URL) {
+                return;
+            }
+
+            var url = new URL(window.location.href);
+
+            if (id) {
+                url.searchParams.set('conversation', String(id));
+            } else {
+                url.searchParams.delete('conversation');
+            }
+
+            window.history.replaceState(window.history.state, '', url.toString());
+        }
+
+        function mark(row) {
+            each('.ws-mail-row[aria-current]', function (node) {
+                node.removeAttribute('aria-current');
+            });
+
+            if (row) {
+                row.setAttribute('aria-current', 'true');
+            }
+        }
+
+        function close() {
+            current = 0;
+            pane.hidden = true;
+            h.clear(pane);
+            root.classList.remove('ws-mail-reading');
+            mark(null);
+            address(0);
+        }
+
+        // The answer and the status controls, for whoever may write in the
+        // conversation's channel; a change draws the pane again.
+        function tools(data) {
+            var place = pane.querySelector('.ws-mail-pane-tools');
+            var shut = h.button('btn btn-sm btn-text theme-secondary', w('close'), 'bi-x-lg');
+
+            shut.addEventListener('click', close);
+            place.appendChild(shut);
+
+            if (!data.reply) {
+                return;
+            }
+
+            var message = { mail_reply: data.reply, sender: { title: data.to }, mail_state: data.state };
+            var view = {
+                channel: { id: data.channel_id, members: data.members || [] },
+                sync: function () {
+                    open(data.reply);
+                }
+            };
+            var answer = h.button('btn btn-sm btn-outline theme-primary', h.t('mail_reply'), 'bi-reply');
+
+            answer.addEventListener('click', function () {
+                compose(message, view, h);
+            });
+            place.insertBefore(answer, place.firstChild);
+
+            if (data.state) {
+                state(place, message, view, h);
+            }
+        }
+
+        function open(id) {
+            var row = root.querySelector('[data-ws-mail-row="' + id + '"]');
+            var again = (current === id);
+
+            current = id;
+            mark(row);
+            pane.hidden = false;
+            root.classList.add('ws-mail-reading');
+
+            if (!again) {
+                h.clear(pane).appendChild(h.el('div', 'ws-empty', w('loading')));
+            }
+
+            h.api('ws_mail_pane', { conversation_id: id }).then(function (data) {
+                if (current !== id) {
+                    return;
+                }
+
+                pane.innerHTML = data.html;
+                tools(data);
+                address(id);
+                badge(data.unread || 0);
+
+                if (row) {
+                    read(row);
+                }
+
+                if (!again) {
+                    pane.scrollTop = 0;
+                    pane.querySelector('h2').focus();
+                }
+            }).catch(function (error) {
+                if (current === id) {
+                    close();
+                }
+
+                h.fail(error);
+            });
+        }
+
+        function more(link) {
+            var data = {};
+
+            new URLSearchParams(link.search).forEach(function (value, key) {
+                data[key] = value;
+            });
+
+            link.classList.add('disabled');
+            link.setAttribute('aria-disabled', 'true');
+
+            h.api('ws_mail_rows', data).then(function (result) {
+                var holder = link.parentNode;
+
+                root.querySelector('[data-ws-mail-rows]').insertAdjacentHTML('beforeend', result.html);
+                holder.insertAdjacentHTML('afterend', result.more || '');
+                holder.parentNode.removeChild(holder);
+            }).catch(function (error) {
+                link.classList.remove('disabled');
+                link.removeAttribute('aria-disabled');
+                h.fail(error);
+            });
+        }
+
+        root.addEventListener('click', function (event) {
+            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-row], [data-ws-mail-new]');
+
+            // A new tab or window keeps the link's own way.
+            if (!target || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
+                return;
+            }
+
+            event.preventDefault();
+
+            if (target.hasAttribute('data-ws-mail-new')) {
+                // The new conversation opens in the pane once sent.
+                compose(h, { sent: function (data) { open(data.conversation_id); } });
+            } else if (target.hasAttribute('data-ws-mail-more')) {
+                more(target);
+            } else if (target.hasAttribute('data-ws-mail-row')) {
+                open(parseInt(target.getAttribute('data-ws-mail-row'), 10));
+            } else {
+                target.disabled = true;
+
+                h.api('ws_mail_read_all').then(function () {
+                    target.disabled = false;
+                    each('.ws-mail-unread', read);
+                    badge(0);
+                    h.toast(w('read_all'), 'success');
+                }).catch(function (error) {
+                    target.disabled = false;
+                    h.fail(error);
+                });
+            }
+        });
+
+        var start = parseInt(new URLSearchParams(window.location.search).get('conversation') || '0', 10);
+
+        if (start > 0) {
+            open(start);
+        }
+    }
+
+    // ── New e-mail ─────────────────────────────────────────────────────
+    //
+    // The form (From, Kept in, To, Cc, Bcc, Subject, the text, files) in a
+    // drawer, opened from the E-mails screen's toolbar and from the menu of
+    // a channel a mailbox keeps its mail in. The mailboxes, their channels
+    // and Signatures come from the server (ws_mail_compose); Send posts the
+    // form with its files as form parts (ws_mail_new), and the mail leaves
+    // through the mail queue (includes/workspace/mail_send.php). The unsent
+    // form is kept in this browser, one slot per site and person, like the
+    // composer's unsent text (workspace.js draftKey()).
+
+    var NEW_PREFIX = 'ws-mail-new:';
+    var NEW_DAYS = 14;
+    var NEW_FIELDS = ['to', 'cc', 'bcc', 'subject', 'text'];
+
+    function newDraftKey(site, viewer) {
+        return NEW_PREFIX + String(site || '') + '|' + (parseInt(viewer, 10) || 0);
+    }
+
+    // A kept form as { box, channel, to, cc, bcc, subject, text, at } while
+    // it is younger than NEW_DAYS and holds words; null otherwise.
+    function newDraftFresh(stored, now) {
+        var value = null;
+
+        try {
+            value = JSON.parse(String(stored || ''));
+        } catch (error) {
+            return null;
+        }
+
+        if (!value || (typeof value !== 'object') || (typeof value.at !== 'number') || !(value.at > now - NEW_DAYS * 86400000)) {
+            return null;
+        }
+
+        var out = { box: parseInt(value.box, 10) || 0, channel: parseInt(value.channel, 10) || 0, at: value.at };
+        var words = false;
+
+        NEW_FIELDS.forEach(function (field) {
+            out[field] = (typeof value[field] === 'string') ? value[field] : '';
+            words = words || (out[field].trim() !== '');
+        });
+
+        return words ? out : null;
+    }
+
+    // Every read and write of the slot may fail (a private window, blocked
+    // storage, a full quota): the form then works without it.
+    function newDraftStore(key, value) {
+        try {
+            if (value) {
+                window.localStorage.setItem(key, JSON.stringify(value));
+            } else {
+                window.localStorage.removeItem(key);
+            }
+        } catch (error) {
+            // Nothing kept.
+        }
+    }
+
+    function newDraftRead(key) {
+        try {
+            var stored = window.localStorage.getItem(key);
+            var value = newDraftFresh(stored, Date.now());
+
+            if (stored && !value) {
+                window.localStorage.removeItem(key);
+            }
+
+            return value;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    // The form posted with its files as form parts; read as api() reads an
+    // answer.
+    function newPost(h, fields, files) {
+        var form = new FormData();
+
+        form.append('action', 'ws_mail_new');
+        form.append('token', h.cfg.token);
+        Object.keys(fields).forEach(function (key) {
+            form.append(key, fields[key]);
+        });
+        files.forEach(function (file) {
+            form.append('files[]', file, file.name);
+        });
+
+        return fetch(h.cfg.api_url, { method: 'POST', credentials: 'same-origin', body: form }).then(function (response) {
+            return response.json().catch(function () {
+                throw new Error(h.t('error_generic'));
+            });
+        }).then(function (json) {
+            if (!json || json.status !== 'success') {
+                var error = new Error((json && json.message) ? json.message : h.t('error_generic'));
+
+                error.field = json ? json.field : '';
+                throw error;
+            }
+
+            return json.data || {};
+        });
+    }
+
+    // options.channel: the channel the form was opened from; its first
+    // mailbox is chosen. options.sent(data) runs after a send.
+    function compose(h, options) {
+        options = options || {};
+
+        h.api('ws_mail_compose').then(function (data) {
+            newForm(h, data.boxes || [], data.writer || '', options);
+        }).catch(function (error) {
+            h.fail(error);
+        });
+    }
+
+    function newForm(h, boxes, writer, options) {
+        var t = h.t;
+        var el = h.el;
+        var node = h.offcanvas('ws-mail-compose', t('mail_new'));
+        var body = h.clear(node.querySelector('.drawer-body'));
+        var footer = h.clear(node.querySelector('.drawer-footer'));
+        var key = newDraftKey(h.cfg.api_url, h.cfg.me);
+        var kept = newDraftRead(key);
+        var files = [];
+        var timer = 0;
+
+        node.querySelector('.drawer-title').textContent = t('mail_new');
+
+        if (!boxes.length) {
+            footer.classList.add('d-none');
+            body.appendChild(el('div', 'ws-empty', t('mail_new_none')));
+            h.showOffcanvas(node);
+            return;
+        }
+
+        footer.classList.remove('d-none');
+
+        var form = el('form', 'ws-mail-new');
+        form.noValidate = true;
+        form.setAttribute('data-ws-mail-new-form', '');
+        body.appendChild(form);
+
+        function boxOf(id) {
+            return boxes.filter(function (box) { return box.id === id; })[0] || null;
+        }
+
+        // The mailbox: the one keeping its mail in the channel the form was
+        // opened from, else the kept form's, else the first.
+        var start = null;
+
+        if (options.channel) {
+            start = boxes.filter(function (box) {
+                return box.channels.some(function (channel) { return channel.id === options.channel; });
+            })[0] || null;
+        }
+
+        start = start || (kept && boxOf(kept.box)) || boxes[0];
+
+        var from = h.select(boxes.map(function (box) {
+            return [String(box.id), box.name + ' <' + box.address + '>'];
+        }), String(start.id));
+        from.name = 'box_id';
+        form.appendChild(h.formRow(t('mail_new_from'), from));
+
+        var where = el('select', 'form-control form-control-sm');
+        where.name = 'channel_id';
+        form.appendChild(h.formRow(t('mail_new_channel'), where, t('mail_new_channel_hint')));
+
+        function input(name, label, type, hint) {
+            var field = el('input', 'form-control form-control-sm');
+
+            field.type = type || 'text';
+            field.name = name;
+            field.autocomplete = 'off';
+
+            if (name !== 'subject') {
+                // Several addresses, separated by commas.
+                field.inputMode = 'email';
+                field.spellcheck = false;
+                field.setAttribute('autocapitalize', 'off');
+            } else {
+                field.maxLength = 200;
+            }
+
+            var row = h.formRow(label, field, hint);
+
+            form.appendChild(row);
+
+            return { field: field, row: row };
+        }
+
+        var to = input('to', t('mail_new_to'), 'text', t('mail_new_addresses'));
+        var copies = el('div', 'ws-mail-new-copies');
+        var showCopies = h.button('btn btn-sm btn-text theme-secondary ws-mail-new-cc-toggle', t('mail_new_cc_bcc'), 'bi-plus-lg');
+
+        form.appendChild(showCopies);
+        form.appendChild(copies);
+
+        var cc = input('cc', t('mail_new_cc'));
+        var bcc = input('bcc', t('mail_new_bcc'));
+
+        copies.appendChild(cc.row);
+        copies.appendChild(bcc.row);
+
+        var subject = input('subject', t('mail_new_subject'));
+        var text = el('textarea', 'form-control');
+
+        text.name = 'text';
+        text.rows = 10;
+        text.maxLength = 50000;
+        form.appendChild(h.formRow(t('mail_new_text'), text));
+
+        // The mailbox's Signature (or its name), as the mail will carry it.
+        var signature = el('div', 'ws-mail-new-signature small fg-secondary');
+
+        text.parentNode.appendChild(signature);
+
+        var picker = el('input', 'form-control form-control-sm');
+        var list = el('ul', 'ws-mail-new-files list-unstyled mb-0');
+
+        picker.type = 'file';
+        picker.multiple = true;
+
+        var fileRow = h.formRow(t('mail_new_files'), picker, t('mail_new_files_hint'));
+
+        fileRow.appendChild(list);
+        form.appendChild(fileRow);
+
+        function drawFiles() {
+            h.clear(list);
+            files.forEach(function (file, index) {
+                var row = el('li', 'd-flex align-items-center gap-2 small mt-2');
+                var drop = h.button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', t('mail_new_remove') + ': ' + file.name);
+
+                row.appendChild(h.icon('bi-paperclip'));
+                row.appendChild(el('span', 'text-truncate', file.name));
+                drop.addEventListener('click', function () {
+                    files.splice(index, 1);
+                    drawFiles();
+                });
+                row.appendChild(drop);
+                list.appendChild(row);
+            });
+        }
+
+        picker.addEventListener('change', function () {
+            Array.prototype.forEach.call(picker.files || [], function (file) {
+                files.push(file);
+            });
+            picker.value = '';
+            drawFiles();
+        });
+
+        function drawBox(channelId) {
+            var box = boxOf(parseInt(from.value, 10)) || boxes[0];
+            var chosen = channelId || parseInt(where.value, 10) || 0;
+
+            h.clear(where);
+            box.channels.forEach(function (channel) {
+                var option = el('option', '', '#' + channel.name);
+
+                option.value = String(channel.id);
+                option.selected = (channel.id === chosen);
+                where.appendChild(option);
+            });
+
+            h.clear(signature);
+            signature.appendChild(el('div', '', t('mail_new_signature')));
+            signature.appendChild(el('div', 'ws-mail-new-signature-text', '-- \n' + (writer ? writer + '\n' : '') + (box.signature || box.name)));
+        }
+
+        function current() {
+            return {
+                box: parseInt(from.value, 10) || 0,
+                channel: parseInt(where.value, 10) || 0,
+                to: to.field.value,
+                cc: cc.field.value,
+                bcc: bcc.field.value,
+                subject: subject.field.value,
+                text: text.value,
+                at: Date.now()
+            };
+        }
+
+        // Saved 400 ms after typing pauses; an empty form drops the slot.
+        function keep() {
+            window.clearTimeout(timer);
+            timer = window.setTimeout(function () {
+                var value = current();
+
+                newDraftStore(key, newDraftFresh(JSON.stringify(value), value.at) ? value : null);
+            }, 400);
+        }
+
+        function setCopies(open) {
+            copies.hidden = !open;
+            showCopies.hidden = open;
+        }
+
+        if (kept) {
+            to.field.value = kept.to;
+            cc.field.value = kept.cc;
+            bcc.field.value = kept.bcc;
+            subject.field.value = kept.subject;
+            text.value = kept.text;
+        }
+
+        drawBox(options.channel || ((kept && (start.id === kept.box)) ? kept.channel : 0));
+        setCopies(!!(cc.field.value || bcc.field.value));
+
+        from.addEventListener('change', function () {
+            drawBox(0);
+            keep();
+        });
+        where.addEventListener('change', keep);
+        showCopies.addEventListener('click', function () {
+            setCopies(true);
+            cc.field.focus();
+        });
+        form.addEventListener('input', keep);
+
+        if (kept) {
+            var note = el('div', 'alert theme-info small d-flex align-items-center gap-3 mb-5', '');
+            var discard = h.button('btn btn-sm btn-text theme-secondary ms-auto py-0', t('mail_new_discard'), 'bi-trash');
+
+            note.appendChild(el('span', '', t('mail_new_draft')));
+            discard.addEventListener('click', function () {
+                window.clearTimeout(timer);
+                newDraftStore(key, null);
+                form.reset();
+                files = [];
+                drawFiles();
+                drawBox(0);
+                setCopies(false);
+                note.parentNode.removeChild(note);
+                to.field.focus();
+            });
+            note.appendChild(discard);
+            form.insertBefore(note, form.firstChild);
+        }
+
+        var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_new_send'), 'bi-send');
+
+        send.addEventListener('click', function () {
+            var fields = current();
+            var empty = [[to.field, fields.to], [subject.field, fields.subject], [text, fields.text]].filter(function (pair) {
+                return !pair[1].trim();
+            })[0];
+
+            if (empty) {
+                empty[0].focus();
+                return;
+            }
+
+            send.disabled = true;
+
+            newPost(h, {
+                box_id: fields.box, channel_id: fields.channel, to: fields.to, cc: fields.cc, bcc: fields.bcc,
+                subject: fields.subject, text: fields.text
+            }, files).then(function (data) {
+                window.clearTimeout(timer);
+                newDraftStore(key, null);
+                send.disabled = false;
+                h.hideOffcanvas(node);
+                h.toast(data.state === 'failed' ? t('mail_new_failed') : t('mail_new_sent'), data.state === 'failed' ? 'warning' : 'success');
+
+                if (options.sent) {
+                    options.sent(data);
+                }
+            }).catch(function (error) {
+                send.disabled = false;
+                h.fail(error);
+            });
+        });
+
+        footer.appendChild(send);
+        h.showOffcanvas(node);
+        (to.field.value ? text : to.field).focus();
+    }
+
     window.PGWsMail = {
         node: node,
         draft: draftNode,
-        plain: plain
+        plain: plain,
+        screen: screen,
+        compose: compose,
+        newDraftKey: newDraftKey,
+        newDraftFresh: newDraftFresh
     };
 })();

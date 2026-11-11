@@ -24,7 +24,7 @@
  *   dashboard_role_default       the caller's layout and look as a role's
  *                                default, locked or not
  *   dashboard_role_default_remove  a role's default and lock removed
- *   dashboard_personal_save      the caller's goals, pins or notes on the
+ *   dashboard_personal_save      the caller's goals or pins on the
  *                                new dashboard (includes/dashboard/v2/
  *                                personal.php)
  *   tour_seen                    a guided tour has been watched or skipped
@@ -499,7 +499,7 @@ function pg_panel_dashboard_role_default_remove($request, $action)
 
 function pg_panel_dashboard_personal_save($request, $action)
 {
-    // Every panel role keeps its own goals, pins and notes; the session and
+    // Every panel role keeps its own goals and pins; the session and
     // the token are checked here, the row written is the caller's own.
     if (!USER_LOGGED_IN) {
         respond(panel_login_refusal());

@@ -14,7 +14,7 @@ Source: the vendor plan's section 9 and its owner decisions, numbered as there (
 - Beta only from pre-releases the owner opens on `development`, tag `v<open version>-beta.<YYYYMMDDHHMM>` (18).
 - Key field: 16 of 0-9 and A-Z without I, L, O, U, any case, dashes optional; 16-digit keys work; a warning for local and private names; a test URL never changes the keys (27).
 - Where section 9 and the vendor's bridge matrix differ (which 401 is `no_match`; "newer" or "other" build), the matrix and its vectors win.
-- Owner (2026-11-11): the switch goes on now ("close the api2 topic"), before the old P8 gate held: the server's go-live steps, P2 and P5c merged, key fingerprints equal production's, a licence check and an update on the vendor's docker API (`workflow/decisions-made-product-43.md`).
+- Owner (2026-11-11): the switch goes on now ("close the api2 topic"), before the old P8 gate held: the server's go-live steps, P2 and P5c merged, key fingerprints equal production's, a licence check and an update on the vendor's docker API (`workflow/decisions-made-product-45.md`).
 - The api2 client branches keep #3205's timing: they leave in the next open version (P9).
 
 ## What is out of scope?

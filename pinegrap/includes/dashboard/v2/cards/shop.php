@@ -33,8 +33,7 @@ if (!defined('PG_DASHBOARD_V2')) {
  */
 function pg_dashboard_v2_shop_windows($period, $compare, $midnight)
 {
-    $lengths = array(0 => 1, 1 => 7, 2 => 30);
-    $days = $lengths[$period] ?? 30;
+    $days = pg_dashboard_v2_shop_days($period);
     $tomorrow = (int) strtotime('+1 day', $midnight);
     $from = (int) strtotime('-' . ($days - 1) . ' days', $midnight);
 
@@ -52,6 +51,19 @@ function pg_dashboard_v2_shop_windows($period, $compare, $midnight)
     }
 
     return $windows;
+}
+
+/**
+ * The number of days a period counts, today included. Pure.
+ *
+ * @param int $period 0 today, 1 last 7 days, 2 last 30 days
+ * @return int 1, 7 or 30 (30 for an unknown period)
+ */
+function pg_dashboard_v2_shop_days($period)
+{
+    $lengths = array(0 => 1, 1 => 7, 2 => 30);
+
+    return $lengths[$period] ?? 30;
 }
 
 /**
@@ -74,21 +86,23 @@ function pg_dashboard_v2_shop_columns($windows)
 }
 
 /**
- * Where the card's "See all" link goes. The card is open to a user with
- * commerce reports only, whom the orders list refuses (it asks for
- * commerce), so that user is sent to the order reports. Pure.
+ * Where the card's "See all" link goes: the order report's ready report
+ * sales over time, counting the card's own days, for a person who may open
+ * the order reports; the orders list for one who may only open that; no
+ * link otherwise. Pure.
  *
  * @param bool $can_orders  the person may open view_orders.php
- * @param bool $can_reports the person may open view_order_reports.php
+ * @param bool $can_reports the person may open view_order_report.php
+ * @param int  $days        the card's period in days (pg_dashboard_v2_shop_days())
  * @return string a panel address, or '' for no link
  */
-function pg_dashboard_v2_shop_url($can_orders, $can_reports)
+function pg_dashboard_v2_shop_url($can_orders, $can_reports, $days = 30)
 {
-    if ($can_orders) {
-        return 'view_orders.php';
+    if ($can_reports) {
+        return pg_ready_report_url('sales_over_time', $days);
     }
 
-    return $can_reports ? 'view_order_reports.php' : '';
+    return $can_orders ? 'view_orders.php' : '';
 }
 
 function pg_dashboard_v2_card_shop($user, $period, $compare)
@@ -161,7 +175,8 @@ function pg_dashboard_v2_card_shop($user, $period, $compare)
         'rows'       => $rows,
         'url'        => pg_dashboard_v2_shop_url(
             pg_dashboard_v2_gate('shop', $user),
-            ((int) $user['role'] < 3) || (defined('USER_MANAGE_ECOMMERCE_REPORTS') && USER_MANAGE_ECOMMERCE_REPORTS)
+            ((int) $user['role'] < 3) || (defined('USER_MANAGE_ECOMMERCE_REPORTS') && USER_MANAGE_ECOMMERCE_REPORTS),
+            pg_dashboard_v2_shop_days($period)
         ),
     ));
 }

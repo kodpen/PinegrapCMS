@@ -566,7 +566,7 @@ function test_designer_interactions_part_fills_and_writes()
 		. 'var calls = []; ["saveState", "render", "renderCanvas"].forEach(function (k) { K[k] = function () { calls.push(k); }; });'
 		. 'K._sdT = function (s) { return s; }; K.esc = function (s) { return String(s); };'
 		. 'K.row = function (l, c) { return "<row " + l + ">" + c; }; K.swAttr = function (a) { return "<sw " + a + ">"; };'
-		. 'K._sdFxSpec = function () { return { effects: ["fade", "slide-up"], triggers: ["view", "hover"], easings: ["ease-out"], numbers: { duration: [100, 5000, 600], delay: [0, 5000, 0], stagger: [0, 1000, 0], distance: [0, 400, 0], offset: [0, 1000, 0], speed: [5, 100, 20] } }; };'
+		. 'K._sdFxSpec = function () { return { effects: ["fade", "slide-up"], triggers: ["view", "hover"], easings: ["ease-out"], numbers: { duration: [100, 5000, 600], delay: [0, 5000, 0], stagger: [0, 1000, 0], distance: [0, 400, 0], offset: [0, 1000, 0], speed: [5, 100, 20] }, from: { "scroll-zoom": [25, 200, 80] } }; };'
 		. 'K._sdFxNormalize = function (fx) { return fx && fx.effect ? { effect: fx.effect, trigger: "view", duration: 600, delay: 0, easing: "ease-out", stagger: 0, repeat: false } : null; };'
 		. 'K._sdFxTakes = function () { return true; };'
 		. 'var replayed = 0; K._sdCanvasInnerOf = function () { return { hasAttribute: function () { return true; } }; };'

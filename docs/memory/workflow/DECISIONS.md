@@ -36,6 +36,18 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-3.md: Which Bootstrap 6 components did the owner name? (2026-10-25)
 - decisions-made-panel-3.md: What does an old browser get in the panel? (owner, 2026-10-25)
 - decisions-made-panel-3.md: What opens from a card inside the Site Settings dialog? (owner, 2026-11-11)
+- decisions-made-panel-4.md: Where are the rules and the earlier parts?
+- decisions-made-panel-4.md: What does a bell row look like? (owner, 2026-11-11, #8670)
+- decisions-made-panel-4.md: Which filters does the bell have? (owner, 2026-11-11, #8670)
+- decisions-made-panel-4.md: What does a bell row's button do? (owner, 2026-11-11, #8670)
+- decisions-made-panel-4.md: When is a notification read? (owner, 2026-11-11, #8670)
+- decisions-made-panel-4.md: Where is it built?
+- decisions-made-panel-5.md: Where are the rules and the earlier parts?
+- decisions-made-panel-5.md: Why does the dashboard's notes card keep no note of its own? (owner, 2026-11-11, #8672)
+- decisions-made-panel-5.md: What does the Online Engagement card show when nobody is on the site? (owner, 2026-11-11, #8672)
+- decisions-made-panel-5.md: What does the Visitor map card draw without city names? (owner, 2026-11-11, #8672)
+- decisions-made-panel-5.md: Which report screens are renewed, and how do they look? (owner, 2026-11-11, #8673)
+- decisions-made-panel-5.md: Are there ready reports on a report screen? (owner, 2026-11-11, #8673)
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?
 - decisions-made-panel.md: Which date-and-time picker does the software use? (#2693, 2026-10-28)
@@ -211,7 +223,14 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-42.md: Are the picker's drawn screens approved? (owner, 2026-11-10)
 - decisions-made-product-42.md: When does a clip edit change the image editor document's length? (owner, 2026-11-10)
 - decisions-made-product-43.md: Where are the rules and the earlier parts?
-- decisions-made-product-43.md: Does the Kodpen API client go on before its release keys exist? (owner, 2026-11-11)
+- decisions-made-product-43.md: How do classic styles that share CSS and JS move to the visual designer? (owner, 2026-11-11, #8671)
+- decisions-made-product-43.md: What does the badge of a Legacy design read? (owner, 2026-11-11, #8671)
+- decisions-made-product-43.md: What follows the group move? (owner, 2026-11-11, #8671)
+- decisions-made-product-44.md: Where are the rules and the earlier parts?
+- decisions-made-product-44.md: May a hero video play by itself? (owner, 2026-11-11, #8687)
+- decisions-made-product-44.md: Can a whole design be light, dark or follow the system? (owner, 2026-11-11, #8687)
+- decisions-made-product-45.md: Where are the rules and the earlier parts?
+- decisions-made-product-45.md: Does the Kodpen API client go on before its release keys exist? (owner, 2026-11-11)
 - decisions-made-product-5.md: Which outside-account leftovers start in 2026.11.0? (#3180)
 - decisions-made-product-5.md: Do subscriptions start, and who runs the renewals? (#3183)
 - decisions-made-product-5.md: Does a beta site without a build file get the beta build of its own version? (#3204)
@@ -309,6 +328,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-13.md: What is the Workspace's mail screen, and how does it send? (#8604, owner 2026-11-10; the shape: architect)
 - decisions-made-workspace-13.md: Who builds the channel look? (owner, 2026-11-11)
 - decisions-made-workspace-13.md: Where do the Workspace settings live? (owner, 2026-11-11)
+- decisions-made-workspace-14.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-14.md: When does a Workspace channel make a sound for a person? (owner, 2026-11-11, #8720)
+- decisions-made-workspace-14.md: What does an agent do while the message that asked it is being edited? (owner, 2026-11-11, #8723)
+- decisions-made-workspace-14.md: When are the coordinators connected to the agent channel? (owner, 2026-11-11, #8726)
 - decisions-made-workspace-2.md: What may the channel menu hold?
 - decisions-made-workspace-2.md: Where are records created inside a chat?
 - decisions-made-workspace-2.md: Does the customer channel's "New sales quote" stay in the menu?
@@ -411,6 +434,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/custom-form-overview.md: Start file for the custom-form-* files: what a designed form is, the decisions that bind it, its parts by the panel label, which file holds what, how a new control or field setting is added
 - designer/custom-form-translate-switch.md: Per-field "Include in translation" switch of custom forms (form_fields.translate_values, step 11.0.26): three-state _cf.translate, extraction and render skip, legacy screens, stale store and pages
 - designer/custom-style.md: Per-element custom style: a User Styles rule keyed by a pgs- class, pg_custom_style.js, the Styles "This element" card and Attributes css row, Split, where it is off
+- designer/design-colour-mode.md: A design's colour mode (style.style_color_mode, 11.0.186): light, dark or the system on <html>, the early script's order (a visitor's stored choice wins), canvas and Preview
 - designer/design-live-pictures.md: Live pictures of templates and designs (the real page in a scaled, script-free frame), the preview address of a template page or tour, the tour page; what the browser side does
 - designer/design-template-bookshop-events.md: Bookshop template (1.3.0) events as records of a collection form, the Café way: New Event page, sample events dated from today, home and events lists from today on, no fixed dates
 - designer/design-template-forum-blog.md: Forum template 1.3.0: the standard blog pages in the forum's look (blog, blog_post, blog_new, home_posts), the Blog Posts form and its samples, the post comments thread
@@ -421,9 +445,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/design-template-shop-comments.md: Shop templates (store, boutique, bookshop 1.2.0, hello 2.6.0) on the Comments widget: post_comments, conversation_replies, the reply e-mail card before the System region, why explicit trees
 - designer/design-template-threads.md: Café, Clinic, Playground and Salon 1.1.0 comment threads on the Comments widget, the comment e-mail cards before the System region, Google Reviews beside the sample testimonials
 - designer/designed-page-comment-names.md: Which name a signed-in member's comment gets: the contact's display name (else Member) on visual-designer pages, the username on legacy pages; the name select's choices and forged values
+- designer/designer-block-motion.md: Motion in designer blocks without JS: the shared pg-marquee contract (loop, pause by hover, focus and a CSS-only button, reduced motion, RTL), no carousel autoplay, no countdowns, the hero video rule.
 - designer/designer-blocks-overview.md: Start file for the designer-blocks-* files: what a block family is, the rule that binds it, every family by its palette group label, which file holds what, how a new family is added
 - designer/designer-content-roles-ui-guards.md: Designer content-role UI guards: _sdCanEditNode vs _sdMayEdit, every guarded mutation path, WeakSet perf rule, _sdGuardItem, content images, revision load, content chrome.
 - designer/designer-home-pictures.md: The Visual Page Editor home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback
+- designer/designer-palette-tabs-and-blocks.md: Designer palette Components tab with a Components / Blocks list switch (building blocks vs ready sections): adding a block, shared list plumbing, recents strip, tab strip width.
 - designer/form-list-filters-fail-closed.md: A form list filter on a missing field or unknown operator shows no record (page, feeds, sitemap, index); address filters unchanged; editor warning; unanswered lists use comments less than 1
 - designer/form-list-result-count.md: form_list_view ^^__result_count^^ (records matched, capped at max_results, grouped digits), the flags has_records / no_records, the count strip (empty loop area), canvas and installer preview
 - designer/layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing
@@ -473,11 +499,14 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/admin-screen-toolbar.md: Panel screen basics (frame, notices, fields, width, icons, help), the one-toolbar principle with view_folders.php as reference, slot order, classes and the pg_screen_toolbar() helper.
 - ui/ai-write-decisions.md: Why "Write with AI" is built the way it is (decided 2026-10-19/20): one endpoint, the models, daily cap, brand voice, the panel, labelling and the marks, translation, alt text on the browser's model
 - ui/back-arrow-no-copies.md: The way back to a parent or list screen is only the back arrow and the breadcrumb; which back-to-list copies were removed and where the screens now go back
+- ui/bell-read-rule.md: When a bell row is read: not on opening the bell; its button, title or Mark as read dot reads it, a fold head its runs; Mark all as read reads only rows the caller sees
 - ui/brand-logo.md: The Pinegrap logo (the squirrel's space window, the single-line wordmark): its files, which shape goes where, the panel's moving loop, the still frames, private label
 - ui/dashboard-system-status-gauge.md: The System Status gauge, check chips and Release Notes dialog shared by dashboard widget 2 and the new dashboard's card: functions, the two palettes, what stays byte for byte, the fixtures test
 - ui/dashboard-v2-brief.md: The old dashboard's brief on the new dashboard (#6431): placement in the greeting card, v2 wording and hour, the phone box, the Top section switch, pg_dash_brief.js
 - ui/dashboard-v2-drawn-look.md: The new dashboard's drawn look (visual pass V): the --pgd-* palette every part reads, the frame and faces, the drawn Assistant and goals, the differences kept on purpose
+- ui/dashboard-v2-engagement-card.md: New dashboard's Online Engagement card (engagement): what it shows when nobody is on the site (the last visits, Last visits list), the time used, the bounded read, when it sends empty
 - ui/dashboard-v2-overview.md: The new dashboard as a whole: the per-person switch beside the untouched old dashboard, welcome.php's page branch, its files and bundles, SVG charts, refresh rules, string card ids
+- ui/dashboard-v2-visitmap-world.md: The Visitor map card's world map when no city can be placed (#8713): countries shaded in four steps, why shading, tips and keys, the card's hue, countries the map file has no outline for
 - ui/dashboard-welcome-card.md: The dashboard top card (welcome.php, .pg-clockbar): greeting on the left, time and date on the right in one full-width card; phone stacking, themes, ids the scripts read
 - ui/details-panel-rule.md: The one structure rule of a list's details panel ("Detaylar"): fixed section order, label/value lines with a fixed label column, empty values left out; how the table driver applies it
 - ui/dialog-result-after-close.md: A Bootstrap 6 dialog or drawer hands its result to the page only once closed; the writing box's + menu windows put in nothing before that (#4196); the caret after a card
@@ -496,6 +525,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/image-editor-overview.md: Pinegrap's own image editor as a whole: what it is, the owner decisions that bind it, who does what (browser or server), the document in rotated space, and which topic file holds each part
 - ui/image-editor-rail.md: The image editor rail's group items Photo (Fotoğraf) and Vector (Vektör): which tools they hold, the mode switch, the mode reopened, letters and hints, M.railItems()
 - ui/image-editor-subject.md: The image editor's Select subject (E28a, #6841): own GrabCut and Boykov-Kolmogorov max-flow in a worker, the start box, the subject op in doc.selection
+- ui/image-editor-upload-setting.md: The image editor's largest upload as a setting (V8b): the config_text row image_editor_upload_max_mb in MB, 0 keeps upload_max_filesize, 10240 at most, its field on Settings, Features
 - ui/list-and-table-screens.md: Panel list and table rules: lists on the list table driver, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
 - ui/list-table-layout.md: How a list on the table driver looks (backend.src.css): the frame, one-line rows, sticky name and actions columns, the selection bar, the details panel's layout rule, the SEO score column
 - ui/list-table-overview.md: The panel list table driver as a whole: the decision behind it, its parts by label, which file holds what, the recipe for a new list, its filter, where a new screen is registered
@@ -504,6 +534,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/notifications-one-inbox.md: The bell as the panel's one inbox (#3817): All, Site, Workspace filters, a flow's runs folded, the meeting call, pgBellOpen() for the old inbox address, the Workspace count with no Inbox entry (#6281)
 - ui/panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
 - ui/panel-top-bar-phone.md: Panel top bar (#header) on a phone: below 768px the mascot alone (no wordmark or page heading), below 390px no logo, why, the test that keeps it
+- ui/picker-pages.md: Pages in the picker dialog (kind page, PK4): rows with address and type, the page type chips, archived and binned marks that cannot be chosen, a caller's own entries (extra)
 - ui/settings-system-tools.md: The System tools screen (system_tools.php): the screens beside Site Settings as cards, the dialog's one row to it, the palette rows; gates from pg_settings_tool_groups()
 - ui/visitors-screen-look.md: How the Visitors overview is drawn: reference pictures, frames and blocks, one change column, folding lists, quiet dashes, anchors, calm charts, the menu's section links, the traps
 - visitors/translation-index-verdict.md: The "reviewed" policy's one rule for a translated page's robots meta, alternates and sitemap.xml: only the page's own words count; no kept answer means not offered; what drops or keeps it
@@ -515,10 +546,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - waf/waf-inflight-request-cap.md: waf_inflight_* concurrent request cap on sensitive scripts: limit, 429 rule concurrent (no offence), file slots under data/temp, 120 s dead slot, fail-open, monitor mode.
 - waf/waf-self-rescue.md: CLI waf_unban.php lifts a ban from the server, Settings refuses a block entry covering your own address, the sign-in lock spares allow-listed addresses (#2187)
 - waf/waf-trusted-proxy-headers.md: Each Trusted Proxies entry names the header its proxy sets; new or edited entries without one read X-Forwarded-For only, stored ones keep every vendor header (#2750).
+- workflow/agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks
 - workflow/agent-channel-wake.md: How a session waits on the agent channel with tools/ws_wait.php (--from, --mention, --changed), the handles typed in it, and who it wakes
 - workflow/architect.md: Decision questions (2026-10-27): an architect issue; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (erdal), records it
 - workflow/coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators
-- workflow/coordinator-no-plans.md: Design template plans are paused (2026-11-09): no template step and no new template is given out; low priority before that; no bug hunt and no bug issue as work
+- workflow/coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; no bug hunt and no bug issue as work
+- workflow/design-template-owner-line.md: Owner (2026-11-11): during the template pause his own line polishes the shipped templates, bolder and with motion, appstudio and dealership first; two workers of one more coordinator take the rest
 - workflow/merge-review.md: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, digs deeper for access, payments, SQL, schema; an architect decision counts as the owner's
 - workflow/merger-wake.md: How the merging session keeps waking: a send_later chain, 3 minutes with more than 3 ready PRs and 15 minutes otherwise (2026-11-09), an hourly routine that re-arms it; GitHub events are not relied on
 - workflow/owner-rules.md: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, where area rules live (memory; vendor Bootstrap skills aside), language, the mobile app, who edits which notes
@@ -527,6 +560,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/agent-canvas-svg.md: Agents draw Workspace canvases from SVG (POST channels/{id}/canvases) and read any canvas (GET messages/{id}/canvas): Import port, blank picture, pending, who may
 - workspace/agent-channel-flag.md: Agent channel switch (ws_channels.agent_channel, #8440): /agent-channel on|off, its decisions kept apart on the decisions screen, the dashboard and GET /workspace/decisions
 - workspace/agent-checklist-questions.md: When an agent asks with a checklist (several ticks, or agent to agent) and not a poll; the ticks over the API (checks), the wake on a tick, the closing decision; who a question rings (question_asked)
+- workspace/agent-key-trial-memory.md: Channel memory written live on dev (2026-11-11) with an application agent's key: create, read, list, update and delete by POST, dry runs, refusals, the entry's line in the brief
 - workspace/agent-questions.md: How an agent asks the people with a poll or an approval; a one-answer question as a one-choice poll closed once the vote is read; why the outcome is written in the agent's name
 - workspace/channel-agent-rights.md: Who adds, changes or removes a channel's agents ("Agents in this channel" in Channel settings, workspace.channels.agents.*): who may post; the tier and a private channel's new agent only its manager
 - workspace/channel-memory.md: A channel's memory (ws_channel_memory) and the decision mark by a person or an agent (ws_messages.marked_by_kind): rows, routes, the index in the brief, the Memory tab
@@ -550,8 +584,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-channel-composer.md: The channel's writing box in one row (C5 of workspace-channel-screen.md): no hint line, marks behind Aa; a phone's one row with the tools switch, the keyboard rules
 - workspace/workspace-channel-decisions-tab.md: The channel's Decisions tab draws each decision as a card of its own with a gap between them, not stacked like the conversation's messages
 - workspace/workspace-channel-head.md: The channel header in one line (C1 of workspace-channel-screen.md, tour #6281): name and tags, people, search, info, task, tour, menu; a phone keeps back, name, ⋯; the purpose in the info drawer
+- workspace/workspace-channel-identity-motion.md: Workspace channel shell as one card in the channel colour (wash, pill tabs), day chip, writing box card (CL1 #8678); group colour chips; send pop, bounce, slide-in (#2094)
 - workspace/workspace-channel-messages.md: The channel's messages as drawn (C4 of workspace-channel-screen.md): grouped lines with their time on hover, the short hover bar, the decision tag, the discussion line, Convert to text
 - workspace/workspace-channel-panels.md: The side panels as drawn (C6 of workspace-channel-screen.md): the channel info beside the conversation in the discussion's place, its parts, the discussion's head and follow line
+- workspace/workspace-channel-panes.md: The channel's Tasks, Decisions and Files tabs as cards (CL2 #8688): task cards in a grid, decisions as a card grid, each kind of file a card; My tasks and a record's window keep their rows
+- workspace/workspace-channel-summary-board-memory.md: The channel's Summary, Board and Memory tabs as cards and the channel panes' empty states in a dashed card (CL3 #8703); the workflow table's board and other screens' empty states unchanged
 - workspace/workspace-command-live-line.md: The live line under a /task and a /status (ws_command_suggest: "Will create: …", warnings), a typed @username assigning, and what the parser reads: next week, datives, 14:00, "1.5 saat" as an estimate
 - workspace/workspace-create-commands.md: /create (/oluştur) product|group and its alias /product (/ürün) in a channel: kind word, parsers, the single-create card through ws_quick_create_input()/_save(), what Create sends
 - workspace/workspace-discussion-follow.md: The assistant a discussion follows (ws_threads.follow_agent, step 11.0.113, decision #2419, PR #2924): who is followed, which message asks it, the no-pile-up rule, scheduled sends

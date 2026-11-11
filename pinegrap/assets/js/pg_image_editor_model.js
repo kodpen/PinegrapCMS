@@ -4324,7 +4324,61 @@
         return (made && made.replace && (made.format === (ANIM_FORMATS[format] || ANIM_FORMATS.gif).ext)) ? 'replace' : 'new';
     }
 
-    var ANIMSAVE = { animFits: animFits, animSmaller: animSmaller, animSaveMode: animSaveMode };
+    // The layers of a document: the open scene's and each closed scene's
+    // (a canvas's scenes keep theirs in their entry).
+    function docLayerLists(doc) {
+        var lists = (doc && Array.isArray(doc.layers)) ? [doc.layers] : [];
+
+        ((doc && Array.isArray(doc.scenes)) ? doc.scenes : []).forEach(function (s) {
+            if (s && Array.isArray(s.layers)) {
+                lists.push(s.layers);
+            }
+        });
+
+        return lists;
+    }
+
+    // Pictures from this computer (a PNG or JPEG data: address, no file
+    // yet) in every scene: a save into Files sends them along to be kept
+    // as files, so the document its version keeps holds no pixels.
+    function animPictures(doc) {
+        var list = [];
+
+        docLayerLists(doc).forEach(function (layers) {
+            layers.forEach(function (l) {
+                if (l && (l.type === 'image') && !l.fileId && /^data:image\/(png|jpeg);base64,/.test(l.src || '')) {
+                    list.push({ id: l.id, data: l.src, name: l.fileName || '' });
+                }
+            });
+        });
+
+        return list;
+    }
+
+    // The files a save kept ({ layer id: { id, url } }): their layers, in
+    // every scene, point at them from now on. How many changed.
+    function picturesTaken(doc, saved) {
+        var n = 0;
+
+        if (!saved || (typeof saved !== 'object')) {
+            return 0;
+        }
+
+        docLayerLists(doc).forEach(function (layers) {
+            layers.forEach(function (l) {
+                if (l && Object.prototype.hasOwnProperty.call(saved, l.id) && saved[l.id]) {
+                    l.src = saved[l.id].url;
+                    l.fileId = saved[l.id].id;
+                    delete l.fileName;
+                    n++;
+                }
+            });
+        });
+
+        return n;
+    }
+
+    var ANIMSAVE = { animFits: animFits, animSmaller: animSmaller, animSaveMode: animSaveMode, animPictures: animPictures, picturesTaken: picturesTaken };
 
     // -- motion in a saved SVG (pg_image_editor_svg.js) --
 
@@ -9614,6 +9668,12 @@
         right.row = row;
         left = { to: src, row: row };
 
+        // The transition leads out of the clip's end, which is the second
+        // part's now; the first meets it in a cut.
+        if (l.transition) {
+            left.transition = null;
+        }
+
         if (l.anim) {
             right.anim = clone(l.anim);
             delete right.anim['in'];
@@ -9677,6 +9737,29 @@
         return out;
     }
 
+    // The source time each visible clip shows in an animation's frame at
+    // document time t (clipAt(): the trim and the speed), by layer id, in
+    // whole milliseconds; null while t is off the clip's span. A still (t
+    // null) waits for no frame: each clip paints its source in.
+    function clipFramesAt(doc, t) {
+        var out = {};
+
+        if ((t === null) || (t === undefined)) {
+            return out;
+        }
+
+        ((doc && doc.layers) || []).forEach(function (l) {
+            var at;
+
+            if ((l.type === 'video') && !l.hidden) {
+                at = clipShowAt(doc.layers, l, t).at;
+                out[l.id] = (at === null) ? null : Math.round(at);
+            }
+        });
+
+        return out;
+    }
+
     // The patches ([{ id, patch }]) put on doc's clips in place (inside an
     // editor change), then the length following them.
     function clipApply(doc, patches) {
@@ -9732,11 +9815,159 @@
         return out;
     }
 
+    // ---- effects and transitions (V5) ----
+
+    // A clip's effects (l.fx): whole numbers in [min, max], 0 changes
+    // nothing. The colour four take the Adjust tool's ranges and numbers;
+    // blur and vignette are 0-100.
+    var CLIP_FX = [['brightness', -100, 100], ['contrast', -100, 100], ['saturation', -100, 100], ['temperature', -100, 100], ['blur', 0, 100], ['vignette', 0, 100]];
+    // Blur at 100: a standard deviation of this part of the box's shorter
+    // side, so a clip blurs alike at any size.
+    var CLIP_BLUR = 0.02;
+
+    function clipFx(l) {
+        var fx = (l && l.fx && (typeof l.fx === 'object')) ? l.fx : {}, out = {};
+
+        CLIP_FX.forEach(function (d) {
+            out[d[0]] = clamp(Math.round(Number(fx[d[0]]) || 0), d[1], d[2]);
+        });
+
+        return out;
+    }
+
+    function clipFxOn(l) {
+        var fx = clipFx(l);
+
+        return CLIP_FX.some(function (d) { return fx[d[0]] !== 0; });
+    }
+
+    // The clip's colour step as the Adjust tool's (colorMatrix()), null for
+    // none; the stage's feColorMatrix and a saved frame's applyColor() take
+    // the same numbers.
+    function clipFxColor(l) {
+        var fx = clipFx(l);
+
+        return colorMatrix(colorValues({ adjust: { brightness: fx.brightness, contrast: fx.contrast, saturation: fx.saturation, temperature: fx.temperature } }));
+    }
+
+    // The blur's standard deviation in the layer's units, 0 for none.
+    function clipFxBlur(l) {
+        var b = clipFx(l).blur;
+
+        return b ? Math.round(b / 100 * CLIP_BLUR * Math.min(Math.abs(Number(l.w) || 0), Math.abs(Number(l.h) || 0)) * 1000) / 1000 : 0;
+    }
+
+    function clipFxVignette(l) {
+        return vignetteStops(clipFx(l).vignette);
+    }
+
+    // The transition out of a clip into the next one on its row (l.transition,
+    // as a scene's: sceneTransition()), null for none.
+    function clipTransition(l) {
+        var tr = (l && l.transition && (typeof l.transition === 'object')) ? sceneTransition(l.transition) : null;
+
+        return (tr && (tr.kind !== 'none')) ? tr : null;
+    }
+
+    // The shown clip after l on its row when it starts where l ends, or
+    // before l when it ends where l starts (dir -1); null for none, so a
+    // transition kept on a clip that no longer meets the next one plays
+    // nothing.
+    function clipTouching(layers, l, dir) {
+        var row = clipRow(layers, l).filter(function (o) { return !o.hidden; }), i = row.indexOf(l), o = row[i + (dir || 1)];
+
+        if ((i < 0) || !o) {
+            return null;
+        }
+
+        return (Math.abs(((dir === -1) ? clipSpan(o).to : clipSpan(l).to) - ((dir === -1) ? clipSpan(l).from : clipSpan(o).from)) < 1) ? o : null;
+    }
+
+    // How long l's transition runs: its time, never longer than the clip it
+    // leads into; 0 with no transition or no clip meeting it.
+    function clipTransitionMs(layers, l) {
+        var tr = clipTransition(l), next = tr ? clipTouching(layers, l, 1) : null, sp;
+
+        if (!next) {
+            return 0;
+        }
+
+        sp = clipSpan(next);
+
+        return Math.min(tr.ms, sp.to - sp.from);
+    }
+
+    // How the clip leading out (a) and the one coming in (b) are drawn at
+    // progress p, each in its own box: { from, to }, each { alpha, x, y,
+    // scale, clip } (clip in the box's own units, null for whole). The
+    // scenes' states (sceneTransitionAt()) draw the new one over the old;
+    // when a is the upper layer, fade, wipe and zoom take a away instead,
+    // so the change shows either way.
+    function clipTransitionStates(kind, p, a, b, aAbove) {
+        var from = sceneTransitionAt(kind, p, Math.abs(a.w), Math.abs(a.h)).from, to = sceneTransitionAt(kind, p, Math.abs(b.w), Math.abs(b.h)).to;
+
+        from = Object.assign({ alpha: 1, x: 0, y: 0, scale: 1 }, from || {}, { clip: null });
+        p = clamp(p, 0, 1);
+
+        if (aAbove && (kind === 'wipe')) {
+            from.clip = { x: Math.abs(a.w) * p, y: 0, w: Math.abs(a.w) * (1 - p), h: Math.abs(a.h) };
+            to.clip = null;
+        } else if (aAbove && ((kind === 'fade') || (kind === 'zoom'))) {
+            from.alpha = 1 - p;
+            to.alpha = 1;
+        }
+
+        return { from: from, to: to };
+    }
+
+    // What clip l shows at document time t: the source time (null for
+    // nothing) and, while a transition runs, its drawing state (else null).
+    // The clip leading out holds its last frame (to - 1, as clipAt() ends)
+    // over the first ms of the next one; no clip's span changes.
+    function clipShowAt(layers, l, t) {
+        var at = clipAt(l, t), other, ms, p, states, idx;
+
+        if ((t === null) || (t === undefined)) {
+            return { at: at, state: null };
+        }
+
+        idx = function (o) { return (layers || []).indexOf(o); };
+
+        if (at !== null) {
+            other = clipTouching(layers, l, -1);
+            ms = other ? clipTransitionMs(layers, other) : 0;
+
+            if (ms && (t - clipSpan(l).from < ms)) {
+                p = easeAt('in-out', (t - clipSpan(l).from) / ms);
+                states = clipTransitionStates(clipTransition(other).kind, p, other, l, idx(other) > idx(l));
+
+                return { at: at, state: states.to };
+            }
+
+            return { at: at, state: null };
+        }
+
+        other = clipTouching(layers, l, 1);
+        ms = other ? clipTransitionMs(layers, l) : 0;
+
+        if (ms && (t >= clipSpan(other).from) && (t - clipSpan(other).from < ms)) {
+            p = easeAt('in-out', (t - clipSpan(other).from) / ms);
+            states = clipTransitionStates(clipTransition(l).kind, p, l, other, idx(l) > idx(other));
+
+            return { at: clipLayer(l).to - 1, state: states.from };
+        }
+
+        return { at: null, state: null };
+    }
+
     var CLIP = {
         CLIP_SPEEDS: CLIP_SPEEDS, CLIP_TYPES: CLIP_TYPES, CLIP_MIN: CLIP_MIN, clipLayer: clipLayer, clipSpan: clipSpan, clipAt: clipAt,
         clipFit: clipFit, clipNew: clipNew, clipReplace: clipReplace, clipEnd: clipEnd, clipSound: clipSound, clipDetach: clipDetach, clipType: clipType,
         clipRowKey: clipRowKey, clipRow: clipRow, clipRipple: clipRipple, clipTrim: clipTrim, clipMove: clipMove, clipSplit: clipSplit, clipLength: clipLength,
-        clipApply: clipApply, clipPart: clipPart, clipJoins: clipJoins, clipMotionNeed: clipMotionNeed, CLIP_STRIP_MAX: CLIP_STRIP_MAX, clipStripTimes: clipStripTimes
+        clipApply: clipApply, clipPart: clipPart, clipJoins: clipJoins, clipMotionNeed: clipMotionNeed, CLIP_STRIP_MAX: CLIP_STRIP_MAX, clipStripTimes: clipStripTimes,
+        clipFramesAt: clipFramesAt, CLIP_FX: CLIP_FX, clipFx: clipFx, clipFxOn: clipFxOn, clipFxColor: clipFxColor, clipFxBlur: clipFxBlur,
+        clipFxVignette: clipFxVignette, clipTransition: clipTransition, clipTouching: clipTouching, clipTransitionMs: clipTransitionMs,
+        clipTransitionStates: clipTransitionStates, clipShowAt: clipShowAt
     };
 
     // ---- MIX (pg_image_editor_mix.js) ----

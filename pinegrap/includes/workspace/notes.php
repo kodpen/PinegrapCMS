@@ -992,6 +992,43 @@ function ws_notes_list($viewer, $search = '')
 }
 
 /**
+ * The person's own notes, the latest changed first, as the notes list
+ * presents them (ws_notes_present()): a note behind the closed lock keeps
+ * its title alone, and a note in a locked group is left out until the list
+ * is opened (ws_note_lock_list_filter()). For the dashboard's notes card.
+ *
+ * @param array $viewer
+ * @param int   $limit
+ * @return array[]
+ */
+function ws_notes_latest($viewer, $limit)
+{
+    $limit = max(1, min(50, (int) $limit));
+
+    if (!ws_notes_ready()) {
+        return array();
+    }
+
+    $me = (int) $viewer['id'];
+
+    // A few more than asked, for the notes the lock leaves out.
+    $rows = (array) db_items("SELECT " . ws_notes_list_columns() . " FROM ws_notes n WHERE n.user_id = '" . $me . "'
+        ORDER BY n.updated_at DESC, n.id DESC LIMIT " . ($limit * 3));
+
+    foreach ($rows as $index => $row) {
+        $rows[$index]['access'] = 'owner';
+    }
+
+    $notes = ws_notes_present($viewer, $rows);
+
+    if (function_exists('ws_note_lock_list_filter') && ws_note_lock_ready() && ws_note_lock_has($me)) {
+        $notes = ws_note_lock_list_filter($notes, ws_note_lock_is_open($me), '');
+    }
+
+    return array_slice($notes, 0, $limit);
+}
+
+/**
  * A note's place in the API's list, which runs the screen's two lists one
  * after the other: group 0 for an own pinned note, 1 for another own note,
  * 2 for a shared one; within a group the latest change first, then the

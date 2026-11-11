@@ -4,7 +4,9 @@ description: Interactions section of the properties panel and on the canvas: nod
 ---
 
 ## Where is the section, and on which nodes?
-- The Interactions section of the properties panel (`propsInteractions()`, after Search and SERP), only on nodes `_sdFxTakes()` accepts: semantic and grid nodes, components but the language switcher (I4, #1998), and the content types whose markup carries the node's attributes (designer-node-attributes.md). Rows follow the effect and the trigger (distance only for slides, stagger for load/view, Every time for view, Top offset for sticky, Speed for parallax). `_sdFxSet()` writes one field and normalizes, so switching the effect keeps the timing and drops what no longer applies; None deletes `_fx`.
+- The Interactions section of the properties panel (`propsInteractions()`, after Search and SERP), only on nodes `_sdFxTakes()` accepts: semantic and grid nodes, components but the language switcher (I4, #1998), and the content types whose markup carries the node's attributes (designer-node-attributes.md).
+- Rows follow the effect and the trigger (distance only for slides, stagger for load/view, Every time for view, Top offset for sticky, Speed for parallax, Start scale / Start opacity / Start offset for Zoom / Fade / Rise on scroll, Duration and Delay for Count up, offered on text nodes only: designer-interactions-count.md). `_sdFxSet()` writes one field and normalizes, so switching the effect keeps the timing and drops what no longer applies, the start too (each effect's is its own unit); None deletes `_fx`.
+- A scroll-linked effect gets a note on how it follows the scroll, and Zoom on scroll starting above 100 % one to set Overflow to Hidden on the element around it (else the page scrolls sideways). It has no trigger, so no Play button.
 
 ## How are undo and redraws handled?
 - A choice is one undo step and redraws the panel; a typed number is one undo step per focus (`_sdUndoBeforeFirstInput()`) and redraws the panel on leaving it, showing the clamped value.
@@ -12,7 +14,7 @@ description: Interactions section of the properties panel and on the canvas: nod
 ## How does the canvas show it?
 - `_sdApplyNodeAttrs()` writes the `_sdFxAttrs()` attributes on the canvas element (a panel copy of the names gives way). `_sdFxCanvas()`, after `_sdScrollers()` in every render, loads `pg_fx.min.js` into the frame once (`#pg-fx-js`, `pgFxEditing = true`) and calls `pgFxBind(canvasDoc)` after later renders.
 - With `pgFxEditing` only the first bind plays entrances; a node drawn again by a later render shows in place (`pg-fx-armed`, no start state), so an edit does not replay the page. `bind()` forgets records of nodes no longer in the document. A paused canvas answers reduced motion (`_sdMotionShimFn()`), so nothing moves; the Animations button resets the frame and the entrances play once.
-- "Play on the canvas" (rows with a trigger) calls `_sdFxReplay(node)` → `pgFx.replay(el)`: the transitions are set `important`, so they beat `body.sd-motion-paused`; afterwards the node's own transition comes back. Sticky gets `position: sticky` from the script where no head style gave it.
+- "Play on the canvas" (rows with a trigger, and Count up) calls `_sdFxReplay(node)` → `pgFx.replay(el)`: the transitions are set `important`, so they beat `body.sd-motion-paused`; afterwards the node's own transition comes back. Sticky gets `position: sticky` from the script where no head style gave it.
 - Checked in Chromium on a static page (I3): load and view entrances, hover, replay under the paused rule. The designer itself was not run.
 
 ## What does the code view do with the attributes?

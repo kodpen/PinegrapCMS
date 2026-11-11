@@ -1869,6 +1869,11 @@ function ws_handle_action($action, $request)
                 ws_channel_mark_read($channel['id'], $viewer['id'], $last_id);
             }
 
+            // A mailbox's card or mails shown here are read (mail_reads.php).
+            if (function_exists('ws_mail_read_rows')) {
+                ws_mail_read_rows($viewer, $rows);
+            }
+
             return ws_action_ok(array(
                 'briefing'   => $briefing,
                 'channel'    => ws_channel_detail($viewer, $channel),
@@ -1957,6 +1962,10 @@ function ws_handle_action($action, $request)
 
                     if (!empty($rows) && !empty($request['read']) && ws_channel_membership($channel_id, $viewer['id'])) {
                         ws_channel_mark_read($channel_id, $viewer['id'], (int) $rows[count($rows) - 1]['id']);
+                    }
+
+                    if (!empty($rows) && !empty($request['read']) && function_exists('ws_mail_read_rows')) {
+                        ws_mail_read_rows($viewer, $rows);
                     }
 
                     // Task cards in this channel that changed since the last
@@ -2465,6 +2474,58 @@ function ws_handle_action($action, $request)
                 'copy_note'  => ($result['copy'] === 'failed') ? lang('The e-mail was sent, but no copy could be put into the mailbox\'s sent folder.') : '',
             ));
 
+        // Send again: an outgoing mail that could not leave (mail_send.php).
+        case 'ws_mail_resend':
+            if (!function_exists('ws_mail_resend') || !ws_mail_send_ready()) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            $result = ws_mail_resend($viewer, (int) ($request['item_id'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']));
+            }
+
+            return ws_action_ok(array('state' => $result['state']));
+
+        // New e-mail: the mailboxes the person may send from with their
+        // channels and Signatures, and the form sent through the queue
+        // (mail_compose.php, ws_mail_send()). People only; a guest has no
+        // mailbox to send from.
+        case 'ws_mail_compose':
+        case 'ws_mail_new':
+            if (!function_exists('ws_mail_send') || !ws_mail_send_ready()) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            if (empty($viewer['member'])) {
+                return ws_action_error(ws_mail_send_error_text('no_box'));
+            }
+
+            if ($action === 'ws_mail_compose') {
+                return ws_action_ok(array('boxes' => ws_mail_compose_boxes(ws_mail_send_boxes($viewer)), 'writer' => ws_person_name((int) $viewer['id'])));
+            }
+
+            $files = ws_mail_compose_files($_FILES['files'] ?? null);
+
+            if (!$files['ok']) {
+                return ws_action_error($files['error'], 'files');
+            }
+
+            $mail = ws_mail_compose_mail($request, $files['files']);
+            $result = ws_mail_send($viewer, $mail);
+
+            if (!$result['ok']) {
+                return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']));
+            }
+
+            return ws_action_ok(array(
+                'conversation_id' => $result['conversation_id'],
+                'message_id'      => $result['message_id'],
+                'channel_id'      => $mail['channel_id'],
+                'state'           => $result['state'],
+            ));
+
         // A conversation's status or holder (mail_status.php).
         case 'ws_mail_conversation':
             if (!function_exists('ws_mail_conversation_set') || !ws_mail_ready()) {
@@ -2481,6 +2542,45 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok();
+
+        // The E-mails screen: the next page of the list, a conversation in
+        // the reading pane (read from then on), Mark all as read
+        // (mail_list.php, mail_pane.php, mail_reads.php).
+        case 'ws_mail_rows':
+        case 'ws_mail_pane':
+        case 'ws_mail_read_all':
+            if (!function_exists('ws_mail_reads_ready') || !ws_mail_reads_ready()) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            if ($action === 'ws_mail_read_all') {
+                ws_mail_read_all($viewer);
+
+                return ws_action_ok(array('unread' => 0));
+            }
+
+            if ($action === 'ws_mail_rows') {
+                $filters = ws_mail_list_filters($request);
+                $list = ws_mail_list($viewer, $filters, time());
+
+                return ws_action_ok(array(
+                    'html' => ws_mail_list_rows_html($list['rows'], OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', time()),
+                    'more' => ws_mail_list_more_html($filters, $list['next']),
+                ));
+            }
+
+            $pane = ws_mail_pane($viewer, (int) ($request['conversation_id'] ?? 0));
+
+            if (!$pane) {
+                return ws_action_error(lang('This conversation cannot be opened.'));
+            }
+
+            ws_mail_read_mark((int) $viewer['id'], (int) $pane['conversation']['id'], $pane['last_id']);
+
+            return ws_action_ok(array_merge(ws_mail_pane_tools($pane, $viewer), array(
+                'html'   => ws_mail_pane_html($pane, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/'),
+                'unread' => ws_mail_unread_count($viewer),
+            )));
 
         case 'ws_attach':
             $channel = ws_action_channel($viewer, $request, 'post');

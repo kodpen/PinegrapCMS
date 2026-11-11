@@ -26,13 +26,48 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 
 /**
+ * Who the dialog is for: a manager (role <= 2) and a holder of the Workspace
+ * settings right, who sees the Workspace heading alone. Asked once a request.
+ *
+ * @param array $user the row validate_user() returned
+ * @return array manager and workspace, both bool (pg_settings_reader())
+ */
+function pg_settings_modal_reader($user)
+{
+    static $readers = array();
+
+    $id = isset($user['id']) ? (int) $user['id'] : 0;
+
+    if (!isset($readers[$id])) {
+
+        if (!defined('PG_SETTINGS_MENU')) {
+            define('PG_SETTINGS_MENU', true);
+        }
+
+        include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+        $readers[$id] = pg_settings_reader($user);
+    }
+
+    return $readers[$id];
+}
+
+
+/**
  * The button that opens it, for the header.
  *
+ * @param array|null $user the row validate_user() returned
  * @return string
  */
-function pg_settings_modal_button()
+function pg_settings_modal_button($user = null)
 {
-    if (!defined('USER_ROLE') || ((int) USER_ROLE) > 2) {
+    if (!is_array($user)) {
+        return '';
+    }
+
+    $reader = pg_settings_modal_reader($user);
+
+    if (!$reader['manager'] && !$reader['workspace']) {
         return '';
     }
 
@@ -55,15 +90,15 @@ function pg_settings_modal_button()
  */
 function pg_settings_modal_markup($user)
 {
-    if (!isset($user['role']) || ((int) $user['role']) > 2) {
+    if (!is_array($user)) {
         return '';
     }
 
-    if (!defined('PG_SETTINGS_MENU')) {
-        define('PG_SETTINGS_MENU', true);
-    }
+    $reader = pg_settings_modal_reader($user);
 
-    include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+    if (!$reader['manager'] && !$reader['workspace']) {
+        return '';
+    }
 
     // ── the categories ───────────────────────────────────────────────────
     $output_links = '';
@@ -75,8 +110,9 @@ function pg_settings_modal_markup($user)
     $output_help_start = pg_help_url(array('topic' => 'site-settings#site-settings-intro'));
 
     // Under the headings of pg_settings_groups(), drawn like the main menu's:
-    // a label over its rows, not a link and not a fold.
-    $categories = pg_settings_categories();
+    // a label over its rows, not a link and not a fold. Only the categories
+    // this reader may open.
+    $categories = pg_settings_categories_for($user, $reader);
 
     foreach (pg_settings_grouped($categories) as $group) {
 
@@ -104,7 +140,9 @@ function pg_settings_modal_markup($user)
     // The list holds only categories. The screens that leave the dialog
     // (logs, connections, jobs, backups) sit on the System tools screen,
     // reached by one row at the end, shown when the user has a tool there.
-    $output_tools = pg_settings_tools_link(pg_settings_tool_groups($user));
+    // Those screens are the managers', so a holder of the Workspace settings
+    // right alone does not get the row.
+    $output_tools = $reader['manager'] ? pg_settings_tools_link(pg_settings_tool_groups($user)) : '';
 
     // Where an old #pgset- link should land, for the script that follows them.
     $output_anchors = array();
@@ -229,13 +267,26 @@ function pg_settings_modal_markup($user)
                 </footer>
             </section>
 
+            <!--
+                A card\'s drawer slides in here, from the dialog\'s right edge
+                over the pane (includes/settings/drawer.php). Inside the dialog,
+                so it is never a second layer that the settings can be left
+                behind; outside the form, so a drawer may carry a form of its
+                own. The scrim under it shuts it; while one is open the list
+                and the pane are inert.
+            -->
+            <div class="pg-sm-dscrim" id="pg_settings_modal_dscrim"></div>
+            <div class="pg-sm-drawers" id="pg_settings_modal_drawers"></div>
+
 </dialog>
 
 <!--
-    Where a card\'s own dialog goes. A Bootstrap modal nested inside another
-    shares the outer one\'s backdrop and is drawn behind it, so the cron dialog
-    and its kind are moved out here -- after the settings modal, which is what
-    puts them in front of it -- and are cleared when the pane changes.
+    What a card hands over beside its markup: a hidden Connect form, which a
+    button in the pane submits by its form attribute (forms cannot be nested),
+    and a card\'s drawer, which arrives here for its scripts to run and is
+    moved into the dialog straight after. Cleared when the pane changes. A
+    card opens no dialog of its own: a second layer could leave the settings
+    unsaved.
 -->
 <div id="pg_settings_modal_extras"></div>';
 }

@@ -6,7 +6,7 @@ module: mail_queue
 
 ## What does a row carry?
 - Two keys in `mail_outbox.properties` (no schema): `on_outcome`, a handler name, and `outcome_ref`, a string the handler reads back (for example the Workspace mail item). `pg_mail_properties_encode()` drops only `queue`, so both survive, as does `keep_mime`.
-- A row never carries a function name. `pg_mail_outcome_handlers()` maps the name to `array('function' => …, 'file' => …)`, the file a path under `includes/` relative to `PG_FUNCTIONS_DIR`. It ships empty: the Workspace entry comes with its handler `ws_mail_send_outcome()` in the send path (plan step WM3). tests/mail_queue_outcome_test.php checks that every entry's file and function exist.
+- A row never carries a function name. `pg_mail_outcome_handlers()` maps the name to `array('function' => …, 'file' => …)`, the file a path under `includes/` relative to `PG_FUNCTIONS_DIR`. One entry: `workspace_mail` → `ws_mail_send_outcome()` in `includes/workspace/mail_send.php` (#8646, `workspace/mail-send.md`). tests/mail_queue_outcome_test.php checks that every entry's file and function exist.
 - Loading as the carrier label drivers do: `is_file`, `require_once`, `function_exists`. An unknown name, a file outside `includes/` (or with `..`), a missing file or function is skipped silently.
 - The handler's file loads what it needs itself: the queue runs in job.php, mail_job.php and the Mail queue screen's Run now and Retry, with no person behind the request.
 

@@ -4,8 +4,9 @@
  * The new dashboard's personal cards and the Performance card
  * (assets/js/pg_dash.js draws the frames): My goals, Pinned, My notes and
  * Performance. The data is what includes/dashboard/v2/cards/<id>.php
- * returns; every text comes from it. Goals, pins and notes are saved one
- * part at a time through api.php's dashboard_personal_save action.
+ * returns; every text comes from it. Goals and pins are saved one part at a
+ * time through api.php's dashboard_personal_save action; My notes adds to
+ * My Notes through the workspace's own ws_note_save action.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -449,57 +450,173 @@
 
     // ── My notes ───────────────────────────────────────────────────────────
 
+    // A shortcut to My Notes: the box adds a note there through the notes'
+    // own save (the ws_note_save action, as the header's quick note does),
+    // and the latest notes, title and date, open on the My Notes screen.
+    function noteRow(row, L) {
+        var el = pgDash.el;
+        var item = el("li", "pg-dash-item");
+        var open = el("a", "pg-dash-item-link");
+        open.href = row.url;
+        if (row.locked) {
+            var lock = el("i", "bi bi-lock pg-dash-notes-lock");
+            lock.setAttribute("role", "img");
+            lock.setAttribute("aria-label", L.locked);
+            open.appendChild(lock);
+        }
+        var main = el("span", "pg-dash-item-main");
+        main.appendChild(el("span", "pg-dash-item-text", row.text));
+        main.appendChild(el("span", "pg-dash-item-note", row.note));
+        open.appendChild(main);
+        open.title = row.text;
+        item.appendChild(open);
+        return item;
+    }
+
     pgDash.renderers.notes = function (body, data, entry) {
         var el = pgDash.el;
         var L = data.labels || {};
-        var most = data.most || 2000;
-        var box = el("textarea", "form-control pg-dash-notes");
+        var shown = data.shown || 5;
         var id = "pg_dash_notes_" + entry.id;
-        var hint = el("p", "pg-dash-personal-hint", L.hint);
+        var form = el("form", "pg-dash-notes-add");
+        var box = el("textarea", "form-control pg-dash-notes");
+        var hint = el("p", "pg-dash-personal-hint pg-dash-notes-hint", L.hint);
+        var tools = el("div", "pg-dash-notes-tools");
+        var keep = el("button", "btn btn-solid theme-primary btn-sm", L.save);
+        var stop = button("btn btn-outline theme-secondary btn-sm", L.cancel);
         var note = status("pg-dash-notes-status");
-        var timer = null;
-        var sent = data.text || "";
+        var list = el("ul", "pg-dash-items pg-dash-notes-list");
+        var none = el("p", "pg-dash-item-none", L.none);
+        var saving = false;
 
+        form.noValidate = true;
         box.id = id;
-        box.value = sent;
-        box.maxLength = most;
-        box.rows = 6;
+        box.name = "body";
+        box.rows = 1;
+        box.maxLength = data.most || 60000;
+        box.placeholder = L.label;
         box.setAttribute("aria-label", L.label);
         hint.id = id + "_hint";
         box.setAttribute("aria-describedby", hint.id);
-        box.readOnly = !!data.locked;
+        keep.type = "submit";
 
-        function left() {
-            return fill(L.left, String(Math.max(0, most - box.value.length)));
+        // One line until it is used; it grows to room enough to write in,
+        // and an empty box left goes back to one line.
+        function grow(open) {
+            form.classList.toggle("is-open", open);
+            box.rows = open ? 4 : 1;
         }
 
-        // Saved after a pause in typing, and when the box is left.
-        function send() {
-            window.clearTimeout(timer);
-            var text = box.value;
-            if (text === sent) {
+        function say(message, noteId) {
+            note.textContent = message || "";
+            if (noteId) {
+                var link = el("a", "", L.open);
+                link.href = data.note_url + encodeURIComponent(noteId);
+                note.appendChild(document.createTextNode(" "));
+                note.appendChild(link);
+            }
+        }
+
+        function add(made) {
+            list.insertBefore(noteRow({
+                id: made.id,
+                text: made.name,
+                note: made.updated,
+                url: data.note_url + encodeURIComponent(made.id),
+                locked: false
+            }, L), list.firstChild);
+            while (list.children.length > shown) {
+                list.removeChild(list.lastChild);
+            }
+            none.remove();
+        }
+
+        function save() {
+            var text = box.value.replace(/\s+$/, "");
+            if (saving) {
                 return;
             }
-            note.textContent = L.saving;
-            save("notes", text, function (value) {
-                sent = (typeof value === "string") ? value : text;
-                note.textContent = L.saved + " · " + left();
-            }, function (message) {
-                note.textContent = message || L.failed;
+            if (text.trim() === "") {
+                box.focus();
+                return;
+            }
+            saving = true;
+            keep.disabled = true;
+            say("");
+            $.ajax({
+                contentType: "application/json",
+                url: data.api || "api.php",
+                data: JSON.stringify({
+                    action: "ws_note_save",
+                    token: (typeof software_token !== "undefined") ? software_token : "",
+                    title: "",
+                    body: text
+                }),
+                type: "POST",
+                dataType: "json"
+            }).done(function (answer) {
+                var made = (answer && answer.status === "success" && answer.data) ? answer.data.note : null;
+                if (made && made.id) {
+                    box.value = "";
+                    grow(false);
+                    add(made);
+                    say(L.saved, made.id);
+                    return;
+                }
+                say((answer && answer.message) || L.failed);
+            }).fail(function () {
+                say(L.failed);
+            }).always(function () {
+                saving = false;
+                keep.disabled = false;
             });
         }
 
-        if (!data.locked) {
-            box.addEventListener("input", function () {
-                window.clearTimeout(timer);
-                timer = window.setTimeout(send, 800);
-            });
-            box.addEventListener("blur", send);
-        }
+        box.addEventListener("focus", function () {
+            grow(true);
+        });
+        box.addEventListener("input", function () {
+            if (note.textContent !== "") {
+                say("");
+            }
+        });
+        box.addEventListener("keydown", function (event) {
+            if ((event.ctrlKey || event.metaKey) && (event.key === "Enter")) {
+                event.preventDefault();
+                save();
+            }
+        });
+        form.addEventListener("focusout", function (event) {
+            if (!form.contains(event.relatedTarget) && (box.value.trim() === "")) {
+                grow(false);
+            }
+        });
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            save();
+        });
+        stop.addEventListener("click", function () {
+            box.value = "";
+            grow(false);
+            say("");
+        });
 
-        body.appendChild(box);
-        body.appendChild(hint);
-        body.appendChild(note);
+        tools.appendChild(keep);
+        tools.appendChild(stop);
+        tools.appendChild(hint);
+        form.appendChild(box);
+        form.appendChild(tools);
+        form.appendChild(note);
+        body.appendChild(form);
+
+        (data.rows || []).forEach(function (row) {
+            list.appendChild(noteRow(row, L));
+        });
+        body.appendChild(list);
+        if (!(data.rows || []).length) {
+            body.appendChild(none);
+        }
+        link(body, data.url, data.link);
     };
 
     // ── Performance ────────────────────────────────────────────────────────

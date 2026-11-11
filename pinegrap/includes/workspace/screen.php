@@ -18,6 +18,41 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * A card of the Site Settings dialog linking the Workspace cards still kept
+ * on the Workspace Settings screen. Each card that moves into the dialog
+ * takes its link out; the last one takes the card.
+ *
+ * @param string $section_id the card's id, a section of its category
+ * @param array  $links      array(anchor on workspace_settings.php, icon, label)
+ * @return string one grid column
+ */
+function ws_settings_screen_links_card($section_id, $links)
+{
+    $screen = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_settings.php';
+    $items = '';
+
+    foreach ($links as $link) {
+        $items .= '
+                    <a class="list-group-item list-group-item-action d-flex align-items-center gap-3" href="' . h($screen . '#' . $link[0]) . '">'
+            . '<i class="bi ' . h($link[1]) . '" aria-hidden="true"></i><span>' . h($link[2]) . '</span></a>';
+    }
+
+    return '
+    <div id="' . h($section_id) . '" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . h(lang('On the Workspace Settings screen')) . '
+            </div>
+            <div class="card-body">
+                <p class="fg-secondary small">' . h(lang('These cards have not moved here yet. Each opens on the Workspace Settings screen.')) . '</p>
+                <div class="list-group">' . $items . '
+                </div>
+            </div>
+        </div>
+    </div>';
+}
+
+/**
  * A text with numbered holes the script fills: {1}, {2}.
  *
  * @param string $string the English text with {var:N}
@@ -844,8 +879,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
     $strings = array_merge($strings, ws_task_time_js_strings(), ws_task_links_js_strings());
     // Approval requests, the people outside the team they ask, read
     // receipts and answers by e-mail (approvals.php, approval_guests.php,
-    // acks.php, mail_reply.php).
-    $strings = array_merge($strings, ws_approvals_js_strings(), ws_approval_guests_js_strings(), ws_acks_js_strings(), ws_mail_js_strings(), ws_mail_status_js_strings());
+    // acks.php, mail_reply.php, mail_send.php).
+    $strings = array_merge($strings, ws_approvals_js_strings(), ws_approval_guests_js_strings(), ws_acks_js_strings(), ws_mail_js_strings(), ws_mail_status_js_strings(), ws_mail_send_js_strings(), ws_mail_compose_js_strings());
     // Voice messages: the recording row and the player (voice.php,
     // assets/js/workspace_voice.js).
     $strings = array_merge($strings, ws_voice_js_strings());

@@ -1891,6 +1891,29 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Nobody on the site: the last visits, each with a muted dot, the time
+     first and the landing page at the end. */
+  .pg-dash-live-last .pg-dash-live-page::before {
+    background: var(--pgd-muted);
+  }
+
+  .pg-dash-live-when {
+    display: flex;
+    flex: 0 0 auto;
+    gap: .375rem;
+    color: var(--pgd-fg);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pg-dash-live-clock {
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-live-last .pg-dash-live-path {
+    text-align: end;
+    color: var(--pgd-muted);
+  }
+
   @media (forced-colors: active) {
     .pg-dash-line .pg-dash-line-main,
     .pg-dash-line .pg-dash-line-compare { stroke: CanvasText; }
@@ -4413,22 +4436,55 @@
 
   .pg-dash-pin-choice-note { margin-inline-start: auto; }
 
-  /* My notes: one plain box. */
-  /* My notes: a pale amber note, as drawn. */
+  /* My notes: an "Add a note" box, a pale amber note as drawn, one line
+     high until it is used; then it grows and shows its buttons. The latest
+     notes are list rows under it. */
+  .pg-dash-notes-add {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+  }
+
   .pg-dash-notes {
-    min-height: 8rem;
-    padding: .75rem .875rem;
+    padding: .5rem .875rem;
     border: 1px solid color-mix(in srgb, var(--pgd-warn) 30%, transparent);
     border-radius: .75rem;
     background: color-mix(in srgb, var(--pgd-warn) 6%, var(--pgd-field));
     font-size: .8125rem;
     line-height: 1.7;
     color: var(--pgd-note);
+    resize: none;
+  }
+
+  .pg-dash-notes-add.is-open .pg-dash-notes {
+    min-height: 7rem;
     resize: vertical;
   }
 
   .pg-dash-notes:focus {
     border-color: var(--pgd-accent-line);
+  }
+
+  .pg-dash-notes-tools {
+    display: none;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+  }
+
+  .pg-dash-notes-add.is-open .pg-dash-notes-tools { display: flex; }
+
+  .pg-dash-personal-hint.pg-dash-notes-hint {
+    flex: 1 1 10rem;
+    margin: 0;
+  }
+
+  .pg-dash-notes-list { margin-top: .25rem; }
+
+  .pg-dash-notes-lock {
+    flex: none;
+    font-size: .875rem;
+    color: var(--pgd-muted);
   }
 
   .pg-dash-personal-hint { margin: .25rem 0 0; }
@@ -4849,6 +4905,18 @@
     --pg-dash-row-from: color-mix(in srgb, var(--pgd-chart-3) 70%, var(--pgd-card));
     --pg-dash-row-to: var(--pgd-map-top);
     grid-template-columns: minmax(0, 6.25rem) minmax(2.5rem, 1fr) minmax(3rem, auto);
+  }
+
+  /* Visitor map without a city to place: the world map in the card's own
+     hue, the busiest step the hue itself. */
+  .pg-dash-map-world {
+    --pg-dash-map-hue: var(--pg-dash-cat);
+  }
+
+  .pg-dash-map-world [data-step="4"],
+  .pg-dash-map-world .pg-dash-map-step[data-step="4"] {
+    fill: var(--pg-dash-map-hue);
+    background: var(--pg-dash-map-hue);
   }
 
   /* Visitor map (pg_dash_cards_visitors.js): a bubble per place over the

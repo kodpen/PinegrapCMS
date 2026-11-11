@@ -51,7 +51,7 @@
 
         var t = h.t;
         var el = h.el;
-        var root = el('div', 'ws-memory p-5');
+        var root = el('div', 'ws-memory');
         var canPost = false;
 
         pane.appendChild(root);
@@ -74,7 +74,7 @@
         }
 
         function entryNode(entry) {
-            var item = el('div', 'list-group-item d-flex align-items-start gap-3' + (entry.expired ? ' opacity-75' : ''));
+            var item = el('div', 'ws-memory-entry d-flex align-items-start gap-3' + (entry.expired ? ' opacity-75' : ''));
             var main = el('div', 'flex-grow-1 min-w-0');
             var head = el('div', 'd-flex align-items-center gap-2 flex-wrap');
 
@@ -140,22 +140,30 @@
 
         function list() {
             h.clear(root);
-            root.appendChild(el('p', 'small fg-secondary', t('mem_help')));
 
-            var holder = el('div', 'list-group');
+            // The hint and New record are one card above the records, each
+            // record a card of its own in a grid.
+            var intro = el('div', 'ws-memory-intro');
+            intro.appendChild(el('p', 'small fg-secondary mb-0', t('mem_help')));
+            root.appendChild(intro);
+
+            var holder = el('div', 'ws-memory-list');
             root.appendChild(holder);
 
             h.api('ws_memory_list', { channel_id: channel.id }).then(function (data) {
                 canPost = !!data.can_post;
 
                 if (canPost) {
-                    var add = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5 mb-5', t('mem_add'), 'bi-plus-lg');
+                    var add = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('mem_add'), 'bi-plus-lg');
                     add.addEventListener('click', function () { form(null); });
-                    root.insertBefore(add, holder);
+                    intro.appendChild(add);
                 }
 
                 if (!data.entries || !data.entries.length) {
-                    holder.appendChild(el('div', 'small fg-secondary', t('mem_empty')));
+                    var empty = el('div', 'ws-empty');
+                    empty.appendChild(h.icon('bi-bookmark'));
+                    empty.appendChild(document.createTextNode(t('mem_empty')));
+                    holder.appendChild(empty);
                     return;
                 }
 

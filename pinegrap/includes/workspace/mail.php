@@ -981,7 +981,7 @@ function ws_mail_card_html($row, $item)
     $badge = $out
         ? (function_exists('ws_mail_item_is_auto_reply') && ws_mail_item_is_auto_reply($item)
             ? '<span class="badge theme-secondary"><i class="bi bi-robot me-1" aria-hidden="true"></i>' . h(lang('Automatic answer')) . '</span>'
-            : '<span class="badge theme-success"><i class="bi bi-send me-1" aria-hidden="true"></i>' . h(lang('Sent by e-mail')) . '</span>')
+            : ws_mail_send_badge_html($item))
         : (((string) $item['auth'] === 'pass')
         ? '<span class="badge theme-info"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . h(lang('E-mail')) . '</span>'
         : '<span class="badge theme-warning"><i class="bi bi-envelope-exclamation me-1" aria-hidden="true"></i>' . h(lang('Sender not verified')) . '</span>');

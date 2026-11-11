@@ -14,15 +14,17 @@ description: Plan (owner 2026-11-10, handed to workers 2026-11-11): the Workspac
 ## What does every step keep?
 - `workspace/workspace-channel-screen.md`: every feature, access, keyboard use, reduced motion, the panel's colour tokens in light and dark, the phone rules (one short header line, the writing box on the keyboard, the list's height).
 - Panel screens are full width: cards fill the pane in a grid, no centred max-width box.
-- Checked on dev at desktop and phone width, light and dark, before it is marked ready.
+- Architect (2026-11-11, #8636): each step's PR shows its screens before and after from the sandbox at desktop (1440) and phone (390) width, light and dark, as a private page linked in the PR (`ui/panel-screenshots.md`), beside `plans/workspace-channel-look/01-before-after.jpg`. That round is the check: the steps are built in cloud containers, which cannot reach dev.
+  - The dev check goes under "Could not verify"; the PR is marked ready when green, without an approval issue. The owner looks on dev after it lands: what he asks for joins the next step, or a small follow-up PR after CL3.
+  - CL1 shows a channel with a colour, one without, and one with the share and era bars; CL2 and CL3 each pane they change.
 
 ## Which steps are there?
-- CL1 (M, no schema) The shell.
+- CL1 (M, no schema) The shell. Done (#8678): `workspace/workspace-channel-identity-motion.md`.
   - The header and the tabs are one card: a border and a wash of the channel's colour (`--ws-ch`) from the side the sign stands on, no top stripe; a channel without a colour keeps a plain card. The share and era bars between them are rows of the same card.
   - Tabs are pills, the open one filled (in the channel's colour when it has one); counts keep their marks. The day mark is a chip without rules. The writing box is a card.
   - Files: the Workspace block of `backend.src.css`, `drawCenter()` in `workspace.js` (the colour on the card, not only on the header), tests, `workspace/workspace-channel-identity-motion.md`.
-- CL2 (M, no schema) Tasks, Decisions and Files as cards. After CL1. Rows lose their rules: a task is a card in a grid (status, title, due line, people, done), the toolbar a quiet row; decisions a card grid; files their groups as cards.
-- CL3 (M, no schema) Summary, Board and Memory. After CL2. The summary as a card with its Edit button in the head, Time spent beside it as tiles; the board's toolbar as chips and its columns in the card manner; memory's hint, New record and records as cards. Empty states sit inside a dashed card.
+- CL2 (M, no schema) Tasks, Decisions and Files as cards. Done (#8688): `workspace/workspace-channel-panes.md`. After CL1. Rows lose their rules: a task is a card in a grid (status, title, due line, people, done), the toolbar a quiet row; decisions a card grid; files their groups as cards.
+- CL3 (M, no schema) Summary, Board and Memory. Done (#8703): `workspace/workspace-channel-summary-board-memory.md`. After CL2. The summary as a card with its Edit button in the head, Time spent beside it as tiles; the board's toolbar as chips and its columns in the card manner; memory's hint, New record and records as cards. Empty states sit inside a dashed card.
 
 ## What is not in it?
 - The conversation's messages (C4) and the side panels (C6) keep their drawing.

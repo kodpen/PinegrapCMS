@@ -1374,6 +1374,60 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     min-height: 0;      /* critical for flex children to scroll correctly */
     overflow: hidden;
 }
+/* The Components tab's two lists: each fills the pane like the pane itself,
+   the hidden one out of the flow ([hidden] loses to display:flex). */
+.sd-pal-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+.sd-pal-list[hidden] { display: none; }
+/* The list switch, by the rules of the panel's view switch (.pg-sale-switch
+   in backend.src.css): one frame round both options, the chosen one on a
+   lighter pill. The editor's own dark tokens stand in for the panel's. */
+.sd-pal-switch {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    margin: .4rem .5rem;
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+.sd-pal-switch-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    min-width: 0;
+    padding: .2rem .6rem;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--sd-text-muted);
+    font-size: .74rem;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.sd-pal-switch-btn:hover { color: var(--sd-text); }
+.sd-pal-switch-btn[aria-selected="true"] {
+    background: rgba(255,255,255,.1);
+    color: var(--sd-text);
+}
+.sd-pal-switch-btn:focus-visible {
+    outline: 2px solid var(--sd-accent);
+    outline-offset: 1px;
+}
+@media (forced-colors: active) {
+    .sd-pal-switch-btn[aria-selected="true"] {
+        forced-color-adjust: none;
+        background-color: Highlight;
+        color: HighlightText;
+    }
+}
 
 /* ── Components panel tab strip ── */
 .sd-panel-tabs {
@@ -5384,6 +5438,8 @@ textarea.sd-as-co-input { resize: vertical; min-height: 38px; }
     background: rgba(255,255,255,.02); font-size: .74rem; color: var(--sd-text, #c9d1d9);
 }
 .sd-theme-head-icon { color: #c39cff; font-size: 1rem; margin-top: .05rem; }
+/* The design's look drawn small (_sdLookDrawingOf()), in the icon's colour. */
+.sd-theme-head-look { flex: 0 0 auto; color: #c39cff; line-height: 0; }
 .sd-theme-head-txt { flex: 1 1 auto; min-width: 0; line-height: 1.35; }
 .sd-theme-head-hint { color: var(--sd-text-muted, #8b949e); font-size: .68rem; }
 .sd-theme-head-btn {

@@ -1,0 +1,107 @@
+/*!
+ * Pinegrap look: Precision.
+ * Flat and square: no shadows, no rounded corners, thin type weights, wide
+ * letter spacing on labels and buttons, generous room around the content.
+ */
+:root,
+[data-bs-theme] {
+    --pg-font-body: "Inter", "Segoe UI Variable Text", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif;
+    --pg-font-heading: "Inter", "Segoe UI Variable Display", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --pg-font-size: 1rem;
+    --pg-line-height: 1.7;
+    --pg-heading-weight: 300;
+    --pg-heading-tracking: 0.01em;
+    --pg-heading-transform: none;
+    --pg-heading-line-height: 1.2;
+    --pg-display-weight: 200;
+    --pg-lead-weight: 300;
+    --pg-brand-weight: 500;
+    --pg-nav-link-weight: 400;
+    --pg-quote-font: inherit;
+    --pg-quote-style: normal;
+
+    --pg-link-decoration: underline;
+    --pg-link-underline-offset: 0.3em;
+    --pg-link-thickness: 1px;
+
+    --pg-radius-sm: 0;
+    --pg-radius: 0;
+    --pg-radius-lg: 0;
+    --pg-radius-xl: 0;
+    --pg-radius-xxl: 0;
+    --pg-radius-btn: 0;
+    --pg-radius-btn-sm: 0;
+    --pg-radius-btn-lg: 0;
+    --pg-radius-input: 0;
+    --pg-radius-card: 0;
+    --pg-radius-badge: 0;
+    --pg-radius-menu: 0;
+    --pg-radius-modal: 0;
+    --pg-radius-progress: 0;
+    --pg-radius-check: 0;
+
+    --pg-border-width: 1px;
+    --pg-control-border-width: 1px;
+    --pg-control-border-color: rgba(var(--bs-emphasis-color-rgb), 0.24);
+    --pg-card-border-width: 1px;
+    --pg-card-border-color: rgba(var(--bs-emphasis-color-rgb), 0.12);
+    --pg-card-hover-border-color: rgba(var(--bs-emphasis-color-rgb), 0.4);
+    --pg-menu-border-color: rgba(var(--bs-emphasis-color-rgb), 0.12);
+    --pg-hr-opacity: 0.15;
+
+    --pg-shadow-sm: none;
+    --pg-shadow: none;
+    --pg-shadow-lg: none;
+    --pg-card-shadow: none;
+    --pg-card-shadow-hover: none;
+    --pg-card-hover-transform: none;
+    --pg-menu-shadow: none;
+    --pg-menu-padding: 0.25rem;
+    --pg-menu-item-radius: 0;
+    --pg-list-shadow: none;
+
+    --pg-btn-weight: 400;
+    --pg-btn-transform: uppercase;
+    --pg-btn-tracking: 0.14em;
+    --pg-btn-font-size: 0.8125rem;
+    --pg-btn-py: 0.875rem;
+    --pg-btn-px: 2rem;
+    --pg-btn-shadow: none;
+    --pg-btn-shadow-hover: none;
+    --pg-btn-shadow-active: none;
+    --pg-btn-hover-transform: none;
+    --pg-btn-active-transform: none;
+
+    --pg-input-py: 0.75rem;
+    --pg-input-px: 1rem;
+    --pg-focus-ring-width: 0.125rem;
+
+    --pg-card-py: 2rem;
+    --pg-card-px: 2rem;
+    --pg-card-cap-bg: transparent;
+
+    --pg-tabs-underline: 1px;
+    --pg-tabs-border-color: var(--bs-border-color);
+    --pg-tabs-active-border-color: transparent;
+    --pg-pagination-joined: 0;
+    --pg-pagination-gap: 0.5rem;
+    --pg-pagination-border-width: 1px;
+
+    --pg-alert-border-width: 1px;
+    --pg-alert-accent: 0px;
+    --pg-alert-accent-color: currentColor;
+
+    --pg-badge-weight: 400;
+    --pg-badge-transform: uppercase;
+    --pg-badge-tracking: 0.14em;
+    --pg-th-weight: 400;
+    --pg-th-transform: uppercase;
+    --pg-th-tracking: 0.14em;
+    --pg-th-size: 0.75rem;
+    --pg-th-bg: transparent;
+
+    --pg-progress-height: 0.125rem;
+
+    --pg-duration: 0.2s;
+    --pg-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}

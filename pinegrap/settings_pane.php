@@ -23,18 +23,24 @@ include('init.php');
 
 $user = validate_user();
 
-// The gate the settings have always used: role <= 2 (Administrator, Designer,
-// Manager). It is here rather than in the modal's markup because a button that
-// is not drawn is not a permission check.
-validate_area_access($user, 'manager');
-
 include_once('liveform.class.php');
 
 define('PG_SETTINGS_ENTRY', true);
 
 include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+include_once(PG_FUNCTIONS_DIR . '/includes/settings/drawer.php');
 include_once(PG_FUNCTIONS_DIR . '/includes/settings/fragment.php');
 include_once(PG_FUNCTIONS_DIR . '/includes/settings/search.php');
+
+// The door: a manager (role <= 2), or a holder of the Workspace settings
+// right, who opens the Workspace categories alone. Anybody else is refused
+// the way the settings have always refused them. Each pane is asked for again
+// below, because a button that is not drawn is not a permission check.
+$reader = pg_settings_reader($user);
+
+if (!$reader['manager'] && !$reader['workspace']) {
+    validate_area_access($user, 'manager');
+}
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -120,6 +126,18 @@ $pane = (isset($_REQUEST['pane']) && is_string($_REQUEST['pane'])) ? $_REQUEST['
 
 if (pg_settings_category($pane) === null) {
     pg_settings_pane_respond(array('status' => 'error', 'message' => lang('Page not found.')), 404);
+}
+
+// A category outside the reader's gate is neither drawn nor saved: a
+// Workspace one for a manager without the Workspace settings right, any other
+// for a holder of that right who is no manager.
+if (!pg_settings_may_open($pane, $user, $reader)) {
+
+    log_activity(pg_settings_category_is_workspace(pg_settings_category($pane))
+        ? lang('access denied to the workspace settings')
+        : lang('access denied because user attempted to access area for higher role'), $_SESSION['sessionusername'] ?? '');
+
+    pg_settings_pane_respond(array('status' => 'error', 'message' => lang('Access denied') . '.'), 403);
 }
 
 

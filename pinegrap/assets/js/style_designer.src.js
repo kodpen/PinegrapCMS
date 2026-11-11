@@ -121,6 +121,31 @@ const StyleDesigner = (function () {
         return (_design && _design.iconsUrl) ? _design.iconsUrl
             : 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css';
     }
+    // The theme file the design loads: the one chosen in Settings → Theme
+    // file, else, for a design moved from a classic style, the activated
+    // theme of the site its classic head printed (sdDesign.themeFile, from
+    // pg_legacy_design_theme_js()). { id, name, url, inherited } or null.
+    function _sdThemeInUse() {
+        var sel = document.querySelector('select[name="theme_id"]');
+        var opt = (sel && sel.selectedIndex >= 0) ? sel.options[sel.selectedIndex] : null;
+        if (opt && opt.value) {
+            var name = opt.text.trim();
+            return { id: opt.value, name: name, url: (window.OUTPUT_PATH || '/') + name, inherited: false };
+        }
+        var t = (_design && _design.themeFile) ? _design.themeFile : null;
+        return (t && t.name) ? { id: String(t.id), name: String(t.name), url: String(t.url), inherited: true } : null;
+    }
+    // Under Settings → Theme file: the theme a moved design loads while no
+    // file is chosen there.
+    function _sdThemeFileHint() {
+        var box = document.getElementById('sd-theme-file-status');
+        if (!box) return;
+        var t = (_design && _design.themeFile && _design.themeFile.name) ? String(_design.themeFile.name) : '';
+        var th = _sdThemeInUse();
+        if (!t) box.textContent = '';
+        else if (th && th.inherited) box.textContent = _sdT('In use: {var}, the activated theme of the site, as on the classic style this design came from.', t);
+        else box.textContent = _sdT('With no file chosen here the design loads {var}, the activated theme of the site, as its classic style did.', t);
+    }
     // How a page names itself in an asset row's `pages`: its id once saved,
     // `tab:<key>` until then (the save swaps it for the id). The server's
     // twin is pg_design_asset_on_page().
@@ -7280,10 +7305,10 @@ const StyleDesigner = (function () {
         var themeSel = document.querySelector('select[name="theme_id"]');
         var syncTheme = window._sdSyncTheme = function() {
             if (!themeSel) return;
-            var themeStr = themeSel.options[themeSel.selectedIndex].text.trim();
+            var th = _sdThemeInUse();
             // CSS
             var themeLink = canvasDoc.getElementById('sd-custom-theme');
-            if (themeStr && themeStr.indexOf('.css') !== -1) {
+            if (th && th.name.indexOf('.css') !== -1) {
                 if (!themeLink) {
                     themeLink = canvasDoc.createElement('link');
                     themeLink.id = 'sd-custom-theme';
@@ -7291,10 +7316,11 @@ const StyleDesigner = (function () {
                     canvasDoc.head.appendChild(themeLink);
                 }
                 // Theme files are addressed from the site root, which is not "/" on a subfolder install.
-                themeLink.href = (window.OUTPUT_PATH || '/') + themeStr + '?t=' + new Date().getTime();
+                themeLink.href = th.url + '?t=' + new Date().getTime();
             } else if (themeLink) {
                 themeLink.remove();
             }
+            _sdThemeFileHint();
             renderHtmlTree();
         };
         if (themeSel) {
@@ -7366,6 +7392,12 @@ const StyleDesigner = (function () {
         var _bodyCls = [];
         if (_sdMotionPaused()) _bodyCls.push('sd-motion-paused');
         if (canvasOutlineGrid) _bodyCls.push('sd-outline-grid');
+        // The canvas opens in the design's colour mode, once per editor:
+        // after that the toolbar's view is the editor's own.
+        if (!_sdColorModeOpened) {
+            _sdColorModeOpened = true;
+            if (_sdColorModeDark() !== canvasDarkTheme) applyCanvasTheme(_sdColorModeDark() ? 'dark' : 'light', { source: 'design' });
+        }
         // The editor's view of the design sits on <html>, where the theme
         // switchers' engine writes it too (applyCanvasTheme()).
         doc.write('<!DOCTYPE html><html lang="' + esc(_sdDocLang()) + '"' + (canvasDarkTheme ? ' data-bs-theme="dark"' : '') + '><head><meta charset="utf-8"><base href="' + _canvasBase + '">' +
@@ -13253,7 +13285,7 @@ const StyleDesigner = (function () {
         if (node.props._attrs && node.props._attrs.length) {
             node.props._attrs.forEach(function(a) {
                 if (a.name === 'style') { _attrStyle = a.value || ''; }
-                else if (a.name && a.name.trim()) { _attrEl.setAttribute(a.name.trim(), _sdResolveAttrTokens(a.value || '')); }
+                else if (a.name && a.name.trim()) { _attrEl.setAttribute(a.name.trim(), _sdSitePath(_sdResolveAttrTokens(a.value || ''))); }
             });
         }
         // Sizing props extra style (before _attrStyle so Attrs panel can override)
@@ -13266,7 +13298,8 @@ const StyleDesigner = (function () {
         }
         // Combine: _attrStyle appended after inlineBase; duplicate props: last wins in CSS
         var _combined = [_inlineBase, _attrStyle].filter(Boolean).join(';');
-        if (_combined) _attrEl.setAttribute('style', _combined);
+        // A background written url({path}…) loads the page's file.
+        if (_combined) _attrEl.setAttribute('style', _sdSitePath(_combined));
         // Extra classes (visually-hidden, ratio, etc.)
         if (_extraClsStr) _extraClsStr.split(/\s+/).forEach(function(c) { if (c) _attrEl.classList.add(c); });
         // Tooltip attrs on canvas element
@@ -15556,7 +15589,7 @@ const StyleDesigner = (function () {
         // text: '^^__cancel_form^^' to mark HTML-emit slots that the server
         // substitutes at request time. Canvas needs an in-place placeholder.
         var textHasLiteralToken = node.props.text && typeof node.props.text === 'string' && node.props.text.indexOf('^^') !== -1;
-        if (!hasBindings && !textHasLiteralToken) return node.props;
+        if (!hasBindings && !textHasLiteralToken) return _sdPathProps(node.props);
         var out = {};
         for (var k in node.props) { if (Object.prototype.hasOwnProperty.call(node.props, k)) out[k] = node.props[k]; }
         if (hasBindings) {
@@ -15591,6 +15624,31 @@ const StyleDesigner = (function () {
         // for the same prop; only kicks in for literal ^^…^^ in unbound text).
         if (textHasLiteralToken && !(hasBindings && node.props._bindings.text)) {
             out.text = _sdResolveAttrTokens(out.text, true);
+        }
+        return _sdPathProps(out);
+    }
+
+    // The props whose site placeholders the canvas fills (_sdPathProps()):
+    // the addresses, and a Custom HTML or SVG block's markup.
+    var _SD_PATH_PROPS = ['src', 'href', 'poster', 'html'];
+
+    // A node's props as the canvas draws them: {path} and
+    // {software_directory} filled (_sdSitePath()) in _SD_PATH_PROPS, in a
+    // copy, so the tree keeps them. Text is left as written: an inline edit
+    // reads it back from the canvas and would save the filled address.
+    function _sdPathProps(props) {
+        if (!props) return props;
+        var out = props;
+        for (var i = 0; i < _SD_PATH_PROPS.length; i++) {
+            var k = _SD_PATH_PROPS[i], v = props[k];
+            if (typeof v !== 'string' || v.indexOf('{') === -1) continue;
+            var next = _sdSitePath(v);
+            if (next === v) continue;
+            if (out === props) {
+                out = {};
+                for (var key in props) { if (Object.prototype.hasOwnProperty.call(props, key)) out[key] = props[key]; }
+            }
+            out[k] = next;
         }
         return out;
     }
@@ -17513,6 +17571,34 @@ const StyleDesigner = (function () {
                                 ])
                             ])
                         ])
+                        ])
+                    ]);
+                }
+
+                // Hero: Full-Screen Media — one screen tall and edge to edge, the
+                // picture as the section's background (the Background panel's
+                // store), a giant headline at the bottom on the shared scrim
+                // over an even tint: giant type reaches the photo's upper half,
+                // where the gradient alone is too light. The eyebrow is bold
+                // at 20 px, large text, so it needs 3:1 there and not 4.5:1.
+                // Same shape as hero-image-bg: the scrim is the only, in-flow
+                // child, so a long translation grows the band instead of being cut.
+                if (ctype === 'spotlight-media') {
+                    return createNode('semantic', { tag: 'section', cssClass: 'd-flex overflow-hidden pg-screen pg-bleed', customName: _sdT('Hero (Full-Screen Media)'),
+                        _attrs: [{ name: 'style', value: 'background-image: url(https://picsum.photos/id/1036/1920/1280); background-size: cover; background-position: center;' }] }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-column justify-content-end w-100 pt-5 text-body pg-shade-bottom pg-shade-tint', customName: _sdT('Overlay'),
+                            _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
+                            createNode('container', { fluid: false, cssClass: 'py-5' }, [
+                                createNode('content', { contentType: 'paragraph', text: _sdT('New season'), cssClass: 'fs-5 fw-bold text-uppercase mb-3' }),
+                                createNode('content', { contentType: 'heading', tag: 'h1', text: _sdT('Made for the outdoors'), cssClass: 'pg-display-xxl mb-4' }),
+                                createNode('semantic', { tag: 'div', cssClass: 'col-lg-7 px-0', customName: _sdT('Hero Body') }, [
+                                    createNode('content', { contentType: 'paragraph', text: _sdT('Light, warm and ready for any weather: meet the collection built for long days outside.'), cssClass: 'lead mb-4' }),
+                                    createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-2 flex-wrap', customName: _sdT('Hero CTA Group') }, [
+                                        createNode('component', { componentType: 'btn', text: _sdT('Shop the Collection'), variant: 'primary',   size: 'lg', href: '#' }),
+                                        createNode('component', { componentType: 'btn', text: _sdT('Watch the Film'),      variant: 'secondary', size: 'lg', href: '#' })
+                                    ])
+                                ])
+                            ])
                         ])
                     ]);
                 }
@@ -23423,25 +23509,29 @@ const StyleDesigner = (function () {
             '<div class="sd-panel-header"><span class="bi bi-puzzle me-1"></span>' + esc(_sdT('Components')) + '</div>' +
             '<div class="sd-panel-tabs" id="sd-panel-tabs">' +
                 '<button type="button" class="sd-panel-tab active" data-tab="components">' + esc(_sdT('Components')) + '</button>' +
-                '<button type="button" class="sd-panel-tab" data-tab="blocks" style="color:#f59e0b"><span class="bi bi-magic me-1"></span>' + esc(_sdT('Blocks')) + '</button>' +
                 '<button type="button" class="sd-panel-tab" data-tab="shared" style="color:#22c55e"><span class="bi bi-puzzle-fill me-1"></span>' + esc(_sdT('Shared')) + '</button>' +
                 '<button type="button" class="sd-panel-tab" data-tab="system" style="color:#6366f1"><span class="bi bi-cpu me-1"></span>' + esc(_sdT('System')) + '</button>' +
             '</div>' +
+            // One tab, two lists: the building blocks and the ready sections,
+            // chosen with the switch at its top (_sdPalSwitchWire()).
             '<div id="sd-tab-components" class="sd-tab-pane">' +
-                '<div class="sd-search-box">' +
-                    '<span class="bi bi-search"></span>' +
-                    '<input type="text" id="sd-search" placeholder="' + esc(_sdT('Search...')) + '" aria-label="' + esc(_sdT('Search components')) + '" autocomplete="off">' +
-                    '<button type="button" class="sd-search-clear bi bi-x" id="sd-search-clear" aria-label="' + esc(_sdT('Clear search')) + '" style="display:none"></button>' +
+                _sdPalSwitchHTML() +
+                '<div id="sd-pal-components" class="sd-pal-list" role="tabpanel" aria-labelledby="sd-pal-sw-components">' +
+                    '<div class="sd-search-box">' +
+                        '<span class="bi bi-search"></span>' +
+                        '<input type="text" id="sd-search" placeholder="' + esc(_sdT('Search...')) + '" aria-label="' + esc(_sdT('Search components')) + '" autocomplete="off">' +
+                        '<button type="button" class="sd-search-clear bi bi-x" id="sd-search-clear" aria-label="' + esc(_sdT('Clear search')) + '" style="display:none"></button>' +
+                    '</div>' +
+                    '<div id="sd-comp-list" class="sd-comp-items-scroll"></div>' +
                 '</div>' +
-                '<div id="sd-comp-list" class="sd-comp-items-scroll"></div>' +
-            '</div>' +
-            '<div id="sd-tab-blocks" style="display:none" class="sd-tab-pane">' +
-                '<div class="sd-search-box">' +
-                    '<span class="bi bi-search"></span>' +
-                    '<input type="text" id="sd-blocks-search" placeholder="' + esc(_sdT('Search...')) + '" aria-label="' + esc(_sdT('Search blocks')) + '" autocomplete="off">' +
-                    '<button type="button" class="sd-search-clear bi bi-x" id="sd-blocks-search-clear" aria-label="' + esc(_sdT('Clear search')) + '" style="display:none"></button>' +
+                '<div id="sd-pal-blocks" class="sd-pal-list" role="tabpanel" aria-labelledby="sd-pal-sw-blocks" hidden>' +
+                    '<div class="sd-search-box">' +
+                        '<span class="bi bi-search"></span>' +
+                        '<input type="text" id="sd-blocks-search" placeholder="' + esc(_sdT('Search...')) + '" aria-label="' + esc(_sdT('Search blocks')) + '" autocomplete="off">' +
+                        '<button type="button" class="sd-search-clear bi bi-x" id="sd-blocks-search-clear" aria-label="' + esc(_sdT('Clear search')) + '" style="display:none"></button>' +
+                    '</div>' +
+                    '<div id="sd-blocks-list" class="sd-comp-items-scroll"></div>' +
                 '</div>' +
-                '<div id="sd-blocks-list" class="sd-comp-items-scroll"></div>' +
             '</div>' +
             '<div id="sd-tab-shared" style="display:none" class="sd-tab-pane">' +
                 '<div class="sd-comp-items-scroll" id="sd-shared-list">' +
@@ -23571,9 +23661,10 @@ const StyleDesigner = (function () {
         // the widgets stay.
         if (!_sdUsesBootstrap()) {
             categories = categories.filter(function (cat) { return !cat.bootstrap; });
-            var _blocksTabBtn = compOuter.querySelector('.sd-panel-tab[data-tab="blocks"]');
-            if (_blocksTabBtn) _blocksTabBtn.remove();
-            var _blocksPane = document.getElementById('sd-tab-blocks');
+            // With one list left there is nothing to switch between.
+            var _palSwitch = compOuter.querySelector('.sd-pal-switch');
+            if (_palSwitch) _palSwitch.remove();
+            var _blocksPane = document.getElementById('sd-pal-blocks');
             if (_blocksPane) _blocksPane.remove();
             blockList = null;
         }
@@ -23595,6 +23686,7 @@ const StyleDesigner = (function () {
                              document.getElementById('sd-search-clear'), compList);
         _sdWirePaletteSearch(document.getElementById('sd-blocks-search'),
                              document.getElementById('sd-blocks-search-clear'), blockList);
+        _sdPalSwitchWire(compOuter);
 
         // ── Panel tab switching: Components ↔ Shared ─────────────────────────
         var _panelTabs = document.getElementById('sd-panel-tabs');
@@ -23605,11 +23697,9 @@ const StyleDesigner = (function () {
                 var tab = btn.dataset.tab;
                 _panelTabs.querySelectorAll('.sd-panel-tab').forEach(function(t) { t.classList.toggle('active', t.dataset.tab === tab); });
                 var cTab   = document.getElementById('sd-tab-components');
-                var bTab   = document.getElementById('sd-tab-blocks');
                 var oTab   = document.getElementById('sd-tab-shared');
                 var sysTab = document.getElementById('sd-tab-system');
                 if (cTab)   cTab.style.display   = tab === 'components' ? '' : 'none';
-                if (bTab)   bTab.style.display   = tab === 'blocks'     ? '' : 'none';
                 if (oTab)   oTab.style.display   = tab === 'shared'     ? '' : 'none';
                 if (sysTab) sysTab.style.display = tab === 'system'     ? '' : 'none';
                 if (tab === 'shared') loadSharedTab();
@@ -27913,10 +28003,35 @@ const StyleDesigner = (function () {
         url = String(url || '').trim();
         if (url) _sdAssetStamps[url] = Date.now();
     }
+    // The canvas address of a linked row: its placeholders filled
+    // (_sdSitePath()), the stamp still looked up by the row's own text.
     function _sdAssetHref(f) {
-        var href = String(f.content || '').trim();
+        var raw = String(f.content || '').trim();
+        var href = _sdSitePath(raw);
         if (!f._file || !href) return href;
-        return href + (href.indexOf('?') === -1 ? '?_t=' : '&_t=') + (_sdAssetStamps[href] || _sdAssetLoadStamp);
+        return href + (href.indexOf('?') === -1 ? '?_t=' : '&_t=') + (_sdAssetStamps[raw] || _sdAssetLoadStamp);
+    }
+
+    // The address placeholders a page fills last (get_page_content.php,
+    // pg_designer_resolve_output_placeholders()): {path} as the site's path,
+    // {software_directory} as the software's folder, the case ignored. A
+    // classic style's code writes its files and pictures "{path}name"; the
+    // canvas draws what the page loads, while the tree and the asset rows
+    // keep the placeholders. The path is copied as written ($ included).
+    function _sdPathFill(s, path, dir) {
+        s = (s === null || s === undefined) ? '' : String(s);
+        if (s.indexOf('{') === -1) return s;
+        return s.replace(/\{path\}/gi, function () { return String(path); })
+            .replace(/\{software_directory\}/gi, function () { return String(dir); });
+    }
+
+    // The same with the editor's values: the site's path and the software's
+    // folder the screen was given. Text without a brace is returned before
+    // the editor's values are read.
+    function _sdSitePath(s) {
+        if (typeof s === 'string' && s.indexOf('{') === -1) return s;
+        return _sdPathFill(s, window.OUTPUT_PATH || '/',
+            typeof software_directory !== 'undefined' ? software_directory : 'pinegrap');
     }
 
     // Brings one family of canvas <link>s (ids prefix0, prefix1, …) to the
@@ -28018,10 +28133,10 @@ const StyleDesigner = (function () {
         cssRows.forEach(function(f) {
             if (f.type === 'external-css') return;
             if (f.meta === 'user-styles') {
-                if (f.content && f.content.trim()) userStylesCss += f.content.trim() + '\n';
+                if (f.content && f.content.trim()) userStylesCss += _sdSitePath(f.content.trim()) + '\n';
                 return;
             }
-            if (f.content) inlineCss += '/* ' + f.name.replace(/\*\//g, '') + ' */\n' + f.content + '\n';
+            if (f.content) inlineCss += '/* ' + f.name.replace(/\*\//g, '') + ' */\n' + _sdSitePath(f.content) + '\n';
         });
 
         var pgStyle = canvasDoc.getElementById('pg-page-css');
@@ -28110,7 +28225,7 @@ const StyleDesigner = (function () {
                 } else if (f.module) {
                     scr.type = 'module';
                 }
-                scr.textContent = f.content;
+                scr.textContent = _sdSitePath(f.content);
                 canvasDoc.head.appendChild(scr);
             });
         }
@@ -28203,10 +28318,9 @@ const StyleDesigner = (function () {
             if (f.content) inlineNames.push(f.name || '');
         });
         if (!themeDone && themeRows.length) themeRows.forEach(function (r) { head.push(r); });
-        // The classic theme file (style.theme_id), when the design has one.
-        var themeSel = document.querySelector('select[name="theme_id"]');
-        var themeStr = themeSel ? themeSel.options[themeSel.selectedIndex].text.trim() : '';
-        if (themeStr && themeStr.indexOf('.css') !== -1) head.push(row('link', [['rel', 'stylesheet'], ['href', '/' + themeStr]]));
+        // The theme file (style.theme_id, or a moved design's classic theme).
+        var themeFile = _sdThemeInUse();
+        if (themeFile && themeFile.name.indexOf('.css') !== -1) head.push(row('link', [['rel', 'stylesheet'], ['href', themeFile.url]]));
         if (inlineNames.length) head.push(row('style', [['id', 'pg-page-css']], '/* ' + inlineNames.join(', ') + ' */', true));
         if (userStyles) head.push(row('style', [['id', 'pg-user-styles']], '…', true));
 
@@ -31503,8 +31617,8 @@ const StyleDesigner = (function () {
         // Search and SERP: the part of the page a site search result points at.
         optHtml += propsSearchSection(selectedNode);
 
-        // Interactions: the node's entrance, hover, click, sticky or
-        // parallax effect (props._fx).
+        // Interactions: the node's entrance, hover, click, sticky,
+        // parallax or scroll-linked effect (props._fx).
         optHtml += propsInteractions(selectedNode);
 
         // Data binding section — shown ONLY when selectedNode is inside a system widget.
@@ -45464,7 +45578,7 @@ const StyleDesigner = (function () {
                                      'navbar-light-cta', 'navbar-search', 'navbar-dark-center',
                                      'footer-minimal', 'footer-multi-col', 'footer-newsletter',
                                      'carousel', 'modal', 'offcanvas', 'dropdown',
-                                     'hero-centered', 'hero-split', 'hero-image-bg',
+                                     'hero-centered', 'hero-split', 'hero-image-bg', 'spotlight-media',
                                      'cta-simple', 'cta-inline', 'cta-gradient',
                                      'features-grid', 'features-alt', 'features-list',
                                      'testimonial-single', 'testimonial-grid', 'testimonial-carousel',
@@ -52892,7 +53006,9 @@ const StyleDesigner = (function () {
                 if (th) {
                     var trow = document.createElement('div');
                     trow.className = 'sd-as-item sd-as-item-locked sd-as-item-theme';
-                    trow.title = _sdT('The theme file chosen in Settings → Theme. Loads last, so it overrides the stylesheets above.');
+                    trow.title = th.inherited
+                        ? _sdT('The activated theme of the site, loaded as on the classic style this design came from while no theme file is chosen in Settings → Theme. Loads last, so it overrides the stylesheets above.')
+                        : _sdT('The theme file chosen in Settings → Theme. Loads last, so it overrides the stylesheets above.');
                     trow.innerHTML = '<span class="bi bi-palette2 sd-as-item-icon"></span><span class="sd-as-item-name">' + esc(th.name) + '</span>' +
                                      '<span class="sd-as-badge-theme">' + esc(_sdT('theme')) + '</span>' +
                                      '<span class="sd-as-badge-lock" title="' + esc(_sdT('Change it in Settings → Theme')) + '"><span class="bi bi-lock-fill"></span></span>';
@@ -52902,13 +53018,11 @@ const StyleDesigner = (function () {
             }
         }
 
-        // The theme currently selected for the design: { id, name } or null.
+        // The theme the design loads: the one selected for it, else a moved
+        // design's classic theme (_sdThemeInUse()). { id, name, url,
+        // inherited } or null.
         function _sdActiveTheme() {
-            var sel = document.querySelector('select[name="theme_id"]');
-            if (!sel || sel.selectedIndex < 0) return null;
-            var opt = sel.options[sel.selectedIndex];
-            if (!opt || !opt.value) return null;
-            return { id: opt.value, name: opt.text.trim() };
+            return _sdThemeInUse();
         }
         function _sdOpenDesignSettings() {
             _sdOpenSettingsPane('theme', 'sd-theme-file-row');
@@ -53757,7 +53871,7 @@ const StyleDesigner = (function () {
 
     // Rail icons mirror the palette tab strip so the rail reads the same
     // way the open panel does.
-    var _SD_RAIL_ICONS = { components: 'bi-puzzle', blocks: 'bi-magic', shared: 'bi-puzzle-fill', system: 'bi-cpu' };
+    var _SD_RAIL_ICONS = { components: 'bi-puzzle', shared: 'bi-puzzle-fill', system: 'bi-cpu' };
 
     function _sdDockBody() { return document.querySelector('.sd-body'); }
 
@@ -64869,15 +64983,22 @@ const StyleDesigner = (function () {
     // range, or null without one. Twin of pg_fx_normalize()
     // (includes/fn/designer_fx.php): the same fields, ranges and defaults.
     // The lists are first-is-default; a number is [min, max, default].
+    // `from` is the start of a scroll-linked effect, its range per effect
+    // (pg_fx_scroll_from()): a scale or an opacity in percent, a distance
+    // in px. `count` holds the duration and delay of a count, its only
+    // fields (pg_fx_count_numbers()).
     function _sdFxSpec() {
         return {
-            effects: ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax'],
+            effects: ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
+                'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count'],
             triggers: ['view', 'load', 'hover', 'click'],
             easings: ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'],
             numbers: {
                 duration: [100, 5000, 600], delay: [0, 5000, 0], stagger: [0, 1000, 0],
                 distance: [0, 400, 0], offset: [0, 1000, 0], speed: [5, 100, 20]
-            }
+            },
+            from: { 'scroll-zoom': [25, 200, 80], 'scroll-fade': [0, 100, 0], 'scroll-rise': [0, 400, 80] },
+            count: { duration: [100, 5000, 2000], delay: [0, 5000, 0] }
         };
     }
     function _sdFxNormalize(fx) {
@@ -64885,7 +65006,7 @@ const StyleDesigner = (function () {
         var spec = _sdFxSpec(), effect = fx.effect.toLowerCase();
         if (spec.effects.indexOf(effect) === -1) return null;
         var num = function (name) {
-            var r = spec.numbers[name], v = fx[name];
+            var r = name === 'from' ? spec.from[effect] : (effect === 'count' && spec.count[name]) || spec.numbers[name], v = fx[name];
             if ((typeof v !== 'number' && typeof v !== 'string') || String(v).trim() === '' || !isFinite(Number(v))) return r[2];
             // PHP's round() rounds halves away from zero.
             v = Number(v);
@@ -64895,6 +65016,8 @@ const StyleDesigner = (function () {
         var out = { effect: effect };
         if (effect === 'sticky') { out.offset = num('offset'); return out; }
         if (effect === 'parallax') { out.speed = num('speed'); return out; }
+        if (spec.from[effect]) { out.from = num('from'); return out; }
+        if (effect === 'count') { out.duration = num('duration'); out.delay = num('delay'); return out; }
         var trigger = typeof fx.trigger === 'string' ? fx.trigger.toLowerCase() : '';
         var easing = typeof fx.easing === 'string' ? fx.easing.toLowerCase() : '';
         out.trigger = spec.triggers.indexOf(trigger) !== -1 ? trigger : spec.triggers[0];
@@ -64921,8 +65044,10 @@ const StyleDesigner = (function () {
                 if (fx.easing !== spec.easings[0]) out += ' data-pg-fx-easing="' + fx.easing + '"';
                 return;
             }
-            if (fx[name] !== spec.numbers[name][2]) out += ' data-pg-fx-' + name + '="' + fx[name] + '"';
+            var def = (fx.effect === 'count' && spec.count[name]) || spec.numbers[name];
+            if (fx[name] !== def[2]) out += ' data-pg-fx-' + name + '="' + fx[name] + '"';
         });
+        if (fx.from !== undefined && fx.from !== spec.from[fx.effect][2]) out += ' data-pg-fx-from="' + fx.from + '"';
         if (fx.repeat) out += ' data-pg-fx-repeat';
         return out;
     }
@@ -65057,6 +65182,7 @@ const StyleDesigner = (function () {
     // and try the stylesheet it answers with on the canvas; saving writes it
     // to the file manager, where every design can pick it.
     var _sdThemeTry = { look: '', palette: '' };   // builder output being tried on the canvas
+    var _sdColorModeOpened = false;                // the canvas took the design's mode once
     var _sdThemeTryTimer = { look: 0, palette: 0 };
     var _sdThemeTrySeq = { look: 0, palette: 0 };
 
@@ -65064,6 +65190,34 @@ const StyleDesigner = (function () {
     function _thAttr(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
     function _sdThemeInput(kind) { return document.getElementById(kind === 'look' ? 'sd-style-look' : 'sd-style-palette'); }
     function _sdThemeValue(kind) { var el = _sdThemeInput(kind); return el ? el.value : ''; }
+
+    // The design's colour mode (hidden input style_color_mode): '' (not
+    // set: the page sets no mode, as before), light, dark or auto (the
+    // visitor's system). The server writes it on the published page's
+    // <html> (pg_design_color_mode_apply()); a visitor's stored theme
+    // switcher choice still wins there.
+    function _sdColorMode() {
+        var el = document.getElementById('sd-style-color-mode');
+        var v = el ? el.value : '';
+        return (v === 'light' || v === 'dark' || v === 'auto') ? v : '';
+    }
+    // Whether the design's mode shows dark here: auto takes the editor's
+    // own system setting.
+    function _sdColorModeDark() {
+        var m = _sdColorMode();
+        if (m === 'auto') return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        return m === 'dark';
+    }
+    function _sdColorModeChoose(mode) {
+        var el = document.getElementById('sd-style-color-mode');
+        if (!el) return;
+        el.value = mode || '';
+        // The canvas and the Preview show the mode picked; "Not set" leaves
+        // the editor's view as it is.
+        if (el.value !== '') applyCanvasTheme(_sdColorModeDark() ? 'dark' : 'light', { source: 'design' });
+        _sdThemeRender();
+        document.dispatchEvent(new CustomEvent('pg-design-theme-change'));
+    }
 
     function _sdThemeFind(kind, key) {
         var th = _sdThemes();
@@ -65204,6 +65358,65 @@ const StyleDesigner = (function () {
                '</span>';
     }
 
+    // The `preview` row of "Plain Bootstrap" (twin of
+    // pg_design_plain_look_preview()).
+    var _SD_PLAIN_LOOK_PREVIEW = { radius: 6, btn_radius: 6, shadow: 'none', border: 1, heading: 'sans', weight: 500, caps: false };
+
+    // A small drawing of a look, 48×32, from its `preview` row: the card's
+    // corner, outline and shadow, the heading's weight, the button's corner
+    // and capitals, in currentColor. Twin of pg_design_look_drawing() in
+    // includes/fn/design_themes.php: both give the same SVG.
+    function _sdLookDrawing(pv) {
+        pv = pv || _SD_PLAIN_LOOK_PREVIEW;
+        var n = function (v) { v = Math.round(v * 100) / 100; return v === 0 ? '0' : String(v); };
+        var half = function (v) { return Math.round(v * 2) / 2; };
+        var int = function (v, def) { v = parseInt(v, 10); return isNaN(v) ? def : v; };
+        var radius = Math.max(0, int(pv.radius, 0)), btnRadius = Math.max(0, int(pv.btn_radius, 0));
+        var border = Math.min(3, Math.max(0, int(pv.border, 1))), weight = Math.min(900, Math.max(100, int(pv.weight, 500)));
+        var heading = pv.heading == null ? 'sans' : String(pv.heading), caps = !!pv.caps;
+        var shadows = {
+            none:  '',
+            crisp: '<rect x="5" y="27" width="38" height="1" fill="currentColor" fill-opacity=".45"/>',
+            soft:  '<rect x="6" y="27" width="36" height="2" rx="1" fill="currentColor" fill-opacity=".2"/>',
+            glow:  '<rect x="8" y="27" width="32" height="3" rx="1.5" fill="currentColor" fill-opacity=".32"/>',
+            deep:  '<rect x="5" y="27" width="38" height="2" fill="currentColor" fill-opacity=".32"/><rect x="8" y="29" width="32" height="2" rx="1" fill="currentColor" fill-opacity=".15"/>',
+            hard:  '<path d="M44 5h2v24H6v-2h38z" fill="currentColor"/>'
+        };
+        var svg = '<svg class="pg-look-drawing" viewBox="0 0 48 32" width="48" height="32" aria-hidden="true" focusable="false">';
+        svg += Object.prototype.hasOwnProperty.call(shadows, pv.shadow) ? shadows[pv.shadow] : '';
+        var card = '<rect x="4" y="3" width="40" height="24" rx="' + n(half(Math.min(radius, 24) / 4)) + '" fill="currentColor" fill-opacity=".1"';
+        if (border > 0) card += ' stroke="currentColor" stroke-width="' + border + '" stroke-opacity="' + (border > 1 ? '1' : '.5') + '"';
+        svg += card + '/>';
+        var hh = half(weight / 200);
+        if (heading === 'mono') {
+            [9, 13.5, 18, 22.5].forEach(function (x) { svg += '<rect x="' + n(x) + '" y="8" width="3.5" height="' + n(hh) + '" fill="currentColor"/>'; });
+        } else {
+            svg += '<rect x="9" y="8" width="18" height="' + n(hh) + '"' + (heading === 'rounded' ? ' rx="' + n(hh / 2) + '"' : '') + ' fill="currentColor"/>';
+            if (heading === 'serif') svg += '<rect x="8" y="' + n(8 + hh - 0.5) + '" width="20" height=".5" fill="currentColor"/>';
+        }
+        svg += '<rect x="9" y="15" width="26" height="1" fill="currentColor" fill-opacity=".4"/>';
+        var br = btnRadius >= 99 ? 2.5 : Math.min(2.5, half(btnRadius / 6));
+        var rect = function (x, y, w, h, r) {
+            if (r <= 0) return 'M' + n(x) + ' ' + n(y) + 'h' + n(w) + 'v' + n(h) + 'h-' + n(w) + 'z';
+            var a = 'a' + n(r) + ' ' + n(r) + ' 0 0 1 ', side = h - 2 * r;
+            return 'M' + n(x + r) + ' ' + n(y) + 'h' + n(w - 2 * r) + a + n(r) + ' ' + n(r) +
+                   (side > 0 ? 'v' + n(side) : '') + a + '-' + n(r) + ' ' + n(r) +
+                   'h-' + n(w - 2 * r) + a + '-' + n(r) + ' -' + n(r) +
+                   (side > 0 ? 'v-' + n(side) : '') + a + n(r) + ' -' + n(r) + 'z';
+        };
+        var label = caps ? 'M12 20.75h2v1.5h-2zM15.5 20.75h2v1.5h-2zM19 20.75h2v1.5h-2z' : 'M12.5 21h8v1h-8z';
+        svg += '<path d="' + rect(9, 19, 15, 5, br) + label + '" fill="currentColor" fill-rule="evenodd"/>';
+        return svg + '</svg>';
+    }
+
+    // The drawing of a look by its key: a custom look draws the look it is
+    // based on, no look (or an unknown one) draws Plain Bootstrap.
+    function _sdLookDrawingOf(key) {
+        var l = _sdThemeFind('look', key);
+        if (l && !l.preview && l.base) l = _sdThemeFind('look', l.base);
+        return _sdLookDrawing(l && l.preview ? l.preview : null);
+    }
+
     // The colours the cards are drawn in: the palette chosen (or tried).
     function _sdThemeColors() {
         var th = _sdThemes();
@@ -65256,7 +65469,7 @@ const StyleDesigner = (function () {
                        (desc ? '<span class="sd-th-look-desc">' + esc(desc) + '</span>' : '') +
                    '</button>';
         };
-        h += lookCard('', _sdT('Plain Bootstrap'), _sdT('Plain Bootstrap 5.3, as it comes.'), { radius: 6, btn_radius: 6, shadow: 'none', border: 1, heading: 'sans', weight: 500 });
+        h += lookCard('', _sdT('Plain Bootstrap'), _sdT('Plain Bootstrap 5.3, as it comes.'), _SD_PLAIN_LOOK_PREVIEW);
         (th.looks || []).forEach(function (l) { h += lookCard(l.key, l.name, l.description, l.preview); });
         (th.customLooks || []).forEach(function (l) {
             var base = _sdThemeFind('look', l.base);
@@ -65294,6 +65507,33 @@ const StyleDesigner = (function () {
              '</button>';
         h += '</div>';
         if (buildingPal) h += _sdThemePaletteBuilderHtml();
+        h += '</div>';
+
+        // ── Colour mode ──
+        var mode = _sdColorMode();
+        h += '<div class="sd-th-sec">' +
+                '<div class="sd-th-head"><span class="sd-th-title">' + esc(_sdT('Colour mode')) + '</span>' +
+                '<span class="sd-th-sub">' + esc(_sdT('Light or dark for every page of the design. A visitor who picks a theme with a theme switcher still sees their choice.')) + '</span></div>';
+        if (th.ready && !th.colorModeReady) {
+            h += '<div class="sd-th-warn"><span class="bi bi-exclamation-triangle me-1"></span>' +
+                 esc(_sdT('The database has not been updated yet: the colour mode is saved once the 2026.11.0 update has run.')) + '</div>';
+        }
+        h += '<div class="btn-group btn-group-sm flex-wrap" role="radiogroup" aria-label="' + _thAttr(_sdT('Colour mode')) + '">';
+        [
+            ['', _sdT('Not set'), 'bi-dash-circle'],
+            ['light', _sdT('Light'), 'bi-sun'],
+            ['dark', _sdT('Dark'), 'bi-moon-stars'],
+            ['auto', _sdT('Follow the system'), 'bi-circle-half']
+        ].forEach(function (o) {
+            var on = (mode === o[0]);
+            h += '<button type="button" class="btn btn-outline-light' + (on ? ' active' : '') + '" role="radio" aria-checked="' + (on ? 'true' : 'false') + '" data-th-mode="' + _thAttr(o[0]) + '">' +
+                     '<span class="bi ' + o[2] + ' me-1" aria-hidden="true"></span>' + esc(o[1]) +
+                 '</button>';
+        });
+        h += '</div>';
+        if (mode === '') {
+            h += '<p class="sd-th-hint mt-2">' + esc(_sdT('Not set: the pages set no mode, as before, and a theme switcher follows the system.')) + '</p>';
+        }
         h += '</div>';
 
         h += '<p class="sd-th-note"><span class="bi bi-info-circle me-1"></span>' +
@@ -65394,6 +65634,9 @@ const StyleDesigner = (function () {
     }
 
     function _sdThemeBind(host) {
+        host.querySelectorAll('[data-th-mode]').forEach(function (b) {
+            b.addEventListener('click', function () { _sdColorModeChoose(b.getAttribute('data-th-mode')); });
+        });
         host.querySelectorAll('[data-th-look]').forEach(function (b) {
             b.addEventListener('click', function () {
                 _sdThemeBuilderState.look = null;
@@ -68230,7 +68473,7 @@ const StyleDesigner = (function () {
         var names = ['name', 'theme_id', 'collection', 'additional_body_classes',
                      'social_networking_position', 'style_head',
                      'style_custom_css', 'style_custom_js', 'style_custom_fonts',
-                     'style_look', 'style_palette', 'style_meta_tags'];
+                     'style_look', 'style_palette', 'style_color_mode', 'style_meta_tags'];
         var o = {};
         names.forEach(function (n) {
             var el = f.querySelector('[name="' + n + '"]');
@@ -73346,6 +73589,7 @@ const StyleDesigner = (function () {
             { label: _sdT('Hero: Centered'),                type: 'component', icon: 'bi-stars',        extra: { componentType: 'hero-centered' } },
             { label: _sdT('Hero: Split'),                 type: 'component', icon: 'bi-layout-split', extra: { componentType: 'hero-split' } },
             { label: _sdT('Hero: Image Background'),       type: 'component', icon: 'bi-image-alt',    extra: { componentType: 'hero-image-bg' } },
+            { label: _sdT('Hero: Full-Screen Media'),      type: 'component', icon: 'bi-fullscreen',   extra: { componentType: 'spotlight-media' } },
             { label: _sdT('CTA: Banner'),                 type: 'component', icon: 'bi-megaphone',    extra: { componentType: 'cta-simple' } },
             { label: _sdT('CTA: Inline'),                 type: 'component', icon: 'bi-arrow-right-circle', extra: { componentType: 'cta-inline' } },
             { label: _sdT('CTA: Gradient'),               type: 'component', icon: 'bi-gem',          extra: { componentType: 'cta-gradient' } },
@@ -73477,7 +73721,7 @@ const StyleDesigner = (function () {
     function _sdBlockPaletteGroups() {
         var groups = [
             { title: _sdT('Page Header'),      icon: 'bi-window-sidebar',     match: ['navbar-', 'hero-', 'breadcrumbs-'] },
-            { title: _sdT('Marketing'),        icon: 'bi-megaphone',          match: ['cta-', 'features-', 'stats-', 'pricing-', 'compare-', 'logos-'] },
+            { title: _sdT('Marketing'),        icon: 'bi-megaphone',          match: ['cta-', 'features-', 'stats-', 'pricing-', 'compare-', 'logos-', 'spotlight-'] },
             { title: _sdT('Creative'),         icon: 'bi-magic',              match: ['bento-', 'marquee-', 'showcase-', 'quote-', 'gallery-', 'scroller-'] },
             { title: _sdT('Social Proof'),     icon: 'bi-patch-check',        match: ['testimonial-', 'team-'] },
             { title: _sdT('Services & Booking'), icon: 'bi-calendar-check',   match: ['services-', 'steps-', 'booking-'] },
@@ -73528,6 +73772,19 @@ const StyleDesigner = (function () {
     var _SD_BLOCK_CSS_MARK = '/* Pinegrap block styles */';
     var _SD_BLOCK_CSS = {
         'pg-hero-tall':    '.pg-hero-tall { min-height: 60vh; }',
+        // One screen tall: svh leaves room for a phone's address bar, and
+        // 100vh stays for a browser that does not know svh.
+        'pg-screen':       '.pg-screen { min-height: 100vh; min-height: 100svh; }',
+        // Edge to edge also inside a container: the band reaches out to the
+        // window's sides. 100vw counts a desktop scrollbar too, so the page
+        // that holds one clips that sliver instead of scrolling sideways.
+        'pg-bleed':        '.pg-bleed { width: 100vw; max-width: none; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); border-radius: 0; }\n' +
+                           'body:has(.pg-bleed) { overflow-x: clip; }',
+        // Giant type that follows the window, from a phone's width up to
+        // about 6.5 rem (xl) and 9 rem (xxl). The weight is the look's
+        // display weight (light in most looks, black in Bold), never fixed.
+        'pg-display-xl':   '.pg-display-xl { font-family: var(--pg-font-heading, inherit); font-size: clamp(2.75rem, 1.6rem + 5vw, 6.5rem); font-weight: var(--pg-display-weight, 300); letter-spacing: var(--pg-heading-tracking, normal); line-height: 1.05; overflow-wrap: break-word; }',
+        'pg-display-xxl':  '.pg-display-xxl { font-family: var(--pg-font-heading, inherit); font-size: clamp(3.25rem, 1.4rem + 8vw, 9rem); font-weight: var(--pg-display-weight, 300); letter-spacing: var(--pg-heading-tracking, normal); line-height: 1; overflow-wrap: break-word; }',
         'pg-ratio-1x1':    '.pg-ratio-1x1 { aspect-ratio: 1 / 1; }',
         'pg-ratio-16x9':   '.pg-ratio-16x9 { aspect-ratio: 16 / 9; }',
         'pg-thumb-100':    '.pg-thumb-100 { width: 100px; height: 100px; }',
@@ -73569,6 +73826,10 @@ const StyleDesigner = (function () {
         // Dark scrim under text placed on a photo; the box also carries
         // data-bs-theme="dark", so the text colour never depends on the photo.
         'pg-shade-bottom': '.pg-shade-bottom { background-image: linear-gradient(to top, rgba(0, 0, 0, .85), rgba(0, 0, 0, .45) 50%, rgba(0, 0, 0, 0)); }',
+        // An even dark tint under pg-shade-bottom's gradient, for text that
+        // reaches the upper half of a photo (giant type on a full-screen
+        // picture): light text stays at 3:1 or more there even on a white photo.
+        'pg-shade-tint':   '.pg-shade-tint { background-color: rgba(0, 0, 0, .55); }',
         // A spinner-grow used as a decorative pulse (dark maintenance band,
         // live badge): under reduced motion it stands still and stays
         // visible (a resting .spinner-grow is transparent).
@@ -73615,6 +73876,7 @@ const StyleDesigner = (function () {
     // block is one line in each, and a block that needs nothing says nothing.
     var _SD_BLOCK_CSS_NEEDS = {
         'hero-image-bg':        ['pg-hero-tall', 'pg-shade-bottom'],
+        'spotlight-media':      ['pg-screen', 'pg-bleed', 'pg-shade-bottom', 'pg-shade-tint', 'pg-display-xxl'],
         'testimonial-carousel': ['pg-carousel-ink'],
         'image-carousel':       ['pg-shade-bottom', 'pg-carousel-photo'],
         'image-grid':           ['pg-ratio-1x1'],
@@ -74239,6 +74501,696 @@ const StyleDesigner = (function () {
             draw[key]() + '</svg>';
     }
 
+    // ── Block drawings ──────────────────────────────────────────────────
+    // A ready-made block's hover card draws the block from the tree a drop
+    // would add, in _sdPalDrawing()'s style: a heading is a dark bar, text
+    // grey lines, a picture a framed box, a button a pill in its colour, the
+    // columns of a row side by side. The walk reads the tree top down as
+    // PGProtoHotspots.sketch() does, through any number of wrappers; what a
+    // desktop page does not show (a collapsed menu, other slides and tabs,
+    // dialogs, scripts) is left out. A block taller than the card is scaled
+    // down and its foot cut off. Only shapes are drawn: no text of the block
+    // reaches the SVG, so nothing is translated or escaped.
+    var _sdBlockSketchCache = {};
+
+    // The drawing of a palette item that is a ready-made block, built once per
+    // componentType; '' for any other item.
+    function _sdBlockSketchOf(it) {
+        var ct = it && it.type === 'component' && it.extra ? String(it.extra.componentType || '') : '';
+        if (!ct) return '';
+        if (Object.prototype.hasOwnProperty.call(_sdBlockSketchCache, ct)) return _sdBlockSketchCache[ct];
+        var svg = '';
+        var isBlock = _sdBlockPaletteItems().some(function (b) { return b.extra && b.extra.componentType === ct; });
+        if (isBlock) {
+            try { svg = _sdBlockSketch(_sdDragTree({ source: 'palette', type: 'component', extra: { componentType: ct } })); }
+            catch (e) { svg = ''; }
+        }
+        _sdBlockSketchCache[ct] = svg;
+        return svg;
+    }
+
+    // The tree is laid out at a content width of 184 units (a desktop page of
+    // about 1,140px, one unit near 6px) into pieces { p, w, h }: p holds the
+    // shapes with their place inside the piece, and put() moves a piece's
+    // shapes to where its parent places it, so every shape ends up with its
+    // place in the block. The class names read here are those of the site
+    // page the block is dropped into.
+    /* @pg-site-output */
+    function _sdBlockSketch(tree) {
+        if (!tree || typeof tree !== 'object') return '';
+        var P = '#0d6efd', S = '#6c757d', B = '#dee2e6', G = '#e9ecef', T = '#ced4da', D = '#343a40', W = '#ffffff',
+            LG = '#f8f9fa', DK = '#212529', CW = 184, PX = 6.2;
+        var TONE = { primary: P, secondary: S, success: '#198754', danger: '#dc3545', warning: '#ffc107', info: '#0dcaf0',
+            light: LG, dark: DK, white: W, black: '#000000' };
+        var SUBTLE = { primary: '#cfe2ff', secondary: '#e2e3e5', success: '#d1e7dd', danger: '#f8d7da', warning: '#fff3cd',
+            info: '#cff4fc', light: LG, dark: T };
+        // The colours of what sits on a light page, on a dark band and on a band
+        // in the accent colour.
+        var INK = {
+            light:  { head: D, text: T, link: P, muted: S, line: B, card: W, dark: false },
+            dark:   { head: W, text: '#adb5bd', link: '#6ea8fe', muted: '#adb5bd', line: '#495057', card: '#2b3035', dark: true },
+            accent: { head: W, text: '#9ec5fe', link: W, muted: '#cfe2ff', line: '#6ea8fe', card: W, dark: true }
+        };
+        var SP = [0, 1.5, 2.5, 3.5, 4.5, 6], HEAD_H = [9, 8, 7, 6, 5, 4.5, 4], SIZES = ['xl-', 'lg-', 'md-', 'sm-', ''], RX = {};
+        var INLINE = / (a|span|strong|b|em|i|small|label|abbr|code|kbd|time|cite|mark|sub|sup|button|q|s|u|var|data|output) /;
+        var TONES = 'primary|secondary|success|danger|warning|info|light|dark|white|black';
+
+        function piece(w, h) { return { p: [], w: w, h: h }; }
+        function rect(pc, x, y, w, h, fill, rx, stroke, dash) {
+            if (w > 0 && h > 0) pc.p.push({ r: [x, y, w, h], f: fill, rx: rx || 0, s: stroke || '', d: !!dash });
+        }
+        function circle(pc, x, y, r, fill) { if (r > 0) pc.p.push({ c: [x, y, r], f: fill }); }
+        function pict(pc, x, y, w, h, dark) {
+            rect(pc, x, y, w, h, dark ? '#495057' : T, Math.min(3, h / 2));
+            if (w < 10 || h < 8) return;
+            circle(pc, x + w * .74, y + h * .3, Math.min(w, h) * .09, dark ? S : W);
+            pc.p.push({ g: [x, y + h, x + w * .34, y + h * .46, x + w * .58, y + h * .78, x + w * .74, y + h * .62, x + w, y + h],
+                f: dark ? D : '#adb5bd' });
+        }
+        function put(dst, src, dx, dy) {
+            src.p.forEach(function (q) {
+                var a = q.r || q.c || q.g;
+                for (var i = 0; i < (q.g ? a.length : 2); i += 2) { a[i] += dx; a[i + 1] += dy; }
+                dst.p.push(q);
+            });
+        }
+
+        // ── Reading a node ──
+        function sp(v, def) { return v === '' || v === undefined || v === null || SP[+v] === undefined ? def : SP[+v]; }
+        function cls(n) { return ' ' + String((n.props && n.props.cssClass) || '').trim().split(/\s+/).join(' ') + ' '; }
+        function has(c, name) { return c.indexOf(' ' + name + ' ') !== -1; }
+        function tagOf(n) { return String((n.props && n.props.tag) || '').toLowerCase(); }
+        // The value a responsive class gives on a desktop page: the widest
+        // breakpoint up to xl that names one, else the class without one.
+        function bp(c, stem, vals) {
+            for (var i = 0; i < SIZES.length; i++) {
+                var key = stem + '|' + SIZES[i] + '|' + vals;
+                var re = RX[key] || (RX[key] = new RegExp(' ' + stem + '-' + SIZES[i] + '(' + vals + ') '));
+                var m = c.match(re);
+                if (m) return m[1];
+            }
+            return '';
+        }
+        function attr(n, name) {
+            var a = n.props && Array.isArray(n.props._attrs) ? n.props._attrs : [];
+            for (var i = 0; i < a.length; i++) {
+                if (a[i] && a[i].name === name) return String(a[i].value === undefined || a[i].value === null ? '' : a[i].value);
+            }
+            return null;
+        }
+        function textOf(n) {
+            return String((n.props && n.props.text) || '').replace(/<[^>]*>/g, ' ').replace(/&#?\w+;/g, 'x')
+                .replace(/\s+/g, ' ').trim();
+        }
+        function allText(n, d) {
+            var s = textOf(n);
+            if (d < 4) kids(n).forEach(function (k) { s += ' ' + allText(k, d + 1); });
+            return s.trim();
+        }
+        function hidden(n) {
+            if (!n || typeof n !== 'object') return true;
+            var p = n.props || {}, c = cls(n), t = tagOf(n);
+            if (n.type === 'semantic' && / (script|style|template|meta|link|option|source|track|noscript|br|wbr|param|area|datalist) /.test(' ' + t + ' ')) return true;
+            if (t === 'input' && String(attr(n, 'type') || '').toLowerCase() === 'hidden') return true;
+            if (p.contentType === 'custom_html' &&
+                !/<[a-z]/i.test(String(p.html || '').replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, ''))) return true;
+            if (/ (visually-hidden|visually-hidden-focusable|sr-only|navbar-toggler|btn-close|carousel-indicators|carousel-control-prev|carousel-control-next|tooltip|popover) /.test(c)) return true;
+            if (/ (modal|offcanvas|offcanvas-start|offcanvas-end|toast|dropdown-menu|collapse) /.test(c) && !has(c, 'show') &&
+                !has(c, 'navbar-collapse') && !has(c, 'd-block')) return true;
+            if ((has(c, 'carousel-item') || has(c, 'tab-pane')) && !has(c, 'active')) return true;
+            if (bp(c, 'd', 'none|block|flex|inline|inline-block|inline-flex|grid|table|table-cell|table-row|contents') === 'none') return true;
+            return attr(n, 'hidden') !== null;
+        }
+        // A block that is itself a dropdown shows its menu open.
+        function kids(n) {
+            return (Array.isArray(n.children) ? n.children : []).filter(function (k) {
+                return !hidden(k) || (n === tree && k && / dropdown-menu /.test(cls(k)));
+            });
+        }
+        // What a node draws as: a leaf kind, 'box' for a node whose children are
+        // drawn, '' for nothing.
+        function kindOf(n) {
+            var p = n.props || {}, ty = n.type, ct = String(p.contentType || ''), c = cls(n), t = tagOf(n), it;
+            if (/^(region|loop_area|recipient_loop_area|shared_ref|widget)$/.test(ty)) return 'slot';
+            if ((ty === 'component' && p.componentType === 'btn') || has(c, 'btn')) return 'btn';
+            if (has(c, 'badge')) return 'badge';
+            if (has(c, 'progress')) return 'progress';
+            if (has(c, 'ratio') || /^(image|video|map|embed|iframe|custom_html|svg)$/.test(ct) ||
+                (ty === 'semantic' && / (img|picture|video|iframe|canvas|object|embed|svg) /.test(' ' + t + ' '))) return 'pic';
+            if (ct === 'icon' || ((t === 'i' || t === 'span') && / bi-[\w-]+ /.test(c))) return 'icon';
+            if (ct === 'divider' || t === 'hr') return 'rule';
+            if (ct === 'spacer') return 'space';
+            if (t === 'textarea') return 'area';
+            if (t === 'input' || t === 'select') {
+                it = String(attr(n, 'type') || '').toLowerCase();
+                if (it === 'checkbox' || it === 'radio') return 'check';
+                if (it === 'submit' || it === 'button') return 'btn';
+                return it === 'range' ? 'rule' : 'field';
+            }
+            if (kids(n).length) return 'box';
+            if (!textOf(n)) return (has(c, 'rounded-circle') || / (?:bg|text-bg)-/.test(c)) ? 'dot' : '';
+            if (ct === 'heading') return (!t || /^h[1-6]$/.test(t)) ? 'head' : 'strong';
+            if (/^h[1-6]$/.test(t)) return 'head';
+            if (ct === 'link' || t === 'a' || t === 'button') return 'link';
+            if (/ (fw-bold|fw-semibold|fw-bolder|display-[1-6]|fs-[1-4]|h[1-6]) /.test(c) ||
+                /^(strong|b|dt|th|legend|caption)$/.test(t)) return 'strong';
+            return 'text';
+        }
+        function isInline(n, c, t, k) {
+            var d = bp(c, 'd', 'block|inline|inline-block|inline-flex|flex|grid|table|table-cell|contents');
+            if (d) return d.indexOf('inline') === 0;
+            if (has(c, 'w-100')) return false;
+            if (/^(btn|badge|icon|check|dot)$/.test(k)) return true;
+            if (k === 'field') return !/ (form-control|form-select) /.test(c);
+            if (/^(pic|area|rule|progress|slot|space)$/.test(k)) return false;
+            if (k === 'box' && / (card|list-group-item|ratio) /.test(c)) return false;
+            if (n.type === 'content') return k === 'link' || (k === 'strong' && INLINE.test(' ' + t + ' '));
+            return n.type === 'semantic' && INLINE.test(' ' + t + ' ');
+        }
+        function level(c, t, def) {
+            var m = c.match(/ display-([1-6]) /);
+            if (m) return +m[1] > 4 ? 1 : 0;
+            m = c.match(/ (?:h|fs-)([1-6]) /);
+            if (m) return +m[1];
+            m = t.match(/^h([1-6])$/);
+            return m ? +m[1] : def;
+        }
+        function iconSize(p, c) {
+            var px = parseFloat(p.fontSize), m = c.match(/ fs-([1-6]) /);
+            if (isFinite(px) && px > 0) return Math.max(3, Math.min(10, px / PX));
+            if (/ display-[1-6] /.test(c)) return 8;
+            return m ? [0, 6, 5, 4.5, 4, 3.5, 3][+m[1]] : 3.5;
+        }
+        function avatar(p) {
+            var px = parseFloat(p.width);
+            return Math.max(5, Math.min(24, isFinite(px) && px > 0 ? px / PX : 12));
+        }
+        function aspect(n, c) {
+            var p = n.props || {}, m = c.match(/ (?:pg-)?ratio-(\d+)x(\d+) /);
+            if (m && +m[1]) return m[2] / m[1];
+            m = String(p.src || '').match(/\/(\d{2,4})\/(\d{2,4})(?:[\/?#.]|$)/);
+            if (m && +m[1]) return m[2] / m[1];
+            var w = parseFloat(p.width), h = parseFloat(p.height);
+            return (w > 0 && h > 0) ? h / w : .6;
+        }
+        function colourOf(c, k, cx) {
+            var ink = cx.ink, m = c.match(new RegExp(' (?:text|link)-(' + TONES + ')(?:-emphasis)? '));
+            if (m) {
+                // White text on a band the drawing cannot see (a family's own
+                // stylesheet) would vanish on the white card: it stays dark.
+                if (m[1] === 'white' || m[1] === 'light') return ink.dark ? (k === 'text' ? ink.text : W) : (k === 'text' ? T : D);
+                if (m[1] === 'dark' || m[1] === 'black') return ink.dark ? ink.head : D;
+                if (m[1] === 'secondary') return k === 'text' ? ink.text : ink.muted;
+                return TONE[m[1]];
+            }
+            if (has(c, 'text-white-50')) return ink.dark ? ink.text : T;
+            if (/ (text-body-secondary|text-body-tertiary|text-muted) /.test(c)) return k === 'text' ? ink.text : ink.muted;
+            if (/ (text-body|text-body-emphasis) /.test(c)) return k === 'text' ? ink.text : ink.head;
+            if (has(c, 'nav-link')) return has(c, 'active') ? ink.head : ink.muted;
+            if (has(c, 'navbar-brand')) return ink.head;
+            if (cx.lc && k !== 'icon') return cx.lc;
+            return k === 'text' ? ink.text : k === 'link' ? ink.link : k === 'icon' ? ink.muted : ink.head;
+        }
+        // Whether children sit in a column ('col'), side by side ('row'), in
+        // Bootstrap's twelve columns ('grid') or as table cells ('tr').
+        function flowOf(n, c, t, cx) {
+            if (n.type === 'row' || has(c, 'row')) return 'grid';
+            if (t === 'tr') return 'tr';
+            var fd = bp(c, 'flex', 'row|column|row-reverse|column-reverse'), col = fd.indexOf('column') === 0;
+            var d = bp(c, 'd', 'flex|inline-flex|grid|block|inline-block|inline|table');
+            if (d === 'flex' || d === 'inline-flex') return col ? 'col' : 'row';
+            if (d === 'grid' || has(c, 'vstack')) return 'col';
+            if (col) return 'col';
+            if (/ (hstack|btn-group|input-group|navbar|navbar-nav|nav|list-inline|pagination|breadcrumb|navbar-collapse|card-group) /.test(c)) return 'row';
+            if (cx.nav && (n.type === 'container' || / (container|container-fluid) /.test(c))) return 'row';
+            return 'col';
+        }
+        function justify(c, cx, n) {
+            var j = bp(c, 'justify-content', 'start|end|center|between|around|evenly');
+            if (j) return j;
+            return (has(c, 'navbar') || (cx.nav && (n.type === 'container' || / (container|container-fluid) /.test(c)))) ? 'between' : 'start';
+        }
+        // The width a node takes when nothing stretches or squeezes it.
+        function nat(n, cap, cx) {
+            var c = cls(n), t = tagOf(n), k = kindOf(n), p = n.props || {}, v = 0, h;
+            if (k === 'btn') v = has(c, 'w-100') ? cap : btnWidth(n, c);
+            else if (k === 'badge') v = 5 + (allText(n, 0).length || 3) * 1.1;
+            else if (k === 'icon') v = iconSize(p, c);
+            else if (k === 'check' || k === 'dot') v = 4;
+            else if (k === 'pic') v = has(c, 'rounded-circle') ? avatar(p) : (parseFloat(p.width) > 0 ? parseFloat(p.width) / PX : 40);
+            else if (k === 'field' || k === 'progress' || k === 'slot') v = 40;
+            else if (k === 'area') v = 60;
+            else if (k === 'rule') v = t === 'hr' ? cap : 20;
+            else if (k === 'head' || k === 'strong') { h = HEAD_H[level(c, t, k === 'head' ? 2 : 5)]; v = textOf(n).length * h * .55; }
+            else if (k === 'link') v = textOf(n).length * (has(c, 'navbar-brand') ? 2.75 : 1.3);
+            else if (k === 'text') v = textOf(n).length * 1.3;
+            else if (k === 'box') {
+                var mode = flowOf(n, c, t, cx), list = kids(n).slice(0, 8), sum = 0, mx = 0;
+                list.forEach(function (x) { var w = nat(x, cap, cx); sum += w; mx = Math.max(mx, w); });
+                v = (mode === 'row' || mode === 'tr') ? sum + 2.5 * Math.max(0, list.length - 1) : mode === 'grid' ? cap : mx;
+                if (textOf(n)) v += textOf(n).length * 1.3 + 2;
+                if (/ (card|border|shadow|shadow-sm|alert|list-group-item) /.test(c) || / (?:bg|text-bg)-/.test(c)) v += 6;
+            }
+            return Math.min(cap, v);
+        }
+        function btnWidth(n, c) {
+            var p = n.props || {}, size = String(p.size || '') || (has(c, 'btn-lg') ? 'lg' : has(c, 'btn-sm') ? 'sm' : '');
+            return (8 + (allText(n, 0).length || 3) * 1.5) * (size === 'lg' ? 1.2 : size === 'sm' ? .8 : 1);
+        }
+
+        // ── Leaves ──
+        // Text as bars: as many lines as the text needs at this width, the
+        // last one as long as what is left.
+        function lines(len, h, cw, gap, max, w, fill, align) {
+            var full = Math.max(len, 2) * cw, n = Math.max(1, Math.min(max, Math.ceil(full / w))), ws = [], i;
+            for (i = 0; i < n; i++) {
+                if (i < n - 1) ws.push(w);
+                else if (full > w * n) ws.push(n > 1 ? w * .62 : w);
+                else ws.push(Math.min(w, Math.max(full - w * (n - 1), h * 2.5)));
+            }
+            var pc = piece(n > 1 ? w : ws[0], n * h + (n - 1) * gap);
+            for (i = 0; i < n; i++) {
+                var x = align === 'center' ? (pc.w - ws[i]) / 2 : align === 'end' ? pc.w - ws[i] : 0;
+                rect(pc, x, i * (h + gap), ws[i], h, fill, Math.min(2, h / 2));
+            }
+            return pc;
+        }
+        function button(n, c, w, cx) {
+            var p = n.props || {}, v = String(p.variant || ''), m;
+            if (!v) {
+                m = c.match(/ btn-((?:outline-)?(?:primary|secondary|success|danger|warning|info|light|dark|link)) /);
+                v = m ? m[1] : 'primary';
+            }
+            var line = v.indexOf('outline-') === 0, tone = v.replace(/^outline-/, '');
+            var size = String(p.size || '') || (has(c, 'btn-lg') ? 'lg' : has(c, 'btn-sm') ? 'sm' : '');
+            var h = size === 'lg' ? 11 : size === 'sm' ? 7 : 9, bw = has(c, 'w-100') ? w : Math.min(w, btnWidth(n, c));
+            // A button with only an icon shows the icon, and a dropdown's button
+            // its caret.
+            var icon = !allText(n, 0) && kids(n).some(function (k) { return kindOf(k) === 'icon'; }), caret = has(c, 'dropdown-toggle');
+            if (icon) bw = Math.min(w, h * 1.4 + (caret ? 4 : 0));
+            var pc = piece(bw, h), col = TONE[tone] || P, mid = caret ? bw - 4 : bw;
+            if (caret) pc.p.push({ g: [bw - 5, h / 2 - 1, bw - 2, h / 2 - 1, bw - 3.5, h / 2 + 1], f: tone === 'link' || line ? (tone === 'link' ? cx.ink.muted : col) : W });
+            if (tone === 'link') {
+                if (icon) circle(pc, mid / 2, h / 2, h * .28, cx.ink.muted);
+                else rect(pc, 0, h / 2 - 1.75, mid * .8, 3.5, cx.ink.link, 1.75);
+                return pc;
+            }
+            if (tone === 'light') col = cx.ink.dark ? LG : G;
+            // A primary button on a band in the accent colour is drawn white.
+            if (tone === 'primary' && cx.ink === INK.accent) col = W;
+            var rx = has(c, 'rounded-pill') ? h / 2 : Math.min(2.5, h / 2);
+            var label = line ? col : col === W ? P : /^(light|warning|info)$/.test(tone) ? D : W;
+            if (line) pc.p.unshift({ r: [.5, .5, bw - 1, h - 1], f: 'none', rx: rx, s: col, d: false });
+            else pc.p.unshift({ r: [0, 0, bw, h], f: col, rx: rx, s: '', d: false });
+            if (icon) circle(pc, mid / 2, h / 2, h * .22, label);
+            else rect(pc, mid * .22, h / 2 - 1.1, mid * .56, 2.2, label, 1.1);
+            return pc;
+        }
+        function leaf(n, k, w, cx) {
+            var p = n.props || {}, c = cls(n), t = tagOf(n), pc, h, m, x;
+            if (k === 'head' || k === 'strong') {
+                h = HEAD_H[level(c, t, k === 'head' ? 2 : 5)];
+                return lines(textOf(n).length, h, h * .55, h * .5, 2, w, colourOf(c, k, cx), cx.align);
+            }
+            if (k === 'text') {
+                h = has(c, 'lead') ? 4 : (has(c, 'small') || t === 'small' || has(c, 'form-text')) ? 3 : 3.5;
+                return lines(textOf(n).length, h, h * .37, 2.5, 3, w, colourOf(c, k, cx), cx.align);
+            }
+            if (k === 'link') {
+                h = has(c, 'navbar-brand') ? 5 : 3.5;
+                return lines(textOf(n).length, h, h > 4 ? h * .55 : h * .37, 2, 1, w, colourOf(c, k, cx), cx.align);
+            }
+            if (k === 'btn') return button(n, c, w, cx);
+            if (k === 'badge') {
+                m = c.match(new RegExp(' (?:text-bg|bg)-(' + TONES + ')(-subtle)? '));
+                var bc = m ? (m[2] ? SUBTLE[m[1]] || LG : TONE[m[1]]) : S, bw = Math.min(w, 5 + (allText(n, 0).length || 3) * 1.1);
+                pc = piece(bw, 6);
+                rect(pc, 0, 0, bw, 6, bc, has(c, 'rounded-pill') ? 3 : 1.5);
+                rect(pc, 2.5, 2, bw - 5, 2, m && m[2] ? TONE[m[1]] : /^(#ffc107|#0dcaf0|#f8f9fa|#ffffff)$/.test(bc) ? D : W, 1);
+                return pc;
+            }
+            if (k === 'icon') {
+                h = iconSize(p, c);
+                pc = piece(h, h);
+                circle(pc, h / 2, h / 2, h / 2, colourOf(c, 'icon', cx));
+                return pc;
+            }
+            if (k === 'dot') {
+                m = c.match(new RegExp(' (?:text-bg|bg)-(' + TONES + ') '));
+                pc = piece(4, 4);
+                circle(pc, 2, 2, 2, m ? TONE[m[1]] : T);
+                return pc;
+            }
+            if (k === 'pic') {
+                if (has(c, 'rounded-circle')) {
+                    h = Math.min(w, avatar(p));
+                    pc = piece(h, h);
+                    circle(pc, h / 2, h / 2, h / 2, T);
+                    return pc;
+                }
+                x = parseFloat(p.width) > 0 && parseFloat(p.width) <= 400 ? Math.min(w, parseFloat(p.width) / PX) : w;
+                h = Math.max(6, Math.min(72, x * aspect(n, c)));
+                pc = piece(x, h);
+                pict(pc, 0, 0, x, h, false);
+                return pc;
+            }
+            if (k === 'field' || k === 'area') {
+                h = k === 'area' ? 16 : / (form-control-lg|form-select-lg) /.test(c) ? 10 : / (form-control-sm|form-select-sm) /.test(c) ? 6.5 : 8;
+                x = (k === 'area' || / (form-control|form-select|w-100) /.test(c)) ? w : Math.min(w, 40);
+                pc = piece(x, h);
+                rect(pc, 0, 0, x, h, cx.ink.card, 1.5, cx.ink.line);
+                rect(pc, 2.5, Math.min(h / 2, 4) - 1, Math.min(x * .4, 28), 2, cx.ink.card === W ? T : S, 1);
+                return pc;
+            }
+            if (k === 'check') {
+                pc = piece(4, 4);
+                rect(pc, 0, 0, 4, 4, attr(n, 'checked') !== null ? P : cx.ink.card, String(attr(n, 'type')).toLowerCase() === 'radio' ? 2 : 1, cx.ink.line);
+                return pc;
+            }
+            if (k === 'rule') {
+                if (t !== 'hr' && p.contentType !== 'divider') {
+                    x = Math.min(w, 40);
+                    pc = piece(x, 4);
+                    rect(pc, 0, 1.5, x, 1, cx.ink.line, .5);
+                    circle(pc, x * .6, 2, 2, P);
+                    return pc;
+                }
+                pc = piece(w, .8);
+                rect(pc, 0, 0, w, .8, cx.ink.line);
+                return pc;
+            }
+            if (k === 'progress') {
+                var bar = kids(n)[0] || n, bcl = cls(bar), st = String(attr(bar, 'style') || '');
+                m = st.match(/width\s*:\s*([\d.]+)%/);
+                var pct = m ? +m[1] : parseFloat(attr(bar, 'aria-valuenow') || attr(n, 'aria-valuenow') || 60);
+                var tm = bcl.match(new RegExp(' (?:text-bg|bg)-(' + TONES + ') '));
+                pc = piece(w, 3);
+                rect(pc, 0, 0, w, 3, cx.ink.dark ? '#495057' : G, 1.5);
+                rect(pc, 0, 0, w * Math.max(4, Math.min(100, isFinite(pct) ? pct : 60)) / 100, 3, tm ? TONE[tm[1]] : P, 1.5);
+                return pc;
+            }
+            if (k === 'slot') {
+                pc = piece(w, 14);
+                rect(pc, 0, 0, w, 14, cx.ink.dark ? '#2b3035' : LG, 2, cx.ink.dark ? S : T, true);
+                return pc;
+            }
+            if (k === 'space') return piece(0, 3);
+            return piece(0, 0);
+        }
+
+        // ── Boxes ──
+        // The fill, line and corner a box draws, and the ink of what sits on it.
+        function frame(n, c, cx) {
+            var f = { fill: '', stroke: '', rx: 0, pic: false, ink: cx.ink }, m, theme = attr(n, 'data-bs-theme');
+            if (theme === 'dark') { f.ink = INK.dark; f.fill = DK; }
+            else if (theme === 'light') f.ink = INK.light;
+            if (/background(?:-image)?\s*:[^;]*url\(/i.test(attr(n, 'style') || '')) { f.pic = true; f.ink = INK.dark; }
+            m = c.match(new RegExp(' (?:text-bg|bg)-(' + TONES + '|body|body-secondary|body-tertiary)(-subtle)? '));
+            if (m) {
+                if (m[2]) f.fill = SUBTLE[m[1]] || LG;
+                else if (m[1] === 'body') f.fill = f.ink.dark ? DK : W;
+                else if (m[1] === 'body-secondary' || m[1] === 'body-tertiary') f.fill = f.ink.dark ? '#2b3035' : LG;
+                else f.fill = TONE[m[1]];
+            }
+            m = c.match(/ alert-(primary|secondary|success|danger|warning|info|light|dark) /);
+            if (m && !f.fill) f.fill = SUBTLE[m[1]];
+            var boxy = / (card|accordion-item|list-group-item|modal-content|toast) /.test(c);
+            if (boxy && !f.fill) f.fill = f.ink.card;
+            if ((boxy || has(c, 'border')) && !has(c, 'border-0')) f.stroke = f.ink.line;
+            m = c.match(/ border-(primary|secondary|success|danger|warning|info|light|dark|white) /);
+            if (m && !has(c, 'border-0')) f.stroke = TONE[m[1]];
+            if (/ (shadow|shadow-sm|shadow-lg) /.test(c) && !f.fill && !f.stroke) { f.fill = f.ink.card; f.stroke = f.ink.line; }
+            if (f.fill && !f.pic) {
+                f.ink = /^(#212529|#2b3035|#000000)$/.test(f.fill) ? INK.dark :
+                    /^(#0d6efd|#6c757d|#198754|#dc3545)$/.test(f.fill) ? INK.accent : INK.light;
+            }
+            f.rx = has(c, 'rounded-0') ? 0 : / (rounded-circle|rounded-pill) /.test(c) ? 99 :
+                (/ rounded(-[0-5]|-top|-bottom|-start|-end)? /.test(c) || boxy) ? 3 : 0;
+            return f;
+        }
+        function pad(c, def) {
+            var all = sp(bp(c, 'p', '[0-5]'), def);
+            return [sp(bp(c, 'px', '[0-5]'), all), sp(bp(c, 'py', '[0-5]'), all)];
+        }
+        function box(n, w, cx, depth) {
+            var c = cls(n), t = tagOf(n), f = frame(n, c, cx);
+            var framed = depth > 0 && !!(f.fill || f.stroke || f.pic);
+            var inner = { ink: f.ink, align: cx.align, nav: cx.nav || has(c, 'navbar'), inBox: cx.inBox || framed, lc: cx.lc };
+            // What sits in a link takes the link's colour.
+            if ((t === 'a' || (n.props && n.props.contentType === 'link')) && !/ (card|stretched-link|text-reset) /.test(c)) {
+                inner.lc = colourOf(c, 'link', { ink: f.ink, lc: '' });
+            }
+            var al = bp(c, 'text', 'start|center|end|left|right');
+            if (al) inner.align = al === 'left' ? 'start' : al === 'right' ? 'end' : al;
+            var pd = framed ? pad(c, has(c, 'card') ? 0 : 3) :
+                / (card-body|card-header|card-footer|accordion-body|alert|list-group-item|modal-body) /.test(c) ? pad(c, 3) :
+                cx.inBox ? pad(c, 0) : [0, 0];
+            if (t === 'tr') pd = [0, 1.5];
+            var body = flow(n, c, t, Math.max(4, w - pd[0] * 2), inner, depth);
+            if (!body.p.length && !framed) return piece(0, 0);
+            var bw = isInline(n, c, t, 'box') ? Math.min(w, body.w + pd[0] * 2) : w;
+            var bh = body.p.length ? body.h + pd[1] * 2 : 8;
+            var pc = piece(bw, bh);
+            pc.bg = f;
+            if (framed && f.pic) pict(pc, 0, 0, bw, bh, true);
+            else if (framed) rect(pc, 0, 0, bw, bh, f.fill || 'none', Math.min(f.rx, bw / 2, bh / 2), f.stroke);
+            if (has(c, 'border-top')) rect(pc, 0, 0, bw, .6, cx.ink.line);
+            if (has(c, 'border-bottom') || t === 'tr') rect(pc, 0, bh - .6, bw, .6, cx.ink.line);
+            put(pc, body, pd[0], pd[1]);
+            return pc;
+        }
+        function flow(n, c, t, w, cx, depth) {
+            var list = kids(n), own = textOf(n);
+            // A box's own text comes first, with the classes that colour it.
+            if (own) {
+                list = [{ type: 'semantic', children: [], props: { tag: /^h[1-6]$/.test(t) ? t : t === 'a' ? 'a' : 'span', text: own,
+                    cssClass: c.trim().split(' ').filter(function (x) { return /^(text-|link-|fw-|fs-|nav-link$|navbar-brand$|small$|lead$|active$|display-)/.test(x); }).join(' ') } }].concat(list);
+            }
+            var mode = flowOf(n, c, t, cx);
+            if (mode === 'grid') return grid(n, list, c, w, cx, depth);
+            if (mode === 'row' || mode === 'tr') return flexRow(n, list, c, w, cx, depth, mode === 'tr');
+            var d = bp(c, 'd', 'flex|inline-flex|grid');
+            return stack(list, c, w, cx, depth, !!d || has(c, 'vstack'));
+        }
+        function lay(n, w, cx, depth) {
+            if (depth > 18 || w < 1) return piece(0, 0);
+            var k = kindOf(n);
+            return k === 'box' ? box(n, w, cx, depth) : leaf(n, k, w, cx);
+        }
+        // Children one under the other; inline ones flow along a line.
+        function stack(list, c, w, cx, depth, flexy) {
+            var pc = piece(w, 0), y = 0, last = 0, run = [], fg = flexy ? sp(bp(c, 'gap', '[0-5]'), 0) : 0;
+            function place(sub, x, g) { put(pc, sub, x, y); y += sub.h + g; last = g; }
+            function flush() {
+                if (!run.length) return;
+                var r = wrap(run, w, cx, depth, 2, cx.align);
+                run = [];
+                if (r.h) place(r, 0, Math.max(1.5, fg || 3));
+            }
+            for (var i = 0; i < list.length && i < 10; i++) {
+                var k = list[i], kc = cls(k), kk = kindOf(k);
+                if (!flexy && isInline(k, kc, tagOf(k), kk)) { run.push(k); continue; }
+                flush();
+                var kw = w, m = bp(kc, 'col', '[1-9]|1[0-2]'), mw = String(attr(k, 'style') || '').match(/max-width\s*:\s*(\d+)px/);
+                if (k.type !== 'col' && m) kw = w * m / 12;
+                else if ((m = kc.match(/ w-(25|50|75) /))) kw = w * m[1] / 100;
+                else if (mw) kw = Math.min(w, mw[1] / PX);
+                var sub = lay(k, kw, cx, depth + 1);
+                if (!sub.h) continue;
+                var mb = bp(kc, 'mb', '[0-5]') || bp(kc, 'my', '[0-5]');
+                var g = Math.max(1.5, (mb !== '' ? SP[+mb] : flexy ? 0 : tagOf(k) === 'li' ? 2 : 3) + fg);
+                var x = has(kc, 'mx-auto') ? (w - sub.w) / 2 : has(kc, 'ms-auto') ? w - sub.w : has(kc, 'me-auto') ? 0 :
+                    cx.align === 'center' ? (w - sub.w) / 2 : cx.align === 'end' ? w - sub.w : 0;
+                place(sub, x, g);
+            }
+            flush();
+            pc.h = Math.max(0, y - last);
+            return pc;
+        }
+        // Items at their own widths, wrapped onto new lines, each line aligned.
+        function wrap(list, w, cx, depth, g, align) {
+            var lns = [], cur = [], cw = 0, pc = piece(w, 0), y = 0;
+            list.slice(0, 12).forEach(function (k) {
+                var s = lay(k, Math.max(1, Math.min(w, nat(k, w, cx))), cx, depth + 1);
+                if (!s.h) return;
+                if (cur.length && cw + g + s.w > w) { lns.push({ it: cur, w: cw }); cur = []; cw = 0; }
+                cw += (cur.length ? g : 0) + s.w;
+                cur.push(s);
+            });
+            if (cur.length) lns.push({ it: cur, w: cw });
+            lns.slice(0, 4).forEach(function (ln) {
+                var H = 0, x = align === 'center' ? (w - ln.w) / 2 : align === 'end' ? w - ln.w : 0;
+                ln.it.forEach(function (s) { H = Math.max(H, s.h); });
+                ln.it.forEach(function (s) { put(pc, s, x, y + (H - s.h) / 2); x += s.w + g; });
+                y += H + 2;
+            });
+            pc.h = Math.max(0, y - 2);
+            if (lns.length === 1 && align !== 'center' && align !== 'end') pc.w = lns[0].w;
+            return pc;
+        }
+        // A flex row: items at their own widths, squeezed when they do not fit,
+        // stretched where they grow, spread as justify-content and auto
+        // margins say.
+        function flexRow(n, list, c, w, cx, depth, tr) {
+            var g = sp(bp(c, 'gap', '[0-5]'), tr ? 2 : 2.5), j = justify(c, cx, n);
+            if (bp(c, 'flex', 'wrap|nowrap') === 'wrap' || has(c, 'list-inline')) {
+                return wrap(list, w, cx, depth, g, j === 'center' ? 'center' : j === 'end' ? 'end' : cx.align);
+            }
+            list = list.slice(0, 8);
+            var cnt = list.length, ws = [], fixed = [], grow = [], sum = 0, fsum = 0, gs = 0, i;
+            if (!cnt) return piece(w, 0);
+            for (i = 0; i < cnt; i++) {
+                var kc = cls(list[i]), kk = kindOf(list[i]);
+                ws[i] = tr ? (w - g * (cnt - 1)) / cnt : nat(list[i], w, cx);
+                fixed[i] = has(kc, 'flex-shrink-0') || /^(btn|badge|icon|check|dot)$/.test(kk) || (kk === 'pic' && ws[i] < 30);
+                grow[i] = / (flex-grow-1|flex-fill|w-100|col|navbar-collapse|container|container-fluid|form-control|form-select) /.test(kc) ||
+                    list[i].type === 'container';
+                sum += ws[i];
+                if (!fixed[i]) fsum += ws[i];
+                if (grow[i]) gs++;
+            }
+            var room = w - g * (cnt - 1);
+            if (!tr && sum > room && fsum > 0) {
+                var scale = Math.max(0, room - (sum - fsum)) / fsum;
+                for (i = 0; i < cnt; i++) if (!fixed[i]) ws[i] = Math.max(4, ws[i] * scale);
+            } else if (!tr && gs) {
+                for (i = 0; i < cnt; i++) if (grow[i]) ws[i] += (room - sum) / gs;
+            }
+            var items = [], H = 0, used = 0;
+            for (i = 0; i < cnt; i++) {
+                var s = lay(list[i], ws[i], cx, depth + 1);
+                if (!s.h) continue;
+                items.push({ s: s, c: cls(list[i]) });
+                H = Math.max(H, s.h);
+                used += s.w;
+            }
+            if (!items.length) return piece(w, 0);
+            used += g * (items.length - 1);
+            var free = Math.max(0, w - used), x = 0, extra = 0, auto = -1, before = false;
+            for (i = 0; i < items.length && auto < 0; i++) {
+                if (has(items[i].c, 'me-auto')) auto = i;
+                else if (has(items[i].c, 'ms-auto')) { auto = i; before = true; }
+            }
+            if (auto < 0 && free > 0) {
+                if (j === 'center') x = free / 2;
+                else if (j === 'end') x = free;
+                else if (j === 'between' && items.length > 1) extra = free / (items.length - 1);
+                else if (j === 'around') { extra = free / items.length; x = extra / 2; }
+                else if (j === 'evenly') { extra = free / (items.length + 1); x = extra; }
+            }
+            var ai = bp(c, 'align-items', 'start|end|center|baseline|stretch') ||
+                ((cx.nav || has(c, 'navbar')) ? 'center' : 'start');
+            var pc = piece(auto >= 0 || extra || x ? w : used, H);
+            for (i = 0; i < items.length; i++) {
+                var it = items[i].s;
+                if (i === auto && before) x += free;
+                put(pc, it, x, ai === 'center' ? (H - it.h) / 2 : ai === 'end' ? H - it.h : 0);
+                x += it.w + g + extra;
+                if (i === auto && !before) x += free;
+            }
+            return pc;
+        }
+        // A Bootstrap row: each column's span at the widest breakpoint up to
+        // xl, columns of one line side by side, at most three lines.
+        function grid(n, list, c, w, cx, depth) {
+            var p = n.props || {}, gut = bp(c, 'g', '[0-5]') || (p.gutter === undefined ? '' : String(p.gutter));
+            var gx = sp(bp(c, 'gx', '[0-5]') || gut, 4), gy = sp(bp(c, 'gy', '[0-5]') || gut, 4);
+            var rc = bp(c, 'row-cols', '[1-6]'), unit = (w + gx) / 12, specs = [], num = 0, eq = 0;
+            list = list.slice(0, 12);
+            list.forEach(function (k) {
+                var kp = k.props || {}, kc = cls(k), v = '', off = 0;
+                if (k.type === 'col') {
+                    v = String(kp.xl || kp.lg || kp.md || kp.sm || kp.xs || '');
+                    off = +(kp.offsetMd || kp.offsetXs || 0) || 0;
+                }
+                if (!v) v = bp(kc, 'col', '[1-9]|1[0-2]|auto');
+                if (!off) off = +bp(kc, 'offset', '[1-9]|1[01]') || 0;
+                if (!v && rc) v = String(12 / +rc);
+                var span = v === 'auto' ? Math.min(12, nat(k, w, cx) / unit + .01) : v && isFinite(+v) && +v > 0 ? +v : 0;
+                if (span) num += span + off; else eq++;
+                specs.push({ k: k, span: span, off: off });
+            });
+            var eqSpan = eq ? Math.max(1, (num && num % 12 === 0 ? 12 : 12 - num % 12) / eq) : 0;
+            var lns = [], cur = [], tot = 0;
+            specs.forEach(function (s) {
+                var span = (s.span || eqSpan) + s.off;
+                if (cur.length && tot + span > 12.01) { lns.push(cur); cur = []; tot = 0; }
+                cur.push({ k: s.k, span: span, off: s.off });
+                tot += span;
+            });
+            if (cur.length) lns.push(cur);
+            var jc = String(p.justify || '') || bp(c, 'justify-content', 'start|end|center|between|around|evenly');
+            var al = String(p.align || '') || bp(c, 'align-items', 'start|end|center');
+            var pc = piece(w, 0), y = 0, lines = 0;
+            lns.forEach(function (ln) {
+                if (lines >= 3) return;
+                var subs = [], H = 0, span = 0;
+                ln.forEach(function (it) {
+                    var cw = Math.max(2, (it.span - it.off) * unit - gx), s = lay(it.k, cw, cx, depth + 1);
+                    subs.push({ s: s, w: cw, off: it.off * unit, c: cls(it.k) });
+                    H = Math.max(H, s.h);
+                    span += it.span;
+                });
+                if (!H) return;
+                var free = Math.max(0, 12 - span) * unit;
+                var x = jc === 'center' || (subs.length === 1 && has(subs[0].c, 'mx-auto')) ? free / 2 : jc === 'end' ? free : 0;
+                subs.forEach(function (o) {
+                    x += o.off;
+                    if (o.s.p.length) put(pc, o.s, x, y + (al === 'center' ? (H - o.s.h) / 2 : al === 'end' ? H - o.s.h : 0));
+                    x += o.w + gx;
+                });
+                y += H + gy;
+                lines++;
+            });
+            pc.h = Math.max(0, y - gy);
+            return pc;
+        }
+
+        // ── The card ──
+        function num(v) { v = Math.round(v * 10) / 10; return String(v === 0 ? 0 : v); }
+        function emit(q, s, ox, oy) {
+            var i, d = '';
+            if (q.r) {
+                var x = ox + q.r[0] * s, y = oy + q.r[1] * s, w = q.r[2] * s, h = q.r[3] * s;
+                if (y >= 110 || w < .2 || h < .2) return '';
+                return '<rect x="' + num(x) + '" y="' + num(y) + '" width="' + num(w) + '" height="' + num(h) + '"' +
+                    (q.rx ? ' rx="' + num(Math.min(q.rx, q.r[2] / 2, q.r[3] / 2) * s) + '"' : '') + ' fill="' + (q.f || 'none') + '"' +
+                    (q.s ? ' stroke="' + q.s + '"' + (q.d ? ' stroke-dasharray="3 2"' : '') : '') + '/>';
+            }
+            if (q.c) {
+                if (oy + (q.c[1] - q.c[2]) * s >= 110) return '';
+                return '<circle cx="' + num(ox + q.c[0] * s) + '" cy="' + num(oy + q.c[1] * s) + '" r="' + num(Math.max(.3, q.c[2] * s)) +
+                    '" fill="' + q.f + '"/>';
+            }
+            for (i = 0; i < q.g.length; i += 2) d += (i ? 'L' : 'M') + num(ox + q.g[i] * s) + ' ' + num(oy + q.g[i + 1] * s);
+            return '<path d="' + d + 'Z" fill="' + q.f + '"/>';
+        }
+
+        if (hidden(tree)) return '';
+        var root = lay(tree, CW, { ink: INK.light, align: 'start', nav: false, inBox: false }, 0);
+        if (!root.p.length || !root.h) return '';
+        var x1 = CW, x2 = 0;
+        root.p.forEach(function (q) {
+            var a = q.r ? [q.r[0], q.r[0] + q.r[2]] : q.c ? [q.c[0] - q.c[2], q.c[0] + q.c[2]] : [q.g[0], q.g[q.g.length - 2]];
+            x1 = Math.min(x1, a[0]);
+            x2 = Math.max(x2, a[1]);
+        });
+        // A small block is drawn larger, a tall one smaller, and the drawing
+        // sits in the middle of the card.
+        var s = Math.max(.45, Math.min(1.6, 96 / root.h, CW / Math.max(1, x2 - x1)));
+        var ox = (200 - (x2 - x1) * s) / 2 - x1 * s;
+        var oy = root.h * s <= 96.01 ? (110 - root.h * s) / 2 : 7;
+        var back = piece(200, 110), bg = root.bg || {};
+        if (bg.pic) pict(back, 0, 0, 200, 110, true);
+        else rect(back, 0, 0, 200, 110, bg.fill || W);
+        var body = '';
+        root.p.forEach(function (q) { body += emit(q, s, ox, oy); });
+        if (!body) return '';
+        var svg = '<svg class="sd-pal-tip-svg" viewBox="0 0 200 110" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">';
+        back.p.forEach(function (q) { svg += emit(q, 1, 0, 0); });
+        return svg + body + '</svg>';
+    }
+
     // ── The hover card ──────────────────────────────────────────────────
     // One card for every palette list, drawn beside the panel so it never
     // covers the list being scanned. It does not take the pointer and goes
@@ -74249,10 +75201,13 @@ const StyleDesigner = (function () {
         var it = { type: item.dataset.type || '', label: item.dataset.label || '', extra: {} };
         try { it.extra = item.dataset.extra ? JSON.parse(item.dataset.extra) : {}; } catch (e) { it.extra = {}; }
         var info = _sdPalInfo()[_sdPalKey(it)];
-        if (!info) return '';
+        // A ready-made block without a drawing of its own is drawn from its tree.
+        var sketch = (info && info.v) ? '' : _sdBlockSketchOf(it);
+        if (!info && !sketch) return '';
+        info = info || {};
         var en = _sdEnglishOf(it.label).filter(function (k) { return _sdFold(k) !== _sdFold(it.label); })
             .sort(function (a, b) { return a.length - b.length; })[0] || '';
-        var svg = info.v ? _sdPalDrawing(info.v) : '';
+        var svg = info.v ? _sdPalDrawing(info.v) : sketch;
         return (svg ? '<div class="sd-pal-tip-preview">' + svg + '</div>' : '') +
             '<div class="sd-pal-tip-head">' +
                 (item.dataset.icon ? '<span class="bi ' + esc(item.dataset.icon) + '" aria-hidden="true"></span>' : '') +
@@ -74260,7 +75215,7 @@ const StyleDesigner = (function () {
                 (en ? '<span class="sd-pal-tip-en">' + esc(en) + '</span>' : '') +
             '</div>' +
             (info.h ? '<code class="sd-pal-tip-code">' + esc(info.h) + '</code>' : '') +
-            '<div class="sd-pal-tip-desc">' + esc(info.d) + '</div>';
+            (info.d ? '<div class="sd-pal-tip-desc">' + esc(info.d) + '</div>' : '');
     }
 
     function _sdPalTipHide() {
@@ -74470,6 +75425,73 @@ const StyleDesigner = (function () {
             }
             if (e.key === 'Escape') { _sdPalTipHide(); return; }
             if (e.key === 'Delete' || e.key === 'Backspace' || String(e.key).toLowerCase() === 'n') e.stopPropagation();
+        });
+    }
+
+    // ── The Components tab's list switch ──────────────────────────────────
+    // Two options at the top of the Components tab choose its list: the
+    // building blocks or the ready sections. Drawn by the rules of the
+    // panel's view switch (.pg-sale-switch: one frame round both, the chosen
+    // option on a lighter pill); a tab list, since each option shows a pane.
+    var _SD_PAL_LIST_KEY = 'pinegrap_designer_palette_list';
+
+    function _sdPalSwitchHTML() {
+        var icons = { components: 'bi-puzzle', blocks: 'bi-magic' };
+        var labels = { components: _sdT('Components'), blocks: _sdT('Blocks') };
+        var out = '<div class="sd-pal-switch" role="tablist" aria-label="' + esc(_sdT('Palette list')) + '">';
+        ['components', 'blocks'].forEach(function (k) {
+            var on = k === 'components';
+            out += '<button type="button" class="sd-pal-switch-btn" role="tab" id="sd-pal-sw-' + k + '"' +
+                ' aria-controls="sd-pal-' + k + '" aria-selected="' + (on ? 'true' : 'false') + '" tabindex="' + (on ? '0' : '-1') + '"' +
+                ' data-pal-list="' + k + '"><span class="bi ' + icons[k] + '" aria-hidden="true"></span>' +
+                '<span>' + esc(labels[k]) + '</span></button>';
+        });
+        return out + '</div>';
+    }
+
+    // Shows one list and hides the other; `store` writes the choice so the
+    // editor opens on it next time.
+    function _sdPalSwitchShow(root, which, store) {
+        var sw = root && root.querySelector('.sd-pal-switch');
+        if (!sw || !root.querySelector('#sd-pal-' + which)) return;
+        sw.querySelectorAll('.sd-pal-switch-btn').forEach(function (b) {
+            var on = b.getAttribute('data-pal-list') === which;
+            b.setAttribute('aria-selected', on ? 'true' : 'false');
+            b.setAttribute('tabindex', on ? '0' : '-1');
+            var pane = root.querySelector('#sd-pal-' + b.getAttribute('data-pal-list'));
+            if (pane) pane.hidden = !on;
+        });
+        if (typeof _sdPalTipHide === 'function') _sdPalTipHide();
+        if (store) {
+            try { localStorage.setItem(_SD_PAL_LIST_KEY, which); } catch (e) {}
+        }
+    }
+
+    function _sdPalSwitchWire(root) {
+        var sw = root && root.querySelector('.sd-pal-switch');
+        if (!sw) return;
+        var saved = '';
+        try { saved = localStorage.getItem(_SD_PAL_LIST_KEY) || ''; } catch (e) {}
+        if (saved === 'blocks') _sdPalSwitchShow(root, 'blocks', false);
+        sw.addEventListener('click', function (e) {
+            var b = e.target.closest('.sd-pal-switch-btn');
+            if (b) _sdPalSwitchShow(root, b.getAttribute('data-pal-list'), true);
+        });
+        // Arrow keys move between the options and choose at once, Home and
+        // End go to the ends; the chosen option is the only tab stop.
+        sw.addEventListener('keydown', function (e) {
+            var btns = Array.prototype.slice.call(sw.querySelectorAll('.sd-pal-switch-btn'));
+            var i = btns.indexOf(document.activeElement);
+            if (i < 0) return;
+            var to = -1;
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') to = (i - 1 + btns.length) % btns.length;
+            else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') to = (i + 1) % btns.length;
+            else if (e.key === 'Home') to = 0;
+            else if (e.key === 'End') to = btns.length - 1;
+            if (to < 0) return;
+            e.preventDefault();
+            _sdPalSwitchShow(root, btns[to].getAttribute('data-pal-list'), true);
+            btns[to].focus();
         });
     }
 
@@ -76015,6 +77037,8 @@ const StyleDesigner = (function () {
     // every redraw, and the browser's own copy of the bare address is
     // fetched again for the preview and other tabs.
     function _sdBustImageCache(url) {
+        // The address the canvas drew: "{path}name" filled as the page fills it.
+        url = _sdSitePath(url);
         var path = _sdImagePath(url, window.location.href);
         if (!path) return;
         _sdEditedImages[path] = String(Date.now());
@@ -76461,6 +77485,7 @@ const StyleDesigner = (function () {
             _sdThemes: _sdThemes,
             _sdThemeFind: _sdThemeFind,
             _sdThemeValue: _sdThemeValue,
+            _sdLookDrawingOf: _sdLookDrawingOf,
             _sdOpenThemeSettings: _sdOpenThemeSettings,
             applyAssetsToIframe: applyAssetsToIframe,
             _SD_CODE_KEY: _SD_CODE_KEY,

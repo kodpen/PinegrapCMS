@@ -1333,3 +1333,59 @@ function test_designer_blocks_family_files_hold_their_rules()
 		'sample: writes pg-sample-tile but no block of it needs that rule',
 	), _test_blocks_family_file_problems('sample', $broken), 'problems found in a broken sample');
 }
+
+// Title of the palette group a block type lands in: the first group, in
+// _sdBlockPaletteGroups() order, with a prefix the type starts with.
+function _test_blocks_group_of($ctype)
+{
+	$body = _test_blocks_slice('function _sdBlockPaletteGroups()', 'var other');
+	preg_match_all("/title:\\s*_sdT\\('([^']+)'\\)[^\\n]*match:\\s*\\[([^\\]]*)\\]/", $body, $rows, PREG_SET_ORDER);
+	foreach ($rows as $row) {
+		preg_match_all("/'([a-z0-9-]+)'/", $row[2], $m);
+		foreach ($m[1] as $prefix) {
+			if (strpos($ctype, $prefix) === 0) {
+				return $row[1];
+			}
+		}
+	}
+	return null;
+}
+
+// Giant type follows the window between a phone size and about 9 rem, in
+// the look's display weight; the bleed and full-screen rules size a band.
+function test_designer_blocks_giant_type_and_full_bleed_rules()
+{
+	$rules = _test_blocks_css_rules();
+	foreach (array('pg-display-xl', 'pg-display-xxl') as $name) {
+		$css = isset($rules[$name]) ? $rules[$name] : '';
+		pg_assert_true(preg_match('/font-size:\\s*clamp\\(\\s*([\\d.]+)rem\\s*,[^,]+,\\s*([\\d.]+)rem\\s*\\)/', $css, $m) === 1, $name . ' sizes its type with clamp() in rem');
+		pg_assert_true(isset($m[2]) && (float) $m[2] <= 9.0 && (float) $m[1] >= 2.5, $name . ' stays between 2.5 and 9 rem');
+		pg_assert_true(strpos($css, 'font-weight: var(--pg-display-weight') !== false, $name . ' takes the look\'s display weight');
+		pg_assert_false((bool) preg_match('/font-weight:\\s*\\d/', $css), $name . ' writes no fixed weight');
+	}
+	$bleed = isset($rules['pg-bleed']) ? $rules['pg-bleed'] : '';
+	pg_assert_true(strpos($bleed, '50vw') !== false, 'pg-bleed reaches the window edges');
+	pg_assert_true(strpos($bleed, 'overflow-x: clip') !== false, 'pg-bleed keeps the page from scrolling sideways by a scrollbar\'s width');
+	$screen = isset($rules['pg-screen']) ? $rules['pg-screen'] : '';
+	pg_assert_true(strpos($screen, '100svh') !== false && strpos($screen, '100vh') !== false, 'pg-screen is one screen tall, 100vh where svh is unknown');
+}
+
+// "Hero: Full-Screen Media" is a general Marketing block: a photo edge to
+// edge and one screen tall, its giant headline on the shared dark scrim.
+function test_designer_blocks_full_screen_media_hero()
+{
+	$ctype = 'spotlight-media';
+	pg_assert_true(in_array($ctype, _test_blocks_palette_ctypes(), true), 'the palette lists ' . $ctype);
+	pg_assert_true(strpos(_test_blocks_palette_body(), "_sdT('Hero: Full-Screen Media')") !== false, 'the palette label is translated');
+	pg_assert_same('Marketing', _test_blocks_group_of($ctype), $ctype . ' sits in the Marketing group');
+	pg_assert_same('Page Header', _test_blocks_group_of('hero-image-bg'), 'the group lookup reads the groups in order');
+	$needs = _test_blocks_css_needs();
+	pg_assert_same(array('pg-screen', 'pg-bleed', 'pg-shade-bottom', 'pg-shade-tint', 'pg-display-xxl'), isset($needs[$ctype]) ? $needs[$ctype] : array(), $ctype . ' needs its four rules');
+	pg_assert_true(_test_blocks_builder_has_classes($ctype, array('d-flex', 'overflow-hidden', 'pg-screen', 'pg-bleed')), 'the section is one screen tall and edge to edge');
+	pg_assert_true(_test_blocks_builder_has_classes($ctype, array('text-body', 'pg-shade-bottom', 'pg-shade-tint')), 'the text sits on the scrim and its tint');
+	pg_assert_true(_test_blocks_builder_has_classes($ctype, array('pg-display-xxl')), 'the headline is giant type');
+	$strings = _test_blocks_builder_strings($ctype);
+	pg_assert_true(in_array('data-bs-theme', $strings, true) && in_array('dark', $strings, true), 'the scrim turns its text light');
+	$noWrap = _test_blocks_slice('var _noWrapCtypes = [', '];');
+	pg_assert_true(strpos($noWrap, "'" . $ctype . "'") !== false, $ctype . ' is dropped without a container around it');
+}

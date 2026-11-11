@@ -653,12 +653,12 @@ function pg_notification_is_read($notification, $user_id)
 	return isset($read[(int) $notification['id']]);
 }
 
-// Marks notifications read for one person. Takes the whole list the dropdown
-// drew rather than one id at a time: opening the bell on a busy site would
-// otherwise be one round trip per row.
+// Marks notifications read for one person. Takes a list rather than one id
+// at a time: "Mark all as read" and a fold's head with its runs are one
+// write each.
 //
-// INSERT IGNORE against the composite primary key is what makes a second tab
-// opening the same dropdown a no-op instead of a duplicate key error.
+// INSERT IGNORE against the composite primary key is what makes reading a
+// row that is already read a no-op instead of a duplicate key error.
 function pg_notification_mark_read($notification_ids, $user_id)
 {
 	$user_id = (int) $user_id;
@@ -705,6 +705,57 @@ function pg_notification_mark_read($notification_ids, $user_id)
 				AND id IN (" . implode(',', array_map('intval', $references)) . ")");
 		}
 	}
+}
+
+// The runs a fold's head sends with it (the rows the bell drew under it):
+// whole positive ids, each once, never the head itself, at most 500 so one
+// request cannot ask about the whole table. Anything but a list is nothing.
+function pg_notification_run_ids($runs, $head_id)
+{
+	$head_id = (int) $head_id;
+	$ids = array();
+
+	if (!is_array($runs)) {
+		return $ids;
+	}
+
+	foreach ($runs as $run) {
+		if (!is_int($run) && !(is_string($run) && ctype_digit($run))) {
+			continue;
+		}
+
+		$run = (int) $run;
+
+		if (($run > 0) && ($run !== $head_id) && !in_array($run, $ids, true)) {
+			$ids[] = $run;
+
+			if (count($ids) >= 500) {
+				break;
+			}
+		}
+	}
+
+	return $ids;
+}
+
+// The ids of the rows the caller may see, in their order: the only rows a
+// read request may touch. $sees answers for one row (the panel passes
+// pg_notification_visible_to() for the signed-in person).
+function pg_notification_readable_ids($rows, $sees)
+{
+	$ids = array();
+
+	foreach ($rows as $row) {
+		if (!is_array($row) || ((int) ($row['id'] ?? 0) < 1)) {
+			continue;
+		}
+
+		if ($sees($row)) {
+			$ids[] = (int) $row['id'];
+		}
+	}
+
+	return $ids;
 }
 
 // Back to unread, for this person only. No row means unread, so there is
@@ -766,7 +817,8 @@ function pg_notification_seed_user($user_id)
 // that ended the same way, ws_bell_fold_key()) under the newest of them: that
 // line carries how many there are (fold_count) and the older ones follow it
 // right after, each with the id of the line it folds under (fold_head), drawn
-// once that line is opened. Everything else keeps its place, newest first.
+// once that line is opened, and under that line's day heading (day). Everything
+// else keeps its place, newest first.
 function pg_notification_fold($items)
 {
 	$heads = array();
@@ -791,6 +843,10 @@ function pg_notification_fold($items)
 
 		$items[$heads[$key]]['fold_count']++;
 		$items[$index]['fold_head'] = (int) $items[$heads[$key]]['id'];
+
+		if (isset($items[$heads[$key]]['day'])) {
+			$items[$index]['day'] = $items[$heads[$key]]['day'];
+		}
 		$members[$heads[$key]][] = $index;
 	}
 
@@ -809,4 +865,103 @@ function pg_notification_fold($items)
 	}
 
 	return $folded;
+}
+
+// The module a bell row belongs to, from its action: the tag at the row's left
+// and, with the dashboard's Next up rows, its colour. Shop: what the shop's
+// customers did; Accounting: the ERP's notices; Content: forms and comments;
+// Team: what the Workspace told the person; System: updates, mail, operations,
+// a custom row and anything else.
+function pg_notification_module($action)
+{
+	$action = (string) $action;
+
+	if (in_array($action, array('new_order', 'order_return', 'out_stock', 'booking_refused'), true)) {
+		return 'shop';
+	}
+
+	if (strpos($action, 'erp_') === 0) {
+		return 'erp';
+	}
+
+	if (in_array($action, array('form_submited', 'new_comment'), true)) {
+		return 'content';
+	}
+
+	if ($action === 'workspace') {
+		return 'team';
+	}
+
+	return 'system';
+}
+
+// The day heading a bell row stands under: today, yesterday or earlier, read
+// in the site's time zone (the default one when none is given). A time after
+// now counts as today. Pure: now is passed in.
+function pg_notification_day($timestamp, $now, $timezone = '')
+{
+	$timezone = (string) $timezone;
+
+	try {
+		$zone = new DateTimeZone(($timezone !== '') ? $timezone : date_default_timezone_get());
+	} catch (Exception $error) {
+		$zone = new DateTimeZone('UTC');
+	}
+
+	$day = function ($time) use ($zone) {
+		$date = new DateTime('@' . (int) $time);
+		$date->setTimezone($zone);
+
+		return $date;
+	};
+
+	$that = $day($timestamp)->format('Y-m-d');
+	$today = $day($now);
+
+	if ($that >= $today->format('Y-m-d')) {
+		return 'today';
+	}
+
+	// Noon keeps the step back on the day before when the clock moves.
+	$today->setTime(12, 0);
+	$today->modify('-1 day');
+
+	return ($that === $today->format('Y-m-d')) ? 'yesterday' : 'earlier';
+}
+
+// The one button at a bell row's right, named by the job it opens: reply to a
+// message or a comment, approve what waits on the reader, join a meeting about
+// to start (only when it has a call), show everything else. A custom row has
+// no page to open and no button (''). kind is the Workspace row's own
+// (ws_bell_describe()), join the meeting's call.
+function pg_notification_button($action, $kind = '', $join = '')
+{
+	$action = (string) $action;
+	$kind = (string) $kind;
+
+	if (($action === 'custom') || ($action === '')) {
+		return '';
+	}
+
+	if ($action === 'new_comment') {
+		return 'reply';
+	}
+
+	if ($action !== 'workspace') {
+		return 'show';
+	}
+
+	if ($kind === 'meeting_soon') {
+		return ((string) $join !== '') ? 'join' : 'show';
+	}
+
+	if (in_array($kind, array('approval_requested', 'approval_reminder'), true)) {
+		return 'approve';
+	}
+
+	if (in_array($kind, array('mention', 'thread', 'guest_message', 'question_asked', 'mail_assigned', 'mail_customer'), true)) {
+		return 'reply';
+	}
+
+	return 'show';
 }

@@ -20,6 +20,11 @@ description: A visual design's look and colour palette (style.style_look / style
 - Starter trees use Bootstrap classes and utilities only: the theme dresses them. A widget container that prints pagination carries `py-4`.
 
 ## How are palette files made?
+- The looks and palettes for product pages (`display`, `precision`, `onyx`, `silver`, `electric`): [[design-theme-product-looks]].
+- A look's small drawing in the Themes tab and on Choose a Template is drawn from its `preview` row: [[design-theme-look-drawing]].
 - Never by hand: `php tools/build_theme_palettes.php` writes `palettes/<key>.css` from `pg_design_palettes()` with the generator a custom palette uses (`pg_design_palette_css()`); `--check` reports stale files.
+
+## Can a whole design be dark?
+- Yes, from 2026.11.0 (#8711): Settings, Theme, "Colour mode" (light, dark, follow the system), kept in `style.style_color_mode`; a visitor's stored switcher choice still wins: [[design-colour-mode]].
 
 Related: docs/memory/designer/design-framework.md

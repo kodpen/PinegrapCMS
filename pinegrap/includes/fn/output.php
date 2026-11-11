@@ -109,6 +109,8 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Close' => lang('Close'),
         'Unpin' => lang('Unpin'),
         'Mark as unread' => lang('Mark as unread'),
+        'Mark as read' => lang('Mark as read'),
+        'Mark all as read' => lang('Mark all as read'),
         'Remove this notification' => lang('Remove this notification'),
         'Delete All Notifications' => lang('Delete All Notifications'),
         'Unlimited' => lang('Unlimited'),
@@ -116,7 +118,18 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Pin this Link' => lang('Pin this Link'),
         'The maximum link pin limit has been reached. Remove one to pin a new one.' => lang('The maximum link pin limit has been reached. Remove one to pin a new one.'),
         'Please Wait' => lang('Please Wait'),
-        'Go to the relevant page' => lang('Go to the relevant page'),
+        'Shop' => lang('Shop'),
+        'Accounting' => lang('Accounting'),
+        'Content' => lang('Content'),
+        'Team' => lang('Team'),
+        'System' => lang('System'),
+        'Reply' => lang('Reply'),
+        'Show' => lang('Show'),
+        'Approve' => lang('Approve'),
+        'Today' => lang('Today'),
+        'Yesterday' => lang('Yesterday'),
+        'Earlier' => lang('Earlier'),
+        'More actions' => lang('More actions'),
         '+{var:1} more' => lang('+{var:1} more'),
         'Show fewer' => lang('Show fewer'),
         'Join' => lang('Join'),
@@ -2771,7 +2784,7 @@ function output_header($properties = false)
     $output_settings_modal  = '';
 
     if ($toolbar != true && is_array($user)) {
-        $output_settings_button = pg_settings_modal_button();
+        $output_settings_button = pg_settings_modal_button($user);
         $output_settings_modal  = pg_settings_modal_markup($user);
     }
 
@@ -4725,6 +4738,9 @@ function output_menu($properties = false)
         case 'workspace_flows.php':
         case 'workspace_mcp.php':
         case 'workspace_settings.php':
+        case 'settings_workspace_team.php':
+        case 'settings_workspace_assistants.php':
+        case 'settings_workspace_channels.php':
         case 'workspace_template.php':
         case 'workspace_calendar_feed.php':
         case 'workspace_mail.php':
@@ -7596,6 +7612,9 @@ function pg_js_bundles()
         // The picker dialog (window.pgPicker, includes/fn/picker.php), printed
         // by pg_picker_script() on the screens that open it.
         'assets/js/pg_picker.min.js'              => array('assets/js/pg_picker.js'),
+        // The report screens' figures and chart (view_order_report.php),
+        // loaded after pg_dash.min.js, whose drawing they use.
+        'assets/js/pg_report_view.min.js'         => array('assets/js/pg_report_view.js'),
     );
 }
 

@@ -9,10 +9,8 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
 - V0 (S) Screens. Done (#7619, screens 35-42, `image-editor-video-visuals.md`).
 
 - V1 (M) Demux and decode. Part `video`. Done (#7658, `ui/image-editor-video-decode.md`).
-  - Own MP4 (moov, trak, stsd, stts, ctts, stss, stsz, stco/co64) and WebM (EBML, Cluster, SimpleBlock) readers; WebCodecs decoders; a frame cache by time; seeking from the nearest key frame; what the browser cannot decode (HEVC on some) gets a message.
-  - Tests: sample tables of small MP4 and WebM fixtures under Node; the seek point for a time.
 
-- V2 (M) The video layer. Part `clip`. Done (#8483, `ui/image-editor-clip.md`; with V4's Detach sound; the export's frames at each moment still open after V7).
+- V2 (M) The video layer. Part `clip`. Done (#8483, `ui/image-editor-clip.md`; with V4's Detach sound; the export's frames at each moment in V7b, #8629).
   - `type: 'video'` with its file, source in and out, place on the timeline, speed, volume, muted. Drawn at the playhead under or over other layers; playing in step with the play bar; added from Files or this computer through E31's Import menu (`ui/image-editor-import.md`).
 
 - V3 (M) Timeline editing. Done (#8510, `ui/image-editor-clip-timeline.md`).
@@ -24,15 +22,15 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
   - An audio layer on any canvas: music and sounds from Files (MP3, AAC, WAV, Ogg), its start, trim, volume, fade in and out, mute; its row with a waveform on the tracks; Web Audio playback in step with the play bar, so an animation gets its music.
   - With V2: a clip's sound as its own row (Detach sound mutes the clip and adds an audio layer on the same source).
 
-- V5 (M) Effects and transitions. `free` after V3.
-  - The Adjust filters per clip (brightness, contrast, saturation, warmth, blur, vignette) drawn per frame; transitions between clips (AN7's fade, slide, wipe); speed 0.25-4× (sound muted off 1×).
+- V5 (M) Effects and transitions. Done (#8667, `ui/image-editor-clip-effects.md`).
 
-- V6 (S) Pictures and animations over video. After V5.
+- V6 (S) Pictures and animations over video. `free`.
   - Layers keep their start and end on the timeline; picture in picture (a second video layer, its size and corners).
+  - Also V5's Effects tab as screen 38 has it (owner 2026-11-11, #8676: "Onay; farklar sonra düzeltilsin"): the labels "Bulanıklık" and "Yok" (built: "Bulanıklaştır", "Hiçbiri"), the tiles' order (none, fade, slide, wipe, zoom), the slider rows' spacing, the note's second sentence, on the sound at a speed off 1×.
 
 - V7 (M) Export with sound. Done (#8484, `ui/image-editor-mix.md`: MP4 with AAC, WebM with Opus; the other formats carry none).
 
-- V8 (M) Large files. Done (#8585, `ui/image-editor-upload.md`). Left: the size setting, a `config` column only the owner may add (#8587); until then the largest file is `upload_max_filesize`.
+- V8 (M) Large files. Done (#8585, `ui/image-editor-upload.md`; the size setting in V8b, #8635).
   - Chunked, resumable upload of a source video into Files; chunked save of the export (AN4's action in parts); type told by its bytes (AN4); the size limits as settings.
 
 - V9 (S) Save and open again. `free` after V8 and V3.
@@ -43,3 +41,4 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
 
 - V11 (S) Access and close-out. The holder.
   - Keys (J, K, L, I, O), names, captions of the controls; lasting decisions to topic files; these plan files, `image-editor-workers.md`, `image-editor-visuals.md` and `plans/image-editor/` (the screens and the prototype) deleted, the image editor's own plan files having gone in E20 (#7695).
+  - The rail's Turkish labels "Animasyon" and "Katmanlar" break inside the word in the sandbox's font at 1440 × 900 (#8705's pictures); the built rule is to break, not to run over (`ui/image-editor-modal.md`). V11 looks at the rail in Turkish and keeps a one-word label on one line.

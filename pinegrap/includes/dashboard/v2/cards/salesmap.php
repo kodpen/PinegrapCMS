@@ -123,7 +123,8 @@ function pg_dashboard_v2_salesmap_data($collect, $maps_url, $limit = 6, $can_ope
         'legend'     => array(lang('Few'), lang('Many')),
         'rows_title' => $on_map ? lang('Regions') : lang('Countries'),
         'rows'       => $rows,
-        'url'        => 'view_order_report.php',
+        // "See all" opens the ready report of what the card counts.
+        'url'        => pg_ready_report_url('sales_by_region'),
     );
 }
 

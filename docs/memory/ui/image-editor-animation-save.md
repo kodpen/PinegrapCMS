@@ -21,3 +21,4 @@ module: image_editor
 
 ## How does it open again?
 - `pg_image_editor_animation_open()` before the SVG and still paths: while the file holds its newest version's bytes and that document names an animation, the answer is the source file (its url, base, versions) with the animation's document, `file.replace` false (a still save is a copy), a notice naming both, and `animation` {id, name, format, replace}. A canvas animation opens as the canvas it was made from (`ui/image-editor-scenes.md`). Once the source's base row is pruned it opens as before: a still copy.
+- A video project (V9): clips and sounds by fileId, pictures kept as files, Image Editor in Files' file window, an unsaved canvas's video replaced: `image-editor-video-reopen.md`.

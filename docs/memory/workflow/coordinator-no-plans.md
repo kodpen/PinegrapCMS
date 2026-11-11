@@ -1,12 +1,13 @@
 ---
 name: coordinator-no-plans
-description: Design template plans are paused (2026-11-09): no template step and no new template is given out; low priority before that; no bug hunt and no bug issue as work
+description: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; no bug hunt and no bug issue as work
 ---
 
 ## Are the design template plans paused?
 - Yes, for now (owner, 2026-11-09): no step of a `plans/design-template-*` plan (new templates and the polishing round) is given out, and no new design template is started. A free slot with no step of the main list stays empty.
 - `tools/free_work.php` prints the low-priority list as "paused" while `FREE_WORK_LOW_PRIORITY_PAUSED` is true; setting it back to false lists those steps again under the rules below.
 - A template PR already open is finished by its own session and lands as usual; it takes no next template step.
+- The exceptions are the owner's of 2026-11-11, his own line and two workers of one more coordinator: [[design-template-owner-line]].
 - Why: coordinators still took template steps first while feature plan steps waited.
 
 ## When does this apply?

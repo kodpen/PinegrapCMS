@@ -41,6 +41,12 @@ function pg_settings_fragment($key, $user, $liveform)
         output_error(lang('Page not found.'));
     }
 
+    // Asked again here, so no caller draws a category for a reader outside
+    // its gate (pg_settings_category_open()).
+    if (!pg_settings_may_open($key, $user)) {
+        output_error(lang('Access denied') . '.');
+    }
+
     $row = pg_settings_config_row();
 
     $pg_settings_cards   = array();
@@ -48,7 +54,15 @@ function pg_settings_fragment($key, $user, $liveform)
     $pg_settings_scripts = array();
     $pg_settings_head    = '';
 
-    include(PG_FUNCTIONS_DIR . '/includes/settings/prep.php');
+    // A card's drawer is a panel of the dialog here (drawer.php).
+    $pg_settings_in_dialog = true;
+
+    // A Workspace category reads none of what prep.php prepares, and its
+    // reader may be no manager.
+    if (!pg_settings_category_is_workspace($category)) {
+        include(PG_FUNCTIONS_DIR . '/includes/settings/prep.php');
+    }
+
     include(PG_FUNCTIONS_DIR . '/includes/settings/' . $key . '.php');
 
     return array(
@@ -116,30 +130,28 @@ function pg_settings_stamp_autocomplete($html)
 
 
 /**
- * Take Bootstrap's own modal trigger out of the cards' hands.
+ * Take Bootstrap's own drawer trigger out of the cards' hands.
  *
- * A dialog a card opens has to appear ON TOP of the settings, and Bootstrap's
- * data-api will not do that: it closes whatever modal is already open before
- * showing the next one, which here drops the operator back on the screen
- * behind and takes the dialog down with the pane it came from.
+ * Bootstrap's data-api, clicked inside an open dialog, opens its drawer in
+ * the top layer and hides the dialog the trigger sits in, which would close
+ * the settings. Its handler cannot be headed off either -- delegated
+ * Bootstrap listeners are registered on the document in the CAPTURE phase,
+ * so they run before anything bound to an element inside it. The only way
+ * past is for the attribute it looks for not to be there: the pane's own
+ * handler answers to data-pgdrawer="open" instead and slides the card's
+ * drawer in inside the dialog (includes/settings/drawer.php).
  *
- * Its handler cannot be headed off either -- delegated Bootstrap listeners are
- * registered on the document in the CAPTURE phase, so they run before anything
- * bound to an element inside it. The only way past is for the attribute it
- * looks for not to be there; the pane's own handler answers to this one
- * instead (see the settings modal in assets/js/backend.src.js).
- *
- * Only the cards are rewritten. The dialogs stay as they are: the close
- * buttons inside them are Bootstrap's to handle and they find the dialog they
- * sit in, and the page flow in screen.php prints the cards untouched, where
- * there is no outer modal and the data-api is right.
+ * A card opens no dialog of its own (a second layer could leave the settings
+ * unsaved), so only the drawer trigger is renamed. The page flow in
+ * screen.php prints the cards untouched, where there is no outer dialog and
+ * the data-api is right.
  *
  * @param string $html
  * @return string
  */
 function pg_settings_own_dialog_triggers($html)
 {
-    return str_ireplace('data-bs-toggle="dialog"', 'data-pgdialog="modal"', $html);
+    return str_ireplace('data-bs-toggle="drawer"', 'data-pgdrawer="open"', $html);
 }
 
 /**
@@ -162,6 +174,12 @@ function pg_settings_apply($key, $user, $liveform)
 {
     if (pg_settings_category($key) === null) {
         output_error(lang('Page not found.'));
+    }
+
+    // Asked again here, so no caller writes a category for a reader outside
+    // its gate.
+    if (!pg_settings_may_open($key, $user)) {
+        output_error(lang('Access denied') . '.');
     }
 
     // A list where the cards draw one value refuses the whole save before the

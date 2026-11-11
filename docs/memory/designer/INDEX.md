@@ -93,16 +93,20 @@
 - custom-form-url-prefill.md: A designed form control filled from a named page-address parameter (props._cf.url_param, ?post=…): where it is stored, names and value rules, order of sources, option matching, what never takes it
 - custom-style.md: Per-element custom style: a User Styles rule keyed by a pgs- class, pg_custom_style.js, the Styles "This element" card and Attributes css row, Split, where it is off [decision: here]
 - data-binding-to-content.md: Bind data to content elements (span, h1-h6, p, a, img), never structural table tags; tooling, the text slot a binding fills inside markup, and the characters a bound field name keeps.
+- design-asset-path-placeholders.md: {path} and {software_directory} in a design: filled in a linked CSS/JS row before the page's address check and on the canvas; what is saved keeps them
 - design-asset-records.md: The design's CSS/JS asset rows (style_custom_css / style_custom_js JSON): module scripts, the per-page `pages` list and its tab:/key: references, where they are resolved, the Bootstrap Icons sheet.
+- design-colour-mode.md: A design's colour mode (style.style_color_mode, 11.0.186): light, dark or the system on <html>, the early script's order (a visitor's stored choice wins), canvas and Preview [decision: here]
 - design-framework.md: A visual design's framework (style.style_framework, bootstrap5 or custom): the pg_design_frameworks() registry, written once at creation, what a custom design does without, the new-design question.
 - design-live-pictures.md: Live pictures of templates and designs (the real page in a scaled, script-free frame), the preview address of a template page or tour, the tour page; what the browser side does [decision: decisions-made-product-35.md]
 - design-preview-address.md: design_preview.php, the panel's preview address: a template page, its tour, or a visual design page as a first-time visitor sees it; who may open it, what is left out, caching [decision: decisions-made-product-35.md]
 - design-template-appstudio.md: Mobile App Developer template (pinegrap-appstudio): apps and release notes as collections, support and project requests followed from the account, beta sign-up, pma- look, tests.
 - design-template-architecture-pages.md: Architecture template 2.0.0: home, projects and the project page on the Architecture blocks: the builders, each page's composition, motion, what left, the test
 - design-template-architecture.md: Architecture & Interiors Studio template (pinegrap-architecture): projects by type and location, enquiries, consultations and careers followed from the account, no shop, pai- look, tests.
+- design-template-bakery-home.md: Bakery template's home and celebration cakes on the Bakery blocks (1.1.0, #8715): sections, the oven data, motion, what the editor cannot do yet, tests
 - design-template-bakery.md: Bakery template (pinegrap-bakery): daily bake and cakes as page content, cake orders and wholesale enquiries as requests, baking classes collection, pickup shop, pbk- look, tests.
 - design-template-blog-cover.md: A design template's blog or article Cover Image input takes image/* and carries _cf.kind = image; templates whose $file helper defaults to documents pass it explicitly (#7513)
 - design-template-bookshop-events.md: Bookshop template (1.3.0) events as records of a collection form, the Café way: New Event page, sample events dated from today, home and events lists from today on, no fixed dates [decision: here]
+- design-template-brewery-pages.md: Craft Brewery template 2.0.0: home, taproom and beer page on the Brewery blocks, motion on about: the builders, each page's composition, what could not be done, the test
 - design-template-brewery.md: Craft Brewery template (pinegrap-brewery): beers and taproom events as collections, tour booking requests, private tastings booked online, packs and Beer Club terms in the shop, pbw- look, tests.
 - design-template-cafe.md: Cafe and Clinic templates: event weekdays, price hint, rating numbers, guests pattern, consent privacy link, subject dates, booking links that fill the form.
 - design-template-campsite-pages.md: Campsite template 2.0.0: home, places to stay and the tent pitches page on the Campsite blocks: the builders, each page's composition, motion, the test
@@ -135,6 +139,7 @@
 - design-template-forum-replies.md: Forum template on the Comments widget (1.1.0, board list 1.2.0): seven comments widgets, why explicit trees, pages that keep the block, e-mails, page settings, older sites, quirks, checks
 - design-template-forum.md: Community Forum & Docs template (pinegrap-forum): what it ships, its three forms, the live rules, archives and feeds, replies on the Comments widget and their names, Turkish words.
 - design-template-gallery.md: Art Gallery template (pinegrap-gallery): artists, exhibitions and works as collections, work enquiries and private viewing requests, editions in the shop, the Journal, pgl- look, tests.
+- design-template-gym-home.md: Gym template's home, classes and timetable pages on the Gym blocks (1.1.0, #8655): sections, motion, the parallax picture layer, pgy-anchor and pgy-depth, what the editor cannot do yet, tests
 - design-template-gym.md: Gym template (pinegrap-gym): classes and a timetable, trainers, plans, class booking and join requests, memberships in the shop with a members' area, pgy- look, tests.
 - design-template-hello.md: Hello template 2.6.0: threads and the reply e-mail card on the Comments widget, product reviews, the Favourites page and its shop-only links, Google Reviews beside the testimonials [decision: decisions-made-product-16.md]
 - design-template-homeservices.md: Home Services template (pinegrap-homeservices): services and team as collections, visit bookings and estimate requests, service areas, price guide, care plans in the shop, phs- look, tests.
@@ -184,6 +189,7 @@
 - design-template-text-contrast.md: Text colours and names in the hello-pinegrap and pinegrap-playground templates: no faded text, no primary text on grey sections, one owner name, Parola wording.
 - design-template-theatre.md: Theatre template (pinegrap-theatre): productions and performances as collections, hire, school group and youth place requests, tickets, friends and vouchers in the shop, pth- look, tests.
 - design-template-threads.md: Café, Clinic, Playground and Salon 1.1.0 comment threads on the Comments widget, the comment e-mail cards before the System region, Google Reviews beside the sample testimonials [decision: here]
+- design-template-travel-pages.md: Travel Agency template 2.0.0: home, tour page and destination page on the Travel blocks, motion on about, travel information, deals and FAQ: the builders, each page's composition, what left, the test
 - design-template-travel.md: Travel Agency template (pinegrap-travel): tours and destinations as collections, reviews, booking requests and tailor-made enquiries, deposits and gift cards in the shop, ptv- look, tests.
 - design-template-veterinary.md: Veterinary template (pinegrap-veterinary): services, pets, emergencies, vets as a collection, online booking, appointment and health plan requests, plans in the shop, pvt- look, tests.
 - design-template-wedding-pages.md: Wedding template 2.0.0: home, timeline, packages and venue on the Wedding blocks: the builders, each page's composition, motion, what left, the test
@@ -195,7 +201,9 @@
 - design-templates-newsroom.md: News Portal and Magazine templates as one effort: the owner's decisions (2026-10-22), the platform steps built for them, the follow-ups still open (search, feeds, caching).
 - design-templates-rows.md: Rows a template or import makes on opening: origin markers, pagehide discard, 12-hour reuse read in one pass, page names freed on the first save, testing Publish inside them.
 - design-templates-standard-pages.md: What every design template carries: account, inbox, staff and blog pages under fixed keys, sample records, the support-center search sections, e-mail pages, settings keys checked against the renderer.
-- design-theme-look-and-palette.md: A visual design's look and colour palette (style.style_look / style_palette, 2026.4.5): values, the stylesheets and their load order on site, canvas and preview, tokens for new component styles.
+- design-theme-look-and-palette.md: A visual design's look and colour palette (style.style_look / style_palette, 2026.4.5): values, the stylesheets and their load order on site, canvas and preview, tokens for new component styles. [decision: decisions-made-product-44.md]
+- design-theme-look-drawing.md: The small drawing of a look (pg_design_look_drawing() and its twin _sdLookDrawing()): what it draws from the preview row, where it shows, the twin test
+- design-theme-product-looks.md: The looks and palettes for bold product pages (display, precision; onyx, silver, electric): values, why the names, the catalog test
 - designed-page-comment-names.md: Which name a signed-in member's comment gets: the contact's display name (else Member) on visual-designer pages, the username on legacy pages; the name select's choices and forged values [decision: here]
 - designer-ai-known-class.md: How the designer AI decides a class is one the framework ships (pg_design_ai_known_class()): the Bootstrap 5 vocabulary, state/pg-*/Bootstrap Icons classes, custom designs, the class-family fallback
 - designer-audit-contrast-opacity.md: How the designer audit's contrast check (PgContrast.check(), assets/js/pg_contrast.js) counts opacity on the text and its ancestors, and why
@@ -205,21 +213,29 @@
 - designer-audit-tree-rules.md: Designer audit's tree rules for empty links/buttons, image alt, form submit and empty headings: what counts as a name, an alt decision, a submit and a heading, and the test
 - designer-block-family-files.md: Block families in their own files (style_designer_blocks_<family>.js): the registration call, the kit, how the palette, drop, block rules and PHP readers take them, the checks (B0)
 - designer-block-forms.md: How a ready-made designer block writes a form that can be sent and read aloud: a label for every field, a real submit button, POST unless search, and what the audit and the block test check.
+- designer-block-full-bleed-giant-type.md: Block rules pg-display-xl / pg-display-xxl (giant type), pg-bleed (edge to edge), pg-screen (one screen tall), pg-shade-tint, and the Hero: Full-Screen Media block (spotlight-media) in Marketing
 - designer-block-markup.md: Heading levels and inline content in ready-made designer blocks: no skipped level, size from an h-class, no paragraph or block inside a button, label, span or heading.
-- designer-block-motion.md: Motion in designer blocks without JS: the shared pg-marquee contract (loop, pause by hover, focus and a CSS-only button, reduced motion, RTL), no carousel autoplay, no countdowns.
+- designer-block-motion.md: Motion in designer blocks without JS: the shared pg-marquee contract (loop, pause by hover, focus and a CSS-only button, reduced motion, RTL), no carousel autoplay, no countdowns, the hero video rule. [decision: decisions-made-product-44.md]
 - designer-block-sample-content.md: Canonical sample content (brand, companies, people, plans, domains, images, prices) to use when writing ready-made designer blocks.
 - designer-block-style.md: Where CSS for ready-made designer blocks may live: Bootstrap classes, _SD_BLOCK_CSS in the Styles panel, never inline style or a <style> element; how a design template ships them.
 - designer-block-theme-colours.md: Which classes keep a ready-made designer block in step with the design's look and colour palette, which ones break it, and the contrast traps measured on the ready-made blocks.
 - designer-block-theme-surfaces.md: How a ready-made designer block writes a dark navbar, a hero on a photo, buttons and links on tinted or primary surfaces, and carousel slides so they pass contrast in every look, palette and mode.
+- designer-blocks-appstudio.md: The App Studio block family (appstudio- prefix, own palette group): phone fan hero, app switch, release chapter, two platforms; why not launch-; rules, motion, test
 - designer-blocks-architecture.md: The Architecture block family (architecture- prefix, own palette group): plate hero, project sheet, material board; general blocks placed instead; rules, test
+- designer-blocks-bakery.md: The Bakery block family (bakery- prefix, own palette group): fresh-from-the-oven hero with oven times and an order tag, cake size guide drawn to scale; blocks placed instead; test
 - designer-blocks-bikeshop.md: The Bike Shop block family (bikeshop- prefix, its own palette group): the four blocks, what each draws, the blocks reused instead, its pg-bike-* rules, motion and test
+- designer-blocks-brewery.md: The Brewery block family (brewery- prefix, own palette group): pour hero, tap board, tasting flight, fresh release; the palette-toned glass; general blocks placed instead; rules, test
 - designer-blocks-campsite.md: The Campsite block family (campsite- prefix, own palette group): hero with a kind-of-stay chooser, comfort scale, pitch drawing; general and other blocks placed instead; rules, test
+- designer-blocks-carrental.md: The Car Rental block family (carrental- prefix, own palette group): trip hero, class line-up, cover levels, sample quote; the driving car, the excess meter; general blocks placed instead; test
 - designer-blocks-cityhall.md: The City Hall block family (cityhall- prefix, own palette group): task hero, service guide, council agenda; general blocks placed instead; rules, test
 - designer-blocks-clinic.md: The Clinic block family (clinic- prefix, own palette group): doctors' week, care guide; general blocks placed instead; rules, test
 - designer-blocks-construction.md: The Construction block family (construction- prefix, own palette group): site board hero, project progress, neighbour notice; general blocks placed instead; rules, test
 - designer-blocks-coworking.md: The coworking- block family (Coworking group): the workspace hero, what it reuses instead (spaces, plans, amenities, floors), its pg-cw-* rules, its test
+- designer-blocks-cta.md: General CTA blocks in a family file (cta- prefix, core Marketing group): the sticky bar; where it sticks, its rule, who uses it
+- designer-blocks-dealership.md: The Car Dealership block family (dealership- prefix, own palette group): showroom panel, stock finder, three ways in; general blocks placed instead; rules, test
 - designer-blocks-drivingschool.md: The Driving School block family (drivingschool- prefix, its own palette group): the three blocks, the general blocks it reuses instead, its pg-drv-* rules, its test
 - designer-blocks-ferry.md: The Ferry block family (ferry- prefix, its own palette group): departure board, route timetable, crossing strip, fares by vehicle; the general blocks a ferry site places instead; rules and test
+- designer-blocks-filmstudio.md: The Film Studio block family (filmstudio- prefix, own palette group): showreel hero, title card with end credits, cuts for every screen drawn to scale; blocks placed instead; test
 - designer-blocks-general.md: General sections the sector templates share: the existing block that covers each, and the ones added in general family files (hours-seasons, locations-spaces, locations-floors, booking-week)
 - designer-blocks-gym.md: The Gym block family (gym- prefix, own palette group): free pass hero, class finder with an intensity meter; the weekly timetable as a general block; general blocks placed instead; rules, test
 - designer-blocks-hotel.md: The Hotel block family (hotel- prefix, own palette group): room showcase, stay clock; general blocks placed instead; rules, test
@@ -281,10 +297,11 @@
 - designer-import-validation-theme.md: Designer HTML/ZIP import rules, SEO validation badges (client twin), theme as files row, canvas direct-child CSS rules, image placeholder and loop band.
 - designer-incremental-canvas.md: How a one-node edit redraws only that node's element on the designer canvas (_sdRenderNode, _sdCanvasRedrawNode), which edits keep the full rebuild, and what the in-place redraw keeps (D2, PR #8048)
 - designer-inline-text-editing.md: Canvas in-place text editing: button-label spaces, colour/date/file input labels, no hint on bound text, an ended edit's key handler, shared-component edits, <html lang>.
+- designer-interactions-count.md: The count interaction (Count up): fields, how pg_fx.src.js reads the first number and counts it, reduced motion, the canvas, the panel, tests.
 - designer-interactions-panel.md: Interactions section of the properties panel and on the canvas: nodes, rows, _sdFxSet(), undo, canvas binding, Play button, code view back to props._fx.
 - designer-interactions-part.md: The Interactions section of the designer's properties panel as the part 'interactions' (D5 part 7): what moved, what the core keeps, when it loads
-- designer-interactions-script.md: What pg_fx.src.js does with the data-pg-fx-* attributes: entrance start states and the observer, stagger, hover and click, parallax, the node's own styles, reduced motion, pgFxBind.
-- designer-interactions.md: Interactions of designer nodes: props._fx, the data-pg-fx-* attributes, pg_fx.src.js (entrance, hover, click, sticky, parallax), the head style and fail-safe, reduced motion, the twins and tests.
+- designer-interactions-script.md: What pg_fx.src.js does: entrance start states and the observer, stagger, hover and click, parallax, scroll-linked effects, the node's own styles, reduced motion, pgFxBind.
+- designer-interactions.md: Interactions of designer nodes: props._fx, data-pg-fx-* attributes, pg_fx.src.js (entrance, hover, click, sticky, parallax, scroll-linked, count), head style, fail-safe, twins, tests.
 - designer-layer-names.md: Rules for node customName (layer names) in designer blocks: one name per role, contextual generic names, no embedded numbers, no empty names.
 - designer-lazy-dirty-checks.md: When the designer compares a page with its baseline (the 1.5 s poll, the tab strip, save) and how the answer for a page not open is kept (_pgDirtyMemo) (D4, PR #8091)
 - designer-live-preview.md: The designer's Preview and live preview: blob page, system widgets drawn by the server from the editor's unsaved trees (preview_widgets), background-render rules, hooks that refresh the preview.
@@ -297,7 +314,7 @@
 - designer-page-names.md: Which names a visual-editor page may take: other pages, files, short links, site root entries, sitemap.xml/robots.txt, site language codes; why check_name_availability() is not used on the save path.
 - designer-page-pickers.md: How widget page pickers are built (_swPageOptions/_swPageVal, tab:<key>, tabs without the widget), how unsaved-tab references resolve on save, and why a page may reach the save without its tree.
 - designer-page-workspace-tasks.md: The visual designer tab menu's "Workspace tasks" item: the Workspace record drawer of page:<id> (tasks, open one, new task tagged with the page), its gates and wiring
-- designer-palette-tabs-and-blocks.md: Designer palette has two tabs (Bileşenler building blocks, Bloklar ready sections): adding a block, shared list plumbing, recents strip, tab strip width.
+- designer-palette-tabs-and-blocks.md: Designer palette Components tab with a Components / Blocks list switch (building blocks vs ready sections): adding a block, shared list plumbing, recents strip, tab strip width. [decision: here]
 - designer-panel-element-identity.md: Designer panel must identify the selected element correctly: propsSemantic() tag groups, HTML defaults, attribute rows, panel refresh, canvas selection.
 - designer-panel-popover-and-rows.md: Bootstrap popover vs dropdown toggles with [title], and the options panel row()/sect()/as() layout rules in the designer.
 - designer-panels-on-demand.md: The designer draws only the panels that can be seen, debounces them while a field is typed into, and redraws one node's Layers rows (D3, PR #8075)
@@ -362,6 +379,7 @@
 - layout-form-converter-editor.md: W22b "Convert to design elements" on a custom form page's system region: the button, the layout_code convert action, the widget placed after the region, toasts, rows the sync keeps
 - layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing [decision: here]
 - layout-widget-offer.md: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, the panel buttons that place it and remove the region, why no 301
+- legacy-design-theme.md: The theme file of a design moved from a classic style: the activated theme the classic head printed, on the site, the canvas and the Theme file hint; the dry run's warning (LG1, #8694)
 - legacy-region-preview.md: The canvas preview of a classic page's system region drawn by its custom layout (designer/legacy_region_preview): who sees it, the markers, the background render, read only, when it is asked again
 - legacy-to-designer-bulk-run.md: The bulk move of classic styles to the visual designer (LD2): the decision, the dry run on the report screen, the server twins of the editor steps the run uses [decision: decisions-made-product-23.md]
 - legacy-to-designer-report.md: The "Move to the visual designer" readiness report (LD1, #6219): what it lists per classic style, its state, the "What stays classic" card (#6488), the rules the whole move keeps [decision: decisions-made-product-21.md, decisions-made-product-3.md]
@@ -406,6 +424,7 @@
 - page-schedule-editor-and-list.md: Page schedule in the designer: Page Settings boxes and the Draft switch (forced state vs own choice), tab badge, where a tab takes the stored times, designs list badge and chips
 - page-schedule.md: Scheduled publishing of visual-designer pages (page.publish_at/unpublish_at, 11.0.17): what is stored, what a save does with the two times, the general job's pass, manual moves [decision: here]
 - page-type-pane-in-designer.md: Designer settings Page Type pane: a classic page's type fields, Layout Type and form editor links via edit_page.php?properties=1 (JSON), rights shared with edit_page.php.
+- palette-block-sketch.md: Visual Page Editor Blocks list hover card: the block drawn from the tree its build returns (_sdBlockSketch), what each node becomes, what is left out, the cache, the test, the known limits
 - palette-component-atomic.md: Palette components explode into a node tree; only btn, badge (atomic) and language_switcher (per request) carry render/toHTML; the two button models, their panel, children in a component button.
 - palette-component-rules.md: Rules for a new designer palette component: the full guide, no script or stylesheet, render equals toHTML, tree by default, inline style, cssClass vs _attrs, grid, canDrop, accessibility, registration
 - palette-insert-at-selection.md: Where a palette double-click or command palette insert lands: in the selection, else beside it (in a widget too), where the operator may edit, wrapped as a drop; widgets stop at a system widget.

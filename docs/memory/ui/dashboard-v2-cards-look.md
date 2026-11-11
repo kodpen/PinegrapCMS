@@ -11,7 +11,7 @@ description: The new dashboard's shop and other cards as drawn (pictures 16-19, 
 - Exchange rates: a currency per line, code, name, the week's line amber when the rate went up and cyan when down, the rate over the toned change.
 
 ## How do the other cards draw?
-- Online engagement: the count in a 60 px green glow, `label` ("On the site now") beside it with the full sentence visually hidden, green minute bars (the last five bright), pages with a live dot.
+- Online engagement: the count in a 60 px green glow, `label` ("On the site now") beside it with the full sentence visually hidden, green minute bars (the last five bright), pages with a live dot; with nobody on the site the line as a heading and the last visits, each with a muted dot (`dashboard-v2-engagement-card.md`).
 - My notes: a pale amber note (`--pgd-note`). File management: an 88 px ring, images cyan, documents violet, other yellow, free a faint track; JPG-type boxes cyan, PDF red. Google Analytics: sources indigo, cyan, pink, grey. Performance: the ring is a half gauge (upper half of a 132 px dial, green into cyan).
 
 ## What differs from the pictures on purpose?

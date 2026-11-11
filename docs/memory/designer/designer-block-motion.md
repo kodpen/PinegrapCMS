@@ -1,6 +1,6 @@
 ---
 name: designer-block-motion
-description: Motion in designer blocks without JS: the shared pg-marquee contract (loop, pause by hover, focus and a CSS-only button, reduced motion, RTL), no carousel autoplay, no countdowns.
+description: Motion in designer blocks without JS: the shared pg-marquee contract (loop, pause by hover, focus and a CSS-only button, reduced motion, RTL), no carousel autoplay, no countdowns, the hero video rule.
 ---
 
 ## How does a block move without JavaScript?
@@ -17,6 +17,9 @@ description: Motion in designer blocks without JS: the shared pg-marquee contrac
 - Bootstrap 5.3.8's carousel pauses only on mouse hover: it keeps cycling with keyboard focus inside (focus falls to `body` when the slide hides) and under reduced motion, and the data API has no pause button. That fails WCAG 2.2.2, so no block or Components-tab carousel plays by itself (`news-ticker-rotator`, `image-carousel`, `testimonial-carousel`, the Components-tab `carousel`): the previous/next buttons and the indicators move it. An operator who wants autoplay sets Carousel Options > Autoplay (it writes `data-bs-ride`). `tests/designer_blocks_test.php` fails when a builder writes `data-bs-ride` or `data-bs-interval`. Measured in a browser: no block slide changes in 6 s, with or without reduced motion.
 - Carousel Options > Add slide copies the last slide (`copyCarouselSlide()`: new ids, no element id, layer names and a `Slide N Title` renumbered, the next palette surface) and the last indicator. A fresh `makeCarouselSlide()` surface is light, made for `.carousel-dark`: in `image-carousel` it hid the white controls.
 - Slide and control colours: `docs/memory/designer/designer-block-theme-surfaces.md`.
+
+## May a video play by itself?
+- Owner (2026-11-11): only a muted, looping hero video with a pause button, and not when the visitor prefers reduced motion (`workflow/decisions-made-product-44.md`). Step B9 of `plans/designer-bold-pages-steps-2.md` builds it; no block plays a video before that.
 
 ## Why is there no countdown or live value?
 - A countdown needs JavaScript; a block shows a fixed date in `<time datetime>` the operator edits (`coming-soon-launch`). Weather and market values in the news blocks are sample values too: a live feed would be a system widget or a request-time component (like the language switcher placeholder), not a palette block.

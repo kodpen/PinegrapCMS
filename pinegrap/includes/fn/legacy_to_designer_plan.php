@@ -33,6 +33,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_region_starters.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_design_theme.php');
 
 /**
  * The classic data-driven regions a widget draws: the widget kind and the
@@ -265,7 +266,9 @@ function pg_ltd_widget_config($target)
  *                      designer regions already components), 'pages'
  *                      (rows: page_id, page_name, source 'own'|'folder',
  *                      has_tree, holder ('' when free), own_regions (page
- *                      region nodes of an existing tree)), 'warnings'
+ *                      region nodes of an existing tree)), 'warnings',
+ *                      'theme_after' (the theme the design loads when the
+ *                      classic head loaded CSS after it, else '')
  * @return array  'skip' ('' or a reason code), 'components' (list of
  *                array('kind' => 'common'|'designer', 'name', 'exists')),
  *                'frame' ('make'|'update'), 'pages' (rows with 'action':
@@ -283,6 +286,11 @@ function pg_ltd_plan_style($facts)
         $out['skip'] = 'refusal';
         $out['widgets'] = array();
         return $out;
+    }
+    // The design prints its theme after all of its stylesheets; CSS the
+    // classic head loaded after the theme now loses to it.
+    if ((string)($f['theme_after'] ?? '') !== '') {
+        $out['warnings'][] = lang(array('string' => 'The style\'s head loads stylesheets after its theme {var:1}. The design loads the theme after all of its stylesheets, so where both set the same rule the theme now wins.', 'vars' => array((string)$f['theme_after'])));
     }
 
     foreach ((array)($f['common'] ?? array()) as $name) {
@@ -360,6 +368,21 @@ function pg_ltd_plan($style_ids)
             }
             $facts['frame_exists'] = (bool)db_value("SELECT id FROM shared_components
                 WHERE category = '" . e(pg_classic_style_component_category($s['id'])) . "' LIMIT 1");
+            // The theme the design will load, when the head loaded CSS after it.
+            if (pg_legacy_style_css_after_theme($code)) {
+                $active = pg_legacy_design_activated_themes();
+                $theme = pg_legacy_design_theme(array(
+                    'own'         => db_item("SELECT files.id, files.name FROM style JOIN files ON style.theme_id = files.id
+                                              WHERE style.style_id = '" . (int)$s['id'] . "' LIMIT 1"),
+                    'classic'     => true,
+                    'device'      => 'desktop',
+                    'desktop'     => $active['desktop'],
+                    'mobile'      => $active['mobile'],
+                    'rows'        => array(),
+                    'output_path' => OUTPUT_PATH,
+                ));
+                $facts['theme_after'] = $theme ? $theme['name'] : '';
+            }
         }
 
         $holders = array();

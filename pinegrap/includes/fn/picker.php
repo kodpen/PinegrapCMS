@@ -33,7 +33,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *             (pg_public_image_files_where()), as what is chosen is shown to
  *             everyone
  *   design    files: design files listed too
- *   archived  pages: pages in an archived folder listed too
+ *   archived  pages: pages in an archived folder listed too, marked and not
+ *             choosable (pg_picker_page_mark())
  *   value     what a pick stores: 'name' (files.name) or 'id'
  *   role      the highest role that may ask (0 Administrator ... 3 User); a
  *             role 3 user only with edit rights, within the folders they may
@@ -64,7 +65,7 @@ function pg_picker_kinds()
         'image' => array_merge($file, array('types' => pg_picker_image_types(), 'value' => 'name', 'pictures' => true)),
         'public_image' => array_merge($file, array('types' => pg_public_image_file_types(), 'public' => true, 'value' => 'name', 'role' => 2, 'pictures' => true)),
         'site_icon' => array_merge($file, array('types' => array('png', 'svg'), 'public' => true, 'value' => 'name', 'role' => 2, 'pictures' => true)),
-        'page' => array('source' => 'pages', 'types' => array(), 'public' => false, 'design' => false, 'archived' => false, 'value' => 'id', 'role' => 3, 'tree' => true, 'pictures' => false, 'upload' => false),
+        'page' => array('source' => 'pages', 'types' => array(), 'public' => false, 'design' => false, 'archived' => true, 'value' => 'id', 'role' => 3, 'tree' => true, 'pictures' => false, 'upload' => false),
     );
 
     return $kinds;
@@ -76,10 +77,10 @@ function pg_picker_image_types()
     return array('gif', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'svg', 'webp', 'avif');
 }
 
-/** The requests the endpoint answers. */
+/** The requests the endpoint answers; upload is the one sent by POST. */
 function pg_picker_requests()
 {
-    return array('list', 'search', 'tree', 'resolve');
+    return array('list', 'search', 'tree', 'resolve', 'upload');
 }
 
 /**
@@ -505,8 +506,10 @@ function pg_picker_offset($page, $per_page)
  *
  * @param array $kind one of pg_picker_kinds()
  * @param array $row  files: id, name, type, folder; pages: page_id,
- *                    page_name, page_type, page_folder
- * @return array id, value (what a pick stores), text, type, folder
+ *                    page_name, page_type, page_folder, page_timestamp,
+ *                    folder_archived, binned (pg_picker_binned_page_row())
+ * @return array id, value (what a pick stores), text, type, folder; a page
+ *               also modified and mark (pg_picker_page_mark())
  */
 function pg_picker_item($kind, $row)
 {
@@ -517,6 +520,8 @@ function pg_picker_item($kind, $row)
             'text' => (string) ($row['page_name'] ?? ''),
             'type' => (string) ($row['page_type'] ?? ''),
             'folder' => (int) ($row['page_folder'] ?? 0),
+            'modified' => (int) ($row['page_timestamp'] ?? 0),
+            'mark' => pg_picker_page_mark((string) ($row['folder_archived'] ?? '0') !== '0', !empty($row['binned'])),
         );
     }
 
@@ -531,6 +536,185 @@ function pg_picker_item($kind, $row)
         'height' => (int) ($row['image_height'] ?? 0),
         'modified' => (int) ($row['timestamp'] ?? 0),
     );
+}
+
+/**
+ * The mark a page carries in the dialog, which keeps a marked page from being
+ * chosen: a page in an archived folder is offline, a binned one is on its way
+ * out. The Recycle Bin is itself an archived folder, so the bin wins. Pure.
+ *
+ * @param bool $archived its folder is archived
+ * @param bool $binned   it is in the Recycle Bin
+ * @return string '', 'archived' or 'binned'
+ */
+function pg_picker_page_mark($archived, $binned)
+{
+    if ($binned) {
+        return 'binned';
+    }
+
+    return $archived ? 'archived' : '';
+}
+
+/**
+ * A binned page's row as the dialog lists it: under the name it had before
+ * the bin parked it, in the folder it came from (recycle_bin
+ * .original_parent_id), flagged binned. Pure.
+ *
+ * @param array $row page_id, page_name, ..., original_parent_id
+ * @return array the row with page_name, page_folder and binned set
+ */
+function pg_picker_binned_page_row($row)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/explorer/recycle_names.php');
+
+    $original = pg_recycle_parked_original((string) ($row['page_name'] ?? ''), (int) ($row['page_id'] ?? 0));
+
+    if ($original !== '') {
+        $row['page_name'] = $original;
+    }
+
+    $row['page_folder'] = (int) ($row['original_parent_id'] ?? 0);
+    $row['binned'] = true;
+
+    return $row;
+}
+
+/**
+ * The groups the dialog's type chips offer, in the order they are drawn,
+ * with their labels. Every page type falls in one
+ * (pg_picker_page_type_group()).
+ *
+ * @return array key => label
+ */
+function pg_picker_page_groups()
+{
+    return array(
+        'standard' => lang('Standard'),
+        'form' => lang('Forms'),
+        'catalog' => lang('Catalog'),
+        'calendar' => lang('Calendars'),
+        'checkout' => lang('Cart and checkout'),
+        'search' => lang('Search Results'),
+        'account' => lang('Sign-in and account'),
+        'other' => lang('Other'),
+    );
+}
+
+/**
+ * The type chip group of a page type (get_page_type_names()); a type no
+ * group names is Other. Pure.
+ *
+ * @param string $type page.page_type
+ * @return string a key of pg_picker_page_groups()
+ */
+function pg_picker_page_type_group($type)
+{
+    static $groups = array(
+        'standard' => array('standard'),
+        'form' => array('custom form', 'custom form confirmation', 'form list view', 'form item view', 'form view directory'),
+        'catalog' => array('catalog', 'catalog detail'),
+        'calendar' => array('calendar view', 'calendar event view'),
+        'checkout' => array('express order', 'order form', 'shopping cart', 'shipping address and arrival', 'shipping method', 'billing information', 'order preview', 'order receipt'),
+        'search' => array('search results'),
+        'account' => array(
+            'login', 'logout', 'change password', 'set password', 'forgot password', 'my account', 'my account profile',
+            'email preferences', 'view order', 'update address book', 'membership confirmation', 'membership entrance',
+            'registration confirmation', 'registration entrance', 'affiliate sign up form', 'affiliate sign up confirmation',
+            'affiliate welcome'),
+    );
+
+    foreach ($groups as $group => $types) {
+        if (in_array((string) $type, $types, true)) {
+            return $group;
+        }
+    }
+
+    return 'other';
+}
+
+/**
+ * What the dialog draws beside a page item: its address (none for a binned
+ * page, which no visitor reaches), its type's name and chip group, and with
+ * $paths the folders down to it.
+ *
+ * @param array $items pg_picker_item() of a page kind
+ * @param bool  $paths
+ * @return array
+ */
+function pg_picker_page_details($items, $paths = false)
+{
+    if ($paths) {
+        require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+    }
+
+    $map = $paths ? pg_explorer_folder_map() : array();
+
+    foreach ($items as $index => $item) {
+        $label = get_page_type_name($item['type']);
+        $item['address'] = ($item['mark'] === 'binned') ? '' : PATH . $item['text'];
+        $item['type_label'] = ($label !== null) ? $label : $item['type'];
+        $item['type_group'] = pg_picker_page_type_group($item['type']);
+
+        if ($paths) {
+            $item['path'] = pg_picker_folder_path($item['folder'], $map);
+        }
+
+        $items[$index] = $item;
+    }
+
+    return $items;
+}
+
+/**
+ * The binned pages that came from the folders a user may use, as
+ * pg_picker_binned_page_row() tells them: those from one folder, or those
+ * whose name holds a typed text (at most pg_picker_scan_limit()).
+ *
+ * @param array    $user   validate_user()
+ * @param int|null $folder the folder they came from
+ * @param string   $query  the typed text; '' for no name match
+ * @return array rows
+ */
+function pg_picker_binned_page_rows($user, $folder = null, $query = '')
+{
+    $bin = pg_picker_ids(pg_recycle_bin_folder_ids());
+
+    if (!$bin) {
+        return array();
+    }
+
+    $where = "(recycle_bin.item_type = 'page') AND (page.page_folder IN (" . implode(', ', $bin) . "))";
+
+    if ($folder !== null) {
+        $where .= " AND (recycle_bin.original_parent_id = '" . (int) $folder . "')";
+    }
+
+    if ($query !== '') {
+        $where .= " AND (LOWER(page.page_name) LIKE '%" . e(pg_picker_like_term($query)) . "%')";
+    }
+
+    $rows = db_items(
+        "SELECT page.page_id, page.page_name, page.page_type, page.page_folder, page.page_timestamp, folder.folder_archived, recycle_bin.original_parent_id
+        FROM recycle_bin
+        INNER JOIN page ON page.page_id = recycle_bin.item_id
+        LEFT JOIN folder ON page.page_folder = folder.folder_id
+        WHERE " . $where . "
+        ORDER BY page.page_name
+        LIMIT " . pg_picker_scan_limit());
+
+    $granted = pg_picker_granted_folders($user);
+    $out = array();
+
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        $row = pg_picker_binned_page_row($row);
+
+        if (pg_picker_folder_allowed($row['page_folder'], $bin, $granted)) {
+            $out[] = $row;
+        }
+    }
+
+    return ($query !== '') ? pg_picker_matches($out, $query, 'page_name') : $out;
 }
 
 /**
@@ -581,17 +765,18 @@ function pg_picker_has_picture($kind, $name)
  * File items with what the dialog shows beside the name: the size as text,
  * the access of the folder (inherited down the tree), the address, the 320
  * px picture (pg_image_panel_thumb_url()) for a picture kind and, with
- * $paths, the folders down to the item's own.
+ * $paths, the folders down to the item's own. Page items get
+ * pg_picker_page_details().
  *
  * @param array $kind
- * @param array $items pg_picker_item() of a files kind
+ * @param array $items pg_picker_item() of the kind
  * @param bool  $paths
  * @return array
  */
 function pg_picker_file_details($kind, $items, $paths = false)
 {
     if ($kind['source'] !== 'files') {
-        return $items;
+        return pg_picker_page_details($items, $paths);
     }
 
     require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
@@ -734,7 +919,7 @@ function pg_picker_granted_folders($user)
 function pg_picker_select($kind, $where)
 {
     if ($kind['source'] === 'pages') {
-        return "SELECT page.page_id, page.page_name, page.page_type, page.page_folder
+        return "SELECT page.page_id, page.page_name, page.page_type, page.page_folder, page.page_timestamp, folder.folder_archived
             FROM page
             LEFT JOIN folder ON page.page_folder = folder.folder_id
             WHERE " . $where;
@@ -792,7 +977,13 @@ function pg_picker_search_rows($kind_name, $query, $user)
         ORDER BY " . $column . "
         LIMIT " . pg_picker_scan_limit());
 
-    return pg_picker_matches(is_array($rows) ? $rows : array(), $query, ($kind['source'] === 'pages') ? 'page_name' : 'name');
+    if ($kind['source'] !== 'pages') {
+        return pg_picker_matches(is_array($rows) ? $rows : array(), $query, 'name');
+    }
+
+    // Binned pages are found too, under their own names, after the others:
+    // marked, so the person sees why the page they look for cannot be chosen.
+    return array_merge(pg_picker_matches(is_array($rows) ? $rows : array(), $query, 'page_name'), pg_picker_binned_page_rows($user, null, $query));
 }
 
 /**
@@ -825,7 +1016,8 @@ function pg_picker_search_answer($request, $user)
  *
  * @param array $request pg_picker_request()
  * @param array $user
- * @return array folder, items, page, per_page, more
+ * @return array folder, items, page, per_page, more; for a page kind's
+ *               first page also binned (the pages binned from the folder)
  */
 function pg_picker_list_answer($request, $user)
 {
@@ -861,6 +1053,20 @@ function pg_picker_list_answer($request, $user)
         return pg_picker_item($kind, $row);
     }, $slice['items']));
     $answer['more'] = $slice['more'];
+
+    // The pages binned from this folder come with its first page, apart
+    // from the paged items, marked.
+    if (($kind['source'] === 'pages') && ($request['page'] === 1)) {
+        $answer['binned'] = pg_picker_page_details(array_map(function ($row) use ($kind) {
+            return pg_picker_item($kind, $row);
+        }, pg_picker_binned_page_rows($user, $request['folder'])));
+    }
+
+    // Whether the dialog offers Upload in this folder, and if not, why.
+    if ($kind['source'] === 'files') {
+        $verdict = pg_picker_folder_upload_verdict($kind, $request['folder'], $user);
+        $answer['upload'] = array('ok' => ($verdict === ''), 'reason' => pg_picker_upload_reason($verdict));
+    }
 
     return $answer;
 }
@@ -942,9 +1148,10 @@ function pg_picker_resolve_answer($request, $user)
 
     if ($kind['source'] === 'pages') {
         $rows = db_items(
-            "SELECT page.page_id, page.page_name, page.page_type, page.page_folder, folder.folder_archived
+            "SELECT page.page_id, page.page_name, page.page_type, page.page_folder, page.page_timestamp, folder.folder_archived, recycle_bin.original_parent_id
             FROM page
             LEFT JOIN folder ON page.page_folder = folder.folder_id
+            LEFT JOIN recycle_bin ON (recycle_bin.item_type = 'page') AND (recycle_bin.item_id = page.page_id)
             WHERE page.page_id IN (" . implode(', ', pg_picker_ids($request['values'])) . ")");
 
         foreach ((is_array($rows) ? $rows : array()) as $row) {
@@ -980,6 +1187,12 @@ function pg_picker_resolve_answer($request, $user)
         $item = array('value' => $value, 'text' => ($kind['value'] === 'name') ? (string) $value : '', 'state' => $state);
 
         if (in_array($state, array('ok', 'binned', 'offline'), true)) {
+            // A page binned by itself is told in the folder it came from;
+            // one inside a binned folder has no record of its own.
+            if (($kind['source'] === 'pages') && $binned) {
+                $row = isset($row['original_parent_id']) ? pg_picker_binned_page_row($row) : array_merge($row, array('binned' => true));
+            }
+
             $item = array_merge(pg_picker_item($kind, $row), $item);
             $item['text'] = ($kind['source'] === 'pages') ? (string) $row['page_name'] : (string) $row['name'];
 
@@ -1003,6 +1216,177 @@ function pg_picker_resolve_answer($request, $user)
     }
 
     return array('items' => $items);
+}
+
+/**
+ * Why a kind may not take an upload into a folder, '' when it may. Pure.
+ *
+ * @param array $kind       one of pg_picker_kinds()
+ * @param int   $folder     the folder the files go into
+ * @param bool  $usable     the folder exists and the user may pick from it (pg_picker_folder_allowed())
+ * @param bool  $edit_right the user may add to what the folder holds (pg_folder_edit_access())
+ * @param bool  $public     every visitor may open the folder (pg_public_folder_ids())
+ * @return string '', 'kind' (the kind takes no upload), 'folder' (no folder
+ *                or no right to it) or 'public' (a public kind's file would
+ *                land where visitors cannot open it)
+ */
+function pg_picker_upload_verdict($kind, $folder, $usable, $edit_right, $public)
+{
+    if (empty($kind['upload']) || (($kind['source'] ?? '') !== 'files')) {
+        return 'kind';
+    }
+
+    if (((int) $folder < 1) || !$usable || !$edit_right) {
+        return 'folder';
+    }
+
+    // The list of a public kind leaves such a file out, so it would vanish
+    // from the dialog the moment it was stored.
+    if (!empty($kind['public']) && !$public) {
+        return 'public';
+    }
+
+    return '';
+}
+
+/**
+ * What the dialog says beside a disabled Upload.
+ *
+ * @param string $verdict pg_picker_upload_verdict()
+ * @return string '' when Upload is offered
+ */
+function pg_picker_upload_reason($verdict)
+{
+    switch ($verdict) {
+        case 'kind':
+            return lang('Files cannot be uploaded here.');
+
+        case 'folder':
+            return lang('You do not have the right to add files to this folder.');
+
+        case 'public':
+            return lang('Files in this folder are not public. Upload into a public folder.');
+    }
+
+    return '';
+}
+
+/**
+ * Whether a file name has one of a kind's types; any name passes a kind
+ * without types. Pure.
+ *
+ * @param array  $kind
+ * @param string $name the name as it was sent
+ * @return bool
+ */
+function pg_picker_upload_type_ok($kind, $name)
+{
+    $types = pg_picker_kind_types($kind);
+
+    if (!$types) {
+        return true;
+    }
+
+    return in_array(strtolower((string) pathinfo((string) $name, PATHINFO_EXTENSION)), $types, true);
+}
+
+/**
+ * Whether the token a POST carries is the session's, compared in constant
+ * time as validate_token_field() does. Pure.
+ *
+ * @param mixed $session $_SESSION['software']['token']
+ * @param mixed $sent    $_POST['token']
+ * @return bool
+ */
+function pg_picker_token_valid($session, $sent)
+{
+    return is_string($session) && ($session !== '') && is_string($sent) && hash_equals($session, $sent);
+}
+
+/**
+ * pg_picker_upload_verdict() for a user and a folder of the database.
+ *
+ * @param array $kind
+ * @param int   $folder
+ * @param array $user validate_user()
+ * @return string
+ */
+function pg_picker_folder_upload_verdict($kind, $folder, $user)
+{
+    $folder = (int) $folder;
+
+    if (empty($kind['upload']) || (($kind['source'] ?? '') !== 'files') || ($folder < 1)) {
+        return pg_picker_upload_verdict($kind, $folder, false, false, false);
+    }
+
+    $usable = pg_picker_folder_allowed($folder, pg_recycle_bin_folder_ids(), pg_picker_granted_folders($user))
+        && ((string) db_value("SELECT folder_id FROM folder WHERE folder_id = '" . $folder . "'") !== '');
+
+    return pg_picker_upload_verdict(
+        $kind,
+        $folder,
+        $usable,
+        $usable && pg_folder_edit_access($folder, (int) $user['id'], (int) $user['role']),
+        !empty($kind['public']) && in_array($folder, pg_public_folder_ids(), true));
+}
+
+/**
+ * The answer to an upload: one file stored into the folder by
+ * pg_file_store_upload(), under the rules of Upload File, and handed back as
+ * the dialog's item. The caller has checked the method, the body and the
+ * token.
+ *
+ * @param array $request pg_picker_request()
+ * @param array $user
+ * @param mixed $file    $_FILES['file']
+ * @return array [status, payload]: payload item, or error
+ */
+function pg_picker_upload_answer($request, $user, $file)
+{
+    $kinds = pg_picker_kinds();
+    $kind = $kinds[$request['kind']];
+
+    $verdict = pg_picker_folder_upload_verdict($kind, $request['folder'], $user);
+
+    if ($verdict !== '') {
+        return array(403, array('error' => pg_picker_upload_reason($verdict)));
+    }
+
+    // One file per request: the dialog sends them one after another, so a
+    // selection never meets max_file_uploads or post_max_size all at once.
+    if (!is_array($file) || !isset($file['error']) || is_array($file['error']) || ((int) $file['error'] === UPLOAD_ERR_NO_FILE)) {
+        return array(400, array('error' => lang('Please select a file.')));
+    }
+
+    $name = pg_basename((string) ($file['name'] ?? ''));
+    $limits = pg_upload_limits();
+    $refusal = pg_upload_error_message($name, $file['error'], $limits['file_max']);
+
+    if ($refusal !== '') {
+        return array(400, array('error' => $refusal));
+    }
+
+    if (!pg_picker_upload_type_ok($kind, $name)) {
+        return array(415, array('error' => lang(array(
+            'string' => 'Only {var:1} files can be chosen here.',
+            'vars'   => array(strtoupper(implode(', ', pg_picker_kind_types($kind))))))));
+    }
+
+    $stored = pg_file_store_upload((string) $file['tmp_name'], $name, (int) ($file['size'] ?? 0), array(
+        'folder'         => $request['folder'],
+        'description'    => '',
+        'design'         => null,
+        'image_profile'  => '',
+        'image_settings' => pg_image_settings(),
+        'file_max'       => $limits['file_max']));
+
+    if (!$stored['ok']) {
+        return array(400, array('error' => $stored['message']));
+    }
+
+    $row = db_item("SELECT id, name, type, folder, size, image_width, image_height, timestamp FROM files WHERE id = '" . (int) $stored['file']['id'] . "'");
+
+    return array(200, array('item' => pg_picker_file_details($kind, array(pg_picker_item($kind, is_array($row) ? $row : array())), true)[0]));
 }
 
 /**
@@ -1060,6 +1444,15 @@ function pg_picker_texts()
         'Only the first 2,000 are shown; search to find the rest.', 'Esc clears the search', 'A column heading sorts',
         'Double-click or Enter chooses', 'Nothing chosen yet', 'Tapping a folder shows its files', 'Folders in {folder}',
         'Public', 'Private', 'Guest', 'Registration', 'Membership',
+        'Upload', 'Upload File', 'Recently used', 'Uploading · {done} / {total}', 'Uploaded · {done} / {total}',
+        'Drop to upload into “{folder}”', '1 file · at most {size} per file', '{n} files · at most {size} per file',
+        'Drag files here or choose them from your computer. An uploaded file is saved in this folder and chosen.',
+        'uploaded', 'uploaded, chosen', 'Not uploaded', 'Only {types} files can be chosen here.',
+        'Larger than {size}, the biggest single file this server accepts.', 'The upload failed.',
+        'Open a folder to upload into it.', 'Files you choose appear here.', 'Your last picks in this browser',
+        '{n} chosen', 'A click adds or removes, Shift+click adds a row',
+        'Choose a page', 'Pages', 'Page', 'Address', 'Archived', 'In the Recycle Bin', 'All', 'Page types', 'Not saved yet',
+        'Pages you choose appear here.', 'Archived pages and pages in the Recycle Bin cannot be chosen.',
     ) as $text) {
         $texts[$text] = lang($text);
     }
@@ -1084,7 +1477,43 @@ function pg_picker_script()
 
     $printed = true;
 
-    $config = array('endpoint' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/picker.php', 'texts' => pg_picker_texts());
+    $limits = pg_upload_limits();
+
+    // One file goes in one request, so the request's own ceiling holds it
+    // too.
+    $file_max = (int) $limits['file_max'];
+
+    if (((int) $limits['request_max'] > 0) && (($file_max === 0) || ((int) $limits['request_max'] < $file_max))) {
+        $file_max = (int) $limits['request_max'];
+    }
+
+    // The token goes with an upload, as in every panel form; the user names
+    // whose Recent list this browser keeps; a file over the server's largest
+    // is refused before it is sent. The page kinds and the type chips' groups
+    // let the dialog draw pages as pages.
+    $page_kinds = array();
+
+    foreach (pg_picker_kinds() as $name => $kind) {
+        if ($kind['source'] === 'pages') {
+            $page_kinds[] = $name;
+        }
+    }
+
+    $groups = array();
+
+    foreach (pg_picker_page_groups() as $key => $label) {
+        $groups[] = array('key' => $key, 'label' => $label);
+    }
+
+    $config = array(
+        'endpoint' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/picker.php',
+        'texts' => pg_picker_texts(),
+        'token' => (string) ($_SESSION['software']['token'] ?? ''),
+        'user' => defined('USER_ID') ? (int) USER_ID : 0,
+        'file_max' => $file_max,
+        'file_max_label' => ($file_max > 0) ? convert_bytes_to_string($file_max, 1) : '',
+        'page_kinds' => $page_kinds,
+        'page_groups' => $groups);
 
     return '<script type="application/json" id="pg_picker_config">' . json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . '</script>'
         . pg_js_bundle_tags('assets/js/pg_picker.min.js');

@@ -1,0 +1,29 @@
+---
+name: bell-read-rule
+description: When a bell row is read: not on opening the bell; its button, title or Mark as read dot reads it, a fold head its runs; Mark all as read reads only rows the caller sees
+---
+
+## When is a bell row read?
+- Owner (2026-11-11, `workflow/decisions-made-panel-4.md`): when it is opened or its dot is pressed, never by opening the bell; "Mark all as read" stands at the top. The bell's count stays until then.
+- `pg_panel_get_notifications()` (`includes/panel/notifications.php`) marks nothing and takes no `read_mark`; its `pg_panel_actions()` row says `'write' => false`.
+- Before, every list request (`get_notifications(true)` on each open) marked every row it drew read, and the badge was cleared before the request.
+
+## Which requests read a row?
+- `edit_notifications` with `do_action`:
+  - `mark_read`: the row `id` if `pg_notification_visible_to()` lets the caller see it, plus the ids in `runs` the caller sees (`pg_notification_run_ids()`: whole positive ids, once, not the head, at most 500);
+  - `mark_all_read`: every notification the caller sees (`id` is ignored);
+  - `mark_unread`, `remove`: one row, as before.
+- Both reading jobs go through `pg_notification_readable_ids($rows, $sees)` (pure, `includes/notifications.php`) and then `pg_notification_mark_read()`, so a Workspace row read here is read in the Workspace too. Read in the Workspace stays read in the bell (`ws_bell_sync_read()`), unchanged.
+
+## Who collects a fold's runs?
+- The script: a fold's head sends the ids of the rows drawn under it (`li[data-pg-bell-fold="<head>"]`) as `runs`; the server checks each one. Opening an older run reads only that run.
+
+## What does the script do?
+- `get_notifications(keep_place)` (`backend.src.js`): no `read_mark`; the badge is left as it is.
+- Each list request is numbered (`pgBellLoad`) and only the latest answer is drawn: the bell's click and its shown event both ask on one opening, and the list (with the buttons above it) was drawn twice (#8682).
+- Above the list: "Mark all as read" (`.pg-bell-mark-all`, hidden while nothing is unread) beside "Delete All Notifications" (shown under All only, more than one row). Mark all turns the rows' classes in place, no redraw.
+- An unread row, custom ones too, has the dot `pg_bell_read_button()`, a button named "Mark as read"; a read row offers "Mark as unread" in its menu. `pg_bell_row_state()` turns the row's `new`/`viewed` classes, the dot and that menu item (`bell-row.md`).
+- The row's title, its one button and "Join" go through `pg_bell_open_row()`: an unread row sends `mark_read` and the page opens when the answer comes, success or not (`complete`); Join opens its tab at once (a popup must follow the click).
+- A refused read puts the row back and shows the bell's toast (`ui/bell-refusals.md`); after every answer `check_unread_notifications('editcallback_check')` sets the badge.
+
+Pinned in `tests/bell_read_rule_test.php`; the poll rule in `ui/notifications-menu.md`. Built in #8682 (plan step BP1).

@@ -3,7 +3,8 @@
  *
  * Visual Page Editor - the interactions part: the rows of the properties
  * panel's Interactions section (the effect, its trigger and timing, the
- * sticky offset, the parallax speed), the fields that write a node's
+ * sticky offset, the parallax speed, the start of a scroll-linked effect,
+ * the duration and delay of a count), the fields that write a node's
  * props._fx and the "Play on the canvas" button. Not needed to open a
  * page: the core draws the section with an empty body and runs this file
  * the first time an open section is shown (_sdPartLoad(),
@@ -29,17 +30,26 @@ StyleDesigner.definePart('interactions', function (K) {
     // The node's interaction after one field of the panel changed: the
     // stored one with `field` set to `value`, normalized; null when the
     // effect is cleared. Fields that no longer apply drop out; switching
-    // the effect keeps the timing.
+    // the effect keeps the timing. A scroll-linked effect's start is a
+    // scale, an opacity or a distance, so another effect starts at its own
+    // default. A count runs for longer than a transition: to or from one,
+    // the duration starts at the new effect's own default too.
     function _sdFxSet(fx, field, value) {
         if (field === 'effect' && !value) return null;
         var cur = _sdFxNormalize(fx) || {}, next = {};
         for (var k in cur) if (Object.prototype.hasOwnProperty.call(cur, k)) next[k] = cur[k];
+        if (field === 'effect' && value !== cur.effect) delete next.from;
+        if (field === 'effect' && value !== cur.effect && (value === 'count' || cur.effect === 'count')) delete next.duration;
         next[field] = value;
         return _sdFxNormalize(next);
     }
 
+    // The content types a count is offered on: those that hold a text.
+    var _SD_FX_COUNT_TEXT = ['heading', 'paragraph', 'span', 'text', 'link'];
+
     // The section's rows for the node: the effect, then the rows that
-    // follow from it and its trigger.
+    // follow from it and its trigger. Count up is offered on text nodes,
+    // and kept in the list on a node that has it.
     function _sdFxRows(n) {
         var fx = _sdFxNormalize(n.props._fx) || { effect: '' };
         var spec = _sdFxSpec();
@@ -49,19 +59,24 @@ StyleDesigner.definePart('interactions', function (K) {
             }).join('') + '</select>';
         };
         var number = function (field, unit, placeholder) {
-            var r = spec.numbers[field];
+            var r = field === 'from' ? spec.from[fx.effect] : (fx.effect === 'count' && spec.count[field]) || spec.numbers[field];
             var v = (field === 'distance' && !fx.distance) ? '' : fx[field];
             return '<div class="input-group input-group-sm">' +
                 '<input type="number" class="form-control form-control-sm" data-fx="' + field + '" min="' + r[0] + '" max="' + r[1] + '" step="1" value="' + esc(String(v)) + '"' +
                 (placeholder ? ' placeholder="' + esc(String(placeholder)) + '"' : '') + '>' +
                 '<span class="input-group-text">' + unit + '</span></div>';
         };
-        var h = row(_sdT('Effect'), select('effect', [
+        var effects = [
             ['', _sdT('None')], ['fade', _sdT('Fade in')],
             ['slide-up', _sdT('Slide up')], ['slide-down', _sdT('Slide down')],
             ['slide-left', _sdT('Slide left')], ['slide-right', _sdT('Slide right')],
-            ['scale', _sdT('Scale')], ['sticky', _sdT('Sticky')], ['parallax', _sdT('Parallax')]
-        ]));
+            ['scale', _sdT('Scale')], ['sticky', _sdT('Sticky')], ['parallax', _sdT('Parallax')],
+            ['scroll-zoom', _sdT('Zoom on scroll')], ['scroll-fade', _sdT('Fade on scroll')], ['scroll-rise', _sdT('Rise on scroll')]
+        ];
+        if (fx.effect === 'count' || (n.type === 'content' && _SD_FX_COUNT_TEXT.indexOf(n.props.contentType) !== -1)) {
+            effects.push(['count', _sdT('Count up')]);
+        }
+        var h = row(_sdT('Effect'), select('effect', effects));
         if (fx.trigger) {
             var entrance = fx.trigger === 'load' || fx.trigger === 'view';
             h += row(_sdT('Trigger'), select('trigger', [
@@ -80,7 +95,25 @@ StyleDesigner.definePart('interactions', function (K) {
         }
         if (fx.effect === 'sticky') h += row(_sdT('Top offset'), number('offset', 'px'));
         if (fx.effect === 'parallax') h += row(_sdT('Speed'), number('speed', '%'));
-        if (fx.trigger) {
+        if (fx.effect === 'scroll-zoom') h += row(_sdT('Start scale'), number('from', '%'));
+        if (fx.effect === 'scroll-fade') h += row(_sdT('Start opacity'), number('from', '%'));
+        if (fx.effect === 'scroll-rise') h += row(_sdT('Start offset'), number('from', 'px'));
+        if (spec.from[fx.effect]) {
+            h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
+                esc(_sdT('Follows the scroll from below the window until the element reaches its middle.')) +
+                (fx.effect === 'scroll-zoom' && fx.from > 100
+                    ? ' ' + esc(_sdT('Larger than its place at the start: set Overflow to Hidden on the element around it, or the page scrolls sideways.'))
+                    : '') +
+                '</div></div>';
+        }
+        if (fx.effect === 'count') {
+            h += row(_sdT('Duration'), number('duration', 'ms'));
+            h += row(_sdT('Delay'), number('delay', 'ms'));
+            h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
+                esc(_sdT('Counts up from zero to the first number in the text once the element is seen, keeping its separators and the words around it. The page holds the number itself.')) +
+                '</div></div>';
+        }
+        if (fx.trigger || fx.effect === 'count') {
             h += row('', '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-fx-play>' +
                 '<span class="bi bi-play-fill"></span> ' + esc(_sdT('Play on the canvas')) + '</button>');
         }

@@ -53,6 +53,75 @@ function pg_design_look_ready($recheck = false)
     return $cached;
 }
 
+// ── Colour mode ────────────────────────────────────────────────────────────
+//
+// A design's colour mode (style.style_color_mode, 2026.11.0, 11.0.186):
+//   ''     none: the page sets no mode and looks as it always did
+//   light  data-bs-theme="light" on <html>
+//   dark   data-bs-theme="dark" on <html>
+//   auto   the visitor's system (prefers-color-scheme), resolved in <head>
+// A visitor's own choice, made with a theme switcher and stored under
+// "pg-theme" (assets/js/pg_theme_switcher.js), wins over the design's mode;
+// the mode only fills in where the visitor has stored nothing.
+
+// The column exists (2026.11.0, 11.0.186).
+function pg_design_color_mode_ready($recheck = false)
+{
+    static $cached = null;
+    if ($cached !== null && !$recheck) return $cached;
+    $cached = function_exists('pg_schema_has') && pg_schema_has('style', 'style_color_mode');
+    return $cached;
+}
+
+// A stored or posted mode as one of the four keys; anything else is ''.
+function pg_design_color_mode_key($value)
+{
+    $value = is_scalar($value) ? strtolower(trim((string)$value)) : '';
+    return in_array($value, array('light', 'dark', 'auto'), true) ? $value : '';
+}
+
+// The inline script that puts the mode on <html> before the page paints:
+// the visitor's stored choice first, then the design's mode from
+// data-pg-color-mode; "auto" resolves to the system's and keeps following
+// it while the page is open, unless a theme switcher's engine runs on the
+// page (window.pgThemeInit): the engine follows the system itself and
+// knows when the visitor has picked a mode since.
+function pg_design_color_mode_script()
+{
+    return '<script>(function(){var d=document.documentElement,t=null,'
+         . 'm=window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)"):null;'
+         . 'try{t=localStorage.getItem("pg-theme");}catch(e){}'
+         . 'if(t!=="light"&&t!=="dark"&&t!=="auto"){t=d.getAttribute("data-pg-color-mode");}'
+         . 'if(t==="auto"){var f=function(){d.setAttribute("data-bs-theme",(m&&m.matches)?"dark":"light");},'
+         . 'g=function(){if(!window.pgThemeInit){f();}};f();'
+         . 'if(m){if(m.addEventListener){m.addEventListener("change",g);}else if(m.addListener){m.addListener(g);}}}'
+         . 'else if(t==="light"||t==="dark"){d.setAttribute("data-bs-theme",t);}})();</script>';
+}
+
+// A published page in the design's colour mode: the mode on the first
+// <html> (data-pg-color-mode, and data-bs-theme for light and dark, so the
+// page reads right without script) and the script above before </head>.
+// An empty mode, or markup without <html>, comes back unchanged.
+function pg_design_color_mode_apply($content, $mode)
+{
+    $mode = pg_design_color_mode_key($mode);
+    if ($mode === '' || !is_string($content)) return $content;
+    if (!preg_match('~<html\b[^>]*>~i', $content, $m, PREG_OFFSET_CAPTURE)) return $content;
+
+    $tag = $m[0][0];
+    // The design's mode replaces a data-bs-theme the design's own markup
+    // put on <html>.
+    $new = preg_replace('~\s+data-(?:bs-theme|pg-color-mode)\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)~i', '', $tag);
+    $attrs = ' data-pg-color-mode="' . $mode . '"';
+    if ($mode !== 'auto') $attrs .= ' data-bs-theme="' . $mode . '"';
+    $new = preg_replace('~^<html\b~i', '<html' . $attrs, $new);
+    $content = substr_replace($content, $new, $m[0][1], strlen($tag));
+
+    $script = pg_design_color_mode_script() . "\n";
+    $head = stripos($content, '</head>');
+    return ($head !== false) ? substr_replace($content, $script, $head, 0) : $content;
+}
+
 // Every built-in look, in the order they are offered. `preview` feeds the
 // small sample the editor draws on the look's card.
 function pg_design_looks()
@@ -118,6 +187,16 @@ function pg_design_looks()
             'description' => lang('Large corners, pill buttons, no outlines, deep layered shadows, grotesque headings.'),
             'preview'     => array('radius' => 14, 'btn_radius' => 99, 'shadow' => 'deep', 'border' => 0, 'heading' => 'grotesk', 'weight' => 600, 'caps' => false),
         ),
+        'display' => array(
+            'name'        => lang('Display Headlines'),
+            'description' => lang('Very light, large headings with tight letter spacing, large corners and soft depth.'),
+            'preview'     => array('radius' => 20, 'btn_radius' => 99, 'shadow' => 'soft', 'border' => 0, 'heading' => 'sans', 'weight' => 200, 'caps' => false),
+        ),
+        'precision' => array(
+            'name'        => lang('Precision'),
+            'description' => lang('Flat and square: no shadows, thin type, widely spaced capitals on the buttons.'),
+            'preview'     => array('radius' => 0, 'btn_radius' => 0, 'shadow' => 'none', 'border' => 1, 'heading' => 'sans', 'weight' => 300, 'caps' => true),
+        ),
     );
 }
 
@@ -129,7 +208,7 @@ function pg_design_default_look()
 
 // Every built-in palette: a primary and a secondary colour. Chosen so white
 // text on either reads at 4.5:1 or better, except where the generator turns
-// the text dark (amber).
+// the text dark (amber, silver).
 function pg_design_palettes()
 {
     return array(
@@ -152,6 +231,9 @@ function pg_design_palettes()
         'sage'       => array('name' => lang('Sage'),            'primary' => '#4a6b53', 'secondary' => '#9a3412'),
         'cocoa'      => array('name' => lang('Cocoa'),           'primary' => '#6f4e37', 'secondary' => '#0f766e'),
         'steel'      => array('name' => lang('Steel'),           'primary' => '#3e5c76', 'secondary' => '#0f766e'),
+        'onyx'       => array('name' => lang('Onyx'),            'primary' => '#0b0b0f', 'secondary' => '#0062ff'),
+        'silver'     => array('name' => lang('Silver'),          'primary' => '#c4c8d0', 'secondary' => '#16171c'),
+        'electric'   => array('name' => lang('Electric Blue'),   'primary' => '#0062ff', 'secondary' => '#a1a6b0'),
     );
 }
 
@@ -378,6 +460,7 @@ function pg_design_theme_catalog()
     }
     return array(
         'ready'          => pg_design_look_ready(),
+        'colorModeReady' => pg_design_color_mode_ready(),
         'bridge'         => pg_design_theme_url('bridge.css'),
         'base'           => pg_design_theme_url('base.css'),
         'looks'          => $looks,
@@ -782,6 +865,95 @@ function pg_design_theme_save_file($kind, $name, $css, $user_id)
     if ($id <= 0) return lang('The theme could not be saved.');
     return array('id' => $id, 'name' => $name, 'file' => $file_name,
                  'url' => (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . $file_name . '?v=' . time());
+}
+
+// ── Look drawings ──────────────────────────────────────────────────────────
+
+// The `preview` row of "Plain Bootstrap" (no look).
+function pg_design_plain_look_preview()
+{
+    return array('radius' => 6, 'btn_radius' => 6, 'shadow' => 'none', 'border' => 1, 'heading' => 'sans', 'weight' => 500, 'caps' => false);
+}
+
+// A number as the drawing writes it: at most two decimals, no trailing zero
+// (twin of the formatting in _sdLookDrawing()).
+function _pg_look_drawing_num($v)
+{
+    $s = rtrim(rtrim(number_format((float)$v, 2, '.', ''), '0'), '.');
+    return ($s === '-0' || $s === '') ? '0' : $s;
+}
+
+// A rounded rectangle as a path, so a label can be cut out of it.
+function _pg_look_drawing_rect($x, $y, $w, $h, $r)
+{
+    $n = '_pg_look_drawing_num';
+    if ($r <= 0) return 'M' . $n($x) . ' ' . $n($y) . 'h' . $n($w) . 'v' . $n($h) . 'h-' . $n($w) . 'z';
+    $a = 'a' . $n($r) . ' ' . $n($r) . ' 0 0 1 ';
+    // A pill has no straight side: no zero-length segment.
+    $side = $h - 2 * $r;
+    return 'M' . $n($x + $r) . ' ' . $n($y) . 'h' . $n($w - 2 * $r) . $a . $n($r) . ' ' . $n($r)
+         . ($side > 0 ? 'v' . $n($side) : '') . $a . '-' . $n($r) . ' ' . $n($r)
+         . 'h-' . $n($w - 2 * $r) . $a . '-' . $n($r) . ' -' . $n($r)
+         . ($side > 0 ? 'v-' . $n($side) : '') . $a . $n($r) . ' -' . $n($r) . 'z';
+}
+
+// A small drawing of a look, 48×32, from its `preview` row
+// (pg_design_looks()): a card in the look's corner, outline and shadow, a
+// heading bar as heavy as the look's headings, a text line and a button in
+// its button corner, with its label in capitals or not. Drawn in
+// currentColor only, so it takes the colour of the text around it; the
+// palette is shown by its own swatches. null draws Plain Bootstrap.
+// Twin of _sdLookDrawing() in style_designer.src.js: both give the same SVG.
+function pg_design_look_drawing($preview = null)
+{
+    $pv = is_array($preview) ? $preview : pg_design_plain_look_preview();
+    $n = '_pg_look_drawing_num';
+    $half = function ($v) { return round($v * 2) / 2; };
+    $radius = isset($pv['radius']) ? max(0, (int)$pv['radius']) : 0;
+    $btn_radius = isset($pv['btn_radius']) ? max(0, (int)$pv['btn_radius']) : 0;
+    $border = isset($pv['border']) ? min(3, max(0, (int)$pv['border'])) : 1;
+    $weight = isset($pv['weight']) ? min(900, max(100, (int)$pv['weight'])) : 500;
+    $shadow = isset($pv['shadow']) ? (string)$pv['shadow'] : 'none';
+    $heading = isset($pv['heading']) ? (string)$pv['heading'] : 'sans';
+    $caps = !empty($pv['caps']);
+
+    $shadows = array(
+        'none'  => '',
+        'crisp' => '<rect x="5" y="27" width="38" height="1" fill="currentColor" fill-opacity=".45"/>',
+        'soft'  => '<rect x="6" y="27" width="36" height="2" rx="1" fill="currentColor" fill-opacity=".2"/>',
+        'glow'  => '<rect x="8" y="27" width="32" height="3" rx="1.5" fill="currentColor" fill-opacity=".32"/>',
+        'deep'  => '<rect x="5" y="27" width="38" height="2" fill="currentColor" fill-opacity=".32"/><rect x="8" y="29" width="32" height="2" rx="1" fill="currentColor" fill-opacity=".15"/>',
+        'hard'  => '<path d="M44 5h2v24H6v-2h38z" fill="currentColor"/>',
+    );
+    $svg = '<svg class="pg-look-drawing" viewBox="0 0 48 32" width="48" height="32" aria-hidden="true" focusable="false">';
+    $svg .= isset($shadows[$shadow]) ? $shadows[$shadow] : '';
+
+    // The card: its corner a quarter of the look's, its outline as thick.
+    $card = '<rect x="4" y="3" width="40" height="24" rx="' . $n($half(min($radius, 24) / 4)) . '" fill="currentColor" fill-opacity=".1"';
+    if ($border > 0) $card .= ' stroke="currentColor" stroke-width="' . $border . '" stroke-opacity="' . ($border > 1 ? '1' : '.5') . '"';
+    $svg .= $card . '/>';
+
+    // The heading: half a unit of height per 100 of weight.
+    $hh = $half($weight / 200);
+    if ($heading === 'mono') {
+        foreach (array(9, 13.5, 18, 22.5) as $x) {
+            $svg .= '<rect x="' . $n($x) . '" y="8" width="3.5" height="' . $n($hh) . '" fill="currentColor"/>';
+        }
+    } else {
+        $svg .= '<rect x="9" y="8" width="18" height="' . $n($hh) . '"' . ($heading === 'rounded' ? ' rx="' . $n($hh / 2) . '"' : '') . ' fill="currentColor"/>';
+        if ($heading === 'serif') {
+            $svg .= '<rect x="8" y="' . $n(8 + $hh - .5) . '" width="20" height=".5" fill="currentColor"/>';
+        }
+    }
+    $svg .= '<rect x="9" y="15" width="26" height="1" fill="currentColor" fill-opacity=".4"/>';
+
+    // The button, its label cut out: one line, or spaced capitals.
+    $br = $btn_radius >= 99 ? 2.5 : min(2.5, $half($btn_radius / 6));
+    $label = $caps
+        ? 'M12 20.75h2v1.5h-2zM15.5 20.75h2v1.5h-2zM19 20.75h2v1.5h-2z'
+        : 'M12.5 21h8v1h-8z';
+    $svg .= '<path d="' . _pg_look_drawing_rect(9, 19, 15, 5, $br) . $label . '" fill="currentColor" fill-rule="evenodd"/>';
+    return $svg . '</svg>';
 }
 
 // ── Thumbnails ─────────────────────────────────────────────────────────────

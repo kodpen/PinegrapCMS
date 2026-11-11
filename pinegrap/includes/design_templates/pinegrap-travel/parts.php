@@ -710,6 +710,19 @@ $trip_band = function () use ($el, $heading, $para, $link, $container, $row, $co
     ));
 };
 
+// Motion from the interactions on the nodes (pg_fx; nothing moves under
+// reduced motion): $fx gives a node one effect, $rise brings the children
+// of a row or a list in one after another as they scroll into view, and
+// $fade_in is the way a section's heading comes in.
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+$rise = function ($node, $stagger = 90) use ($fx) {
+    return $fx($node, array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => $stagger));
+};
+$fade_in = array('effect' => 'fade', 'trigger' => 'view', 'duration' => 700);
+
 // The facts of a tour in one line: length, largest group, destination and
 // style, each bound to the Tours form's field of the same name.
 $tour_facts = function ($sample_key = 'cappadocia', $class = 'd-flex flex-wrap gap-3 small text-body-secondary mb-0') use ($el, $icon, $span, $bind, $tours, $destinations, $styles, $length_text) {

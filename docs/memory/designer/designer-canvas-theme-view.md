@@ -6,7 +6,7 @@ description: The editor's Dark/Light canvas view and the theme switchers on the 
 ## Where does the editor's Dark/Light view live?
 - On the canvas `<html>` as `data-bs-theme` (dark, or no attribute / the engine's `light` for light), the attribute `pg_theme_switcher.js` writes on the published page. `applyCanvasTheme(mode, {source})` in `assets/js/style_designer.js` is the one place that sets it, the toolbar button (`#sd-vb-theme`), the Themes panel mode tabs and the panel's values. A fresh canvas document is written with the attribute on `<html>` (`_sdInitCanvasDoc()`), so the Animations button (`_sdCanvasRealmReset()`) keeps the view.
 - It used to sit on `<body>`, which overrides `<html>` for everything below it: with the toolbar on Dark, a canvas switcher set `<html>` light and the canvas stayed dark.
-- The view is not saved: the editor opens light.
+- The view is not saved: the editor opens in the design's colour mode (dark for Dark, the editor's system for Follow the system), else light ([[design-colour-mode]]).
 
 ## Why is a switcher on the canvas never stored as the visitor's theme?
 - The canvas iframe shares the site's origin, so its `localStorage` is the site's. `applyCanvasTheme()` used to click every `[data-bs-theme-value]` item and flip `.theme-toggle` checkboxes; the engine's `pgSetTheme()` then stored `pg-theme`, and the admin's own site opened dark. The canvas also opened in whatever the admin last picked on the site.

@@ -65,11 +65,12 @@ function test_settings_maintenance_category_is_last()
 	$source = settings_maintenance_test_source('includes/settings/registry.php');
 	$api = strpos($source, "\n        'api' => array(");
 	$maintenance = strpos($source, "\n        'maintenance' => array(");
-	$end = strpos($source, "\n    );\n", $maintenance);
+	// The Workspace's own categories follow it, under a heading of their own.
+	$end = strpos($source, "\n        'workspace_team' => array(", $maintenance);
 
 	pg_assert_true($maintenance !== false, 'a maintenance category');
 	pg_assert_true($api < $maintenance, 'read after API');
-	pg_assert_same(false, strpos(substr($source, $maintenance + 10, $end - $maintenance - 10), "\n        '"), 'the last one');
+	pg_assert_same(false, strpos(substr($source, $maintenance + 10, $end - $maintenance - 10), "\n        '"), 'the managers\' last one');
 }
 
 function test_settings_maintenance_category_holds_its_four_cards()
@@ -111,7 +112,7 @@ function test_settings_maintenance_cards_moved_out_of_general()
 		pg_assert_contains('id="' . $section . '"', $cards, $section . ' drawn here');
 	}
 
-	pg_assert_contains('id="cron_jobs"', $cards, 'the setup dialog goes with Cron Jobs');
+	pg_assert_contains("pg_settings_drawer('cron_jobs',", $cards, 'the setup drawer goes with Cron Jobs');
 	pg_assert_same(false, strpos($general, 'id="cron_jobs"'), 'and leaves General');
 
 	$names = settings_maintenance_test_names($cards);

@@ -1846,7 +1846,7 @@ $(document).ready(function () {
     //#notifications
     $('#notification_toggle').on('click', function () {
         if (pgUI.menu.isOpen(this)) {
-            get_notifications(true);
+            get_notifications();
         } else {
             $('#notifications').scrollTop(0);
         }
@@ -1855,13 +1855,24 @@ $(document).ready(function () {
     //shown #notifications
     pgUI.menu.on('#notification_toggle', 'shown', function () {
         $('#notification_toggle').addClass('show');
-        get_notifications(true);
+        get_notifications();
     });
     //hidden #notifications
     pgUI.menu.on('#notification_toggle', 'hidden', function () {
         $('#notification_toggle').removeClass('show');
         $('#notifications').scrollTop(0);
         pgBellFilter = pg_bell_filter_kept();
+        pg_bell_menu_close($('#notifications .pg-bell-menu-wrap'), false);
+    });
+    // A row's menu keeps its keys: Escape closes it (not the bell) and the
+    // arrows, Home and End move between its items. Bound on the bell itself,
+    // so the keys stop before Bootstrap's menu handler on the document.
+    window.addEventListener('keydown', pg_bell_menu_key, true);
+    // The menu closes when the focus leaves it.
+    $('#notifications').on('focusout', '.pg-bell-menu-wrap', function (event) {
+        if (!event.relatedTarget || !$.contains(this, event.relatedTarget)) {
+            pg_bell_menu_close($(this), false);
+        }
     });
 
     pg_push_open_requested();
@@ -3616,8 +3627,8 @@ function pg_push_message($text) {
 }
 
 //::::::::::::::::::NOTIFICATION::::::::::::::::::
-// The unread count the open list was last drawn for. It survives across
-// polls and drops to 0 when the list marks everything read, so a poll
+// The unread count the open list shows. It survives across polls and is set
+// by every drawing of the list (opening the bell reads nothing), so a poll
 // redraws the open list only when the count really rises.
 var $unreadsCallback = 0;
 
@@ -3657,10 +3668,10 @@ function check_unread_notifications(refresh_type) {
                     // if there is at least 1 unreaded notification that user is accessable than prepare for output notification badge.
                     // this check system dont get notifications we dont wanna more traffic.
                     if ($unreads > 0) {
-                        // if notification view menu is active than we also get notifications and update all but we dont set notifications readed, because maybe sceen is forgetten and user close and go we be sure to readed.
+                        // An open list is redrawn when something new came in; drawing it reads nothing.
                         if (pgUI.menu.isOpen('#notification_toggle')) {
                             if ($unreads > $unreadsCallback && refresh_type != 'editcallback_check') {
-                                get_notifications(false, true);
+                                get_notifications(true);
                             }
                         }
                         $output_unreads = 0;
@@ -3692,6 +3703,10 @@ function check_unread_notifications(refresh_type) {
     }
 };
 var notification_scrollTop = 0;
+// The latest list request: the bell's click and its shown event both ask
+// for the list on one opening, and only the last answer is drawn, so the
+// list (and the buttons above it) is never drawn twice.
+var pgBellLoad = 0;
 
 // What a refused or failed bell request says: the server's own sentence (a
 // translated refusal such as an ended session) or the generic failure line.
@@ -3747,7 +3762,7 @@ function remove_all_notifications() {
 // keep_place: a redraw the reader did not ask for (the unread poll) keeps the
 // old list until the new one arrives, then puts back its scroll position and
 // the focus on the same notification row.
-function get_notifications($read_mark, keep_place) {
+function get_notifications(keep_place) {
     const notifications = $('#notifications');
     const notifications_body = $('#notifications .menu-scroll-area');
     const notifications_content = $('#notifications .menu-scroll-area *');
@@ -3757,10 +3772,6 @@ function get_notifications($read_mark, keep_place) {
     var kept_scroll_outer = 0;
     var kept_row = '';
     var kept_index = -1;
-
-    if ($read_mark) {
-        $unreadsCallback = 0;
-    }
 
     if (keep_place) {
         kept_scroll = scroll_area.scrollTop();
@@ -3799,19 +3810,12 @@ function get_notifications($read_mark, keep_place) {
     };
 
     var spinner = $('#notifications .spinner');
-    var kept_badge = $('#notification_toggle .has-notification-icon').html();
-    var kept_badge_on = $('#notification_toggle').hasClass('fg-success');
-    // we will get new notifications that user can access and this notifications will set readed so we remove badges from notification button.
-    $('#notification_toggle .has-notification-icon').html('');
-    $('#notification_toggle').removeClass('fg-success');
+    var load = ++pgBellLoad;
 
-    // A refused or failed load: the unread badge comes back (nothing was
-    // marked read) and a list the reader opened shows why it is empty in
-    // place of the spinner. A keep_place redraw keeps the list it had.
+    // A refused or failed load: a list the reader opened shows why it is
+    // empty in place of the spinner. A keep_place redraw keeps the list it
+    // had. The unread badge is never touched: drawing the list reads nothing.
     var load_failed = function (response, xhr) {
-        $('#notification_toggle .has-notification-icon').html(kept_badge);
-        $('#notification_toggle').toggleClass('fg-success', kept_badge_on);
-
         if (keep_place) {
             return;
         }
@@ -3827,11 +3831,14 @@ function get_notifications($read_mark, keep_place) {
         url: 'api.php',
         data: JSON.stringify({
             action: 'get_notifications',
-            read_mark: $read_mark, // if this is true all notifications will be readed that user can access.
             token: software_token // token is important.
         }),
         type: 'POST',
         success: function (response) {
+
+            if (load !== pgBellLoad) {
+                return;
+            }
 
             // if we get response and its response.status is "success" than we get all notifications json encoded from api.php.
             $status = response.status;
@@ -3840,6 +3847,13 @@ function get_notifications($read_mark, keep_place) {
 
                 // there is at least 1 notifications, so we will output it.
                 var data_length = response.data.length;
+
+                // The poll redraws this list only when the count rises
+                // above what it shows.
+                var shown_unread = response.data.filter(function (row) {
+                    return row.readed != 1;
+                }).length;
+                $unreadsCallback = shown_unread;
 
                 var output_notifications = '';
                 if (keep_place) {
@@ -3850,113 +3864,36 @@ function get_notifications($read_mark, keep_place) {
                     // notification loading spinner remove
                     spinner.remove();
 
-                    // than we create notification by data.
-                    output_notifications = '<ul class="list-group list-group-flush">';
+                    // Above the list: "Mark all as read" beside "Delete All
+                    // Notifications" (pg_bell_filter_apply() shows each when
+                    // it applies).
+                    output_notifications = '<div class="pg-bell-actions d-flex flex-wrap border-bottom">'
+                        + '<button type="button" class="menu-item w-auto flex-fill pg-bell-mark-all fg-emphasis-primary"><span class="bi bi-check2-all me-3" aria-hidden="true"></span>' + lang('Mark all as read') + '</button>'
+                        + ((data_length > 1) ? '<button type="button" onclick="remove_all_notifications();" class="menu-item w-auto flex-fill notification-remove-btn fg-danger"><span class="bi bi-trash me-3" aria-hidden="true"></span>' + lang('Delete All Notifications') + '</button>' : '')
+                        + '</div>';
 
-                    var output_button_bar = '';
-                    // title, description and details arrive from the server as
-                    // ready-made HTML (pg_notification_display() escapes the
-                    // row's values and adds the markup). time is also
-                    // server-built markup: get_relative_time() wraps the
-                    // relative time in a <time> element that carries the
-                    // absolute time as a tooltip. Everything else is a raw
-                    // value and is escaped here before it becomes markup.
-                    // The target URL travels in a data attribute and is read
-                    // by the delegated click handler below, never spliced into
-                    // an inline onclick.
-                    var notification_id;
-                    var notification_user;
-                    var notification_time;
-                    var notification_type;
-                    var notification_readed;
-                    var notification_group;
-                    var notification_fold_head;
-                    var notification_fold_count;
-                    var notification_glyph;
-                    var notification_join;
-                    var notification_bell;
+                    // than we create notification by data: each row as the
+                    // dashboard's Next up row (pg_bell_row()), under its day
+                    // heading. A fold's runs follow their head and carry its
+                    // day (pg_notification_fold()), so they never open one.
+                    output_notifications += '<ul class="list-group list-group-flush pg-bell-list">';
+
+                    var notification_day = '';
+                    var notification_days = pg_bell_words().day;
                     while (i < data_length) {
-                        notification_id = parseInt(response.data[i].id, 10) || 0;
-                        notification_user = h(String(response.data[i].user || ''));
-                        notification_time = String(response.data[i].time || '');
-                        notification_type = h(String(response.data[i].type || ''));
-                        // The bell is the one inbox: a row is the site's or
-                        // the workspace's (the filters), and the older runs
-                        // of a flow follow the newest folded under it
-                        // (pg_notification_fold()).
-                        notification_group = (response.data[i].group === 'workspace') ? 'workspace' : 'site';
-                        notification_fold_head = parseInt(response.data[i].fold_head, 10) || 0;
-                        notification_fold_count = parseInt(response.data[i].fold_count, 10) || 1;
-                        notification_glyph = /^bi-[a-z0-9-]+$/.test(String(response.data[i].glyph || '')) ? String(response.data[i].glyph) : '';
-                        notification_join = /^https?:\/\//i.test(String(response.data[i].join || '')) ? String(response.data[i].join) : '';
-                        notification_bell = ' data-pg-bell-group="' + notification_group + '"';
+                        if ((parseInt(response.data[i].fold_head, 10) || 0) === 0) {
+                            var row_day = notification_days[response.data[i].day] ? String(response.data[i].day) : 'earlier';
 
-                        if (notification_fold_head > 0) {
-                            notification_bell += ' data-pg-bell-fold="' + notification_fold_head + '"';
-                        }
-
-                        response.data[i].description = '<div class="notification-description bg-2" style="--bs-bg-opacity: 0.2;">' + response.data[i].description + '</div>';
-                        response.data[i].details = '<div notification-details>' + response.data[i].details + '</div>';
-                        if (response.data[i].action != 'custom') {
-                            output_button_bar = '<button type="button" class="menu-item bi bi-link bi-me-2 fg-emphasis-primary notification-go" data-url="' + h(String(response.data[i].url || '')) + '">' + lang('Go to the relevant page') + '</button>';
-
-
-                            output_button_bar += '<button type="button" class="fs-smaller menu-item bi bi-check-square bi-me-2 fg-emphasis-secondary" onclick="edit_notification(\'' + notification_id + '\', \'mark_unread\'); this.remove();">' + lang('Mark as unread') + '</button>';
-
-                            // A meeting about to start: its call, one tap away.
-                            if (notification_join !== '') {
-                                output_button_bar = '<button type="button" class="menu-item bi bi-camera-video bi-me-2 fg-emphasis-primary pg-bell-join" data-url="' + h(notification_join) + '">' + lang('Join') + '</button>' + output_button_bar;
+                            if (row_day !== notification_day) {
+                                notification_day = row_day;
+                                output_notifications += '<li class="pg-bell-day" data-pg-bell-day="' + row_day + '">' + h(notification_days[row_day]) + '</li>';
                             }
-
-                            if (notification_fold_count > 1) {
-                                output_button_bar += pg_bell_fold_button(notification_id, notification_fold_count);
-                            }
-
-                            output_data_title = '<small class="notification-title text-wrap text-break w-100">' + ((notification_glyph !== '') ? '<span class="bi ' + notification_glyph + ' pg-bell-glyph" aria-hidden="true"></span>' : '') + response.data[i].title + '</small>';
-                        } else {
-                            output_data_title = '<div class="notification-title text-wrap w-100">' + response.data[i].title + '</div>';
                         }
 
-
-                        if (response.data[i].readed != 1) {
-                            notification_readed = 'new';
-                        } else {
-                            notification_readed = '';
-                        }
-
-                        $output_border_classes = '';
-                        if (i > 0) {
-                            $output_border_classes = ' border-top border-secondary';
-
-                        }
-
-                        //we complete notification skeleton and output it before clear notification button.
-                        // OUTPUT
-                        output_notifications += '\
-                        <li notification-id="' + notification_id + '"' + notification_bell + ' class="software_notification custom-contextmenu position-relative list-group-item border-0 p-0 viewed bg-transparent ' + notification_readed + ' ' + notification_type + (((notification_fold_head > 0) && !pgBellOpenFolds[notification_fold_head]) ? ' pg-bell-shut' : '') + '">\
-                            <div class="container-fluid">\
-                            <div class="row notification-card ' + $output_border_classes + '" style="--bs-border-opacity:0.08;">\
-                                    <div class="col-12 ps-7 p-3 border-bottom border-secondary " style="--bs-border-opacity:0.04;">\
-                                        <div class="d-flex w-100 justify-content-between">\
-                                            ' + output_data_title + '\
-                                        </div>\
-                                        <small>' + response.data[i].description + response.data[i].details + '</small>\
-                                        <div class="d-flex w-100 justify-content-between">\
-                                            <span class="me-auto badge bg-transparent fg-reset fw-light text-overflow-hidden">' + notification_user + '</span>\
-                                            <span class="ms-auto badge bg-transparent fg-reset fw-light">' + notification_time + '</span>\
-                                        </div>\
-                                    </div>\
-                                    ' + output_button_bar + '\
-                                </div>\
-                            </div>\
-                        </li>';
+                        output_notifications += pg_bell_row(response.data[i]);
                         i++;
                     }
                     output_notifications += '</ul>';
-
-                    if (data_length > 1) {
-                        output_notifications += '<a href="#!" onclick="remove_all_notifications();" title="' + lang('Delete All Notifications') + '" class="menu-item notification-remove-btn fg-danger border-top"><span class="bi bi-trash me-3"></span>' + lang('Delete All Notifications') + '</a></li>';
-                    }
 
                     notifications_body.append(output_notifications);
                     pg_bell_filter_apply();
@@ -3979,10 +3916,108 @@ function get_notifications($read_mark, keep_place) {
             }
         },
         error: function (xhr) {
-            load_failed(null, xhr);
+            if (load === pgBellLoad) {
+                load_failed(null, xhr);
+            }
         }
     });
 };
+
+// The names a bell row is drawn with: its module's tag
+// (pg_notification_module()), the job of its one button
+// (pg_notification_button()) and the day headings (pg_notification_day()).
+function pg_bell_words() {
+    return {
+        module: { shop: lang('Shop'), erp: lang('Accounting'), content: lang('Content'), team: lang('Team'), system: lang('System') },
+        button: { reply: lang('Reply'), show: lang('Show'), join: lang('Join'), approve: lang('Approve') },
+        day: { today: lang('Today'), yesterday: lang('Yesterday'), earlier: lang('Earlier') }
+    };
+}
+
+// One bell row, drawn as the dashboard's Next up row: the module's tag, the
+// title over one second line (the excerpt, or the sender when there is none,
+// then the time), the one button named by its job, the unread dot ("Mark as
+// read") and the row's menu (Delete, "Mark as unread").
+// title, description and details arrive from the server as ready-made HTML
+// (pg_notification_display() escapes the row's values and adds the markup).
+// time is also server-built markup: get_relative_time() wraps the relative
+// time in a <time> element that carries the absolute time as a tooltip.
+// Everything else is a raw value and is escaped here before it becomes
+// markup. The target URL travels in a data attribute and is read by the
+// delegated click handler below, never spliced into an inline onclick.
+function pg_bell_row(row) {
+    var words = pg_bell_words();
+    var id = parseInt(row.id, 10) || 0;
+    var module = words.module[row.module] ? String(row.module) : 'system';
+    // The bell is the one inbox: a row is the site's or the workspace's (the
+    // filters), and the older runs of a flow follow the newest folded under
+    // it (pg_notification_fold()).
+    var group = (row.group === 'workspace') ? 'workspace' : 'site';
+    var fold_head = parseInt(row.fold_head, 10) || 0;
+    var fold_count = parseInt(row.fold_count, 10) || 1;
+    var glyph = /^bi-[a-z0-9-]+$/.test(String(row.glyph || '')) ? String(row.glyph) : '';
+    var join = /^https?:\/\//i.test(String(row.join || '')) ? String(row.join) : '';
+    var job = words.button[row.button] ? String(row.button) : '';
+    var unread = (row.readed != 1);
+    var url = h(String(row.url || ''));
+    var title_id = 'pg_bell_title_' + id;
+    var menu_id = 'pg_bell_menu_' + id;
+    var type = h(String(row.type || ''));
+    var excerpt = String(row.description || '');
+    var title;
+    var button = '';
+
+    if (excerpt === '') {
+        excerpt = String(row.details || '').replace(/<br\s*\/?>/gi, ' · ');
+    }
+
+    if (excerpt === '') {
+        excerpt = h(String(row.user || ''));
+    }
+
+    // A meeting without its call opens the row's place like Show.
+    if ((job === 'join') && (join === '')) {
+        job = 'show';
+    }
+
+    // The title opens the row's place as the button does; a custom row has
+    // neither.
+    title = ((glyph !== '') ? '<span class="bi ' + glyph + ' pg-bell-glyph" aria-hidden="true"></span>' : '') + String(row.title || '');
+
+    if (job !== '') {
+        title = '<button type="button" class="pg-bell-title notification-title notification-go no-popover" id="' + title_id + '" data-url="' + url + '">' + title + '</button>';
+        button = (job === 'join')
+            ? '<button type="button" class="pg-bell-act pg-bell-join no-popover" data-url="' + h(join) + '" aria-describedby="' + title_id + '">' + h(words.button.join) + '</button>'
+            : '<button type="button" class="pg-bell-act notification-go no-popover" data-url="' + url + '" aria-describedby="' + title_id + '">' + h(words.button[job]) + '</button>';
+    } else {
+        title = '<div class="pg-bell-title notification-title" id="' + title_id + '">' + title + '</div>';
+    }
+
+    return '<li notification-id="' + id + '" data-pg-bell-group="' + group + '" data-pg-bell-module="' + module + '"'
+        + ((fold_head > 0) ? ' data-pg-bell-fold="' + fold_head + '"' : '')
+        + ' class="software_notification pg-bell-row list-group-item ' + (unread ? 'new' : 'viewed') + ' ' + type
+        + (((fold_head > 0) && !pgBellOpenFolds[fold_head]) ? ' pg-bell-shut' : '') + '">'
+        + '<div class="notification-card pg-bell-card">'
+        + '<span class="pg-bell-tag" data-module="' + module + '">' + h(words.module[module]) + '</span>'
+        + '<div class="pg-bell-text">'
+        + title
+        + '<div class="pg-bell-sub">' + ((excerpt !== '') ? '<span class="pg-bell-excerpt">' + excerpt + '</span> ' : '') + '<span class="pg-bell-time">' + String(row.time || '') + '</span></div>'
+        + ((fold_count > 1) ? pg_bell_fold_button(id, fold_count) : '')
+        + '</div>'
+        + '<div class="pg-bell-side">'
+        + button
+        + pg_bell_read_button(id, unread)
+        + '<div class="pg-bell-menu-wrap">'
+        + '<button type="button" class="pg-bell-menu-toggle no-popover" aria-expanded="false" aria-controls="' + menu_id + '" aria-label="' + h(lang('More actions')) + '" aria-describedby="' + title_id + '"><span class="bi bi-three-dots" aria-hidden="true"></span></button>'
+        + '<div class="pg-bell-menu" id="' + menu_id + '" hidden>'
+        + '<button type="button" class="pg-bell-menu-item pg-bell-unread" data-pg-bell-unread="' + id + '"' + (unread ? ' hidden' : '') + '><span class="bi bi-envelope" aria-hidden="true"></span>' + h(lang('Mark as unread')) + '</button>'
+        + '<button type="button" class="pg-bell-menu-item pg-bell-delete" data-pg-bell-delete="' + id + '"><span class="bi bi-trash" aria-hidden="true"></span>' + h(lang('Delete')) + '</button>'
+        + '</div>'
+        + '</div>'
+        + '</div>'
+        + '</div>'
+        + '</li>';
+}
 
 // The bell's filters (output.php, for a member of the team): everything, the
 // site's notices or what the workspace told the person. The reader's choice
@@ -4031,10 +4066,30 @@ function pg_bell_filter_apply() {
             counts[group]++;
         }
 
-        if (!off && !row.classList.contains('pg-bell-shut')) {
+        if (!off && !row.classList.contains('pg-bell-shut') && !row.classList.contains('pg-bell-gone')) {
             shown++;
         }
     });
+
+    // A day heading stays while a row under it is shown.
+    var heading = null;
+    var heading_rows = 0;
+    var heading_done = function () {
+        if (heading) {
+            heading.classList.toggle('pg-bell-off', heading_rows === 0);
+        }
+    };
+
+    Array.prototype.forEach.call(box.querySelectorAll('li.pg-bell-day, li.software_notification'), function (item) {
+        if (item.classList.contains('pg-bell-day')) {
+            heading_done();
+            heading = item;
+            heading_rows = 0;
+        } else if (!item.classList.contains('pg-bell-off') && !item.classList.contains('pg-bell-shut') && !item.classList.contains('pg-bell-gone')) {
+            heading_rows++;
+        }
+    });
+    heading_done();
 
     if (bar) {
         Array.prototype.forEach.call(bar.querySelectorAll('[data-pg-bell-filter]'), function (chip) {
@@ -4054,15 +4109,55 @@ function pg_bell_filter_apply() {
         $(box).find('.notifications_empty').toggleClass('d-none', shown > 0);
     }
 
-    // Deleting everything is offered only while everything is shown.
+    // Deleting everything is offered only while everything is shown;
+    // marking everything read only while something is unread.
     $(box).find('.notification-remove-btn').toggleClass('d-none', filter !== 'all');
+    $(box).find('.pg-bell-mark-all').toggleClass('d-none', counts.all === 0);
+}
+
+// A row's unread dot, a button named "Mark as read"; a read row keeps its
+// place empty, and "Mark as unread" waits in its menu.
+function pg_bell_read_button(notification_id, unread) {
+    var id = parseInt(notification_id, 10) || 0;
+
+    if (!unread) {
+        return '<span class="pg-bell-dot pg-bell-read" data-pg-bell-read="' + id + '" aria-hidden="true"></span>';
+    }
+
+    return '<button type="button" class="pg-bell-dot pg-bell-read no-popover" data-pg-bell-read="' + id + '" aria-label="' + h(lang('Mark as read')) + '" title="' + h(lang('Mark as read')) + '"></button>';
+}
+
+// Draws a row read or unread: its classes, its dot and its menu's "Mark as
+// unread".
+function pg_bell_row_state($row, unread) {
+    $row.toggleClass('new', unread).toggleClass('viewed', !unread);
+    $row.find('.pg-bell-read').each(function () {
+        $(this).replaceWith(pg_bell_read_button($(this).attr('data-pg-bell-read'), unread));
+    });
+    $row.find('.pg-bell-unread').prop('hidden', unread);
+}
+
+// Opens a row: an unread row is read first and open() runs once the server
+// answered, either way, so the read is not lost to the page change and a
+// refusal never keeps the reader from the page.
+function pg_bell_open_row($button, open) {
+    var $row = $button.closest('li[notification-id]');
+    var notification_id = parseInt($row.attr('notification-id'), 10) || 0;
+
+    if (!$row.hasClass('new') || notification_id < 1) {
+        open();
+        return;
+    }
+
+    edit_notification(notification_id, 'mark_read', open);
 }
 
 // The way to a flow's older runs folded under its newest, and back.
 function pg_bell_fold_button(notification_id, count) {
     var open = !!pgBellOpenFolds[notification_id];
 
-    return '<button type="button" class="menu-item bi ' + (open ? 'bi-chevron-up' : 'bi-chevron-down') + ' bi-me-2 fg-emphasis-secondary pg-bell-more" data-pg-bell-more="' + notification_id + '" data-pg-bell-runs="' + (count - 1) + '" aria-expanded="' + (open ? 'true' : 'false') + '">'
+    return '<button type="button" class="pg-bell-more no-popover" data-pg-bell-more="' + notification_id + '" data-pg-bell-runs="' + (count - 1) + '" aria-expanded="' + (open ? 'true' : 'false') + '">'
+        + '<span class="bi ' + (open ? 'bi-chevron-up' : 'bi-chevron-down') + '" aria-hidden="true"></span>'
         + h(open ? lang('Show fewer') : lang('+{var:1} more').replace('{var:1}', String(count - 1))) + '</button>';
 }
 
@@ -4119,7 +4214,8 @@ $(document).on('click', '#notifications .pg-bell-more', function () {
     pg_bell_filter_apply();
 });
 
-// A meeting's call opens in a tab of its own, cut off from the panel.
+// A meeting's call opens in a tab of its own, cut off from the panel. The
+// tab opens at once (a popup must follow the click) and the row is read.
 $(document).on('click', '#notifications .pg-bell-join', function () {
     var url = String($(this).attr('data-url') || '');
 
@@ -4132,6 +4228,148 @@ $(document).on('click', '#notifications .pg-bell-join', function () {
     if (opened) {
         opened.opener = null;
     }
+
+    pg_bell_open_row($(this), function () {});
+});
+
+// The unread dot reads the row; the focus moves on to the row's menu, as
+// the dot is gone once the row is read.
+$(document).on('click', '#notifications button.pg-bell-read', function () {
+    var notification_id = parseInt($(this).attr('data-pg-bell-read'), 10) || 0;
+    var $row = $(this).closest('li[notification-id]');
+
+    edit_notification(notification_id, 'mark_read');
+    $row.find('.pg-bell-menu-toggle').trigger('focus');
+});
+
+// A row's menu (Delete, "Mark as unread"): a small disclosure of its own,
+// not a nested Bootstrap menu, so it never closes the bell around it.
+function pg_bell_menu_close($wrap, focus) {
+    $wrap.each(function () {
+        var $menu = $(this).find('.pg-bell-menu');
+
+        if ($menu.prop('hidden')) {
+            return;
+        }
+
+        $menu.prop('hidden', true).removeClass('pg-bell-menu-up');
+        $(this).find('.pg-bell-menu-toggle').attr('aria-expanded', 'false');
+
+        if (focus) {
+            $(this).find('.pg-bell-menu-toggle').trigger('focus');
+        }
+    });
+}
+
+function pg_bell_menu_items($wrap) {
+    return $wrap.find('.pg-bell-menu-item').filter(function () {
+        return !this.hidden;
+    });
+}
+
+// The keys of an open row menu: the arrows, Home and End move, Escape
+// closes it. Bootstrap binds its menu keys on the document in the capture
+// phase, where Escape would close the whole bell, so this listener sits on
+// the window's capture phase and stops these keys before they get there.
+function pg_bell_menu_key(event) {
+    var wrap = (event.target instanceof Element) ? event.target.closest('#notifications .pg-bell-menu-wrap') : null;
+
+    if (!wrap || ['Escape', 'ArrowDown', 'ArrowUp', 'Home', 'End'].indexOf(event.key) < 0) {
+        return;
+    }
+
+    var $wrap = $(wrap);
+    var $items = pg_bell_menu_items($wrap);
+    var at = $items.index(document.activeElement);
+
+    if ($wrap.find('.pg-bell-menu').prop('hidden')) {
+        return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (event.key === 'Escape') {
+        pg_bell_menu_close($wrap, true);
+    } else if (event.key === 'Home') {
+        $items.first().trigger('focus');
+    } else if (event.key === 'End') {
+        $items.last().trigger('focus');
+    } else if (at < 0) {
+        ((event.key === 'ArrowDown') ? $items.first() : $items.last()).trigger('focus');
+    } else {
+        $items.eq((at + ((event.key === 'ArrowDown') ? 1 : ($items.length - 1))) % $items.length).trigger('focus');
+    }
+}
+
+$(document).on('click', '#notifications .pg-bell-menu-toggle', function () {
+    var $wrap = $(this).closest('.pg-bell-menu-wrap');
+    var $menu = $wrap.find('.pg-bell-menu');
+    var open = $menu.prop('hidden');
+
+    pg_bell_menu_close($('#notifications .pg-bell-menu-wrap').not($wrap), false);
+
+    if (!open) {
+        pg_bell_menu_close($wrap, true);
+        return;
+    }
+
+    $menu.prop('hidden', false);
+    $(this).attr('aria-expanded', 'true');
+
+    // Opens upwards when the bell's list has no room left below the row.
+    var area = $(this).closest('.menu-scroll-area')[0];
+
+    if (area) {
+        var room = area.getBoundingClientRect().bottom - this.getBoundingClientRect().bottom;
+
+        $menu.toggleClass('pg-bell-menu-up', room < $menu.outerHeight() + 8);
+    }
+
+    pg_bell_menu_items($wrap).first().trigger('focus');
+});
+
+$(document).on('click', function (event) {
+    var $open = $('#notifications .pg-bell-menu-wrap').filter(function () {
+        return !$(this).find('.pg-bell-menu').prop('hidden') && !$.contains(this, event.target);
+    });
+
+    pg_bell_menu_close($open, false);
+});
+
+$(document).on('click', '#notifications .pg-bell-unread', function () {
+    var $wrap = $(this).closest('.pg-bell-menu-wrap');
+
+    pg_bell_menu_close($wrap, true);
+    edit_notification(parseInt($(this).attr('data-pg-bell-unread'), 10) || 0, 'mark_unread');
+});
+
+// Delete: the focus goes to the next row's menu, or the one before, so the
+// keyboard is not dropped with the row.
+$(document).on('click', '#notifications .pg-bell-delete', function () {
+    var $row = $(this).closest('li[notification-id]');
+    var shown = function () {
+        return !$(this).is('.pg-bell-off, .pg-bell-shut, .pg-bell-gone');
+    };
+    var $next = $row.nextAll('li.software_notification').filter(shown).first();
+
+    if (!$next.length) {
+        $next = $row.prevAll('li.software_notification').filter(shown).first();
+    }
+
+    pg_bell_menu_close($(this).closest('.pg-bell-menu-wrap'), false);
+    edit_notification(parseInt($(this).attr('data-pg-bell-delete'), 10) || 0, 'remove');
+
+    if ($next.length) {
+        $next.find('.pg-bell-menu-toggle').trigger('focus');
+    } else {
+        $('#notification_toggle').trigger('focus');
+    }
+});
+
+// "Mark all as read" above the list: every row the reader sees.
+$(document).on('click', '#notifications .pg-bell-mark-all', function () {
+    edit_notification(0, 'mark_all_read');
 });
 
 // Opens the page a notification points to. The URL sits in a data attribute
@@ -4146,40 +4384,64 @@ $(document).on('click', '#notifications .notification-go', function () {
         return;
     }
 
-    if (window.location.href.indexOf('toolbar.php') > -1) {
-        parent.document.location.href = url;
-    } else {
-        location.href = url;
-    }
+    // The row is read first, then its page opens.
+    pg_bell_open_row($(this), function () {
+        if (window.location.href.indexOf('toolbar.php') > -1) {
+            parent.document.location.href = url;
+        } else {
+            location.href = url;
+        }
+    });
 });
 
-function edit_notification(notification_id, do_action) {
+// do_action: remove, mark_read, mark_unread (one row) or mark_all_read
+// (every row the reader sees; notification_id is 0). done, when given, runs
+// once the server answered, whatever it said (pg_bell_open_row()).
+function edit_notification(notification_id, do_action, done) {
 
-    var $target = $('#notifications li[notification-id="' + String(notification_id).replace(/["\\]/g, '') + '"]');
-    var was_new = $target.hasClass('new');
-    var was_viewed = $target.hasClass('viewed');
+    var all = (do_action === 'mark_all_read');
+    var $target = all
+        ? $('#notifications li.software_notification')
+        : $('#notifications li[notification-id="' + String(notification_id).replace(/["\\]/g, '') + '"]');
+    var runs = [];
+    var kept = [];
+
+    // A fold's head is read with the runs drawn under it.
+    if (do_action === 'mark_read') {
+        $('#notifications li[data-pg-bell-fold="' + (parseInt(notification_id, 10) || 0) + '"]').each(function () {
+            if ($(this).hasClass('new')) {
+                runs.push(parseInt($(this).attr('notification-id'), 10) || 0);
+                $target = $target.add(this);
+            }
+        });
+    }
+
+    $target.each(function () {
+        kept.push({ row: $(this), unread: $(this).hasClass('new') });
+    });
 
     // The row changes at once, but it is removed only once the server has
-    // deleted it: a refused edit puts the row back as it was, so the list
-    // never hides a notification that is still on the server.
+    // deleted it: a refused edit puts the rows back as they were, so the
+    // list never shows a state the server does not hold.
     var put_back = function () {
-        $target.stop(true, true).show();
-        $target.toggleClass('new', was_new).toggleClass('viewed', was_viewed);
-
-        // The 'Mark as unread' button removed itself on the click; a quiet
-        // redraw brings it back with the row's state as the server holds it.
-        if (do_action === 'mark_unread') {
-            get_notifications(false, true);
-        }
+        kept.forEach(function (entry) {
+            entry.row.stop(true, true).removeClass('pg-bell-gone').show();
+            pg_bell_row_state(entry.row, entry.unread);
+        });
+        pg_bell_filter_apply();
     };
 
     if (do_action === 'remove') {
-        $target.hide('slow');
+        $target.addClass('pg-bell-gone').hide('slow');
+    } else if ((do_action === 'mark_read') || all) {
+        $target.each(function () {
+            pg_bell_row_state($(this), false);
+        });
     } else if (do_action === 'mark_unread') {
-        $target.addClass('new');
-        $target.removeClass('viewed');
-
+        pg_bell_row_state($target, true);
     }
+    pg_bell_filter_apply();
+
     // we check notifications from api.php with ajax.
     $.ajax({
         contentType: 'application/json',
@@ -4188,6 +4450,7 @@ function edit_notification(notification_id, do_action) {
             action: 'edit_notifications',
             do_action: do_action,
             id: notification_id,
+            runs: runs,
             token: software_token // token is important.
         }),
         type: 'POST',
@@ -4197,6 +4460,7 @@ function edit_notification(notification_id, do_action) {
             if ($status == "success") {
                 if (do_action === 'remove') {
                     $target.stop(true, true).remove();
+                    pg_bell_filter_apply();
                 }
 
                 //we check notifications because maybe change notification number
@@ -4210,6 +4474,11 @@ function edit_notification(notification_id, do_action) {
         error: function (xhr) {
             put_back();
             pg_bell_refused(null, xhr);
+        },
+        complete: function () {
+            if (typeof done === 'function') {
+                done();
+            }
         }
     });
 };
@@ -10952,6 +11221,94 @@ var pgSettingsModal = (function () {
     }
 
 
+    /**
+     * A card's drawer.
+     *
+     * A card that needs more room than a card has (a list of examples, a
+     * long form) carries a panel of its own, which slides in from the
+     * dialog's right edge over the pane (includes/settings/drawer.php). It
+     * is moved into the dialog's own host when the pane arrives, so it is a
+     * part of this dialog and never a second layer above it.
+     *
+     * The pane under it is only covered: its values, its unsaved mark and
+     * its scroll stay as they were. While the drawer is open the list and
+     * the pane are inert, so Tab stays inside the drawer; Escape and Close
+     * shut it and hand the focus back to the button that opened it.
+     */
+    var opener = null;
+
+
+    function cardDrawer() {
+        return el ? el.querySelector('#pg_settings_modal_drawers > .pg-sm-drawer.is-open') : null;
+    }
+
+
+    function underCardDrawer(state) {
+
+        state = !!state;
+
+        el.classList.toggle('is-drawer-open', state);
+
+        [byId('pg_settings_modal_side'), byId('pg_settings_modal_scrim'), el.querySelector('.pg-sm-main')].forEach(function (node) {
+            if (node) {
+                node.toggleAttribute('inert', state);
+            }
+        });
+    }
+
+
+    function openCardDrawer(target, button) {
+
+        if (!target || !target.parentNode || (target.parentNode.id !== 'pg_settings_modal_drawers')) {
+            return;
+        }
+
+        var open = cardDrawer();
+
+        if (open && (open !== target)) {
+            open.classList.remove('is-open');
+        }
+
+        // The phone list and a card's drawer never stand open together.
+        drawer(false);
+
+        if (button) {
+            button.setAttribute('aria-expanded', 'true');
+        }
+
+        opener = button || null;
+
+        target.classList.add('is-open');
+        underCardDrawer(true);
+        target.focus({ preventScroll: true });
+    }
+
+
+    function closeCardDrawer(giveBack) {
+
+        var open = cardDrawer();
+
+        if (open) {
+            open.classList.remove('is-open');
+        }
+
+        underCardDrawer(false);
+
+        var back = opener;
+
+        opener = null;
+
+        if (back) {
+            back.setAttribute('aria-expanded', 'false');
+        }
+
+        // Not when the pane is being thrown away: the button goes with it.
+        if ((giveBack !== false) && back && document.contains(back)) {
+            back.focus({ preventScroll: true });
+        }
+    }
+
+
     function wire() {
 
         // The chat launcher is fixed at a higher z-index than any modal, so it
@@ -11007,7 +11364,9 @@ var pgSettingsModal = (function () {
         // button (modal.php), which clears it. A click whose default was
         // cancelled -- an inline confirm() answered with Cancel -- submits
         // nothing, so it is not remembered for the next save either.
-        $(el).on('click', '#pg_settings_modal_form [type="submit"]', function (event) {
+        // A button in a card's drawer joins the form by its form attribute
+        // (the drawer sits outside it) and counts the same.
+        $(el).on('click', '#pg_settings_modal_form [type="submit"], #pg_settings_modal_drawers [type="submit"][form="pg_settings_modal_form"]', function (event) {
 
             pressed = (!event.isDefaultPrevented() && this.name && !this.disabled)
                 ? { name: this.name, value: this.value }
@@ -11080,36 +11439,52 @@ var pgSettingsModal = (function () {
             }
         });
 
-        // Escape closes the drawer before it closes the dialog. Bound to the
-        // document in the capture phase because Bootstrap's own Escape handler
-        // sits on the dialog element and was registered first.
+        // Escape closes a card's drawer, then the phone list, before it
+        // closes the dialog. Bound to the document in the capture phase
+        // because Bootstrap's own Escape handler sits on the dialog element
+        // and was registered first.
         document.addEventListener('keydown', function (event) {
 
-            if ((event.key !== 'Escape') || !pgUI.dialog.isOpen(el) || !drawerOpen()) {
+            if ((event.key !== 'Escape') || !pgUI.dialog.isOpen(el)) {
                 return;
             }
 
-            // A native <dialog> closes on Escape as the key's default
-            // action, which stopping the event alone does not cancel.
+            // An Escape meant for another dialog in front of this one (a
+            // confirmation, the file picker) is that dialog's.
+            var layer = (event.target && event.target.closest) ? event.target.closest('dialog[open]') : null;
+
+            if (layer && (layer !== el)) {
+                return;
+            }
+
+            if (cardDrawer()) {
+
+                // A native <dialog> closes on Escape as the key's default
+                // action, which stopping the event alone does not cancel.
+                event.preventDefault();
+                event.stopPropagation();
+                closeCardDrawer();
+                return;
+            }
+
+            if (!drawerOpen()) {
+                return;
+            }
+
             event.preventDefault();
             event.stopPropagation();
             drawer(false);
 
         }, true);
 
-        $(el).on('click', '#pg_settings_modal_save', function () {
-            save();
-        });
+        // A card's drawer slides in over the pane. Bootstrap's own data-api
+        // would open it in the top layer and hide the settings, and cannot be
+        // headed off -- its delegated listeners sit on the document in the
+        // capture phase -- so the server hands us the trigger under a name of
+        // our own; see pg_settings_own_dialog_triggers().
+        $(el).on('click', '#pg_settings_modal_pane [data-pgdrawer="open"]', function (event) {
 
-        // A dialog a card brings with it opens ON TOP of the settings, not
-        // instead of them. Bootstrap's own data-api would close the settings
-        // first and cannot be headed off -- its delegated listeners sit on the
-        // document in the capture phase -- so the server hands us the trigger
-        // under a name of our own; see pg_settings_own_dialog_triggers().
-        $(el).on('click', '#pg_settings_modal_pane [data-pgdialog="modal"]', function (event) {
-
-            var target = document.querySelector(
-                this.getAttribute('data-bs-target') || this.getAttribute('href') || '');
+            var target = byId((this.getAttribute('data-bs-target') || '').replace(/^#/, ''));
 
             if (!target) {
                 return;
@@ -11117,15 +11492,21 @@ var pgSettingsModal = (function () {
 
             event.preventDefault();
 
+            openCardDrawer(target, this);
+        });
 
-            pgUI.dialog.show(target);
+        $(el).on('click', '[data-pgdrawer-close], #pg_settings_modal_dscrim', function () {
+            closeCardDrawer();
+        });
+
+        $(el).on('click', '#pg_settings_modal_save', function () {
+            save();
         });
 
         // When a person last did something. Bound to the document and in the
-        // capture phase, not to the dialog: a card's own sub-dialog sits in the
-        // box BESIDE the dialog, and the file picker it opens is somewhere else
-        // again -- a press in either of those is still the operator working on
-        // this pane.
+        // capture phase, not to the dialog: the file picker a card opens sits
+        // outside it -- a press there is still the operator working on this
+        // pane.
         //
         // The time is all that is kept. Which control was pressed says nothing
         // useful: the operator presses "Generate" and the value appears in a
@@ -11863,21 +12244,20 @@ var pgSettingsModal = (function () {
 
 
     /**
-     * Let go of the dialogs the pane on screen brought with it.
-     *
-     * Disposed rather than dropped: an instance whose element is torn out from
-     * under it leaves its backdrop on the page, over a screen with nothing to
-     * close it.
+     * Let go of what the pane on screen brought with it: its drawer and the
+     * hidden forms beside the dialog.
      */
     function clearExtras() {
 
-        // The code fields of a card's own dialog (the cron commands) go with it.
-        window.pgReleaseEditors(byId('pg_settings_modal_extras'));
+        // A card's drawer goes with the pane that brought it, and so do its
+        // code fields (the cron commands). The focus is not handed back: the
+        // button that opened it is on its way out too.
+        closeCardDrawer(false);
 
-        $('#pg_settings_modal_extras .dialog').each(function () {
+        window.pgReleaseEditors(byId('pg_settings_modal_drawers'));
+        window.pgReleaseFields(byId('pg_settings_modal_drawers'));
 
-            pgUI.dialog.dispose(this);
-        });
+        $('#pg_settings_modal_drawers').empty();
 
         $('#pg_settings_modal_extras').empty();
     }
@@ -11935,14 +12315,15 @@ var pgSettingsModal = (function () {
      */
     function markable(name) {
 
-        var box = byId('pg_settings_modal_pane');
-
-        if (!box || !name) {
+        if (!el || !name) {
             return null;
         }
 
+        // The pane, then a card's drawer: a drawer's fields join the form too.
         var esc = (window.CSS && CSS.escape) ? CSS.escape : function (text) { return String(text).replace(/["\\]/g, '\\$&'); };
-        var found = box.querySelectorAll('[name="' + esc(name) + '"], [name="' + esc(name + '[]') + '"], [name^="' + esc(name + '[') + '"]');
+        var found = el.querySelectorAll(['#pg_settings_modal_pane', '#pg_settings_modal_drawers'].map(function (box) {
+            return box + ' [name="' + esc(name) + '"], ' + box + ' [name="' + esc(name + '[]') + '"], ' + box + ' [name^="' + esc(name + '[') + '"]';
+        }).join(', '));
 
         for (var i = 0; i < found.length; i++) {
 
@@ -11960,7 +12341,7 @@ var pgSettingsModal = (function () {
      */
     function unmark() {
 
-        $('#pg_settings_modal_pane [data-pg-sm-marked]').each(function () {
+        $('#pg_settings_modal_pane [data-pg-sm-marked], #pg_settings_modal_drawers [data-pg-sm-marked]').each(function () {
             this.removeAttribute('data-pg-sm-marked');
             window.pgFieldInvalid(this, false);
         });
@@ -12330,10 +12711,17 @@ window.pgCodeEditorReady = function (markup, done) {
         // the code editors and the tag fields, and .html() runs them.
         $pane.html(response.html || '');
 
-        // A card's own dialog cannot stay inside this one -- nested modals
-        // share the outer backdrop and are drawn behind it.
+        // What a card hands over beside its markup: hidden Connect forms stay
+        // in the box after the dialog, outside the settings form.
         if (response.modals) {
             $('#pg_settings_modal_extras').html(response.modals);
+
+            // A card's drawer is the other way round: it belongs inside the
+            // dialog, over the pane, and is moved into the dialog's host
+            // once its scripts have run (includes/settings/drawer.php).
+            $('#pg_settings_modal_extras').children('.pg-sm-drawer').appendTo('#pg_settings_modal_drawers');
+
+            pgInitInjected($('#pg_settings_modal_drawers'));
         }
 
         // The scripts a card publishes separately. Appended into the pane, not

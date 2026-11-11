@@ -8,31 +8,33 @@ description: Order of the polishing round after Launch: every shipped template's
 - From when L3 lands, up to four templates at a time, in the order below; a template's `-2` waits for its `-1`.
 
 ## In which order, and why?
-0. G1, G2 (after L1): general blocks the sector templates share, each checked against the existing groups first, so the later families stay small and reuse them. Done in one PR (#8082): eight of the ten were already palette blocks; spaces to hire and seasonal hours were added. Which block covers each: [[designer-blocks-general]].
+0. G1, G2 (after L1): general blocks the sector templates share, each checked against the existing groups first, so the later families stay small and reuse them. Done in #8082: eight of ten were already palette blocks; spaces to hire and seasonal hours were added. Which block covers each: [[designer-blocks-general]].
 1. Built on the shared builders (`$story_band`, `$framed`, `$ask_band`, `$figures`, `$testimonials`): they make the set look alike. Most builders first: wedding, photo, school, architecture, campsite, cityhall, construction, museum, hotel, travel, gym, music.
-2. Sector templates with the same eyebrow, figures, lift-card and FAQ pattern, in the picker's order (first seen first): clinic, salon, cafe, events, courses, law, realestate, portfolio, appstudio, dealership, market, social, charity.
+2. Sector templates with the same eyebrow, figures, lift-card and FAQ pattern, in the picker's order: clinic, salon, cafe, events, courses, law, realestate, portfolio, appstudio, dealership, market, social, charity.
 3. The shop templates: store, boutique, bookshop.
 4. Templates that already have a family or their own layout: news, magazine (one step each: motion and the family's newer blocks), forum.
 5. Last: hello (the default starter), playground (it then shows each family's blocks).
 - Every shipped template is in this list or in the status lines below; Launch is in the main plan. A template plan opened after 2026-11-07 starts with its family step ([[design-template-own-look]]) and needs no polishing step.
 
 ## Which templates came from their own plans?
-- Their plans built their pages and have finished, so their `-1` and `-2` come ahead of groups 2 to 5 (their status lines are first). Gallery's signature pages are artists and exhibitions. Skiresort's plan built home, conditions and slopes on its family, so it needs no `-2`.
+- Their plans built their pages and have finished, so their `-1` and `-2` come ahead of groups 2 to 5 (their status lines are first). Gallery's signature pages are artists and exhibitions.
 
 ## Where does each template stand?
-- Travel: `-1` #8337 done.
+- Travel: `-1` #8337, `-2` #8657 done.
 
-- Gym: `-1` #8339 done.
+- Gym: `-1` #8339, `-2` #8655 done.
 
 - Clinic: `-1` #8346 done.
 
-- Bakery: `-1`, `-2` open.
+- Dealership: `-1` #8640 done; `-2` open.
 
-- Brewery: `-1`, `-2` open.
+- Bakery: `-1` #8665, `-2` #8715 done.
 
-- Carrental: `-1`, `-2` open.
+- Brewery: `-1` #8666, `-2` #8714 done.
 
-- Filmstudio: `-1`, `-2` open.
+- Carrental: `-1` #8669 done.
+
+- Filmstudio: `-1` #8689 done; `-2` open.
 
 - Florist: `-1`, `-2` open.
 
@@ -52,7 +54,7 @@ description: Order of the polishing round after Launch: every shipped template's
 
 - Gallery: `-1`, `-2` open.
 
-- Skiresort: `-1` #8050 done; it needs no `-2`.
+- Skiresort: `-1` #8050 done; it needs no `-2` (its plan built the pages).
 
 - Wedding: `-1` #8167, `-2` #8196 done.
 
@@ -85,6 +87,8 @@ description: Order of the polishing round after Launch: every shipped template's
 - Pharmacy: `-1` #8160, `-2` #8181 done.
 
 - Marina: `-1` #8159, `-2` #8185 done.
+
+- Appstudio: `-1`+`-2` #8642.
 
 ## Who claims what?
 - Any worker, in the order above, one step per PR; a step whose template still has an open PR on its files waits.
