@@ -22,7 +22,7 @@ description: Order of the polishing round after Launch: every shipped template's
 ## Where does each template stand?
 - Travel: `-1` #8337, `-2` #8657 done.
 
-- Gym: `-1` #8339 done; `-2` #8655 done.
+- Gym: `-1` #8339, `-2` #8655 done.
 
 - Clinic: `-1` #8346 done.
 
@@ -32,7 +32,7 @@ description: Order of the polishing round after Launch: every shipped template's
 
 - Carrental: `-1`, `-2` open.
 
-- Filmstudio: `-1`, `-2` open.
+- Filmstudio: `-1` #8689 done; `-2` open.
 
 - Florist: `-1`, `-2` open.
 
