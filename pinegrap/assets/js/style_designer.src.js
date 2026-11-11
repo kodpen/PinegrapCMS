@@ -74290,6 +74290,696 @@ const StyleDesigner = (function () {
             draw[key]() + '</svg>';
     }
 
+    // ── Block drawings ──────────────────────────────────────────────────
+    // A ready-made block's hover card draws the block from the tree a drop
+    // would add, in _sdPalDrawing()'s style: a heading is a dark bar, text
+    // grey lines, a picture a framed box, a button a pill in its colour, the
+    // columns of a row side by side. The walk reads the tree top down as
+    // PGProtoHotspots.sketch() does, through any number of wrappers; what a
+    // desktop page does not show (a collapsed menu, other slides and tabs,
+    // dialogs, scripts) is left out. A block taller than the card is scaled
+    // down and its foot cut off. Only shapes are drawn: no text of the block
+    // reaches the SVG, so nothing is translated or escaped.
+    var _sdBlockSketchCache = {};
+
+    // The drawing of a palette item that is a ready-made block, built once per
+    // componentType; '' for any other item.
+    function _sdBlockSketchOf(it) {
+        var ct = it && it.type === 'component' && it.extra ? String(it.extra.componentType || '') : '';
+        if (!ct) return '';
+        if (Object.prototype.hasOwnProperty.call(_sdBlockSketchCache, ct)) return _sdBlockSketchCache[ct];
+        var svg = '';
+        var isBlock = _sdBlockPaletteItems().some(function (b) { return b.extra && b.extra.componentType === ct; });
+        if (isBlock) {
+            try { svg = _sdBlockSketch(_sdDragTree({ source: 'palette', type: 'component', extra: { componentType: ct } })); }
+            catch (e) { svg = ''; }
+        }
+        _sdBlockSketchCache[ct] = svg;
+        return svg;
+    }
+
+    // The tree is laid out at a content width of 184 units (a desktop page of
+    // about 1,140px, one unit near 6px) into pieces { p, w, h }: p holds the
+    // shapes with their place inside the piece, and put() moves a piece's
+    // shapes to where its parent places it, so every shape ends up with its
+    // place in the block. The class names read here are those of the site
+    // page the block is dropped into.
+    /* @pg-site-output */
+    function _sdBlockSketch(tree) {
+        if (!tree || typeof tree !== 'object') return '';
+        var P = '#0d6efd', S = '#6c757d', B = '#dee2e6', G = '#e9ecef', T = '#ced4da', D = '#343a40', W = '#ffffff',
+            LG = '#f8f9fa', DK = '#212529', CW = 184, PX = 6.2;
+        var TONE = { primary: P, secondary: S, success: '#198754', danger: '#dc3545', warning: '#ffc107', info: '#0dcaf0',
+            light: LG, dark: DK, white: W, black: '#000000' };
+        var SUBTLE = { primary: '#cfe2ff', secondary: '#e2e3e5', success: '#d1e7dd', danger: '#f8d7da', warning: '#fff3cd',
+            info: '#cff4fc', light: LG, dark: T };
+        // The colours of what sits on a light page, on a dark band and on a band
+        // in the accent colour.
+        var INK = {
+            light:  { head: D, text: T, link: P, muted: S, line: B, card: W, dark: false },
+            dark:   { head: W, text: '#adb5bd', link: '#6ea8fe', muted: '#adb5bd', line: '#495057', card: '#2b3035', dark: true },
+            accent: { head: W, text: '#9ec5fe', link: W, muted: '#cfe2ff', line: '#6ea8fe', card: W, dark: true }
+        };
+        var SP = [0, 1.5, 2.5, 3.5, 4.5, 6], HEAD_H = [9, 8, 7, 6, 5, 4.5, 4], SIZES = ['xl-', 'lg-', 'md-', 'sm-', ''], RX = {};
+        var INLINE = / (a|span|strong|b|em|i|small|label|abbr|code|kbd|time|cite|mark|sub|sup|button|q|s|u|var|data|output) /;
+        var TONES = 'primary|secondary|success|danger|warning|info|light|dark|white|black';
+
+        function piece(w, h) { return { p: [], w: w, h: h }; }
+        function rect(pc, x, y, w, h, fill, rx, stroke, dash) {
+            if (w > 0 && h > 0) pc.p.push({ r: [x, y, w, h], f: fill, rx: rx || 0, s: stroke || '', d: !!dash });
+        }
+        function circle(pc, x, y, r, fill) { if (r > 0) pc.p.push({ c: [x, y, r], f: fill }); }
+        function pict(pc, x, y, w, h, dark) {
+            rect(pc, x, y, w, h, dark ? '#495057' : T, Math.min(3, h / 2));
+            if (w < 10 || h < 8) return;
+            circle(pc, x + w * .74, y + h * .3, Math.min(w, h) * .09, dark ? S : W);
+            pc.p.push({ g: [x, y + h, x + w * .34, y + h * .46, x + w * .58, y + h * .78, x + w * .74, y + h * .62, x + w, y + h],
+                f: dark ? D : '#adb5bd' });
+        }
+        function put(dst, src, dx, dy) {
+            src.p.forEach(function (q) {
+                var a = q.r || q.c || q.g;
+                for (var i = 0; i < (q.g ? a.length : 2); i += 2) { a[i] += dx; a[i + 1] += dy; }
+                dst.p.push(q);
+            });
+        }
+
+        // ── Reading a node ──
+        function sp(v, def) { return v === '' || v === undefined || v === null || SP[+v] === undefined ? def : SP[+v]; }
+        function cls(n) { return ' ' + String((n.props && n.props.cssClass) || '').trim().split(/\s+/).join(' ') + ' '; }
+        function has(c, name) { return c.indexOf(' ' + name + ' ') !== -1; }
+        function tagOf(n) { return String((n.props && n.props.tag) || '').toLowerCase(); }
+        // The value a responsive class gives on a desktop page: the widest
+        // breakpoint up to xl that names one, else the class without one.
+        function bp(c, stem, vals) {
+            for (var i = 0; i < SIZES.length; i++) {
+                var key = stem + '|' + SIZES[i] + '|' + vals;
+                var re = RX[key] || (RX[key] = new RegExp(' ' + stem + '-' + SIZES[i] + '(' + vals + ') '));
+                var m = c.match(re);
+                if (m) return m[1];
+            }
+            return '';
+        }
+        function attr(n, name) {
+            var a = n.props && Array.isArray(n.props._attrs) ? n.props._attrs : [];
+            for (var i = 0; i < a.length; i++) {
+                if (a[i] && a[i].name === name) return String(a[i].value === undefined || a[i].value === null ? '' : a[i].value);
+            }
+            return null;
+        }
+        function textOf(n) {
+            return String((n.props && n.props.text) || '').replace(/<[^>]*>/g, ' ').replace(/&#?\w+;/g, 'x')
+                .replace(/\s+/g, ' ').trim();
+        }
+        function allText(n, d) {
+            var s = textOf(n);
+            if (d < 4) kids(n).forEach(function (k) { s += ' ' + allText(k, d + 1); });
+            return s.trim();
+        }
+        function hidden(n) {
+            if (!n || typeof n !== 'object') return true;
+            var p = n.props || {}, c = cls(n), t = tagOf(n);
+            if (n.type === 'semantic' && / (script|style|template|meta|link|option|source|track|noscript|br|wbr|param|area|datalist) /.test(' ' + t + ' ')) return true;
+            if (t === 'input' && String(attr(n, 'type') || '').toLowerCase() === 'hidden') return true;
+            if (p.contentType === 'custom_html' &&
+                !/<[a-z]/i.test(String(p.html || '').replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, ''))) return true;
+            if (/ (visually-hidden|visually-hidden-focusable|sr-only|navbar-toggler|btn-close|carousel-indicators|carousel-control-prev|carousel-control-next|tooltip|popover) /.test(c)) return true;
+            if (/ (modal|offcanvas|offcanvas-start|offcanvas-end|toast|dropdown-menu|collapse) /.test(c) && !has(c, 'show') &&
+                !has(c, 'navbar-collapse') && !has(c, 'd-block')) return true;
+            if ((has(c, 'carousel-item') || has(c, 'tab-pane')) && !has(c, 'active')) return true;
+            if (bp(c, 'd', 'none|block|flex|inline|inline-block|inline-flex|grid|table|table-cell|table-row|contents') === 'none') return true;
+            return attr(n, 'hidden') !== null;
+        }
+        // A block that is itself a dropdown shows its menu open.
+        function kids(n) {
+            return (Array.isArray(n.children) ? n.children : []).filter(function (k) {
+                return !hidden(k) || (n === tree && k && / dropdown-menu /.test(cls(k)));
+            });
+        }
+        // What a node draws as: a leaf kind, 'box' for a node whose children are
+        // drawn, '' for nothing.
+        function kindOf(n) {
+            var p = n.props || {}, ty = n.type, ct = String(p.contentType || ''), c = cls(n), t = tagOf(n), it;
+            if (/^(region|loop_area|recipient_loop_area|shared_ref|widget)$/.test(ty)) return 'slot';
+            if ((ty === 'component' && p.componentType === 'btn') || has(c, 'btn')) return 'btn';
+            if (has(c, 'badge')) return 'badge';
+            if (has(c, 'progress')) return 'progress';
+            if (has(c, 'ratio') || /^(image|video|map|embed|iframe|custom_html|svg)$/.test(ct) ||
+                (ty === 'semantic' && / (img|picture|video|iframe|canvas|object|embed|svg) /.test(' ' + t + ' '))) return 'pic';
+            if (ct === 'icon' || ((t === 'i' || t === 'span') && / bi-[\w-]+ /.test(c))) return 'icon';
+            if (ct === 'divider' || t === 'hr') return 'rule';
+            if (ct === 'spacer') return 'space';
+            if (t === 'textarea') return 'area';
+            if (t === 'input' || t === 'select') {
+                it = String(attr(n, 'type') || '').toLowerCase();
+                if (it === 'checkbox' || it === 'radio') return 'check';
+                if (it === 'submit' || it === 'button') return 'btn';
+                return it === 'range' ? 'rule' : 'field';
+            }
+            if (kids(n).length) return 'box';
+            if (!textOf(n)) return (has(c, 'rounded-circle') || / (?:bg|text-bg)-/.test(c)) ? 'dot' : '';
+            if (ct === 'heading') return (!t || /^h[1-6]$/.test(t)) ? 'head' : 'strong';
+            if (/^h[1-6]$/.test(t)) return 'head';
+            if (ct === 'link' || t === 'a' || t === 'button') return 'link';
+            if (/ (fw-bold|fw-semibold|fw-bolder|display-[1-6]|fs-[1-4]|h[1-6]) /.test(c) ||
+                /^(strong|b|dt|th|legend|caption)$/.test(t)) return 'strong';
+            return 'text';
+        }
+        function isInline(n, c, t, k) {
+            var d = bp(c, 'd', 'block|inline|inline-block|inline-flex|flex|grid|table|table-cell|contents');
+            if (d) return d.indexOf('inline') === 0;
+            if (has(c, 'w-100')) return false;
+            if (/^(btn|badge|icon|check|dot)$/.test(k)) return true;
+            if (k === 'field') return !/ (form-control|form-select) /.test(c);
+            if (/^(pic|area|rule|progress|slot|space)$/.test(k)) return false;
+            if (k === 'box' && / (card|list-group-item|ratio) /.test(c)) return false;
+            if (n.type === 'content') return k === 'link' || (k === 'strong' && INLINE.test(' ' + t + ' '));
+            return n.type === 'semantic' && INLINE.test(' ' + t + ' ');
+        }
+        function level(c, t, def) {
+            var m = c.match(/ display-([1-6]) /);
+            if (m) return +m[1] > 4 ? 1 : 0;
+            m = c.match(/ (?:h|fs-)([1-6]) /);
+            if (m) return +m[1];
+            m = t.match(/^h([1-6])$/);
+            return m ? +m[1] : def;
+        }
+        function iconSize(p, c) {
+            var px = parseFloat(p.fontSize), m = c.match(/ fs-([1-6]) /);
+            if (isFinite(px) && px > 0) return Math.max(3, Math.min(10, px / PX));
+            if (/ display-[1-6] /.test(c)) return 8;
+            return m ? [0, 6, 5, 4.5, 4, 3.5, 3][+m[1]] : 3.5;
+        }
+        function avatar(p) {
+            var px = parseFloat(p.width);
+            return Math.max(5, Math.min(24, isFinite(px) && px > 0 ? px / PX : 12));
+        }
+        function aspect(n, c) {
+            var p = n.props || {}, m = c.match(/ (?:pg-)?ratio-(\d+)x(\d+) /);
+            if (m && +m[1]) return m[2] / m[1];
+            m = String(p.src || '').match(/\/(\d{2,4})\/(\d{2,4})(?:[\/?#.]|$)/);
+            if (m && +m[1]) return m[2] / m[1];
+            var w = parseFloat(p.width), h = parseFloat(p.height);
+            return (w > 0 && h > 0) ? h / w : .6;
+        }
+        function colourOf(c, k, cx) {
+            var ink = cx.ink, m = c.match(new RegExp(' (?:text|link)-(' + TONES + ')(?:-emphasis)? '));
+            if (m) {
+                // White text on a band the drawing cannot see (a family's own
+                // stylesheet) would vanish on the white card: it stays dark.
+                if (m[1] === 'white' || m[1] === 'light') return ink.dark ? (k === 'text' ? ink.text : W) : (k === 'text' ? T : D);
+                if (m[1] === 'dark' || m[1] === 'black') return ink.dark ? ink.head : D;
+                if (m[1] === 'secondary') return k === 'text' ? ink.text : ink.muted;
+                return TONE[m[1]];
+            }
+            if (has(c, 'text-white-50')) return ink.dark ? ink.text : T;
+            if (/ (text-body-secondary|text-body-tertiary|text-muted) /.test(c)) return k === 'text' ? ink.text : ink.muted;
+            if (/ (text-body|text-body-emphasis) /.test(c)) return k === 'text' ? ink.text : ink.head;
+            if (has(c, 'nav-link')) return has(c, 'active') ? ink.head : ink.muted;
+            if (has(c, 'navbar-brand')) return ink.head;
+            if (cx.lc && k !== 'icon') return cx.lc;
+            return k === 'text' ? ink.text : k === 'link' ? ink.link : k === 'icon' ? ink.muted : ink.head;
+        }
+        // Whether children sit in a column ('col'), side by side ('row'), in
+        // Bootstrap's twelve columns ('grid') or as table cells ('tr').
+        function flowOf(n, c, t, cx) {
+            if (n.type === 'row' || has(c, 'row')) return 'grid';
+            if (t === 'tr') return 'tr';
+            var fd = bp(c, 'flex', 'row|column|row-reverse|column-reverse'), col = fd.indexOf('column') === 0;
+            var d = bp(c, 'd', 'flex|inline-flex|grid|block|inline-block|inline|table');
+            if (d === 'flex' || d === 'inline-flex') return col ? 'col' : 'row';
+            if (d === 'grid' || has(c, 'vstack')) return 'col';
+            if (col) return 'col';
+            if (/ (hstack|btn-group|input-group|navbar|navbar-nav|nav|list-inline|pagination|breadcrumb|navbar-collapse|card-group) /.test(c)) return 'row';
+            if (cx.nav && (n.type === 'container' || / (container|container-fluid) /.test(c))) return 'row';
+            return 'col';
+        }
+        function justify(c, cx, n) {
+            var j = bp(c, 'justify-content', 'start|end|center|between|around|evenly');
+            if (j) return j;
+            return (has(c, 'navbar') || (cx.nav && (n.type === 'container' || / (container|container-fluid) /.test(c)))) ? 'between' : 'start';
+        }
+        // The width a node takes when nothing stretches or squeezes it.
+        function nat(n, cap, cx) {
+            var c = cls(n), t = tagOf(n), k = kindOf(n), p = n.props || {}, v = 0, h;
+            if (k === 'btn') v = has(c, 'w-100') ? cap : btnWidth(n, c);
+            else if (k === 'badge') v = 5 + (allText(n, 0).length || 3) * 1.1;
+            else if (k === 'icon') v = iconSize(p, c);
+            else if (k === 'check' || k === 'dot') v = 4;
+            else if (k === 'pic') v = has(c, 'rounded-circle') ? avatar(p) : (parseFloat(p.width) > 0 ? parseFloat(p.width) / PX : 40);
+            else if (k === 'field' || k === 'progress' || k === 'slot') v = 40;
+            else if (k === 'area') v = 60;
+            else if (k === 'rule') v = t === 'hr' ? cap : 20;
+            else if (k === 'head' || k === 'strong') { h = HEAD_H[level(c, t, k === 'head' ? 2 : 5)]; v = textOf(n).length * h * .55; }
+            else if (k === 'link') v = textOf(n).length * (has(c, 'navbar-brand') ? 2.75 : 1.3);
+            else if (k === 'text') v = textOf(n).length * 1.3;
+            else if (k === 'box') {
+                var mode = flowOf(n, c, t, cx), list = kids(n).slice(0, 8), sum = 0, mx = 0;
+                list.forEach(function (x) { var w = nat(x, cap, cx); sum += w; mx = Math.max(mx, w); });
+                v = (mode === 'row' || mode === 'tr') ? sum + 2.5 * Math.max(0, list.length - 1) : mode === 'grid' ? cap : mx;
+                if (textOf(n)) v += textOf(n).length * 1.3 + 2;
+                if (/ (card|border|shadow|shadow-sm|alert|list-group-item) /.test(c) || / (?:bg|text-bg)-/.test(c)) v += 6;
+            }
+            return Math.min(cap, v);
+        }
+        function btnWidth(n, c) {
+            var p = n.props || {}, size = String(p.size || '') || (has(c, 'btn-lg') ? 'lg' : has(c, 'btn-sm') ? 'sm' : '');
+            return (8 + (allText(n, 0).length || 3) * 1.5) * (size === 'lg' ? 1.2 : size === 'sm' ? .8 : 1);
+        }
+
+        // ── Leaves ──
+        // Text as bars: as many lines as the text needs at this width, the
+        // last one as long as what is left.
+        function lines(len, h, cw, gap, max, w, fill, align) {
+            var full = Math.max(len, 2) * cw, n = Math.max(1, Math.min(max, Math.ceil(full / w))), ws = [], i;
+            for (i = 0; i < n; i++) {
+                if (i < n - 1) ws.push(w);
+                else if (full > w * n) ws.push(n > 1 ? w * .62 : w);
+                else ws.push(Math.min(w, Math.max(full - w * (n - 1), h * 2.5)));
+            }
+            var pc = piece(n > 1 ? w : ws[0], n * h + (n - 1) * gap);
+            for (i = 0; i < n; i++) {
+                var x = align === 'center' ? (pc.w - ws[i]) / 2 : align === 'end' ? pc.w - ws[i] : 0;
+                rect(pc, x, i * (h + gap), ws[i], h, fill, Math.min(2, h / 2));
+            }
+            return pc;
+        }
+        function button(n, c, w, cx) {
+            var p = n.props || {}, v = String(p.variant || ''), m;
+            if (!v) {
+                m = c.match(/ btn-((?:outline-)?(?:primary|secondary|success|danger|warning|info|light|dark|link)) /);
+                v = m ? m[1] : 'primary';
+            }
+            var line = v.indexOf('outline-') === 0, tone = v.replace(/^outline-/, '');
+            var size = String(p.size || '') || (has(c, 'btn-lg') ? 'lg' : has(c, 'btn-sm') ? 'sm' : '');
+            var h = size === 'lg' ? 11 : size === 'sm' ? 7 : 9, bw = has(c, 'w-100') ? w : Math.min(w, btnWidth(n, c));
+            // A button with only an icon shows the icon, and a dropdown's button
+            // its caret.
+            var icon = !allText(n, 0) && kids(n).some(function (k) { return kindOf(k) === 'icon'; }), caret = has(c, 'dropdown-toggle');
+            if (icon) bw = Math.min(w, h * 1.4 + (caret ? 4 : 0));
+            var pc = piece(bw, h), col = TONE[tone] || P, mid = caret ? bw - 4 : bw;
+            if (caret) pc.p.push({ g: [bw - 5, h / 2 - 1, bw - 2, h / 2 - 1, bw - 3.5, h / 2 + 1], f: tone === 'link' || line ? (tone === 'link' ? cx.ink.muted : col) : W });
+            if (tone === 'link') {
+                if (icon) circle(pc, mid / 2, h / 2, h * .28, cx.ink.muted);
+                else rect(pc, 0, h / 2 - 1.75, mid * .8, 3.5, cx.ink.link, 1.75);
+                return pc;
+            }
+            if (tone === 'light') col = cx.ink.dark ? LG : G;
+            // A primary button on a band in the accent colour is drawn white.
+            if (tone === 'primary' && cx.ink === INK.accent) col = W;
+            var rx = has(c, 'rounded-pill') ? h / 2 : Math.min(2.5, h / 2);
+            var label = line ? col : col === W ? P : /^(light|warning|info)$/.test(tone) ? D : W;
+            if (line) pc.p.unshift({ r: [.5, .5, bw - 1, h - 1], f: 'none', rx: rx, s: col, d: false });
+            else pc.p.unshift({ r: [0, 0, bw, h], f: col, rx: rx, s: '', d: false });
+            if (icon) circle(pc, mid / 2, h / 2, h * .22, label);
+            else rect(pc, mid * .22, h / 2 - 1.1, mid * .56, 2.2, label, 1.1);
+            return pc;
+        }
+        function leaf(n, k, w, cx) {
+            var p = n.props || {}, c = cls(n), t = tagOf(n), pc, h, m, x;
+            if (k === 'head' || k === 'strong') {
+                h = HEAD_H[level(c, t, k === 'head' ? 2 : 5)];
+                return lines(textOf(n).length, h, h * .55, h * .5, 2, w, colourOf(c, k, cx), cx.align);
+            }
+            if (k === 'text') {
+                h = has(c, 'lead') ? 4 : (has(c, 'small') || t === 'small' || has(c, 'form-text')) ? 3 : 3.5;
+                return lines(textOf(n).length, h, h * .37, 2.5, 3, w, colourOf(c, k, cx), cx.align);
+            }
+            if (k === 'link') {
+                h = has(c, 'navbar-brand') ? 5 : 3.5;
+                return lines(textOf(n).length, h, h > 4 ? h * .55 : h * .37, 2, 1, w, colourOf(c, k, cx), cx.align);
+            }
+            if (k === 'btn') return button(n, c, w, cx);
+            if (k === 'badge') {
+                m = c.match(new RegExp(' (?:text-bg|bg)-(' + TONES + ')(-subtle)? '));
+                var bc = m ? (m[2] ? SUBTLE[m[1]] || LG : TONE[m[1]]) : S, bw = Math.min(w, 5 + (allText(n, 0).length || 3) * 1.1);
+                pc = piece(bw, 6);
+                rect(pc, 0, 0, bw, 6, bc, has(c, 'rounded-pill') ? 3 : 1.5);
+                rect(pc, 2.5, 2, bw - 5, 2, m && m[2] ? TONE[m[1]] : /^(#ffc107|#0dcaf0|#f8f9fa|#ffffff)$/.test(bc) ? D : W, 1);
+                return pc;
+            }
+            if (k === 'icon') {
+                h = iconSize(p, c);
+                pc = piece(h, h);
+                circle(pc, h / 2, h / 2, h / 2, colourOf(c, 'icon', cx));
+                return pc;
+            }
+            if (k === 'dot') {
+                m = c.match(new RegExp(' (?:text-bg|bg)-(' + TONES + ') '));
+                pc = piece(4, 4);
+                circle(pc, 2, 2, 2, m ? TONE[m[1]] : T);
+                return pc;
+            }
+            if (k === 'pic') {
+                if (has(c, 'rounded-circle')) {
+                    h = Math.min(w, avatar(p));
+                    pc = piece(h, h);
+                    circle(pc, h / 2, h / 2, h / 2, T);
+                    return pc;
+                }
+                x = parseFloat(p.width) > 0 && parseFloat(p.width) <= 400 ? Math.min(w, parseFloat(p.width) / PX) : w;
+                h = Math.max(6, Math.min(72, x * aspect(n, c)));
+                pc = piece(x, h);
+                pict(pc, 0, 0, x, h, false);
+                return pc;
+            }
+            if (k === 'field' || k === 'area') {
+                h = k === 'area' ? 16 : / (form-control-lg|form-select-lg) /.test(c) ? 10 : / (form-control-sm|form-select-sm) /.test(c) ? 6.5 : 8;
+                x = (k === 'area' || / (form-control|form-select|w-100) /.test(c)) ? w : Math.min(w, 40);
+                pc = piece(x, h);
+                rect(pc, 0, 0, x, h, cx.ink.card, 1.5, cx.ink.line);
+                rect(pc, 2.5, Math.min(h / 2, 4) - 1, Math.min(x * .4, 28), 2, cx.ink.card === W ? T : S, 1);
+                return pc;
+            }
+            if (k === 'check') {
+                pc = piece(4, 4);
+                rect(pc, 0, 0, 4, 4, attr(n, 'checked') !== null ? P : cx.ink.card, String(attr(n, 'type')).toLowerCase() === 'radio' ? 2 : 1, cx.ink.line);
+                return pc;
+            }
+            if (k === 'rule') {
+                if (t !== 'hr' && p.contentType !== 'divider') {
+                    x = Math.min(w, 40);
+                    pc = piece(x, 4);
+                    rect(pc, 0, 1.5, x, 1, cx.ink.line, .5);
+                    circle(pc, x * .6, 2, 2, P);
+                    return pc;
+                }
+                pc = piece(w, .8);
+                rect(pc, 0, 0, w, .8, cx.ink.line);
+                return pc;
+            }
+            if (k === 'progress') {
+                var bar = kids(n)[0] || n, bcl = cls(bar), st = String(attr(bar, 'style') || '');
+                m = st.match(/width\s*:\s*([\d.]+)%/);
+                var pct = m ? +m[1] : parseFloat(attr(bar, 'aria-valuenow') || attr(n, 'aria-valuenow') || 60);
+                var tm = bcl.match(new RegExp(' (?:text-bg|bg)-(' + TONES + ') '));
+                pc = piece(w, 3);
+                rect(pc, 0, 0, w, 3, cx.ink.dark ? '#495057' : G, 1.5);
+                rect(pc, 0, 0, w * Math.max(4, Math.min(100, isFinite(pct) ? pct : 60)) / 100, 3, tm ? TONE[tm[1]] : P, 1.5);
+                return pc;
+            }
+            if (k === 'slot') {
+                pc = piece(w, 14);
+                rect(pc, 0, 0, w, 14, cx.ink.dark ? '#2b3035' : LG, 2, cx.ink.dark ? S : T, true);
+                return pc;
+            }
+            if (k === 'space') return piece(0, 3);
+            return piece(0, 0);
+        }
+
+        // ── Boxes ──
+        // The fill, line and corner a box draws, and the ink of what sits on it.
+        function frame(n, c, cx) {
+            var f = { fill: '', stroke: '', rx: 0, pic: false, ink: cx.ink }, m, theme = attr(n, 'data-bs-theme');
+            if (theme === 'dark') { f.ink = INK.dark; f.fill = DK; }
+            else if (theme === 'light') f.ink = INK.light;
+            if (/background(?:-image)?\s*:[^;]*url\(/i.test(attr(n, 'style') || '')) { f.pic = true; f.ink = INK.dark; }
+            m = c.match(new RegExp(' (?:text-bg|bg)-(' + TONES + '|body|body-secondary|body-tertiary)(-subtle)? '));
+            if (m) {
+                if (m[2]) f.fill = SUBTLE[m[1]] || LG;
+                else if (m[1] === 'body') f.fill = f.ink.dark ? DK : W;
+                else if (m[1] === 'body-secondary' || m[1] === 'body-tertiary') f.fill = f.ink.dark ? '#2b3035' : LG;
+                else f.fill = TONE[m[1]];
+            }
+            m = c.match(/ alert-(primary|secondary|success|danger|warning|info|light|dark) /);
+            if (m && !f.fill) f.fill = SUBTLE[m[1]];
+            var boxy = / (card|accordion-item|list-group-item|modal-content|toast) /.test(c);
+            if (boxy && !f.fill) f.fill = f.ink.card;
+            if ((boxy || has(c, 'border')) && !has(c, 'border-0')) f.stroke = f.ink.line;
+            m = c.match(/ border-(primary|secondary|success|danger|warning|info|light|dark|white) /);
+            if (m && !has(c, 'border-0')) f.stroke = TONE[m[1]];
+            if (/ (shadow|shadow-sm|shadow-lg) /.test(c) && !f.fill && !f.stroke) { f.fill = f.ink.card; f.stroke = f.ink.line; }
+            if (f.fill && !f.pic) {
+                f.ink = /^(#212529|#2b3035|#000000)$/.test(f.fill) ? INK.dark :
+                    /^(#0d6efd|#6c757d|#198754|#dc3545)$/.test(f.fill) ? INK.accent : INK.light;
+            }
+            f.rx = has(c, 'rounded-0') ? 0 : / (rounded-circle|rounded-pill) /.test(c) ? 99 :
+                (/ rounded(-[0-5]|-top|-bottom|-start|-end)? /.test(c) || boxy) ? 3 : 0;
+            return f;
+        }
+        function pad(c, def) {
+            var all = sp(bp(c, 'p', '[0-5]'), def);
+            return [sp(bp(c, 'px', '[0-5]'), all), sp(bp(c, 'py', '[0-5]'), all)];
+        }
+        function box(n, w, cx, depth) {
+            var c = cls(n), t = tagOf(n), f = frame(n, c, cx);
+            var framed = depth > 0 && !!(f.fill || f.stroke || f.pic);
+            var inner = { ink: f.ink, align: cx.align, nav: cx.nav || has(c, 'navbar'), inBox: cx.inBox || framed, lc: cx.lc };
+            // What sits in a link takes the link's colour.
+            if ((t === 'a' || (n.props && n.props.contentType === 'link')) && !/ (card|stretched-link|text-reset) /.test(c)) {
+                inner.lc = colourOf(c, 'link', { ink: f.ink, lc: '' });
+            }
+            var al = bp(c, 'text', 'start|center|end|left|right');
+            if (al) inner.align = al === 'left' ? 'start' : al === 'right' ? 'end' : al;
+            var pd = framed ? pad(c, has(c, 'card') ? 0 : 3) :
+                / (card-body|card-header|card-footer|accordion-body|alert|list-group-item|modal-body) /.test(c) ? pad(c, 3) :
+                cx.inBox ? pad(c, 0) : [0, 0];
+            if (t === 'tr') pd = [0, 1.5];
+            var body = flow(n, c, t, Math.max(4, w - pd[0] * 2), inner, depth);
+            if (!body.p.length && !framed) return piece(0, 0);
+            var bw = isInline(n, c, t, 'box') ? Math.min(w, body.w + pd[0] * 2) : w;
+            var bh = body.p.length ? body.h + pd[1] * 2 : 8;
+            var pc = piece(bw, bh);
+            pc.bg = f;
+            if (framed && f.pic) pict(pc, 0, 0, bw, bh, true);
+            else if (framed) rect(pc, 0, 0, bw, bh, f.fill || 'none', Math.min(f.rx, bw / 2, bh / 2), f.stroke);
+            if (has(c, 'border-top')) rect(pc, 0, 0, bw, .6, cx.ink.line);
+            if (has(c, 'border-bottom') || t === 'tr') rect(pc, 0, bh - .6, bw, .6, cx.ink.line);
+            put(pc, body, pd[0], pd[1]);
+            return pc;
+        }
+        function flow(n, c, t, w, cx, depth) {
+            var list = kids(n), own = textOf(n);
+            // A box's own text comes first, with the classes that colour it.
+            if (own) {
+                list = [{ type: 'semantic', children: [], props: { tag: /^h[1-6]$/.test(t) ? t : t === 'a' ? 'a' : 'span', text: own,
+                    cssClass: c.trim().split(' ').filter(function (x) { return /^(text-|link-|fw-|fs-|nav-link$|navbar-brand$|small$|lead$|active$|display-)/.test(x); }).join(' ') } }].concat(list);
+            }
+            var mode = flowOf(n, c, t, cx);
+            if (mode === 'grid') return grid(n, list, c, w, cx, depth);
+            if (mode === 'row' || mode === 'tr') return flexRow(n, list, c, w, cx, depth, mode === 'tr');
+            var d = bp(c, 'd', 'flex|inline-flex|grid');
+            return stack(list, c, w, cx, depth, !!d || has(c, 'vstack'));
+        }
+        function lay(n, w, cx, depth) {
+            if (depth > 18 || w < 1) return piece(0, 0);
+            var k = kindOf(n);
+            return k === 'box' ? box(n, w, cx, depth) : leaf(n, k, w, cx);
+        }
+        // Children one under the other; inline ones flow along a line.
+        function stack(list, c, w, cx, depth, flexy) {
+            var pc = piece(w, 0), y = 0, last = 0, run = [], fg = flexy ? sp(bp(c, 'gap', '[0-5]'), 0) : 0;
+            function place(sub, x, g) { put(pc, sub, x, y); y += sub.h + g; last = g; }
+            function flush() {
+                if (!run.length) return;
+                var r = wrap(run, w, cx, depth, 2, cx.align);
+                run = [];
+                if (r.h) place(r, 0, Math.max(1.5, fg || 3));
+            }
+            for (var i = 0; i < list.length && i < 10; i++) {
+                var k = list[i], kc = cls(k), kk = kindOf(k);
+                if (!flexy && isInline(k, kc, tagOf(k), kk)) { run.push(k); continue; }
+                flush();
+                var kw = w, m = bp(kc, 'col', '[1-9]|1[0-2]'), mw = String(attr(k, 'style') || '').match(/max-width\s*:\s*(\d+)px/);
+                if (k.type !== 'col' && m) kw = w * m / 12;
+                else if ((m = kc.match(/ w-(25|50|75) /))) kw = w * m[1] / 100;
+                else if (mw) kw = Math.min(w, mw[1] / PX);
+                var sub = lay(k, kw, cx, depth + 1);
+                if (!sub.h) continue;
+                var mb = bp(kc, 'mb', '[0-5]') || bp(kc, 'my', '[0-5]');
+                var g = Math.max(1.5, (mb !== '' ? SP[+mb] : flexy ? 0 : tagOf(k) === 'li' ? 2 : 3) + fg);
+                var x = has(kc, 'mx-auto') ? (w - sub.w) / 2 : has(kc, 'ms-auto') ? w - sub.w : has(kc, 'me-auto') ? 0 :
+                    cx.align === 'center' ? (w - sub.w) / 2 : cx.align === 'end' ? w - sub.w : 0;
+                place(sub, x, g);
+            }
+            flush();
+            pc.h = Math.max(0, y - last);
+            return pc;
+        }
+        // Items at their own widths, wrapped onto new lines, each line aligned.
+        function wrap(list, w, cx, depth, g, align) {
+            var lns = [], cur = [], cw = 0, pc = piece(w, 0), y = 0;
+            list.slice(0, 12).forEach(function (k) {
+                var s = lay(k, Math.max(1, Math.min(w, nat(k, w, cx))), cx, depth + 1);
+                if (!s.h) return;
+                if (cur.length && cw + g + s.w > w) { lns.push({ it: cur, w: cw }); cur = []; cw = 0; }
+                cw += (cur.length ? g : 0) + s.w;
+                cur.push(s);
+            });
+            if (cur.length) lns.push({ it: cur, w: cw });
+            lns.slice(0, 4).forEach(function (ln) {
+                var H = 0, x = align === 'center' ? (w - ln.w) / 2 : align === 'end' ? w - ln.w : 0;
+                ln.it.forEach(function (s) { H = Math.max(H, s.h); });
+                ln.it.forEach(function (s) { put(pc, s, x, y + (H - s.h) / 2); x += s.w + g; });
+                y += H + 2;
+            });
+            pc.h = Math.max(0, y - 2);
+            if (lns.length === 1 && align !== 'center' && align !== 'end') pc.w = lns[0].w;
+            return pc;
+        }
+        // A flex row: items at their own widths, squeezed when they do not fit,
+        // stretched where they grow, spread as justify-content and auto
+        // margins say.
+        function flexRow(n, list, c, w, cx, depth, tr) {
+            var g = sp(bp(c, 'gap', '[0-5]'), tr ? 2 : 2.5), j = justify(c, cx, n);
+            if (bp(c, 'flex', 'wrap|nowrap') === 'wrap' || has(c, 'list-inline')) {
+                return wrap(list, w, cx, depth, g, j === 'center' ? 'center' : j === 'end' ? 'end' : cx.align);
+            }
+            list = list.slice(0, 8);
+            var cnt = list.length, ws = [], fixed = [], grow = [], sum = 0, fsum = 0, gs = 0, i;
+            if (!cnt) return piece(w, 0);
+            for (i = 0; i < cnt; i++) {
+                var kc = cls(list[i]), kk = kindOf(list[i]);
+                ws[i] = tr ? (w - g * (cnt - 1)) / cnt : nat(list[i], w, cx);
+                fixed[i] = has(kc, 'flex-shrink-0') || /^(btn|badge|icon|check|dot)$/.test(kk) || (kk === 'pic' && ws[i] < 30);
+                grow[i] = / (flex-grow-1|flex-fill|w-100|col|navbar-collapse|container|container-fluid|form-control|form-select) /.test(kc) ||
+                    list[i].type === 'container';
+                sum += ws[i];
+                if (!fixed[i]) fsum += ws[i];
+                if (grow[i]) gs++;
+            }
+            var room = w - g * (cnt - 1);
+            if (!tr && sum > room && fsum > 0) {
+                var scale = Math.max(0, room - (sum - fsum)) / fsum;
+                for (i = 0; i < cnt; i++) if (!fixed[i]) ws[i] = Math.max(4, ws[i] * scale);
+            } else if (!tr && gs) {
+                for (i = 0; i < cnt; i++) if (grow[i]) ws[i] += (room - sum) / gs;
+            }
+            var items = [], H = 0, used = 0;
+            for (i = 0; i < cnt; i++) {
+                var s = lay(list[i], ws[i], cx, depth + 1);
+                if (!s.h) continue;
+                items.push({ s: s, c: cls(list[i]) });
+                H = Math.max(H, s.h);
+                used += s.w;
+            }
+            if (!items.length) return piece(w, 0);
+            used += g * (items.length - 1);
+            var free = Math.max(0, w - used), x = 0, extra = 0, auto = -1, before = false;
+            for (i = 0; i < items.length && auto < 0; i++) {
+                if (has(items[i].c, 'me-auto')) auto = i;
+                else if (has(items[i].c, 'ms-auto')) { auto = i; before = true; }
+            }
+            if (auto < 0 && free > 0) {
+                if (j === 'center') x = free / 2;
+                else if (j === 'end') x = free;
+                else if (j === 'between' && items.length > 1) extra = free / (items.length - 1);
+                else if (j === 'around') { extra = free / items.length; x = extra / 2; }
+                else if (j === 'evenly') { extra = free / (items.length + 1); x = extra; }
+            }
+            var ai = bp(c, 'align-items', 'start|end|center|baseline|stretch') ||
+                ((cx.nav || has(c, 'navbar')) ? 'center' : 'start');
+            var pc = piece(auto >= 0 || extra || x ? w : used, H);
+            for (i = 0; i < items.length; i++) {
+                var it = items[i].s;
+                if (i === auto && before) x += free;
+                put(pc, it, x, ai === 'center' ? (H - it.h) / 2 : ai === 'end' ? H - it.h : 0);
+                x += it.w + g + extra;
+                if (i === auto && !before) x += free;
+            }
+            return pc;
+        }
+        // A Bootstrap row: each column's span at the widest breakpoint up to
+        // xl, columns of one line side by side, at most three lines.
+        function grid(n, list, c, w, cx, depth) {
+            var p = n.props || {}, gut = bp(c, 'g', '[0-5]') || (p.gutter === undefined ? '' : String(p.gutter));
+            var gx = sp(bp(c, 'gx', '[0-5]') || gut, 4), gy = sp(bp(c, 'gy', '[0-5]') || gut, 4);
+            var rc = bp(c, 'row-cols', '[1-6]'), unit = (w + gx) / 12, specs = [], num = 0, eq = 0;
+            list = list.slice(0, 12);
+            list.forEach(function (k) {
+                var kp = k.props || {}, kc = cls(k), v = '', off = 0;
+                if (k.type === 'col') {
+                    v = String(kp.xl || kp.lg || kp.md || kp.sm || kp.xs || '');
+                    off = +(kp.offsetMd || kp.offsetXs || 0) || 0;
+                }
+                if (!v) v = bp(kc, 'col', '[1-9]|1[0-2]|auto');
+                if (!off) off = +bp(kc, 'offset', '[1-9]|1[01]') || 0;
+                if (!v && rc) v = String(12 / +rc);
+                var span = v === 'auto' ? Math.min(12, nat(k, w, cx) / unit + .01) : v && isFinite(+v) && +v > 0 ? +v : 0;
+                if (span) num += span + off; else eq++;
+                specs.push({ k: k, span: span, off: off });
+            });
+            var eqSpan = eq ? Math.max(1, (num && num % 12 === 0 ? 12 : 12 - num % 12) / eq) : 0;
+            var lns = [], cur = [], tot = 0;
+            specs.forEach(function (s) {
+                var span = (s.span || eqSpan) + s.off;
+                if (cur.length && tot + span > 12.01) { lns.push(cur); cur = []; tot = 0; }
+                cur.push({ k: s.k, span: span, off: s.off });
+                tot += span;
+            });
+            if (cur.length) lns.push(cur);
+            var jc = String(p.justify || '') || bp(c, 'justify-content', 'start|end|center|between|around|evenly');
+            var al = String(p.align || '') || bp(c, 'align-items', 'start|end|center');
+            var pc = piece(w, 0), y = 0, lines = 0;
+            lns.forEach(function (ln) {
+                if (lines >= 3) return;
+                var subs = [], H = 0, span = 0;
+                ln.forEach(function (it) {
+                    var cw = Math.max(2, (it.span - it.off) * unit - gx), s = lay(it.k, cw, cx, depth + 1);
+                    subs.push({ s: s, w: cw, off: it.off * unit, c: cls(it.k) });
+                    H = Math.max(H, s.h);
+                    span += it.span;
+                });
+                if (!H) return;
+                var free = Math.max(0, 12 - span) * unit;
+                var x = jc === 'center' || (subs.length === 1 && has(subs[0].c, 'mx-auto')) ? free / 2 : jc === 'end' ? free : 0;
+                subs.forEach(function (o) {
+                    x += o.off;
+                    if (o.s.p.length) put(pc, o.s, x, y + (al === 'center' ? (H - o.s.h) / 2 : al === 'end' ? H - o.s.h : 0));
+                    x += o.w + gx;
+                });
+                y += H + gy;
+                lines++;
+            });
+            pc.h = Math.max(0, y - gy);
+            return pc;
+        }
+
+        // ── The card ──
+        function num(v) { v = Math.round(v * 10) / 10; return String(v === 0 ? 0 : v); }
+        function emit(q, s, ox, oy) {
+            var i, d = '';
+            if (q.r) {
+                var x = ox + q.r[0] * s, y = oy + q.r[1] * s, w = q.r[2] * s, h = q.r[3] * s;
+                if (y >= 110 || w < .2 || h < .2) return '';
+                return '<rect x="' + num(x) + '" y="' + num(y) + '" width="' + num(w) + '" height="' + num(h) + '"' +
+                    (q.rx ? ' rx="' + num(Math.min(q.rx, q.r[2] / 2, q.r[3] / 2) * s) + '"' : '') + ' fill="' + (q.f || 'none') + '"' +
+                    (q.s ? ' stroke="' + q.s + '"' + (q.d ? ' stroke-dasharray="3 2"' : '') : '') + '/>';
+            }
+            if (q.c) {
+                if (oy + (q.c[1] - q.c[2]) * s >= 110) return '';
+                return '<circle cx="' + num(ox + q.c[0] * s) + '" cy="' + num(oy + q.c[1] * s) + '" r="' + num(Math.max(.3, q.c[2] * s)) +
+                    '" fill="' + q.f + '"/>';
+            }
+            for (i = 0; i < q.g.length; i += 2) d += (i ? 'L' : 'M') + num(ox + q.g[i] * s) + ' ' + num(oy + q.g[i + 1] * s);
+            return '<path d="' + d + 'Z" fill="' + q.f + '"/>';
+        }
+
+        if (hidden(tree)) return '';
+        var root = lay(tree, CW, { ink: INK.light, align: 'start', nav: false, inBox: false }, 0);
+        if (!root.p.length || !root.h) return '';
+        var x1 = CW, x2 = 0;
+        root.p.forEach(function (q) {
+            var a = q.r ? [q.r[0], q.r[0] + q.r[2]] : q.c ? [q.c[0] - q.c[2], q.c[0] + q.c[2]] : [q.g[0], q.g[q.g.length - 2]];
+            x1 = Math.min(x1, a[0]);
+            x2 = Math.max(x2, a[1]);
+        });
+        // A small block is drawn larger, a tall one smaller, and the drawing
+        // sits in the middle of the card.
+        var s = Math.max(.45, Math.min(1.6, 96 / root.h, CW / Math.max(1, x2 - x1)));
+        var ox = (200 - (x2 - x1) * s) / 2 - x1 * s;
+        var oy = root.h * s <= 96.01 ? (110 - root.h * s) / 2 : 7;
+        var back = piece(200, 110), bg = root.bg || {};
+        if (bg.pic) pict(back, 0, 0, 200, 110, true);
+        else rect(back, 0, 0, 200, 110, bg.fill || W);
+        var body = '';
+        root.p.forEach(function (q) { body += emit(q, s, ox, oy); });
+        if (!body) return '';
+        var svg = '<svg class="sd-pal-tip-svg" viewBox="0 0 200 110" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">';
+        back.p.forEach(function (q) { svg += emit(q, 1, 0, 0); });
+        return svg + body + '</svg>';
+    }
+
     // ── The hover card ──────────────────────────────────────────────────
     // One card for every palette list, drawn beside the panel so it never
     // covers the list being scanned. It does not take the pointer and goes
@@ -74300,10 +74990,13 @@ const StyleDesigner = (function () {
         var it = { type: item.dataset.type || '', label: item.dataset.label || '', extra: {} };
         try { it.extra = item.dataset.extra ? JSON.parse(item.dataset.extra) : {}; } catch (e) { it.extra = {}; }
         var info = _sdPalInfo()[_sdPalKey(it)];
-        if (!info) return '';
+        // A ready-made block without a drawing of its own is drawn from its tree.
+        var sketch = (info && info.v) ? '' : _sdBlockSketchOf(it);
+        if (!info && !sketch) return '';
+        info = info || {};
         var en = _sdEnglishOf(it.label).filter(function (k) { return _sdFold(k) !== _sdFold(it.label); })
             .sort(function (a, b) { return a.length - b.length; })[0] || '';
-        var svg = info.v ? _sdPalDrawing(info.v) : '';
+        var svg = info.v ? _sdPalDrawing(info.v) : sketch;
         return (svg ? '<div class="sd-pal-tip-preview">' + svg + '</div>' : '') +
             '<div class="sd-pal-tip-head">' +
                 (item.dataset.icon ? '<span class="bi ' + esc(item.dataset.icon) + '" aria-hidden="true"></span>' : '') +
@@ -74311,7 +75004,7 @@ const StyleDesigner = (function () {
                 (en ? '<span class="sd-pal-tip-en">' + esc(en) + '</span>' : '') +
             '</div>' +
             (info.h ? '<code class="sd-pal-tip-code">' + esc(info.h) + '</code>' : '') +
-            '<div class="sd-pal-tip-desc">' + esc(info.d) + '</div>';
+            (info.d ? '<div class="sd-pal-tip-desc">' + esc(info.d) + '</div>' : '');
     }
 
     function _sdPalTipHide() {
