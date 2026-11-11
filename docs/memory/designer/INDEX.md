@@ -184,7 +184,7 @@
 - design-template-text-contrast.md: Text colours and names in the hello-pinegrap and pinegrap-playground templates: no faded text, no primary text on grey sections, one owner name, Parola wording.
 - design-template-theatre.md: Theatre template (pinegrap-theatre): productions and performances as collections, hire, school group and youth place requests, tickets, friends and vouchers in the shop, pth- look, tests.
 - design-template-threads.md: Café, Clinic, Playground and Salon 1.1.0 comment threads on the Comments widget, the comment e-mail cards before the System region, Google Reviews beside the sample testimonials [decision: here]
-- design-template-travel-pages.md: Travel Agency template 2.0.0: home, tour and destination pages on the Travel blocks, motion on about, travel information and deals: the builders, each page's composition, what left, the test
+- design-template-travel-pages.md: Travel Agency template 2.0.0: home, tour page and destination page on the Travel blocks, motion on about, travel information, deals and FAQ: the builders, each page's composition, what left, the test
 - design-template-travel.md: Travel Agency template (pinegrap-travel): tours and destinations as collections, reviews, booking requests and tailor-made enquiries, deposits and gift cards in the shop, ptv- look, tests.
 - design-template-veterinary.md: Veterinary template (pinegrap-veterinary): services, pets, emergencies, vets as a collection, online booking, appointment and health plan requests, plans in the shop, pvt- look, tests.
 - design-template-wedding-pages.md: Wedding template 2.0.0: home, timeline, packages and venue on the Wedding blocks: the builders, each page's composition, motion, what left, the test

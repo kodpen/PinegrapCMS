@@ -4,7 +4,8 @@ description: Travel Agency template (pinegrap-travel): tours and destinations as
 ---
 
 ## What does it ship?
-- Home (places `home_tours`, `home_destinations`, `google_reviews`, `home_posts`), `about`, `travel_info`, `faq`, `deals`; `destinations`, `destination`, `tours`, the `tour` record page (itinerary, reviews), `destination_new`, `tour_new` (staff); `book`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`; `enquiry` (`?destination=`), `enquiry_view`, `my_enquiries`, `staff_enquiries`; shop pages (`packages`, product, cart, checkout, order, `email_order`); the standard pages with the blog called Travel Journal ([[design-templates-standard-pages]]); sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`; the e-mail pages.
+- Home (2.0.0, Travel blocks: [[design-template-travel-pages]]; places `home_tours`, `home_destinations`, `google_reviews`, `home_posts`), `about`, `travel_info`, `faq`, `deals`; `destinations`, `destination`, `tours`, the `tour` record page (itinerary, reviews), `destination_new`, `tour_new` (staff).
+- `book`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`; `enquiry` (`?destination=`), `enquiry_view`, `my_enquiries`, `staff_enquiries`; shop pages (`packages`, product, cart, checkout, order, `email_order`); the standard pages with the blog called Travel Journal ([[design-templates-standard-pages]]); sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`; the e-mail pages.
 - Shared: account_bar, notice, header, footer, staff_bar, trip_band, email_header/footer. Order 83, icon `bi-airplane`, look `modern-soft`, palette `sky` (e-mail blue `#0369a1`). Folders root, public, registration, private. Contact group `newsletter`. `catalog` from `shop.php`: a Tour Packages group with a deposit per sample tour (`TRAVEL-DEPOSIT-<KEY>`) and the gift cards. Built in #7473–#7700 and the assembly PR.
 
 ## Why a main file plus a folder?
@@ -23,5 +24,6 @@ description: Travel Agency template (pinegrap-travel): tours and destinations as
 - Turkish: "tur", "destinasyon", "kapora", "rezervasyon talebi", blog "Seyahat Günlüğü"; no shared key reading "randevu" (the bookings test checks it).
 
 ## Which tests cover it?
-- `design_template_travel_test.php` (data, shared parts, `_test_tv_page_keys()`) and `…_public_`, `…_tours_`, `…_bookings_`, `…_enquiries_`, `…_shop_`, `…_standard_`, `…_account_test.php`; `…_assembly_test.php`: offered without the shop, catalog, pages in order, widgets once and placed, placeholders, shop-only `requires`, contact search sections, `ptv-` rules, six comment widgets (tour reviews not drawn: the shared draw goes two answers deep), reply e-mail card, samples kept, Google reviews.
+- `design_template_travel_test.php` (data, shared parts, `_test_tv_page_keys()`) and `…_public_`, `…_tours_`, `…_bookings_`, `…_enquiries_`, `…_shop_`, `…_standard_`, `…_account_test.php`.
+- `…_assembly_test.php`: no shop needed, catalog, pages, widgets, placeholders, shop-only `requires`, search sections, `ptv-` rules, six comment widgets (tour reviews not drawn: the shared draw goes two answers deep), reply card, samples, Google reviews.
 - In the shared lists of the collection-form (`blog_new`, `destination_new`, `staff_entry`, `tour_new`), account-email, submitter-name, consent-privacy (`tv-bk-consent`, `tv-eq-consent`) and faded-text tests.
