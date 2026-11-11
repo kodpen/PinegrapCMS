@@ -11,9 +11,10 @@
  * action video_upload). The clip's panel holds the source in and out, the
  * start, the speed, the volume and mute, Detach sound and Replace.
  *
- * At rest (outside the Animate tool, and in every save) the clip shows its
- * frame at the source in; the animation's frames take it at each moment in
- * the export step.
+ * At rest (outside the Animate tool, and in every still save) the clip
+ * shows its frame at the source in; each frame of an animation's export
+ * shows the clip's own frame of that moment (clipFramesAt()), from a
+ * decoder of its own.
  *
  * A part of window.PgImageEditor, bundled after pg_image_editor_video.js
  * (pg_js_bundles()); it hangs its code on the editor through
@@ -262,15 +263,73 @@
         return entry.promise;
     }
 
+    // In an animation's frame (renderFrame(), this.clipFrames) the clip's
+    // frame of that moment, nothing off its span; else, and where that
+    // frame could not be decoded, the source in.
     function clipPaint(g, l) {
-        var entry = this.clipRests[restKey(l)];
+        var frames = this.clipFrames, own = (frames && Object.prototype.hasOwnProperty.call(frames, l.id)) ? frames[l.id] : undefined;
+        var entry = this.clipRests[restKey(l)], img = own || (entry && entry.canvas);
 
-        if (entry && entry.canvas) {
+        if ((own !== null) && img) {
             g.translate(l.x + l.w / 2, l.y + l.h / 2);
             g.rotate((l.rot || 0) * Math.PI / 180);
-            g.drawImage(entry.canvas, -l.w / 2, -l.h / 2, l.w, l.h);
+            g.drawImage(img, -l.w / 2, -l.h / 2, l.w, l.h);
         }
     }
+
+    // ---- the frames of an animation's export ----
+
+    // The export's frames of a source: a decoder of its own on the same
+    // bytes (a source answers only its newest request, and the stage and
+    // the bars ask too), asked one frame after another so none overtakes
+    // the one before.
+    Editor.prototype.clipFrameSource = function (src) {
+        var fs = this.clipFrameSets[src];
+
+        if (!fs) {
+            fs = this.clipFrameSets[src] = { source: null, queue: Promise.resolve() };
+            fs.source = this.clipSource(src).then(function (s) { return X.video.open(s.bytes); });
+            fs.source.then(null, function () {});
+        }
+
+        return fs;
+    };
+
+    // Each visible clip's frame at document time (M.clipFramesAt()) in the
+    // document being drawn, by layer id: a VideoFrame the caller closes, or
+    // null off the clip's span. A clip whose frame cannot be decoded is left
+    // out and paints its source in; a still asks for none.
+    Editor.prototype.clipFramesAt = function (time) {
+        var self = this, times = M.clipFramesAt(this.doc, time), frames = {}, waits = [];
+
+        this.doc.layers.forEach(function (l) {
+            var fs, ms;
+
+            if (!Object.prototype.hasOwnProperty.call(times, l.id)) {
+                return;
+            }
+
+            if (times[l.id] === null) {
+                frames[l.id] = null;
+                return;
+            }
+
+            fs = self.clipFrameSource(l.src);
+            ms = times[l.id];
+            fs.queue = fs.queue.then(function () {
+                return fs.source;
+            }).then(function (source) {
+                return source.frameAt(ms);
+            }).then(function (f) {
+                if (f) {
+                    frames[l.id] = f;
+                }
+            }, function () {});
+            waits.push(fs.queue);
+        });
+
+        return Promise.all(waits).then(function () { return frames; });
+    };
 
     // With the playhead (a motion dock with no rows): each clip shows the
     // frame at that moment, or nothing off its span.
@@ -1156,15 +1215,19 @@
     var finish = Editor.prototype.finish;
 
     Editor.prototype.finish = function () {
-        var sources = this.clipSources, thumbs = this.clipThumbSets;
+        var sources = this.clipSources, thumbs = this.clipThumbSets, framed = this.clipFrameSets;
 
         this.clipSources = {};
         this.clipThumbSets = {};
+        this.clipFrameSets = {};
         Object.keys(sources).forEach(function (src) {
             sources[src].then(function (s) { s.close(); }, function () {});
         });
         Object.keys(thumbs).forEach(function (src) {
             thumbs[src].source.then(function (s) { s.close(); }, function () {});
+        });
+        Object.keys(framed).forEach(function (src) {
+            framed[src].source.then(function (s) { s.close(); }, function () {});
         });
 
         return finish.apply(this, arguments);
@@ -1176,6 +1239,7 @@
         this.clipStates = {};
         this.clipRests = {};
         this.clipThumbSets = {};
+        this.clipFrameSets = {};
         this.clipTab = 'clip';
         this.clipDragging = false;
         this.clipKeyNow = '';
