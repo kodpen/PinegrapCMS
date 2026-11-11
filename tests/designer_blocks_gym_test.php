@@ -96,10 +96,17 @@ function test_designer_blocks_gym_rules_reach_the_stylesheet()
 {
 	$part = _pg_designer_block_css_parse(pg_test_designer_family_file('gym'));
 	pg_assert_same(array('pg-gym-photo', 'pg-gym-pass', 'pg-gym-meter'), array_keys($part['rules']), 'the family\'s rules');
-	pg_assert_same(array('pg-gym-photo', 'pg-gym-pass'), $part['needs']['gym-hero'], 'the hero needs the frame and the pass');
+	// The pass comes first: the frame's rule places `.pg-gym-photo >
+	// .pg-gym-pass`, and a rule whose class the stylesheet already names is
+	// taken as present, so a pass after the frame was never added.
+	pg_assert_same(array('pg-gym-pass', 'pg-gym-photo'), $part['needs']['gym-hero'], 'the hero needs the pass and the frame');
 	pg_assert_same(array('pg-gym-meter'), $part['needs']['gym-classes'], 'the classes need the meter');
 	$source = _pg_designer_block_css_source();
 	pg_assert_true(isset($source['rules']['pg-gym-meter']), 'the block stylesheet holds the family\'s rules');
+	$hero = pg_designer_block_css(array('gym-hero'));
+	foreach (array('pg-gym-pass', 'pg-gym-photo') as $rule) {
+		pg_assert_true(strpos($hero, $source['rules'][$rule]) !== false, 'the hero ships the rule of .' . $rule);
+	}
 	foreach ($part['rules'] as $css) {
 		pg_assert_true((bool) preg_match('/var\\(--bs-[a-z-]+\\)/', $css), 'a rule colours with a theme variable: ' . $css);
 	}

@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Design template "Travel Agency": a travel agency and tour operator. A
- * home page with the featured tours, the destinations, the deals and what
- * travellers say; the destinations and the tours with filters by region,
+ * home page drawn on the Travel blocks (a photo hero with the regions,
+ * a tour day by day, a destination guide), with the featured tours, the
+ * destinations, the deals and what travellers say; the destinations and the tours with filters by region,
  * destination and travel style, one page per tour with its photos, facts,
  * day-by-day itinerary and the travellers' reviews; travel information,
  * the deals, the about page and the questions; a booking request and a
@@ -147,8 +148,9 @@ $travel_fonts = array(
     array('family' => 'Nunito Sans', 'weights' => array('400', '600', '700'), 'enabled' => true),
 );
 
-// The template's own CSS in User Styles. Every class is named ptv- (the
-// field ids are tv-); no block rule's class is named here. Selectors use
+// The template's own CSS in User Styles, after the block rules the pages
+// use. Every class is named ptv- (the field ids are tv-); no block rule's
+// class is named here. Selectors use
 // descendants and pseudo-classes only, so they hold on the editor's canvas
 // too. Colours are tokens only, so they follow any palette in both themes.
 $travel_css = implode("\n", array(
@@ -175,7 +177,7 @@ $travel_css = implode("\n", array(
 
 return array(
     'name'        => lang('Travel Agency'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 83,
     'icon'        => 'bi-airplane',
@@ -231,10 +233,11 @@ return array(
         'email_footer' => array('name' => lang('Travel E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its ptv- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the rules of the blocks its pages place
+    // (the Hero (Image Background) and the two Travel blocks), then its
+    // ptv- rules, in one User Styles entry; and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $travel_css),
+        'css'   => pg_design_template_user_styles(array('hero-image-bg', 'travel-itinerary', 'travel-destination'), $travel_css),
         'fonts' => json_encode($travel_fonts),
     ),
 );

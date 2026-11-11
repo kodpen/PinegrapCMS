@@ -128,7 +128,7 @@ function pg_panel_actions()
         // The bell is drawn for every backend role.
         'check_unread_notifications' => array('file' => 'notifications.php', 'handler' => 'pg_panel_check_unread_notifications', 'exempt' => true, 'token' => false, 'write' => false),
         'edit_notifications' => array('file' => 'notifications.php', 'handler' => 'pg_panel_edit_notifications', 'exempt' => true, 'token' => true, 'write' => true),
-        'get_notifications' => array('file' => 'notifications.php', 'handler' => 'pg_panel_get_notifications', 'exempt' => true, 'token' => true, 'write' => true),
+        'get_notifications' => array('file' => 'notifications.php', 'handler' => 'pg_panel_get_notifications', 'exempt' => true, 'token' => true, 'write' => false),
         'remove_notifications' => array('file' => 'notifications.php', 'handler' => 'pg_panel_remove_notifications', 'exempt' => true, 'token' => true, 'write' => true),
         // Browser notifications for this device. Each touches only the
         // caller's own subscriptions and devices, so every role may use them.

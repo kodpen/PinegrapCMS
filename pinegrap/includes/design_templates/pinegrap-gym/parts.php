@@ -102,6 +102,13 @@ $searchable = function ($id, $topics = '') {
     if ($topics !== '') $props['searchKeywords'] = $topics;
     return $props;
 };
+// A node with an interaction (props._fx, played by pg_fx on the site and on
+// the canvas; under reduced motion nothing moves). The template carries no
+// script of its own: every motion of its pages is one of these.
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
 // The language switcher button: the server draws it for each request and
 // leaves it out while the site has a single language.
 $lang_switcher = function ($class = '', $variant = 'secondary') {
@@ -659,36 +666,67 @@ $join_band = function () use ($el, $heading, $para, $link, $container, $row, $co
     ));
 };
 
-// How long a class lasts, who it is for and how hard it is, in one line.
-$class_facts = function ($key, $class = 'd-flex flex-wrap gap-3 small text-body-secondary mb-0') use ($el, $icon, $span, $classes, $levels) {
+// The class cards are the palette's Gym: Class Finder block
+// (assets/js/style_designer_blocks_gym.js) drawn with the gym's own data,
+// and the timetable's days its Booking: Weekly Timetable block
+// (style_designer_blocks_booking.js): the same structure and classes, their
+// rules shipped in User Styles from the block source (pinegrap-gym.php).
+
+// How long a class lasts and who it is for, in one line.
+$class_facts = function ($key) use ($el, $icon, $span, $classes, $levels) {
     $c = $classes[$key];
     $fact = function ($icon_name, $text, $name) use ($el, $icon, $span) {
         return $el('li', 'd-inline-flex align-items-center gap-1', $name, array($icon($icon_name, 'text-primary'), $span($text, '', lang('Value'))));
     };
-    return $el('ul', 'list-unstyled ' . $class, lang('Class Facts'), array(
+    return $el('ul', 'list-unstyled d-flex flex-wrap gap-3 small text-body-secondary mb-3', lang('Class Facts'), array(
         $fact('bi-stopwatch', sprintf(lang('%d min'), $c['minutes']), lang('Length')),
         $fact('bi-person-check', $levels[$c['level']], lang('Level')),
-        $fact('bi-speedometer2', sprintf(lang('Intensity %d of 5'), $c['intensity']), lang('Intensity')),
+    ));
+};
+
+// How hard a class is: five rising steps, the first $level of them in the
+// palette's colour, named in words for a screen reader. The steps rise one
+// after another when the card comes into view.
+$meter = function ($level) use ($el, $span, $attr, $fx) {
+    $label = sprintf(lang('Intensity %d of 5'), $level);
+    $steps = array();
+    for ($i = 1; $i <= 5; $i++) $steps[] = $el('span', $i <= $level ? 'pg-gym-on' : '', lang('Step'));
+    return $el('div', 'd-flex align-items-center gap-2 small mb-4', lang('Intensity'), array(
+        $fx($el('div', 'pg-gym-meter', $label, $steps, array('_attrs' => array($attr('role', 'img'), $attr('aria-label', $label)))),
+            array('effect' => 'slide-up', 'trigger' => 'view', 'distance' => 8, 'duration' => 400, 'stagger' => 90)),
+        $span($label, 'text-body-secondary', lang('Text'), array('_attrs' => array($attr('aria-hidden', 'true')))),
     ));
 };
 
 // A class's card (the class list and the home): the icon, the focus, the
-// name, a line, the facts and a link that opens the booking request with
-// the class chosen.
-$class_card = function ($key) use ($el, $heading, $para, $span, $link, $col, $icon_tile, $class_facts, $classes, $focuses, $query) {
+// name, a line, the facts, the intensity and a link that opens the booking
+// request with the class chosen. An item of $class_list.
+$class_card = function ($key) use ($el, $heading, $para, $link, $icon, $class_facts, $meter, $classes, $focuses, $query) {
     $c = $classes[$key];
-    return $col(array(
+    return $el('li', 'col', $c['name'], array(
         $el('article', 'card h-100 border-0 shadow-sm pgy-lift', lang('Class Card'), array(
             $el('div', 'card-body d-flex flex-column p-4', lang('Card Body'), array(
-                $icon_tile($c['icon'], 'align-self-start mb-3'),
-                $span($focuses[$c['focus']]['title'], 'pgy-eyebrow small text-uppercase fw-semibold text-primary mb-1', lang('Focus')),
+                $el('div', 'd-inline-flex align-items-center justify-content-center rounded-3 bg-primary-subtle text-primary-emphasis fs-4 mb-3 align-self-start p-2', lang('Icon Box'), array(
+                    $icon($c['icon']),
+                )),
+                $para($focuses[$c['focus']]['title'], 'pgy-eyebrow small text-uppercase fw-semibold text-primary mb-1'),
                 $heading('h3', $c['name'], 'pgy-display h4 mb-2'),
                 $para($c['summary'], 'small text-body-secondary mb-3'),
-                $class_facts($key, 'd-flex flex-wrap gap-3 small text-body-secondary mb-4'),
+                $class_facts($key),
+                $meter($c['intensity']),
                 $link(lang('Book this class'), '{{page:class_booking}}?' . $query(array('class' => $c['name'])), 'btn btn-outline-primary mt-auto'),
             )),
         )),
-    ), '6', '4');
+    ));
+};
+
+// The cards of the given classes in a list, one, two or three to a row;
+// the cards rise in one after another when the list comes into view.
+$class_list = function ($keys) use ($el, $fx, $class_card) {
+    $cards = array();
+    foreach ($keys as $key) $cards[] = $class_card($key);
+    return $fx($el('ul', 'list-unstyled row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-0', lang('Group Classes'), $cards),
+        array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => 120));
 };
 
 // A trainer's card of the lists (the home and the trainer list): the
@@ -743,54 +781,54 @@ $plan_card = function ($key) use ($el, $heading, $para, $link, $span, $col, $che
     ), '', '4');
 };
 
-// What a member says: the quote, the stars, the member and the class.
-$testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $stars, $portrait, $testimonials) {
+// The member under a quote: the portrait, the name and the class.
+$quote_author = function ($n, $size = 48) use ($el, $span, $image, $attr, $portrait, $testimonials) {
     $t = $testimonials[$n];
-    return $col(array(
-        $el('figure', 'card h-100 border-0 shadow-sm p-4 mb-0', lang('Member Quote'), array(
-            $stars(),
-            $el('blockquote', 'mb-4', lang('Quote'), array($para($t['quote'], 'mb-0'))),
-            $el('figcaption', 'd-flex align-items-center gap-3 mt-auto', lang('Member'), array(
-                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('_attrs' => array($attr('width', '48'), $attr('height', '48'), $attr('loading', 'lazy')))),
-                $el('div', '', lang('Name and Role'), array(
-                    $span($t['name'], 'd-block fw-semibold', lang('Name')),
-                    $span($t['role'], 'd-block small text-body-secondary', lang('Role')),
-                )),
-            )),
+    return $el('figcaption', 'd-flex align-items-center gap-3 mt-auto', lang('Member'), array(
+        $image($portrait($t['name'], $size * 2), $t['name'], 'rounded-circle', array('_attrs' => array($attr('width', (string)$size), $attr('height', (string)$size), $attr('loading', 'lazy')))),
+        $el('div', '', lang('Name and Role'), array(
+            $span($t['name'], 'd-block fw-semibold', lang('Name')),
+            $span($t['role'], 'd-block small text-body-secondary', lang('Role')),
         )),
-    ), '', '4');
-};
-
-// One class of the timetable: the start, the class, the trainer and the
-// studio, and a link that opens the booking request with the class, the
-// day and the time chosen.
-$session_item = function ($s) use ($el, $span, $link, $classes, $trainers, $studios, $days, $query) {
-    $c = $classes[$s['class']];
-    return $el('li', 'list-group-item d-flex align-items-start gap-3 py-3', lang('Timetable Class'), array(
-        $span($s['time'], 'pgy-price fw-bold text-primary', lang('Start Time')),
-        $el('div', 'flex-grow-1', lang('Class Details'), array(
-            $span($c['name'], 'd-block fw-semibold', lang('Class Name')),
-            $span(sprintf(lang('%1$s · %2$s · %3$d min'), $trainers[$s['trainer']]['name'], $studios[$s['studio']], $c['minutes']),
-                'd-block small text-body-secondary', lang('Trainer and Studio')),
-        )),
-        $link(lang('Book'), '{{page:class_booking}}?' . $query(array(
-            'class' => $c['name'], 'day' => $days[$s['day']]['title'], 'time' => $s['time'],
-        )), 'btn btn-sm btn-outline-primary text-nowrap'),
     ));
 };
 
-// A day of the timetable: its name and its classes in the order they start.
+// What a member says: the stars, the quote and the member.
+$testimonial_card = function ($n) use ($el, $para, $stars, $quote_author, $testimonials) {
+    return $el('figure', 'card border-0 shadow-sm p-4 mb-0', lang('Member Quote'), array(
+        $stars(),
+        $el('blockquote', 'mb-4', lang('Quote'), array($para($testimonials[$n]['quote'], 'mb-0'))),
+        $quote_author($n),
+    ));
+};
+
+// One class of the timetable: the start, the class, the trainer, the
+// studio and the length, and a link that opens the booking request with
+// the class, the day and the time chosen.
+$session_item = function ($s) use ($el, $para, $link, $attr, $classes, $trainers, $studios, $days, $query) {
+    $c = $classes[$s['class']];
+    return $el('li', 'pg-week-slot mb-2', $c['name'], array(
+        $el('time', 'small', lang('Start Time'), array(), array('text' => $s['time'], '_attrs' => array($attr('datetime', $s['time'])))),
+        $para($c['name'], 'fw-semibold small mb-0'),
+        $para(sprintf(lang('%1$s · %2$s · %3$d min'), $trainers[$s['trainer']]['name'], $studios[$s['studio']], $c['minutes']),
+            'small text-body-secondary mb-1'),
+        $link(lang('Book'), '{{page:class_booking}}?' . $query(array(
+            'class' => $c['name'], 'day' => $days[$s['day']]['title'], 'time' => $s['time'],
+        )), 'small fw-semibold link-primary'),
+    ));
+};
+
+// A day of the timetable, an item of the week's list: its name and its
+// classes in the order they start.
 $timetable_day = function ($day) use ($el, $heading, $timetable, $days, $session_item) {
     $sessions = array();
     foreach ($timetable as $s) {
         if ($s['day'] === $day) $sessions[$s['time']] = $session_item($s);
     }
     ksort($sessions);
-    return $el('section', 'card h-100 border-0 shadow-sm', $days[$day]['title'], array(
-        $el('div', 'card-header bg-body border-0 pt-3', lang('Day Header'), array(
-            $heading('h3', $days[$day]['title'], 'pgy-display h5 mb-0'),
-        )),
-        $el('ul', 'list-group list-group-flush', lang('Day Classes'), array_values($sessions)),
+    return $el('li', '', $days[$day]['title'], array(
+        $heading('h3', $days[$day]['title'], 'pgy-display h6 fw-bold text-uppercase mb-3'),
+        $el('ul', 'list-unstyled mb-0', lang('Day Classes'), array_values($sessions)),
     ), array('id' => 'gy-day-' . $day));
 };
 

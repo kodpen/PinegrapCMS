@@ -11,9 +11,10 @@ Extra CSS either does not exist or is defined in the design's Styles panel. Inli
 
 ## How is a block rule written?
 - One `_SD_BLOCK_CSS` entry may hold several rules, media queries and keyframes, but its key must appear in it as a class (`'pg-tilt'` holds `.pg-tilt`): `_sdEnsureBlockStyles()` decides "already there" by that class, so a key that is not a class of its rule is appended again on every drop (`tests/designer_blocks_test.php` checks it).
+- The same test makes a rule that names another key's class (`.pg-gym-photo > .pg-gym-pass`) stand for that key: list the named key first in `_SD_BLOCK_CSS_NEEDS`, or its own rule is never added, in a drop or a template (`pg_designer_block_css()`). The Gym hero lost its pass rule so until #8655.
 - Descendant selectors only: the canvas wraps every node in `.sd-wrap`, so `>`, `+`, `~` between two tree nodes never match there.
 - Bootstrap utilities are `!important`: an element whose property a rule changes (display, overflow) carries no utility for that property.
-- Colours in a rule are `var(--bs-…)`, `var(--pg-…)` or `currentColor`; motion stops under `prefers-reduced-motion`. Shared entries: `pg-marquee`, `pg-shade-bottom`, `pg-pulse-still` (`designer-block-motion.md`, `designer-block-theme-colours.md`).
+- Colours in a rule are `var(--bs-…)`, `var(--pg-…)` or `currentColor`; motion stops under `prefers-reduced-motion`. Shared entries: `pg-marquee`, `pg-shade-bottom`, `pg-shade-tint`, `pg-pulse-still`, `pg-bleed`, `pg-screen`, `pg-display-xl` / `-xxl` ([[designer-block-full-bleed-giant-type]]) (`designer-block-motion.md`, `designer-block-theme-colours.md`).
 
 ## What is the one exception?
 - Style properties written by the properties panel itself: `background-image` / `-size` / `-position` / `-repeat` / `-attachment`, `background-color`, `font-size`, `object-position` (`setAttrStyleProp`). There the `style` attribute is the panel's **store**; moving it to a stylesheet takes the control away from the operator.

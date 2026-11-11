@@ -12,7 +12,9 @@
  * parts are search sections, the ptv- classes equal their rules, the
  * comment threads (the tours' reviews with stars among them) run on the
  * Comments widget with the reply e-mail's card, and the sample tours,
- * destinations, deposits and gift cards survive the assembly.
+ * destinations, deposits and gift cards survive the assembly; the home,
+ * the tour page and the destination page are drawn on the Travel blocks
+ * with their rules shipped and motion from the interactions on nodes.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -240,4 +242,84 @@ function test_travel_assembly_google_reviews()
 	$home = json_encode(_tpl_threads_page($tpl, 'home')['tree'], JSON_UNESCAPED_UNICODE);
 	pg_assert_true(strpos($home, '"templateWidget":"google_reviews"') !== false, 'the home places the Google reviews');
 	pg_assert_true(strpos($home, '"templateWidget":"home_tours"') !== false && strpos($home, '"templateWidget":"home_posts"') !== false, 'the home places the tours and the journal');
+}
+
+// Version 2.0.0 draws the home, the tour page and the destination page on
+// the Travel blocks and the Hero (Image Background): every block class they
+// place ships its rule in the template's User Styles, each moves through
+// the interactions on its nodes (kept as written by pg_fx_normalize()), and
+// each has one h1. The home's tour runs day by day and its destination has
+// its four seasons; the old figures, reasons and question bands are gone.
+function test_travel_assembly_pages_on_travel_blocks()
+{
+	$tpl = _test_tv_asm_tpl();
+	pg_assert_true(version_compare($tpl['version'], '2.0.0', '>='), 'version 2.0.0');
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	$trees = array();
+	foreach ($tpl['pages'] as $p) if (in_array($p['key'], array('home', 'about', 'travel_info', 'deals', 'faq'), true)) $trees[$p['key']] = $p['tree'];
+	$trees['tour'] = $tpl['widgets']['tour_detail']['tree'];
+	$trees['destination'] = $tpl['widgets']['destination_detail']['tree'];
+	$wanted = array(
+		'home'        => array('pg-hero-tall', 'pg-shade-bottom', 'pg-travel-days', 'pg-travel-day', 'pg-travel-glance', 'pg-travel-figure', 'pg-travel-seasons'),
+		'tour'        => array('pg-travel-glance', 'pg-travel-figure', 'sticky-lg-top'),
+		'destination' => array('pg-travel-glance'),
+	);
+	pg_assert_same(7, count($trees), 'five public pages, the tour page, the destination page');
+	$found = array();
+	foreach ($trees as $key => $tree) {
+		$nodes = array();
+		_test_tv_asm_tpl_nodes($tree, $nodes);
+		$classes = '';
+		$labels = array();
+		$effects = 0;
+		$h1 = 0;
+		foreach ($nodes as $n) {
+			$classes .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			if (isset($n['props']['_label'])) $labels[] = $n['props']['_label'];
+			if ((isset($n['props']['tag']) ? $n['props']['tag'] : '') === 'h1') $h1++;
+			foreach (array('pg-travel-days', 'pg-travel-seasons') as $list) {
+				if (preg_match('/(?<![\w-])' . $list . '(?![\w-])/', isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '')) $found[$key][$list] = $n;
+			}
+			if (!isset($n['props']['_fx'])) continue;
+			$effects++;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, $key . ': ' . $field . ' is kept as written');
+			}
+		}
+		preg_match_all('/(?<![\w-])pg-(?:travel-[a-z0-9-]+|hero-tall|shade-bottom)(?![\w-])/', $classes, $m);
+		foreach (array_unique($m[0]) as $class) pg_assert_contains('.' . $class, $css, $key . ': the rule of ' . $class . ' ships');
+		foreach (isset($wanted[$key]) ? $wanted[$key] : array() as $class) {
+			pg_assert_true((bool)preg_match('/(?<![\w-])' . preg_quote($class, '/') . '(?![\w-])/', $classes), $key . ': places ' . $class);
+		}
+		pg_assert_true($effects >= 1, $key . ': something moves');
+		pg_assert_true($h1 <= 1, $key . ': at most one h1');
+		if (in_array($key, array('home', 'tour', 'destination'), true)) {
+			pg_assert_true($effects >= 3, $key . ': opens and scrolls in motion');
+			pg_assert_same(1, $h1, $key . ': one h1');
+		}
+		if (in_array($key, array('home', 'about', 'travel_info'), true)) pg_assert_false(in_array('Write to Us', $labels, true), $key . ': no question band');
+		if ($key === 'home') {
+			foreach (array('Figures', 'Why Travel with Us') as $band) pg_assert_false(in_array($band, $labels, true), 'home: no ' . $band . ' band');
+			foreach (array('Hero', 'Travel (Day by Day)', 'Travel (Destination Guide)') as $block) pg_assert_true(in_array($block, $labels, true), 'home: the ' . $block . ' block');
+		}
+	}
+
+	$home = json_encode($trees['home'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_contains('"trigger":"load"', $home, 'the hero comes in on load');
+	pg_assert_contains('"id":"tv-home-itinerary"', $home, 'the tour day by day is a search section');
+	pg_assert_contains('"id":"tv-home-destination"', $home, 'the destination guide is a search section');
+	pg_assert_contains('{{page:destinations}}?region=', $home, 'the hero links each region');
+	pg_assert_same(4, count($found['home']['pg-travel-days']['children']), 'the sample tour has four days');
+	$seasons = $found['home']['pg-travel-seasons']['children'];
+	pg_assert_same(4, count($seasons), 'four seasons');
+	$best = 0;
+	foreach ($seasons as $li) if (strpos(isset($li['props']['cssClass']) ? $li['props']['cssClass'] : '', 'pg-travel-best') !== false) $best++;
+	pg_assert_same(2, $best, 'spring and autumn are the best time');
+	$tour = json_encode($trees['tour'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_contains('"price"', $tour, 'the glance shows the bound price');
+	pg_assert_contains('"group_size"', $tour, 'the glance shows the bound group size');
+	$destination = json_encode($trees['destination'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_contains('"season"', $destination, 'the guide shows the bound best time to go');
 }

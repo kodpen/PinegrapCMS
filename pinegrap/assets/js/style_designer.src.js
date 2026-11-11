@@ -17517,6 +17517,34 @@ const StyleDesigner = (function () {
                     ]);
                 }
 
+                // Hero: Full-Screen Media — one screen tall and edge to edge, the
+                // picture as the section's background (the Background panel's
+                // store), a giant headline at the bottom on the shared scrim
+                // over an even tint: giant type reaches the photo's upper half,
+                // where the gradient alone is too light. The eyebrow is bold
+                // at 20 px, large text, so it needs 3:1 there and not 4.5:1.
+                // Same shape as hero-image-bg: the scrim is the only, in-flow
+                // child, so a long translation grows the band instead of being cut.
+                if (ctype === 'spotlight-media') {
+                    return createNode('semantic', { tag: 'section', cssClass: 'd-flex overflow-hidden pg-screen pg-bleed', customName: _sdT('Hero (Full-Screen Media)'),
+                        _attrs: [{ name: 'style', value: 'background-image: url(https://picsum.photos/id/1036/1920/1280); background-size: cover; background-position: center;' }] }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-column justify-content-end w-100 pt-5 text-body pg-shade-bottom pg-shade-tint', customName: _sdT('Overlay'),
+                            _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
+                            createNode('container', { fluid: false, cssClass: 'py-5' }, [
+                                createNode('content', { contentType: 'paragraph', text: _sdT('New season'), cssClass: 'fs-5 fw-bold text-uppercase mb-3' }),
+                                createNode('content', { contentType: 'heading', tag: 'h1', text: _sdT('Made for the outdoors'), cssClass: 'pg-display-xxl mb-4' }),
+                                createNode('semantic', { tag: 'div', cssClass: 'col-lg-7 px-0', customName: _sdT('Hero Body') }, [
+                                    createNode('content', { contentType: 'paragraph', text: _sdT('Light, warm and ready for any weather: meet the collection built for long days outside.'), cssClass: 'lead mb-4' }),
+                                    createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-2 flex-wrap', customName: _sdT('Hero CTA Group') }, [
+                                        createNode('component', { componentType: 'btn', text: _sdT('Shop the Collection'), variant: 'primary',   size: 'lg', href: '#' }),
+                                        createNode('component', { componentType: 'btn', text: _sdT('Watch the Film'),      variant: 'secondary', size: 'lg', href: '#' })
+                                    ])
+                                ])
+                            ])
+                        ])
+                    ]);
+                }
+
                 // CTA: Simple — centered banner on subtle bg, h2 + lead + 2 CTAs
                 if (ctype === 'cta-simple') {
                     return createNode('semantic', { tag: 'section', cssClass: 'py-5 bg-body-tertiary', customName: _sdT('CTA (Banner)') }, [
@@ -23423,25 +23451,29 @@ const StyleDesigner = (function () {
             '<div class="sd-panel-header"><span class="bi bi-puzzle me-1"></span>' + esc(_sdT('Components')) + '</div>' +
             '<div class="sd-panel-tabs" id="sd-panel-tabs">' +
                 '<button type="button" class="sd-panel-tab active" data-tab="components">' + esc(_sdT('Components')) + '</button>' +
-                '<button type="button" class="sd-panel-tab" data-tab="blocks" style="color:#f59e0b"><span class="bi bi-magic me-1"></span>' + esc(_sdT('Blocks')) + '</button>' +
                 '<button type="button" class="sd-panel-tab" data-tab="shared" style="color:#22c55e"><span class="bi bi-puzzle-fill me-1"></span>' + esc(_sdT('Shared')) + '</button>' +
                 '<button type="button" class="sd-panel-tab" data-tab="system" style="color:#6366f1"><span class="bi bi-cpu me-1"></span>' + esc(_sdT('System')) + '</button>' +
             '</div>' +
+            // One tab, two lists: the building blocks and the ready sections,
+            // chosen with the switch at its top (_sdPalSwitchWire()).
             '<div id="sd-tab-components" class="sd-tab-pane">' +
-                '<div class="sd-search-box">' +
-                    '<span class="bi bi-search"></span>' +
-                    '<input type="text" id="sd-search" placeholder="' + esc(_sdT('Search...')) + '" aria-label="' + esc(_sdT('Search components')) + '" autocomplete="off">' +
-                    '<button type="button" class="sd-search-clear bi bi-x" id="sd-search-clear" aria-label="' + esc(_sdT('Clear search')) + '" style="display:none"></button>' +
+                _sdPalSwitchHTML() +
+                '<div id="sd-pal-components" class="sd-pal-list" role="tabpanel" aria-labelledby="sd-pal-sw-components">' +
+                    '<div class="sd-search-box">' +
+                        '<span class="bi bi-search"></span>' +
+                        '<input type="text" id="sd-search" placeholder="' + esc(_sdT('Search...')) + '" aria-label="' + esc(_sdT('Search components')) + '" autocomplete="off">' +
+                        '<button type="button" class="sd-search-clear bi bi-x" id="sd-search-clear" aria-label="' + esc(_sdT('Clear search')) + '" style="display:none"></button>' +
+                    '</div>' +
+                    '<div id="sd-comp-list" class="sd-comp-items-scroll"></div>' +
                 '</div>' +
-                '<div id="sd-comp-list" class="sd-comp-items-scroll"></div>' +
-            '</div>' +
-            '<div id="sd-tab-blocks" style="display:none" class="sd-tab-pane">' +
-                '<div class="sd-search-box">' +
-                    '<span class="bi bi-search"></span>' +
-                    '<input type="text" id="sd-blocks-search" placeholder="' + esc(_sdT('Search...')) + '" aria-label="' + esc(_sdT('Search blocks')) + '" autocomplete="off">' +
-                    '<button type="button" class="sd-search-clear bi bi-x" id="sd-blocks-search-clear" aria-label="' + esc(_sdT('Clear search')) + '" style="display:none"></button>' +
+                '<div id="sd-pal-blocks" class="sd-pal-list" role="tabpanel" aria-labelledby="sd-pal-sw-blocks" hidden>' +
+                    '<div class="sd-search-box">' +
+                        '<span class="bi bi-search"></span>' +
+                        '<input type="text" id="sd-blocks-search" placeholder="' + esc(_sdT('Search...')) + '" aria-label="' + esc(_sdT('Search blocks')) + '" autocomplete="off">' +
+                        '<button type="button" class="sd-search-clear bi bi-x" id="sd-blocks-search-clear" aria-label="' + esc(_sdT('Clear search')) + '" style="display:none"></button>' +
+                    '</div>' +
+                    '<div id="sd-blocks-list" class="sd-comp-items-scroll"></div>' +
                 '</div>' +
-                '<div id="sd-blocks-list" class="sd-comp-items-scroll"></div>' +
             '</div>' +
             '<div id="sd-tab-shared" style="display:none" class="sd-tab-pane">' +
                 '<div class="sd-comp-items-scroll" id="sd-shared-list">' +
@@ -23571,9 +23603,10 @@ const StyleDesigner = (function () {
         // the widgets stay.
         if (!_sdUsesBootstrap()) {
             categories = categories.filter(function (cat) { return !cat.bootstrap; });
-            var _blocksTabBtn = compOuter.querySelector('.sd-panel-tab[data-tab="blocks"]');
-            if (_blocksTabBtn) _blocksTabBtn.remove();
-            var _blocksPane = document.getElementById('sd-tab-blocks');
+            // With one list left there is nothing to switch between.
+            var _palSwitch = compOuter.querySelector('.sd-pal-switch');
+            if (_palSwitch) _palSwitch.remove();
+            var _blocksPane = document.getElementById('sd-pal-blocks');
             if (_blocksPane) _blocksPane.remove();
             blockList = null;
         }
@@ -23595,6 +23628,7 @@ const StyleDesigner = (function () {
                              document.getElementById('sd-search-clear'), compList);
         _sdWirePaletteSearch(document.getElementById('sd-blocks-search'),
                              document.getElementById('sd-blocks-search-clear'), blockList);
+        _sdPalSwitchWire(compOuter);
 
         // ── Panel tab switching: Components ↔ Shared ─────────────────────────
         var _panelTabs = document.getElementById('sd-panel-tabs');
@@ -23605,11 +23639,9 @@ const StyleDesigner = (function () {
                 var tab = btn.dataset.tab;
                 _panelTabs.querySelectorAll('.sd-panel-tab').forEach(function(t) { t.classList.toggle('active', t.dataset.tab === tab); });
                 var cTab   = document.getElementById('sd-tab-components');
-                var bTab   = document.getElementById('sd-tab-blocks');
                 var oTab   = document.getElementById('sd-tab-shared');
                 var sysTab = document.getElementById('sd-tab-system');
                 if (cTab)   cTab.style.display   = tab === 'components' ? '' : 'none';
-                if (bTab)   bTab.style.display   = tab === 'blocks'     ? '' : 'none';
                 if (oTab)   oTab.style.display   = tab === 'shared'     ? '' : 'none';
                 if (sysTab) sysTab.style.display = tab === 'system'     ? '' : 'none';
                 if (tab === 'shared') loadSharedTab();
@@ -45464,7 +45496,7 @@ const StyleDesigner = (function () {
                                      'navbar-light-cta', 'navbar-search', 'navbar-dark-center',
                                      'footer-minimal', 'footer-multi-col', 'footer-newsletter',
                                      'carousel', 'modal', 'offcanvas', 'dropdown',
-                                     'hero-centered', 'hero-split', 'hero-image-bg',
+                                     'hero-centered', 'hero-split', 'hero-image-bg', 'spotlight-media',
                                      'cta-simple', 'cta-inline', 'cta-gradient',
                                      'features-grid', 'features-alt', 'features-list',
                                      'testimonial-single', 'testimonial-grid', 'testimonial-carousel',
@@ -53757,7 +53789,7 @@ const StyleDesigner = (function () {
 
     // Rail icons mirror the palette tab strip so the rail reads the same
     // way the open panel does.
-    var _SD_RAIL_ICONS = { components: 'bi-puzzle', blocks: 'bi-magic', shared: 'bi-puzzle-fill', system: 'bi-cpu' };
+    var _SD_RAIL_ICONS = { components: 'bi-puzzle', shared: 'bi-puzzle-fill', system: 'bi-cpu' };
 
     function _sdDockBody() { return document.querySelector('.sd-body'); }
 
@@ -73346,6 +73378,7 @@ const StyleDesigner = (function () {
             { label: _sdT('Hero: Centered'),                type: 'component', icon: 'bi-stars',        extra: { componentType: 'hero-centered' } },
             { label: _sdT('Hero: Split'),                 type: 'component', icon: 'bi-layout-split', extra: { componentType: 'hero-split' } },
             { label: _sdT('Hero: Image Background'),       type: 'component', icon: 'bi-image-alt',    extra: { componentType: 'hero-image-bg' } },
+            { label: _sdT('Hero: Full-Screen Media'),      type: 'component', icon: 'bi-fullscreen',   extra: { componentType: 'spotlight-media' } },
             { label: _sdT('CTA: Banner'),                 type: 'component', icon: 'bi-megaphone',    extra: { componentType: 'cta-simple' } },
             { label: _sdT('CTA: Inline'),                 type: 'component', icon: 'bi-arrow-right-circle', extra: { componentType: 'cta-inline' } },
             { label: _sdT('CTA: Gradient'),               type: 'component', icon: 'bi-gem',          extra: { componentType: 'cta-gradient' } },
@@ -73477,7 +73510,7 @@ const StyleDesigner = (function () {
     function _sdBlockPaletteGroups() {
         var groups = [
             { title: _sdT('Page Header'),      icon: 'bi-window-sidebar',     match: ['navbar-', 'hero-', 'breadcrumbs-'] },
-            { title: _sdT('Marketing'),        icon: 'bi-megaphone',          match: ['cta-', 'features-', 'stats-', 'pricing-', 'compare-', 'logos-'] },
+            { title: _sdT('Marketing'),        icon: 'bi-megaphone',          match: ['cta-', 'features-', 'stats-', 'pricing-', 'compare-', 'logos-', 'spotlight-'] },
             { title: _sdT('Creative'),         icon: 'bi-magic',              match: ['bento-', 'marquee-', 'showcase-', 'quote-', 'gallery-', 'scroller-'] },
             { title: _sdT('Social Proof'),     icon: 'bi-patch-check',        match: ['testimonial-', 'team-'] },
             { title: _sdT('Services & Booking'), icon: 'bi-calendar-check',   match: ['services-', 'steps-', 'booking-'] },
@@ -73528,6 +73561,19 @@ const StyleDesigner = (function () {
     var _SD_BLOCK_CSS_MARK = '/* Pinegrap block styles */';
     var _SD_BLOCK_CSS = {
         'pg-hero-tall':    '.pg-hero-tall { min-height: 60vh; }',
+        // One screen tall: svh leaves room for a phone's address bar, and
+        // 100vh stays for a browser that does not know svh.
+        'pg-screen':       '.pg-screen { min-height: 100vh; min-height: 100svh; }',
+        // Edge to edge also inside a container: the band reaches out to the
+        // window's sides. 100vw counts a desktop scrollbar too, so the page
+        // that holds one clips that sliver instead of scrolling sideways.
+        'pg-bleed':        '.pg-bleed { width: 100vw; max-width: none; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); border-radius: 0; }\n' +
+                           'body:has(.pg-bleed) { overflow-x: clip; }',
+        // Giant type that follows the window, from a phone's width up to
+        // about 6.5 rem (xl) and 9 rem (xxl). The weight is the look's
+        // display weight (light in most looks, black in Bold), never fixed.
+        'pg-display-xl':   '.pg-display-xl { font-family: var(--pg-font-heading, inherit); font-size: clamp(2.75rem, 1.6rem + 5vw, 6.5rem); font-weight: var(--pg-display-weight, 300); letter-spacing: var(--pg-heading-tracking, normal); line-height: 1.05; overflow-wrap: break-word; }',
+        'pg-display-xxl':  '.pg-display-xxl { font-family: var(--pg-font-heading, inherit); font-size: clamp(3.25rem, 1.4rem + 8vw, 9rem); font-weight: var(--pg-display-weight, 300); letter-spacing: var(--pg-heading-tracking, normal); line-height: 1; overflow-wrap: break-word; }',
         'pg-ratio-1x1':    '.pg-ratio-1x1 { aspect-ratio: 1 / 1; }',
         'pg-ratio-16x9':   '.pg-ratio-16x9 { aspect-ratio: 16 / 9; }',
         'pg-thumb-100':    '.pg-thumb-100 { width: 100px; height: 100px; }',
@@ -73569,6 +73615,10 @@ const StyleDesigner = (function () {
         // Dark scrim under text placed on a photo; the box also carries
         // data-bs-theme="dark", so the text colour never depends on the photo.
         'pg-shade-bottom': '.pg-shade-bottom { background-image: linear-gradient(to top, rgba(0, 0, 0, .85), rgba(0, 0, 0, .45) 50%, rgba(0, 0, 0, 0)); }',
+        // An even dark tint under pg-shade-bottom's gradient, for text that
+        // reaches the upper half of a photo (giant type on a full-screen
+        // picture): light text stays at 3:1 or more there even on a white photo.
+        'pg-shade-tint':   '.pg-shade-tint { background-color: rgba(0, 0, 0, .55); }',
         // A spinner-grow used as a decorative pulse (dark maintenance band,
         // live badge): under reduced motion it stands still and stays
         // visible (a resting .spinner-grow is transparent).
@@ -73615,6 +73665,7 @@ const StyleDesigner = (function () {
     // block is one line in each, and a block that needs nothing says nothing.
     var _SD_BLOCK_CSS_NEEDS = {
         'hero-image-bg':        ['pg-hero-tall', 'pg-shade-bottom'],
+        'spotlight-media':      ['pg-screen', 'pg-bleed', 'pg-shade-bottom', 'pg-shade-tint', 'pg-display-xxl'],
         'testimonial-carousel': ['pg-carousel-ink'],
         'image-carousel':       ['pg-shade-bottom', 'pg-carousel-photo'],
         'image-grid':           ['pg-ratio-1x1'],
@@ -74470,6 +74521,73 @@ const StyleDesigner = (function () {
             }
             if (e.key === 'Escape') { _sdPalTipHide(); return; }
             if (e.key === 'Delete' || e.key === 'Backspace' || String(e.key).toLowerCase() === 'n') e.stopPropagation();
+        });
+    }
+
+    // ── The Components tab's list switch ──────────────────────────────────
+    // Two options at the top of the Components tab choose its list: the
+    // building blocks or the ready sections. Drawn by the rules of the
+    // panel's view switch (.pg-sale-switch: one frame round both, the chosen
+    // option on a lighter pill); a tab list, since each option shows a pane.
+    var _SD_PAL_LIST_KEY = 'pinegrap_designer_palette_list';
+
+    function _sdPalSwitchHTML() {
+        var icons = { components: 'bi-puzzle', blocks: 'bi-magic' };
+        var labels = { components: _sdT('Components'), blocks: _sdT('Blocks') };
+        var out = '<div class="sd-pal-switch" role="tablist" aria-label="' + esc(_sdT('Palette list')) + '">';
+        ['components', 'blocks'].forEach(function (k) {
+            var on = k === 'components';
+            out += '<button type="button" class="sd-pal-switch-btn" role="tab" id="sd-pal-sw-' + k + '"' +
+                ' aria-controls="sd-pal-' + k + '" aria-selected="' + (on ? 'true' : 'false') + '" tabindex="' + (on ? '0' : '-1') + '"' +
+                ' data-pal-list="' + k + '"><span class="bi ' + icons[k] + '" aria-hidden="true"></span>' +
+                '<span>' + esc(labels[k]) + '</span></button>';
+        });
+        return out + '</div>';
+    }
+
+    // Shows one list and hides the other; `store` writes the choice so the
+    // editor opens on it next time.
+    function _sdPalSwitchShow(root, which, store) {
+        var sw = root && root.querySelector('.sd-pal-switch');
+        if (!sw || !root.querySelector('#sd-pal-' + which)) return;
+        sw.querySelectorAll('.sd-pal-switch-btn').forEach(function (b) {
+            var on = b.getAttribute('data-pal-list') === which;
+            b.setAttribute('aria-selected', on ? 'true' : 'false');
+            b.setAttribute('tabindex', on ? '0' : '-1');
+            var pane = root.querySelector('#sd-pal-' + b.getAttribute('data-pal-list'));
+            if (pane) pane.hidden = !on;
+        });
+        if (typeof _sdPalTipHide === 'function') _sdPalTipHide();
+        if (store) {
+            try { localStorage.setItem(_SD_PAL_LIST_KEY, which); } catch (e) {}
+        }
+    }
+
+    function _sdPalSwitchWire(root) {
+        var sw = root && root.querySelector('.sd-pal-switch');
+        if (!sw) return;
+        var saved = '';
+        try { saved = localStorage.getItem(_SD_PAL_LIST_KEY) || ''; } catch (e) {}
+        if (saved === 'blocks') _sdPalSwitchShow(root, 'blocks', false);
+        sw.addEventListener('click', function (e) {
+            var b = e.target.closest('.sd-pal-switch-btn');
+            if (b) _sdPalSwitchShow(root, b.getAttribute('data-pal-list'), true);
+        });
+        // Arrow keys move between the options and choose at once, Home and
+        // End go to the ends; the chosen option is the only tab stop.
+        sw.addEventListener('keydown', function (e) {
+            var btns = Array.prototype.slice.call(sw.querySelectorAll('.sd-pal-switch-btn'));
+            var i = btns.indexOf(document.activeElement);
+            if (i < 0) return;
+            var to = -1;
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') to = (i - 1 + btns.length) % btns.length;
+            else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') to = (i + 1) % btns.length;
+            else if (e.key === 'Home') to = 0;
+            else if (e.key === 'End') to = btns.length - 1;
+            if (to < 0) return;
+            e.preventDefault();
+            _sdPalSwitchShow(root, btns[to].getAttribute('data-pal-list'), true);
+            btns[to].focus();
         });
     }
 

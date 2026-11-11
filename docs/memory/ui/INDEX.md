@@ -27,7 +27,8 @@
 - back-arrow-no-copies.md: The way back to a parent or list screen is only the back arrow and the breadcrumb; which back-to-list copies were removed and where the screens now go back [decision: decisions-made-product-14.md]
 - back-arrow-targets.md: The back arrow of a panel screen (pg_page_shell 'cancel') goes where its Save goes, send_to first; the screens fixed for it and the ones that keep another target
 - barcode-scanner-detection.md: Barcode stock screens and Create Order: the scanner listener ignores fields, dialogs and blank codes; Last Scans rows built as text; the stock screens' wide layout
-- bell-refusals.md: What the bell panel shows when loading, marking unread or Delete All Notifications is refused or fails (no endless spinner, refused rows put back)
+- bell-read-rule.md: When a bell row is read: not on opening the bell; its link or Mark as read box reads it, a fold head its runs; Mark all as read reads only rows the caller sees [decision: here]
+- bell-refusals.md: What the bell panel shows when loading, marking read or unread or Delete All Notifications is refused or fails (no endless spinner, refused rows put back)
 - booking-agenda.md: Booking agenda (view_bookings.php, edit_booking.php, #6231): views, who sees what, staff-made bookings, status moves, cancel reason, audit, search
 - booking-edit-form-fields.md: The booking screen (edit_booking.php, new and existing) draws every field as a labelled form-field box; the help texts are form-text the fields name (step B11)
 - booking-settings.md: Settings › Bookings (category bookings): services, staff hours grid and exceptions, booking rules and widget texts in config_text; what the save writes and refuses
@@ -242,6 +243,7 @@
 - image-editor-callers.md: Who opens the image editor and how (#4609): the openImageEditor alias, data-pg-image-edit buttons, the live site's copy into content, Workspace's save.url, the redirect [decision: decisions-made-product-15.md]
 - image-editor-canvas-save.md: How a photo's grown or trimmed canvas and an outward frame are saved (extend step), pictures from the computer as files rows, a canvas file keeping and reopening its document
 - image-editor-clip-bar.md: A video clip's bar on the tracks (V3b): the filmstrip of several frames from a second decoder, the clip's sound as a waveform under the frames [decision: here]
+- image-editor-clip-effects.md: A video clip's effects (l.fx) and its transition into the next clip on its row (l.transition), V5 #8667: numbers, stage and save, held frame, layer order, split, panel
 - image-editor-clip-export.md: A video layer in an animation's export (V7b): each frame waits for the clip's own frame of that moment from a decoder of its own, nothing off its span; a still save keeps the source in
 - image-editor-clip-timeline.md: Editing clips on the tracks (V3): one row per source cut, trim, split, move, snapping, ripple, the length following the clips but never cutting another layer's motion (V3b) [decision: decisions-made-product-42.md]
 - image-editor-clip.md: The video layer (V2): type video, source in and out, start, speed, the frame at the playhead, its sound, Import of videos, the clip panel, video_files and video_upload

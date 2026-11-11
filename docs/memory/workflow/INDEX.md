@@ -5,6 +5,7 @@
 - agent-channel-experiment.md: Which doors wake a cloud session (A0, 2026-11-07): session webhook refused unsigned, routine /fire with an owner token, ws_wait.php poll; CI [ci]/[ready] lines; A3 door fields
 - agent-channel-wake.md: How a session waits on the agent channel with tools/ws_wait.php (--from, --mention, --changed), the handles typed in it, and who it wakes [decision: here]
 - architect-asking.md: How a session asks a decision question or the owner's approval of screenshots: search first, one architect issue each, a Türkçe özet block, then the session ends
+- architect-decision-record.md: An owner's answer stands as a Karar: comment on an architect issue before the decisions list names it; a decisions entry that names no such issue is held by the merging session [decision: decisions-made-panel-4.md]
 - architect-no-hand-over.md: The architect session does not hand over to a fresh session at a token count (2026-11-10): auto-compact summarises its context in place; what it reads again after a compaction
 - architect.md: Decision questions (2026-10-27): an architect issue; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (erdal), records it [decision: decisions-made-schema.md, decisions-made.md]
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
@@ -24,6 +25,8 @@
 - decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS, the cash-on-delivery code's orders, the member's SMS sign-in code.
 - decisions-made-panel-2.md: Decisions list, panel part 2 (2026-11-02 on): no Site Settings menu row; two-colour menu icons; no alert boxes on app-like screens; rights trees keep Workspace; a local change in the Bootstrap 6 dist
 - decisions-made-panel-3.md: Decisions list, panel part 3: Bootstrap 6 choices of 2026-10-25 (multiselect kept, liked screens, Stepper, Avatar, password meter, old browser notice); the Site Settings dialog's drawer (2026-11-11)
+- decisions-made-panel-4.md: Decisions list, panel part 4: the notifications bell (owner 2026-11-11): rows as the dashboard's Next up rows, module chips, unread only, asked of me, search, in-place actions, read when opened
+- decisions-made-panel-5.md: Decisions list, panel part 5 (2026-11-11 on): the dashboard's notes card as a My Notes shortcut, last online times, the world map without city names (#8672); the report screens' renewal (#8673)
 - decisions-made-panel.md: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose; the one date-and-time picker; the main menu in category headings; navigator screens; the front-end editing button box
 - decisions-made-product-10.md: Decisions list, product part 10 (2026-10-30 evening on): Turkish i-fold in panel lists, public invoice PDF address, e-mail triage suggestion, Workspace uploads, no collection schedule columns
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log
@@ -61,6 +64,7 @@
 - decisions-made-product-40.md: Decisions list, product part 40 (2026-11-09 on): standing feature rules (legacy stays, global audience, no design variables); workflow tables like SQL tables; a product photo's alt text
 - decisions-made-product-41.md: Decisions list, product part 41 (2026-11-09 on): Workspace scheduling in one place (no Scheduled flow window, one flow list); the new dashboard's System Status card: look, lights off, chips in sight
 - decisions-made-product-42.md: Decisions list, product part 42 (2026-11-10 on): one modern picker for a file or a page (no "Choose from File Manager" button), its screens, archived pages; the image editor's clip timeline and length
+- decisions-made-product-43.md: Decisions list, product part 43 (2026-11-11 on): classic styles sharing a CSS/JS set move as one "Legacy" design, its badge "Legacy" / "Eski", what follows the move (#8671)
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
