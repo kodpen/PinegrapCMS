@@ -200,3 +200,70 @@ function test_workspace_channel_panes_file_groups_are_cards()
 	pg_assert_contains('border-bottom: 0;', $rows, 'its file rows have no rule between them');
 	pg_assert_contains('border: 0;', workspace_channel_look_block($css, '.ws-file-group .ws-file-list'), 'and the list no frame of its own');
 }
+
+// The Summary, Board and Memory panes as cards, and the channel panes' empty
+// states in a dashed card.
+function test_workspace_channel_panes_summary_is_a_card_with_edit_in_its_head()
+{
+	$summary = workspace_channel_look_method('drawSummary');
+
+	pg_assert_contains("var card = el('section', 'card ws-summary-card');", $summary, 'the summary is a card');
+	pg_assert_contains('header.appendChild(edit);', $summary, 'Edit stands in its head');
+	pg_assert_contains('clear(body);', $summary, 'the editor opens inside the card');
+	pg_assert_false(strpos($summary, 'clear(pane);') !== false, 'not in place of the whole pane');
+	pg_assert_contains("var side = el('div', 'ws-summary-side');", $summary, 'the customer and the time spent stand beside it');
+	pg_assert_contains('side.appendChild(window.PGWsTaskTime.channelCard(', $summary, 'the time spent among them');
+
+	$css = workspace_channel_look_css();
+	pg_assert_contains('grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);', workspace_channel_look_block($css, '.ws-summary-layout'), 'side by side on a wide pane');
+	pg_assert_contains("@container (max-width: 48rem) {\n  .ws-summary-layout {\n    grid-template-columns: minmax(0, 1fr);", $css, 'one under the other on a narrow one');
+
+	$stat = workspace_channel_look_block($css, '.ws-task-time-stat');
+	pg_assert_contains('border: 1px solid', $stat, 'each figure of Time spent is a tile');
+
+	$time = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_task_time.js');
+	pg_assert_contains("h.el('div', 'card ws-task-time-card')", $time, 'the card takes its place from the layout');
+}
+
+function test_workspace_channel_panes_board_toolbar_is_chips_and_columns_cards()
+{
+	$board = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_board_channel.js');
+
+	pg_assert_contains("k.el('div', 'ws-chip-group')", $board, 'the grouping is a row of chips');
+	pg_assert_contains("k.button('btn btn-sm ws-chip' + (prefs.group === key ? ' active' : '')", $board, 'each grouping a chip');
+	pg_assert_contains("var chip = k.button('btn btn-sm ws-chip' + (on ? ' active' : '')", $board, 'the switches are chips');
+	pg_assert_contains("chip.setAttribute('aria-pressed', on ? 'true' : 'false');", $board, 'that say whether they are on');
+	pg_assert_false(strpos($board, "'btn-group btn-group-sm'") !== false, 'no button group left');
+
+	$css = workspace_channel_look_css();
+	$col = workspace_channel_look_block($css, '.ws-pane-board .ws-cb-col');
+	pg_assert_contains('border: 1px solid', $col, 'a column of the channel\'s board is a card');
+	pg_assert_contains('background: var(--pg-card-bg);', $col, 'on the card background');
+	pg_assert_contains('border: 2px solid transparent;', workspace_channel_look_block($css, '.ws-cb-col'), 'the workflow table\'s board keeps its columns');
+	pg_assert_contains("    .ws-cb-col.ws-cb-col-current {\n        display: flex;", $css, 'a phone still shows the picked column');
+}
+
+function test_workspace_channel_panes_memory_is_cards()
+{
+	$memory = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_memory.js');
+
+	pg_assert_false(strpos($memory, 'list-group') !== false, 'no list-group rows');
+	pg_assert_contains("var intro = el('div', 'ws-memory-intro');", $memory, 'the hint is a card');
+	pg_assert_contains('intro.appendChild(add);', $memory, 'with New record in it');
+	pg_assert_contains("el('div', 'ws-memory-entry d-flex align-items-start gap-3'", $memory, 'each record is a card');
+
+	$css = workspace_channel_look_css();
+	pg_assert_contains('border: 1px solid', workspace_channel_look_block($css, '.ws-memory-intro'), 'the hint card has a border');
+	pg_assert_contains('border: 1px solid', workspace_channel_look_block($css, '.ws-memory-entry'), 'and so does a record');
+	pg_assert_contains('display: grid;', workspace_channel_look_block($css, '.ws-memory-list'), 'records are a grid');
+}
+
+function test_workspace_channel_panes_empty_states_are_dashed_cards()
+{
+	$css = workspace_channel_look_css();
+	$empty = workspace_channel_look_block($css, '.ws-pane:is(.ws-pane-tasks, .ws-pane-decisions, .ws-pane-files, .ws-pane-summary, .ws-pane-board, .ws-pane-memory) .ws-empty');
+
+	pg_assert_contains('border: 1px dashed', $empty, 'an empty channel pane shows a dashed card');
+	pg_assert_same("\n  text-align: center;\n  color: var(--pg-fg-2);\n  padding: 2.5rem 1rem;\n", workspace_channel_look_block($css, '.ws-empty'), 'other screens keep their empty state');
+	pg_assert_contains('.ws-task-grid > .ws-empty {', $css, 'the task grid\'s empty state still spans it');
+}
