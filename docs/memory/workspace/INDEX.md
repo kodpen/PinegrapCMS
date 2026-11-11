@@ -291,6 +291,7 @@
 - workspace-guest-cleared-room.md: A guest's requests on one message (file address, tick, reaction, vote) reach only the room's current conversation, after its clear floor, as the guest page lists it
 - workspace-guest-request-input.md: How the public guest page reads the strings of its JSON body and its cookie
 - workspace-holiday-feed-overrides.md: Holiday calendar addresses (ws_ical_events()): a moved occurrence gets its own uid so it never replaces its yearly day; cancelled days are left out
+- workspace-holiday-settings.md: The Working calendar card in Site Settings (Team and working hours) and on Workspace Settings: one request reader and one save, button and field names, drawers, old anchors
 - workspace-keyboard-rows.md: Workspace div rows act as buttons through pressKeys() (Enter and Space), the inbox Join shortcut takes keys, planning board hours print through hoursText()
 - workspace-mcp-agent-identity.md: One avatar and icon per MCP server asked by its alias ('mcp:<id>'), drawn the same by every server-side place (ws_mcp_agent_identity()); the catalogue entry found by URL; the name kept '@alias'
 - workspace-mcp-servers-api.md: The site's MCP servers in the Workspace API (api_mcp.php, PR #1800): list with state, add, probe, refresh, tool rules; administrators only, no MCP tool; checks and writes shared with the settings card

@@ -70,7 +70,7 @@ function test_settings_workspace_team_sections_and_gate()
 
 	pg_assert_contains("'gate'  => 'workspace',", $entry, 'opened by the Workspace settings right');
 
-	foreach (array('pgset-ws-departments', 'pgset-ws-people', 'pgset-ws-defaults', 'pgset-ws-team-screen') as $section) {
+	foreach (array('pgset-ws-departments', 'pgset-ws-people', 'pgset-ws-defaults', 'pgset-ws-calendar') as $section) {
 		pg_assert_contains("'" . $section . "'", $entry, $section . ' is a section');
 	}
 
@@ -105,10 +105,9 @@ function test_settings_workspace_team_cards_and_drawers()
 	pg_assert_contains("return 'ws_people[' . (int) \$person_id . '][' . \$field . ']';", $cards, 'team member fields named apart from other categories');
 	pg_assert_same(0, preg_match('/<form[\s>]/', $cards), 'no form of its own in the pane');
 
-	// The link card keeps only what is still on the old screen.
-	pg_assert_false(strpos($cards, "array('ws-departments'"), 'no link to the old Departments card');
-	pg_assert_false(strpos($cards, "array('ws-people'"), 'no link to the old Team members card');
-	pg_assert_contains("array('ws-calendar'", $cards, 'the working calendar is still linked');
+	// Every card of the old screen's team part has moved: no link card is left.
+	pg_assert_false(strpos($cards, 'ws_settings_screen_links_card('), 'no card linking the old screen');
+	pg_assert_false(strpos(settings_workspace_team_test_entry(), 'pgset-ws-team-screen'), 'no section for it');
 
 	// Both paths' forms have the id the drawer's fields join.
 	pg_assert_contains("\$ws_form = !empty(\$pg_settings_in_dialog) ? 'pg_settings_modal_form' : 'pg_settings_page_form';", $cards, 'the form by path');

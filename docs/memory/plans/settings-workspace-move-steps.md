@@ -12,7 +12,7 @@ description: Steps of plans/settings-workspace-move.md: SD1-SD2 the drawer insid
 - SD2 (S) The other card dialogs of the Site Settings dialog move into the drawer. Done (#8710, `ui/settings-modal-card-extras.md`): none was left (Cron Jobs was SD1; the Connect entries are hidden forms, kept beside the pane); the second-dialog path is gone.
 - SW2 (M) Team and working hours, the rest, cut in two:
   - SW2a Departments (add, edit, archive), Team members, Who is in the team. Done (#8721): `ui/settings-drawer-card-form.md`, `workspace/workspace-settings-card-saves.md`.
-  - SW2b (S) Holidays and calendar feeds (`ws_holidays_settings_card()`): holiday add and remove, feed add, read, remove and a feed's days, its forms into the drawer the SW2a way; its link leaves the link card.
+  - SW2b (S) Holidays and calendar feeds. Done (#8741): `workspace/workspace-holiday-settings.md`; the category's link card went with it.
 - SW3 (M) Claude (`ws_claude_settings_card()`: settings, test, key create and reset, its dialogs into the drawer) and Bulk changes.
 - SW4 (M) Agents (save, delete, test; the request rows' cancel, retry, knock) and Pinegrap AI (settings, test, key).
 - SW5 (M) MCP servers (`ws_mcp_settings_card()`: eleven actions, the catalogue, a person's own connections, the links of `workspace_mcp.php`).

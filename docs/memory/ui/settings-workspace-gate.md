@@ -25,6 +25,7 @@ description: The Workspace heading of the Site Settings dialog and its gate: who
 - `ws_settings_mask()`, `ws_settings_days_html()` and `ws_settings_hours()` moved there from `workspace_settings.php`, so both screens draw them.
 - `workspace_settings.php` draws a line linking the card's new place where Defaults was.
 - Departments (`pgset-ws-departments`) and Team members (`pgset-ws-people`) moved in PR #8721: [[workspace-team-settings]].
-- Each Workspace category ends with an "On the Workspace Settings screen" card (`pgset-ws-*-screen`) linking the cards not moved yet (`ws_settings_screen_links_card()`, `includes/workspace/screen.php`); a step that moves a card removes its link, SW7 the card. Team and working hours links only the Working calendar (SW2b).
+- The Working calendar (`pgset-ws-calendar`) moved in SW2b: [[workspace-holiday-settings]].
+- A Workspace category with cards still on the old screen ends with an "On the Workspace Settings screen" card (`pgset-ws-*-screen`) linking them (`ws_settings_screen_links_card()`, `includes/workspace/screen.php`); a step that moves a card removes its link, the last one the card and its section. Team and working hours has none left (SW2b).
 
 Tests: `tests/settings_workspace_gate_test.php`.

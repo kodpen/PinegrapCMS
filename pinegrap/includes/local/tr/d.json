@@ -193,6 +193,7 @@
     "Day(s)/Hour(s)": "Gün/Saat",
     "Daylight": "Gün ışığı",
     "Days": "Günler",
+    "Days ({var:1})": "Günler ({var:1})",
     "Days Left": "Kalan Gün",
     "Days are counted in calendar days from the day the template is applied; 0 is that day.": "Günler, şablonun uygulandığı günden itibaren takvim günü olarak sayılır; 0 o gündür.",
     "Days before it expires": "Süre dolmadan kaç gün önce",
