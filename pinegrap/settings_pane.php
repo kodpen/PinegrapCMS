@@ -33,6 +33,7 @@ include_once('liveform.class.php');
 define('PG_SETTINGS_ENTRY', true);
 
 include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+include_once(PG_FUNCTIONS_DIR . '/includes/settings/drawer.php');
 include_once(PG_FUNCTIONS_DIR . '/includes/settings/fragment.php');
 include_once(PG_FUNCTIONS_DIR . '/includes/settings/search.php');
 

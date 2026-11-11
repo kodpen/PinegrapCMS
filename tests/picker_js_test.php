@@ -155,3 +155,59 @@ function test_picker_js_search_helpers()
 	pg_assert_same('{x} stays', $out['keep']);
 	pg_assert_same(array('bi-file-earmark-pdf', 'bi-file-earmark-image', 'bi-file-earmark-word', 'bi-file-earmark'), $out['icons']);
 }
+
+function test_picker_js_upload_helpers()
+{
+	$out = picker_js_test_run('return {
+		ext: [P.extensionOf("Logo.PNG"), P.extensionOf("a.tar.gz"), P.extensionOf("noext"), P.extensionOf("dir.v2/file"), P.extensionOf(null)],
+		refuse: [
+			P.uploadRefusal({name: "a.png", size: 10}, ["png", "svg"], 100),
+			P.uploadRefusal({name: "a.JPG", size: 10}, ["png", "svg"], 100),
+			P.uploadRefusal({name: "a.png", size: 200}, ["png"], 100),
+			P.uploadRefusal({name: "a.bin", size: 200}, [], 0)
+		],
+		sizes: [P.formatSize(0, "en"), P.formatSize(2048, "en"), P.formatSize(1572864, "en"), P.formatSize(1572864, "tr")]
+	};');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('png', 'gz', '', '', ''), $out['ext']);
+	pg_assert_same(array('', 'type', 'size', ''), $out['refuse'], 'the type first, then the size; no limit takes any');
+	pg_assert_same(array('0 B', '2 KB', '1.5 MB', '1,5 MB'), $out['sizes']);
+}
+
+function test_picker_js_recent_and_picks()
+{
+	$out = picker_js_test_run('var a = {value: "a.png", text: "a.png", type: "png", folder: 4, thumb: "t", size: 9};
+		var b = {value: "b.png", text: "b.png", folder: 4}, c = {value: 7, text: "c"}, f = {value: 3, isFolder: true};
+		var list = P.addRecent([], a, 12);
+		list = P.addRecent(list, b, 12);
+		list = P.addRecent(list, a, 12);
+		var capped = [1, 2, 3, 4].reduce(function (l, n) { return P.addRecent(l, {value: n}, 3); }, []);
+		var picks = P.togglePick([], a);
+		picks = P.togglePick(picks, b);
+		var removed = P.togglePick(picks, {value: "a.png"});
+		return {
+			recent: list,
+			capped: capped.map(function (e) { return e.value; }),
+			bad: P.addRecent("x", c, 12).length,
+			picks: picks.map(function (p) { return p.value; }),
+			removed: removed.map(function (p) { return p.value; }),
+			range: P.rangePick([b], [a, f, b, c], 3, 0).map(function (p) { return p.value; }),
+			numeric: P.togglePick([c], {value: "7"}).length
+		};');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(array('value' => 'a.png', 'text' => 'a.png', 'type' => 'png', 'folder' => 4), array('value' => 'b.png', 'text' => 'b.png', 'folder' => 4)), $out['recent'], 'newest first, each value once, only what finds it again');
+	pg_assert_same(array(4, 3, 2), $out['capped']);
+	pg_assert_same(1, $out['bad'], 'a broken stored list starts again');
+	pg_assert_same(array('a.png', 'b.png'), $out['picks'], 'in the order picked');
+	pg_assert_same(array('b.png'), $out['removed']);
+	pg_assert_same(array('b.png', 'a.png', 7), $out['range'], 'folders and files already picked are passed over');
+	pg_assert_same(0, $out['numeric'], 'a value matches as text');
+}

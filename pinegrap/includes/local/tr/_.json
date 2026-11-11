@@ -500,6 +500,8 @@
     "{name} is saved in Files.": "{name} Dosyalara kaydedildi.",
     "{notebook}: the notebook the note goes into": "{notebook}: notun gireceği defter",
     "{n} changes": "{n} değişiklik",
+    "{n} chosen": "{n} seçildi",
+    "{n} files · at most {size} per file": "{n} dosya · dosya başına en çok {size}",
     "{n} frames": "{n} kare",
     "{n} items": "{n} öğe",
     "{n} layers": "{n} katman",

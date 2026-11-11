@@ -76,10 +76,10 @@ function pg_picker_image_types()
     return array('gif', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'svg', 'webp', 'avif');
 }
 
-/** The requests the endpoint answers. */
+/** The requests the endpoint answers; upload is the one sent by POST. */
 function pg_picker_requests()
 {
-    return array('list', 'search', 'tree', 'resolve');
+    return array('list', 'search', 'tree', 'resolve', 'upload');
 }
 
 /**
@@ -862,6 +862,12 @@ function pg_picker_list_answer($request, $user)
     }, $slice['items']));
     $answer['more'] = $slice['more'];
 
+    // Whether the dialog offers Upload in this folder, and if not, why.
+    if ($kind['source'] === 'files') {
+        $verdict = pg_picker_folder_upload_verdict($kind, $request['folder'], $user);
+        $answer['upload'] = array('ok' => ($verdict === ''), 'reason' => pg_picker_upload_reason($verdict));
+    }
+
     return $answer;
 }
 
@@ -1006,6 +1012,177 @@ function pg_picker_resolve_answer($request, $user)
 }
 
 /**
+ * Why a kind may not take an upload into a folder, '' when it may. Pure.
+ *
+ * @param array $kind       one of pg_picker_kinds()
+ * @param int   $folder     the folder the files go into
+ * @param bool  $usable     the folder exists and the user may pick from it (pg_picker_folder_allowed())
+ * @param bool  $edit_right the user may add to what the folder holds (pg_folder_edit_access())
+ * @param bool  $public     every visitor may open the folder (pg_public_folder_ids())
+ * @return string '', 'kind' (the kind takes no upload), 'folder' (no folder
+ *                or no right to it) or 'public' (a public kind's file would
+ *                land where visitors cannot open it)
+ */
+function pg_picker_upload_verdict($kind, $folder, $usable, $edit_right, $public)
+{
+    if (empty($kind['upload']) || (($kind['source'] ?? '') !== 'files')) {
+        return 'kind';
+    }
+
+    if (((int) $folder < 1) || !$usable || !$edit_right) {
+        return 'folder';
+    }
+
+    // The list of a public kind leaves such a file out, so it would vanish
+    // from the dialog the moment it was stored.
+    if (!empty($kind['public']) && !$public) {
+        return 'public';
+    }
+
+    return '';
+}
+
+/**
+ * What the dialog says beside a disabled Upload.
+ *
+ * @param string $verdict pg_picker_upload_verdict()
+ * @return string '' when Upload is offered
+ */
+function pg_picker_upload_reason($verdict)
+{
+    switch ($verdict) {
+        case 'kind':
+            return lang('Files cannot be uploaded here.');
+
+        case 'folder':
+            return lang('You do not have the right to add files to this folder.');
+
+        case 'public':
+            return lang('Files in this folder are not public. Upload into a public folder.');
+    }
+
+    return '';
+}
+
+/**
+ * Whether a file name has one of a kind's types; any name passes a kind
+ * without types. Pure.
+ *
+ * @param array  $kind
+ * @param string $name the name as it was sent
+ * @return bool
+ */
+function pg_picker_upload_type_ok($kind, $name)
+{
+    $types = pg_picker_kind_types($kind);
+
+    if (!$types) {
+        return true;
+    }
+
+    return in_array(strtolower((string) pathinfo((string) $name, PATHINFO_EXTENSION)), $types, true);
+}
+
+/**
+ * Whether the token a POST carries is the session's, compared in constant
+ * time as validate_token_field() does. Pure.
+ *
+ * @param mixed $session $_SESSION['software']['token']
+ * @param mixed $sent    $_POST['token']
+ * @return bool
+ */
+function pg_picker_token_valid($session, $sent)
+{
+    return is_string($session) && ($session !== '') && is_string($sent) && hash_equals($session, $sent);
+}
+
+/**
+ * pg_picker_upload_verdict() for a user and a folder of the database.
+ *
+ * @param array $kind
+ * @param int   $folder
+ * @param array $user validate_user()
+ * @return string
+ */
+function pg_picker_folder_upload_verdict($kind, $folder, $user)
+{
+    $folder = (int) $folder;
+
+    if (empty($kind['upload']) || (($kind['source'] ?? '') !== 'files') || ($folder < 1)) {
+        return pg_picker_upload_verdict($kind, $folder, false, false, false);
+    }
+
+    $usable = pg_picker_folder_allowed($folder, pg_recycle_bin_folder_ids(), pg_picker_granted_folders($user))
+        && ((string) db_value("SELECT folder_id FROM folder WHERE folder_id = '" . $folder . "'") !== '');
+
+    return pg_picker_upload_verdict(
+        $kind,
+        $folder,
+        $usable,
+        $usable && pg_folder_edit_access($folder, (int) $user['id'], (int) $user['role']),
+        !empty($kind['public']) && in_array($folder, pg_public_folder_ids(), true));
+}
+
+/**
+ * The answer to an upload: one file stored into the folder by
+ * pg_file_store_upload(), under the rules of Upload File, and handed back as
+ * the dialog's item. The caller has checked the method, the body and the
+ * token.
+ *
+ * @param array $request pg_picker_request()
+ * @param array $user
+ * @param mixed $file    $_FILES['file']
+ * @return array [status, payload]: payload item, or error
+ */
+function pg_picker_upload_answer($request, $user, $file)
+{
+    $kinds = pg_picker_kinds();
+    $kind = $kinds[$request['kind']];
+
+    $verdict = pg_picker_folder_upload_verdict($kind, $request['folder'], $user);
+
+    if ($verdict !== '') {
+        return array(403, array('error' => pg_picker_upload_reason($verdict)));
+    }
+
+    // One file per request: the dialog sends them one after another, so a
+    // selection never meets max_file_uploads or post_max_size all at once.
+    if (!is_array($file) || !isset($file['error']) || is_array($file['error']) || ((int) $file['error'] === UPLOAD_ERR_NO_FILE)) {
+        return array(400, array('error' => lang('Please select a file.')));
+    }
+
+    $name = pg_basename((string) ($file['name'] ?? ''));
+    $limits = pg_upload_limits();
+    $refusal = pg_upload_error_message($name, $file['error'], $limits['file_max']);
+
+    if ($refusal !== '') {
+        return array(400, array('error' => $refusal));
+    }
+
+    if (!pg_picker_upload_type_ok($kind, $name)) {
+        return array(415, array('error' => lang(array(
+            'string' => 'Only {var:1} files can be chosen here.',
+            'vars'   => array(strtoupper(implode(', ', pg_picker_kind_types($kind))))))));
+    }
+
+    $stored = pg_file_store_upload((string) $file['tmp_name'], $name, (int) ($file['size'] ?? 0), array(
+        'folder'         => $request['folder'],
+        'description'    => '',
+        'design'         => null,
+        'image_profile'  => '',
+        'image_settings' => pg_image_settings(),
+        'file_max'       => $limits['file_max']));
+
+    if (!$stored['ok']) {
+        return array(400, array('error' => $stored['message']));
+    }
+
+    $row = db_item("SELECT id, name, type, folder, size, image_width, image_height, timestamp FROM files WHERE id = '" . (int) $stored['file']['id'] . "'");
+
+    return array(200, array('item' => pg_picker_file_details($kind, array(pg_picker_item($kind, is_array($row) ? $row : array())), true)[0]));
+}
+
+/**
  * The answer to a checked request (pg_picker_request() without an error) of
  * a user the caller has let through pg_picker_access_verdict().
  *
@@ -1060,6 +1237,13 @@ function pg_picker_texts()
         'Only the first 2,000 are shown; search to find the rest.', 'Esc clears the search', 'A column heading sorts',
         'Double-click or Enter chooses', 'Nothing chosen yet', 'Tapping a folder shows its files', 'Folders in {folder}',
         'Public', 'Private', 'Guest', 'Registration', 'Membership',
+        'Upload', 'Upload File', 'Recently used', 'Uploading · {done} / {total}', 'Uploaded · {done} / {total}',
+        'Drop to upload into “{folder}”', '1 file · at most {size} per file', '{n} files · at most {size} per file',
+        'Drag files here or choose them from your computer. An uploaded file is saved in this folder and chosen.',
+        'uploaded', 'uploaded, chosen', 'Not uploaded', 'Only {types} files can be chosen here.',
+        'Larger than {size}, the biggest single file this server accepts.', 'The upload failed.',
+        'Open a folder to upload into it.', 'Files you choose appear here.', 'Your last picks in this browser',
+        '{n} chosen', 'A click adds or removes, Shift+click adds a row',
     ) as $text) {
         $texts[$text] = lang($text);
     }
@@ -1084,7 +1268,26 @@ function pg_picker_script()
 
     $printed = true;
 
-    $config = array('endpoint' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/picker.php', 'texts' => pg_picker_texts());
+    $limits = pg_upload_limits();
+
+    // One file goes in one request, so the request's own ceiling holds it
+    // too.
+    $file_max = (int) $limits['file_max'];
+
+    if (((int) $limits['request_max'] > 0) && (($file_max === 0) || ((int) $limits['request_max'] < $file_max))) {
+        $file_max = (int) $limits['request_max'];
+    }
+
+    // The token goes with an upload, as in every panel form; the user names
+    // whose Recent list this browser keeps; a file over the server's largest
+    // is refused before it is sent.
+    $config = array(
+        'endpoint' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/picker.php',
+        'texts' => pg_picker_texts(),
+        'token' => (string) ($_SESSION['software']['token'] ?? ''),
+        'user' => defined('USER_ID') ? (int) USER_ID : 0,
+        'file_max' => $file_max,
+        'file_max_label' => ($file_max > 0) ? convert_bytes_to_string($file_max, 1) : '');
 
     return '<script type="application/json" id="pg_picker_config">' . json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . '</script>'
         . pg_js_bundle_tags('assets/js/pg_picker.min.js');

@@ -23423,25 +23423,29 @@ const StyleDesigner = (function () {
             '<div class="sd-panel-header"><span class="bi bi-puzzle me-1"></span>' + esc(_sdT('Components')) + '</div>' +
             '<div class="sd-panel-tabs" id="sd-panel-tabs">' +
                 '<button type="button" class="sd-panel-tab active" data-tab="components">' + esc(_sdT('Components')) + '</button>' +
-                '<button type="button" class="sd-panel-tab" data-tab="blocks" style="color:#f59e0b"><span class="bi bi-magic me-1"></span>' + esc(_sdT('Blocks')) + '</button>' +
                 '<button type="button" class="sd-panel-tab" data-tab="shared" style="color:#22c55e"><span class="bi bi-puzzle-fill me-1"></span>' + esc(_sdT('Shared')) + '</button>' +
                 '<button type="button" class="sd-panel-tab" data-tab="system" style="color:#6366f1"><span class="bi bi-cpu me-1"></span>' + esc(_sdT('System')) + '</button>' +
             '</div>' +
+            // One tab, two lists: the building blocks and the ready sections,
+            // chosen with the switch at its top (_sdPalSwitchWire()).
             '<div id="sd-tab-components" class="sd-tab-pane">' +
-                '<div class="sd-search-box">' +
-                    '<span class="bi bi-search"></span>' +
-                    '<input type="text" id="sd-search" placeholder="' + esc(_sdT('Search...')) + '" aria-label="' + esc(_sdT('Search components')) + '" autocomplete="off">' +
-                    '<button type="button" class="sd-search-clear bi bi-x" id="sd-search-clear" aria-label="' + esc(_sdT('Clear search')) + '" style="display:none"></button>' +
+                _sdPalSwitchHTML() +
+                '<div id="sd-pal-components" class="sd-pal-list" role="tabpanel" aria-labelledby="sd-pal-sw-components">' +
+                    '<div class="sd-search-box">' +
+                        '<span class="bi bi-search"></span>' +
+                        '<input type="text" id="sd-search" placeholder="' + esc(_sdT('Search...')) + '" aria-label="' + esc(_sdT('Search components')) + '" autocomplete="off">' +
+                        '<button type="button" class="sd-search-clear bi bi-x" id="sd-search-clear" aria-label="' + esc(_sdT('Clear search')) + '" style="display:none"></button>' +
+                    '</div>' +
+                    '<div id="sd-comp-list" class="sd-comp-items-scroll"></div>' +
                 '</div>' +
-                '<div id="sd-comp-list" class="sd-comp-items-scroll"></div>' +
-            '</div>' +
-            '<div id="sd-tab-blocks" style="display:none" class="sd-tab-pane">' +
-                '<div class="sd-search-box">' +
-                    '<span class="bi bi-search"></span>' +
-                    '<input type="text" id="sd-blocks-search" placeholder="' + esc(_sdT('Search...')) + '" aria-label="' + esc(_sdT('Search blocks')) + '" autocomplete="off">' +
-                    '<button type="button" class="sd-search-clear bi bi-x" id="sd-blocks-search-clear" aria-label="' + esc(_sdT('Clear search')) + '" style="display:none"></button>' +
+                '<div id="sd-pal-blocks" class="sd-pal-list" role="tabpanel" aria-labelledby="sd-pal-sw-blocks" hidden>' +
+                    '<div class="sd-search-box">' +
+                        '<span class="bi bi-search"></span>' +
+                        '<input type="text" id="sd-blocks-search" placeholder="' + esc(_sdT('Search...')) + '" aria-label="' + esc(_sdT('Search blocks')) + '" autocomplete="off">' +
+                        '<button type="button" class="sd-search-clear bi bi-x" id="sd-blocks-search-clear" aria-label="' + esc(_sdT('Clear search')) + '" style="display:none"></button>' +
+                    '</div>' +
+                    '<div id="sd-blocks-list" class="sd-comp-items-scroll"></div>' +
                 '</div>' +
-                '<div id="sd-blocks-list" class="sd-comp-items-scroll"></div>' +
             '</div>' +
             '<div id="sd-tab-shared" style="display:none" class="sd-tab-pane">' +
                 '<div class="sd-comp-items-scroll" id="sd-shared-list">' +
@@ -23571,9 +23575,10 @@ const StyleDesigner = (function () {
         // the widgets stay.
         if (!_sdUsesBootstrap()) {
             categories = categories.filter(function (cat) { return !cat.bootstrap; });
-            var _blocksTabBtn = compOuter.querySelector('.sd-panel-tab[data-tab="blocks"]');
-            if (_blocksTabBtn) _blocksTabBtn.remove();
-            var _blocksPane = document.getElementById('sd-tab-blocks');
+            // With one list left there is nothing to switch between.
+            var _palSwitch = compOuter.querySelector('.sd-pal-switch');
+            if (_palSwitch) _palSwitch.remove();
+            var _blocksPane = document.getElementById('sd-pal-blocks');
             if (_blocksPane) _blocksPane.remove();
             blockList = null;
         }
@@ -23595,6 +23600,7 @@ const StyleDesigner = (function () {
                              document.getElementById('sd-search-clear'), compList);
         _sdWirePaletteSearch(document.getElementById('sd-blocks-search'),
                              document.getElementById('sd-blocks-search-clear'), blockList);
+        _sdPalSwitchWire(compOuter);
 
         // ── Panel tab switching: Components ↔ Shared ─────────────────────────
         var _panelTabs = document.getElementById('sd-panel-tabs');
@@ -23605,11 +23611,9 @@ const StyleDesigner = (function () {
                 var tab = btn.dataset.tab;
                 _panelTabs.querySelectorAll('.sd-panel-tab').forEach(function(t) { t.classList.toggle('active', t.dataset.tab === tab); });
                 var cTab   = document.getElementById('sd-tab-components');
-                var bTab   = document.getElementById('sd-tab-blocks');
                 var oTab   = document.getElementById('sd-tab-shared');
                 var sysTab = document.getElementById('sd-tab-system');
                 if (cTab)   cTab.style.display   = tab === 'components' ? '' : 'none';
-                if (bTab)   bTab.style.display   = tab === 'blocks'     ? '' : 'none';
                 if (oTab)   oTab.style.display   = tab === 'shared'     ? '' : 'none';
                 if (sysTab) sysTab.style.display = tab === 'system'     ? '' : 'none';
                 if (tab === 'shared') loadSharedTab();
@@ -53757,7 +53761,7 @@ const StyleDesigner = (function () {
 
     // Rail icons mirror the palette tab strip so the rail reads the same
     // way the open panel does.
-    var _SD_RAIL_ICONS = { components: 'bi-puzzle', blocks: 'bi-magic', shared: 'bi-puzzle-fill', system: 'bi-cpu' };
+    var _SD_RAIL_ICONS = { components: 'bi-puzzle', shared: 'bi-puzzle-fill', system: 'bi-cpu' };
 
     function _sdDockBody() { return document.querySelector('.sd-body'); }
 
@@ -74470,6 +74474,73 @@ const StyleDesigner = (function () {
             }
             if (e.key === 'Escape') { _sdPalTipHide(); return; }
             if (e.key === 'Delete' || e.key === 'Backspace' || String(e.key).toLowerCase() === 'n') e.stopPropagation();
+        });
+    }
+
+    // ── The Components tab's list switch ──────────────────────────────────
+    // Two options at the top of the Components tab choose its list: the
+    // building blocks or the ready sections. Drawn by the rules of the
+    // panel's view switch (.pg-sale-switch: one frame round both, the chosen
+    // option on a lighter pill); a tab list, since each option shows a pane.
+    var _SD_PAL_LIST_KEY = 'pinegrap_designer_palette_list';
+
+    function _sdPalSwitchHTML() {
+        var icons = { components: 'bi-puzzle', blocks: 'bi-magic' };
+        var labels = { components: _sdT('Components'), blocks: _sdT('Blocks') };
+        var out = '<div class="sd-pal-switch" role="tablist" aria-label="' + esc(_sdT('Palette list')) + '">';
+        ['components', 'blocks'].forEach(function (k) {
+            var on = k === 'components';
+            out += '<button type="button" class="sd-pal-switch-btn" role="tab" id="sd-pal-sw-' + k + '"' +
+                ' aria-controls="sd-pal-' + k + '" aria-selected="' + (on ? 'true' : 'false') + '" tabindex="' + (on ? '0' : '-1') + '"' +
+                ' data-pal-list="' + k + '"><span class="bi ' + icons[k] + '" aria-hidden="true"></span>' +
+                '<span>' + esc(labels[k]) + '</span></button>';
+        });
+        return out + '</div>';
+    }
+
+    // Shows one list and hides the other; `store` writes the choice so the
+    // editor opens on it next time.
+    function _sdPalSwitchShow(root, which, store) {
+        var sw = root && root.querySelector('.sd-pal-switch');
+        if (!sw || !root.querySelector('#sd-pal-' + which)) return;
+        sw.querySelectorAll('.sd-pal-switch-btn').forEach(function (b) {
+            var on = b.getAttribute('data-pal-list') === which;
+            b.setAttribute('aria-selected', on ? 'true' : 'false');
+            b.setAttribute('tabindex', on ? '0' : '-1');
+            var pane = root.querySelector('#sd-pal-' + b.getAttribute('data-pal-list'));
+            if (pane) pane.hidden = !on;
+        });
+        if (typeof _sdPalTipHide === 'function') _sdPalTipHide();
+        if (store) {
+            try { localStorage.setItem(_SD_PAL_LIST_KEY, which); } catch (e) {}
+        }
+    }
+
+    function _sdPalSwitchWire(root) {
+        var sw = root && root.querySelector('.sd-pal-switch');
+        if (!sw) return;
+        var saved = '';
+        try { saved = localStorage.getItem(_SD_PAL_LIST_KEY) || ''; } catch (e) {}
+        if (saved === 'blocks') _sdPalSwitchShow(root, 'blocks', false);
+        sw.addEventListener('click', function (e) {
+            var b = e.target.closest('.sd-pal-switch-btn');
+            if (b) _sdPalSwitchShow(root, b.getAttribute('data-pal-list'), true);
+        });
+        // Arrow keys move between the options and choose at once, Home and
+        // End go to the ends; the chosen option is the only tab stop.
+        sw.addEventListener('keydown', function (e) {
+            var btns = Array.prototype.slice.call(sw.querySelectorAll('.sd-pal-switch-btn'));
+            var i = btns.indexOf(document.activeElement);
+            if (i < 0) return;
+            var to = -1;
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') to = (i - 1 + btns.length) % btns.length;
+            else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') to = (i + 1) % btns.length;
+            else if (e.key === 'Home') to = 0;
+            else if (e.key === 'End') to = btns.length - 1;
+            if (to < 0) return;
+            e.preventDefault();
+            _sdPalSwitchShow(root, btns[to].getAttribute('data-pal-list'), true);
+            btns[to].focus();
         });
     }
 

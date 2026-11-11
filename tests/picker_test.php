@@ -56,7 +56,7 @@ function test_picker_kinds()
 		pg_assert_same($kinds[$name], $kind, $name . ' moved into the registry');
 	}
 
-	pg_assert_same(array('list', 'search', 'tree', 'resolve'), pg_picker_requests());
+	pg_assert_same(array('list', 'search', 'tree', 'resolve', 'upload'), pg_picker_requests());
 }
 
 function test_picker_access_verdict()
@@ -342,4 +342,60 @@ function test_picker_subtree_counts()
 	pg_assert_same(array(), pg_picker_subtree_counts(array(), $map));
 	pg_assert_same(array(20 => 2, 21 => 2), pg_picker_subtree_counts(array(20 => 2), $map), 'a parent loop ends');
 	pg_assert_same(array(77 => 1), pg_picker_subtree_counts(array(77 => 1), $map), 'a folder the map lacks keeps its own count');
+}
+
+// Upload goes only into a folder the user may add to, and a public kind only
+// into a public folder, where its list would show the file.
+function test_picker_upload_verdict()
+{
+	$kinds = pg_picker_kinds();
+
+	pg_assert_same('', pg_picker_upload_verdict($kinds['image'], 4, true, true, false));
+	pg_assert_same('', pg_picker_upload_verdict($kinds['file'], '4', true, true, false));
+	pg_assert_same('kind', pg_picker_upload_verdict($kinds['page'], 4, true, true, true), 'pages take no upload');
+	pg_assert_same('folder', pg_picker_upload_verdict($kinds['image'], 0, true, true, true), 'the top is no folder');
+	pg_assert_same('folder', pg_picker_upload_verdict($kinds['image'], 4, false, true, true), 'a folder out of reach');
+	pg_assert_same('folder', pg_picker_upload_verdict($kinds['image'], 4, true, false, true), 'no edit right');
+	pg_assert_same('public', pg_picker_upload_verdict($kinds['site_icon'], 4, true, true, false));
+	pg_assert_same('', pg_picker_upload_verdict($kinds['public_image'], 4, true, true, true));
+
+	foreach (array('kind', 'folder', 'public') as $verdict) {
+		pg_assert_true(pg_picker_upload_reason($verdict) !== '', 'a reason for ' . $verdict);
+	}
+
+	pg_assert_same('', pg_picker_upload_reason(''));
+}
+
+function test_picker_upload_type_and_token()
+{
+	$kinds = pg_picker_kinds();
+
+	pg_assert_true(pg_picker_upload_type_ok($kinds['site_icon'], 'icon.PNG'));
+	pg_assert_false(pg_picker_upload_type_ok($kinds['site_icon'], 'icon.jpg'));
+	pg_assert_false(pg_picker_upload_type_ok($kinds['image'], 'noextension'));
+	pg_assert_true(pg_picker_upload_type_ok($kinds['file'], 'notes'), 'a kind without types takes any name');
+
+	pg_assert_true(pg_picker_token_valid('abc123', 'abc123'));
+	pg_assert_false(pg_picker_token_valid('abc123', 'abc124'));
+	pg_assert_false(pg_picker_token_valid('', ''), 'a session without a token');
+	pg_assert_false(pg_picker_token_valid('abc123', array('abc123')), 'an array sent as the token');
+	pg_assert_false(pg_picker_token_valid(null, 'abc123'));
+}
+
+// An upload is a POST with the session's token; a body PHP threw away is
+// named before the token is read, as the token is lost with the file.
+function test_picker_upload_wired()
+{
+	$endpoint = picker_test_source('picker.php');
+
+	pg_assert_contains("(\$_SERVER['REQUEST_METHOD'] ?? '') !== 'POST'", $endpoint);
+	pg_assert_contains("pg_picker_token_valid(\$_SESSION['software']['token'] ?? '', \$_POST['token'] ?? '')", $endpoint);
+	pg_assert_true(strpos($endpoint, 'pg_post_body_discarded()') < strpos($endpoint, 'pg_picker_token_valid('), 'the lost body before the token');
+	pg_assert_true(strpos($endpoint, 'pg_picker_token_valid(') < strpos($endpoint, 'pg_picker_upload_answer('), 'the token before the file');
+
+	$module = picker_test_source('includes/fn/picker.php');
+
+	pg_assert_contains('pg_file_store_upload(', $module, 'stored as Upload File stores');
+	pg_assert_contains("\$answer['upload'] = array('ok'", $module, 'the list says whether Upload is offered');
+	pg_assert_contains("data.append('token'", picker_test_source('assets/js/pg_picker.js'));
 }

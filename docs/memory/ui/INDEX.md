@@ -242,6 +242,7 @@
 - image-editor-callers.md: Who opens the image editor and how (#4609): the openImageEditor alias, data-pg-image-edit buttons, the live site's copy into content, Workspace's save.url, the redirect [decision: decisions-made-product-15.md]
 - image-editor-canvas-save.md: How a photo's grown or trimmed canvas and an outward frame are saved (extend step), pictures from the computer as files rows, a canvas file keeping and reopening its document
 - image-editor-clip-bar.md: A video clip's bar on the tracks (V3b): the filmstrip of several frames from a second decoder, the clip's sound as a waveform under the frames [decision: here]
+- image-editor-clip-export.md: A video layer in an animation's export (V7b): each frame waits for the clip's own frame of that moment from a decoder of its own, nothing off its span; a still save keeps the source in
 - image-editor-clip-timeline.md: Editing clips on the tracks (V3): one row per source cut, trim, split, move, snapping, ripple, the length following the clips but never cutting another layer's motion (V3b) [decision: decisions-made-product-42.md]
 - image-editor-clip.md: The video layer (V2): type video, source in and out, start, speed, the frame at the playhead, its sound, Import of videos, the clip panel, video_files and video_upload
 - image-editor-crop.md: The image editor's crop tool: geometry in the document, the rotated space, cover scale, crop mode with its undo and Cancel, ratios, handles, turns and flips, shape, output size, keys
@@ -284,7 +285,8 @@
 - image-editor-text.md: The image editor's text layers: fields, the one line layout the stage and the save share, typing in place, system and site fonts, resize scaling the letters, the panel
 - image-editor-touch.md: The image editor on touch: the two-finger twist that turns a layer, 44 px handle targets and the finger's reach for points and edges (M.touchReach())
 - image-editor-tracks.md: The Animate tool's tracks under the play bar: a row per layer, the bars from M.trackBars(), dragging a bar or an end (M.trackEdit()), snapping, the dock hook in the motion part, no tracks on a phone
-- image-editor-upload.md: Large files in the image editor (V8): video, sound and saved animation sent in parts and resumed, type by bytes, pg_image_editor_upload_limits(), parts in data/temp
+- image-editor-upload-setting.md: The image editor's largest upload as a setting (V8b): the config_text row image_editor_upload_max_mb in MB, 0 keeps upload_max_filesize, 10240 at most, its field on Settings, Features [decision: here]
+- image-editor-upload.md: Large files in the image editor (V8, V8b): video, sound and saved animation sent in parts and resumed, type by bytes, pg_image_editor_upload_limits(), parts in data/temp
 - image-editor-vector.md: The image editor's vector pen: path layers as boxes with knots inside, drawing point by point, editing points and handles, smooth and corner, open and closed, convert to path
 - image-editor-versions.md: The image editor's versions (file_versions, 2026.11.0): base and save rows, what opening loads, what a save, restore and delete write, retention, the drawer, deleting a file, Disk Usage [decision: decisions-made-product-15.md, decisions-made-schema-7.md]
 - image-editor-video-decode.md: How the image editor reads a video: own MP4 and WebM demuxers in the model, WebCodecs decoding, the frame cache, seeking, the messages when a browser cannot decode
@@ -384,7 +386,7 @@
 - notice-button-names.md: A notice, hint or dialog names the control it means by its label, never "OK", "the button", a colour or a direction
 - notification-links.md: Bell, banner and System Status link only to screens the reader may use: Repair Software for role 0 off hosting; form submissions for the folder's editors
 - notifications-menu.md: Header notifications panel (#notifications, bell #notification_toggle): one Menu on the bell, Ctrl+Q, events on the toggle (#2578), poll redraws the open list only on a rise; titles wrap, no ellipsis
-- notifications-one-inbox.md: The bell as the panel's one inbox (#3817): All, Site, Workspace filters, a flow's runs folded, the meeting call, pgBellOpen() for the old inbox address, the Workspace count with no Inbox entry (#6281) [decision: decisions-made-workspace-6.md]
+- notifications-one-inbox.md: The bell as the panel's one inbox (#3817): All, Site, Workspace filters, a flow's runs folded, the meeting call, pgBellOpen() for the old inbox address, the Workspace count with no Inbox entry (#6281) [decision: decisions-made-workspace-5.md, decisions-made-workspace-6.md]
 - offer-code-key-codes.md: A saved offer's code change moves its key codes to the new code (unless another offer keeps the old one); the editor warns while the code changes; All Key Codes names an orphan
 - offer-editor.md: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON save, auto names, copy shared rows, two-sided type registry, write order, currency entity.
 - offers-list-chips.md: Offers list (view_offers.php) Flow chips and status filter chips: gift only when free, both usage limits, optional chips drawn hidden and shown by recount(), the offer-only 'Shipping {var:1}' key
@@ -465,7 +467,8 @@
 - pg-ui-adapter.md: pgUI (assets/js/pg_ui.js), the panel's one door to Bootstrap's JavaScript on 5.3 and 6: kinds, promises, both event names, dialog markup, overlay host, readiness, the Bootstrap 6 bridge
 - phone-width-rows.md: Phone-width fixes: v6 .input-group and .btn do not wrap (rate tiers, documents card, sign-in rows, product group default option), Login Region fields, inner clusters wrap, marketplace grid
 - picker-dialog.md: The picker dialog pgPicker.open() (assets/js/pg_picker.js, PK2): what it shows, how a pick is handed back, the keyboard, the phone sheet, the Browse button, what picker.php added for it
-- picker-registry.md: The picker's registry pg_picker_kinds() and endpoint picker.php (list, search, tree, resolve): kinds, request checks, paging, access rule, value states
+- picker-registry.md: The picker's registry pg_picker_kinds() and endpoint picker.php (list, search, tree, resolve, upload): kinds, request checks, paging, access rule, value states
+- picker-upload.md: The picker dialog's Upload (picker.php request upload), its Recently used list kept in the browser, and several picks (multiple): rules, keys, where each is checked
 - print-order-product-links.md: The order print view's product name and image are real links to edit_product.php, reachable from the keyboard
 - print-views-light-paper.md: The order print view and packing slip force the light theme, carry their own title and the store icon; the packing slip's address lines; the campaign popups' title and icon
 - product-attribute-shared-form.md: The product attribute create and edit screens share includes/forms/product_attribute_form.php: what it holds, what stays in the screens
@@ -511,6 +514,7 @@
 - settings-modal-autofill-restore.md: Settings dialog defence against password-manager fills: hold()/review() restore, gesture-clock ownership, patrol() polling, three-restore limit.
 - settings-modal-card-dialogs.md: Rules for a settings card that opens its own dialog inside the settings modal: extras box, data-pgdialog rename, the dialog-open scroll lock, dispose.
 - settings-modal-dirty-tracking.md: How the settings dialog decides "unsaved changes": two-question criterion, snapshot(), baseline in paint(), hand gesture triggering its own review.
+- settings-modal-drawer.md: A settings card's drawer: a panel that slides in from the Site Settings dialog's right edge over the pane, never a second dialog; markup, hand-over, Escape, focus, page path (PR #8658).
 - settings-modal-endpoint.md: settings_pane.php rules: always JSON, pg_error_throws, access gate, manual CSRF, remove_form, re-read after save, reload on a language change, Safe Mode scheme change.
 - settings-modal-entry-points.md: How Site Settings opens: header gear button, pgOpenSettings, URL hooks via fromUrl, pg_settings_link, legacy anchors, orphaned settings.php, removed hub.
 - settings-modal-injected-markup.md: Rules for settings pane markup injected by AJAX: jQuery .html(), pg_settings_scripts, scope-taking initializers, delegated listeners, code fields.

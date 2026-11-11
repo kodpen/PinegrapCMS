@@ -39,8 +39,10 @@ StyleDesigner.registerBlockFamily(function (kit) {
                         '.pg-gym-meter > .pg-gym-on { background: var(--bs-primary); }'
     };
 
+    // The pass before the frame: the frame's rule names `.pg-gym-pass`, and
+    // a rule whose class the stylesheet already names is taken as present.
     var _SD_BLOCK_CSS_NEEDS = {
-        'gym-hero':    ['pg-gym-photo', 'pg-gym-pass'],
+        'gym-hero':    ['pg-gym-pass', 'pg-gym-photo'],
         'gym-classes': ['pg-gym-meter']
     };
 

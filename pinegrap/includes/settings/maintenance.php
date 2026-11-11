@@ -57,7 +57,7 @@ $pg_settings_cards[] = '
                             <div class="card">
                                 <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
                                     <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Cron Jobs') . ' (<span lang="en">' . h($output_os_family) . '</span>)</span>
-                                    <a href="#!" class="btn btn-sm btn-outline theme-secondary" data-bs-toggle="dialog" data-bs-target="#cron_jobs"><i class="bi bi-clock-history me-1"></i>' . lang('Setup Instructions') . '</a>
+                                    <button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-toggle="drawer" data-bs-target="#cron_jobs" aria-controls="cron_jobs"><i class="bi bi-clock-history me-1" aria-hidden="true"></i>' . lang('Setup Instructions') . '</button>
                                 </div>
                                 <div class="card-body">
                                    <div class="row gy-5">
@@ -101,15 +101,11 @@ $pg_settings_cards[] = '
                             })();
                         </script>';
 
-// The modal explains every job the card can switch on. It is printed outside
-// the form, so it travels in its own variable.
-$pg_settings_modals[] = '
-                <dialog class="dialog dialog-xl" id="cron_jobs" aria-labelledby="cron_jobs_title">
-                            <div class="dialog-header">
-                                <h5 class="dialog-title" id="cron_jobs_title">' . lang('Cron Jobs') . ' (<span lang="en">' . h($output_os_family) . '</span>)</h5>
-                                <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
-                            </div>
-                            <div class="dialog-body ">
+// The setup instructions explain every job the card can switch on, with the
+// command that runs it on this server. A drawer over the pane, not a second
+// dialog (includes/settings/drawer.php); printed outside the form, so it
+// travels in its own variable.
+$pg_settings_modals[] = pg_settings_drawer('cron_jobs', lang('Cron Jobs') . ' (<span lang="en">' . h($output_os_family) . '</span>)', '
                                <div class="row gy-5">
                                     <div class="col-12">
                                         <div class="alert theme-success form-text" role="alert">
@@ -208,9 +204,7 @@ $pg_settings_modals[] = '
                                         ' . pg_code_editor_attach(array('id' => 'cron_job_auto_backup', 'code_type' => 'plain','readonly'=>true )) . '
                                         <div class="form-text text-end">' . lang('Recommended Schedule: Once a week') . '</div>
                                     </div>
-                                </div>
-                            </div>
-                </dialog>';
+                                </div>', !empty($pg_settings_in_dialog));
 
 // ── Backups ──
 //

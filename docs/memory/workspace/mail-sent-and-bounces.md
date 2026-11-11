@@ -10,7 +10,7 @@ description: After a Workspace e-mail answer leaves (G3c): the copy APPENDed to 
 - Box form, "Sending answers": the "Keep a copy…" box (ticked on a new box) and "Sent folder" (empty = found by itself).
 
 ## What did email() and the IMAP client gain?
-- `email()`: `'keep_mime' => true` keeps PHPMailer's `getSentMIMEMessage()` after a successful `send()` for `pg_mail_last_sent_mime()`; reset at the start of every call (a demo site's or a failed send's is ''). Not kept through a connected account or the queue.
+- `email()`: `'keep_mime' => true` keeps PHPMailer's `getSentMIMEMessage()` after a successful `send()` for `pg_mail_last_sent_mime()`; reset at the start of every call (a demo site's or a failed send's is ''). Not kept through a connected account; through the queue only for a row with an outcome handler (`core/mail-queue-outcome.md`).
 - `pg_imap_append($session, $folder, $mime, $flags, $encoded)`: line ends made CRLF, the mail as a literal; a refusal is the `folder` error, over `PG_IMAP_MAX_LITERAL` is `too_large`. `pg_imap_parse_untagged()` tokenizes LIST/LSUB; `pg_imap_list_result()` gives name and upper-cased attributes.
 
 ## How is a bounce told?

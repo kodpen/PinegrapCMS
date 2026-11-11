@@ -351,6 +351,21 @@ $pg_settings_cards[] = '
                             </div>';
         }
 
+        // The image editor's largest upload, a config_text row. Empty or 0:
+        // PHP's upload_max_filesize, named below.
+        $image_editor_php_limit = pg_ini_bytes(@ini_get('upload_max_filesize'));
+        $image_editor_php_limit_text = ($image_editor_php_limit > 0) ? round($image_editor_php_limit / 1048576, 1) . ' MB' : lang('no limit');
+
+        $output_image_upload_cap_field .= '
+                            <div class="pg-f-xs">
+                                <label for="image_editor_upload_max_mb" class="form-label">' . lang('Largest Video Or Sound In The Image Editor (MB)') . '</label>
+                                <label class="form-control form-adorn form-adorn-end">
+                                    <span class="form-adorn-text" aria-hidden="true">MB</span>
+                                    <input type="text" name="image_editor_upload_max_mb" id="image_editor_upload_max_mb" maxlength="5" inputmode="numeric" class="form-ghost text-end" value="' . h(pg_image_editor_upload_max_mb()) . '" />
+                                </label>
+                                <div class="form-text">' . h(lang(array('string' => 'A video or sound uploaded in the image editor, and an animation it saves to Files, may be up to this size; it is sent in parts, so it may be larger than the upload limit of PHP. 0 keeps that limit ({var:1}). At most {var:2} MB.', 'vars' => array($image_editor_php_limit_text, pg_image_editor_upload_max_mb_most())))) . '</div>
+                            </div>';
+
         $output_image_settings_card =
             '<div id="pgset-images" class="pg-set-card">
                 <div class="card">

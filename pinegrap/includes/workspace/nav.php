@@ -26,12 +26,13 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *
  * @param array      $viewer
  * @param array|null $flags  what the gates found, for a test (notes,
- *                           calendar_feed, actions, messages, flows, mcp, base);
+ *                           calendar_feed, actions, messages, flows, mcp, mail,
+ *                           mail_unread, base);
  *                           null asks them
  * @return array[] head (the settings gear beside the search), top (Today,
  *                 the one place over the channels), tools (the tiles), more
  *                 (behind the More tile) => items (key, label, icon, url; a
- *                 tile's short name)
+ *                 tile's short name; count, a tile's number)
  */
 function ws_nav_groups($viewer, $flags = null)
 {
@@ -55,6 +56,9 @@ function ws_nav_groups($viewer, $flags = null)
             // A mailbox writes into a channel the person reads (mail_list.php).
             'mail'          => function_exists('ws_mail_list_visible') && ws_mail_list_visible($viewer),
         );
+
+        // The tile's number: the open conversations unread for the person (mail_reads.php).
+        $flags['mail_unread'] = ($flags['mail'] && function_exists('ws_mail_unread_count')) ? ws_mail_unread_count($viewer) : 0;
     }
 
     $base = isset($flags['base']) ? (string) $flags['base'] : OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
@@ -91,7 +95,8 @@ function ws_nav_groups($viewer, $flags = null)
     $groups['tools'][] = array('key' => 'timeline', 'label' => lang('Decision Timeline'), 'short' => lang('Decisions'), 'icon' => 'bi-clock-history', 'url' => $base . 'workspace_timeline.php');
 
     if (!empty($flags['mail'])) {
-        $groups['tools'][] = array('key' => 'mail', 'label' => lang('E-mails'), 'icon' => 'bi-envelope', 'url' => $base . 'workspace_mail.php');
+        $groups['tools'][] = array('key' => 'mail', 'label' => lang('E-mails'), 'icon' => 'bi-envelope', 'url' => $base . 'workspace_mail.php',
+            'count' => (int) ($flags['mail_unread'] ?? 0));
     }
 
     // Behind More: the screens visited now and then. Scheduled actions are
@@ -175,7 +180,7 @@ function ws_side_screen($script)
  * with only what the browser needs.
  *
  * @param array $groups ws_nav_groups()
- * @return array head, top, tools, more => [key, label, short, icon, url]
+ * @return array head, top, tools, more => [key, label, short, icon, url, count (when one)]
  */
 function ws_side_nav($groups)
 {
@@ -185,13 +190,20 @@ function ws_side_nav($groups)
         $out[$group] = array();
 
         foreach ((array) ($groups[$group] ?? array()) as $item) {
-            $out[$group][] = array(
+            $entry = array(
                 'key'   => (string) $item['key'],
                 'label' => (string) $item['label'],
                 'short' => (string) ($item['short'] ?? $item['label']),
                 'icon'  => (string) $item['icon'],
                 'url'   => (string) $item['url'],
             );
+
+            // A number on the tile, as the unread e-mails.
+            if (!empty($item['count'])) {
+                $entry['count'] = (int) $item['count'];
+            }
+
+            $out[$group][] = $entry;
         }
     }
 

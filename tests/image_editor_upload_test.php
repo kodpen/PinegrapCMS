@@ -83,6 +83,42 @@ function test_image_editor_upload_limits()
 	pg_assert_same(20000, $tiny['max'], 'one request when upload_max_filesize is not known');
 }
 
+// The largest file from the setting (pg_image_editor_upload_max_mb()): 0
+// keeps upload_max_filesize, a value replaces it above or below, never under
+// one request; the part size never follows the setting.
+function test_image_editor_upload_setting()
+{
+	$mb = 1024 * 1024;
+	$limits = array('file_max' => 8 * $mb, 'request_max' => 64 * $mb, 'json_max' => 0);
+
+	$off = pg_image_editor_upload_limits_of($limits, 512 * $mb, 0);
+	pg_assert_same(pg_image_editor_upload_limits_of($limits, 512 * $mb), $off, '0 is the bound before the setting');
+	pg_assert_same(512 * $mb, $off['max'], '0 keeps upload_max_filesize');
+
+	$raised = pg_image_editor_upload_limits_of($limits, 512 * $mb, 2048);
+	pg_assert_same(2048 * $mb, $raised['max'], 'a value above upload_max_filesize');
+	pg_assert_same($off['part'], $raised['part'], 'the part size stays');
+	pg_assert_same($off['request'], $raised['request'], 'one request stays');
+
+	$lowered = pg_image_editor_upload_limits_of($limits, 512 * $mb, 100);
+	pg_assert_same(100 * $mb, $lowered['max'], 'a value below upload_max_filesize');
+
+	$under = pg_image_editor_upload_limits_of(array('file_max' => 8 * $mb, 'request_max' => 3 * $mb, 'json_max' => 0), 512 * $mb, 1);
+	pg_assert_same($under['request'], $under['max'], 'a value under one request gives one request');
+	pg_assert_true($under['request'] > $mb, 'one request is above the setting');
+
+	$unknown = pg_image_editor_upload_limits_of(array(), 0, 50);
+	pg_assert_same(50 * $mb, $unknown['max'], 'the setting when no other bound is known');
+
+	pg_assert_same(10240 * $mb, pg_image_editor_upload_limits_of($limits, 0, 99999)['max'], 'held at the highest value');
+	pg_assert_same(512 * $mb, pg_image_editor_upload_limits_of($limits, 512 * $mb, -5)['max'], 'a negative value is 0');
+
+	pg_assert_same(0, pg_image_editor_upload_max_mb_clamp(''), 'an empty box is 0');
+	pg_assert_same(0, pg_image_editor_upload_max_mb_clamp('abc'), 'a word is 0');
+	pg_assert_same(300, pg_image_editor_upload_max_mb_clamp('300'), 'a stored value');
+	pg_assert_same(pg_image_editor_upload_max_mb_most(), pg_image_editor_upload_max_mb_clamp(65535), 'the column\'s top is held');
+}
+
 // The id, the state of a kept upload, the check of each part.
 function test_image_editor_upload_checks()
 {

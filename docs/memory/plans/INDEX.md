@@ -6,10 +6,16 @@
 - agent-channel-steps-2.md: Steps A0-A9 of plans/agent-channel.md: registry, doors, wakes, channel memory, model assistants, risk tiers, the canvas as a tool, further doors (Claude Code plugin, per-person sessions, chat box)
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
+- bell-panel-steps.md: Steps of plans/bell-panel.md: BP1 a row is read when opened, BP2 the row drawn as the dashboard's Next up row, BP3 the filters and the search, BP4 the in-place actions and the close-out
+- bell-panel.md: Plan (owner 2026-11-11): the bell's rows drawn as the dashboard's Next up rows, module chips, unread only, asked of me, search, day headings; a row is read when it is opened; steps BP1-BP4
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
+- designer-bold-pages-steps-2.md: Steps B7 to B12 of the designer bold pages plan: pinned scene, looks and palettes, video, dark and light chapters, design colour mode, template colour classes
+- designer-bold-pages-steps.md: Steps B1 to B6 of the designer bold pages plan: full-bleed and giant type blocks, scroll effects, count-up, variant picker, product bar, wide gallery slides
+- designer-bold-pages.md: Plan: what the Visual Page Editor needs for bold product pages (scroll scenes, edge-to-edge media, big type, dark and light chapters), from an inspection of the designer
+- designer-palette-drawings.md: Plan (owner 2026-11-11): one Components tab with a Blocks switch, a small drawing per look, a drawing and a short description for every ready block and component
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
@@ -29,6 +35,8 @@
 - one-picker-visuals.md: The one picker's screens (PKV, approved by the owner 2026-11-10): pictures in plans/one-picker/, what each shows and which step builds it
 - one-picker.md: Plan (owner 2026-11-10): one modern picker for choosing a file or a page on every screen (a dialog with tree, grid, search and upload; a field with search and Browse), ready for other records
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
+- settings-workspace-move-steps.md: Steps of plans/settings-workspace-move.md: SD1-SD2 the drawer inside the Site Settings dialog, SW1 the Workspace heading and its gate, SW2-SW6 the cards by category, SW7 the button and the old screen
+- settings-workspace-move.md: Plan (owner 2026-11-11): the Workspace settings move into the Site Settings dialog, a fifth heading with three categories, one card at a time; a card's dialog becomes a drawer in it; steps SD1-SW7
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19; design note first, code after 2026.11.0 ships, #3798): public storefront API (cart, checkout, customer auth), base for OpenAI ACP and Google UCP bindings
 - storefront-api-callers.md: Storefront API design note: who calls it (application key + optional cart or customer token), the storefront:* scopes, rate buckets, Idempotency-Key and dry-run rules shared by every route
@@ -40,8 +48,7 @@
 - storefront-api-routes-customer.md: Storefront API design note: customer routes (sign-in, sign-up, refresh, sign-out, password reset, profile, orders, addresses, returns) with scopes, limits and the website code each one calls
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - workspace-channel-look-prototype.md: The style sheet tried on dev for step CL1 of plans/workspace-channel-look.md (one header card, colour wash, pill tabs, day chip, writing box card); a browser trial, not in the code
-- workspace-channel-look.md: Proposal, not to be started before the owner approves the look: the Workspace channel screen in the dashboard's manner (one header card, colour wash, pill tabs, panes as cards); steps CL1-CL3
+- workspace-channel-look.md: Plan (owner 2026-11-10, handed to workers 2026-11-11): the Workspace channel screen in the dashboard's manner (one header card, colour wash, pill tabs, panes as cards); steps CL1-CL3 in order
 - workspace-mail-screen-sending.md: How the Workspace mail plan sends: one send path through the mail queue with an outcome hook, the item's send state, the schema step, limits, files, what a forward carries
 - workspace-mail-screen-steps.md: Steps WM1-WM9 of plans/workspace-mail-screen.md: queue outcome hook, schema, send path, the screen with views and pane, New e-mail, Forward as e-mail, the answer on the same path, API, close-out
 - workspace-mail-screen.md: Plan (owner 2026-11-10): the Workspace's E-mails screen becomes a mail screen for the Workspace mailboxes: Incoming, Sent, Not sent, a reading pane, New e-mail, Forward as e-mail, the mail queue
-- workspace-menu-layout.md: Plan (owner decision 2026-10-30) for a tidier Workspace list in the main menu: search, places, one Channels section, discussions, Tools tiles; channel screen unchanged

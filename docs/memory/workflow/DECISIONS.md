@@ -35,6 +35,13 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-3.md: Which screens must never look worse? (owner, 2026-10-25)
 - decisions-made-panel-3.md: Which Bootstrap 6 components did the owner name? (2026-10-25)
 - decisions-made-panel-3.md: What does an old browser get in the panel? (owner, 2026-10-25)
+- decisions-made-panel-3.md: What opens from a card inside the Site Settings dialog? (owner, 2026-11-11)
+- decisions-made-panel-4.md: Where are the rules and the earlier parts?
+- decisions-made-panel-4.md: What does a bell row look like? (owner, 2026-11-11, #8670)
+- decisions-made-panel-4.md: Which filters does the bell have? (owner, 2026-11-11, #8670)
+- decisions-made-panel-4.md: What does a bell row's button do? (owner, 2026-11-11, #8670)
+- decisions-made-panel-4.md: When is a notification read? (owner, 2026-11-11, #8670)
+- decisions-made-panel-4.md: Where is it built?
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?
 - decisions-made-panel.md: Which date-and-time picker does the software use? (#2693, 2026-10-28)
@@ -304,6 +311,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-12.md: Where is a channel's agent asked in the channel's discussions? (architect, 2026-11-10)
 - decisions-made-workspace-13.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-13.md: What is the Workspace's mail screen, and how does it send? (#8604, owner 2026-11-10; the shape: architect)
+- decisions-made-workspace-13.md: Who builds the channel look? (owner, 2026-11-11)
+- decisions-made-workspace-13.md: Where do the Workspace settings live? (owner, 2026-11-11)
 - decisions-made-workspace-2.md: What may the channel menu hold?
 - decisions-made-workspace-2.md: Where are records created inside a chat?
 - decisions-made-workspace-2.md: Does the customer channel's "New sales quote" stay in the menu?
@@ -419,6 +428,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/designer-blocks-overview.md: Start file for the designer-blocks-* files: what a block family is, the rule that binds it, every family by its palette group label, which file holds what, how a new family is added
 - designer/designer-content-roles-ui-guards.md: Designer content-role UI guards: _sdCanEditNode vs _sdMayEdit, every guarded mutation path, WeakSet perf rule, _sdGuardItem, content images, revision load, content chrome.
 - designer/designer-home-pictures.md: The Visual Page Editor home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback
+- designer/designer-palette-tabs-and-blocks.md: Designer palette Components tab with a Components / Blocks list switch (building blocks vs ready sections): adding a block, shared list plumbing, recents strip, tab strip width.
 - designer/form-list-filters-fail-closed.md: A form list filter on a missing field or unknown operator shows no record (page, feeds, sitemap, index); address filters unchanged; editor warning; unanswered lists use comments less than 1
 - designer/form-list-result-count.md: form_list_view ^^__result_count^^ (records matched, capped at max_results, grouped digits), the flags has_records / no_records, the count strip (empty loop area), canvas and installer preview
 - designer/layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing
@@ -491,6 +501,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/image-editor-overview.md: Pinegrap's own image editor as a whole: what it is, the owner decisions that bind it, who does what (browser or server), the document in rotated space, and which topic file holds each part
 - ui/image-editor-rail.md: The image editor rail's group items Photo (Fotoğraf) and Vector (Vektör): which tools they hold, the mode switch, the mode reopened, letters and hints, M.railItems()
 - ui/image-editor-subject.md: The image editor's Select subject (E28a, #6841): own GrabCut and Boykov-Kolmogorov max-flow in a worker, the start box, the subject op in doc.selection
+- ui/image-editor-upload-setting.md: The image editor's largest upload as a setting (V8b): the config_text row image_editor_upload_max_mb in MB, 0 keeps upload_max_filesize, 10240 at most, its field on Settings, Features
 - ui/list-and-table-screens.md: Panel list and table rules: lists on the list table driver, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
 - ui/list-table-layout.md: How a list on the table driver looks (backend.src.css): the frame, one-line rows, sticky name and actions columns, the selection bar, the details panel's layout rule, the SEO score column
 - ui/list-table-overview.md: The panel list table driver as a whole: the decision behind it, its parts by label, which file holds what, the recipe for a new list, its filter, where a new screen is registered
@@ -513,7 +524,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/agent-channel-wake.md: How a session waits on the agent channel with tools/ws_wait.php (--from, --mention, --changed), the handles typed in it, and who it wakes
 - workflow/architect.md: Decision questions (2026-10-27): an architect issue; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (erdal), records it
 - workflow/coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators
-- workflow/coordinator-no-plans.md: Design template plans are paused (2026-11-09): no template step and no new template is given out; low priority before that; no bug hunt and no bug issue as work
+- workflow/coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; no bug hunt and no bug issue as work
+- workflow/design-template-owner-line.md: Owner (2026-11-11): during the template pause his own line polishes the shipped templates, bolder and with motion, appstudio and dealership first; two workers of one more coordinator take the rest
 - workflow/merge-review.md: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, digs deeper for access, payments, SQL, schema; an architect decision counts as the owner's
 - workflow/merger-wake.md: How the merging session keeps waking: a send_later chain, 3 minutes with more than 3 ready PRs and 15 minutes otherwise (2026-11-09), an hourly routine that re-arms it; GitHub events are not relied on
 - workflow/owner-rules.md: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, where area rules live (memory; vendor Bootstrap skills aside), language, the mobile app, who edits which notes
@@ -522,6 +534,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/agent-canvas-svg.md: Agents draw Workspace canvases from SVG (POST channels/{id}/canvases) and read any canvas (GET messages/{id}/canvas): Import port, blank picture, pending, who may
 - workspace/agent-channel-flag.md: Agent channel switch (ws_channels.agent_channel, #8440): /agent-channel on|off, its decisions kept apart on the decisions screen, the dashboard and GET /workspace/decisions
 - workspace/agent-checklist-questions.md: When an agent asks with a checklist (several ticks, or agent to agent) and not a poll; the ticks over the API (checks), the wake on a tick, the closing decision; who a question rings (question_asked)
+- workspace/agent-key-trial-memory.md: Channel memory written live on dev (2026-11-11) with an application agent's key: create, read, list, update and delete by POST, dry runs, refusals, the entry's line in the brief
 - workspace/agent-questions.md: How an agent asks the people with a poll or an approval; a one-answer question as a one-choice poll closed once the vote is read; why the outcome is written in the agent's name
 - workspace/channel-agent-rights.md: Who adds, changes or removes a channel's agents ("Agents in this channel" in Channel settings, workspace.channels.agents.*): who may post; the tier and a private channel's new agent only its manager
 - workspace/channel-memory.md: A channel's memory (ws_channel_memory) and the decision mark by a person or an agent (ws_messages.marked_by_kind): rows, routes, the index in the brief, the Memory tab

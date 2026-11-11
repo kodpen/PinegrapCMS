@@ -565,6 +565,12 @@
 
             node.appendChild(icon(item.icon));
             node.appendChild(el('span', 'ws-side-tile-name', item.short || item.label));
+
+            // A number the server counted, as the unread e-mails.
+            if (item.count) {
+                node.appendChild(countBadge(item.count, false));
+            }
+
             inPlace(node, navHooks[item.key]);
 
             return node;

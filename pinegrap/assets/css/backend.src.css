@@ -10785,6 +10785,87 @@ body.pg-side-panel-open .pg-chat-launcher {
   .pg-sm-progress::after { animation: none; }
 }
 
+/* ── a card's drawer ───────────────────────────────────────────────────────
+   A panel of the dialog (includes/settings/drawer.php), not a second dialog:
+   it slides in from the dialog's right edge over the pane, which keeps its
+   values under it. The dialog is fixed in the top layer, so it is the box the
+   drawer is placed in, and its overflow clips the drawer while it is out.
+   Visibility is not timed on the way in, so the focus can land at once. */
+.pg-sm-drawer {
+  position: absolute;
+  z-index: 5;
+  inset-block: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(42rem, 100%);
+  min-height: 0;
+  border-left: var(--pg-border-width) solid var(--pg-border-color);
+  background: var(--pg-bg-body);
+  box-shadow: var(--pg-shadow-lg);
+  transform: translateX(100%);
+  transition: transform .2s ease-out, visibility 0s linear .2s;
+  visibility: hidden;
+}
+.pg-sm-drawer.is-open {
+  transform: none;
+  transition: transform .2s ease-out, visibility 0s linear 0s;
+  visibility: visible;
+}
+.pg-sm-drawer:focus { outline: 0; }
+.pg-sm-drawer-head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: 1rem 1.25rem .75rem;
+  border-bottom: var(--pg-border-width) solid var(--pg-border-color-translucent);
+}
+.pg-sm-drawer-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+/* Scrolls on its own; a long command wraps or scrolls inside its field. */
+.pg-sm-drawer-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 1.25rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+}
+/* Tapping beside the drawer closes it; the pane shows dimmed through. */
+.pg-sm-dscrim {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  background: color-mix(in srgb, #000 30%, transparent);
+  opacity: 0;
+  transition: opacity .2s linear;
+  pointer-events: none;
+}
+.pg-sm.is-drawer-open .pg-sm-dscrim {
+  opacity: 1;
+  pointer-events: auto;
+}
+@media (max-width: 575.98px) {
+  .pg-sm-drawer { width: 100%; }
+  .pg-sm-drawer-head { padding-inline: .875rem; }
+  .pg-sm-drawer-body { padding: 1rem .875rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-sm-drawer,
+  .pg-sm-dscrim { transition: none; }
+}
+/* The same content in Bootstrap's drawer on the page path
+   (settings_maintenance.php and the like, with no settings dialog around it). */
+.pg-set-drawer { --pg-drawer-width: min(42rem, 100vw); }
+
 /* ── Dashboard sales map (widget 1) ─────────────────────────────────────────
    The left panel of a two-track card: a period head and the outlines, with the
    period and map switches in a menu in the corner of them. The right panel is a
@@ -15353,6 +15434,148 @@ a.ws-chip:hover {
   bottom: auto;
   left: 0;
   width: min(26rem, 100%);
+}
+/* The E-mails screen (workspace_mail.php): the list, and the reading pane
+   beside it once a row is open; on a phone the pane takes the list's
+   place. */
+.ws-mail-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ws-space-3);
+  align-items: start;
+}
+.ws-mail-reading .ws-mail-columns {
+  grid-template-columns: minmax(18rem, 2fr) minmax(0, 3fr);
+}
+.ws-mail-rows {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius-sm);
+  overflow: hidden;
+}
+.ws-mail-row {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+  padding: .55rem .75rem;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+  color: var(--pg-fg-body);
+  text-decoration: none;
+}
+.ws-mail-row:last-child {
+  border-bottom: 0;
+}
+.ws-mail-row:hover {
+  background: var(--pg-bg-1);
+}
+.ws-mail-row[aria-current] {
+  background: var(--ws-soft);
+}
+.ws-mail-row-head {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-width: 0;
+}
+.ws-mail-who,
+.ws-mail-subject,
+.ws-mail-snippet {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-mail-who {
+  flex: 1 1 auto;
+}
+.ws-mail-row .ws-mail-time {
+  flex: 0 0 auto;
+  font-size: .78rem;
+  color: var(--pg-fg-2);
+}
+.ws-mail-snippet,
+.ws-mail-row-meta {
+  font-size: .8rem;
+  color: var(--pg-fg-2);
+}
+.ws-mail-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem .6rem;
+}
+/* Unread: the name and subject in bold, and a bar in the accent. */
+.ws-mail-unread {
+  box-shadow: inset 3px 0 0 var(--ws-accent);
+}
+.ws-mail-unread .ws-mail-who,
+.ws-mail-unread .ws-mail-subject {
+  font-weight: 600;
+  color: var(--pg-fg-emphasis);
+}
+.ws-mail-overdue .ws-mail-time {
+  color: var(--pg-danger);
+}
+.ws-mail-more {
+  padding: .75rem 0;
+  text-align: center;
+}
+.ws-mail-pane {
+  position: sticky;
+  top: var(--ws-space-3);
+  max-height: calc(100vh - 8rem);
+  overflow: auto;
+  padding: .75rem 1rem;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius-sm);
+  background: var(--pg-bg-body);
+}
+.ws-mail-pane-head {
+  margin-bottom: .75rem;
+  padding-bottom: .5rem;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mail-pane-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem;
+  margin-top: .5rem;
+}
+.ws-mail-item {
+  margin-bottom: .6rem;
+  padding: .6rem .75rem;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius-sm);
+}
+.ws-mail-item.ws-mail-out {
+  background: var(--pg-bg-1);
+}
+.ws-mail-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .35rem;
+}
+.ws-mail-item-head .ws-mail-time {
+  margin-inline-start: auto;
+}
+.ws-mail-text {
+  margin-top: .5rem;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 767.98px) {
+  .ws-mail-reading .ws-mail-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ws-mail-reading .ws-mail-list {
+    display: none;
+  }
+  .ws-mail-pane {
+    position: static;
+    max-height: none;
+  }
 }
 /* The "/" list of a note's inserts, under the caret. */
 .ws-picker.ws-slash {
@@ -20712,8 +20935,8 @@ html.ws-flow-layer-on body {
   max-width: 16rem;
 }
 /* The scheduled actions the flow list ends with (drawScheduled()): the
-   converted rows, then the cards of the rows not converted, whose state
-   chips have nothing to filter there. */
+   cards of the actions the conversion refused, whose state chips have
+   nothing to filter there. */
 .wsf-sched-group {
   margin-top: 1.5rem;
 }
@@ -20722,27 +20945,6 @@ html.ws-flow-layer-on body {
 }
 .wsf-sched-title:focus {
   outline: none;
-}
-.wsf-sched-row {
-  padding: var(--ws-space-2) 0 var(--ws-space-3);
-  border-bottom: 1px solid var(--pg-border-color-translucent);
-  font-size: .85rem;
-}
-.wsf-sched-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--ws-space-2);
-  margin-bottom: .2rem;
-}
-.wsf-sched-mark {
-  font-weight: 400;
-}
-.wsf-sched-tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ws-space-2);
-  margin-top: var(--ws-space-2);
 }
 .wsf-sched-refused .ws-sa-filters {
   display: none;
@@ -23179,6 +23381,204 @@ select.pg-list-table-field option.private {
     transition: none;
   }
 }
+/* Recent above the folders; Upload at the bar's end. */
+.pg-picker-recent {
+  width: 100%;
+  margin-bottom: 0.35rem;
+  padding-left: 0.45rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.pg-picker-recent:focus-visible {
+  outline: var(--pg-focus-ring-width) solid var(--pg-focus-ring-color);
+  outline-offset: calc(var(--pg-focus-ring-width) * -1);
+}
+.pg-picker-upload {
+  flex: 0 0 auto;
+}
+.pg-picker-upload:disabled {
+  pointer-events: auto;
+  cursor: not-allowed;
+}
+.pg-picker-folders .pg-picker-upload {
+  display: none;
+}
+/* Files dragged over the pane: the folder they go into, or why not. */
+.pg-picker-pane {
+  position: relative;
+}
+.pg-picker-drop {
+  position: absolute;
+  inset: 0.5rem;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 1rem;
+  border: 2px dashed var(--pg-primary);
+  border-radius: var(--pg-radius-lg);
+  background: color-mix(in srgb, var(--pg-primary-bg-subtle) 92%, transparent);
+  color: var(--pg-fg-emphasis);
+  text-align: center;
+  pointer-events: none;
+}
+.pg-picker-drop .bi {
+  font-size: 2.5rem;
+  color: var(--pg-primary);
+}
+.pg-picker-drop span {
+  font-size: 0.85rem;
+  color: var(--pg-fg-2);
+}
+.pg-picker-drop.is-refused {
+  border-color: var(--pg-danger);
+  background: color-mix(in srgb, var(--pg-danger-bg-subtle) 92%, transparent);
+}
+.pg-picker-drop.is-refused .bi {
+  color: var(--pg-danger);
+}
+.pg-picker-drop[hidden],
+.pg-picker-uploads[hidden] {
+  display: none;
+}
+/* The files being sent, one row each. */
+.pg-picker-uploads {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  width: min(22rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  border: var(--pg-border-width) solid var(--pg-border-color);
+  border-radius: var(--pg-radius-lg);
+  background: var(--pg-bg-body);
+  box-shadow: var(--pg-shadow-lg);
+}
+.pg-picker-uploads-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-bottom: var(--pg-border-width) solid var(--pg-border-color);
+  font-size: 0.875rem;
+}
+.pg-picker-uploads-head strong {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.pg-picker-uploads-folder {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  margin-right: auto;
+  font-size: 0.8rem;
+  color: var(--pg-fg-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-picker-uploads-list {
+  margin: 0;
+  padding: 0.25rem 0;
+  overflow: auto;
+  list-style: none;
+}
+.pg-picker-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.75rem;
+}
+.pg-picker-upload-row .pg-picker-thumb {
+  flex: 0 0 2.25rem;
+  width: 2.25rem;
+  font-size: 1.1rem;
+}
+.pg-picker-upload-row .pg-picker-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.pg-picker-upload-row .pg-picker-name {
+  overflow: hidden;
+  font-size: 0.85rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-picker-upload-row .pg-picker-meta {
+  white-space: normal;
+}
+.pg-picker-progress {
+  display: block;
+  height: 0.25rem;
+  overflow: hidden;
+  border-radius: var(--pg-radius-pill);
+  background: var(--pg-border-color);
+}
+.pg-picker-progress > span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--pg-primary);
+  transition: width 0.15s linear;
+}
+.pg-picker-progress[hidden] {
+  display: none;
+}
+.pg-picker-upload-state {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  color: var(--pg-fg-2);
+}
+.pg-picker-upload-row.is-done .pg-picker-upload-state {
+  color: var(--pg-success);
+}
+.pg-picker-upload-row.is-refused .pg-picker-upload-state,
+.pg-picker-upload-row.is-refused .pg-picker-meta,
+.pg-picker-upload-row.is-refused .pg-picker-thumb {
+  color: var(--pg-danger);
+}
+/* An empty folder: what Upload does, and its buttons. */
+.pg-picker-empty p {
+  max-width: 26rem;
+  margin: 0;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+}
+.pg-picker-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+/* Several picks: their pictures overlap in the footer. */
+.pg-picker-strip {
+  display: flex;
+  flex: 0 0 auto;
+}
+.pg-picker-strip .pg-picker-thumb {
+  flex: 0 0 2.25rem;
+  width: 2.25rem;
+  font-size: 1rem;
+  border: 2px solid var(--pg-bg-body);
+}
+.pg-picker-strip .pg-picker-thumb + .pg-picker-thumb {
+  margin-left: -0.75rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-picker-progress > span {
+    transition: none;
+  }
+}
 /* The phone: a sheet from the bottom edge, three tiles a row. */
 .dialog.pg-picker.pg-picker-sheet {
   --bs-dialog-margin: 0;
@@ -23265,6 +23665,23 @@ select.pg-list-table-field option.private {
 }
 .pg-picker-sheet .pg-picker-choose {
   min-width: 5rem;
+}
+.pg-picker-sheet .pg-picker-upload {
+  order: -1;
+}
+.pg-picker-sheet .pg-picker-bar:has(.pg-picker-upload:not([hidden])) .pg-picker-search {
+  flex-basis: calc(100% - 3rem);
+}
+.pg-picker-sheet .pg-picker-upload .pg-btn-label {
+  display: none;
+}
+.pg-picker-sheet .pg-picker-uploads {
+  right: 0.75rem;
+  bottom: 0.75rem;
+  width: calc(100% - 1.5rem);
+}
+.pg-picker-sheet .pg-picker-strip .pg-picker-thumb:nth-child(n+3) {
+  display: none;
 }
 }
 

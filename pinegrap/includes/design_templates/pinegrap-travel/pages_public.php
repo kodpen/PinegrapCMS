@@ -12,6 +12,12 @@
  * $testimonials), so a change made there reaches every page here. No page
  * here links a shop page: the template stands on a site without the shop.
  *
+ * The home is drawn on the general Hero (Image Background) block and the
+ * two Travel blocks, Day by Day and Destination Guide: their pg- classes
+ * are the block rules pinegrap-travel.php ships. What moves does so by the
+ * interactions on the nodes (props _fx), never by a script of the
+ * template's own.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -37,7 +43,7 @@ $framed = function ($src, $alt, $ratio = '4x3', $lazy = true) use ($el, $image, 
 // The band is a search section under its anchor $id, with the topics a
 // visitor may search for that it does not say itself.
 $story_band = function ($id, $eyebrow, $title, $texts, $picture, $alt, $flip = false, $more = array(), $topics = '', $class = 'py-5')
-    use ($el, $heading, $para, $container, $row, $col, $framed, $searchable) {
+    use ($el, $heading, $para, $container, $row, $col, $framed, $searchable, $fx) {
     $words = array(
         $para($eyebrow, 'ptv-eyebrow text-uppercase fw-semibold text-primary mb-2'),
         $heading('h2', $title, 'ptv-display h2 mb-3'),
@@ -50,7 +56,7 @@ $story_band = function ($id, $eyebrow, $title, $texts, $picture, $alt, $flip = f
         $container(array(
             $row(array(
                 $col(array_merge($words, $more), '', '6', '', '12', $flip ? 'order-lg-last' : ''),
-                $col(array($framed($picture, $alt)), '', '6'),
+                $col(array($fx($framed($picture, $alt), array('effect' => 'fade', 'trigger' => 'view', 'duration' => 900))), '', '6'),
             ), '4', '', 'g-lg-5 align-items-center'),
         )),
     ), $searchable($id, $topics));
@@ -82,19 +88,162 @@ $figure_row = function () use ($el, $para, $row, $col, $figures) {
     return $row($cols, '4');
 };
 
-// A band that sends a question to the contact page.
-$ask_band = function ($title, $text) use ($el, $heading, $para, $link, $container) {
-    return $el('section', 'py-5', lang('Write to Us'), array(
-        $container(array(
-            $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3', lang('Text'), array(
-                $el('div', '', lang('Text'), array(
-                    $heading('h2', $title, 'ptv-display h4 mb-1'),
-                    $para($text, 'text-body-secondary mb-0'),
-                )),
-                $link(lang('Contact Us'), '{{page:contact}}', 'btn btn-primary rounded-pill px-4 text-nowrap'),
+// An icon and a few words on one line: a day's night and meals.
+$note = function ($icon_name, $text, $name) use ($el, $icon, $span) {
+    return $el('div', 'd-flex align-items-center gap-2', $name, array(
+        $icon($icon_name, 'text-primary flex-shrink-0'),
+        $span($text, '', lang('Text')),
+    ));
+};
+// A fact of a trip or a place: its label over its value.
+$fact = function ($label, $value) use ($el) {
+    return $el('div', '', $label, array(
+        $el('dt', '', lang('Label'), array(), array('text' => $label)),
+        $el('dd', '', lang('Value'), array(), array('text' => $value)),
+    ));
+};
+
+// The home's way in, on the general Hero (Image Background) block: a photo
+// of the road under the dark shade, the agency in a sentence, the two ways
+// on, and the four regions as the stops of a route, each opening the
+// destinations of its region. The words come in on load, the stops after
+// them, and a stop rises under the pointer.
+$home_hero = function () use ($el, $heading, $para, $link, $span, $icon, $container, $attr, $fx, $photo, $query, $regions, $agency) {
+    $stops = array();
+    foreach ($regions as $r) {
+        $stops[] = $el('li', '', $r['title'], array(
+            $fx($el('a', 'btn btn-outline-light rounded-pill d-inline-flex align-items-center gap-2 px-3', lang('Link'), array(
+                $icon($r['icon']),
+                $span($r['title'], '', lang('Link Text')),
+            ), array('href' => '{{page:destinations}}?' . $query(array('region' => $r['title'])))),
+            array('effect' => 'slide-up', 'trigger' => 'hover', 'duration' => 200)),
+        ));
+    }
+    return $el('section', 'd-flex overflow-hidden pg-hero-tall', lang('Hero'), array(
+        $el('div', 'd-flex flex-column justify-content-end w-100 py-5 text-body pg-shade-bottom', lang('Overlay'), array(
+            $container(array(
+                $fx($el('div', 'col-lg-8 mb-5', lang('Hero Body'), array(
+                    $para(lang('Small groups, local guides'), 'ptv-eyebrow text-uppercase fw-semibold mb-3'),
+                    $heading('h1', lang('See the world slowly'), 'ptv-display display-2 mb-3'),
+                    $para($agency['tagline'] . '.', 'lead mb-4'),
+                    $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
+                        $link(lang('Find a tour'), '{{page:tours}}', 'btn btn-primary btn-lg rounded-pill px-4'),
+                        $link(lang('Plan a Tailor-made Trip'), '{{page:enquiry}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
+                    )),
+                )), array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 900, 'stagger' => 120)),
+                $fx($el('ol', 'list-unstyled d-flex flex-wrap gap-2 mb-0', lang('Regions'), $stops),
+                    array('effect' => 'slide-up', 'trigger' => 'load', 'delay' => 500, 'stagger' => 100)),
+            ), 'py-5'),
+        ), array('_attrs' => array($attr('data-bs-theme', 'dark')))),
+    ), array('_attrs' => array($attr('style', 'background-image: url(' . $photo('hero', 1920, 1080) . '); background-size: cover; background-position: center;'))));
+};
+
+// A tour day by day, on the Travel block Day by Day: each day with its
+// marker, where the night is spent and the meals ($notes, one pair per
+// day), and beside them the trip at a glance with the price and the ways
+// to book it. The days rise one after another as they scroll into view.
+$day_by_day = function ($key, $notes, $start, $id, $topics) use ($el, $heading, $para, $link, $span, $container, $row, $col, $fx, $rise, $fade_in, $note, $fact, $tours, $tour_prices, $money, $length_text, $query, $searchable) {
+    $t = $tours[$key];
+    $days = array();
+    foreach ($t['itinerary'] as $n => $d) {
+        $days[] = $el('li', '', $d[0], array(
+            $el('div', 'pg-travel-day', lang('Day'), array(
+                $span(lang('Day'), 'small text-uppercase fw-semibold', lang('Text')),
+                $span((string)($n + 1), 'fs-5 fw-bold', lang('Number')),
             )),
+            $el('div', 'flex-grow-1 pt-1', lang('Text'), array(
+                $heading('h3', $d[0], 'h5 fw-bold mb-1'),
+                $para($d[1], 'text-body-secondary mb-2'),
+                $el('div', 'd-flex flex-wrap gap-3 small', lang('Notes'), array(
+                    $note('bi-moon', $notes[$n][0], lang('Overnight')),
+                    $note('bi-cup-hot', $notes[$n][1], lang('Meals')),
+                )),
+            )),
+        ));
+    }
+    $glance = $el('aside', 'card border-0 shadow-sm rounded-4 sticky-lg-top', lang('Trip at a Glance'), array(
+        $el('div', 'card-body p-4', lang('Card Body'), array(
+            $heading('h3', lang('Trip at a glance'), 'h5 fw-bold mb-3'),
+            $el('dl', 'pg-travel-glance mb-4', lang('Facts'), array(
+                $fact(lang('Duration'), $length_text($key)),
+                $fact(lang('Group size'), implode(' ', array(lang('Up to'), (string)$t['group'], lang('travellers')))),
+                $fact(lang('Starts and ends'), $start),
+                $fact(lang('Departures'), $t['departures']),
+            )),
+            $el('div', 'd-flex align-items-baseline flex-wrap gap-2 mb-3', lang('Price'), array(
+                $span(lang('Starting from'), 'small text-body-secondary', lang('Label')),
+                $span($money($tour_prices[$key]), 'pg-travel-figure fs-2 fw-bold', lang('Price')),
+                $span(lang('per traveller'), 'text-body-secondary', lang('Unit')),
+            )),
+            // Opens the booking request with this tour chosen (?tour=).
+            $link(lang('Book this tour'), '{{page:book}}?' . $query(array('tour' => $t['name'])), 'btn btn-primary rounded-pill w-100 mb-2'),
+            $link(lang('Plan a Tailor-made Trip'), '{{page:enquiry}}', 'btn btn-outline-primary rounded-pill w-100'),
         )),
     ));
+    return $el('section', 'py-5 bg-body-tertiary', lang('Travel (Day by Day)'), array(
+        $container(array(
+            $fx($el('div', 'col-lg-8 mb-5', lang('Section Header'), array(
+                $para(lang('Itinerary'), 'ptv-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+                $heading('h2', $t['name'], 'ptv-display h2 mb-2'),
+                $para($t['summary'], 'lead text-body-secondary mb-0'),
+            )), $fade_in),
+            $row(array(
+                $col(array($rise($el('ol', 'pg-travel-days', lang('Itinerary'), $days), 100)), '', '8'),
+                $col(array($glance), '', '4'),
+            ), '4', '', 'g-lg-5 align-items-start'),
+        )),
+    ), $searchable($id, $topics));
+};
+
+// A destination as a guide, on the Travel block Destination Guide: the
+// picture with the region, the country, the name and the summary, the
+// best time to go season by season ($seasons), the facts a traveller asks
+// first ($facts, label => value) and the ways to its tours. The picture
+// fades in and the seasons rise as they scroll into view.
+$destination_guide = function ($key, $alt, $seasons, $facts, $id, $topics) use ($el, $heading, $para, $link, $span, $icon, $image, $attr, $container, $row, $col, $fx, $rise, $fact, $photo, $query, $destinations, $regions, $searchable) {
+    $d = $destinations[$key];
+    $tiles = array();
+    foreach ($seasons as $s) {
+        $verdict = array($span($s['verdict'], '', lang('Text')));
+        if ($s['best']) array_unshift($verdict, $icon('bi-check2-circle', 'flex-shrink-0'));
+        $tiles[] = $el('li', $s['best'] ? 'pg-travel-best' : '', $s['title'], array(
+            $icon($s['icon'], 'fs-4 d-block mb-1'),
+            $span($s['title'], 'd-block fw-semibold', lang('Name')),
+            $el('div', 'd-flex align-items-center justify-content-center gap-1 small', lang('Verdict'), $verdict),
+        ));
+    }
+    $fact_nodes = array();
+    foreach ($facts as $label => $value) $fact_nodes[] = $fact($label, $value);
+    $picture = $el('figure', 'position-relative m-0', lang('Picture'), array(
+        $el('div', 'ratio ratio-4x3 rounded-4 overflow-hidden bg-body-tertiary', lang('Picture Frame'), array(
+            $image($photo('place-' . $key, 1200, 900), $alt, 'w-100 h-100 object-fit-cover', array('_attrs' => array($attr('loading', 'lazy')))),
+        )),
+        $el('div', 'badge rounded-pill text-bg-primary d-inline-flex align-items-center gap-1 position-absolute top-0 start-0 m-3', lang('Region'), array(
+            $icon($regions[$d['region']]['icon']),
+            $span($regions[$d['region']]['title'], '', lang('Text')),
+        )),
+    ));
+    return $el('section', 'py-5', lang('Travel (Destination Guide)'), array(
+        $container(array(
+            $row(array(
+                $col(array($fx($picture, array('effect' => 'fade', 'trigger' => 'view', 'duration' => 900))), '', '6'),
+                $col(array(
+                    $para($d['country'], 'ptv-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+                    $heading('h2', $d['name'], 'ptv-display h2 mb-2'),
+                    $para($d['summary'], 'lead text-body-secondary mb-4'),
+                    $heading('h3', lang('Best time to go'), 'h6 fw-bold mb-2'),
+                    $rise($el('ul', 'pg-travel-seasons mb-4', lang('Seasons'), $tiles), 80),
+                    $el('dl', 'pg-travel-glance row row-cols-1 row-cols-sm-2 g-0 mb-4', lang('Facts'), $fact_nodes),
+                    $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
+                        // The tour list and the enquiry, each with this
+                        // destination chosen (?destination=).
+                        $link(lang('See the tours here'), '{{page:tours}}?' . $query(array('destination' => $d['name'])), 'btn btn-primary rounded-pill px-4'),
+                        $link(lang('Plan a Tailor-made Trip'), '{{page:enquiry}}?' . $query(array('destination' => $d['name'])), 'btn btn-outline-primary rounded-pill px-4'),
+                    )),
+                ), '', '6'),
+            ), '4', '', 'g-lg-5 align-items-center'),
+        )),
+    ), $searchable($id, $topics));
 };
 
 // The cards of the shared data, in their order.
@@ -108,6 +257,29 @@ $deposit_text = $money($deposit);
 
 // ── Home ────────────────────────────────────────────────────────────────
 
+// The Cappadocia sample on the home: where each of its nights is spent and
+// its meals, one pair per day of its itinerary, and the destination's
+// seasons and facts. The tour and destination records have no such
+// fields, so only the home shows them.
+$home_day_notes = array(
+    array(lang('Cave hotel in Göreme'), lang('Dinner')),
+    array(lang('Cave hotel in Göreme'), lang('Breakfast and lunch')),
+    array(lang('Stone house in Ürgüp'), lang('Breakfast and dinner')),
+    array(lang('The journey home'), lang('Breakfast')),
+);
+$home_seasons = array(
+    array('icon' => 'bi-flower1', 'title' => lang('Spring'), 'verdict' => lang('Best time'), 'best' => true),
+    array('icon' => 'bi-sun', 'title' => lang('Summer'), 'verdict' => lang('Hot days'), 'best' => false),
+    array('icon' => 'bi-tree', 'title' => lang('Autumn'), 'verdict' => lang('Best time'), 'best' => true),
+    array('icon' => 'bi-snow', 'title' => lang('Winter'), 'verdict' => lang('Snow and quiet'), 'best' => false),
+);
+$home_place_facts = array(
+    lang('Getting there') => lang('A short flight to Kayseri or Nevşehir'),
+    lang('Language')      => lang('Turkish'),
+    lang('Currency')      => lang('Turkish lira'),
+    lang('Entry visa')    => lang('Many travellers apply online before they go'),
+);
+
 $public_pages[] = array(
     'key'              => 'home',
     'name'             => lang('home'),
@@ -115,67 +287,36 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('Small-group tours with local guides on four continents, and journeys planned around you.'),
     'tree'             => $page(array(
-        // The way in: the agency in a sentence, the two ways on and a photo
-        // of a road ahead.
-        $el('section', 'py-5 overflow-hidden', lang('Hero'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('Small groups, local guides'), 'ptv-eyebrow text-uppercase fw-semibold text-primary mb-3'),
-                        $heading('h1', lang('See the world slowly'), 'ptv-display display-3 mb-3'),
-                        $para($agency['tagline'] . '.', 'lead text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('Find a tour'), '{{page:tours}}', 'btn btn-primary btn-lg rounded-pill px-4'),
-                            $link(lang('Plan a Tailor-made Trip'), '{{page:enquiry}}', 'btn btn-outline-primary btn-lg rounded-pill px-4'),
-                        )),
-                        $para($agency['licence'] . '.', 'small text-body-secondary mt-4 mb-0'),
-                    ), '', '5'),
-                    $col(array(
-                        $framed($photo('hero', 1400, 1050), lang('A small group of travellers on a mountain path at sunrise'), '4x3', false),
-                    ), '', '7'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        )),
-
-        $el('section', 'py-4 border-top border-bottom bg-body-tertiary', lang('Figures'), array(
-            $container(array($figure_row())),
-        )),
+        $home_hero(),
 
         // The featured tours, read from the Tours collection.
         $el('section', 'py-5', lang('Featured Tours'), array(
             $container(array(
-                $section_header(lang('Where we go'), lang('Tours our travellers love'), lang('All Tours'), '{{page:tours}}'),
+                $fx($section_header(lang('Where we go'), lang('Tours our travellers love'), lang('All Tours'), '{{page:tours}}'), $fade_in),
                 $widget('home_tours'),
             )),
         )),
 
-        $el('section', 'py-5 bg-body-tertiary', lang('Why Travel with Us'), array(
-            $container(array(
-                $section_header(lang('The way we travel'), lang('Why travel with us'), lang('About Us'), '{{page:about}}'),
-                $row($why_tiles, '4'),
-            )),
-        ), $searchable('tv-why-us', lang('small group, local guide, family hotel, licensed, protected'))),
+        // One of them day by day, then one place in depth.
+        $day_by_day('cappadocia', $home_day_notes, lang('Kayseri airport'), 'tv-home-itinerary',
+            lang('itinerary, day by day, overnight, hotel, meals, programme')),
+        $destination_guide('cappadocia', lang('Balloons over the fairy chimneys of Cappadocia at sunrise'), $home_seasons, $home_place_facts,
+            'tv-home-destination', lang('best time to go, season, weather, visa, currency, language')),
 
         // The featured destinations, read from the Destinations collection.
-        $el('section', 'py-5', lang('Featured Destinations'), array(
+        $el('section', 'py-5 bg-body-tertiary', lang('Featured Destinations'), array(
             $container(array(
-                $section_header(lang('Four continents'), lang('Destinations to dream of'), lang('All Destinations'), '{{page:destinations}}'),
+                $fx($section_header(lang('Four continents'), lang('Destinations to dream of'), lang('All Destinations'), '{{page:destinations}}'), $fade_in),
                 $widget('home_destinations'),
             )),
         )),
 
-        $el('section', 'py-5 bg-body-tertiary', lang('Deals'), array(
+        $el('section', 'py-5', lang('Deals'), array(
             $container(array(
-                $section_header(lang('Good to know'), lang('Deals on every tour'), lang('All deals'), '{{page:deals}}'),
-                $row($deal_cards_row, '4'),
+                $fx($section_header(lang('Good to know'), lang('Deals on every tour'), lang('All deals'), '{{page:deals}}'), $fade_in),
+                $rise($row($deal_cards_row, '4')),
             )),
         )),
-
-        $story_band('tv-home-tailor', lang('Tailor-made Trips'), lang('A journey planned around you'),
-            array(lang('A honeymoon, a family holiday or a long journey through one country: tell us what you like and we plan the route, the stays and the guides with you.'), lang('A planner answers within a day with a first idea and its price.')),
-            $photo('home-tailor', 1200, 900), lang('A map and a notebook on a café table'), false,
-            array($link(lang('Plan a Tailor-made Trip'), '{{page:enquiry}}', 'btn btn-outline-primary rounded-pill px-4')),
-            lang('custom trip, private tour, honeymoon, family holiday')),
 
         // What travellers say: sample words for the agency to replace, and
         // beside them its own Google reviews, which show once Google Reviews
@@ -183,15 +324,15 @@ $public_pages[] = array(
         // reviews.
         $el('section', 'py-5 bg-body-tertiary', lang('Testimonials'), array(
             $container(array(
-                $section_header(lang('Our travellers'), lang('What travellers say')),
-                $row($testimonial_cols, '4'),
+                $fx($section_header(lang('Our travellers'), lang('What travellers say'), lang('About Us'), '{{page:about}}'), $fade_in),
+                $rise($row($testimonial_cols, '4'), 120),
                 $widget('google_reviews'),
             )),
         )),
 
         $el('section', 'py-5', lang('From the Journal'), array(
             $container(array(
-                $section_header(lang('Travel Journal'), lang('Stories from the road'), lang('All stories'), '{{page:blog}}'),
+                $fx($section_header(lang('Travel Journal'), lang('Stories from the road'), lang('All stories'), '{{page:blog}}'), $fade_in),
                 $widget('home_posts'),
             )),
         )),
@@ -221,21 +362,20 @@ $public_pages[] = array(
             $photo('about-guides', 1200, 900), lang('Two guides reading a map at a mountain pass'), false, array(),
             lang('history, founders, team, who we are')),
         $el('section', 'py-4 border-top border-bottom bg-body-tertiary', lang('Figures'), array(
-            $container(array($figure_row())),
+            $container(array($rise($figure_row(), 120))),
         )),
         $el('section', 'py-5', lang('Our Values'), array(
             $container(array(
-                $section_header(lang('What we care about'), lang('How we travel')),
-                $row($about_value_tiles, '4'),
+                $fx($section_header(lang('What we care about'), lang('How we travel')), $fade_in),
+                $rise($row($about_value_tiles, '4')),
             )),
         ), $searchable('tv-values', lang('sustainable, responsible travel, environment, local'))),
         $el('section', 'py-5 bg-body-tertiary', lang('Why Travel with Us'), array(
             $container(array(
-                $section_header(lang('The way we travel'), lang('Why travel with us')),
-                $row($why_tiles, '4'),
+                $fx($section_header(lang('The way we travel'), lang('Why travel with us'), lang('Travel Information'), '{{page:travel_info}}'), $fade_in),
+                $rise($row($why_tiles, '4')),
             )),
         ), $searchable('tv-about-why', lang('small group, local guide, family hotel, licensed, protected'))),
-        $ask_band(lang('A question before you travel?'), lang('Write to us and a planner who knows the route answers, usually the same day.')),
     )),
 );
 
@@ -272,16 +412,17 @@ $public_pages[] = array(
                     $col(array(
                         $para(lang('Step by step'), 'ptv-eyebrow text-uppercase fw-semibold text-primary mb-2'),
                         $heading('h2', lang('From request to departure'), 'ptv-display h2 mb-4'),
-                        $el('ol', 'list-unstyled mb-4', lang('Steps'), $step_items),
+                        $rise($el('ol', 'list-unstyled mb-4', lang('Steps'), $step_items), 120),
                         $link(lang('Book a Tour'), '{{page:book}}', 'btn btn-primary rounded-pill px-4'),
                     ), '', '6'),
-                    $col(array($framed($photo('info-planning', 1200, 900), lang('A planner on the phone in front of a world map'))), '', '6'),
+                    $col(array($fx($framed($photo('info-planning', 1200, 900), lang('A planner on the phone in front of a world map')),
+                        array('effect' => 'fade', 'trigger' => 'view', 'duration' => 900))), '', '6'),
                 ), '4', '', 'g-lg-5 align-items-center'),
             )),
         ), $searchable('tv-how-booking-works', lang('book, request, confirm, deposit, payment, balance'))),
         $el('section', 'py-5 bg-body-tertiary', lang('What a Tour Includes'), array(
             $container(array(
-                $row(array(
+                $rise($row(array(
                     $col(array(
                         $heading('h2', lang('Every tour includes'), 'ptv-display h3 mb-3'),
                         $check_list($included),
@@ -290,13 +431,13 @@ $public_pages[] = array(
                         $heading('h2', lang('Not included'), 'ptv-display h3 mb-3'),
                         $check_list($not_included),
                     ), '', '6'),
-                ), '4', '', 'g-lg-5'),
+                ), '4', '', 'g-lg-5'), 120),
             )),
         ), $searchable('tv-included', lang('included, price includes, flights, meals, insurance, extras'))),
         $el('section', 'py-5', lang('Before You Go'), array(
             $container(array(
-                $section_header(lang('Before you go'), lang('What to arrange at home')),
-                $row($before_tiles, '4'),
+                $fx($section_header(lang('Before you go'), lang('What to arrange at home'), lang('Frequently Asked Questions'), '{{page:faq}}'), $fade_in),
+                $rise($row($before_tiles, '4')),
             )),
         ), $searchable('tv-before-you-go', lang('passport, visa, insurance, vaccination, packing list'))),
         $el('section', 'py-5 bg-body-tertiary', lang('Payments and Cancellation'), array(
@@ -321,7 +462,6 @@ $public_pages[] = array(
                 ), '4', '', 'g-lg-5'),
             )),
         ), $searchable('tv-payments', lang('deposit, balance, refund, cancellation policy, terms'))),
-        $ask_band(lang('Something else to ask?'), lang('Write to us with your question; a planner who knows the route answers.')),
     )),
 );
 
@@ -353,13 +493,13 @@ $public_pages[] = array(
         $page_header(lang('Deals'), lang('Ways to save on every tour. Choose a deal in your booking request; we take it off the price when we confirm.')),
         $el('section', 'py-5', lang('Deals'), array(
             $container(array(
-                $row($deal_cards_row, '4'),
+                $rise($row($deal_cards_row, '4'), 120),
             )),
         ), $searchable('tv-deals', lang('discount, offer, saving, early booking, group, solo'))),
         $el('section', 'py-5 bg-body-tertiary', lang('Tour Prices'), array(
             $container(array(
-                $section_header(lang('Every tour'), lang('Prices per traveller'), lang('All Tours'), '{{page:tours}}'),
-                $el('div', 'table-responsive', lang('Table'), array(
+                $fx($section_header(lang('Every tour'), lang('Prices per traveller'), lang('All Tours'), '{{page:tours}}'), $fade_in),
+                $fx($el('div', 'table-responsive', lang('Table'), array(
                     $el('table', 'table align-middle mb-0', lang('Price Table'), array(
                         $el('thead', '', lang('Table Head'), array(
                             $el('tr', '', lang('Row'), array(
@@ -373,7 +513,7 @@ $public_pages[] = array(
                         )),
                         $el('tbody', '', lang('Table Body'), $price_rows),
                     )),
-                )),
+                )), array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 700)),
                 $para(lang('Prices are per traveller sharing a double room; a planner confirms the price for your departure.'), 'small text-body-secondary mt-3 mb-0'),
             )),
         ), $searchable('tv-prices', lang('price, prices, cost, how much, per person'))),
@@ -403,7 +543,7 @@ $public_pages[] = array(
         $el('section', 'py-5', lang('Questions'), array(
             $container(array(
                 $row(array(
-                    $col(array(
+                    $rise($col(array(
                         $faq_group('tv-faq-booking', lang('Booking a tour'), array(
                             array(lang('Is my booking request a confirmed booking?'), lang('Not yet: a planner checks the departure and answers within a day. Your places are confirmed when you read "Confirmed" on your request.'), lang('confirmation, reservation, request, availability')),
                             array(lang('How do I follow my booking request?'), lang('Sending the form opens an account for you. Under My Account you see the state of each request and can write to us there.'), lang('my account, status, follow, message')),
@@ -421,7 +561,13 @@ $public_pages[] = array(
                             array(lang('What if I need to cancel?'), lang('More than six weeks before departure only the deposit is kept; closer to the date, part of the price. Travel insurance covers most reasons to cancel.'), lang('cancel, cancellation, refund, change')),
                             array(lang('Is my money protected?'), $agency['licence'] . '.', lang('protection, guarantee, licence, safe')),
                         )),
-                    ), '', '8'),
+                        // The page header's "Write to us", where the
+                        // questions end.
+                        $el('div', 'd-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 p-4 rounded-4 bg-body-tertiary', lang('Write to Us'), array(
+                            $heading('h2', lang('Still have a question?'), 'ptv-display h5 mb-0'),
+                            $link(lang('Contact Us'), '{{page:contact}}', 'btn btn-primary rounded-pill px-4 text-nowrap'),
+                        )),
+                    ), '', '8'), 120),
                 ), '4', 'center'),
             )),
         )),

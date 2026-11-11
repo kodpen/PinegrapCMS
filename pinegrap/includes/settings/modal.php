@@ -229,13 +229,26 @@ function pg_settings_modal_markup($user)
                 </footer>
             </section>
 
+            <!--
+                A card\'s drawer slides in here, from the dialog\'s right edge
+                over the pane (includes/settings/drawer.php). Inside the dialog,
+                so it is never a second layer that the settings can be left
+                behind; outside the form, so a drawer may carry a form of its
+                own. The scrim under it shuts it; while one is open the list
+                and the pane are inert.
+            -->
+            <div class="pg-sm-dscrim" id="pg_settings_modal_dscrim"></div>
+            <div class="pg-sm-drawers" id="pg_settings_modal_drawers"></div>
+
 </dialog>
 
 <!--
     Where a card\'s own dialog goes. A Bootstrap modal nested inside another
-    shares the outer one\'s backdrop and is drawn behind it, so the cron dialog
-    and its kind are moved out here -- after the settings modal, which is what
-    puts them in front of it -- and are cleared when the pane changes.
+    shares the outer one\'s backdrop and is drawn behind it, so such dialogs
+    are moved out here -- after the settings modal, which is what puts them in
+    front of it -- and are cleared when the pane changes. A card\'s drawer
+    arrives here too, for its scripts to run, and is moved into the dialog
+    straight after.
 -->
 <div id="pg_settings_modal_extras"></div>';
 }
