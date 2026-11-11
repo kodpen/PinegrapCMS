@@ -19,4 +19,5 @@ module: image_editor
 
 ## Is it in step with the sound?
 - Yes by construction: the mix (`image-editor-mix.md`) places a clip's sound with `M.clipSound()` from the same start, source in and speed that `M.clipAt()` uses.
+- Tried in Chrome (#8629): a clip trimmed to 2-6 s of its source from 1 s on, MP4 and WebM at 10 fps: each frame the source's own, nothing before 1 s or from 5 s, the beeps where the source has them; at 2x the frames twice as fast and no sound (a clip off 1x carries none).
 - Every export path waits for the frames: the encoder's frames, the estimate's samples, the real-time recorder (a slow decode holds the frame before longer there) and Present's playback (it draws the next moment when the last is done).
