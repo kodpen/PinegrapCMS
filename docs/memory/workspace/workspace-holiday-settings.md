@@ -4,7 +4,7 @@ description: The Working calendar card in Site Settings (Team and working hours)
 ---
 
 ## Where is the Working calendar card?
-- SW2b ( of `plans/settings-workspace-move.md`): in Team and working hours, section `pgset-ws-calendar`, cards in `includes/settings/workspace_team.php`. The old card (`#ws-calendar`, `ws_holidays_settings_card()`) keeps working on `workspace_settings.php` until SW7, as SW2a left Departments and Team members ([[workspace-team-settings]]).
+- PR #8741 (SW2b of `plans/settings-workspace-move.md`): in Team and working hours, section `pgset-ws-calendar`, cards in `includes/settings/workspace_team.php`. The old card (`#ws-calendar`, `ws_holidays_settings_card()`) keeps working on `workspace_settings.php` until SW7, as SW2a left Departments and Team members ([[workspace-team-settings]]).
 - `pg_settings_legacy_anchors()` maps `ws-calendar` to the new card. A calendar's days on the old screen (`?feed=N#ws-feed-N`) are not mapped: that anchor stays on the old screen until SW7 redirects it.
 
 ## How do the two screens share the save?
