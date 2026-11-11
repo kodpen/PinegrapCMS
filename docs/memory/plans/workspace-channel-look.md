@@ -24,7 +24,7 @@ description: Plan (owner 2026-11-10, handed to workers 2026-11-11): the Workspac
   - Tabs are pills, the open one filled (in the channel's colour when it has one); counts keep their marks. The day mark is a chip without rules. The writing box is a card.
   - Files: the Workspace block of `backend.src.css`, `drawCenter()` in `workspace.js` (the colour on the card, not only on the header), tests, `workspace/workspace-channel-identity-motion.md`.
 - CL2 (M, no schema) Tasks, Decisions and Files as cards. Done (#8688): `workspace/workspace-channel-panes.md`. After CL1. Rows lose their rules: a task is a card in a grid (status, title, due line, people, done), the toolbar a quiet row; decisions a card grid; files their groups as cards.
-- CL3 (M, no schema) Summary, Board and Memory. After CL2. The summary as a card with its Edit button in the head, Time spent beside it as tiles; the board's toolbar as chips and its columns in the card manner; memory's hint, New record and records as cards. Empty states sit inside a dashed card.
+- CL3 (M, no schema) Summary, Board and Memory. Done (#8703): `workspace/workspace-channel-summary-board-memory.md`. After CL2. The summary as a card with its Edit button in the head, Time spent beside it as tiles; the board's toolbar as chips and its columns in the card manner; memory's hint, New record and records as cards. Empty states sit inside a dashed card.
 
 ## What is not in it?
 - The conversation's messages (C4) and the side panels (C6) keep their drawing.

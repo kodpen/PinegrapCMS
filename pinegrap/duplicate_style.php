@@ -120,6 +120,14 @@ if (function_exists('pg_design_look_ready') && pg_design_look_ready()) {
           AND src.style_id = '" . (int)$_GET['id'] . "'");
 }
 
+// ...and opens in the same colour mode.
+if (function_exists('pg_design_color_mode_ready') && pg_design_color_mode_ready()) {
+    db("UPDATE style dst, style src
+        SET dst.style_color_mode = src.style_color_mode
+        WHERE dst.style_id = '" . (int)$new_style_id . "'
+          AND src.style_id = '" . (int)$_GET['id'] . "'");
+}
+
 // ...and writes the same meta tags in the head. The pages' own lists are
 // copied with the rest of their columns below.
 if (pg_meta_tags_ready()) {

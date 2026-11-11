@@ -4,7 +4,8 @@
  *
  * Tests for the new dashboard's Visitor map card (includes/dashboard/v2/
  * cards/visitmap.php): the home country, the share from abroad, the bubbles
- * by province, and the countries drawn when no city can be placed.
+ * by province, and the world map with the countries shaded when no city can
+ * be placed.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -51,6 +52,8 @@ function test_dashboard_v2_visitmap_bubbles_by_province()
 	pg_assert_same('1,300', $data['figure']);
 	pg_assert_same('Last 30 Days · 1,300 visits · abroad 4%', $data['sub'], '40 of 1,000 placed visits');
 	pg_assert_same('/m/tr-regions.svg', $data['map_url']);
+	pg_assert_same('region', $data['map']);
+	pg_assert_same(array(), (array) $data['shades'], 'no country shading over the provinces');
 	pg_assert_same(array('TR-34', 'TR-06'), array_column($data['bubbles'], 'code'), 'the places a province matches, most first');
 	pg_assert_same(array(1.0, 0.5), array_map('floatval', array_column($data['bubbles'], 'share')));
 	pg_assert_same('İstanbul: 400 visits', $data['bubbles'][0]['tip']);
@@ -59,15 +62,22 @@ function test_dashboard_v2_visitmap_bubbles_by_province()
 	pg_assert_same('', $data['none']);
 }
 
-// No city matches a province (no Cloudflare): the countries are drawn.
+// No city matches a province (no Cloudflare): the world map with the
+// countries shaded by their share, the countries as bars under it.
 function test_dashboard_v2_visitmap_countries_without_cities()
 {
 	$countries = dashboard_v2_visitmap_list(100, array('TR' => 60, 'DE' => 30, 'US' => 10));
 	$cities = dashboard_v2_visitmap_list(100, array('' => 100));
 	$data = pg_dashboard_v2_visitmap_data($countries, $cities, 'Today', '/m/', 'visitors.php?p=today');
 
-	pg_assert_same('', $data['map_url']);
+	pg_assert_same('/m/world-countries.svg', $data['map_url'], 'the world map');
+	pg_assert_same('world', $data['map']);
+	pg_assert_same('Visits by country', $data['map_label']);
 	pg_assert_same(array(), $data['bubbles']);
+	pg_assert_same(array('TR' => 4, 'DE' => 3, 'US' => 2), (array) $data['shades'], 'each country in its step, the busiest darkest');
+	pg_assert_same(array('TR', 'DE', 'US'), array_column($data['places'], 'id'));
+	pg_assert_same(pg_geo_country_name('DE') . ': 30 visits', $data['places'][1]['text'], 'the tip names the country and its visits');
+	pg_assert_same(array('Few', 'Many'), $data['legend']);
 	pg_assert_same('Countries', $data['rows_title']);
 	pg_assert_same(array(pg_geo_country_name('TR'), pg_geo_country_name('DE'), pg_geo_country_name('US')), array_column($data['rows'], 'text'), 'countries named in the panel language, as the rest of the panel names them');
 	pg_assert_same('Today · 100 visits · abroad 40%', $data['sub']);
@@ -80,8 +90,22 @@ function test_dashboard_v2_visitmap_home_without_a_map()
 	$cities = dashboard_v2_visitmap_list(10, array('Ankara' => 1, 'Berlin' => 9));
 	$data = pg_dashboard_v2_visitmap_data($countries, $cities, 'Today', '/m/', '');
 
-	pg_assert_same('', $data['map_url']);
+	pg_assert_same('/m/world-countries.svg', $data['map_url'], 'the world map, not the home country\'s');
+	pg_assert_same('world', $data['map']);
+	pg_assert_same(array('DE', 'TR'), array_keys((array) $data['shades']));
 	pg_assert_same('Countries', $data['rows_title']);
+}
+
+// A country the world map has no outline for keeps its mark in the data;
+// the renderer draws only the ids the file has, and its bar stays.
+function test_dashboard_v2_visitmap_world_marks_every_country_with_visits()
+{
+	$world = pg_dashboard_v2_visitmap_world(array('TR' => 5, 'XK' => 1), function ($n) {
+		return $n . ' visits';
+	});
+
+	pg_assert_same(array('TR', 'XK'), array_column($world['places'], 'id'));
+	pg_assert_same(array('shades' => array(), 'places' => array()), pg_dashboard_v2_visitmap_world(array(), 'strval'), 'no country, no marks');
 }
 
 function test_dashboard_v2_visitmap_without_locations()
@@ -89,6 +113,8 @@ function test_dashboard_v2_visitmap_without_locations()
 	$data = pg_dashboard_v2_visitmap_data(dashboard_v2_visitmap_list(5, array('' => 5)), dashboard_v2_visitmap_list(5, array('' => 5)), 'Today', '/m/', '');
 
 	pg_assert_same('Today · 5 visits', $data['sub']);
+	pg_assert_same('', $data['map_url'], 'no map without a known country');
+	pg_assert_same('', $data['map']);
 	pg_assert_same(array(), $data['rows']);
 	pg_assert_same('No visit in this period has a known location.', $data['none']);
 }

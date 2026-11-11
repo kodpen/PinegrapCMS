@@ -4907,6 +4907,18 @@
     grid-template-columns: minmax(0, 6.25rem) minmax(2.5rem, 1fr) minmax(3rem, auto);
   }
 
+  /* Visitor map without a city to place: the world map in the card's own
+     hue, the busiest step the hue itself. */
+  .pg-dash-map-world {
+    --pg-dash-map-hue: var(--pg-dash-cat);
+  }
+
+  .pg-dash-map-world [data-step="4"],
+  .pg-dash-map-world .pg-dash-map-step[data-step="4"] {
+    fill: var(--pg-dash-map-hue);
+    background: var(--pg-dash-map-hue);
+  }
+
   /* Visitor map (pg_dash_cards_visitors.js): a bubble per place over the
      plain provinces; the hovered or focused one is outlined. */
   .pg-dash-map .pg-dash-map-bubble {

@@ -10,7 +10,7 @@ description: Steps of plans/report-screens.md: RS1 the Sales map card's See all,
   - A registry of ready reports in a new `includes/fn/` module (key, title, levels, filters, period), pure, with one entry: sales by region, last 30 days, counted as the card counts (`includes/dashboard/v2/cards/salesmap.php`: the same orders, the same region field).
   - `view_order_report.php` opens a ready report by an address parameter as a new, unsaved report; an unknown key opens the plain new report. The card's link (`'url' => 'view_order_report.php'`) names the ready report. A level for the card's region field, if the report has none, is added in code.
   - Tests: the registry's shape, the parameter's reading, the report's levels and period for the entry. Topic `commerce/order-report-ready-reports.md`; `ui/dashboard-v2-shop-cards.md` corrected.
-- RS2 (M) The shared view, on the order report.
+- RS2 (M) The shared view, on the order report. Done: #8709.
   - `includes/fn/report_view.php`: from a report's result (levels, rows, totals) the summary figures, the chart's kind and series (a line over time, bars for a named level, the map for a region level, none otherwise) and the table model; pure, tested.
   - `view_order_report.php` draws figures, chart and table with the dashboard's drawing (`assets/js/pg_dash.js`, served here as a bundle, `core/js-bundles.md`). The settings form moves into a drawer from the right (`<dialog class="drawer drawer-end">`) behind a "Report settings" button, open at once on a plain new report; field names, the filter builder and Save stay.
   - Every figure equals today's: the queries are not touched. Kept: `ui/report-table-rows.md`, `order-report-totals.md`, `report-dynamic-date-filter.md`, `list-period-navigator-and-clock.md`.

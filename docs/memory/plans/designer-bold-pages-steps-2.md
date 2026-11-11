@@ -17,6 +17,6 @@ description: Steps B7 to B12 of the designer bold pages plan: pinned scene, look
 
 - B10 (M, waits for B2): dark and light chapters. A `chapter` effect on a section: when it reaches the window's middle, the page's background and text colour move to the section's own in a transition; reduced motion: a cut. Files and tests as B2.
 
-- B11 (M, free): a design-wide colour mode (light, dark, follow the system) in the Theme pane, written as `data-bs-theme` on `<html>`, a visitor's switcher still winning; empty is today's behaviour. Decided by the owner on 2026-11-11 (`workflow/decisions-made-product-44.md`); its new `style` column is approved in `workflow/decisions-made-schema-15.md`.
+- B11 (M, done #8711): a design-wide colour mode (light, dark, follow the system) in the Theme pane, written as `data-bs-theme` on `<html>`, a visitor's switcher still winning; empty is today's behaviour. Decided by the owner on 2026-11-11 (`workflow/decisions-made-product-44.md`); its new `style` column is approved in `workflow/decisions-made-schema-15.md`.
 
 - B12 (M, waits for appstudio-1 and dealership-1 to land: same files): `bg-primary text-white` becomes `text-bg-primary` in the template files (39 folders), and a template test fails on the fixed colour classes of [[designer-block-theme-colours]].
