@@ -15956,7 +15956,11 @@ const StyleDesigner = (function () {
                 // <a> is innerEl itself — edit directly, no span wrapper
                 editableTargets.push({ el: innerEl, prop: 'text' });
             }
-        } else if (node.type === 'semantic' && !_sdIsSentence(node) && (node.props.text !== undefined || !(node.children && node.children.length))) {
+        } else if (node.type === 'semantic' && !_sdIsSentence(node) && !/^(video|audio)$/i.test(String(node.props.tag || '')) &&
+                   (node.props.text !== undefined || !(node.children && node.children.length))) {
+            // A player is left out: text typed into it is fallback content
+            // no current browser shows, and a double-click on it belongs to
+            // its own controls.
             // A sentence with values is written in the panel: typing across
             // it would take its values' words for its own.
             // Semantic elements with direct text (e.g. <button>, <a> with text
