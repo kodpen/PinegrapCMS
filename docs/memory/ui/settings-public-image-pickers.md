@@ -14,7 +14,9 @@ module: files
 ## What does a save accept?
 - One check for all five: `pg_public_image_choice_ok($input, $stored, $types)`, pure part `pg_public_image_choice_verdict()` (the row carries `public`, read by `pg_public_image_row()`).
 - Empty passes; a files row passes when it is no attachment, no ERP document, in a public folder and of the listed types; a name no row carries passes only when it is the stored value (an old typed address the picker keeps, [[stored-choice-kept]]).
-- A stored file that is now private or in the bin is refused too; the field shows it with its note (offline: amber, binned: red, `pg_picker_field_view()`). The field is marked "Choose a picture from the Files screen that everyone may see." and nothing is written.
+- A stored file that is now private or in the bin is refused too; the field shows it with its note (offline: amber, `pg_picker_field_view()`).
+- These fields store a name, and the bin parks a file as `pgbin_<id>_<name>`: a binned picture shows as missing (amber, "file not found"), not binned (red, an id kind only; #8751).
+- A refused save marks the field with "Choose a picture from the Files screen that everyone may see." and nothing is written.
 
 ## How is it tested?
 - `tests/settings_public_image_test.php`: the filter, the public folders, the verdict, the wiring of the two search kinds, four saves and four marks; the search itself in `tests/file_picker_search_test.php`.
