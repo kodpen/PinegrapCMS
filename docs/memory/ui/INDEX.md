@@ -530,6 +530,7 @@
 - settings-modal-injected-markup.md: Rules for settings pane markup injected by AJAX: jQuery .html(), pg_settings_scripts, scope-taking initializers, delegated listeners, code fields.
 - settings-modal-layout.md: Settings modal layout and CSS pitfalls: three sizes, min-height 0 scroll chain, dialog margin height, dvh, phone fullscreen width, drawer visibility.
 - settings-modal-navigation.md: Settings modal vs rest of panel: no settings breadcrumbs/back button, pgSettingsGo, the leaving bar, one dialog after another, return URL, notice handoff.
+- settings-modal-overview.md: Start file for the settings-modal-* files: Site Settings dialog (gear button, list, Search settings, pane, card drawer, Unsaved Changes), decisions, which file holds what, adding a card
 - settings-modal-search.md: The Site Settings dialog's search box (index, system tools, ranking, Turkish keywords keeping English terms) and how a text names a card's place [decision: decisions-made-product-14.md]
 - settings-organization-card.md: Site Settings General › Organization card: which fields it gathered from where, who saves them, the two support e-mail fields, the ERP Settings pointer. [decision: decisions-made-product-11.md]
 - settings-public-image-pickers.md: Site Settings pickers whose picture is shown to everyone (Site Icon, App Icon, Default Share Image, Organization Logo, Fediverse Avatar): search and save keep only files every visitor can open

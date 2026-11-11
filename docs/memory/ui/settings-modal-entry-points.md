@@ -19,6 +19,6 @@ description: How Site Settings opens: header gear button, pgOpenSettings, URL ho
 
 ## What happened to the old single screen and the hub?
 - `settings.php` (old single screen) is orphan and listed in `clean_up.php`: no link, redirect or include anywhere (remaining `settings.php` passes are comments). Deleting it is the operator's decision: whoever runs the Cleanup screen deletes it. After deletion old in-panel links still work (the resolver recognizes them); only a hand-typed address-bar bookmark is lost.
-- `settings2.php` (hub) was deleted: the dialog sidebar does the tile screen's job and only eight category pages remain. Old `settings2.php` links are still resolved by the resolver.
+- `settings2.php` (hub) was deleted: the dialog's list does the tile screen's job, and each category keeps its own `settings_<key>.php` page. Old `settings2.php` links are still resolved by the resolver.
 
 Related: docs/memory/ui/settings-modal-navigation.md
