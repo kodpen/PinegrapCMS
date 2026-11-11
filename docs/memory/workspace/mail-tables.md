@@ -21,6 +21,7 @@ description: Incoming e-mail tables (G1b, step 11.0.82): ws_mail_boxes, ws_mail_
 ## What does ws_mail_items hold?
 - Every mail in and out: `box_id`, `conversation_id`, `message_id` (its card or thread message), `direction` (in | out), `rfc_message_id`, `in_reply_to`, `reference_ids` (`references` is a reserved word), `from_email` / `from_name`, `to_list` / `cc_list`, `subject`, `body_text` MEDIUMTEXT, `auth` (pass | fail | none), `raw_path` (the `.eml` outside the web root, 30 days), `refused_files` (names only), `user_id` (the writer of an outgoing mail), `sent_at` (the mail's Date), `created_at`.
 - `rfc_message_hash` CHAR(64): SHA-256 of the Message-ID, or of the raw mail when it has none. `UNIQUE (box_id, rfc_message_hash)` is the de-duplication; a 255-character utf8mb4 key would pass the 767-byte index limit of older InnoDB row formats.
+- Sending columns (`bcc_list`, `send_state`, `send_error`, `outbox_id`) and `ws_mail_reads` came in step 11.0.185: `mail-send-schema.md`.
 - `idx_sender (box_id, from_email(191), created_at)` serves the loop gate's per-sender hourly count; `idx_created` the `.eml` cleanup.
 
 ## Which existing columns change?

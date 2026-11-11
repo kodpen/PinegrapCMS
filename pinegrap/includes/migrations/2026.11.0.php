@@ -175,6 +175,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_agent_token_limit();     // 11.0.182
 	upgrade_2026_11_0_ws_wtable_numbers();       // 11.0.183
 	upgrade_2026_11_0_ws_agent_sessions();       // 11.0.184
+	upgrade_2026_11_0_ws_mail_send();            // 11.0.185
 
 }
 
@@ -5931,5 +5932,57 @@ function upgrade_2026_11_0_ws_agent_sessions() {
 	install_add_column('ws_ai_requests', 'claimed_device_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Workspace: a request to Claude can be taken by the asker\'s own connected session; existing messages and requests are unchanged.');
+
+}
+
+// Sending mail from the Workspace and per-person read marks for mail
+// (11.0.185; docs/memory/workspace/mail-tables.md).
+// ws_mail_items gains bcc_list (Bcc of an outgoing mail, kept apart from the
+// headers so it is never shown to the other recipients), send_state (empty
+// for mail that came in and for answers written before this step, which read
+// as sent; else queued, sent or failed), send_error (why the queue gave up)
+// and outbox_id (the mail_outbox row while the mail waits). ws_mail_reads is
+// a person's read mark per conversation: item_id is the newest item read. A
+// row with conversation_id 0 is the person's floor: every item up to it is
+// read. Additions only: no existing row is rewritten.
+function upgrade_2026_11_0_ws_mail_send() {
+
+	if (!install_table_exists('ws_mail_items')) {
+
+		install_skipped('ws_mail_items does not exist, skipped');
+
+		return;
+
+	}
+
+	$columns = array(
+		'bcc_list'   => "TEXT NULL",
+		'send_state' => "ENUM('','queued','sent','failed') NOT NULL DEFAULT ''",
+		'send_error' => "VARCHAR(255) NOT NULL DEFAULT ''",
+		'outbox_id'  => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('ws_mail_items', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('ws_mail_items', $column, $definition);
+
+		}
+
+	}
+
+	// The primary key answers one conversation for one person (and the
+	// floor, conversation 0); idx_user serves Mark all as read, which drops
+	// a person's rows and writes a new floor.
+	install_create_table('ws_mail_reads', "CREATE TABLE ws_mail_reads (
+		conversation_id INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		item_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (conversation_id, user_id),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: mail can be sent from the Workspace with its delivery state, and each person keeps their own read marks for mail; existing mail is unchanged and earlier answers read as sent.');
 
 }

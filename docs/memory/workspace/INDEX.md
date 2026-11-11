@@ -40,6 +40,7 @@
 - mail-parse.md: Incoming mail MIME parser pg_mail_parse() (G1a of incoming e-mail): result shape, charset fallback, limits, error codes, what it leaves to ws_mail_ingest()
 - mail-reply.md: Answering a Workspace e-mail conversation by e-mail (mail_reply.php, workspace_mail.js): route, sending fields, the drawer, headers, subject tag, the outgoing item, email() headers/smtp, site mark
 - mail-routing.md: Routing incoming Workspace e-mail (G6, mail_route.php): box routes by address or +tag to a channel, recipients read, the known customer's line in their channels
+- mail-send-schema.md: Step 11.0.185 (PR #PRNUM): ws_mail_items bcc_list, send_state, send_error, outbox_id and table ws_mail_reads, the schema of sending mail and per-person read marks [decision: decisions-made-workspace-13.md]
 - mail-sent-and-bounces.md: After a Workspace e-mail answer leaves (G3c): the copy APPENDed to the box's sent folder, email()'s keep_mime, and a delivery failure (DSN) drawn as a "Not delivered" line under the conversation
 - mail-status.md: State of a Workspace e-mail conversation (G5a, G5b, mail_status.php): open/waiting/closed, the holder, the first-response target, the card's controls, the automatic answer
 - mail-tables.md: Incoming e-mail tables (G1b, step 11.0.82): ws_mail_boxes, ws_mail_conversations, ws_mail_items, sender kind 'mail'; what each column holds and why [decision: decisions-made-schema-2.md]
