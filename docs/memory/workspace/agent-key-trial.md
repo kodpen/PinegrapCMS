@@ -22,4 +22,4 @@ description: The agent's own side tried live on dev (2026-11-10) with an applica
 ## What could the key not see or do?
 - The line under the asking message: `GET /workspace/sync` gives a message's reactions, not its request's state; the panel draws the line (`agent-shown.md`).
 - A proposal: a dry run of `POST /workspace/channels/25/changes` got 403, "An assistant proposes changes in its answer to the request it works on."; now let through to the tier (`agent-risk-tiers.md`).
-- Not tried: a text answer to a wake, `no_answer` on a mention, `POST agent-wake`, the agent's edits of its own messages, a knock.
+- Tried the next day (`agent-key-trial-2.md`): a text answer to a wake, `POST agent-wake`, the agent's edit of its own message. Not tried: `no_answer` on a mention, a knock.

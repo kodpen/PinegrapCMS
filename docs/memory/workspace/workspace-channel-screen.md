@@ -26,3 +26,4 @@ description: The Workspace channel screen as redrawn (C1–C8, 2026-10-31): what
 
 ## Who changes the design?
 - The session the owner names in chat for the design, against the drawn design, checked at desktop and phone width, light and dark (`workflow/decisions-made-workspace-5.md`); coordinators do not hand such work out.
+- The channel look of `plans/workspace-channel-look.md` is the exception since 2026-11-11: coordinators hand its steps out, built against the picture the owner was shown (`workflow/decisions-made-workspace-13.md`).

@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-13
-description: Decisions list, workspace part 13 (2026-11-10 on): the Workspace mail screen (one list of every e-mail, New e-mail, Forward as e-mail), its send path through the mail queue; schema approved (#8604)
+description: Decisions list, workspace part 13 (2026-11-10 on): the Workspace mail screen and its send path (schema #8604), the channel look handed to workers, the Workspace settings moved under Site Settings
 ---
 
 ## Where are the rules and the earlier parts?
@@ -16,3 +16,12 @@ description: Decisions list, workspace part 13 (2026-11-10 on): the Workspace ma
 - Not chosen: a second screen beside E-mails (two lists of the same conversations); sending at once as the answer does today (no retry, a failure nobody sees); the site's own mailbox in the list (the owner's words); a mailbox with rights of its own (a channel decides, as for reading).
 - For later: writing and showing HTML, recipient suggestions, drafts kept on the server, reading a box's Sent folder.
 - The plan: `plans/workspace-mail-screen.md` and its two files.
+
+## Who builds the channel look? (owner, 2026-11-11)
+- Owner (2026-11-11): "workspace kanal görünümü yapan oturumu bulamıyorum onu başkası devir alsın ve tamamlasın." The session he had named for the design has ended.
+- Architect (2026-11-11): his words are the go-ahead for the look he was shown on 2026-11-10 (`plans/workspace-channel-look/01-before-after.jpg`). Coordinators hand CL1-CL3 out like any plan's steps, one after another, built against the picture. For this plan it lifts "the session the owner names" (`decisions-made-workspace-5.md`).
+
+## Where do the Workspace settings live? (owner, 2026-11-11)
+- Owner (2026-11-11): "workspace ayarları çok karıştı, site ayarları altına taşıyalım. dikkatli olunması için adım adım. workspace ayarları düğmesi tıklandığında ilgili ayarlara gitsin."
+- Asked how they stand in the Site Settings dialog, he chose "Ayrı başlık, 3 kategori": a fifth heading "Workspace" with Team and working hours; Assistants and agents; Channels, mail and voice. Not chosen: one category holding all 14 cards; the cards spread over the existing categories.
+- Architect (2026-11-11): who may change a Workspace setting stays (the Workspace settings right, not the manager role); no schema; one card at a time. The plan: `plans/settings-workspace-move.md`.

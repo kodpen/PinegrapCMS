@@ -1,16 +1,15 @@
 ---
 name: workspace-channel-look
-description: Proposal, not to be started before the owner approves the look: the Workspace channel screen in the dashboard's manner (one header card, colour wash, pill tabs, panes as cards); steps CL1-CL3
+description: Plan (owner 2026-11-10, handed to workers 2026-11-11): the Workspace channel screen in the dashboard's manner (one header card, colour wash, pill tabs, panes as cards); steps CL1-CL3 in order
 ---
 
 ## What is it for?
 - Owner (2026-11-10): the channel screen is "line after line" (the colour stripe, the rule under the header, under the tabs, between rows), the channel's colour shows as a stripe ("shadow") instead of in the header itself, and the insides of the tabs look dated. It is drawn again in the new dashboard's manner.
 
 ## Where does it stand?
-- A proposal. The owner was shown `plans/workspace-channel-look/01-before-after.jpg` on 2026-11-10 (the conversation, Tasks and Summary tabs now and proposed, the header card in the light theme) and has not answered.
-- Not to be started before he approves the look, asked as `workflow/architect-asking.md` says; the decision is then written to `workflow/decisions-made-workspace-<n>.md` with CL1.
-- Built by the session the owner names for the design (`workflow/decisions-made-workspace-5.md`): coordinators do not hand its steps out. The session he named on 2026-11-10 has ended.
-- The picture was made on dev with a style sheet put into the page, nothing in the code: `workspace-channel-look-prototype.md` holds CL1's part. The Tasks and Summary panes were arranged by hand for the picture.
+- Free to build. The owner was shown `plans/workspace-channel-look/01-before-after.jpg` on 2026-11-10 (the conversation, Tasks and Summary tabs now and proposed, the header card in the light theme). On 2026-11-11 he asked that another session take the work over and complete it (`workflow/decisions-made-workspace-13.md`).
+- Coordinators hand the steps out like any plan's; claim as `[plan:workspace-channel-look] CL<n> — <topic>`. They are built in the order written: each waits for the one before it.
+- The picture was made on dev with a style sheet put into the page, nothing in the code: `workspace-channel-look-prototype.md` holds CL1's part. The Tasks and Summary panes were arranged by hand for the picture: CL2 and CL3 follow it, and their PRs show each pane before and after.
 
 ## What does every step keep?
 - `workspace/workspace-channel-screen.md`: every feature, access, keyboard use, reduced motion, the panel's colour tokens in light and dark, the phone rules (one short header line, the writing box on the keyboard, the list's height).

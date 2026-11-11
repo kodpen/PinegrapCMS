@@ -35,6 +35,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-3.md: Which screens must never look worse? (owner, 2026-10-25)
 - decisions-made-panel-3.md: Which Bootstrap 6 components did the owner name? (2026-10-25)
 - decisions-made-panel-3.md: What does an old browser get in the panel? (owner, 2026-10-25)
+- decisions-made-panel-3.md: What opens from a card inside the Site Settings dialog? (owner, 2026-11-11)
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?
 - decisions-made-panel.md: Which date-and-time picker does the software use? (#2693, 2026-10-28)
@@ -304,6 +305,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-12.md: Where is a channel's agent asked in the channel's discussions? (architect, 2026-11-10)
 - decisions-made-workspace-13.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-13.md: What is the Workspace's mail screen, and how does it send? (#8604, owner 2026-11-10; the shape: architect)
+- decisions-made-workspace-13.md: Who builds the channel look? (owner, 2026-11-11)
+- decisions-made-workspace-13.md: Where do the Workspace settings live? (owner, 2026-11-11)
 - decisions-made-workspace-2.md: What may the channel menu hold?
 - decisions-made-workspace-2.md: Where are records created inside a chat?
 - decisions-made-workspace-2.md: Does the customer channel's "New sales quote" stay in the menu?
