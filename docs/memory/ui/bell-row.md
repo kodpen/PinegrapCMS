@@ -12,7 +12,7 @@ description: A bell row drawn as the dashboard's Next up row: module tag, title,
 
 ## How is the row drawn?
 - `pg_bell_row(row)` (`backend.src.js`): one grid, as `.pg-dash-queue-row`: the tag (`.pg-bell-tag[data-module]`, 3.75rem), the text, then the side.
-- Text: the title (a button that opens the row; plain text on a custom row), one second line `.pg-bell-sub` (the description, else the details with `<br>` as " · ", else the sender, then the time), the fold's "+N more" link.
+- Text: the title (a button that opens the row; plain text on a custom row), one second line `.pg-bell-sub` (the description, else the details with `<br>` as " · ", else the sender, then the time; no gap when there is no text), the fold's "+N more" link.
 - Side: the one button `.pg-bell-act` named by the job (Reply, Show, Join, Approve), the unread dot, the menu button ("More actions", `bi-three-dots`).
 - The dot is a button named "Mark as read" (`pg_bell_read_button()`); a read row keeps an empty place so the columns stay put.
 - The menu (`.pg-bell-menu`) holds "Mark as unread" (read rows only) and Delete. It is a small disclosure of its own, not a nested Bootstrap menu, so it never closes the bell; it opens upwards when the list has no room below.
@@ -21,7 +21,8 @@ description: A bell row drawn as the dashboard's Next up row: module tag, title,
 
 ## Which keys work?
 - Tab reaches the title, the button, the dot and the menu button in that order.
-- In the open menu: the arrows, Home and End move; Escape closes it and returns to the menu button. The handler sits on `#notifications` and stops these keys, so Bootstrap's menu handler on the document does not close the bell.
+- In the open menu: the arrows, Home and End move; Escape closes it and returns to the menu button; a second Escape closes the bell.
+- Bootstrap takes menu keys on the document's capture phase (a handler on `#notifications` never sees them; Escape closed the whole bell), so `pg_bell_menu_key()` listens on `window`'s capture phase and stops them first.
 - The dot moves the focus to the row's menu button (the dot is gone once read); Delete moves it to the next row's menu button, or the one before.
 
 ## Where do the tag colours come from?
@@ -29,6 +30,7 @@ description: A bell row drawn as the dashboard's Next up row: module tag, title,
 - `tests/bell_row_test.php` holds the hues equal: a dashboard colour change fails it until the bell's token follows.
 
 ## Does the title still wrap?
-- Yes: `.pg-bell-title` has `white-space: normal` and `overflow-wrap: anywhere`, no ellipsis and no hover `title` (`notifications-menu.md`). At phone width the tag stands over the text, as on the dashboard; nothing scrolls sideways.
+- Yes: `.pg-bell-title` has `white-space: normal` and `overflow-wrap: anywhere`, no ellipsis and no hover `title` (`notifications-menu.md`).
+- The second line wraps too: an order's number and total cut to "Order Number: …" in the narrow bell, so `.pg-bell-sub` has `overflow-wrap: anywhere` and only the time stays on one line. At phone width the tag stands over the text, as on the dashboard; nothing scrolls sideways.
 
 Pinned in `tests/bell_row_test.php`. Built in #8722 (plan step BP2).

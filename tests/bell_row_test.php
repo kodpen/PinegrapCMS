@@ -198,6 +198,16 @@ function test_bell_row_script_draws_the_row()
 	pg_assert_contains('class="pg-bell-tag" data-module="', $row, 'the tag');
 	pg_assert_contains('pg-bell-title', $row, 'the title');
 	pg_assert_contains('pg-bell-sub', $row, 'one second line');
+	pg_assert_contains("((excerpt !== '') ? '<span class=\"pg-bell-excerpt\">'", $row, 'an empty second line leaves no gap before the time');
+
+	// The details (an order's number and total) wrap in the narrow bell
+	// instead of ending in an ellipsis, as the title does.
+	$css = bell_row_source('assets/css/backend.src.css');
+	$at = strpos($css, "\n#notifications .pg-bell-sub {");
+	$sub = ($at === false) ? '' : substr($css, $at, strpos($css, '}', $at) - $at);
+	pg_assert_contains('overflow-wrap: anywhere;', $sub, 'the second line wraps');
+	pg_assert_same(false, strpos($sub, 'ellipsis'), 'and never ends in an ellipsis');
+	pg_assert_same(false, strpos($css, '#notifications .pg-bell-excerpt {'), 'the excerpt has no one-line rule of its own');
 	pg_assert_contains('pg-bell-act', $row, 'the one button');
 	pg_assert_contains('pg_bell_read_button(id, unread)', $row, 'the dot');
 	pg_assert_contains("lang('Mark as read')", $dot, 'the dot is named');
@@ -221,8 +231,15 @@ function test_bell_row_menu_keeps_its_keys()
 {
 	$js = bell_row_source('assets/js/backend.src.js');
 
-	pg_assert_contains("\$('#notifications').on('keydown', '.pg-bell-menu-wrap'", $js, 'bound on the bell, before Bootstrap\'s handler on the document');
-	pg_assert_contains("event.stopPropagation();", bell_row_function('assets/js/backend.src.js', 'pg_bell_menu_items') . substr($js, strpos($js, "\$('#notifications').on('keydown', '.pg-bell-menu-wrap'"), 1200), 'Escape and the arrows stop there');
+	$key = bell_row_function('assets/js/backend.src.js', 'pg_bell_menu_key');
+
+	// Bootstrap's menu keys run on the document's capture phase: a listener
+	// on the bell itself never sees Escape, which would close the whole bell.
+	pg_assert_contains("window.addEventListener('keydown', pg_bell_menu_key, true);", $js, 'taken on the window\'s capture phase, before Bootstrap\'s');
+	pg_assert_false(strpos($js, "\$('#notifications').on('keydown', '.pg-bell-menu-wrap'") !== false, 'not on the bell, where Bootstrap gets the keys first');
+	pg_assert_contains("closest('#notifications .pg-bell-menu-wrap')", $key, 'only inside a row menu');
+	pg_assert_contains('event.stopPropagation();', $key, 'Escape and the arrows stop there');
+	pg_assert_contains('pg_bell_menu_close($wrap, true);', $key, 'Escape closes the row menu and returns to its button');
 	pg_assert_contains("edit_notification(parseInt(\$(this).attr('data-pg-bell-delete'), 10) || 0, 'remove')", $js, 'Delete');
 	pg_assert_contains("edit_notification(parseInt(\$(this).attr('data-pg-bell-unread'), 10) || 0, 'mark_unread')", $js, 'Mark as unread');
 	pg_assert_contains("\$(document).on('click', '#notifications button.pg-bell-read'", $js, 'the dot reads the row');

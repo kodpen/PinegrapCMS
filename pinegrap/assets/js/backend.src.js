@@ -1867,31 +1867,7 @@ $(document).ready(function () {
     // A row's menu keeps its keys: Escape closes it (not the bell) and the
     // arrows, Home and End move between its items. Bound on the bell itself,
     // so the keys stop before Bootstrap's menu handler on the document.
-    $('#notifications').on('keydown', '.pg-bell-menu-wrap', function (event) {
-        var $wrap = $(this);
-        var open = !$wrap.find('.pg-bell-menu').prop('hidden');
-        var $items = pg_bell_menu_items($wrap);
-        var at = $items.index(document.activeElement);
-
-        if (!open || ['Escape', 'ArrowDown', 'ArrowUp', 'Home', 'End'].indexOf(event.key) < 0) {
-            return;
-        }
-
-        event.preventDefault();
-        event.stopPropagation();
-
-        if (event.key === 'Escape') {
-            pg_bell_menu_close($wrap, true);
-        } else if (event.key === 'Home') {
-            $items.first().trigger('focus');
-        } else if (event.key === 'End') {
-            $items.last().trigger('focus');
-        } else if (at < 0) {
-            ((event.key === 'ArrowDown') ? $items.first() : $items.last()).trigger('focus');
-        } else {
-            $items.eq((at + ((event.key === 'ArrowDown') ? 1 : ($items.length - 1))) % $items.length).trigger('focus');
-        }
-    });
+    window.addEventListener('keydown', pg_bell_menu_key, true);
     // The menu closes when the focus leaves it.
     $('#notifications').on('focusout', '.pg-bell-menu-wrap', function (event) {
         if (!event.relatedTarget || !$.contains(this, event.relatedTarget)) {
@@ -4025,7 +4001,7 @@ function pg_bell_row(row) {
         + '<span class="pg-bell-tag" data-module="' + module + '">' + h(words.module[module]) + '</span>'
         + '<div class="pg-bell-text">'
         + title
-        + '<div class="pg-bell-sub"><span class="pg-bell-excerpt">' + excerpt + '</span> <span class="pg-bell-time">' + String(row.time || '') + '</span></div>'
+        + '<div class="pg-bell-sub">' + ((excerpt !== '') ? '<span class="pg-bell-excerpt">' + excerpt + '</span> ' : '') + '<span class="pg-bell-time">' + String(row.time || '') + '</span></div>'
         + ((fold_count > 1) ? pg_bell_fold_button(id, fold_count) : '')
         + '</div>'
         + '<div class="pg-bell-side">'
@@ -4289,6 +4265,41 @@ function pg_bell_menu_items($wrap) {
     return $wrap.find('.pg-bell-menu-item').filter(function () {
         return !this.hidden;
     });
+}
+
+// The keys of an open row menu: the arrows, Home and End move, Escape
+// closes it. Bootstrap binds its menu keys on the document in the capture
+// phase, where Escape would close the whole bell, so this listener sits on
+// the window's capture phase and stops these keys before they get there.
+function pg_bell_menu_key(event) {
+    var wrap = (event.target instanceof Element) ? event.target.closest('#notifications .pg-bell-menu-wrap') : null;
+
+    if (!wrap || ['Escape', 'ArrowDown', 'ArrowUp', 'Home', 'End'].indexOf(event.key) < 0) {
+        return;
+    }
+
+    var $wrap = $(wrap);
+    var $items = pg_bell_menu_items($wrap);
+    var at = $items.index(document.activeElement);
+
+    if ($wrap.find('.pg-bell-menu').prop('hidden')) {
+        return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (event.key === 'Escape') {
+        pg_bell_menu_close($wrap, true);
+    } else if (event.key === 'Home') {
+        $items.first().trigger('focus');
+    } else if (event.key === 'End') {
+        $items.last().trigger('focus');
+    } else if (at < 0) {
+        ((event.key === 'ArrowDown') ? $items.first() : $items.last()).trigger('focus');
+    } else {
+        $items.eq((at + ((event.key === 'ArrowDown') ? 1 : ($items.length - 1))) % $items.length).trigger('focus');
+    }
 }
 
 $(document).on('click', '#notifications .pg-bell-menu-toggle', function () {
