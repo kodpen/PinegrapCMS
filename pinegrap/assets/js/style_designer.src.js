@@ -13285,7 +13285,7 @@ const StyleDesigner = (function () {
         if (node.props._attrs && node.props._attrs.length) {
             node.props._attrs.forEach(function(a) {
                 if (a.name === 'style') { _attrStyle = a.value || ''; }
-                else if (a.name && a.name.trim()) { _attrEl.setAttribute(a.name.trim(), _sdResolveAttrTokens(a.value || '')); }
+                else if (a.name && a.name.trim()) { _attrEl.setAttribute(a.name.trim(), _sdSitePath(_sdResolveAttrTokens(a.value || ''))); }
             });
         }
         // Sizing props extra style (before _attrStyle so Attrs panel can override)
@@ -13298,7 +13298,8 @@ const StyleDesigner = (function () {
         }
         // Combine: _attrStyle appended after inlineBase; duplicate props: last wins in CSS
         var _combined = [_inlineBase, _attrStyle].filter(Boolean).join(';');
-        if (_combined) _attrEl.setAttribute('style', _combined);
+        // A background written url({path}…) loads the page's file.
+        if (_combined) _attrEl.setAttribute('style', _sdSitePath(_combined));
         // Extra classes (visually-hidden, ratio, etc.)
         if (_extraClsStr) _extraClsStr.split(/\s+/).forEach(function(c) { if (c) _attrEl.classList.add(c); });
         // Tooltip attrs on canvas element
@@ -15588,7 +15589,7 @@ const StyleDesigner = (function () {
         // text: '^^__cancel_form^^' to mark HTML-emit slots that the server
         // substitutes at request time. Canvas needs an in-place placeholder.
         var textHasLiteralToken = node.props.text && typeof node.props.text === 'string' && node.props.text.indexOf('^^') !== -1;
-        if (!hasBindings && !textHasLiteralToken) return node.props;
+        if (!hasBindings && !textHasLiteralToken) return _sdPathProps(node.props);
         var out = {};
         for (var k in node.props) { if (Object.prototype.hasOwnProperty.call(node.props, k)) out[k] = node.props[k]; }
         if (hasBindings) {
@@ -15623,6 +15624,31 @@ const StyleDesigner = (function () {
         // for the same prop; only kicks in for literal ^^…^^ in unbound text).
         if (textHasLiteralToken && !(hasBindings && node.props._bindings.text)) {
             out.text = _sdResolveAttrTokens(out.text, true);
+        }
+        return _sdPathProps(out);
+    }
+
+    // The props whose site placeholders the canvas fills (_sdPathProps()):
+    // the addresses, and a Custom HTML or SVG block's markup.
+    var _SD_PATH_PROPS = ['src', 'href', 'poster', 'html'];
+
+    // A node's props as the canvas draws them: {path} and
+    // {software_directory} filled (_sdSitePath()) in _SD_PATH_PROPS, in a
+    // copy, so the tree keeps them. Text is left as written: an inline edit
+    // reads it back from the canvas and would save the filled address.
+    function _sdPathProps(props) {
+        if (!props) return props;
+        var out = props;
+        for (var i = 0; i < _SD_PATH_PROPS.length; i++) {
+            var k = _SD_PATH_PROPS[i], v = props[k];
+            if (typeof v !== 'string' || v.indexOf('{') === -1) continue;
+            var next = _sdSitePath(v);
+            if (next === v) continue;
+            if (out === props) {
+                out = {};
+                for (var key in props) { if (Object.prototype.hasOwnProperty.call(props, key)) out[key] = props[key]; }
+            }
+            out[k] = next;
         }
         return out;
     }
@@ -27995,10 +28021,35 @@ const StyleDesigner = (function () {
         url = String(url || '').trim();
         if (url) _sdAssetStamps[url] = Date.now();
     }
+    // The canvas address of a linked row: its placeholders filled
+    // (_sdSitePath()), the stamp still looked up by the row's own text.
     function _sdAssetHref(f) {
-        var href = String(f.content || '').trim();
+        var raw = String(f.content || '').trim();
+        var href = _sdSitePath(raw);
         if (!f._file || !href) return href;
-        return href + (href.indexOf('?') === -1 ? '?_t=' : '&_t=') + (_sdAssetStamps[href] || _sdAssetLoadStamp);
+        return href + (href.indexOf('?') === -1 ? '?_t=' : '&_t=') + (_sdAssetStamps[raw] || _sdAssetLoadStamp);
+    }
+
+    // The address placeholders a page fills last (get_page_content.php,
+    // pg_designer_resolve_output_placeholders()): {path} as the site's path,
+    // {software_directory} as the software's folder, the case ignored. A
+    // classic style's code writes its files and pictures "{path}name"; the
+    // canvas draws what the page loads, while the tree and the asset rows
+    // keep the placeholders. The path is copied as written ($ included).
+    function _sdPathFill(s, path, dir) {
+        s = (s === null || s === undefined) ? '' : String(s);
+        if (s.indexOf('{') === -1) return s;
+        return s.replace(/\{path\}/gi, function () { return String(path); })
+            .replace(/\{software_directory\}/gi, function () { return String(dir); });
+    }
+
+    // The same with the editor's values: the site's path and the software's
+    // folder the screen was given. Text without a brace is returned before
+    // the editor's values are read.
+    function _sdSitePath(s) {
+        if (typeof s === 'string' && s.indexOf('{') === -1) return s;
+        return _sdPathFill(s, window.OUTPUT_PATH || '/',
+            typeof software_directory !== 'undefined' ? software_directory : 'pinegrap');
     }
 
     // Brings one family of canvas <link>s (ids prefix0, prefix1, …) to the
@@ -28100,10 +28151,10 @@ const StyleDesigner = (function () {
         cssRows.forEach(function(f) {
             if (f.type === 'external-css') return;
             if (f.meta === 'user-styles') {
-                if (f.content && f.content.trim()) userStylesCss += f.content.trim() + '\n';
+                if (f.content && f.content.trim()) userStylesCss += _sdSitePath(f.content.trim()) + '\n';
                 return;
             }
-            if (f.content) inlineCss += '/* ' + f.name.replace(/\*\//g, '') + ' */\n' + f.content + '\n';
+            if (f.content) inlineCss += '/* ' + f.name.replace(/\*\//g, '') + ' */\n' + _sdSitePath(f.content) + '\n';
         });
 
         var pgStyle = canvasDoc.getElementById('pg-page-css');
@@ -28192,7 +28243,7 @@ const StyleDesigner = (function () {
                 } else if (f.module) {
                     scr.type = 'module';
                 }
-                scr.textContent = f.content;
+                scr.textContent = _sdSitePath(f.content);
                 canvasDoc.head.appendChild(scr);
             });
         }
@@ -65070,18 +65121,20 @@ const StyleDesigner = (function () {
     // The lists are first-is-default; a number is [min, max, default].
     // `from` is the start of a scroll-linked effect, its range per effect
     // (pg_fx_scroll_from()): a scale or an opacity in percent, a distance
-    // in px.
+    // in px. `count` holds the duration and delay of a count, its only
+    // fields (pg_fx_count_numbers()).
     function _sdFxSpec() {
         return {
             effects: ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
-                'scroll-zoom', 'scroll-fade', 'scroll-rise'],
+                'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count'],
             triggers: ['view', 'load', 'hover', 'click'],
             easings: ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'],
             numbers: {
                 duration: [100, 5000, 600], delay: [0, 5000, 0], stagger: [0, 1000, 0],
                 distance: [0, 400, 0], offset: [0, 1000, 0], speed: [5, 100, 20]
             },
-            from: { 'scroll-zoom': [25, 200, 80], 'scroll-fade': [0, 100, 0], 'scroll-rise': [0, 400, 80] }
+            from: { 'scroll-zoom': [25, 200, 80], 'scroll-fade': [0, 100, 0], 'scroll-rise': [0, 400, 80] },
+            count: { duration: [100, 5000, 2000], delay: [0, 5000, 0] }
         };
     }
     function _sdFxNormalize(fx) {
@@ -65089,7 +65142,7 @@ const StyleDesigner = (function () {
         var spec = _sdFxSpec(), effect = fx.effect.toLowerCase();
         if (spec.effects.indexOf(effect) === -1) return null;
         var num = function (name) {
-            var r = name === 'from' ? spec.from[effect] : spec.numbers[name], v = fx[name];
+            var r = name === 'from' ? spec.from[effect] : (effect === 'count' && spec.count[name]) || spec.numbers[name], v = fx[name];
             if ((typeof v !== 'number' && typeof v !== 'string') || String(v).trim() === '' || !isFinite(Number(v))) return r[2];
             // PHP's round() rounds halves away from zero.
             v = Number(v);
@@ -65100,6 +65153,7 @@ const StyleDesigner = (function () {
         if (effect === 'sticky') { out.offset = num('offset'); return out; }
         if (effect === 'parallax') { out.speed = num('speed'); return out; }
         if (spec.from[effect]) { out.from = num('from'); return out; }
+        if (effect === 'count') { out.duration = num('duration'); out.delay = num('delay'); return out; }
         var trigger = typeof fx.trigger === 'string' ? fx.trigger.toLowerCase() : '';
         var easing = typeof fx.easing === 'string' ? fx.easing.toLowerCase() : '';
         out.trigger = spec.triggers.indexOf(trigger) !== -1 ? trigger : spec.triggers[0];
@@ -65126,7 +65180,8 @@ const StyleDesigner = (function () {
                 if (fx.easing !== spec.easings[0]) out += ' data-pg-fx-easing="' + fx.easing + '"';
                 return;
             }
-            if (fx[name] !== spec.numbers[name][2]) out += ' data-pg-fx-' + name + '="' + fx[name] + '"';
+            var def = (fx.effect === 'count' && spec.count[name]) || spec.numbers[name];
+            if (fx[name] !== def[2]) out += ' data-pg-fx-' + name + '="' + fx[name] + '"';
         });
         if (fx.from !== undefined && fx.from !== spec.from[fx.effect][2]) out += ' data-pg-fx-from="' + fx.from + '"';
         if (fx.repeat) out += ' data-pg-fx-repeat';
@@ -65439,6 +65494,65 @@ const StyleDesigner = (function () {
                '</span>';
     }
 
+    // The `preview` row of "Plain Bootstrap" (twin of
+    // pg_design_plain_look_preview()).
+    var _SD_PLAIN_LOOK_PREVIEW = { radius: 6, btn_radius: 6, shadow: 'none', border: 1, heading: 'sans', weight: 500, caps: false };
+
+    // A small drawing of a look, 48×32, from its `preview` row: the card's
+    // corner, outline and shadow, the heading's weight, the button's corner
+    // and capitals, in currentColor. Twin of pg_design_look_drawing() in
+    // includes/fn/design_themes.php: both give the same SVG.
+    function _sdLookDrawing(pv) {
+        pv = pv || _SD_PLAIN_LOOK_PREVIEW;
+        var n = function (v) { v = Math.round(v * 100) / 100; return v === 0 ? '0' : String(v); };
+        var half = function (v) { return Math.round(v * 2) / 2; };
+        var int = function (v, def) { v = parseInt(v, 10); return isNaN(v) ? def : v; };
+        var radius = Math.max(0, int(pv.radius, 0)), btnRadius = Math.max(0, int(pv.btn_radius, 0));
+        var border = Math.min(3, Math.max(0, int(pv.border, 1))), weight = Math.min(900, Math.max(100, int(pv.weight, 500)));
+        var heading = pv.heading == null ? 'sans' : String(pv.heading), caps = !!pv.caps;
+        var shadows = {
+            none:  '',
+            crisp: '<rect x="5" y="27" width="38" height="1" fill="currentColor" fill-opacity=".45"/>',
+            soft:  '<rect x="6" y="27" width="36" height="2" rx="1" fill="currentColor" fill-opacity=".2"/>',
+            glow:  '<rect x="8" y="27" width="32" height="3" rx="1.5" fill="currentColor" fill-opacity=".32"/>',
+            deep:  '<rect x="5" y="27" width="38" height="2" fill="currentColor" fill-opacity=".32"/><rect x="8" y="29" width="32" height="2" rx="1" fill="currentColor" fill-opacity=".15"/>',
+            hard:  '<path d="M44 5h2v24H6v-2h38z" fill="currentColor"/>'
+        };
+        var svg = '<svg class="pg-look-drawing" viewBox="0 0 48 32" width="48" height="32" aria-hidden="true" focusable="false">';
+        svg += Object.prototype.hasOwnProperty.call(shadows, pv.shadow) ? shadows[pv.shadow] : '';
+        var card = '<rect x="4" y="3" width="40" height="24" rx="' + n(half(Math.min(radius, 24) / 4)) + '" fill="currentColor" fill-opacity=".1"';
+        if (border > 0) card += ' stroke="currentColor" stroke-width="' + border + '" stroke-opacity="' + (border > 1 ? '1' : '.5') + '"';
+        svg += card + '/>';
+        var hh = half(weight / 200);
+        if (heading === 'mono') {
+            [9, 13.5, 18, 22.5].forEach(function (x) { svg += '<rect x="' + n(x) + '" y="8" width="3.5" height="' + n(hh) + '" fill="currentColor"/>'; });
+        } else {
+            svg += '<rect x="9" y="8" width="18" height="' + n(hh) + '"' + (heading === 'rounded' ? ' rx="' + n(hh / 2) + '"' : '') + ' fill="currentColor"/>';
+            if (heading === 'serif') svg += '<rect x="8" y="' + n(8 + hh - 0.5) + '" width="20" height=".5" fill="currentColor"/>';
+        }
+        svg += '<rect x="9" y="15" width="26" height="1" fill="currentColor" fill-opacity=".4"/>';
+        var br = btnRadius >= 99 ? 2.5 : Math.min(2.5, half(btnRadius / 6));
+        var rect = function (x, y, w, h, r) {
+            if (r <= 0) return 'M' + n(x) + ' ' + n(y) + 'h' + n(w) + 'v' + n(h) + 'h-' + n(w) + 'z';
+            var a = 'a' + n(r) + ' ' + n(r) + ' 0 0 1 ', side = h - 2 * r;
+            return 'M' + n(x + r) + ' ' + n(y) + 'h' + n(w - 2 * r) + a + n(r) + ' ' + n(r) +
+                   (side > 0 ? 'v' + n(side) : '') + a + '-' + n(r) + ' ' + n(r) +
+                   'h-' + n(w - 2 * r) + a + '-' + n(r) + ' -' + n(r) +
+                   (side > 0 ? 'v-' + n(side) : '') + a + n(r) + ' -' + n(r) + 'z';
+        };
+        var label = caps ? 'M12 20.75h2v1.5h-2zM15.5 20.75h2v1.5h-2zM19 20.75h2v1.5h-2z' : 'M12.5 21h8v1h-8z';
+        svg += '<path d="' + rect(9, 19, 15, 5, br) + label + '" fill="currentColor" fill-rule="evenodd"/>';
+        return svg + '</svg>';
+    }
+
+    // The drawing of a look by its key: a custom look draws the look it is
+    // based on, no look (or an unknown one) draws Plain Bootstrap.
+    function _sdLookDrawingOf(key) {
+        var l = _sdThemeFind('look', key);
+        if (l && !l.preview && l.base) l = _sdThemeFind('look', l.base);
+        return _sdLookDrawing(l && l.preview ? l.preview : null);
+    }
+
     // The colours the cards are drawn in: the palette chosen (or tried).
     function _sdThemeColors() {
         var th = _sdThemes();
@@ -65491,7 +65605,7 @@ const StyleDesigner = (function () {
                        (desc ? '<span class="sd-th-look-desc">' + esc(desc) + '</span>' : '') +
                    '</button>';
         };
-        h += lookCard('', _sdT('Plain Bootstrap'), _sdT('Plain Bootstrap 5.3, as it comes.'), { radius: 6, btn_radius: 6, shadow: 'none', border: 1, heading: 'sans', weight: 500 });
+        h += lookCard('', _sdT('Plain Bootstrap'), _sdT('Plain Bootstrap 5.3, as it comes.'), _SD_PLAIN_LOOK_PREVIEW);
         (th.looks || []).forEach(function (l) { h += lookCard(l.key, l.name, l.description, l.preview); });
         (th.customLooks || []).forEach(function (l) {
             var base = _sdThemeFind('look', l.base);
@@ -77064,6 +77178,8 @@ const StyleDesigner = (function () {
     // every redraw, and the browser's own copy of the bare address is
     // fetched again for the preview and other tabs.
     function _sdBustImageCache(url) {
+        // The address the canvas drew: "{path}name" filled as the page fills it.
+        url = _sdSitePath(url);
         var path = _sdImagePath(url, window.location.href);
         if (!path) return;
         _sdEditedImages[path] = String(Date.now());
@@ -77510,6 +77626,7 @@ const StyleDesigner = (function () {
             _sdThemes: _sdThemes,
             _sdThemeFind: _sdThemeFind,
             _sdThemeValue: _sdThemeValue,
+            _sdLookDrawingOf: _sdLookDrawingOf,
             _sdOpenThemeSettings: _sdOpenThemeSettings,
             applyAssetsToIframe: applyAssetsToIframe,
             _SD_CODE_KEY: _SD_CODE_KEY,

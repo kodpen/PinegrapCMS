@@ -242,3 +242,130 @@ function test_brewery_assembly_home_and_tours()
 	}
 	pg_assert_contains('{{page:book_online}}', json_encode(_tpl_threads_page($tpl, 'tours')['tree']), 'the tours lead to the private tastings');
 }
+
+// The nodes of a tree whose class list holds $class, depth first.
+function _test_bw_asm_with_class($tree, $class)
+{
+	$nodes = array();
+	_test_bw_asm_nodes($tree, $nodes);
+	$out = array();
+	foreach ($nodes as $n) {
+		if (preg_match('/(?<![\w-])' . preg_quote($class, '/') . '(?![\w-])/', isset($n['props']['cssClass']) ? (string)$n['props']['cssClass'] : '')) $out[] = $n;
+	}
+	return $out;
+}
+
+// Version 2.0.0 draws the home, the taproom and the beer page on the
+// Brewery blocks: every block class they place ships its rule in the
+// template's User Styles, every interaction is kept as written by
+// pg_fx_normalize(), each page has one h1, the glasses are hidden from
+// screen readers, the tap board lists every sample beer, the flight pours
+// four tasters light to dark one after another, and the beer page's
+// sticker and figures are the record's own fields.
+function test_brewery_assembly_pages_on_brewery_blocks()
+{
+	$tpl = _test_bw_asm_tpl();
+	pg_assert_true(version_compare($tpl['version'], '2.0.0', '>='), 'version 2.0.0');
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	include PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-brewery/parts.php';
+	$trees = array();
+	foreach ($tpl['pages'] as $p) if (in_array($p['key'], array('home', 'taproom', 'about'), true)) $trees[$p['key']] = $p['tree'];
+	$trees['beer'] = $tpl['widgets']['beer_detail']['tree'];
+	pg_assert_same(4, count($trees), 'home, taproom, about and the beer page');
+	$wanted = array(
+		'home'    => array('pg-brewery-glass', 'pg-brewery-pour', 'pg-brewery-photo', 'pg-brewery-tap', 'pg-brewery-mini', 'pg-brewery-paddle', 'pg-brewery-taster', 'pg-brewery-sticker', 'pg-brewery-figure'),
+		'taproom' => array('pg-brewery-tap', 'pg-brewery-mini', 'pg-brewery-paddle', 'pg-brewery-taster', 'pg-brewery-figure'),
+		'beer'    => array('pg-brewery-photo', 'pg-brewery-sticker', 'pg-brewery-figure'),
+	);
+	$blocks = array(
+		'home'    => array('Brewery Hero', 'Brewery Tap Board', 'Brewery Release', 'Brewery Tasting Flight'),
+		'taproom' => array('Brewery Tap Board', 'Brewery Tasting Flight'),
+		'beer'    => array('Release Facts'),
+	);
+	foreach ($trees as $key => $tree) {
+		$nodes = array();
+		_test_bw_asm_nodes($tree, $nodes);
+		$classes = '';
+		$labels = array();
+		$effects = 0;
+		$h1 = 0;
+		foreach ($nodes as $n) {
+			$classes .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			if (isset($n['props']['_label'])) $labels[] = $n['props']['_label'];
+			if ((isset($n['props']['tag']) ? $n['props']['tag'] : '') === 'h1') $h1++;
+			if (!isset($n['props']['_fx'])) continue;
+			$effects++;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, $key . ': ' . $field . ' is kept as written');
+			}
+		}
+		preg_match_all('/(?<![\w-])pg-brewery-[a-z0-9-]+(?![\w-])/', $classes, $m);
+		foreach (array_unique($m[0]) as $class) pg_assert_contains('.' . $class, $css, $key . ': the rule of ' . $class . ' ships');
+		foreach (isset($wanted[$key]) ? $wanted[$key] : array() as $class) {
+			pg_assert_true((bool)preg_match('/(?<![\w-])' . preg_quote($class, '/') . '(?![\w-])/', $classes), $key . ': places ' . $class);
+		}
+		foreach (isset($blocks[$key]) ? $blocks[$key] : array() as $label) pg_assert_true(in_array($label, $labels, true), $key . ': the ' . $label . ' block');
+		foreach (_test_bw_asm_with_class($tree, 'pg-brewery-glass') as $glass) {
+			pg_assert_contains('{"name":"aria-hidden","value":"true"}', json_encode(isset($glass['props']['_attrs']) ? $glass['props']['_attrs'] : array()), $key . ': a glass is hidden from screen readers');
+		}
+		pg_assert_true($effects >= 2, $key . ': something moves');
+		pg_assert_same(1, $h1, $key . ': one h1');
+		if ($key !== 'about') pg_assert_true($effects >= 4, $key . ': opens and scrolls in motion');
+	}
+
+	// The home: the hero comes in on load and pours its glass; the story
+	// band left the home (the about page keeps it).
+	$home = json_encode($trees['home'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_contains('"trigger":"load"', $home, 'the hero comes in on load');
+	$pour = _test_bw_asm_with_class($trees['home'], 'pg-brewery-pour');
+	pg_assert_same(1, count($pour), 'one glass over the hero picture');
+	$poured = isset($pour[0]['children'][0]['props']['_fx']) ? $pour[0]['children'][0]['props']['_fx'] : array();
+	pg_assert_same('load', isset($poured['trigger']) ? $poured['trigger'] : '', 'the hero glass fills on load');
+	pg_assert_false(strpos($home, '"id":"bw-home-story"') !== false, 'no story band on the home');
+	foreach (array('bw-home-taps', 'bw-home-release', 'bw-home-flight', 'bw-home-tours', 'bw-home-reviews') as $id) {
+		pg_assert_contains('"id":"' . $id . '"', $home, 'the home\'s search section ' . $id);
+	}
+	foreach (array('bw-taproom-taps', 'bw-taproom-visit', 'bw-taproom-food', 'bw-taproom-flight') as $id) {
+		pg_assert_contains('"id":"' . $id . '"', json_encode($trees['taproom']), 'the taproom\'s search section ' . $id);
+	}
+
+	// The tap board: a tap per sample beer, numbered in order, with its
+	// strength and bitterness; the flight: four tasters, tones 1 to 4,
+	// each poured after the one before.
+	foreach (array('home', 'taproom') as $key) {
+		$board = _test_bw_asm_with_class($trees[$key], 'pg-brewery-tap');
+		pg_assert_same(count($beers), count($board), $key . ': a tap per beer');
+		$texts = json_encode($trees[$key], JSON_UNESCAPED_UNICODE);
+		$n = 0;
+		foreach ($beers as $bkey => $b) {
+			$n++;
+			pg_assert_same(sprintf('%02d', $n), isset($board[$n - 1]['props']['text']) ? $board[$n - 1]['props']['text'] : '', $key . ': tap ' . $n . ' is numbered');
+			foreach (array($b['name'], $b['abv'], str_replace('{var}', $b['ibu'], lang('{var} IBU'))) as $t) {
+				pg_assert_contains(json_encode($t, JSON_UNESCAPED_UNICODE), $texts, $key . ': ' . $bkey . ' shows ' . $t);
+			}
+		}
+		$tasters = _test_bw_asm_with_class($trees[$key], 'pg-brewery-taster');
+		pg_assert_same(4, count($tasters), $key . ': four tasters');
+		$delay = -1;
+		foreach ($tasters as $i => $t) {
+			$beer = $t['children'][0];
+			$pour_fx = isset($beer['props']['_fx']) ? $beer['props']['_fx'] : array();
+			pg_assert_contains('pg-brewery-tone-' . ($i + 1), $beer['props']['cssClass'], $key . ': taster ' . ($i + 1) . ' is tone ' . ($i + 1));
+			pg_assert_same('view', isset($pour_fx['trigger']) ? $pour_fx['trigger'] : '', $key . ': taster ' . ($i + 1) . ' pours in view');
+			pg_assert_true(isset($pour_fx['delay']) && $pour_fx['delay'] > $delay, $key . ': taster ' . ($i + 1) . ' pours after the one before');
+			if (isset($pour_fx['delay'])) $delay = $pour_fx['delay'];
+		}
+	}
+	pg_assert_contains('{{page:book_online}}', json_encode($trees['taproom']), 'the taproom\'s flight books a tasting');
+
+	// The beer page: the release's picture with parallax, the sticker says
+	// how long the beer stays, the figures are its style and strength.
+	$sticker = _test_bw_asm_with_class($trees['beer'], 'pg-brewery-sticker');
+	pg_assert_same(1, count($sticker), 'the beer page has its sticker');
+	pg_assert_contains('"text":"availability"', json_encode($sticker[0]), 'the sticker is the beer\'s availability');
+	$figures = json_encode(_test_bw_asm_with_class($trees['beer'], 'pg-brewery-figure'));
+	foreach (array('style', 'strength') as $field) pg_assert_contains('"text":"' . $field . '"', $figures, 'the beer page\'s figure ' . $field);
+	pg_assert_contains('"effect":"parallax"', json_encode($trees['beer']), 'the beer\'s picture moves slower than the page');
+}

@@ -11,6 +11,13 @@
  * upload) and the first becomes the pick; Recent lists the person's last
  * picks of the kind, kept in this browser.
  *
+ * A page kind (config page_kinds) lists pages as rows with their address,
+ * type and date, a chip per page type group, and pages in an archived folder
+ * or in the Recycle Bin marked; neither can be chosen. A caller may hand in
+ * entries of its own (extra: [{value, text, type, type_group, note}], under
+ * extraLabel), listed beside the folders and found by the search; they are
+ * never kept in Recent.
+ *
  *   pgPicker.open({kind, value, title}) -> Promise of the picked item
  *   ({value, text, ...}) or null, settled once the dialog has closed, so the
  *   caller may focus or edit the page (docs/memory/ui/dialog-result-after-close.md).
@@ -270,13 +277,20 @@
         return at === -1 ? picks.concat([item]) : picks.slice(0, at).concat(picks.slice(at + 1));
     }
 
+    // Whether an item may be chosen: never a folder, nor a page marked
+    // archived or binned (pg_picker_page_mark()).
+    function pickable(item) {
+        return !!item && !item.isFolder && !item.mark;
+    }
+
     // Several picks after Shift: the files between two places added in the
-    // order they are drawn; folders and files already picked are passed over.
+    // order they are drawn; folders, marked pages and items already picked
+    // are passed over.
     function rangePick(picks, items, from, to) {
         var out = picks.slice();
         var low = Math.max(0, Math.min(from, to)), high = Math.min(items.length - 1, Math.max(from, to));
         for (var i = low; i <= high; i++) {
-            if (items[i] && !items[i].isFolder && pickIndex(out, items[i]) === -1) {
+            if (pickable(items[i]) && pickIndex(out, items[i]) === -1) {
                 out.push(items[i]);
             }
         }
@@ -300,12 +314,54 @@
         return text + ' ' + units[unit];
     }
 
+    // The type chips over a list of pages: each group a page in it belongs
+    // to, in the set order, and the chosen one though nothing in view has it.
+    function groupChips(items, order, active) {
+        var present = {};
+        (items || []).forEach(function (item) {
+            if (item && !item.isFolder && item.type_group) {
+                present[item.type_group] = true;
+            }
+        });
+        if (active) {
+            present[active] = true;
+        }
+        return (order || []).filter(function (key) { return present[key]; });
+    }
+
+    // A list kept to one chip's pages; the folders stay, to be opened.
+    function inGroup(items, group) {
+        return (items || []).filter(function (item) { return !group || item.isFolder || item.type_group === group; });
+    }
+
+    // The entries a caller hands in beside the pages (the designer's unsaved
+    // tabs, `tab:<key>`): each needs a value and a name; the value is kept as
+    // text, as a field stores it.
+    function extraItems(list) {
+        return (Array.isArray(list) ? list : []).filter(function (entry) {
+            return entry && entry.value !== undefined && entry.value !== null && String(entry.value) !== '' && String(entry.text || '') !== '';
+        }).map(function (entry) {
+            return {
+                value: String(entry.value), text: String(entry.text), type: String(entry.type || ''),
+                type_group: String(entry.type_group || 'standard'), note: String(entry.note || ''), extra: true
+            };
+        });
+    }
+
+    // The entries whose folded name holds the typed text, as the server
+    // matches the pages.
+    function extraMatches(items, query) {
+        var q = foldText(String(query || '').trim());
+        return q ? (items || []).filter(function (item) { return foldText(item.text).indexOf(q) !== -1; }) : [];
+    }
+
     var pure = {
         foldText: foldText, highlightParts: highlightParts, defaultDir: defaultDir, sortItems: sortItems,
         stepIndex: stepIndex, underFolder: underFolder, typeAheadIndex: typeAheadIndex, typesLabel: typesLabel,
         fill: fill, pathText: pathText, fileIcon: fileIcon, makeCollator: makeCollator,
         extensionOf: extensionOf, uploadRefusal: uploadRefusal, addRecent: addRecent, togglePick: togglePick,
-        rangePick: rangePick, formatSize: formatSize
+        rangePick: rangePick, formatSize: formatSize, pickable: pickable, groupChips: groupChips, inGroup: inGroup,
+        extraItems: extraItems, extraMatches: extraMatches
     };
 
     var doc = root.document;
@@ -447,6 +503,25 @@
         return labels[access] || '';
     }
 
+    function markLabel(mark) {
+        return mark === 'binned' ? t('In the Recycle Bin') : (mark === 'archived' ? t('Archived') : '');
+    }
+
+    // The page type groups in chip order, and each one's label.
+    function groupOrder() {
+        return (conf().page_groups || []).map(function (group) { return group.key; });
+    }
+
+    function groupLabel(key) {
+        var groups = conf().page_groups || [];
+        for (var i = 0; i < groups.length; i++) {
+            if (groups[i].key === key) {
+                return groups[i].label;
+            }
+        }
+        return '';
+    }
+
     // ── The dialog ────────────────────────────────────────────────────────
 
     function Picker(opts) {
@@ -481,11 +556,29 @@
         this.typesList = [];
         this.dragDepth = 0;
         this.objectUrls = [];
+        // Pages are rows (address, type, date), never tiles; their sort has
+        // no size.
+        this.pages = (conf().page_kinds || []).indexOf(this.kind) !== -1;
+        this.extras = this.pages ? extraItems(this.opts.extra) : [];
+        this.extraOn = false;
+        this.group = '';
+        this.chipKeys = [];
+        if (this.pages) {
+            this.view = 'list';
+            if (this.sort === 'size') {
+                this.sort = 'name';
+                this.dir = defaultDir('name');
+            }
+        }
     }
+
+    Picker.prototype.defaultTitle = function () {
+        return this.opts.title || (this.pages ? t('Choose a page') : t('Choose a file'));
+    };
 
     Picker.prototype.build = function () {
         var self = this;
-        var parts = root.pgUI.dialog.build({ size: 'xl', className: 'pg-picker', closeLabel: t('Close'), title: this.opts.title || t('Choose a file') });
+        var parts = root.pgUI.dialog.build({ size: 'xl', className: 'pg-picker' + (this.pages ? ' pg-picker-is-pages' : ''), closeLabel: t('Close'), title: this.defaultTitle() });
 
         this.root = parts.root;
         this.titleNode = parts.title;
@@ -523,6 +616,7 @@
         this.listButton = button('btn btn-icon', '', 'bi-list-ul', t('List'));
         views.appendChild(this.gridButton);
         views.appendChild(this.listButton);
+        views.hidden = this.pages;
 
         this.uploadButton = button('btn btn-outline theme-primary pg-picker-upload', t('Upload'), 'bi-upload');
         this.uploadButton.hidden = true;
@@ -539,6 +633,9 @@
         this.treeBox.setAttribute('aria-label', t('Folders'));
         this.recentRow = button('pg-picker-row pg-picker-recent', t('Recently used'), 'bi-clock-history');
         this.treeBox.appendChild(this.recentRow);
+        this.extraRow = button('pg-picker-row pg-picker-recent', this.opts.extraLabel || t('Not saved yet'), 'bi-file-earmark-plus');
+        this.extraRow.hidden = !this.extras.length;
+        this.treeBox.appendChild(this.extraRow);
         this.treeBox.appendChild(el('div', 'pg-picker-section', t('Folders')));
         this.treeList = el('ul');
         this.treeList.setAttribute('role', 'tree');
@@ -548,12 +645,16 @@
         var pane = el('section', 'pg-picker-pane');
         this.status = el('div', 'pg-picker-status');
         this.status.setAttribute('aria-live', 'polite');
+        this.chipBox = el('div', 'pg-picker-chips');
+        this.chipBox.setAttribute('role', 'group');
+        this.chipBox.setAttribute('aria-label', t('Page types'));
+        this.chipBox.hidden = true;
         this.head = el('div', 'pg-picker-head');
         this.itemsBox = el('div', 'pg-picker-items');
         this.itemsBox.id = 'pg_picker_items_' + Date.now();
         this.itemsBox.tabIndex = 0;
         this.itemsBox.setAttribute('role', 'listbox');
-        this.itemsBox.setAttribute('aria-label', t('Files'));
+        this.itemsBox.setAttribute('aria-label', this.pages ? t('Pages') : t('Files'));
         if (this.multiple) {
             this.itemsBox.setAttribute('aria-multiselectable', 'true');
         }
@@ -564,6 +665,7 @@
         this.uploadsBox.setAttribute('aria-live', 'polite');
         this.pane = pane;
         pane.appendChild(this.status);
+        pane.appendChild(this.chipBox);
         pane.appendChild(this.head);
         pane.appendChild(this.itemsBox);
         pane.appendChild(this.dropBox);
@@ -617,6 +719,17 @@
             self.uploadFiles(files);
         });
         this.recentRow.addEventListener('click', function () { self.showRecent(); });
+        this.extraRow.addEventListener('click', function () { self.showExtras(); });
+        // A chip keeps the list to its pages; the chosen chip again, or All,
+        // shows every page.
+        this.chipBox.addEventListener('click', function (event) {
+            var chip = event.target.closest('[data-group]');
+            if (chip) {
+                var key = chip.getAttribute('data-group');
+                self.group = (key === self.group) ? '' : key;
+                self.render(true);
+            }
+        });
 
         // Files dragged over the pane are offered to the open folder; the
         // overlay names it, or says why it takes none. A drop elsewhere in
@@ -759,7 +872,8 @@
     };
 
     Picker.prototype.fillSort = function () {
-        var keys = [['name', t('Name')], ['modified', t('Modified')], ['size', t('Size')], ['type', t('Type')]];
+        var keys = this.pages ? [['name', t('Name')], ['modified', t('Modified')], ['type', t('Type')]]
+            : [['name', t('Name')], ['modified', t('Modified')], ['size', t('Size')], ['type', t('Type')]];
         if (this.results) {
             keys.unshift(['best', t('Best match')]);
         }
@@ -828,6 +942,7 @@
         var self = this, seq = ++this.seq;
         this.folder = id;
         this.recentOn = false;
+        this.extraOn = false;
         this.showFolderList(false);
         this.leaveSearch();
         this.setStatus(t('Loading…'));
@@ -839,7 +954,7 @@
                 return;
             }
             self.crumbs = out[0].crumbs || [];
-            self.files = out[0].items || [];
+            self.files = (out[0].items || []).concat(out[0].binned || []);
             self.capped = !!out[0].more;
             self.upload = out[0].upload || null;
             return self.loadTree(self.crumbs.map(function (crumb) { return crumb.id; })).then(function () {
@@ -873,8 +988,9 @@
         }
         this.query = text;
         this.onlyHere = false;
-        if (text !== '' && this.recentOn) {
+        if (text !== '' && (this.recentOn || this.extraOn)) {
             this.recentOn = false;
+            this.extraOn = false;
             this.renderTree();
         }
         if (text === '') {
@@ -888,7 +1004,7 @@
             if (seq !== self.seq) {
                 return;
             }
-            self.results = body.items || [];
+            self.results = extraMatches(self.extras, text).concat(body.items || []);
             self.resultSort = 'best';
             self.resultDir = 'asc';
             self.fillSort();
@@ -911,7 +1027,18 @@
 
     // ── Drawing ───────────────────────────────────────────────────────────
 
+    // What the pane lists, kept to the chosen chip; the chips are those of
+    // the whole list.
     Picker.prototype.visible = function () {
+        var list = this.listed();
+        this.chipKeys = this.pages ? groupChips(list, groupOrder(), this.group) : [];
+        return this.pages ? inGroup(list, this.group) : list;
+    };
+
+    Picker.prototype.listed = function () {
+        if (this.extraOn) {
+            return this.extras.slice();
+        }
         if (this.recentOn) {
             return this.recent.slice();
         }
@@ -935,15 +1062,16 @@
         this.listButton.classList.toggle('active', this.view === 'list');
         this.renderCrumbs();
         this.renderStatus();
+        this.renderChips();
         this.renderHead();
         this.renderUpload();
-        this.sortSelect.disabled = this.recentOn;
+        this.sortSelect.disabled = this.recentOn || this.extraOn;
 
         if (resetCursor) {
             var first = this.multiple ? this.picks[0] : this.pick;
             this.cursor = -1;
             for (var i = 0; first && i < this.items.length; i++) {
-                if (!this.items[i].isFolder && String(this.items[i].value) === String(first.value)) {
+                if (pickable(this.items[i]) && String(this.items[i].value) === String(first.value)) {
                     this.cursor = i;
                     break;
                 }
@@ -966,15 +1094,20 @@
     };
 
     Picker.prototype.itemNode = function (item, index) {
-        var node = el('div', 'pg-picker-item' + (item.isFolder ? ' is-folder' : ''));
+        var node = el('div', 'pg-picker-item' + (item.isFolder ? ' is-folder' : '') + (item.mark ? ' is-marked' : ''));
         node.id = this.itemsBox.id + '_' + index;
         node.setAttribute('role', 'option');
         node.setAttribute('data-index', String(index));
         node.setAttribute('aria-selected', 'false');
+        if (item.mark) {
+            node.setAttribute('aria-disabled', 'true');
+        }
 
         var thumb = el('span', 'pg-picker-thumb');
         if (item.isFolder) {
             thumb.appendChild(icon('bi-folder-fill'));
+        } else if (this.pages) {
+            thumb.appendChild(icon(item.extra ? 'bi-file-earmark-plus' : 'bi-file-earmark-text'));
         } else if (item.thumb) {
             var img = el('img');
             img.alt = '';
@@ -1000,11 +1133,23 @@
         node.appendChild(thumb);
 
         var body = el('span', 'pg-picker-text');
-        body.appendChild(highlighted(item.text, this.results ? this.query : ''));
+        var name = highlighted(item.text, this.results ? this.query : '');
+        if (item.mark) {
+            var line = el('span', 'pg-picker-name-line');
+            line.appendChild(name);
+            line.appendChild(el('span', 'pg-picker-mark is-' + item.mark, markLabel(item.mark)));
+            body.appendChild(line);
+        } else {
+            body.appendChild(name);
+        }
         body.appendChild(el('span', 'pg-picker-meta', this.metaText(item)));
         node.appendChild(body);
 
-        if (this.view === 'list') {
+        if (this.pages) {
+            node.appendChild(el('span', 'pg-picker-col', item.isFolder ? t('{n} items', { n: item.count }) : (item.address || item.note || '')));
+            node.appendChild(el('span', 'pg-picker-col', item.isFolder ? t('Folder') : (item.type_label || groupLabel(item.type_group))));
+            node.appendChild(el('span', 'pg-picker-col', item.isFolder ? '' : formatDate(item.modified)));
+        } else if (this.view === 'list') {
             node.appendChild(el('span', 'pg-picker-col', item.isFolder ? t('Folder') : String(item.type || '').toUpperCase()));
             node.appendChild(el('span', 'pg-picker-col pg-picker-num', item.isFolder ? t('{n} items', { n: item.count }) : (item.size_label || '')));
             node.appendChild(el('span', 'pg-picker-col', item.isFolder ? '' : formatDate(item.modified)));
@@ -1024,8 +1169,14 @@
         if (item.isFolder) {
             return t('{n} items', { n: item.count });
         }
+        if (item.extra) {
+            return item.note;
+        }
         if (this.results || this.recentOn) {
             return pathText(item.path);
+        }
+        if (this.pages) {
+            return [item.address, item.type_label].filter(Boolean).join(' · ');
         }
         var parts = [];
         if (item.width && item.height) {
@@ -1041,7 +1192,9 @@
         var self = this;
         this.head.textContent = '';
         this.head.hidden = this.view !== 'list' || !this.items.length;
-        [['name', t('Name')], ['type', t('Type')], ['size', t('Size')], ['modified', t('Modified')], ['', t('Access')]].forEach(function (col) {
+        var cols = this.pages ? [['name', t('Name')], ['', t('Address')], ['type', t('Type')], ['modified', t('Modified')]]
+            : [['name', t('Name')], ['type', t('Type')], ['size', t('Size')], ['modified', t('Modified')], ['', t('Access')]];
+        cols.forEach(function (col) {
             var cell = col[0] ? button('pg-picker-col', col[1]) : el('span', 'pg-picker-col', col[1]);
             if (col[0]) {
                 var on = self.currentSort() === col[0];
@@ -1058,12 +1211,31 @@
         });
     };
 
+    // A chip per page type group in the list, with All; shown once there
+    // are two groups to tell apart, or one is chosen.
+    Picker.prototype.renderChips = function () {
+        var self = this;
+        this.chipBox.textContent = '';
+        this.chipBox.hidden = !this.pages || this.folderList || (this.chipKeys.length < 2 && !this.group);
+        if (this.chipBox.hidden) {
+            return;
+        }
+        [''].concat(this.chipKeys).forEach(function (key) {
+            var chip = button('btn btn-sm pg-picker-only' + (self.group === key ? ' active' : ''), key ? groupLabel(key) : t('All'));
+            chip.setAttribute('data-group', key);
+            chip.setAttribute('aria-pressed', String(self.group === key));
+            self.chipBox.appendChild(chip);
+        });
+    };
+
     Picker.prototype.renderStatus = function () {
         var self = this;
         this.status.textContent = '';
-        if (this.recentOn) {
+        if (this.recentOn || this.extraOn) {
             this.status.appendChild(el('span', '', (this.items.length === 1) ? t('1 item') : t('{n} items', { n: this.items.length })));
-            this.status.appendChild(el('span', 'pg-picker-note', t('Your last picks in this browser')));
+            if (this.recentOn) {
+                this.status.appendChild(el('span', 'pg-picker-note', t('Your last picks in this browser')));
+            }
         } else if (this.results) {
             var summary = el('strong', '', t('{n} results for “{q}”', { n: this.items.length, q: this.query }));
             this.status.appendChild(summary);
@@ -1079,13 +1251,16 @@
         } else {
             var folders = (this.tree[this.folder] || []).length;
             var text = (this.items.length === 1) ? t('1 item') : t('{n} items', { n: this.items.length });
-            if (folders && this.files.length) {
+            if (folders && this.files.length && !this.pages) {
                 text += ' · ' + t('{folders} folders, {files} files', { folders: folders, files: this.files.length });
             }
             this.status.appendChild(el('span', '', text));
             if (this.capped) {
                 this.status.appendChild(el('span', 'pg-picker-note', t('Only the first 2,000 are shown; search to find the rest.')));
             }
+        }
+        if (this.items.some(function (item) { return !!item.mark; })) {
+            this.status.appendChild(el('span', 'pg-picker-note', t('Archived pages and pages in the Recycle Bin cannot be chosen.')));
         }
         this.hint.textContent = this.results ? t('Esc clears the search')
             : (this.multiple ? t('A click adds or removes, Shift+click adds a row')
@@ -1096,7 +1271,9 @@
         var self = this;
         var crumbs = this.folderList ? this.listCrumbs() : this.crumbs;
         this.crumbNav.textContent = '';
-        if (this.recentOn && !this.folderList) {
+        if (this.extraOn && !this.folderList) {
+            this.crumbNav.appendChild(el('strong', '', this.extraRow.textContent));
+        } else if (this.recentOn && !this.folderList) {
             this.crumbNav.appendChild(el('strong', '', t('Recently used')));
         } else if (this.results && !this.folderList) {
             this.crumbNav.appendChild(el('strong', '', t('Search results')));
@@ -1115,8 +1292,9 @@
                 self.crumbNav.appendChild(link);
             });
         }
-        this.upButton.disabled = !this.results && !this.recentOn && this.crumbs.length < 2;
-        var here = this.recentOn ? t('Recently used') : (this.crumbs.length ? this.crumbs[this.crumbs.length - 1].name : t('Files'));
+        this.upButton.disabled = !this.results && !this.recentOn && !this.extraOn && this.crumbs.length < 2;
+        var here = this.extraOn ? this.extraRow.textContent : (this.recentOn ? t('Recently used')
+            : (this.crumbs.length ? this.crumbs[this.crumbs.length - 1].name : (this.pages ? t('Pages') : t('Files'))));
         this.chip.textContent = '';
         this.chip.appendChild(icon('bi-folder-fill'));
         this.chip.appendChild(el('span', 'pg-btn-label', here));
@@ -1135,7 +1313,9 @@
             return;
         }
         var thumb = el('span', 'pg-picker-thumb');
-        if (this.pick.thumb) {
+        if (this.pages) {
+            thumb.appendChild(icon(this.pick.extra ? 'bi-file-earmark-plus' : 'bi-file-earmark-text'));
+        } else if (this.pick.thumb) {
             var img = el('img');
             img.alt = '';
             img.src = this.pick.thumb;
@@ -1145,7 +1325,7 @@
         }
         var text = el('span', 'pg-picker-text');
         text.appendChild(el('strong', 'pg-picker-name', this.pick.text));
-        var meta = [pathText(this.pick.path)];
+        var meta = [this.pages ? (this.pick.address || this.pick.note || '') : '', pathText(this.pick.path)];
         if (this.pick.width && this.pick.height) {
             meta.push(this.pick.width + ' × ' + this.pick.height);
         }
@@ -1172,7 +1352,7 @@
                 img.src = pick.thumb;
                 thumb.appendChild(img);
             } else {
-                thumb.appendChild(icon(fileIcon(pick.type)));
+                thumb.appendChild(icon(pick.extra || pick.type_group ? 'bi-file-earmark-text' : fileIcon(pick.type)));
             }
             strip.appendChild(thumb);
         });
@@ -1201,10 +1381,10 @@
         if (this.recentOn) {
             box.appendChild(icon('bi-clock-history'));
             box.appendChild(el('strong', '', t('Nothing chosen yet')));
-            box.appendChild(el('p', '', t('Files you choose appear here.')));
+            box.appendChild(el('p', '', this.pages ? t('Pages you choose appear here.') : t('Files you choose appear here.')));
             return box;
         }
-        box.appendChild(icon(this.results ? 'bi-search' : 'bi-images'));
+        box.appendChild(icon(this.results ? 'bi-search' : (this.pages ? 'bi-file-earmark-text' : 'bi-images')));
         box.appendChild(el('strong', '', this.results ? t('No results found') : t('There is nothing to choose in this folder')));
         if (this.results || !this.upload) {
             return box;
@@ -1245,9 +1425,11 @@
     Picker.prototype.renderTree = function () {
         var self = this;
         var focused = doc.activeElement && this.treeList.contains(doc.activeElement) ? doc.activeElement.getAttribute('data-folder') : null;
-        var here = this.recentOn ? -1 : this.folder;
+        var here = (this.recentOn || this.extraOn) ? -1 : this.folder;
         this.recentRow.classList.toggle('is-open', this.recentOn);
         this.recentRow.setAttribute('aria-current', String(this.recentOn));
+        this.extraRow.classList.toggle('is-open', this.extraOn);
+        this.extraRow.setAttribute('aria-current', String(this.extraOn));
         this.treeList.textContent = '';
         function branch(parent, list, level) {
             (self.tree[parent] || []).forEach(function (row) {
@@ -1363,11 +1545,12 @@
 
     // An item with the folders down to it, for the footer.
     Picker.prototype.withPath = function (item) {
-        return item.path ? item : Object.assign({}, item, { path: this.crumbs.slice() });
+        return (item.path || item.extra) ? item : Object.assign({}, item, { path: this.crumbs.slice() });
     };
 
     // With one pick the cursor on a file is the pick, as the tile drawn
-    // chosen in the screens; a folder only takes the cursor. With several
+    // chosen in the screens; a folder or a marked page only takes the
+    // cursor. With several
     // the cursor only moves, and `extend` (Shift) adds the files from the
     // anchor to it.
     Picker.prototype.moveTo = function (index, extend) {
@@ -1382,7 +1565,7 @@
             } else {
                 this.anchor = index;
             }
-        } else if (!item.isFolder) {
+        } else if (pickable(item)) {
             this.pick = this.withPath(item);
             this.renderPick();
             this.refreshTicks();
@@ -1399,7 +1582,7 @@
 
     Picker.prototype.togglePickAt = function (index) {
         var item = this.items[index];
-        if (item && !item.isFolder) {
+        if (pickable(item)) {
             this.setPicks(togglePick(this.picks, this.withPath(item)));
         }
     };
@@ -1431,6 +1614,9 @@
             this.itemsBox.focus();
             return;
         }
+        if (!pickable(item)) {
+            return;
+        }
         if (this.multiple) {
             if (!this.isPicked(item)) {
                 this.picks = this.picks.concat([this.withPath(item)]);
@@ -1442,7 +1628,7 @@
     };
 
     Picker.prototype.goUp = function () {
-        if (this.recentOn) {
+        if (this.recentOn || this.extraOn) {
             this.openFolder(this.folder);
             return;
         }
@@ -1535,7 +1721,7 @@
         this.folderList = !!on;
         this.root.classList.toggle('pg-picker-folders', this.folderList);
         this.back.hidden = !this.folderList;
-        this.titleNode.textContent = this.folderList ? t('Choose a folder') : (this.opts.title || t('Choose a file'));
+        this.titleNode.textContent = this.folderList ? t('Choose a folder') : this.defaultTitle();
         if (!this.folderList) {
             if (was && this.items) {
                 this.render(false);
@@ -1556,6 +1742,15 @@
             recent.appendChild(el('span', 'pg-picker-label', t('Recently used')));
             recent.addEventListener('click', function () { self.showRecent(); });
             self.itemsBox.appendChild(recent);
+            if (self.extras.length) {
+                var extra = el('div', 'pg-picker-item pg-picker-folder-row' + (self.extraOn ? ' is-cursor' : ''));
+                extra.setAttribute('role', 'option');
+                extra.setAttribute('aria-selected', String(self.extraOn));
+                extra.appendChild(icon('bi-file-earmark-plus'));
+                extra.appendChild(el('span', 'pg-picker-label', self.extraRow.textContent));
+                extra.addEventListener('click', function () { self.showExtras(); });
+                self.itemsBox.appendChild(extra);
+            }
             (self.tree[self.listFolder] || []).forEach(function (folder, index) {
                 var line = el('div', 'pg-picker-item pg-picker-folder-row' + (folder.id === self.folder ? ' is-cursor' : ''));
                 line.setAttribute('role', 'option');
@@ -1598,7 +1793,7 @@
 
     Picker.prototype.keepRecent = function (items) {
         var list = this.readRecent();
-        items.slice().reverse().forEach(function (item) { list = addRecent(list, item, 12); });
+        items.filter(function (item) { return !item.extra; }).reverse().forEach(function (item) { list = addRecent(list, item, 12); });
         remember(this.recentKey(), JSON.stringify(list));
     };
 
@@ -1607,6 +1802,7 @@
         this.showFolderList(false);
         this.leaveSearch();
         this.recentOn = true;
+        this.extraOn = false;
         this.recent = [];
         this.renderTree();
         if (!list.length) {
@@ -1629,10 +1825,22 @@
         }).catch(function (error) { self.fail(error); });
     };
 
+    // The caller's own entries, as handed in.
+    Picker.prototype.showExtras = function () {
+        ++this.seq;
+        this.showFolderList(false);
+        this.leaveSearch();
+        this.recentOn = false;
+        this.extraOn = true;
+        this.renderTree();
+        this.render(true);
+        this.itemsBox.focus();
+    };
+
     // ── Upload ────────────────────────────────────────────────────────────
 
     Picker.prototype.canUpload = function () {
-        return !!(this.upload && this.upload.ok) && !this.recentOn && !this.uploading;
+        return !!(this.upload && this.upload.ok) && !this.recentOn && !this.extraOn && !this.uploading;
     };
 
     Picker.prototype.renderUpload = function () {
@@ -1871,22 +2079,38 @@
         var self = this;
         var values = [].concat(this.opts.value === undefined || this.opts.value === null ? [] : this.opts.value)
             .map(String).filter(function (value) { return value !== ''; }).slice(0, this.multiple ? 50 : 1);
-        var first = values.length
-            ? request({ kind: this.kind, request: 'resolve', values: values }).then(function (body) {
+        var own = {};
+        this.extras.forEach(function (entry) { own[entry.value] = entry; });
+        var asked = values.filter(function (value) { return !own[value]; });
+        var first = asked.length
+            ? request({ kind: this.kind, request: 'resolve', values: asked }).then(function (body) {
                 return (body.items || []).filter(function (item) { return item.state === 'ok'; });
             }).catch(function () { return []; })
             : Promise.resolve([]);
 
         return Promise.all([first, this.loadTree([0])]).then(function (out) {
-            var item = out[0][0];
+            // The picks in the order stored, the caller's entries among them.
+            var picks = [];
+            values.forEach(function (value) {
+                var found = own[value] || null;
+                for (var i = 0; !found && i < out[0].length; i++) {
+                    if (String(out[0][i].value) === value) {
+                        found = out[0][i];
+                    }
+                }
+                if (found) {
+                    picks.push(found);
+                }
+            });
+            var item = picks[0];
             if (item) {
                 if (self.multiple) {
-                    self.picks = out[0];
+                    self.picks = picks;
                 } else {
                     self.pick = item;
                 }
                 self.renderPick();
-                return self.openFolder(item.folder);
+                return item.extra ? self.showExtras() : self.openFolder(item.folder);
             }
             var top = self.tree[0] || [];
             if (!top.length) {

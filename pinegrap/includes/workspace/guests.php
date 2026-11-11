@@ -1475,14 +1475,15 @@ function ws_guest_votes_ready()
  */
 function ws_guest_file_send($context, $message_id)
 {
-    $row = $context ? db_item("SELECT m.file_name, f.name AS stored FROM ws_messages m
+    // MySQL 8 reserves STORED: the stored name is aliased stored_name.
+    $row = $context ? db_item("SELECT m.file_name, f.name AS stored_name FROM ws_messages m
         INNER JOIN files f ON f.id = m.file_id
         WHERE m.id = '" . (int) $message_id . "' AND " . ws_guest_message_reach_sql($context['channel']['id'], ws_guest_room_floor($context['channel']['id']), 'm.') . "
         AND m.sender_kind = 'user' AND m.file_id > 0") : null;
 
     // The local file, or a copy of one moved to the object store: the guest
     // page streams it, the store's address is never shown to a guest.
-    $path = is_array($row) ? pg_file_reader_path(basename((string) $row['stored'])) : '';
+    $path = is_array($row) ? pg_file_reader_path(basename((string) $row['stored_name'])) : '';
 
     if ($path === '') {
         http_response_code(404);

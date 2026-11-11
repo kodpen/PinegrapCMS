@@ -5,7 +5,7 @@ description: The new dashboard's shop cards (shop, salesmap, ops, orders, offers
 
 ## Where does each shop card read from? (#4881)
 - `shop` (Ecommerce summary): one query sums the period, the window it is compared with (the period before or the same days a year ago) and the last seven days (`pg_dashboard_v2_shop_windows()`), over orders `complete` or `exported` as widget 3 counts; best sellers are widget 3's `pg_dashboard_best_sellers()` since the period start.
-- `shop`'s "See all" link (`pg_dashboard_v2_shop_url()`): the orders list for the `shop` gate, the order reports for a reports-only user, else none. The card's gate (`shop_summary`) lets a reports-only user in, whom `view_orders.php` refuses with Access denied.
+- `shop`'s "See all" (`pg_dashboard_v2_shop_url()`): the ready report sales over time with the card's days for whoever may open the order reports, else the orders list for the `shop` gate, else none (`commerce/order-report-ready-strip.md`, #8724).
 - `salesmap`: `pg_sales_map_collect()` (widget 1's one query), the `d30` period only, so the card has no period pill. The home country's regions shaded in the quantile steps of `pg_sales_map_steps()` when a map of it ships (`assets/maps/`), its countries otherwise (`dashboard-sales-map-data.md`). "See all": the ready report sales by region (`commerce/order-report-ready-reports.md`, #8691).
 - `orders`: `pg_dashboard_recent_orders(3)`, moved out of widget 8 (which calls it with 50). Cancelled, shipped, not shipped are written out beside their tone.
 - `offers`: `pg_dashboard_offer_lists()`, moved out of widget 15: running offers, the ones ending within a week first.
