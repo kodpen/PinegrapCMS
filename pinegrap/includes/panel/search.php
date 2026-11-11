@@ -177,26 +177,34 @@ function pg_panel_backend_search($request, $action)
     }
 
     // ── Settings and system tools ─────────────────────────────────────────
-    if ($gate['manage']) {
-        // Every settings section, from the one list the hub and the sidebar
-        // of the dialog draw from (includes/settings/registry.php).
+    // A manager, or a holder of the Workspace settings right, who finds the
+    // Workspace categories alone (pg_settings_categories_for()).
+    if (!defined('PG_SETTINGS_MENU')) {
+        define('PG_SETTINGS_MENU', true);
+    }
+
+    include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+    $settings_reader = pg_settings_reader($user);
+
+    if ($gate['manage'] || $settings_reader['workspace']) {
+        // Every settings section the reader may open, from the one list the
+        // hub and the sidebar of the dialog draw from
+        // (includes/settings/registry.php).
         // Registering them is what answers "where is that setting": the
         // operator types the thing itself (ssl, waf, cron, kargo) and the
         // settings open on the card holding it instead of on a long page.
         // The keywords are the field names of the section, not just its
         // title, because nobody searches for "Feature Options" when they
         // are looking for the cart.
-        if (!defined('PG_SETTINGS_MENU')) {
-            define('PG_SETTINGS_MENU', true);
+
+        // Plain "Settings" opens on the category last used, which may be
+        // any of them: the managers' alone. The ones below each name one.
+        if ($gate['manage']) {
+            $actions[] = array('label' => lang('Settings'), 'icon' => 'bi-gear', 'url' => $base_url . '/' . pg_settings_link(), 'keys' => array('ayar', 'ayarlar', 'setting', 'settings', 'set', 'aya'));
         }
 
-        include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
-
-        // Plain "Settings" opens on the category last used; the eight
-        // below each name one.
-        $actions[] = array('label' => lang('Settings'), 'icon' => 'bi-gear', 'url' => $base_url . '/' . pg_settings_link(), 'keys' => array('ayar', 'ayarlar', 'setting', 'settings', 'set', 'aya'));
-
-        foreach (pg_settings_categories() as $settings_key => $settings_category) {
+        foreach (pg_settings_categories_for($user, $settings_reader) as $settings_key => $settings_category) {
 
             $actions[] = array(
                 'label' => lang('Settings') . ' - ' . $settings_category['label'],
@@ -219,8 +227,10 @@ function pg_panel_backend_search($request, $action)
         }
         // The System tools screen and every tool on it, from the groups the
         // screen draws (pg_settings_tool_groups()), so each tool keeps the
-        // gate it has there.
-        $actions = array_merge($actions, pg_panel_search_tool_actions(pg_settings_tool_groups($user), $base_url, $actions));
+        // gate it has there. Those screens are the managers'.
+        if ($gate['manage']) {
+            $actions = array_merge($actions, pg_panel_search_tool_actions(pg_settings_tool_groups($user), $base_url, $actions));
+        }
     }
 
     // ── Design ────────────────────────────────────────────────────────────

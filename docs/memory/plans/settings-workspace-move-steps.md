@@ -7,8 +7,7 @@ description: Steps of plans/settings-workspace-move.md: SD1-SD2 the drawer insid
 - S under 400 product lines, M about 1,000; no schema; each step its tests and its memory topic. They are built in the order written: each waits for the one before it. A step near 1,000 lines may be cut (SW3a, SW3b), each part landing whole cards.
 
 - SD1 (M) The drawer, tried with Cron Jobs. Done (#8658): `ui/settings-modal-drawer.md`.
-- SW1 (M) The Workspace heading and its gate, with the Defaults card as the proof. The heading and three category keys in `includes/settings/registry.php`, each with `<key>.php`, `<key>.save.php`, `settings_<key>.php`, the menu `case` and a help row (`ui/settings-modal-architecture.md`).
-  - The gate (the pane's endpoint, the save path, the menu): a holder of the Workspace settings right opens these three and nothing else; a manager without it is refused them; every other category stays the manager's. Tests pin the three cases.
+- SW1 (M) The Workspace heading and its gate, with the Defaults card as the proof. Done (#8675, `ui/settings-workspace-gate.md`): three categories under a Workspace heading, opened by the Workspace settings right alone.
 - SD1b The owner's look on dev. Done (2026-11-11, #8677): "Yeniledim, açılıyor", no change asked (`workflow/decisions-made-panel-3.md`).
 - SD2 (S) The other card dialogs of the Site Settings dialog move into the drawer: the second dialog of `maintenance.php`, the Connect forms of `commerce_merchant.php` and `privacy_analytics.php`, every other `$pg_settings_modals[]` entry. The second-dialog path goes once nothing uses it.
 - SW2 (M) Team and working hours, the rest: Departments (add, edit, archive), Team members, Who is in the team, Holidays and calendar feeds (`ws_holidays_settings_card()`, its dialogs into the drawer).

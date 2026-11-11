@@ -2773,7 +2773,7 @@ function output_header($properties = false)
     $output_settings_modal  = '';
 
     if ($toolbar != true && is_array($user)) {
-        $output_settings_button = pg_settings_modal_button();
+        $output_settings_button = pg_settings_modal_button($user);
         $output_settings_modal  = pg_settings_modal_markup($user);
     }
 
@@ -4727,6 +4727,9 @@ function output_menu($properties = false)
         case 'workspace_flows.php':
         case 'workspace_mcp.php':
         case 'workspace_settings.php':
+        case 'settings_workspace_team.php':
+        case 'settings_workspace_assistants.php':
+        case 'settings_workspace_channels.php':
         case 'workspace_template.php':
         case 'workspace_calendar_feed.php':
         case 'workspace_mail.php':

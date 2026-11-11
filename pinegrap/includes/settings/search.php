@@ -275,7 +275,10 @@ function pg_settings_search_tool_words($label, $words)
  */
 function pg_settings_search_build($user, $liveform)
 {
-    $categories = pg_settings_categories();
+    // Only the categories this reader may open, and the System tools only
+    // for a manager: those screens are the managers'.
+    $reader     = pg_settings_reader($user);
+    $categories = pg_settings_categories_for($user, $reader);
     $labels = array();
 
     foreach ($categories as $key => $category) {
@@ -297,5 +300,5 @@ function pg_settings_search_build($user, $liveform)
 
     return array_merge(
         pg_settings_search_index($categories, $labels),
-        pg_settings_search_tool_rows(pg_settings_tool_groups($user), OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/'));
+        $reader['manager'] ? pg_settings_search_tool_rows(pg_settings_tool_groups($user), OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/') : array());
 }
