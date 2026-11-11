@@ -547,7 +547,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - waf/waf-self-rescue.md: CLI waf_unban.php lifts a ban from the server, Settings refuses a block entry covering your own address, the sign-in lock spares allow-listed addresses (#2187)
 - waf/waf-trusted-proxy-headers.md: Each Trusted Proxies entry names the header its proxy sets; new or edited entries without one read X-Forwarded-For only, stored ones keep every vendor header (#2750).
 - workflow/agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks
-- workflow/agent-channel-wake.md: How a session waits on the agent channel with tools/ws_wait.php (--from, --mention, --changed), the handles typed in it, and who it wakes
+- workflow/agent-channel-wake.md: How a session waits on the agent channel: on its request queue (every wake rule makes a request), tools/ws_wait.php for text and changes, the handles typed in it
 - workflow/architect.md: Decision questions (2026-10-27): an architect issue; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (erdal), records it
 - workflow/coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators
 - workflow/coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; no bug hunt and no bug issue as work
