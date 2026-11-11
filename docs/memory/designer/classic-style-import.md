@@ -17,7 +17,7 @@ description: A classic style's code read by the HTML importer (L1): placeholders
 - A classic document (one that had `<meta_tags>`, `<stylesheet>` or a placeholder, `$ctx->classic`) with a non-empty `<title>` keeps it as root `props.title`. `generate_style_code_from_tree()` and its JS twin in `generateHTML()` print it in `<title>`; `get_page_content.php` shows it only for a page without a title of its own, as the classic style did. The root's settings edit it (#3140), shown only when the root carries a title. A plain imported page keeps its title on the page only.
 
 ## Site paths?
-- `pg_di_is_absolute()` counts a reference starting with `{path}` or `{software_directory}` as absolute: kept as written, a head link or script becomes an external asset entry, no "not in the archive" warning. `get_page_content.php` fills both in on the assembled page.
+- `pg_di_is_absolute()` counts a reference starting with `{path}` or `{software_directory}` as absolute: kept as written, a head link or script becomes an external asset entry, no "not in the archive" warning. The row keeps them; the page fills them in a linked row's address before its address check and the canvas fills them too (`design-asset-path-placeholders.md`).
 - The framework filter still drops `{path}bootstrap.css` and `{path}jquery.min.js` unless `keep_framework` is set: the starting site's theme Bootstrap is not Bootstrap 5, so L2 sets it (`classic-style-to-design.md`).
 
 ## Tests?

@@ -1155,6 +1155,7 @@ var _SD_HTML_PREVIEW_TOKENS = { __comment_message_html: function () { return '<p
 var SW_COMMENTS_TOKEN_GROUPS = [{ label: 'Thread', tokens: [['__comments_intro', 'Intro'], ['__comments_label', 'Label']] },
                                 { label: 'Comment', tokens: [['__comment_status', 'Status'], ['__comment_message_html', 'Text']] }];
 var _sdCommentsTokenSet = null;
+var _SD_PATH_PROPS = ['src', 'href', 'poster', 'html'];
 function content(type, text, tok) { return { type: 'content', props: { contentType: type, text: text, _bindings: { text: tok } }, children: [] }; }
 var out = {};
 out.paragraph = _propsWithBindings(content('paragraph', 'Intro', '__comments_intro')).text;
@@ -1168,7 +1169,7 @@ process.stdout.write(JSON.stringify(out));
 JS;
 
 	$res = comments_widget_designer_test_node(array('_sdBindTextSlot', '_propsWithBindings', '_displayValueForBinding',
-		'_sdCommentsPageToken', '_sdIsHtmlPreviewToken', '_sdCommentsTextToken'), $script);
+		'_sdCommentsPageToken', '_sdIsHtmlPreviewToken', '_sdCommentsTextToken', '_sdPathProps', '_sdPathFill', '_sdSitePath'), $script);
 	if ($res === null) {
 		return;
 	}
