@@ -29,7 +29,7 @@
 
     // The drawer: who it goes to, the answer, Send. A draft fills the
     // answer; nothing leaves before the member presses Send.
-    function compose(message, view, h, draft) {
+    function replyForm(message, view, h, draft) {
         var t = h.t;
         var el = h.el;
         var node = h.offcanvas('ws-mail-reply', t('mail_reply'));
@@ -233,10 +233,21 @@
 
         open.addEventListener('click', function (event) {
             event.stopPropagation();
-            compose(message, view, h);
+            replyForm(message, view, h);
         });
 
         row.appendChild(open);
+
+        // Forward as e-mail: the New e-mail form filled with this mail.
+        if (message.mail_forward && h.cfg.mail_forward) {
+            var pass = h.button('btn btn-sm btn-outline theme-secondary py-0 ms-2', h.t('mail_fwd'), 'bi-envelope-arrow-up');
+
+            pass.addEventListener('click', function (event) {
+                event.stopPropagation();
+                forward(h, { kind: 'mail', ids: [message.mail_forward] }, { sent: function () { view.sync(); } });
+            });
+            row.appendChild(pass);
+        }
 
         if (message.mail_resend) {
             row.appendChild(resend(message, view, h));
@@ -335,7 +346,7 @@
 
         open.addEventListener('click', function (event) {
             event.stopPropagation();
-            compose({ mail_reply: offer.conversation_id, sender: { title: offer.to } }, view, h, offer.text);
+            replyForm({ mail_reply: offer.conversation_id, sender: { title: offer.to } }, view, h, offer.text);
         });
 
         row.appendChild(open);
@@ -453,7 +464,7 @@
             var answer = h.button('btn btn-sm btn-outline theme-primary', h.t('mail_reply'), 'bi-reply');
 
             answer.addEventListener('click', function () {
-                compose(message, view, h);
+                replyForm(message, view, h);
             });
             place.insertBefore(answer, place.firstChild);
 
@@ -526,7 +537,7 @@
         }
 
         root.addEventListener('click', function (event) {
-            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-row], [data-ws-mail-new]');
+            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-forward]');
 
             // A new tab or window keeps the link's own way.
             if (!target || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
@@ -538,6 +549,9 @@
             if (target.hasAttribute('data-ws-mail-new')) {
                 // The new conversation opens in the pane once sent.
                 compose(h, { sent: function (data) { open(data.conversation_id); } });
+            } else if (target.hasAttribute('data-ws-mail-forward')) {
+                // A mail of the pane forwarded; the new conversation opens.
+                forward(h, { kind: 'mail', ids: [parseInt(target.getAttribute('data-ws-mail-forward'), 10)] }, { sent: function (data) { open(data.conversation_id); } });
             } else if (target.hasAttribute('data-ws-mail-more')) {
                 more(target);
             } else if (target.hasAttribute('data-ws-mail-row')) {
@@ -574,6 +588,13 @@
     // through the mail queue (includes/workspace/mail_send.php). The unsent
     // form is kept in this browser, one slot per site and person, like the
     // composer's unsent text (workspace.js draftKey()).
+    //
+    // Forward as e-mail opens the same form filled from chosen channel
+    // messages or one mail (ws_mail_forward, includes/workspace/
+    // mail_forward.php): a subject, the original quoted under the person's
+    // words and its files carried. Send names the source again
+    // (forward_kind, forward_ids, forward_files) and the server reads it
+    // anew. An unsent forward has a slot of its own, kept for that source.
 
     var NEW_PREFIX = 'ws-mail-new:';
     var NEW_DAYS = 14;
@@ -584,7 +605,8 @@
     }
 
     // A kept form as { box, channel, to, cc, bcc, subject, text, at } while
-    // it is younger than NEW_DAYS and holds words; null otherwise.
+    // it is younger than NEW_DAYS and holds words; null otherwise. A kept
+    // forward also names its source.
     function newDraftFresh(stored, now) {
         var value = null;
 
@@ -600,6 +622,10 @@
 
         var out = { box: parseInt(value.box, 10) || 0, channel: parseInt(value.channel, 10) || 0, at: value.at };
         var words = false;
+
+        if (typeof value.source === 'string') {
+            out.source = value.source;
+        }
 
         NEW_FIELDS.forEach(function (field) {
             out[field] = (typeof value[field] === 'string') ? value[field] : '';
@@ -680,18 +706,46 @@
         });
     }
 
+    // source: { kind: 'messages' | 'mail', ids }. options.channel and
+    // options.sent as compose() takes them; the source's channel is the
+    // default.
+    function forward(h, source, options) {
+        options = options || {};
+
+        h.api('ws_mail_forward', { kind: source.kind, ids: source.ids.join(',') }).then(function (data) {
+            var fill = data.forward || null;
+
+            newForm(h, data.boxes || [], data.writer || '', {
+                channel: options.channel || (fill ? fill.channel_id : 0),
+                sent: options.sent,
+                fill: fill
+            });
+        }).catch(function (error) {
+            h.fail(error);
+        });
+    }
+
     function newForm(h, boxes, writer, options) {
         var t = h.t;
         var el = h.el;
-        var node = h.offcanvas('ws-mail-compose', t('mail_new'));
+        var fill = options.fill || null;
+        var title = fill ? t('mail_fwd') : t('mail_new');
+        var node = h.offcanvas('ws-mail-compose', title);
         var body = h.clear(node.querySelector('.drawer-body'));
         var footer = h.clear(node.querySelector('.drawer-footer'));
-        var key = newDraftKey(h.cfg.api_url, h.cfg.me);
+        // A forward keeps its unsent form apart, and only for its source.
+        var key = newDraftKey(h.cfg.api_url, h.cfg.me) + (fill ? '|fwd' : '');
         var kept = newDraftRead(key);
         var files = [];
+        // The source's files the forward carries; each can be taken out.
+        var carried = fill ? fill.files.slice() : [];
         var timer = 0;
 
-        node.querySelector('.drawer-title').textContent = t('mail_new');
+        if (fill && kept && (kept.source !== fill.source)) {
+            kept = null;
+        }
+
+        node.querySelector('.drawer-title').textContent = title;
 
         if (!boxes.length) {
             footer.classList.add('d-none');
@@ -712,10 +766,11 @@
         }
 
         // The mailbox: the one keeping its mail in the channel the form was
-        // opened from, else the kept form's, else the first.
-        var start = null;
+        // opened from, else the kept form's, else the first. A kept forward
+        // keeps the mailbox it was given.
+        var start = (fill && kept) ? boxOf(kept.box) : null;
 
-        if (options.channel) {
+        if (!start && options.channel) {
             start = boxes.filter(function (box) {
                 return box.channels.some(function (channel) { return channel.id === options.channel; });
             })[0] || null;
@@ -795,6 +850,19 @@
 
         function drawFiles() {
             h.clear(list);
+            carried.forEach(function (file, index) {
+                var row = el('li', 'd-flex align-items-center gap-2 small mt-2');
+                var drop = h.button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', t('mail_new_remove') + ': ' + file.name);
+
+                row.appendChild(h.icon('bi-paperclip'));
+                row.appendChild(el('span', 'text-truncate', file.name));
+                drop.addEventListener('click', function () {
+                    carried.splice(index, 1);
+                    drawFiles();
+                });
+                row.appendChild(drop);
+                list.appendChild(row);
+            });
             files.forEach(function (file, index) {
                 var row = el('li', 'd-flex align-items-center gap-2 small mt-2');
                 var drop = h.button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', t('mail_new_remove') + ': ' + file.name);
@@ -837,7 +905,7 @@
         }
 
         function current() {
-            return {
+            var value = {
                 box: parseInt(from.value, 10) || 0,
                 channel: parseInt(where.value, 10) || 0,
                 to: to.field.value,
@@ -847,6 +915,19 @@
                 text: text.value,
                 at: Date.now()
             };
+
+            if (fill) {
+                value.source = fill.source;
+            }
+
+            return value;
+        }
+
+        // The forward's subject and quote, the person's words to go above.
+        function filled() {
+            subject.field.value = fill.subject;
+            text.value = fill.text;
+            text.setSelectionRange(0, 0);
         }
 
         // Saved 400 ms after typing pauses; an empty form drops the slot.
@@ -870,10 +951,20 @@
             bcc.field.value = kept.bcc;
             subject.field.value = kept.subject;
             text.value = kept.text;
+        } else if (fill) {
+            filled();
         }
 
-        drawBox(options.channel || ((kept && (start.id === kept.box)) ? kept.channel : 0));
+        var keptChannel = (kept && (start.id === kept.box)) ? kept.channel : 0;
+
+        drawBox(fill ? (keptChannel || options.channel || 0) : (options.channel || keptChannel));
         setCopies(!!(cc.field.value || bcc.field.value));
+        drawFiles();
+
+        // The source's files that do not fit a mail are named, not carried.
+        if (fill && fill.left.length) {
+            form.insertBefore(el('div', 'alert theme-warning small mb-5', t('mail_fwd_left', fill.left.join(', '))), form.firstChild);
+        }
 
         from.addEventListener('change', function () {
             drawBox(0);
@@ -896,6 +987,12 @@
                 newDraftStore(key, null);
                 form.reset();
                 files = [];
+                carried = fill ? fill.files.slice() : [];
+
+                if (fill) {
+                    filled();
+                }
+
                 drawFiles();
                 drawBox(0);
                 setCopies(false);
@@ -921,10 +1018,18 @@
 
             send.disabled = true;
 
-            newPost(h, {
+            var post = {
                 box_id: fields.box, channel_id: fields.channel, to: fields.to, cc: fields.cc, bcc: fields.bcc,
                 subject: fields.subject, text: fields.text
-            }, files).then(function (data) {
+            };
+
+            if (fill) {
+                post.forward_kind = fill.kind;
+                post.forward_ids = fill.ids.join(',');
+                post.forward_files = carried.map(function (file) { return file.id; }).join(',');
+            }
+
+            newPost(h, post, files).then(function (data) {
                 window.clearTimeout(timer);
                 newDraftStore(key, null);
                 send.disabled = false;
@@ -951,6 +1056,7 @@
         plain: plain,
         screen: screen,
         compose: compose,
+        forward: forward,
         newDraftKey: newDraftKey,
         newDraftFresh: newDraftFresh
     };
