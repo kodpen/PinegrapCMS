@@ -70,7 +70,7 @@ description: Generated from the module field of the memory files: each includes/
 - `design_file_list_edit`: [[list-table-quick-edit-design-files]]
 - `design_previews`: [[design-live-pictures]], [[design-preview-address]], [[designer-home-pictures]]
 - `design_themes`: [[design-theme-product-looks]]
-- `designer`: [[bound-media-src]]
+- `designer`: [[bound-media-src]], [[design-asset-path-placeholders]]
 - `designer_fx`: [[designer-interactions]]
 - `designer_vocab`: [[designer-bootstrap-vocabulary]]
 - `ecommerce`: [[affiliate-code-on-order]], [[affiliate-link-offer-code]], [[barcode-stock-scan-checks]], [[card-data-manual-processing]], [[cart-default-quantity]], [[cart-posted-quantity]], [[contact-import-cells]], [[csv-import-headings]], [[currency-form-rules]], [[currency-names-display]], [[express-order-tax-address]], [[helper-fixes-2026-11]], [[import-decimal-cells]], [[marketplace-product-import-queue]], [[offer-gift-refusal]], [[order-cancel-commissions]], [[panel-image-alt]], [[product-bulk-duplicate-code]], [[product-mass-edit-checks]]

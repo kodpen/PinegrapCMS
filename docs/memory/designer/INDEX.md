@@ -93,6 +93,7 @@
 - custom-form-url-prefill.md: A designed form control filled from a named page-address parameter (props._cf.url_param, ?post=…): where it is stored, names and value rules, order of sources, option matching, what never takes it
 - custom-style.md: Per-element custom style: a User Styles rule keyed by a pgs- class, pg_custom_style.js, the Styles "This element" card and Attributes css row, Split, where it is off [decision: here]
 - data-binding-to-content.md: Bind data to content elements (span, h1-h6, p, a, img), never structural table tags; tooling, the text slot a binding fills inside markup, and the characters a bound field name keeps.
+- design-asset-path-placeholders.md: {path} and {software_directory} in a design: filled in a linked CSS/JS row before the page's address check and on the canvas; what is saved keeps them
 - design-asset-records.md: The design's CSS/JS asset rows (style_custom_css / style_custom_js JSON): module scripts, the per-page `pages` list and its tab:/key: references, where they are resolved, the Bootstrap Icons sheet.
 - design-framework.md: A visual design's framework (style.style_framework, bootstrap5 or custom): the pg_design_frameworks() registry, written once at creation, what a custom design does without, the new-design question.
 - design-live-pictures.md: Live pictures of templates and designs (the real page in a scaled, script-free frame), the preview address of a template page or tour, the tour page; what the browser side does [decision: decisions-made-product-35.md]
