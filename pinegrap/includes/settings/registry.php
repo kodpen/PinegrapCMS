@@ -460,18 +460,20 @@ function pg_settings_categories()
                 'pgset-ws-departments' => lang('Departments'),
                 'pgset-ws-people'      => lang('Team members'),
                 'pgset-ws-defaults'    => lang('Defaults'),
-                'pgset-ws-team-screen' => lang('On the Workspace Settings screen'),
+                'pgset-ws-calendar'    => lang('Working calendar'),
             ),
             'keywords' => array(
                 'pgset-ws-departments' => pg_settings_keywords(lang('workspace, department, departments, team lead, own department, channel, archive')),
                 'pgset-ws-people'      => pg_settings_keywords(lang('workspace, team, team members, job title, hours a day, working days, not in the team')),
                 'pgset-ws-defaults'    => pg_settings_keywords(lang('workspace, working day, working days, hours, week, estimate, planning board, default')),
-                'pgset-ws-team-screen' => pg_settings_keywords(lang('workspace, holiday, holidays, days off, working calendar, calendar feed')),
+                'pgset-ws-calendar'    => pg_settings_keywords(lang('workspace, holiday, holidays, days off, working calendar, calendar feed')),
             ),
             'lists' => array(
                 'ws_workdays' => 1,
                 'ws_people'   => 3,
                 'ws_dept'     => 3,
+                'ws_hol'      => 1,
+                'ws_feed'     => 1,
             ),
         ),
 
@@ -914,6 +916,7 @@ function pg_settings_legacy_anchors()
         'ws-departments'   => array('workspace_team', 'pgset-ws-departments'),
         'ws-people'        => array('workspace_team', 'pgset-ws-people'),
         'ws-defaults'      => array('workspace_team', 'pgset-ws-defaults'),
+        'ws-calendar'      => array('workspace_team', 'pgset-ws-calendar'),
     );
 }
 

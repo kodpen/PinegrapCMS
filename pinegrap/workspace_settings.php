@@ -160,14 +160,14 @@ if ($_POST) {
         case 'feed_add':
         case 'feed_sync':
         case 'feed_remove':
-            ws_holidays_settings_post($viewer, $action, $liveform);
+            ws_holidays_settings_post($viewer, $action, $liveform, ws_holidays_settings_input($action, $_POST));
             $anchor = '#ws-calendar';
             break;
 
         // A day of a calendar left out or counted again: back to the open
         // list of that calendar's days.
         case 'feed_day':
-            ws_holidays_settings_post($viewer, $action, $liveform);
+            ws_holidays_settings_post($viewer, $action, $liveform, ws_holidays_settings_input($action, $_POST));
             $anchor = '?feed=' . (int) ($_POST['feed_id'] ?? 0) . '#ws-feed-' . (int) ($_POST['feed_id'] ?? 0);
             break;
 

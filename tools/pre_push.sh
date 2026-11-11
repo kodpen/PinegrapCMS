@@ -270,7 +270,9 @@ check_commit() {
 		say "checking $short: memory index, commits (the branch changes documentation only)..."
 	fi
 
-	run_tool 'memory index' memory_index.php --check
+	# The long-line rule compares the memory files with where the branch left
+	# development; without a base the tool looks for it itself.
+	run_tool 'memory index' memory_index.php --check "--base=$base"
 
 	# Without a base the branch's own commits are unknown.
 	if [ -n "$base" ]; then

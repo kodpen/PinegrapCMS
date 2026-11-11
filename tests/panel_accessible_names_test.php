@@ -148,10 +148,12 @@ function test_panel_accessible_names_workspace_settings_hints()
 	// Bootstrap 6 copies a title into aria-label on a textless element, which
 	// on a labelled field replaces the label's name: the hint is form-text.
 	$source = panel_accessible_names_source('includes/workspace/workdays.php');
-	pg_assert_true((bool) preg_match('/<input[^>]*id="ws_hol_to"[^>]*>/', $source, $match), 'ws_hol_to found');
-	pg_assert_true(strpos($match[0], 'title=') === false, 'ws_hol_to has no title');
-	pg_assert_contains('aria-describedby="ws_hol_to_hint"', $match[0]);
-	pg_assert_contains("<div class=\"form-text\" id=\"ws_hol_to_hint\">' . h(lang('Leave it empty for one day.')) . '</div>", $source);
+	// The last day's field is drawn for both screens, its id from a prefix
+	// (ws_hol_ on Workspace Settings).
+	pg_assert_true((bool) preg_match('/<input[^>]*id="\' \. \$prefix \. \'to"[^>]*>/', $source, $match), 'the last day\'s field found');
+	pg_assert_true(strpos($match[0], 'title=') === false, 'the last day\'s field has no title');
+	pg_assert_contains("aria-describedby=\"' . \$prefix . 'to_hint\"", $match[0]);
+	pg_assert_contains("<div class=\"form-text\" id=\"' . \$prefix . 'to_hint\">' . h(lang('Leave it empty for one day.')) . '</div>", $source);
 
 	$source = panel_accessible_names_source('includes/workspace/mcp.php');
 	pg_assert_true(strpos($source, "title=\"' . h(lang('Disconnect')) . '\"") === false, 'the Disconnect button repeats its text in a title');

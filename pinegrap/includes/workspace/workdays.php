@@ -356,6 +356,36 @@ function ws_settings_defaults_save($day_hours, $workdays, $default_task_hours)
 // ── Days off kept by hand ───────────────────────────────────────────────
 
 /**
+ * A day off's name and days, checked: the last day is the first when left
+ * empty. Needs no database, so the Site Settings dialog asks it before it
+ * writes anything (ws_holidays_settings_refused()).
+ *
+ * @param array $data name, from, to
+ * @return array name, from, to, error ('' when accepted), field (the one refused)
+ */
+function ws_holiday_input($data)
+{
+    $text = function ($key) use ($data) {
+        return is_scalar($data[$key] ?? '') ? (string) ($data[$key] ?? '') : '';
+    };
+    $name = mb_substr(trim(preg_replace('/\s+/u', ' ', $text('name'))), 0, 255);
+    $from = ws_date_or_null($text('from'));
+    $to = ($text('to') !== '') ? ws_date_or_null($text('to')) : $from;
+    $out = array('name' => $name, 'from' => $from, 'to' => $to, 'error' => '', 'field' => '');
+    $missing = ($name === '') ? 'name' : (!$from ? 'from' : (!$to ? 'to' : ''));
+
+    if ($missing !== '') {
+        return array_merge($out, array('error' => lang('A holiday needs a name and a first day.'), 'field' => $missing));
+    }
+
+    if ($to < $from) {
+        return array_merge($out, array('error' => lang('The last day cannot be before the first day.'), 'field' => 'to'));
+    }
+
+    return $out;
+}
+
+/**
  * Adds a day off, or a run of them.
  *
  * @param array $viewer
@@ -364,17 +394,15 @@ function ws_settings_defaults_save($day_hours, $workdays, $default_task_hours)
  */
 function ws_holiday_add($viewer, $data)
 {
-    $name = mb_substr(trim(preg_replace('/\s+/u', ' ', (string) ($data['name'] ?? ''))), 0, 255);
-    $from = ws_date_or_null($data['from'] ?? '');
-    $to = ((string) ($data['to'] ?? '') !== '') ? ws_date_or_null($data['to']) : $from;
+    $checked = ws_holiday_input($data);
 
-    if (($name === '') || !$from || !$to) {
-        return array('ok' => false, 'error' => lang('A holiday needs a name and a first day.'), 'event_id' => 0);
+    if ($checked['error'] !== '') {
+        return array('ok' => false, 'error' => $checked['error'], 'event_id' => 0);
     }
 
-    if ($to < $from) {
-        return array('ok' => false, 'error' => lang('The last day cannot be before the first day.'), 'event_id' => 0);
-    }
+    $name = $checked['name'];
+    $from = $checked['from'];
+    $to = $checked['to'];
 
     $department_id = (int) ($data['department_id'] ?? 0);
 
@@ -471,6 +499,20 @@ function ws_holiday_feed_url($url)
 }
 
 /**
+ * A calendar address as it is stored, or '' when it is not one: https (or
+ * webcal) and at most 2,000 characters.
+ *
+ * @param mixed $url
+ * @return string
+ */
+function ws_holiday_feed_address($url)
+{
+    $url = ws_holiday_feed_url(is_scalar($url) ? $url : '');
+
+    return (preg_match('#^https://[^\s]+$#i', $url) && (strlen($url) <= 2000)) ? $url : '';
+}
+
+/**
  * Adds a calendar address and reads it.
  *
  * @param array $viewer
@@ -479,9 +521,9 @@ function ws_holiday_feed_url($url)
  */
 function ws_holiday_feed_add($viewer, $data)
 {
-    $url = ws_holiday_feed_url($data['url'] ?? '');
+    $url = ws_holiday_feed_address($data['url'] ?? '');
 
-    if (!preg_match('#^https://[^\s]+$#i', $url) || (strlen($url) > 2000)) {
+    if ($url === '') {
         return array('ok' => false, 'error' => lang('Write the address of an iCal calendar (https://…).'), 'feed_id' => 0, 'events' => 0);
     }
 
@@ -940,19 +982,32 @@ function ws_ical_events($text, $public_only = true)
 }
 
 // ── The settings card ──────────────────────────────────────────────────
+//
+// Drawn on two screens until the Workspace Settings screen goes: its own
+// card there, with a form per action, and the Working calendar card of the
+// Site Settings dialog (includes/settings/workspace_team.php), whose actions
+// are named submit buttons of the settings form. Both read the request
+// through ws_holidays_settings_input() and save through
+// ws_holidays_settings_post(), and both draw the parts below.
 
 /**
- * Handles the card's forms.
+ * Handles the card's actions.
  *
  * @param array    $viewer
  * @param string   $action holiday_add | holiday_remove | feed_add | feed_sync | feed_remove | feed_day
  * @param liveform $liveform
+ * @param array    $input  ws_holidays_settings_input()
+ * @param bool     $after_save true when the Site Settings pane was saved
+ *                         first: a refusal is then a warning, as the rest of
+ *                         the pane is stored by now
  * @return void
  */
-function ws_holidays_settings_post($viewer, $action, $liveform)
+function ws_holidays_settings_post($viewer, $action, $liveform, $input, $after_save = false)
 {
+    $refuse = $after_save ? 'add_warning' : 'add_error';
+
     if (!ws_workdays_ready()) {
-        $liveform->add_error(lang('The workspace is not installed yet: the database has to be updated first.'));
+        $liveform->$refuse(lang('The workspace is not installed yet: the database has to be updated first.'));
         return;
     }
 
@@ -961,24 +1016,24 @@ function ws_holidays_settings_post($viewer, $action, $liveform)
     switch ($action) {
         case 'holiday_add':
             $added = ws_holiday_add($viewer, array(
-                'name'          => $_POST['name'] ?? '',
-                'from'          => $_POST['from'] ?? '',
-                'to'            => $_POST['to'] ?? '',
-                'department_id' => $_POST['department_id'] ?? 0,
-                'yearly'        => !empty($_POST['yearly']),
+                'name'          => $input['name'] ?? '',
+                'from'          => $input['from'] ?? '',
+                'to'            => $input['to'] ?? '',
+                'department_id' => $input['department_id'] ?? 0,
+                'yearly'        => !empty($input['yearly']),
             ));
 
             if (!$added['ok']) {
-                $liveform->add_error($added['error']);
+                $liveform->$refuse($added['error']);
                 return;
             }
 
-            log_activity(lang(array('string' => 'workspace holiday ({var:1}) was added', 'vars' => trim((string) ($_POST['name'] ?? '')))), $username);
-            $liveform->add_notice(lang(array('string' => 'The holiday was added: {var:1}.', 'vars' => h(trim((string) ($_POST['name'] ?? ''))))));
+            log_activity(lang(array('string' => 'workspace holiday ({var:1}) was added', 'vars' => trim((string) ($input['name'] ?? '')))), $username);
+            $liveform->add_notice(lang(array('string' => 'The holiday was added: {var:1}.', 'vars' => h(trim((string) ($input['name'] ?? ''))))));
             return;
 
         case 'holiday_remove':
-            $event = db_item("SELECT * FROM ws_events WHERE id = '" . (int) ($_POST['event_id'] ?? 0) . "' AND kind = 'holiday' AND feed_id = 0");
+            $event = db_item("SELECT * FROM ws_events WHERE id = '" . (int) ($input['event_id'] ?? 0) . "' AND kind = 'holiday' AND feed_id = 0");
 
             if (is_array($event) && ws_event_delete($viewer, $event['id'])['ok']) {
                 log_activity(lang(array('string' => 'workspace holiday ({var:1}) was removed', 'vars' => $event['title'])), $username);
@@ -989,14 +1044,14 @@ function ws_holidays_settings_post($viewer, $action, $liveform)
 
         case 'feed_add':
             $added = ws_holiday_feed_add($viewer, array(
-                'url'           => $_POST['url'] ?? '',
-                'name'          => $_POST['name'] ?? '',
-                'department_id' => $_POST['department_id'] ?? 0,
-                'public_only'   => !empty($_POST['public_only']),
+                'url'           => $input['url'] ?? '',
+                'name'          => $input['name'] ?? '',
+                'department_id' => $input['department_id'] ?? 0,
+                'public_only'   => !empty($input['public_only']),
             ));
 
             if ($added['feed_id'] <= 0) {
-                $liveform->add_error($added['error']);
+                $liveform->$refuse($added['error']);
                 return;
             }
 
@@ -1011,37 +1066,37 @@ function ws_holidays_settings_post($viewer, $action, $liveform)
             return;
 
         case 'feed_sync':
-            if (!ws_holiday_feed_site_wide((int) ($_POST['feed_id'] ?? 0))) {
+            if (!ws_holiday_feed_site_wide((int) ($input['feed_id'] ?? 0))) {
                 return;
             }
 
-            $read = ws_holiday_feed_sync((int) ($_POST['feed_id'] ?? 0));
+            $read = ws_holiday_feed_sync((int) ($input['feed_id'] ?? 0));
 
             if ($read['ok']) {
                 $liveform->add_notice(lang(array('string' => 'The calendar was read: {var:1} days off.', 'vars' => $read['events'])));
             } else {
-                $liveform->add_error(lang(array('string' => 'The calendar could not be read: {var:1}', 'vars' => h($read['error']))));
+                $liveform->$refuse(lang(array('string' => 'The calendar could not be read: {var:1}', 'vars' => h($read['error']))));
             }
 
             return;
 
         case 'feed_remove':
-            if (!ws_holiday_feed_site_wide((int) ($_POST['feed_id'] ?? 0))) {
+            if (!ws_holiday_feed_site_wide((int) ($input['feed_id'] ?? 0))) {
                 return;
             }
 
-            ws_holiday_feed_remove((int) ($_POST['feed_id'] ?? 0));
+            ws_holiday_feed_remove((int) ($input['feed_id'] ?? 0));
             log_activity(lang('a public holiday calendar was removed from the workspace'), $username);
             $liveform->add_notice(lang('The calendar was removed with its days.'));
             return;
 
         // One day of a calendar left out, or counted again.
         case 'feed_day':
-            $skip = !empty($_POST['skip']);
-            $event = ws_holiday_feed_day_skip((int) ($_POST['event_id'] ?? 0), $skip);
+            $skip = !empty($input['skip']);
+            $event = ws_holiday_feed_day_skip((int) ($input['event_id'] ?? 0), $skip);
 
             if ($event === null) {
-                $liveform->add_error(lang('That day could not be found.'));
+                $liveform->$refuse(lang('That day could not be found.'));
                 return;
             }
 
@@ -1060,45 +1115,189 @@ function ws_holidays_settings_post($viewer, $action, $liveform)
 }
 
 /**
- * The working calendar card of the settings screen.
+ * The fields an action of the card reads, from a request in the field names
+ * of the Workspace Settings screen. A field posted as a list reads as empty.
  *
- * @param string $self_url
+ * @param string $action holiday_add | holiday_remove | feed_add | feed_sync | feed_remove | feed_day
+ * @param array  $source
+ * @return array
+ */
+function ws_holidays_settings_input($action, $source)
+{
+    $fields = array(
+        'holiday_add'    => array('name', 'from', 'to', 'department_id', 'yearly'),
+        'holiday_remove' => array('event_id'),
+        'feed_add'       => array('url', 'name', 'department_id', 'public_only'),
+        'feed_sync'      => array('feed_id'),
+        'feed_remove'    => array('feed_id'),
+        'feed_day'       => array('feed_id', 'event_id', 'skip'),
+    );
+    $source = is_array($source) ? $source : array();
+    $input = array();
+
+    foreach ($fields[(string) $action] ?? array() as $field) {
+        $value = $source[$field] ?? '';
+        $input[$field] = is_scalar($value) ? (string) $value : '';
+    }
+
+    return $input;
+}
+
+/**
+ * The name and value of the settings form's submit button for a row action
+ * (holiday_remove, feed_sync, feed_remove, feed_day): the record's id is the
+ * value, and a day of a calendar has one name to leave it out and one to
+ * count it again. ws_holidays_settings_request() reads them back.
+ *
+ * @param string $action
+ * @param array  $values the action's fields (ws_holidays_settings_input())
+ * @return array name, value
+ */
+function ws_holidays_settings_button($action, $values)
+{
+    switch ((string) $action) {
+        case 'holiday_remove':
+            return array('ws_holiday_remove', (int) ($values['event_id'] ?? 0));
+
+        case 'feed_sync':
+        case 'feed_remove':
+            return array('ws_' . $action, (int) ($values['feed_id'] ?? 0));
+
+        case 'feed_day':
+            return array(!empty($values['skip']) ? 'ws_feed_skip' : 'ws_feed_count', (int) ($values['event_id'] ?? 0));
+    }
+
+    return array('ws_' . $action, 1);
+}
+
+/**
+ * The name of an add form's field in the Site Settings dialog: a holiday's
+ * under ws_hol, a calendar address's under ws_feed, so the pane's names stay
+ * apart from every other card's.
+ *
+ * @param string $action holiday_add | feed_add
+ * @param string $field  the field's name on the Workspace Settings screen
  * @return string
  */
-function ws_holidays_settings_card($self_url)
+function ws_holidays_settings_field($action, $field)
 {
-    if (!ws_workdays_ready()) {
-        return '';
-    }
+    return (($action === 'feed_add') ? 'ws_feed' : 'ws_hol') . '[' . $field . ']';
+}
 
-    $departments = ws_departments();
-    $whom = function ($department_id) use ($departments) {
-        return ((int) $department_id > 0)
-            ? h($departments[(int) $department_id]['name'] ?? lang('Department'))
-            : h(lang('The whole company'));
+/**
+ * Which action of the card a Site Settings save asks for, read from the
+ * pressed button: array(action, its fields as ws_holidays_settings_input()
+ * gives them), or null for a plain save.
+ *
+ * @param array $post
+ * @return array|null
+ */
+function ws_holidays_settings_request($post)
+{
+    $post = is_array($post) ? $post : array();
+    $pressed = function ($name) use ($post) {
+        return (isset($post[$name]) && is_scalar($post[$name])) ? (int) $post[$name] : null;
     };
 
-    $options = '<option value="0">' . h(lang('The whole company')) . '</option>';
-
-    foreach ($departments as $department) {
-        $options .= '<option value="' . (int) $department['id'] . '">' . h($department['name']) . '</option>';
+    if ($pressed('ws_holiday_add') !== null) {
+        return array('holiday_add', ws_holidays_settings_input('holiday_add', $post['ws_hol'] ?? array()));
     }
 
-    $form = function ($action, $inner, $class = 'd-inline') use ($self_url) {
-        return '<form method="post" action="' . h($self_url) . '" class="' . $class . '">' . get_token_field()
-            . '<input type="hidden" name="ws_action" value="' . h($action) . '">' . $inner . '</form>';
-    };
-
-    // The next days off, from every source, so the effect can be seen.
-    $next = '';
-
-    foreach (ws_holidays_next(8) as $item) {
-        $next .= '<li class="d-flex gap-3"><span class="fg-secondary text-nowrap">' . h(ws_day_label($item[0])) . '.' . h(date('Y', strtotime($item[0]))) . '</span>'
-            . '<span class="ws-grow">' . h($item[1]) . '</span>'
-            . ((int) $item[2] > 0 ? '<span class="badge badge-subtle theme-secondary">' . $whom($item[2]) . '</span>' : '') . '</li>';
+    if ($pressed('ws_feed_add') !== null) {
+        return array('feed_add', ws_holidays_settings_input('feed_add', $post['ws_feed'] ?? array()));
     }
 
-    // The days off kept by hand.
+    if (($id = $pressed('ws_holiday_remove')) !== null) {
+        return array('holiday_remove', ws_holidays_settings_input('holiday_remove', array('event_id' => $id)));
+    }
+
+    foreach (array('feed_sync', 'feed_remove') as $action) {
+        if (($id = $pressed('ws_' . $action)) !== null) {
+            return array($action, ws_holidays_settings_input($action, array('feed_id' => $id)));
+        }
+    }
+
+    foreach (array('ws_feed_skip' => 1, 'ws_feed_count' => 0) as $name => $skip) {
+        if (($id = $pressed($name)) !== null) {
+            return array('feed_day', ws_holidays_settings_input('feed_day', array('event_id' => $id, 'skip' => $skip)));
+        }
+    }
+
+    return null;
+}
+
+/**
+ * The checks of an add form that need no database: field => sentence, the
+ * field in the Workspace Settings screen's names. ws_holiday_add() and
+ * ws_holiday_feed_add() ask the same, so a request that passes here is
+ * refused there only by the database.
+ *
+ * @param string $action
+ * @param array  $input ws_holidays_settings_input()
+ * @return array
+ */
+function ws_holidays_settings_refused($action, $input)
+{
+    if ($action === 'holiday_add') {
+        $checked = ws_holiday_input($input);
+
+        return ($checked['error'] !== '') ? array($checked['field'] => $checked['error']) : array();
+    }
+
+    if ($action === 'feed_add') {
+        return (ws_holiday_feed_address($input['url'] ?? '') === '') ? array('url' => lang('Write the address of an iCal calendar (https://…).')) : array();
+    }
+
+    return array();
+}
+
+/**
+ * Who a day off or a calendar address is for, as markup.
+ *
+ * @param array $departments ws_departments()
+ * @param int   $department_id 0 for the whole company
+ * @return string
+ */
+function ws_holidays_whom($departments, $department_id)
+{
+    return ((int) $department_id > 0)
+        ? h($departments[(int) $department_id]['name'] ?? lang('Department'))
+        : h(lang('The whole company'));
+}
+
+/**
+ * A row action's button. The caller's $button callback draws it: in a form
+ * of its own on the Workspace Settings screen, as a named submit button of
+ * the settings form in the dialog.
+ *
+ * @param callable $button function ($action, $values, $class, $inner, $label)
+ * @return string
+ */
+function ws_holidays_button($button, $action, $values, $class, $inner, $label = '')
+{
+    return (string) call_user_func($button, $action, $values, $class, $inner, $label);
+}
+
+/**
+ * The card's opening sentence.
+ *
+ * @return string markup
+ */
+function ws_holidays_settings_intro_html()
+{
+    return '<p class="small fg-secondary">' . h(lang('A repeating task\'s copy that falls on a weekend or a holiday moves to the next working day, and the task window warns about a date picked by hand. The working week is set under Defaults; the days off are kept here. A holiday for one department counts for that department\'s tasks.')) . '</p>';
+}
+
+/**
+ * The days off kept by hand, as rows of the Holidays table, each with its
+ * remove button.
+ *
+ * @param array    $departments
+ * @param callable $button see ws_holidays_button()
+ * @return string
+ */
+function ws_holidays_rows_html($departments, $button)
+{
     $rows = '';
 
     foreach (ws_holidays_kept() as $event) {
@@ -1112,8 +1311,8 @@ function ws_holidays_settings_card($self_url)
             <tr>
                 <td>' . h($event['title']) . '</td>
                 <td class="text-nowrap">' . h($when) . ((int) $event['yearly'] === 1 ? ' <span class="badge badge-subtle theme-secondary">' . h(lang('Every year')) . '</span>' : '') . '</td>
-                <td>' . $whom(((string) $event['scope'] === 'department') ? $event['department_id'] : 0) . '</td>
-                <td class="text-end">' . $form('holiday_remove', '<input type="hidden" name="event_id" value="' . (int) $event['id'] . '"><button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>') . '</td>
+                <td>' . ws_holidays_whom($departments, ((string) $event['scope'] === 'department') ? $event['department_id'] : 0) . '</td>
+                <td class="text-end">' . ws_holidays_button($button, 'holiday_remove', array('event_id' => (int) $event['id']), 'btn btn-sm btn-text theme-secondary', '<i class="bi bi-trash" aria-hidden="true"></i>', lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Remove'), $event['title'])))) . '</td>
             </tr>';
     }
 
@@ -1121,101 +1320,270 @@ function ws_holidays_settings_card($self_url)
         $rows = '<tr><td colspan="4" class="fg-secondary small">' . h(lang('No holidays kept by hand yet.')) . '</td></tr>';
     }
 
-    // The calendar addresses.
-    $feeds = '';
-
-    foreach (ws_holiday_feeds() as $feed) {
-        // Its days, each of which can be left out: a day the country keeps
-        // that this company works on.
-        $days = '';
-        $left_out = 0;
-
-        foreach (ws_holiday_feed_days($feed['id']) as $day) {
-            $off = ((int) $day['skipped'] === 1);
-            $first = date('d.m.Y', (int) $day['starts_at']);
-            $last = date('d.m.Y', (int) $day['ends_at']);
-            $when = ((int) $day['yearly'] === 1)
-                ? date('d.m', (int) $day['starts_at']) . (($first !== $last) ? '–' . date('d.m', (int) $day['ends_at']) : '') . ' <span class="badge badge-subtle theme-secondary">' . h(lang('Every year')) . '</span>'
-                : h($first . (($first !== $last) ? '–' . $last : ''));
-
-            $left_out += $off ? 1 : 0;
-            $days .= '
-                <li class="ws-feed-day' . ($off ? ' ws-feed-day-off' : '') . '">
-                    <span class="fg-secondary text-nowrap">' . $when . '</span>
-                    <span class="ws-grow">' . h($day['title']) . ($off ? ' <span class="badge theme-secondary">' . h(lang('Not counted')) . '</span>' : '') . '</span>
-                    ' . (ws_holiday_skip_ready() ? $form('feed_day', '<input type="hidden" name="feed_id" value="' . (int) $feed['id'] . '"><input type="hidden" name="event_id" value="' . (int) $day['id'] . '"><input type="hidden" name="skip" value="' . ($off ? 0 : 1) . '"><button type="submit" class="btn btn-sm btn-link p-0">' . h($off ? lang('Count again') : lang('Do not count')) . '</button>') : '') . '
-                </li>';
-        }
-
-        $state = ((string) $feed['sync_error'] !== '')
-            ? '<span class="fg-danger">' . h($feed['sync_error']) . '</span>'
-            : h(lang(array('string' => '{var:1} days off', 'vars' => (int) $feed['events'])))
-                . ($left_out > 0 ? ' · ' . h(lang(array('string' => '{var:1} not counted', 'vars' => $left_out))) : '')
-                . ((int) $feed['synced_at'] > 0 ? ' · ' . h(lang(array('string' => 'read {var:1}', 'vars' => date('d.m.Y H:i', (int) $feed['synced_at'])))) : '');
-
-        $feeds .= '
-            <div class="ws-feed-row">
-                <i class="bi bi-calendar2-week" aria-hidden="true"></i>
-                <div class="ws-grow">
-                    <div class="fw-semibold">' . h($feed['name']) . ' <span class="badge badge-subtle theme-secondary">' . $whom($feed['department_id']) . '</span></div>
-                    <div class="small fg-secondary text-break">' . h(parse_url((string) $feed['url'], PHP_URL_HOST)) . ' · ' . $state . '</div>
-                </div>
-                ' . $form('feed_sync', '<input type="hidden" name="feed_id" value="' . (int) $feed['id'] . '"><button type="submit" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Read now')) . '</button>') . '
-                ' . $form('feed_remove', '<input type="hidden" name="feed_id" value="' . (int) $feed['id'] . '"><button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>') . '
-            </div>';
-
-        if ($days !== '') {
-            $feeds .= '
-            <details class="ws-feed-days" id="ws-feed-' . (int) $feed['id'] . '"' . ((!empty($_GET['feed']) && ((int) $_GET['feed'] === (int) $feed['id'])) ? ' open' : '') . '>
-                <summary class="small">' . h(lang(array('string' => 'Days from this calendar ({var:1})', 'vars' => substr_count($days, '<li')))) . '</summary>
-                <p class="small fg-secondary my-1">' . h(lang('A day that is not a day off at this company can be left out; reading the calendar again keeps the choice.')) . '</p>
-                <ul class="list-unstyled small mb-0">' . $days . '</ul>
-            </details>';
-        }
-    }
-
-    $example = 'https://calendar.google.com/calendar/ical/en.turkish%23holiday%40group.v.calendar.google.com/public/basic.ics';
-
     return '
-        <div class="card mt-7" id="ws-calendar">
-            <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-calendar-x me-1" aria-hidden="true"></i>' . h(lang('Working calendar')) . '</h2></div>
-            <div class="card-body">
-                <p class="small fg-secondary">' . h(lang('A repeating task\'s copy that falls on a weekend or a holiday moves to the next working day, and the task window warns about a date picked by hand. The working week is set under Defaults; the days off are kept here. A holiday for one department counts for that department\'s tasks.')) . '</p>
-
-                <div class="row g-7">
-                    <div class="lg:col-7">
-                        <h3 class="h6">' . h(lang('Holidays')) . '</h3>
                         <div class="table-responsive">
                             <table class="table table-sm align-middle mb-3">
                                 <thead><tr><th>' . h(lang('Holiday')) . '</th><th>' . h(lang('Date')) . '</th><th>' . h(lang('Who it is for')) . '</th><th></th></tr></thead>
                                 <tbody>' . $rows . '</tbody>
                             </table>
+                        </div>';
+}
+
+/**
+ * The next days off, from every source, so the effect can be seen.
+ *
+ * @param array $departments
+ * @return string
+ */
+function ws_holidays_next_html($departments)
+{
+    $next = '';
+
+    foreach (ws_holidays_next(8) as $item) {
+        $next .= '<li class="d-flex gap-3"><span class="fg-secondary text-nowrap">' . h(ws_day_label($item[0])) . '.' . h(date('Y', strtotime($item[0]))) . '</span>'
+            . '<span class="ws-grow">' . h($item[1]) . '</span>'
+            . ((int) $item[2] > 0 ? '<span class="badge badge-subtle theme-secondary">' . ws_holidays_whom($departments, $item[2]) . '</span>' : '') . '</li>';
+    }
+
+    return '<h3 class="h6">' . h(lang('Next days off')) . '</h3>'
+        . ($next !== '' ? '<ul class="list-unstyled small mb-0 ws-next-off">' . $next . '</ul>' : '<div class="small fg-secondary">' . h(lang('No days off in the coming months.')) . '</div>');
+}
+
+/**
+ * A calendar address's days, each of which can be left out: a day the
+ * country keeps that this company works on.
+ *
+ * @param array    $feed
+ * @param callable $button see ws_holidays_button()
+ * @return array html (list items), count, left_out
+ */
+function ws_holiday_feed_days_html($feed, $button)
+{
+    $days = '';
+    $count = 0;
+    $left_out = 0;
+
+    foreach (ws_holiday_feed_days($feed['id']) as $day) {
+        $off = ((int) $day['skipped'] === 1);
+        $first = date('d.m.Y', (int) $day['starts_at']);
+        $last = date('d.m.Y', (int) $day['ends_at']);
+        $when = ((int) $day['yearly'] === 1)
+            ? date('d.m', (int) $day['starts_at']) . (($first !== $last) ? '–' . date('d.m', (int) $day['ends_at']) : '') . ' <span class="badge badge-subtle theme-secondary">' . h(lang('Every year')) . '</span>'
+            : h($first . (($first !== $last) ? '–' . $last : ''));
+
+        $count++;
+        $left_out += $off ? 1 : 0;
+        $days .= '
+                <li class="ws-feed-day' . ($off ? ' ws-feed-day-off' : '') . '">
+                    <span class="fg-secondary text-nowrap">' . $when . '</span>
+                    <span class="ws-grow">' . h($day['title']) . ($off ? ' <span class="badge theme-secondary">' . h(lang('Not counted')) . '</span>' : '') . '</span>
+                    ' . (ws_holiday_skip_ready() ? ws_holidays_button($button, 'feed_day', array('feed_id' => (int) $feed['id'], 'event_id' => (int) $day['id'], 'skip' => $off ? 0 : 1), 'btn btn-sm btn-link p-0', h($off ? lang('Count again') : lang('Do not count'))) : '') . '
+                </li>';
+    }
+
+    return array('html' => $days, 'count' => $count, 'left_out' => $left_out);
+}
+
+/**
+ * A calendar address's row: its name, whom it is for, its state, Read now
+ * and Remove, and what the caller puts after the name (the dialog's Days
+ * button).
+ *
+ * @param array    $feed
+ * @param array    $departments
+ * @param int      $left_out days of it not counted
+ * @param callable $button see ws_holidays_button()
+ * @param string   $extra markup before Read now
+ * @return string
+ */
+function ws_holiday_feed_row_html($feed, $departments, $left_out, $button, $extra = '')
+{
+    $state = ((string) $feed['sync_error'] !== '')
+        ? '<span class="fg-danger">' . h($feed['sync_error']) . '</span>'
+        : h(lang(array('string' => '{var:1} days off', 'vars' => (int) $feed['events'])))
+            . ($left_out > 0 ? ' · ' . h(lang(array('string' => '{var:1} not counted', 'vars' => $left_out))) : '')
+            . ((int) $feed['synced_at'] > 0 ? ' · ' . h(lang(array('string' => 'read {var:1}', 'vars' => date('d.m.Y H:i', (int) $feed['synced_at'])))) : '');
+
+    return '
+            <div class="ws-feed-row">
+                <i class="bi bi-calendar2-week" aria-hidden="true"></i>
+                <div class="ws-grow">
+                    <div class="fw-semibold">' . h($feed['name']) . ' <span class="badge badge-subtle theme-secondary">' . ws_holidays_whom($departments, $feed['department_id']) . '</span></div>
+                    <div class="small fg-secondary text-break">' . h(parse_url((string) $feed['url'], PHP_URL_HOST)) . ' · ' . $state . '</div>
+                </div>
+                ' . $extra . '
+                ' . ws_holidays_button($button, 'feed_sync', array('feed_id' => (int) $feed['id']), 'btn btn-sm btn-text theme-secondary', '<i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Read now'))) . '
+                ' . ws_holidays_button($button, 'feed_remove', array('feed_id' => (int) $feed['id']), 'btn btn-sm btn-text theme-secondary', '<i class="bi bi-trash" aria-hidden="true"></i>', lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Remove'), $feed['name'])))) . '
+            </div>';
+}
+
+/**
+ * The heading and the help of the calendar addresses.
+ *
+ * @return string
+ */
+function ws_holiday_feeds_intro_html()
+{
+    $example = 'https://calendar.google.com/calendar/ical/en.turkish%23holiday%40group.v.calendar.google.com/public/basic.ics';
+
+    return '<h3 class="h6">' . h(lang('Public holidays from a calendar address')) . '</h3>
+                <p class="small fg-secondary mb-3">' . h(lang('Paste the iCal address of a public holiday calendar: its days are read now and again every day. Google Calendar publishes one for every country, for example:')) . '
+                    <code class="d-block text-break my-1">' . h($example) . '</code>'
+                    . h(lang('Write the country in place of "turkish" (usa, uk, german, french…).')) . '</p>';
+}
+
+/**
+ * The department choices of the add forms.
+ *
+ * @param array $departments
+ * @return string
+ */
+function ws_holidays_department_options($departments)
+{
+    $options = '<option value="0">' . h(lang('The whole company')) . '</option>';
+
+    foreach ($departments as $department) {
+        $options .= '<option value="' . (int) $department['id'] . '">' . h($department['name']) . '</option>';
+    }
+
+    return $options;
+}
+
+/**
+ * The fields of an add form. The Workspace Settings screen names them as
+ * posted there and marks the needed ones required; the dialog names them
+ * through ws_holidays_settings_field(), joins them to the settings form and
+ * checks them on the server, since a required field in a drawer would block
+ * the pane's Save.
+ *
+ * @param string      $action  holiday_add | feed_add
+ * @param array       $departments
+ * @param callable    $name    function ($field) the field's name
+ * @param string      $prefix  the ids' prefix
+ * @param string|null $form    the settings form's id, null on the old screen
+ * @return string
+ */
+function ws_holidays_add_fields_html($action, $departments, $name, $prefix, $form = null)
+{
+    $join = ($form !== null) ? ' form="' . h($form) . '"' : '';
+    $required = ($form === null) ? ' required' : '';
+    $options = ws_holidays_department_options($departments);
+    $field = function ($field) use ($name) {
+        return h((string) call_user_func($name, $field));
+    };
+
+    if ($action === 'feed_add') {
+        return '
+                    <div class="row g-3' . (($form === null) ? ' align-items-end mt-1' : '') . '">
+                        <div class="' . (($form === null) ? 'lg:col-6' : 'col-12') . '">
+                            <label class="form-label small" for="' . $prefix . 'url">' . h(lang('Calendar address (iCal)')) . '</label>
+                            <input class="form-control form-control-sm" type="url" name="' . $field('url') . '" id="' . $prefix . 'url"' . $join . $required . ' placeholder="https://…/basic.ics">
                         </div>
-                        ' . $form('holiday_add', '
-                            <div class="row g-3 align-items-end">
+                        <div class="col-6' . (($form === null) ? ' lg:col-3' : '') . '">
+                            <label class="form-label small" for="' . $prefix . 'name">' . h(lang('Name')) . '</label>
+                            <input class="form-control form-control-sm" type="text" name="' . $field('name') . '" id="' . $prefix . 'name"' . $join . ' maxlength="120">
+                        </div>
+                        <div class="col-6' . (($form === null) ? ' lg:col-3' : '') . '">
+                            <label class="form-label small" for="' . $prefix . 'for">' . h(lang('Who it is for')) . '</label>
+                            <select class="form-control form-control-sm" name="' . $field('department_id') . '" id="' . $prefix . 'for"' . $join . '>' . $options . '</select>
+                        </div>
+                        <div class="' . (($form === null) ? 'sm:col-8' : 'col-12') . '">
+                            <div class="form-field mb-0">
+                                <input class="check" type="checkbox" name="' . $field('public_only') . '" value="1" id="' . $prefix . 'public"' . $join . ' checked>
+                                <label class="small" for="' . $prefix . 'public">' . h(lang('Only the public holidays (observances and half days are left out)')) . '</label>
+                            </div>
+                        </div>';
+    }
+
+    return '
+                            <div class="row g-3' . (($form === null) ? ' align-items-end' : '') . '">
                                 <div class="sm:col-12">
-                                    <label class="form-label small" for="ws_hol_name">' . h(lang('Add a holiday')) . '</label>
-                                    <input class="form-control form-control-sm" type="text" name="name" id="ws_hol_name" maxlength="255" required placeholder="' . h(lang('Name')) . '">
+                                    <label class="form-label small" for="' . $prefix . 'name">' . h(($form === null) ? lang('Add a holiday') : lang('Name')) . '</label>
+                                    <input class="form-control form-control-sm" type="text" name="' . $field('name') . '" id="' . $prefix . 'name"' . $join . ' maxlength="255"' . $required . (($form === null) ? ' placeholder="' . h(lang('Name')) . '"' : '') . '>
                                 </div>
-                                <div class="col-6 sm:col-4">
-                                    <label class="form-label small" for="ws_hol_from">' . h(lang('First day')) . '</label>
-                                    <input class="form-control form-control-sm" type="date" data-pg-date name="from" id="ws_hol_from" required>
+                                <div class="col-6' . (($form === null) ? ' sm:col-4' : '') . '">
+                                    <label class="form-label small" for="' . $prefix . 'from">' . h(lang('First day')) . '</label>
+                                    <input class="form-control form-control-sm" type="date" data-pg-date name="' . $field('from') . '" id="' . $prefix . 'from"' . $join . $required . '>
                                 </div>
-                                <div class="col-6 sm:col-4">
-                                    <label class="form-label small" for="ws_hol_to">' . h(lang('Last day')) . '</label>
-                                    <input class="form-control form-control-sm" type="date" data-pg-date name="to" id="ws_hol_to" aria-describedby="ws_hol_to_hint">
-                                    <div class="form-text" id="ws_hol_to_hint">' . h(lang('Leave it empty for one day.')) . '</div>
+                                <div class="col-6' . (($form === null) ? ' sm:col-4' : '') . '">
+                                    <label class="form-label small" for="' . $prefix . 'to">' . h(lang('Last day')) . '</label>
+                                    <input class="form-control form-control-sm" type="date" data-pg-date name="' . $field('to') . '" id="' . $prefix . 'to"' . $join . ' aria-describedby="' . $prefix . 'to_hint">
+                                    <div class="form-text" id="' . $prefix . 'to_hint">' . h(lang('Leave it empty for one day.')) . '</div>
                                 </div>
-                                <div class="sm:col-4">
-                                    <label class="form-label small" for="ws_hol_for">' . h(lang('Who it is for')) . '</label>
-                                    <select class="form-control form-control-sm" name="department_id" id="ws_hol_for">' . $options . '</select>
+                                <div class="' . (($form === null) ? 'sm:col-4' : 'col-12') . '">
+                                    <label class="form-label small" for="' . $prefix . 'for">' . h(lang('Who it is for')) . '</label>
+                                    <select class="form-control form-control-sm" name="' . $field('department_id') . '" id="' . $prefix . 'for"' . $join . '>' . $options . '</select>
                                 </div>
-                                <div class="sm:col-8">
+                                <div class="' . (($form === null) ? 'sm:col-8' : 'col-12') . '">
                                     <div class="form-field mb-0">
-                                        <input class="check" type="checkbox" name="yearly" value="1" id="ws_hol_yearly">
-                                        <label class="small" for="ws_hol_yearly">' . h(lang('Every year on the same day')) . '</label>
+                                        <input class="check" type="checkbox" name="' . $field('yearly') . '" value="1" id="' . $prefix . 'yearly"' . $join . '>
+                                        <label class="small" for="' . $prefix . 'yearly">' . h(lang('Every year on the same day')) . '</label>
                                     </div>
-                                </div>
+                                </div>';
+}
+
+/**
+ * The working calendar card of the Workspace Settings screen.
+ *
+ * @param string $self_url
+ * @return string
+ */
+function ws_holidays_settings_card($self_url)
+{
+    if (!ws_workdays_ready()) {
+        return '';
+    }
+
+    $departments = ws_departments();
+
+    $form = function ($action, $inner, $class = 'd-inline') use ($self_url) {
+        return '<form method="post" action="' . h($self_url) . '" class="' . $class . '">' . get_token_field()
+            . '<input type="hidden" name="ws_action" value="' . h($action) . '">' . $inner . '</form>';
+    };
+
+    // A row action posts its own form with the action's fields hidden.
+    $button = function ($action, $values, $class, $inner, $label) use ($form) {
+        $hidden = '';
+
+        foreach ($values as $field => $value) {
+            $hidden .= '<input type="hidden" name="' . h($field) . '" value="' . h($value) . '">';
+        }
+
+        return $form($action, $hidden . '<button type="submit" class="' . h($class) . '"' . (($label !== '') ? ' title="' . h(lang('Remove')) . '" aria-label="' . h($label) . '"' : '') . '>' . $inner . '</button>');
+    };
+
+    $named = function ($field) {
+        return $field;
+    };
+
+    // The calendar addresses, each with the list of its days.
+    $feeds = '';
+
+    foreach (ws_holiday_feeds() as $feed) {
+        $days = ws_holiday_feed_days_html($feed, $button);
+        $feeds .= ws_holiday_feed_row_html($feed, $departments, $days['left_out'], $button);
+
+        if ($days['count'] > 0) {
+            $feeds .= '
+            <details class="ws-feed-days" id="ws-feed-' . (int) $feed['id'] . '"' . ((!empty($_GET['feed']) && ((int) $_GET['feed'] === (int) $feed['id'])) ? ' open' : '') . '>
+                <summary class="small">' . h(lang(array('string' => 'Days from this calendar ({var:1})', 'vars' => $days['count']))) . '</summary>
+                <p class="small fg-secondary my-1">' . h(lang('A day that is not a day off at this company can be left out; reading the calendar again keeps the choice.')) . '</p>
+                <ul class="list-unstyled small mb-0">' . $days['html'] . '</ul>
+            </details>';
+        }
+    }
+
+    return '
+        <div class="card mt-7" id="ws-calendar">
+            <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-calendar-x me-1" aria-hidden="true"></i>' . h(lang('Working calendar')) . '</h2></div>
+            <div class="card-body">
+                ' . ws_holidays_settings_intro_html() . '
+
+                <div class="row g-7">
+                    <div class="lg:col-7">
+                        <h3 class="h6">' . h(lang('Holidays')) . '</h3>
+                        ' . ws_holidays_rows_html($departments, $button) . '
+                        ' . $form('holiday_add', ws_holidays_add_fields_html('holiday_add', $departments, $named, 'ws_hol_') . '
                                 <div class="sm:col-4 sm:text-end">
                                     <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add')) . '</button>
                                 </div>
@@ -1223,38 +1591,15 @@ function ws_holidays_settings_card($self_url)
                     </div>
 
                     <div class="lg:col-5">
-                        <h3 class="h6">' . h(lang('Next days off')) . '</h3>
-                        ' . ($next !== '' ? '<ul class="list-unstyled small mb-0 ws-next-off">' . $next . '</ul>' : '<div class="small fg-secondary">' . h(lang('No days off in the coming months.')) . '</div>') . '
+                        ' . ws_holidays_next_html($departments) . '
                     </div>
                 </div>
 
                 <hr>
 
-                <h3 class="h6">' . h(lang('Public holidays from a calendar address')) . '</h3>
-                <p class="small fg-secondary mb-3">' . h(lang('Paste the iCal address of a public holiday calendar: its days are read now and again every day. Google Calendar publishes one for every country, for example:')) . '
-                    <code class="d-block text-break my-1">' . h($example) . '</code>'
-                    . h(lang('Write the country in place of "turkish" (usa, uk, german, french…).')) . '</p>
+                ' . ws_holiday_feeds_intro_html() . '
                 ' . $feeds . '
-                ' . $form('feed_add', '
-                    <div class="row g-3 align-items-end mt-1">
-                        <div class="lg:col-6">
-                            <label class="form-label small" for="ws_feed_url">' . h(lang('Calendar address (iCal)')) . '</label>
-                            <input class="form-control form-control-sm" type="url" name="url" id="ws_feed_url" required placeholder="https://…/basic.ics">
-                        </div>
-                        <div class="col-6 lg:col-3">
-                            <label class="form-label small" for="ws_feed_name">' . h(lang('Name')) . '</label>
-                            <input class="form-control form-control-sm" type="text" name="name" id="ws_feed_name" maxlength="120">
-                        </div>
-                        <div class="col-6 lg:col-3">
-                            <label class="form-label small" for="ws_feed_for">' . h(lang('Who it is for')) . '</label>
-                            <select class="form-control form-control-sm" name="department_id" id="ws_feed_for">' . $options . '</select>
-                        </div>
-                        <div class="sm:col-8">
-                            <div class="form-field mb-0">
-                                <input class="check" type="checkbox" name="public_only" value="1" id="ws_feed_public" checked>
-                                <label class="small" for="ws_feed_public">' . h(lang('Only the public holidays (observances and half days are left out)')) . '</label>
-                            </div>
-                        </div>
+                ' . $form('feed_add', ws_holidays_add_fields_html('feed_add', $departments, $named, 'ws_feed_') . '
                         <div class="sm:col-4 sm:text-end">
                             <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . h(lang('Add and read')) . '</button>
                         </div>

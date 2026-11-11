@@ -5,8 +5,9 @@
  * Site Settings - Team and working hours: the departments (each created or
  * changed in a drawer), the team members' rows (job title, working day, taken
  * out of the team), the Workspace defaults (the hours of a working day, the
- * working week, the hours a task with no estimate counts as), and a card
- * linking the working calendar still kept on the Workspace Settings screen.
+ * working week, the hours a task with no estimate counts as), and the
+ * working calendar (days off kept by hand, public holiday calendar
+ * addresses and the days read from them).
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -113,7 +114,7 @@ $pg_settings_cards[] = '
                     <div class="col-12">
                         <div class="form-label">' . h(lang('Working days')) . '</div>
                         ' . ws_settings_days_html('ws_workdays', (int) WS_WORKDAYS, 'ws_default_day') . '
-                        <div class="form-text"><a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_settings.php#ws-calendar') . '">' . h(lang('The days off are kept in the Working calendar card.')) . '</a></div>
+                        <div class="form-text"><a href="#pgset-ws-calendar">' . h(lang('The days off are kept in the Working calendar card.')) . '</a></div>
                     </div>
                     <div class="col-12">
                         <label class="form-label" for="ws_default_task_hours">' . h(lang('A task with no estimate counts as (hours)')) . '</label>
@@ -125,7 +126,73 @@ $pg_settings_cards[] = '
         </div>
     </div>';
 
-// ── The cards still on Workspace Settings ──
-$pg_settings_cards[] = ws_settings_screen_links_card('pgset-ws-team-screen', array(
-    array('ws-calendar', 'bi-calendar-x', lang('Working calendar')),
-));
+// ── Working calendar ──
+// Its row actions are named submit buttons of the settings form, run after
+// the pane is saved; adding a holiday or a calendar address and a calendar's
+// days open in drawers, whose fields join the form by its id.
+if (ws_workdays_ready()) {
+    $ws_button = function ($action, $values, $class, $inner, $label) use ($ws_form) {
+        list($name, $value) = ws_holidays_settings_button($action, $values);
+
+        return '<button type="submit" name="' . h($name) . '" value="' . (int) $value . '" form="' . h($ws_form) . '" class="' . h($class) . '"'
+            . (($label !== '') ? ' title="' . h(lang('Remove')) . '" aria-label="' . h($label) . '"' : '') . '>' . $inner . '</button>';
+    };
+    $ws_drawer_button = function ($id, $class, $inner, $label = '') {
+        return '<button type="button" class="' . $class . '" data-bs-toggle="drawer" data-bs-target="#' . $id . '" aria-controls="' . $id . '"'
+            . (($label !== '') ? ' aria-label="' . h($label) . '"' : '') . '>' . $inner . '</button>';
+    };
+    $ws_calendar_departments = ws_departments();
+    $ws_feeds = '';
+
+    foreach (ws_holiday_feeds() as $ws_feed) {
+        $ws_id = (int) $ws_feed['id'];
+        $ws_days = ws_holiday_feed_days_html($ws_feed, $ws_button);
+        $ws_feeds .= ws_holiday_feed_row_html($ws_feed, $ws_calendar_departments, $ws_days['left_out'], $ws_button, ($ws_days['count'] > 0)
+            ? $ws_drawer_button('pgset-ws-feed-' . $ws_id, 'btn btn-sm btn-text theme-secondary', '<i class="bi bi-list-ul me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Days ({var:1})', 'vars' => $ws_days['count']))), lang(array('string' => 'Days from this calendar ({var:1})', 'vars' => $ws_days['count'])))
+            : '');
+
+        if ($ws_days['count'] > 0) {
+            $pg_settings_modals[] = pg_settings_drawer('pgset-ws-feed-' . $ws_id, h($ws_feed['name']), '
+            <p class="small fg-secondary">' . h(lang('A day that is not a day off at this company can be left out; reading the calendar again keeps the choice.')) . '</p>
+            <ul class="list-unstyled small mb-0">' . $ws_days['html'] . '</ul>', !empty($pg_settings_in_dialog));
+        }
+    }
+
+    $ws_name = function ($action) {
+        return function ($field) use ($action) {
+            return ws_holidays_settings_field($action, $field);
+        };
+    };
+
+    $pg_settings_modals[] = pg_settings_drawer('pgset-ws-holiday-new', h(lang('Add a holiday')), ws_holidays_add_fields_html('holiday_add', $ws_calendar_departments, $ws_name('holiday_add'), 'pgset_ws_hol_', $ws_form) . '
+                            </div>
+            <button type="submit" name="ws_holiday_add" value="1" form="' . h($ws_form) . '" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 mt-5"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add')) . '</button>', !empty($pg_settings_in_dialog));
+
+    $pg_settings_modals[] = pg_settings_drawer('pgset-ws-feed-new', h(lang('Add a calendar address')), ws_holidays_add_fields_html('feed_add', $ws_calendar_departments, $ws_name('feed_add'), 'pgset_ws_feed_', $ws_form) . '
+                    </div>
+            <button type="submit" name="ws_feed_add" value="1" form="' . h($ws_form) . '" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 mt-5"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . h(lang('Add and read')) . '</button>', !empty($pg_settings_in_dialog));
+
+    $pg_settings_cards[] = '
+    <div id="pgset-ws-calendar" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . h(lang('Working calendar')) . '
+            </div>
+            <div class="card-body">
+                ' . ws_holidays_settings_intro_html() . '
+                <div class="d-flex align-items-center gap-3 mb-2">
+                    <h3 class="h6 mb-0 ws-grow">' . h(lang('Holidays')) . '</h3>
+                    ' . $ws_drawer_button('pgset-ws-holiday-new', 'btn btn-sm btn-outline theme-primary rounded-pill', '<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add a holiday'))) . '
+                </div>
+                ' . ws_holidays_rows_html($ws_calendar_departments, $ws_button) . '
+                ' . ws_holidays_next_html($ws_calendar_departments) . '
+                <hr>
+                ' . ws_holiday_feeds_intro_html() . '
+                ' . $ws_feeds . '
+                <div class="mt-3">
+                    ' . $ws_drawer_button('pgset-ws-feed-new', 'btn btn-sm btn-outline theme-primary rounded-pill', '<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add a calendar address'))) . '
+                </div>
+            </div>
+        </div>
+    </div>' . get_date_picker_format() . pg_fields_script();
+}
