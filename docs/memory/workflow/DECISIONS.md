@@ -227,8 +227,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-43.md: What does the badge of a Legacy design read? (owner, 2026-11-11, #8671)
 - decisions-made-product-43.md: What follows the group move? (owner, 2026-11-11, #8671)
 - decisions-made-product-44.md: Where are the rules and the earlier parts?
-- decisions-made-product-44.md: May a hero video play by itself? (owner, 2026-11-11)
-- decisions-made-product-44.md: Can a whole design be light, dark or follow the system? (owner, 2026-11-11)
+- decisions-made-product-44.md: May a hero video play by itself? (owner, 2026-11-11, #8687)
+- decisions-made-product-44.md: Can a whole design be light, dark or follow the system? (owner, 2026-11-11, #8687)
 - decisions-made-product-5.md: Which outside-account leftovers start in 2026.11.0? (#3180)
 - decisions-made-product-5.md: Do subscriptions start, and who runs the renewals? (#3183)
 - decisions-made-product-5.md: Does a beta site without a build file get the beta build of its own version? (#3204)
