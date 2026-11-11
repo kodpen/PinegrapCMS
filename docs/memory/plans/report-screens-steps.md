@@ -6,7 +6,7 @@ description: Steps of plans/report-screens.md: RS1 the Sales map card's See all,
 ## Which steps are there?
 - S under 400 product lines, M about 1,000; no schema; each step its tests and its memory topic. They are built in the order written: each waits for the one before it.
 
-- RS1 (S) The Sales map card's "See all" opens what the card shows.
+- RS1 (S) The Sales map card's "See all" opens what the card shows. Done: #8691.
   - A registry of ready reports in a new `includes/fn/` module (key, title, levels, filters, period), pure, with one entry: sales by region, last 30 days, counted as the card counts (`includes/dashboard/v2/cards/salesmap.php`: the same orders, the same region field).
   - `view_order_report.php` opens a ready report by an address parameter as a new, unsaved report; an unknown key opens the plain new report. The card's link (`'url' => 'view_order_report.php'`) names the ready report. A level for the card's region field, if the report has none, is added in code.
   - Tests: the registry's shape, the parameter's reading, the report's levels and period for the entry. Topic `commerce/order-report-ready-reports.md`; `ui/dashboard-v2-shop-cards.md` corrected.
