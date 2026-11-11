@@ -14,7 +14,9 @@ description: Plan (owner 2026-11-10, handed to workers 2026-11-11): the Workspac
 ## What does every step keep?
 - `workspace/workspace-channel-screen.md`: every feature, access, keyboard use, reduced motion, the panel's colour tokens in light and dark, the phone rules (one short header line, the writing box on the keyboard, the list's height).
 - Panel screens are full width: cards fill the pane in a grid, no centred max-width box.
-- Checked on dev at desktop and phone width, light and dark, before it is marked ready.
+- Architect (2026-11-11, #8636): each step's PR shows its screens before and after from the sandbox at desktop (1440) and phone (390) width, light and dark, as a private page linked in the PR (`ui/panel-screenshots.md`), beside `plans/workspace-channel-look/01-before-after.jpg`. That round is the check: the steps are built in cloud containers, which cannot reach dev.
+  - The dev check goes under "Could not verify"; the PR is marked ready when green, without an approval issue. The owner looks on dev after it lands: what he asks for joins the next step, or a small follow-up PR after CL3.
+  - CL1 shows a channel with a colour, one without, and one with the share and era bars; CL2 and CL3 each pane they change.
 
 ## Which steps are there?
 - CL1 (M, no schema) The shell.
