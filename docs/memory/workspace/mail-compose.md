@@ -15,6 +15,7 @@ description: New e-mail in the Workspace (WM5, #8719): the form and its fields, 
 - `ws_mail_compose`: the boxes (`ws_mail_compose_boxes()`: id, name, address, signature, channels id and name; never the route or settings) and the writer's name. `ws_mail_new`: the form as `multipart/form-data` with `files[]` (`ws_mail_compose_files()`, each through `ws_upload_part_error()`), turned into `ws_mail_send()`'s array by `ws_mail_compose_mail()`.
 - Both refuse a guest ("You cannot send from this mailbox.") and answer "The database has not been upgraded yet." before 11.0.185. Everything else is `ws_mail_send_check()`: the box from `ws_mail_send_boxes()`, the channel one of its channels (`ws_can_post_channel()`), addresses, subject, text, files, the bounce list, the hourly limit (`mail-send.md`).
 - People only: no API route (WM8) and no MCP tool; assistants never send (`mail-decisions.md`).
+- Every `ws_mail_*` case is a row of `pg_panel_actions()` (`includes/panel/actions.php`), checked by the test below. Before #8719 none was, so `api.php` answered "Invalid action." to Reply by e-mail, Send again, the status controls, the pane, Load more and Mark all as read.
 
 ## Where is the unsent form kept?
 - `localStorage` `ws-mail-new:<api url>|<viewer>`: one form per site and person (not per channel), `{ box, channel, to, cc, bcc, subject, text, at }`, saved 400 ms after typing pauses, dropped when the form is emptied, on Send and by Discard on the "Your unsent e-mail was brought back." line. Older than 14 days or without words it is not restored and is removed. Files are never kept. Every storage call is in `try`/`catch`. The composer's own slots: `workspace-unsent-draft.md`.
@@ -25,4 +26,4 @@ description: New e-mail in the Workspace (WM5, #8719): the form and its fields, 
 - Reply by e-mail keeps its own signature (writer and box name, `ws_mail_reply_body()`) until WM7 moves the answer to `ws_mail_send()`; that step decides whether answers take the Signature.
 
 ## Tests?
-- `tests/workspace_mail_compose_test.php`: Signature input and body, boxes and menu rule, request and files, the guest and the one send path by source, the toolbar, the unsent form under Node. Not run against a database, a mail server or in a browser beyond the sandbox look in PR #8719.
+- `tests/workspace_mail_compose_test.php` (pure parts, Node for the kept form, wiring by source). PR #8719 ran it on a sandbox; never against a mail server.

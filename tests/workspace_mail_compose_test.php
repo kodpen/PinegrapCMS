@@ -202,3 +202,18 @@ function test_workspace_mail_compose_unsent_form()
 	pg_assert_contains("form.addEventListener('input', keep);", $mail, 'kept while typing');
 	pg_assert_true(strpos(substr($mail, (int) strpos($mail, 'function current()'), 600), 'files') === false, 'files are never kept');
 }
+
+// Every e-mail action of the Workspace is in the panel's action table, or
+// api.php answers "Invalid action." before the Workspace sees it.
+function test_workspace_mail_actions_are_in_the_panel_table()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/panel/actions.php');
+
+	preg_match_all("/case '(ws_mail_[a-z_]+)':/", workspace_mail_compose_test_source('includes/workspace/actions.php'), $found);
+	pg_assert_true(count($found[1]) >= 8, 'the e-mail actions are found');
+
+	foreach ($found[1] as $action) {
+		$entry = pg_panel_action($action);
+		pg_assert_true(is_array($entry) && ($entry['handler'] === 'pg_panel_ws') && !empty($entry['token']), $action . ' reaches the Workspace with its token checked');
+	}
+}

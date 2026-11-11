@@ -872,7 +872,7 @@
             text.value = kept.text;
         }
 
-        drawBox(options.channel || (kept && (start.id === kept.box) ? kept.channel : 0));
+        drawBox(options.channel || ((kept && (start.id === kept.box)) ? kept.channel : 0));
         setCopies(!!(cc.field.value || bcc.field.value));
 
         from.addEventListener('change', function () {
