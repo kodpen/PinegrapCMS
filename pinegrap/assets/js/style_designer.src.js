@@ -13279,7 +13279,7 @@ const StyleDesigner = (function () {
         if (node.props._attrs && node.props._attrs.length) {
             node.props._attrs.forEach(function(a) {
                 if (a.name === 'style') { _attrStyle = a.value || ''; }
-                else if (a.name && a.name.trim()) { _attrEl.setAttribute(a.name.trim(), _sdResolveAttrTokens(a.value || '')); }
+                else if (a.name && a.name.trim()) { _attrEl.setAttribute(a.name.trim(), _sdSitePath(_sdResolveAttrTokens(a.value || ''))); }
             });
         }
         // Sizing props extra style (before _attrStyle so Attrs panel can override)
@@ -13292,7 +13292,8 @@ const StyleDesigner = (function () {
         }
         // Combine: _attrStyle appended after inlineBase; duplicate props: last wins in CSS
         var _combined = [_inlineBase, _attrStyle].filter(Boolean).join(';');
-        if (_combined) _attrEl.setAttribute('style', _combined);
+        // A background written url({path}…) loads the page's file.
+        if (_combined) _attrEl.setAttribute('style', _sdSitePath(_combined));
         // Extra classes (visually-hidden, ratio, etc.)
         if (_extraClsStr) _extraClsStr.split(/\s+/).forEach(function(c) { if (c) _attrEl.classList.add(c); });
         // Tooltip attrs on canvas element
@@ -15582,7 +15583,7 @@ const StyleDesigner = (function () {
         // text: '^^__cancel_form^^' to mark HTML-emit slots that the server
         // substitutes at request time. Canvas needs an in-place placeholder.
         var textHasLiteralToken = node.props.text && typeof node.props.text === 'string' && node.props.text.indexOf('^^') !== -1;
-        if (!hasBindings && !textHasLiteralToken) return node.props;
+        if (!hasBindings && !textHasLiteralToken) return _sdPathProps(node.props);
         var out = {};
         for (var k in node.props) { if (Object.prototype.hasOwnProperty.call(node.props, k)) out[k] = node.props[k]; }
         if (hasBindings) {
@@ -15617,6 +15618,31 @@ const StyleDesigner = (function () {
         // for the same prop; only kicks in for literal ^^…^^ in unbound text).
         if (textHasLiteralToken && !(hasBindings && node.props._bindings.text)) {
             out.text = _sdResolveAttrTokens(out.text, true);
+        }
+        return _sdPathProps(out);
+    }
+
+    // The props whose site placeholders the canvas fills (_sdPathProps()):
+    // the addresses, and a Custom HTML or SVG block's markup.
+    var _SD_PATH_PROPS = ['src', 'href', 'poster', 'html'];
+
+    // A node's props as the canvas draws them: {path} and
+    // {software_directory} filled (_sdSitePath()) in _SD_PATH_PROPS, in a
+    // copy, so the tree keeps them. Text is left as written: an inline edit
+    // reads it back from the canvas and would save the filled address.
+    function _sdPathProps(props) {
+        if (!props) return props;
+        var out = props;
+        for (var i = 0; i < _SD_PATH_PROPS.length; i++) {
+            var k = _SD_PATH_PROPS[i], v = props[k];
+            if (typeof v !== 'string' || v.indexOf('{') === -1) continue;
+            var next = _sdSitePath(v);
+            if (next === v) continue;
+            if (out === props) {
+                out = {};
+                for (var key in props) { if (Object.prototype.hasOwnProperty.call(props, key)) out[key] = props[key]; }
+            }
+            out[k] = next;
         }
         return out;
     }
@@ -27971,10 +27997,33 @@ const StyleDesigner = (function () {
         url = String(url || '').trim();
         if (url) _sdAssetStamps[url] = Date.now();
     }
+    // The canvas address of a linked row: its placeholders filled
+    // (_sdSitePath()), the stamp still looked up by the row's own text.
     function _sdAssetHref(f) {
-        var href = String(f.content || '').trim();
+        var raw = String(f.content || '').trim();
+        var href = _sdSitePath(raw);
         if (!f._file || !href) return href;
-        return href + (href.indexOf('?') === -1 ? '?_t=' : '&_t=') + (_sdAssetStamps[href] || _sdAssetLoadStamp);
+        return href + (href.indexOf('?') === -1 ? '?_t=' : '&_t=') + (_sdAssetStamps[raw] || _sdAssetLoadStamp);
+    }
+
+    // The address placeholders a page fills last (get_page_content.php,
+    // pg_designer_resolve_output_placeholders()): {path} as the site's path,
+    // {software_directory} as the software's folder, the case ignored. A
+    // classic style's code writes its files and pictures "{path}name"; the
+    // canvas draws what the page loads, while the tree and the asset rows
+    // keep the placeholders. The path is copied as written ($ included).
+    function _sdPathFill(s, path, dir) {
+        s = (s === null || s === undefined) ? '' : String(s);
+        if (s.indexOf('{') === -1) return s;
+        return s.replace(/\{path\}/gi, function () { return String(path); })
+            .replace(/\{software_directory\}/gi, function () { return String(dir); });
+    }
+
+    // The same with the editor's values: the site's path and the software's
+    // folder the screen was given.
+    function _sdSitePath(s) {
+        return _sdPathFill(s, window.OUTPUT_PATH || '/',
+            typeof software_directory !== 'undefined' ? software_directory : 'pinegrap');
     }
 
     // Brings one family of canvas <link>s (ids prefix0, prefix1, …) to the
@@ -28076,10 +28125,10 @@ const StyleDesigner = (function () {
         cssRows.forEach(function(f) {
             if (f.type === 'external-css') return;
             if (f.meta === 'user-styles') {
-                if (f.content && f.content.trim()) userStylesCss += f.content.trim() + '\n';
+                if (f.content && f.content.trim()) userStylesCss += _sdSitePath(f.content.trim()) + '\n';
                 return;
             }
-            if (f.content) inlineCss += '/* ' + f.name.replace(/\*\//g, '') + ' */\n' + f.content + '\n';
+            if (f.content) inlineCss += '/* ' + f.name.replace(/\*\//g, '') + ' */\n' + _sdSitePath(f.content) + '\n';
         });
 
         var pgStyle = canvasDoc.getElementById('pg-page-css');
@@ -28168,7 +28217,7 @@ const StyleDesigner = (function () {
                 } else if (f.module) {
                     scr.type = 'module';
                 }
-                scr.textContent = f.content;
+                scr.textContent = _sdSitePath(f.content);
                 canvasDoc.head.appendChild(scr);
             });
         }
@@ -76858,6 +76907,8 @@ const StyleDesigner = (function () {
     // every redraw, and the browser's own copy of the bare address is
     // fetched again for the preview and other tabs.
     function _sdBustImageCache(url) {
+        // The address the canvas drew: "{path}name" filled as the page fills it.
+        url = _sdSitePath(url);
         var path = _sdImagePath(url, window.location.href);
         if (!path) return;
         _sdEditedImages[path] = String(Date.now());
