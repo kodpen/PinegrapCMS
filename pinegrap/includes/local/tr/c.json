@@ -23,6 +23,7 @@
     "CAPTCHA protection is enabled.": "CAPTCHA koruması etkin.",
     "CA_BUNDLE_SOURCE_URL in config.php must be an https address. Nothing was downloaded.": "config.php içindeki CA_BUNDLE_SOURCE_URL bir https adresi olmalı. Hiçbir şey indirilmedi.",
     "CA_BUNDLE_SOURCE_URL is not an https address": "CA_BUNDLE_SOURCE_URL bir https adresi değil",
+    "CC": "CC",
     "CDN not confirmed": "CDN onaylanmadı",
     "CI results": "CI sonuçları",
     "CLOUDFLARE_ACCOUNT_ID could not be determined. Define it in your config or ensure token has Zone:Read permission.": "CLOUDFLARE_ACCOUNT_ID belirlenemedi. Yapılandırmanızda tanımlayın ya da token'ın Zone:Read iznine sahip olduğundan emin olun.",
