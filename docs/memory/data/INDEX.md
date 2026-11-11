@@ -40,6 +40,7 @@
 - db-q-converted-tail.md: Installer, designer actions, TinyMCE pickers (#2647), Flows INSERTs and init.php's path UPDATE on db_q(); why includes/authentication.php keeps raw queries; what stayed raw, guard test.
 - db-q-converted-visitor-settings.md: Visitor text, retention and partition functions, InnoDB checks, output, comment counters, settings and widgets 8 and 23 on db_q(): PR, special cases, what stayed raw, test.
 - db-q-converted-zones-currencies-jobs.md: Tax zone, state, currency, add, order edit and payment job screens converted to db_q(): PR, bare ids bound as int, what stayed raw, guard test.
+- db-q-overview.md: Start file for the db-q-* files: db_q() and pg_db_bind() (? placeholders, false on failure), the rule for new code, the converted areas grouped, what stays raw, how a file is converted
 - db-q-placeholder-helper.md: db_q($sql, $params) and its binder pg_db_bind(): how each ? is filled, what is refused, why it returns false like mysqli_query() instead of ending the request, the new-code rule.
 - designer-page-queries.md: Queries per designer-built page (2026-11-01 sandbox measure, four design templates): what repeated, the request-scope reads that removed it (PR #4403), what is left, why no fragment cache yet
 - files-type-column-width.md: files.type is four characters wide, so long extensions are stored cut (webmanifest as webm); the file manager reads the kind from the name instead; which views still read the column

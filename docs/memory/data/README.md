@@ -20,7 +20,7 @@ Table structures and SQL pitfalls.
 
 ## Clusters
 
-- `db-q-*`: 28 files.
+- `db-q-*`: 29 files; start at `db-q-overview.md`.
 
 ## Files
 
