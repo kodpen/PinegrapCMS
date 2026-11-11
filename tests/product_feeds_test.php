@@ -124,6 +124,17 @@ function test_product_feeds_plain_text_block_start()
 	pg_assert_same('a<b>c', pg_product_feed_plain_text('a&lt;b&gt;c'), 'an encoded tag stays text');
 }
 
+// The other block elements a description carries part words as well: a
+// definition list of specifications, a figure caption, preformatted text,
+// a header or footer.
+function test_product_feeds_plain_text_definition_list_and_captions()
+{
+	pg_assert_same('Ölçü 40 cm Ağırlık 2 kg', pg_product_feed_plain_text('<dl><dt>Ölçü</dt><dd>40 cm</dd><dt>Ağırlık</dt><dd>2 kg</dd></dl>'), 'definition list');
+	pg_assert_same('Ön görünüm Açıklama', pg_product_feed_plain_text('<figure><img src="a.jpg"><figcaption>Ön görünüm</figcaption></figure>Açıklama'), 'figure caption');
+	pg_assert_same('Kod Sonra', pg_product_feed_plain_text('<pre>Kod</pre>Sonra'), 'preformatted text');
+	pg_assert_same('Başlık Metin', pg_product_feed_plain_text('<header>Başlık</header><footer>Metin</footer>'), 'header and footer');
+}
+
 // A text field is not HTML: a "<" stays.
 function test_product_feeds_text_keeps_angle_brackets()
 {

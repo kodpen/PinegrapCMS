@@ -192,7 +192,7 @@ function pg_product_feed_plain_text($html, $max = 0)
     }
 
     $text = preg_replace('#<(script|style)\b[^>]*>.*?</\1\s*>#is', ' ', $text);
-    $text = preg_replace('#<(br|hr)\b[^>]*>|</?(p|div|li|ul|ol|h[1-6]|tr|td|th|table|blockquote|section|article)\b[^>]*>#i', ' ', (string) $text);
+    $text = preg_replace('#<(br|hr)\b[^>]*>|</?(p|div|li|ul|ol|dl|dt|dd|h[1-6]|tr|td|th|table|blockquote|section|article|header|footer|figure|figcaption|pre)\b[^>]*>#i', ' ', (string) $text);
 
     return pg_product_feed_text(strip_tags((string) $text), $max);
 }
