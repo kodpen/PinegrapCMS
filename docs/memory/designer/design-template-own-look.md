@@ -21,7 +21,7 @@ description: Rule (owner, 2026-11-07): sector sections first as palette blocks, 
 - The standard, account and request pages may stay plain ([[design-templates-standard-pages]]).
 
 ## Where does motion come from?
-- Where the sector calls for it (a product launch, an event, a venue), from the interactions on nodes (`props._fx`: entrance, hover, click, sticky, parallax; `designer-interactions.md`), never a template's own JavaScript. Reduced motion is honoured by the platform script and the head style; a block's own motion follows `designer-block-motion.md` (no autoplay, no countdown).
+- Where the sector calls for it (a product launch, an event, a venue), from the interactions on nodes (`props._fx`: entrance, hover, click, sticky, parallax; `designer-interactions.md`), never a template's own JavaScript. Reduced motion is honoured by the platform script and the head style; a block's own motion follows `designer-block-motion.md` (no autoplay but the hero video decided there, no countdown).
 - A quiet sector (law, pharmacy) may stay still: motion is chosen, not sprinkled.
 
 ## What does its plan say?
