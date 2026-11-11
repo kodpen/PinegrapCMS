@@ -298,17 +298,31 @@ $tour_pages[] = array(
 
 // ── Widget pieces ───────────────────────────────────────────────────────
 
-// Beside the tour's words: the price, the departures, the way to book this
-// tour or ask for it to be changed, and the deposit.
-$tour_aside = function ($sample_key) use ($el, $heading, $para, $link, $span, $icon, $bind, $tv_page_link, $price_text, $tours, $money, $deposit) {
-    return $el('aside', 'card border-0 shadow-sm rounded-4', lang('Price Card'), array(
+// Beside the tour's words, kept in view while the itinerary scrolls: the
+// trip at a glance in the Travel (Day by Day) block's list, the price, the
+// way to book this tour or ask for it to be changed, and the deposit.
+$tour_aside = function ($sample_key) use ($el, $heading, $para, $link, $span, $icon, $bind, $tv_page_link, $price_text, $length_text, $tours, $money, $deposit) {
+    $t = $tours[$sample_key];
+    $glance = function ($label, $children) use ($el) {
+        return $el('div', '', $label, array(
+            $el('dt', '', lang('Label'), array(), array('text' => $label)),
+            $el('dd', 'd-flex flex-wrap gap-1', lang('Value'), $children),
+        ));
+    };
+    return $el('aside', 'card border-0 shadow-sm rounded-4 sticky-lg-top', lang('Trip at a Glance'), array(
         $el('div', 'card-body p-4', lang('Card Body'), array(
-            $para(lang('Per traveller, sharing a double room'), 'small text-uppercase fw-semibold text-body-secondary mb-1'),
-            $heading('h2', $price_text($sample_key), 'ptv-price h4 fw-semibold mb-3', $bind('price')),
-            $el('p', 'd-flex align-items-center gap-2 small mb-3', lang('Departures'), array(
-                $icon('bi-calendar-event', 'text-primary'),
-                $span($tours[$sample_key]['departures'], 'fw-semibold', lang('Departures'), $bind('departures')),
+            $heading('h2', lang('Trip at a glance'), 'ptv-display h5 mb-3'),
+            $el('dl', 'pg-travel-glance mb-4', lang('Facts'), array(
+                $glance(lang('Duration'), array($span($length_text($sample_key), '', lang('Length'), $bind('length')))),
+                $glance(lang('Group size'), array(
+                    $span(lang('Up to'), '', lang('Label')),
+                    $span((string)$t['group'], '', lang('Value'), $bind('group_size')),
+                    $span(lang('travellers'), '', lang('Unit')),
+                )),
+                $glance(lang('Departures'), array($span($t['departures'], '', lang('Departures'), $bind('departures')))),
             )),
+            $para(lang('Per traveller, sharing a double room'), 'small text-uppercase fw-semibold text-body-secondary mb-2'),
+            $para($price_text($sample_key), 'pg-travel-figure fs-4 fw-bold mb-4', $bind('price')),
             // Opens the booking request with this tour chosen (?tour=).
             $link(lang('Book this tour'), '#', 'btn btn-primary rounded-pill w-100 mb-2', array(),
                 $tv_page_link('book', array('tour' => 'name'))),
@@ -498,11 +512,19 @@ $tv_not_found = function ($icon_name, $title, $text, $back_text, $back_page) use
     ), $show_when('record_not_found'));
 };
 
-// One destination: the cover, the region, the name, the country, the best
-// time to go, the summary, the description and the way to its tours.
+// One destination, drawn as the Travel (Destination Guide) block: the
+// cover beside the country, the name, the summary, the best time to go and
+// the region, and the way to its tours; under them what the place is like.
+// The cover fades in and the words rise as the page opens.
 $dest_sample_key = 'cappadocia';
 $dest_sample = $destinations[$dest_sample_key];
 $dest_not_found = lang('This destination could not be found. It may have been renamed or taken off the list.');
+$dest_glance = function ($label, $value, $token) use ($el, $span, $bind) {
+    return $el('div', '', $label, array(
+        $el('dt', '', lang('Label'), array(), array('text' => $label)),
+        $el('dd', '', lang('Value'), array($span($value, 'fw-semibold', $label, $bind($token)))),
+    ));
+};
 $tour_widgets['destination_detail'] = array(
     'page'   => 'destination',
     'slug'   => lang('form-detail'),
@@ -517,40 +539,45 @@ $tour_widgets['destination_detail'] = array(
             $tv_not_found('bi-geo', lang('Destination not found'), $dest_not_found, lang('See the destinations'), 'destinations'),
             $el('article', '', lang('Travel Destination'), array(
                 $tv_toolbar('destinations', lang('All Destinations')),
-                $span($regions[$dest_sample['region']]['title'], 'badge rounded-pill bg-primary-subtle text-primary-emphasis mb-2', lang('Region'), $bind('region')),
-                $heading('h1', $dest_sample['name'], 'ptv-display display-6 mb-1', $bind('name')),
-                $para($dest_sample['country'], 'fw-semibold mb-2', $bind('country')),
-                $para($dest_sample['summary'], 'lead text-body-secondary mb-4', $bind('summary')),
-                $el('div', 'mb-5', lang('Cover'), array($tv_photo('cover', 'place-' . $dest_sample_key, '16x9'))),
                 $row(array(
+                    $col(array(
+                        $fx($el('div', '', lang('Cover'), array($tv_photo('cover', 'place-' . $dest_sample_key, '4x3'))),
+                            array('effect' => 'fade', 'trigger' => 'load', 'duration' => 900)),
+                    ), '', '6'),
+                    $col(array(
+                        $fx($el('div', '', lang('Text'), array(
+                            $para($dest_sample['country'], 'ptv-eyebrow text-uppercase fw-semibold text-primary mb-2', $bind('country')),
+                            $heading('h1', $dest_sample['name'], 'ptv-display display-5 mb-3', $bind('name')),
+                            $para($dest_sample['summary'], 'lead text-body-secondary mb-4', $bind('summary')),
+                            $el('dl', 'pg-travel-glance row row-cols-1 row-cols-sm-2 g-0 mb-4', lang('Facts'), array(
+                                $dest_glance(lang('Best time to go'), $dest_sample['season'], 'season'),
+                                $dest_glance(lang('Region'), $regions[$dest_sample['region']]['title'], 'region'),
+                            )),
+                            $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
+                                // Opens the tour list filtered on this
+                                // destination (?destination=).
+                                $link(lang('See the tours here'), '#', 'btn btn-primary btn-lg rounded-pill', array(),
+                                    $tv_page_link('tours', array('destination' => 'name'))),
+                                $link(lang('Plan a Tailor-made Trip'), '{{page:enquiry}}', 'btn btn-outline-primary btn-lg rounded-pill'),
+                            )),
+                        )), array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 800, 'delay' => 150, 'stagger' => 80)),
+                    ), '', '6'),
+                ), '4', '', 'g-lg-5 align-items-center mb-5'),
+                $fx($row(array(
                     $col(array(
                         $tv_long_field(lang('About the place'), 'description', $destination_texts[$dest_sample_key]),
                     ), '', '8'),
-                    $col(array(
-                        $el('aside', 'card border-0 shadow-sm rounded-4', lang('Destination Card'), array(
-                            $el('div', 'card-body p-4', lang('Card Body'), array(
-                                $el('p', 'd-flex align-items-center gap-2 mb-3', lang('Best time to go'), array(
-                                    $icon('bi-sun', 'text-primary'),
-                                    $span($dest_sample['season'], 'fw-semibold', lang('Best time to go'), $bind('season')),
-                                )),
-                                // Opens the tour list filtered on this
-                                // destination (?destination=).
-                                $link(lang('See the tours here'), '#', 'btn btn-primary rounded-pill w-100 mb-2', array(),
-                                    $tv_page_link('tours', array('destination' => 'name'))),
-                                $link(lang('Plan a Tailor-made Trip'), '{{page:enquiry}}', 'btn btn-outline-primary rounded-pill w-100'),
-                            )),
-                        )),
-                    ), '', '4'),
-                ), '4', '', 'g-lg-5'),
+                ), '4'), $fade_in),
             ), $show_when('record_found')),
         ), 'py-5'),
     )),
 );
 
-// One tour, its itinerary page: the photos, the style and destination, the
-// name, the facts, the summary, the highlights, the itinerary day by day,
-// what every tour includes and leaves out, and beside them the price with
-// the way to book it.
+// One tour, its itinerary page: the style and destination, the name, the
+// summary and the facts rise as the page opens, the photos fade in, then the
+// highlights, the itinerary, what every tour includes and leaves out come
+// in as they scroll into view, beside the trip at a glance with the price
+// and the way to book it.
 $tour_sample_key = 'cappadocia';
 $tour_sample = $tours[$tour_sample_key];
 $tour_not_found = lang('This tour could not be found. It may have been renamed or taken off sale.');
@@ -568,15 +595,17 @@ $tour_widgets['tour_detail'] = array(
             $tv_not_found('bi-signpost', lang('Tour not found'), $tour_not_found, lang('See the tours'), 'tours'),
             $el('article', '', lang('Tour'), array(
                 $tv_toolbar('tours', lang('All Tours')),
-                $el('div', 'd-flex flex-wrap gap-2 mb-2', lang('Badges'), array(
-                    $span($styles[$tour_sample['style']]['title'], 'badge rounded-pill bg-primary-subtle text-primary-emphasis', lang('Travel Style'), $bind('style')),
-                    $span($destinations[$tour_sample['destination']]['name'], 'badge rounded-pill text-bg-light border', lang('Tour Destination'), $bind('destination')),
-                )),
-                $heading('h1', $tour_sample['name'], 'ptv-display display-6 mb-2', $bind('name')),
-                $para($tour_sample['summary'], 'lead text-body-secondary mb-3', $bind('summary')),
-                $tour_facts($tour_sample_key, 'd-flex flex-wrap gap-3 text-body-secondary mb-4'),
+                $fx($el('header', 'col-lg-9 mb-4', lang('Section Header'), array(
+                    $el('div', 'd-flex flex-wrap gap-2 mb-3', lang('Badges'), array(
+                        $span($styles[$tour_sample['style']]['title'], 'badge rounded-pill bg-primary-subtle text-primary-emphasis', lang('Travel Style'), $bind('style')),
+                        $span($destinations[$tour_sample['destination']]['name'], 'badge rounded-pill text-bg-light border', lang('Tour Destination'), $bind('destination')),
+                    )),
+                    $heading('h1', $tour_sample['name'], 'ptv-display display-5 mb-3', $bind('name')),
+                    $para($tour_sample['summary'], 'lead text-body-secondary mb-3', $bind('summary')),
+                    $tour_facts($tour_sample_key, 'd-flex flex-wrap gap-3 text-body-secondary mb-0'),
+                )), array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 800, 'stagger' => 90)),
                 // The photos: the first large, the other two beside it.
-                $row(array(
+                $fx($row(array(
                     $col(array($tv_photo('photo_1', 'tour-' . $tour_sample_key)), '', '8'),
                     $col(array(
                         $el('div', 'd-flex flex-column gap-3 h-100', lang('Photos'), array(
@@ -584,15 +613,15 @@ $tour_widgets['tour_detail'] = array(
                             $tv_photo('photo_3', 'tour-' . $tour_sample_key . '-3'),
                         )),
                     ), '', '4'),
-                ), '3', '', 'mb-5'),
+                ), '3', '', 'mb-5'), array('effect' => 'fade', 'trigger' => 'load', 'duration' => 900, 'delay' => 200, 'stagger' => 120)),
                 $row(array(
                     $col(array(
-                        $el('div', 'pg-hide-if-empty p-4 rounded-4 bg-body-tertiary mb-4', lang('Highlights'), array(
+                        $fx($el('div', 'pg-hide-if-empty p-4 rounded-4 bg-body-tertiary mb-4', lang('Highlights'), array(
                             $heading('h2', lang('Highlights'), 'ptv-display h5 mb-2'),
                             $el('div', 'pg-field-value lh-lg', lang('Value'), array(), array_merge(array('text' => implode("\n", $tour_sample['highlights'])), $bind('highlights'))),
-                        )),
-                        $tv_long_field(lang('Itinerary'), 'itinerary', $itinerary_text($tour_sample_key)),
-                        $row(array(
+                        )), $fade_in),
+                        $fx($tv_long_field(lang('Itinerary'), 'itinerary', $itinerary_text($tour_sample_key)), $fade_in),
+                        $rise($row(array(
                             $col(array(
                                 $heading('h2', lang('Every tour includes'), 'ptv-display h5 mb-2'),
                                 $check_list($included, 'list-unstyled small mb-0'),
@@ -601,10 +630,10 @@ $tour_widgets['tour_detail'] = array(
                                 $heading('h2', lang('Not included'), 'ptv-display h5 mb-2'),
                                 $check_list($not_included, 'list-unstyled small mb-0'),
                             ), '6'),
-                        ), '4', '', 'mb-2'),
+                        ), '4', '', 'mb-2'), 120),
                     ), '', '8'),
                     $col(array($tour_aside($tour_sample_key)), '', '4'),
-                ), '4', '', 'g-lg-5 mb-4'),
+                ), '4', '', 'g-lg-5 align-items-start mb-4'),
             ), $show_when('record_found')),
         ), 'py-5'),
     )),

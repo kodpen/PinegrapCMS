@@ -20,7 +20,7 @@ description: Order of the polishing round after Launch: every shipped template's
 - Their plans built their pages and have finished, so their `-1` and `-2` come ahead of groups 2 to 5 (their status lines are first). Gallery's signature pages are artists and exhibitions. Skiresort's plan built home, conditions and slopes on its family, so it needs no `-2`.
 
 ## Where does each template stand?
-- Travel: `-1` #8337 done.
+- Travel: `-1` #8337, `-2` #8657 done.
 
 - Gym: `-1` #8339 done; `-2` #8655 done.
 
