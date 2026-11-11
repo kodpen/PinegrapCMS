@@ -26,7 +26,7 @@ description: Order of the polishing round after Launch: every shipped template's
 
 - Clinic: `-1` #8346 done.
 
-- Bakery: `-1`, `-2` open.
+- Bakery: `-1` #8665 done; `-2` open.
 
 - Brewery: `-1`, `-2` open.
 
