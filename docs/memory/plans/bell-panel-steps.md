@@ -7,7 +7,7 @@ description: Steps of plans/bell-panel.md: BP1 a row is read when opened, BP2 th
 - S under 400 product lines, M about 1,000; each step its tests and its memory topic. They are built in the order written: each waits for the one before it.
 - Every step edits `assets/js/backend.src.js` and its bundle, BP2 and BP3 `assets/css/backend.src.css` too: a step starts only while no open PR edits the same file (the claim check).
 
-- BP1 (M) A row is read when it is opened. No stylesheet change.
+- BP1 (M) A row is read when it is opened. No stylesheet change. Done: #8682.
   - `pg_panel_get_notifications()` (`includes/panel/notifications.php`) marks nothing on a list request. `pg_panel_edit_notifications()` learns `mark_read` (one row; a fold's head reads its runs too) and `mark_all_read` (only the rows the caller sees, `pg_notification_visible_to()`), both through `pg_notification_mark_read()`.
   - The script (`get_notifications()`, `edit_notification()`): the row's link marks it read and then opens; "Mark all as read" stands at the top beside "Delete All Notifications"; the row's box turns both ways (read, unread) until BP2 draws the dot.
   - The 20 s poll: `$unreadsCallback` holds the count the open list shows instead of dropping to 0, so the open list is still redrawn only on a rise (`tests/panel_timers_test.php`).

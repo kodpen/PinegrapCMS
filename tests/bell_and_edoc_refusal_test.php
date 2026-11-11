@@ -87,7 +87,9 @@ function test_bell_edoc_get_notifications_shows_failure_and_drops_spinner()
 	pg_assert_contains('spinner.remove();', $fn);
 	pg_assert_contains('pg-bell-failed', $fn);
 	pg_assert_contains('pg_bell_refusal(response, xhr)', $fn);
-	pg_assert_contains('kept_badge', $fn);
+	// Drawing the list reads nothing, so the badge is never cleared and has
+	// nothing to be put back (tests/bell_read_rule_test.php).
+	pg_assert_false(strpos($fn, "has-notification-icon').html('')") !== false, 'the badge stays while the list loads');
 	pg_assert_contains('load_failed(response);', $fn);
 	pg_assert_contains('load_failed(null, xhr);', $fn);
 	pg_assert_false(strpos($fn, 'console.log(') !== false, 'a refused load is not only logged');
