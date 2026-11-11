@@ -478,6 +478,7 @@
     "Use {size} at {fps} ({bytes})": "{size}, {fps} kullan ({bytes})",
     "Used": "Kullanıldı",
     "Used Cars": "İkinci El Araçlar",
+    "Used Cars Link": "İkinci El Araçlar Bağlantısı",
     "Used and ex-demonstrator cars checked on 120 points, newest models first, each with a warranty.": "120 noktada kontrol edilmiş ikinci el ve eski test araçları, en yeni modeller önce, her biri garantili.",
     "Used and ex-demonstrator cars, each checked on 120 points and sold with a warranty.": "İkinci el ve eski test araçları; her biri 120 noktada kontrol edilir ve garantiyle satılır.",
     "Used as the ^^__empty_message^^ token.": "^^__empty_message^^ token'ı olarak kullanılır.",

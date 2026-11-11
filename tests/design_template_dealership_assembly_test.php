@@ -216,3 +216,59 @@ function test_dealership_assembly_google_reviews()
 	pg_assert_true(strpos($home, '"templateWidget":"google_reviews"') !== false, 'the home places the Google reviews');
 	pg_assert_true(strpos($home, '"templateWidget":"home_featured"') !== false && strpos($home, '"templateWidget":"home_used"') !== false, 'the home places the featured and the used cars');
 }
+
+// The home is built on the Car Dealership blocks and CTA: Sticky Bar: every
+// pg-dl- and pg-sticky- class's rule ships in the User Styles, the
+// interactions are kept as written, one h1 (the first showroom panel, on
+// load), three panels with their photos, the bar sticking through the rest
+// of the page, the finder's filters and the three ways' requests.
+function test_dealership_assembly_home_on_dealership_blocks()
+{
+	$tpl = _test_dl_asm_tpl();
+	pg_assert_same('2.0.0', $tpl['version'], 'version raised');
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	$home = null;
+	foreach ($tpl['pages'] as $p) if ($p['key'] === 'home') $home = $p['tree'];
+	$nodes = array();
+	_test_dl_asm_tpl_nodes($home, $nodes);
+	$classes = '';
+	$effects = array();
+	$h1 = 0;
+	$panels = 0;
+	foreach ($nodes as $n) {
+		$class = isset($n['props']['cssClass']) && is_string($n['props']['cssClass']) ? $n['props']['cssClass'] : '';
+		$classes .= ' ' . $class;
+		if ((isset($n['props']['tag']) ? $n['props']['tag'] : '') === 'h1') $h1++;
+		if (strpos(' ' . $class . ' ', ' pg-dl-panel ') !== false) {
+			$panels++;
+			pg_assert_true(strpos($n['props']['_attrs'][0]['value'], 'background-image: url(https://picsum.photos/seed/pinegrap-dealership-panel-') === 0, 'a panel\'s photo is its background');
+		}
+		if (!isset($n['props']['_fx'])) continue;
+		$effects[] = $n['props']['_fx']['effect'];
+		$kept = pg_fx_normalize($n['props']['_fx']);
+		foreach ($n['props']['_fx'] as $field => $value) {
+			pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, 'home: ' . $field . ' is kept as written');
+		}
+	}
+	preg_match_all('/(?<![\w-])pg-(dl|sticky)-[a-z0-9-]+/', $classes, $m);
+	foreach (array_unique($m[0]) as $class) pg_assert_contains('.' . $class, $css, 'the rule of ' . $class . ' ships');
+	pg_assert_contains('.pg-shade-bottom', $css, 'the core scrim of the tiles ships');
+	pg_assert_same(1, $h1, 'one h1');
+	pg_assert_same(3, $panels, 'three showroom panels');
+	pg_assert_same(1, count(array_keys($effects, 'sticky', true)), 'one sticky bar');
+	pg_assert_true(count($effects) >= 8, 'the home moves');
+
+	$json = json_encode($home, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_contains('"tag":"h1","text":"Velo Volt Long Range"', $json, 'the first panel is the page\'s title');
+	pg_assert_contains('"trigger":"load"', $json, 'the first panel comes in on load');
+	pg_assert_contains('{{page:test_drive}}?vehicle=Velo%20Volt%20Long%20Range', $json, 'a panel books a test drive of its car');
+	pg_assert_contains('{{page:vehicles}}?body=SUV', $json, 'a panel opens the stock of its body style');
+	pg_assert_contains('"id":"car-velo-volt"', $json, 'a panel is a search section');
+	pg_assert_contains('"id":"stock"', $json, 'the finder is a search section');
+	pg_assert_contains('"id":"ways"', $json, 'the three ways are a search section');
+	foreach (array('{{page:new_cars}}', '{{page:used_cars}}', '{{page:tradein}}', '{{page:finance}}') as $href) {
+		pg_assert_contains('"href":"' . $href . '"', $json, 'the home links ' . $href);
+	}
+	pg_assert_false(strpos($classes, 'btn-light') !== false, 'no fixed light button on the home');
+}

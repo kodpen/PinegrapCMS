@@ -53,7 +53,7 @@ description: Order of the polishing round after Launch: every shipped template's
 - Sportsclub: `-1` #8140, `-2` #8175 done.
 - Pharmacy: `-1` #8160, `-2` #8181 done.
 - Marina: `-1` #8159, `-2` #8185 done.
-- Dealership: `-1` in progress.
+- Dealership: `-1` #8640 (family, `cta-sticky`, home); `-2` open.
 
 ## Who claims what?
 - Any worker, in the order above, one step per PR; a step whose template still has an open PR on its files waits.

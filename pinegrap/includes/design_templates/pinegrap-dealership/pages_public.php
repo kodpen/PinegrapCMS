@@ -80,36 +80,6 @@ $value = function ($icon_name, $title, $text) use ($el, $heading, $para, $icon_t
     ), '6', '3');
 };
 
-// How buying goes, from the first look to the keys.
-$buying_steps = function () use ($el, $step) {
-    return $el('ol', 'list-unstyled mb-0', lang('List'), array(
-        $step(1, lang('Choose a car'), lang('Filter the stock by make, body style and fuel; each car\'s page shows its history and photos.')),
-        $step(2, lang('Book a test drive'), lang('Choose a day and a time of day; we confirm within one working day and have the car ready.')),
-        $step(3, lang('Value your car'), lang('Bring the car you drive now; we inspect it while you drive and give the offer in writing.')),
-        $step(4, lang('Drive it home'), lang('Pay in full or with finance, sign the papers and collect the keys, usually within the week.')),
-    ));
-};
-
-// The quick ways into the stock on the home: new, used, every car, and a
-// chip for each make that opens the list filtered on it (?make=).
-$stock_search = function () use ($el, $link, $icon, $span, $query, $makes) {
-    $chips = array();
-    foreach ($makes as $m) {
-        $chips[] = $el('a', 'btn btn-sm btn-light rounded-pill d-inline-flex align-items-center gap-1', $m['title'], array(
-            $icon('bi-car-front', 'text-primary'),
-            $span($m['title'], '', lang('Link Text')),
-        ), array('href' => '{{page:vehicles}}?' . $query(array('make' => $m['title']))));
-    }
-    return $el('div', 'card border-0 shadow p-3 p-lg-4', lang('Search Box'), array(
-        $el('div', 'd-flex flex-wrap gap-2 mb-3', lang('Buttons'), array(
-            $link(lang('New Cars'), '{{page:new_cars}}', 'btn btn-primary px-4'),
-            $link(lang('Used Cars'), '{{page:used_cars}}', 'btn btn-outline-primary px-4'),
-            $link(lang('All Cars'), '{{page:vehicles}}', 'btn btn-link link-body-emphasis'),
-        )),
-        $el('div', 'd-flex flex-wrap gap-2', lang('Makes'), $chips),
-    ));
-};
-
 // A way to reach a department on the visit page: the icon, its name, the
 // hours and the phone.
 $department = function ($icon_name, $title, $text, $when) use ($el, $heading, $para, $icon_tile, $col) {
@@ -127,14 +97,29 @@ $department = function ($icon_name, $title, $text, $when) use ($el, $heading, $p
 
 $phone_href = 'tel:' . preg_replace('/[^0-9+]/', '', $dealer['phone']);
 
-$body_tiles = array();
-foreach (array_keys($bodies) as $key) $body_tiles[] = $body_tile($key);
 $finance_cards = array();
 foreach (array_keys($finance_plans) as $key) $finance_cards[] = $finance_card($key);
 $testimonial_cards = array();
 foreach (array_keys($testimonials) as $n) $testimonial_cards[] = $testimonial_card($n);
 $team_cards = array();
 foreach (array_keys($team) as $n) $team_cards[] = $team_card($n);
+
+// The dealer's figures as Stats: Counter draws them, in the showroom's
+// thin type; they rise one after another on view.
+$figure_band = function () use ($el, $heading, $para, $container, $row, $col, $fx, $figures) {
+    $cols = array();
+    foreach ($figures as $f) {
+        $cols[] = $col(array(
+            $heading('div', $f['value'], 'pg-dl-type display-4 text-primary mb-2'),
+            $para($f['label'], 'text-body-secondary fw-medium mb-0'),
+        ), '3', '', '', '6');
+    }
+    return $el('section', 'py-5 border-bottom', lang('Figures'), array(
+        $container(array(
+            $fx($row($cols, '4', '', 'text-center'), array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => 100)),
+        )),
+    ));
+};
 
 // ── Home ────────────────────────────────────────────────────────────────
 
@@ -145,97 +130,58 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('New cars from four makes, checked used cars, test drives booked online, a fair trade-in offer and finance explained before you sign.'),
     'tree'             => $page(array(
-        // The way in: the words and the quick ways into the stock beside a
-        // photo of the showroom.
-        $el('section', 'pdl-hero position-relative py-5 overflow-hidden', lang('Hero'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('Car dealership · Izmir'), 'pdl-eyebrow text-uppercase fw-semibold text-primary mb-3'),
-                        $heading('h1', lang('The right car, checked and ready to drive'), 'pdl-display display-4 fw-bold mb-3'),
-                        $para($dealer['tagline'], 'lead text-body-secondary mb-4'),
-                        $stock_search(),
-                    ), '', '6'),
-                    $col(array(
-                        $el('div', 'ratio ratio-4x3 rounded-4 overflow-hidden shadow-sm', lang('Picture Frame'), array(
-                            $image($photo('hero', 1200, 900), lang('A bright showroom with new cars in a row'), 'object-fit-cover'),
-                        )),
-                    ), '', '6'),
-                ), '4', '', 'g-lg-5 align-items-center'),
+        // A showroom: the range in panels a window tall, the first one the
+        // page's title; the sticky bar keeps the two requests in reach
+        // while the visitor scrolls the rest of the page.
+        $showroom_panel('velo-volt', 'h1'),
+        $el('div', '', lang('Showroom'), array(
+            $sticky_bar(lang('Drive it before you decide'), lang('Choose a car, a day and a time; we confirm within one working day.'),
+                array(lang('Book a Test Drive'), '{{page:test_drive}}'), array(lang('Value My Car'), '{{page:tradein}}')),
+            $showroom_panel('kestrel-gt'),
+            $showroom_panel('norda-tour'),
+            $figure_band(),
+
+            // The stock: the ways in, then the featured and the latest used
+            // cars.
+            $stock_finder(),
+            $el('section', 'pb-5', lang('Featured Cars'), array(
+                $container(array(
+                    $section_header(lang('In the showroom'), lang('Featured cars'), lang('All cars'), '{{page:vehicles}}'),
+                    $widget('home_featured'),
+                )),
             )),
-        )),
-
-        $el('section', 'py-4 border-top border-bottom', lang('Figures'), array(
-            $container(array($figure_row())),
-        )),
-
-        $el('section', 'py-5', lang('Featured Cars'), array(
-            $container(array(
-                $section_header(lang('In the showroom'), lang('Featured cars'), lang('All cars'), '{{page:vehicles}}'),
-                $widget('home_featured'),
+            $el('section', 'py-5', lang('Used Cars'), array(
+                $container(array(
+                    $section_header(lang('Checked and ready'), lang('Latest used cars'), lang('All used cars'), '{{page:used_cars}}'),
+                    $widget('home_used'),
+                )),
             )),
-        )),
 
-        $el('section', 'py-5', lang('Used Cars'), array(
-            $container(array(
-                $section_header(lang('Checked and ready'), lang('Latest used cars'), lang('All used cars'), '{{page:used_cars}}'),
-                $widget('home_used'),
+            // Test drive, trade-in and finance, then the ways to pay.
+            $three_ways(),
+            $el('section', 'py-5', lang('Finance'), array(
+                $container(array(
+                    $section_header(lang('Ways to pay'), lang('Finance that fits your month'), lang('How finance works'), '{{page:finance}}'),
+                    $fx($row($finance_cards, '4'), array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => 120)),
+                )),
             )),
-        )),
 
-        $el('section', 'py-5 bg-body-tertiary', lang('Body Styles'), array(
-            $container(array(
-                $section_header(lang('Browse the stock'), lang('Find your body style')),
-                $row($body_tiles, '3', 'center'),
+            // What customers say: sample words for the dealer to replace,
+            // and beside them its own Google reviews, which show once Google
+            // Reviews is set up under Site Settings.
+            $el('section', 'py-5 bg-body-tertiary', lang('Testimonials'), array(
+                $container(array(
+                    $section_header(lang('Our customers'), lang('What customers say')),
+                    $fx($row($testimonial_cards, '4'), array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => 120)),
+                    $widget('google_reviews'),
+                )),
             )),
-        )),
 
-        $el('section', 'py-5', lang('How It Works'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('Buying a car with us'), 'pdl-eyebrow text-uppercase fw-semibold text-primary mb-1'),
-                        $heading('h2', lang('From the first look to the keys'), 'h3 fw-semibold mb-3'),
-                        $para(lang('No account needed to begin: the test drive form opens one for you, so you can follow your requests and write to us afterwards.'), 'text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('Book a Test Drive'), '{{page:test_drive}}', 'btn btn-primary px-4'),
-                            $link(lang('Value My Car'), '{{page:tradein}}', 'btn btn-outline-primary px-4'),
-                        )),
-                    ), '', '5'),
-                    $col(array($buying_steps()), '', '7'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        )),
-
-        $el('section', 'py-5 bg-body-tertiary', lang('Finance'), array(
-            $container(array(
-                $section_header(lang('Ways to pay'), lang('Finance that fits your month'), lang('How finance works'), '{{page:finance}}'),
-                $row($finance_cards, '4'),
-            )),
-        )),
-
-        $el('section', 'py-5', lang('Service'), array(
-            $container(array(
-                $section_header(lang('After you buy'), lang('A workshop that knows your car'), lang('Service centre'), '{{page:service}}'),
-                $row(array($service_card('servicing'), $service_card('tyres'), $service_card('bodywork'), $service_card('ev')), '4'),
-            )),
-        )),
-
-        // What customers say: sample words for the dealer to replace, and
-        // beside them its own Google reviews, which show once Google Reviews
-        // is set up under Site Settings.
-        $el('section', 'py-5 bg-body-tertiary', lang('Testimonials'), array(
-            $container(array(
-                $section_header(lang('Our customers'), lang('What customers say')),
-                $row($testimonial_cards, '4'),
-                $widget('google_reviews'),
-            )),
-        )),
-
-        $el('section', 'py-5 border-top', lang('Showroom News'), array(
-            $container(array(
-                $section_header(lang('From the showroom'), lang('Showroom News'), lang('All articles'), '{{page:blog}}'),
-                $widget('home_posts'),
+            $el('section', 'py-5', lang('Showroom News'), array(
+                $container(array(
+                    $section_header(lang('From the showroom'), lang('Showroom News'), lang('All articles'), '{{page:blog}}'),
+                    $widget('home_posts'),
+                )),
             )),
         )),
 

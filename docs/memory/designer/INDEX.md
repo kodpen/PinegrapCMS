@@ -218,6 +218,8 @@
 - designer-blocks-clinic.md: The Clinic block family (clinic- prefix, own palette group): doctors' week, care guide; general blocks placed instead; rules, test
 - designer-blocks-construction.md: The Construction block family (construction- prefix, own palette group): site board hero, project progress, neighbour notice; general blocks placed instead; rules, test
 - designer-blocks-coworking.md: The coworking- block family (Coworking group): the workspace hero, what it reuses instead (spaces, plans, amenities, floors), its pg-cw-* rules, its test
+- designer-blocks-cta.md: General CTA blocks in a family file (cta- prefix, core Marketing group): the sticky bar; where it sticks, its rule, who uses it
+- designer-blocks-dealership.md: The Car Dealership block family (dealership- prefix, own palette group): showroom panel, stock finder, three ways in; general blocks placed instead; rules, test
 - designer-blocks-drivingschool.md: The Driving School block family (drivingschool- prefix, its own palette group): the three blocks, the general blocks it reuses instead, its pg-drv-* rules, its test
 - designer-blocks-ferry.md: The Ferry block family (ferry- prefix, its own palette group): departure board, route timetable, crossing strip, fares by vehicle; the general blocks a ferry site places instead; rules and test
 - designer-blocks-general.md: General sections the sector templates share: the existing block that covers each, and the ones added in general family files (hours-seasons, locations-spaces, locations-floors, booking-week)
