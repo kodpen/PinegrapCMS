@@ -60,7 +60,8 @@
  * A folder README also lists the folder's clusters (MIN_CLUSTER_FILES or
  * more files sharing their first two name tokens, a plural s aside) with the
  * count and the start file, <prefix>.md or <prefix>-overview.md, when the
- * folder has one, so a session sees where a large topic begins.
+ * folder has one, so a session sees where a large topic begins. A cluster of
+ * MIN_OVERVIEW_FILES or more with no start file stops the run (plans aside).
  *
  * A folder index that exists without the two markers (an older copy taken
  * during a merge) stops the run, so the rules are never dropped in silence;
@@ -86,7 +87,9 @@
  *         outside a known folder, a module field names no module file, a
  *         folder index has no key rules block or a merge conflict inside it,
  *         a topic file or decisions part links a memory file that does not
- *         exist ([[name]] or folder/file.md; plans are exempt), or, with --check, an index differs from what the files produce.
+ *         exist ([[name]] or folder/file.md; plans are exempt), a cluster of
+ *         MIN_OVERVIEW_FILES files or more has no start file, or, with
+ *         --check, an index differs from what the files produce.
  *
  * Line endings do not count: files are read with CR removed and the indexes
  * are written with LF endings, so a checkout that turned them into CRLF passes.
@@ -125,6 +128,11 @@ const DECISION_PART_PREFIX = 'decisions-made';
 
 // The fewest files sharing their first two name tokens that a README lists as a cluster.
 const MIN_CLUSTER_FILES = 6;
+
+// The fewest files of a cluster that must have a start file: read file by
+// file, a large cluster costs a session more calls than its start file costs
+// to keep (workflow/memory-writing.md).
+const MIN_OVERVIEW_FILES = 10;
 
 // Memory folders and what they hold, as listed in the top index.
 const FOLDERS = array(
@@ -338,7 +346,10 @@ foreach ($folders as $folder => $entries) {
 		continue;
 	}
 
-	$indexes[$relative] = memory_index_folder($folder, $rules, memory_index_clusters(array_keys($entries)));
+	$clusters = memory_index_clusters(array_keys($entries));
+	$errors = array_merge($errors, memory_index_cluster_errors($folder, $clusters));
+
+	$indexes[$relative] = memory_index_folder($folder, $rules, $clusters);
 	$indexes["memory/$folder/INDEX.md"] = memory_index_folder_files($folder, $entries);
 }
 
@@ -913,6 +924,31 @@ function memory_index_clusters($files) {
 	uksort($clusters, 'strcmp');
 
 	return array_values($clusters);
+}
+
+/**
+ * The errors for the clusters of a folder that have MIN_OVERVIEW_FILES files
+ * or more and no start file (<prefix>-overview.md, or <prefix>.md as the
+ * older clusters have it), one per cluster. $clusters is what
+ * memory_index_clusters() returns. Plans are left out: a plan is deleted when
+ * it is finished, so its files are no lasting topic.
+ */
+function memory_index_cluster_errors($folder, $clusters) {
+
+	$errors = array();
+
+	if ($folder === 'plans') {
+		return $errors;
+	}
+
+	foreach ($clusters as $cluster) {
+		if ($cluster[1] >= MIN_OVERVIEW_FILES && $cluster[2] === null) {
+			$errors[] = 'docs/memory/' . $folder . '/' . $cluster[0] . '-*: ' . $cluster[1] . ' files and no start file; add '
+				. $cluster[0] . '-overview.md (workflow/memory-writing.md, "When does a cluster get an overview?")';
+		}
+	}
+
+	return $errors;
 }
 
 /**

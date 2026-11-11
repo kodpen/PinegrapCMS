@@ -23,6 +23,7 @@ description: How a memory file is written so the next task finds it: labels as o
 ## When does a cluster get an overview?
 - Ten files or more sharing a name prefix have `<prefix>-overview.md` (at most 4 KB): what the feature is, the decisions that bind it, its parts by the label a person sees, which file holds what, how a new part is added. Model: `ui/image-editor-overview.md`.
 - The plan that grows a cluster keeps its overview current in its close-out step.
+- `tools/memory_index.php` refuses a cluster of ten files or more with no start file ([[memory-cluster-check]]).
 
 ## How far is memory trusted?
 - Rely on what memory says; check in the code only what the change depends on. A trial answered right by its fourth call, then spent 15 more checking in code what memory had said.

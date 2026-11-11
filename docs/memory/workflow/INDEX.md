@@ -111,6 +111,7 @@
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, the PR footer (pointer), editing shared files without conflicts, API vs ERP files
 - github-rest-without-gh.md: GitHub from the owner's machine, where gh is not installed: the token from git credential fill, a REST helper, GraphQL for draft and ready, the ready label, reading CI, mergeable_state unstable
 - install-check-filter.md: When install-check.yml runs its six-database matrix (#1985): the changes job, the paths it reads, always on merge trains and pushes, why plain git, a skipped job blocks nothing
+- memory-cluster-check.md: The memory index tool refuses a cluster of ten memory files or more with no start file (<prefix>-overview.md or <prefix>.md); plans left out; what to do when it fails
 - memory-index-key-rules.md: The hand-written key-rules block of each memory folder README, what tools/memory_index.php keeps and regenerates, when it stops with exit 1 and how a merge conflict in a README is settled
 - memory-long-lines.md: The memory index tool refuses a memory line over 500 characters that a branch adds or rewrites; old lines pass; the base from pre_push, CI (PR base or push before) or merge-base; no base [decision: here]
 - memory-writing.md: How a memory file is written so the next task finds it: labels as on screen, one owner per value, old values searched, lines under 500 characters, decisions dated, cluster overviews, trials
