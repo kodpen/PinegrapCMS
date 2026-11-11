@@ -5337,6 +5337,14 @@ function pg_image_editor_strings_clip()
         'clipTracksNote'  => lang('While an end is dragged the stage shows its frame. The clips after it follow with no gap and the length of the document follows the clips. Ends snap to the playhead, the other layers\' ends and 0.1 s steps; Shift turns snapping off.'),
         'hintClipMove'    => lang('Clip: moving · Shift turns off snapping · Esc cancels'),
         'hintClipTrim'    => lang('Trim: dragging an end · Shift turns off snapping · Esc cancels'),
+        'hintClips'       => lang('Clips: drag the middle to move · the ends trim · the button between two clips opens the transition'),
+        'clipTabFx'       => lang('Effects'),
+        'clipFxBlur'      => lang('Blur'),
+        'clipFxReset'     => lang('Reset'),
+        'clipFxNote'      => lang('The settings apply to this clip in every frame.'),
+        'clipTransition'  => lang('Transition to the next clip'),
+        'clipTransitionNone' => lang('No clip starts where this one ends on its row. Put the next clip right after it to add a transition.'),
+        'clipTransitionOpen' => lang('Transition after {name}'),
     );
 }
 

@@ -3967,6 +3967,18 @@ button.pgie-sndfile:hover {
   height: 100%;
 }
 
+/* The frame's box: a transition's wipe cuts it, the vignette lies over it. */
+.pgie-clipbox {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.pgie-clipvig {
+  position: absolute;
+  inset: 0;
+}
+
 /* Six speeds on one row, the numbers lined up. */
 .pgie-seg.pgie-clipspeeds {
   margin-bottom: 0;
@@ -4069,6 +4081,66 @@ button.pgie-sndfile:hover {
   border-left: 2px dashed var(--pgie-surface);
   pointer-events: none;
   z-index: 1;
+}
+
+/* A clip's speed off 1x and its effects mark, in front of its name. */
+.pgie-clipspeed {
+  margin-right: 4px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.pgie-clipfxmark .pgie-ic {
+  width: 11px;
+  height: 11px;
+  margin-right: 4px;
+  vertical-align: -1px;
+}
+
+/* The button of the transition between two clips that meet, on the line
+   between them; filled when the first clip has one. */
+.pgie-cliptr {
+  position: absolute;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  padding: 2px;
+  border: 1px solid var(--pgie-sel);
+  border-radius: 50%;
+  background: var(--pgie-surface);
+  color: var(--pgie-sel);
+  z-index: 2;
+  cursor: pointer;
+}
+
+.pgie-cliptr.on {
+  background: var(--pgie-sel);
+  color: #fff;
+}
+
+.pgie-cliptr:focus-visible {
+  outline: 2px solid var(--pgie-sel);
+  outline-offset: 2px;
+}
+
+.pgie-cliptr .pgie-ic {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+/* The Effects tab: its heading with Reset, the six sliders two a row. */
+.pgie-clipfxhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.pgie-clipfx {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 12px;
 }
 
 .pgie-clipcut .pgie-ic {
