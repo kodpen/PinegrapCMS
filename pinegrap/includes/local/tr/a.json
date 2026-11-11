@@ -6416,6 +6416,7 @@
     "Archived files": "Arşivlenmiş dosyalar",
     "Archived items": "Arşivlenmiş öğeler",
     "Archived on {var:1}.": "{var:1} üzerinde arşivde.",
+    "Archived pages and pages in the Recycle Bin cannot be chosen.": "Arşivlenmiş sayfalar ve Geri Dönüşüm Kutusu'ndaki sayfalar seçilemez.",
     "Archived: closed to visitors (410)": "Arşivde: ziyaretçiye kapalı (410)",
     "Archives and ordinary files only. Anything a web server would run or read as settings is refused, except .htaccess.": "Yalnızca arşivler ve sıradan dosyalar. Web sunucusunun çalıştıracağı veya ayar olarak okuyacağı her şey reddedilir, .htaccess hariç.",
     "Arda Şahin": "Arda Şahin",
