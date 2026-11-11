@@ -195,3 +195,83 @@ function test_workspace_thread_follow_api_fields()
 
 	pg_assert_same(array_keys($fields), array_slice($schema, $at + 1, 4), 'declared after assistants');
 }
+
+// A registry agent is kept by the value its requests carry; a broken one is
+// not.
+function test_workspace_thread_follow_clean_registry()
+{
+	pg_assert_same('agent:12', ws_thread_follow_clean('agent:12'));
+	pg_assert_same('agent:12', ws_thread_follow_clean(' Agent:12 '));
+	pg_assert_same('model:3', ws_thread_follow_clean('model:3'));
+	pg_assert_same('', ws_thread_follow_clean('agent:0'));
+	pg_assert_same('', ws_thread_follow_clean('agent:x'));
+	pg_assert_same('', ws_thread_follow_clean('model:'));
+	pg_assert_same('', ws_thread_follow_clean('app:4'), 'an application proposal key is no agent');
+	pg_assert_same('agent:12', ws_agent_request_value(array('kind' => 'app', 'id' => 12)), 'the same value the request carries');
+}
+
+// A registry agent asked by name is followed, a later message that asks
+// nobody asks it, and a bot's message changes nothing.
+function test_workspace_thread_follow_decide_registry()
+{
+	pg_assert_same(array('follow' => 'agent:12', 'ask' => ''), ws_thread_follow_decide('claude', array('claude', 'agent:12'), true, true), 'the last asked');
+	pg_assert_same(array('follow' => 'agent:12', 'ask' => 'agent:12'), ws_thread_follow_decide('agent:12', array(), true, false), 'asks nobody');
+	pg_assert_same(array('follow' => 'model:3', 'ask' => 'model:3'), ws_thread_follow_decide('model:3', array(), true, false), 'a model assistant');
+	pg_assert_same(array('follow' => 'agent:12', 'ask' => ''), ws_thread_follow_decide('agent:12', array(), false, false), 'a bot');
+	pg_assert_same(array('follow' => 'agent:12', 'ask' => ''), ws_thread_follow_decide('agent:12', array('agent:9'), false, false), 'a bot naming another agent');
+}
+
+// Only the rows that reach the discussion count: a name, by handle or tag,
+// asks; the channel's other wake rules do not.
+function test_workspace_thread_follow_registry_named()
+{
+	$rows = array(
+		array('id' => 9, 'kind' => 'model', 'handle' => 'muhasebe', 'app_id' => 0, 'wake_rule' => 'all'),
+		array('id' => 12, 'kind' => 'app', 'handle' => 'mimar', 'app_id' => 40, 'wake_rule' => 'mention'),
+	);
+
+	pg_assert_same(array('agent:12'), ws_thread_agents_named($rows, 'what do you think @mimar?'));
+	pg_assert_same(array('agent:12'), ws_thread_agents_named($rows, '<@app:40> look'));
+	pg_assert_same(array('model:9', 'agent:12'), ws_thread_agents_named($rows, '@mimar and @muhasebe'), 'by id, the last followed');
+	pg_assert_same(array(), ws_thread_agents_named($rows, 'and the price?'), 'the all rule starts no follow');
+	pg_assert_same(array(), ws_thread_agents_named(array(), '@mimar'), 'no row reaches the discussion');
+	pg_assert_same(array(), ws_thread_agents_named($rows, 'mail me at a@mimar.com'));
+}
+
+// The row that lets an agent be followed, shown and asked; none, none of
+// them.
+function test_workspace_thread_follow_reach_pick()
+{
+	$rows = array(array('id' => 12, 'kind' => 'app', 'handle' => 'mimar', 'app_id' => 40));
+
+	pg_assert_same('mimar', ws_thread_follow_reach_pick($rows, 'agent:12')['handle']);
+	pg_assert_same(null, ws_thread_follow_reach_pick($rows, 'model:12'), 'another kind, same number');
+	pg_assert_same(null, ws_thread_follow_reach_pick(array(), 'agent:12'), 'taken out of the channel');
+	pg_assert_same('', ws_thread_follow_handle('agent:12'), 'no channel, no handle');
+	pg_assert_true(ws_thread_follow_is_registry('model:3'));
+	pg_assert_false(ws_thread_follow_is_registry('mcp:3'));
+}
+
+// The followed registry agent is asked through its own wake path, never
+// through Pinegrap AI's.
+function test_workspace_thread_follow_ask_registry()
+{
+	$ask = workspace_thread_follow_test_source('ws_thread_follow_ask');
+
+	pg_assert_contains('ws_agent_after_send($viewer, $channel, $message_id, $body, $agent)', $ask);
+	pg_assert_true(strpos($ask, 'ws_thread_follow_is_registry($agent)') < strpos($ask, 'ws_ai_after_send('), 'the registry branch comes before the Pinegrap AI one');
+	pg_assert_contains('ws_thread_follow_reaches(', $ask, 'asked only while it reaches the discussion');
+
+	$send = workspace_thread_follow_test_source('ws_agent_after_send');
+
+	pg_assert_contains("\$followed !== ''", $send);
+	pg_assert_contains('ws_agent_brake(', $send, 'the brakes stay');
+	pg_assert_contains('ws_agent_knock(', $send, 'the push door stays');
+
+	$messages = workspace_thread_follow_test_source('ws_message_ask_assistants');
+
+	pg_assert_contains('ws_thread_agents_asked($body, $message_id, $channel)', $messages);
+	pg_assert_contains("\$woken[] = \$kind", $messages, 'the asked registry agent is carried on');
+	pg_assert_contains('ws_thread_follow_reaches(', workspace_thread_follow_test_source('ws_thread_follow_agent'));
+	pg_assert_contains('ws_thread_follow_reaches(', workspace_thread_follow_test_source('ws_thread_follow_last'));
+}

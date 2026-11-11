@@ -19,5 +19,4 @@ description: How a registry agent shows (A4b2): the line under the message that 
 - Own messages: `workspace.messages.update` and `.delete` take an active app agent's own key (no device, `ws_api_agent_own_app()`) for messages its application wrote (`ws_message_is_own()`, `$as_app` on `ws_message_edit*()` / `ws_message_delete*()`); the edit sets `edited_at`, so the edited mark shows. Any other application key stays refused.
 
 ## What is not done?
-- A discussion following a registry agent (`ws_threads.follow_agent` `agent:<id>`): only Claude, Pinegrap AI and MCP agents are followed.
 - Seen live on dev (2026-11-10): the waiting line under the message, the tag as `@mimar` with the robot mark, the @ list's entry (after an MCP alias, before the people). Typed as text `@mimar` wakes too, drawn as plain text. The marks its claim and answer leave on the message: `agent-key-trial.md`. Own-message edits were not tried with a real agent key.

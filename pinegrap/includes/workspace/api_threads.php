@@ -77,7 +77,7 @@ function ws_api_thread_present($viewer, $thread, $channel)
 
 /**
  * The agent a discussion follows, as the API shows it: its key (claude, ai,
- * mcp:<server id>) and handle, the one Follow again would bring back, and
+ * mcp:<server id>, or a registry agent's agent:<id> / model:<id>) and handle, the one Follow again would bring back, and
  * whether the person may change it (POST /workspace/threads/{id}/follow).
  *
  * @param array $present ws_thread_present()

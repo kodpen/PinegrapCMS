@@ -310,13 +310,18 @@ function ws_agent_chain($message_id, $agent_apps)
  * wakes, within the brakes, and a knock on each push door. The agent's own
  * message never wakes it.
  *
+ * Followed mode (a discussion that follows the agent, ws_thread_follow_ask()):
+ * only that agent's reaching row is read, and its name need not be written;
+ * the own-message rule, the brakes and the push door stay.
+ *
  * @param array  $viewer the writer (a person, or an application's owner)
  * @param array  $channel
  * @param int    $message_id
  * @param string $body tags normalised
+ * @param string $followed agent:<id> | model:<id> in followed mode, '' otherwise
  * @return string[] the agent values a request was made for
  */
-function ws_agent_after_send($viewer, $channel, $message_id, $body)
+function ws_agent_after_send($viewer, $channel, $message_id, $body, $followed = '')
 {
     if (!ws_agents_ready() || !ws_ai_schema_ready()) {
         return array();
@@ -324,6 +329,12 @@ function ws_agent_after_send($viewer, $channel, $message_id, $body)
 
     // In a discussion also the agents its channel allows, by name only.
     $rows = ws_agent_reach_rows($channel);
+
+    if ($followed !== '') {
+        $rows = array_values(array_filter($rows, function ($row) use ($followed) {
+            return ws_agent_request_value($row) === $followed;
+        }));
+    }
 
     if (empty($rows)) {
         return array();
@@ -352,7 +363,7 @@ function ws_agent_after_send($viewer, $channel, $message_id, $body)
 
         $replies_own = $parent && ($own_app > 0) && ($parent['sender_kind'] === 'app') && ($parent['sender_id'] === $own_app);
 
-        if (!ws_agent_wake_matches($row, $body, $replies_own)) {
+        if (($followed === '') && !ws_agent_wake_matches($row, $body, $replies_own)) {
             continue;
         }
 

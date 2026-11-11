@@ -1002,8 +1002,9 @@ function ws_message_send($viewer, $channel, $body, $options = array())
  * @param int    $message_id
  * @param string $body as written
  * @return array claude, agent, ai: whether a request was queued for each;
- *               agents: the registry agents woken (app:<id>, model:<id>);
- *               models: a model agent among them, carried on as ai is
+ *               agents: the registry agents woken (agent:<id>, model:<id>),
+ *               the followed one included; models: a model agent among
+ *               them, carried on as ai is
  */
 function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
 {
@@ -1012,7 +1013,7 @@ function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
 
     // The agents it asks by name, or by answering one of their answers:
     // the last of them is followed from now on.
-    $named = $follows ? ws_thread_agents_asked($body, $message_id) : array();
+    $named = $follows ? ws_thread_agents_asked($body, $message_id, $channel) : array();
 
     $claude = function_exists('ws_claude_after_send') && ws_claude_after_send($viewer, $channel, $message_id, $body);
     $agent = function_exists('ws_mcp_agent_after_send') ? ws_mcp_agent_after_send($viewer, $channel, $message_id, $body) : null;
@@ -1023,9 +1024,6 @@ function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
     // The registry's agents the channel lets this message wake
     // (agent_queue.php): a model agent is answered by the site's own loop.
     $woken = function_exists('ws_agent_after_send') ? ws_agent_after_send($viewer, $channel, $message_id, $body) : array();
-    $models = !empty(array_filter($woken, function ($value) {
-        return strpos($value, 'model:') === 0;
-    }));
 
     if ($follows) {
         $followed = ws_thread_follow_agent($channel['id']);
@@ -1036,11 +1034,21 @@ function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
             ws_thread_follow_set($channel['id'], $decision['follow']);
         }
 
-        $kind = ($decision['ask'] !== '') ? ws_thread_follow_ask($viewer, $channel, $message_id, $body, $decision['ask']) : '';
+        // A registry agent this message woke already is not asked twice.
+        $ask = in_array($decision['ask'], $woken, true) ? '' : $decision['ask'];
+        $kind = ($ask !== '') ? ws_thread_follow_ask($viewer, $channel, $message_id, $body, $ask) : '';
         $claude = $claude || ($kind === 'claude');
         $ai = $ai || ($kind === 'ai');
         $agent = ($kind === 'agent') ? true : $agent;
+
+        if (ws_thread_follow_is_registry($kind)) {
+            $woken[] = $kind;
+        }
     }
+
+    $models = !empty(array_filter($woken, function ($value) {
+        return strpos($value, 'model:') === 0;
+    }));
 
     // Asked in a discussion: its channel's message says so.
     if (($claude || $ai) && ws_channel_is_thread($channel)) {
