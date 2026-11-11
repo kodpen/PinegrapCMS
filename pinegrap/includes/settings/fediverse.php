@@ -62,10 +62,10 @@ foreach (array('Organization' => lang('Organization'), 'Person' => lang('Person'
     $ap_type_options .= '<option value="' . $ap_value . '"' . (($ap_stored['type'] === $ap_value) ? ' selected="selected"' : '') . '>' . h($ap_label) . '</option>';
 }
 
-// The avatar is shown to everyone, so the picker searches only pictures every
-// visitor may open (kind public_image, settings-public-image-pickers) and
-// prints the stored one alone.
-$ap_icon_options = pg_file_picker_public_options($ap_stored['icon'], lang('(the organization logo)'));
+// The avatar is shown to everyone, so the picker field searches only
+// pictures every visitor may open (kind public_image,
+// settings-public-image-pickers).
+$ap_icon_field = pg_picker_field('public_image', 'ap_icon', $ap_stored['icon'], array('title' => lang('Choose a picture'), 'describedby' => 'ap_icon_help'));
 
 $ap_on = $ap_stored['enabled'] && pg_ap_handle_valid($ap_stored['handle']);
 $ap_address = $ap_on ? '@' . $ap_stored['handle'] . '@' . $ap_host : '';
@@ -102,7 +102,8 @@ $pg_settings_cards[] = $ap_card('pgset-fediverse', lang('Fediverse account'), '
                     </div>
                     <div class="pg-f-lg">
                         <label for="ap_icon" class="form-label">' . lang('Avatar') . '</label>
-                        <select name="ap_icon" id="ap_icon" class="form-control"' . pg_file_picker_attributes('public_image') . '>' . $ap_icon_options . '</select>
+                        ' . $ap_icon_field . '
+                        <div class="form-text" id="ap_icon_help">' . lang('Empty: the organization logo.') . '</div>
                     </div>
                     <div class="col-12">' . ($ap_on ? '
                         <div class="form-text mb-3">' . lang(array('string' => 'Followed as {var:1}.', 'vars' => '<strong>' . h($ap_address) . '</strong>')) . '</div>
@@ -145,7 +146,7 @@ $pg_settings_cards[] = $ap_card('pgset-fediverse-publish', lang('What is publish
                         <select multiple data-pg-combobox name="ap_folders[]" id="ap_folders" class="form-control" data-placeholder="' . h(lang('Choose the folders')) . '">' . $ap_folder_options . '</select>
                         <div class="form-text">' . lang('Standard pages directly in a public folder; subfolders are not included. What was published before the switch was turned on is not sent.') . '</div>
                     </div>
-                    <div class="d-none">' . pg_fields_script() . '</div>');
+                    <div class="d-none">' . pg_fields_script() . pg_picker_script() . '</div>');
 
 // ── Followers and blocks ──
 $ap_followers = pg_ap_followers_list(200);

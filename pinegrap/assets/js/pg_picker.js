@@ -18,14 +18,23 @@
  * extraLabel), listed beside the folders and found by the search; they are
  * never kept in Recent.
  *
- *   pgPicker.open({kind, value, title}) -> Promise of the picked item
- *   ({value, text, ...}) or null, settled once the dialog has closed, so the
- *   caller may focus or edit the page (docs/memory/ui/dialog-result-after-close.md).
+ *   pgPicker.open({kind, value, title, query}) -> Promise of the picked
+ *   item ({value, text, ...}) or null, settled once the dialog has closed, so
+ *   the caller may focus or edit the page (docs/memory/ui/dialog-result-after-close.md);
+ *   a query opens it on that search.
  *   pgPicker.open({kind, value: [values], multiple: true}) -> Promise of the
  *   picked items in the order they were picked, or null.
  *
  * A button with data-pg-picker-browse and data-pg-picker-kind opens it for
  * the field named by data-pg-picker-for and writes the pick there.
+ *
+ * The field (pg_picker_field(), [data-pg-picker-field]) is the second face:
+ * a combobox showing the chosen value with its picture, searching the kind
+ * as one types (a list of up to eight with pictures, the last row opening
+ * Browse on the text, Alt+Down too), clear and Browse beside it; below
+ * 576 px a tap opens the search in a half sheet. Its listeners sit on the
+ * document, so a field in injected markup works as printed; a pick fires
+ * change on its hidden input.
  * pg_picker_script() prints the texts and the address as JSON
  * (#pg_picker_config) beside this script. pgPicker.pure holds the helpers
  * without the DOM (tests/picker_js_test.php runs them in Node).
@@ -221,6 +230,27 @@
         return (path.length > 1 ? path.slice(1) : path).map(function (crumb) { return crumb.name; }).join(' / ');
     }
 
+    // The line under a chosen name in the field: a page's address, the
+    // folder, the picture size and the file size (pg_picker_field_meta()).
+    function fieldMeta(item) {
+        item = item || {};
+        var parts = [item.address || '', pathText(item.path)];
+        if (item.width && item.height) {
+            parts.push(item.width + ' × ' + item.height);
+        }
+        parts.push(item.size_label || '');
+        return parts.filter(Boolean).join(' · ');
+    }
+
+    // The text key of the field's result count: a full page of answers
+    // says there are more.
+    function resultsKey(count, more) {
+        if (more) {
+            return '{n}+ results · in every folder';
+        }
+        return count === 1 ? '1 result · in every folder' : '{n} results · in every folder';
+    }
+
     function fileIcon(type) {
         var t = String(type || '').toLowerCase();
         var map = { pdf: 'pdf', zip: 'zip', rar: 'zip', doc: 'word', docx: 'word', xls: 'excel', xlsx: 'excel', csv: 'spreadsheet', ppt: 'ppt', pptx: 'ppt', txt: 'text', md: 'text', mp3: 'music', wav: 'music', ogg: 'music', mp4: 'play', webm: 'play', mov: 'play', js: 'code', css: 'code', html: 'code', json: 'code', xml: 'code' };
@@ -362,7 +392,7 @@
         fill: fill, pathText: pathText, fileIcon: fileIcon, makeCollator: makeCollator,
         extensionOf: extensionOf, uploadRefusal: uploadRefusal, addRecent: addRecent, togglePick: togglePick,
         rangePick: rangePick, formatSize: formatSize, pickable: pickable, groupChips: groupChips, inGroup: inGroup,
-        extraItems: extraItems, extraMatches: extraMatches
+        extraItems: extraItems, extraMatches: extraMatches, fieldMeta: fieldMeta, resultsKey: resultsKey
     };
 
     var doc = root.document;
@@ -2135,6 +2165,12 @@
             }
             return self.openFolder(top[0].id);
         }).then(function () {
+            // The field's "in Browse" row hands in what was typed.
+            if (self.opts.query) {
+                self.setQuery(self.opts.query);
+                self.search.focus();
+                return;
+            }
             self.itemsBox.focus();
         }).catch(function (error) { self.fail(error); });
     };
@@ -2195,6 +2231,398 @@
                 writeField(field, item);
             }
         });
+    });
+
+    // ── The field ─────────────────────────────────────────────────────────
+    // pg_picker_field() prints the whole field: the posted value in a
+    // hidden input, a combobox showing the chosen name with its picture and
+    // folder, clear, Browse and an empty list. Typing asks picker.php to
+    // search the kind and lists the answers with their pictures; the last
+    // row opens Browse on the same text (Alt+Down too). Below 576 px a tap
+    // opens the search in a half sheet. The listeners sit on the document,
+    // so a field in injected markup needs no start.
+
+    var FIELD_PAUSE = 250, FIELD_ROWS = 8;
+
+    function onPhone() {
+        return !!(root.matchMedia && root.matchMedia('(max-width: 575.98px)').matches);
+    }
+
+    function fillThumb(box, item, pages) {
+        box.textContent = '';
+        if (!item) {
+            return;
+        }
+        if (item.thumb) {
+            var img = el('img');
+            img.alt = '';
+            img.src = item.thumb;
+            box.appendChild(img);
+        } else {
+            box.appendChild(icon(pages ? 'bi-file-earmark-text' : fileIcon(item.type)));
+        }
+    }
+
+    function Field(node) {
+        this.root = node;
+        this.kind = node.getAttribute('data-pg-picker-kind') || 'file';
+        this.pages = (conf().page_kinds || []).indexOf(this.kind) !== -1;
+        this.value = node.querySelector('[data-pg-picker-value]');
+        this.input = node.querySelector('.pg-pfield-input');
+        this.thumb = node.querySelector('.pg-pfield-thumb');
+        this.meta = node.querySelector('.pg-pfield-meta');
+        this.pop = node.querySelector('.pg-pfield-pop');
+        this.own = { input: this.input, status: node.querySelector('.pg-pfield-status'), list: node.querySelector('.pg-pfield-list') };
+        this.host = this.own;
+        // The chosen name, put back when a search is left without a pick.
+        this.text = this.input.value;
+        this.items = [];
+        this.query = '';
+        this.active = -1;
+        this.seq = 0;
+        this.timer = null;
+        this.sheet = null;
+    }
+
+    function fieldOf(target) {
+        var node = (target && target.closest) ? target.closest('[data-pg-picker-field]') : null;
+        if (!node) {
+            return null;
+        }
+        if (!node.pgPickerField) {
+            node.pgPickerField = new Field(node);
+        }
+        return node.pgPickerField;
+    }
+
+    Field.prototype.isOpen = function () {
+        return !!this.sheet || !this.pop.hidden;
+    };
+
+    Field.prototype.show = function (on) {
+        this.pop.hidden = !on;
+        this.input.setAttribute('aria-expanded', String(!!on));
+        this.root.classList.toggle('is-open', !!on);
+        if (on && !this.own.list.firstChild) {
+            this.draw([], '', false);
+        }
+    };
+
+    // Nothing typed lists only Browse; a text is asked for after a pause,
+    // and an answer to an older text is dropped.
+    Field.prototype.typed = function () {
+        var self = this, text = String(this.host.input.value).trim();
+        if (!this.sheet) {
+            this.root.classList.toggle('is-typing', this.input.value !== this.text);
+            this.show(true);
+        }
+        root.clearTimeout(this.timer);
+        if (text === '') {
+            this.seq++;
+            this.draw([], '', false);
+            return;
+        }
+        this.timer = root.setTimeout(function () { self.search(text); }, FIELD_PAUSE);
+    };
+
+    Field.prototype.search = function (text) {
+        var self = this, seq = ++this.seq;
+        this.host.status.textContent = t('Searching…');
+        request({ kind: this.kind, request: 'search', q: text, per_page: FIELD_ROWS }).then(function (body) {
+            if (seq === self.seq) {
+                self.draw(body.items || [], text, !!body.more);
+            }
+        }).catch(function (error) {
+            if (seq === self.seq) {
+                self.draw([], text, false);
+                self.host.status.textContent = error.message;
+            }
+        });
+    };
+
+    Field.prototype.draw = function (items, text, more) {
+        var self = this, list = this.host.list;
+        this.items = items.slice();
+        this.query = text;
+        list.textContent = '';
+        items.forEach(function (item, index) {
+            var row = el('div', 'pg-pfield-option');
+            row.id = list.id + '_' + index;
+            row.setAttribute('role', 'option');
+            row.setAttribute('data-index', String(index));
+            var thumb = el('span', 'pg-pfield-thumb');
+            fillThumb(thumb, item, self.pages);
+            row.appendChild(thumb);
+            var words = el('span', 'pg-pfield-words');
+            words.appendChild(highlighted(String(item.text), text));
+            words.appendChild(el('span', 'pg-pfield-meta', fieldMeta(item)));
+            row.appendChild(words);
+            list.appendChild(row);
+        });
+        var more_row = el('div', 'pg-pfield-option pg-pfield-more');
+        more_row.id = list.id + '_browse';
+        more_row.setAttribute('role', 'option');
+        more_row.setAttribute('data-index', String(items.length));
+        more_row.appendChild(icon('bi-folder2-open'));
+        more_row.appendChild(el('span', 'pg-pfield-words', text ? t('All results for “{q}” in Browse', { q: text }) : t('Browse…')));
+        if (!this.sheet) {
+            more_row.appendChild(el('kbd', '', 'Alt + ↓'));
+        }
+        list.appendChild(more_row);
+        this.host.status.textContent = (text === '') ? t('Type to search…')
+            : (items.length ? t(resultsKey(items.length, more), { n: items.length }) : t('No results found'));
+        this.setActive(-1);
+    };
+
+    Field.prototype.setActive = function (index) {
+        var rows = this.host.list.querySelectorAll('.pg-pfield-option');
+        this.active = (index >= 0 && index < rows.length) ? index : -1;
+        for (var i = 0; i < rows.length; i++) {
+            rows[i].classList.toggle('is-active', i === this.active);
+            rows[i].setAttribute('aria-selected', String(i === this.active));
+        }
+        if (this.active < 0) {
+            this.host.input.removeAttribute('aria-activedescendant');
+            return;
+        }
+        this.host.input.setAttribute('aria-activedescendant', rows[this.active].id);
+        if (rows[this.active].scrollIntoView) {
+            rows[this.active].scrollIntoView({ block: 'nearest' });
+        }
+    };
+
+    // Writes a pick (null clears): the posted value, the name, its line and
+    // picture; a note on the stored value goes with it. Fires the change a
+    // screen listens to.
+    Field.prototype.set = function (item) {
+        this.value.value = item ? String(item.value) : '';
+        this.text = item ? String(item.text) : '';
+        this.input.value = this.text;
+        this.meta.textContent = item ? fieldMeta(item) : '';
+        fillThumb(this.thumb, item, this.pages);
+        this.root.classList.remove('is-typing', 'is-warning', 'is-danger', 'is-error');
+        this.root.classList.toggle('is-empty', !item);
+        this.input.removeAttribute('aria-invalid');
+        var note = this.root.querySelector('.pg-pfield-note');
+        if (note) {
+            this.input.setAttribute('aria-describedby', String(this.input.getAttribute('aria-describedby') || '').split(' ').filter(function (id) { return id && id !== note.id; }).join(' '));
+            note.remove();
+        }
+        this.show(false);
+        this.value.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    // Leaves a search without a pick: the chosen name comes back.
+    Field.prototype.restore = function () {
+        root.clearTimeout(this.timer);
+        this.seq++;
+        this.input.value = this.text;
+        this.root.classList.remove('is-typing');
+        this.show(false);
+        this.setActive(-1);
+    };
+
+    Field.prototype.choose = function (index) {
+        var self = this, item = this.items[index];
+        if (index >= this.items.length) {
+            return this.browse(this.query);
+        }
+        if (!item) {
+            return null;
+        }
+        if (this.sheet) {
+            return this.closeSheet().then(function () {
+                self.set(item);
+                self.input.focus();
+            });
+        }
+        this.set(item);
+        return null;
+    };
+
+    Field.prototype.browse = function (text) {
+        var self = this;
+        var go = function () {
+            self.restore();
+            return open({ kind: self.kind, title: self.root.getAttribute('data-pg-picker-title') || undefined, value: self.value.value, query: text || '' }).then(function (item) {
+                if (item) {
+                    self.set(item);
+                }
+                self.input.focus();
+            });
+        };
+        return this.sheet ? this.closeSheet().then(go) : go();
+    };
+
+    Field.prototype.key = function (event) {
+        var rows = this.host.list.querySelectorAll('.pg-pfield-option').length;
+        var open_now = this.isOpen();
+        if (event.key === 'ArrowDown' && event.altKey) {
+            event.preventDefault();
+            this.browse(String(this.host.input.value).trim() === this.text && !this.sheet ? '' : String(this.host.input.value).trim());
+        } else if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            if (!open_now) {
+                this.show(true);
+                return;
+            }
+            this.setActive(Math.min(this.active + 1, rows - 1));
+        } else if (event.key === 'ArrowUp' && open_now) {
+            event.preventDefault();
+            this.setActive(Math.max(this.active - 1, 0));
+        } else if (event.key === 'Enter') {
+            // Never submits the form the field sits in.
+            event.preventDefault();
+            if (open_now && rows) {
+                this.choose(this.active >= 0 ? this.active : 0);
+            }
+        } else if (event.key === 'Escape' && !this.sheet && (open_now || this.input.value !== this.text)) {
+            // Kept from the settings dialog around the field.
+            event.preventDefault();
+            event.stopPropagation();
+            this.restore();
+        }
+    };
+
+    // The phone's half sheet: the field's label as its title, a search box
+    // and the same rows; a pick is written once the sheet has closed.
+    Field.prototype.openSheet = function () {
+        var self = this;
+        if (this.sheet || !root.pgUI) {
+            return;
+        }
+        var label = this.input.id ? doc.querySelector('label[for="' + this.input.id + '"]') : null;
+        var parts = root.pgUI.dialog.build({ className: 'pg-pfield-sheet', closeLabel: t('Close'), title: label ? label.textContent.trim() : this.root.getAttribute('data-pg-picker-title') });
+        var input = el('input', 'form-control pg-pfield-query');
+        var status = el('div', 'pg-pfield-status');
+        var list = el('div', 'pg-pfield-list');
+        list.id = (this.input.id || 'pg_pfield') + '_sheet_list';
+        list.setAttribute('role', 'listbox');
+        list.setAttribute('aria-label', parts.title.textContent);
+        input.type = 'search';
+        input.setAttribute('role', 'combobox');
+        input.setAttribute('aria-expanded', 'true');
+        input.setAttribute('aria-autocomplete', 'list');
+        input.setAttribute('aria-controls', list.id);
+        input.setAttribute('aria-label', t('Search'));
+        input.setAttribute('autocomplete', 'off');
+        input.placeholder = t('Type to search…');
+        status.setAttribute('role', 'status');
+        status.setAttribute('aria-live', 'polite');
+        parts.body.appendChild(input);
+        parts.body.appendChild(status);
+        parts.body.appendChild(list);
+        input.addEventListener('input', function () { self.typed(); });
+        input.addEventListener('keydown', function (event) { self.key(event); });
+        list.addEventListener('click', function (event) {
+            var row = event.target.closest('.pg-pfield-option');
+            if (row) {
+                self.choose(Number(row.getAttribute('data-index')));
+            }
+        });
+        this.sheet = parts.root;
+        this.host = { input: input, status: status, list: list };
+        root.pgUI.on(parts.root, 'dialog', 'hidden', function () { self.dropSheet(); }, { once: true });
+        doc.body.appendChild(parts.root);
+        this.draw([], '', false);
+        root.pgUI.dialog.show(parts.root).then(function () { input.focus(); });
+    };
+
+    Field.prototype.dropSheet = function () {
+        if (this.sheet) {
+            root.clearTimeout(this.timer);
+            this.seq++;
+            this.sheet.remove();
+            this.sheet = null;
+            this.host = this.own;
+            this.items = [];
+        }
+    };
+
+    Field.prototype.closeSheet = function () {
+        var self = this, sheet = this.sheet;
+        return Promise.resolve(sheet ? root.pgUI.dialog.hide(sheet) : null).then(function () { self.dropSheet(); });
+    };
+
+    function fieldInput(target) {
+        return !!(target && target.classList && target.classList.contains('pg-pfield-input'));
+    }
+
+    doc.addEventListener('input', function (event) {
+        if (fieldInput(event.target)) {
+            fieldOf(event.target).typed();
+        }
+    });
+
+    // In the capture phase: Bootstrap's Escape handler sits on the dialog
+    // element around a field, before a bubbling document listener.
+    doc.addEventListener('keydown', function (event) {
+        if (fieldInput(event.target)) {
+            fieldOf(event.target).key(event);
+        }
+    }, true);
+
+    // On a phone the box opens the sheet: read-only before the tap's focus,
+    // so no keyboard opens under it.
+    doc.addEventListener('pointerdown', function (event) {
+        var box = event.target.closest && event.target.closest('.pg-pfield-box');
+        if (box) {
+            var input = box.querySelector('.pg-pfield-input');
+            input.readOnly = onPhone() && !event.target.closest('.pg-pfield-clear');
+        }
+    });
+
+    // A press in the open list keeps the focus in the box.
+    doc.addEventListener('mousedown', function (event) {
+        if (event.target.closest && event.target.closest('.pg-pfield-pop')) {
+            event.preventDefault();
+        }
+    });
+
+    doc.addEventListener('click', function (event) {
+        var field = fieldOf(event.target), target = event.target;
+        if (!field) {
+            return;
+        }
+        if (target.closest('.pg-pfield-clear')) {
+            event.preventDefault();
+            field.set(null);
+            field.input.readOnly = false;
+            field.input.focus();
+        } else if (target.closest('.pg-pfield-browse')) {
+            event.preventDefault();
+            field.browse('');
+        } else if (target.closest('.pg-pfield-option')) {
+            field.choose(Number(target.closest('.pg-pfield-option').getAttribute('data-index')));
+        } else if (target.closest('.pg-pfield-box')) {
+            if (onPhone()) {
+                event.preventDefault();
+                field.openSheet();
+                return;
+            }
+            field.input.readOnly = false;
+            if (field.isOpen() && target.closest('.pg-pfield-caret')) {
+                field.restore();
+                return;
+            }
+            field.input.focus();
+            if (!field.isOpen()) {
+                // A typed name is replaced as a whole.
+                if (!field.root.classList.contains('is-typing')) {
+                    field.input.select();
+                }
+                field.show(true);
+            }
+        }
+    });
+
+    // Leaving the field (Tab, a click elsewhere) puts the chosen name back.
+    doc.addEventListener('focusout', function (event) {
+        var field = fieldInput(event.target) ? fieldOf(event.target) : null;
+        var next = event.relatedTarget;
+        if (field && !field.sheet && !(next && (field.pop.contains(next) || next === field.input))) {
+            field.restore();
+        }
     });
 
     root.pgPicker = { open: open, pure: pure };

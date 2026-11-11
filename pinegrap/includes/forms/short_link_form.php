@@ -153,9 +153,10 @@ function pg_short_link_form_label_blank($options, $label)
  *                     (cards under the summary in the status column),
  *                     'keep' (the page_id, product_group_id and product_id
  *                     the link points at, which stay on their lists while in
- *                     the Recycle Bin; nothing on create). The file picker
- *                     prints only its chosen file, marked when it is in the
- *                     bin, and searches the rest (pg_file_picker_id_options())
+ *                     the Recycle Bin; nothing on create). The File field
+ *                     is the picker field (pg_picker_field(), kind file):
+ *                     its chosen file marked when it is in the bin, the
+ *                     rest searched or browsed
  * @return string
  */
 function pg_short_link_form_cards($liveform, $form)
@@ -240,7 +241,7 @@ function pg_short_link_form_cards($liveform, $form)
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3" id="file_row"' . $style['file'] . '>
                                                 <label for="file" class="form-label">' . lang('File') . '</label>
-                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'file', 'id'=>'file', 'class'=>'form-control', 'options'=>pg_file_picker_id_options($liveform->get_field_value('file'))) + pg_file_picker_field_attributes('file')) . pg_fields_script() . '
+                                                ' . pg_picker_field('file', 'file', $liveform->get_field_value('file'), array('title' => lang('Choose a file'), 'invalid' => $liveform->check_field_error('file'))) . pg_picker_script() . '
                                             </div>
                                         </div>
                                     </div>

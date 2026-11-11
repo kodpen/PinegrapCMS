@@ -22,11 +22,8 @@ module: file_picker_search
 - `pg_file_picker_id_options($id)` (short links): the field's file if it exists, is no attachment and a role 3 user may edit its folder; a binned file under the name it had, marked `[IN RECYCLE BIN]`. The save refuses a binned file the link did not have, and an id with no file row (attachment or nameless too). A deleted file is not printed.
 
 ## Which screens use it?
-- Settings: Site Icon (`site_icon`); Application Icon, Default Share Image, Organization Logo, Fediverse Avatar (`public_image`). `seo.php` and `general.php` print `pg_fields_script()` with the picker cards, never `prep.php` (it runs before every category, and the script prints once per request).
-- Settings › Commerce PEM File: a short list, so a local `data-pg-combobox`; a stored name no pem file carries stays, marked (`pg_stored_file_option()`).
-- Add/Edit Short Link: File (`file`).
-- File Manager short link wizard: File (`file`). `pg_explorer_handle_short_link_options()` sends only the link's own file (`pg_file_picker_id_options()`) and `file_source`; `view_folders.php` draws the select through `pgFields.init()` and sets it with `pgCombobox.set()`. Lists holding a link's file are never `kept`.
 - Short link list quick edit File cell (#8424): the list table driver's `search` type, kind `file` (`list-table-quick-edit-search.md`); `get_file_options()` is gone.
-- Next: `plans/one-picker.md`.
+- Settings › Commerce PEM File: a short list, so a local `data-pg-combobox`; a stored name no pem file carries stays, marked (`pg_stored_file_option()`).
+- The five Settings pictures (Site Icon, Application Icon, Default Share Image, Organization Logo, Fediverse Avatar) and the short link File field on Add/Edit Short Link and in the File Manager wizard are picker fields since #8751 (`picker-field.md`, F3 of this plan): they search through `picker.php`. `pg_file_picker_attributes()`, `pg_file_picker_field_attributes()`, `pg_file_picker_public_options()` and `pg_file_picker_id_options()` have no screen left; PK10 of `plans/one-picker.md` removes them.
 
 Tests: `tests/file_picker_search_test.php`, `tests/settings_public_image_test.php`, `tests/short_link_requests_test.php`.
