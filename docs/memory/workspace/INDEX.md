@@ -32,6 +32,7 @@
 - contact-group-joined-event.md: Flow event contact_group.joined: one ws_events_in row per contact added to a group, from pg_announce_contact_group_members(); payload, group filter kept as status, outputs [decision: decisions-made-product-27.md]
 - mail-api.md: Workspace e-mail conversations in the external API and MCP (api_mail.php, G7): routes, which are tools, who may answer, errors, the workspace.mail.received webhook, a mail message's mail object
 - mail-card.md: How a mail is drawn in a Workspace channel (ws_mail_card_html(), sender like a guest) and the Mailboxes card of Workspace settings with the .eml upload (mail_settings.php)
+- mail-compose.md: New e-mail in the Workspace (WM5, #8719): the form and its fields, where it opens, the panel actions, who may send, the unsent form kept in the browser, a mailbox's Signature and where it goes
 - mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP chosen (#2444) and when a push endpoint (G9) would come, the eleven answers and their files, defaults, scope, PRs, what stays unverified [decision: decisions-made-product-10.md, decisions-made-workspace-13.md]
 - mail-fetch.md: Reading Workspace mailboxes over IMAP (ws_mail_fetch(), inline in job.php): what is searched, the UID position, held mail, limits, after-fetch, what the box records, the System status tile
 - mail-imap-client.md: The socket IMAP client pg_imap_*() (includes/fn/imap_client.php, G2a of incoming e-mail): why no imap extension, TLS and address check, sign-in, commands, error codes, limits, tests
@@ -364,6 +365,7 @@
 - workspace-task-filters.md: My Tasks, planning board and Work Calendar filters (workspace.js): named department selects, scope buttons that follow a department pick, pressed week buttons, the announced task count
 - workspace-task-reminders.md: Task reminders, overdue and meeting notices (reminders.php): who is told, the per-recipient mail and its channel line, claims against double sending, time zone and DST
 - workspace-task-zero-dates.md: A task's start or due date of 0000-00-00 is no date when the board or /postpone moves it and when the start-after-due check runs (ws_task_move_dates(), ws_task_starts_after_due())
+- workspace-team-settings.md: Departments and Team members in Site Settings (Team and working hours) and on Workspace Settings: shared checks and writes, field names, old anchors, Who is in the team
 - workspace-text-fold.md: Turkish-aware case-insensitive search of the workspace (ws_fold(), ws_text_position(), ws_text_contains(), SQL helpers in commands.php): what folds, who calls it, why not mb_stripos() [decision: decisions-made-product-10.md]
 - workspace-text-headings.md: Headings "#" to "###" and "---" rules in Workspace notes only (#2649): server rule and fast path, plain text, editor twins, tools, Enter/Backspace, "# " autoformat, the import
 - workspace-text-highlight.md: ==x== as a highlight (<mark>): the pair rule, old shapes that stay text, server and editor twins, plain text, guest page, notes import, sums, table cells

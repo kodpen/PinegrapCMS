@@ -527,7 +527,7 @@ function ws_mail_send_outcome($outbox_id, $outcome, $ref, $error, $mime)
 /**
  * What email() is given for an outgoing item: the box's address and route,
  * the item's addresses, subject and Message-ID, the text with the writer's
- * name and the box's under it, and the files of the item's messages by
+ * name and the box's Signature (or its name) under it, and the files of the item's messages by
  * path, read when the mail leaves.
  *
  * @param array $item  ws_mail_items row
@@ -544,7 +544,7 @@ function ws_mail_send_properties($item, $box, $route)
         'from_name'          => (string) $box['name'],
         'from_email_address' => (string) $box['address'],
         'subject'            => (string) $item['subject'],
-        'body'               => ws_mail_reply_body((string) $item['body_text'], (string) $item['from_name'], (string) $box['name'], null),
+        'body'               => ws_mail_send_body((string) $item['body_text'], (string) $item['from_name'], (string) $box['name'], ws_mail_box_signature($box)),
         'headers'            => ws_mail_reply_headers(null, (string) $item['rfc_message_id']),
         'type'               => 'workspace',
         // The text stays out of failure notices and the Site Log; the writer

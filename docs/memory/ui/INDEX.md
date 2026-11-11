@@ -296,6 +296,7 @@
 - image-editor-versions.md: The image editor's versions (file_versions, 2026.11.0): base and save rows, what opening loads, what a save, restore and delete write, retention, the drawer, deleting a file, Disk Usage [decision: decisions-made-product-15.md, decisions-made-schema-7.md]
 - image-editor-video-decode.md: How the image editor reads a video: own MP4 and WebM demuxers in the model, WebCodecs decoding, the frame cache, seeking, the messages when a browser cannot decode
 - image-editor-video-export.md: The image editor's MP4 and WebM output (AN6): WebCodecs with own MP4 and WebM muxers, the MediaRecorder fallback, the limits, the estimate from the bit rate
+- image-editor-video-reopen.md: A video project saved and opened again (V9, #8701): clips and sounds by fileId, pictures kept as files, Image Editor on a video in Files, an unsaved canvas's video replaced
 - image-editor-warp.md: The image editor's Warp tool: presets and an envelope mesh kept as l.warp, drawn by mapping the flattened outline; Expand bakes it into the path
 - image-editor-workspace.md: Workspace canvas (E16 #4762, E16b): New canvas in a channel or note, saved with its document in file_versions and its pictures as files beside it, opened again with its layers
 - import-campaign-profiles-screen.md: import_email_campaign_profiles.php on the wide edit layout (step B11): the Import CSV and File Format cards, the Summary with the name-match warning, the save bar
@@ -508,6 +509,7 @@
 - settings-card-row-layout.md: How a settings card lays out one setting per row via stylesheet only: shape-based :has() rule, dividers between rows, name+control grid, single vertical rhythm.
 - settings-card-save-rules.md: Rules for writing settings cards and their save modules: own columns only, $sql_* splice, prep.php $row, balanced divs, registry.php sections.
 - settings-dashboard-card.md: Dashboard card in Site Settings > Appearance (pgset-dashboard): card style, panel backdrop, per-sign-in refresh time, Reset Widgets; role < 2 gate; how a save reaches the dashboard behind the dialog [decision: decisions-made-access.md]
+- settings-drawer-card-form.md: A settings drawer that edits a record (a department): fields and a named button joined to the settings form by its id, saved by the pane's Save
 - settings-filter-autofill.md: Settings category screens: a password manager wrote the saved username ("admin") into the toolbar filter and every section card vanished; the token and the focus guard that stop it (PR #1700)
 - settings-folder-pickers.md: Site Settings and page folder pickers leave out the Workspace (settings also the Recycle Bin); settings saves refuse them; a stored one is shown marked
 - settings-group-names.md: Site Settings groups, user rights Select / Select All and the other two-list Select All switches (Organize Contacts, calendar event) named by their heading

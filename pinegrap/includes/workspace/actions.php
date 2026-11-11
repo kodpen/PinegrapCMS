@@ -2488,6 +2488,44 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('state' => $result['state']));
 
+        // New e-mail: the mailboxes the person may send from with their
+        // channels and Signatures, and the form sent through the queue
+        // (mail_compose.php, ws_mail_send()). People only; a guest has no
+        // mailbox to send from.
+        case 'ws_mail_compose':
+        case 'ws_mail_new':
+            if (!function_exists('ws_mail_send') || !ws_mail_send_ready()) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            if (empty($viewer['member'])) {
+                return ws_action_error(ws_mail_send_error_text('no_box'));
+            }
+
+            if ($action === 'ws_mail_compose') {
+                return ws_action_ok(array('boxes' => ws_mail_compose_boxes(ws_mail_send_boxes($viewer)), 'writer' => ws_person_name((int) $viewer['id'])));
+            }
+
+            $files = ws_mail_compose_files($_FILES['files'] ?? null);
+
+            if (!$files['ok']) {
+                return ws_action_error($files['error'], 'files');
+            }
+
+            $mail = ws_mail_compose_mail($request, $files['files']);
+            $result = ws_mail_send($viewer, $mail);
+
+            if (!$result['ok']) {
+                return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']));
+            }
+
+            return ws_action_ok(array(
+                'conversation_id' => $result['conversation_id'],
+                'message_id'      => $result['message_id'],
+                'channel_id'      => $mail['channel_id'],
+                'state'           => $result['state'],
+            ));
+
         // A conversation's status or holder (mail_status.php).
         case 'ws_mail_conversation':
             if (!function_exists('ws_mail_conversation_set') || !ws_mail_ready()) {

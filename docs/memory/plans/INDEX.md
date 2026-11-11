@@ -31,6 +31,7 @@
 - legacy-group-design-steps.md: Steps of plans/legacy-group-design.md: LG1 the theme, LG2 {path} addresses, LG3 the legacy key and badge, LG4 sets in the report and dry run, LG5 the run, LG6 the frame split, LG7 back to classic
 - legacy-group-design.md: Plan (owner 2026-11-11, #8671): classic styles that share a CSS/JS set move as one "Legacy" design that opens right in the visual designer; the theme and {path} fixes first; steps LG1-LG7
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
+- memory-rule-checks.md: Plan: the tool refuses a new memory line over 500 characters and a cluster of ten files with no start file; the nine missing cluster overviews; steps MR1-MR5
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - one-picker-inventory.md: What chooses a file, a picture, a page or a folder in the software today (2026-11-10, with call counts): what the one picker takes over, and the record searches that model its later kinds
 - one-picker-steps.md: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry and endpoint, dialog, upload, pages, the field, page fields, editor and designer bridges, remaining screens, close-out; open questions

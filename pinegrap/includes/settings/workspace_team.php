@@ -2,10 +2,11 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - Team and working hours: the Workspace defaults (the hours
- * of a working day, the working week, the hours a task with no estimate
- * counts as), and a card linking the team cards still kept on the Workspace
- * Settings screen.
+ * Site Settings - Team and working hours: the departments (each created or
+ * changed in a drawer), the team members' rows (job title, working day, taken
+ * out of the team), the Workspace defaults (the hours of a working day, the
+ * working week, the hours a task with no estimate counts as), and a card
+ * linking the working calendar still kept on the Workspace Settings screen.
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -23,6 +24,78 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/team_settings.php');
+
+// A drawer sits outside the settings form (the dialog's drawer host, or the
+// page's Bootstrap drawer after the form), so its fields and its button join
+// the form by its id: the department is saved with the pane's Save path.
+$ws_form = !empty($pg_settings_in_dialog) ? 'pg_settings_modal_form' : 'pg_settings_page_form';
+$ws_viewer = ws_viewer($user);
+$ws_departments = ws_departments(true, true);
+$ws_people_by_id = ws_people(ws_team_ids());
+
+// ── Departments ──
+$ws_department_rows = '';
+
+foreach ($ws_departments as $ws_department) {
+    $ws_id = (int) $ws_department['id'];
+    $ws_channel = ((int) $ws_department['channel_id'] > 0) ? ws_channel($ws_department['channel_id']) : null;
+    $ws_archive_label = $ws_department['archived'] ? lang('Bring it back') : lang('Move to the archive');
+
+    $ws_department_rows .= ws_settings_department_row_html($ws_department, $ws_people_by_id, $ws_channel, '
+                    <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="drawer" data-bs-target="#pgset-ws-dept-' . $ws_id . '" aria-controls="pgset-ws-dept-' . $ws_id . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Edit'), $ws_department['name'])))) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</button>
+                    <button type="submit" name="ws_department_archive" value="' . $ws_id . '" class="btn btn-sm btn-text theme-secondary" title="' . h($ws_archive_label) . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array($ws_archive_label, $ws_department['name'])))) . '"><i class="bi ' . ($ws_department['archived'] ? 'bi-arrow-counterclockwise' : 'bi-archive') . '" aria-hidden="true"></i></button>');
+
+    $pg_settings_modals[] = ws_settings_department_drawer($ws_department, ws_settings_department_primary_ids($ws_id), $ws_channel, $ws_form, !empty($pg_settings_in_dialog));
+}
+
+$pg_settings_modals[] = ws_settings_department_drawer(null, array(), null, $ws_form, !empty($pg_settings_in_dialog));
+
+if ($ws_department_rows === '') {
+    $ws_department_rows = '<div class="ws-empty py-5"><i class="bi bi-diagram-3" aria-hidden="true"></i>' . h(lang('No departments yet. A department groups people so work can be handed to it and its lead sees its board.')) . '</div>';
+}
+
+$pg_settings_cards[] = '
+    <div id="pgset-ws-departments" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0 ws-grow">' . h(lang('Departments')) . '</span>
+                <button type="button" class="btn btn-sm btn-outline theme-primary rounded-pill" data-bs-toggle="drawer" data-bs-target="#pgset-ws-dept-0" aria-controls="pgset-ws-dept-0"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New department')) . '</button>
+            </div>
+            <div class="card-body">
+                ' . $ws_department_rows . '
+            </div>
+        </div>
+    </div>';
+
+// ── Team members ──
+$pg_settings_cards[] = '
+    <div id="pgset-ws-people" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . h(lang('Team members')) . '
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-3">
+                        <thead>
+                            <tr>
+                                <th>' . h(lang('Team member')) . '</th>
+                                <th>' . h(lang('Job title')) . '</th>
+                                <th>' . h(lang('Hours a day')) . '</th>
+                                <th>' . h(lang('Working days')) . '</th>
+                                <th class="text-center">' . h(lang('Not in the team')) . '</th>
+                            </tr>
+                        </thead>
+                        <tbody>' . ws_settings_people_rows_html(ws_settings_candidates(), $ws_departments, $ws_viewer, function ($person_id, $field) {
+                            return 'ws_people[' . (int) $person_id . '][' . $field . ']';
+                        }) . '</tbody>
+                    </table>
+                </div>
+                <div class="form-text">' . h(lang('Every administrator, designer and manager is in the team, unless taken out of it on this screen.')) . ' ' . h(lang('A basic user joins the team when the Workspace right is switched on in their user settings. The same place gives them the right to hand work to others, to see the whole team\'s board and to change these settings.')) . ' <a href="view_users.php">' . h(lang('Users')) . '</a></div>
+            </div>
+        </div>
+    </div>';
 
 // ── Defaults ──
 $pg_settings_cards[] = '
@@ -54,7 +127,5 @@ $pg_settings_cards[] = '
 
 // ── The cards still on Workspace Settings ──
 $pg_settings_cards[] = ws_settings_screen_links_card('pgset-ws-team-screen', array(
-    array('ws-departments', 'bi-diagram-3', lang('Departments')),
-    array('ws-people', 'bi-people', lang('Team members')),
     array('ws-calendar', 'bi-calendar-x', lang('Working calendar')),
 ));

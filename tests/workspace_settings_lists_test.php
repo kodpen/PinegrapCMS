@@ -74,5 +74,11 @@ function test_workspace_settings_lists_every_card_list_allowed()
 		}
 	}
 
-	pg_assert_true(isset($seen['route_match'], $seen['route_channel'], $seen['members']), 'list fields not found in the card sources');
+	pg_assert_true(isset($seen['route_match'], $seen['route_channel']), 'list fields not found in the card sources');
+
+	// The department and people fields are named by the caller
+	// (includes/workspace/team_settings.php): the old screen's names.
+	foreach (array('members', 'leads', 'primary', 'people') as $name) {
+		pg_assert_true(in_array($name, $allowed, true), $name . '[] is not in the list allow-list');
+	}
 }

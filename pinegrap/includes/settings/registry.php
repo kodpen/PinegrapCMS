@@ -457,15 +457,21 @@ function pg_settings_categories()
             'icon'  => 'bi-people',
             'description' => lang('The departments, the team, the working day and week, and the days off.'),
             'sections' => array(
+                'pgset-ws-departments' => lang('Departments'),
+                'pgset-ws-people'      => lang('Team members'),
                 'pgset-ws-defaults'    => lang('Defaults'),
                 'pgset-ws-team-screen' => lang('On the Workspace Settings screen'),
             ),
             'keywords' => array(
+                'pgset-ws-departments' => pg_settings_keywords(lang('workspace, department, departments, team lead, own department, channel, archive')),
+                'pgset-ws-people'      => pg_settings_keywords(lang('workspace, team, team members, job title, hours a day, working days, not in the team')),
                 'pgset-ws-defaults'    => pg_settings_keywords(lang('workspace, working day, working days, hours, week, estimate, planning board, default')),
-                'pgset-ws-team-screen' => pg_settings_keywords(lang('workspace, department, departments, team, team members, job title, holiday, holidays, days off, calendar feed')),
+                'pgset-ws-team-screen' => pg_settings_keywords(lang('workspace, holiday, holidays, days off, working calendar, calendar feed')),
             ),
             'lists' => array(
                 'ws_workdays' => 1,
+                'ws_people'   => 3,
+                'ws_dept'     => 3,
             ),
         ),
 
@@ -904,6 +910,10 @@ function pg_settings_legacy_anchors()
         'pgset-maintenance' => array('maintenance', 'pgset-maintenance'),
         'pgset-backup'     => array('maintenance', 'pgset-backup'),
         'pgset-google-reviews' => array('api',    'pgset-google-reviews'),
+        // Workspace Settings cards moved into Team and working hours.
+        'ws-departments'   => array('workspace_team', 'pgset-ws-departments'),
+        'ws-people'        => array('workspace_team', 'pgset-ws-people'),
+        'ws-defaults'      => array('workspace_team', 'pgset-ws-defaults'),
     );
 }
 

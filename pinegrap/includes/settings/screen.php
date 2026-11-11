@@ -265,7 +265,7 @@ if (!$_POST) {
                 <div class="btn-group btn-group-sm">' . $pg_settings_step_links . '</div>
             </div>
 
-            <form name="form" action="' . h($pg_settings_self) . '" method="post" autocomplete="off">
+            <form name="form" id="pg_settings_page_form" action="' . h($pg_settings_self) . '" method="post" autocomplete="off">
                 <!--
                     Return in a text field presses the first submit button of
                     the form. This one stands first and has no name, so Return

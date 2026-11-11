@@ -24,6 +24,7 @@ description: The Workspace heading of the Site Settings dialog and its gate: who
 - Defaults (`pgset-ws-defaults`) is in Team and working hours, fields `ws_day_hours`, `ws_workdays[]` (a `lists` entry), `ws_default_task_hours`, saved with the pane's Save; a request without the two hour fields leaves the defaults alone. The checks and the write are `ws_settings_defaults_save()` (`includes/workspace/workdays.php`), which the old screen's `defaults` case calls too; a refused hour is marked on its field.
 - `ws_settings_mask()`, `ws_settings_days_html()` and `ws_settings_hours()` moved there from `workspace_settings.php`, so both screens draw them.
 - `workspace_settings.php` draws a line linking the card's new place where Defaults was.
-- Each Workspace category ends with an "On the Workspace Settings screen" card (`pgset-ws-*-screen`) linking the cards not moved yet (`ws_settings_screen_links_card()`, `includes/workspace/screen.php`); a step that moves a card removes its link, SW7 the card.
+- Departments (`pgset-ws-departments`) and Team members (`pgset-ws-people`) moved in PR #8721: [[workspace-team-settings]].
+- Each Workspace category ends with an "On the Workspace Settings screen" card (`pgset-ws-*-screen`) linking the cards not moved yet (`ws_settings_screen_links_card()`, `includes/workspace/screen.php`); a step that moves a card removes its link, SW7 the card. Team and working hours links only the Working calendar (SW2b).
 
 Tests: `tests/settings_workspace_gate_test.php`.

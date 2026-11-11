@@ -231,6 +231,11 @@ function ws_channel_detail($viewer, $channel)
         ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_erp_quote.php?account_id=' . $quote_account_id
         : '';
 
+    // "New e-mail" in the channel's menu: a mailbox this person may send
+    // from keeps its mail here (mail_compose.php).
+    $brief['mail_new'] = function_exists('ws_mail_send_ready') && ws_mail_send_ready() && !empty($viewer['member'])
+        && ws_mail_compose_in_channel(ws_mail_send_boxes($viewer), (int) $channel['id']);
+
     $brief['department'] = null;
 
     if ((int) $channel['department_id'] > 0) {
