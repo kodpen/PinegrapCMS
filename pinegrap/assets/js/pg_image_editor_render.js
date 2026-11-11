@@ -208,6 +208,9 @@
                 self.paintBase(g, time, w / out.w, h / out.h);
                 self.frameCuts = cuts;
                 self.clipFrames = frames;
+                // The moment drawn, for a layer whose look depends on its
+                // neighbours then (a clip's transition).
+                self.frameTime = time;
                 self.paintLayers(g, box, w, h, time);
 
                 if (self.paintFrame) {
@@ -216,6 +219,7 @@
             } finally {
                 self.frameCuts = null;
                 self.clipFrames = null;
+                self.frameTime = null;
                 self.doc = keep;
 
                 Object.keys(frames || {}).forEach(function (id) {
