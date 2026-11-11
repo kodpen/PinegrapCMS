@@ -12,10 +12,10 @@ module: ready_reports
 - `view_order_report.php?ready=<key>`: `pg_ready_report_requested($_GET['ready'] ?? null, 'order_report')` returns the entry, or null for a value that is not a string, an unknown key (keys are exact, case included) or another screen's key; null opens the plain new report (Year, Month, Day and `pg_order_report_default_filters()`). An `id` wins: a saved report ignores `ready`.
 - Only while the form has not come back from a save: the levels (a level the entry does not name is -None-), the order by, the Name field (the title) and `pg_ready_report_filters()`, which appends the period as Order Date "is greater than or equal to" `period - 1` Day(s) Ago. The heading reads "Create Order Report: <title>".
 - With that date filter the date changer is left out, as for any report with a date filter.
-- Links build the address with `pg_ready_report_url($key)`.
+- Links build the address with `pg_ready_report_url($key, $days)`; `&days=N` replaces the period (`order-report-ready-strip.md`).
 
 ## Which entries are there?
-- `sales_by_region`, "Sales by region": Billing Country, then Billing State, both by Total; the default filters (not Incomplete, not Cancelled); period 30.
+- `sales_by_region`, "Sales by region": Billing Country, then Billing State, both by Total; the default filters (not Incomplete, not Cancelled); period 30. The others and the strip: `order-report-ready-strip.md`.
 
 ## Why does sales by region equal the Sales map card?
 - Orders: the card sums `orders.status IN ('complete', 'exported')` (`pg_sales_map_collect()`); `orders.status` holds only incomplete, complete, exported, cancelled, so leaving out the two others keeps the same orders. A row whose status was stored as `''` (an unknown value, `order-cancellation-flow.md`) is the one difference.

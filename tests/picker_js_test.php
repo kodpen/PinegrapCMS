@@ -211,3 +211,46 @@ function test_picker_js_recent_and_picks()
 	pg_assert_same(array('b.png', 'a.png', 7), $out['range'], 'folders and files already picked are passed over');
 	pg_assert_same(0, $out['numeric'], 'a value matches as text');
 }
+
+function test_picker_js_pages()
+{
+	$out = picker_js_test_run('var order = ["standard", "form", "catalog", "checkout"];
+		var items = [
+			{isFolder: true, text: "Blog"},
+			{value: 1, text: "Hakkımızda", type_group: "standard"},
+			{value: 2, text: "İletişim", type_group: "form"},
+			{value: 3, text: "Kış İndirimi", type_group: "standard", mark: "archived"},
+			{value: 4, text: "Eski", type_group: "checkout", mark: "binned"}
+		];
+		var extra = P.extraItems([
+			{value: "tab:a1", text: "İade koşulları", type: "standard", note: "Not saved yet"},
+			{value: "", text: "no value"},
+			{value: "tab:b2"},
+			{value: 9, text: "Sepet", type_group: "checkout"}
+		]);
+		function values(list) { return list.map(function (i) { return i.value; }); }
+		return {
+			pickable: items.map(P.pickable),
+			chips: P.groupChips(items, order, ""),
+			kept: P.groupChips(items, order, "catalog"),
+			only: values(P.inGroup(items, "standard")).concat([P.inGroup(items, "").length]),
+			range: values(P.rangePick([], items, 0, 4)),
+			extra: extra,
+			found: values(P.extraMatches(extra, "IADE")).concat(values(P.extraMatches(extra, "ep"))).concat(values(P.extraMatches(extra, " ")))
+		};');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(false, true, true, false, false), $out['pickable'], 'neither an archived nor a binned page is chosen, nor a folder');
+	pg_assert_same(array('standard', 'form', 'checkout'), $out['chips'], 'a chip for each group in view, in the set order');
+	pg_assert_same(array('standard', 'form', 'catalog', 'checkout'), $out['kept'], 'the chosen chip stays though nothing in view has it');
+	pg_assert_same(array(null, 1, 3, 5), $out['only'], 'folders stay beside the chosen type');
+	pg_assert_same(array(1, 2), $out['range'], 'a range passes the marked pages over');
+	pg_assert_same(array(
+		array('value' => 'tab:a1', 'text' => 'İade koşulları', 'type' => 'standard', 'type_group' => 'standard', 'note' => 'Not saved yet', 'extra' => true),
+		array('value' => '9', 'text' => 'Sepet', 'type' => '', 'type_group' => 'checkout', 'note' => '', 'extra' => true),
+	), $out['extra'], 'an entry needs a value and a name; the value is kept as text');
+	pg_assert_same(array('tab:a1', '9'), $out['found'], 'folded as the server matches; nothing for an empty text');
+}

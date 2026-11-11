@@ -49,7 +49,7 @@ function test_picker_kinds()
 	pg_assert_same(3, $kinds['page']['role']);
 	pg_assert_true($kinds['image']['pictures'] && !$kinds['file']['pictures'] && !$kinds['page']['pictures']);
 	pg_assert_true($kinds['file']['upload'] && !$kinds['page']['upload'], 'no upload of pages');
-	pg_assert_false($kinds['page']['archived'], 'pages in archived folders are left out as today');
+	pg_assert_true($kinds['page']['archived'], 'pages in archived folders are listed, marked and not choosable');
 
 	// The search's kinds are the registry's under their names.
 	foreach (pg_file_picker_kinds() as $name => $kind) {
@@ -170,14 +170,19 @@ function test_picker_pages_where()
 	$kinds = pg_picker_kinds();
 
 	pg_assert_same(
-		"(page.page_name != '') AND (folder.folder_archived = '0') AND (page.page_folder NOT IN (9, 10)) AND (page.page_folder IN (3)) AND (page.page_folder = '3')",
+		"(page.page_name != '') AND (page.page_folder NOT IN (9, 10)) AND (page.page_folder IN (3)) AND (page.page_folder = '3')",
 		pg_picker_pages_where($kinds['page'], array(9, 10), array(3), 3),
-		'a User\'s folder, never the bin or an archived folder');
+		'a User\'s folder, never the bin; an archived folder\'s pages are listed to be marked');
 
 	pg_assert_same(
-		"(page.page_name != '') AND (folder.folder_archived = '0') AND (page.page_folder IN (-1))",
+		"(page.page_name != '') AND (page.page_folder IN (-1))",
 		pg_picker_pages_where($kinds['page'], array(), array()),
 		'no grant lists nothing');
+
+	pg_assert_same(
+		"(page.page_name != '') AND (folder.folder_archived = '0')",
+		pg_picker_pages_where(array('archived' => false), array(), null),
+		'a kind without archived pages leaves them out');
 
 	pg_assert_same(
 		"(page.page_name != '') AND (page.page_type IN ('standard', 'form list view'))",
@@ -242,7 +247,7 @@ function test_picker_items_and_states()
 		'a file item carries what the dialog shows beside the name');
 	pg_assert_same('logo.png', pg_picker_item($kinds['image'], array('id' => '7', 'name' => 'logo.png', 'type' => 'png', 'folder' => '3'))['value'], 'a name kind stores the name');
 	pg_assert_same(
-		array('id' => 12, 'value' => 12, 'text' => 'Home', 'type' => 'standard', 'folder' => 1),
+		array('id' => 12, 'value' => 12, 'text' => 'Home', 'type' => 'standard', 'folder' => 1, 'modified' => 0, 'mark' => ''),
 		pg_picker_item($kinds['page'], array('page_id' => '12', 'page_name' => 'Home', 'page_type' => 'standard', 'page_folder' => '1')));
 
 	pg_assert_same('missing', pg_picker_value_state(false, false, false, false));
@@ -250,6 +255,48 @@ function test_picker_items_and_states()
 	pg_assert_same('binned', pg_picker_value_state(true, true, true, true));
 	pg_assert_same('offline', pg_picker_value_state(true, true, false, true));
 	pg_assert_same('ok', pg_picker_value_state(true, true, false, false));
+}
+
+// A page in an archived folder or in the Recycle Bin is listed with its mark
+// and cannot be chosen; a binned page is told under its own name, in the
+// folder it came from. The type chips group every page type.
+function test_picker_page_marks_and_groups()
+{
+	$kinds = pg_picker_kinds();
+
+	pg_assert_same('', pg_picker_page_mark(false, false));
+	pg_assert_same('archived', pg_picker_page_mark(true, false));
+	pg_assert_same('binned', pg_picker_page_mark(false, true));
+	pg_assert_same('binned', pg_picker_page_mark(true, true), 'the bin, itself archived, is told as the bin');
+
+	pg_assert_same(
+		array('modified' => 1762700000, 'mark' => 'archived'),
+		array_intersect_key(pg_picker_item($kinds['page'], array('page_id' => '12', 'page_name' => 'Kampanya', 'page_type' => 'standard', 'page_folder' => '4', 'page_timestamp' => '1762700000', 'folder_archived' => '1')), array_flip(array('modified', 'mark'))),
+		'a page item carries when it changed and its mark');
+
+	$binned = pg_picker_binned_page_row(array('page_id' => '15', 'page_name' => 'pgbin_15_Hakkımızda', 'page_type' => 'standard', 'page_folder' => '99', 'folder_archived' => '1', 'original_parent_id' => '4'));
+	pg_assert_same(array('page_name' => 'Hakkımızda', 'page_folder' => 4, 'binned' => true), array_intersect_key($binned, array_flip(array('page_name', 'page_folder', 'binned'))), 'its own name, in the folder it came from');
+	pg_assert_same(array('text' => 'Hakkımızda', 'folder' => 4, 'mark' => 'binned'), array_intersect_key(pg_picker_item($kinds['page'], $binned), array_flip(array('text', 'folder', 'mark'))));
+	pg_assert_same('pgbin_7_Eski', pg_picker_binned_page_row(array('page_id' => '15', 'page_name' => 'pgbin_7_Eski', 'original_parent_id' => '4'))['page_name'], 'another row\'s parked name is kept as it is');
+
+	pg_assert_same('standard', pg_picker_page_type_group('standard'));
+	pg_assert_same('form', pg_picker_page_type_group('custom form'));
+	pg_assert_same('form', pg_picker_page_type_group('form list view'));
+	pg_assert_same('catalog', pg_picker_page_type_group('catalog detail'));
+	pg_assert_same('calendar', pg_picker_page_type_group('calendar event view'));
+	pg_assert_same('checkout', pg_picker_page_type_group('shopping cart'));
+	pg_assert_same('checkout', pg_picker_page_type_group('order receipt'));
+	pg_assert_same('search', pg_picker_page_type_group('search results'));
+	pg_assert_same('account', pg_picker_page_type_group('login'));
+	pg_assert_same('other', pg_picker_page_type_group('error'));
+	pg_assert_same('other', pg_picker_page_type_group('a type of tomorrow'), 'a type no group names is Other');
+
+	$groups = pg_picker_page_groups();
+	pg_assert_same(array('standard', 'form', 'catalog', 'calendar', 'checkout', 'search', 'account', 'other'), array_keys($groups));
+
+	foreach (array_keys(get_page_type_names()) as $type) {
+		pg_assert_true(isset($groups[pg_picker_page_type_group($type)]), $type . ' has a chip');
+	}
 }
 
 // The endpoint refuses in JSON before validate_user(), checks the request
