@@ -29,6 +29,7 @@ module: image_editor
 
 ## Where is it in the panel and the row?
 - Animate with one clip: tabs Video clip | Effects | Motion; Effects has the six sliders two a row (one drag one undo step), Reset, "Transition to the next clip" (tiles and Transition time, or a note when no clip meets this one) and the note. Select's clip panel has no effects: they are part of the video's timeline work.
+- Screen 38's labels and order since #8733 (owner, #8676): "Blurriness" (Bulanıklık), "No transition" (Yok), tiles `M.CLIP_TRANSITIONS` (scenes keep theirs), note plus `clipFxNoteSound`, rows 6 px apart.
 - The bar: a speed badge off 1×, an effects mark. Between two clips that meet, a round button (the transition's icon, filled when set): it selects the leading clip and opens Effects; it sits mid-height, the split's scissors at the top. Footer hint `hintClips`.
 
 ## Tests?

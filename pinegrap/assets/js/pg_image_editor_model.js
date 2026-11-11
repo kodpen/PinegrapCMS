@@ -3490,6 +3490,24 @@
         return (d > 0) ? d : 0;
     }
 
+    // Where a layer's exit ends when it has its own end on the timeline
+    // (out.at, ms, written by a drag of the exit's bar): the layer is gone
+    // from then on, and a document grown or cut by a clip edit leaves it
+    // where it is. null for an exit counted back from the document's end.
+    function motionAt0(a) {
+        var at = Number(a && a.out && a.out.kind && a.out.at);
+
+        return (at > 0) ? at : null;
+    }
+
+    // The time a layer is last drawn on a timeline of end ms: its own end
+    // (inside the timeline), else the end.
+    function layerUntil(l, end) {
+        var at = motionAt0(l && l.anim);
+
+        return (at === null) ? end : Math.min(at, end);
+    }
+
     // When each phase runs on a timeline of end ms; null for a phase the
     // layer does not have.
     function motionSpans(l, end) {
@@ -3501,7 +3519,7 @@
         }
 
         if (a.out && a.out.kind) {
-            sp.outEnd = Math.max(0, end - motionDelay(a.out));
+            sp.outEnd = (motionAt0(a) === null) ? Math.max(0, end - motionDelay(a.out)) : layerUntil(l, end);
             sp.outStart = Math.max(0, sp.outEnd - motionMs(a.out, 800));
         }
 
@@ -3616,6 +3634,11 @@
 
         sp = motionSpans(l, end);
 
+        // Past its own end a layer is not drawn.
+        if ((motionAt0(a) !== null) && (t >= sp.outEnd)) {
+            return Object.assign(st, { opacity: 0 });
+        }
+
         if ((sp.inStart !== null) && (t < sp.inEnd)) {
             p = (t - sp.inStart) / (sp.inEnd - sp.inStart);
             st = motionCompose(st, motionEnter(l, a['in'].kind, easeAt(a['in'].ease, p), a['in'].dir, t > sp.inStart));
@@ -3682,7 +3705,7 @@
 
     var MOTION = {
         MOTION_IN: MOTION_IN, MOTION_LOOP: MOTION_LOOP, MOTION_DIRS: MOTION_DIRS, MOTION_EASES: MOTION_EASES, MOTION_BASES: MOTION_BASES,
-        MOTION_MIN: MOTION_MIN, MOTION_MAX: MOTION_MAX, easeAt: easeAt, newMotion: newMotion, motionSpans: motionSpans, motionAt: motionAt,
+        MOTION_MIN: MOTION_MIN, MOTION_MAX: MOTION_MAX, easeAt: easeAt, newMotion: newMotion, motionSpans: motionSpans, motionAt: motionAt, layerUntil: layerUntil,
         docMotion: docMotion, baseAt: baseAt, hasMotion: hasMotion
     };
 
@@ -4135,7 +4158,9 @@
             return { delay: Math.round(nf), ms: Math.round(nt - nf) };
         }
 
-        return { delay: Math.round(end - nt), ms: Math.round(nt - nf) };
+        // The exit keeps where it was dropped (its own end, out.at): a clip
+        // edit that changes the document's length no longer moves it.
+        return { delay: Math.round(end - nt), ms: Math.round(nt - nf), at: Math.round(nt) };
     }
 
     var TRACKS = { TRACK_STEP: TRACK_STEP, trackBars: trackBars, trackTargets: trackTargets, trackSnap: trackSnap, trackEdit: trackEdit };
@@ -9699,6 +9724,11 @@
             need += motionDelay(a.loop) + TRACK_MIN;
         }
 
+        // An exit with its own end needs the timeline up to there.
+        if (motionAt0(a) !== null) {
+            return Math.max(need, motionAt0(a));
+        }
+
         if (a.out && a.out.kind) {
             need += motionDelay(a.out) + motionMs(a.out, 800);
         }
@@ -9960,6 +9990,24 @@
         return { at: null, state: null };
     }
 
+    // A clip's frame for picture in picture: rounded corners (radius in the
+    // layer's units, at most half the shorter side) and a border in one of
+    // CLIP_BORDERS, drawn inside the box, its width a share of the shorter
+    // side. The stage and a save draw from these numbers.
+    var CLIP_BORDERS = ['#ffffff', '#000000', '#e53935', '#1e88e5'];
+
+    function clipFrame(l) {
+        var side = Math.min(Math.abs(Number(l && l.w) || 0), Math.abs(Number(l && l.h) || 0));
+        var radius = Math.round(clamp(Number(l && l.radius) || 0, 0, side / 2));
+        var border = (l && (CLIP_BORDERS.indexOf(l.border) >= 0)) ? l.border : '';
+
+        return { radius: radius, border: border, width: border ? Math.max(2, Math.round(side * 0.015)) : 0 };
+    }
+
+    // The clip panel's transition tiles, in the screen's order; the scenes
+    // keep SCENE_TRANSITIONS.
+    var CLIP_TRANSITIONS = ['none', 'fade', 'slide', 'wipe', 'zoom'];
+
     var CLIP = {
         CLIP_SPEEDS: CLIP_SPEEDS, CLIP_TYPES: CLIP_TYPES, CLIP_MIN: CLIP_MIN, clipLayer: clipLayer, clipSpan: clipSpan, clipAt: clipAt,
         clipFit: clipFit, clipNew: clipNew, clipReplace: clipReplace, clipEnd: clipEnd, clipSound: clipSound, clipDetach: clipDetach, clipType: clipType,
@@ -9967,7 +10015,7 @@
         clipApply: clipApply, clipPart: clipPart, clipJoins: clipJoins, clipMotionNeed: clipMotionNeed, CLIP_STRIP_MAX: CLIP_STRIP_MAX, clipStripTimes: clipStripTimes,
         clipFramesAt: clipFramesAt, CLIP_FX: CLIP_FX, clipFx: clipFx, clipFxOn: clipFxOn, clipFxColor: clipFxColor, clipFxBlur: clipFxBlur,
         clipFxVignette: clipFxVignette, clipTransition: clipTransition, clipTouching: clipTouching, clipTransitionMs: clipTransitionMs,
-        clipTransitionStates: clipTransitionStates, clipShowAt: clipShowAt
+        clipTransitionStates: clipTransitionStates, clipShowAt: clipShowAt, CLIP_BORDERS: CLIP_BORDERS, clipFrame: clipFrame, CLIP_TRANSITIONS: CLIP_TRANSITIONS
     };
 
     // ---- MIX (pg_image_editor_mix.js) ----

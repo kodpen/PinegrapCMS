@@ -136,7 +136,9 @@
 
     Editor.prototype.trackRow = function (l, end) {
         var self = this, on = (this.sel.indexOf(l.id) >= 0), name = this.layerName(l);
-        var lane = el('div', { class: 'pgie-trlane' }, [el('span', { class: 'pgie-trline' })]);
+        // The line runs while the layer stays: up to its own end, if it has one.
+        var until = M.layerUntil(l, end), line = el('span', { class: 'pgie-trline', style: (until < end) ? 'right: ' + pct(end - until, end) : null });
+        var lane = el('div', { class: 'pgie-trlane' }, [line]);
         var pick = el('button', { type: 'button', class: 'pgie-trname', title: name, 'aria-pressed': on ? 'true' : 'false', onclick: function (e) {
             self.trackSelect(l.id, e.shiftKey);
         } }, [icon(TYPE_ICONS[l.type] || l.type), el('span', { text: name })]);
