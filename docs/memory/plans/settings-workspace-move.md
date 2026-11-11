@@ -25,4 +25,4 @@ description: Plan (owner 2026-11-11): the Workspace settings move into the Site 
 - Looked at in a browser (the sandbox) at desktop and phone width, light and dark, before a step is marked ready; the PR gives the reason: a unit test cannot reach the dialog's layout.
 
 ## Who holds it, where does it start?
-- Coordinators hand the steps out; claim as `[plan:settings-workspace-move] <step> — <topic>`. The steps: `settings-workspace-move-steps.md`. SD1 starts.
+- Coordinators hand the steps out; claim as `[plan:settings-workspace-move] <step> — <topic>`. The steps: `settings-workspace-move-steps.md`.
