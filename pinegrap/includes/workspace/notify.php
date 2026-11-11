@@ -46,6 +46,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                         | note_group_shared, note_group_added (note_group_shares.php)
  *                         | mail_assigned | mail_customer (an e-mail conversation given to one, its
  *                           customer writing again on one held: mail_status.php, mail.php)
+ *                         | mail_unsent (an e-mail one wrote could not be sent: mail_send.php)
  *                         | canvas_edited (an agent edited one's canvas: canvas_edit.php)
  *                         | question_asked (an application asks one with a checklist
  *                           or a poll: interact.php)
@@ -590,6 +591,13 @@ function ws_inbox_describe($viewer, $row)
         case 'mail_customer':
             if (function_exists('ws_mail_inbox_describe')) {
                 return ws_mail_inbox_describe($row, $actor, $channel_name, $base);
+            }
+            break;
+
+        // An e-mail the person wrote could not be sent (mail_send.php).
+        case 'mail_unsent':
+            if (function_exists('ws_mail_unsent_describe')) {
+                return ws_mail_unsent_describe($row, $channel_name, $base);
             }
             break;
 

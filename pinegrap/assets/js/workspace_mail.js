@@ -237,11 +237,36 @@
 
         row.appendChild(open);
 
+        if (message.mail_resend) {
+            row.appendChild(resend(message, view, h));
+        }
+
         if (message.mail_state) {
             state(row, message, view, h);
         }
 
         return row;
+    }
+
+    // Send again, under a mail that could not leave: pressed once, the
+    // button stays off until the screen draws the card again.
+    function resend(message, view, h) {
+        var again = h.button('btn btn-sm btn-outline theme-danger py-0 ms-2', h.t('mail_send_again'), 'bi-arrow-repeat');
+
+        again.addEventListener('click', function (event) {
+            event.stopPropagation();
+            again.disabled = true;
+
+            h.api('ws_mail_resend', { item_id: message.mail_resend }).then(function () {
+                h.toast(h.t('mail_send_again_done'), 'success');
+                view.sync();
+            }).catch(function (error) {
+                again.disabled = false;
+                h.fail(error);
+            });
+        });
+
+        return again;
     }
 
     // The conversation's status and holder, changed at once.

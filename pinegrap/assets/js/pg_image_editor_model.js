@@ -9677,6 +9677,29 @@
         return out;
     }
 
+    // The source time each visible clip shows in an animation's frame at
+    // document time t (clipAt(): the trim and the speed), by layer id, in
+    // whole milliseconds; null while t is off the clip's span. A still (t
+    // null) waits for no frame: each clip paints its source in.
+    function clipFramesAt(doc, t) {
+        var out = {};
+
+        if ((t === null) || (t === undefined)) {
+            return out;
+        }
+
+        ((doc && doc.layers) || []).forEach(function (l) {
+            var at;
+
+            if ((l.type === 'video') && !l.hidden) {
+                at = clipAt(l, t);
+                out[l.id] = (at === null) ? null : Math.round(at);
+            }
+        });
+
+        return out;
+    }
+
     // The patches ([{ id, patch }]) put on doc's clips in place (inside an
     // editor change), then the length following them.
     function clipApply(doc, patches) {
@@ -9736,7 +9759,8 @@
         CLIP_SPEEDS: CLIP_SPEEDS, CLIP_TYPES: CLIP_TYPES, CLIP_MIN: CLIP_MIN, clipLayer: clipLayer, clipSpan: clipSpan, clipAt: clipAt,
         clipFit: clipFit, clipNew: clipNew, clipReplace: clipReplace, clipEnd: clipEnd, clipSound: clipSound, clipDetach: clipDetach, clipType: clipType,
         clipRowKey: clipRowKey, clipRow: clipRow, clipRipple: clipRipple, clipTrim: clipTrim, clipMove: clipMove, clipSplit: clipSplit, clipLength: clipLength,
-        clipApply: clipApply, clipPart: clipPart, clipJoins: clipJoins, clipMotionNeed: clipMotionNeed, CLIP_STRIP_MAX: CLIP_STRIP_MAX, clipStripTimes: clipStripTimes
+        clipApply: clipApply, clipPart: clipPart, clipJoins: clipJoins, clipMotionNeed: clipMotionNeed, CLIP_STRIP_MAX: CLIP_STRIP_MAX, clipStripTimes: clipStripTimes,
+        clipFramesAt: clipFramesAt
     };
 
     // ---- MIX (pg_image_editor_mix.js) ----

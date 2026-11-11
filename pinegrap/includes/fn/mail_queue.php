@@ -450,7 +450,10 @@ function pg_mail_enqueue(array $properties)
 // queue screen, with no person behind the request.
 function pg_mail_outcome_handlers()
 {
-    return array();
+    return array(
+        // A mail sent from the Workspace: its item reads sent or Not sent.
+        'workspace_mail' => array('function' => 'ws_mail_send_outcome', 'file' => 'includes/workspace/mail_send.php'),
+    );
 }
 
 // Tells the handler a queued message names how it ended: 'sent', 'failed'
