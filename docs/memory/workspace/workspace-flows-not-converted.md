@@ -14,4 +14,4 @@ description: The "Not converted · N" group at the end of the Flows list (V5 #32
 - "Show on canvas" on such a card: `ws_scheduled_get` answers `graph` (pure `ws_scheduled_graph()`); `showAction()` draws it read-only in place of the list (only while the list is shown); Back returns to the list with the group's heading focused; Edit converts it first.
 
 ## Which CSS draws the group?
-- backend.src.css: `.wsf-sched-group`, `.wsf-sched-title` and its `:focus`, and `.wsf-sched-refused .ws-sa-filters`, which hides the list's state chips. The rules of the converted rows (`.wsf-sched-row`, `-head`, `-mark`, `-tools`) were removed in PR #PRNUM: since #8573 a converted action is a row of the flow table.
+- backend.src.css: `.wsf-sched-group`, `.wsf-sched-title` and its `:focus`, and `.wsf-sched-refused .ws-sa-filters`, which hides the list's state chips. The rules of the converted rows (`.wsf-sched-row`, `-head`, `-mark`, `-tools`) were removed in PR #8631: since #8573 a converted action is a row of the flow table.
