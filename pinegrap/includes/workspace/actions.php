@@ -1869,6 +1869,11 @@ function ws_handle_action($action, $request)
                 ws_channel_mark_read($channel['id'], $viewer['id'], $last_id);
             }
 
+            // A mailbox's card or mails shown here are read (mail_reads.php).
+            if (function_exists('ws_mail_read_rows')) {
+                ws_mail_read_rows($viewer, $rows);
+            }
+
             return ws_action_ok(array(
                 'briefing'   => $briefing,
                 'channel'    => ws_channel_detail($viewer, $channel),
@@ -1957,6 +1962,10 @@ function ws_handle_action($action, $request)
 
                     if (!empty($rows) && !empty($request['read']) && ws_channel_membership($channel_id, $viewer['id'])) {
                         ws_channel_mark_read($channel_id, $viewer['id'], (int) $rows[count($rows) - 1]['id']);
+                    }
+
+                    if (!empty($rows) && !empty($request['read']) && function_exists('ws_mail_read_rows')) {
+                        ws_mail_read_rows($viewer, $rows);
                     }
 
                     // Task cards in this channel that changed since the last
@@ -2481,6 +2490,45 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok();
+
+        // The E-mails screen: the next page of the list, a conversation in
+        // the reading pane (read from then on), Mark all as read
+        // (mail_list.php, mail_pane.php, mail_reads.php).
+        case 'ws_mail_rows':
+        case 'ws_mail_pane':
+        case 'ws_mail_read_all':
+            if (!function_exists('ws_mail_reads_ready') || !ws_mail_reads_ready()) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            if ($action === 'ws_mail_read_all') {
+                ws_mail_read_all($viewer);
+
+                return ws_action_ok(array('unread' => 0));
+            }
+
+            if ($action === 'ws_mail_rows') {
+                $filters = ws_mail_list_filters($request);
+                $list = ws_mail_list($viewer, $filters, time());
+
+                return ws_action_ok(array(
+                    'html' => ws_mail_list_rows_html($list['rows'], OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', time()),
+                    'more' => ws_mail_list_more_html($filters, $list['next']),
+                ));
+            }
+
+            $pane = ws_mail_pane($viewer, (int) ($request['conversation_id'] ?? 0));
+
+            if (!$pane) {
+                return ws_action_error(lang('This conversation cannot be opened.'));
+            }
+
+            ws_mail_read_mark((int) $viewer['id'], (int) $pane['conversation']['id'], $pane['last_id']);
+
+            return ws_action_ok(array_merge(ws_mail_pane_tools($pane, $viewer), array(
+                'html'   => ws_mail_pane_html($pane, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/'),
+                'unread' => ws_mail_unread_count($viewer),
+            )));
 
         case 'ws_attach':
             $channel = ws_action_channel($viewer, $request, 'post');

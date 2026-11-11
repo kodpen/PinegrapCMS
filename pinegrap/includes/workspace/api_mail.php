@@ -375,7 +375,7 @@ function ws_api_mail_conversations_list($params)
         }
     }
 
-    $filters = ws_mail_list_filters(array('status' => (string) ($params['status'] ?? 'all'), 'holder' => (string) ($params['holder'] ?? 'all')));
+    $filters = ws_mail_list_filters(array('view' => 'all', 'status' => (string) ($params['status'] ?? 'all'), 'holder' => (string) ($params['holder'] ?? 'all')));
     $where = ws_mail_list_where($filters, (int) $viewer['id'], $channel_ids);
     $limit = (int) ($params['limit'] ?? 50);
 

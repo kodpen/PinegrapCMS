@@ -16,7 +16,7 @@ description: What step 11.0.185 (WM2, #8634) adds for sending and reading Worksp
 
 ## What does ws_mail_reads hold?
 - `conversation_id`, `user_id`, `item_id` (INT UNSIGNED, 0 by default), PRIMARY KEY (`conversation_id`, `user_id`), InnoDB utf8mb4_unicode_ci; no other index.
-- The newest item of a conversation the person has read. A row with conversation 0 is the person's floor: everything up to that item is read. The screen (WM4) writes it at the newest item when the person's count is first asked for and on Mark all as read, so nobody starts with a backlog.
+- The newest item of a conversation the person has read. A row with conversation 0 is the person's floor: everything up to that item is read. The E-mails screen (#8652) writes it at the newest item when the person's count is first asked for and on Mark all as read, so nobody starts with a backlog; the rule and where marks are written: `workspace/mail-screen-pane.md`.
 - Why a table: the only read mark is one position per channel (`ws_channel_members.last_read_id`); opening one mail would mark the whole channel read.
 
 ## What do running sites see?

@@ -26125,6 +26125,9 @@
                 startTimeline(root);
             } else if (CFG.mode === 'notes' && root) {
                 startNotes(root);
+            } else if (CFG.mode === 'mail' && root && window.PGWsMail) {
+                // The E-mails list and its reading pane (workspace_mail.js).
+                window.PGWsMail.screen(root, featureHelpers());
             } else if (CFG.mode === 'flows' && root) {
                 // The canvas lives in workspace_flow.js; it takes the team
                 // from here for its people picker.
