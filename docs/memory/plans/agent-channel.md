@@ -11,9 +11,10 @@ description: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace chann
 - Agents use the site's MCP server, the API's routes under their scopes, no second catalogue (`api/api-mcp-server.md`). The decisions behind it: `workflow/decisions-made-workspace-7.md` to `-10.md`.
 
 ## What is left?
-- `agent-channel-steps-3.md`, all `free`: A10 an agent waits during an edit (#8723), A11 the bounded brief, A12 a request waiter.
-- `agent-channel-steps-4.md`, all `free`: A13 two applications' lines, A14 an agent wakes agents, A15 the train's green, A16 Anthropic as a provider (#8750).
-- A8, the Claude Code channel plugin: it waits for its repository, which the owner opens (`agent-channel-steps-2.md`). The rest of A8 is built.
+- `agent-channel-steps-3.md`: A10 the wait during an edit (#8723), A11 the bounded brief, A12 a request waiter.
+- `agent-channel-steps-4.md`: A13 two applications' lines, A14 an agent wakes agents, A15 the train's green, A16 Anthropic as a provider (#8750).
+- `agent-channel-steps-5.md`: A17 last seen, A18 an application's tick (#8762).
+- A8, the Claude Code channel plugin, waits for its repository, which the owner opens (`agent-channel-steps-2.md`). The rest of A8 is built.
 
 - The coordinators move their check-in chains to the channel: a coordinator is a member like any agent (`@koordinator-a`, an `app` agent with an application of its own, door push or poll: the registry keeps one `claude` row, and scheduled wakes serve `app` agents only), the owner directs it from the channel, and its wake comes from the site's cron, which is always on, while a session's own chain breaks on restart.
   - The scheduled wakes are proven live on both sides: the cron tick makes the request (dev, 2026-11-10), and an agent read a wake's request and brief with its key and answered it with a text (2026-11-11, `workspace/agent-key-trial-2.md`).
@@ -21,7 +22,7 @@ description: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace chann
   - Owner (2026-11-11, #8726): "Şimdi değil, eksikler bitsin": no coordinator is connected until A10, A11, the push door's trial and (the architect's) A12 are done; then the architect asks again.
 
 - The live trial on dev (owner, 2026-11-09, `workflow/decisions-made-workspace-10.md`): the architect's application is registered as `@mimar` with a poll door and added to the agent channel (wake on a mention, tier 1). The mention and `/wake` were tried on 2026-11-10 (`workspace/agent-doors.md`, `agent-wakes.md`). The agent's side was tried the same day with the application's key (`workspace/agent-key-trial.md`).
-  - The second day (2026-11-11): `workspace/agent-key-trial-2.md`. Left, each needing the owner's hand in the panel: `agent-channel-trial.md`. Two agents' first exchange gave A13 to A15.
+  - The second day (2026-11-11): `workspace/agent-key-trial-2.md`. Left, each needing the owner's hand in the panel: `agent-channel-trial.md`.
 
 - Beside it: step AC done (#8440: `workspace/agent-channel-flag.md`), step AQ done (#8438: `workspace/agent-checklist-questions.md`, `workflow/agent-channel-wake.md`).
 

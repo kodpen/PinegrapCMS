@@ -5,11 +5,11 @@ description: Plan (owner 2026-11-10): the Workspace's E-mails screen becomes a m
 
 ## What is it for?
 - Owner (2026-11-10): mail is written into channels but lands in no one list. Wanted: one list of every e-mail, writing and sending a new e-mail in the Workspace, forwarding a chosen channel message as an e-mail; sent through the systems there are (the mail queue), for the mailboxes entered for channels (`ws_mail_boxes`), not the site's own. Plain text now, HTML later. The decisions were left to the architect (#8604).
-- Sending and the schema: `workspace-mail-screen-sending.md`. Steps: `workspace-mail-screen-steps.md`. The record: `workflow/decisions-made-workspace-13.md`.
+- Sending and the schema: `workspace-mail-screen-sending.md`. Steps: `workspace-mail-screen-steps.md`, then `workspace-mail-screen-steps-2.md` (#8765). The record: `workflow/decisions-made-workspace-13.md`.
 
 ## What is there today?
 - Mail to a box is a card in the box's channel, its answers the card's replies (`workspace/mail-decisions.md`, `mail-card.md`). The E-mails screen (`workspace_mail.php`, `mail-list.md`) lists the conversations of the channels the reader may read, by status and holder; a row only links into its channel.
-- "Reply by e-mail" sends plain text to the conversation's customer at once, not through the queue, with no Cc and no file (`mail-reply.md`). Nothing writes a new e-mail, and a channel message cannot leave as one.
+- "Reply by e-mail" sends plain text to the conversation's customer at once, not through the queue, with no Cc and no file (`mail-reply.md`).
 
 ## What does the screen become?
 - Architect (2026-11-10, for all that follows): the E-mails screen grows; no second screen. The name rule stays (`mail-decisions.md`): "Inbox" is the notifications' word, so the screen is "E-mails" and its first view "Incoming".
