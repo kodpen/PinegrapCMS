@@ -17224,6 +17224,20 @@
             var self = this;
             var pane = self.pane;
             var channel = self.channel;
+
+            // The summary is a card with Edit in its head; the customer and
+            // the time spent stand beside it on a wide screen, under it on a
+            // narrow one (.ws-summary-layout).
+            var layout = el('div', 'ws-summary-layout');
+            var card = el('section', 'card ws-summary-card');
+            var header = el('div', 'card-header d-flex align-items-center gap-3');
+            var heading = el('h3', 'h6 mb-0 me-auto');
+            heading.appendChild(icon('bi-journal-text', 'me-1'));
+            heading.appendChild(document.createTextNode(t('tab_summary')));
+            header.appendChild(heading);
+            card.appendChild(header);
+
+            var body = el('div', 'card-body');
             var view = el('div', 'ws-summary-view');
 
             if (channel.summary) {
@@ -17235,17 +17249,23 @@
                 view.appendChild(empty);
             }
 
-            pane.appendChild(view);
+            body.appendChild(view);
 
             if (channel.summary_updated) {
-                pane.appendChild(el('div', 'small fg-secondary mt-3', channel.summary_updated));
+                body.appendChild(el('div', 'small fg-secondary mt-3', channel.summary_updated));
             }
 
+            card.appendChild(body);
+            layout.appendChild(card);
+            pane.appendChild(layout);
+
             if (channel.can_post) {
-                var edit = button('btn btn-sm btn-outline theme-secondary mt-5', t('edit_summary'), 'bi-pencil');
+                var edit = button('btn btn-sm btn-outline theme-secondary', t('edit_summary'), 'bi-pencil');
                 edit.addEventListener('click', function () {
-                    clear(pane);
-                    pane.appendChild(el('p', 'small fg-secondary', t('summary_help')));
+                    // The editor opens inside the card, in place of the text.
+                    clear(body);
+                    edit.remove();
+                    body.appendChild(el('p', 'small fg-secondary', t('summary_help')));
 
                     // The formatted box the notes use: @ and # open the
                     // pickers, tags are chips, lists and tables are cards.
@@ -17264,7 +17284,7 @@
                         wrap.appendChild(area);
                     }
 
-                    pane.appendChild(wrap);
+                    body.appendChild(wrap);
 
                     var actions = el('div', 'd-flex gap-3 mt-3');
                     var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('save'), 'bi-check2');
@@ -17279,22 +17299,30 @@
                     cancel.addEventListener('click', function () { self.drawCenter(); });
                     actions.appendChild(save);
                     actions.appendChild(cancel);
-                    pane.appendChild(actions);
+                    body.appendChild(actions);
                     (rich ? rich.input : area).focus();
                 });
-                pane.appendChild(edit);
+                header.appendChild(edit);
             }
+
+            var side = el('div', 'ws-summary-side');
 
             // The customer the channel is about and where they stand, loaded
             // when the tab is opened (workspace_customer.js).
             if (window.PGWsCustomer && channel.customer) {
-                pane.appendChild(window.PGWsCustomer.card(channel, partHelpers()));
+                side.appendChild(window.PGWsCustomer.card(channel, partHelpers()));
             }
 
             // The time spent on the channel's tasks, loaded when the tab is
             // opened (workspace_task_time.js).
             if (window.PGWsTaskTime && CFG.task_time && CFG.task_time.ready) {
-                pane.appendChild(window.PGWsTaskTime.channelCard(channel, partHelpers()));
+                side.appendChild(window.PGWsTaskTime.channelCard(channel, partHelpers()));
+            }
+
+            if (side.firstChild) {
+                layout.appendChild(side);
+            } else {
+                layout.classList.add('ws-summary-alone');
             }
         },
 
