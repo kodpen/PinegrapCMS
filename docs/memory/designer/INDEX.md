@@ -163,6 +163,7 @@
 - design-template-news-publishing.md: News template publishing: who may submit, the three-row live rule, scheduling and search, where a draft could leak, search noise, structured data and feeds, author HTML, signed-in tips, e-mails. [decision: decisions-made-schema-6.md]
 - design-template-news.md: News Portal template (pinegrap-news): what it ships, the Articles form contract, the look, ?r= addresses, sample dates, preview, platform limits.
 - design-template-newsroom-comments.md: News and magazine templates (1.1.0) on the Comments widget: post_comments, conversation_replies, desk_messages, the e-mail card on both comment e-mails, why explicit trees, older sites [decision: here]
+- design-template-overview.md: Start file for the design-template(s)-* files: the Choose a Template catalog, Use This Template, a template file, its own look rule, rows and standard pages, and each template's file [decision: here]
 - design-template-own-look.md: Rule (owner, 2026-11-07): sector sections first as palette blocks, reused not duplicated, general ones in general groups; own composition and motion on home and signature pages [decision: decisions-made-product-37.md]
 - design-template-pharmacy-pages.md: Pharmacy template 2.0.0: home, on duty, health checks and three service pages on the Pharmacy blocks: the builders, each page's composition, what left, no motion, the test
 - design-template-pharmacy.md: Pharmacy template (pinegrap-pharmacy): services, health checks, on duty, pharmacists, prescription requests and questions, health products shop, Health Advice by topic, prx- look, tests.
@@ -258,6 +259,7 @@
 - designer-canvas-design-assets.md: How a design's scripts and stylesheets reach the designer canvas: scripts once per canvas document, realm reset, links synced by difference, file stamps, frame scheduling, motion pause, state classes.
 - designer-canvas-links.md: Canvas links never navigate in the designer, even #fragment, because of the <base> tag; Bootstrap-bound links; the editor opens dropdowns itself, guarded on the canvas window, edited items too.
 - designer-canvas-open-state.md: A modal, offcanvas or dropdown menu open on the canvas is canvas state only: renderCanvas() keeps it through a redraw, the tree never holds it, preview and code view show it closed.
+- designer-canvas-overview.md: Start file for the designer-canvas-* files: the canvas, its width buttons, Dark, Animations, context bar and element toolbar, the rules that bind it, which file holds what
 - designer-canvas-page-parity.md: Canvas vs published page of a Bootstrap design: width buttons give the canvas their width, Bootstrap rules rebuilt across wrappers, sd-fx-fit, what still differs on purpose.
 - designer-canvas-redraw-paths.md: Which designer path redraws what: render() for tree changes, _sdSelectRender() for a selection, the overview marked in place, the scroll pass, toolbars filled on first need, writes by difference.
 - designer-canvas-selector-bridge.md: Canvas selector bridge for designs on their own framework: rules rewritten across .sd-wrap, only rules whose classes are on the page, flat selector lists instead of :is(), one place that rewrites.
@@ -500,6 +502,7 @@
 - widget-conditions.md: Value conditions on system widget nodes (show_if): operators, how a value reads as text or a number, refused tokens, tree checks, fail closed (#1592).
 - widget-copy-for-this-page.md: Designer "Make a copy for this page": when the widget panel offers it, the dialog's choices for unsaved edits, what the copy keeps (field row ids, name), the tab open at the answer, what Save writes.
 - widget-currency-symbol-once.md: System widgets print the stored currency symbol (&#8378;) once: raw in markup, decoded before a token map, list row or h() escapes it (pg_visitor_money_text()); spots fixed, tests
+- widget-default-overview.md: Start file for the widget-default-* files: default parts drawing a system widget's old HTML blocks (breadcrumb, stars, cross-sell, filter chips, cart and order forms, returns) as design elements [decision: here]
 - widget-default-parts-breadcrumb.md: The catalog breadcrumb default part (W16, #1945): the catalog.crumbs list, its rows and key, the four placements it replaces, the listing's lead part, what changed for running sites
 - widget-default-parts-cart-form.md: The cart's product order form part with controls (W16, #2401): three lists, one control per field kind chosen by condition, row-decided required and limits, controls that come back, the old block
 - widget-default-parts-cart-gift-card.md: The cart's gift card part with controls (W16): the cart.item_gift_cards list, the control bindings the system owns, the required control that comes back, the old token, what is left [decision: here]
