@@ -24,7 +24,7 @@ description: The Workspace heading of the Site Settings dialog and its gate: who
 - Defaults (`pgset-ws-defaults`) is in Team and working hours, fields `ws_day_hours`, `ws_workdays[]` (a `lists` entry), `ws_default_task_hours`, saved with the pane's Save; a request without the two hour fields leaves the defaults alone. The checks and the write are `ws_settings_defaults_save()` (`includes/workspace/workdays.php`), which the old screen's `defaults` case calls too; a refused hour is marked on its field.
 - `ws_settings_mask()`, `ws_settings_days_html()` and `ws_settings_hours()` moved there from `workspace_settings.php`, so both screens draw them.
 - `workspace_settings.php` draws a line linking the card's new place where Defaults was.
-- Moved since: [[workspace-team-settings]], [[workspace-holiday-settings]], [[workspace-assistant-settings]] (Claude, Pinegrap AI, Bulk changes), [[workspace-agent-settings]], [[workspace-mcp-settings-dialog]].
+- Moved since: [[workspace-team-settings]], [[workspace-holiday-settings]], [[workspace-assistant-settings]], [[workspace-agent-settings]], [[workspace-mcp-settings-dialog]], [[workspace-channel-settings]].
 - A Workspace category with cards still on the old screen ends with an "On the Workspace Settings screen" card (`pgset-ws-*-screen`) linking them (`ws_settings_screen_links_card()`, `includes/workspace/screen.php`); a step that moves a card removes its link, the last one the card and its section. None is left in Team and working hours (SW2b) or Assistants and agents (SW5).
 
 Tests: `tests/settings_workspace_gate_test.php`.

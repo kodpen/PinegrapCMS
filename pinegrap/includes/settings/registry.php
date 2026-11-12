@@ -510,10 +510,19 @@ function pg_settings_categories()
             'icon'  => 'bi-chat-square-text',
             'description' => lang('Channel templates, mailboxes, voice transcripts and GitHub links.'),
             'sections' => array(
+                'pgset-ws-templates'       => lang('Channel templates'),
+                'pgset-ws-voice'           => lang('Voice message transcripts'),
+                'pgset-ws-github'          => lang('GitHub repositories'),
                 'pgset-ws-channels-screen' => lang('On the Workspace Settings screen'),
             ),
             'keywords' => array(
-                'pgset-ws-channels-screen' => pg_settings_keywords(lang('workspace, channel template, templates, mailbox, mailboxes, e-mail, voice, transcript, github')),
+                'pgset-ws-templates'       => pg_settings_keywords(lang('workspace, channel template, templates, archive')),
+                'pgset-ws-voice'           => pg_settings_keywords(lang('workspace, voice, transcript, speech, spoken answers, key')),
+                'pgset-ws-github'          => pg_settings_keywords(lang('workspace, github, repository, webhook, pull request')),
+                'pgset-ws-channels-screen' => pg_settings_keywords(lang('workspace, mailbox, mailboxes, e-mail')),
+            ),
+            'lists' => array(
+                'ws_github' => 2,
             ),
         ),
 
@@ -957,6 +966,9 @@ function pg_settings_legacy_anchors()
         'ws-agents'        => array('workspace_assistants', 'pgset-ws-agents'),
         'ws-ai'            => array('workspace_assistants', 'pgset-ws-ai'),
         'ws-mcp'           => array('workspace_assistants', 'pgset-ws-mcp'),
+        'ws-templates'     => array('workspace_channels', 'pgset-ws-templates'),
+        'ws-voice'         => array('workspace_channels', 'pgset-ws-voice'),
+        'ws-github'        => array('workspace_channels', 'pgset-ws-github'),
     );
 }
 

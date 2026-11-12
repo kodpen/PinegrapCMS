@@ -443,8 +443,171 @@ function ws_voice_channel_set($viewer, $channel, $allowed)
    --------------------------------------------------------------------------- */
 
 /**
- * Saves the card: the switch, the address, the model and the key. The key is
- * written, never shown: left empty, the stored one stays.
+ * What the card posted: voice_* on Workspace Settings, ws_voice_* in Site
+ * Settings ($prefix 'ws_'). Pure.
+ *
+ * @param array  $post
+ * @param string $prefix
+ * @return array enabled, url, model, key, key_clear, speech_enabled,
+ *               speech_url, speech_model, speech_voice, speech_key,
+ *               speech_key_clear
+ */
+function ws_voice_settings_input($post, $prefix = '')
+{
+    $text = function ($field) use ($post, $prefix) {
+        $value = $post[$prefix . 'voice_' . $field] ?? '';
+
+        return is_scalar($value) ? trim((string) $value) : '';
+    };
+
+    return array(
+        'enabled'          => ($text('enabled') !== ''),
+        'url'              => ws_voice_url_clean($text('url')),
+        'model'            => $text('model'),
+        'key'              => $text('key'),
+        'key_clear'        => ($text('key_clear') !== ''),
+        'speech_enabled'   => ($text('speech_enabled') !== ''),
+        'speech_url'       => ws_voice_speech_url_clean($text('speech_url')),
+        'speech_model'     => $text('speech_model'),
+        'speech_voice'     => $text('speech_voice'),
+        'speech_key'       => $text('speech_key'),
+        'speech_key_clear' => ($text('speech_key_clear') !== ''),
+    );
+}
+
+/**
+ * Every refusal of a posted card, by the field it is for (url, model,
+ * key, speech_url, speech_model, speech_voice, speech_key), in the card's
+ * order. Pure; whether the site can seal a key is asked by the write.
+ *
+ * @param array $input ws_voice_settings_input()
+ * @return array field => sentence
+ */
+function ws_voice_settings_check($input)
+{
+    $refused = array();
+
+    if (($input['url'] !== '') && !ws_voice_url_valid($input['url'])) {
+        $refused['url'] = lang('The service\'s address starts with https:// and ends before /audio/transcriptions, for example https://api.openai.com/v1');
+    }
+
+    if (($input['model'] !== '') && !ws_voice_model_valid($input['model'])) {
+        $refused['model'] = lang('The model name may hold letters, digits and . _ : / - only.');
+    }
+
+    if (($input['key'] !== '') && !ws_voice_key_shape_ok($input['key'])) {
+        $refused['key'] = lang('The key is 8 to 512 characters without spaces.');
+    }
+
+    if (($input['speech_url'] !== '') && !ws_voice_url_valid($input['speech_url'])) {
+        $refused['speech_url'] = lang('The speech service\'s address starts with https:// and ends before /audio/speech, for example https://api.openai.com/v1');
+    }
+
+    if (($input['speech_model'] !== '') && !ws_voice_model_valid($input['speech_model'])) {
+        $refused['speech_model'] = lang('The model name may hold letters, digits and . _ : / - only.');
+    }
+
+    if (($input['speech_voice'] !== '') && !ws_voice_speech_voice_valid($input['speech_voice'])) {
+        $refused['speech_voice'] = lang('The voice name may hold letters, digits and . _ : / - only.');
+    }
+
+    if (($input['speech_key'] !== '') && !ws_voice_key_shape_ok($input['speech_key'])) {
+        $refused['speech_key'] = lang('The key is 8 to 512 characters without spaces.');
+    }
+
+    return $refused;
+}
+
+/**
+ * Whether a posted card differs from what is stored. The Site Settings pane
+ * posts the card with every Save, and a write clears the services' last
+ * errors and the transcripts' wait, so an unchanged card is not written.
+ * A typed key or a ticked remove box is a change. Pure.
+ *
+ * @param array $input      ws_voice_settings_input()
+ * @param array $transcript ws_voice_config()
+ * @param array $speech     ws_voice_speech_config()
+ * @return bool
+ */
+function ws_voice_settings_changed($input, $transcript, $speech)
+{
+    return ($input['key'] !== '') || $input['key_clear'] || ($input['speech_key'] !== '') || $input['speech_key_clear']
+        || ($input['enabled'] !== (bool) $transcript['enabled'])
+        || ($input['url'] !== (string) $transcript['url'])
+        || ($input['model'] !== (string) $transcript['model'])
+        || ($input['speech_enabled'] !== (bool) $speech['enabled'])
+        || ($input['speech_url'] !== (string) $speech['url'])
+        || ($input['speech_model'] !== (string) $speech['model'])
+        || ($input['speech_voice'] !== (string) $speech['voice']);
+}
+
+/**
+ * Stores a card that passed ws_voice_settings_check(): the keys sealed (or
+ * kept, or removed), the services' last errors and the transcripts' wait
+ * cleared, the audit trail and the Site Log written.
+ *
+ * @param array    $input    ws_voice_settings_input()
+ * @param liveform $liveform given the notice
+ * @param callable $refuse   takes a refusal
+ * @return bool written
+ */
+function ws_voice_settings_write($input, $liveform, $refuse)
+{
+    $sealed = ws_voice_settings_seal($input['key'], $input['key_clear'], $refuse);
+    $speech_sealed = ws_voice_settings_seal($input['speech_key'], $input['speech_key_clear'], $refuse);
+
+    if (($sealed === false) || ($speech_sealed === false)) {
+        return false;
+    }
+
+    $before = ws_voice_settings_audit_side();
+
+    $saved = pg_config_text_save('ws_voice_url', $input['url'])
+        && pg_config_text_save('ws_voice_model', $input['model'])
+        && pg_config_text_save('ws_voice_error', '')
+        && (($sealed === null) || pg_config_text_save('ws_voice_key', $sealed))
+        && pg_config_text_save('ws_voice_speech_enabled', $input['speech_enabled'] ? '1' : '')
+        && pg_config_text_save('ws_voice_speech_url', $input['speech_url'])
+        && pg_config_text_save('ws_voice_speech_model', $input['speech_model'])
+        && pg_config_text_save('ws_voice_speech_voice', $input['speech_voice'])
+        && pg_config_text_save('ws_voice_speech_error', '')
+        && (($speech_sealed === null) || pg_config_text_save('ws_voice_speech_key', $speech_sealed));
+
+    if (!$saved) {
+        $refuse(lang('The transcription settings could not be saved.'));
+        return false;
+    }
+
+    db("UPDATE config SET ws_voice_enabled = '" . ($input['enabled'] ? 1 : 0) . "', ws_voice_hold_until = 0");
+
+    $after = array(
+        'enabled'        => $input['enabled'] ? 1 : 0,
+        'url'            => $input['url'],
+        'model'          => $input['model'],
+        'api_key'        => ($sealed === null) ? $before['api_key'] : $sealed,
+        'speech_enabled' => $input['speech_enabled'] ? 1 : 0,
+        'speech_url'     => $input['speech_url'],
+        'speech_model'   => $input['speech_model'],
+        'speech_voice'   => $input['speech_voice'],
+        'speech_api_key' => ($speech_sealed === null) ? $before['speech_api_key'] : $speech_sealed,
+    );
+
+    if (function_exists('pg_audit')) {
+        pg_audit('update', 'settings', 0, $before, $after, 'workspace_voice');
+    }
+
+    log_activity(lang('the voice message transcripts of the workspace were changed'), (string) ($_SESSION['sessionusername'] ?? ''));
+    $liveform->add_notice(lang('The transcript settings were saved.'));
+    ws_voice_config(true);
+    ws_voice_speech_config(true);
+
+    return true;
+}
+
+/**
+ * Saves the card on Workspace Settings: the switch, the address, the model
+ * and the key. The key is written, never shown: left empty, the stored one
+ * stays. The first refusal is the form's error and nothing is stored.
  *
  * @param array    $viewer
  * @param liveform $liveform
@@ -461,86 +624,17 @@ function ws_voice_settings_post($viewer, $liveform)
         return;
     }
 
-    $enabled = !empty($_POST['voice_enabled']);
-    $url = ws_voice_url_clean($_POST['voice_url'] ?? '');
-    $model = trim((string) ($_POST['voice_model'] ?? ''));
-    $key = trim((string) ($_POST['voice_key'] ?? ''));
-    $speech_enabled = !empty($_POST['voice_speech_enabled']);
-    $speech_url = ws_voice_speech_url_clean($_POST['voice_speech_url'] ?? '');
-    $speech_model = trim((string) ($_POST['voice_speech_model'] ?? ''));
-    $speech_voice = trim((string) ($_POST['voice_speech_voice'] ?? ''));
-    $speech_key = trim((string) ($_POST['voice_speech_key'] ?? ''));
+    $input = ws_voice_settings_input($_POST);
+    $refused = ws_voice_settings_check($input);
 
-    if (($url !== '') && !ws_voice_url_valid($url)) {
-        $liveform->add_error(lang('The service\'s address starts with https:// and ends before /audio/transcriptions, for example https://api.openai.com/v1'));
+    if ($refused) {
+        $liveform->add_error(reset($refused));
         return;
     }
 
-    if (($model !== '') && !ws_voice_model_valid($model)) {
-        $liveform->add_error(lang('The model name may hold letters, digits and . _ : / - only.'));
-        return;
-    }
-
-    if (($speech_url !== '') && !ws_voice_url_valid($speech_url)) {
-        $liveform->add_error(lang('The speech service\'s address starts with https:// and ends before /audio/speech, for example https://api.openai.com/v1'));
-        return;
-    }
-
-    if (($speech_model !== '') && !ws_voice_model_valid($speech_model)) {
-        $liveform->add_error(lang('The model name may hold letters, digits and . _ : / - only.'));
-        return;
-    }
-
-    if (($speech_voice !== '') && !ws_voice_speech_voice_valid($speech_voice)) {
-        $liveform->add_error(lang('The voice name may hold letters, digits and . _ : / - only.'));
-        return;
-    }
-
-    $sealed = ws_voice_settings_seal($key, !empty($_POST['voice_key_clear']), $liveform);
-    $speech_sealed = ws_voice_settings_seal($speech_key, !empty($_POST['voice_speech_key_clear']), $liveform);
-
-    if (($sealed === false) || ($speech_sealed === false)) {
-        return;
-    }
-
-    $before = ws_voice_settings_audit_side();
-
-    $saved = pg_config_text_save('ws_voice_url', $url)
-        && pg_config_text_save('ws_voice_model', $model)
-        && pg_config_text_save('ws_voice_error', '')
-        && (($sealed === null) || pg_config_text_save('ws_voice_key', $sealed))
-        && pg_config_text_save('ws_voice_speech_enabled', $speech_enabled ? '1' : '')
-        && pg_config_text_save('ws_voice_speech_url', $speech_url)
-        && pg_config_text_save('ws_voice_speech_model', $speech_model)
-        && pg_config_text_save('ws_voice_speech_voice', $speech_voice)
-        && pg_config_text_save('ws_voice_speech_error', '')
-        && (($speech_sealed === null) || pg_config_text_save('ws_voice_speech_key', $speech_sealed));
-
-    if (!$saved) {
-        $liveform->add_error(lang('The transcription settings could not be saved.'));
-        return;
-    }
-
-    db("UPDATE config SET ws_voice_enabled = '" . ($enabled ? 1 : 0) . "', ws_voice_hold_until = 0");
-
-    $after = array(
-        'enabled'        => $enabled ? 1 : 0,
-        'url'            => $url,
-        'model'          => $model,
-        'api_key'        => ($sealed === null) ? $before['api_key'] : $sealed,
-        'speech_enabled' => $speech_enabled ? 1 : 0,
-        'speech_url'     => $speech_url,
-        'speech_model'   => $speech_model,
-        'speech_voice'   => $speech_voice,
-        'speech_api_key' => ($speech_sealed === null) ? $before['speech_api_key'] : $speech_sealed,
-    );
-
-    if (function_exists('pg_audit')) {
-        pg_audit('update', 'settings', 0, $before, $after, 'workspace_voice');
-    }
-
-    log_activity(lang('the voice message transcripts of the workspace were changed'), (string) ($_SESSION['sessionusername'] ?? ''));
-    $liveform->add_notice(lang('The transcript settings were saved.'));
+    ws_voice_settings_write($input, $liveform, function ($sentence) use ($liveform) {
+        $liveform->add_error($sentence);
+    });
 }
 
 /**
@@ -550,22 +644,22 @@ function ws_voice_settings_post($viewer, $liveform)
  *
  * @param string   $key      as typed, trimmed
  * @param bool     $clear    the remove box
- * @param liveform $liveform given the error
- * @return string|null|false false when the key cannot be taken (the error is added)
+ * @param callable $refuse   takes the refusal
+ * @return string|null|false false when the key cannot be taken (the refusal is given)
  */
-function ws_voice_settings_seal($key, $clear, $liveform)
+function ws_voice_settings_seal($key, $clear, $refuse)
 {
     if ($key === '') {
         return $clear ? '' : null;
     }
 
     if (!ws_voice_key_shape_ok($key)) {
-        $liveform->add_error(lang('The key is 8 to 512 characters without spaces.'));
+        $refuse(lang('The key is 8 to 512 characters without spaces.'));
         return false;
     }
 
     if (!function_exists('encrypt_string_with_iv') || !defined('ENCRYPTION_KEY') || (ENCRYPTION_KEY === '')) {
-        $liveform->add_error(lang('The key cannot be stored: encryption is not available on this site.'));
+        $refuse(lang('The key cannot be stored: encryption is not available on this site.'));
         return false;
     }
 
@@ -601,12 +695,16 @@ function ws_voice_settings_audit_side()
  * stands on the right. Role-3 settings holders see it without the key and
  * cannot change it.
  *
- * @param string $self_url
- * @param array  $viewer
+ * @param string      $self_url
+ * @param array       $viewer
+ * @param string|null $form the Site Settings form's id: no form of its own,
+ *                          fields ws_voice_* saved with the pane's Save
  * @return string
  */
-function ws_voice_settings_card($self_url, $viewer)
+function ws_voice_settings_card($self_url, $viewer, $form = null)
 {
+    // Site Settings posts the fields as ws_voice_* with the pane's Save.
+    $prefix = ($form !== null) ? 'ws_' : '';
     if (!ws_voice_schema_ready()) {
         return '';
     }
@@ -636,14 +734,64 @@ function ws_voice_settings_card($self_url, $viewer)
         $key_field = '
                             <div class="mb-5">
                                 <label class="form-label" for="ws_voice_key">' . h(lang('The service\'s key')) . '</label>
-                                <input class="form-control form-control-sm font-monospace" type="password" name="voice_key" id="ws_voice_key" value="" autocomplete="new-password" placeholder="' . h($config['key_set'] ? lang('Stored. Type a new one to replace it.') : 'sk-…') . '">
+                                <input class="form-control form-control-sm font-monospace" type="password" name="' . $prefix . 'voice_key" id="ws_voice_key" value="" autocomplete="new-password" placeholder="' . h($config['key_set'] ? lang('Stored. Type a new one to replace it.') : 'sk-…') . '">
                                 ' . ($config['key_set'] ? '
                                 <div class="form-field mt-1">
-                                    <input class="check" type="checkbox" name="voice_key_clear" value="1" id="ws_voice_key_clear">
+                                    <input class="check" type="checkbox" name="' . $prefix . 'voice_key_clear" value="1" id="ws_voice_key_clear">
                                     <label class="small" for="ws_voice_key_clear">' . h(lang('Remove the stored key')) . '</label>
                                 </div>' : '') . '
                                 <div class="form-text">' . h(lang('It is stored encrypted and never shown again. The site\'s own account at the service pays for the transcripts.')) . '</div>
                             </div>';
+    }
+
+    $fields = '
+                            <div class="form-field mb-5">
+                                <div class="switch"><input class="" type="checkbox" name="' . $prefix . 'voice_enabled" value="1" id="ws_voice_enabled"' . ($config['enabled'] ? ' checked' : '') . $disabled . '></div>
+                                <label class="" for="ws_voice_enabled">' . h(lang('Write voice messages out as text')) . '</label>
+                                <div class="form-text">' . h(lang(array(
+                                    'string' => 'The sound of a voice message is sent to {var:1} with the key below, and the text written from it is kept beside the message. Public channels are written out, private ones only when their manager allows it. Recordings longer than {var:2} minutes are not sent.',
+                                    'vars'   => array($config['provider'], (int) (WS_VOICE_MAX_SECONDS / 60)),
+                                ))) . '</div>
+                            </div>
+                            <div class="mb-5">
+                                <label class="form-label" for="ws_voice_url">' . h(lang('The service\'s address')) . '</label>
+                                <input class="form-control form-control-sm font-monospace" type="url" name="' . $prefix . 'voice_url" id="ws_voice_url" value="' . h($config['url']) . '" placeholder="' . h(ws_voice_default_url()) . '" autocomplete="off"' . $disabled . '>
+                                <div class="form-text">' . h(lang('Any service that answers like OpenAI\'s /audio/transcriptions. Left empty, OpenAI is used.')) . '</div>
+                            </div>
+                            <div class="mb-5">
+                                <label class="form-label" for="ws_voice_model">' . h(lang('Model')) . '</label>
+                                <input class="form-control form-control-sm font-monospace" type="text" name="' . $prefix . 'voice_model" id="ws_voice_model" value="' . h($config['model']) . '" placeholder="' . h(ws_voice_default_model()) . '" maxlength="100" autocomplete="off"' . $disabled . '>
+                            </div>
+                            ' . $key_field . '
+                            ' . ws_voice_speech_settings_part($admin, $prefix) . '
+';
+    $status = '
+                        <div class="ws-claude-status">
+                            <div class="small fw-semibold mb-1">' . h(lang('Recordings are sent to')) . '</div>
+                            <div class="small mb-5">' . h($config['provider']) . ' · <code>' . h(($config['model'] !== '') ? $config['model'] : ws_voice_default_model()) . '</code></div>
+                            ' . (!empty($missing) ? '<div class="small fw-semibold mb-1">' . h(lang('Still missing')) . '</div><ul class="small mb-5">' . $status_list . '</ul>' : '') . '
+                            ' . (($config['error'] !== '') ? '<div class="alert theme-danger small py-3">' . h($config['error']) . '</div>' : '') . '
+                            ' . (($config['hold_until'] > time()) ? '<div class="alert theme-warning small py-3">' . h(lang(array('string' => 'Recordings wait until {var:1}.', 'vars' => date('d.m.Y H:i', $config['hold_until'])))) . '</div>' : '') . '
+                            ' . ws_voice_speech_settings_status() . '
+                        </div>
+';
+
+    if ($form !== null) {
+        return '
+    <div id="pgset-ws-voice" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center gap-3">
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0 ws-grow">' . h(lang('Voice message transcripts')) . '</span>
+                ' . $state . '
+            </div>
+            <div class="card-body">
+                <div class="row g-7">
+                    <div class="lg:col-7">' . $fields . ($admin ? '' : '<div class="form-text">' . h(lang('Only an administrator can connect a transcription service.')) . '</div>') . '</div>
+                    <div class="lg:col-5">' . $status . '</div>
+                </div>
+            </div>
+        </div>
+    </div>';
     }
 
     return '
@@ -658,38 +806,11 @@ function ws_voice_settings_card($self_url, $viewer)
                         <form method="post" action="' . h($self_url) . '#ws-voice">
                             ' . get_token_field() . '
                             <input type="hidden" name="ws_action" value="voice">
-                            <div class="form-field mb-5">
-                                <div class="switch"><input class="" type="checkbox" name="voice_enabled" value="1" id="ws_voice_enabled"' . ($config['enabled'] ? ' checked' : '') . $disabled . '></div>
-                                <label class="" for="ws_voice_enabled">' . h(lang('Write voice messages out as text')) . '</label>
-                                <div class="form-text">' . h(lang(array(
-                                    'string' => 'The sound of a voice message is sent to {var:1} with the key below, and the text written from it is kept beside the message. Public channels are written out, private ones only when their manager allows it. Recordings longer than {var:2} minutes are not sent.',
-                                    'vars'   => array($config['provider'], (int) (WS_VOICE_MAX_SECONDS / 60)),
-                                ))) . '</div>
-                            </div>
-                            <div class="mb-5">
-                                <label class="form-label" for="ws_voice_url">' . h(lang('The service\'s address')) . '</label>
-                                <input class="form-control form-control-sm font-monospace" type="url" name="voice_url" id="ws_voice_url" value="' . h($config['url']) . '" placeholder="' . h(ws_voice_default_url()) . '" autocomplete="off"' . $disabled . '>
-                                <div class="form-text">' . h(lang('Any service that answers like OpenAI\'s /audio/transcriptions. Left empty, OpenAI is used.')) . '</div>
-                            </div>
-                            <div class="mb-5">
-                                <label class="form-label" for="ws_voice_model">' . h(lang('Model')) . '</label>
-                                <input class="form-control form-control-sm font-monospace" type="text" name="voice_model" id="ws_voice_model" value="' . h($config['model']) . '" placeholder="' . h(ws_voice_default_model()) . '" maxlength="100" autocomplete="off"' . $disabled . '>
-                            </div>
-                            ' . $key_field . '
-                            ' . ws_voice_speech_settings_part($admin) . '
+                            ' . $fields . '
                             ' . ($admin ? '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '<div class="form-text">' . h(lang('Only an administrator can connect a transcription service.')) . '</div>') . '
                         </form>
                     </div>
-                    <div class="lg:col-5">
-                        <div class="ws-claude-status">
-                            <div class="small fw-semibold mb-1">' . h(lang('Recordings are sent to')) . '</div>
-                            <div class="small mb-5">' . h($config['provider']) . ' · <code>' . h(($config['model'] !== '') ? $config['model'] : ws_voice_default_model()) . '</code></div>
-                            ' . (!empty($missing) ? '<div class="small fw-semibold mb-1">' . h(lang('Still missing')) . '</div><ul class="small mb-5">' . $status_list . '</ul>' : '') . '
-                            ' . (($config['error'] !== '') ? '<div class="alert theme-danger small py-3">' . h($config['error']) . '</div>' : '') . '
-                            ' . (($config['hold_until'] > time()) ? '<div class="alert theme-warning small py-3">' . h(lang(array('string' => 'Recordings wait until {var:1}.', 'vars' => date('d.m.Y H:i', $config['hold_until'])))) . '</div>' : '') . '
-                            ' . ws_voice_speech_settings_status() . '
-                        </div>
-                    </div>
+                    <div class="lg:col-5">' . $status . '</div>
                 </div>
             </div>
         </div>';
@@ -701,10 +822,11 @@ function ws_voice_settings_card($self_url, $viewer)
  * from a list or typed. The consent line names the provider the text goes
  * to.
  *
- * @param bool $admin role 0; others see it disabled without the key
+ * @param bool   $admin  role 0; others see it disabled without the key
+ * @param string $prefix 'ws_' in Site Settings
  * @return string
  */
-function ws_voice_speech_settings_part($admin)
+function ws_voice_speech_settings_part($admin, $prefix = '')
 {
     $config = ws_voice_speech_config(true);
     $disabled = $admin ? '' : ' disabled';
@@ -725,10 +847,10 @@ function ws_voice_speech_settings_part($admin)
         $key_field = '
                             <div class="mb-5">
                                 <label class="form-label" for="ws_voice_speech_key">' . h(lang('The speech service\'s key')) . '</label>
-                                <input class="form-control form-control-sm font-monospace" type="password" name="voice_speech_key" id="ws_voice_speech_key" value="" autocomplete="new-password" placeholder="' . h($config['own_key'] ? lang('Stored. Type a new one to replace it.') : lang('Left empty, the transcripts\' key is used.')) . '">
+                                <input class="form-control form-control-sm font-monospace" type="password" name="' . $prefix . 'voice_speech_key" id="ws_voice_speech_key" value="" autocomplete="new-password" placeholder="' . h($config['own_key'] ? lang('Stored. Type a new one to replace it.') : lang('Left empty, the transcripts\' key is used.')) . '">
                                 ' . ($config['own_key'] ? '
                                 <div class="form-field mt-1">
-                                    <input class="check" type="checkbox" name="voice_speech_key_clear" value="1" id="ws_voice_speech_key_clear">
+                                    <input class="check" type="checkbox" name="' . $prefix . 'voice_speech_key_clear" value="1" id="ws_voice_speech_key_clear">
                                     <label class="small" for="ws_voice_speech_key_clear">' . h(lang('Remove the stored speech key')) . '</label>
                                 </div>' : '') . '
                             </div>';
@@ -737,7 +859,7 @@ function ws_voice_speech_settings_part($admin)
     return '
                             <h3 class="h6 mt-7 mb-3"><i class="bi bi-volume-up me-1" aria-hidden="true"></i>' . h(lang('Spoken answers')) . '</h3>
                             <div class="form-field mb-5">
-                                <div class="switch"><input class="" type="checkbox" name="voice_speech_enabled" value="1" id="ws_voice_speech_enabled"' . ($config['enabled'] ? ' checked' : '') . $disabled . '></div>
+                                <div class="switch"><input class="" type="checkbox" name="' . $prefix . 'voice_speech_enabled" value="1" id="ws_voice_speech_enabled"' . ($config['enabled'] ? ' checked' : '') . $disabled . '></div>
                                 <label class="" for="ws_voice_speech_enabled">' . h(lang('Assistants answer a voice message by voice')) . '</label>
                                 <div class="form-text">' . h(lang(array(
                                     'string' => 'The text of an assistant\'s answer to a voice message is sent to {var:1} with the key below, and the sound made from it is kept beside the answer as a voice message. Answers longer than {var:2} characters are spoken up to the sentence that fits.',
@@ -746,19 +868,19 @@ function ws_voice_speech_settings_part($admin)
                             </div>
                             <div class="mb-5">
                                 <label class="form-label" for="ws_voice_speech_url">' . h(lang('The speech service\'s address')) . '</label>
-                                <input class="form-control form-control-sm font-monospace" type="url" name="voice_speech_url" id="ws_voice_speech_url" value="' . h($config['url']) . '" placeholder="' . h($config['base']) . '" autocomplete="off"' . $disabled . '>
+                                <input class="form-control form-control-sm font-monospace" type="url" name="' . $prefix . 'voice_speech_url" id="ws_voice_speech_url" value="' . h($config['url']) . '" placeholder="' . h($config['base']) . '" autocomplete="off"' . $disabled . '>
                                 <div class="form-text">' . h(lang('Any service that answers like OpenAI\'s /audio/speech. Left empty, the transcripts\' address is used.')) . '</div>
                             </div>
                             ' . $key_field . '
                             <div class="row g-5 mb-5">
                                 <div class="sm:col-6">
                                     <label class="form-label" for="ws_voice_speech_model">' . h(lang('Model')) . '</label>
-                                    <input class="form-control form-control-sm font-monospace" type="text" name="voice_speech_model" id="ws_voice_speech_model" list="ws_voice_speech_models" value="' . h($config['model']) . '" placeholder="' . h(ws_voice_speech_default_model()) . '" maxlength="100" autocomplete="off"' . $disabled . '>
+                                    <input class="form-control form-control-sm font-monospace" type="text" name="' . $prefix . 'voice_speech_model" id="ws_voice_speech_model" list="ws_voice_speech_models" value="' . h($config['model']) . '" placeholder="' . h(ws_voice_speech_default_model()) . '" maxlength="100" autocomplete="off"' . $disabled . '>
                                     <datalist id="ws_voice_speech_models">' . $models . '</datalist>
                                 </div>
                                 <div class="sm:col-6">
                                     <label class="form-label" for="ws_voice_speech_voice">' . h(lang('Voice')) . '</label>
-                                    <input class="form-control form-control-sm font-monospace" type="text" name="voice_speech_voice" id="ws_voice_speech_voice" list="ws_voice_speech_voices" value="' . h($config['voice']) . '" placeholder="' . h(ws_voice_speech_default_voice()) . '" maxlength="100" autocomplete="off"' . $disabled . '>
+                                    <input class="form-control form-control-sm font-monospace" type="text" name="' . $prefix . 'voice_speech_voice" id="ws_voice_speech_voice" list="ws_voice_speech_voices" value="' . h($config['voice']) . '" placeholder="' . h(ws_voice_speech_default_voice()) . '" maxlength="100" autocomplete="off"' . $disabled . '>
                                     <datalist id="ws_voice_speech_voices">' . $voices . '</datalist>
                                 </div>
                             </div>';
