@@ -12,7 +12,7 @@ description: Steps WM10-WM14 of plans/workspace-mail-screen.md (owner 2026-11-11
   - The row's `href` becomes the E-mails screen with `conversation=<id>`, the filters kept. For that address the server draws the pane itself (`ws_mail_pane_html()`), so the mail opens with or without the script. "Open in channel" stays the pane's button.
   - A check (in `tools/lint.php` or a test) that no script source declares one function name twice in a scope: #8719 did so in `workspace_mail.js`, "Reply by e-mail" broke and `node --check` saw nothing (#8748 renames it).
   - Tests: the row's address, the pane drawn for the address, the check on a fixture. `workspace/mail-list.md` and `mail-screen-pane.md` corrected.
-- WM11 (S, schema) A mail's HTML is kept. `free`. Owner 2026-11-11, #8765 (`workflow/decisions-made-schema-16.md`).
+- WM11 (S, schema) Done #8821. A mail's HTML is kept. Owner 2026-11-11, #8765 (`workflow/decisions-made-schema-16.md`).
   - The step: `ws_mail_items.body_html` and the kind value `mailbox`, rerun twice on a dev DB; the PR body names the `[SCHEME]` item.
   - `ws_mail_ingest()` keeps the HTML part, cleaned by an allowlist of its own (`includes/fn/mail_html.php`: text, tables, inline styles; no script, form, frame, event attribute or style sheet from outside; an outside address in `src` set aside so nothing loads by itself), 1 MB at most, else none. A picture the HTML names by `cid:` is kept as the mail's file even without a name.
   - Mail whose `.eml` is still kept is filled in by the recurring job, 200 a run. Tests: what the cleaner keeps and drops, the `cid:` pictures, the fill. Topic `workspace/mail-html.md`.

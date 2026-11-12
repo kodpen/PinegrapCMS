@@ -6034,7 +6034,9 @@ function upgrade_2026_11_0_ws_mail_html() {
 
 	$kind = install_column_info('ws_channels', 'kind');
 
-	if (is_array($kind) && (strpos((string) $kind['Type'], "'mailbox'") === false)) {
+	if (!is_array($kind)) {
+		install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => 'ws_channels.kind')));
+	} elseif (strpos((string) $kind['Type'], "'mailbox'") === false) {
 		install_modify_column('ws_channels', 'kind', "ENUM('public','private','guest','thread','mailbox') NOT NULL DEFAULT 'public'");
 	} else {
 		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'ws_channels.kind mailbox')));
