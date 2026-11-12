@@ -26,7 +26,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
 $pg_settings_cards[] = '
                         <div id="pgset-campaigns" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Campaigns') . '
                                 </div>
                                 <div class="card-body">
@@ -48,7 +48,7 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
                         <div id="pgset-chat" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Chat') . '
                                 </div>
                                 <div class="card-body">
@@ -155,7 +155,7 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
                         <div id="pgset-mailchimp" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     <span lang="en">' . lang('MailChimp') . '</span>
                                 </div>
                                 <div class="card-body">
@@ -220,7 +220,7 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
                         <div id="pgset-sms" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('SMS') . '
                                 </div>
                                 <div class="card-body">
@@ -238,7 +238,7 @@ $pg_settings_scripts[] = pg_sms_settings_script();
 $pg_settings_cards[] = '
                         <div id="pgset-sms-messages" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('SMS Messages') . '
                                 </div>
                                 <div class="card-body">
@@ -253,7 +253,7 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
                         <div id="pgset-iys" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('İYS') . '
                                 </div>
                                 <div class="card-body">

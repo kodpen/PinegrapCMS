@@ -130,3 +130,10 @@ $ws_card = ws_bulk_settings_card('', $ws_viewer, $ws_form);
 if ($ws_card !== '') {
     $pg_settings_cards[] = $ws_card;
 }
+
+// ── Canvas templates ──
+$ws_card = ws_canvas_templates_settings_card($ws_viewer);
+
+if ($ws_card !== '') {
+    $pg_settings_cards[] = $ws_card;
+}

@@ -80,7 +80,7 @@ $output_api_switches = '
 $pg_settings_cards[] = '
     <div id="pgset-api" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Application API') . '
             </div>
             <div class="card-body">
@@ -118,7 +118,7 @@ $output_api_storage = '
 $pg_settings_cards[] = '
     <div id="pgset-api-storage" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Uploads & Logs') . '
             </div>
             <div class="card-body">
@@ -134,7 +134,7 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
                         <div id="pgset-google-reviews" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Google Reviews') . '
                                 </div>
                                 <div class="card-body">
@@ -163,7 +163,7 @@ if ($output_integration_links !== '') {
     $pg_settings_cards[] = '
     <div id="pgset-integration-links" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Related screens') . '
             </div>
             <div class="list-group list-group-flush">' . $output_integration_links . '

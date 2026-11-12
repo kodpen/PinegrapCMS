@@ -896,6 +896,23 @@ function ws_notes_list_columns()
 }
 
 /**
+ * The words condition of a list where the notes behind the reader's closed
+ * lock are found by their title alone, as the notes screen finds them
+ * (ws_note_lock_list_filter()): the words are in the title, or in the text
+ * of a note that is not behind the lock. Pure.
+ *
+ * @param string $title_sql  the words in the title
+ * @param string $body_sql   the words in the text
+ * @param string $behind_sql the note is behind the reader's lock
+ *                           (ws_note_lock_behind_sql())
+ * @return string "(...)"
+ */
+function ws_notes_search_closed_sql($title_sql, $body_sql, $behind_sql)
+{
+    return '(' . $title_sql . ' OR (NOT ' . $behind_sql . ' AND ' . $body_sql . '))';
+}
+
+/**
  * The conditions every list of notes shares: words in the title or the text,
  * and a change at or after a moment.
  *
@@ -905,15 +922,23 @@ function ws_notes_list_columns()
  *                              notes shared with the person: a note shared
  *                              again since counts as changed, as sharing
  *                              does not move updated_at
+ * @param string $behind_lock   the condition of a note behind the reader's
+ *                              closed lock (ws_note_lock_behind_sql()), whose
+ *                              text the words are not looked for in; '' when
+ *                              no lock is closed for the reader
  * @return string " AND ..." or ''
  */
-function ws_notes_filter_sql($search, $updated_since = 0, $shared_at = '')
+function ws_notes_filter_sql($search, $updated_since = 0, $shared_at = '', $behind_lock = '')
 {
     $filter = '';
     $search = trim(mb_substr((string) $search, 0, 100));
 
     if ($search !== '') {
-        $filter .= ' AND ' . ws_search_like_sql($search, array('n.title', 'n.body'), pg_list_search_connection_charset());
+        $charset = pg_list_search_connection_charset();
+
+        $filter .= ' AND ' . (((string) $behind_lock !== '')
+            ? ws_notes_search_closed_sql(ws_search_like_sql($search, array('n.title'), $charset), ws_search_like_sql($search, array('n.body'), $charset), (string) $behind_lock)
+            : ws_search_like_sql($search, array('n.title', 'n.body'), $charset));
     }
 
     if ((int) $updated_since > 0) {
@@ -1093,7 +1118,9 @@ function ws_notes_after_sql($group_sql, $after)
  * @param int   $user_id
  * @param array $options scope (all, mine or shared), search, updated_since
  *                       (unix time), after (a position, null for the first
- *                       page), limit
+ *                       page), limit, behind_lock (the condition of a note
+ *                       behind the reader's closed lock, which a search
+ *                       finds by its title alone; '' or left out for none)
  * @return array rows (with list_group and access), next (the position to go
  *               on from, null on the last page), total (every note that
  *               matches)
@@ -1104,7 +1131,8 @@ function ws_notes_page_rows($user_id, $options)
     $scope = (string) ($options['scope'] ?? 'all');
     $limit = max(1, min(WS_NOTES_PAGE_MAX, (int) ($options['limit'] ?? 100)));
     $after = is_array($options['after'] ?? null) ? $options['after'] : null;
-    $filter = ws_notes_filter_sql((string) ($options['search'] ?? ''), (int) ($options['updated_since'] ?? 0));
+    $behind = (string) ($options['behind_lock'] ?? '');
+    $filter = ws_notes_filter_sql((string) ($options['search'] ?? ''), (int) ($options['updated_since'] ?? 0), '', $behind);
     $rows = array();
     $total = 0;
 
@@ -1125,7 +1153,7 @@ function ws_notes_page_rows($user_id, $options)
     if ($scope !== 'mine') {
         $from = " FROM ws_notes n
             INNER JOIN ws_note_shares s ON s.note_id = n.id AND s.user_id = '" . $me . "'
-            WHERE n.user_id <> '" . $me . "'" . ws_notes_filter_sql((string) ($options['search'] ?? ''), (int) ($options['updated_since'] ?? 0), 's.created_at');
+            WHERE n.user_id <> '" . $me . "'" . ws_notes_filter_sql((string) ($options['search'] ?? ''), (int) ($options['updated_since'] ?? 0), 's.created_at', $behind);
 
         $total += (int) db_value("SELECT COUNT(DISTINCT n.id)" . $from);
 
@@ -1162,7 +1190,17 @@ function ws_notes_page($viewer, $options)
         return array('rows' => array(), 'next' => null, 'total' => 0);
     }
 
-    $page = ws_notes_page_rows((int) $viewer['id'], $options);
+    $me = (int) $viewer['id'];
+
+    // No API client holds the notes lock open (note_lock.php), so a search
+    // finds a note behind the person's lock by its title alone, as the notes
+    // screen does while the lock is closed: a match in the text would tell
+    // what the locked note holds.
+    if ((trim((string) ($options['search'] ?? '')) !== '') && function_exists('ws_note_lock_behind_sql') && ws_note_lock_ready()) {
+        $options['behind_lock'] = ws_note_lock_behind_sql($me, ws_note_lock_has($me), ws_note_lock_group_note_ids($me));
+    }
+
+    $page = ws_notes_page_rows($me, $options);
     $page['rows'] = ws_notes_present($viewer, $page['rows']);
 
     return $page;

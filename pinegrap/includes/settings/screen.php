@@ -230,7 +230,7 @@ if (!$_POST) {
     $output =
     pg_page_shell(array(
         'title'         => lang('Site Settings') . ' - ' . $pg_settings_category['label'],
-        'extra classes' => 'setting',
+        'extra classes' => 'setting pg-measure-edit',
         'icon'          => 'setting',
         'heading'       => $pg_settings_category['label'],
         'heading_description' => $pg_settings_category['description'],
@@ -294,10 +294,10 @@ if (!$_POST) {
 
                 <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />
 
-                <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                <nav class="buttons navigation position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
-                        <div class=" btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_save" value="Save" class="btn btn-solid theme-success"><i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                        <div class="btn-group flex-wrap">
+                            <button type="submit" id="create_button" name="submit_save" value="Save" class="pg-button pg-button-fill"><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
                         </div>
                     </div>
                 </nav>

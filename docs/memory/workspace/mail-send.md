@@ -4,7 +4,7 @@ description: Sending Workspace mail through the mail queue (mail_send.php, WM3 #
 ---
 
 ## Which functions?
-- `includes/workspace/mail_send.php` (PR #8646). `ws_mail_send_boxes($viewer)`: open boxes with a working route (`ws_mail_reply_route()`) and the channels a mail may be kept in (the box's own and its routes' channels the person may post in); team accounts only (`member`), never a guest.
+- `includes/workspace/mail_send.php` (PR #8646). `ws_mail_send_boxes($viewer)`: open boxes with a working route (`ws_mail_reply_route()`) and the channels a mail may be kept in (the box's own and its routes' channels where `ws_mail_can_answer()`); team accounts only (`member`), never a guest.
 - `ws_mail_send_check($viewer, $mail)` checks everything before a write; `$mail` = box_id, channel_id, to, cc, bcc (text or list), subject, text, files (each `name` and decoded `bytes`). Pure parts: `ws_mail_send_input()`, `ws_mail_send_limits()`. Words: `ws_mail_send_error_text($error, $detail)`.
 - `ws_mail_send($viewer, $mail)` → ok, error, detail, conversation_id, item_id, message_id, state. Called by New e-mail (`ws_mail_new`, `mail-compose.md`), Forward (`mail-forward.md`) and the panel's answer with `conversation_id` (`ws_mail_send_answer()`, `mail-reply.md`).
 
@@ -22,7 +22,7 @@ description: Sending Workspace mail through the mail queue (mail_send.php, WM3 #
 - Payload `mail_resend` (`ws_mail_resend_offer()`): the item id on a failed out item for a team member who may post. `workspace_mail.js` draws Send again in `node()`, which workspace.js calls where `mail_reply` or `mail_resend` is set; the offer stands only on the item's own message (a new mail's card, an answer's text), not on its files.
 
 ## Who may press Send again?
-- Action `ws_mail_resend`: anyone who may send from the item's channel (`ws_can_post_channel()`, team only), the same rule as sending; the conversation is the channel's. Hourly limit and the bounce list again. One press counts: `failed` → `queued` only where the row still reads failed.
+- Action `ws_mail_resend`: anyone who may send from the item's channel (`ws_mail_can_answer()`, team only), the same rule as sending; the conversation is the channel's. Hourly limit and the bounce list again. One press counts: `failed` → `queued` only where the row still reads failed.
 
 ## Which limits?
 - 20 addresses (To, Cc, Bcc), each valid; one on the bounce list refused by name (the queue gates only To); subject required; text 1 to `WS_MAIL_REPLY_MAX`; 10 files, 20 MB together, the channel's upload rules; `WS_MAIL_SEND_HOURLY` 30 out items a person an hour (answers count; Send again adds none).

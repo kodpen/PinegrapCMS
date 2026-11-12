@@ -2194,7 +2194,9 @@ function ws_message_search($viewer, $query, $channel_id = 0)
             $channels[$id] = ws_channel($id);
         }
 
-        if (ws_can_read_channel($viewer, $channels[$id])) {
+        // The mail of a mailbox kept in no channel is searched on the
+        // E-mails screen, the only place that opens it.
+        if (ws_can_read_channel($viewer, $channels[$id]) && !ws_channel_is_mailbox($channels[$id])) {
             $visible[] = $row;
         }
 

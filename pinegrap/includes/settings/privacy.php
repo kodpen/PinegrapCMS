@@ -26,7 +26,7 @@ require(PG_FUNCTIONS_DIR . '/includes/settings/privacy_analytics.php');
 $pg_settings_cards[] = '
                         <div id="pgset-analytics" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Visitor Tracking') . '
                                 </div>
                                 <div class="card-body">
@@ -114,7 +114,7 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
                         <div id="pgset-cookies" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Cookie Consent') . '
                                 </div>
                                 <div class="card-body">
@@ -183,7 +183,7 @@ if ($legal_documents_ready) {
     $pg_settings_cards[] = '
     <div id="pgset-legal" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Legal Documents') . '
             </div>
             <div class="card-body">
@@ -243,7 +243,7 @@ if (pg_schema_has('config_text')) {
     $pg_settings_cards[] = '
                         <div id="pgset-a11y-statement" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Accessibility Statement') . '
                                 </div>
                                 <div class="card-body">

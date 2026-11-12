@@ -54,7 +54,7 @@ function ws_timeline_channels($viewer)
         . (ws_agent_channel_ready() ? 'c.agent_channel' : '0 AS agent_channel') . "
         FROM ws_channels c
         LEFT JOIN ws_channel_members m ON m.channel_id = c.id AND m.user_id = '" . (int) $viewer['id'] . "'
-        WHERE c.kind <> 'thread'
+        WHERE c.kind NOT IN ('thread', 'mailbox')
         ORDER BY (c.archived_at > 0), c.name") as $row) {
 
         $readable = ($row['kind'] === 'public')

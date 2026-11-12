@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Otomasyon akışları: menü satırı ve simge</title>
+<style>
+/* Standalone preview: the main menu row "Otomasyon akışları" with three moving icon candidates, in both themes. */
+.dark { --back: #040508; --page: #090a0e; --surf1: #16181e; --surf2: #101217; --line: rgba(255,255,255,.075); --hover: rgba(255,255,255,.045); --quiet: rgba(255,255,255,.065); --fg: #eef0f3; --fg2: #a4a9b1; --fg3: #6d737c; --accent: #6aa5ff; --mod: #b19cff; --sk: rgba(255,255,255,.085); --shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 20px 50px -20px rgba(0,0,0,.7); --new: #3fd0a8; }
+.light { --back: #dfe2ea; --page: #f3f4f8; --surf1: #ffffff; --surf2: #fdfdfe; --line: rgba(15,23,42,.085); --hover: rgba(15,23,42,.04); --quiet: rgba(15,23,42,.055); --fg: #12151a; --fg2: #58606a; --fg3: #8a919b; --accent: #2f6fed; --mod: #7150e6; --sk: rgba(15,23,42,.09); --shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 16px 40px -22px rgba(15,23,42,.25); --new: #0e9a74; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #040508; font: 400 14px/1.45 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+.stage { display: grid; grid-template-columns: 1fr 1fr; width: 1420px; }
+.th { padding: 28px 30px 32px; background: var(--back); color: var(--fg); }
+h1 { margin: 0 0 2px; font-size: 17px; font-weight: 650; letter-spacing: -.015em; }
+p.sub { margin: 0 0 18px; font-size: 13px; color: var(--fg2); }
+.cands { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 22px; }
+.cand { padding: 14px 14px 12px; border-radius: 16px; border: 1px solid var(--line); background: linear-gradient(180deg, var(--surf1), var(--surf2)); box-shadow: var(--shadow); }
+.cand .big { display: grid; place-items: center; height: 104px; border-radius: 12px; background: var(--page); margin-bottom: 10px; }
+.cand .big svg { width: 72px; height: 72px; }
+.cand b { display: block; font-size: 13.5px; font-weight: 600; }
+.cand small { display: block; margin-top: 2px; font-size: 12px; color: var(--fg2); min-height: 34px; }
+.mi-row { display: flex; align-items: center; gap: 11px; height: 36px; margin-top: 8px; padding: 0 9px; border-radius: 10px; background: var(--quiet); font-size: 13px; font-weight: 500; white-space: nowrap; }
+.mi-row svg, .menu .mi svg { width: 22px; height: 22px; flex: none; }
+svg.ic { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; color: var(--fg); }
+svg.ic .t { fill: var(--mod); fill-opacity: .3; stroke: none; }
+svg.ic .a { stroke: var(--accent); }
+svg.ic .af { fill: var(--accent); stroke: none; }
+/* candidate C: the ring turns, the bolt lights up */
+.spin { transform-origin: 12px 12px; animation: spin 3.2s linear infinite; }
+.flash { animation: flash 1.6s ease-in-out infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes flash { 0%, 55%, 100% { fill-opacity: .25; } 70% { fill-opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .spin, .flash { animation: none; } }
+.cols { display: grid; grid-template-columns: 250px 1fr; gap: 22px; align-items: start; }
+.menu { padding: 14px 12px 16px; border-radius: 16px; border: 1px solid var(--line); background: var(--page); box-shadow: var(--shadow); }
+.menu .logo { display: flex; align-items: center; gap: 10px; margin: 2px 6px 16px; font-weight: 650; letter-spacing: -.01em; }
+.menu .logo i { width: 24px; height: 24px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--mod)); }
+.menu .mi { display: flex; align-items: center; gap: 11px; height: 34px; padding: 0 8px; border-radius: 9px; font-size: 13.5px; color: var(--fg2); }
+.menu .mi > i { width: 22px; height: 22px; display: grid; place-items: center; flex: none; }
+.menu .mi > i::before { content: ""; width: 16px; height: 16px; border-radius: 5px; background: var(--sk); }
+.menu .mi.is { color: var(--fg); font-weight: 550; background: var(--quiet); }
+.menu .mi em { margin-left: auto; font-style: normal; font-size: 10.5px; font-weight: 650; letter-spacing: .04em; color: var(--new); }
+.menu .live { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--fg3); font-weight: 400; }
+.menu .live::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--new); animation: pulse 1.8s ease-out infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--new) 60%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
+.menu .mh { margin: 14px 8px 6px; font-size: 10.5px; font-weight: 650; letter-spacing: .07em; color: var(--fg3); }
+.notes { font-size: 13px; color: var(--fg2); }
+.notes h2 { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: var(--fg); }
+.notes ul { margin: 0 0 14px; padding-left: 18px; }
+.notes li { margin: 5px 0; }
+.notes b { color: var(--fg); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="stage">
+<!-- the same block is drawn twice, once per theme -->
+<script>
+var CAND = {
+  A: '<svg class="ic" viewBox="0 0 24 24"><circle class="t" cx="5.2" cy="6" r="2.7"/><circle cx="5.2" cy="6" r="2.7"/><rect class="t" x="9.2" y="9.2" width="5.6" height="5.6" rx="1.7"/><rect x="9.2" y="9.2" width="5.6" height="5.6" rx="1.7"/><circle class="t" cx="18.8" cy="18" r="2.7"/><circle cx="18.8" cy="18" r="2.7"/><path class="a" d="M7.9 6H10a2 2 0 0 1 2 2v1.2M12 14.8V16a2 2 0 0 0 2 2h2.1"/><circle class="af" r="1.5"><animateMotion dur="2.4s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;.75;1" calcMode="linear" path="M5.2 6H10a2 2 0 0 1 2 2v8a2 2 0 0 0 2 2h4.8"/></circle></svg>',
+  B: '<svg class="ic" viewBox="0 0 24 24"><circle class="t" cx="12" cy="4.8" r="2.6"/><circle cx="12" cy="4.8" r="2.6"/><rect class="t" x="3" y="15.4" width="5.6" height="5.6" rx="1.7"/><rect x="3" y="15.4" width="5.6" height="5.6" rx="1.7"/><rect class="t" x="15.4" y="15.4" width="5.6" height="5.6" rx="1.7"/><rect x="15.4" y="15.4" width="5.6" height="5.6" rx="1.7"/><path class="a" d="M12 7.4v2.4M12 9.8a2.2 2.2 0 0 1-2.2 2.2H8a2.2 2.2 0 0 0-2.2 2.2v1.2M12 9.8a2.2 2.2 0 0 0 2.2 2.2H16a2.2 2.2 0 0 1 2.2 2.2v1.2"/><circle class="af" r="1.4"><animateMotion dur="3s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;.4;1" calcMode="linear" path="M12 4.8v5a2.2 2.2 0 0 1-2.2 2.2H8a2.2 2.2 0 0 0-2.2 2.2v4"/></circle><circle class="af" r="1.4"><animateMotion dur="3s" begin="-1.5s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;.4;1" calcMode="linear" path="M12 4.8v5a2.2 2.2 0 0 0 2.2 2.2H16a2.2 2.2 0 0 1 2.2 2.2v4"/></circle></svg>',
+  C: '<svg class="ic" viewBox="0 0 24 24"><circle class="t" cx="12" cy="12" r="8.6"/><g class="spin"><path d="M12 3.4a8.6 8.6 0 0 1 8.6 8.6M12 20.6A8.6 8.6 0 0 1 3.4 12"/><circle class="af" cx="20.6" cy="12" r="1.5"/><circle class="af" cx="3.4" cy="12" r="1.5"/></g><path class="a" d="M13.2 6.6 8.6 13H12l-1 4.4 4.6-6.4H12z"/><path class="af flash" d="M13.2 6.6 8.6 13H12l-1 4.4 4.6-6.4H12z"/></svg>'
+};
+function block(theme) {
+  var rows = function (list) { return list.map(function (n) { return '<div class="mi"><i></i>' + n + '</div>'; }).join(''); };
+  return '<section class="th ' + theme + '">' +
+    '<h1>Otomasyon akışları: üç simge adayı</h1><p class="sub">Burada sürekli dönüyor; üründe satırın üstüne gelince ve bir akış çalışırken hareket eder.</p>' +
+    '<div class="cands">' +
+      '<div class="cand"><div class="big">' + CAND.A + '</div><b>A · Yol</b><small>Başlangıç, adım, bitiş; nokta yolu izler.</small><div class="mi-row">' + CAND.A + 'Otomasyon akışları</div></div>' +
+      '<div class="cand"><div class="big">' + CAND.B + '</div><b>B · Dal</b><small>Bir başlangıçtan iki kola ayrılır; nokta sırayla iner.</small><div class="mi-row">' + CAND.B + 'Otomasyon akışları</div></div>' +
+      '<div class="cand"><div class="big">' + CAND.C + '</div><b>C · Şimşek</b><small>Dönen halka içinde yanıp sönen şimşek.</small><div class="mi-row">' + CAND.C + 'Otomasyon akışları</div></div>' +
+    '</div>' +
+    '<div class="cols"><nav class="menu"><div class="logo"><i></i>Pinegrap</div>' +
+      rows(['Pano']) +
+      '<div class="mi is">' + CAND.A + 'Otomasyon akışları<span class="live">2</span></div>' +
+      rows(['Çalışma Alanı']) +
+      '<div class="mh">İÇERİK</div>' + rows(['Sayfalar', 'Dosya Yöneticisi', 'Takvimler', 'Formlar']) +
+      '<div class="mh">E-TİCARET</div>' + rows(['Siparişler', 'Ürünler']) +
+      '<div class="mh">PAZARLAMA</div>' + rows(['Ziyaretçiler', 'Kişiler']) +
+      '<div class="mi" style="color:var(--fg)"><i></i>İletişim<em>YENİ</em></div>' + rows(['Reklamlar']) +
+    '</nav><div class="notes">' +
+      '<h2>Menüde yeri</h2><ul><li><b>Otomasyon akışları</b> en üstte, Pano ile Çalışma Alanı arasında: sitenin her alanına dokunduğu için bir başlığın altına girmez.</li><li>Çalışma Alanı kapalı sitede de görünür ve çalışır.</li><li>Sağdaki küçük sayı, o anda çalışan akışları gösterir (yoksa görünmez).</li><li>Bir kanalın içinde açılan akış görünümü kanalda kalır; o da yeni düzenle modernleşir.</li></ul>' +
+      '<h2>Kampanyalarım → İletişim</h2><ul><li>Pazarlama başlığındaki <b>Kampanyalarım</b> satırı, baştan kurulan <b>İletişim</b> alanı olur: kampanyalar, şablonlar, gönderimler, kanallar.</li><li>Otomatik gönderimler (bugünkü kampanya profilleri) akış olarak kurulur.</li></ul>' +
+      '<h2>Hareket kuralı</h2><ul><li>Diğer menü simgeleri gibi: üstüne gelince bir kez. Ek olarak bir akış çalışırken yavaşça.</li><li>"Daha az hareket" isteyen cihazda hiç hareket etmez.</li></ul>' +
+    '</div></div></section>';
+}
+document.write(block('dark') + block('light'));
+</script>
+</div>
+</body>
+</html>

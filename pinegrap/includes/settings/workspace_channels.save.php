@@ -75,7 +75,9 @@ if (($ws_box_id !== null) && is_scalar($ws_box_id) && ws_mail_ready()) {
     $ws_box_checked = ws_mail_box_save_check($ws_viewer, $ws_box, ws_mail_settings_dialog_input($_POST, $ws_box_id));
 
     if (!$ws_box_checked['ok']) {
-        $liveform->mark_error('ws_mail[' . $ws_box_id . '][' . (($ws_box_checked['field'] === 'route_match') ? 'route_match][' : $ws_box_checked['field']) . ']', h($ws_box_checked['error']));
+        // A field posted as a list (the routes, the readers of a box kept in
+        // no channel) is marked by its list name.
+        $liveform->mark_error('ws_mail[' . $ws_box_id . '][' . $ws_box_checked['field'] . (in_array($ws_box_checked['field'], array('route_match', 'room_people'), true) ? '][' : '') . ']', h($ws_box_checked['error']));
         return;
     }
 }

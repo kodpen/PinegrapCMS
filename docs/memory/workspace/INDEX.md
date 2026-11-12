@@ -11,6 +11,7 @@
 - agent-canvas-save.md: An agent saves a canvas's picture into Files (POST messages/{id}/canvas/save, canvas_save.php): a file create of the change catalogue, tier 2 at once, tier 1 a card, the formats, the pending refusal
 - agent-canvas-split-parts.md: Layers "split": a text as a text layer, a site file's picture as a picture layer (canvas_split_parts.php): what converts, fonts, placement, which files
 - agent-canvas-svg.md: Agents draw Workspace canvases from SVG (POST channels/{id}/canvases) and read any canvas (GET messages/{id}/canvas): Import port, blank picture, pending, who may [decision: decisions-made-workspace-7.md, decisions-made-workspace-9.md]
+- agent-canvas-templates.md: Canvas templates (CV5): Save as template, the config_text list, the settings card, GET workspace/canvas/templates, a canvas made from template and fill, refusals
 - agent-channel-flag.md: Agent channel switch (ws_channels.agent_channel, #8440): /agent-channel on|off, its decisions kept apart on the decisions screen, the dashboard and GET /workspace/decisions [decision: decisions-made-schema-13.md, decisions-made-workspace-9.md]
 - agent-checklist-questions.md: Checklist questions over a poll; reading ticks (checks) and an application ticking a line (POST …/checks, app_id), a roll call, the wake on a tick, the closing decision; who a question rings [decision: decisions-made-workspace-10.md, decisions-made-workspace-12.md, decisions-made-workspace-16.md]
 - agent-discussion-follow.md: A discussion that follows a registry agent (#8608, #8911): the agent:<id> / model:<id> key, the reaching row read live, what starts it (answer, writer, name), the ask [decision: decisions-made-workspace-12.md, decisions-made-workspace-19.md]
@@ -47,7 +48,7 @@
 - mail-api.md: Workspace e-mail in the external API and MCP (api_mail.php, G7, WM8 #8737): routes, list filters, unread, send_state, which are tools, who may answer or send, errors, the webhook
 - mail-card.md: How a mail is drawn in a Workspace channel (ws_mail_card_html(), sender like a guest) and the Mailboxes card of Workspace settings with the .eml upload (mail_settings.php)
 - mail-compose.md: New e-mail in the Workspace (WM5, #8719): the form and its fields, where it opens, the panel actions, who may send, the unsent form kept in the browser, a mailbox's Signature and where it goes
-- mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP chosen (#2444) and when a push endpoint (G9) would come, the eleven answers and their files, defaults, scope, PRs, what stays unverified [decision: decisions-made-product-10.md, decisions-made-workspace-13.md, decisions-made-workspace-17.md]
+- mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP chosen (#2444) and when a push endpoint (G9) would come, the eleven answers and their files, defaults, scope, PRs, what stays unverified [decision: decisions-made-product-10.md, decisions-made-workspace-13.md, decisions-made-workspace-17.md, decisions-made-workspace-21.md]
 - mail-email-fields.md: What email() gained for Workspace mail (G3a #2846, #8646): cc and bcc, the threading headers it lets through, a box's own SMTP server, and the site's mark every mail carries for the loop gate
 - mail-fetch.md: Reading Workspace mailboxes over IMAP (ws_mail_fetch(), inline in job.php): what is searched, the UID position, held mail, limits, after-fetch, what the box records, the System status tile
 - mail-forward.md: Forward as e-mail in the Workspace (WM6): the buttons, the filled New e-mail form, what a forward quotes and carries, the line under a forwarded mail, the checks when it is sent
@@ -60,9 +61,10 @@
 - mail-notices-and-event.md: Who hears of a Workspace e-mail conversation (inbox kinds mail_assigned, mail_customer) and the workspace.mail.received event for scheduled actions and flows (G5b)
 - mail-parse.md: Incoming mail MIME parser pg_mail_parse() (G1a of incoming e-mail): result shape, charset fallback, limits, error codes, what it leaves to ws_mail_ingest()
 - mail-reply.md: Answering a Workspace e-mail by e-mail (WM7): the queued answer, Cc, Bcc, files, Reply to all, the drawer, route, headers and subject, the API's answer sent at once
+- mail-room.md: A mailbox kept in no channel (WM13, #8985): its room of kind mailbox, the box form's Kept in, who reads and answers, where the room never shows, the inventory test [decision: decisions-made-workspace-17.md]
 - mail-routing.md: Routing incoming Workspace e-mail (G6, mail_route.php): box routes by address or +tag to a channel, recipients read, the known customer's line in their channels
 - mail-screen-pane.md: The Workspace E-mails reading pane (mail_pane.php) and the per-person unread marks (mail_reads.php): the unread rule, the floor, where marks are written, the menu count
-- mail-send-outcome.md: How the mail queue's outcome reaches a Workspace mail (ws_mail_send_outcome(), #8646): sent is final, only the current attempt fails it, the race of an unwritten row id, idempotence
+- mail-send-outcome.md: How the queue's outcome reaches a Workspace mail (ws_mail_send_outcome(), #8646): sent is final, only the current attempt fails it, the unwritten row id race, a deleted queue row
 - mail-send.md: Sending Workspace mail through the mail queue (mail_send.php, WM3 #8646): functions, the flow, send states and the card, Send again, limits, mail_unsent, the outcome handler's rules [decision: decisions-made-workspace-13.md]
 - mail-sent-and-bounces.md: After a Workspace e-mail answer leaves (G3c): the copy APPENDed to the box's sent folder, email()'s keep_mime, and a delivery failure (DSN) drawn as a "Not delivered" line under the conversation
 - mail-status.md: State of a Workspace e-mail conversation (G5a, G5b, mail_status.php): open/waiting/closed, the holder, the first-response target, the card's controls, the automatic answer
@@ -336,6 +338,7 @@
 - workspace-note-groups-screen.md: Note groups on the My Notes screen — workspace_note_groups.js (folders, New group, group menu, Move to group, drag and drop, search, closed folders in the browser) and its hooks in startNotes()
 - workspace-note-groups-shared-screen.md: Shared note groups on the screen (G6) — workspace_note_group_shares.js (Share dialog, Shared with me folders, channel group card, ?group=N) and the list fields shared_groups / shared_group
 - workspace-note-groups.md: Workspace note groups and the notes lock — tables of step 11.0.119, readiness probes ws_note_groups_ready() / ws_note_lock_ready()
+- workspace-note-lock-changes.md: A notes lock change moves the note's updated_at (ws_note_lock_moved(), #8647) so updated_since carries it; the API notes search finds a locked note by its title only
 - workspace-note-lock-gate.md: Notes lock gate: ws_note_behind_lock(), code note_locked on the screen's note actions, list and presenter while closed, locking notes and groups, shares refused
 - workspace-note-lock-readers.md: Notes lock beyond the notes screen: API and MCP (locked, 423 note_locked), assistants, get_file.php, export, blocks, record history, table import; the readers guard test
 - workspace-note-lock-screen.md: Notes lock on My Notes (workspace_note_lock.js): toolbar Lock and dialogs, Lock/Unlock in menus, list marks, the lock pane and e-mailed code, the time-out, note_locked answers

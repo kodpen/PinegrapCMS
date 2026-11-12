@@ -5,8 +5,8 @@ description: State of a Workspace e-mail conversation (G5a, G5b, mail_status.php
 
 ## Which states, and who changes them?
 - `ws_mail_conversations.status`: `open` (new mail, or the customer wrote again: `ws_mail_ingest()`), `waiting` (set when an e-mail answer is written, `ws_mail_send_answer()` or the API's `ws_mail_reply_send()`, which also clear `closed_at`), `closed` (by hand; `closed_at` set, cleared when opened). Words `ws_mail_statuses()`.
-- Holder `assignee_id`: assign `me`, `none` or a person's id (the viewer's own id counts as `me`). Somebody else must be a member who may post in the channel (`ws_change_viewer_for_id()` + `ws_can_post_channel()`), else error `assignee`. Who is told: `mail-notices-and-event.md`.
-- Action `ws_mail_conversation` (`actions.php`) → `ws_mail_conversation_set()`: whoever may post in the conversation's channel (`ws_can_post_channel()`); `ws_mail_conversation_changes()` is the pure part (columns to write; `nothing` when nothing changes). The card is touched so every reader redraws it.
+- Holder `assignee_id`: assign `me`, `none` or a person's id (the viewer's own id counts as `me`). Somebody else must be a member who may answer in the channel (`ws_change_viewer_for_id()` + `ws_mail_can_answer()`), else error `assignee`. Who is told: `mail-notices-and-event.md`.
+- Action `ws_mail_conversation` (`actions.php`) → `ws_mail_conversation_set()`: whoever may answer in the conversation's channel (`ws_mail_can_answer()`); `ws_mail_conversation_changes()` is the pure part (columns to write; `nothing` when nothing changes). The card is touched so every reader redraws it.
 
 ## What is the first-response target?
 - Per box, `settings.first_reply_hours` (0 none, at most `WS_MAIL_FIRST_REPLY_MAX` 720), box form field "First answer within (hours)", `ws_mail_first_reply_input()`; read by `ws_mail_first_reply_hours()`.
