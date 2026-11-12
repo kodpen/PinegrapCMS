@@ -1,11 +1,11 @@
 ---
 name: workspace-assistant-settings
-description: Claude in the channels and Bulk changes in Site Settings (Assistants and agents) and on Workspace Settings: field and button names, the shared saves, an unchanged pane Save, the secret drawer
+description: Claude, Pinegrap AI and Bulk changes in Site Settings (Assistants and agents) and on Workspace Settings: names, shared saves, an unchanged pane Save, the secret drawer
 ---
 
 ## Where are the two cards?
 - PR #8801 (SW3 of `plans/settings-workspace-move.md`): in Assistants and agents, sections `pgset-ws-claude` and `pgset-ws-bulk`, cards in `includes/settings/workspace_assistants.php`, writes in `workspace_assistants.save.php`. The old cards (`#ws-claude`, `#ws-bulk`) keep working on `workspace_settings.php` until SW7, as SW2 left its cards ([[workspace-holiday-settings]]).
-- `pg_settings_legacy_anchors()` maps `ws-claude` and `ws-bulk` to the new cards. The category's link card keeps Pinegrap AI and the MCP servers; the agents moved in SW4a ([[workspace-agent-settings]]).
+- `pg_settings_legacy_anchors()` maps `ws-claude` and `ws-bulk` to the new cards. Pinegrap AI (`pgset-ws-ai`, anchor `ws-ai`) followed in PR #8832 (SW4b), the agents in SW4a ([[workspace-agent-settings]]); the link card keeps the MCP servers.
 
 ## How do the two screens share one card and one save?
 - `ws_claude_settings_card($self_url, $viewer, $credentials, $form)` and `ws_bulk_settings_card($self_url, $viewer, $form)` draw both: with `$form` (the settings form's id) no `<form>`, fields named `ws_*`, buttons named submit buttons of the settings form.
@@ -15,6 +15,10 @@ description: Claude in the channels and Bulk changes in Site Settings (Assistant
 ## Why does a pane Save not always write Claude's connection?
 - The pane posts every field with each Save; a write clears `ws_claude_error` and the routine's wait. `ws_claude_settings_changed()` (pure) skips it when nothing differs; the bulk switch is written only when it differs too.
 - Both cards are role 0's: for others the fields are disabled (not posted) and the save module leaves them alone.
+
+## How does Pinegrap AI's card save?
+- `ws_ai_settings_card($self_url, $viewer, $form)`; fields `ws_ai_enabled`, `ws_ai_app_id` (old `ai_*`), read by `ws_ai_settings_input()`. `ws_ai_settings_check()` refuses a missing application or Claude's (as stored, or as posted for Claude in the same save); `ws_ai_settings_write()` stores, logs and asks the licence again. Skipped when `ws_ai_settings_changed()` is false.
+- Buttons `ws_ai_test`, `ws_ai_key_create` run after the save (`ws_ai_settings_post(..., true)`). The key has no secret, so no drawer.
 
 ## Which buttons run after the save?
 - `ws_claude_test`, `ws_claude_key_create`, `ws_claude_key_reset` (value 1): `ws_claude_settings_post(..., true)`, a refusal a warning, as the pane is stored by then. Reset asks with an inline `confirm()`; Cancel posts nothing.
