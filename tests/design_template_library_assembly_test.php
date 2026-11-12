@@ -295,7 +295,16 @@ function test_library_assembly_pages_on_library_blocks()
 	pg_assert_true(version_compare($tpl['version'], '2.0.0', '>='), 'version 2.0.0');
 	$styles = json_decode($tpl['assets']['css'], true);
 	$css = $styles[0]['content'];
+	// Small coloured text on the dark tertiary bands and the hero's tinted
+	// corner: Forest's text colour gives 4.1:1 there, the emphasis tint 4.7:1.
+	pg_assert_contains('[data-bs-theme=dark] :is(.bg-body-tertiary,.plb-hero) :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}', $css, 'primary text on a dark band');
+	pg_assert_contains('[data-bs-theme=dark] :is(.bg-body-tertiary,.plb-hero) .btn-outline-primary{--bs-btn-color:var(--bs-primary-text-emphasis)}', $css, 'outline buttons on a dark band');
+	pg_assert_contains('[data-bs-theme=dark] .bg-body-tertiary .link-secondary{color:var(--bs-secondary-color)!important}', $css, 'secondary links on a dark band');
+	pg_assert_contains('[data-bs-theme=dark] .bg-body-tertiary .btn-outline-secondary{--bs-btn-color:var(--bs-body-color)}', $css, 'secondary buttons on a dark band');
+	// A long site name shrinks in the header instead of widening the page.
+	pg_assert_contains('.navbar-brand{min-width:0}', $css, 'the brand may shrink');
 	include PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-library/parts.php';
+	pg_assert_contains('plb-brand fs-4 text-truncate', json_encode($header()), 'the name ends with an ellipsis');
 	$trees = array();
 	foreach ($tpl['pages'] as $p) $trees[$p['key']] = $p['tree'];
 	$wanted = array(

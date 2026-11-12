@@ -651,7 +651,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $icon('bi-book', 'fs-4 text-primary'),
-                    $span('{{site_name}}', 'plb-brand fs-4', lang('Name')),
+                    $span('{{site_name}}', 'plb-brand fs-4 text-truncate', lang('Name')),
                 ), array('href' => '{{page:home}}')),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
                     $el('span', 'navbar-toggler-icon', lang('Toggler Icon')),
@@ -665,8 +665,11 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
                     $el('ul', 'navbar-nav ms-xl-auto me-xl-3 column-gap-xl-1 py-3 py-xl-0', lang('Nav Menu'), $nav, array('smartActive' => true)),
+                    // From 1200 to 1399 px the brand and the seven links fill the
+                    // 1140 px container, so the card button stays in the collapsed
+                    // menu and comes back to the open bar from 1400 px.
                     $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
-                        $el('a', 'btn btn-primary d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
+                        $el('a', 'btn btn-primary d-inline-flex d-xl-none d-xxl-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
                             $icon('bi-person-vcard'),
                             $span(lang('Join the Library'), '', lang('Link Text')),
                         ), array('href' => '{{page:join}}')),

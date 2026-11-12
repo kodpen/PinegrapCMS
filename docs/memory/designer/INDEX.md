@@ -154,6 +154,7 @@
 - design-template-launch-pages.md: Launch template's camera, specs and compare pages on the Product Launch blocks: the spec comparison from $spec_groups, the differences-only compare, motion, what was dropped
 - design-template-launch.md: Phone Launch Site template (pinegrap-launch, 2.0.0): the Orbit in three models from one data file, pages on the launch- blocks, a buy page without the shop, requests, tests
 - design-template-law.md: Law Firm template (pinegrap-law): practice areas, lawyers, results, fees, a consultation request with a conflict check followed from the account, careers, no shop, plw- look, tests.
+- design-template-library-pages.md: Public Library 2.0.0 (#8846): home, visit, Central Library and catalogue drawn on the Library blocks and the general hours and floor blocks; the data behind them, motion, browser fixes, tests
 - design-template-library.md: Public Library template (pinegrap-library): branches as data, catalogue and events as collections, card, reservation, place and room requests, no shop, plb- look, tests.
 - design-template-magazine-a11y.md: Magazine accessibility: ink focus rings on links, buttons, fields and the shelf, headings that never repeat, e-mail frames light in the dark theme, the core items left open.
 - design-template-magazine-issues.md: Magazine issues: office pick list with the stored default Online only, ?issue= contents, index of live Editor's letters, value links, plain names, launching one.

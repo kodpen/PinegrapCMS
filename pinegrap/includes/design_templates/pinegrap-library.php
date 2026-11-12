@@ -168,6 +168,9 @@ $library_css = implode("\n", array(
     '.plb-eyebrow{letter-spacing:.14em;font-size:.75rem}',
     // The library's name in the header and the footer, in the serif face.
     '.plb-brand{font-family:var(--pg-font-heading);font-weight:700}',
+    // A long name shrinks with an ellipsis instead of pushing the open bar
+    // past the container.
+    '.navbar-brand{min-width:0}',
     // A key figure: the serif face, figures of one width.
     '.plb-stat{font-family:var(--pg-font-heading);font-variant-numeric:tabular-nums}',
     // Opening times: figures of one width, so the hours line up.
@@ -183,6 +186,17 @@ $library_css = implode("\n", array(
     '.plb-lift{transition:transform .2s ease,box-shadow .2s ease}',
     '.plb-lift:hover,.plb-lift:focus-visible,.plb-lift:focus-within{transform:translateY(-3px);box-shadow:var(--bs-box-shadow)}',
     '@media (prefers-reduced-motion:reduce){.plb-lift{transition:none}.plb-lift:hover,.plb-lift:focus-visible,.plb-lift:focus-within{transform:none}}',
+    // In the dark theme a palette's text colour is made for the page
+    // background and falls under 4.5:1 on the tertiary bands (the account
+    // bar, the page headers, the grey sections; Forest gives 4.1:1) and at
+    // the hero's tinted corner. Small coloured text there takes the
+    // palette's emphasis tint; secondary links and buttons take the theme's
+    // own text colours, as a dark secondary (Forest's brown) has no
+    // readable tint on a dark band.
+    '[data-bs-theme=dark] :is(.bg-body-tertiary,.plb-hero) :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}',
+    '[data-bs-theme=dark] :is(.bg-body-tertiary,.plb-hero) .btn-outline-primary{--bs-btn-color:var(--bs-primary-text-emphasis)}',
+    '[data-bs-theme=dark] .bg-body-tertiary .link-secondary{color:var(--bs-secondary-color)!important}',
+    '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-secondary{--bs-btn-color:var(--bs-body-color)}',
 ));
 
 return array(
