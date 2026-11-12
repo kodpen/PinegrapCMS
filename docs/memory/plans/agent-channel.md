@@ -13,7 +13,7 @@ description: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace chann
 
 ## What is left?
 - `agent-channel-steps-3.md`: A10 the wait during an edit (#8723); A11 (#8756) and A12 (#8767) are done.
-- `agent-channel-steps-7.md` (owner 2026-11-12): A22 agents among the members. A19 to A21 are done (`workspace/agent-discussion-follow.md`, `agent-shown.md`, `agent-emoji.md`).
+- `agent-channel-steps-7.md` (owner 2026-11-12): A22 is done (#8936). A19 to A21 are done (`workspace/agent-discussion-follow.md`, `agent-shown.md`, `agent-emoji.md`).
 - A8, the Claude Code channel plugin, waits for its repository, which the owner opens (`agent-channel-steps-2.md`). The rest of A8 is built.
 
 - The coordinators move their check-in chains to the channel: a coordinator is a member like any agent (`@koordinator-a`, an `app` agent with an application of its own, door push or poll: the registry keeps one `claude` row, and scheduled wakes serve `app` agents only), the owner directs it from the channel, and its wake comes from the site's cron, which is always on, while a session's own chain breaks on restart.

@@ -3208,6 +3208,70 @@
         return stack;
     }
 
+    // A channel's agents as its head and Channel info show them: Claude and
+    // Pinegrap AI where they can be asked, then the registry agents the
+    // server sends (ws_channel_member_agents()).
+    function channelAgents(channel) {
+        var out = [];
+
+        if (BOOT.claude && channel.claude && channel.claude.available) {
+            out.push({ key: 'claude', tone: 3, name: BOOT.claude.name, line: t('claude_member'), assistant: true, active: true, seen: t('cm_ready'), seen_state: 'ready' });
+        }
+
+        if (BOOT.ai && channel.ai && channel.ai.available) {
+            out.push({ key: 'ai', tone: 1, name: BOOT.ai.name, line: t('ai_member'), assistant: true, active: true, seen: t('cm_ready'), seen_state: 'ready' });
+        }
+
+        (channel.agents || []).forEach(function (agent) {
+            out.push({
+                key: 'agent-' + agent.id,
+                tone: agent.id,
+                name: agent.name || ('@' + agent.handle),
+                handle: agent.handle,
+                line: ['@' + agent.handle, agent.wake].filter(Boolean).join(' · '),
+                assistant: !!agent.assistant,
+                active: !!agent.active,
+                seen: agent.seen,
+                seen_state: agent.seen_state
+            });
+        });
+
+        return out;
+    }
+
+    // An agent's face: a rounded square in its tone with the agent mark, so
+    // it is never taken for a person's round face.
+    function agentFace(agent) {
+        var face = el('span', 'avatar avatar-subtle ws-agent-face ' + AVATAR_THEMES[((parseInt(agent.tone, 10) || 0) % 8 + 8) % 8]);
+
+        face.appendChild(icon(agent.assistant ? 'bi-stars' : 'bi-robot'));
+        face.setAttribute('aria-hidden', 'true');
+
+        return face;
+    }
+
+    // The channel head's faces: its people, then its agents as squares, and
+    // one count for both.
+    function memberFaces(node, channel) {
+        var agents = channelAgents(channel);
+
+        node.appendChild(avatarStack('', channel.members, 4));
+
+        if (agents.length) {
+            var stack = el('span', 'avatar-stack ws-avatars ws-agent-stack');
+
+            agents.slice(0, 4).reverse().forEach(function (agent) {
+                var face = agentFace(agent);
+
+                face.title = agent.name;
+                stack.appendChild(face);
+            });
+            node.appendChild(stack);
+        }
+
+        node.appendChild(el('span', 'small', channel.members.length + agents.length));
+    }
+
     // The hour and minute of a moment, in the site's time zone like the
     // labels the server writes; a zone the browser does not know falls back
     // to its own.
@@ -5850,7 +5914,7 @@
         // The channel's agents and what wakes each here
         // (assets/js/workspace_channel_agents.js); it saves on its own.
         if (channel && window.PGWsChannelAgents) {
-            window.PGWsChannelAgents.mount(body, channel);
+            window.PGWsChannelAgents.mount(body, channel, { reveal: !!defaults.agents });
         }
 
         var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', channel ? t('save') : t('create_channel'), 'bi-check2');
@@ -9030,8 +9094,7 @@
 
             var actions = el('div', 'ws-head-actions');
             var faces = button('btn btn-sm btn-text theme-secondary ws-head-faces ws-head-wide', '', '', t('members'));
-            faces.appendChild(avatarStack('', channel.members, 4));
-            faces.appendChild(el('span', 'small', channel.members.length));
+            memberFaces(faces, channel);
             faces.addEventListener('click', function () { self.showMembers(); });
             actions.appendChild(faces);
 
@@ -9790,12 +9853,12 @@
                 body.appendChild(statusPill);
             }
 
-            section(t('members') + ' · ' + channel.members.length);
+            section(t('cm_people') + ' · ' + channel.members.length);
 
             var people = el('div', 'ws-info-people');
 
             // A row of the list: the face, the name and under it the role.
-            function personRow(face, name, role) {
+            function personRow(face, name, role, list) {
                 var row = el('div', 'ws-info-person');
                 var text = el('div', 'ws-info-person-text');
 
@@ -9807,19 +9870,17 @@
                 }
 
                 row.appendChild(text);
-                people.appendChild(row);
+                (list || people).appendChild(row);
 
                 return row;
             }
 
-            // Claude and Pinegrap AI, where they can be asked: listed, but
-            // no person to open.
-            if (BOOT.claude && channel.claude && channel.claude.available) {
-                personRow(avatar({ avatar: BOOT.claude.avatar }), el('div', 'ws-info-person-name', BOOT.claude.name), t('claude_member'));
-            }
+            // The last seen at the row's right: a teal dot while it is
+            // fresh, an amber pill once an agent has gone quiet.
+            function seenNode(words, state) {
+                var node = el('span', 'ws-info-seen' + (state ? ' is-' + state : ''), words);
 
-            if (BOOT.ai && channel.ai && channel.ai.available) {
-                personRow(avatar({ avatar: BOOT.ai.avatar }), el('div', 'ws-info-person-name', BOOT.ai.name), t('ai_member'));
+                return node;
             }
 
             channel.members.forEach(function (member) {
@@ -9830,6 +9891,11 @@
                 // Online or not is the dot on the face; said in words too.
                 name.appendChild(el('span', 'visually-hidden', ' (' + t('presence_' + member.presence) + ')'));
                 onContext(row, function () { return personMenu(member); });
+
+                // The time itself only a manager reads (ws_channel_member_seen()).
+                if (member.seen) {
+                    row.appendChild(seenNode(member.seen, (member.presence === 'online') ? 'on' : ''));
+                }
 
                 if (channel.can_manage && member.id !== channel.owner_id && member.id !== BOOT.me.id) {
                     var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('member_remove', member.name));
@@ -9882,6 +9948,46 @@
                     addBox.appendChild(add);
                     body.appendChild(addOpen);
                     body.appendChild(addBox);
+                }
+            }
+
+            // Its agents with their handle, what wakes them here and their
+            // last seen, which everyone in the channel reads; a manager
+            // opens "Agents in this channel" from here.
+            var agents = channelAgents(channel);
+
+            if (agents.length) {
+                section(t('cm_agents') + ' · ' + agents.length);
+
+                var agentList = el('div', 'ws-info-people ws-info-agents');
+
+                agents.forEach(function (agent) {
+                    var name = el('div', 'ws-info-person-name', agent.name);
+
+                    name.appendChild(el('span', 'badge badge-subtle theme-accent ws-info-badge', t(agent.assistant ? 'cm_assistant' : 'cm_agent')));
+
+                    if (!agent.active) {
+                        name.appendChild(el('span', 'badge badge-subtle theme-secondary ws-info-badge', t('cha_paused')));
+                    }
+
+                    var row = personRow(agentFace(agent), name, agent.line, agentList);
+
+                    if (agent.seen) {
+                        row.appendChild(seenNode(agent.seen, agent.seen_state));
+                    }
+                });
+
+                body.appendChild(agentList);
+
+                if (channel.can_manage && window.PGWsChannelAgents) {
+                    var manage = button('btn btn-sm btn-text theme-secondary ws-info-manage', t('cm_manage'), 'bi-sliders');
+
+                    manage.title = t('cm_manage_label');
+                    manage.setAttribute('data-info-key', 'agents-manage');
+                    manage.addEventListener('click', function () {
+                        channelForm(channel, { agents: true }, function () { self.refreshInfo(); });
+                    });
+                    body.appendChild(manage);
                 }
             }
 
@@ -10125,9 +10231,7 @@
             var faces = actions.querySelector('.ws-head-faces');
 
             if (faces) {
-                clear(faces);
-                faces.appendChild(avatarStack('', channel.members, 4));
-                faces.appendChild(el('span', 'small', channel.members.length));
+                memberFaces(clear(faces), channel);
             }
 
             var menu = actions.querySelector(':scope > .pg-menu-wrap');

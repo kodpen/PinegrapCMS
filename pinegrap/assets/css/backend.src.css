@@ -12274,6 +12274,51 @@ body.workspace .ws-shell-main > #button_bar {
 .ws-info-add {
   margin-top: .5rem;
 }
+/* Channel info's agents and last seen: an agent's face is a rounded square
+   with its mark, a person's stays round; the last seen sits at the right. */
+.avatar.ws-agent-face {
+  border-radius: 30%;
+}
+.avatar.ws-agent-face .bi {
+  font-size: 13px;
+  line-height: 1;
+}
+.ws-agent-stack {
+  margin-left: .45rem;
+}
+.ws-info-badge {
+  margin-left: .4rem;
+  font-size: 11px;
+  font-weight: 550;
+  vertical-align: 1px;
+}
+.ws-info-seen {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: .35rem;
+  font-size: 12px;
+  color: var(--pg-fg-2);
+  white-space: nowrap;
+}
+.ws-info-seen.is-on::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pg-success);
+  content: "";
+}
+.ws-info-seen.is-late {
+  padding: 0 .45rem;
+  border-radius: 999px;
+  background: var(--pg-warning-bg-subtle);
+  color: var(--pg-warning-fg-emphasis);
+  font-weight: 550;
+  line-height: 1.5rem;
+}
+.ws-info-manage {
+  margin-top: .25rem;
+}
 /* The reader's notifications: three choices side by side. */
 .ws-seg {
   display: inline-flex;
