@@ -13,6 +13,7 @@ description: Florist template 2.0.0: home, occasions, subscriptions and delivery
 - Home: hero (six occasions as links to the order request with `?occasion=`), featured bouquets, subscriptions, card band, weddings with Our Work, Why Choose Us (`fl-why-us`), testimonials with Google reviews, the journal. Figures, the occasion grid and In Season left the home.
 - Occasions: the occasion cards rise, then the card band (`fl-card-message`). Subscriptions: the plans (`fl-plans`), how it works, the ask band.
 - Delivery: the zones band (`fl-zones`: rings, zone list, time slots, cut-off), then When it arrives (`fl-delivery-times`).
+- The shared header (`$header` in `parts.php`) opens its menu from `xl` and its list may wrap (`flex-wrap`): at `lg` the Turkish menu (seven links and Order Flowers) ran past a 1024 and a 1200 px screen (scroll width 1255 and 1258).
 - Bouquets, events, care, about: rows rise on view, section headings fade in; the FAQ's accordion fades in. Only the hero and the card band are `overflow-hidden`; rows are `g-4 g-lg-5` so nothing runs past a phone screen.
 
 ## Why do the pages differ from the blocks?

@@ -613,7 +613,9 @@ $account_bar_tree = function () use ($el, $widget, $shared, $lang_switcher) {
 // to the current page are marked active on the server (smart active
 // state), so one header serves every page. The shop's pages are linked
 // from the shop pages only, so the header stands on a site without the
-// shop: "Order Flowers" opens the order request.
+// shop: "Order Flowers" opens the order request. The menu opens from xl
+// and may wrap to a second row there: seven links and the button in
+// Turkish ran past the screen at lg.
 $header = function () use ($el, $link, $icon, $span, $attr) {
     $items = array();
     foreach (array(
@@ -628,7 +630,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link($n[1], '{{page:' . $n[0] . '}}', 'nav-link text-nowrap')));
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
-        $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
+        $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $icon('bi-flower1', 'fs-4 text-primary'),
@@ -645,8 +647,8 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
                     $attr('aria-label', lang('Toggle navigation')),
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
-                    $el('ul', 'navbar-nav ms-lg-auto me-lg-3 column-gap-lg-2 py-3 py-lg-0', lang('Nav Menu'), $items, array('smartActive' => true)),
-                    $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center gap-2 pb-2 pb-lg-0', lang('Header Actions'), array(
+                    $el('ul', 'navbar-nav flex-wrap justify-content-xl-end ms-xl-auto me-xl-3 column-gap-xl-2 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
+                    $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
                         $el('a', 'btn btn-primary rounded-pill d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
                             $icon('bi-flower2'),
                             $span(lang('Order Flowers'), '', lang('Link Text')),
