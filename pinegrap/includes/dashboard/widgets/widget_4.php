@@ -165,7 +165,8 @@ function pg_dashboard_widget_4($request, $user)
                 contacts.file_id AS image_file_id,
                 contacts.first_name AS first_name,
                 contacts.last_name AS last_name,
-                files.name AS image_file_name
+                files.name AS image_file_name,
+                files.timestamp AS image_file_timestamp
              FROM user
              LEFT JOIN contacts ON contacts.id = user.user_contact
              LEFT JOIN files ON files.id = contacts.file_id
@@ -233,7 +234,8 @@ function pg_dashboard_widget_4($request, $user)
                 isset($eg_person['first_name']) ? $eg_person['first_name'] : '',
                 isset($eg_person['last_name']) ? $eg_person['last_name'] : '',
                 $eg_person['username'],
-                $eg_person['id']);
+                $eg_person['id'],
+                $eg_person['image_file_timestamp'] ?? 0);
 
             // The same face as the chat's: the photo or the letters on the
             // person's tone, with the presence dot (includes/fn/contacts.php).

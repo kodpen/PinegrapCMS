@@ -688,10 +688,12 @@ if (!$_POST) {
         if ($contact_file_id != 0) {
             // A file deleted in the File Manager leaves contacts.file_id
             // behind; without its files row the initial shows.
-            $contact_picture_name = pg_contact_picture_name($contact_file_id);
+            // The address carries the file's change stamp, so a picture
+            // saved again under its name is drawn anew.
+            $contact_picture_address = pg_contact_picture_address($contact_file_id);
 
-            if ($contact_picture_name !== '') {
-                $identity_photo = PATH . $contact_picture_name;
+            if ($contact_picture_address !== '') {
+                $identity_photo = $contact_picture_address;
             }
         } elseif ($contact_image != '') {
             $identity_photo = $contact_image;
