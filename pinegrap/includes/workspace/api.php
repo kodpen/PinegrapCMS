@@ -1248,7 +1248,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_approvals_list',
             'returns'     => array('list' => 'WorkspaceApproval'),
             'summary'     => 'List the approval requests of a channel',
-            'description' => 'The approval requests of a channel the owner of the application may read, newest first: the people asked and each one\'s answer, the rule, the deadline and, once settled, the outcome and the decision it wrote into the channel.',
+            'description' => 'The approval requests of a channel the owner of the application may read, newest first: the people asked and each one\'s answer, the rule, the deadline and, once settled, the outcome and the decision it wrote into the channel. answer says what an approval has to bring with it while the request is open: none, or text or number when a flow\'s approval box asks for an answer, which POST /workspace/approvals/{id}/decide then takes in note; answer_label is the question the box asks, null when it set none, so a client shows a field of its own wording. A closed request asks for nothing: answer is none.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'state', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'closed', 'all'), 'default' => 'all'),
@@ -1290,11 +1290,11 @@ function ws_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceApproval',
             'summary'     => 'Approve or reject a request',
-            'description' => 'The answer of the person signed in, who has to be one of the people asked and may answer once. Only a device session may - a team devices session (a Bearer token from POST /auth/login) or an OAuth connection: an application key is refused with 403 forbidden - an integration does not approve in its owner\'s name. A request that is closed, or whose deadline passed, is refused with 422. A dry run\'s detail.outcome says what the request would be after the answer: open, approved or rejected.',
+            'description' => 'The answer of the person signed in, who has to be one of the people asked and may answer once. Only a device session may - a team devices session (a Bearer token from POST /auth/login) or an OAuth connection: an application key is refused with 403 forbidden - an integration does not approve in its owner\'s name. A request that is closed, or whose deadline passed, is refused with 422. When the request\'s answer is text or number (GET /workspace/channels/{id}/approvals), an approval has to carry that answer in note - for number a figure or a sum such as 27, 27,5 or 25 + 2 - and is refused with 422 at decision without it; a rejection\'s note stays free. A dry run\'s detail.outcome says what the request would be after the answer: open, approved or rejected.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'decision', 'in' => 'body', 'type' => 'enum', 'values' => array('approve', 'reject'), 'required' => true),
-                array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Why, shown beside the answer; a refusal\'s note goes into the decision.'),
+                array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Why, shown beside the answer; a refusal\'s note goes into the decision. With an approval of a request whose answer is text or number: the answer itself.'),
             ),
         ),
 
