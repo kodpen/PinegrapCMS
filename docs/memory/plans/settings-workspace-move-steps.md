@@ -18,9 +18,9 @@ description: Steps of plans/settings-workspace-move.md: SD1-SD2 the drawer insid
   - SW4a Agents (save, delete, test; the request rows' cancel, retry, knock). Done (#8814): `workspace/workspace-agent-settings.md`.
   - SW4b Pinegrap AI (settings, test, key). Done (#8832): `workspace/workspace-assistant-settings.md`.
 - SW5 (M) MCP servers (`ws_mcp_settings_card()`: eleven actions, the catalogue, a person's own connections, the links of `workspace_mcp.php`). Done (#8844): `workspace/workspace-mcp-settings-dialog.md`; the Assistants and agents link card went with it.
-- SW6 (M) Channels, mail and voice: Channel templates (archive, the links of `workspace_template.php`), Mailboxes (save, test, the .eml upload in the drawer), Voice transcripts, GitHub links.
+- SW6 (M) Channels, mail and voice: Channel templates (archive, the links of `workspace_template.php`), Mailboxes (save, test, the .eml upload in the drawer), Voice transcripts, GitHub links. Done (#8865, #8899):
   - SW6a Channel templates, Voice transcripts, GitHub links. Done (#8865): `workspace/workspace-channel-settings.md`.
-  - SW6b Mailboxes (save, test, the .eml upload in the drawer). Done (#8899): `workspace/workspace-mail-settings-dialog.md`; the link card is gone. Next: SW7, open for any worker once #8899 lands.
+  - SW6b Mailboxes (save, test, the .eml upload in the drawer). Done (#8899): `workspace/workspace-mail-settings-dialog.md`; the link card is gone. SW7 in progress.
 - SW7 (S) The button and the old screen. "Workspace Settings" in the Workspace menu and screen (`includes/workspace/nav.php`, `screen.php`) opens the first Workspace category the reader may open. Every link to `workspace_settings.php` is repointed with `pg_settings_link()`: the Workspace cards, `workspace_mcp.php`, `workspace_template.php`, `includes/designer_ai.php`, the system status rows, the dashboard's AI card, `pg_settings_integration_links()`.
   - `workspace_settings.php` stays as an address that redirects, its anchors mapped to the cards' new places; a POST to it is refused. Help rows follow (`ui/panel-help-links.md`).
   - Close-out: the lasting rules to `ui/settings-modal-architecture.md` and a `workspace/workspace-settings-overview.md`; the plan's two files are deleted.
