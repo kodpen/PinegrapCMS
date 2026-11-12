@@ -8,7 +8,7 @@ description: Plan (owner 2026-11-11, #8720): a short sound in Workspace when som
 - Today a Workspace channel makes no sound. The panel's chat window has a short tone made in the browser (`playTone()`, `assets/js/chat_backend.src.js`); assistants' answers read aloud is another thing (`workspace/workspace-voice-read-aloud.md`).
 
 ## Which steps are there?
-- CS1 (S, under 400 product lines) The sound. `free`.
+- CS1 (S, under 400 product lines) The sound. `in progress`.
   - It sounds for: a mention of the person, a direct message, an answer to their own message or request (an agent's answer too), a question asked of them. Never for their own message, never for other channel traffic.
   - Only while that conversation is not in front of them: another channel open, the tab in the background, or the window not focused.
   - One short tone made in the browser (no sound file), the chat window's way; several arrivals at once sound once. A page that has not been clicked yet makes no sound (the browser's rule) and shows no error.
