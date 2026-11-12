@@ -4,7 +4,7 @@ description: Variant Picker block (variant-picker, Marketing): radios and :has()
 ---
 
 ## What is the Variant Picker?
-- `variant-picker` (PR #8781, B4 of [[designer-bold-pages-steps]]), palette > Marketing, in `_noWrapCtypes`, needs the core rule `pg-variant`. It replaced Product Launch's `launch-colours`, no copy left.
+- `variant-picker` (PR #8781), palette > Marketing, in `_noWrapCtypes`, needs the core rule `pg-variant`. It replaced Product Launch's `launch-colours`, no copy left.
 - A section `pg-variant pg-variant-dots` (or `pg-variant-pills`): heading, lead, a picture stage, then a fieldset (hidden legend "Colour") holding the choices. Choice n is `pg-variant-choice` with the radio `btn-check pg-variant-pick pg-variant-pick-n` and its `label.pg-variant-label` (`for` = the radio's id); picture n is `pg-variant-shot pg-variant-shot-n`. One radio group per picker (`kit.uid('vp')`), the first checked.
 
 ## How does it switch without script?

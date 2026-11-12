@@ -712,7 +712,7 @@ $enquiry_band = function () use ($el, $heading, $para, $link, $container, $row, 
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
                         $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-primary btn-lg px-4'),
-                        $link($studio['phone'], 'tel:' . preg_replace('/[^0-9+]/', '', $studio['phone']), 'btn btn-outline-light btn-lg px-4'),
+                        $link($studio['phone'], 'tel:' . preg_replace('/[^0-9+]/', '', $studio['phone']), 'btn btn-secondary btn-lg px-4'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),
@@ -725,16 +725,16 @@ $enquiry_band = function () use ($el, $heading, $para, $link, $container, $row, 
 // until then the poster shows.
 // $frame is the frame's class: on the home's cinema screen the screen
 // rounds and fills it (pg-filmstudio-screen).
-$showreel = function ($seed = 'showreel', $title = '', $frame = 'ratio ratio-16x9 rounded-3 overflow-hidden bg-dark') use ($el, $attr, $para, $photo) {
+$showreel = function ($seed = 'showreel', $title = '', $frame = 'ratio ratio-16x9 rounded-3 overflow-hidden bg-body') use ($el, $attr, $para, $photo) {
     if ($title === '') $title = lang('Showreel');
     return $el('div', $frame, lang('Video Frame'), array(
         $el('video', 'w-100 h-100 object-fit-cover', lang('Video'), array(
-            $para(lang('Your browser cannot play this video.'), 'text-white p-3'),
+            $para(lang('Your browser cannot play this video.'), 'text-body p-3'),
         ), array('_attrs' => array(
             $attr('controls', ''), $attr('preload', 'none'), $attr('playsinline', ''),
             $attr('poster', $photo($seed, 1280, 720)), $attr('title', $title),
         ))),
-    ));
+    ), array('_attrs' => array($attr('data-bs-theme', 'dark'))));
 };
 
 // The facts of a project in one list: client, industry, service, where it
@@ -783,8 +783,8 @@ $project_card = function ($sample_key = 'night_drive') use ($el, $para, $span, $
                         array('_bindings' => array('src' => 'still_1', 'alt' => 'name'), '_attrs' => array($attr('loading', 'lazy')))),
                 )),
                 $el('span', 'pfm-play position-absolute top-50 start-50 translate-middle', lang('Play'), array(
-                    $icon('bi-play-circle-fill', 'display-5 text-white'),
-                )),
+                    $icon('bi-play-circle-fill', 'display-5 text-body-emphasis'),
+                ), array('_attrs' => array($attr('data-bs-theme', 'dark')))),
             )),
             $el('div', 'card-body d-flex flex-column p-4', lang('Card Body'), array(
                 $span($industries[$p['industry']]['title'], 'pfm-eyebrow small text-uppercase fw-semibold text-primary mb-1', lang('Industry'), $bind('industry')),
@@ -803,7 +803,7 @@ $project_card = function ($sample_key = 'night_drive') use ($el, $para, $span, $
                     )),
                 )),
                 $para($p['summary'], 'small text-body-secondary mb-3', $bind('summary')),
-                $span($project_statuses[$p['status']], 'badge text-bg-dark align-self-start mt-auto', lang('Status'), $bind('status')),
+                $span($project_statuses[$p['status']], 'badge text-bg-secondary align-self-start mt-auto', lang('Status'), $bind('status')),
             )),
         )),
     ), '6', '4');

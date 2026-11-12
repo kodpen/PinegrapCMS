@@ -286,7 +286,7 @@ $staff_bar = function () use ($el, $link) {
     };
     return $el('div', 'bg-body-tertiary border-bottom', lang('Staff Bar'), array(
         $el('div', 'container d-flex flex-wrap align-items-center gap-4 py-2 small', lang('Staff Bar Container'), array(
-            $el('span', 'badge text-bg-dark', lang('Staff Badge'), array(), array('text' => lang('Staff'))),
+            $el('span', 'badge text-bg-secondary', lang('Staff Badge'), array(), array('text' => lang('Staff'))),
             $el('nav', 'nav nav-underline gap-4', lang('Staff Links'), array(
                 $item('staff', lang('Staff Area')),
                 $item('blog_new', lang('New Blog Post')),
@@ -308,7 +308,7 @@ $cta = function () use ($el, $container, $heading, $para, $link) {
                     $heading('h2', lang('Have a question? We are happy to help.'), 'h3 mb-2'),
                     $para(lang('Write a few lines; the answer comes to your inbox.'), 'mb-0'),
                 )),
-                $link(lang('Write to Us'), '{{page:contact}}', 'btn btn-light btn-lg px-4 flex-shrink-0'),
+                $link(lang('Write to Us'), '{{page:contact}}', 'btn btn-primary btn-lg px-4 flex-shrink-0'),
             )),
         )),
     ));
@@ -691,7 +691,7 @@ $quote = function ($text, $name, $role) use ($el, $para, $span, $icon, $col, $ci
 // A step of the about page's timeline.
 $milestone = function ($year, $title, $text) use ($el, $heading, $para, $span) {
     return $el('li', 'position-relative ps-4 pb-4 border-start border-2', lang('Milestone'), array(
-        $span('', 'position-absolute top-0 start-0 translate-middle rounded-circle bg-primary p-2', lang('Dot')),
+        $span('', 'position-absolute top-0 start-0 translate-middle rounded-circle text-bg-primary p-2', lang('Dot')),
         $span($year, 'badge text-bg-primary mb-2', lang('Year')),
         $heading('h3', $title, 'h5 mb-1'),
         $para($text, 'text-body-secondary mb-0'),
@@ -2501,7 +2501,7 @@ $widgets = array(
                         $el('h2', 'h5 mb-1', lang('Result Title'), array(
                             $link(lang('Title'), '#', 'link-body-emphasis text-decoration-none', array(),
                                 array('_bindings' => array('href' => '__result_url', 'text' => '__result_title'))),
-                            $span(lang('Page'), 'badge text-bg-light border fw-normal align-middle ms-2', lang('Result Type'), $bind('__result_type_label')),
+                            $span(lang('Page'), 'badge bg-body text-body-emphasis border fw-normal align-middle ms-2', lang('Result Type'), $bind('__result_type_label')),
                         )),
                         $para(lang('Shipping and returns'), 'small text-primary mb-1', array_merge(array('customName' => lang('Result Section')), $bind('__result_section'))),
                         $para(lang('Excerpt'), 'text-body-secondary mb-1', $bind('__result_excerpt')),
@@ -2871,7 +2871,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Say hello to Pinegrap'),
-    'version'     => '2.6.3',
+    'version'     => '2.6.4',
     'framework'   => 'bootstrap5',
     'order'       => 10,
     'icon'        => 'bi-hand-thumbs-up',

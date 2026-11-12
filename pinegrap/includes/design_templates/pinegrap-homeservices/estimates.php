@@ -395,7 +395,7 @@ $estimate_widgets = array(
                                         $detail(lang('Customer'), '', lang('Customer'), $customer_name(), true),
                                         $detail(lang('Contact by'), '', lang('Contact by'), $bound($estimate_contact, 'contact_method')),
                                         $detail(lang('Photos'), 'text-break', lang('Photos'), array(
-                                            $link('balcony-door.jpg', '#', 'link-dark', array(), array('target' => '_blank', 'rel' => 'noopener',
+                                            $link('balcony-door.jpg', '#', 'link-body-emphasis', array(), array('target' => '_blank', 'rel' => 'noopener',
                                                 '_bindings' => array('href' => 'photos', 'text' => 'photos'))),
                                         ), true),
                                         $detail(lang('Reference Code'), 'mb-0 font-monospace', lang('Reference Code'), $bound('ABC123', 'reference_code'))

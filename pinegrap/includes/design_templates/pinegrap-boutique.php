@@ -152,14 +152,14 @@ $button = function ($text, $variant, $class = '', $extra = array()) {
 // The product card's Add to cart: the listing wraps the card in the form
 // that adds the product.
 $add_to_bag = function ($class = '') use ($button) {
-    return $button(lang('Add to cart'), 'dark', $class, array('size' => 'sm', 'outline' => true, '_bindings' => array('action' => 'catalog_add_to_cart')));
+    return $button(lang('Add to cart'), 'secondary', $class, array('size' => 'sm', 'outline' => true, '_bindings' => array('action' => 'catalog_add_to_cart')));
 };
 // The favourite heart in the corner of a product card, above the card's
 // stretched link: the listing marks it with the card's product and draws it
 // hidden, the page's script shows it, filled for a product the visitor
 // saved. A product group's card has none.
 $heart = function () use ($button, $icon, $span) {
-    $node = $button('', 'light', 'position-absolute top-0 end-0 m-2 z-2 rounded-circle',
+    $node = $button('', 'secondary', 'position-absolute top-0 end-0 m-2 z-2 rounded-circle',
         array('btnType' => 'button', 'size' => 'sm', 'customName' => lang('Favourite'), '_bindings' => array('action' => 'catalog_wishlist')));
     $node['children'] = array(
         $icon('bi-heart', ''),
@@ -213,7 +213,7 @@ $account_bar = function () use ($el, $widget, $shared, $container, $row, $col, $
                 $col(array($shared('announcement')), '', '', '', '12', 'col-md'),
                 $col(array(
                     $el('div', 'd-flex align-items-center justify-content-center gap-3', lang('Account Links'), array(
-                        $lang_switcher('', 'light'), $widget('cart_link'), $widget('login_region'),
+                        $lang_switcher(), $widget('cart_link'), $widget('login_region'),
                     )),
                 ), 'auto'),
             ), '2', '', 'align-items-center'),
@@ -293,7 +293,7 @@ $header = function () use ($el, $link, $icon, $span, $container, $row, $col, $at
                                     $attr('name', 'query'),
                                     $attr('placeholder', lang('Rings, totes, sunglasses…')),
                                 ))),
-                                $el('button', 'btn btn-dark', lang('Submit Button'), array(), array('text' => lang('Search'), '_attrs' => array($attr('type', 'submit')))),
+                                $el('button', 'btn btn-secondary', lang('Submit Button'), array(), array('text' => lang('Search'), '_attrs' => array($attr('type', 'submit')))),
                             )),
                         ), array('_attrs' => array($attr('action', '{{page:shop}}'), $attr('method', 'get'), $attr('role', 'search')))),
                         // The box above looks through the products; the
@@ -526,7 +526,7 @@ $card_new = function () use ($el, $col, $span, $product_title, $product_picture,
         $el('article', 'position-relative h-100', lang('Product Card'), array(
             $el('div', 'position-relative mb-3', lang('Picture Area'), array(
                 $product_picture('ratio ratio-1x1 bg-body-tertiary'),
-                $span(lang('New'), 'badge position-absolute top-0 start-0 m-3 fw-normal text-uppercase text-bg-light', lang('Badge')),
+                $span(lang('New'), 'badge position-absolute top-0 start-0 m-3 fw-normal text-uppercase bg-body text-body-emphasis', lang('Badge')),
                 $heart(),
             )),
             $product_title('h3', 'h6 fw-normal mb-1'),
@@ -643,7 +643,7 @@ $textarea = function ($id, $name, $rows) use ($el, $attr) {
         $attr('name', $name), $attr('rows', (string)$rows), $attr('required', ''),
     )));
 };
-$submit = function ($text, $class = 'btn btn-dark') use ($el, $attr) {
+$submit = function ($text, $class = 'btn btn-secondary') use ($el, $attr) {
     return $el('button', $class, lang('Submit Button'), array(), array('text' => $text, '_attrs' => array($attr('type', 'submit'))));
 };
 $captcha = function () use ($el) {
@@ -723,7 +723,7 @@ $post_card = function () use ($el, $para, $link, $col, $optional_image, $bind) {
 // The record's Edit button, shown to whoever may edit the submissions of
 // its form; it opens the record in the control panel and comes back.
 $edit_button = function () use ($link) {
-    return $link(lang('Edit'), '#', 'btn btn-sm btn-outline-dark', array(),
+    return $link(lang('Edit'), '#', 'btn btn-sm btn-outline-secondary', array(),
         array('_bindings' => array('href' => '__edit_url', 'eo_visible_if' => 'can_edit')));
 };
 
@@ -734,7 +734,7 @@ $edit_button = function () use ($link) {
 // anybody may open.
 $ai_summary = function () use ($el, $link, $icon, $span, $attr, $bind, $show_when) {
     $assistant = function ($text, $token) use ($link, $attr) {
-        return $link($text, '#', 'btn btn-sm btn-outline-dark', array($attr('rel', 'noopener nofollow')),
+        return $link($text, '#', 'btn btn-sm btn-outline-secondary', array($attr('rel', 'noopener nofollow')),
             array('target' => '_blank', '_bindings' => array('href' => $token)));
     };
     return $el('aside', 'border p-3 p-lg-4 mb-4', lang('AI Summary'), array(
@@ -745,7 +745,7 @@ $ai_summary = function () use ($el, $link, $icon, $span, $attr, $bind, $show_whe
             $assistant('Claude', '__ai_claude_url'),
             $assistant('Perplexity', '__ai_perplexity_url'),
             $assistant('Google AI', '__ai_google_url'),
-            $el('button', 'btn btn-sm btn-dark', lang('Summarize Here Button'), array(), array(
+            $el('button', 'btn btn-sm btn-secondary', lang('Summarize Here Button'), array(), array(
                 'text' => lang('Summarize here'), '_bindings' => array('action' => 'ai_summarize'))),
         )),
         $el('div', 'small mt-3', lang('Summary Box'), array(), array_merge(
@@ -797,7 +797,7 @@ $comment_thread = function ($w) use ($el, $heading, $para, $link, $span, $attr, 
         $span(lang('Badge'), 'badge text-bg-secondary', lang('Badge'), array('_bindings' => array('text' => '__comment_badge', 'eo_visible_if' => 'comment_has_badge'))),
     );
     if ($w['reply']) {
-        $badges[] = $span(lang('Featured'), 'badge text-bg-dark', lang('Featured'), $show_when('comment_is_featured'));
+        $badges[] = $span(lang('Featured'), 'badge text-bg-secondary', lang('Featured'), $show_when('comment_is_featured'));
     }
     $card = $el('div', 'p-4 bg-body-tertiary flex-grow-1', lang('Comment Card'), array(
         $el('p', 'small fw-semibold text-danger-emphasis mb-2 pg-hide-if-empty', lang('Comment Status'), array(),
@@ -870,11 +870,11 @@ $comment_thread = function ($w) use ($el, $heading, $para, $link, $span, $attr, 
     }
     $fields[] = $el('div', 'mb-3', lang('CAPTCHA'), array(), array('_bindings' => array('section' => 'comment_captcha')));
     $fields[] = $el('div', '', lang('Send Button'), array(
-        $el('button', 'btn btn-dark px-4', lang('Send Button'), array(), array('text' => $w['submit'], '_attrs' => array($attr('type', 'submit')), '_bindings' => array('action' => 'comment_submit'))),
+        $el('button', 'btn btn-secondary px-4', lang('Send Button'), array(), array('text' => $w['submit'], '_attrs' => array($attr('type', 'submit')), '_bindings' => array('action' => 'comment_submit'))),
     ));
 
     $small_button = function ($text, $action) use ($el, $attr) {
-        return $el('button', 'btn btn-sm btn-outline-dark', lang('Send Button'), array(), array('text' => $text, '_attrs' => array($attr('type', 'submit')), '_bindings' => array('action' => $action)));
+        return $el('button', 'btn btn-sm btn-outline-secondary', lang('Send Button'), array(), array('text' => $text, '_attrs' => array($attr('type', 'submit')), '_bindings' => array('action' => $action)));
     };
 
     $children = array(
@@ -967,7 +967,7 @@ $pages[] = array(
                         $heading('h1', lang('Small pieces, chosen to be kept for years'), 'display-4 mb-4'),
                         $para(lang('Jewellery, bags and gifts from independent makers, wrapped by hand in our boutique.'), 'lead text-body-secondary mb-4'),
                         $el('div', 'd-flex flex-wrap align-items-center gap-3', lang('Buttons'), array(
-                            $link(lang('Shop the edit'), '{{page:shop}}', 'btn btn-dark btn-lg'),
+                            $link(lang('Shop the edit'), '{{page:shop}}', 'btn btn-secondary btn-lg'),
                             $link(lang('See the lookbook'), '{{page:lookbook}}', 'btn btn-link px-0 link-body-emphasis'),
                         )),
                     ), '6', '5'),
@@ -1063,7 +1063,7 @@ $pages[] = array(
                         $para($categories['eyewear']['title'], 'small text-uppercase text-body-secondary mb-2'),
                         $heading('h2', lang('A clear view, a quiet face'), 'display-6 mb-3'),
                         $para(lang('Frames in light acetate and titanium, and watches with nothing on the dial that does not need to be there.'), 'text-body-secondary mb-4'),
-                        $link(lang('Shop eyewear & watches'), $category_url('eyewear'), 'btn btn-outline-dark'),
+                        $link(lang('Shop eyewear & watches'), $category_url('eyewear'), 'btn btn-outline-secondary'),
                     ), '', '4'),
                     $col(array($widget('home_eyewear')), '', '8'),
                 ), '4', '', 'g-lg-5 align-items-center'),
@@ -1178,7 +1178,7 @@ $pages[] = array(
                             $el('div', 'ratio ratio-1x1 bg-body-tertiary', lang('Picture Frame'), array(
                                 $image('{{product_group_image:eyewear}}', $categories['eyewear']['title'], 'object-fit-cover', $lazy),
                             )),
-                            $span(lang('Look 03'), 'badge position-absolute top-0 start-0 m-3 fw-normal text-uppercase text-bg-light', lang('Badge')),
+                            $span(lang('Look 03'), 'badge position-absolute top-0 start-0 m-3 fw-normal text-uppercase bg-body text-body-emphasis', lang('Badge')),
                         )),
                     ), '', '', '', '6'),
                     $col(array(
@@ -1186,7 +1186,7 @@ $pages[] = array(
                             $el('div', 'ratio ratio-1x1 bg-body-tertiary', lang('Picture Frame'), array(
                                 $image('{{product_group_image:gifts}}', $categories['gifts']['title'], 'object-fit-cover', $lazy),
                             )),
-                            $span(lang('Look 04'), 'badge position-absolute top-0 start-0 m-3 fw-normal text-uppercase text-bg-light', lang('Badge')),
+                            $span(lang('Look 04'), 'badge position-absolute top-0 start-0 m-3 fw-normal text-uppercase bg-body text-body-emphasis', lang('Badge')),
                         )),
                     ), '', '', '', '6'),
                 ), '', '', 'g-0'),
@@ -1344,7 +1344,7 @@ $pages[] = array(
                                     $hours(lang('Saturday'), '10:00 – 18:00'),
                                     $hours(lang('Sunday'), lang('Closed')),
                                 )),
-                                $link(lang('Write to us'), '{{page:contact}}', 'btn btn-outline-dark'),
+                                $link(lang('Write to us'), '{{page:contact}}', 'btn btn-outline-secondary'),
                             )),
                         ), array('id' => 'bq-visit')),
                     ), '', '5'),
@@ -1420,7 +1420,7 @@ $pages[] = array(
                                     $span(lang('Follow the answer in your inbox'), '', lang('Text')),
                                 )),
                                 $para(lang('Your message becomes a conversation: the page that opens after you send it, and your inbox, show our answers, and you can write back there. If you have no account yet, one is opened for you.'), 'small text-body-secondary mb-3'),
-                                $link(lang('Open my inbox'), '{{page:inbox}}', 'btn btn-sm btn-outline-dark'),
+                                $link(lang('Open my inbox'), '{{page:inbox}}', 'btn btn-sm btn-secondary'),
                             )),
                         )),
                     ), '', '5'),
@@ -1586,7 +1586,7 @@ $pages[] = array(
                         $el('aside', 'p-4 bg-body-tertiary', lang('Inbox Note'), array(
                             $heading('h2', lang('A question about a piece?'), 'h5 fw-normal mb-2'),
                             $para(lang('Write to us from the contact page; your message and our answers stay here, in one conversation.'), 'small text-body-secondary mb-3'),
-                            $link(lang('New message'), '{{page:contact}}', 'btn btn-sm btn-dark'),
+                            $link(lang('New message'), '{{page:contact}}', 'btn btn-sm btn-secondary'),
                         )),
                     ), '', '4'),
                 ), '4', '', 'g-lg-5'),
@@ -1652,8 +1652,8 @@ $pages[] = array(
                         $heading('h1', lang('Welcome to the staff area'), 'display-5 mb-3'),
                         $para(lang('Orders, products and customers are handled in the control panel. The journal, the staff directory and the conversations with customers are kept here.'), 'lead text-body-secondary mb-4'),
                         $el('div', 'd-flex flex-wrap justify-content-center gap-2', lang('Buttons'), array(
-                            $link(lang('Open the control panel'), $panel_url, 'btn btn-dark px-4'),
-                            $link(lang('New Journal Entry'), '{{page:blog_new}}', 'btn btn-outline-dark px-4'),
+                            $link(lang('Open the control panel'), $panel_url, 'btn btn-secondary px-4'),
+                            $link(lang('New Journal Entry'), '{{page:blog_new}}', 'btn btn-outline-secondary px-4'),
                         )),
                     ), '10', '7'),
                 ), '', 'center'),
@@ -1809,7 +1809,7 @@ $pages[] = array(
                         $el('aside', 'p-4 border', lang('Still Need Help'), array(
                             $heading('h2', lang('Still need help?'), 'h5 fw-normal mb-2'),
                             $para(lang('Write to us from the contact page; the answer comes to your inbox on this site.'), 'small text-body-secondary mb-3'),
-                            $link(lang('Write to Us'), '{{page:contact}}', 'btn btn-sm btn-dark'),
+                            $link(lang('Write to Us'), '{{page:contact}}', 'btn btn-sm btn-secondary'),
                         )),
                     ), '', '4'),
                 ), '4', '', 'g-lg-5'),
@@ -1871,7 +1871,7 @@ $mail_para = function ($text, $class = 'mb-3', $style = 'margin:0 0 16px') use (
 };
 $mail_button = function ($text, $href, $extra = array()) use ($el, $link, $mail_style, $attr) {
     return $el('p', 'my-4', lang('Button'), array(
-        $link($text, $href, 'btn btn-dark px-4', array($attr('style',
+        $link($text, $href, 'btn btn-secondary px-4', array($attr('style',
             'display:inline-block;padding:12px 26px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;text-decoration:none;'
             . 'background-color:#2b2326;color:#ffffff')), $extra),
     ), $mail_style('margin:24px 0'));
@@ -2365,7 +2365,7 @@ $widgets = array(
                             $icon('bi-journal-x', 'd-block display-5 text-body-tertiary'),
                             $heading('h2', lang('Entry not found'), 'h3 fw-normal mt-3'),
                             $para(lang('This entry could not be found. It may have been removed.'), 'text-body-secondary mb-4', $bind('not_found')),
-                            $link(lang('Back to the journal'), '{{page:blog}}', 'btn btn-dark px-4'),
+                            $link(lang('Back to the journal'), '{{page:blog}}', 'btn btn-secondary px-4'),
                         ), $show_when('record_not_found')),
                         $el('article', '', lang('Post'), array(
                             $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-4', lang('Toolbar'), array(
@@ -2558,7 +2558,7 @@ $widgets = array(
                             $icon('bi-chat-left-dots', 'd-block display-5 text-body-tertiary'),
                             $heading('h2', lang('Conversation not found'), 'h3 fw-normal mt-3'),
                             $para(lang('This conversation could not be found, or it is not yours to read.'), 'text-body-secondary mb-4', $bind('not_found')),
-                            $link(lang('Back to the inbox'), '{{page:inbox}}', 'btn btn-dark px-4'),
+                            $link(lang('Back to the inbox'), '{{page:inbox}}', 'btn btn-secondary px-4'),
                         ), $show_when('record_not_found')),
                         $el('div', '', lang('Conversation'), array(
                             $el('div', 'alert alert-success d-flex gap-2 rounded-0', lang('Sent Notice'), array(
@@ -2573,7 +2573,7 @@ $widgets = array(
                                 )),
                                 // The single-use set password link, for the person who sent the form
                                 // while it is live; the sentence below covers a used or expired link.
-                                $link(lang('Set your password'), '#', 'btn btn-sm btn-dark', array(),
+                                $link(lang('Set your password'), '#', 'btn btn-sm btn-secondary', array(),
                                     array('_bindings' => array('href' => '__new_account_set_password_url', 'eo_visible_if' => 'has_set_password_link'))),
                                 $para(lang('You can set a password with "Forgot password" on the sign-in page.'), 'small mt-2 mb-0'),
                             ), $show_when('has_new_account')),
@@ -2661,7 +2661,7 @@ $widgets = array(
                         $el('div', 'p-4 p-lg-5 text-center bg-body-tertiary', lang('No Orders'), array(
                             $icon('bi-bag-heart', 'd-block fs-2 mb-2 text-primary'),
                             $para(lang('You have not ordered anything yet.'), 'mb-3'),
-                            $link(lang('Start Shopping'), '{{page:shop}}', 'btn btn-dark'),
+                            $link(lang('Start Shopping'), '{{page:shop}}', 'btn btn-secondary'),
                         ), $show_when('no_orders')),
                     ), '', '8'),
                     $col(array(
@@ -2678,7 +2678,7 @@ $widgets = array(
                             // Drawn only for the members the staff area's private folder lets in.
                             $account_link('bi-person-badge', lang('Staff Area'), '#', '__staff_url', 'is_staff'),
                         )),
-                        $link(lang('Log out'), '#', 'btn btn-outline-dark w-100 mt-4', array(), array('_bindings' => array('href' => '__logout_url'))),
+                        $link(lang('Log out'), '#', 'btn btn-outline-secondary w-100 mt-4', array(), array('_bindings' => array('href' => '__logout_url'))),
                     ), '', '4'),
                 ), '4', '', 'g-lg-5'),
                 $loop(array()),
@@ -2841,7 +2841,7 @@ $widgets = array(
                         '_attrs'    => array($attr('type', 'search'), $attr('placeholder', lang('Search the site…')), $attr('aria-label', lang('Search the site'))),
                         '_bindings' => array('value' => 'search_query'),
                     )),
-                    $el('button', 'btn btn-dark px-4', lang('Submit Button'), array(), array(
+                    $el('button', 'btn btn-secondary px-4', lang('Submit Button'), array(), array(
                         'text'      => lang('Search'),
                         '_attrs'    => array($attr('type', 'submit')),
                         '_bindings' => array('action' => 'submit_search'),
@@ -3169,7 +3169,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Boutique'),
-    'version'     => '1.2.4',
+    'version'     => '1.2.5',
     'framework'   => 'bootstrap5',
     'order'       => 30,
     'icon'        => 'bi-gem',
