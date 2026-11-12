@@ -246,6 +246,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-45.md: Does the api2 server stay open? (owner, 2026-11-11, #8755)
 - decisions-made-product-46.md: Where are the rules and the earlier parts?
 - decisions-made-product-46.md: Does a picture saved again from the Design Canvas show at once? (owner, 2026-11-12, #8882)
+- decisions-made-product-46.md: How does the Legacy to Bootstrap helper go on after its census? (owner, 2026-11-12, #8942)
+- decisions-made-product-46.md: Is a plan written for the custom layouts' move to Bootstrap 5.3.8? (owner, 2026-11-12, #8942)
 - decisions-made-product-5.md: Which outside-account leftovers start in 2026.11.0? (#3180)
 - decisions-made-product-5.md: Do subscriptions start, and who runs the renewals? (#3183)
 - decisions-made-product-5.md: Does a beta site without a build file get the beta build of its own version? (#3204)
