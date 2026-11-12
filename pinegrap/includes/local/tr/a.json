@@ -3114,6 +3114,7 @@
     "A table has at most {var:1} rows.": "Bir tabloda en fazla {var:1} satır olabilir.",
     "A table in one of your notes whose first row names the columns: each fills the column of its name. The note stays as it is.": "Notlarınızdan birinde, ilk satırı sütunları adlandıran bir tablo: her sütun aynı adlı sütunu doldurur. Not olduğu gibi kalır.",
     "A table in one of your notes: its first row names the columns. The note stays as it is.": "Notlarınızdan birindeki bir tablo: ilk satırı sütunları adlandırır. Not olduğu gibi kalır.",
+    "A table in the Data of the Workspace.": "Çalışma Alanı'nın Veri bölümünde bir tablo.",
     "A table keeps rows of your own columns: text, numbers, money, dates, people, statuses and formulas. Share it with a colleague or a channel.": "Bir tablo, kendi belirlediğiniz sütunlarda satırlar tutar: metin, sayı, para, tarih, kişi, durum ve formül. Bir çalışma arkadaşınızla ya da bir kanalla paylaşabilirsiniz.",
     "A table laid for lunch in the dining room": "Yemekhanede öğle yemeği için kurulmuş bir masa",
     "A table named {var:1} is in the way of the move. Once you have looked at it and removed it, the move can start.": "Taşımanın önünde {var:1} adlı bir tablo var. Ona bakıp kaldırdıktan sonra taşıma başlayabilir.",
