@@ -16,7 +16,7 @@ module: picker
 - The `keep` arguments went (`keep_page_id`, `$keep_next_page_id`, the short link form's `keep.page_id`): the field shows the stored page however it is (archived, binned, a role 3 user's closed folder, gone) and posts it unchanged (`page-form-page-fields.md`, `picker-field.md`). The saves keep their checks (`commerce/short-link-recycle-bin.md`).
 - The File Manager window caches the product lists only; a link with a page always asks for its own fields (`shortLinkTargetMissing()`).
 
-- Product builder Custom Form (`page_custom_form`) and e-mail campaign profile Custom Form (`page_form`) and Page (`page_view`), #PK6C. Their hidden inputs carry `collapse-if-selected` and `data-bs-target` through `value_attributes`: `backend.src.js` opens and closes the section for `input.collapse-if-selected` as for a select. The Body Preview frame loads `data-base` plus the picked name; the Custom Form's fields are read from `input[name="submit_form_custom_form_page_id"]`.
+- Product builder Custom Form (`page_custom_form`) and e-mail campaign profile Custom Form (`page_form`) and Page (`page_view`), #8824. Their hidden inputs carry `collapse-if-selected` and `data-bs-target` through `value_attributes`: `backend.src.js` opens and closes the section for `input.collapse-if-selected` as for a select. The Body Preview frame loads `data-base` plus the picked name; the Custom Form's fields are read from `input[name="submit_form_custom_form_page_id"]`.
 - The campaign screen's script sets `required` on the field's text input (ids `page_id`, `custom_form_page_id`); the saves check it anyway.
 
 ## What stays a list?
