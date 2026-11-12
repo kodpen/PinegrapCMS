@@ -324,99 +324,285 @@ function pg_ltd_plan_style($facts)
 }
 
 /**
- * The dry run: for each chosen style what a run would write, read from the
- * readiness report, the style's code through the frame importer and the
- * stored rows. Writes nothing.
+ * The asset rows of a set's design. A stylesheet or script file is a row
+ * once, on every page: every style of the set loads the same ones in the
+ * same order (pg_ltd_set_key()). An inline block (the importer's 'css' or
+ * 'js' row of a style) that every style with pages has is a row on every
+ * page too; one only some styles have is a row kept to their pages
+ * ('pages', read by pg_design_asset_on_page()), named after the first of
+ * them. A style with no page adds no inline row: there is nowhere to load it.
  *
- * @param array $style_ids
- * @return array  list of array('id', 'name', 'state') + pg_ltd_plan_style()
+ * Pure: no query.
+ *
+ * @param array $styles  list of array('id', 'name', 'pages' (page ids), 'css',
+ *                       'js' (the importer's asset entries of its code))
+ * @return array  'css', 'js': asset entries in the order they first stand;
+ *                a kept row carries 'pages' and 'styles' (the names)
  */
-function pg_ltd_plan($style_ids)
+function pg_ltd_set_assets($styles)
 {
-    $want = array();
-    foreach ((array)$style_ids as $id) {
-        if ((int)$id > 0) $want[(int)$id] = true;
+    $with_pages = 0;
+    foreach ((array)$styles as $s) {
+        if (!empty($s['pages'])) ++$with_pages;
     }
-    if (!$want) return array();
-
-    $converted = array_flip(pg_common_region_converted_ids());
-    $out = array();
-    foreach (pg_ltd_report() as $s) {
-        if (!isset($want[$s['id']])) continue;
-        $facts = array('refusal' => $s['refusal'], 'common' => array(), 'pages' => array(), 'warnings' => array(),
-                       'designer_made' => array(), 'frame_exists' => false);
-        if ($s['refusal'] === '') {
-            $code = (string)db_value("SELECT style_code FROM style WHERE style_id = '" . (int)$s['id'] . "' LIMIT 1");
-            $common = array();
-            foreach (pg_ltd_style_tags($code)['regions'] as $r) {
-                if ($r['type'] !== 'common' || isset($common[$r['name']])) continue;
-                $row = db_item("SELECT cregion_id FROM cregion WHERE cregion_name = '" . e($r['name']) . "' AND cregion_designer_type = 'no' LIMIT 1");
-                if (is_array($row) && !isset($converted[(int)$row['cregion_id']])) $common[$r['name']] = true;
-            }
-            $facts['common'] = array_keys($common);
-
-            // Common regions still to convert are placed as components by
-            // the run; read as region nodes here, they change no target.
-            $frame = pg_classic_style_frame($code, pg_classic_style_region_lookup());
-            $facts['frame'] = pg_ltd_frame_targets($frame['frame']);
-            $facts['warnings'] = $frame['warnings'];
-            foreach ($facts['frame']['designer'] as $name) {
-                $made = db_value("SELECT sc.id FROM shared_components sc
-                                  JOIN cregion ON sc.category = CONCAT('cregion:', cregion.cregion_id)
-                                  WHERE cregion.cregion_name = '" . e($name) . "' AND cregion.cregion_designer_type = 'yes' LIMIT 1");
-                if ($made) $facts['designer_made'][] = $name;
-            }
-            $facts['frame_exists'] = (bool)db_value("SELECT id FROM shared_components
-                WHERE category = '" . e(pg_classic_style_component_category($s['id'])) . "' LIMIT 1");
-            // The theme the design will load, when the head loaded CSS after it.
-            if (pg_legacy_style_css_after_theme($code)) {
-                $active = pg_legacy_design_activated_themes();
-                $theme = pg_legacy_design_theme(array(
-                    'own'         => db_item("SELECT files.id, files.name FROM style JOIN files ON style.theme_id = files.id
-                                              WHERE style.style_id = '" . (int)$s['id'] . "' LIMIT 1"),
-                    'classic'     => true,
-                    'device'      => 'desktop',
-                    'desktop'     => $active['desktop'],
-                    'mobile'      => $active['mobile'],
-                    'rows'        => array(),
-                    'output_path' => OUTPUT_PATH,
-                ));
-                $facts['theme_after'] = $theme ? $theme['name'] : '';
-            }
-        }
-
-        $holders = array();
-        foreach ($s['locked'] as $p) $holders[$p['page_id']] = $p['holder'] !== '' ? $p['holder'] : lang('Unknown');
-        foreach (array('own' => $s['own'], 'folder' => $s['folder']) as $source => $rows) {
-            foreach ($rows as $p) {
-                $own_regions = 0;
-                if ($p['has_tree']) {
-                    $tree = json_decode((string)db_value("SELECT page_tree_json FROM page WHERE page_id = '" . (int)$p['page_id'] . "' LIMIT 1"), true);
-                    $own_regions = is_array($tree) ? pg_ltd_page_regions($tree, array())['own'] : 0;
+    $out = array('css' => array(), 'js' => array());
+    foreach (array('css', 'js') as $kind) {
+        $files = array();
+        $inline = array();
+        $order = array();
+        foreach ((array)$styles as $s) {
+            $pages = array_map('intval', (array)($s['pages'] ?? array()));
+            foreach ((array)($s[$kind] ?? array()) as $a) {
+                if (!is_array($a)) continue;
+                $type = (string)($a['type'] ?? '');
+                $content = (string)($a['content'] ?? '');
+                if ($type === 'css' || $type === 'js') {
+                    if (!$pages) continue;
+                    $k = $type . '|' . (empty($a['module']) ? '' : 'module|') . md5($content);
+                    if (!isset($inline[$k])) {
+                        $inline[$k] = array('entry' => $a, 'styles' => array(), 'pages' => array());
+                        $order[] = array('inline', $k);
+                    }
+                    if (!in_array((string)$s['name'], $inline[$k]['styles'], true)) {
+                        $inline[$k]['styles'][] = (string)$s['name'];
+                        $inline[$k]['pages'] = array_merge($inline[$k]['pages'], $pages);
+                    }
+                    continue;
                 }
-                $facts['pages'][] = array(
-                    'page_id'     => (int)$p['page_id'],
-                    'page_name'   => (string)$p['page_name'],
-                    'source'      => $source,
-                    'has_tree'    => (bool)$p['has_tree'],
-                    'holder'      => isset($holders[$p['page_id']]) ? $holders[$p['page_id']] : '',
-                    'own_regions' => $own_regions,
-                );
+                $k = $type . '|' . $content;
+                if (!isset($files[$k])) {
+                    $files[$k] = $a;
+                    $order[] = array('file', $k);
+                }
             }
         }
-        $out[] = array_merge(array('id' => $s['id'], 'name' => $s['name'], 'state' => $s['state']), pg_ltd_plan_style($facts));
+        foreach ($order as $o) {
+            if ($o[0] === 'file') {
+                $out[$kind][] = $files[$o[1]];
+                continue;
+            }
+            $row = $inline[$o[1]];
+            $entry = $row['entry'];
+            if (count($row['styles']) < $with_pages) {
+                $name = (string)($entry['name'] ?? '');
+                $at = strpos($name, '-inline');
+                $slug = pg_ltd_slug($row['styles'][0]);
+                $entry['name'] = ($slug !== '' ? $slug : 'style') . ($at !== false ? substr($name, $at) : '-inline.' . $kind);
+                $entry['pages'] = array_values(array_unique($row['pages']));
+                $entry['styles'] = $row['styles'];
+                $entry['id'] = 'imp_' . substr(md5($entry['type'] . '|' . $entry['name'] . '|' . $entry['content'] . '|' . implode(',', $entry['pages'])), 0, 10);
+            }
+            $out[$kind][] = $entry;
+        }
     }
     return $out;
 }
 
 /**
- * One style of the dry run on the report screen: what a run would write,
- * what it skips and why.
+ * What a run would write for a set: one Legacy design (its own style row,
+ * with the set's asset rows), then per style what pg_ltd_plan_style() lists
+ * (its frame component, its pages, components and widgets) but no flip of
+ * the style itself: the classic style stays as it is, its pages take the
+ * design as their style. A style the designer refuses is skipped with its
+ * reason; a set none of whose styles can move is skipped as 'empty'.
  *
- * @param array $p  a pg_ltd_plan() entry
- * @return string
+ * Pure: no query.
+ *
+ * @param array $facts  'key', 'name' (the design's), 'theme' (its theme
+ *                      file's name, '' for the activated theme),
+ *                      'collection', 'styles' (list of array('id', 'name',
+ *                      'state', 'facts' (pg_ltd_plan_style()'s), 'body_classes',
+ *                      'style_head' (bool), 'mobile_pages')), 'assets'
+ *                      (pg_ltd_set_assets())
+ * @return array  'kind' => 'set', 'key', 'name', 'theme', 'collection',
+ *                'assets', 'styles' (each id, name, state,
+ *                pg_ltd_plan_style()'s keys, 'folder_pages' (folder pages
+ *                that move), 'body_classes', 'style_head', 'mobile_pages'),
+ *                'skip' ('' or 'empty'), 'writes'
  */
-function pg_ltd_plan_html($p)
+function pg_ltd_plan_set($facts)
+{
+    $f = (array)$facts;
+    $out = array('kind' => 'set', 'key' => (string)($f['key'] ?? ''), 'name' => (string)($f['name'] ?? ''),
+                 'theme' => (string)($f['theme'] ?? ''), 'collection' => (string)($f['collection'] ?? ''),
+                 'assets' => isset($f['assets']) && is_array($f['assets']) ? $f['assets'] : array('css' => array(), 'js' => array()),
+                 'styles' => array(), 'skip' => '', 'writes' => 0);
+    $moving = 0;
+    foreach ((array)($f['styles'] ?? array()) as $s) {
+        $plan = pg_ltd_plan_style((array)($s['facts'] ?? array()));
+        $folder = 0;
+        foreach ($plan['pages'] as $p) {
+            if (($p['source'] ?? '') === 'folder' && ($p['action'] === 'tree' || $p['action'] === 'regions')) ++$folder;
+        }
+        $out['styles'][] = array_merge(
+            array('id' => (int)($s['id'] ?? 0), 'name' => (string)($s['name'] ?? ''), 'state' => (string)($s['state'] ?? '')),
+            $plan,
+            array('folder_pages' => $folder, 'body_classes' => trim((string)($s['body_classes'] ?? '')),
+                  'style_head' => !empty($s['style_head']), 'mobile_pages' => (int)($s['mobile_pages'] ?? 0)));
+        if ($plan['skip'] !== '') continue;
+        ++$moving;
+        // pg_ltd_plan_style() counts the style's flip; here the design is
+        // one row of its own, counted once below.
+        $out['writes'] += $plan['writes'] - 1;
+    }
+    if ($moving === 0) {
+        $out['skip'] = 'empty';
+        $out['writes'] = 0;
+    } else {
+        ++$out['writes'];
+    }
+    return $out;
+}
+
+/**
+ * What the dry run reads for one style of the report: its common regions
+ * still to make components, its frame's targets, the frame component made
+ * before, its pages with their holders, the importer's warnings and asset
+ * entries ('_css', '_js', the style's own design files made managed ones as
+ * the editor's open makes them).
+ *
+ * @param array $s          a pg_ltd_report() entry
+ * @param array $converted  common region id => true for those already components
+ * @return array  pg_ltd_plan_style()'s facts plus '_css', '_js'
+ */
+function pg_ltd_plan_facts($s, $converted)
+{
+    $facts = array('refusal' => $s['refusal'], 'common' => array(), 'pages' => array(), 'warnings' => array(),
+                   'designer_made' => array(), 'frame_exists' => false, '_css' => array(), '_js' => array());
+    if ($s['refusal'] === '') {
+        $code = (string)db_value("SELECT style_code FROM style WHERE style_id = '" . (int)$s['id'] . "' LIMIT 1");
+        $common = array();
+        foreach (pg_ltd_style_tags($code)['regions'] as $r) {
+            if ($r['type'] !== 'common' || isset($common[$r['name']])) continue;
+            $row = db_item("SELECT cregion_id FROM cregion WHERE cregion_name = '" . e($r['name']) . "' AND cregion_designer_type = 'no' LIMIT 1");
+            if (is_array($row) && !isset($converted[(int)$row['cregion_id']])) $common[$r['name']] = true;
+        }
+        $facts['common'] = array_keys($common);
+
+        // Common regions still to convert are placed as components by
+        // the run; read as region nodes here, they change no target.
+        $frame = pg_classic_style_frame($code, pg_classic_style_region_lookup());
+        $facts['frame'] = pg_ltd_frame_targets($frame['frame']);
+        $facts['warnings'] = $frame['warnings'];
+        $is_own_file = function ($name) {
+            $file = db_item("SELECT theme FROM files WHERE design = '1' AND name = '" . e($name) . "' LIMIT 1");
+            return is_array($file) && (string)$file['theme'] !== '1';
+        };
+        $facts['_css'] = pg_classic_style_managed_files($frame['css'], $is_own_file, OUTPUT_PATH);
+        $facts['_js'] = pg_classic_style_managed_files($frame['js'], $is_own_file, OUTPUT_PATH);
+        foreach ($facts['frame']['designer'] as $name) {
+            $made = db_value("SELECT sc.id FROM shared_components sc
+                              JOIN cregion ON sc.category = CONCAT('cregion:', cregion.cregion_id)
+                              WHERE cregion.cregion_name = '" . e($name) . "' AND cregion.cregion_designer_type = 'yes' LIMIT 1");
+            if ($made) $facts['designer_made'][] = $name;
+        }
+        $facts['frame_exists'] = (bool)db_value("SELECT id FROM shared_components
+            WHERE category = '" . e(pg_classic_style_component_category($s['id'])) . "' LIMIT 1");
+        // The theme the design will load, when the head loaded CSS after it.
+        if (pg_legacy_style_css_after_theme($code)) {
+            $active = pg_legacy_design_activated_themes();
+            $theme = pg_legacy_design_theme(array(
+                'own'         => db_item("SELECT files.id, files.name FROM style JOIN files ON style.theme_id = files.id
+                                          WHERE style.style_id = '" . (int)$s['id'] . "' LIMIT 1"),
+                'classic'     => true,
+                'device'      => 'desktop',
+                'desktop'     => $active['desktop'],
+                'mobile'      => $active['mobile'],
+                'rows'        => array(),
+                'output_path' => OUTPUT_PATH,
+            ));
+            $facts['theme_after'] = $theme ? $theme['name'] : '';
+        }
+    }
+
+    $holders = array();
+    foreach ($s['locked'] as $p) $holders[$p['page_id']] = $p['holder'] !== '' ? $p['holder'] : lang('Unknown');
+    foreach (array('own' => $s['own'], 'folder' => $s['folder']) as $source => $rows) {
+        foreach ($rows as $p) {
+            $own_regions = 0;
+            if ($p['has_tree']) {
+                $tree = json_decode((string)db_value("SELECT page_tree_json FROM page WHERE page_id = '" . (int)$p['page_id'] . "' LIMIT 1"), true);
+                $own_regions = is_array($tree) ? pg_ltd_page_regions($tree, array())['own'] : 0;
+            }
+            $facts['pages'][] = array(
+                'page_id'     => (int)$p['page_id'],
+                'page_name'   => (string)$p['page_name'],
+                'source'      => $source,
+                'has_tree'    => (bool)$p['has_tree'],
+                'holder'      => isset($holders[$p['page_id']]) ? $holders[$p['page_id']] : '',
+                'own_regions' => $own_regions,
+            );
+        }
+    }
+    return $facts;
+}
+
+/**
+ * The dry run: for each chosen set and each style chosen alone what a run
+ * would write, read from the readiness report, the style's code through the
+ * frame importer and the stored rows. A style ticked alone and inside a
+ * chosen set is shown in its set. Writes nothing.
+ *
+ * @param array $style_ids
+ * @param array $set_keys  pg_ltd_sets() keys
+ * @return array  sets first (pg_ltd_plan_set()), then styles: array('kind'
+ *                => 'style', 'id', 'name', 'state') + pg_ltd_plan_style()
+ */
+function pg_ltd_plan($style_ids, $set_keys = array())
+{
+    $want = array();
+    foreach ((array)$style_ids as $id) {
+        if ((int)$id > 0) $want[(int)$id] = true;
+    }
+    $want_sets = array();
+    foreach ((array)$set_keys as $key) {
+        if (is_string($key) && preg_match('/^[0-9a-f]{16}$/', $key)) $want_sets[$key] = true;
+    }
+    if (!$want && !$want_sets) return array();
+
+    $report = pg_ltd_report();
+    $by_id = array();
+    foreach ($report as $s) $by_id[$s['id']] = $s;
+    $converted = array_flip(pg_common_region_converted_ids());
+    $out = array();
+    foreach (($want_sets ? pg_ltd_sets($report)['sets'] : array()) as $set) {
+        if (!isset($want_sets[$set['key']])) continue;
+        $styles = array();
+        $assets = array();
+        foreach ($set['styles'] as $id) {
+            $s = $by_id[$id];
+            unset($want[$id]);
+            $facts = pg_ltd_plan_facts($s, $converted);
+            $styles[] = array('id' => $s['id'], 'name' => $s['name'], 'state' => $s['state'], 'facts' => $facts,
+                              'body_classes' => $s['body_classes'], 'style_head' => $s['style_head'], 'mobile_pages' => $s['mobile_pages']);
+            $pages = array();
+            foreach (array_merge($s['own'], $s['folder']) as $p) $pages[] = (int)$p['page_id'];
+            $assets[] = array('id' => $s['id'], 'name' => $s['name'], 'pages' => $pages, 'css' => $facts['_css'], 'js' => $facts['_js']);
+        }
+        $out[] = pg_ltd_plan_set(array('key' => $set['key'], 'name' => $set['name'], 'theme' => $set['theme'],
+                                       'collection' => $set['collection'], 'styles' => $styles, 'assets' => pg_ltd_set_assets($assets)));
+    }
+    foreach ($report as $s) {
+        if (!isset($want[$s['id']])) continue;
+        $out[] = array_merge(array('kind' => 'style', 'id' => $s['id'], 'name' => $s['name'], 'state' => $s['state']),
+                             pg_ltd_plan_style(pg_ltd_plan_facts($s, $converted)));
+    }
+    return $out;
+}
+
+/**
+ * The lines of one style's dry run: the components it makes, its frame,
+ * its pages, widgets, the page regions inside its frame and the importer's
+ * warnings. Alone the style itself becomes the design; in a set it stays
+ * classic and its pages take the set's design, so the lines say how its
+ * folder pages, body classes, Head code and mobile style fall instead.
+ *
+ * @param array $p       a pg_ltd_plan_style() result with 'name' (in a set,
+ *                       a pg_ltd_plan_set() style)
+ * @param bool  $in_set
+ * @return string  <li> items
+ */
+function pg_ltd_plan_items($p, $in_set = false)
 {
     $line = function ($text, $tone = '') {
         return '<li' . ($tone !== '' ? ' class="' . $tone . '"' : '') . '>' . h($text) . '</li>';
@@ -426,43 +612,123 @@ function pg_ltd_plan_html($p)
         foreach ($rows as $r) $out[] = (string)$r['page_name'];
         return implode(', ', $out);
     };
-    $items = '';
     if ($p['skip'] === 'refusal') {
-        $items .= $line(lang('Skipped: the visual designer does not open this style.'), 'fg-danger');
-    } else {
-        foreach ($p['components'] as $c) {
-            if ($c['exists']) continue;
-            $items .= $line($c['kind'] === 'common'
-                ? lang(array('string' => 'The common region "{var:1}" becomes a shared component.', 'vars' => array($c['name'])))
-                : lang(array('string' => 'The designer region "{var:1}" becomes a shared component in the frame.', 'vars' => array($c['name']))));
-        }
-        $items .= $line($p['frame'] === 'make' ? lang('The style\'s frame is made a shared component.') : lang('The style\'s frame component made before is used.'));
-        $by = array('tree' => array(), 'keep' => array(), 'regions' => array(), 'held' => array());
-        foreach ($p['pages'] as $page) $by[$page['action']][] = $page;
-        if ($by['tree']) {
-            $items .= $line(lang(array('string' => 'Pages given a tree placing the frame ({var:1}): {var:2}', 'vars' => array(count($by['tree']), $names($by['tree'])))));
-        }
-        if ($by['regions']) {
-            $items .= $line(lang(array('string' => 'Pages whose page regions move into their tree ({var:1}): {var:2}', 'vars' => array(count($by['regions']), $names($by['regions'])))));
-        }
-        if ($by['keep']) {
-            $items .= $line(lang(array('string' => 'Pages that keep their tree ({var:1}): {var:2}', 'vars' => array(count($by['keep']), $names($by['keep'])))), 'fg-secondary');
-        }
-        foreach ($by['held'] as $page) {
-            $items .= $line(lang(array('string' => 'Skipped: "{var:1}" is being edited by {var:2}.', 'vars' => array($page['page_name'], $page['holder']))), 'fg-warning');
-        }
-        foreach ($p['widgets'] as $w) {
-            $items .= $line(lang(array('string' => 'The region "{var:1}" becomes a widget you design: {var:2}', 'vars' => array($w['name'], pg_ltd_widget_name($p['name'], $w['kind'])))));
-        }
-        if ($p['frame_page_regions'] > 0) {
-            $items .= $line(lang('Page regions inside the frame stay: each page fills them from its own content.'), 'fg-secondary');
-        }
-        $items .= $line(lang('The style becomes a visual design.'));
-        foreach ($p['warnings'] as $w) $items .= $line((string)$w, 'fg-warning');
+        return $line(lang('Skipped: the visual designer does not open this style.'), 'fg-danger');
     }
+    $items = '';
+    foreach ($p['components'] as $c) {
+        if ($c['exists']) continue;
+        $items .= $line($c['kind'] === 'common'
+            ? lang(array('string' => 'The common region "{var:1}" becomes a shared component.', 'vars' => array($c['name'])))
+            : lang(array('string' => 'The designer region "{var:1}" becomes a shared component in the frame.', 'vars' => array($c['name']))));
+    }
+    $items .= $line($p['frame'] === 'make' ? lang('The style\'s frame is made a shared component.') : lang('The style\'s frame component made before is used.'));
+    $by = array('tree' => array(), 'keep' => array(), 'regions' => array(), 'held' => array());
+    foreach ($p['pages'] as $page) $by[$page['action']][] = $page;
+    if ($by['tree']) {
+        $items .= $line(lang(array('string' => 'Pages given a tree placing the frame ({var:1}): {var:2}', 'vars' => array(count($by['tree']), $names($by['tree'])))));
+    }
+    if ($by['regions']) {
+        $items .= $line(lang(array('string' => 'Pages whose page regions move into their tree ({var:1}): {var:2}', 'vars' => array(count($by['regions']), $names($by['regions'])))));
+    }
+    if ($by['keep']) {
+        $items .= $line(lang(array('string' => 'Pages that keep their tree ({var:1}): {var:2}', 'vars' => array(count($by['keep']), $names($by['keep'])))), 'fg-secondary');
+    }
+    foreach ($by['held'] as $page) {
+        $items .= $line(lang(array('string' => 'Skipped: "{var:1}" is being edited by {var:2}.', 'vars' => array($page['page_name'], $page['holder']))), 'fg-warning');
+    }
+    foreach ($p['widgets'] as $w) {
+        $items .= $line(lang(array('string' => 'The region "{var:1}" becomes a widget you design: {var:2}', 'vars' => array($w['name'], pg_ltd_widget_name($p['name'], $w['kind'])))));
+    }
+    if ($p['frame_page_regions'] > 0) {
+        $items .= $line(lang('Page regions inside the frame stay: each page fills them from its own content.'), 'fg-secondary');
+    }
+    if (!$in_set) {
+        $items .= $line(lang('The style becomes a visual design.'));
+    } else {
+        if ($p['folder_pages'] > 0) {
+            $items .= $line(lang(array('string' => '{var:1} of these pages take the style from their folder: they get the design as their own style, and the folder keeps the classic style.', 'vars' => array($p['folder_pages']))), 'fg-secondary');
+        }
+        if ($p['body_classes'] !== '') {
+            $items .= $line(lang(array('string' => 'Its body classes "{var:1}" go on its pages.', 'vars' => array($p['body_classes']))), 'fg-secondary');
+        }
+        if ($p['style_head']) {
+            $items .= $line(lang('Its Head code was not printed on its classic pages and is not carried into the design.'), 'fg-secondary');
+        }
+        if ($p['mobile_pages'] > 0) {
+            $items .= $line(lang(array('string' => '{var:1} of its pages have a mobile style: on a phone they are still drawn with that style, not with the design.', 'vars' => array($p['mobile_pages']))), 'fg-warning');
+        }
+    }
+    foreach ($p['warnings'] as $w) $items .= $line((string)$w, 'fg-warning');
+    return $items;
+}
+
+/**
+ * A chosen style or set of the dry run on the report screen: what a run
+ * would write, what it skips and why.
+ *
+ * @param array $p  a pg_ltd_plan() entry
+ * @return string
+ */
+function pg_ltd_plan_html($p)
+{
+    if (($p['kind'] ?? '') === 'set') return pg_ltd_plan_set_html($p);
     return '
         <div class="mb-5">
             <h3 class="h6 mb-1">' . h($p['name']) . ($p['skip'] === '' ? ' <span class="small fg-secondary fw-normal">' . h(lang(array('string' => '{var:1} writes', 'vars' => array(pg_format_number($p['writes'], 0))))) . '</span>' : '') . '</h3>
-            <ul class="small mb-0 ps-12">' . $items . '</ul>
+            <ul class="small mb-0 ps-12">' . pg_ltd_plan_items($p) . '</ul>
         </div>';
 }
+
+/**
+ * A set of the dry run: the one design (its theme file, the stylesheets and
+ * scripts on every page), then each style with its frame, its pages and the
+ * rows kept to them.
+ *
+ * @param array $p  a pg_ltd_plan_set() result
+ * @return string
+ */
+function pg_ltd_plan_set_html($p)
+{
+    $line = function ($text, $tone = '') {
+        return '<li' . ($tone !== '' ? ' class="' . $tone . '"' : '') . '>' . h($text) . '</li>';
+    };
+    $every = array();
+    $kept = array();
+    foreach (array('css', 'js') as $kind) {
+        foreach ((array)($p['assets'][$kind] ?? array()) as $a) {
+            if (!empty($a['pages'])) $kept[] = $a;
+            else $every[] = (string)($a['name'] ?? '');
+        }
+    }
+    $items = '';
+    if ($p['skip'] === 'empty') {
+        $items .= $line(lang('Skipped: no style of this set can be moved.'), 'fg-danger');
+    } else {
+        $items .= $line(lang(array('string' => 'One Legacy design "{var:1}" is made for these {var:2} styles: their pages take it as their style, and the classic styles stay as they are.', 'vars' => array($p['name'], count($p['styles'])))));
+        $items .= $line($p['theme'] !== ''
+            ? lang(array('string' => 'Theme file: {var:1}', 'vars' => array($p['theme'])))
+            : lang('Theme file: none of its own, so the site\'s activated theme loads, as on the classic pages.'));
+        if ($every) {
+            $items .= $line(lang(array('string' => 'Stylesheets and scripts on every page ({var:1}): {var:2}', 'vars' => array(count($every), implode(', ', $every)))));
+        }
+    }
+    $styles = '';
+    foreach ($p['styles'] as $s) {
+        $only = array();
+        foreach ($kept as $a) {
+            if (in_array($s['name'], (array)($a['styles'] ?? array()), true)) $only[] = (string)$a['name'];
+        }
+        $styles .= '
+            <h4 class="small fw-semibold mt-3 mb-1">' . h($s['name']) . '</h4>
+            <ul class="small mb-0 ps-12">' . pg_ltd_plan_items($s, true)
+            . ($only && $s['skip'] === '' ? $line(lang(array('string' => 'Only on its pages: {var:1}', 'vars' => array(implode(', ', $only))))) : '') . '</ul>';
+    }
+    return '
+        <div class="mb-5">
+            <h3 class="h6 mb-1">' . h($p['name']) . ' <span class="badge theme-secondary fw-normal">' . h(lang('Legacy')) . '</span>'
+            . ($p['skip'] === '' ? ' <span class="small fg-secondary fw-normal">' . h(lang(array('string' => '{var:1} writes', 'vars' => array(pg_format_number($p['writes'], 0))))) . '</span>' : '') . '</h3>
+            <ul class="small mb-0 ps-12">' . $items . '</ul>' . $styles . '
+        </div>';
+}
+

@@ -1864,6 +1864,7 @@
     "No other attributes.": "Başka özellik yok.",
     "No other currencies are set up.": "Başka para birimi tanımlı değil.",
     "No other scheduled action yet. Write the one to start first; “When another action starts it” gives it no time of its own.": "Henüz başka bir programlanmış işlem yok. Önce başlatılacak işlemi yazın; “Başka bir işlem başlatınca” seçeneği ona kendi zamanını vermez.",
+    "No other style loads the same files with the same settings, or the style cannot join a set.": "Başka hiçbir stil aynı dosyaları aynı ayarlarla yüklemiyor ya da stil bir sete katılamıyor.",
     "No other widget of this kind has a layout that fits this one.": "Bu türde, bu bileşene uyan bir düzeni olan başka bileşen yok.",
     "No outfit: a glamping tent or a cabin": "Araç yok: glamping çadırı ya da kulübe",
     "No override (the page type layout)": "Üzerine yazma yok (sayfa türünün düzeni)",
