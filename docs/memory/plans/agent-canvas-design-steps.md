@@ -9,7 +9,7 @@ description: Steps CV1-CV8 of plans/agent-canvas-design.md: an SVG taken apart, 
 - CV1 (M) One SVG taken apart. Done in #8799: `workspace/agent-canvas-layers.md`.
 - CV2 (M) Text and pictures as their own layers. Done in #8823: `workspace/agent-canvas-split-parts.md`.
 - CV3 (M) Layer writes. Done in #8834: `workspace/agent-canvas-layer-writes.md`.
-- CV4 (S) Sizes and scenes. `free` once #8834 lands.
+- CV4 (S) Sizes and scenes. Claimed.
   - `size` by name from the New image dialog's presets (`M.BOARD_PRESETS`), `background`. Scenes: add, choose, remove, a transition (`ui/image-editor-scenes.md`); at most 30.
 - CV5 (M) Templates. `free` once #8834 lands.
   - A person marks a canvas in Files as a template ("Save as template" in the editor; a list on a settings card). The list is a site setting holding file ids, no column. An agent reads the templates (name, size, the named layers and their kinds) and makes a canvas from one: `template` and `fill` (a name to words or to a file).
