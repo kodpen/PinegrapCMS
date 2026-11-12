@@ -1,6 +1,6 @@
 ---
 name: classic-style-to-design
-description: A classic style opened in the visual designer (L2, #2370): the style list button, the frame as one shared component, page trees placing it, what Save writes and what stays
+description: A classic style opened in the visual designer (L2, #2370): the style list button, the frame as shared components, page trees placing them, what Save writes and what stays
 module: classic_style_design
 ---
 
@@ -9,10 +9,10 @@ module: classic_style_design
 - `pg_classic_style_design_open()` (`includes/fn/classic_style_design.php`) refuses a role above 1 and a row `pg_classic_style_refusal()` names: already a visual design, not a code style (an older cell-based system style), no code.
 
 ## Where does the style's frame go?
-- Owner answer (b), 2026-10-27, given through the coordinator ("bekleyen işçilere yanıtı sen ver benim yerime", "en makul ve işlevsel seçimle"): one shared component, the same source rule as R2. Reason: one place to edit the frame for every page; a copy per page would have nowhere to edit it.
-- `pg_classic_style_frame()` runs the L1 importer with `keep_framework` (the theme's `{path}bootstrap.css`/jQuery stay as design assets). The body's children become the component tree (category `classic_style:<style_id>`, `pg_classic_style_component()`); an unused row made before is brought back to the style's code, a placed one is left alone.
-- Each page naming the style (`page_style`, not binned, `pg_designer_load_pages(..., true)`) gets `pg_classic_style_page_tree()`: body attributes and title on the root, one `shared_ref` child. A page with a tree of its own keeps it.
-- No page names the style as its own (all take it from their folder, or none uses it): the editor's blank tab (`pg_designer_blank_page()`, `includes/fn/designer.php`) starts with the same tree (`frame_tree` of the open result, passed as `classic_frame_tree`) and `converted: 1`; Save creates it as a new page (a draft where drafts exist). Before #4893 it opened as an empty "New Page". Folder pages are still not tabs: a tab is saved as a design page whatever the "Also convert" box says.
+- Owner answer (b), 2026-10-27: shared, not copied per page, so the frame is edited in one place for every page. Owner (2026-11-11, #8671): the page's own content is edited in the page, so the frame is split around it (LG6, `legacy-frame-split.md`).
+- `pg_classic_style_frame()` runs the L1 importer with `keep_framework` (the theme's `{path}bootstrap.css`/jQuery stay as design assets). The body's children become the frame: shared parts around the page content, or one component (category `classic_style:<style_id>`) when it has no page region (`pg_classic_style_component()`); an unused row made before is brought back to the style's code, a placed one is left alone.
+- Each page naming the style (`page_style`, not binned, `pg_designer_load_pages(..., true)`) gets `pg_classic_style_frame_page_tree()`: body attributes and title on the root, the parts around its content. A page with a tree of its own keeps it.
+- No page names the style as its own (all take it from their folder, or none uses it): the editor's blank tab (`pg_designer_blank_page()`, `includes/fn/designer.php`) starts with the same tree (`frame_tree` of the open result, passed as `classic_frame_tree`) and `converted: 1`; Save creates it as a new page (a draft where drafts exist). Folder pages are still not tabs: a tab is saved as a design page whatever the "Also convert" box says.
 - `<cregion>` tags (L3): a common region already made a shared component (category `common_region:<id>`) is placed as a `shared_ref` to it, the component its tag draws anyway; any other common or designer region stays a region node.
 - No region is converted by opening a style: each conversion stays opt-in on its own screen or node. A designer region made a component from the designer (R3, `cregion:<id>`) stays a region node: its tag still draws the row, so placing the component could change what the page shows.
 - Region tags inside the component render per page: `_expand_shared_refs()` runs before the region passes of `get_page_content.php`.

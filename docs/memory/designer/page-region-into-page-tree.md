@@ -19,5 +19,8 @@ description: A page's own regions (pregion) moved into its designer tree: one _e
 - Front-end inline editing of the page's regions ends (owner 2026-10-27): the saved tree prints no `<pregion>` tag. The `pregion` rows stay, no longer read by the page; undo is the editor's undo or a page revision.
 - Site search (`get_search_results.php`) and find and replace (`pregion`) skip the rows a page no longer reads: `pg_page_region_read_sql()` (`includes/fn/content.php`) keeps a row when its page has no tree of its own, or its `page_tree_code` holds `<pregion>` or the marker of a component that prints one (`pg_page_region_component_ids()`: `"regionType":"page"` in `tree_json`, then the components placing those, read once per request). Both read the page's tree instead (`tree-search.md`).
 
+## Where do page region nodes come from?
+- A page with its own tree, and since LG6 every page of a classic style opened in the visual designer: its frame is split so the page regions sit in the page's tree (`legacy-frame-split.md`); the bulk move converts them itself (`pg_ltd_page_regions_into_tree()`).
+
 ## Tests?
 - `tests/page_region_blocks_test.php`; the endpoint and the editor action need a database and a browser.

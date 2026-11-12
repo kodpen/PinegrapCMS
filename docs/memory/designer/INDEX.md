@@ -28,7 +28,7 @@
 - classic-style-design-files.md: A classic style converted to a visual design: its own linked CSS/JS files become managed file entries, editable in the designer (P7, #2484, #2532)
 - classic-style-folder-pages.md: Save of a converted classic style also converts the pages that take it from their folder (#2411 (c)): the box, which pages, what is written
 - classic-style-import.md: A classic style's code read by the HTML importer (L1): placeholders to region nodes, meta_tags/stylesheet dropped, title and body on the root, site paths kept, what stays text
-- classic-style-to-design.md: A classic style opened in the visual designer (L2, #2370): the style list button, the frame as one shared component, page trees placing it, what Save writes and what stays
+- classic-style-to-design.md: A classic style opened in the visual designer (L2, #2370): the style list button, the frame as shared components, page trees placing them, what Save writes and what stays [decision: decisions-made-product-43.md]
 - code-view-tab-search.md: Search in all tabs of the designer's code view (page and file tabs): the bar, PgCodeEditor.findAll(), why it searches only and does not replace
 - collection-fields.md: Collection forms and field kinds: columns, where the kind is written and read, kinds per field type, template collections (C6a), the slug kind (C5b)
 - collection-history.md: History section of a collection item (C7b, #3099): list, compare with the current values, Load, the save with source restore, what happens to files and signatures
@@ -393,6 +393,7 @@
 - layout-widget-offer.md: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, the panel buttons that place it and remove the region, why no 301
 - legacy-design-framework.md: The legacy framework key of a classic style moved into the editor (LG3): registry entry and flags, who writes it, the 11.0.187 data step, the Legacy / Eski badge on Visual Designs
 - legacy-design-theme.md: The theme file of a design moved from a classic style: the activated theme the classic head printed, on the site, the canvas and the Theme file hint; the dry run's warning (LG1, #8694)
+- legacy-frame-split.md: A classic style's frame split at its page regions (LG6, #8819): page content in each page's tree, the rest shared parts ("Main top"), their categories, the open and the bulk move [decision: decisions-made-product-43.md]
 - legacy-region-preview.md: The canvas preview of a classic page's system region drawn by its custom layout (designer/legacy_region_preview): who sees it, the markers, the background render, read only, when it is asked again
 - legacy-set-run.md: The run of a set of classic styles into one Legacy design (LG5, #8795): its steps, the design row, the pages moved, a resume, the report, a set moved before
 - legacy-set.md: A set of classic styles on the move report (LG4, #8776): the set key, who moves alone, mobile styles, folder pages, Head code, body classes, the set's dry run
