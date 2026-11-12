@@ -20,7 +20,7 @@ module: editor, picker
 - The destination text is `pg_picker_short_link_destination()` (page, group, product with `?t=` tracking code; an address as given).
 
 ## What happens without the panel's scripts?
-- Where `pgPicker` or `pgUI` is missing (a site page with a rich text field), the bridge does nothing and Browse Server opens the old windows `editor_select_page_or_file.php` and `editor_select_image.php`. The designer no longer opens them (PK8, `picker-designer-bridge.md`). When PK8b deletes the link window and PK9 the image window (`software_image_picker()` still opens it), the `filebrowserBrowseUrl` and `filebrowserImageBrowseUrl` settings in `_pg_wysiwyg_file_properties()` go with them.
+- Where `pgPicker` or `pgUI` is missing (a site page with a rich text field), the bridge does nothing: the Link dialog has no Browse Server (the link window and `filebrowserBrowseUrl` were deleted in PK8b), and the Image dialog's opens `editor_select_image.php`. When PK9 deletes that window (`software_image_picker()` still opens it), `filebrowserImageBrowseUrl` in `_pg_wysiwyg_file_properties()` goes with it.
 
 ## What could not be checked?
 - Nothing was opened in a browser: the dialogs' layout and the focus between CKEditor's dialog and the picker's `<dialog>` were not seen. The picker's Escape is taken on `window` in the capture phase, so it never reaches CKEditor's dialog.

@@ -23,11 +23,11 @@ function test_editor_file_properties_refused()
 	pg_assert_same('', _pg_wysiwyg_file_properties(false, '/pinegrap', 'abc123', 7));
 }
 
-// An allowed user gets both browsers and both upload addresses.
+// An allowed user gets the image browser and both upload addresses.
 function test_editor_file_properties_allowed()
 {
 	$out = _pg_wysiwyg_file_properties(true, '/pinegrap', 'abc123', 7);
-	pg_assert_true(strpos($out, 'filebrowserBrowseUrl: "/pinegrap/editor_select_page_or_file.php"') !== false, 'link browser');
+	pg_assert_true(strpos($out, 'filebrowserBrowseUrl') === false, 'no link window: the Link dialog opens the picker');
 	pg_assert_true(strpos($out, 'filebrowserImageBrowseUrl: "/pinegrap/editor_select_image.php"') !== false, 'image browser');
 	pg_assert_true(strpos($out, 'filebrowserUploadUrl: "/pinegrap/editor_add_file.php?token=abc123&folder_id=7"') !== false, 'upload');
 	pg_assert_true(strpos($out, 'filebrowserImageUploadUrl: "/pinegrap/editor_add_file.php?token=abc123&folder_id=7"') !== false, 'image upload');

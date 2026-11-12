@@ -68,7 +68,6 @@ function test_size_label_panel_call_sites()
 		'includes/fn/files.php' => "convert_bytes_to_string(\$image_report['bytes_after'], 'auto')",
 		'includes/fn/design_file_list_edit.php' => "convert_bytes_to_string(\$file['size'], 'auto')",
 		'editor_select_image.php' => "convert_bytes_to_string(\$images[\$key]['size'], 'auto')",
-		'editor_select_page_or_file.php' => "convert_bytes_to_string(\$item['size'], 'auto')",
 	);
 	foreach ($sites as $path => $needle) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);

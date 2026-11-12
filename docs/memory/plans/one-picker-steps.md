@@ -28,7 +28,7 @@ description: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry an
 
 - PK8 (M) The designer bridge: link and picture fields through `pgEditorPicker`, the fake `CKEDITOR` gone, Browse under the widget page selects, the page type pane on picker fields. Done in #8884 (`ui/picker-designer-bridge.md`).
 
-- PK8b (S) Delete `editor_select_page_or_file.php` and the `filebrowserBrowseUrl` setting with what only they use, no redirect (#8836). `editor_select_image.php` goes in PK9: `software_image_picker()` and `add_file.php` still open it.
+- PK8b (S) The link window `editor_select_page_or_file.php` and `filebrowserBrowseUrl` deleted, no redirect, listed in Cleanup (#8836). Done in #PK8BPR. `editor_select_image.php` goes in PK9: `software_image_picker()` and `add_file.php` still open it.
 
 - PK9 (M) The remaining screens. The product builder's pictures, the contact photo, the image editor's From the site lists, the theme designer's file list, and the Workspace's "from the files" picker with its chat attachment refusal kept (`platform/file-copy-chat-attachments.md`).
 

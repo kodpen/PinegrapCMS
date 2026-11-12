@@ -43,9 +43,9 @@ To the bin (`recycled = 1` plus a `recycle_bin` row,
 `pg_short_link_to_bin()`) from the wizard, the API and, since #487, the
 classic edit screen's Delete (before, it deleted the row outright). Restore or
 permanent delete happen in the File Manager's bin. `view_short_links.php`
-and the rich text editor's link picker (`editor_select_page_or_file.php`,
-type `short_link`; since #1017, before it offered them and the link put in
-the content answered 404) leave binned links out; `edit_short_link.php`
+and the editors' short link list (`pg_picker_short_link_entries()`,
+`ui/picker-editor-bridge.md`; the old link window left them out since #1017,
+before which a link put in the content answered 404) leave binned links out; `edit_short_link.php`
 answers 409 "This short link is in the recycle bin…" for one. Restore
 renames a taken name (`pg_short_link_free_name()`) and refuses a link that
 would close a loop with links saved meanwhile (it stays binned; #1235).

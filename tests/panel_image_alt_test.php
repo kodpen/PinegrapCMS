@@ -4,8 +4,7 @@
  *
  * Source pins for panel pictures: decorative thumbnails and icons carry an
  * empty alt so a screen reader never reads their file name or repeats the
- * text beside them, the link picker's No Image placeholder has a name, and
- * the Paraşüt emblem says what it means.
+ * text beside them, and the Paraşüt emblem says what it means.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -33,16 +32,6 @@ function panel_image_alt_missing($source)
 		}
 	}
 	return $missing;
-}
-
-function test_link_picker_thumbnails()
-{
-	$source = panel_image_alt_source('editor_select_page_or_file.php');
-
-	pg_assert_same(array(), panel_image_alt_missing($source), 'img without alt');
-	pg_assert_contains('img-thumbnail" alt="" data-pg-thumb=', $source, 'thumbnail alt is empty: the name is the link beside it');
-	pg_assert_same(1, substr_count($source, 'role="img" aria-label="\' . h(lang(\'No Image\')) . \'"'), 'the No Image placeholder is named');
-	pg_assert_false((bool) preg_match('/role="img"\s*>/', $source), 'role=img without a name');
 }
 
 function test_image_picker_tile_does_not_repeat_its_name()

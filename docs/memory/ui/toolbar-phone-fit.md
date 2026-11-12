@@ -4,7 +4,7 @@ description: Toolbar filter forms capped to the bar (.pg-toolbar-filter), Edit C
 ---
 
 ## Why does a toolbar filter no longer push the page sideways?
-- A flex item's automatic minimum width is its content, and a select is as wide as its longest option. In the Accessibility report ("1.3.1 …" rule) and Browse Items (`editor_select_page_or_file.php`, a long folder name) the filter ran to 494 / 425 px at 375.
+- A flex item's automatic minimum width is its content, and a select is as wide as its longest option. In the Accessibility report ("1.3.1 …" rule) the filter ran to 494 px at 375.
 - `backend.src.css` (block *Admin screen toolbar*) gives `.pg-toolbar-filter`, its `> .input-group` and its `select` `min-width: 0; max-width: 100%`, the select `text-overflow: ellipsis`. It applies at every width: wrapping uses the content width, so a desktop bar is unchanged; the cap only bites when the filter is alone on a line wider than the bar.
 - The markup keeps `w-auto flex-nowrap` (icon beside the select). Every filter form in a bar carries `pg-toolbar-filter` (`pg_filter_select()` adds it).
 

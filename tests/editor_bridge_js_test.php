@@ -183,3 +183,12 @@ function test_editor_bridge_designer_wired()
 	$bridge = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_ckeditor_picker.js');
 	pg_assert_true(strpos($bridge, 'root.pgEditorPicker = {') !== false, 'the bridge offers its pickers');
 }
+
+// The link window is gone: no file, no setting naming it, and Cleanup lists
+// it for sites that still carry it from before.
+function test_editor_bridge_link_window_deleted()
+{
+	pg_assert_false(is_file(PG_FUNCTIONS_DIR . '/editor_select_page_or_file.php'), 'the file is deleted');
+	pg_assert_same(false, strpos(file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/editor.php'), 'editor_select_page_or_file'), 'no setting names it');
+	pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/clean_up.php'), "    'editor_select_page_or_file.php',\n") !== false, 'Cleanup lists it');
+}

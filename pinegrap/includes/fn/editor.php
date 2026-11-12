@@ -599,8 +599,9 @@ function _pg_wysiwyg_file_properties($allowed, $base, $token, $folder_id)
     $upload = escape_javascript($base . '/editor_add_file.php?token=' . rawurlencode((string) $token)
         . (((int) $folder_id > 0) ? '&folder_id=' . (int) $folder_id : ''));
 
-    return 'filebrowserBrowseUrl: "' . escape_javascript($base . '/editor_select_page_or_file.php') . '",
-                filebrowserImageBrowseUrl: "' . escape_javascript($base . '/editor_select_image.php') . '",
+    // The Link dialog has no browse window of its own: its Browse Server
+    // opens the picker (pg_editor_bridge_script()).
+    return 'filebrowserImageBrowseUrl: "' . escape_javascript($base . '/editor_select_image.php') . '",
                 filebrowserWindowWidth: "850",
                 filebrowserWindowHeight: "740",
                 filebrowserUploadMethod: "form",

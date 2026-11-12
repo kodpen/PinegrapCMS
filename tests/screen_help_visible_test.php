@@ -60,7 +60,7 @@ function test_screen_help_visible_no_heading_popover()
 
 function test_screen_help_visible_navbar_titles()
 {
-	foreach (array('send_email_campaign.php', 'editor_select_page_or_file.php', 'editor_select_image.php') as $path) {
+	foreach (array('send_email_campaign.php', 'editor_select_image.php') as $path) {
 		pg_assert_true(!preg_match('/<span[^>]*class="navbar-text[^"]*"[^>]*data-bs-content/s', screen_help_visible_source($path)), $path . ': navbar title keeps a hover-only popover');
 	}
 }
@@ -75,7 +75,6 @@ function test_screen_help_visible_instructions_printed()
 		'edit_custom_style.php' => "'heading_description' => lang('Update this HTML template that is applied to all associated pages.')",
 		'add_submitted_form.php' => "'heading_description' => lang('Manually create a submitted form for this custom form.",
 		'preview_form.php' => "lang('The form layout will look like this when displayed within a page.')",
-		'editor_select_page_or_file.php' => "lang('Select the Page, File, or Short Link that you want to link to.')",
 		'editor_select_image.php' => "lang('Select the image that you want to embed in your content. Hover over or focus an image to see more info.')",
 	);
 
