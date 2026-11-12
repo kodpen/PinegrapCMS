@@ -2891,6 +2891,7 @@
     "Shown in browser tabs, in search results and on home screens. Choose a square PNG of at least 512x512 (the smaller sizes are made from it) or an SVG. Leave it empty to keep the design's own icon.": "Tarayıcı sekmelerinde, arama sonuçlarında ve ana ekranlarda görünür. En az 512x512 boyutunda kare bir PNG (küçük boyutlar ondan üretilir) ya da bir SVG seçin. Tasarımın kendi simgesini korumak için boş bırakın.",
     "Shown in the \"How did you hear about us?\" choice at checkout": "Ödeme adımındaki \"Bizi nereden duydunuz?\" seçiminde gösterilir",
     "Shown in the styles list. Pages keep their own names.": "Stiller listesinde görünür. Sayfalar kendi adlarını korur.",
+    "Shown in {var}": "{var} rengiyle",
     "Shown instead of the event when the address names none, or one outside these calendars.": "Adres bir etkinlik belirtmediğinde ya da bu takvimlerin dışındaki bir etkinliği gösterdiğinde etkinliğin yerine çıkar.",
     "Shown last season": "Geçen sezon sahnelendi",
     "Shown last season in the front room": "Geçen sezon ön salonda sergilendi",
