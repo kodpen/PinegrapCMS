@@ -21,6 +21,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/page_form.php');
 function test_mass_edit_page_name_cleaned_as_the_page_screen()
 {
 	pg_assert_same('my_page_x', pg_page_form_bulk_name(' my page&x ', 'standard'), 'trimmed, spaces and ampersands become underscores');
+	pg_assert_same('soru_100_', pg_page_form_bulk_name('soru?100%', 'standard'), 'question marks and percent signs too');
 	pg_assert_same('a/b', pg_page_form_bulk_name('a/b', 'standard'), 'a slash is kept on other types');
 	pg_assert_same('shop', pg_page_form_bulk_name('shop', 'catalog'));
 }
