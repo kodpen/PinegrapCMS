@@ -37,6 +37,6 @@ function test_erp_waybill_note_keeps_send_to()
 	pg_assert_contains("/edit_erp_waybill.php?id=' . \$waybill_id . \$send_to_query", $source, 'reloads keep send_to');
 	pg_assert_contains("'cancel' => array('enable' => 'true', 'url' => pg_send_to_url('erp_waybills.php'))", $source, 'the back arrow goes to the filtered list');
 	pg_assert_contains("'url' => pg_send_to_list_url(\$list_url)", $source, 'the breadcrumb keeps the filtered list');
-	pg_assert_contains('<form name="form" action="\' . $self_action . \'" method="post">', $source, 'the form posts send_to');
+	pg_assert_contains('<form name="form" action="\' . $self_action . \'" method="post"', $source, 'the form posts send_to');
 	pg_assert_false(strpos($source, "'url' => 'erp_waybills.php'") !== false, 'no bare back arrow');
 }
