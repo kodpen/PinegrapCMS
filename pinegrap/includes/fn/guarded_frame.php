@@ -327,7 +327,9 @@ function pg_guarded_frame_mail_script($mail)
  * The shell document: the stored document in its frame, escaped into
  * srcdoc so nothing it holds is markup of the shell. Pure.
  *
- * @param string $html  the stored document, at most PG_GUARDED_FRAME_MAX_BYTES
+ * @param string $html  the stored document: a live page at most
+ *                      PG_GUARDED_FRAME_MAX_BYTES, a mail's at most
+ *                      pg_mail_html_max_bytes() and its wrapping
  * @param string $mode  script, static or mail
  * @param string $nonce
  * @param string $title the frame's accessible name

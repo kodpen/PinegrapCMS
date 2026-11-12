@@ -229,3 +229,18 @@ function test_mail_html_module_is_loaded()
 {
 	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_html.php');", (string) file_get_contents(PG_FUNCTIONS_DIR . '/functions.php'), 'loaded with the other mail modules');
 }
+
+function test_mail_html_document_is_whole_and_keeps_the_frame_in_charge_of_its_height()
+{
+	$clean = pg_mail_html_clean('<html><head><style>p{color:red}</style></head><body bgcolor="#eee"><p>Hi <a href="https://example.com/x">there</a></p></body></html>');
+	$document = pg_mail_html_document($clean);
+
+	pg_assert_same(0, strpos($document, '<!DOCTYPE html>'), 'standards mode, never quirks');
+	pg_assert_contains('<base target="_blank">', $document, 'a link opens a new tab before the frame dresses it');
+	pg_assert_false(strpos($document, '<base href') !== false, 'base-uri stays closed: no address of its own');
+	pg_assert_contains('html:root,html:root>body{height:auto!important', $document, 'a mail\'s height: 100% never follows the frame');
+	pg_assert_contains('overflow-y:hidden', $document, 'the frame grows, it never scrolls inside');
+	pg_assert_contains('background:#fff', $document, 'drawn on white in either theme');
+	pg_assert_contains('<body>' . $clean . '</body></html>', $document, 'the cleaned HTML unchanged in the body');
+	pg_assert_false(strpos($document, '<script') !== false);
+}
