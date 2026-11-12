@@ -115,9 +115,22 @@ function ws_mail_reply_body($text, $writer, $box_name, $answered)
     $text = rtrim(str_replace(array("\r\n", "\r"), "\n", (string) $text));
     $signature = array_filter(array(trim((string) $writer), trim((string) $box_name)), 'strlen');
     $body = $text . ($signature ? "\n\n-- \n" . implode("\n", $signature) : '');
+    $quote = ws_mail_reply_quote($answered);
 
+    return ($quote === '') ? $body : $body . "\n\n" . $quote;
+}
+
+/**
+ * The answered mail quoted under an answer: who wrote it and when, then its
+ * first WS_MAIL_REPLY_QUOTE_LINES lines, each after "> ". Pure.
+ *
+ * @param array|null $answered ws_mail_items row (from_name, from_email, sent_at, created_at, body_text)
+ * @return string '' when nothing is answered or it has no text
+ */
+function ws_mail_reply_quote($answered)
+{
     if (!is_array($answered) || (trim((string) $answered['body_text']) === '')) {
-        return $body;
+        return '';
     }
 
     $when = ((int) $answered['sent_at'] > 0) ? (int) $answered['sent_at'] : (int) $answered['created_at'];
@@ -135,8 +148,129 @@ function ws_mail_reply_body($text, $writer, $box_name, $answered)
         $quoted[] = '> …';
     }
 
-    return $body . "\n\n" . lang(array('string' => 'On {var:1}, {var:2} wrote:', 'vars' => array(date('d.m.Y H:i', $when), $who)))
+    return lang(array('string' => 'On {var:1}, {var:2} wrote:', 'vars' => array(date('d.m.Y H:i', $when), $who)))
         . "\n" . implode("\n", $quoted);
+}
+
+/**
+ * The text of an answer as it leaves: what was written, the writer's name
+ * and the mailbox's Signature (its name when it has none) as a new mail
+ * carries them (ws_mail_send_body()), then the answered mail quoted.
+ *
+ * @param string     $text
+ * @param string     $writer
+ * @param array      $box      ws_mail_boxes row
+ * @param array|null $answered ws_mail_items row, null when nothing is answered
+ * @return string
+ */
+function ws_mail_answer_body($text, $writer, $box, $answered)
+{
+    $body = ws_mail_send_body($text, $writer, (string) $box['name'], ws_mail_box_signature($box));
+    $quote = ws_mail_reply_quote($answered);
+
+    return ($quote === '') ? $body : $body . "\n\n" . $quote;
+}
+
+/**
+ * The mail an answer answers: the newest that came in.
+ *
+ * @param int $conversation_id
+ * @return array|null ws_mail_items row
+ */
+function ws_mail_reply_answered($conversation_id)
+{
+    $answered = db_item("SELECT * FROM ws_mail_items
+        WHERE conversation_id = '" . (int) $conversation_id . "' AND direction = 'in'
+        ORDER BY id DESC LIMIT 1");
+
+    return (is_array($answered) && $answered) ? $answered : null;
+}
+
+/**
+ * The addresses a mailbox receives at besides its own: the routes that
+ * name a whole address (a +tag route is the box's own address with a tag).
+ *
+ * @param array $box ws_mail_boxes row
+ * @return string[] lower case
+ */
+function ws_mail_answer_aliases($box)
+{
+    $out = array();
+
+    foreach (ws_mail_routes($box) as $route) {
+        if (strpos((string) $route['match'], '@') !== false) {
+            $out[] = strtolower((string) $route['match']);
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Whether an address is the mailbox's own: its address, the address with a
+ * +tag, or an address one of its routes answers to. Pure.
+ *
+ * @param string   $address
+ * @param string   $box_address
+ * @param string[] $aliases ws_mail_answer_aliases()
+ * @return bool
+ */
+function ws_mail_answer_own($address, $box_address, $aliases)
+{
+    $address = strtolower(trim((string) $address));
+    $box_address = strtolower(trim((string) $box_address));
+
+    if (($address === $box_address) || in_array($address, array_map('strtolower', (array) $aliases), true)) {
+        return true;
+    }
+
+    $at = strrpos($address, '@');
+    $box_at = strrpos($box_address, '@');
+
+    if (($at === false) || ($box_at === false) || (substr($address, $at) !== substr($box_address, $box_at))) {
+        return false;
+    }
+
+    // local+tag@domain is the box's local@domain.
+    $local = substr($address, 0, $at);
+    $plus = strpos($local, '+');
+
+    return ($plus !== false) && (substr($local, 0, $plus) === substr($box_address, 0, $box_at));
+}
+
+/**
+ * Whom Reply to all adds as copies: the answered mail's sender when it is
+ * not the customer, its To and its Cc, without the customer (the answer's
+ * To) and the mailbox's own addresses, each once, as many as an e-mail may
+ * carry besides the customer. Pure.
+ *
+ * @param array|null $answered ws_mail_items row (from_email, to_list, cc_list)
+ * @param string     $customer the conversation's address
+ * @param string     $box_address
+ * @param string[]   $aliases ws_mail_answer_aliases()
+ * @return string[]
+ */
+function ws_mail_answer_others($answered, $customer, $box_address, $aliases)
+{
+    if (!is_array($answered)) {
+        return array();
+    }
+
+    $customer = strtolower(trim((string) $customer));
+    $out = array();
+    $candidates = array_merge(ws_mail_send_addresses((string) ($answered['from_email'] ?? '')),
+        ws_mail_send_addresses((string) ($answered['to_list'] ?? '')), ws_mail_send_addresses((string) ($answered['cc_list'] ?? '')));
+
+    foreach ($candidates as $address) {
+        if (($address === $customer) || in_array($address, $out, true) || !filter_var($address, FILTER_VALIDATE_EMAIL)
+            || ws_mail_answer_own($address, $box_address, $aliases)) {
+            continue;
+        }
+
+        $out[] = $address;
+    }
+
+    return array_slice($out, 0, WS_MAIL_SEND_ADDRESSES - 1);
 }
 
 /**
@@ -346,10 +480,11 @@ function ws_mail_js_strings()
 {
     return array(
         'mail_reply'         => lang('Reply by e-mail'),
+        'mail_reply_all'     => lang('Reply to all'),
+        'mail_reply_all_to'  => ws_js_template('Also to {var:1}', 1),
         'mail_reply_to'      => ws_js_template('To {var:1}', 1),
-        'mail_reply_hint'    => lang('Sent from the mailbox\'s address with your name under it; the customer\'s last e-mail is quoted below. Only the customer receives it.'),
+        'mail_reply_hint'    => lang('Sent from the mailbox\'s address with your name and its Signature under it; the customer\'s last e-mail is quoted below.'),
         'mail_reply_send'    => lang('Send e-mail'),
-        'mail_reply_sent'    => lang('The e-mail was sent.'),
         'mail_reply_text'    => lang('Answer'),
         'mail_draft_open'    => lang('Open the reply draft'),
     );
@@ -377,6 +512,20 @@ function ws_mail_reply_check($viewer, $conversation_id, $text)
         return array_merge($out, array('error' => 'too_long'));
     }
 
+    return ws_mail_reply_target($viewer, $conversation_id);
+}
+
+/**
+ * Whether this person may answer this conversation, whatever the text: the
+ * channel's writers, an open mailbox with a way to send, a customer address.
+ *
+ * @param array $viewer
+ * @param int   $conversation_id
+ * @return array ok, error (no_access | no_box | no_customer | the route's), conversation, box, channel, route
+ */
+function ws_mail_reply_target($viewer, $conversation_id)
+{
+    $out = array('ok' => false, 'error' => '', 'conversation' => null, 'box' => null, 'channel' => null, 'route' => null);
     $conversation = db_item("SELECT * FROM ws_mail_conversations WHERE id = '" . (int) $conversation_id . "'");
     $channel = is_array($conversation) ? ws_channel((int) $conversation['channel_id']) : null;
 
@@ -419,9 +568,11 @@ function ws_mail_reply_site_domain()
 }
 
 /**
- * Sends an answer now (not through the queue: the writer waits for it and
+ * Sends an answer now (not through the queue: the caller waits for it and
  * is told when it fails), then keeps it as the conversation's outgoing
- * item, draws it under the card and notes the answer's time.
+ * item, draws it under the card and notes the answer's time. The external
+ * API's answer (api_mail.php); the panel's answer, with copies and files,
+ * goes through the queue (ws_mail_send() with a conversation_id).
  *
  * @param array  $viewer
  * @param int    $conversation_id
@@ -442,12 +593,7 @@ function ws_mail_reply_send($viewer, $conversation_id, $text)
     $conversation_id = (int) $conversation['id'];
     $now = time();
     $writer = ws_person_name((int) $viewer['id']);
-
-    // The newest mail of the customer is the one answered.
-    $answered = db_item("SELECT * FROM ws_mail_items
-        WHERE conversation_id = '" . $conversation_id . "' AND direction = 'in'
-        ORDER BY id DESC LIMIT 1");
-    $answered = is_array($answered) && $answered ? $answered : null;
+    $answered = ws_mail_reply_answered($conversation_id);
 
     $host = pg_mail_hostname();
 
@@ -458,7 +604,7 @@ function ws_mail_reply_send($viewer, $conversation_id, $text)
     $message_id = ws_mail_reply_message_id($conversation_id, bin2hex(random_bytes(8)), $host);
     $headers = ws_mail_reply_headers($answered, $message_id);
     $subject = ws_mail_reply_subject($answered ? (string) $answered['subject'] : (string) $conversation['subject'], $conversation_id);
-    $body = ws_mail_reply_body(trim((string) $text), $writer, (string) $box['name'], $answered);
+    $body = ws_mail_answer_body(trim((string) $text), $writer, $box, $answered);
 
     $properties = array(
         'to'                 => (string) $conversation['customer_email'],
@@ -529,4 +675,34 @@ function ws_mail_reply_send($viewer, $conversation_id, $text)
         WHERE id = '" . $conversation_id . "'");
 
     return array('ok' => true, 'error' => '', 'detail' => '', 'item_id' => $item_id, 'message_id' => (int) $message, 'copy' => $copy());
+}
+
+/**
+ * What the "Reply by e-mail" drawer shows before anything is written: whom
+ * the answer goes to and whom Reply to all adds. Reads the conversation,
+ * its newest incoming mail and the mailbox; sends nothing.
+ *
+ * @param array $viewer
+ * @param int   $conversation_id
+ * @return array ok, error (ws_mail_reply_target()'s), to (the customer's address), name (theirs), others (ws_mail_answer_others())
+ */
+function ws_mail_answer_form($viewer, $conversation_id)
+{
+    $target = ws_mail_reply_target($viewer, $conversation_id);
+
+    if (!$target['ok']) {
+        return array('ok' => false, 'error' => $target['error'], 'to' => '', 'name' => '', 'others' => array());
+    }
+
+    $conversation = $target['conversation'];
+    $box = $target['box'];
+
+    return array(
+        'ok'     => true,
+        'error'  => '',
+        'to'     => (string) $conversation['customer_email'],
+        'name'   => (string) $conversation['customer_name'],
+        'others' => ws_mail_answer_others(ws_mail_reply_answered((int) $conversation['id']), (string) $conversation['customer_email'],
+            (string) $box['address'], ws_mail_answer_aliases($box)),
+    );
 }

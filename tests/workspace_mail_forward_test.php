@@ -223,7 +223,7 @@ function test_workspace_mail_forward_wiring()
 	pg_assert_contains("h.api('ws_mail_forward', { kind: source.kind, ids: source.ids.join(',') })", $mail, 'the form asks for the fill');
 	pg_assert_contains("post.forward_files = carried.map(function (file) { return file.id; }).join(',');", $mail, 'Send names the files still carried');
 	pg_assert_contains("[data-ws-mail-forward]", $mail, 'the pane\'s button');
-	pg_assert_contains("if (message.mail_forward && h.cfg.mail_forward) {", $mail, 'the card\'s button');
+	pg_assert_contains("if (message.mail_reply && message.mail_forward && h.cfg.mail_forward) {", $mail, 'the card\'s button');
 }
 
 // The Reply by e-mail drawer and New e-mail each keep their own function:
@@ -233,8 +233,8 @@ function test_workspace_mail_forward_reply_drawer_keeps_its_name()
 	$mail = workspace_mail_forward_test_source('assets/js/workspace_mail.js');
 
 	pg_assert_same(1, substr_count($mail, 'function compose('), 'one compose()');
-	pg_assert_same(1, substr_count($mail, 'function replyForm(message, view, h, draft) {'), 'the drawer');
-	pg_assert_same(3, substr_count($mail, 'replyForm(') - 1, 'the card, the AI draft and the pane open it');
+	pg_assert_same(1, substr_count($mail, 'function replyForm(message, view, h, draft, all) {'), 'the drawer');
+	pg_assert_same(4, substr_count($mail, 'replyForm(') - 1, 'the card, the AI draft and the pane\'s Reply and Reply to all open it');
 
 	$out = array();
 	$code = 1;

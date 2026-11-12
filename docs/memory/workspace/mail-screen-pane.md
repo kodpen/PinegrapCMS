@@ -10,8 +10,8 @@ description: The Workspace E-mails reading pane (mail_pane.php) and the per-pers
 - The open conversation stays in the address (`?conversation=`), so a reload or a shared link opens it again. Below 768 px the pane takes the list's place.
 
 ## What can be done in it?
-- Close, and for whoever may write in the channel (`ws_can_post_channel()`, `ws_mail_pane_tools()`): Reply, which opens the same drawer as the card's Reply by e-mail (`compose()`, `workspace/mail-reply.md`), and the status and holder controls (`ws_mail_state_offer()`, `workspace/mail-status.md`). After a change the pane is drawn again.
-- Not yet there: Reply to all and Forward (WM6, WM7). New e-mail is the toolbar's, not the pane's (`mail-compose.md`). Send again (#8646) is on the card only; no step brings it to the pane yet.
+- Close, and for whoever may write in the channel (`ws_can_post_channel()`, `ws_mail_pane_tools()`): Reply, which opens the same drawer as the card's Reply by e-mail (`replyForm()`, `workspace/mail-reply.md`), Reply to all when the last mail named others (WM7), and the status and holder controls (`ws_mail_state_offer()`, `workspace/mail-status.md`). After a change the pane is drawn again; focus that was in it (or fell to the page) goes to its heading (#8779).
+- Forward under each mail (WM6, `mail-forward.md`). New e-mail is the toolbar's, not the pane's (`mail-compose.md`). Send again (#8646) is on the card only; no step brings it to the pane yet.
 
 ## When is a conversation unread?
 - Per person, in `ws_mail_reads` (`workspace/mail-tables-sending.md`): unread while its newest incoming mail id is greater than both the person's mark on it and their floor (`ws_mail_unread()`, in SQL `ws_mail_unread_sql()`). A mark never moves back (`GREATEST` on upsert).

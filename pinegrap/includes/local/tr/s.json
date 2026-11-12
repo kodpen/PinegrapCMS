@@ -2049,6 +2049,7 @@
     "Sent folder": "Gönderilenler klasörü",
     "Sent form": "Gönderildi formu",
     "Sent from the ERP": "ERP'den gönderildi",
+    "Sent from the mailbox's address with your name and its Signature under it; the customer's last e-mail is quoted below.": "E-posta kutusunun adresinden, altında sizin adınız ve kutunun imzasıyla gönderilir; müşterinin son e-postası altta alıntılanır.",
     "Sent from the mailbox's address with your name under it; the customer's last e-mail is quoted below. Only the customer receives it.": "E-posta kutusunun adresinden, altında sizin adınızla gönderilir; müşterinin son e-postası altta alıntılanır. Yalnızca müşteri alır.",
     "Sent from {var:1}; replies come back to the same address.": "{var:1} adresinden gönderilir; yanıtlar aynı adrese gelir.",
     "Sent in the last 24 hours": "Son 24 saatte gönderilen",

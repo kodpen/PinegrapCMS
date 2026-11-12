@@ -4,9 +4,10 @@ description: After a Workspace e-mail answer leaves (G3c): the copy APPENDed to 
 ---
 
 ## When is an answer copied into the box's sent folder?
-- `ws_mail_reply_send()` asks `email()` for `keep_mime` and, after the item and thread message are written, calls `ws_mail_reply_copy()` when `ws_mail_reply_copy_plan()` says so: a box read over IMAP (`transport = imap`, host, user, sealed secret), `settings.sent_copy` not 0 (a box saved before G3c has no key and copies), and the sending server not on a domain of `ws_mail_reply_keeps_sent()` (gmail.com, googlemail.com, office365.com, outlook.com keep what their own SMTP sends; a copy would show twice). Through the site's mail settings it copies too.
+- The API's answer (`ws_mail_reply_send()`) asks `email()` for `keep_mime` and, after the item and thread message are written, calls `ws_mail_reply_copy()` when `ws_mail_reply_copy_plan()` says so: a box read over IMAP (`transport = imap`, host, user, sealed secret),
+  `settings.sent_copy` not 0 (a box saved before G3c has no key and copies), and the sending server not on a domain of `ws_mail_reply_keeps_sent()` (gmail.com, googlemail.com, office365.com, outlook.com keep their own; a copy would show twice). Through the site's mail settings it copies too.
 - The folder is `settings.sent_folder` as typed, else `pg_imap_sent_folder()`: `LIST (SPECIAL-USE)` when offered, the `\Sent` mark first, then usual names (Sent, Sent Items, Sent Messages, Sent Mail, INBOX.Sent …), `\Noselect` skipped. The found name is APPENDed as the server spells it (modified UTF-7, `$encoded`).
-- Its own IMAP session with a 10 s budget while the writer waits; flags `(\Seen)`. No mail kept (a demonstration site sends none) copies nothing. A failure never fails the answer: the action returns `copy_note` and the drawer shows it as a warning toast instead of "The e-mail was sent."
+- Its own IMAP session, 10 s budget; flags `(\Seen)`. No mail kept (a demonstration site sends none) copies nothing. A failure never fails the answer (the API says `copy_kept` false). A queued mail, the panel's answer too, is copied by `ws_mail_send_outcome()` once sent.
 - Box form, "Sending answers": the "Keep a copy…" box (ticked on a new box) and "Sent folder" (empty = found by itself).
 
 ## What did email() and the IMAP client gain?
