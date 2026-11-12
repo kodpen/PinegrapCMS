@@ -1410,6 +1410,115 @@ function ws_bell_describe($inbox_id, $user_id)
 }
 
 /**
+ * Which in-place action a bell row of this kind may offer, before the
+ * reader's rights are checked: approve an approval request, try a failed
+ * run of a flow again, mark a task done. Pure.
+ *
+ * @param string $kind       the inbox row's kind
+ * @param string $run_status a flow_finished row's run status ('' for none)
+ * @return string approve | retry | done | ''
+ */
+function ws_bell_act_kind($kind, $run_status = '')
+{
+    $kind = (string) $kind;
+
+    if ($kind === 'approval_requested') {
+        return 'approve';
+    }
+
+    if ($kind === 'flow_finished') {
+        return ((string) $run_status === 'failed') ? 'retry' : '';
+    }
+
+    if (in_array($kind, array('assigned', 'task_reminder', 'task_overdue'), true)) {
+        return 'done';
+    }
+
+    return '';
+}
+
+/**
+ * The in-place action of a bell row, offered only when the reader may run
+ * it: the dry-run checks of the actions it calls (ws_approval_decide_check(),
+ * ws_flow_step_mend_check(), ws_task_set_status_check()), so the row never
+ * shows a button the action would refuse. An approval that asks for an
+ * answer is approved where it was asked, not from the bell.
+ *
+ * @param array $viewer ws_viewer() of the row's reader
+ * @param array $row    the ws_inbox row
+ * @return array|null kind (approve, retry, done) and its ids: approval_id;
+ *                    run_id, node_id; task_id
+ */
+function ws_bell_act($viewer, $row)
+{
+    $kind = (string) ($row['kind'] ?? '');
+    $run = null;
+
+    if ($kind === 'flow_finished') {
+        $known = ws_inbox_flow_run((int) $row['id']);
+        $run = is_array($known) ? ws_flow_run((int) $known['id']) : null;
+    }
+
+    switch (ws_bell_act_kind($kind, is_array($run) ? (string) $run['status'] : '')) {
+        case 'approve':
+            $approval = ws_approval_of_message((int) ($row['message_id'] ?? 0));
+
+            if (!$approval || !ws_approval_decide_check($viewer, $approval, 'approve', '')['ok']) {
+                return null;
+            }
+
+            return array('kind' => 'approve', 'approval_id' => (int) $approval['id']);
+
+        case 'retry':
+            $step = db_item("SELECT node_id FROM ws_flow_run_steps WHERE run_id = '" . (int) $run['id'] . "' AND status = 'failed' ORDER BY id DESC LIMIT 1");
+
+            if (!is_array($step) || !ws_flow_step_mend_check($viewer, $run, (string) $step['node_id'])['ok']) {
+                return null;
+            }
+
+            return array('kind' => 'retry', 'run_id' => (int) $run['id'], 'node_id' => (string) $step['node_id']);
+
+        case 'done':
+            $task = ws_task((int) ($row['task_id'] ?? 0));
+
+            if (!$task || ((string) $task['status'] === 'done') || !ws_can_see_task($viewer, $task) || !ws_task_set_status_check($viewer, $task, 'done')['ok']) {
+                return null;
+            }
+
+            return array('kind' => 'done', 'task_id' => (int) $task['id']);
+    }
+
+    return null;
+}
+
+/**
+ * The in-place action of the bell row that shows this inbox row to its
+ * person (ws_bell_act()), or null.
+ *
+ * @param int $inbox_id
+ * @param int $user_id
+ * @return array|null
+ */
+function ws_bell_row_act($inbox_id, $user_id)
+{
+    $row = db_item("SELECT * FROM ws_inbox WHERE id = '" . (int) $inbox_id . "' AND user_id = '" . (int) $user_id . "'");
+
+    if (!is_array($row) || (ws_bell_act_kind((string) $row['kind'], 'failed') === '')) {
+        return null;
+    }
+
+    $user = function_exists('pg_load_user_row') ? pg_load_user_row((int) $user_id) : null;
+
+    if (!is_array($user)) {
+        return null;
+    }
+
+    $viewer = ws_viewer($user);
+
+    return ws_inbox_row_visible($viewer, $row) ? ws_bell_act($viewer, $row) : null;
+}
+
+/**
  * Which bell rows fold into one line: the runs of one flow that ended the
  * same way, so a flow that runs every few minutes is one line, not a page of
  * them. A failed run folds only with the failed ones and still stands out.

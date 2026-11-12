@@ -3918,6 +3918,7 @@ function pg_bell_words() {
     return {
         module: { shop: lang('Shop'), erp: lang('Accounting'), content: lang('Content'), team: lang('Team'), system: lang('System') },
         button: { reply: lang('Reply'), show: lang('Show'), join: lang('Join'), approve: lang('Approve') },
+        act: { approve: lang('Approve'), retry: lang('Try again'), done: lang('Mark as done') },
         day: { today: lang('Today'), yesterday: lang('Yesterday'), earlier: lang('Earlier') }
     };
 }
@@ -3959,6 +3960,20 @@ function pg_bell_row(row) {
     var place = String(row.place || '');
     var title;
     var button = '';
+    // The button acts in place where the reader may (ws_bell_act()): it
+    // approves, tries a failed run again or marks a task done; the title
+    // still opens the row's place.
+    var act_row = (row.act && (typeof row.act === 'object')) ? row.act : {};
+    var act = words.act[act_row.kind] ? String(act_row.kind) : '';
+    var act_data = '';
+
+    if (act === 'approve') {
+        act_data = ' data-approval-id="' + (parseInt(act_row.approval_id, 10) || 0) + '"';
+    } else if (act === 'retry') {
+        act_data = ' data-run-id="' + (parseInt(act_row.run_id, 10) || 0) + '" data-node-id="' + h(String(act_row.node_id || '')) + '"';
+    } else if (act === 'done') {
+        act_data = ' data-task-id="' + (parseInt(act_row.task_id, 10) || 0) + '"';
+    }
 
     if (place === '') {
         place = String(row.details || '').replace(/<br\s*\/?>/gi, ' · ');
@@ -3979,7 +3994,9 @@ function pg_bell_row(row) {
 
     if (job !== '') {
         title = '<button type="button" class="pg-bell-title notification-title notification-go no-popover" id="' + title_id + '" data-url="' + url + '">' + title + '</button>';
-        button = (job === 'join')
+        button = (act !== '')
+            ? '<button type="button" class="pg-bell-act pg-bell-do no-popover" data-pg-bell-do="' + act + '"' + act_data + ' aria-describedby="' + title_id + '">' + h(words.act[act]) + '</button>'
+            : (job === 'join')
             ? '<button type="button" class="pg-bell-act pg-bell-join no-popover" data-url="' + h(join) + '" aria-describedby="' + title_id + '">' + h(words.button.join) + '</button>'
             : '<button type="button" class="pg-bell-act notification-go no-popover" data-url="' + url + '" aria-describedby="' + title_id + '">' + h(words.button[job]) + '</button>';
     } else {
@@ -4332,6 +4349,63 @@ $(document).on('click', '#notifications .pg-bell-more', function () {
 
 // A meeting's call opens in a tab of its own, cut off from the panel. The
 // tab opens at once (a popup must follow the click) and the row is read.
+// A row's in-place action, through the Workspace's own actions, which check
+// the reader again. After success the row is read and the list drawn anew;
+// a refusal shows the bell's toast. The button keeps its label and is
+// disabled only while the request runs.
+$(document).on('click', '#notifications .pg-bell-do', function () {
+    var button = this;
+    var $row = $(button).closest('li[notification-id]');
+    var notification_id = parseInt($row.attr('notification-id'), 10) || 0;
+    var kind = String($(button).attr('data-pg-bell-do'));
+    var request = { token: software_token };
+
+    if (kind === 'approve') {
+        request.action = 'ws_approval_decide';
+        request.approval_id = parseInt($(button).attr('data-approval-id'), 10) || 0;
+        request.decision = 'approve';
+    } else if (kind === 'retry') {
+        request.action = 'ws_flow_step_mend';
+        request.run_id = parseInt($(button).attr('data-run-id'), 10) || 0;
+        request.node_id = String($(button).attr('data-node-id') || '');
+        request.how = 'retry';
+    } else if (kind === 'done') {
+        request.action = 'ws_task_status';
+        request.task_id = parseInt($(button).attr('data-task-id'), 10) || 0;
+        request.status = 'done';
+    } else {
+        return;
+    }
+
+    var redraw = function () {
+        get_notifications(true);
+    };
+
+    button.disabled = true;
+    $.ajax({
+        contentType: 'application/json',
+        url: 'api.php',
+        data: JSON.stringify(request),
+        type: 'POST',
+        dataType: 'json'
+    }).done(function (response) {
+        if (!response || response.status !== 'success') {
+            button.disabled = false;
+            pg_bell_refused(response);
+            return;
+        }
+
+        if ($row.hasClass('new') && (notification_id > 0)) {
+            edit_notification(notification_id, 'mark_read', redraw);
+        } else {
+            redraw();
+        }
+    }).fail(function (xhr) {
+        button.disabled = false;
+        pg_bell_refused(null, xhr);
+    });
+});
+
 $(document).on('click', '#notifications .pg-bell-join', function () {
     var url = String($(this).attr('data-url') || '');
 
