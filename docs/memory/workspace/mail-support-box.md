@@ -1,6 +1,6 @@
 ---
 name: mail-support-box
-description: A mailbox's "Support box" switch (WM14): what a plain box leaves out (status, holder, first-answer time, overdue filter, automatic answer), how lists count its conversations, the form's default
+description: A mailbox's "Support box" switch (WM14, #PRNUM): what a plain box leaves out (status, holder, first-answer time, automatic answer), how lists count its conversations, the default
 ---
 
 ## What is it?

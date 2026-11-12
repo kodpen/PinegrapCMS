@@ -11,7 +11,7 @@ description: Decisions list, schema part 15 (2026-11-10 on): ws_messages.via_cli
   - `via_client_id` is the `oauth_clients` id of the connection that wrote the message, 0 for a message not written through one. The client row is named, not the `api_devices` row: a person's device rows give way past 20, the client stays.
   - `claimed_device_id` is the `api_devices` id of the connection that claimed the request, 0 when the site's routine takes it.
   - No backfill and no index. Both tables exist on released sites (created in 2026.4.4), so the step only adds the columns.
-- The Workspace mail screen (owner, 2026-11-11, #8604: "A: dört sütun + tablo."; step WM2 of `plans/workspace-mail-screen-steps.md`; the behaviour: `decisions-made-workspace-13.md`): four `ws_mail_items` columns and table `ws_mail_reads`, in one re-runnable step of 2026.11.0 with the idempotent helpers.
+- The Workspace mail screen (owner, 2026-11-11, #8604: "A: dört sütun + tablo."; step WM2 of the closed plan, `workspace/mail-overview.md`; the behaviour: `decisions-made-workspace-13.md`): four `ws_mail_items` columns and table `ws_mail_reads`, in one re-runnable step of 2026.11.0 with the idempotent helpers.
   - `bcc_list` (text, as `cc_list`); `send_state` (empty for mail that came in and for earlier answers, else `queued`, `sent`, `failed`); `send_error` (the reason of a failure); `outbox_id` (the mail queue's row while the mail waits).
   - `ws_mail_reads` (`conversation_id`, `user_id`, `item_id`; primary key the first two): the newest mail of a conversation a person has read; a row with conversation 0 is the person's floor, so nobody starts with a backlog.
   - Additions only, nothing rewritten: an earlier outgoing mail (empty state) reads as sent.
