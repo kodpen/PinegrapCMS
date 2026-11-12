@@ -433,19 +433,27 @@ function ws_change_types()
         ),
         // A file in the file manager: its description, its folder and, for a
         // text file, its words. Its name is its address, so it is not changed
-        // from here.
+        // from here. A new one is only a canvas's picture saved into a folder
+        // (canvas_save.php): a file like any other, binned like any other, so
+        // its create-only fields keep it a reversible change.
         'file' => array(
-            'label'   => lang('File'),
-            'right'   => '',
-            'tag'     => 'file',
-            'table'   => 'files',
-            'actions' => array('update', 'delete'),
-            'names'   => array('name'),
-            'fields'  => array(
+            'label'    => lang('File'),
+            'right'    => '',
+            'tag'      => 'file',
+            'table'    => 'files',
+            'actions'  => array('update', 'delete', 'create'),
+            'names'    => array('name'),
+            'fields'   => array(
                 'description' => array('text', 255, lang('Description'), 'description'),
                 'folder_id'   => array('int', array(1, 2147483647), lang('Folder'), 'folder'),
                 'content'     => array('long', defined('WS_FILE_TEXT_MAX') ? WS_FILE_TEXT_MAX : 524288, lang('Content'), 'content'),
             ),
+            'create'   => array(
+                'canvas' => array('int', array(1, 2147483647), lang('Canvas'), ''),
+                'name'   => array('text', 120, lang('Name'), ''),
+                'format' => array('enum', array('jpeg', 'png', 'webp', 'avif'), lang('Format'), ''),
+            ),
+            'create_reversible' => true,
         ),
         // An offer is switched on or off, described and dated here; its rules
         // are built on the offer screen.
@@ -2249,6 +2257,18 @@ function ws_change_check($viewer, $type, $action, $record, $values)
             return '';
 
         case 'file':
+            // A new file is a canvas saved into a folder.
+            if ($action === 'create') {
+                if (array_key_exists('content', $values)) {
+                    return lang('A new file is a canvas saved into a folder: it takes canvas, folder_id, name, format and description.');
+                }
+
+                require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas.php');
+                require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_save.php');
+
+                return ws_canvas_save_check($viewer, $values);
+            }
+
             if (ws_change_recycle_ready() && pg_recycle_is_inside($record['folder'])) {
                 return lang('This file is in the recycle bin.');
             }
@@ -2852,6 +2872,15 @@ function ws_change_create_check($type, $list)
 
     if (($type === 'product_group') && isset($values['parent_id']) && (count($values['parent_id']) !== 1)) {
         return lang('parent_id is one product group.');
+    }
+
+    // A new file is a canvas's picture, put into a folder in a format.
+    if ($type === 'file') {
+        foreach (array('canvas', 'folder_id', 'format') as $name) {
+            if (empty($values[$name])) {
+                return lang(array('string' => '{var:1} is required', 'vars' => array($name)));
+            }
+        }
     }
 
     if (($type === 'task_note') && (count((array) ($values['task_id'] ?? array())) !== 1)) {
@@ -3800,8 +3829,12 @@ function ws_change_apply($viewer, $change_id, $by_app = false)
         $body = ws_ai_voice($body, $change);
     }
 
+    // Undo is offered only for what it can put back (a saved canvas is not:
+    // the file is binned in Files instead).
     if ($by_app) {
-        $body .= ' ' . lang(array('string' => 'Applied at once within the tier this channel allows {var:1}; a member may undo it for 7 days.', 'vars' => ws_change_proposer($change)));
+        $body .= ' ' . ((ws_agent_undo_reverse(array_merge($change, array('record_id' => $record_id)), $types) !== null)
+            ? lang(array('string' => 'Applied at once within the tier this channel allows {var:1}; a member may undo it for 7 days.', 'vars' => ws_change_proposer($change)))
+            : lang(array('string' => 'Applied at once within the tier this channel allows {var:1}.', 'vars' => ws_change_proposer($change))));
     }
 
     $sent = ws_message_send($viewer, $channel, mb_substr($body, 0, WS_MESSAGE_MAX), array('kind' => 'decision', 'parent_id' => (int) $change['message_id']));
@@ -5513,6 +5546,14 @@ function ws_change_write_page($viewer, $action, $record, $values)
  */
 function ws_change_write_file($viewer, $action, $record, $values)
 {
+    // A canvas saved into a folder (canvas_save.php).
+    if ($action === 'create') {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas.php');
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_save.php');
+
+        return ws_canvas_save_write($viewer, $values);
+    }
+
     $id = (int) $record['id'];
 
     if ($action === 'delete') {

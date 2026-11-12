@@ -59,6 +59,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-7.md: How wide is a list, and how does it page? (owner, 2026-11-12, #8860)
 - decisions-made-panel-7.md: Is the dialogs and drawers page the reference? (owner, 2026-11-12, #8860)
 - decisions-made-panel-7.md: Which drawing is the Design Canvas icon? (owner, 2026-11-12, #8903)
+- decisions-made-panel-7.md: Does the dashboard move to look A? (owner, 2026-11-12, #8938)
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?
 - decisions-made-panel.md: Which date-and-time picker does the software use? (#2693, 2026-10-28)
@@ -245,6 +246,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-45.md: Does the api2 server stay open? (owner, 2026-11-11, #8755)
 - decisions-made-product-46.md: Where are the rules and the earlier parts?
 - decisions-made-product-46.md: Does a picture saved again from the Design Canvas show at once? (owner, 2026-11-12, #8882)
+- decisions-made-product-46.md: How does the Legacy to Bootstrap helper go on after its census? (owner, 2026-11-12, #8942)
+- decisions-made-product-46.md: Is a plan written for the custom layouts' move to Bootstrap 5.3.8? (owner, 2026-11-12, #8942)
 - decisions-made-product-5.md: Which outside-account leftovers start in 2026.11.0? (#3180)
 - decisions-made-product-5.md: Do subscriptions start, and who runs the renewals? (#3183)
 - decisions-made-product-5.md: Does a beta site without a build file get the beta build of its own version? (#3204)
@@ -287,6 +290,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-15.md: Which tables and columns were approved?
 - decisions-made-schema-16.md: Where are the rules and the earlier parts?
 - decisions-made-schema-16.md: Which tables and columns were approved?
+- decisions-made-schema-17.md: Where are the rules and the earlier parts?
+- decisions-made-schema-17.md: Which tables and columns were approved?
 - decisions-made-schema-2.md: Where are the rules and the earlier steps?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-28?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-29 and later?
@@ -376,6 +381,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-2.md: Does the customer channel's "New sales quote" stay in the menu?
 - decisions-made-workspace-2.md: Who may draft from a channel file, and what does /oluştur take? (#2999)
 - decisions-made-workspace-2.md: How does Run from a workflow table work? (F6c, #3122)
+- decisions-made-workspace-20.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-20.md: Are the canvas-one drawings the reference? (owner, 2026-11-12, #8929)
 - decisions-made-workspace-3.md: Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - decisions-made-workspace-3.md: How does a "For each" box loop over a list? (#3312)
 - decisions-made-workspace-3.md: What may a role-3 member's personal flow hold? (#3345)

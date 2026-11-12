@@ -42,7 +42,8 @@ function ws_change_tier3_types()
  * status (a cancellation, a completed order) and every change of the kinds of
  * ws_change_tier3_types() are tier 3; any other change of a known kind is
  * tier 2. An unknown kind or action counts as tier 3, so nothing new runs
- * unattended before it is classed. Pure but for the catalogue.
+ * unattended before it is classed; so does a create-only field, unless its
+ * kind is marked create_reversible. Pure but for the catalogue.
  *
  * @param string   $type   a key of ws_change_types()
  * @param string   $action update, create, delete, add, remove, invoice
@@ -65,6 +66,13 @@ function ws_change_tier($type, $action, $fields = array(), $types = null)
 
     foreach ((array) $fields as $field) {
         $spec = $kind['fields'][(string) $field] ?? null;
+
+        // A kind whose new record is as reversible as a change to it (a file
+        // saved from a canvas goes to the bin like any file) counts its
+        // create-only fields as fields.
+        if (($spec === null) && ((string) $action === 'create') && !empty($kind['create_reversible'])) {
+            $spec = $kind['create'][(string) $field] ?? null;
+        }
 
         if (!$spec || ($spec[0] === 'money')) {
             return WS_TIER_IRREVERSIBLE;

@@ -28,6 +28,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_svg.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_edit.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_split.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_layer_write.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_save.php');
 
 /**
  * The canvas routes, merged into ws_api_routes().
@@ -91,6 +92,27 @@ function ws_canvas_api_routes()
                     'font' => 'string', 'size' => 'number', 'weight' => 'integer', 'italic' => 'boolean', 'align' => 'string', 'bg' => 'string', 'lineHeight' => 'number', 'spacing' => 'number', 'opacity' => 'number',
                     'shape' => 'string', 'fill' => 'string', 'stroke' => 'number', 'dash' => 'string', 'radius' => 'number', 'x1' => 'number', 'y1' => 'number', 'x2' => 'number', 'y2' => 'number',
                     'icon' => 'string', 'file' => 'string', 'file_id' => 'integer', 'name' => 'string', 'lock' => 'boolean', 'locked' => 'boolean', 'to' => 'string', 'target' => 'string'), 'max_items' => 20, 'required' => true, 'description' => 'Objects of {op, ...}, applied in order; see the description.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.messages.canvas.save',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/canvas/save',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_canvas_save',
+            'dry_run'     => true,
+            'status'      => 201,
+            'returns'     => array('saved' => 'boolean', 'file_id' => 'integer?', 'file_name' => 'string?', 'file_url' => 'string?', 'proposal' => 'WorkspaceProposal'),
+            'summary'     => 'Save a canvas into Files',
+            'description' => 'Saves the drawn picture of a canvas of the channel as a new file of a folder in Files, in the name of the person the application acts for, who must be allowed to add files to that folder. It is a change of the file kind (as POST /workspace/channels/{id}/changes proposes it with type file, action create), so it follows the tier the channel allows the agent: within tier 2 or above it is saved at once and the channel is told by a decision naming the file (saved true, file_id, file_name and file_url given); at tier 1 it is a proposal the person saves on its card (saved false). The picture must be drawn: a canvas whose picture is pending (canvas.picture of GET /workspace/messages/{id}/canvas) answers 409 conflict until a member\'s browser has drawn it. format is one of the formats the server writes (jpeg and png always, webp and avif where the server has a library for them; png when left out); name is the canvas\'s file name when left out, its extension the format\'s, and a name already taken gets a number. Only an application\'s agent of the channel saves (403 forbidden otherwise; Claude proposes in its answer); the hourly proposal limit applies (429). Refusals: no folder with that id, a folder in the recycle bin or one the person may not add files to, or a format this server does not write 422 validation_failed on changes.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'folder_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The folder of Files the picture is saved into.'),
+                array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 120, 'description' => 'The new file\'s name; the canvas\'s when left out. The extension is the format\'s.'),
+                array('name' => 'format', 'in' => 'body', 'type' => 'enum', 'values' => array('png', 'jpeg', 'webp', 'avif'), 'description' => 'png (the default), jpeg, or webp and avif where the server writes them.'),
+                array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The file\'s description in Files.'),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'Words beside the save in the channel; the person it is saved for is mentioned either way.'),
             ),
         ),
 
@@ -529,4 +551,85 @@ function ws_api_canvas_edit($params)
     }
 
     api_ok(ws_api_canvas_present($message));
+}
+
+function ws_api_canvas_save($params)
+{
+    $viewer = ws_api_viewer();
+    $target = ws_api_canvas_edit_target($viewer, $params['id']);
+    $agent = ws_api_proposal_agent(true);
+    $message = $target['message'];
+    $channel = $target['channel'];
+
+    if (!ws_proposals_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    $state = ws_canvas_message_state((int) $message['file_id']);
+
+    if ($state && !empty($state['pending'])) {
+        api_fail(409, 'conflict', lang('The canvas has no picture to save yet: a member of the channel opens it and the picture is drawn.'));
+    }
+
+    $format = (string) ($params['format'] ?? 'png');
+    $name = ws_canvas_save_name($params['name'] ?? null, (string) $message['file_name'], $format);
+    $change = ws_canvas_save_change((int) $message['id'], (int) $params['folder_id'], $name, $format);
+
+    if ((string) ($params['description'] ?? '') !== '') {
+        $change['fields']['description'] = (string) $params['description'];
+    }
+
+    ws_api_proposal_scopes(array($change));
+
+    // The person the file is saved for is told, whatever the text says.
+    $text = trim((string) ($params['text'] ?? ''));
+    $text = ($text !== '') ? $text : lang(array('string' => 'Save the canvas into Files as {var:1}.', 'vars' => $name));
+    $mention = '<@user:' . (int) $viewer['id'] . '>';
+
+    if (strpos($text, $mention) === false) {
+        $text = $mention . ' ' . $text;
+    }
+
+    $app_id = ws_api_writer_app_id();
+    $checked = ws_message_send_check($viewer, $channel, $text, array('app_id' => $app_id));
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], 'text');
+    }
+
+    $rows = ws_api_proposal_rows(array($change), $viewer, $channel['id'], 0);
+    $at_once = ws_agent_tier_allows(ws_channel_agent_tier_of((int) $channel['id'], $agent), ws_changes_tier(array($change)));
+
+    ws_api_proposal_limit($agent, $viewer);
+
+    api_dry_run_stop($at_once ? 'created' : 'proposed', 'workspace_canvas_save', array(
+        'message_id' => (int) $message['id'],
+        'folder_id'  => (int) $params['folder_id'],
+        'name'       => $name,
+        'format'     => $format,
+        'at_once'    => $at_once,
+    ));
+
+    $result = ws_proposal_store($viewer, $agent, array('channel' => $channel), $text, $rows, $app_id);
+
+    if (!$result['ok']) {
+        ws_api_proposal_store_failed($result);
+    }
+
+    ws_api_log(lang(array('string' => 'A canvas save proposed in #{var:1}', 'vars' => $channel['name'])));
+
+    // Within the agent's tier the save is applied at once (agent_tiers.php);
+    // the decision under it names the file in the channel.
+    ws_agent_apply_within_tier($viewer, (int) $result['request_id'], $agent, $channel);
+
+    $file_id = (int) db_value("SELECT record_id FROM ws_ai_changes WHERE request_id = '" . (int) $result['request_id'] . "' AND status = 'applied' LIMIT 1");
+    $stored = ($file_id > 0) ? (string) db_value("SELECT name FROM files WHERE id = '" . $file_id . "'") : '';
+
+    api_ok(array(
+        'saved'     => ($stored !== ''),
+        'file_id'   => ($stored !== '') ? $file_id : null,
+        'file_name' => ($stored !== '') ? $stored : null,
+        'file_url'  => ($stored !== '') ? URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path($stored) : null,
+        'proposal'  => ws_api_proposal_present($viewer, ws_api_proposal_or_404($result['request_id'])),
+    ), 201);
 }

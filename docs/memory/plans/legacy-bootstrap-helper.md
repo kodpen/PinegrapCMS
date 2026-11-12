@@ -28,7 +28,7 @@ description: Plan: the helper that turns a Legacy design towards Bootstrap 5.3.8
 - A page's Legacy tree is written as its newest revision before the converted tree is saved (`pg_page_revision_record()`, as Back to classic does, `designer/legacy-to-classic.md`); the run's kept report holds each page's origin design. "Send back to Legacy" gives the page its tree and its design back. No schema.
 
 ## Which questions wait for the owner?
-- None before LB1. After it the architect shows him the side-by-side pictures and asks: is the trial near enough to go on as planned; which theme parts get a twin (LB6); does the theme become a palette and a look (LB7).
+- The three after LB1 are answered (2026-11-12, #8942): `legacy-bootstrap-helper-rules.md`. Next: what the helper does on a design that is not Bootstrap, after LB1b's pictures.
 
 ## Where are the steps?
 - `legacy-bootstrap-helper-steps.md`, with the rules every step keeps.

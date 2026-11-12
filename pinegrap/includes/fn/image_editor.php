@@ -3008,6 +3008,89 @@ function pg_image_editor_canvas_open_doc($file_id)
     return (is_object($doc) && pg_image_editor_canvas_is_doc($doc)) ? $doc : null;
 }
 
+/**
+ * A canvas's drawn picture saved as a new file of a folder, in one of the
+ * formats a save writes here (pg_image_editor_export_formats()): a PNG as it
+ * was drawn, any other format encoded by the engine at the save's own
+ * quality. The name takes the format's extension and is made unique. The
+ * caller has checked the folder and writes the audit line.
+ *
+ * @param string $source  the picture's local path (a PNG)
+ * @param string $name    the wanted name
+ * @param int    $folder_id
+ * @param string $format  jpeg, png, webp or avif
+ * @param int    $user_id
+ * @return array ok, error, id, name
+ */
+function pg_image_editor_canvas_export($source, $name, $folder_id, $format, $user_id)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'id' => 0, 'name' => '');
+    };
+
+    $formats = pg_image_editor_export_formats();
+    $size = ($source !== '') ? @getimagesize($source) : false;
+
+    if (!in_array($format, $formats, true)) {
+        return $fail(lang(array('string' => 'format is one of {var:1}.', 'vars' => implode(', ', $formats))));
+    }
+
+    if (!$size || ((int) $size[2] !== IMAGETYPE_PNG)) {
+        return $fail(lang('The canvas has no picture to save yet.'));
+    }
+
+    if ($format === 'png') {
+        $data = @file_get_contents($source);
+    } else {
+        $check = pg_image_edit_validate(array('v' => 1, 'source' => array('width' => (int) $size[0], 'height' => (int) $size[1]), 'geometry' => array()));
+        $export = pg_image_editor_export_options(array('format' => $format), 'png', $formats);
+
+        if (($check['error'] !== '') || ($export === false)) {
+            return $fail(lang('Invalid request.'));
+        }
+
+        @set_time_limit(60);
+
+        list($edit, $engine) = pg_image_editor_export_edit($check['edit'], $export);
+        $report = pg_image_edit_apply($source, $edit, $engine);
+        $data = (($report['status'] === 'success') && is_string($report['data'])) ? $report['data'] : false;
+
+        if ($data === false) {
+            return $fail(pg_image_editor_report_message($report, $name));
+        }
+    }
+
+    if (!is_string($data) || ($data === '')) {
+        return $fail(lang('Sorry, the file could not be saved.'));
+    }
+
+    $name = get_unique_name(array('name' => prepare_file_name(pg_image_editor_export_name($name, $format)), 'type' => 'file'));
+
+    if (pg_upload_name_blocked($name)) {
+        return $fail(pg_upload_blocked_message($name));
+    }
+
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
+
+    if (!pg_image_editor_put($path, $data)) {
+        return $fail(lang('Sorry, the file could not be saved.'));
+    }
+
+    $written = @getimagesize($path);
+    $type = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+    $saved = pg_schema_has('files', 'image_width')
+        ? db_q("INSERT INTO files (name, folder, type, size, image_width, image_height, user, design, optimized, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, UNIX_TIMESTAMP())", array($name, (int) $folder_id, $type, strlen($data), $written ? (int) $written[0] : 0, $written ? (int) $written[1] : 0, (int) $user_id))
+        : db_q("INSERT INTO files (name, folder, type, size, user, design, optimized, timestamp) VALUES (?, ?, ?, ?, ?, 0, 0, UNIX_TIMESTAMP())", array($name, (int) $folder_id, $type, strlen($data), (int) $user_id));
+
+    if (!$saved) {
+        @unlink($path);
+
+        return $fail(lang('Sorry, the file could not be saved.'));
+    }
+
+    return array('ok' => true, 'error' => '', 'id' => (int) mysqli_insert_id(db::$con), 'name' => $name);
+}
+
 // -- Export (pg_image_editor_export.js) --
 
 /**
