@@ -39,7 +39,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - `image-editor-*`: 68 files; start at `image-editor-overview.md`.
 - `list-table-*`: 46 files; start at `list-table-overview.md`.
 - `main-menu-*`: 9 files.
-- `settings-card-*`: 6 files.
+- `settings-card-*`: 7 files.
 - `settings-modal-*`: 13 files; start at `settings-modal-overview.md`.
 
 ## Files
