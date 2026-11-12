@@ -3870,6 +3870,7 @@ function get_notifications(keep_place) {
 
                     var notification_day = '';
                     var notification_days = pg_bell_words().day;
+                    var draw = { fill: true };
                     while (i < data_length) {
                         if ((parseInt(response.data[i].fold_head, 10) || 0) === 0) {
                             var row_day = notification_days[response.data[i].day] ? String(response.data[i].day) : 'earlier';
@@ -3880,7 +3881,7 @@ function get_notifications(keep_place) {
                             }
                         }
 
-                        output_notifications += pg_bell_row(response.data[i]);
+                        output_notifications += pg_bell_row(response.data[i], draw);
                         i++;
                     }
                     output_notifications += '</ul>';
@@ -3925,12 +3926,40 @@ function pg_bell_words() {
     };
 }
 
-// One bell row, laid out for the drawer. Line one: the module's tag as a
-// small mark, the unread dot ("Mark as read") and the title. Line two: the
-// place (a Workspace row's channel, a site row's details, else the sender)
-// and the time, with the one button named by its job and the row's menu
-// (Delete, "Mark as unread") at the right. Then the excerpt, two lines at
-// most; the whole text is at the row's place.
+// The tile of a bell row: the module names its tone (team blue, shop teal,
+// content rose, accounting amber, system gray); a warning is amber and an
+// error rose whatever the module, so a state is told by the tile and never
+// by the title's colour. The glyph names what happened; a Workspace row
+// brings its own.
+function pg_bell_tile(row, module) {
+    var tones = { shop: 'teal', erp: 'amber', content: 'rose', team: 'blue', system: 'gray' };
+    var glyphs = {
+        new_order: 'bi-bag', order_return: 'bi-arrow-return-left', out_stock: 'bi-box-seam',
+        booking_refused: 'bi-calendar-x', form_submited: 'bi-ui-checks', new_comment: 'bi-chat-left-text',
+        software_update: 'bi-arrow-repeat', erp_overdue: 'bi-exclamation-triangle', erp_money: 'bi-cash-coin',
+        erp_low_stock: 'bi-box-seam', erp_quote_expiry: 'bi-hourglass-split', erp_auto_invoice: 'bi-receipt',
+        mail_failed: 'bi-envelope-exclamation', ops: 'bi-activity', workspace: 'bi-chat-dots'
+    };
+    var action = String(row.action || '');
+    var glyph = /^bi-[a-z0-9-]+$/.test(String(row.glyph || '')) ? String(row.glyph) : (glyphs[action] || 'bi-bell');
+    var tone = tones[module] || 'gray';
+
+    if ((row.type === 'warning') || (action === 'out_stock')) {
+        tone = 'amber';
+    } else if (row.type === 'error') {
+        tone = 'rose';
+    }
+
+    return '<span class="pg-icon-tile pg-tone-' + tone + '" aria-hidden="true"><span class="bi ' + glyph + '"></span></span>';
+}
+
+// One bell row in look A (the recipes' .pg-list-row): the tile; the title
+// on one line with the time at its right, the quick actions ("Mark as read",
+// "More actions") in the time's place on hover or focus; the text, two lines
+// at most; the button and the place only when the row asks for something;
+// the unread dot at the right. A fold's head carries its count beside the
+// title and the way to its runs, which follow it as gathered lines
+// (pg_bell_run()).
 // title, place, description and details arrive from the server as
 // ready-made HTML (pg_notification_display() escapes the row's values and
 // adds the markup). time is also server-built markup: get_relative_time()
@@ -3938,7 +3967,9 @@ function pg_bell_words() {
 // as a tooltip. Everything else is a raw value and is escaped here before it
 // becomes markup. The target URL travels in a data attribute and is read by
 // the delegated click handler below, never spliced into an inline onclick.
-function pg_bell_row(row) {
+// draw, shared by one drawing of the list, gives the first asking row's
+// button the filled look: one filled button in the view.
+function pg_bell_row(row, draw) {
     var words = pg_bell_words();
     var id = parseInt(row.id, 10) || 0;
     var module = words.module[row.module] ? String(row.module) : 'system';
@@ -3950,15 +3981,14 @@ function pg_bell_row(row) {
     var group = (row.group === 'workspace') ? 'workspace' : 'site';
     var fold_head = parseInt(row.fold_head, 10) || 0;
     var fold_count = parseInt(row.fold_count, 10) || 1;
-    var glyph = /^bi-[a-z0-9-]+$/.test(String(row.glyph || '')) ? String(row.glyph) : '';
     var join = /^https?:\/\//i.test(String(row.join || '')) ? String(row.join) : '';
     var job = words.button[row.button] ? String(row.button) : '';
     var unread = (row.readed != 1);
+    var ask = (parseInt(row.ask, 10) === 1);
     var url = h(String(row.url || ''));
     var title_id = 'pg_bell_title_' + id;
-    var menu_id = 'pg_bell_menu_' + id;
     var type = h(String(row.type || ''));
-    var excerpt = String(row.description || '');
+    var text = String(row.description || '');
     var place = String(row.place || '');
     var title;
     var button = '';
@@ -3968,6 +3998,9 @@ function pg_bell_row(row) {
     var act_row = (row.act && (typeof row.act === 'object')) ? row.act : {};
     var act = words.act[act_row.kind] ? String(act_row.kind) : '';
     var act_data = '';
+    var attributes = ' notification-id="' + id + '" data-pg-bell-group="' + group + '" data-pg-bell-module="' + module + '"'
+        + (ask ? ' data-pg-bell-ask="1"' : '')
+        + (unread ? ' data-pg-bell-was-new="1"' : '');
 
     if (act === 'approve') {
         act_data = ' data-approval-id="' + (parseInt(act_row.approval_id, 10) || 0) + '"';
@@ -3977,12 +4010,19 @@ function pg_bell_row(row) {
         act_data = ' data-task-id="' + (parseInt(act_row.task_id, 10) || 0) + '"';
     }
 
-    if (place === '') {
-        place = String(row.details || '').replace(/<br\s*\/?>/gi, ' · ');
+    // A site row's details are its text when it has no excerpt (an order's
+    // total, a form's reference code), else its place; the sender stands in
+    // when there is neither.
+    var details = String(row.details || '').replace(/<br\s*\/?>/gi, ' · ');
+
+    if (text === '') {
+        text = details;
+    } else if (place === '') {
+        place = details;
     }
 
-    if ((place === '') && (excerpt === '')) {
-        place = h(String(row.user || ''));
+    if ((place === '') && (text === '')) {
+        text = h(String(row.user || ''));
     }
 
     // A meeting without its call opens the row's place like Show.
@@ -3990,51 +4030,108 @@ function pg_bell_row(row) {
         job = 'show';
     }
 
-    // The title opens the row's place as the button does; a custom row has
-    // neither.
-    title = ((glyph !== '') ? '<span class="bi ' + glyph + ' pg-bell-glyph" aria-hidden="true"></span>' : '') + String(row.title || '');
-
-    if (job !== '') {
-        title = '<button type="button" class="pg-bell-title notification-title notification-go no-popover" id="' + title_id + '" data-url="' + url + '">' + title + '</button>';
-        button = (act !== '')
-            ? '<button type="button" class="pg-bell-act pg-bell-do no-popover" data-pg-bell-do="' + act + '"' + act_data + ' aria-describedby="' + title_id + '">' + h(words.act[act]) + '</button>'
-            : (job === 'join')
-            ? '<button type="button" class="pg-bell-act pg-bell-join no-popover" data-url="' + h(join) + '" aria-describedby="' + title_id + '">' + h(words.button.join) + '</button>'
-            : '<button type="button" class="pg-bell-act notification-go no-popover" data-url="' + url + '" aria-describedby="' + title_id + '">' + h(words.button[job]) + '</button>';
-    } else {
-        title = '<div class="pg-bell-title notification-title" id="' + title_id + '">' + title + '</div>';
+    // An older run of a flow is one gathered line under its newest.
+    if (fold_head > 0) {
+        return pg_bell_run(row, attributes + ' data-pg-bell-fold="' + fold_head + '"', type, job, url, text, unread);
     }
 
-    return '<li notification-id="' + id + '" data-pg-bell-group="' + group + '" data-pg-bell-module="' + module + '"'
-        + ((parseInt(row.ask, 10) === 1) ? ' data-pg-bell-ask="1"' : '')
-        + (unread ? ' data-pg-bell-was-new="1"' : '')
-        + ((fold_head > 0) ? ' data-pg-bell-fold="' + fold_head + '"' : '')
-        + ' class="software_notification pg-bell-row list-group-item ' + (unread ? 'new' : 'viewed') + ' ' + type
-        + (((fold_head > 0) && !pgBellOpenFolds[fold_head]) ? ' pg-bell-shut' : '') + '">'
-        + '<div class="notification-card pg-bell-card">'
-        + '<div class="pg-bell-line">'
-        + '<span class="pg-bell-tag" data-module="' + module + '">' + h(words.module[module]) + '</span>'
-        + pg_bell_read_button(id, unread)
+    // The title opens the row's place as the button does; a custom row has
+    // neither. A fold's head counts its runs beside the title.
+    title = String(row.title || '');
+
+    if (job !== '') {
+        title = '<button type="button" class="pg-list-row-title pg-bell-title notification-title notification-go no-popover" id="' + title_id + '" data-url="' + url + '">' + title + '</button>';
+    } else {
+        title = '<div class="pg-list-row-title pg-bell-title notification-title" id="' + title_id + '">' + title + '</div>';
+    }
+
+    if (fold_count > 1) {
+        title = '<span class="pg-bell-title-wrap">' + title + '<span class="pg-count">' + fold_count + '</span></span>';
+    }
+
+    // A button only when the row asks for something: an answer, an approval,
+    // a meeting to join, an action in place, or an unread warning to look
+    // at. Every other row opens from its title.
+    if ((act !== '') || (job === 'reply') || (job === 'approve') || (job === 'join') || ((job === 'show') && unread && ((row.type === 'warning') || (row.type === 'error')))) {
+        var look = 'pg-button pg-button-sm pg-button-quiet';
+
+        if (draw && draw.fill && ask && unread) {
+            look = 'pg-button pg-button-sm pg-button-fill';
+            draw.fill = false;
+        }
+
+        button = (act !== '')
+            ? '<button type="button" class="' + look + ' pg-bell-act pg-bell-do no-popover" data-pg-bell-do="' + act + '"' + act_data + ' aria-describedby="' + title_id + '">' + h(words.act[act]) + '</button>'
+            : (job === 'join')
+            ? '<button type="button" class="' + look + ' pg-bell-act pg-bell-join no-popover" data-url="' + h(join) + '" aria-describedby="' + title_id + '">' + h(words.button.join) + '</button>'
+            : '<button type="button" class="' + look + ' pg-bell-act notification-go no-popover" data-url="' + url + '" aria-describedby="' + title_id + '">' + h(words.button[job]) + '</button>';
+    }
+
+    return '<li' + attributes
+        + ' class="software_notification pg-bell-row list-group-item ' + (unread ? 'new' : 'viewed') + ' ' + type + '">'
+        + '<div class="notification-card pg-bell-card pg-list-row' + (unread ? '' : ' is-read') + '">'
+        + pg_bell_tile(row, module)
+        + '<div class="pg-list-row-main">'
+        + '<div class="pg-list-row-head">'
         + title
+        + pg_bell_quick(id, unread, title_id)
+        + '<span class="pg-list-row-time pg-bell-time">' + String(row.time || '') + '</span>'
         + '</div>'
-        + '<div class="pg-bell-sub">'
-        + '<div class="pg-bell-meta">'
-        + ((place !== '') ? '<span class="pg-bell-place">' + place + '</span>' : '')
-        + '<span class="pg-bell-time">' + String(row.time || '') + '</span>'
+        + ((text !== '') ? '<p class="pg-list-row-text pg-bell-excerpt">' + text + '</p>' : '')
+        + ((fold_count > 1) ? pg_bell_fold_button(id, fold_count) : '')
+        + (((button !== '') || (place !== ''))
+            ? '<div class="pg-list-row-actions">' + button + ((place !== '') ? '<span class="pg-list-row-place pg-bell-place">' + place + '</span>' : '') + '</div>'
+            : '')
         + '</div>'
-        + '<div class="pg-bell-side">'
-        + button
-        + '<div class="pg-bell-menu-wrap">'
-        + '<button type="button" class="pg-bell-menu-toggle no-popover" aria-expanded="false" aria-controls="' + menu_id + '" aria-label="' + h(lang('More actions')) + '" aria-describedby="' + title_id + '"><span class="bi bi-three-dots" aria-hidden="true"></span></button>'
-        + '<div class="pg-bell-menu" id="' + menu_id + '" hidden>'
+        + '<div class="pg-list-row-side"><span class="pg-unread-dot pg-bell-dot"></span></div>'
+        + '</div>'
+        + '</li>';
+}
+
+// A row's quick actions, shown in the time's place on hover or focus: the
+// unread row's "Mark as read" (pg_bell_read_button()) and "More actions",
+// whose menu holds "Mark as read" (unread rows; a phone has no hover and
+// shows only the menu button), "Mark as unread" (read rows) and Delete.
+function pg_bell_quick(id, unread, title_id) {
+    var menu_id = 'pg_bell_menu_' + id;
+
+    return '<span class="pg-list-row-quick pg-bell-quick">'
+        + pg_bell_read_button(id, unread)
+        + '<span class="pg-bell-menu-wrap">'
+        + '<button type="button" class="pg-icon-button pg-icon-button-sm pg-bell-menu-toggle no-popover" aria-expanded="false" aria-controls="' + menu_id + '" aria-label="' + h(lang('More actions')) + '" aria-describedby="' + title_id + '"><span class="bi bi-three-dots" aria-hidden="true"></span></button>'
+        + '<span class="pg-bell-menu" id="' + menu_id + '" hidden>'
+        + '<button type="button" class="pg-bell-menu-item pg-bell-read-item" data-pg-bell-read-item="' + id + '"' + (unread ? '' : ' hidden') + '><span class="bi bi-check2" aria-hidden="true"></span>' + h(lang('Mark as read')) + '</button>'
         + '<button type="button" class="pg-bell-menu-item pg-bell-unread" data-pg-bell-unread="' + id + '"' + (unread ? ' hidden' : '') + '><span class="bi bi-envelope" aria-hidden="true"></span>' + h(lang('Mark as unread')) + '</button>'
         + '<button type="button" class="pg-bell-menu-item pg-bell-delete" data-pg-bell-delete="' + id + '"><span class="bi bi-trash" aria-hidden="true"></span>' + h(lang('Delete')) + '</button>'
-        + '</div>'
-        + '</div>'
-        + '</div>'
-        + '</div>'
-        + ((excerpt !== '') ? '<p class="pg-bell-excerpt">' + excerpt + '</p>' : '')
-        + ((fold_count > 1) ? pg_bell_fold_button(id, fold_count) : '')
+        + '</span>'
+        + '</span>'
+        + '</span>';
+}
+
+// An older run of a flow as one gathered line under its newest (the
+// recipes' .pg-gather-line): its time in bold, what it says, the unread dot
+// at the end, the quick actions on hover or focus. It stays a row of its
+// own, so it is read, kept unread or deleted as before.
+function pg_bell_run(row, attributes, type, job, url, text, unread) {
+    var id = parseInt(row.id, 10) || 0;
+    var title_id = 'pg_bell_title_' + id;
+    var head = parseInt(row.fold_head, 10) || 0;
+    var says = (text !== '') ? text : String(row.title || '');
+
+    says = (job !== '')
+        ? '<button type="button" class="pg-bell-title pg-bell-run-title notification-title notification-go no-popover" id="' + title_id + '" data-url="' + url + '">' + says + '</button>'
+        : '<span class="pg-bell-title pg-bell-run-title notification-title" id="' + title_id + '">' + says + '</span>';
+
+    return '<li' + attributes
+        + ' class="software_notification pg-bell-row pg-bell-run list-group-item ' + (unread ? 'new' : 'viewed') + ' ' + type
+        + (!pgBellOpenFolds[head] ? ' pg-bell-shut' : '') + '">'
+        + '<div class="notification-card pg-bell-card pg-gather-line">'
+        + '<b class="pg-bell-time">' + String(row.time || '') + '</b>'
+        + says
+        + '<span class="pg-gather-line-end">'
+        + pg_bell_quick(id, unread, title_id)
+        + '<span class="pg-unread-dot pg-bell-dot"></span>'
+        + '</span>'
         + '</div>'
         + '</li>';
 }
@@ -4225,26 +4322,28 @@ function pg_bell_filter_apply() {
     $(box).find('.pg-bell-mark-all').toggleClass('d-none', !counts.all);
 }
 
-// A row's unread dot, a button named "Mark as read"; a read row keeps its
-// place empty, and "Mark as unread" waits in its menu.
+// A row's quick "Mark as read", a check button; a read row keeps an empty
+// mark in its place, and "Mark as unread" waits in its menu.
 function pg_bell_read_button(notification_id, unread) {
     var id = parseInt(notification_id, 10) || 0;
 
     if (!unread) {
-        return '<span class="pg-bell-dot pg-bell-read" data-pg-bell-read="' + id + '" aria-hidden="true"></span>';
+        return '<span class="pg-bell-read" data-pg-bell-read="' + id + '" hidden></span>';
     }
 
-    return '<button type="button" class="pg-bell-dot pg-bell-read no-popover" data-pg-bell-read="' + id + '" aria-label="' + h(lang('Mark as read')) + '" title="' + h(lang('Mark as read')) + '"></button>';
+    return '<button type="button" class="pg-icon-button pg-icon-button-sm pg-bell-read no-popover" data-pg-bell-read="' + id + '" aria-label="' + h(lang('Mark as read')) + '" title="' + h(lang('Mark as read')) + '"><span class="bi bi-check2" aria-hidden="true"></span></button>';
 }
 
 // Draws a row read or unread: its classes, its dot and its menu's "Mark as
 // unread".
 function pg_bell_row_state($row, unread) {
     $row.toggleClass('new', unread).toggleClass('viewed', !unread);
+    $row.children('.pg-list-row').toggleClass('is-read', !unread);
     $row.find('.pg-bell-read').each(function () {
         $(this).replaceWith(pg_bell_read_button($(this).attr('data-pg-bell-read'), unread));
     });
     $row.find('.pg-bell-unread').prop('hidden', unread);
+    $row.find('.pg-bell-read-item').prop('hidden', !unread);
 }
 
 // Opens a row: an unread row is read first and open() runs once the server
@@ -4262,13 +4361,14 @@ function pg_bell_open_row($button, open) {
     edit_notification(notification_id, 'mark_read', open);
 }
 
-// The way to a flow's older runs folded under its newest, and back.
+// The way to a flow's older runs gathered under its newest ("Show N more"),
+// and back ("Hide").
 function pg_bell_fold_button(notification_id, count) {
     var open = !!pgBellOpenFolds[notification_id];
 
-    return '<button type="button" class="pg-bell-more no-popover" data-pg-bell-more="' + notification_id + '" data-pg-bell-runs="' + (count - 1) + '" aria-expanded="' + (open ? 'true' : 'false') + '">'
-        + '<span class="bi ' + (open ? 'bi-chevron-up' : 'bi-chevron-down') + '" aria-hidden="true"></span>'
-        + h(open ? lang('Show fewer') : lang('+{var:1} more').replace('{var:1}', String(count - 1))) + '</button>';
+    return '<button type="button" class="pg-gather-toggle pg-bell-more no-popover" data-pg-bell-more="' + notification_id + '" data-pg-bell-runs="' + (count - 1) + '" aria-expanded="' + (open ? 'true' : 'false') + '">'
+        + h(open ? lang('Hide') : lang('Show {var:1} more').replace('{var:1}', String(count - 1)))
+        + '<span class="bi ' + (open ? 'bi-chevron-up' : 'bi-chevron-down') + '" aria-hidden="true"></span></button>';
 }
 
 // Opens the bell on one filter: the Workspace's old inbox address
@@ -4527,6 +4627,14 @@ $(document).on('click', function (event) {
     });
 
     pg_bell_menu_close($open, false);
+});
+
+// "Mark as read" in a row's menu, as the quick check does.
+$(document).on('click', '#notifications .pg-bell-read-item', function () {
+    var $wrap = $(this).closest('.pg-bell-menu-wrap');
+
+    pg_bell_menu_close($wrap, true);
+    edit_notification(parseInt($(this).attr('data-pg-bell-read-item'), 10) || 0, 'mark_read');
 });
 
 $(document).on('click', '#notifications .pg-bell-unread', function () {

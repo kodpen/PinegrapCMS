@@ -1782,6 +1782,7 @@
     "Order #{var:1} cancelled by customer (user ID {var:2}).": "#{var:1} numaralı sipariş müşteri tarafından iptal edildi (kullanıcı kimliği {var:2}).",
     "Order #{var:1} cancelled: {var:2} affiliate commission(s) set to Ineligible, {var:3} recurring commission profile(s) stopped.": "#{var:1} numaralı sipariş iptal edildi: {var:2} ortaklık komisyonu Uygun Değil yapıldı, {var:3} yinelenen komisyon profili durduruldu.",
     "Order #{var:1} has been cancelled.": "#{var:1} numaralı sipariş iptal edildi.",
+    "Order #{var:1} not invoiced": "Sipariş #{var:1} faturalanmadı",
     "Order #{var:1} restored: {var:2} affiliate commission(s) got their status back, {var:3} recurring commission profile(s) enabled again.": "#{var:1} numaralı sipariş geri alındı: {var:2} ortaklık komisyonu eski durumuna döndü, {var:3} yinelenen komisyon profili yeniden etkinleştirildi.",
     "Order #{var:1} · {var:2}": "Sipariş #{var:1} · {var:2}",
     "Order #{var:1}: {var:2}": "Sipariş #{var:1}: {var:2}",
