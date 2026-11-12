@@ -2,8 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The report screens' shared view (the order, visitor and shipping
- * reports): from a report's result (its first summarize-by level, the
+ * The report screens' shared view (the order, visitor, shipping and ERP
+ * tax reports): from a report's result (its first summarize-by level, the
  * groups of that level, the grand total) the summary figures and the
  * chart the screen draws with the dashboard's drawing
  * (assets/js/pg_dash.js, assets/js/pg_report_view.js). The table under
@@ -271,6 +271,102 @@ function pg_report_view_shipping_chart($totals, $dates, $names)
             return $name . ': ' . lang(array('string' => '{var:1} unit{suffix:1}', 'vars' => pg_format_number($count, 0), 'suffix' => ($count == 1) ? '' : 's'));
         },
     ));
+}
+
+/**
+ * The ERP tax report's summary figures, the cards it had: calculated,
+ * deductible, the difference and, with withholding, the VAT withheld on
+ * sales; each with its note. Money is written by $money (erp_money_out()
+ * on the screen), so the figures read as the report's tables. Pure.
+ *
+ * @param array    $totals      erp_vat_report()['totals']
+ * @param bool     $withholding whether the report shows withholding
+ * @param array    $names       'calculated', 'deductible' (the tax's
+ *                              captions, erp_tax_label())
+ * @param callable $money       minor units => text
+ * @return array of label, text, note, tone
+ */
+function pg_report_view_vat_figures($totals, $withholding, $names, $money)
+{
+    $difference = (int) ($totals['difference'] ?? 0);
+    $hint = ($difference > 0)
+        ? lang('Calculated exceeds deductible')
+        : (($difference < 0) ? lang('Deductible exceeds calculated') : lang('Calculated and deductible are equal'));
+
+    $figures = array(
+        array('label' => (string) $names['calculated'], 'text' => $money((int) ($totals['calculated'] ?? 0)), 'note' => lang('Sales less sales returns'), 'tone' => ''),
+        array('label' => (string) $names['deductible'], 'text' => $money((int) ($totals['deductible'] ?? 0)), 'note' => lang(array('string' => 'Purchases {var:1} · expenses {var:2}', 'vars' => array($money((int) ($totals['deductible_purchases'] ?? 0)), $money((int) ($totals['deductible_expenses'] ?? 0))))), 'tone' => ''),
+        array('label' => lang('Difference'), 'text' => $money($difference), 'note' => $hint, 'tone' => ($difference < 0) ? 'bad' : ''),
+    );
+
+    if ($withholding) {
+        $figures[] = array('label' => lang('Withholding'), 'text' => $money((int) ($totals['withheld_sales'] ?? 0)), 'note' => lang(array('string' => 'On sales; on purchases {var:1}', 'vars' => $money((int) ($totals['withheld_purchases'] ?? 0)))), 'tone' => '');
+    }
+
+    return $figures;
+}
+
+/**
+ * The ERP tax report's chart. Over more than one month: a line of the
+ * calculated tax by month with the deductible tax dashed beside it, the
+ * gap between them the month's difference (both from the By month table).
+ * Over one month: the tax of each kind of document as rows (sales, sales
+ * returns, purchases, returns to suppliers, the expenses' deductible tax).
+ * The line draws from zero up, so a month below zero (more returns than
+ * sales) is drawn at zero; its tip says the real figure. Pure.
+ *
+ * @param array    $report erp_vat_report(): 'months', 'kinds', 'totals'
+ * @param array    $names  'calculated', 'deductible' captions, 'kinds'
+ *                         (erp_vat_kind_labels()), 'months' (month =>
+ *                         its name)
+ * @param callable $money  minor units => text
+ * @return array|null
+ */
+function pg_report_view_vat_chart($report, $names, $money)
+{
+    $months = (array) ($report['months'] ?? array());
+
+    if (count($months) > 1) {
+        $chart = array('kind' => 'line', 'label' => lang(array('string' => '{var:1} by month', 'vars' => $names['calculated'])), 'compare_label' => (string) $names['deductible'], 'values' => array(), 'compare' => array(), 'tips' => array());
+        $any = false;
+
+        foreach ($months as $month => $figures) {
+            $calculated = (int) ($figures['calculated'] ?? 0);
+            $deductible = (int) ($figures['deductible_purchases'] ?? 0) + (int) ($figures['deductible_expenses'] ?? 0);
+            $any = $any || ($calculated !== 0) || ($deductible !== 0);
+
+            $chart['values'][] = round(max(0, $calculated) / 100, 2);
+            $chart['compare'][] = round(max(0, $deductible) / 100, 2);
+            $chart['tips'][] = $names['months'][$month] . ': ' . $names['calculated'] . ' ' . $money($calculated) . ' · ' . $names['deductible'] . ' ' . $money($deductible) . ' · ' . lang('Difference') . ' ' . $money((int) ($figures['difference'] ?? 0));
+        }
+
+        if (!$any) {
+            return null;
+        }
+
+        $chart['first'] = (string) reset($names['months']);
+        $chart['last'] = (string) end($names['months']);
+
+        return $chart;
+    }
+
+    $kinds = (array) ($report['kinds'] ?? array());
+    $amounts = array(
+        'sales' => (int) ($kinds['sales']['vat'] ?? 0),
+        'sales_return' => (int) ($kinds['sales_return']['vat'] ?? 0),
+        'purchase' => (int) ($kinds['purchase']['vat'] ?? 0),
+        'purchase_return' => (int) ($kinds['purchase_return']['vat'] ?? 0),
+        'expense' => (int) ($report['totals']['deductible_expenses'] ?? 0),
+    );
+    $rows = array();
+
+    foreach ($amounts as $key => $amount) {
+        if ($amount > 0) {
+            $rows[] = array('text' => (string) $names['kinds'][$key], 'value' => round($amount / 100, 2), 'note' => $money($amount));
+        }
+    }
+
+    return $rows ? array('kind' => 'bars', 'label' => lang('Tax by document type'), 'rows' => $rows) : null;
 }
 
 /**

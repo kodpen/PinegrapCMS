@@ -308,9 +308,35 @@ foreach (array('month' => lang('Month'), 'quarter' => lang('Quarter'), 'year' =>
 }
 
 $export_url = 'erp_vat_report.php?' . h(http_build_query(array('range' => 'dates', 'from' => $period['from'], 'to' => $period['to'], 'export' => 'xlsx')));
-$difference_hint = ($totals['difference'] > 0)
-    ? lang('Calculated exceeds deductible')
-    : (($totals['difference'] < 0) ? lang('Deductible exceeds calculated') : lang('Calculated and deductible are equal'));
+
+// The figures and the chart over the tables (includes/fn/report_view.php),
+// read from the same totals and months the tables print.
+require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/layout.php');
+
+$report_view_money = function ($kurus) {
+    return erp_money_out((int) $kurus);
+};
+$report_view_month_names = array();
+
+foreach (array_keys($report['months']) as $month) {
+    $report_view_month_names[$month] = get_month_name_from_number(substr($month, 5, 2)) . ' ' . substr($month, 0, 4);
+}
+
+$report_view_names = array(
+    'calculated' => erp_tax_label('calculated'),
+    'deductible' => erp_tax_label('deductible'),
+    'kinds' => $labels,
+    'months' => $report_view_month_names,
+);
+$report_view = array(
+    'figures' => pg_report_view_vat_figures($totals, $has_withholding, $report_view_names, $report_view_money),
+    'chart' => pg_report_view_vat_chart($report, $report_view_names, $report_view_money),
+    'maps' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/maps/',
+    'strings' => array(
+        'figures' => lang('Summary'),
+        'legend' => array(lang('Few'), lang('Many')),
+    ),
+);
 
 echo
 pg_page_shell([
@@ -319,6 +345,7 @@ pg_page_shell([
     'icon' => 'erp',
     'heading' => h($title),
     'heading_description' => h(lang(array('string' => 'The tax on the invoices, returns and expenses of a period, by rate, in {var:1}.', 'vars' => $base))),
+    'head' => '<link rel="stylesheet" href="' . h(pg_dashboard_v2_style_url()) . '"><style>@layer custom { .pg-report-view { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; margin-block: 1rem; } .pg-report-view > div, .pg-report-view .pg-dash-card { width: 100%; min-width: 0; } .pg-report-view .pg-dash-figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: .75rem; } .pg-report-view .pg-dash-line { display: block; width: 100%; height: 11rem; } .pg-report-view .pg-report-view-ends { display: flex; justify-content: space-between; gap: 1rem; margin-top: .375rem; font-size: .75rem; color: var(--pgd-muted); } }</style>',
     'cancel' => false,
 ]) . '
 <main id="content" class="container-fluid">
@@ -364,28 +391,12 @@ pg_page_shell([
                 </div>
             </form>
 
-            <div class="row g-5">
-                <div class="col-6 lg:col-' . ($has_withholding ? '3' : '4') . '"><div class="card h-100"><div class="card-body">
-                    <div class="small text-uppercase fg-secondary">' . h(erp_tax_label('calculated')) . '</div>
-                    <div class="h4 mb-0">' . $money($totals['calculated']) . '</div>
-                    <div class="small fg-secondary">' . lang('Sales less sales returns') . '</div>
-                </div></div></div>
-                <div class="col-6 lg:col-' . ($has_withholding ? '3' : '4') . '"><div class="card h-100"><div class="card-body">
-                    <div class="small text-uppercase fg-secondary">' . h(erp_tax_label('deductible')) . '</div>
-                    <div class="h4 mb-0">' . $money($totals['deductible']) . '</div>
-                    <div class="small fg-secondary">' . h(lang(array('string' => 'Purchases {var:1} · expenses {var:2}', 'vars' => array(erp_money_out($totals['deductible_purchases']), erp_money_out($totals['deductible_expenses']))))) . '</div>
-                </div></div></div>
-                <div class="col-6 lg:col-' . ($has_withholding ? '3' : '4') . '"><div class="card h-100 border-primary"><div class="card-body">
-                    <div class="small text-uppercase fg-secondary">' . lang('Difference') . '</div>
-                    <div class="h4 mb-0">' . $money($totals['difference']) . '</div>
-                    <div class="small fg-secondary">' . h($difference_hint) . '</div>
-                </div></div></div>
-                ' . ($has_withholding ? '<div class="col-6 lg:col-3"><div class="card h-100"><div class="card-body">
-                    <div class="small text-uppercase fg-secondary">' . lang('Withholding') . '</div>
-                    <div class="h4 mb-0">' . $money($totals['withheld_sales']) . '</div>
-                    <div class="small fg-secondary">' . h(lang(array('string' => 'On sales; on purchases {var:1}', 'vars' => erp_money_out($totals['withheld_purchases'])))) . '</div>
-                </div></div></div>' : '') . '
-            </div>
+            <section class="pg-dash pg-report-view" id="pg_report_view" aria-label="' . h(lang('Summary')) . '">
+                <div class="pg-report-view-figures"></div>
+                <div class="pg-report-view-chart"></div>
+                <script type="application/json" id="pg_report_view_data">' . (string) json_encode($report_view, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) . '</script>
+            </section>
+            ' . pg_js_bundle_tags('assets/js/pg_dash.min.js') . pg_js_bundle_tags('assets/js/pg_report_view.min.js') . '
 
             ' . $output_notes . '
 
