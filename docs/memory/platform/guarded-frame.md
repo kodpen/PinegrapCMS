@@ -21,7 +21,7 @@ module: guarded_frame
 - Shell to panel: `{pg: 'guarded-frame', height}`, a whole number up to `PG_GUARDED_FRAME_MAX_HEIGHT` (100000). The panel takes it only when `event.source` is the shell's frame window: the page can post to `top` too, and those are dropped. The card bounds the height further (LP2).
 
 ## Which route answers a stored page?
-- `live_page.php?message=<id>[&mode=static]`: a panel session, the Workspace on, a member who may read the channel (`ws_can_read_channel()`), the message not deleted, its file `.html`/`.htm` of at most 500 KB (`PG_GUARDED_FRAME_MAX_BYTES`), read with `pg_file_reader_path()`. The id must be plain digits (`pg_guarded_frame_page_id()`).
+- `live_page.php?message=<id>[&mode=static]`: a panel session, the Workspace on, a member who may read the channel (`ws_can_read_channel()`), the message not deleted, its file a live page (`ws_page_is_page()`, `workspace/agent-page.md`) of at most 500 KB (`PG_GUARDED_FRAME_MAX_BYTES`), read with `pg_file_reader_path()`. The id must be plain digits (`pg_guarded_frame_page_id()`).
 - A request whose `Sec-Fetch-Dest` is not `iframe` (or missing) is refused: the shell is never a page of its own. Every refusal is the same 404 line, nothing of the page.
 - The answer replaces the firewall's own policy (`header_remove()` of the report-only one).
 
@@ -32,5 +32,5 @@ module: guarded_frame
 - A blocked self-navigation shows Chrome's error page in the frame: the page is gone, nothing left the frame.
 
 ## What does it not cover?
-- WebRTC: no CSP directive stops a peer connection, so a page could learn the reader's IP through STUN. It holds no secret of the reader's; a later step may close it if wanted.
+- WebRTC: no CSP directive stops a peer connection, so a page could learn the reader's IP through STUN. It holds no secret of the reader's.
 - Outside pictures in a mail ("Show pictures") and links in a new tab are WM12's: they widen `img-src` and add `allow-popups` only in that mode.
