@@ -402,6 +402,8 @@
 - layout-form-converter-editor.md: W22b "Convert to design elements" on a custom form page's system region: the button, the layout_code convert action, the widget placed after the region, toasts, rows the sync keeps
 - layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing [decision: here]
 - layout-widget-offer.md: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, the panel buttons that place it and remove the region, why no 301
+- legacy-bootstrap-census.md: Census of the starting sites' Legacy designs for the Bootstrap 5.3.8 helper (LB1, #8940): sets, Bootstrap 3 and theme classes, scripts, theme parts, map coverage and gaps
+- legacy-bootstrap-trial.md: The LB1 hand trial (#8940): a Legacy page with Bootstrap 5.3.8 in place of the classic sheet, how it was made, what broke, how near it came; pictures beside the plan
 - legacy-design-framework.md: The legacy framework key of a classic style moved into the editor (LG3): registry entry and flags, who writes it, the 11.0.187 data step, the Legacy / Eski badge on Visual Designs
 - legacy-design-theme.md: The theme file of a design moved from a classic style: the activated theme the classic head printed, on the site, the canvas and the Theme file hint; the dry run's warning (LG1, #8694)
 - legacy-frame-split.md: A classic style's frame split at its page regions (LG6, #8819): page content in each page's tree, the rest shared parts ("Main top"), their categories, the open and the bulk move [decision: decisions-made-product-43.md]
