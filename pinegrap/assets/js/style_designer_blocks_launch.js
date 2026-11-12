@@ -72,12 +72,18 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'launch-',
         group: { title: _sdT('Product Launch'), icon: 'bi-phone' },
         items: [
-            { label: _sdT('Launch: Product Hero'),     type: 'component', icon: 'bi-phone',              extra: { componentType: 'launch-hero' } },
-            { label: _sdT('Launch: Sticky Showcase'),  type: 'component', icon: 'bi-layout-sidebar',     extra: { componentType: 'launch-showcase' } },
-            { label: _sdT('Launch: Camera Band'),      type: 'component', icon: 'bi-camera',             extra: { componentType: 'launch-camera' } },
-            { label: _sdT('Launch: Spec Comparison'),  type: 'component', icon: 'bi-table',              extra: { componentType: 'launch-specs' } },
-            { label: _sdT('Launch: In the Box'),       type: 'component', icon: 'bi-box-seam',           extra: { componentType: 'launch-box' } },
-            { label: _sdT('Launch: Buy Band'),         type: 'component', icon: 'bi-bag',                extra: { componentType: 'launch-buy' } }
+            { label: _sdT('Launch: Product Hero'),     type: 'component', icon: 'bi-phone',              extra: { componentType: 'launch-hero' },
+              desc: _sdT('A dark band with the product name, a line, the price and two buttons that rise in on load, beside a large phone that scales in.') },
+            { label: _sdT('Launch: Sticky Showcase'),  type: 'component', icon: 'bi-layout-sidebar',     extra: { componentType: 'launch-showcase' },
+              desc: _sdT('A heading over a picture that stays in view beside three panels for the display, chip and battery, each sliding up as it comes in.') },
+            { label: _sdT('Launch: Camera Band'),      type: 'component', icon: 'bi-camera',             extra: { componentType: 'launch-camera' },
+              desc: _sdT('A tall dark photo band that moves slower than the page, with a heading, a line and three camera figures over a shade at its foot.') },
+            { label: _sdT('Launch: Spec Comparison'),  type: 'component', icon: 'bi-table',              extra: { componentType: 'launch-specs' },
+              desc: _sdT('A table comparing three models with their prices, specs grouped under display, camera and battery, its head row staying at the top.') },
+            { label: _sdT('Launch: In the Box'),       type: 'component', icon: 'bi-box-seam',           extra: { componentType: 'launch-box' },
+              desc: _sdT('A centred heading over a row of four pictures of what comes in the box, each with its name.') },
+            { label: _sdT('Launch: Buy Band'),         type: 'component', icon: 'bi-bag',                extra: { componentType: 'launch-buy' },
+              desc: _sdT('A card per model with its picture, a line, the price from and per month, and buy and learn more buttons, shown one after another.') }
         ],
         build: function (ctype) {
 
