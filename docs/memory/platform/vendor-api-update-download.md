@@ -1,17 +1,17 @@
 ---
 name: vendor-api-update-download
-description: Download, backup and replace of a signed update behind PG_VENDOR_API_V1 (PR #3632): pg_vendor_update_steps(), fetch order, package file, refusals, security log, manifest shape
+description: Download, backup and replace of a signed update (PR #3632, PG_VENDOR_API_V1 on): pg_vendor_update_steps(), fetch order, package file, refusals, security log, manifest shape
 ---
 
 ## What runs after the check step?
-- `includes/panel/software.php` `download`, `backup`, `replace` read only `$_SESSION['software']['update']` (`pg_panel_software_update_pin()`; none: "Start the update again"). With the switch off they run api2's fixed package as before.
+- `includes/panel/software.php` `download`, `backup`, `replace` read only `$_SESSION['software']['update']` (`pg_panel_software_update_pin()`; none: "Start the update again"). Switched off (the way back until plan step P9) they run api2's fixed package.
 - `pg_vendor_update_download($pin)` (`includes/fn/update.php`; on success its `pin` is the session pin plus the verified manifest's `git_ref`, `pg_vendor_update_pin_manifest()`) runs the pure `pg_vendor_update_steps($pin, $site, $keys, $observed, $from)` after each fetch: signature, manifest, download, package, zip_magic, zip_version (`update_steps.json`). A step whose observation is missing answers `pending`, so nothing is fetched before the checks ahead of it pass: manifest and signature addresses (`pg_vendor_update_url_ok()`: https, the base's host and effective port, no user info, backslash, blank or control byte), OpenSSL present and a known key id come before any fetch; the package URL before the package.
 - Manifest cap 64 KB, signature 4 KB, package capped at the pinned size into `data/temp/<package_file>` opened with `x`. A non-200 manifest or signature counts as no signature (`signature_invalid`).
 - `pg_vendor_update_verify()`: blanks stripped, strict base64, `openssl_verify(..., OPENSSL_ALGO_SHA256)`; only `=== 1` passes.
 - "Newer" is judged only at zip_version: newer than VERSION, or equal for Repair or for another beta build than the build file's (`update-beta-builds.md`).
 
 ## What is the manifest read as?
-- `pg_vendor_manifest_read()`: JSON with `schema` 1, `version`, `channel`, `build` ('' when absent), optional `git_ref` ('' when absent; a tag or commit name without a slash, else no manifest) and `artifacts`, a list whose one entry of `kind` `update` gives size (int) and sha256; none or two is no manifest (`manifest_mismatch`). The vendor tool's real output is to be checked against this in P8's docker try.
+- `pg_vendor_manifest_read()`: JSON with `schema` 1, `version`, `channel`, `build` ('' when absent), optional `git_ref` ('' when absent; a tag or commit name without a slash, else no manifest) and `artifacts`, a list whose one entry of `kind` `update` gives size (int) and sha256; none or two is no manifest (`manifest_mismatch`). Not yet checked against the vendor tool's real output: no signed release has been read end to end.
 
 ## What do backup and replace do?
 - Backup passes the pin's package to `pg_update_backup_create()`. Replace runs `pg_vendor_update_recheck()` (steps from `package`: size, sha256, in-ZIP version from the file on disk) right before `pg_extract_archive()`, so a file swapped after the download step is refused.
@@ -22,7 +22,8 @@ description: Download, backup and replace of a signed update behind PG_VENDOR_AP
 - Refusal: `pg_vendor_update_refusal_message($reason)`, one text per reason. `pg_vendor_update_security_event()` marks the log line "refused as a security event" for a complete answer that is not the pinned release (bad signature, unknown key, manifest, foreign host or status, package, not a zip, in-ZIP version); not for `signature_unverifiable` or `not_newer`. A body past the cap counts as another size.
 
 ## Which keys?
-- `pg_vendor_release_keys()` is empty until P5c, so every key id is unknown and nothing installs with the switch on.
+- `pg_vendor_release_keys()` is empty until P5c, so nothing installs: no release offered is no update; an offered one is refused at the signature step as `unknown_key_id` (a security event), before any fetch.
+- So P2 and P5c land before the 2026.11.0 release branch (`plans/kodpen-vendor-api-client.md`): a release without keys never updates from the panel, only by `download_assistant.php`.
 
 ## Tests?
 - `tests/vendor_update_steps_test.php`: every vector case after the check, the pending order, address rules, manifest shapes, a P-256 pair made with `pg_openssl_key_new()`, a ZIP built in the test, a file swapped before replace. The network path itself is not unit tested.
