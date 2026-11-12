@@ -5,7 +5,7 @@ description: Order of the polishing round after Launch: every shipped template's
 
 ## How does a template's polishing go?
 - Step `<id>-1`: its blocks. First the reuse search ([[design-template-own-look]]): a block of the same structure is placed or extended, never copied; general blocks go into the general groups, only sector-specific ones into the family (prefix = the template's short name). The PR body names the blocks reused and added. Step `<id>-2`: home and signature pages rebuilt on it (the sector's pages, not the standard ones), motion where it fits, version raised, its `designer/design-template-<id>.md` updated. A small template may do both in one PR; a big one a third step. Main plan: [[design-template-own-looks]].
-- From when L3 lands, up to four templates at a time, in the order below; a template's `-2` waits for its `-1`.
+- Up to four templates at a time, in the order below; a template's `-2` waits for its `-1`.
 
 ## In which order, and why?
 0. G1, G2 (after L1): general blocks the sector templates share, checked against the existing groups first, so later families stay small. Done in #8082: eight of ten were already palette blocks; spaces to hire and seasonal hours were added. Which block covers each: [[designer-blocks-general]].
@@ -44,7 +44,7 @@ description: Order of the polishing round after Launch: every shipped template's
 
 - Podcast: `-1` #8785, `-2` #8845 done.
 
-- Recruitment: `-1`, `-2` open.
+- Recruitment: `-1` #8876 done; `-2` open.
 
 - Restaurant: `-1`, `-2` open.
 
