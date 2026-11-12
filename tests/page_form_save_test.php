@@ -30,8 +30,8 @@ function test_page_form_clean_name()
 }
 
 // The name is the page's address. IIS decodes the path before PHP reads it:
-// a "?" (%3F) cut the name at the router as the query string, and "%" with
-// two hex digits is a double escape IIS answers with 404.11. Both become
+// a "?" (%3F) cut the name at the router as the query string, and "+" or "%"
+// with two hex digits is a double escape IIS answers with 404.11. They become
 // underscores as spaces do; "#" (%23) reaches the router whole and is kept.
 function test_page_form_clean_name_address_characters()
 {
@@ -41,6 +41,8 @@ function test_page_form_clean_name_address_characters()
 	pg_assert_same('', pg_page_form_clean_name('pg-test-soru?isareti', 'standard')['error'], 'cleaned, not refused');
 	pg_assert_same('pg-test-diyez#isareti', pg_page_form_clean_name('pg-test-diyez#isareti', 'standard')['name']);
 	pg_assert_same('çay_ğ', pg_page_form_clean_name('çay?ğ', 'standard')['name'], 'letters are kept');
+	pg_assert_same('pg-test-arti_isaret', pg_page_form_clean_name('pg-test-arti+isaret', 'standard')['name'], 'a plus sign');
+	pg_assert_same('C__', pg_page_form_clean_name('C++', 'standard')['name']);
 }
 
 function test_page_form_clean_name_length()

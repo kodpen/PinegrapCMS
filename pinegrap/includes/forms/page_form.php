@@ -3762,15 +3762,17 @@ function pg_page_form_save_type_links($page_type, $page_id, $user)
 
 /**
  * The name a page is saved under, as both screens clean it: spaces,
- * ampersands, question marks and percent signs become underscores. The name
- * is the page's address: IIS decodes the path before PHP reads it, so a "?"
- * (sent as %3F) cut the name at the router as the start of the query string,
- * and a "%" followed by two hex digits is a double escape IIS answers with
- * its own 404.11 before PHP runs. Catalog and catalog detail pages take part
- * of their address from the item after the page name, so their name may not
- * hold a forward slash. A name longer than the page_name column (100
- * characters) is refused: the session is not strict, so the column would cut
- * it and the page could end up with the name of another page.
+ * ampersands, question marks, percent signs and plus signs become
+ * underscores. The name is the page's address: IIS decodes the path before
+ * PHP reads it, so a "?" (sent as %3F) cut the name at the router as the
+ * start of the query string, and IIS request filtering (allowDoubleEscaping
+ * off, its default) answers a path holding "+" or a "%" followed by two hex
+ * digits with its own 404.11 before PHP runs. Catalog and catalog detail
+ * pages take part of their address from the item after the page name, so
+ * their name may not hold a forward slash. A name longer than the page_name
+ * column (100 characters) is refused: the session is not strict, so the
+ * column would cut it and the page could end up with the name of another
+ * page.
  *
  * @param string $name       The trimmed posted name
  * @param string $page_type  The type the page is saved as
@@ -3790,7 +3792,7 @@ function pg_page_form_clean_name($name, $page_type)
     }
 
     return array(
-        'name' => str_replace(array(' ', '&', '?', '%'), '_', $name),
+        'name' => str_replace(array(' ', '&', '?', '%', '+'), '_', $name),
         'error' => $error,
         'too_long' => $too_long,
     );

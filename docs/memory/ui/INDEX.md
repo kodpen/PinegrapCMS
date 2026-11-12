@@ -423,7 +423,7 @@
 - page-form-page-fields.md: Create Page / Edit Page and the designer's page type pane: page settings are typed page picker fields (pg_page_form_page_field()); Settings and the user start page too (#8782)
 - page-form-refused-save.md: Create Page and Edit Page come back with what was typed when a save is refused: the stored post, the redraw helpers in includes/forms/page_form.php, what is not redrawn
 - page-list-paging.md: The pages list (view_pages.php) on the list table driver (paged since #6114, issues #6076 #6088): views, source, bulk actions by selection, folder access in SQL, inherited styles
-- page-name-address-characters.md: Which characters a page name saved on Add Page, Edit Page, Mass Edit and the Pages quick edit loses (space, &, ?, % become _), why, and what # and older names do
+- page-name-address-characters.md: Which characters a page name saved on Add Page, Edit Page, Mass Edit and the Pages quick edit loses (space, &, ?, %, + become _), why, and what # and older names do
 - page-shared-form.md: The page create and edit screens share includes/forms/page_form.php: the type picker and System Options card, and the save checks; what differs and what stays in the screens
 - page-style-screen-guards.md: Page style screens: which styles the custom edit screen opens, where View Source returns, how bulk delete reads its selection
 - pages-list-bulk-edit-fixes.md: Pages list and Mass Edit fixes (#5288-#5293): a deleted page in Delete Selected, too long values, Find & Replace skips, stale SEO scores, column names and row labels

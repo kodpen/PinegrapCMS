@@ -9,7 +9,7 @@ description: The page create and edit screens share includes/forms/page_form.php
 - Saving: `pg_page_form_type_properties_from_post()`, `pg_page_form_save_type_links()`, and the helpers below. The save half moved here in #3024.
 
 ## Which save checks do both screens share?
-- `pg_page_form_clean_name($name, $type)`: spaces, `&`, `?` and `%` become `_` (`page-name-address-characters.md`); a catalog or catalog detail name with `/` gets the error. `pg_page_form_refuse($liveform, $errors, $url)` marks the errors and redirects back; it returns only when there are none.
+- `pg_page_form_clean_name($name, $type)`: spaces, `&`, `?`, `%`, `+` become `_` (`page-name-address-characters.md`); a catalog or catalog detail name with `/` gets the error. `pg_page_form_refuse($liveform, $errors, $url)` marks the errors and redirects back; it returns only when there are none.
 - `pg_page_type_user_may_set($user, $type)`: create saves a type the user was not given as `standard`; edit keeps the stored type (`$may_save_page_type`).
 - `pg_page_type_custom_form_errors($page_id, $check_settings)`: the form name another page holds, then `pg_cf_legacy_settings_errors()` with the live-page closure (written once here). Create passes page 0 and always checks the settings; edit checks the name always and the settings only when `$may_save_page_type` (`designer/custom-form-email-and-confirmation-fallbacks.md`).
 - `pg_page_form_index_flags($sitemap, $_POST)`: noindex drops the page from the site map, nofollow only with noindex. `pg_page_form_noindex_sql($flags, pg_page_noindex_ready())` gives the INSERT `columns`/`values` and the UPDATE `set`, ints inline (`visitors/page-noindex-switch.md`).

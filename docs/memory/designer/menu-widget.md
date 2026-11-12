@@ -30,4 +30,4 @@ module: widgets_lists_menu, widgets_menu
 - The menu's effect (pop-up, accordion and `software.init_menu()`), its `class` and `active_item_class` and the item `class` column: the design gives the look. A parent with sub-items is a dropdown toggle, not a link. A `<menu>` region node becomes this widget with "Make designable" ([[region-node-to-widget]]).
 
 ## How is a page item's address built?
-- `OUTPUT_PATH` plus the page name through `encode_url_path()`, as the classic menu links it: a page name may hold `#`, and one saved before #8984 `?` or `%` (`ui/page-name-address-characters.md`), and a raw one cut the link at the `?` or `#`. The Menu Sequence widget and the classic `<menu_sequence>` region encode their previous and next links the same way.
+- `OUTPUT_PATH` plus the page name through `encode_url_path()`, as the classic menu links it: a page name may hold `#`, and one saved before #8984 `?`, `%` or `+` (`ui/page-name-address-characters.md`), and a raw one cut the link at the `?` or `#`. The Menu Sequence widget and the classic `<menu_sequence>` region encode their previous and next links the same way.
