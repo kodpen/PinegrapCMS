@@ -13,7 +13,7 @@ description: The Podcast block family (podcast- prefix): episode hero with chapt
 - `podcast-transcript` (Podcast: Transcript): `h2`, a line, the two speakers, Read the Full Transcript; beside them a part of the transcript (`pg-podcast-script`): the chapter as an `h3` with its time, then six turns, each a `<time>` and the speaker's name over the words.
 
 ## Why is there no player?
-- A palette block cannot bind an audio file outside a widget, so an `<audio>` would be dead. Listen Now is a link; episode pages keep the media widget.
+- A palette block has no episode record behind it, so an `<audio>` would play nothing. Listen Now is a link; the episode record's page plays its Audio file in the template's own player (`$episode_player`, `pinegrap-podcast/parts.php`, a `src` binding).
 
 ## Why are these not reused blocks?
 - `music-release` lists an album's tracks, not where a talk turns; `timeline-horizontal` is dated steps; `news-live-blog` has timed updates without speakers; `pricing-tiers` gives a price per tier, not where the mention plays.
@@ -24,12 +24,12 @@ description: The Podcast block family (podcast- prefix): episode hero with chapt
 ## How are the drawings made?
 - Bars are background gradients; the middle mark's label is set in by `margin-left: 46%`, not positioned, so it lines up on the canvas too ([[designer-block-style]]).
 - The wave is a striped gradient cut by a mask, with the `-webkit-` prefix beside `mask-image`.
-- Eyebrows and chapter times use the theme's darker shade (`text-primary-emphasis`, `--bs-primary-text-emphasis`); secondary buttons `btn border link-body-emphasis`: small primary text and outline buttons are under 4.5:1 in dark mode ([[designer-block-theme-colours]]).
+- Eyebrows and chapter times use the theme's darker shade (`text-primary-emphasis`); secondary buttons `btn border link-body-emphasis`: small primary text and outline buttons are under 4.5:1 in dark mode ([[designer-block-theme-colours]]).
 
 ## Translation choices
 - Chapters are "Kısımlar", Transcript "Metin dökümü", a mention "anons", host "sunucu", guest "konuk", Hero "Giriş". A price reuses "Starting from" ("Başlangıç fiyatı"): "From" is "Kimden".
 
 ## How is it tested?
-- `tests/designer_blocks_podcast_test.php` (Node runner `tests/helpers/designer_family_run.php`): the shared checks plus no light primary text or outline button; per block its words, headings and entrances; six numbers, seven transcript rows; times, lists and hidden drawings read from the file; rules: theme variables, no `!important` or child selector, mask prefix, 46% alignment.
+- `tests/designer_blocks_podcast_test.php` (under Node): the shared checks plus no light primary text or outline button; per block its words, headings and entrances; six numbers, seven transcript rows; times, lists and hidden drawings read from the file; rules: theme variables, no `!important` or child selector, mask prefix, 46% alignment.
 
 Related: docs/memory/designer/design-template-own-look.md, docs/memory/designer/designer-blocks-overview.md
