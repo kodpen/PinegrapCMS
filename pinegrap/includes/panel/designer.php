@@ -990,7 +990,7 @@ function pg_panel_designer($request, $action)
                 respond(array('status' => 'error', 'message' => lang('The style could not be found.')));
             }
             if ($style['style_layout'] !== 'visual_designer') {
-                respond(array('status' => 'error', 'message' => lang('Only designs made with the visual editor can be deleted here.')));
+                respond(array('status' => 'error', 'message' => lang('Only designs made in the Page Design Studio can be deleted here.')));
             }
             $dd = pg_designer_delete_design($style_id, $user);
             if (!$dd['ok']) {

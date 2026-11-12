@@ -435,7 +435,7 @@ function api_design_page_free_or_fail($page) {
 
 	if (!pg_collab_may_edit_page('', $page['page_id'])) {
 
-		api_fail(409, 'page_open_in_editor', lang('Somebody has this page open in the Visual Page Editor. Try again when they are done, or make the change there.'));
+		api_fail(409, 'page_open_in_editor', lang('Somebody has this page open in the Page Design Studio. Try again when they are done, or make the change there.'));
 
 	}
 
@@ -585,7 +585,7 @@ function api_design_pages_create($params) {
 
 	if (!isset($visual[$design_id]) && (int)api_value("SELECT COUNT(*) FROM page WHERE page_style = '" . $design_id . "' AND page_tree_json IS NOT NULL AND page_tree_json <> ''") === 0) {
 
-		api_fail_validation(lang('The design was not made with the Visual Page Editor.'), 'design_id');
+		api_fail_validation(lang('The design was not made in the Page Design Studio.'), 'design_id');
 
 	}
 
@@ -608,7 +608,7 @@ function api_design_pages_create($params) {
 
 		if (!$source) {
 
-			api_fail_validation(lang('There is no page of a visual design with that id.'), 'copy_from');
+			api_fail_validation(lang('There is no design page with that id.'), 'copy_from');
 
 		}
 
@@ -620,7 +620,7 @@ function api_design_pages_create($params) {
 
 		if (function_exists('_pg_cf_page_form_widgets') && _pg_cf_page_form_widgets($copy_from)) {
 
-			api_fail(409, 'page_has_form', lang('The page to copy has a form of its own. Duplicate it in the Visual Page Editor, which makes the copy\'s form.'), 'copy_from');
+			api_fail(409, 'page_has_form', lang('The page to copy has a form of its own. Duplicate it in the Page Design Studio, which makes the copy\'s form.'), 'copy_from');
 
 		}
 

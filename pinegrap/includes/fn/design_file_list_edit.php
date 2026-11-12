@@ -208,7 +208,7 @@ function pg_design_file_list_cells(array $file, array $quick_edit, $optimize_per
             $output_optimize_button = '<a class="btn btn-sm btn-text theme-success" title="' . h(lang('Optimize this image')) . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/optimize.php?id=' . $id . get_token_query_string_field() . h('&send_to=' . urlencode(PATH . SOFTWARE_DIRECTORY . '/view_design_files.php')) . '"><i class="bi bi-fast-forward-circle" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Optimize this image')) . '</span>' . $optimize_percent_html . '</a>';
         }
 
-        $output_edit_image_button = '<button type="button" class="btn btn-sm btn-text theme-secondary" title="' . h(lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor'))))) . '" aria-label="' . h(lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor'))))) . '" data-pg-image-edit="' . h($file['name']) . '"><i class="bi bi-brush" aria-hidden="true"></i></button>';
+        $output_edit_image_button = '<button type="button" class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Edit this image in the Design Canvas')) . '" aria-label="' . h(lang('Edit this image in the Design Canvas')) . '" data-pg-image-edit="' . h($file['name']) . '"><i class="bi bi-brush" aria-hidden="true"></i></button>';
         $editor_image = true;
     }
 

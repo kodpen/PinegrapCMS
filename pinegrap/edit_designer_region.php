@@ -132,7 +132,7 @@ $liveform->remove_form();
             $liveform_common = new liveform('edit_common_region');
             $liveform_common->add_error(
                 h(lang(array('string' => 'This common region is the shared component "{var:1}". Delete the component first; its content comes back here, then the region can be deleted.', 'vars' => $component_name)))
-                . ' <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_system_style.php?component=' . (int) $component_id . '">' . h(lang('Edit in the visual designer')) . '</a>');
+                . ' <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_system_style.php?component=' . (int) $component_id . '">' . h(lang('Edit in the Page Design Studio')) . '</a>');
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_common_region.php?id=' . $id);
             exit();
         }

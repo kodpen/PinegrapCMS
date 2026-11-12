@@ -428,7 +428,7 @@ function pg_page_quick_decide($page, $field, $value, $role, $device = 'desktop')
     $decision = pg_page_bulk_decide($page, array($keys[$field] => $value), $role);
 
     if (($field === 'style') && ($decision['style_skipped'] || !$decision['styles'])) {
-        return array('ok' => false, 'decision' => null, 'message' => lang('A page made in the visual editor keeps the style it was designed with.'));
+        return array('ok' => false, 'decision' => null, 'message' => lang('A page made in the Page Design Studio keeps the style it was designed with.'));
     }
 
     return array('ok' => true, 'decision' => $decision, 'message' => '');

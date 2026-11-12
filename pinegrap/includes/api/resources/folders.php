@@ -583,7 +583,7 @@ function api_folder_destination_or_fail($folder_id, $field) {
 
 	if (($folder_id === api_folder_drafts_id()) && ($folder_id > 0)) {
 
-		api_fail_validation(lang('The drafts folder is filled by the Visual Page Editor and cannot be used here.'), $field);
+		api_fail_validation(lang('The drafts folder is filled by the Page Design Studio and cannot be used here.'), $field);
 
 	}
 

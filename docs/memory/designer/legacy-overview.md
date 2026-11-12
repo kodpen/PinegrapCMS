@@ -4,7 +4,7 @@ description: Start file for moving classic styles to the visual designer: owner 
 ---
 
 ## What is it?
-- A designer moves classic styles to the visual designer from Move to the visual designer (`legacy_to_designer.php`, under All Page Styles): a report, a dry run, then a run. A style moved alone becomes a design itself; a set (styles with the same ordered CSS and JS, collection and theme) becomes one new Legacy design, badge "Legacy" / "Eski".
+- A designer moves classic styles to the visual designer from Move to the Page Design Studio (`legacy_to_designer.php`, under All Page Styles): a report, a dry run, then a run. A style moved alone becomes a design itself; a set (styles with the same ordered CSS and JS, collection and theme) becomes one new Legacy design, badge "Legacy" / "Eski".
 - Owner (2026-11-11, #8671, `workflow/decisions-made-product-43.md`): a set moves as one design; the page content is edited in the page; a back-to-classic button; a helper towards Bootstrap 5.3.8 as a plan of its own. Not chosen: joining designs moved one by one earlier to their set's design; never propose that merge.
 
 ## Which file holds what?

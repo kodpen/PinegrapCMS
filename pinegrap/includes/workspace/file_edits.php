@@ -501,8 +501,8 @@ function ws_file_edit_js_strings()
         'file_versions'        => ws_js_template('{var:1} earlier version(s)', 1),
         'file_versions_title'  => lang('Earlier versions'),
         'file_versions_by'     => ws_js_template('replaced by {var:1}', 1),
-        'file_editor_loading'  => lang('The image editor is loading…'),
-        'file_editor_missing'  => lang('The image editor could not be loaded.'),
+        'file_editor_loading'  => lang('The Design Canvas is loading…'),
+        'file_editor_missing'  => lang('The Design Canvas could not be loaded.'),
         'file_cells_unsaved'   => lang('The changed cells are not saved. Close the window anyway?'),
         'file_paragraphs_unsaved' => lang('The changed paragraphs are not saved. Close the window anyway?'),
     );

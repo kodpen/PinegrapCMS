@@ -750,7 +750,7 @@ $pages[] = array(
                     $col(array(
                         $el('span', 'badge rounded-pill text-bg-primary mb-3', lang('Badge'), array(), array('text' => lang('New site, ready to go'))),
                         $heading('h1', lang('Hello, Pinegrap!'), 'display-5 fw-bold mb-3'),
-                        $para(lang('This site is ready. Change the words, add your pictures and publish — every block on these pages can be edited in the visual editor.'), 'lead text-body-secondary mb-4'),
+                        $para(lang('This site is ready. Change the words, add your pictures and publish — every block on these pages can be edited in the Page Design Studio.'), 'lead text-body-secondary mb-4'),
                         $el('div', 'd-flex flex-wrap gap-2 mb-4', lang('Buttons'), array(
                             $link(lang('Our Services'), '{{page:services}}', 'btn btn-primary btn-lg px-4'),
                             $link(lang('Write to Us'), '{{page:contact}}', 'btn btn-secondary btn-lg px-4'),
@@ -860,7 +860,7 @@ $pages[] = array(
                     ), '', '4'),
                     $col(array(
                         $el('div', 'accordion', lang('FAQ'), array(
-                            $faq(1, lang('How do I change the text and the pictures?'), lang('Open the page in the visual editor, click what you want to change and type. Pictures are swapped from the options panel.')),
+                            $faq(1, lang('How do I change the text and the pictures?'), lang('Open the page in the Page Design Studio, click what you want to change and type. Pictures are swapped from the options panel.')),
                             $faq(2, lang('Can I add pages of my own?'), lang('Yes. Add a page from the editor\'s toolbar, build it from the palette and publish it; it gets its own address.')),
                             $faq(3, lang('What happens to the messages sent from the contact page?'), lang('Each message opens a conversation. You answer it from the control panel, and the visitor reads the answer and writes back on the site.')),
                             $faq(4, lang('Can I change the colours and the look later?'), lang('Any time: Settings, Design, Theme. The look and the colour palette change every page at once and leave the content as it is.')),
@@ -1348,7 +1348,7 @@ $pages[] = array(
                 $container(array(
                     $heading('h2', lang('What Pinegrap does for this site'), 'h4 mb-4'),
                     $row(array(
-                        $feature('bi-brush', lang('Visual editor'), lang('Pages are designed on the canvas: drag blocks, write on the page, publish every tab at once.')),
+                        $feature('bi-brush', lang('Page Design Studio'), lang('Pages are designed on the canvas: drag blocks, write on the page, publish every tab at once.')),
                         $feature('bi-ui-checks', lang('Forms that do the work'), lang('The contact form, this blog and the staff directory are all forms: sent here, listed there.')),
                         $feature('bi-folder-check', lang('Folders decide who sees what'), lang('public is open to all, registration to signed-in visitors, private to staff and the users you give access.')),
                         $feature('bi-kanban', lang('The workspace'), lang('Channels, tasks and the plan board keep the team on the same page, in the panel.')),

@@ -71416,7 +71416,7 @@ const StyleDesigner = (function () {
                     return !q || sp.page_name.toLowerCase().indexOf(q) !== -1 || (sp.page_title || '').toLowerCase().indexOf(q) !== -1;
                 });
                 if (!rows.length) {
-                    list.innerHTML = '<div class="list-group-item bg-transparent fg-secondary small">' + esc(_sdT('There is no other visual designer page to add.')) + '</div>';
+                    list.innerHTML = '<div class="list-group-item bg-transparent fg-secondary small">' + esc(_sdT('There is no other Page Design Studio page to add.')) + '</div>';
                     return;
                 }
                 list.innerHTML = rows.map(function (sp) {
@@ -78237,7 +78237,7 @@ const StyleDesigner = (function () {
         if (!name) return;
 
         if (typeof window.openImageEditor !== 'function') {
-            sdToast(_sdT('The image editor is not loaded on this screen.'), 'error', 4000);
+            sdToast(_sdT('The Design Canvas is not loaded on this screen.'), 'error', 4000);
             return;
         }
 

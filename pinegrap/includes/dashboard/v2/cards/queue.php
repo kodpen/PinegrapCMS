@@ -190,7 +190,7 @@ function pg_dashboard_v2_queue_rows($counts, $limit = PG_DASHBOARD_V2_QUEUE_ROWS
             (($count === 1) && ($title !== ''))
                 ? lang(array('string' => '“{var:1}” is ready to publish', 'vars' => $title))
                 : lang(array('string' => '{var:1} draft page{suffix:1} ready to publish', 'vars' => $number($count), 'suffix' => $suffix($count))),
-            lang('Draft · Visual Editor'),
+            lang('Draft · Page Design Studio'),
             'plain', lang('Publish'), $url('drafts', 'view_system_styles.php'));
     }
 

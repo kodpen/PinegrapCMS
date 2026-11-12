@@ -5,7 +5,7 @@ module: legacy_to_classic
 ---
 
 ## What does it do?
-- On Move to the visual designer (`legacy_to_designer.php`), the card "Back to classic" lists each set's Legacy design (made by `legacy-set-run.md`) with its pages and the classic style each came from. A designer (role 0 or 1) sends the whole design back ("Send N pages back") or one page ("Send back" in the page's row).
+- On Move to the Page Design Studio (`legacy_to_designer.php`), the card "Back to classic" lists each set's Legacy design (made by `legacy-set-run.md`) with its pages and the classic style each came from. A designer (role 0 or 1) sends the whole design back ("Send N pages back") or one page ("Send back" in the page's row).
 - Module `includes/fn/legacy_to_classic.php`: `pg_ltc_designs()` lists, `pg_ltc_back($design_id, $page_ids|null, $user)` writes; the screen's POST field `back` with `design` and an optional `page`. No button while a move runs; the screen also refuses the POST then.
 - Owner (2026-11-11, #8671): a back-to-classic button for a moved group or one page, safe as the classic style stays (`workflow/decisions-made-product-43.md`).
 

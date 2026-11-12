@@ -11,7 +11,7 @@ module: image_editor
 - Read by `pg_image_editor_upload_max_mb()` through `pg_config_text()`, saved by `pg_image_editor_upload_max_mb_save()` through `pg_config_text_save()`, both held by `pg_image_editor_upload_max_mb_clamp()` from 0 to 10240 (`pg_image_editor_upload_max_mb_most()`: 10 GB, above what a tab decodes, while an extra digit is refused).
 
 ## Where is it set?
-- Field "Largest Video Or Sound In The Image Editor (MB)" in Settings, Features, Image Optimization, after "Shrink Pictures On Upload Above" (`platform/image-upload-cap.md`), always shown; its help names PHP's own limit. Saved by `features.save.php`; an empty box is 0.
+- Field "Largest Video Or Sound In The Design Canvas (MB)" in Settings, Features, Image Optimization, after "Shrink Pictures On Upload Above" (`platform/image-upload-cap.md`), always shown; its help names PHP's own limit. Saved by `features.save.php`; an empty box is 0.
 
 ## How was it tried?
 - Tests: `test_image_editor_upload_setting()` in `tests/image_editor_upload_test.php` (0, above and below `upload_max_filesize`, under one request, the clamp).

@@ -147,11 +147,11 @@ function pg_ltc_refusal_text($code)
         case 'no_origin':
             return lang('It came from no classic style, so it stays in the design.');
         case 'origin':
-            return lang('Its classic style is gone or is a visual design now.');
+            return lang('Its classic style is gone or is a design now.');
         case 'experiment':
             return lang('An experiment uses it: end the experiment first.');
         case 'held':
-            return lang('It is being edited in the visual designer.');
+            return lang('It is being edited in the Page Design Studio.');
     }
     return '';
 }

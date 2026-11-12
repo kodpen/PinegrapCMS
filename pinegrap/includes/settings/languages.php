@@ -160,7 +160,7 @@ $output_translation_rows_have_language = ($output_translation_rows !== '');
 
 if ($output_translation_rows === '') {
     $output_translation_rows = '
-                        <div class="fg-secondary small">' . lang('No target language yet. Add one below: the pages of the visual designs are then served under its address prefix as well.') . '</div>';
+                        <div class="fg-secondary small">' . lang('No target language yet. Add one below: the pages of the designs are then served under its address prefix as well.') . '</div>';
 }
 
 // Languages that can still be added: the known list minus the source and
@@ -258,7 +258,7 @@ if (!empty($language_redirect_ready)) {
 
     foreach (array(
         'home' => array(lang('The home page only'), lang('A visitor who opens the site\'s address is sent to the home page in their language. Recommended: a link to any other page opens that page as it was shared.')),
-        'all'  => array(lang('Every page of a visual design'), lang('A visitor who arrives on any page of a visual design, from a search result or a shared link, is sent to that page in their language.')),
+        'all'  => array(lang('Every page of a design'), lang('A visitor who arrives on any page of a design, from a search result or a shared link, is sent to that page in their language.')),
     ) as $language_redirect_scope_key => $language_redirect_scope_text) {
         $output_language_redirect_scopes .= '
                                     <div class="form-field">

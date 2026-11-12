@@ -777,7 +777,7 @@ function pg_experiment_sheet_publish_winner($experiment, $key, $user)
         require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
 
         if (!pg_collab_may_edit_page('', $live['page_id'])) {
-            return array('ok' => false, 'error' => lang('Somebody has this page open in the Visual Page Editor. Try again when they are done.'));
+            return array('ok' => false, 'error' => lang('Somebody has this page open in the Page Design Studio. Try again when they are done.'));
         }
 
         $tree = (string) db_value("SELECT page_tree_json FROM page WHERE page_id = '" . (int) $variant['draft_page_id'] . "' LIMIT 1");

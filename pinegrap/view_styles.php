@@ -122,9 +122,9 @@ pg_page_shell([
             ' . pg_screen_toolbar(array(
                 'primary'   => array('label' => lang('Create'), 'url' => 'add_custom_style.php', 'icon' => 'bi-plus-circle'),
                 'secondary' => array(
-                    array('label' => lang('Visual Page Editor'), 'url' => 'view_system_styles.php', 'icon' => 'bi-magic'),
+                    array('label' => lang('Page Design Studio'), 'url' => 'view_system_styles.php', 'icon' => 'bi-magic'),
                     // Read-only readiness report of every classic style (legacy_to_designer.php).
-                    array('label' => lang('Move to the visual designer'), 'url' => 'legacy_to_designer.php', 'icon' => 'bi-clipboard-check'),
+                    array('label' => lang('Move to the Page Design Studio'), 'url' => 'legacy_to_designer.php', 'icon' => 'bi-clipboard-check'),
                 ),
                 'search'    => array(pg_list_table_search_box('view_styles'), pg_list_sort_menu('view_styles.php', $sort_columns, $sort_levels, $sort_default)),
             )) . '

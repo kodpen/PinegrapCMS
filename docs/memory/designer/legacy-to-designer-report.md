@@ -1,6 +1,6 @@
 ---
 name: legacy-to-designer-report
-description: The "Move to the visual designer" readiness report (LD1, #6219): what it lists per classic style, its sets (LG4), its state, the "What stays classic" card (#6488), the rules the whole move keeps
+description: The "Move to the Page Design Studio" readiness report (LD1, #6219): what it lists per classic style, its sets (LG4), its state, the "What stays classic" card (#6488), the rules the whole move keeps
 module: legacy_to_designer
 ---
 
