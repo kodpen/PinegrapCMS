@@ -79,7 +79,7 @@
 - decisions-made-schema-13.md: Decisions list, schema part 13 (2026-11-08 on): agent channel switch (AC); channel memory and agent mark (A5); A7 undo; GitHub channel links (G2); carrier service on a shipping method (R2)
 - decisions-made-schema-14.md: Decisions list, schema part 14 (2026-11-09 on): a bundle's own back order choice (bundle_backorder); the workflow table bin and row numbers; the team replies right; agent token counts and limit
 - decisions-made-schema-15.md: Decisions list, schema part 15 (2026-11-10 on): ws_messages.via_client_id, ws_ai_requests.claimed_device_id, the Workspace mail screen's columns and ws_mail_reads, the image editor's largest upload
-- decisions-made-schema-16.md: Decisions list, schema part 16 (2026-11-11 on): ws_mail_items.body_html for a mail's HTML, the kind value mailbox on ws_channels for a mailbox kept in no channel
+- decisions-made-schema-16.md: Decisions list, schema part 16 (2026-11-11 on): ws_mail_items.body_html, the kind value mailbox on ws_channels, ws_agents.seen_at for an agent's last seen, ws_checks.app_id for an application's tick
 - decisions-made-schema-2.md: Decisions list, schema part 2, approved on 2026-10-28: e-mail tables, workflow tables, MCP preamble, secret widths, prompt version, discussion follow; rules in part 1, 2026-10-29 on in part 3
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
