@@ -1,0 +1,37 @@
+{
+    "assets/css/backend.src.css": {
+        "size": 451,
+        "weight": 245,
+        "colour": 386
+    },
+    "assets/css/pg_dash.src.css": {
+        "size": 21,
+        "weight": 49,
+        "colour": 111
+    },
+    "assets/css/pg_visitors.src.css": {
+        "size": 3,
+        "weight": 6,
+        "colour": 0
+    },
+    "assets/css/ws_today.src.css": {
+        "size": 0,
+        "weight": 9,
+        "colour": 0
+    },
+    "assets/css/pg_image_editor.src.css": {
+        "size": 15,
+        "weight": 24,
+        "colour": 71
+    },
+    "assets/css/pg_tour.css": {
+        "size": 4,
+        "weight": 1,
+        "colour": 7
+    },
+    "assets/css/pg_datetime.css": {
+        "size": 1,
+        "weight": 3,
+        "colour": 0
+    }
+}
