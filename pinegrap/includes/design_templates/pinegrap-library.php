@@ -56,7 +56,11 @@
  * components, 'catalog' and 'requires'.
  *
  * The version follows the template, not the software: raise it whenever the
- * pages change, so a design records which edition it started from.
+ * pages change, so a design records which edition it started from. 2.0.0
+ * draws the home, the visit page, the Central Library's page and the
+ * catalogue on the Library blocks (the Shelf Hero, the Card and Loans,
+ * the Shelf Mark Guide) and the general Seasonal Hours, Weekly Timetable
+ * and Floor Directory.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -183,7 +187,7 @@ $library_css = implode("\n", array(
 
 return array(
     'name'        => lang('Public Library'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 103,
     'icon'        => 'bi-book',
