@@ -6,7 +6,7 @@ description: Steps A19 to A21 of plans/agent-channel.md (owner 2026-11-12): a di
 ## Which steps are there?
 - S under 400 product lines, M about 1,000; each step its tests and its memory topic in `workspace/`. The earlier steps: `agent-channel-steps-2.md`, `-3.md`. The decisions: `workflow/decisions-made-workspace-19.md`.
 
-- A19 (S) A discussion under a message an agent wrote follows that agent. `free`. #8871.
+- A19 (S) A discussion under a message an agent wrote follows that agent. `done` (PR #8911). #8871.
   - Today `ws_thread_message_agent()` (`threads.php`) gives a discussion its first followed agent from the root message only when the root is an agent's answer to a request (`ws_ai_requests.reply_message_id`) or names an agent. A message the agent's application wrote by itself gives nobody: the owner opened a discussion under such a message of the architect agent and his words reached no one.
   - The root message's writing application is looked up in the registry: when it is an agent's and a row of that agent reaches the discussion, the discussion follows it. Order: the answer's agent, then the writing agent, then the agent the root names.
   - Unchanged: one followed agent per discussion, Stop and Follow again, the brakes, an agent is never woken by its own message. `workspace/agent-discussion-follow.md` is rewritten for it.
