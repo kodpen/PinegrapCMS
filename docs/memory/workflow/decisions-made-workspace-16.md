@@ -11,7 +11,7 @@ description: Decisions list, workspace part 16 (2026-11-11): clearing a conversa
 - Owner (2026-11-11), in the agents channel: "ajan kanalında konuşmayı temizle dersem bellek ve kararlar dahil silinir mi mi? silinmeli mi?"; to the architect agent's suggestions: "önerilerini onaylıyorum".
 
 ## How is it seen that an agent is up, and may an agent tick a checklist? (owner, 2026-11-11, #8762)
-- An agent's card shows when it was last seen; an application ticks a checklist line over the API. Steps A17 and A18 (`plans/agent-channel-steps-5.md`).
+- An agent's card shows when it was last seen; an application ticks a checklist line over the API. Built: `workspace/agent-last-seen.md`, `workspace/agent-checklist-questions.md`.
 - Owner (2026-11-11): "burada checkin sorabiliyormusunuz? ve diğer ajanlar işaretleyebilyor mu? mesela tüm ajanlar ayakta mı sorulabilir."; then "önerilerini onaylıyorum".
 - The architect's, not the owner's words: no roll call that wakes every agent; it costs each a turn.
 
