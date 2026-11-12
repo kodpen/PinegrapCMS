@@ -19,8 +19,7 @@ description: Steps CV1-CV8 of plans/agent-canvas-design.md: an SVG taken apart, 
   - Where it can, a pending canvas gets its picture from the server at once. A document it cannot draw faithfully (text in a font it has no file for, an effect outside the probe) waits for a browser as today; a browser's picture replaces the server's.
   - Guards: only markup that `pg_svg_sanitize()` passes; pictures put in from the files the document names, nothing fetched; limits on size and time, Imagick's resource limits set; no shell.
   - `ui/image-editor-overview.md` corrected: "the server never rasterises SVG" holds only where the host cannot.
-- CV7 (M) Saving into Files. `free` once #8834 lands.
-  - `POST messages/{id}/canvas/save` (folder, name, format). A tier 2 agent's save is done at once and named in the channel; a tier 1 agent's is a proposal a person approves (`workspace/agent-risk-tiers.md`, the one proposal route). The picture must be there (CV6 or a browser); the formats are the export formats the server writes.
+- CV7 (M) Saving into Files. Done in #8948: `workspace/agent-canvas-save.md`.
 - CV8 (S) Close-out. An overview if the `agent-canvas-*` cluster has ten files, the lasting rules into the topic files, the PR body names the `[NEW]` changelog line, both plan files deleted.
 
 ## Which questions are open?

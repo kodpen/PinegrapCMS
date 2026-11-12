@@ -355,6 +355,7 @@
     "Save the Note": "Notu Kaydet",
     "Save the allocations": "Tahsisleri kaydet",
     "Save the animation": "Animasyonu kaydet",
+    "Save the canvas into Files as {var:1}.": "Tuvali Dosyalar'a {var:1} olarak kaydet.",
     "Save the change to the description first: the new item goes into it.": "Önce açıklamadaki değişikliği kaydedin: yeni madde açıklamaya eklenir.",
     "Save the counts": "Sayıları kaydet",
     "Save the design first; a template is made from the saved pages.": "Önce tasarımı kaydedin; şablon kaydedilmiş sayfalardan oluşturulur.",
