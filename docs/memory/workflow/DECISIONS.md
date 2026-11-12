@@ -334,6 +334,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-15.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-15.md: Are the Workspace settings cards simplified as they move under Site Settings? (owner, 2026-11-11, #8750)
 - decisions-made-workspace-15.md: Is Claude (the Anthropic API) a provider of model assistants? (owner, 2026-11-11, #8750)
+- decisions-made-workspace-16.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-16.md: Does clearing a conversation delete the channel's memory and decisions? (owner, 2026-11-11, #8762)
+- decisions-made-workspace-16.md: How is it seen that an agent is up, and may an agent tick a checklist? (owner, 2026-11-11, #8762)
+- decisions-made-workspace-16.md: Is a chart or a design made by a tool of its own, or by the canvas? (owner, 2026-11-11, #8762)
+- decisions-made-workspace-16.md: What does the canvas plan hold beside layers? (owner, 2026-11-11, #8762)
+- decisions-made-workspace-16.md: Does an agent make a live page too? (owner, 2026-11-11, #8762)
 - decisions-made-workspace-2.md: What may the channel menu hold?
 - decisions-made-workspace-2.md: Where are records created inside a chat?
 - decisions-made-workspace-2.md: Does the customer channel's "New sales quote" stay in the menu?
