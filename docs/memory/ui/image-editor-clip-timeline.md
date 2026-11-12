@@ -26,4 +26,4 @@ module: image_editor
 - "From the source" and "On the timeline" (in → out and the length), "Same source" beside the size when another layer plays the same file, Split clip (`M.clipSplit()` at the playhead, 0.1 s of source on both sides, else a message; the second part right above the first, selected; the first keeps the entrance, the second the exit), and in Animate a note on dragging.
 
 ## What is left?
-- Keys and captions (V11), touch-sized handles and the phone's rows (V10: no tracks under 600 px).
+- Keys and captions (V11). The phone's rows and touch-sized grips: `image-editor-phone-rows.md`.

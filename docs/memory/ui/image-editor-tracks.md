@@ -24,5 +24,5 @@ module: image_editor
 - The part sets the tool's hint to `hintTracks`; `note()` adds the panel's line.
 
 ## Where are there no tracks?
-- Under 600 px wide or under 500 px high (a phone either way up): the panel's delay and duration sliders do it (`image-editor-motion.md`).
+- Under 600 px wide or under 500 px high (a phone either way up): the panel's delay and duration sliders do it (`image-editor-motion.md`), unless the document holds a video: then the rows sit in the sheet under the play bar (`image-editor-phone-rows.md`).
 - The rows scroll past 150 px. Keys on the timeline are AN11's; keyframe diamonds come from `Editor.trackMarks` (`image-editor-keyframes.md`).

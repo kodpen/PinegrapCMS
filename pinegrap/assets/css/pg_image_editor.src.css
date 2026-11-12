@@ -4431,3 +4431,115 @@ button.pgie-sndfile:hover {
     height: 44px;
   }
 }
+
+/* The phone's rows (pg_image_editor_phone.js): in the sheet under the play
+   bar, each name above its lane, one ruler, the playhead across them all;
+   the clip's row tall with finger-size grips; the sounds folded into one
+   line. The lanes span the whole width, so --pgie-trname is 0. */
+.pgie-phrows {
+  margin: 4px -4px 8px;
+}
+
+.pgie-phrows .pgie-tracks {
+  --pgie-trname: 0px;
+  border: 0;
+  background: none;
+}
+
+.pgie-phrows .pgie-trrows {
+  max-height: none;
+  overflow: visible;
+}
+
+.pgie-phrows .pgie-trhead {
+  height: 22px;
+}
+
+.pgie-phrows .pgie-trhead .pgie-trname {
+  display: none;
+}
+
+.pgie-phrows .pgie-trrow {
+  flex-wrap: wrap;
+  height: auto;
+  padding-bottom: 4px;
+  border-bottom: 0;
+  border-radius: 8px;
+}
+
+.pgie-phrows .pgie-trrow .pgie-trname {
+  width: 100%;
+  height: 24px;
+  border-right: 0;
+}
+
+.pgie-phrows .pgie-trrow .pgie-trlane {
+  flex: 1 0 100%;
+  height: 24px;
+}
+
+.pgie-phrows .pgie-trrow.pgie-cliprow .pgie-trlane {
+  height: 56px;
+}
+
+/* The trim grips: wider, with a 44 px target past their edges. */
+.pgie-phrows .pgie-trgrip {
+  width: 14px;
+}
+
+.pgie-phrows .pgie-trgrip-start {
+  left: -7px;
+}
+
+.pgie-phrows .pgie-trgrip-end {
+  right: -7px;
+}
+
+.pgie-phrows .pgie-trgrip::after {
+  content: "";
+  position: absolute;
+  inset: -4px -15px;
+}
+
+.pgie-phrows .pgie-trtip {
+  display: none;
+}
+
+/* The folded sounds: one line that opens their rows. */
+.pgie .pgie-phfold {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-top: 1px solid var(--pgie-line);
+  background: none;
+  color: var(--pgie-tx);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pgie-phfold > span:first-of-type {
+  flex: none;
+}
+
+.pgie-phwave {
+  flex: 1;
+  min-width: 0;
+  height: 12px;
+  background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--pgie-primary) 55%, transparent) 0 2px, transparent 2px 4px);
+}
+
+.pgie-phfold .pgie-ic {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.pgie-phfold.on .pgie-ic:last-child {
+  transform: rotate(90deg);
+}

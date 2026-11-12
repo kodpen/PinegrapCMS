@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'actions', 'menu');
 }
 
 /**
@@ -5660,6 +5660,21 @@ function pg_image_editor_strings_upload()
         'soundComputer'   => lang('From this computer'),
         'soundUploading'  => lang('Uploading the sound into Files...'),
         'soundNeedsFiles' => lang('A sound is added through Files: save this image in the File Manager first.'),
+    );
+}
+
+/**
+ * The phone's rows (pg_image_editor_phone.js): the folded sounds' line and
+ * Split in the selection bar.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_phone()
+{
+    return array(
+        'phoneSounds'    => lang('Sound · {n} rows'),
+        'phoneSoundsOne' => lang('Sound · 1 row'),
+        'actSplit'       => lang('Split'),
     );
 }
 

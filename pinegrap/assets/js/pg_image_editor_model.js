@@ -4725,6 +4725,11 @@
         }
 
         if (s.layers) {
+            // One clip in the Animate tool: Split at the playhead too.
+            if (s.split) {
+                add('split', !s.free);
+            }
+
             add('duplicate');
             add('remove', !s.free);
         } else if (s.picture) {
@@ -10181,6 +10186,23 @@
         uploadDelay: uploadDelay, uploadKey: uploadKey, uploadFits: uploadFits
     };
 
+    // ---- PHONE (pg_image_editor_phone.js) ----
+
+    // Whether a phone's sheet shows the rows under its play bar: once the
+    // document holds a shown clip (without one the panel's fields do it).
+    function phoneRows(layers) {
+        return (layers || []).some(function (l) { return !!l && (l.type === 'video') && !l.hidden; });
+    }
+
+    // The folded sounds' line: its label key and the count it names.
+    function phoneSoundLine(n) {
+        n = Math.max(0, Math.floor(Number(n) || 0));
+
+        return { key: (n === 1) ? 'phoneSoundsOne' : 'phoneSounds', n: n };
+    }
+
+    var PHONE = { phoneRows: phoneRows, phoneSoundLine: phoneSoundLine };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -10198,7 +10220,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');
