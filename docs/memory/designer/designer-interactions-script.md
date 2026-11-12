@@ -11,8 +11,11 @@ description: What pg_fx.src.js does: entrance start states and the observer, sta
 - scroll-zoom / scroll-fade / scroll-rise (B2 #8696) run in the parallax loop `float()`, once per frame, on scroll, resize and `load`; it measures every box before writing any. Progress (`pgFx.progress()`) is 0 while the node's top is below the window and 1 once its middle reaches the window's middle; then the node keeps its own state.
 - The end is never below the node's top with the page scrolled to its end (`floor` = top less the scroll left), so a node in the page's last strip finishes at the page's end instead of staying half played (the #1922 trap); one that never comes into the window counts as whole.
 - The box is measured without the scale or rise it already has (layout height, middle less the rise). A fade is a part of the node's own opacity. At its own state the node gets its own transition back, so a hover effect still eases. Reduced motion: the node shows its own state; switched on while open, it is put back.
+- A rise never makes the page longer (#9018). A browser counts a transformed box into the page's height, so a rise near the page's end pushed the end down by up to its distance, then the end moved back while the visitor scrolled to it. The rise starts from the room under the node at most, less 1 px (`pgFx.riseFrom()`); a risen node reaching the page's end is put back before the page is measured, so a page that grew shorter is not held at its old height.
 
 ## How is it tested?
-- `test_designer_fx_script_reads_the_page`, `test_designer_fx_script_on_the_canvas` and `test_designer_fx_script_scroll_effects` in `tests/designer_fx_test.php`, under Node, on a fake page (`_test_fx_fake_dom()`).
+- `test_designer_fx_script_reads_the_page`, `test_designer_fx_script_on_the_canvas`, `test_designer_fx_script_scroll_effects` and `test_designer_fx_script_rise_keeps_the_page_length` in `tests/designer_fx_test.php`, under Node, on a fake page (`_test_fx_fake_dom()`).
+- Checked in Chromium for #9018 (360, 768 and 1280 px): each scroll-linked node at every 37 px against the rule, no drift over passes, a taller window, reduced motion on and off while open, scripts off. 120 nodes on a long page with the CPU slowed four times: about 2 ms of script a frame, no dropped frame. Firefox, Safari and a real phone not checked.
+- A utility class with `!important` (`opacity-50`) wins over Fade on scroll: the node keeps that opacity throughout.
 
 Related: docs/memory/designer/designer-interactions.md
