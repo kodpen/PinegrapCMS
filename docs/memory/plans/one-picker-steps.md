@@ -26,7 +26,7 @@ description: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry an
 
 - PK7 (M) The editor bridge: CKEditor's Link and Image dialogs open the picker; TinyMCE 3 keeps its lists (#8835). Done in #8858 (`ui/picker-editor-bridge.md`).
 
-- PK8 (M) The designer bridge: link and picture fields through `pgEditorPicker`, the fake `CKEDITOR` gone, Browse under the widget page selects, the page type pane on picker fields. Done in #PK8PR (`ui/picker-designer-bridge.md`).
+- PK8 (M) The designer bridge: link and picture fields through `pgEditorPicker`, the fake `CKEDITOR` gone, Browse under the widget page selects, the page type pane on picker fields. Done in #8884 (`ui/picker-designer-bridge.md`).
 
 - PK8b (S) Delete `editor_select_page_or_file.php` and the `filebrowserBrowseUrl` setting with what only they use, no redirect (#8836). `editor_select_image.php` goes in PK9: `software_image_picker()` and `add_file.php` still open it.
 
