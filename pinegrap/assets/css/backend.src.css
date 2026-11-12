@@ -24880,3 +24880,737 @@ select.pg-list-table-field option.private {
   --bs-drawer-width: var(--pg-drawer-width, 400px);
   --bs-drawer-height: var(--pg-drawer-height, 30vh);
 }
+
+/* ==========================================================================
+   Look A: the panel's type and recipes.
+   The typeface, the type scale and the recipe classes every panel screen is
+   built from. A recipe lives here once; a screen's own class only places
+   things. The page widths have their own block.
+   ========================================================================== */
+
+/* Inter 4.1 (SIL Open Font License 1.1, assets/fonts/inter/LICENSE.txt),
+   self-hosted: one variable file per style. Its optical size axis (opsz
+   14 to 32) gives the Display cut that headings ask for. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../fonts/inter/InterVariable.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../fonts/inter/InterVariable-Italic.woff2") format("woff2");
+}
+
+@layer custom {
+
+/* Tokens of the look. Neutral text and lines stay the panel's own
+   (--pg-fg-body, --pg-fg-2, --pg-fg-3, --pg-border-color-translucent); the
+   names below are what the look adds, each value for light and dark. */
+:root,
+[data-bs-theme] {
+  /* Type. */
+  --pg-font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --pg-font-features: "cv11", "ss01";
+  --pg-opsz-display: "opsz" 32;
+  --pg-text-count: 0.6875rem;
+  --pg-text-meta: var(--bs-font-size-xs);
+  --pg-text-2: 0.8125rem;
+  --pg-text-base: var(--bs-font-size-sm);
+  --pg-text-status-title: 0.9375rem;
+  --pg-text-section-title: 1.0625rem;
+  --pg-text-screen-title: 1.5rem;
+  --pg-weight-regular: var(--bs-font-weight-normal);
+  --pg-weight-medium: var(--bs-font-weight-medium);
+  --pg-weight-strong: 550;
+  --pg-weight-title: 650;
+  --pg-leading: 1.45;
+  --pg-leading-title: 1.25;
+  --pg-tracking-screen-title: -0.03em;
+  --pg-tracking-section-title: -0.015em;
+
+  /* Surfaces and depth. */
+  --pg-surface-1: light-dark(#ffffff, #16181e);
+  --pg-surface-2: light-dark(#fdfdfe, #101217);
+  --pg-surface-hi: light-dark(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.06));
+  --pg-surface-inset: light-dark(rgba(15, 23, 42, 0.018), rgba(255, 255, 255, 0.028));
+  --pg-surface-float: light-dark(rgba(255, 255, 255, 0.86), rgba(26, 28, 35, 0.84));
+  --pg-hover: light-dark(rgba(15, 23, 42, 0.04), rgba(255, 255, 255, 0.045));
+  --pg-quiet: light-dark(rgba(15, 23, 42, 0.055), rgba(255, 255, 255, 0.065));
+  --pg-radius-card: 16px;
+  --pg-radius-sheet: 20px;
+
+  /* The accent of the look: filled buttons, the switch, focus. */
+  --pg-accent: light-dark(#2f6fed, #6aa5ff);
+  --pg-accent-1: light-dark(#4a88f7, #8ab8ff);
+  --pg-accent-2: light-dark(#2a63e0, #5a90f6);
+  --pg-accent-glow: light-dark(rgba(47, 111, 237, 0.45), rgba(90, 144, 246, 0.55));
+  --pg-on-accent-fill: light-dark(#ffffff, #06101f);
+
+  /* Fields and the segmented control's thumb. */
+  --pg-field-bg: light-dark(#ffffff, rgba(0, 0, 0, 0.28));
+  --pg-field-line: light-dark(rgba(15, 23, 42, 0.13), rgba(255, 255, 255, 0.09));
+  --pg-field-shadow: inset 0 1px 2px light-dark(rgba(15, 23, 42, 0.06), rgba(0, 0, 0, 0.45));
+  --pg-thumb: light-dark(#ffffff, #262930);
+
+  /* Tones. A tone names a module; a new module gets its line here, never a
+     colour of its own in a screen. The tint strengths differ by theme. */
+  --pg-tone-blue: light-dark(#2f6fed, #6aa5ff);
+  --pg-tone-violet: light-dark(#7150e6, #b19cff);
+  --pg-tone-amber: light-dark(#b7791f, #f2b84b);
+  --pg-tone-teal: light-dark(#0e9a74, #3fd0a8);
+  --pg-tone-rose: light-dark(#d43d6b, #f58aa0);
+  --pg-tone-gray: light-dark(#6b7280, #9aa0a8);
+  --pg-tone-team: var(--pg-tone-blue);
+  --pg-tone-shop: var(--pg-tone-teal);
+  --pg-tone-content: var(--pg-tone-rose);
+  --pg-tone-accounting: var(--pg-tone-amber);
+  --pg-tone-warning: var(--pg-tone-amber);
+  --pg-tone-reports: var(--pg-tone-violet);
+  --pg-tone-system: var(--pg-tone-gray);
+}
+/* light-dark() takes only colours, so the tint strengths and the shadows
+   flip with the theme blocks. */
+:root,
+[data-bs-theme="light"] {
+  --pg-tint-from: 17%;
+  --pg-tint-to: 8%;
+  --pg-tint-line: 20%;
+  --pg-shadow-card: 0 1px 0 var(--pg-surface-hi) inset, 0 10px 28px -18px rgba(15, 23, 42, 0.2), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --pg-shadow-float: 0 1px 0 var(--pg-surface-hi) inset, 0 18px 44px -14px rgba(15, 23, 42, 0.3), 0 2px 6px rgba(15, 23, 42, 0.06);
+  --pg-thumb-shadow: 0 1px 2px rgba(15, 23, 42, 0.14), 0 0 0 1px rgba(15, 23, 42, 0.05);
+}
+[data-bs-theme="dark"] {
+  --pg-tint-from: 26%;
+  --pg-tint-to: 11%;
+  --pg-tint-line: 22%;
+  --pg-shadow-card: 0 1px 0 var(--pg-surface-hi) inset, 0 14px 34px -18px rgba(0, 0, 0, 0.65);
+  --pg-shadow-float: 0 1px 0 var(--pg-surface-hi) inset, 0 18px 44px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(0, 0, 0, 0.3);
+  --pg-thumb-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* The typeface's features. Only the family (set unlayered below) and its
+   features change here; sizes stay until a screen family moves to the scale. */
+body {
+  font-feature-settings: var(--pg-font-features);
+}
+
+/* Type. */
+.pg-title-screen {
+  margin: 0;
+  font-size: var(--pg-text-screen-title);
+  font-weight: var(--pg-weight-title);
+  line-height: var(--pg-leading-title);
+  letter-spacing: var(--pg-tracking-screen-title);
+  font-variation-settings: var(--pg-opsz-display);
+}
+.pg-title-section,
+.pg-title-status {
+  margin: 0;
+  font-size: var(--pg-text-section-title);
+  font-weight: var(--pg-weight-title);
+  line-height: 1.3;
+  letter-spacing: var(--pg-tracking-section-title);
+  font-variation-settings: var(--pg-opsz-display);
+}
+.pg-title-status {
+  font-size: var(--pg-text-status-title);
+}
+.pg-text-2 {
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+}
+.pg-text-meta {
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Card: two near surfaces top to bottom, a line, a light inner top edge. */
+.pg-card {
+  background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2));
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--pg-radius-card);
+  box-shadow: var(--pg-shadow-card);
+}
+.pg-card.pg-card-sheet {
+  border-radius: var(--pg-radius-sheet);
+}
+.pg-card-sub {
+  margin: 2px 0 0;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+}
+/* Inner card (settings rows): a faint tint, an inset line, rows split by a line. */
+.pg-card-inner {
+  border-radius: var(--pg-radius-card);
+  background: var(--pg-surface-inset);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent), inset 0 1px 0 var(--pg-surface-hi);
+}
+.pg-card-inner-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 13px 16px;
+}
+.pg-card-inner-row + .pg-card-inner-row {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+/* Floating bar (the save bar's surface). */
+.pg-floatbar {
+  border-radius: var(--pg-radius-card);
+  background: var(--pg-surface-float);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--pg-shadow-float);
+}
+
+/* Field: label above, help under, a unit or counter at the right end. */
+.pg-field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-strong);
+}
+.pg-field-label-note {
+  font-style: normal;
+  font-weight: var(--pg-weight-regular);
+  color: var(--pg-fg-3);
+}
+.pg-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--pg-field-line);
+  border-radius: 10px;
+  background: var(--pg-field-bg);
+  box-shadow: var(--pg-field-shadow);
+  color: var(--pg-fg-body);
+  font: inherit;
+  font-size: var(--pg-text-base);
+}
+.pg-input::placeholder {
+  color: var(--pg-fg-3);
+}
+textarea.pg-input {
+  display: block;
+  height: auto;
+  min-height: 92px;
+  padding: 9px 12px;
+  line-height: 1.5;
+}
+/* A wrapper holding an input and its unit: the inner input is bare. */
+.pg-input > input,
+.pg-input > select {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  outline: 0;
+}
+.pg-input-end {
+  margin-left: auto;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-3);
+  white-space: nowrap;
+}
+.pg-input-sm {
+  height: 32px;
+  border-radius: 9px;
+  font-size: var(--pg-text-2);
+}
+.pg-input:focus,
+.pg-input:focus-within {
+  border-color: var(--pg-accent);
+  outline: 0;
+  box-shadow: var(--pg-field-shadow), 0 0 0 4px color-mix(in srgb, var(--pg-accent) 24%, transparent);
+}
+.pg-input.is-invalid,
+.pg-input[aria-invalid="true"],
+.pg-input:has(> [aria-invalid="true"]) {
+  border-color: var(--pg-tone-rose);
+  box-shadow: var(--pg-field-shadow), 0 0 0 4px color-mix(in srgb, var(--pg-tone-rose) 16%, transparent);
+}
+.pg-field-help {
+  margin-top: 6px;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-field-help.pg-field-error {
+  color: var(--pg-tone-rose);
+}
+/* Switch and checkbox, drawn on the native input. */
+.pg-switch,
+.pg-checkbox {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: none;
+  margin: 0;
+  vertical-align: middle;
+  cursor: pointer;
+}
+.pg-switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--pg-fg-3) 40%, transparent);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.pg-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.pg-switch:checked {
+  background: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
+}
+.pg-switch:checked::after {
+  left: 18px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pg-switch::after {
+    transition: left 0.15s ease;
+  }
+}
+.pg-checkbox {
+  display: inline-grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1.5px var(--pg-fg-3);
+}
+.pg-checkbox:checked {
+  background: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
+  box-shadow: none;
+}
+.pg-checkbox:checked::after {
+  content: "";
+  width: 9px;
+  height: 5px;
+  margin-top: -2px;
+  border: solid var(--pg-on-accent-fill);
+  border-width: 0 0 2px 2px;
+  transform: rotate(-45deg);
+}
+.pg-switch:focus-visible,
+.pg-checkbox:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--pg-accent) 24%, transparent);
+}
+
+/* Buttons: filled (at most one in a view), quiet, ghost, danger. */
+.pg-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--pg-fg-body);
+  font: inherit;
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-strong);
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+}
+.pg-button-fill {
+  color: var(--pg-on-accent-fill);
+  background: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 18px -8px var(--pg-accent-glow);
+}
+.pg-button-quiet {
+  background: var(--pg-quiet);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent), inset 0 1px 0 var(--pg-surface-hi);
+}
+.pg-button-ghost {
+  color: var(--pg-fg-2);
+}
+.pg-button-ghost:hover {
+  background: var(--pg-hover);
+  color: var(--pg-fg-body);
+}
+.pg-button-danger {
+  color: var(--pg-tone-rose);
+  background: color-mix(in srgb, var(--pg-tone-rose) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-tone-rose) 22%, transparent);
+}
+.pg-button-sm {
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 8px;
+}
+.pg-button:disabled,
+.pg-button.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.pg-icon-button {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--pg-fg-2);
+  font-size: 15px;
+  cursor: pointer;
+}
+.pg-icon-button-sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.pg-icon-button:hover,
+.pg-icon-button.is-active,
+.pg-icon-button[aria-pressed="true"],
+.pg-icon-button[aria-expanded="true"] {
+  background: var(--pg-quiet);
+  color: var(--pg-fg-body);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.pg-button:focus-visible,
+.pg-icon-button:focus-visible,
+.pg-seg-item:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
+}
+
+/* Segmented control (in place of filter chips): the chosen segment is a
+   raised thumb, a count beside its label. */
+.pg-seg {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 11px;
+  background: var(--pg-quiet);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.pg-seg-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--pg-fg-2);
+  font: inherit;
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-medium);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+}
+.pg-seg-item.is-active,
+.pg-seg-item[aria-pressed="true"],
+.pg-seg-item[aria-selected="true"],
+.pg-seg-item[aria-current="true"] {
+  background: var(--pg-thumb);
+  color: var(--pg-fg-body);
+  box-shadow: var(--pg-thumb-shadow);
+}
+.pg-seg-count {
+  font-style: normal;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+
+/* Tones: a class sets --pg-tone, the pill and the tile read it. */
+.pg-tone-blue { --pg-tone: var(--pg-tone-blue); }
+.pg-tone-violet { --pg-tone: var(--pg-tone-violet); }
+.pg-tone-amber { --pg-tone: var(--pg-tone-amber); }
+.pg-tone-teal { --pg-tone: var(--pg-tone-teal); }
+.pg-tone-rose { --pg-tone: var(--pg-tone-rose); }
+.pg-tone-gray { --pg-tone: var(--pg-tone-gray); }
+.pg-tone-team { --pg-tone: var(--pg-tone-team); }
+.pg-tone-shop { --pg-tone: var(--pg-tone-shop); }
+.pg-tone-content { --pg-tone: var(--pg-tone-content); }
+.pg-tone-accounting { --pg-tone: var(--pg-tone-accounting); }
+.pg-tone-warning { --pg-tone: var(--pg-tone-warning); }
+.pg-tone-reports { --pg-tone: var(--pg-tone-reports); }
+.pg-tone-system { --pg-tone: var(--pg-tone-system); }
+
+/* Status pill: paid and live teal, waiting amber, on the way blue,
+   cancelled and out of stock rose, draft gray. */
+.pg-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 9px 0 8px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--pg-tone, var(--pg-tone-gray)) var(--pg-tint-to), transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-tone, var(--pg-tone-gray)) var(--pg-tint-line), transparent);
+  color: var(--pg-tone, var(--pg-tone-gray));
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
+  line-height: 1;
+  white-space: nowrap;
+}
+.pg-pill::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pg-tone, var(--pg-tone-gray)) 18%, transparent);
+}
+
+/* Icon tile: a glyph in the tone on a diagonal gradient of it. */
+.pg-icon-tile {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: linear-gradient(140deg, color-mix(in srgb, var(--pg-tone, var(--pg-tone-gray)) var(--pg-tint-from), transparent), color-mix(in srgb, var(--pg-tone, var(--pg-tone-gray)) var(--pg-tint-to), transparent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-tone, var(--pg-tone-gray)) var(--pg-tint-line), transparent);
+  color: var(--pg-tone, var(--pg-tone-gray));
+  font-size: 14px;
+  line-height: 1;
+}
+.pg-icon-tile-lg {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  font-size: 16px;
+}
+/* A person is a round avatar with initials. */
+.pg-initials {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8b6cf6, #5b8def);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+.pg-initials-2 {
+  background: linear-gradient(135deg, #2bb3a3, #3f8fd8);
+}
+.pg-initials-3 {
+  background: linear-gradient(135deg, #e08a4f, #d4577b);
+}
+.pg-initials > img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* Count beside a title, and the unread dot. */
+.pg-count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--pg-fg-body) 9%, transparent);
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-count);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 17px;
+  vertical-align: 1px;
+}
+.pg-unread-dot {
+  display: block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pg-accent);
+}
+
+/* Row (the bell's row): tile, a one-line title with the time at its right,
+   at most two lines of text, a button only when the row asks for something,
+   the unread dot at the right. A read row is dimmed; hover shows the quick
+   actions in place of the time. */
+.pg-list-row {
+  position: relative;
+  display: flex;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+.pg-list-row:hover,
+.pg-list-row:focus-within {
+  background: var(--pg-hover);
+}
+.pg-list-row > .pg-icon-tile,
+.pg-list-row > .pg-initials {
+  margin-top: 2px;
+}
+.pg-list-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.pg-list-row-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.pg-list-row-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: var(--pg-weight-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-list-row-title-verb {
+  font-weight: var(--pg-weight-regular);
+  color: var(--pg-fg-2);
+}
+.pg-list-row-time {
+  flex: none;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-list-row-text {
+  display: -webkit-box;
+  margin-top: 1px;
+  overflow: hidden;
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-2);
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.pg-list-row-text b,
+.pg-list-row-text strong {
+  color: var(--pg-fg-body);
+  font-weight: var(--pg-weight-strong);
+}
+.pg-list-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.pg-list-row-place {
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-list-row-side {
+  flex: none;
+  width: 8px;
+  padding-top: 6px;
+}
+.pg-list-row-quick {
+  display: none;
+  flex: none;
+  gap: 2px;
+  margin: -5px -6px -5px 0;
+}
+.pg-list-row-quick .pg-icon-button {
+  width: 26px;
+  height: 26px;
+  font-size: 14px;
+}
+.pg-list-row:hover .pg-list-row-quick,
+.pg-list-row:focus-within .pg-list-row-quick {
+  display: flex;
+}
+.pg-list-row:hover .pg-list-row-quick ~ .pg-list-row-time,
+.pg-list-row:focus-within .pg-list-row-quick ~ .pg-list-row-time {
+  display: none;
+}
+.pg-list-row.is-read .pg-list-row-title {
+  font-weight: var(--pg-weight-medium);
+  color: var(--pg-fg-2);
+}
+.pg-list-row.is-read > .pg-icon-tile {
+  opacity: 0.8;
+  filter: saturate(0.55);
+}
+
+/* Gathered rows: one row with the kind as its title and the count beside
+   it; "Show N ..." opens the single lines, "Hide" closes them. */
+.pg-gather {
+  margin: 8px 0 2px;
+  padding-left: 10px;
+  border-left: 2px solid var(--pg-border-color-translucent);
+}
+.pg-gather-line {
+  display: flex;
+  gap: 8px;
+  padding: 3px 0;
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-2);
+  white-space: nowrap;
+}
+.pg-gather-line > b,
+.pg-gather-line > strong {
+  color: var(--pg-fg-body);
+  font-weight: var(--pg-weight-strong);
+}
+.pg-gather-line-end {
+  margin-left: auto;
+  color: var(--pg-fg-body);
+  font-variant-numeric: tabular-nums;
+}
+.pg-gather-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pg-fg-2);
+  font: inherit;
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-medium);
+  cursor: pointer;
+}
+.pg-gather-toggle:hover {
+  color: var(--pg-fg-body);
+}
+
+}
+
+/* Unlayered: Bootstrap 6 declares --bs-body-font-family on :root outside
+   any layer, which beats @layer custom. */
+:root,
+[data-bs-theme] {
+  --bs-body-font-family: var(--pg-font-sans);
+}
