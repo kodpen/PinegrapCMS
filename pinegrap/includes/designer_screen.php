@@ -517,6 +517,11 @@ function pg_designer_screen_render($ctx)
                          the header link and the browser back button all go through
                          the unsaved-changes guard. -->
                     <div class="sd-toolbar sd-toolbar-tabs">
+                        <!-- Hides the whole left panel (and its docking rail)
+                             and brings it back; outside the page group so the
+                             component editor keeps it. Wired by
+                             _sdLeftHideInit(). -->
+                        <button type="button" id="sd-left-toggle" class="sd-icon-btn sd-left-toggle" aria-controls="sd-components" aria-expanded="true" title="' . h(lang('Hide the left panel')) . '" aria-label="' . h(lang('Hide the left panel')) . '"><span class="bi bi-layout-sidebar" aria-hidden="true"></span></button>
                         <div class="sd-toolbar-group sd-toolbar-pages"' . ($sd_component ? ' hidden' : '') . '>
                             <div class="pg-menu-wrap sd-tabs-add">
                                 <button type="button" class="sd-tabs-add-btn" data-bs-toggle="menu" aria-expanded="false" title="' . lang('Add Page') . '">

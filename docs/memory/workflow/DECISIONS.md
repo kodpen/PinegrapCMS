@@ -250,6 +250,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-46.md: Does a picture saved again from the Design Canvas show at once? (owner, 2026-11-12, #8882)
 - decisions-made-product-46.md: How does the Legacy to Bootstrap helper go on after its census? (owner, 2026-11-12, #8942)
 - decisions-made-product-46.md: Is a plan written for the custom layouts' move to Bootstrap 5.3.8? (owner, 2026-11-12, #8942)
+- decisions-made-product-47.md: Where are the rules and the earlier parts?
+- decisions-made-product-47.md: Does WhatsApp become a message channel, and how far at first? (owner, 2026-11-12, #8950)
+- decisions-made-product-47.md: Are WhatsApp templates designed in the panel, and can a message carry an offer code? (owner, 2026-11-12, #8950)
+- decisions-made-product-47.md: Is the campaigns area made anew as one messages area? (owner, 2026-11-12, #8961)
+- decisions-made-product-47.md: What happens to the e-mail campaign profiles? (owner, 2026-11-12, #8961)
 - decisions-made-product-5.md: Which outside-account leftovers start in 2026.11.0? (#3180)
 - decisions-made-product-5.md: Do subscriptions start, and who runs the renewals? (#3183)
 - decisions-made-product-5.md: Does a beta site without a build file get the beta build of its own version? (#3204)
@@ -385,6 +390,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-2.md: How does Run from a workflow table work? (F6c, #3122)
 - decisions-made-workspace-20.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-20.md: Are the canvas-one drawings the reference? (owner, 2026-11-12, #8929)
+- decisions-made-workspace-20.md: Do Flows get a quick setup? (owner, 2026-11-12, #8950)
+- decisions-made-workspace-20.md: Is the flow window rearranged? (owner, 2026-11-12, #8950)
+- decisions-made-workspace-20.md: Do flows leave the Workspace's menu and switch? (owner, 2026-11-12, #8961)
+- decisions-made-workspace-21.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-21.md: Where does the incoming e-mail sit? (owner, 2026-11-12, #8961)
 - decisions-made-workspace-3.md: Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - decisions-made-workspace-3.md: How does a "For each" box loop over a list? (#3312)
 - decisions-made-workspace-3.md: What may a role-3 member's personal flow hold? (#3345)

@@ -2906,6 +2906,7 @@
     "A site already exists in this database": "Bu veritabanında zaten bir site var",
     "A site can have at most {var:1} MCP servers.": "Bir sitede en fazla {var:1} MCP sunucusu olabilir.",
     "A site is already installed in the database that you entered. If you wish to reinstall please check to verify reinstallation.": "Girdiğiniz veritabanında zaten bir site kurulu. Yeniden yüklemek istiyorsanız, lütfen yeniden yüklemeyi doğrulamak için kontrol edin.",
+    "A site keeps at most {var:1} templates.": "Bir site en çok {var:1} şablon tutar.",
     "A site key has only letters, digits, dots, hyphens and underscores.": "Site anahtarı yalnızca harf, rakam, nokta, tire ve alt çizgi içerir.",
     "A site page outside this design": "Bu tasarımın dışında bir site sayfası",
     "A site photo beside a striped board with the headline, two square buttons and four facts about how the firm builds.": "Bir şantiye fotoğrafı; yanında başlık, iki köşeli düğme ve firmanın nasıl inşa ettiğine dair dört bilgi olan çizgili bir pano.",

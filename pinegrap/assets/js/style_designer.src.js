@@ -54211,6 +54211,9 @@ const StyleDesigner = (function () {
     function _sdDockSetOpen(side, on) {
         var body = _sdDockBody();
         if (!body) return;
+        // Whatever asks for the left drawer while the menu button has the
+        // panel hidden gets the panel back first.
+        if (on && side === 'left' && body.classList.contains('sd-hide-left')) { _sdLeftSetHidden(false, true); return; }
         var cls = side === 'left' ? 'sd-open-left' : 'sd-open-right';
         // A panel sitting in the layout has nothing to slide open.
         if (on && !body.classList.contains(side === 'left' ? 'sd-dock-left' : 'sd-dock-right')) return;
@@ -54388,6 +54391,58 @@ const StyleDesigner = (function () {
         }, 120);
     }
 
+    // ── The toolbar's menu button: the left panel out of the way ──────
+    // Hiding takes the panel and its rail off the screen together
+    // (sd-hide-left on .sd-body), so the canvas gets the whole width. The
+    // docking state underneath is kept: showing puts the panel back as
+    // docking has it, in the flow, or on its rail with the drawer open, so
+    // one press leaves the palette on screen at every width.
+    var _SD_HIDE_LEFT_KEY = 'pinegrap_designer_hide_left';
+
+    function _sdLeftHidden() {
+        var body = _sdDockBody();
+        return !!(body && body.classList.contains('sd-hide-left'));
+    }
+
+    function _sdLeftHideSync() {
+        var btn = document.getElementById('sd-left-toggle');
+        if (!btn) return;
+        var hidden = _sdLeftHidden();
+        var label = hidden ? _sdT('Show the left panel') : _sdT('Hide the left panel');
+        btn.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+        btn.title = label;
+        btn.setAttribute('aria-label', label);
+    }
+
+    function _sdLeftSetHidden(on, remember) {
+        var body = _sdDockBody();
+        if (!body) return;
+        if (on) _sdDockSetOpen('left', false);
+        body.classList.toggle('sd-hide-left', !!on);
+        // A docked panel comes back with its drawer open (which also closes
+        // the other drawer and the bottom sheet: one layer at a time).
+        if (!on && body.classList.contains('sd-dock-left')) _sdDockSetOpen('left', true);
+        if (remember) {
+            try { localStorage.setItem(_SD_HIDE_LEFT_KEY, on ? '1' : '0'); } catch (e) {}
+        }
+        _sdLeftHideSync();
+        // The canvas frame's width label follows by its own ResizeObserver;
+        // the selection's size badge is placed by hand.
+        if (selectedNode) setTimeout(_positionSizeBadge, 0);
+    }
+
+    function _sdLeftHideInit() {
+        var btn = document.getElementById('sd-left-toggle');
+        if (btn && !btn._sdWired) {
+            btn._sdWired = true;
+            btn.addEventListener('click', function () { _sdLeftSetHidden(!_sdLeftHidden(), true); });
+        }
+        var stored = false;
+        try { stored = localStorage.getItem(_SD_HIDE_LEFT_KEY) === '1'; } catch (e) {}
+        if (stored) _sdLeftSetHidden(true, false);
+        else _sdLeftHideSync();
+    }
+
     function initPanelDocking() {
         var body = _sdDockBody();
         if (!body || body.getAttribute('data-sd-dock-ready')) return;
@@ -54447,6 +54502,7 @@ const StyleDesigner = (function () {
         window.addEventListener('resize', _sdDockOnResize);
         _sdDockApply();
         _sdRailSyncTabs();
+        _sdLeftHideInit();
     }
 
     function initPanelResizes() {
@@ -73603,6 +73659,7 @@ const StyleDesigner = (function () {
                 if (b) b.click();
             }},
             { id: 'act_grid', label: _sdT('Toggle Grid'), icon: 'bi-grid', action: function() { var b = document.getElementById('sd-vb-grid'); if (b) b.click(); } },
+            { id: 'act_left_panel', label: _sdLeftHidden() ? _sdT('Show the left panel') : _sdT('Hide the left panel'), icon: 'bi-layout-sidebar', action: function() { _sdLeftSetHidden(!_sdLeftHidden(), true); } },
             { id: 'act_outline', label: _sdT('Toggle Outline'), icon: 'bi-grid-3x3', action: function() { var b = document.getElementById('sd-vb-outline'); if (b) b.click(); } },
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
         ];

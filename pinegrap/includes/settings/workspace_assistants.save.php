@@ -125,6 +125,12 @@ if ($ws_bulk !== null) {
     ws_bulk_settings_save($ws_bulk);
 }
 
+// Canvas templates: the hidden ws_canvas_templates_card says the card was
+// posted; a template whose box is unticked is taken off the list.
+if ($ws_admin && (post_value('ws_canvas_templates_card') !== null)) {
+    ws_canvas_templates_settings_save(is_array($_POST['ws_canvas_template'] ?? null) ? $_POST['ws_canvas_template'] : array(), $liveform);
+}
+
 if ($ws_agent !== null) {
     ws_agents_settings_write($ws_viewer, $ws_agent);
     $liveform->add_notice(lang('The agent was saved.'));

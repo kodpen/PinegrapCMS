@@ -754,6 +754,7 @@
     "{var:1} cannot draft it right now.": "{var:1} şu anda taslak hazırlayamıyor.",
     "{var:1} cannot read this channel, so it was not told about your message.": "{var:1} bu kanalı okuyamıyor, bu yüzden mesajınızdan haberi olmadı.",
     "{var:1} cannot wait for {var:2}: the tasks would wait for each other.": "{var:1}, {var:2} görevini bekleyemez: görevler birbirini beklemiş olur.",
+    "{var:1} canvas template(s) were taken off the list": "{var:1} tuval şablonu listeden çıkarıldı",
     "{var:1} capital letter": "{var:1} büyük harf",
     "{var:1} card(s) read from {var:2}, {var:3} of them new; {var:4} linked by tax number.": "{var:2} listesinden {var:1} kart okundu, {var:3} tanesi yeni; {var:4} kart vergi numarasıyla bağlandı.",
     "{var:1} card(s) taken into the ERP (a card whose number an account already carried was linked to it).": "{var:1} kart ERP'ye alındı (numarası zaten bir caride olan kart o cariye bağlandı).",
