@@ -18,13 +18,13 @@ description: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry an
 
 - PK5 (M) The field. `pg_picker_field()`: the combobox with Browse and the chosen value with its picture; the Settings pictures and the short link File fields move to it. This delivers what F3 of the search plan asked for. Done in #8751 (`ui/picker-field.md`).
 
-- PK6 (M) Page fields, first part. Typed page kinds and the field's page wording; Create Page and Edit Page move to `pg_picker_field()` and drop their `<template>` fill (the designer's page type pane keeps its selects until PK8); Settings (Commerce, Privacy, Security) and the User Start Page; a stored archived or binned page stays, marked, and Browse opens on its folder.
+- PK6 (M) Page fields, first part. Typed page kinds and the field's page wording; Create Page and Edit Page move to `pg_picker_field()` and drop their `<template>` fill (the designer's page type pane keeps its selects until PK8); Settings (Commerce, Privacy, Security) and the User Start Page; a stored archived or binned page stays, marked, and Browse opens on its folder. Done in #8782 (`ui/page-form-page-fields.md`).
 
 - PK6b (M) Page fields, second part. The rest of `select_page()` and `get_page_options()`: the product builder, Edit Offer, the short link form and the File Manager short link window, the menu item, the calendar event and the e-mail campaign profile; it decides whether the list screens' quick edit (short links, users) keeps its own lists.
 
 - PK7 (M) The editor bridge. CKEditor's Link and Image dialogs open the picker (pages, files, short links, pictures; Unsplash kept as a source); `editor_select_image.php` and `editor_select_page_or_file.php` are retired.
 
-- PK8 (M) The designer bridge. `sdOpenFilePicker()` and `sdOpenImagePicker()` call `pgPicker` and the fake `CKEDITOR` goes; the widget page pickers (`_swPageOptions()`) get Browse; texts through `_sdT()`.
+- PK8 (M) The designer bridge. `sdOpenFilePicker()` and `sdOpenImagePicker()` call `pgPicker` and the fake `CKEDITOR` goes; the widget page pickers (`_swPageOptions()`) get Browse; the page type pane's page selects become picker fields (`pg_page_form_type_fields()` with `true`); texts through `_sdT()`.
 
 - PK9 (M) The remaining screens. The product builder's pictures, the contact photo, the image editor's From the site lists, the theme designer's file list, and the Workspace's "from the files" picker with its chat attachment refusal kept (`platform/file-copy-chat-attachments.md`).
 

@@ -27,4 +27,9 @@ module: picker
 - `pgPicker.open({kind: 'page', extra: [{value, text, type, type_group, note}], extraLabel})`: the designer's unsaved tabs (`tab:<key>`), shown under a tree row (default "Not saved yet"), first in search results (`extraMatches()`), never resolved and never kept in Recent.
 - A stored value that is one of them opens the dialog on that row.
 
+## What does a page field do with marked pages?
+- The field's search list shows an archived or binned match greyed with its mark (`aria-disabled`); clicking or Enter on it only says why in the status line, and Enter with no row active takes the first choosable one (#8782).
+- Browse with a stored archived or binned page opens its folder, or the folder it was binned from (resolve gives that `folder`), where it is listed marked; before, the dialog opened at the top.
+- A kind kept to some page types (`page_catalog_detail` …) names their labels on the dialog's title line, as a file kind names its extensions.
+
 Tests: `test_picker_page_marks_and_groups` in `tests/picker_test.php`, `test_picker_js_pages` in `tests/picker_js_test.php`. Related: picker-registry.md, picker-dialog.md
