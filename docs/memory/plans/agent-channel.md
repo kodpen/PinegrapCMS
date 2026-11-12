@@ -12,7 +12,6 @@ description: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace chann
 
 ## What is left?
 - `agent-channel-steps-3.md`: A10 the wait during an edit (#8723), A11 the bounded brief, A12 a request waiter.
-- `agent-channel-steps-4.md`: A13 two applications' lines (A14 #8806, A15, A16 done).
 - `agent-channel-steps-5.md`: A17 last seen, A18 an application's tick (#8762).
 - A8, the Claude Code channel plugin, waits for its repository, which the owner opens (`agent-channel-steps-2.md`). The rest of A8 is built.
 
