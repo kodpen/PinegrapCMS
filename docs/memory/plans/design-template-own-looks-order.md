@@ -17,7 +17,7 @@ description: Order of the polishing round after Launch: every shipped template's
 - Every shipped template is in this list or in the status lines below; Launch is in the main plan. A template plan opened after 2026-11-07 starts with its family step ([[design-template-own-look]]) and needs no polishing step.
 
 ## Which templates came from their own plans?
-- Their plans built their pages and have finished, so their `-1` and `-2` come ahead of groups 2 to 5 (their status lines are first). Gallery's signature pages are artists and exhibitions.
+- Their plans built their pages and have finished, so their `-1` and `-2` come ahead of groups 2 to 5. Gallery's signature pages are artists and exhibitions.
 
 ## Where does each template stand?
 - Travel: `-1` #8337, `-2` #8657 done.
@@ -46,7 +46,7 @@ description: Order of the polishing round after Launch: every shipped template's
 
 - Recruitment: `-1`, `-2` open.
 
-- Restaurant: `-1`, `-2` open.
+- Restaurant: `-1` #8878 done; `-2` open.
 
 - Theatre: `-1`, `-2` open.
 
