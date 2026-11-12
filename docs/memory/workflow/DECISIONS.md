@@ -49,6 +49,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-5.md: What does the Visitor map card draw without city names? (owner, 2026-11-11, #8672)
 - decisions-made-panel-5.md: Which report screens are renewed, and how do they look? (owner, 2026-11-11, #8673)
 - decisions-made-panel-5.md: Are there ready reports on a report screen? (owner, 2026-11-11, #8673)
+- decisions-made-panel-6.md: Where are the rules and the earlier parts?
+- decisions-made-panel-6.md: Does the panel get a design language, and from which look? (owner, 2026-11-12, #8842)
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?
 - decisions-made-panel.md: Which date-and-time picker does the software use? (#2693, 2026-10-28)
