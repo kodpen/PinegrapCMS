@@ -47,6 +47,7 @@
 - one-picker.md: Plan (owner 2026-11-10): one modern picker for choosing a file or a page on every screen (a dialog with tree, grid, search and upload; a field with search and Browse), ready for other records
 - panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 - panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
+- panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
 - panel-design-language-sheet.md: The reference sheet of the panel's design language: its pages (basics, add page, table page, the bell's drawer), the page widths they set (#8860), the list rules, what is only a placeholder
 - panel-design-language-steps.md: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860): typeface and recipes, the page widths, the Design examples screen, the bell's drawer, the check, the screen families, close-out
 - report-screens-steps.md: Steps of plans/report-screens.md: RS1 the Sales map card's See all, RS2 the shared view on the order report, RS3 its ready reports, RS4-RS5 the visitor report, RS6 shipping, RS7 ERP VAT, RS8 close-out
