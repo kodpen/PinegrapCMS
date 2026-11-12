@@ -356,7 +356,7 @@ $header = function () use ($el, $link, $icon, $span, $attr, $search_box) {
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2 fw-bold', lang('Brand'), array(
                     $icon('bi-shop', 'fs-4 text-primary'),
-                    $span('{{site_name}}', 'fs-5 pmk-brand', lang('Name')),
+                    $span('{{site_name}}', 'fs-5 pmk-brand text-truncate', lang('Name')),
                 ), array('href' => '{{page:home}}')),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
                     $el('span', 'navbar-toggler-icon', lang('Toggler Icon')),

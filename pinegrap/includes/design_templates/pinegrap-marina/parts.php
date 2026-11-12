@@ -586,10 +586,10 @@ $figure_row = function ($class = '') use ($el, $span, $col, $row, $figures) {
 // The line in the account bar: the radio channel and the way to ask for a
 // berth. A shared component.
 $notice = function () use ($el, $icon, $span, $link, $harbour) {
-    return $el('p', 'd-flex flex-wrap align-items-center gap-2 mb-0', lang('Notice'), array(
-        $icon('bi-broadcast', 'text-primary'),
+    return $el('p', 'mb-0', lang('Notice'), array(
+        $icon('bi-broadcast', 'text-primary me-1'),
         $span(sprintf(lang('Arriving by sea? Call us on %s'), $harbour['vhf']), '', lang('Text')),
-        $link(lang('Request a Berth'), '{{page:berth_request}}', 'link-primary fw-semibold'),
+        $link(lang('Request a Berth'), '{{page:berth_request}}', 'link-primary fw-semibold ms-1'),
     ));
 };
 
@@ -625,11 +625,13 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link($n[1], '{{page:' . $n[0] . '}}', 'nav-link text-nowrap')));
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
-        $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
+        // The bar opens out from 1200 px: from 992 px the brand, the links
+        // and the button overflowed the container in Turkish.
+        $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $icon('bi-life-preserver', 'fs-4 text-primary'),
-                    $span('{{site_name}}', 'pmn-brand fs-4', lang('Name')),
+                    $span('{{site_name}}', 'pmn-brand fs-4 text-truncate', lang('Name')),
                 ), array('href' => '{{page:home}}')),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
                     $el('span', 'navbar-toggler-icon', lang('Toggler Icon')),
@@ -642,8 +644,8 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
                     $attr('aria-label', lang('Toggle navigation')),
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
-                    $el('ul', 'navbar-nav ms-lg-auto me-lg-3 column-gap-lg-2 py-3 py-lg-0', lang('Nav Menu'), $items, array('smartActive' => true)),
-                    $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center gap-2 pb-2 pb-lg-0', lang('Header Actions'), array(
+                    $el('ul', 'navbar-nav ms-xl-auto me-xl-3 column-gap-xl-2 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
+                    $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
                         $el('a', 'btn btn-primary rounded-pill d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
                             $icon('bi-calendar-plus'),
                             $span(lang('Request a Berth'), '', lang('Link Text')),
@@ -875,7 +877,7 @@ $testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $
             $icon('bi-quote', 'fs-2 text-primary lh-1 mb-2'),
             $el('blockquote', 'mb-4', lang('Quote'), array($para($t['quote'], 'pmn-quote mb-0'))),
             $el('figcaption', 'd-flex align-items-center gap-3 mt-auto', lang('Crew Details'), array(
-                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('_attrs' => array($attr('width', '48'), $attr('height', '48'), $attr('loading', 'lazy')))),
+                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('width' => '48', 'height' => '48', '_attrs' => array($attr('loading', 'lazy')))),
                 $el('div', '', lang('Name and Role'), array(
                     $span($t['name'], 'd-block fw-semibold', lang('Name')),
                     $span($t['role'], 'd-block small text-body-secondary', lang('Role')),
@@ -907,7 +909,7 @@ $rate_table = function ($only = '') use ($el, $link, $span, $attr, $kinds, $seas
         }
         $rows[] = $el('tr', '', lang('Table Row'), $cells);
     }
-    return $el('div', 'table-responsive', lang('Rate Table'), array(
+    return $el('div', 'table-responsive position-relative', lang('Rate Table'), array(
         $el('table', 'table align-middle mb-0', lang('Table'), array(
             $el('thead', '', lang('Table Head'), array($el('tr', '', lang('Table Row'), $head))),
             $el('tbody', '', lang('Table Body'), $rows),

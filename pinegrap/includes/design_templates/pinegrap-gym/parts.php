@@ -485,10 +485,10 @@ $faq = function ($n, $question, $answer, $topics = '', $parent = 'gy-faq') use (
 // The line in the account bar: the free trial pass and the way to ask for
 // it. A shared component.
 $notice = function () use ($el, $icon, $span, $link, $query) {
-    return $el('p', 'd-flex flex-wrap align-items-center gap-2 mb-0', lang('Notice'), array(
-        $icon('bi-ticket-perforated', 'text-primary'),
+    return $el('p', 'mb-0', lang('Notice'), array(
+        $icon('bi-ticket-perforated', 'text-primary me-1'),
         $span(lang('Your first visit is on us: a free trial pass for any class.'), '', lang('Text')),
-        $link(lang('Get a pass'), '{{page:join}}?' . $query(array('plan' => lang('Free trial pass'))), 'link-primary fw-semibold'),
+        $link(lang('Get a pass'), '{{page:join}}?' . $query(array('plan' => lang('Free trial pass'))), 'link-primary fw-semibold ms-1'),
     ));
 };
 
@@ -525,11 +525,13 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link($n[1], '{{page:' . $n[0] . '}}', 'nav-link text-nowrap')));
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
-        $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
+        // The bar opens out from 1200 px: from 992 px the brand, the links
+        // and the button overflowed the container in Turkish.
+        $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $icon('bi-lightning-charge-fill', 'fs-4 text-primary'),
-                    $span('{{site_name}}', 'pgy-brand fs-4', lang('Name')),
+                    $span('{{site_name}}', 'pgy-brand fs-4 text-truncate', lang('Name')),
                 ), array('href' => '{{page:home}}')),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
                     $el('span', 'navbar-toggler-icon', lang('Toggler Icon')),
@@ -542,8 +544,8 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
                     $attr('aria-label', lang('Toggle navigation')),
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
-                    $el('ul', 'navbar-nav ms-lg-auto me-lg-3 column-gap-lg-2 py-3 py-lg-0', lang('Nav Menu'), $items, array('smartActive' => true)),
-                    $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center gap-2 pb-2 pb-lg-0', lang('Header Actions'), array(
+                    $el('ul', 'navbar-nav ms-xl-auto me-xl-3 column-gap-xl-2 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
+                    $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
                         $el('a', 'btn btn-primary d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
                             $icon('bi-calendar-plus'),
                             $span(lang('Book a Class'), '', lang('Link Text')),
@@ -633,7 +635,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $focuses, 
                     $contact_line('bi-geo-alt', $link($gym['address'], '{{page:location}}', $plain), lang('Address')),
                     $contact_line('bi-telephone', $link($gym['phone'], 'tel:' . preg_replace('/[^0-9+]/', '', $gym['phone']), $plain), lang('Phone')),
                     $contact_line('bi-envelope', $link($gym['email'], 'mailto:' . $gym['email'], $plain . ' text-break'), lang('Email')),
-                    $contact_line('bi-clock', $el('div', '', lang('Opening Hours'), $hours), lang('Opening Hours')),
+                    $contact_line('bi-clock', $el('span', '', lang('Opening Hours'), $hours), lang('Opening Hours')),
                 )),
             )),
             $el('div', 'd-flex flex-column flex-md-row justify-content-between align-items-center gap-3 border-top mt-4 pt-4', lang('Footer Bottom'), array(
@@ -785,7 +787,7 @@ $plan_card = function ($key) use ($el, $heading, $para, $link, $span, $col, $che
 $quote_author = function ($n, $size = 48) use ($el, $span, $image, $attr, $portrait, $testimonials) {
     $t = $testimonials[$n];
     return $el('figcaption', 'd-flex align-items-center gap-3 mt-auto', lang('Member'), array(
-        $image($portrait($t['name'], $size * 2), $t['name'], 'rounded-circle', array('_attrs' => array($attr('width', (string)$size), $attr('height', (string)$size), $attr('loading', 'lazy')))),
+        $image($portrait($t['name'], $size * 2), $t['name'], 'rounded-circle', array('width' => (string)$size, 'height' => (string)$size, '_attrs' => array($attr('loading', 'lazy')))),
         $el('div', '', lang('Name and Role'), array(
             $span($t['name'], 'd-block fw-semibold', lang('Name')),
             $span($t['role'], 'd-block small text-body-secondary', lang('Role')),

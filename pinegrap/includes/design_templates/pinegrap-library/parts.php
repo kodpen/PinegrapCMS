@@ -608,10 +608,10 @@ $figure_row = function ($class = '') use ($el, $span, $col, $row, $figures) {
 // The line in the account bar: the late opening and the way to the hours.
 // A shared component.
 $notice = function () use ($el, $icon, $span, $link) {
-    return $el('p', 'd-flex flex-wrap align-items-center gap-2 mb-0', lang('Notice'), array(
-        $icon('bi-clock', 'text-primary'),
+    return $el('p', 'mb-0', lang('Notice'), array(
+        $icon('bi-clock', 'text-primary me-1'),
         $span(lang('The Central Library is open until 20:00 on weekdays'), '', lang('Text')),
-        $link(lang('Opening Hours'), '{{page:visit}}', 'link-primary fw-semibold'),
+        $link(lang('Opening Hours'), '{{page:visit}}', 'link-primary fw-semibold ms-1'),
     ));
 };
 
@@ -950,7 +950,7 @@ $staff_card = function ($n) use ($el, $heading, $para, $image, $col, $attr, $por
     $t = $staff[$n];
     return $col(array(
         $el('article', 'card h-100 border-0 shadow-sm text-center p-4', lang('Staff Member'), array(
-            $image($portrait($t['name'], 240), $t['name'], 'rounded-circle mx-auto mb-3', array('_attrs' => array($attr('width', '120'), $attr('height', '120'), $attr('loading', 'lazy')))),
+            $image($portrait($t['name'], 240), $t['name'], 'rounded-circle mx-auto mb-3', array('width' => '120', 'height' => '120', '_attrs' => array($attr('loading', 'lazy')))),
             $heading('h3', $t['name'], 'plb-display h5 mb-1'),
             $para($t['role'], 'small fw-semibold text-primary mb-2'),
             $para($t['bio'], 'small text-body-secondary mb-0'),
@@ -966,7 +966,7 @@ $testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $
             $icon('bi-quote', 'fs-2 text-primary lh-1 mb-2'),
             $el('blockquote', 'mb-4', lang('Quote'), array($para($t['quote'], 'plb-quote mb-0'))),
             $el('figcaption', 'd-flex align-items-center gap-3 mt-auto', lang('Reader Details'), array(
-                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('_attrs' => array($attr('width', '48'), $attr('height', '48'), $attr('loading', 'lazy')))),
+                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('width' => '48', 'height' => '48', '_attrs' => array($attr('loading', 'lazy')))),
                 $el('div', '', lang('Name and Role'), array(
                     $span($t['name'], 'd-block fw-semibold', lang('Name')),
                     $span($t['role'], 'd-block small text-body-secondary', lang('Role')),

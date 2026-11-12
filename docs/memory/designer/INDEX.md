@@ -145,7 +145,7 @@
 - design-template-gym-home.md: Gym template's home, classes and timetable pages on the Gym blocks (1.1.0, #8655): sections, motion, the parallax picture layer, pgy-anchor and pgy-depth, what the editor cannot do yet, tests
 - design-template-gym.md: Gym template (pinegrap-gym): classes and a timetable, trainers, plans, class booking and join requests, memberships in the shop with a members' area, pgy- look, tests.
 - design-template-hello.md: Hello template 2.6.0: threads and the reply e-mail card on the Comments widget, product reviews, the Favourites page and its shop-only links, Google Reviews beside the testimonials [decision: decisions-made-product-16.md]
-- design-template-homeservices-fit.md: Home Services 2.0.0 browser fixes: the header opens out at 1200 px, the price tables' scroll boxes are positioned, dark tertiary bands take the emphasis tint; why and the numbers
+- design-template-homeservices-fit.md: Home Services 2.0.0 browser fixes: the header opens out at 1200 px, the price tables' scroll boxes are positioned, dark tertiary bands mix their text colour lighter; why and the numbers
 - design-template-homeservices-pages.md: Home Services 2.0.0: home on the Home Services blocks and Arrival Windows, service areas on the Zones block, motion elsewhere; builders, data, limits, test
 - design-template-homeservices.md: Home Services template (pinegrap-homeservices): services and team as collections, visit bookings and estimate requests, service areas, price guide, care plans in the shop, phs- look, tests.
 - design-template-hotel-pages.md: Hotel template 2.0.0: home, rooms and rates on the Hotel blocks: the builders, each page's composition, motion, what left, the test
@@ -174,6 +174,7 @@
 - design-template-newsroom-comments.md: News and magazine templates (1.1.0) on the Comments widget: post_comments, conversation_replies, desk_messages, the e-mail card on both comment e-mails, why explicit trees, older sites [decision: here]
 - design-template-overview.md: Start file for the design-template(s)-* files: the Choose a Template catalog, Use This Template, a template file, its own look rule, rows and standard pages, and each template's file [decision: here]
 - design-template-own-look.md: Rule (owner, 2026-11-07): sector sections first as palette blocks, reused not duplicated, general ones in general groups; own composition and motion on home and signature pages [decision: decisions-made-product-37.md]
+- design-template-page-fit.md: Ferry to photo templates in a browser: header at 1200 px, brand ellipsis, notice line, image size props, tinted-band text colours for every palette, positioned scroll boxes
 - design-template-pharmacy-pages.md: Pharmacy template 2.0.0: home, on duty, health checks and three service pages on the Pharmacy blocks: the builders, each page's composition, what left, no motion, the test
 - design-template-pharmacy.md: Pharmacy template (pinegrap-pharmacy): services, health checks, on duty, pharmacists, prescription requests and questions, health products shop, Health Advice by topic, prx- look, tests.
 - design-template-photo-pages.md: Photography Studio template 2.0.0: home, how it works, packages and about on the Photo blocks: the builders, each page's composition, motion, what left, the test

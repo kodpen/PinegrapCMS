@@ -366,7 +366,7 @@ $public_pages[] = array(
         $el('section', 'py-5 bg-body-tertiary', lang('Prices and Deposits'), array(
             $container(array(
                 $section_header(lang('At a glance'), lang('Prices and deposits')),
-                $el('div', 'table-responsive', lang('Table'), array(
+                $el('div', 'table-responsive position-relative', lang('Table'), array(
                     $el('table', 'table align-middle mb-0', lang('Price Table'), array(
                         $el('thead', '', lang('Table Head'), array(
                             $el('tr', '', lang('Row'), array(

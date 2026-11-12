@@ -169,8 +169,9 @@ $library_css = implode("\n", array(
     // The library's name in the header and the footer, in the serif face.
     '.plb-brand{font-family:var(--pg-font-heading);font-weight:700}',
     // A long name shrinks with an ellipsis instead of pushing the open bar
-    // past the container.
-    '.navbar-brand{min-width:0}',
+    // past the container, and on a phone it leaves room for the menu
+    // button on the same line.
+    '.navbar-brand{min-width:0;max-width:calc(100% - 5rem)}',
     // A key figure: the serif face, figures of one width.
     '.plb-stat{font-family:var(--pg-font-heading);font-variant-numeric:tabular-nums}',
     // Opening times: figures of one width, so the hours line up.
@@ -186,17 +187,30 @@ $library_css = implode("\n", array(
     '.plb-lift{transition:transform .2s ease,box-shadow .2s ease}',
     '.plb-lift:hover,.plb-lift:focus-visible,.plb-lift:focus-within{transform:translateY(-3px);box-shadow:var(--bs-box-shadow)}',
     '@media (prefers-reduced-motion:reduce){.plb-lift{transition:none}.plb-lift:hover,.plb-lift:focus-visible,.plb-lift:focus-within{transform:none}}',
-    // In the dark theme a palette's text colour is made for the page
-    // background and falls under 4.5:1 on the tertiary bands (the account
-    // bar, the page headers, the grey sections; Forest gives 4.1:1) and at
-    // the hero's tinted corner. Small coloured text there takes the
-    // palette's emphasis tint; secondary links and buttons take the theme's
-    // own text colours, as a dark secondary (Forest's brown) has no
-    // readable tint on a dark band.
-    '[data-bs-theme=dark] :is(.bg-body-tertiary,.plb-hero) :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}',
-    '[data-bs-theme=dark] :is(.bg-body-tertiary,.plb-hero) .btn-outline-primary{--bs-btn-color:var(--bs-primary-text-emphasis)}',
-    '[data-bs-theme=dark] .bg-body-tertiary .link-secondary{color:var(--bs-secondary-color)!important}',
-    '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-secondary{--bs-btn-color:var(--bs-body-color)}',
+    // A palette's text colour is made readable on the page background only:
+    // on the tertiary bands (the account bar, the page headers, the grey
+    // sections) and at the hero's tinted corner, Coral, Amber and Electric
+    // fall just under 4.5:1 in the light theme, Midnight and Burgundy to
+    // 3.9:1 in the dark one. Small coloured text, links, section menus and
+    // outline buttons there are mixed 10% darker in the light theme and 15%
+    // lighter in the dark one, 4.8:1 or more with every palette; a hovered
+    // or focused link keeps its own shade.
+    '@supports (color:color-mix(in srgb,red 50%,blue)){.bg-body-tertiary,.plb-hero{--plb-band-primary:color-mix(in srgb,var(--pg-primary-fg,var(--bs-primary)) 90%,black);--plb-band-secondary:color-mix(in srgb,var(--pg-secondary-fg,var(--bs-secondary)) 90%,black)}}',
+    '@supports (color:color-mix(in srgb,red 50%,blue)){[data-bs-theme=dark] .bg-body-tertiary,[data-bs-theme=dark] .plb-hero{--plb-band-primary:color-mix(in srgb,var(--pg-primary-fg,var(--bs-primary)) 85%,white);--plb-band-secondary:color-mix(in srgb,var(--pg-secondary-fg,var(--bs-secondary)) 85%,white)}}',
+    ':is(.bg-body-tertiary,.plb-hero) :is(.text-primary,.link-primary:not(:hover,:focus)){color:var(--plb-band-primary,var(--pg-primary-fg,var(--bs-primary)))!important}',
+    ':is(.bg-body-tertiary,.plb-hero) :is(.text-secondary,.link-secondary:not(:hover,:focus)){color:var(--plb-band-secondary,var(--pg-secondary-fg,var(--bs-secondary)))!important}',
+    ':is(.bg-body-tertiary,.plb-hero) .btn-outline-primary{--bs-btn-color:var(--plb-band-primary,var(--pg-primary-fg,var(--bs-primary)))}',
+    ':is(.bg-body-tertiary,.plb-hero) .btn-outline-secondary{--bs-btn-color:var(--plb-band-secondary,var(--pg-secondary-fg,var(--bs-secondary)))}',
+    ':is(.bg-body-tertiary,.plb-hero) .nav{--bs-nav-link-color:var(--plb-band-primary,var(--bs-link-color))}',
+    // On the palette's soft surface (bg-primary-subtle: the call to action
+    // bands, the account card) the colour as text falls to 3.2:1 in the
+    // light theme (Graphite's secondary); there it takes the emphasis tint
+    // the surface is made for, 4.5:1 or more with every palette in both
+    // themes.
+    '.bg-primary-subtle :is(.text-primary,.link-primary:not(:hover,:focus)){color:var(--bs-primary-text-emphasis)!important}',
+    '.bg-primary-subtle :is(.text-secondary,.link-secondary:not(:hover,:focus)){color:var(--bs-secondary-text-emphasis)!important}',
+    '.bg-primary-subtle .btn-outline-primary{--bs-btn-color:var(--bs-primary-text-emphasis)}',
+    '.bg-primary-subtle .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-text-emphasis)}',
 ));
 
 return array(

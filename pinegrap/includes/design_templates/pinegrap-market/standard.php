@@ -144,7 +144,7 @@ foreach ($sellers as $journal_key => $journal_seller) {
     if (!$journal_seller['featured']) continue;
     $journal_makers[] = $el('a', 'list-group-item list-group-item-action d-flex align-items-center gap-3 py-3', lang('Maker'), array(
         $image($photo('maker-' . $journal_key, 96, 96), $journal_seller['maker'], 'rounded-circle object-fit-cover flex-shrink-0', array(
-            '_attrs' => array($attr('width', '48'), $attr('height', '48')),
+            'width' => '48', 'height' => '48',
         )),
         $el('span', 'd-block', lang('Words'), array(
             $span($journal_seller['maker'], 'd-block fw-semibold', lang('Name')),

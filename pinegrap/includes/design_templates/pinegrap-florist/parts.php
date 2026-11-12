@@ -587,10 +587,10 @@ $faq = function ($n, $question, $answer, $topics = '', $parent = 'fl-faq') use (
 // The line in the account bar: the same-day cut-off and the delivery page.
 // A shared component.
 $notice = function () use ($el, $icon, $span, $link, $cutoff_text) {
-    return $el('p', 'd-flex flex-wrap align-items-center gap-2 mb-0', lang('Notice'), array(
-        $icon('bi-truck', 'text-primary'),
+    return $el('p', 'mb-0', lang('Notice'), array(
+        $icon('bi-truck', 'text-primary me-1'),
         $span($cutoff_text(), '', lang('Text')),
-        $link(lang('Delivery details'), '{{page:delivery}}', 'link-primary fw-semibold'),
+        $link(lang('Delivery details'), '{{page:delivery}}', 'link-primary fw-semibold ms-1'),
     ));
 };
 
@@ -634,7 +634,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $icon('bi-flower1', 'fs-4 text-primary'),
-                    $span('{{site_name}}', 'pfl-brand fs-4', lang('Name')),
+                    $span('{{site_name}}', 'pfl-brand fs-4 text-truncate', lang('Name')),
                 ), array('href' => '{{page:home}}')),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
                     $el('span', 'navbar-toggler-icon', lang('Toggler Icon')),
@@ -953,7 +953,7 @@ $testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $
             $stars(),
             $el('blockquote', 'mb-4', lang('Quote'), array($para($t['quote'], 'pfl-quote mb-0'))),
             $el('figcaption', 'd-flex align-items-center gap-3 mt-auto', lang('Customer'), array(
-                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('_attrs' => array($attr('width', '48'), $attr('height', '48'), $attr('loading', 'lazy')))),
+                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('width' => '48', 'height' => '48', '_attrs' => array($attr('loading', 'lazy')))),
                 $el('div', '', lang('Name and Role'), array(
                     $span($t['name'], 'd-block fw-semibold', lang('Name')),
                     $span($t['role'], 'd-block small text-body-secondary', lang('Role')),

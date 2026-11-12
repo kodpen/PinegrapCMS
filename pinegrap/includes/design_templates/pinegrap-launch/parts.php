@@ -360,7 +360,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2 fw-semibold', lang('Brand'), array(
                     $icon('bi-phone', 'fs-4 text-primary'),
-                    $span('{{site_name}}', 'fs-5 plx-brand', lang('Name')),
+                    $span('{{site_name}}', 'fs-5 plx-brand text-truncate', lang('Name')),
                 ), array('href' => '{{page:home}}')),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
                     $el('span', 'navbar-toggler-icon', lang('Toggler Icon')),

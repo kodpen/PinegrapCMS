@@ -319,7 +319,7 @@ $seller_widgets = array(
                                 $el('div', 'pg-hide-if-empty flex-shrink-0', lang('Logo'), array(
                                     $el('span', 'pg-field-value d-block', lang('Picture Frame'), array(
                                         $image($photo('logo-clay', 400, 400), lang('Logo'), 'rounded-circle border object-fit-cover',
-                                            array('_attrs' => array($attr('width', '72'), $attr('height', '72')), '_bindings' => array('src' => 'logo', 'alt' => 'shop_name'))),
+                                            array('width' => '72', 'height' => '72', '_bindings' => array('src' => 'logo', 'alt' => 'shop_name'))),
                                     )),
                                 )),
                                 $el('div', '', lang('Title'), array(

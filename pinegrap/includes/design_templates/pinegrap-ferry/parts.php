@@ -547,10 +547,10 @@ $figure_row = function ($class = '') use ($el, $span, $col, $row, $figures) {
 // The line in the account bar: the way to today's travel notices and to a
 // booking. A shared component.
 $notice = function () use ($el, $icon, $span, $link) {
-    return $el('p', 'd-flex flex-wrap align-items-center gap-2 mb-0', lang('Notice'), array(
-        $icon('bi-megaphone', 'text-primary'),
+    return $el('p', 'mb-0', lang('Notice'), array(
+        $icon('bi-megaphone', 'text-primary me-1'),
         $span(lang('Before you travel, check the travel notices for your route'), '', lang('Text')),
-        $link(lang('Travel Notices'), '{{page:notices}}', 'link-primary fw-semibold'),
+        $link(lang('Travel Notices'), '{{page:notices}}', 'link-primary fw-semibold ms-1'),
     ));
 };
 
@@ -586,11 +586,13 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link($n[1], '{{page:' . $n[0] . '}}', 'nav-link text-nowrap')));
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
-        $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
+        // The bar opens out from 1200 px: from 992 px the brand, the links
+        // and the button overflowed the container in Turkish.
+        $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $icon('bi-water', 'fs-4 text-primary'),
-                    $span('{{site_name}}', 'pfy-brand fs-4', lang('Name')),
+                    $span('{{site_name}}', 'pfy-brand fs-4 text-truncate', lang('Name')),
                 ), array('href' => '{{page:home}}')),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
                     $el('span', 'navbar-toggler-icon', lang('Toggler Icon')),
@@ -603,8 +605,8 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
                     $attr('aria-label', lang('Toggle navigation')),
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
-                    $el('ul', 'navbar-nav ms-lg-auto me-lg-3 column-gap-lg-2 py-3 py-lg-0', lang('Nav Menu'), $items, array('smartActive' => true)),
-                    $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center gap-2 pb-2 pb-lg-0', lang('Header Actions'), array(
+                    $el('ul', 'navbar-nav ms-xl-auto me-xl-3 column-gap-xl-2 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
+                    $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
                         $el('a', 'btn btn-primary rounded-pill d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
                             $icon('bi-ticket-perforated'),
                             $span(lang('Request a Booking'), '', lang('Link Text')),
@@ -812,7 +814,7 @@ $testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $
         $el('figure', 'h-100 border-top border-primary border-3 pt-4 mb-0', lang('Traveller Quote'), array(
             $el('blockquote', 'mb-4', lang('Quote'), array($para($t['quote'], 'pfy-quote mb-0'))),
             $el('figcaption', 'd-flex align-items-center gap-3', lang('Traveller Details'), array(
-                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('_attrs' => array($attr('width', '48'), $attr('height', '48'), $attr('loading', 'lazy')))),
+                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('width' => '48', 'height' => '48', '_attrs' => array($attr('loading', 'lazy')))),
                 $el('div', '', lang('Name and Role'), array(
                     $span($t['name'], 'd-block fw-semibold', lang('Name')),
                     $span($t['role'], 'd-block small text-body-secondary', lang('Role')),
@@ -947,7 +949,7 @@ $fare_table = function ($only = '') use ($el, $link, $span, $icon, $attr, $route
         }
         $bodies[] = $el('tbody', '', $group_name, $rows);
     }
-    return $el('div', 'table-responsive rounded-4 border bg-body p-2 p-md-3', lang('Table Wrap'), array(
+    return $el('div', 'table-responsive position-relative rounded-4 border bg-body p-2 p-md-3', lang('Table Wrap'), array(
         $el('table', 'table align-middle mb-0 pg-ferry-figures', lang('Fares Table'), array_merge(array(
             $el('caption', 'visually-hidden', lang('Table Caption'), array(), array('text' => lang('Single fares by traveller and vehicle'))),
             $el('thead', '', lang('Table Head'), array($el('tr', '', lang('Head Row'), $head))),

@@ -546,10 +546,10 @@ $figure_row = function ($class = '') use ($el, $span, $col, $row, $figures) {
 // The line in the account bar: the free first call and the way to ask for
 // it. A shared component.
 $notice = function () use ($el, $icon, $span, $link) {
-    return $el('p', 'd-flex flex-wrap align-items-center gap-2 mb-0', lang('Notice'), array(
-        $icon('bi-camera-reels', 'text-primary'),
+    return $el('p', 'mb-0', lang('Notice'), array(
+        $icon('bi-camera-reels', 'text-primary me-1'),
         $span(lang('A free first call and a written treatment within a week'), '', lang('Text')),
-        $link(lang('Start a Project'), '{{page:enquiry}}', 'link-primary fw-semibold'),
+        $link(lang('Start a Project'), '{{page:enquiry}}', 'link-primary fw-semibold ms-1'),
     ));
 };
 
@@ -588,7 +588,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $icon('bi-film', 'fs-4 text-primary'),
-                    $span('{{site_name}}', 'pfm-brand fs-4', lang('Name')),
+                    $span('{{site_name}}', 'pfm-brand fs-4 text-truncate', lang('Name')),
                 ), array('href' => '{{page:home}}')),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
                     $el('span', 'navbar-toggler-icon', lang('Toggler Icon')),
@@ -853,7 +853,7 @@ $crew_card = function ($n) use ($el, $heading, $para, $image, $col, $attr, $port
     $t = $crew[$n];
     return $col(array(
         $el('article', 'card h-100 border-0 shadow-sm rounded-3 text-center p-4', lang('Crew Member'), array(
-            $image($portrait($t['name'], 240), $t['name'], 'rounded-circle mx-auto mb-3', array('_attrs' => array($attr('width', '120'), $attr('height', '120'), $attr('loading', 'lazy')))),
+            $image($portrait($t['name'], 240), $t['name'], 'rounded-circle mx-auto mb-3', array('width' => '120', 'height' => '120', '_attrs' => array($attr('loading', 'lazy')))),
             $heading('h3', $t['name'], 'h5 mb-1'),
             $para($t['role'], 'small fw-semibold text-primary mb-2'),
             $para($t['bio'], 'small text-body-secondary mb-0'),
@@ -869,7 +869,7 @@ $testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $
             $stars(),
             $el('blockquote', 'mb-4', lang('Quote'), array($para($t['quote'], 'pfm-quote mb-0'))),
             $el('figcaption', 'd-flex align-items-center gap-3 mt-auto', lang('Client'), array(
-                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('_attrs' => array($attr('width', '48'), $attr('height', '48'), $attr('loading', 'lazy')))),
+                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('width' => '48', 'height' => '48', '_attrs' => array($attr('loading', 'lazy')))),
                 $el('div', '', lang('Name and Role'), array(
                     $span($t['name'], 'd-block fw-semibold', lang('Name')),
                     $span($t['role'], 'd-block small text-body-secondary', lang('Role')),

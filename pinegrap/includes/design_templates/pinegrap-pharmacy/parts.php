@@ -522,12 +522,13 @@ $account_bar_tree = function () use ($el, $widget, $shared, $lang_switcher) {
 };
 
 // The pharmacy's name with its cross, in the header and the footer.
-$brand = function ($class) use ($el, $span, $attr) {
+// $name_class: the name's classes (the header's ends with an ellipsis).
+$brand = function ($class, $name_class = 'prx-brand') use ($el, $span, $attr) {
     return $el('a', $class, lang('Brand'), array(
         $el('span', 'prx-cross d-inline-flex align-items-center justify-content-center rounded-3 text-bg-primary', lang('Pharmacy Cross'), array(
             $el('i', 'bi bi-plus-lg', lang('Icon'), array(), array('_attrs' => array($attr('aria-hidden', 'true')))),
         )),
-        $span('{{site_name}}', 'prx-brand', lang('Name')),
+        $span('{{site_name}}', $name_class, lang('Name')),
     ), array('href' => '{{page:home}}'));
 };
 
@@ -549,9 +550,11 @@ $header = function () use ($el, $link, $icon, $span, $attr, $brand) {
         $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link($n[1], '{{page:' . $n[0] . '}}', 'nav-link text-nowrap')));
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
-        $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
+        // The bar opens out from 1200 px: from 992 px the brand, the links
+        // and the button overflowed the container in Turkish.
+        $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
             $el('div', 'container', lang('Navbar Container'), array(
-                $brand('navbar-brand d-flex align-items-center gap-2 fs-4'),
+                $brand('navbar-brand d-flex align-items-center gap-2 fs-4', 'prx-brand text-truncate'),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
                     $el('span', 'navbar-toggler-icon', lang('Toggler Icon')),
                 ), array('_attrs' => array(
@@ -563,8 +566,8 @@ $header = function () use ($el, $link, $icon, $span, $attr, $brand) {
                     $attr('aria-label', lang('Toggle navigation')),
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
-                    $el('ul', 'navbar-nav ms-lg-auto me-lg-3 column-gap-lg-2 py-3 py-lg-0', lang('Nav Menu'), $items, array('smartActive' => true)),
-                    $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center gap-2 pb-2 pb-lg-0', lang('Header Actions'), array(
+                    $el('ul', 'navbar-nav ms-xl-auto me-xl-3 column-gap-xl-2 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
+                    $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
                         $el('a', 'btn btn-primary rounded-pill d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
                             $icon('bi-prescription2'),
                             $span(lang('Send a Prescription'), '', lang('Link Text')),
@@ -604,7 +607,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $services,
     foreach ($opening_hours as $h) {
         $hours[] = $el('span', 'd-block', lang('Opening Hours'), array(
             $span($h['days'] . ': ', '', lang('Days')),
-            $span($h['hours'], 'prx-price', lang('Hours')),
+            $span($h['hours'], 'prx-price text-wrap', lang('Hours')),
         ));
     }
 
@@ -654,7 +657,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $services,
                     $contact_line('bi-bicycle', $labelled(lang('Delivery'), $pharmacy['delivery'], lang('Delivery Line')), lang('Delivery Line')),
                     $contact_line('bi-telephone-plus', $labelled(lang('Emergency'), $pharmacy['emergency'], lang('Emergency Number')), lang('Emergency Number')),
                     $contact_line('bi-envelope', $link($pharmacy['email'], 'mailto:' . $pharmacy['email'], $plain . ' text-break'), lang('Email')),
-                    $contact_line('bi-clock', $el('div', '', lang('Opening Hours'), $hours), lang('Opening Hours')),
+                    $contact_line('bi-clock', $el('span', '', lang('Opening Hours'), $hours), lang('Opening Hours')),
                 )),
             )),
             $el('div', 'd-flex flex-column flex-md-row justify-content-between align-items-center gap-3 border-top mt-4 pt-4', lang('Footer Bottom'), array(
@@ -798,7 +801,7 @@ $testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $
             $stars(),
             $el('blockquote', 'mb-4', lang('Quote'), array($para($t['quote'], 'mb-0'))),
             $el('figcaption', 'd-flex align-items-center gap-3 mt-auto', lang('Customer'), array(
-                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('_attrs' => array($attr('width', '48'), $attr('height', '48'), $attr('loading', 'lazy')))),
+                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('width' => '48', 'height' => '48', '_attrs' => array($attr('loading', 'lazy')))),
                 $el('div', '', lang('Name and Role'), array(
                     $span($t['name'], 'd-block fw-semibold', lang('Name')),
                     $span($t['role'], 'd-block small text-body-secondary', lang('Role')),

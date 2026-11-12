@@ -29,10 +29,10 @@ $tel = function ($number) {
 // The line in the account bar: what is on now, that entry is free, and the
 // way to the exhibitions. A shared component.
 $notice = function () use ($el, $icon, $span, $link, $query, $exhibition_statuses) {
-    return $el('p', 'd-flex flex-wrap align-items-center gap-2 mb-0', lang('Notice'), array(
-        $icon('bi-easel2', 'text-primary'),
+    return $el('p', 'mb-0', lang('Notice'), array(
+        $icon('bi-easel2', 'text-primary me-1'),
         $span(lang('Free entry, Tuesday to Saturday.'), '', lang('Text')),
-        $link(lang('See what is on now'), '{{page:exhibitions}}?' . $query(array('status' => $exhibition_statuses['now'])), 'link-primary fw-semibold'),
+        $link(lang('See what is on now'), '{{page:exhibitions}}?' . $query(array('status' => $exhibition_statuses['now'])), 'link-primary fw-semibold ms-1'),
     ));
 };
 
@@ -75,9 +75,11 @@ $header = function () use ($el, $link, $icon, $span, $attr, $brand) {
         $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link($n[1], '{{page:' . $n[0] . '}}', 'nav-link text-nowrap')));
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
-        $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
+        // The bar opens out from 1200 px: from 992 px the brand, the links
+        // and the button overflowed the container in Turkish.
+        $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
             $el('div', 'container', lang('Navbar Container'), array(
-                $brand('navbar-brand fs-3 link-body-emphasis'),
+                $brand('navbar-brand fs-3 link-body-emphasis text-truncate'),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
                     $el('span', 'navbar-toggler-icon', lang('Toggler Icon')),
                 ), array('_attrs' => array(
@@ -89,8 +91,8 @@ $header = function () use ($el, $link, $icon, $span, $attr, $brand) {
                     $attr('aria-label', lang('Toggle navigation')),
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
-                    $el('ul', 'navbar-nav ms-lg-auto me-lg-3 column-gap-lg-2 py-3 py-lg-0', lang('Nav Menu'), $items, array('smartActive' => true)),
-                    $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center gap-2 pb-2 pb-lg-0', lang('Header Actions'), array(
+                    $el('ul', 'navbar-nav ms-xl-auto me-xl-3 column-gap-xl-2 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
+                    $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
                         $el('a', 'btn btn-primary rounded-0 d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
                             $icon('bi-calendar2-heart'),
                             $span(lang('Book a Private Viewing'), '', lang('Link Text')),
@@ -176,7 +178,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $gallery, 
                     $contact_line('bi-geo-alt', $link($gallery['address'], '{{page:visit}}', $plain), lang('Address')),
                     $contact_line('bi-telephone', $link($gallery['phone'], $tel($gallery['phone']), $plain), lang('Phone')),
                     $contact_line('bi-envelope', $link($gallery['email'], 'mailto:' . $gallery['email'], $plain . ' text-break'), lang('Email')),
-                    $contact_line('bi-clock', $el('div', '', lang('Opening Hours'), $hours), lang('Opening Hours')),
+                    $contact_line('bi-clock', $el('span', '', lang('Opening Hours'), $hours), lang('Opening Hours')),
                 )),
             )),
             $el('div', 'd-flex flex-column flex-md-row justify-content-between align-items-center gap-3 border-top mt-4 pt-4', lang('Footer Bottom'), array(
