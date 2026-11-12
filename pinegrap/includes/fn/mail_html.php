@@ -366,6 +366,22 @@ function pg_mail_html_attributes($node, $own, $common)
 }
 
 /**
+ * Takes the tags of prefixed elements (Outlook's <o:p>, VML's <v:shape>)
+ * out of the HTML before it is parsed, keeping what they hold: such an
+ * element is never on the list, so it is unwrapped. This cannot wait for
+ * the DOM: libxml 2.9's HTML parser splits the name at the colon and keeps
+ * only the part after it, so <o:p> would come back as a paragraph, while
+ * later versions keep the whole name.
+ *
+ * @param string $html
+ * @return string
+ */
+function pg_mail_html_unprefix($html)
+{
+    return (string) preg_replace('#</?[a-z][\w.-]*:[\w.:-]*(?=[\s/>])[^>]*>#i', '', (string) $html);
+}
+
+/**
  * Writes the kept children of a node, depth first.
  *
  * @param DOMNode $node
@@ -474,7 +490,7 @@ function pg_mail_html_clean($html)
 
     // The parser follows the first character set it is told; the mail's own
     // meta tags name the one it was sent in, before the parser made it UTF-8.
-    $html = '<meta http-equiv="Content-Type" content="text/html; charset=utf-8">' . preg_replace('/<meta\b[^>]*>/i', '', $html);
+    $html = '<meta http-equiv="Content-Type" content="text/html; charset=utf-8">' . preg_replace('/<meta\b[^>]*>/i', '', pg_mail_html_unprefix($html));
 
     $document = new DOMDocument();
     $errors = libxml_use_internal_errors(true);

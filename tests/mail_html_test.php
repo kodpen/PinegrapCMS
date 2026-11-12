@@ -57,7 +57,24 @@ function test_mail_html_drops_what_runs_asks_or_frames()
 
 	pg_assert_contains('Please sign in', $clean, 'an element not on the list is unwrapped, its text kept');
 	pg_assert_contains('<p>AOutlook</p>', $clean, 'an Outlook element unwrapped');
+	pg_assert_same(false, strpos($clean, '<p>A<p>'), 'never a paragraph inside a paragraph');
 	pg_assert_contains('<p>End</p>', $clean, 'what follows the dropped elements stays');
+}
+
+// libxml 2.9's HTML parser reads <o:p> as <p>: the prefixed tags are taken
+// out before any parser sees them, so the result does not depend on its
+// version.
+function test_mail_html_prefixed_elements_are_unwrapped_before_parsing()
+{
+	pg_assert_same('<p>AOutlook</p>', pg_mail_html_unprefix('<p>A<o:p>Outlook</o:p></p>'), 'the tags go, the text stays');
+	pg_assert_same('<p>AB</p>', pg_mail_html_unprefix('<p>A<O:P class="x">B</O:P><o:p/><o:p /></p>'), 'any case, attributes, self-closed');
+	pg_assert_same('<div>x</div>', pg_mail_html_unprefix('<div><v:shape style="width:1px"><v:imagedata src="cid:a"/></v:shape><w:Sdt.Pr-1>x</w:Sdt.Pr-1></div>'), 'VML and Word parts');
+	pg_assert_same('<p xmlns:o="urn:x" title="a:b"><a href="mailto:a@b">m</a></p>', pg_mail_html_unprefix('<p xmlns:o="urn:x" title="a:b"><a href="mailto:a@b">m</a></p>'), 'a colon in an attribute leaves the element alone');
+	pg_assert_same('a < b: c', pg_mail_html_unprefix('a < b: c'), 'text that is no tag');
+
+	$clean = pg_mail_html_clean('<p>A<o:p>Outlook</o:p></p><p>B<v:shape><v:imagedata src="cid:a"/></v:shape></p>');
+
+	pg_assert_same('<p>AOutlook</p><p>B</p>', trim($clean), 'cleaned the same on every libxml');
 }
 
 function test_mail_html_text_after_an_html5_empty_element_stays()

@@ -10,7 +10,7 @@ module: mail_html
 
 ## What does the cleaner keep?
 - It rebuilds the HTML element by element (DOMDocument; the mail's own charset meta tags are taken out first, the text is already UTF-8). Kept: text, headings, lists, tables, `font`, `center`, `a`, `img`, with the attributes of `pg_mail_html_elements()` plus the common ones (id, class, style, title, lang, dir, align, valign, width, height, bgcolor, role, aria).
-- Left out with their content: script, iframe, frame, object, embed, form controls, svg, math, media, template, base, meta, link, the head. An element on no list (`<o:p>`, `<form>`) is unwrapped, its text kept. Text the HTML 4 parser hands to `<wbr>`, `<embed>` or `<source>` is given back.
+- Left out with their content: script, iframe, frame, object, embed, form controls, svg, math, media, template, base, meta, link, the head. An element on no list (`<form>`) is unwrapped, its text kept. Prefixed tags (`<o:p>`, `<v:shape>`) go before parsing (`pg_mail_html_unprefix()`): libxml 2.9 reads `<o:p>` as `<p>`. Text the HTML 4 parser hands to `<wbr>`, `<embed>` or `<source>` is given back.
 - A link keeps only http(s), mailto, tel or `#`. The body's look (bgcolor, style, class, background) goes on a wrapping `div`.
 
 ## What can its CSS do?
