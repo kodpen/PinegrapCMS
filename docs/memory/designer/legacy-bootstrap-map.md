@@ -6,6 +6,7 @@ module: legacy_bootstrap
 
 ## Where is it?
 - `includes/fn/legacy_bootstrap.php`, pure, no database; loaded by whoever converts (the card, the trial design, the page move: LB3-LB5). Tests: `tests/legacy_bootstrap_test.php`.
+- `tools/check_bs6.php` reads the module as site output (`bs6_scope_kind()` in `tools/bs6_rules.php`): its class names are Bootstrap 5.3.8 on purpose, never converted to 6.
 - `pg_lbs_class_map()` is the one map (name => 5.3.8 classes, `''` drops); `pg_lbs_icon_map()` the Glyphicon and Themify twins in Bootstrap Icons; `pg_lbs_by_hand_names()` the Bootstrap 3 names left for a designer.
 
 ## What does a class list get?
