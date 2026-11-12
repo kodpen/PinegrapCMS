@@ -389,6 +389,27 @@ if (count($products) > 0) {
     $output_report = '<div class="alert theme-info mb-0">' . lang('Sorry, there does not appear to be any shipping info for that date range.  Shipping info will appear for this report once shippable Products are purchased.') . '</div>';
 }
 
+// The figures and the chart over the table (includes/fn/report_view.php),
+// read from the Grand Total row and the day columns the table prints.
+require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/layout.php');
+
+$report_view_totals = isset($totals) ? $totals : array();
+$report_view_names = array();
+
+foreach ($dates as $date) {
+    $report_view_names[] = lang(date('D', strtotime($date))) . ' ' . date('j', strtotime($date)) . ' ' . lang(date('M', strtotime($date)));
+}
+
+$report_view = array(
+    'figures' => pg_report_view_shipping_figures($report_view_totals, $dates, count($products)),
+    'chart' => pg_report_view_shipping_chart($report_view_totals, $dates, $report_view_names),
+    'maps' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/maps/',
+    'strings' => array(
+        'figures' => lang('Summary'),
+        'legend' => array(lang('Few'), lang('Many')),
+    ),
+);
+
 print
     pg_page_shell(
         array(
@@ -397,6 +418,7 @@ print
             'icon'=>'store', 
             'heading'=> lang('Shipping Report'),
             'heading_description' => lang('View the number of Products that need to be shipped or have been shipped on different days.'),
+            'head' => '<link rel="stylesheet" href="' . h(pg_dashboard_v2_style_url()) . '">',
             'cancel'=>false
         )
     ) . '
@@ -425,7 +447,21 @@ print
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            
+            <style>
+                @layer custom {
+                    .pg-report-view { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; margin-block: 1rem; }
+                    .pg-report-view > div, .pg-report-view .pg-dash-card { width: 100%; min-width: 0; }
+                    .pg-report-view .pg-dash-figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .75rem; }
+                    .pg-report-view .pg-dash-line { display: block; width: 100%; height: 11rem; }
+                    .pg-report-view .pg-report-view-ends { display: flex; justify-content: space-between; gap: 1rem; margin-top: .375rem; font-size: .75rem; color: var(--pgd-muted); }
+                }
+            </style>
+            <section class="pg-dash pg-report-view" id="pg_report_view" aria-label="' . h(lang('Summary')) . '">
+                <div class="pg-report-view-figures"></div>
+                <div class="pg-report-view-chart"></div>
+                <script type="application/json" id="pg_report_view_data">' . (string) json_encode($report_view, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) . '</script>
+            </section>
+            ' . pg_js_bundle_tags('assets/js/pg_dash.min.js') . pg_js_bundle_tags('assets/js/pg_report_view.min.js') . '
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     ' . $output_report . '

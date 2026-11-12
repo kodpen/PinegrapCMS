@@ -449,11 +449,15 @@ function ws_canvas_svg_background($value)
  * document is marked picture: pending: its PNG is drawn by a member's
  * browser. Pure but for the sanitizer.
  *
+ * With split the SVG becomes a layer per top-level element, as Break
+ * apart makes them (canvas_split.php).
+ *
  * @param mixed $svg
  * @param mixed $background #rrggbb, transparent, or empty for white
+ * @param bool  $split
  * @return array error ('' or too_large, empty, background, not_kept), doc (object or null)
  */
-function ws_canvas_from_svg($svg, $background = '')
+function ws_canvas_from_svg($svg, $background = '', $split = false)
 {
     $fail = function ($error) {
         return array('error' => $error, 'doc' => null);
@@ -474,15 +478,20 @@ function ws_canvas_from_svg($svg, $background = '')
     }
 
     $clean = pg_svg_sanitize($svg);
-    $made = ($clean === '') ? null : ws_canvas_svg_layer($clean);
+
+    if ($split) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_split.php');
+        $parts = ($clean === '') ? null : ws_canvas_split_layers($clean);
+        $made = $parts ? array('w' => $parts['w'], 'h' => $parts['h']) : null;
+    } else {
+        $made = ($clean === '') ? null : ws_canvas_svg_layer($clean);
+    }
 
     if ($made === null) {
         return $fail('empty');
     }
 
-    $made['layer'] = array('id' => 'l0') + $made['layer'];
-
-    $doc = json_decode(json_encode(array(
+    $doc = array(
         'v'        => 1,
         'source'   => null,
         'artboard' => array('width' => $made['w'], 'height' => $made['h'], 'background' => $fill),
@@ -490,9 +499,17 @@ function ws_canvas_from_svg($svg, $background = '')
         'adjust'   => new stdClass(),
         'filter'   => 'none',
         'frame'    => null,
-        'layers'   => array($made['layer']),
+        'layers'   => array(),
         'picture'  => 'pending',
-    ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    );
+
+    if ($split) {
+        $doc = ws_canvas_split_into($doc, $parts, array('x' => 0, 'y' => 0, 'w' => $made['w'], 'h' => $made['h'], 'rot' => 0));
+    } else {
+        $doc['layers'][] = array('id' => 'l0') + $made['layer'];
+    }
+
+    $doc = json_decode(json_encode($doc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
     if (!is_object($doc) || (ws_canvas_doc_json($doc) === '')) {
         return $fail('not_kept');
@@ -516,6 +533,8 @@ function ws_canvas_from_svg_error_text($error)
             return lang('The background is a colour such as #ffffff, or transparent.');
         case 'not_kept':
             return lang('The canvas could not be kept: a picture inside the SVG has to be a file of the site, not data.');
+        case 'layers':
+            return lang('layers is split (a layer per element) or one.');
         default:
             return lang('Nothing in this SVG can be drawn.');
     }

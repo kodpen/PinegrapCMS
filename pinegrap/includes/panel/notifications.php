@@ -186,7 +186,12 @@ function pg_panel_get_notifications($request, $action)
             'day' => pg_notification_day((int) $notification['timestamp'], $now),
             'button' => pg_notification_button($display['action'], $display['kind'], $display['join']),
             // The "Asked of me" chip: a mention, a question or an approval.
-            'ask' => (pg_notification_asks($display['action'], $display['kind']) ? 1 : 0)
+            'ask' => (pg_notification_asks($display['action'], $display['kind']) ? 1 : 0),
+            // What the row's button does in place (approve, try again, a task
+            // done), only when this reader may (ws_bell_act()).
+            'act' => ((($display['action'] === 'workspace') && function_exists('ws_bell_row_act') && (ws_bell_act_kind($display['kind'], 'failed') !== ''))
+                ? ws_bell_row_act((int) ($notification['reference_id'] ?? 0), (int) $user['id'])
+                : null)
         );
 
         array_push($array, $item);

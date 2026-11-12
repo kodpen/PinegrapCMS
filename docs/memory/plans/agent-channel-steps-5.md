@@ -4,7 +4,7 @@ description: Steps A17 and A18 of plans/agent-channel.md (owner 2026-11-11, #876
 ---
 
 ## Which steps are there?
-- S under 400 product lines; each with its tests and its memory topic in `workspace/`. The earlier steps: `agent-channel-steps-3.md`, `agent-channel-steps-4.md`.
+- S under 400 product lines; each with its tests and its memory topic in `workspace/`. The earlier steps: `agent-channel-steps-3.md`; A13 to A16 are done (#8812, #8806, #8770, #8772).
 - Their two columns are approved (owner 2026-11-12, #8762, `workflow/decisions-made-schema-16.md`): `ws_agents.seen_at`, `ws_checks.app_id`. The step that lands first carries the schema step for both, rerun twice on a dev DB; its PR body names the `[SCHEME]` item.
 
 - A17 (S) An agent's last seen. `free`. Owner 2026-11-11, #8762 (`workflow/decisions-made-workspace-16.md`).
