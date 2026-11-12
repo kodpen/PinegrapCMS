@@ -9,8 +9,7 @@ description: Agents draw Workspace canvases from SVG (POST channels/{id}/canvase
 
 ## What does an agent's SVG become?
 - `ws_canvas_from_svg($svg, $background, $split)` (`includes/workspace/canvas_svg.php`) builds the image editor's canvas document as Import does (`ui/image-editor-import.md`): `pg_svg_sanitize()`, then one `svg` layer (id `l0`, kind `g`, `imported`) covering the artboard; an outer `<g id>` with the root's id (`svg` when none), an inner `<g transform>` with the view box's matrix and the root's inherited paint; ids prefixed `i<n>-` and references renamed.
-- With `layers: "split"`: a layer per element (`agent-canvas-layers.md`).
-- Instead of `svg`, `template` and `fill`: a copy of a canvas template with its named layers filled (`agent-canvas-templates.md`).
+- With `layers: "split"`: a layer per element (`agent-canvas-layers.md`); `template` instead: `agent-canvas-templates.md`.
 - The ports of the model's `svgRoot()`, `svgMatrixText()`, `svgIdMap()`, `svgRenameValue()`, `svgRenameCss()` are checked against it under Node (`tests/workspace_agent_canvas_test.php`).
 - Artboard: the root's width and height (view box when missing, 300 x 150 when both are), each side 16-8000; fill `#rrggbb` or `transparent`, white by default. One layer keeps its definitions in its markup, as Import does (no `svgDefs`).
 - Refused (422 on `svg` or `background`): over 1 MB, nothing left to draw after the sanitizer (definitions only count as nothing), a picture as a `data:` URL (not storable, `pg_file_versions_doc_storable()`), a fill that is no colour.
