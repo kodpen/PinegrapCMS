@@ -348,3 +348,52 @@ function test_submitted_form_list_unpaid_filter()
 	pg_assert_same('', pg_submitted_form_list_payment_condition(array(), true), 'unset');
 	pg_assert_same('', pg_submitted_form_list_payment_condition(array('payment' => array('unpaid')), true), 'not text');
 }
+
+// Submitted forms whose page is gone or no longer a form page get their
+// own picker entry: the form's name (else the page's), the reason, and the
+// page id when the name is taken (#9027).
+function test_submitted_form_list_gone_labels()
+{
+	$listed = array(array('id' => '5', 'name' => 'Blog Posts', 'binned' => false));
+	$gone = pg_submitted_form_list_gone_labels(array(
+		array('id' => '40', 'form_name' => 'Events', 'page_name' => '', 'page_exists' => false),
+		array('id' => '41', 'form_name' => '', 'page_name' => 'old-forum', 'page_exists' => true),
+		array('id' => '42', 'form_name' => '', 'page_name' => '', 'page_exists' => false),
+		array('id' => '43', 'form_name' => 'Topics', 'page_name' => '', 'page_exists' => false),
+		array('id' => '44', 'form_name' => 'Topics', 'page_name' => '', 'page_exists' => false),
+	), $listed);
+
+	$deleted = ' [' . lang('PAGE DELETED') . ']';
+
+	pg_assert_same(array(
+		array('id' => '40', 'name' => 'Events' . $deleted, 'binned' => false, 'gone' => true),
+		array('id' => '41', 'name' => 'old-forum [' . lang('NOT A FORM PAGE') . ']', 'binned' => false, 'gone' => true),
+		array('id' => '42', 'name' => lang('Custom Form') . $deleted, 'binned' => false, 'gone' => true),
+		array('id' => '43', 'name' => 'Topics' . $deleted . ' (#43)', 'binned' => false, 'gone' => true),
+		array('id' => '44', 'name' => 'Topics' . $deleted . ' (#44)', 'binned' => false, 'gone' => true),
+	), $gone);
+
+	$taken = pg_submitted_form_list_gone_labels(array(array('id' => '7', 'form_name' => 'X', 'page_name' => '', 'page_exists' => false)), array(array('id' => '3', 'name' => 'X' . $deleted)));
+	pg_assert_same('X' . $deleted . ' (#7)', $taken[0]['name'], 'a name a listed form already has');
+	pg_assert_same(array(), pg_submitted_form_list_gone_labels(array(), $listed), 'none');
+}
+
+// [All] counts the forms of every entry offered, the gone ones too, and a
+// remembered gone form stays picked (the rows action settles it the same
+// way) (#9027).
+function test_submitted_form_list_total_and_gone_pick()
+{
+	$forms = array(
+		array('id' => '5', 'name' => 'A', 'binned' => false),
+		array('id' => '9', 'name' => 'B', 'binned' => true),
+		array('id' => '40', 'name' => 'C', 'binned' => false, 'gone' => true),
+	);
+	$counts = array('5' => 8, '9' => 2, '40' => 104, '77' => 1);
+
+	pg_assert_same(114, pg_submitted_form_list_total($forms, $counts), 'a page id no entry offers (out of the user\'s reach) is not counted');
+	pg_assert_same(0, pg_submitted_form_list_total(array(array('id' => '6', 'name' => 'D')), $counts), 'a form with no submissions');
+
+	submitted_form_list_test_state(array('custom_form' => '40'));
+	pg_submitted_form_list_defaults($forms);
+	pg_assert_same('40', $_SESSION['software']['forms']['view_submitted_forms']['custom_form']);
+}

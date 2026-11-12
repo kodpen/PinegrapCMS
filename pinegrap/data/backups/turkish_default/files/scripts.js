@@ -61,7 +61,7 @@ $(document).ready(function() {
     $('.software_attachment a:first-child').prepend('<i class="ti-clip"></i>');
     
     // file upload fields
-    $('input[type="file"]').wrap('<div class="input-group file-upload"><span class="input-group-btn"><span class="btn btn-secondary btn-file btn-sm btn-thin"><i class="ti-clip"></i> Attach a File</span></span></div>');
+    $('input[type="file"]').wrap('<div class="input-group file-upload"><span class="input-group-btn"><span class="btn btn-secondary btn-file btn-sm btn-thin"><i class="ti-clip"></i> Dosya Ekle</span></span></div>');
     $('div.input-group.file-upload').append('<input type="text" class="file-upload-text" readonly>');
     
     // scheduled comments

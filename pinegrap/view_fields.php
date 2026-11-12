@@ -202,7 +202,9 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     $pg_breadcrumb_parent_items = array(
         array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php'),
     );
-    $output_form_designer_content_heading = ucwords($form_type_name);
+    // pg_upper_words() is UTF-8 and Turkish aware: ucwords() left the "ö" of
+    // "özel form" small.
+    $output_form_designer_content_heading = pg_upper_words($form_type_name);
     if ($form_type == 'shipping') {
         $output_form_designer_content_subheading = lang('Add fields to this custom shipping form.');
     } elseif ($form_type == 'billing') {
@@ -478,3 +480,7 @@ pg_page_shell(array(
 </main>
 ' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
 ' . output_footer();
+
+// The notices Create, Save and Delete left for this screen were printed
+// above; without this they come back on every visit.
+$liveform->remove_form();
