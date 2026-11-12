@@ -797,7 +797,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $services,
 // to start a project and to book a consultation. Shared, so every page
 // that ends with it carries the same call.
 $enquiry_band = function () use ($el, $heading, $para, $link, $container, $row, $col) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -806,8 +806,8 @@ $enquiry_band = function () use ($el, $heading, $para, $link, $container, $row, 
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-light btn-lg rounded-0 px-4'),
-                        $link(lang('Book a Consultation'), '{{page:consultation}}', 'btn btn-outline-light btn-lg rounded-0 px-4'),
+                        $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-secondary btn-lg rounded-0 px-4'),
+                        $link(lang('Book a Consultation'), '{{page:consultation}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),

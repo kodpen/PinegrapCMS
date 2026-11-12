@@ -431,7 +431,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $attr) {
 // The enrol band: a full-width band in the palette's colour with the way to
 // start. Shared, so every page that ends with it carries the same offer.
 $enrol_band = function () use ($el, $heading, $para, $link, $container, $row, $col, $attr) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -440,8 +440,8 @@ $enrol_band = function () use ($el, $heading, $para, $link, $container, $row, $c
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Browse courses'), '{{page:courses}}', 'btn btn-light btn-lg px-4'),
-                        $link(lang('See the membership'), '{{page:pricing}}', 'btn btn-outline-light btn-lg px-4'),
+                        $link(lang('Browse courses'), '{{page:courses}}', 'btn btn-secondary btn-lg px-4'),
+                        $link(lang('See the membership'), '{{page:pricing}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),

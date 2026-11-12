@@ -615,7 +615,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $hours, $b
 // ways to try a car and to value the one you drive now. Shared, so every
 // page that ends with it carries the same offer.
 $test_drive_band = function () use ($el, $heading, $para, $link, $container, $row, $col) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -624,8 +624,8 @@ $test_drive_band = function () use ($el, $heading, $para, $link, $container, $ro
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Book a Test Drive'), '{{page:test_drive}}', 'btn btn-light btn-lg px-4'),
-                        $link(lang('Value My Car'), '{{page:tradein}}', 'btn btn-outline-light btn-lg px-4'),
+                        $link(lang('Book a Test Drive'), '{{page:test_drive}}', 'btn btn-secondary btn-lg px-4'),
+                        $link(lang('Value My Car'), '{{page:tradein}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),

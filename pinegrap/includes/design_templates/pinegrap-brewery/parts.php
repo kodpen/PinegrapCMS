@@ -670,7 +670,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $styles, $
 // that ends with it carries the same call. The Beer Club is the shop's,
 // so the band names it only in words.
 $news_band = function () use ($el, $heading, $para, $link, $container, $row, $col) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -679,8 +679,8 @@ $news_band = function () use ($el, $heading, $para, $link, $container, $row, $co
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Join the Newsletter'), '{{page:newsletter}}', 'btn btn-light btn-lg rounded-pill px-4'),
-                        $link(lang('Book a Tour'), '{{page:tour_booking}}', 'btn btn-outline-light btn-lg rounded-pill px-4'),
+                        $link(lang('Join the Newsletter'), '{{page:newsletter}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
+                        $link(lang('Book a Tour'), '{{page:tour_booking}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),

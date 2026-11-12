@@ -425,7 +425,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $venue, $a
 // to register. Shared, so every page that ends with it carries the same
 // offer.
 $register_band = function () use ($el, $heading, $para, $link, $container, $row, $col, $attr) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -434,8 +434,8 @@ $register_band = function () use ($el, $heading, $para, $link, $container, $row,
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Register'), '{{page:registration}}', 'btn btn-light btn-lg px-4'),
-                        $link(lang('See the passes'), '{{page:tickets}}', 'btn btn-outline-light btn-lg px-4'),
+                        $link(lang('Register'), '{{page:registration}}', 'btn btn-secondary btn-lg px-4'),
+                        $link(lang('See the passes'), '{{page:tickets}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),

@@ -717,7 +717,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $classes, 
 // way to book and the deals. Shared, so every page that ends with it
 // carries the same offer.
 $booking_band = function () use ($el, $heading, $para, $link, $container, $row, $col) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -726,8 +726,8 @@ $booking_band = function () use ($el, $heading, $para, $link, $container, $row, 
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Book a Car'), '{{page:book}}', 'btn btn-light btn-lg px-4'),
-                        $link(lang('See the Deals'), '{{page:deals}}', 'btn btn-outline-light btn-lg px-4'),
+                        $link(lang('Book a Car'), '{{page:book}}', 'btn btn-secondary btn-lg px-4'),
+                        $link(lang('See the Deals'), '{{page:deals}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),

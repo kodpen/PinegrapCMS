@@ -678,7 +678,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $formats, 
 // the way onto the mailing list and the way to the tour dates. Shared, so
 // every page that ends with it carries the same call.
 $list_band = function () use ($el, $heading, $para, $link, $container, $row, $col) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -687,8 +687,8 @@ $list_band = function () use ($el, $heading, $para, $link, $container, $row, $co
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Join the Mailing List'), '{{page:newsletter}}', 'btn btn-light btn-lg rounded-pill px-4'),
-                        $link(lang('Tour Dates'), '{{page:tour}}', 'btn btn-outline-light btn-lg rounded-pill px-4'),
+                        $link(lang('Join the Mailing List'), '{{page:newsletter}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
+                        $link(lang('Tour Dates'), '{{page:tour}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),
