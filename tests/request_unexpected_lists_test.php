@@ -131,6 +131,14 @@ function test_request_unexpected_lists_screens()
 
 		pg_assert_true(count($fields) > 0, $screen . ' draws list fields');
 
+		// A card that moved to Site Settings draws its dialog-only lists
+		// there; that category's 'lists' entry in the registry names them.
+		if ($screen === 'workspace_settings.php') {
+			preg_match_all("/'lists'\s*=>\s*array\((.*?)\)/s", file_get_contents($pinegrap . '/includes/settings/registry.php'), $lists);
+			preg_match_all("/'(ws_[a-z0-9_]*)'\s*=>\s*[1-9]/", implode("\n", $lists[1]), $dialog);
+			$named += array_flip($dialog[1]);
+		}
+
 		foreach ($fields as $name) {
 			pg_assert_true(isset($named[$name]), $screen . ' draws ' . $name . '[...] and its check names it');
 		}
