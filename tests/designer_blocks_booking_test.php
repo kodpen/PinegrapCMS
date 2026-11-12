@@ -101,4 +101,9 @@ function test_designer_blocks_booking_rules_reach_the_stylesheet()
 	foreach ($part['rules'] as $css) {
 		pg_assert_true((bool) preg_match('/var\\(--bs-[a-z-]+\\)/', $css), 'a rule colours with a theme variable: ' . $css);
 	}
+	// The canvas wraps every node in an .sd-wrap, so the windows' rules use
+	// no child or sibling selector, which would miss there.
+	foreach (array('pg-window', 'pg-window-day') as $name) {
+		pg_assert_same(0, preg_match('/[>+~]\s*(li|div|span|p)\b/', $part['rules'][$name]), 'no child or sibling selector: ' . $name);
+	}
 }

@@ -32,19 +32,19 @@ StyleDesigner.registerBlockFamily(function (kit) {
         // start in tabular figures.
         'pg-week-slot': '.pg-week-slot { padding: .5rem .75rem; border-left: 3px solid var(--bs-primary); border-radius: var(--bs-border-radius); background: var(--bs-body-bg); } ' +
                         '.pg-week-slot > time { display: block; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--bs-primary-text-emphasis); }',
-        // An arrival window: a round icon mark, its times in tabular
-        // figures at full strength and its tag set on the card's top edge.
-        'pg-window':     '.pg-window { position: relative; } ' +
-                         '.pg-window .pg-window-icon { display: inline-flex; align-items: center; justify-content: center; width: 3rem; height: 3rem; } ' +
-                         '.pg-window time { font-variant-numeric: tabular-nums; color: var(--bs-emphasis-color); } ' +
-                         '.pg-window .pg-window-tag { position: absolute; top: 0; right: 1.5rem; transform: translateY(-50%); }',
-        // The working day from 08:00 to 19:00 as a bar, the window's hours
-        // filled in the theme's colour, so the windows compare at a glance.
-        'pg-window-day': '.pg-window-day { position: relative; height: .5rem; border-radius: 50rem; background-color: var(--bs-secondary-bg); } ' +
-                         '.pg-window-day > div { position: absolute; top: 0; bottom: 0; border-radius: inherit; background-color: var(--bs-primary); } ' +
-                         '.pg-window-day .pg-window-am { left: 0; width: 36.36%; } ' +
-                         '.pg-window-day .pg-window-pm { left: 36.36%; width: 36.36%; } ' +
-                         '.pg-window-day .pg-window-eve { left: 72.72%; width: 27.28%; }'
+        // An arrival window: a round icon mark and its times in tabular
+        // figures at full strength. Descendant selectors only, so the
+        // canvas (an .sd-wrap around every node) draws it the same.
+        'pg-window':     '.pg-window .pg-window-icon { display: inline-flex; align-items: center; justify-content: center; width: 3rem; height: 3rem; } ' +
+                         '.pg-window time { font-variant-numeric: tabular-nums; color: var(--bs-emphasis-color); }',
+        // The working day from 08:00 to 19:00 as a track, the window's hours
+        // a bar in the theme's colour set in by a margin, so the windows
+        // compare at a glance; the bar gives the track its height.
+        'pg-window-day': '.pg-window-day { border-radius: 50rem; background-color: var(--bs-secondary-bg); } ' +
+                         '.pg-window-day .pg-window-am, .pg-window-day .pg-window-pm, .pg-window-day .pg-window-eve { height: .5rem; border-radius: 50rem; background-color: var(--bs-primary); } ' +
+                         '.pg-window-day .pg-window-am { width: 36.36%; } ' +
+                         '.pg-window-day .pg-window-pm { width: 36.36%; margin-left: 36.36%; } ' +
+                         '.pg-window-day .pg-window-eve { width: 27.28%; margin-left: 72.72%; }'
     };
 
     var _SD_BLOCK_CSS_NEEDS = {
@@ -134,8 +134,12 @@ StyleDesigner.registerBlockFamily(function (kit) {
     // working day (a drawing hidden from a screen reader, which reads the
     // times), what it suits, and when it is offered.
     var win = function (icon, name, from, to, span, text, days, tag) {
+        // The icon, and the tag on the right of the same row when the
+        // window has one.
+        var top = [kit.tag('span', 'pg-window-icon rounded-circle bg-primary-subtle text-primary-emphasis fs-4', _sdT('Icon'), [kit.icon(icon)], [{ name: 'aria-hidden', value: 'true' }])];
+        if (tag) top.push(kit.p(tag, 'pg-window-tag badge rounded-pill text-bg-primary mb-0'));
         var kids = [
-            kit.tag('span', 'pg-window-icon rounded-circle bg-primary-subtle text-primary-emphasis fs-4 mb-3', _sdT('Icon'), [kit.icon(icon)], [{ name: 'aria-hidden', value: 'true' }]),
+            kit.div('d-flex align-items-start justify-content-between gap-2 mb-3', _sdT('Card Top'), top),
             kit.h('h3', name, 'h5 fw-bold mb-1'),
             kit.div('fs-3 fw-bold mb-3', _sdT('Time Range'), [
                 kit.time(from, from, '', _sdT('Start Time')),
@@ -148,7 +152,6 @@ StyleDesigner.registerBlockFamily(function (kit) {
             kit.p(text, 'text-body-secondary mb-3'),
             kit.p(days, 'small fw-semibold mb-0')
         ];
-        if (tag) kids.unshift(kit.p(tag, 'pg-window-tag badge rounded-pill text-bg-primary mb-0'));
         return kit.tag('li', 'col', name, [
             kit.div('pg-window h-100 p-4 rounded-4 border bg-body', _sdT('Card'), kids)
         ]);
@@ -156,7 +159,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
     var buildWindows = function () {
         var head = kit.div('row g-4 align-items-end mb-5', _sdT('Section Header'), [
             kit.div('col-lg-7', _sdT('Section Title'), [
-                kit.p(_sdT('Arrival windows'), 'small text-uppercase fw-semibold text-primary mb-2'),
+                kit.p(_sdT('Arrival windows'), 'small text-uppercase fw-semibold text-primary-emphasis mb-2'),
                 kit.h('h2', _sdT('Choose when we come'), 'display-6 fw-bold mb-0')
             ]),
             kit.div('col-lg-5', _sdT('Lead'), [

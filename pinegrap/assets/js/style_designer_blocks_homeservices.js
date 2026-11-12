@@ -37,9 +37,11 @@ StyleDesigner.registerBlockFamily(function (kit) {
                                  'border-radius: var(--bs-border-radius); font-weight: 700; letter-spacing: .06em; color: var(--bs-success-text-emphasis); transform: rotate(-6deg); } ' +
                                  '.pg-homeservices-sheet img { width: 3rem; height: 3rem; }',
         // The visit's facts under a dashed line, as on a tear-off form: the
-        // label with its icon on the left, the fact on the right.
+        // label with its icon on the left, the fact on the right. Classes
+        // and descendant selectors only, so the canvas (an .sd-wrap around
+        // every node) draws the rows the same.
         'pg-homeservices-facts': '.pg-homeservices-facts { margin: 0; padding-top: .25rem; border-top: 2px dashed var(--bs-border-color); } ' +
-                                 '.pg-homeservices-facts > div { display: grid; grid-template-columns: 7.5rem 1fr; gap: .75rem; padding: .625rem 0; ' +
+                                 '.pg-homeservices-facts .pg-homeservices-fact { display: grid; grid-template-columns: 7.5rem 1fr; gap: .75rem; padding: .625rem 0; ' +
                                  'border-bottom: 1px solid var(--bs-border-color-translucent); } ' +
                                  '.pg-homeservices-facts dt { display: flex; align-items: center; gap: .5rem; font-weight: 400; color: var(--bs-secondary-color); } ' +
                                  '.pg-homeservices-facts dd { margin: 0; font-weight: 600; }',
@@ -50,11 +52,11 @@ StyleDesigner.registerBlockFamily(function (kit) {
                                  '@keyframes pg-homeservices-ring { from { box-shadow: 0 0 0 0 rgba(var(--bs-danger-rgb), .55); } to { box-shadow: 0 0 0 1.25rem rgba(var(--bs-danger-rgb), 0); } } ' +
                                  '@media (prefers-reduced-motion: reduce) { .pg-homeservices-call { animation: none; } }',
         // What to do before the technician arrives: numbered steps, each
-        // number in a round mark in the warning tint.
-        'pg-homeservices-safety': '.pg-homeservices-safety { counter-reset: pg-homeservices-step; margin: 0; padding: 0; list-style: none; } ' +
-                                  '.pg-homeservices-safety > li { position: relative; padding-left: 3rem; counter-increment: pg-homeservices-step; } ' +
-                                  '.pg-homeservices-safety > li + li { margin-top: 1.25rem; } ' +
-                                  '.pg-homeservices-safety > li::before { content: counter(pg-homeservices-step); position: absolute; top: 0; left: 0; display: flex; ' +
+        // number in a round mark in the warning tint. The gap is the list's,
+        // as a sibling selector would miss the canvas's wrapped items.
+        'pg-homeservices-safety': '.pg-homeservices-safety { display: grid; gap: 1.25rem; counter-reset: pg-homeservices-step; margin: 0; padding: 0; list-style: none; } ' +
+                                  '.pg-homeservices-safety li { position: relative; padding-left: 3rem; counter-increment: pg-homeservices-step; } ' +
+                                  '.pg-homeservices-safety li::before { content: counter(pg-homeservices-step); position: absolute; top: 0; left: 0; display: flex; ' +
                                   'align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 50%; font-weight: 700; ' +
                                   'color: var(--bs-warning-text-emphasis); background-color: var(--bs-warning-bg-subtle); }'
     };
@@ -73,7 +75,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
 
     // The small spaced line above a title.
     var eyebrow = function (text, cls) {
-        return kit.p(text, 'small text-uppercase fw-semibold ' + (cls || 'text-primary mb-2'));
+        return kit.p(text, 'small text-uppercase fw-semibold ' + (cls || 'text-primary-emphasis mb-2'));
     };
 
     // A dark band in every look and mode; the palette's accent stays.
@@ -85,7 +87,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
     // ── Hero with a job sheet ───────────────────────────────────────────
     // A fact on the job sheet: its label with an icon, and the fact.
     var fact = function (icon, label, text) {
-        return kit.div('', label, [
+        return kit.div('pg-homeservices-fact', label, [
             kit.tag('dt', '', _sdT('Label'), [kit.icon(icon, 'text-primary'), kit.h('span', label)]),
             kit.tag('dd', '', _sdT('Value'), [kit.h('span', text)])
         ]);
@@ -99,7 +101,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
     };
     var buildJobSheet = function () {
         var words = fx(kit.div('', _sdT('Hero Text'), [
-            eyebrow(_sdT('One call for every job at home'), 'text-primary mb-3'),
+            eyebrow(_sdT('One call for every job at home'), 'text-primary-emphasis mb-3'),
             kit.h('h1', _sdT('Your home, looked after'), 'display-4 fw-bold mb-3'),
             kit.p(_sdT('Cleaning, plumbing, electrical work and repairs, with the price agreed before we start and a twelve-month guarantee on the work.'), 'lead text-body-secondary mb-4'),
             kit.div('d-flex flex-wrap gap-2', _sdT('Buttons'), [

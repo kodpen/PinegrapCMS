@@ -63,7 +63,7 @@ function test_designer_blocks_homeservices_blocks_draw_sound_trees()
 	}
 
 	$hero = $got['blocks']['homeservices-jobsheet'];
-	foreach (array('pg-homeservices-sheet', 'pg-homeservices-paper', 'pg-homeservices-facts', 'pg-homeservices-stamp', 'pg-homeservices-no', 'btn-primary', 'btn-outline-primary') as $class) {
+	foreach (array('pg-homeservices-sheet', 'pg-homeservices-paper', 'pg-homeservices-facts', 'pg-homeservices-fact', 'pg-homeservices-stamp', 'pg-homeservices-no', 'btn-primary', 'btn-outline-primary') as $class) {
 		pg_assert_true(in_array($class, $hero['classes'], true), 'the hero writes ' . $class);
 	}
 	foreach (array('Your home, looked after', 'Book a Visit', 'Get a Free Estimate', '+90 555 000 00 99', 'Job sheet', '#0427', 'Leaking kitchen tap', 'Confirmed', 'Arrival time', 'Tuesday, 08:00 to 12:00', 'Price', 'Fixed, agreed before we start', 'Guarantee', 'We bring', 'Shoe covers and dust sheets', 'Mert Yılmaz') as $text) {
@@ -113,6 +113,9 @@ function test_designer_blocks_homeservices_rules_reach_the_stylesheet()
 	foreach ($part['rules'] as $name => $css) {
 		pg_assert_true((bool) preg_match('/var\\(--bs-[a-z-]+\\)/', $css), 'a rule colours with a theme variable: ' . $name);
 		pg_assert_same(false, strpos($css, '!important'), 'a rule never forces: ' . $name);
+		// The canvas wraps every node in an .sd-wrap, so a child or sibling
+		// selector would miss there what it matches on the page.
+		pg_assert_same(0, preg_match('/[>+~]\s*(li|div|dt|dd)\b/', $css), 'no child or sibling selector: ' . $name);
 	}
 	// The mark rings three times, then rests; never under reduced motion.
 	pg_assert_true(strpos($part['rules']['pg-homeservices-call'], 'animation: pg-homeservices-ring 1.8s ease-out 3;') !== false, 'the mark rings three times');
