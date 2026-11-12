@@ -9,7 +9,7 @@ description: A mail's HTML in the E-mails reading pane (WM12, PR #8861): the gua
 
 ## What does workspace_mail_frame.php answer?
 - Only as a frame (`pg_guarded_frame_request_framed()`), to a Workspace member, for a mail of a conversation with its card whose channel the reader may read (`ws_mail_frame()`); else the same 404 line. `&pictures=1` asks for pictures from outside.
-- `pg_mail_html_document()` wraps the cleaned HTML: `<base target="_blank">`, white in both themes (mail is written for white), html and body height auto so the shell measures the mail.
+- `pg_mail_html_document()` wraps the cleaned HTML: `<base target="_blank">`, white in both themes (mail is written for white), html and body height auto and the body kept in flow (`position:static`; a mail's `body{position:fixed}` measured 0 and the mail vanished) so the shell measures the mail.
 - The mail's own pictures are its `ws_messages` files (`sender_kind = 'mail'`, `sender_id` = the mail's id), at most 100, by file id.
 
 ## What is the guarded frame's mail mode?

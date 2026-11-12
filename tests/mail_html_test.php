@@ -239,6 +239,7 @@ function test_mail_html_document_is_whole_and_keeps_the_frame_in_charge_of_its_h
 	pg_assert_contains('<base target="_blank">', $document, 'a link opens a new tab before the frame dresses it');
 	pg_assert_false(strpos($document, '<base href') !== false, 'base-uri stays closed: no address of its own');
 	pg_assert_contains('html:root,html:root>body{height:auto!important', $document, 'a mail\'s height: 100% never follows the frame');
+	pg_assert_contains('html:root>body{position:static!important}', $document, 'a body taken out of flow would leave the measured root at 0');
 	pg_assert_contains('overflow-y:hidden', $document, 'the frame grows, it never scrolls inside');
 	pg_assert_contains('background:#fff', $document, 'drawn on white in either theme');
 	pg_assert_contains('<body>' . $clean . '</body></html>', $document, 'the cleaned HTML unchanged in the body');

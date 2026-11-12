@@ -592,8 +592,10 @@ function pg_mail_html_link_files($clean, $files)
  * either theme of the panel; a link opens a new tab even before the
  * frame's script has dressed the document. The root and the body never take
  * the frame's height (a mail's height: 100% would follow the frame it sets,
- * and the frame follows the mail), and wide content scrolls sideways inside
- * the frame, whose height counts that bar. Pure.
+ * and the frame follows the mail), the body stays in flow (a fixed or
+ * absolute body leaves the measured root at 0 and the mail would vanish),
+ * and wide content scrolls sideways inside the frame, whose height counts
+ * that bar. Pure.
  *
  * @param string $clean pg_mail_html_clean()
  * @return string HTML
@@ -603,6 +605,7 @@ function pg_mail_html_document($clean)
     return '<!DOCTYPE html><html><head><meta charset="utf-8"><base target="_blank"><style>'
         . 'html{background:#fff;color:#1f2328;color-scheme:light;overflow-x:auto;overflow-y:hidden}'
         . 'html:root,html:root>body{height:auto!important;min-height:0!important;max-height:none!important}'
+        . 'html:root>body{position:static!important}'
         . 'body{margin:0;padding:12px;font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;overflow-wrap:break-word}'
         . 'img{max-width:100%;height:auto}'
         . '</style></head><body>' . (string) $clean . '</body></html>';
