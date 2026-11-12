@@ -1,6 +1,6 @@
 ---
 name: decisions-made-panel-7
-description: Decisions list, panel part 7 (2026-11-12 on): look A's second pass as the reference; how wide add and edit screens and lists are, lists without a pager (#8860)
+description: Decisions list, panel part 7 (2026-11-12 on): look A's second pass as the reference; how wide add and edit screens and lists are, lists without a pager; the dialogs and drawers page (#8860)
 ---
 
 ## Where are the rules and the earlier parts?
@@ -21,3 +21,7 @@ description: Decisions list, panel part 7 (2026-11-12 on): look A's second pass 
 - As wide as its columns need: at least 1280 px (the window when it is narrower), at most the window, centred; only the name column takes the slack.
 - No pager: rows are added on scroll, with "Daha fazla göster" in the foot. Owner (2026-11-12): "liste ekranlarında önceki sonraki yok, kaydırdıkça tablo ekliyor yeni geliştirdik datatable yerine".
 - The numbers 760, 336 and 1280 were offered as open to change; the owner took them as drawn.
+
+## Is the dialogs and drawers page the reference? (owner, 2026-11-12, #8860)
+- Yes: the confirm, form and settings dialogs and the drawer as drawn (`plans/panel-design-language-dialogs.md`).
+- Owner (2026-11-12), shown the page in both themes: "tasarımlarını onaylıyorum bu arada plana koyabilirsin".

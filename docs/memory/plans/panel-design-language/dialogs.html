@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>panel look A: dialogs (confirm, form, settings) and a drawer (channel info with people, agents and last seen)</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="sheet.css">
+<style>
+.board { display: grid; grid-template-columns: 1120px 480px; gap: 36px; align-items: start; }
+.two { display: grid; grid-template-columns: 484px 604px; gap: 32px; align-items: start; margin-top: 28px; }
+
+/* the page behind a dialog: a placeholder under the scrim */
+.shot { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; border-radius: 18px; overflow: hidden; border: 1px solid var(--line);
+  background: radial-gradient(700px 380px at 18% -10%, var(--glow1), transparent 62%), radial-gradient(600px 340px at 100% -8%, var(--glow2), transparent 60%), var(--page); }
+.shot .under { position: absolute; inset: 0; padding: 22px 26px; display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 86px; gap: 14px; }
+.shot .under i { border-radius: 14px; background: var(--sk); }
+.shot .under i.w { grid-column: span 2; }
+.shot::after { content: ""; position: absolute; inset: 0; background: var(--scrim); backdrop-filter: blur(2px); }
+.shot > .dlg { z-index: 1; }
+
+/* a dialog */
+.dlg { position: relative; display: flex; flex-direction: column; overflow: hidden; border-radius: 20px; border: 1px solid var(--line); box-shadow: var(--shadow); background: linear-gradient(180deg, var(--surf1), var(--surf2)); }
+.dh { display: flex; align-items: flex-start; gap: 13px; padding: 20px 16px 0 24px; }
+.dh h2 { margin: 0; font: 650 17px/1.3 "Inter Display", Inter, sans-serif; letter-spacing: -.015em; }
+.dh p { margin: 3px 0 0; font-size: 13px; color: var(--fg2); }
+.dh .ib { margin: -4px 0 0 auto; }
+.dh .tile { margin-top: 1px; }
+.db { padding: 16px 24px 20px; }
+.df { display: flex; align-items: center; gap: 8px; padding: 0 24px 20px; }
+.df.line { padding: 14px 24px; border-top: 1px solid var(--line); }
+.hint { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg3); }
+.ckrow { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--fg2); }
+.g12 { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px 12px; }
+.c4 { grid-column: span 4; } .c8 { grid-column: span 8; } .c12 { grid-column: span 12; }
+.swatch { width: 14px; height: 14px; border-radius: 5px; background: linear-gradient(180deg, var(--a1), var(--a2)); }
+
+/* rows of settings, in a dialog as on a page */
+.card { border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 0 var(--hi); }
+.card .row { display: flex; align-items: center; gap: 13px; padding: 12px 16px; }
+.card .row + .row { border-top: 1px solid var(--line); }
+.card .row .t { flex: 1; min-width: 0; }
+.card .row b { display: block; font-weight: 550; }
+.card .row small { display: block; font-size: 13px; color: var(--fg2); margin-top: 1px; }
+.card .row .in { height: 32px; font-size: 13px; border-radius: 9px; gap: 14px; }
+
+/* the settings dialog: a rail and a pane */
+.dlg.set { flex-direction: row; width: 1040px; height: 680px; }
+.rail { flex: none; width: 232px; padding: 18px 12px; border-right: 1px solid var(--line); background: var(--menu); }
+.rail .rt { margin: 2px 10px 14px; font: 650 17px/1.3 "Inter Display", Inter, sans-serif; letter-spacing: -.015em; }
+.rail .in { height: 32px; font-size: 13px; border-radius: 9px; padding: 0 10px; margin-bottom: 6px; }
+.rail .rg { margin: 16px 10px 6px; font-size: 12px; font-weight: 550; color: var(--fg3); }
+.rail .ri { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 9px; font-size: 13px; font-weight: 500; color: var(--fg2); }
+.rail .ri i { font-size: 15px; }
+.rail .ri.on { color: var(--fg); background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line); }
+.rail .ri.on i { color: var(--accent); }
+.pane { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pane .scroll { flex: 1; min-height: 0; overflow: hidden; padding: 6px 24px 0; }
+.gl { margin: 16px 2px 8px; font-size: 12px; font-weight: 550; color: var(--fg3); }
+
+/* the channel head and the drawer */
+.chead { display: flex; align-items: center; gap: 10px; height: 60px; padding: 0 12px 0 16px; }
+.chead .nm { flex: 1; min-width: 0; }
+.chead .nm b { display: block; font-weight: 600; }
+.chead .nm small { display: block; font-size: 12px; color: var(--fg3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.faces { flex: none; display: inline-flex; align-items: center; height: 32px; padding: 0 9px 0 5px; border-radius: 10px; background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line); }
+.faces .face { margin-left: -5px; box-shadow: 0 0 0 2px var(--surf1); }
+.faces .face:first-child { margin-left: 0; }
+.faces .gap { width: 11px; }
+.faces em { margin-left: 8px; white-space: nowrap; font-style: normal; font-size: 12px; font-weight: 550; color: var(--fg2); }
+.face { position: relative; flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 11.5px; font-weight: 600; color: #fff; background: linear-gradient(135deg, #8b6cf6, #5b8def); }
+.face.b { background: linear-gradient(135deg, #2bb3a3, #3f8fd8); } .face.c { background: linear-gradient(135deg, #e08a4f, #d4577b); }
+.face.sm { width: 22px; height: 22px; font-size: 8.5px; }
+.face.ag { border-radius: 10px; font-size: 15px; color: var(--c, var(--gray)); background: linear-gradient(140deg, color-mix(in srgb, var(--c, var(--gray)) 34%, var(--surf1)), color-mix(in srgb, var(--c, var(--gray)) 16%, var(--surf1))); }
+.face.ag:not(.sm) { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c, var(--gray)) var(--tl), transparent); }
+.face.ag.sm { border-radius: 7px; font-size: 11px; }
+.face u { position: absolute; right: -1px; bottom: -1px; width: 10px; height: 10px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 2px var(--surf1); }
+.face u.away { background: var(--amber); }
+.drawer { width: 430px; margin-left: auto; display: flex; flex-direction: column; overflow: hidden; border-radius: 20px; border: 1px solid var(--line); box-shadow: var(--shadow); background: linear-gradient(180deg, var(--surf1), var(--surf2)); }
+.drawer .head { display: flex; align-items: center; padding: 16px 12px 6px 20px; }
+.drawer .head h2 { margin: 0 auto 0 0; font: 650 17px/1.3 "Inter Display", Inter, sans-serif; letter-spacing: -.015em; }
+.sec { padding: 10px 20px 14px; }
+.sec + .sec { border-top: 1px solid var(--line); padding-top: 14px; }
+.sl { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; font-size: 12px; font-weight: 550; color: var(--fg3); }
+.sl em { font-style: normal; padding: 0 6px; border-radius: 9px; font-size: 11px; font-weight: 600; line-height: 17px; color: var(--fg2); background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line); }
+.sl a { margin-left: auto; font-weight: 500; color: var(--fg2); }
+.purpose { display: flex; align-items: center; gap: 8px; }
+.purpose .ib { margin: -4px -6px -4px auto; }
+.m { display: flex; align-items: center; gap: 12px; margin: 0 -8px; padding: 7px 8px; border-radius: 12px; }
+.m.hov { background: var(--hover); }
+.m .t { flex: 1; min-width: 0; }
+.m b { display: flex; align-items: center; gap: 7px; font-weight: 550; white-space: nowrap; }
+.m small { display: block; font-size: 12.5px; color: var(--fg2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m small span { color: var(--fg3); }
+.badge { height: 17px; padding: 0 6px; border-radius: 6px; font-size: 10.5px; font-weight: 600; line-height: 17px; color: var(--violet); background: color-mix(in srgb, var(--violet) var(--t2), transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--violet) var(--tl), transparent); }
+.seen { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg3); white-space: nowrap; }
+.seen.on { color: var(--fg2); }
+.seen.on::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 18%, transparent); }
+.sec .btn { margin-top: 8px; }
+.sec .ckrow { margin-top: 12px; }
+</style>
+</head>
+<body>
+<div class="stage"><div class="board">
+
+<div>
+  <div class="cap"><b>Ayarlar penceresi</b>1040 × 680 · solda 232 px ray, sağda başlık, ayar kartları ve alt çubuk · köşe 20</div>
+  <div class="shot" style="height: 760px">
+    <div class="under"><i class="w"></i><i></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i class="w"></i><i class="w"></i><i></i><i></i><i></i><i></i><i class="w"></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <section class="dlg set">
+      <nav class="rail">
+        <div class="rt">Ayarlar</div>
+        <div class="in"><i class="bi bi-search"></i><span class="ph">Ayarlarda ara</span><kbd class="end">Ctrl K</kbd></div>
+        <div class="rg">Site</div>
+        <div class="ri"><i class="bi bi-sliders"></i>Genel</div>
+        <div class="ri"><i class="bi bi-palette"></i>Görünüm</div>
+        <div class="ri on"><i class="bi bi-bell"></i>Bildirimler</div>
+        <div class="ri"><i class="bi bi-envelope"></i>E-posta</div>
+        <div class="ri"><i class="bi bi-shield-lock"></i>Güvenlik</div>
+        <div class="rg">Modüller</div>
+        <div class="ri"><i class="bi bi-bag"></i>Ticaret</div>
+        <div class="ri"><i class="bi bi-chat-square-text"></i>Çalışma Alanı</div>
+        <div class="ri"><i class="bi bi-receipt"></i>Ön Muhasebe</div>
+        <div class="rg">Sistem</div>
+        <div class="ri"><i class="bi bi-arrow-repeat"></i>Güncelleme</div>
+        <div class="ri"><i class="bi bi-code-slash"></i>Gelişmiş</div>
+      </nav>
+      <div class="pane">
+        <div class="dh"><div><h2>Bildirimler</h2><p>Zil, ses ve e-posta özetleri.</p></div><button class="ib"><i class="bi bi-x-lg"></i></button></div>
+        <div class="scroll">
+          <div class="gl">Bu cihaz</div>
+          <div class="card">
+            <div class="row"><span class="tile lg t-blue"><i class="bi bi-bell"></i></span><div class="t"><b>Masaüstü bildirimleri</b><small>Panel kapalıyken de göster.</small></div><span class="sw on"></span></div>
+            <div class="row"><span class="tile lg t-violet"><i class="bi bi-volume-up"></i></span><div class="t"><b>Bildirim sesi</b><small>Yeni mesajda ve anıldığınızda çalar.</small></div><div class="in">Yumuşak<i class="bi bi-chevron-down end"></i></div></div>
+          </div>
+          <div class="gl">E-posta</div>
+          <div class="card">
+            <div class="row"><span class="tile lg t-teal"><i class="bi bi-envelope"></i></span><div class="t"><b>Günlük özet</b><small>Okunmamışları her sabah 08:00'de gönderir.</small></div><span class="sw on"></span></div>
+            <div class="row"><span class="tile lg t-amber"><i class="bi bi-moon"></i></span><div class="t"><b>Sessiz saatler</b><small>22:00 – 08:00 arasında bildirim göndermez.</small></div><button class="btn quiet sm">Düzenle</button></div>
+            <div class="row"><span class="tile lg t-rose"><i class="bi bi-exclamation-triangle"></i></span><div class="t"><b>Kritik uyarılar</b><small>Stok tükenmesi ve ödeme hataları sessiz saatleri aşar.</small></div><span class="sw"></span></div>
+          </div>
+          <div class="gl">Çalışma Alanı</div>
+          <div class="card">
+            <div class="row"><span class="tile lg"><i class="bi bi-at"></i></span><div class="t"><b>Kanal bildirimleri</b><small>Yeni kanallarda varsayılan seçim.</small></div><span class="seg"><span>Her mesaj</span><span class="on">Anıldığımda</span><span>Kapalı</span></span></div>
+          </div>
+        </div>
+        <div class="df line"><span class="st t-amber">2 değişiklik kaydedilmedi</span><span class="sp"></span><button class="btn ghost">Geri al</button><button class="btn fill">Kaydet</button></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="two">
+    <div>
+      <div class="cap"><b>Onay penceresi</b>420 · simge karosu, tek cümle başlık, sonuç metni · tehlikeli iş pembe düğmede</div>
+      <div class="shot" style="height: 478px">
+        <div class="under"><i class="w"></i><i></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i class="w"></i><i></i></div>
+        <section class="dlg" style="width: 420px">
+          <div class="dh"><span class="tile lg t-rose"><i class="bi bi-trash3"></i></span><div><h2>3 ürün silinsin mi?</h2><p>Seçili ürünler görselleriyle birlikte kalıcı olarak silinir. Bu işlem geri alınamaz.</p></div></div>
+          <div class="db"><label class="ckrow"><span class="ck on"><i class="bi bi-check"></i></span>Bu ürünlere bağlı indirimleri de sil</label></div>
+          <div class="df"><span class="sp"></span><button class="btn quiet">Vazgeç</button><button class="btn danger">3 ürünü sil</button></div>
+        </section>
+        <section class="dlg" style="width: 420px">
+          <div class="dh"><span class="tile lg t-amber"><i class="bi bi-pencil-square"></i></span><div><h2>Kaydedilmemiş değişiklikler</h2><p>Çıkarsanız bu sayfadaki 4 değişiklik kaybolur.</p></div></div>
+          <div class="db" style="padding-bottom: 4px"></div>
+          <div class="df"><button class="btn ghost" style="margin-left: -10px">Kaydetmeden çık</button><span class="sp"></span><button class="btn quiet">Vazgeç</button><button class="btn fill">Kaydet</button></div>
+        </section>
+      </div>
+    </div>
+    <div>
+      <div class="cap"><b>Form penceresi</b>560 · alanlar 12 sütunluk ızgarada · solda kısayol ipucu, sağda Vazgeç ve asıl düğme</div>
+      <div class="shot" style="height: 478px">
+        <div class="under"><i class="w"></i><i></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i class="w"></i><i></i></div>
+        <section class="dlg" style="width: 560px">
+          <div class="dh"><div><h2>Yeni kanal</h2><p>Kanal, ekibin bir konu etrafında yazıştığı yerdir.</p></div><button class="ib"><i class="bi bi-x-lg"></i></button></div>
+          <div class="db g12">
+            <div class="c8"><label class="lab">Ad</label><div class="in focus"><i class="bi bi-hash"></i>yazilim-koordinasyon</div></div>
+            <div class="c4"><label class="lab">Renk</label><div class="in"><span class="swatch"></span>Mavi<i class="bi bi-chevron-down end"></i></div></div>
+            <div class="c12"><label class="lab">Amaç <em>isteğe bağlı</em></label><div class="in"><span class="ph">Bu kanal ne için?</span></div></div>
+            <div class="c12"><label class="lab">Kim görebilir?</label><span class="seg"><span class="on"><i class="bi bi-globe2"></i>Ekipteki herkes</span><span><i class="bi bi-lock"></i>Yalnızca eklenenler</span></span></div>
+            <div class="c12 card"><div class="row"><span class="tile lg t-violet"><i class="bi bi-robot"></i></span><div class="t"><b>Ajanlar yanıtlayabilsin</b><small>Kanala eklenen ajanlar anıldığında uyanır.</small></div><span class="sw on"></span></div></div>
+          </div>
+          <div class="df"><span class="hint"><kbd>Esc</kbd>kapatır</span><span class="sp"></span><button class="btn ghost">Vazgeç</button><button class="btn fill">Kanalı oluştur</button></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div>
+  <div class="cap"><b>Kanal başlığı</b>Yüzler: kişiler yuvarlak, ajanlar köşeli · sayı ikisini de sayar</div>
+  <div class="pcard chead">
+    <span class="tile lg t-blue"><i class="bi bi-hash"></i></span>
+    <div class="nm"><b>yazilim</b><small>Yazılım geliştirme koordinasyon</small></div>
+    <span class="faces"><span class="face sm">EG</span><span class="face sm b">AD</span><span class="face sm c">MK</span><span class="gap"></span><span class="face sm ag t-violet"><i class="bi bi-stars"></i></span><span class="face sm ag t-blue"><i class="bi bi-robot"></i></span><span class="face sm ag t-teal"><i class="bi bi-robot"></i></span><span class="face sm ag t-amber"><i class="bi bi-robot"></i></span><em>7</em></span>
+    <button class="ib"><i class="bi bi-search"></i></button><button class="ib on"><i class="bi bi-info-circle"></i></button><button class="ib"><i class="bi bi-three-dots-vertical"></i></button>
+  </div>
+
+  <div class="cap" style="margin-top: 28px"><b>Çekmece</b>430 · başlık, bölümler, satırlar · kişide ve ajanda son görülme sağda</div>
+  <section class="drawer">
+    <div class="head"><h2>Kanal bilgisi</h2><button class="ib"><i class="bi bi-x-lg"></i></button></div>
+    <div class="sec">
+      <div class="sl">Amaç</div>
+      <div class="purpose">Yazılım geliştirme koordinasyon<button class="ib sm dim"><i class="bi bi-pencil"></i></button></div>
+    </div>
+    <div class="sec">
+      <div class="sl">Kişiler <em>3</em></div>
+      <div class="m"><span class="face">EG<u></u></span><div class="t"><b>Erdal Güral</b><small>Sahibi</small></div><span class="seen on">Çevrimiçi</span></div>
+      <div class="m"><span class="face b">AD<u class="away"></u></span><div class="t"><b>Ayşe Demir</b><small>Üye <span>· Satış</span></small></div><span class="seen">12 dk önce</span></div>
+      <div class="m"><span class="face c">MK</span><div class="t"><b>Mehmet Kaya</b><small>Üye <span>· Depo</span></small></div><span class="seen">Dün 18:42</span></div>
+      <button class="btn quiet sm"><i class="bi bi-person-plus"></i>Kişi ekle</button>
+    </div>
+    <div class="sec">
+      <div class="sl">Ajanlar <em>4</em><a>Yönet</a></div>
+      <div class="m"><span class="face ag t-violet"><i class="bi bi-stars"></i></span><div class="t"><b>Claude<span class="badge">Asistan</span></b><small>@Claude <span>· sitenin asistanı</span></small></div><span class="seen">Her zaman hazır</span></div>
+      <div class="m hov"><span class="face ag t-blue"><i class="bi bi-robot"></i></span><div class="t"><b>ADNAN Mimar<span class="badge">Ajan</span></b><small>@mimar <span>· anılınca uyanır</span></small></div><span class="seen on">40 sn önce</span></div>
+      <div class="m"><span class="face ag t-teal"><i class="bi bi-robot"></i></span><div class="t"><b>PR Merge<span class="badge">Ajan</span></b><small>@prmerge <span>· anılınca uyanır</span></small></div><span class="seen on">2 dk önce</span></div>
+      <div class="m"><span class="face ag t-amber"><i class="bi bi-robot"></i></span><div class="t"><b>Koordinatör A<span class="badge">Ajan</span></b><small>@koordinator-a <span>· her mesajda uyanır</span></small></div><span class="st t-amber">3 sa önce</span></div>
+    </div>
+    <div class="sec">
+      <div class="sl">Bildirimler</div>
+      <span class="seg"><span>Her mesaj</span><span class="on">Anıldığımda</span><span>Kapalı</span></span>
+      <label class="ckrow"><span class="ck"></span>Asistan yanıtlarını bana sesli oku</label>
+    </div>
+  </section>
+</div>
+
+</div></div>
+</body>
+</html>

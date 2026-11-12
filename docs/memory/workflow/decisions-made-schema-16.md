@@ -1,6 +1,6 @@
 ---
 name: decisions-made-schema-16
-description: Decisions list, schema part 16 (2026-11-11 on): ws_mail_items.body_html, the kind value mailbox on ws_channels, ws_agents.seen_at for an agent's last seen, ws_checks.app_id for an application's tick
+description: Decisions list, schema part 16 (2026-11-11 on): ws_mail_items.body_html, kind mailbox on ws_channels, ws_agents.seen_at, ws_checks.app_id, ws_ai_requests.held_until for the edit hold
 ---
 
 ## Where are the rules and the earlier parts?
@@ -14,3 +14,6 @@ description: Decisions list, schema part 16 (2026-11-11 on): ws_mail_items.body_
 - An agent's last seen and an application's tick (owner, 2026-11-12, #8762; the behaviour: `decisions-made-workspace-16.md`): `ws_agents.seen_at` and `ws_checks.app_id`, each INT UNSIGNED NOT NULL DEFAULT 0 by `install_add_column()`, in a re-runnable sub-step of 2026.11.0.
   - Owner (2026-11-12), in the architect's window: "Onaylıyorum (Önerilen)". Not chosen: "Yalnızca son görülme sütunu"; "Değişiklik istiyorum".
   - `seen_at` is the time of the agent's last call with its key, written at most once a minute, 0 for an agent never seen. `app_id` is the application that set the tick, 0 when a person did (`user_id`).
+- The edit hold of a request (owner, 2026-11-12, #8870; step A10 of `plans/agent-channel-steps-3.md`; the behaviour: `decisions-made-workspace-14.md`, #8723): `ws_ai_requests.held_until` INT UNSIGNED NOT NULL DEFAULT 0 by `install_add_column()` in a 2026.11.0 step, no index.
+  - Owner (2026-11-12), asked with the three stores: "Sütunu ekle (Önerilen)". Not chosen: a file per message under `data/`; a column on `ws_messages`.
+  - The beat sets now + 120 for the message's open requests, save and cancel set 0, every picker reads `held_until <= now`. Existing rows get 0: nothing is held after the upgrade.

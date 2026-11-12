@@ -9,7 +9,8 @@ description: The reference sheet of the panel's design language: its pages (basi
 - `add-page`: an add or edit screen on a 1920 px window.
 - `table-page`: a list on the table driver on a 1920 px window.
 - `bell-drawer`: the bell's drawer in the second pass (#8860): the head's icon buttons, the filter row (a segmented control with counts, the "Unread" button), day groups, the rows, a fold as gathered rows, the foot's device switch.
-- Still to draw, each with the owner: dialogs and drawers (the settings modal), dashboard cards, report screens, Workspace, phone widths.
+- `dialogs`: the confirm, form and settings dialogs and a drawer drawn as "Channel info" (#8860, #8880); numbers in `panel-design-language-dialogs.md`.
+- Still to draw, each with the owner: dashboard cards, report screens, Workspace, phone widths.
 
 ## What is only a placeholder in a picture?
 - The main menu and the top bar are gray bars: they show where the page sits and are not drawn here. The ruler under a screen and the caption above it are notes, not parts of the screen.
