@@ -1,6 +1,6 @@
 ---
 name: command-palette-chips
-description: Which Ctrl+K search chips a viewer gets (the main-menu entry's gate), how typed text matches their keys, Enter and fast typing in the box
+description: Which Ctrl+K search chips a viewer gets (the main-menu entry's gate), how typed text matches their keys, Enter, fast typing and reopening the box
 ---
 ## Which chips does a viewer get?
 - The chips follow the main-menu gates: each one is offered under the rule of the `output_menu()` entry (`fn/output.php`) that opens the same screen, module switches included. `pg_panel_search_chip_gates()` (pure) takes the role, the rights and the query-backed rights read once for role 3 (`no_acl_check()`, `validate_contacts_access($user, true)`, `validate_calendars_access($user, true)`, an ad region) and returns one flag per group.
@@ -16,3 +16,6 @@ description: Which Ctrl+K search chips a viewer gets (the main-menu entry's gate
 ## What do Enter and fast typing do?
 - Enter in the box does nothing: the one-field form's `submit` is cancelled. Before, it reloaded the screen as `?query=…`, losing unsaved input.
 - A first-page search aborts the request still running and every answer carries a number (`searchSeq`); an older one is dropped. Before, a query typed while one loaded was never sent and the old results stayed. Load More still waits for the running request.
+
+## What does the box show when it opens again?
+- The last query and its results, kept across close and reopen, with the query selected (the `shown` handler focuses the field and triggers `select`): Enter-free repeat of the last search, and the first key typed replaces it. Before, the caret sat at the end, so a new word was added to the old one ("pg-test-navayar", no results) (#8996, PR #PRNUM). The clear button still empties the box.

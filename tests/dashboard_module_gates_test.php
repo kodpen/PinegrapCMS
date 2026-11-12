@@ -81,6 +81,9 @@ function test_dashboard_brief_feature_links_follow_their_screens()
 	// only the old dashboard offers it; a kind left with nothing for the reader
 	// falls back to a closing word.
 	pg_assert_contains("!== 'v2'", dashboard_module_gates_block_condition($brief, "h(lang('You can start a deep database check from the system status widget whenever you like.'))"), 'database check line only on the old dashboard');
+	// welcome.php shows that widget only below the User role (#8995).
+	pg_assert_contains("if (\$user['role'] < 3) {\n            \$greeting_features[] = h(lang('You can start a deep database check", $brief, 'database check line only where the System Status widget is shown');
+	pg_assert_true(preg_match("/\\\$widget_registry\[2\] = array\(.*?'show'   => \(\\\$user\['role'\] < 3\)\);/s", dashboard_module_gates_source('welcome.php')) === 1, 'the System Status widget keeps the gate the line follows');
 	pg_assert_contains("if (empty(\$greeting_tail_pool)) {\n            \$greeting_tail_pool = \$greeting_closers;", $brief, 'an empty pool falls back to a closing word');
 }
 
