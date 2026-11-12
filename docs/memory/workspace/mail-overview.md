@@ -24,7 +24,7 @@ description: Workspace e-mail as a whole: mailboxes, the card or a box's room, t
 
 ## Which PR built each slice?
 - G1 core #2586, #2676, #2710, #2738; G2 IMAP #2764, #2788, #2806, #2828; G3 answer #2846, #2872, #2885; G4 Microsoft 365 #2961; G5 #2923, #2942; G6 routing #2904; G7 API #2952; G8 triage #3787.
-- WM1 queue hook #8607; WM2 schema #8634; WM3 send #8646; WM4 screen #8652; WM5 New e-mail #8719; WM6 forward #8748; WM7 answer #8779; WM8 API #8737; WM10 a row opens the mail #8796; WM11 HTML kept #8821; WM12 HTML drawn #8861; WM13 kept in no channel #8985; WM14 support box #PRNUM.
+- WM1 queue hook #8607; WM2 schema #8634; WM3 send #8646; WM4 screen #8652; WM5 New e-mail #8719; WM6 forward #8748; WM7 answer #8779; WM8 API #8737; WM10 a row opens the mail #8796; WM11 HTML kept #8821; WM12 HTML drawn #8861; WM13 kept in no channel #8985; WM14 support box #9061.
 
 ## How is a part added?
 - Who may answer asks `ws_mail_can_answer()`, never `ws_can_post_channel()` alone: a box's room is no channel to post in.
