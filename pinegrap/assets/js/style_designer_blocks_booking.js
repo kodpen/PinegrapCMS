@@ -137,7 +137,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
         // The icon, and the tag on the right of the same row when the
         // window has one.
         var top = [kit.tag('span', 'pg-window-icon rounded-circle bg-primary-subtle text-primary-emphasis fs-4', _sdT('Icon'), [kit.icon(icon)], [{ name: 'aria-hidden', value: 'true' }])];
-        if (tag) top.push(kit.p(tag, 'pg-window-tag badge rounded-pill text-bg-primary mb-0'));
+        if (tag) top.push(kit.p(tag, 'badge rounded-pill text-bg-primary mb-0'));
         var kids = [
             kit.div('d-flex align-items-start justify-content-between gap-2 mb-3', _sdT('Card Top'), top),
             kit.h('h3', name, 'h5 fw-bold mb-1'),

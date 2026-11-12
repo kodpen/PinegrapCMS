@@ -77,7 +77,7 @@ function test_designer_blocks_booking_windows()
 	pg_assert_same(array('ok', 'ok', 'ok'), $b['fx'], 'the header fades, the windows rise, the note follows');
 	pg_assert_same(3, count(array_keys($b['classes'], 'pg-window', true)), 'three windows');
 	pg_assert_same(3, count(array_keys($b['classes'], 'pg-window-day', true)), 'each drawn on the working day');
-	foreach (array('pg-window-am', 'pg-window-pm', 'pg-window-eve', 'pg-window-tag') as $class) {
+	foreach (array('pg-window-am', 'pg-window-pm', 'pg-window-eve') as $class) {
 		pg_assert_true(in_array($class, $b['classes'], true), 'the windows write ' . $class);
 	}
 	foreach (array('Choose when we come', 'Morning', 'Afternoon', 'Evening', '08:00', '12:00', '19:00', 'Most booked', 'Monday to Friday; an evening rate applies', 'Book a Visit') as $text) {
