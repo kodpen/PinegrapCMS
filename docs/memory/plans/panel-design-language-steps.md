@@ -22,7 +22,7 @@ description: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860)
 
 - DL4 (S) The check and the rule. `tools/check_look.php` in CI counts panel rules outside the recipes (a font size or weight off the scale, a colour outside the tokens) and lets the count only fall. Key rule in `ui/README.md`: a panel screen is built from the recipes; a new recipe is drawn first and asked on an `architect` issue. Done in #8905 (`ui/look-check.md`).
 
-- DL5a to DL5f (M each) The screen families, one step each, in this order: the dashboard (not given, #8938); list screens (toolbar, table, row actions); add and edit screens (cards, field widths, the save bar); settings (section cards, the modal); report screens; Workspace (channel, lists). Each waits for its family's part of the sheet; lists and add screens have theirs. DL5a waits for its drawing. DL5b done in #8921.
+- DL5a to DL5f (M each) The screen families, one step each, in this order: the dashboard (not given, #8938); list screens (toolbar, table, row actions); add and edit screens (cards, field widths, the save bar); settings (section cards, the modal); report screens; Workspace (channel, lists). Each waits for its family's part of the sheet. DL5b done in #8921. DL5c's cards and save bar in #8934; its field widths remain.
 
 - DL6 (S) Close-out: `ui/look-overview.md`, the lasting rules in `ui/`, this plan and its folder deleted but for what the overview names.
 

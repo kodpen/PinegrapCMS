@@ -37,7 +37,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Create Contact Group'),
-            'extra classes'=>'contact',
+            'extra classes'=>'contact pg-measure-edit',
             'icon'=>'contact', 
             'heading'=>lang('Create Contact Group'),
             'heading_description' => lang('Create a new contact group to collect and organize contacts.'),

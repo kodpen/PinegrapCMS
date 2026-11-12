@@ -29,7 +29,7 @@ if (!$_POST) {
     print
     pg_page_shell([
         'title'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Login Region'))),
-        'extra classes'=>'page',
+        'extra classes'=>'page pg-measure-edit',
         'icon'=>'page',
         'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('Login Region'))),
         'heading_description' => lang('Create the messages displayed in the login region before and after users log in.'),

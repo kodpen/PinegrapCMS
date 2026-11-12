@@ -76,7 +76,7 @@ if (!isset($_POST['name'])) {
     print
     pg_page_shell([
         'title'=> lang('Edit Designer Region'),
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-edit',
         'icon'=>'design',
         'heading'=>lang('Edit Designer Region'),
         'heading_description' => lang('Update this designer region of shared content. (A rename will require its tag to be updated in any page styles.)'),

@@ -66,7 +66,7 @@ if (!$_POST) {
     
     $output = pg_page_shell([
         'title'=> lang('Create Menu Item'),
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-edit',
         'icon'=>'design',
         'heading'=>lang('Create Menu Item'),
         'heading_description' => lang('Create a new menu item within this shared menu.'),

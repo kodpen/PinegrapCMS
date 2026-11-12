@@ -34,7 +34,7 @@ if (!$_POST) {
     print
         pg_page_shell([
             'title'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Ad'))),
-            'extra classes'=>'ads',
+            'extra classes'=>'ads pg-measure-edit',
             'icon'=>'ads',
             'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('Ad'))),
             'heading_description' => lang('Create a new ad and assign it to any existing ad region.'),

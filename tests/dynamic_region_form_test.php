@@ -70,7 +70,7 @@ function test_dynamic_region_form_wide_layout_columns()
 	pg_assert_true($form_column !== false && $status_column !== false && $form_column < $status_column, 'the status column follows the form column');
 	pg_assert_contains('<div class="position-sticky" style="top:3.3rem;">', $src, 'the status box sticks under the top bar');
 	pg_assert_contains('id="dregion_summary_tag"', $src, 'the Summary shows the body tag');
-	pg_assert_true(preg_match_all('/<h2 class="card-header[^"]*\\bh5\\b[^"]*">/', $src) === 3, 'Options, PHP Code and Summary are h2.h5 cards');
+	pg_assert_true(preg_match_all('/<h2 class="card-header[^"]*\\bpg-title-section\\b[^"]*">/', $src) === 3, 'Options, PHP Code and Summary are h2 card titles');
 
 	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_dynamic_region.php');
 	pg_assert_contains("lang('Last Modified')", $edit, 'the edit screen shows the last change');

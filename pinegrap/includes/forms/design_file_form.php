@@ -71,7 +71,7 @@ function pg_design_file_form_access_card($folder_options, $options = array())
 
     return '
                             <div class="card my-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('File Access Control') . '
                                 </h2>
                                 <div class="card-body">
@@ -97,7 +97,7 @@ function pg_design_file_form_description_card($description = '', $compact = fals
 
     return '
                             <div class="card my-7 ">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Description') . '
                                 </h2>
                                 <div class="card-body">
@@ -172,7 +172,7 @@ function pg_design_file_form_summary_card($top, $rows)
 
     return '
                             <div class="card my-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Summary') . '
                                 </h2>
                                 <div class="card-body pt-0">' . $top . '

@@ -32,7 +32,7 @@ if (!$_POST) {
     echo pg_page_shell(
         array(
             'title'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Auto Dialog'))),
-            'extra classes'=>'page',
+            'extra classes'=>'page pg-measure-edit',
             'icon'=>'page',
             'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('Auto Dialog'))),
             'cancel'=>array('enable'=>'true','url'=>'view_auto_dialogs.php'),

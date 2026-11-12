@@ -43,7 +43,7 @@ if (!$_POST) {
 
     $output_header = pg_page_shell([
         'title'=> lang('Create Custom Page Style'),
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-edit',
         'icon'=>'design',
         'heading'=>lang('Create Custom Page Style'),
         'heading_description' => lang('Create a new HTML template that can be associated with one or many Pages.'),

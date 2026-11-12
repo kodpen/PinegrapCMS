@@ -122,7 +122,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title' => lang('Edit Till'),
-        'extra classes' => 'erp erp_cash',
+        'extra classes' => 'erp erp_cash pg-measure-edit',
         'icon' => 'erp',
         'heading' => h($till['name']),
         'heading_description' => lang('The till, and every movement through it.'),
@@ -188,7 +188,7 @@ if (!$_POST) {
 
         <div class="col-12 order-3">
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <div class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Cash Book') . '
                 </div>
                 <div class="card-body p-0 position-relative table-responsive">

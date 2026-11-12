@@ -64,7 +64,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Currency'))),
-            'extra classes'=>'setting',
+            'extra classes'=>'setting pg-measure-edit',
             'icon'=>'setting', 
             'heading'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Currency'))),
             'heading_description' => lang('Edit this currency conversion selectable by customers.'),

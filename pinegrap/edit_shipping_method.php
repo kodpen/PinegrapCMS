@@ -46,7 +46,7 @@ if (!$_POST) {
     $output =
     pg_page_shell([
         'title'=> lang('Edit Shipping Method'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-edit',
         'icon'=>'store',
         'heading'=>lang('Edit Shipping Method'),
         'heading_description' => lang('Edit a shipping method that will be made available during checkout based on the products and destination address.'),

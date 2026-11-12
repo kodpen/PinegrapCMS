@@ -374,6 +374,7 @@
 - login-region-shared-form.md: The login region create and edit screens share includes/forms/login_region_form.php: the columns, the Summary, the save bar, the default, what stays in the screens
 - look-check.md: tools/check_look.php (#8905): panel CSS outside look A's recipes (sizes or weights off the scale, colour literals) may only fall against its baseline; what it skips, --update
 - look-design-examples.md: The Design examples screen (design_examples.php, DL2 #8907): every look A recipe live in a light and a dark pane, the classes under each, what is not a recipe yet; where a step copies markup from
+- look-edit-screens.md: Add and edit screens in look A (DL5c, #8934): the edit width on every add/edit screen, columns 760 and 336 from the shared classes, look cards and titles, the floating save bar; what is not done yet
 - look-page-widths.md: Look A's page widths (#8892): edit screens centred at 1120 px (760 + 24 + 336), lists as wide as their columns (1280 px to the window); tokens, body classes, rail, name column [decision: decisions-made-panel-7.md]
 - look-type-and-recipes.md: Look A's typeface (self-hosted Inter 4.1), the type scale and tone tokens, and the recipe classes in backend.src.css (#8879): which class draws which part, the block's place, the unlayered body family
 - mail-queue-paging.md: The mail queue screen's e-mail and SMS lists on the list table driver, the row confirm, the wrapping long-text cells, Retry while the queue is inactive, and the screen's wording

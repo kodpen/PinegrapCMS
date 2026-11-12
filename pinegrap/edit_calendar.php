@@ -86,7 +86,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang(array('string'=>'Edit Calendar Properties') ),
-            'extra classes'=>'calendar',
+            'extra classes'=>'calendar pg-measure-edit',
             'icon'=>'calendar',
             'heading'=> lang(array('string'=>'Edit Calendar Properties') ),
             'heading_description' => lang('Edit the properties for this calendar.'),

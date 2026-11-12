@@ -185,7 +185,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Upload File'),
-            'extra classes'=>'file',
+            'extra classes'=>'file pg-measure-edit',
             'icon'=>'file',
             'heading'=>lang('Upload File'),
             'heading_description' => lang('Drop files below, update the settings (if necessary), and then click Upload.'),
@@ -350,7 +350,7 @@ if (!$_POST) {
                     ' . pg_design_file_form_layout(
                         '
                             <div class="card my-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Files To Upload') . '
                                 </h2>
                                 <div class="card-body">

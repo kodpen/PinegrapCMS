@@ -25,7 +25,7 @@ if (!defined('PG_INIT_LOADED')) {
 		<div class="row">
 			<div class="col-12 lg:col-8 2xl:col-9 order-1">
 				<div class="card mb-7">
-					<h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+					<h2 class="card-header bg-reset border-0 pg-title-section">
 						<?=lang('Duplicate Options')?>
 					</h2>
 					<div class="card-body pt-0">
@@ -57,7 +57,7 @@ if (!defined('PG_INIT_LOADED')) {
 				<!-- 3.3rem: the fixed control panel header covers the top of the window. -->
 				<div class="position-sticky" style="top:3.3rem;">
 					<div class="card mb-7">
-						<h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+						<h2 class="card-header bg-reset border-0 pg-title-section">
 							<?=lang('Summary')?>
 						</h2>
 						<div class="card-body pt-0">

@@ -93,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         pg_page_shell(
             array(
                 'title' => lang('Approve Affiliate'),
-                'extra classes' => 'contact',
+                'extra classes' => 'contact pg-measure-edit',
                 'icon' => 'contact',
                 'heading' => lang('Approve Affiliate'),
                 'heading_description' => lang('Confirm the approval of the affiliate request that reached you by e-mail.'),

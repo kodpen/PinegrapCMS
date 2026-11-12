@@ -1172,7 +1172,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Edit User') . ' : ' . h($username),
-            'extra classes'=>'users',
+            'extra classes'=>'users pg-measure-edit',
             'icon'=>'account',
             'heading'=>lang('Edit User'),
             'heading_description' => lang('Update this user\'s role and rights, or e-mail a link to set a new password.'),

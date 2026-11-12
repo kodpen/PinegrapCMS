@@ -93,7 +93,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Create Short Link'),
-            'extra classes'=>'page',
+            'extra classes'=>'page pg-measure-edit',
             'icon'=>'page',
             'heading'=>lang('Create Short Link'),
             'heading_description' => lang('Create a short address for a page, product group, product, file or URL.'),

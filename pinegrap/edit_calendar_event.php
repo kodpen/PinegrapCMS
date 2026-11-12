@@ -241,7 +241,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Event'))),
-            'extra classes'=>'calendar',
+            'extra classes'=>'calendar pg-measure-edit',
             'icon'=>'calendar', 
             'heading'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Event'))),
             'heading_description' => lang('View, edit, or publish this calendar event.'),

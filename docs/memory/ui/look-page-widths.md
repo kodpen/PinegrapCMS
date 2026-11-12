@@ -10,7 +10,7 @@ description: Look A's page widths (#8892): edit screens centred at 1120 px (760 
 ## How does a screen take them?
 - With a class on `<body>` through `'extra classes'` of `pg_page_shell()`/`output_header()`: `pg-measure-edit` for an add or edit screen, `pg-measure-list` for a list.
 - An edit screen also puts `pg-edit-columns` on the `.row` holding its form column (`order-1`), status column (`order-2`) and save bar (`order-3`).
-- On the look so far: `product_builder.php` (Create Product, Edit Product; not Variant Sets); every root list screen on the list table driver (#8921: `view_*.php` but `view_fields.php`, the `erp_*.php` lists, `mail_queue.php`). The add and edit screens follow with their family (DL5c).
+- On the look so far: every add and edit screen with the form and status columns (#8934, `look-edit-screens.md`; `product_builder.php` also has `pg-edit-columns`); every root list screen on the list table driver (#8921: `view_*.php` but `view_fields.php`, the `erp_*.php` lists, `mail_queue.php`).
 
 ## How does an add or edit screen sit?
 - `#content` is at most 1120 px plus its 1rem padding, centred. From lg (1024 px) the row is a grid: form column up to 760, status column up to 336, 24 between, the save bar across both. On a narrower window the form column gives way first; below lg they stack in source order as `edit-screen-wide-layout.md` says.

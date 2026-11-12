@@ -14,7 +14,7 @@ description: Owner decision for panel edit screens: a wide screen is not spent o
 | Save bar | `col-12 order-3 position-sticky` | the primary button |
 
 ## How wide is it?
-- Centred, at most 1120 px: form 760, status 336, gap 24 (#8860); `look-page-widths.md`.
+- Centred, at most 1120 px: form 760, status 336, gap 24 (#8860); `look-page-widths.md`. Cards, titles and the floating save bar of look A: `look-edit-screens.md`.
 
 ## What are the placement rules?
 - Below `lg` (1024px; `2xl` is 1536px) the columns stack in source order: write the status column AFTER the form column, so on a narrow screen the summary does not push the first field off screen.
