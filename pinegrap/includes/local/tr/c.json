@@ -3649,6 +3649,8 @@
     "Counted from the texts last read from this page and from what it places: shared components, menus, the records a list includes. A widget may draw other texts as well (products, form fields), and they count too when the page is drawn.": "Bu sayfadan ve sayfanın yerleştirdiklerinden (ortak bileşenler, menüler, bir listenin çeviriye kattığı kayıtlar) son okunan metinlerden sayıldı. Bir widget başka metinler de gösterebilir (ürünler, form alanları); sayfa açılırken onlar da sayılır.",
     "Counted in": "Birim",
     "Counted only": "Yalnızca sayılır",
+    "Counter": "Tezgâh",
+    "Counter Seats": "Tezgâh Yerleri",
     "Counter sale": "Kasa satışı",
     "Counter sale #{var:1}": "Tezgâh satışı #{var:1}",
     "Counter sale #{var:1}, part {var:2}": "Tezgâh satışı #{var:1}, {var:2}. parça",
