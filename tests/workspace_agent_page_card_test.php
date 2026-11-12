@@ -77,4 +77,9 @@ function test_workspace_agent_page_card_frame_and_script()
 
 	$strings = ws_page_card_js_strings();
 	pg_assert_true(strpos($strings['page_by'], '{1}') !== false, 'the maker\'s line names the agent');
+
+	// The frame's address is in the software's folder: without it a site
+	// whose panel sits under /pinegrap/ framed its own 404 page.
+	$card = file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/page_card.php');
+	pg_assert_true(strpos($card, "PATH . SOFTWARE_DIRECTORY . '/live_page.php?message='") !== false, 'the frame is live_page.php beside the panel');
 }

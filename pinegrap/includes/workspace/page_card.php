@@ -78,7 +78,8 @@ function ws_page_card($message_id, $file_id, $may_undo, $viewer = null)
         return null;
     }
 
-    $state['frame'] = PATH . 'live_page.php?message=' . (int) $message_id;
+    // live_page.php sits in the software's folder, beside the panel.
+    $state['frame'] = PATH . SOFTWARE_DIRECTORY . '/live_page.php?message=' . (int) $message_id;
     $state['sandbox'] = pg_guarded_frame_panel_sandbox('script');
 
     if (is_array($viewer) && function_exists('ws_canvas_tables_card')) {
