@@ -3,10 +3,12 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Design template "Public Library", part 1 of its files: the node
- * builders, the library's own data (the branches with their opening
- * hours, the services, the rooms and spaces, the staff, the figures, what
- * readers say, the sample titles of the catalogue, the sample events and
- * the answers of the forms' pick lists) and the parts every page repeats
+ * builders and the interactions the pages put on them, the library's own
+ * data (the branches with their opening hours day by day, the Central
+ * Library's floors, the services, what a card lends, the rooms and spaces,
+ * the staff, the figures, what readers say, the sample titles of the
+ * catalogue, the sample events and the answers of the forms' pick lists)
+ * and the parts every page repeats
  * (account bar, notice, header, footer, join band, branch, hours, room,
  * title, event, staff and reader cards, page shells, section headers,
  * form fields, the comment thread).
@@ -63,6 +65,24 @@ $icon = function ($name, $class = '') use ($el, $attr) {
 $span = function ($text, $class, $name, $extra = array()) use ($el) {
     return $el('span', $class, $name, array(), array_merge(array('text' => $text), $extra));
 };
+// A time of day the operator edits like a link's words; 'datetime' keeps
+// the machine-readable value (the editor's kit.time()).
+$time = function ($datetime, $text, $class, $name) use ($el, $attr) {
+    return $el('time', $class, $name, array(), array('text' => $text, '_attrs' => array($attr('datetime', $datetime))));
+};
+// An interaction on a node (Interactions in the editor): the operator can
+// change or remove it there, and the platform keeps the node still for a
+// visitor who prefers reduced motion.
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+// A row whose items rise one after another as it scrolls into view.
+$rise = function ($node, $stagger = 90) use ($fx) {
+    return $fx($node, array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => $stagger));
+};
+// A section heading that fades in on view.
+$fade_in = array('effect' => 'fade', 'trigger' => 'view', 'duration' => 700);
 $container = function ($children, $class = '') {
     return array('type' => 'container', 'props' => array('fluid' => false, 'cssClass' => $class), 'children' => $children);
 };
@@ -144,15 +164,17 @@ $library = array(
 
 // The branches. Each has its own page (branch_<key>) with its hours day
 // by day; the forms' Branch lists and the event list name them in their
-// own words. Fixed data: a library's branches change rarely.
+// own words. Fixed data: a library's branches change rarely. An hours row
+// names its days in words and lists them in 'on' (0 is Monday, 6 Sunday),
+// so the visit page's table gives every day of the week its own row.
 $branches = array(
     'central' => array('icon' => 'bi-building', 'title' => lang('Central Library'),
         'address' => lang('Library Square 1, Town Centre'), 'phone' => '+90 555 000 00 00',
         'short'   => lang('Open every day, late until 20:00 on weekdays'),
         'hours'   => array(
-            array('days' => lang('Monday to Friday'), 'hours' => '9:00 - 20:00'),
-            array('days' => lang('Saturday'), 'hours' => '9:00 - 18:00'),
-            array('days' => lang('Sunday'), 'hours' => '12:00 - 17:00'),
+            array('days' => lang('Monday to Friday'), 'on' => array(0, 1, 2, 3, 4), 'hours' => '9:00 - 20:00'),
+            array('days' => lang('Saturday'), 'on' => array(5), 'hours' => '9:00 - 18:00'),
+            array('days' => lang('Sunday'), 'on' => array(6), 'hours' => '12:00 - 17:00'),
         ),
         'summary' => lang('Four floors of books, a quiet study floor, the local history room and the community hall.'),
         'text'    => lang('The Central Library holds the largest collection, the local history room and the community hall. Its top floor is kept quiet for study, and the ground floor has the children\'s library, the café corner and the computers.'),
@@ -161,10 +183,10 @@ $branches = array(
         'address' => lang('Mill Lane 8, Riverside'), 'phone' => '+90 555 000 00 01',
         'short'   => lang('Open Tuesday to Saturday'),
         'hours'   => array(
-            array('days' => lang('Monday'), 'hours' => lang('Closed')),
-            array('days' => lang('Tuesday to Friday'), 'hours' => '10:00 - 18:00'),
-            array('days' => lang('Saturday'), 'hours' => '10:00 - 16:00'),
-            array('days' => lang('Sunday'), 'hours' => lang('Closed')),
+            array('days' => lang('Monday'), 'on' => array(0), 'hours' => lang('Closed')),
+            array('days' => lang('Tuesday to Friday'), 'on' => array(1, 2, 3, 4), 'hours' => '10:00 - 18:00'),
+            array('days' => lang('Saturday'), 'on' => array(5), 'hours' => '10:00 - 16:00'),
+            array('days' => lang('Sunday'), 'on' => array(6), 'hours' => lang('Closed')),
         ),
         'summary' => lang('A bright family library by the river, with a large children\'s corner and a garden for story time.'),
         'text'    => lang('Riverside is our family branch: picture books, early readers and a reading garden where story time is held whenever the weather allows. Parents\' groups meet in its activity room every week.'),
@@ -173,14 +195,62 @@ $branches = array(
         'address' => lang('Station Road 21, Hillside'), 'phone' => '+90 555 000 00 02',
         'short'   => lang('Open Monday to Friday, late on Thursdays'),
         'hours'   => array(
-            array('days' => lang('Monday to Wednesday'), 'hours' => '10:00 - 18:00'),
-            array('days' => lang('Thursday'), 'hours' => '10:00 - 20:00'),
-            array('days' => lang('Friday'), 'hours' => '10:00 - 17:00'),
-            array('days' => lang('Saturday and Sunday'), 'hours' => lang('Closed')),
+            array('days' => lang('Monday to Wednesday'), 'on' => array(0, 1, 2), 'hours' => '10:00 - 18:00'),
+            array('days' => lang('Thursday'), 'on' => array(3), 'hours' => '10:00 - 20:00'),
+            array('days' => lang('Friday'), 'on' => array(4), 'hours' => '10:00 - 17:00'),
+            array('days' => lang('Saturday and Sunday'), 'on' => array(5, 6), 'hours' => lang('Closed')),
         ),
         'summary' => lang('A small neighbourhood library near the station, with study tables, computers and a meeting room.'),
         'text'    => lang('Hillside is a small, friendly branch close to the station. Students use its study tables after school, and its meeting room hosts the evening reading clubs and digital help sessions.'),
         'points'  => array(lang('Study tables and quiet corners'), lang('Ten public computers and printing'), lang('A meeting room for clubs and groups'), lang('Returns box open around the clock'))),
+);
+
+// The days of the week, Monday first (the visit page's table).
+$week_days = array(lang('Monday'), lang('Tuesday'), lang('Wednesday'), lang('Thursday'), lang('Friday'), lang('Saturday'), lang('Sunday'));
+
+// A branch's hours as two times ('9:00 - 20:00'), or null on a closed day.
+$hours_times = function ($hours) {
+    $parts = explode(' - ', $hours);
+    return count($parts) === 2 ? $parts : null;
+};
+// A time of the hours as a <time> value: 9:00 is 09:00.
+$clock = function ($time) {
+    return str_pad($time, 5, '0', STR_PAD_LEFT);
+};
+
+// The Central Library's floors from the top down (its page's floor
+// directory): the level, what the floor is, what is on it and who goes
+// up. A room named on a floor is one of the branch's rooms to book.
+$floors = array(
+    'central' => array(
+        array('level' => '3', 'name' => lang('Quiet study floor'),
+            'text' => lang('Desks with power at every seat, kept quiet for study and reading.'),
+            'items' => array(lang('Study desks'), lang('Silent reading room'), lang('Free Wi-Fi')),
+            'access' => lang('Everyone, by lift or stairs')),
+        array('level' => '2', 'name' => lang('Local History'),
+            'text' => lang('The local history room and its archive: maps, newspapers and photographs of the town.'),
+            'items' => array(lang('Local history room'), lang('Archive'), lang('Group Study Room')),
+            'access' => lang('The archive by appointment with a librarian')),
+        array('level' => '1', 'name' => lang('Lending floor'),
+            'text' => lang('Novels, non-fiction, large print and films, and the community hall for talks and concerts.'),
+            'items' => array(lang('Novels'), lang('Non-fiction'), lang('Large Print'), lang('Community Hall')),
+            'access' => lang('Everyone; the hall when it is booked')),
+        array('level' => '0', 'name' => lang('Ground floor'),
+            'text' => lang('The welcome desk, the children\'s library, the café corner and the public computers.'),
+            'items' => array(lang('Welcome desk'), lang('Children\'s library'), lang('Computers'), lang('Café corner')),
+            'access' => lang('Everyone; the returns box is by the door')),
+    ),
+);
+
+// What a card lends (the home's card band): each format with how many
+// items at a time, for how long and how often a loan is renewed. Fifteen
+// items in all, as the services and the questions say; the eBooks count
+// apart, ten at a time, as the digital page says.
+$loan_rules = array(
+    array('icon' => 'bi-book', 'format' => lang('Books and large print'), 'count' => '15', 'loan' => lang('3 weeks'), 'renew' => lang('Twice')),
+    array('icon' => 'bi-film', 'format' => lang('Films'), 'count' => '5', 'loan' => lang('1 week'), 'renew' => lang('Once')),
+    array('icon' => 'bi-newspaper', 'format' => lang('Magazines'), 'count' => '5', 'loan' => lang('1 week'), 'renew' => lang('Not renewed')),
+    array('icon' => 'bi-tablet', 'format' => lang('eBooks and audiobooks'), 'count' => '10', 'loan' => lang('3 weeks'), 'renew' => lang('Once')),
 );
 
 // What the library offers (the home, the digital page and the about page).
@@ -581,7 +651,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $icon('bi-book', 'fs-4 text-primary'),
-                    $span('{{site_name}}', 'plb-brand fs-4', lang('Name')),
+                    $span('{{site_name}}', 'plb-brand fs-4 text-truncate', lang('Name')),
                 ), array('href' => '{{page:home}}')),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
                     $el('span', 'navbar-toggler-icon', lang('Toggler Icon')),
@@ -595,8 +665,11 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
                     $el('ul', 'navbar-nav ms-xl-auto me-xl-3 column-gap-xl-1 py-3 py-xl-0', lang('Nav Menu'), $nav, array('smartActive' => true)),
+                    // From 1200 to 1399 px the brand and the seven links fill the
+                    // 1140 px container, so the card button stays in the collapsed
+                    // menu and comes back to the open bar from 1400 px.
                     $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
-                        $el('a', 'btn btn-primary d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
+                        $el('a', 'btn btn-primary d-inline-flex d-xl-none d-xxl-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
                             $icon('bi-person-vcard'),
                             $span(lang('Join the Library'), '', lang('Link Text')),
                         ), array('href' => '{{page:join}}')),

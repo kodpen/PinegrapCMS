@@ -17,6 +17,8 @@
  * a link to a library system; availability is the staff's word for where
  * a title is. New arrival is the staff's choice (office use only): the
  * home page shows the new arrivals. The newest title added comes first.
+ * Under the list the Library: Shelf Mark Guide reads a sample title's
+ * spine label, so a visitor finds the title on the shelf.
  *
  * The pieces defined here ($lb_filter, $lb_page_link, $lb_yes_no and
  * $lb_filter_bar) serve the later lists too (events.php); the template
@@ -90,6 +92,90 @@ $item_grid = function () use ($widget_root, $row, $loop, $item_card) {
     return $widget_root(array($row(array($loop(array($item_card()))), '4')));
 };
 
+// Finding a title on the shelf, the Library: Shelf Mark Guide block: the
+// spine of a sample title (A Year in the Kitchen Garden, 635 REE) drawn
+// large and scaled in on view, a drawing screen readers skip; its label
+// read part by part, the fiction mark and the shelves that stand apart
+// named by the sample titles' own marks; beside it the ten subject
+// classes rising in turn, the example's marked in words as well as colour.
+$shelfmark_band = function () use ($el, $heading, $para, $link, $span, $container, $row, $col, $fx, $attr, $searchable, $catalogue_items) {
+    $sample = $catalogue_items['garden'];
+    $mark = explode(' ', $sample['shelf']);
+    $prefixes = array();
+    foreach (array('stars', 'river', 'quiet') as $key) {
+        $words = explode(' ', $catalogue_items[$key]['shelf']);
+        $prefixes[] = $words[0];
+    }
+    $part = function ($code, $text) use ($el, $span) {
+        return $el('div', 'd-flex gap-3 mb-3', lang('Label Part'), array(
+            $el('dt', 'pg-library-figure font-monospace fw-bold text-primary flex-shrink-0', lang('Term'), array($span($code, '', lang('Text')))),
+            $el('dd', 'mb-0 text-body-secondary', lang('Description'), array($span($text, '', lang('Text')))),
+        ));
+    };
+    $subjects = array();
+    foreach (array(
+        array('000', lang('General knowledge and computers')),
+        array('100', lang('Philosophy and psychology')),
+        array('200', lang('Religion')),
+        array('300', lang('Society, law and education')),
+        array('400', lang('Languages')),
+        array('500', lang('Science and nature')),
+        array('600', lang('Technology, health and cooking')),
+        array('700', lang('Arts, music and sport')),
+        array('800', lang('Literature and poetry')),
+        array('900', lang('History, geography and travel')),
+    ) as $c) {
+        $example = $c[0][0] === $mark[0][0];
+        $kids = array(
+            $span($c[0], 'pg-library-figure font-monospace fw-bold', lang('Number')),
+            $span($c[1], '', lang('Text')),
+        );
+        if ($example) $kids[] = $span(lang('Example'), 'badge rounded-pill text-bg-primary ms-auto', lang('Badge'));
+        $subjects[] = $el('li', 'col', $c[0], array(
+            $el('div', 'd-flex align-items-center gap-3 h-100 px-3 py-2 rounded-3 ' . ($example ? 'bg-primary-subtle text-primary-emphasis' : 'bg-body-tertiary'), lang('Subject'), $kids),
+        ));
+    }
+    $spine = $fx($el('div', 'pg-library-label px-4 pt-5 pb-4 rounded-top-4 text-bg-primary shadow', lang('Spine'), array(
+        $span($sample['title'], 'd-block text-center small fw-semibold text-uppercase mb-5', lang('Title')),
+        $el('div', 'px-3 py-3 rounded-3 bg-body text-body-emphasis text-center font-monospace', lang('Spine Label'), array(
+            $span($mark[0], 'pg-library-figure d-block fs-2 fw-bold lh-1 mb-2', lang('Subject')),
+            $span($mark[1], 'd-block fs-3 fw-bold lh-1', lang('Author')),
+        )),
+    ), array('_attrs' => array($attr('aria-hidden', 'true')))), array('effect' => 'scale', 'trigger' => 'view', 'duration' => 800));
+    return $el('section', 'py-5 border-top', lang('Library Shelf Mark Guide'), array(
+        $container(array(
+            $fx($el('div', 'row g-4 align-items-end mb-5', lang('Section Header'), array(
+                $el('div', 'col-lg-7', lang('Section Title'), array(
+                    $para(lang('Finding a book'), 'plb-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+                    $heading('h2', lang('Every title has its own place on the shelf'), 'plb-display display-6 mb-0'),
+                )),
+                $el('div', 'col-lg-5', lang('Lead'), array(
+                    $para(lang('The label on the spine is the address of a title: the shelf it stands on, then the first letters of its author.'), 'lead text-body-secondary mb-0'),
+                )),
+            )), array('effect' => 'fade', 'trigger' => 'view', 'duration' => 800)),
+            $row(array(
+                $col(array(
+                    $spine,
+                    $heading('h3', lang('How to read the label'), 'plb-display h5 mt-4 mb-3'),
+                    $el('dl', 'mb-0', lang('Label Parts'), array(
+                        $part($mark[0], lang('The subject: 600 is technology, 630 farming and 635 gardening.')),
+                        $part($mark[1], sprintf(lang('The author: the first three letters of the surname, as for %s.'), $sample['author'])),
+                        $part('F', sprintf(lang('Fiction stands apart, from A to Z by the author\'s surname: %s.'), $catalogue_items['harbour']['shelf'])),
+                        $part(implode(' ', $prefixes), lang('Picture books, large print and films stand on shelves of their own, marked in front.')),
+                    )),
+                ), '', '5', '', '12', 'col-xl-4'),
+                $col(array(
+                    $heading('h3', lang('The ten subjects'), 'plb-display h5 mb-2'),
+                    $para(lang('Non-fiction runs along the shelves from 000 to 999.'), 'text-body-secondary mb-4'),
+                    $fx($el('ol', 'list-unstyled row row-cols-1 row-cols-sm-2 g-2 mb-4', lang('Subjects'), $subjects),
+                        array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 500, 'stagger' => 60, 'distance' => 20)),
+                    $link(lang('Ask a Librarian'), '{{page:contact}}', 'btn btn-outline-primary'),
+                ), '', '7', '', '12', 'offset-xl-1'),
+            ), '4', '', 'g-lg-5'),
+        )),
+    ), $searchable('lib-shelf-marks', lang('shelf mark, call number, classification, where is the book, find a book, non-fiction')));
+};
+
 // ── Pages ───────────────────────────────────────────────────────────────
 
 // Every title, narrowed by format and audience from the address.
@@ -108,6 +194,7 @@ $catalogue_pages[] = array(
                 $el('div', 'mt-4', lang('List'), array($widget('catalogue_list'))),
             )),
         ), $searchable('lib-catalogue', lang('books, search, find a book, author, title, novels, dvd, ebooks'))),
+        $shelfmark_band(),
     )),
 );
 
