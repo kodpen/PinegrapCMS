@@ -7,7 +7,6 @@
 - agent-canvas-design.md: Plan (owner 2026-11-11, #8762): an agent makes a design on the Workspace canvas through the API: layers from an SVG, layer writes, sizes, templates, the server's drawing, saving into Files
 - agent-channel-steps-2.md: Steps A0-A9 of plans/agent-channel.md: registry, doors, wakes, channel memory, model assistants, risk tiers, the canvas as a tool, further doors (Claude Code plugin, per-person sessions, chat box)
 - agent-channel-steps-3.md: Steps A10 and A11 of plans/agent-channel.md: an agent waits while the message that asked it is being edited (owner, #8723), the brief's decisions list stays bounded
-- agent-channel-steps-5.md: Steps A17 and A18 of plans/agent-channel.md (owner 2026-11-11, #8762): an agent's last seen on its card, an application ticks a checklist line over the API
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
 - agent-live-page-steps.md: Steps LP1-LP5 (LP2 as LP2a and LP2b) of plans/agent-live-page.md: the guarded frame and its proofs in a browser, the agent's routes and the card, the assistants' tools, the site's libraries, close-out

@@ -1133,6 +1133,23 @@ function ws_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.messages.check',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/checks',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_messages_check',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceMessage',
+            'summary'     => 'Tick a checklist line',
+            'description' => 'Ticks one line of a message\'s checklist (a "- [ ] item" line), or clears it with checked false, the way the box in the channel does, in a channel the owner may post in. item is the line\'s item in the message\'s checks. With an application key or an OAuth connection the tick is the application\'s: the line shows its name, and checks gives its name in by and its id in app_id; from a team devices session (POST /auth/login) it is the person\'s. Nobody is woken or notified by a tick; the message comes under sync changed. A roll call is a checklist with a line per agent, each ticked by its agent when it next wakes. Somebody who may only read the channel is refused with 403, an item the list no longer has with 422. A dry run\'s detail.changes is false when the line already is as asked.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'item', 'in' => 'body', 'type' => 'int', 'min' => 0, 'required' => true, 'description' => 'The line, item in the message\'s checks (0 for the first).'),
+                array('name' => 'checked', 'in' => 'body', 'type' => 'bool', 'description' => 'true (the default) ticks the line, false clears it.'),
+            ),
+        ),
+
+        array(
             'id'          => 'workspace.messages.ack',
             'method'      => 'POST',
             'path'        => '/workspace/messages/{id}/ack',

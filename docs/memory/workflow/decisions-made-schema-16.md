@@ -11,6 +11,6 @@ description: Decisions list, schema part 16 (2026-11-11 on): ws_mail_items.body_
   - Owner (2026-11-11), his vote on the one-choice poll in the agents channel: "Onaylıyorum (Önerilen)". Not chosen: "Yalnızca HTML sütunu"; "Değişiklik istiyorum".
   - `body_html` is the mail's HTML after cleaning, NULL for a mail with none or one over the limit; the plain `body_text` stays what the search and the card read.
   - `mailbox` is the room of a box kept in no channel: no channel list, picker or search shows it; who may read it is its membership, as for any channel.
-- An agent's last seen and an application's tick (owner, 2026-11-12, #8762; steps A17 and A18 of `plans/agent-channel-steps-5.md`; the behaviour: `decisions-made-workspace-16.md`): `ws_agents.seen_at` and `ws_checks.app_id`, each INT UNSIGNED NOT NULL DEFAULT 0 by `install_add_column()`, in a re-runnable sub-step of 2026.11.0.
+- An agent's last seen and an application's tick (owner, 2026-11-12, #8762; the behaviour: `decisions-made-workspace-16.md`): `ws_agents.seen_at` and `ws_checks.app_id`, each INT UNSIGNED NOT NULL DEFAULT 0 by `install_add_column()`, in a re-runnable sub-step of 2026.11.0.
   - Owner (2026-11-12), in the architect's window: "Onaylıyorum (Önerilen)". Not chosen: "Yalnızca son görülme sütunu"; "Değişiklik istiyorum".
   - `seen_at` is the time of the agent's last call with its key, written at most once a minute, 0 for an agent never seen. `app_id` is the application that set the tick, 0 when a person did (`user_id`).
