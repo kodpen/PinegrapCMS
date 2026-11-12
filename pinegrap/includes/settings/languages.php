@@ -210,7 +210,7 @@ $pg_settings_cards[] = '
     <div id="pgset-languages" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center gap-3">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Site Languages') . '</span>' . ($translation_settings_ready ? '
+                <span class="pg-title-section">' . lang('Site Languages') . '</span>' . ($translation_settings_ready ? '
                 <a class="btn btn-sm btn-outline theme-primary rounded-pill px-5" href="translations.php"><i class="bi bi-translate me-1" aria-hidden="true"></i>' . lang('Open the Translations screen') . '</a>' : '') . '
             </div>
             <div class="card-body">
@@ -343,7 +343,7 @@ if (!empty($language_redirect_ready)) {
 $pg_settings_cards[] = '
     <div id="pgset-language-redirect" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Automatic Language Redirect') . '
             </div>
             <div class="card-body">
@@ -418,7 +418,7 @@ $output_translation_engines_card = '
 $pg_settings_cards[] = '
     <div id="pgset-translation-engines" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Translation Engines') . '
             </div>
             <div class="card-body">

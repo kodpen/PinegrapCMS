@@ -36,6 +36,12 @@ define('WS_MAIL_SEND_FILES_BYTES', 20971520);
 define('WS_MAIL_SEND_HANDLER', 'workspace_mail');
 
 /**
+ * Days back ws_mail_send_orphans_run() looks for a waiting mail whose queue
+ * row is gone; under the seven days the queue keeps a sent row.
+ */
+define('WS_MAIL_SEND_ORPHAN_DAYS', 6);
+
+/**
  * Whether the send state is kept: the columns of 11.0.185. Before that
  * step has run nothing is sent or changed from here.
  *
@@ -553,6 +559,41 @@ function ws_mail_send_outcome($outbox_id, $outcome, $ref, $error, $mime)
 
         ws_notify((int) $item['user_id'], 'mail_unsent', array('channel_id' => $channel_id, 'message_id' => (int) $item['message_id'], 'actor_id' => 0));
     }
+}
+
+/**
+ * Outgoing mail still waiting on a queue row that is gone - deleted before
+ * the Mail queue screen told its handler, by a privacy erase, by hand - is
+ * marked Not sent, as a deleted row's outcome would. Only mail of the last
+ * WS_MAIL_SEND_ORPHAN_DAYS days is read: the queue keeps a sent row seven
+ * days after it left, so a newer mail whose row is missing never left. Run
+ * by job.php on every tick; one small read on the created index.
+ *
+ * @param int $now
+ * @return int the mails marked
+ */
+function ws_mail_send_orphans_run($now)
+{
+    if (!ws_mail_send_ready() || !function_exists('pg_mail_queue_ready') || !pg_mail_queue_ready()) {
+        return 0;
+    }
+
+    $rows = db_items("SELECT i.id, i.outbox_id
+        FROM ws_mail_items AS i
+        LEFT JOIN mail_outbox AS o ON o.id = i.outbox_id
+        WHERE
+            i.created_at > '" . ((int) $now - WS_MAIL_SEND_ORPHAN_DAYS * 86400) . "'
+            AND i.direction = 'out'
+            AND i.send_state = 'queued'
+            AND i.outbox_id > 0
+            AND o.id IS NULL
+        LIMIT 20");
+
+    foreach ((array) $rows as $row) {
+        ws_mail_send_outcome((int) $row['outbox_id'], 'failed', ws_mail_send_ref((int) $row['id'], 0), lang('It was deleted from the mail queue before it was sent.'), '');
+    }
+
+    return count((array) $rows);
 }
 
 /**

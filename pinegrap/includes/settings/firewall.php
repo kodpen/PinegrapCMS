@@ -49,7 +49,7 @@ $pg_settings_cards[] = '
     <div id="pgset-waf" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Firewall') . '</span>
+                <span class="pg-title-section">' . lang('Firewall') . '</span>
                 <a href="view_waf_log.php" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-list-columns-reverse me-1"></i>' . lang('Firewall Log') . '</a>
             </div>
             <div class="card-body">
@@ -228,7 +228,7 @@ $pg_settings_cards[] = '
     <div id="pgset-proxies" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Trusted Proxies') . '</span>
+                <span class="pg-title-section">' . lang('Trusted Proxies') . '</span>
             </div>
             <div class="card-body">
                 <div class="row gy-5">
@@ -249,7 +249,7 @@ $pg_settings_cards[] = '
     <div id="pgset-bots" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Bot Filtering') . '</span>
+                <span class="pg-title-section">' . lang('Bot Filtering') . '</span>
             </div>
             <div class="card-body">
                 <div class="row gy-5">
@@ -293,7 +293,7 @@ $pg_settings_cards[] = '
     <div id="pgset-iplists" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('IP Lists') . '</span>
+                <span class="pg-title-section">' . lang('IP Lists') . '</span>
             </div>
             <div class="card-body">
                 <div class="row gy-5">
@@ -422,7 +422,7 @@ $pg_settings_cards[] = '
     <div id="pgset-countries" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Country Restriction') . '</span>
+                <span class="pg-title-section">' . lang('Country Restriction') . '</span>
             </div>
             <div class="card-body">
                 <div class="row gy-5">' . (!empty($waf_country_ready) ? $output_waf_country : '
@@ -597,7 +597,7 @@ $pg_settings_cards[] = '
     <div id="pgset-headers" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('HTTPS and Security Headers') . '</span>
+                <span class="pg-title-section">' . lang('HTTPS and Security Headers') . '</span>
                 <a href="view_waf_log.php" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-list-columns-reverse me-1"></i>' . lang('Policy Reports') . '</a>
             </div>
             <div class="card-body">

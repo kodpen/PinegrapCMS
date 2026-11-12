@@ -21,7 +21,7 @@ description: CO0 model of plans/canvas-one.md: what one canvas is in the store a
 - MCP tools come from the rows: `workspace_canvases_get`, `workspace_canvases_tables_bind`, `workspace_canvases_tables_unbind`, `workspace_canvases_page_put`, `workspace_canvases_drawing_put` (CO7).
 
 ## What does the page ask the shell?
-- One message shape both ways, `pg: 'canvas-data'`: the page posts {`id`, `call`, `args`}; the shell answers {`id`, `ok`, `data`} or {`id`, `ok: false`, `error` {`code`, `text`}}. The shell takes it only from its own frame (`event.source`) and adds the canvas id itself: a page never names its canvas.
+- One message shape both ways, `pg: 'canvas-data'`: the page posts {`id`, `call`, `args`}; the shell answers {`id`, `ok`, `data`} or {`id`, `ok: false`, `error` {`code`, `text`}}. The shell takes it only from its own frame (`event.source`) and passes it to the panel; the panel adds the canvas id of the card that made that shell: a page never names its canvas.
 - Calls: `who` (CO1: the reader's display name), `tables` (the bound list), `rows` {`table`, `where`, `sort`, `dir`, `limit`, `totals`} (CO2, `workspace/workflow-tables-query.md`), `add` {`table`, `cells`} and `change` {`table`, `row`, `revision`, `cells`} (CO3). `table` is a bound table's id; any other id answers `not_bound`.
 - Errors: `not_bound`, `forbidden` (the reader's rights), `consent` (the reader said no), `limit` (bounds), `changed_meanwhile`, `invalid` with the field.
 

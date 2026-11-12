@@ -509,6 +509,42 @@ function pg_mail_outcome_call($properties, $outbox_id, $outcome, $error, $mime, 
     return true;
 }
 
+// The outcome a deleted queue row ends with, '' for none. A row still
+// waiting or being sent will never leave once it is gone, so it ends
+// 'failed'; a sent, given up or blocked row has told its handler already.
+function pg_mail_queue_delete_outcome($status)
+{
+    return in_array((string) $status, array('queued', 'sending'), true) ? 'failed' : '';
+}
+
+// Deletes one row of the mail queue (the Mail queue screen's Delete). A
+// message that had not left is reported to its outcome handler as failed,
+// so a Workspace mail waiting on it reads Not sent instead of waiting for
+// ever. Returns whether a row was deleted.
+function pg_mail_queue_delete($id)
+{
+    $id = (int) $id;
+    $row = db_item("SELECT status, properties FROM mail_outbox WHERE id = '" . $id . "'");
+
+    if (!is_array($row)) {
+        return false;
+    }
+
+    db("DELETE FROM mail_outbox WHERE id = '" . $id . "'");
+
+    if (mysqli_affected_rows(db::$con) <= 0) {
+        return false;
+    }
+
+    $outcome = pg_mail_queue_delete_outcome($row['status']);
+
+    if ($outcome !== '') {
+        pg_mail_outcome_call(pg_mail_properties_decode($row['properties']), $id, $outcome, lang('It was deleted from the mail queue before it was sent.'), '');
+    }
+
+    return true;
+}
+
 // Send what is due in the queue. Called by job.php on every run and by
 // mail_job.php. Bounded by both a row count and wall-clock time: an SMTP
 // server that has stopped answering costs PHPMailer its whole timeout per

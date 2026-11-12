@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>panel look A: a report screen (ready reports, period, figures, chart, grouped table) and its settings drawer</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="sheet.css">
+<style>
+.wrap { width: 1280px; }
+.phead .saved { align-self: flex-end; margin-bottom: 3px; }
+.strip { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.strip .lbl, .tools .lbl { font-size: 13px; color: var(--fg3); }
+.tools { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.tools .in { height: 34px; font-size: 13px; }
+.tools .div { width: 1px; height: 20px; background: var(--line); margin: 0 4px; }
+.fp { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 9px 0 11px; border-radius: 10px; font-size: 13px; font-weight: 500; color: var(--fg2); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; }
+.fp b { color: var(--fg); font-weight: 550; }
+.fp i { font-size: 11px; color: var(--fg3); }
+.figs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+.fig { padding: 15px 18px 14px; }
+.fig .k { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--fg2); }
+.fig .v { margin: 7px 0 5px; font: 650 26px/1.2 "Inter Display", Inter, sans-serif; letter-spacing: -.03em; }
+.fig .v small { font-size: 15px; font-weight: 550; color: var(--fg2); letter-spacing: 0; }
+.fig .d { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--fg3); }
+.ch { padding: 16px 20px 10px; margin-bottom: 16px; }
+.ch .hd { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+.ch .hd b { font-size: 15px; font-weight: 600; }
+.ch .hd small { font-size: 13px; color: var(--fg3); }
+.lg { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--fg2); }
+.lg i { display: block; width: 18px; height: 0; border-top: 2px solid var(--accent); border-radius: 1px; }
+.lg.prev i { border-top: 2px dashed var(--fg3); }
+.plot { position: relative; height: 232px; }
+.plot svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.plot .grid { stroke: var(--line); stroke-width: 1; }
+.plot text { font: 11.5px Inter, sans-serif; fill: var(--fg3); font-variant-numeric: tabular-nums; }
+.plot .area { fill: color-mix(in srgb, var(--accent) 11%, transparent); }
+.plot .cur { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.plot .prv { fill: none; stroke: var(--fg3); stroke-width: 1.5; stroke-dasharray: 4 4; stroke-linejoin: round; }
+.plot .cross { stroke: color-mix(in srgb, var(--fg) 26%, transparent); stroke-width: 1; }
+.plot .pt { fill: var(--accent); stroke: var(--surf2); stroke-width: 2; }
+.plot .pp { fill: var(--fg3); stroke: var(--surf2); stroke-width: 2; }
+.tip { position: absolute; min-width: 196px; padding: 10px 12px; border-radius: 12px; font-size: 12.5px; background: var(--float); border: 1px solid var(--line); box-shadow: var(--shadow-float); backdrop-filter: blur(14px); }
+.tip b { display: block; margin-bottom: 6px; font-weight: 600; }
+.tip div { display: flex; align-items: center; gap: 8px; padding: 2px 0; color: var(--fg2); }
+.tip div span:last-child { margin-left: auto; color: var(--fg); font-weight: 550; }
+.frame { overflow: hidden; }
+.thd { display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 10px 0 18px; border-bottom: 1px solid var(--line); }
+.thd b { font-size: 15px; font-weight: 600; }
+.thd small { font-size: 13px; color: var(--fg3); }
+.thd .lbl { font-size: 13px; color: var(--fg2); margin: 0 8px 0 2px; }
+table.rt { width: 100%; border-collapse: separate; border-spacing: 0; }
+.rt th, .rt td { height: 40px; padding: 0 16px; white-space: nowrap; border-bottom: 1px solid var(--line); text-align: right; font-variant-numeric: tabular-nums; }
+.rt thead th { height: 36px; font-size: 12px; font-weight: 550; color: var(--fg3); background: var(--card); }
+.rt thead th.sorted { color: var(--fg); }
+.rt thead th i { font-size: 11px; margin-left: 4px; }
+.rt th[scope="row"], .rt thead th:first-child { text-align: left; width: 100%; font-weight: 400; }
+.rt tr.g1 th, .rt tr.g1 td { font-weight: 600; background: var(--card); }
+.rt tr.g1 th i { font-size: 11px; color: var(--fg3); margin-right: 8px; }
+.rt tr.g2 th { padding-left: 42px; color: var(--fg2); }
+.rt tr.g2 td { color: var(--fg2); }
+.rt tr.g2 td.sum { color: var(--fg); }
+.rt tr.hov th, .rt tr.hov td { background: var(--hover); color: var(--fg); }
+.rt td.pc { color: var(--fg3); width: 72px; padding-left: 0; }
+.rt tr.tot th, .rt tr.tot td { height: 46px; font-weight: 650; border-bottom: 0; border-top: 1px solid color-mix(in srgb, var(--fg) 22%, transparent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.rt tr.tot td.pc { color: var(--fg2); font-weight: 550; }
+.mbar { display: inline-block; width: 64px; height: 4px; margin-right: 10px; border-radius: 2px; background: var(--quiet); vertical-align: middle; overflow: hidden; }
+.mbar b { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+/* the parts under the screen */
+.parts { display: flex; align-items: flex-start; gap: 36px; margin-top: 34px; }
+.part .cap { margin-top: 0; }
+.bars { width: 620px; padding: 16px 20px 14px; }
+.bars .hd { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+.bars .hd b { font-size: 15px; font-weight: 600; }
+.bars .hd small { font-size: 13px; color: var(--fg3); }
+.brow { display: grid; grid-template-columns: 150px 1fr 104px 56px; align-items: center; gap: 12px; height: 34px; font-size: 13.5px; }
+.brow .tr { height: 10px; border-radius: 5px; background: var(--quiet); overflow: hidden; }
+.brow .tr b { display: block; height: 100%; border-radius: 0 5px 5px 0; background: linear-gradient(90deg, var(--a2), var(--a1)); }
+.brow .v { text-align: right; font-weight: 550; }
+.brow .p { text-align: right; color: var(--fg3); font-size: 12.5px; }
+.brow.hov { margin: 0 -10px; padding: 0 10px; border-radius: 9px; background: var(--hover); }
+.nochart { width: 620px; margin-top: 16px; padding: 14px 18px; display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--fg2); }
+.drawer { width: 430px; display: flex; flex-direction: column; overflow: hidden; border-radius: 20px; border: 1px solid var(--line); box-shadow: var(--shadow); background: linear-gradient(180deg, var(--surf1), var(--surf2)); }
+.drawer .head { display: flex; align-items: center; padding: 16px 12px 8px 20px; }
+.drawer .head h2 { margin: 0 auto 0 0; font: 650 17px/1.3 "Inter Display", Inter, sans-serif; letter-spacing: -.015em; }
+.drawer .sec { padding: 12px 20px 14px; border-top: 1px solid var(--line); }
+.drawer .sec:first-of-type { border-top: 0; }
+.drawer .sec h3 { margin: 0 0 10px; font-size: 13px; font-weight: 600; }
+.drawer .sec h3 em { font-style: normal; font-weight: 400; color: var(--fg3); }
+.lv { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.lv > i { color: var(--fg3); font-size: 15px; }
+.lv .n { width: 18px; font-size: 12px; color: var(--fg3); text-align: center; }
+.lv .in { flex: 1; }
+.fl { display: grid; grid-template-columns: 1fr 96px 1fr 28px; gap: 8px; align-items: center; margin-bottom: 8px; }
+.fl .in { font-size: 13px; padding: 0 10px; }
+.drawer .add { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 550; color: var(--accent); }
+.drawer .opt { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 13.5px; }
+.drawer .opt .sw { margin-left: auto; }
+.drawer .foot { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="stage">
+<div class="cap"><b>Rapor ekranı</b>Üstte hazır raporlar ve dönem, altında özet sayılar, grafik ve tablo. İçerik 1280 px, ortada. Grafik ilk "özetle" düzeyini izler: zaman için çizgi, adlı düzey için çubuklar.</div>
+<div class="screen">
+  <aside class="menu">
+    <div class="logo"><i></i><span class="sk" style="width:92px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:74px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:104px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:62px"></span></div>
+    <span class="sk mh"></span>
+    <div class="mi"><i></i><span class="sk" style="width:88px"></span></div>
+    <div class="mi on"><i></i><span class="sk" style="width:70px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:112px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:80px"></span></div>
+    <span class="sk mh"></span>
+    <div class="mi"><i></i><span class="sk" style="width:96px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:66px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:84px"></span></div>
+  </aside>
+  <div class="main">
+    <div class="top"><span class="sk s"></span><span class="sp"></span><span class="sk c"></span><span class="sk c"></span></div>
+    <div class="content">
+      <div class="wrap">
+        <div class="phead" style="margin-top:0"><h1 class="disp">Sipariş raporu</h1><span class="tag saved"><i class="bi bi-circle"></i>Kaydedilmedi</span><span class="sp"></span><button class="btn quiet"><i class="bi bi-download"></i>Dışa aktar</button><button class="btn quiet"><i class="bi bi-sliders"></i>Rapor ayarları</button><button class="btn fill"><i class="bi bi-bookmark"></i>Kaydet</button></div>
+        <div class="strip">
+          <span class="lbl">Hazır raporlar</span>
+          <span class="seg"><span class="on">Zamana göre</span><span>Bölgeye göre</span><span>Ürüne göre</span><span>Ödeme yöntemine göre</span><span>Kaynağa göre</span></span>
+        </div>
+        <div class="tools">
+          <span class="seg"><span>Bugün</span><span>7 gün</span><span class="on">30 gün</span><span>Bu yıl</span><span>Özel</span></span>
+          <div class="in"><i class="bi bi-calendar3"></i><span class="num">14 Eki 2026 – 12 Kas 2026</span></div>
+          <span class="div"></span>
+          <span class="fp">Durum: <b>Tamamlandı</b> <i class="bi bi-x-lg"></i></span>
+          <span class="fp">Ülke: <b>Türkiye</b> <i class="bi bi-x-lg"></i></span>
+          <button class="btn ghost sm"><i class="bi bi-plus-lg"></i>Filtre</button>
+          <span class="sp"></span>
+          <span class="lbl">Önceki dönemle karşılaştır</span><span class="sw on"></span>
+        </div>
+        <div class="figs">
+          <section class="pcard fig"><div class="k"><span class="tile t-blue"><i class="bi bi-cash-stack"></i></span>Ciro</div><div class="v num">184.250,00 <small>₺</small></div><div class="d"><span class="up"><i class="bi bi-arrow-up-short"></i>%12,4</span>önceki 30 güne göre</div></section>
+          <section class="pcard fig"><div class="k"><span class="tile t-teal"><i class="bi bi-bag"></i></span>Sipariş</div><div class="v num">412</div><div class="d"><span class="up"><i class="bi bi-arrow-up-short"></i>%8,1</span>önceki 30 güne göre</div></section>
+          <section class="pcard fig"><div class="k"><span class="tile t-violet"><i class="bi bi-basket2"></i></span>Ortalama sepet</div><div class="v num">447,21 <small>₺</small></div><div class="d"><span class="up"><i class="bi bi-arrow-up-short"></i>%3,9</span>önceki 30 güne göre</div></section>
+          <section class="pcard fig"><div class="k"><span class="tile t-amber"><i class="bi bi-arrow-return-left"></i></span>İade</div><div class="v num">6.120,00 <small>₺</small></div><div class="d"><span class="up down"><i class="bi bi-arrow-up-short"></i>%1,2</span>önceki 30 güne göre</div></section>
+        </div>
+        <section class="pcard ch">
+          <div class="hd"><b>Ciro</b><small>günlük, ₺</small><span class="sp"></span><span class="lg"><i></i>Bu dönem</span><span class="lg prev"><i></i>Önceki dönem</span><span class="seg" style="margin-left:8px"><span class="on">Ciro</span><span>Sipariş</span><span>Ortalama sepet</span></span></div>
+          <div class="plot" id="plot"></div>
+        </section>
+        <section class="pcard frame">
+          <div class="thd"><b>Ay / Gün</b><small>30 gün · 412 sipariş</small><span class="sp"></span><span class="lbl">Ayrıntıyı göster</span><span class="sw" style="margin-right:10px"></span><button class="ib sm" title="Sütunlar"><i class="bi bi-layout-three-columns"></i></button></div>
+          <table class="rt">
+            <thead><tr><th>Ay / Gün</th><th>Sipariş</th><th>Ara toplam</th><th>İndirim</th><th>Vergi</th><th>Kargo</th><th class="sorted">Toplam<i class="bi bi-arrow-down"></i></th><th style="padding-left:0">%</th></tr></thead>
+            <tbody>
+              <tr class="g1"><th scope="row"><i class="bi bi-chevron-down"></i>Kasım 2026</th><td>181</td><td>68.940,00 ₺</td><td>−2.310,00 ₺</td><td>12.409,20 ₺</td><td>3.420,00 ₺</td><td>82.459,20 ₺</td><td class="pc">%44,75</td></tr>
+              <tr class="g2"><th scope="row">12 Kasım Perşembe</th><td>17</td><td>6.480,00 ₺</td><td>−190,00 ₺</td><td>1.166,40 ₺</td><td>320,00 ₺</td><td class="sum">7.776,40 ₺</td><td class="pc">%4,22</td></tr>
+              <tr class="g2 hov"><th scope="row">11 Kasım Çarşamba</th><td>21</td><td>8.115,00 ₺</td><td>−420,00 ₺</td><td>1.460,70 ₺</td><td>400,00 ₺</td><td class="sum">9.555,70 ₺</td><td class="pc">%5,19</td></tr>
+              <tr class="g2"><th scope="row">10 Kasım Salı</th><td>14</td><td>5.230,00 ₺</td><td>−80,00 ₺</td><td>941,40 ₺</td><td>260,00 ₺</td><td class="sum">6.351,40 ₺</td><td class="pc">%3,45</td></tr>
+              <tr class="g1"><th scope="row"><i class="bi bi-chevron-right"></i>Ekim 2026</th><td>231</td><td>85.190,00 ₺</td><td>−3.150,00 ₺</td><td>15.334,20 ₺</td><td>4.416,60 ₺</td><td>101.790,80 ₺</td><td class="pc">%55,25</td></tr>
+              <tr class="tot"><th scope="row">Genel toplam</th><td>412</td><td>154.130,00 ₺</td><td>−5.460,00 ₺</td><td>27.743,40 ₺</td><td>7.836,60 ₺</td><td>184.250,00 ₺</td><td class="pc">%100,00</td></tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="ruler"><span style="width:250px">menü 250</span><span style="flex:1">boş</span><span class="on" style="width:1276px">içerik 1280 · sayılar sağa yaslı, tablo satırı 40 px</span><span style="flex:1">boş</span></div>
+
+<div class="parts">
+  <div class="part">
+    <div class="cap"><b>Adlı düzey: çubuklar</b>İlk düzey bir ad olduğunda (durum, ürün, ödeme yöntemi, kaynak, sayfa) grafik tek renkli yatay çubuklardır; değer ve pay sağda.</div>
+    <section class="pcard bars">
+      <div class="hd"><b>Ödeme yöntemine göre</b><small>ciro, ₺ · 30 gün</small></div>
+      <div class="brow"><span>Kredi kartı</span><span class="tr"><b style="width:100%"></b></span><span class="v num">112.480,00 ₺</span><span class="p num">%61,05</span></div>
+      <div class="brow hov"><span>Havale / EFT</span><span class="tr"><b style="width:36%"></b></span><span class="v num">40.535,00 ₺</span><span class="p num">%22,00</span></div>
+      <div class="brow"><span>Kapıda ödeme</span><span class="tr"><b style="width:19.5%"></b></span><span class="v num">21.925,00 ₺</span><span class="p num">%11,90</span></div>
+      <div class="brow"><span>Hediye çeki</span><span class="tr"><b style="width:6.3%"></b></span><span class="v num">7.094,00 ₺</span><span class="p num">%3,85</span></div>
+      <div class="brow"><span>Diğer</span><span class="tr"><b style="width:2%"></b></span><span class="v num">2.216,00 ₺</span><span class="p num">%1,20</span></div>
+    </section>
+    <section class="pcard nochart"><span class="tile t-blue"><i class="bi bi-info-lg"></i></span>Bu düzeye uyan bir grafik yok; özet sayılar ve tablo gösteriliyor.</section>
+  </div>
+  <div class="part">
+    <div class="cap"><b>Rapor ayarları çekmecesi</b>Sağdan açılır, 430 px. Özetleme düzeyleri, filtreler ve seçenekler burada; ekran sade kalır.</div>
+    <section class="drawer">
+      <div class="head"><h2>Rapor ayarları</h2><button class="ib"><i class="bi bi-x-lg"></i></button></div>
+      <div class="sec">
+        <h3>Özetle <em>· en çok üç düzey</em></h3>
+        <div class="lv"><i class="bi bi-grip-vertical"></i><span class="n">1</span><div class="in"><span>Ay</span><i class="bi bi-chevron-down end"></i></div><button class="ib sm dim"><i class="bi bi-x-lg"></i></button></div>
+        <div class="lv"><i class="bi bi-grip-vertical"></i><span class="n">2</span><div class="in"><span>Gün</span><i class="bi bi-chevron-down end"></i></div><button class="ib sm dim"><i class="bi bi-x-lg"></i></button></div>
+        <span class="add"><i class="bi bi-plus-lg"></i>Düzey ekle</span>
+      </div>
+      <div class="sec">
+        <h3>Filtreler</h3>
+        <div class="fl"><div class="in"><span>Durum</span><i class="bi bi-chevron-down end"></i></div><div class="in"><span>eşittir</span></div><div class="in"><span>Tamamlandı</span><i class="bi bi-chevron-down end"></i></div><button class="ib sm dim"><i class="bi bi-x-lg"></i></button></div>
+        <div class="fl"><div class="in"><span>Ülke</span><i class="bi bi-chevron-down end"></i></div><div class="in"><span>eşittir</span></div><div class="in focus"><span>Türkiye</span><i class="bi bi-chevron-down end"></i></div><button class="ib sm dim"><i class="bi bi-x-lg"></i></button></div>
+        <span class="add"><i class="bi bi-plus-lg"></i>Filtre ekle</span>
+      </div>
+      <div class="sec">
+        <h3>Seçenekler</h3>
+        <div class="opt">Önceki dönemle karşılaştır<span class="sw on"></span></div>
+        <div class="opt">Ayrıntı satırlarını göster<span class="sw"></span></div>
+        <div class="opt">Boş günleri gizle<span class="sw"></span></div>
+      </div>
+      <div class="foot"><button class="btn fill">Uygula</button><button class="btn quiet">Vazgeç</button><span class="sp"></span><button class="btn ghost"><i class="bi bi-arrow-counterclockwise"></i>Sıfırla</button></div>
+    </section>
+  </div>
+</div>
+</div>
+<script>
+(function () {
+  var cur = [5200, 4800, 6100, 5600, 7300, 6900, 4300, 5100, 5900, 6400, 6000, 7700, 8200, 5000, 5500, 6300, 6800, 7100, 8400, 9100, 5800, 6100, 6900, 7400, 7000, 8800, 9600, 6351, 9556, 7776];
+  var prv = [4700, 4500, 5200, 5400, 6100, 6600, 4100, 4400, 5300, 5600, 5800, 6500, 7100, 4600, 4900, 5700, 5900, 6600, 7200, 7900, 5300, 5500, 6000, 6700, 6400, 7500, 8300, 5900, 7800, 7100];
+  var W = 1238, H = 232, L = 46, R = 10, T = 10, B = 26, max = 10000, n = cur.length;
+  function x(i) { return L + (W - L - R) * i / (n - 1); }
+  function y(v) { return T + (H - T - B) * (1 - v / max); }
+  function path(a) { return a.map(function (v, i) { return (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1); }).join(' '); }
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">';
+  [0, 2500, 5000, 7500, 10000].forEach(function (v) {
+    s += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"/>';
+    s += '<text x="' + (L - 10) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + (v ? (v / 1000).toLocaleString('tr-TR') + ' B' : '0') + '</text>';
+  });
+  var days = ['14 Eki', '19 Eki', '24 Eki', '29 Eki', '3 Kas', '8 Kas', '12 Kas'], at = [0, 5, 10, 15, 20, 25, 29];
+  at.forEach(function (i, k) { s += '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="' + (k === 0 ? 'start' : k === at.length - 1 ? 'end' : 'middle') + '">' + days[k] + '</text>'; });
+  s += '<path class="area" d="' + path(cur) + ' L' + x(n - 1) + ' ' + y(0) + ' L' + x(0) + ' ' + y(0) + ' Z"/>';
+  s += '<path class="prv" d="' + path(prv) + '"/><path class="cur" d="' + path(cur) + '"/>';
+  var h = 19;
+  s += '<line class="cross" x1="' + x(h) + '" x2="' + x(h) + '" y1="' + T + '" y2="' + y(0) + '"/>';
+  s += '<circle class="pp" cx="' + x(h) + '" cy="' + y(prv[h]) + '" r="4"/><circle class="pt" cx="' + x(h) + '" cy="' + y(cur[h]) + '" r="5"/></svg>';
+  s += '<div class="tip" style="left:' + (x(h) + 16) + 'px;top:34px"><b>2 Kasım Pazartesi</b><div><span class="lg"><i></i></span>Bu dönem<span class="num">9.100,00 ₺</span></div><div><span class="lg prev"><i></i></span>Önceki dönem<span class="num">7.900,00 ₺</span></div><div style="color:var(--fg3)">Fark<span class="up"><i class="bi bi-arrow-up-short"></i>%15,2</span></div></div>';
+  document.getElementById('plot').innerHTML = s;
+})();
+</script>
+</body>
+</html>

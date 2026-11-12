@@ -107,9 +107,9 @@ if ($_POST) {
 
         } else {
 
-            db("DELETE FROM mail_outbox WHERE id = '" . $mail_queue_id . "'");
-
-            if (mysqli_affected_rows(db::$con) > 0) {
+            // A message that had not left tells its outcome handler it
+            // failed (a Workspace mail then reads Not sent).
+            if (pg_mail_queue_delete($mail_queue_id)) {
                 $liveform->add_notice(lang('The message was deleted from the queue.'));
             }
         }

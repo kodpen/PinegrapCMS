@@ -20,7 +20,8 @@ module: mail_queue
 - A handler's error is caught (`\Throwable`) and written to the Site Log (with a database); the row and the run's counts do not change.
 
 ## Where is it not called?
-- A row whose stored properties cannot be read (no handler can be known), a retry (`queued` again: not an outcome), the sweep of old rows, and Delete on the Mail queue screen. A queued row deleted there is never heard of: the send path must allow an item that waits for ever.
+- A row whose stored properties cannot be read (no handler can be known), a retry (`queued` again: not an outcome), the sweep of old rows (each told already).
+- Delete on the Mail queue screen is `pg_mail_queue_delete()`: a `queued` or `sending` row deleted there tells its handler `failed`, "It was deleted from the mail queue before it was sent." (`pg_mail_queue_delete_outcome()`); a sent, given up or blocked row tells nothing again. A row gone any other way (privacy erase, by hand) is caught by the Workspace's own sweep (`workspace/mail-send-outcome.md`).
 - email() with `queue` sends at once when no job is alive (`pg_mail_job_alive()`); that send calls no handler. A caller that needs the outcome writes the row with `pg_mail_enqueue()` and handles a 0 itself.
 
 ## What must a handler bear?

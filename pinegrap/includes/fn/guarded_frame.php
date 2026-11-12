@@ -56,6 +56,17 @@ define('PG_GUARDED_FRAME_MAX_BYTES', 512000);
 define('PG_GUARDED_FRAME_MAX_HEIGHT', 100000);
 
 /**
+ * The bounds of the data bridge between a live page and the panel
+ * (pg_guarded_frame_bridge_script()): requests a page may make in a minute
+ * before the shell stops it, requests waiting for an answer at once, and
+ * the size of a request's arguments and of an answer as JSON text.
+ */
+define('PG_GUARDED_FRAME_BRIDGE_PER_MINUTE', 120);
+define('PG_GUARDED_FRAME_BRIDGE_PENDING', 8);
+define('PG_GUARDED_FRAME_BRIDGE_MAX_ARGS', 16384);
+define('PG_GUARDED_FRAME_BRIDGE_MAX_ANSWER', 1048576);
+
+/**
  * The mode asked for: 'static' only when asked by that exact word, else
  * 'script'. Pure.
  *
@@ -266,7 +277,9 @@ function pg_guarded_frame_shell_script($mode, $mail = array())
         . 'max=' . PG_GUARDED_FRAME_MAX_HEIGHT . ',last=-1,up=window.parent;'
         . 'function n(v){if(typeof v!=="number"||!isFinite(v)||v<0){return -1;}return Math.min(Math.round(v),max);}'
         . 'function out(h){if(h<0||h===last||up===window){return;}last=h;up.postMessage({pg:"guarded-frame",height:h},"*");}'
+        . (($mode === 'script') ? pg_guarded_frame_bridge_script() : '')
         . 'window.addEventListener("message",function(e){var d=e.data;'
+        . (($mode === 'script') ? 'if(d&&typeof d==="object"&&d.pg==="canvas-data"){bridge(e,d);return;}' : '')
         . 'if(!d||typeof d!=="object"||d.pg!=="guarded-frame"){return;}'
         . 'if(e.source===up&&up!==window){var w=n(d.width),h=n(d.height);'
         . 'if(w<0||h<0||mode!=="script"||!f.contentWindow){return;}'
@@ -282,6 +295,56 @@ function pg_guarded_frame_shell_script($mode, $mail = array())
         . (($mode === 'mail') ? 'if(doc){dress(doc);}' : '') . 'doc=measure();'
         . 'if(doc&&doc.documentElement&&window.ResizeObserver){new ResizeObserver(measure).observe(doc.documentElement);}});}'
         . '})();';
+}
+
+/**
+ * The shell's part of the data bridge, the script mode only: the page asks
+ * {pg: 'canvas-data', id, call, args}; the shell passes a well-formed
+ * request to the panel (window.parent) and the panel's answer
+ * {pg: 'canvas-data', id, ok, data | error {code, text}} back to the page,
+ * only for a request still waiting. The shell names no canvas: the panel
+ * adds the one of the card that made this shell, so a page cannot ask in
+ * another canvas's name. A request is taken only from the shell's own
+ * document frame, an answer only from the parent.
+ *
+ * Bounds (PG_GUARDED_FRAME_BRIDGE_*): a request with no usable id is
+ * dropped; a bad call name or arguments answer invalid; arguments too
+ * large, or too many waiting, answer limit; an answer too large reaches
+ * the page as limit. More requests in a minute than allowed stop the page:
+ * its frame is removed and the panel told {pg: 'canvas-data', stopped:
+ * 'limit'}. Defines bridge(e, d) for the shell's listener. Pure.
+ *
+ * @return string JavaScript
+ */
+function pg_guarded_frame_bridge_script()
+{
+    return 'var bp=' . PG_GUARDED_FRAME_BRIDGE_PER_MINUTE . ',bw=' . PG_GUARDED_FRAME_BRIDGE_PENDING . ','
+        . 'ba=' . PG_GUARDED_FRAME_BRIDGE_MAX_ARGS . ',bx=' . PG_GUARDED_FRAME_BRIDGE_MAX_ANSWER . ','
+        . 'waiting={},times=[],stopped=false;'
+        . 'function bsize(v){try{return JSON.stringify(v).length;}catch(x){return Infinity;}}'
+        . 'function bkey(id){if(typeof id==="string"&&id.length>0&&id.length<=64){return "s"+id;}'
+        . 'if(typeof id==="number"&&isFinite(id)){return "n"+id;}return "";}'
+        . 'function bpage(m){if(!stopped&&f.contentWindow){f.contentWindow.postMessage(m,"*");}}'
+        . 'function bfail(id,code){bpage({pg:"canvas-data",id:id,ok:false,error:{code:code,text:""}});}'
+        . 'function btext(v,n){return (typeof v==="string")?v.slice(0,n):"";}'
+        . 'function bridge(e,d){if(up===window||stopped){return;}var k=bkey(d.id);if(!k){return;}'
+        // An answer from the panel, for a request still waiting.
+        . 'if(e.source===up){if(!waiting[k]){return;}delete waiting[k];'
+        . 'if(d.ok===true){var a={pg:"canvas-data",id:d.id,ok:true,data:(d.data===undefined?null:d.data)};'
+        . 'if(bsize(a)>bx){bfail(d.id,"limit");return;}bpage(a);return;}'
+        . 'var r=(d.error&&typeof d.error==="object")?d.error:{};'
+        . 'bpage({pg:"canvas-data",id:d.id,ok:false,error:{code:btext(r.code,32)||"failed",text:btext(r.text,500)}});return;}'
+        . 'if(!f.contentWindow||e.source!==f.contentWindow){return;}'
+        // A request from the page.
+        . 'var now=Date.now();times=times.filter(function(t){return now-t<60000;});times.push(now);'
+        . 'if(times.length>bp){stopped=true;waiting={};f.remove();up.postMessage({pg:"canvas-data",stopped:"limit"},"*");return;}'
+        . 'if(waiting[k]){bfail(d.id,"invalid");return;}'
+        . 'if(typeof d.call!=="string"||!/^[a-z][a-z_]{0,23}$/.test(d.call)){bfail(d.id,"invalid");return;}'
+        . 'var args=(d.args===undefined)?{}:d.args;'
+        . 'if(!args||typeof args!=="object"||Array.isArray(args)){bfail(d.id,"invalid");return;}'
+        . 'var n=bsize(args);if(n>ba){bfail(d.id,"limit");return;}'
+        . 'if(Object.keys(waiting).length>=bw){bfail(d.id,"limit");return;}'
+        . 'waiting[k]=1;up.postMessage({pg:"canvas-data",id:d.id,call:d.call,args:JSON.parse(JSON.stringify(args))},"*");}';
 }
 
 /**
