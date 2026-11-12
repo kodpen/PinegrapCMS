@@ -6,8 +6,8 @@
  * window and the dark theme: the header's menu opens out only where its
  * links fit beside the name and wraps instead of running off the page, an
  * image's size is in the props the page writes (not in its attributes,
- * which the page drops), and the grey sections give their primary and
- * second coloured text a readable tint in the dark theme.
+ * which the page drops), and the grey sections and primary-tinted cards give
+ * their primary and second coloured text a readable tint in both themes.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -133,22 +133,30 @@ function test_design_template_fit_image_size_in_props()
 	}
 }
 
-// In the dark theme a palette's primary and second text colours fall to
-// about 4:1 on bg-body-tertiary; the template's User Styles lift them there.
-function test_design_template_fit_dark_grey_sections()
+// A palette's primary and second text colours are made readable on the
+// page background only: across all palettes they fell to 3.9:1 on
+// bg-body-tertiary in the dark theme, to 4.4:1 in the light one and to 3.2:1
+// on bg-primary-subtle. The template's User Styles give them a tint there.
+function test_design_template_fit_tinted_surfaces()
 {
 	foreach (_test_tpl_fit_ids() as $id) {
 		$tpl = _test_tpl_fit_template($id);
 		$css = isset($tpl['assets']['css']) ? (string)$tpl['assets']['css'] : '';
 		$css = str_replace('\\/', '/', $css);
 		foreach (array(
-			'[data-bs-theme=dark] .bg-body-tertiary :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}',
-			'[data-bs-theme=dark] .bg-body-tertiary .btn-outline-primary{--bs-btn-color:var(--bs-primary-text-emphasis)}',
-			'color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))',
-			'[data-bs-theme=dark] .bg-body-tertiary .link-secondary{color:var(--bs-secondary-color)!important}',
-			'[data-bs-theme=dark] .bg-body-tertiary .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-color)}',
+			':is(.bg-body-tertiary,.bg-primary-subtle){--tpl-tinted-fg:var(--bs-primary-text-emphasis)}',
+			'.bg-body-tertiary{--tpl-tinted-fg:color-mix(in srgb,var(--pg-primary-fg,var(--bs-primary)) 85%,var(--bs-emphasis-color))}',
+			'[data-bs-theme=dark] .bg-body-tertiary{--tpl-tinted-fg:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))}',
+			':is(.bg-body-tertiary,.bg-primary-subtle) :is(.text-primary,.link-primary){color:var(--tpl-tinted-fg)!important}',
+			':is(.bg-body-tertiary,.bg-primary-subtle) .btn-outline-primary{--bs-btn-color:var(--tpl-tinted-fg)}',
+			':is(.bg-body-tertiary,.bg-primary-subtle) .nav{--bs-nav-link-color:var(--tpl-tinted-fg);',
+			':is(.bg-body-tertiary,.bg-primary-subtle) :is(.text-secondary,.link-secondary){color:var(--bs-secondary-color)!important}',
+			':is(.bg-body-tertiary,.bg-primary-subtle) .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-color)}',
 		) as $rule) {
 			pg_assert_contains($rule, $css, "$id: $rule");
 		}
+		// The mixed tints sit behind @supports: an older browser keeps the
+		// emphasis tint.
+		pg_assert_true(strpos($css, '@supports (color:color-mix(in srgb,red 50%,blue)){.bg-body-tertiary{--tpl-tinted-fg:') !== false, "$id: the mixed tints are behind @supports");
 	}
 }

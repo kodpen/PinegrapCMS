@@ -1,6 +1,6 @@
 ---
 name: design-template-fit
-description: Templates App Studio to Events (#8997): header menu opens at 1200 px and wraps, image sizes in props not _attrs, dark grey sections lift primary and second text
+description: Templates App Studio to Events (#8997): header menu opens at 1200 px and wraps, image sizes in props not _attrs, grey and primary-tinted surfaces tint primary and second text
 ---
 
 ## Why does the header menu open out at 1200 px?
@@ -12,14 +12,15 @@ description: Templates App Studio to Events (#8997): header menu opens at 1200 p
 - The page writes `width` / `height` from the image's props only: `_render_extra_attrs()` leaves them out of `_attrs` ([[image-size-props]]). Twenty images that had them in `_attrs` showed at the file's size: testimonial faces at 96 px instead of 48, City Hall's council portraits at 240 px instead of 112 (the Council and Mayor pages scrolled sideways at 390 px), team cards, app icons, phone screens.
 - On 2026-11-12 the same pattern was still in about thirty files of other templates (ferry to zoo): `grep -rn "\$attr('width'" includes/design_templates`.
 
-## Which text is lifted on grey sections in the dark theme?
-- A palette's primary text colour is made readable on the page background; on `bg-body-tertiary` (account bar, page headers, grey bands) it measured 3.9 to 4.4:1 in the dark theme in all fourteen templates, and so did `link-secondary` (the breadcrumbs' Home link).
-- Each template's User Styles: `text-primary`, `link-primary` and `btn-outline-primary` there take `--bs-primary-text-emphasis`, mixed 80% with `--bs-emphasis-color` behind `@supports (color-mix)` (Cobalt's emphasis tint is as dark as its primary: 4.12:1 without the mix); `link-secondary` and `btn-outline-secondary` take `--bs-secondary-color`. Light was measured with no failure and is unchanged.
+## Which text is tinted on grey sections and primary-tinted cards?
+- A palette's primary and second text colours are made readable on the page background only. Across all 22 palettes they fell to 3.9:1 on `bg-body-tertiary` (account bar, page headers, grey bands) in the dark theme (Midnight, Ocean), to 4.4:1 there in the light one (Coral, Electric) and to 3.2:1 on `bg-primary-subtle` (the account card's Log out, Graphite).
+- Each template's User Styles set `--tpl-tinted-fg` on those surfaces: `--bs-primary-text-emphasis`; on grey, behind `@supports (color-mix)`, `--pg-primary-fg` 85% with `--bs-emphasis-color`, and in the dark theme the emphasis tint 80% with it. `text-primary`, `link-primary`, `btn-outline-primary` and `.nav` links there take it; `text-secondary`, `link-secondary`, `btn-outline-secondary` take `--bs-secondary-color`. Minimum after: 5.1:1 dark, 5.2:1 light.
 - Blocks: `pg-campsite-marker` and the construction progress dot write `var(--pg-on-primary, var(--bs-body-bg))` on the primary (2.18:1 in dark before).
 - Charity's Our Work jump links on the page header are `nav-link link-primary`, so the rule reaches them.
 
 ## How was it measured, and what tests it?
 - Every public page and e-mail page drawn from the template file (`pg_design_template_preview_html()`, the template's look and palette) in headless Chromium at 320 to 1,440 px, Turkish and English, light and dark (`data-bs-theme` set with transitions off); contrast from computed colours.
-- `tests/design_template_fit_test.php`: header navbar `navbar-expand-xl` with no `-lg-` class, container `flex-xl-wrap`, no image size in `_attrs`, the dark rules in the User Styles.
+- `tests/design_template_fit_test.php`: header navbar `navbar-expand-xl` with no `-lg-` class, container `flex-xl-wrap`, no image size in `_attrs`, the tint rules in the User Styles.
+- Each surface rule was measured on a probe page with every palette in both themes, then the 14 templates' pages with Midnight (dark), Coral and Graphite (light).
 
 Related: [[design-template-text-contrast]], [[designer-block-theme-colours]]
