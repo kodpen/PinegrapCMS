@@ -22,7 +22,7 @@ description: Short link names (2026.11.0): the name and address rules, a pasted 
 - Without a connection (the test runner) `pg_short_link_fold()`: NFKD without marks, lower case (intl), only lower case without intl.
 
 ## What may an address destination be?
-- `pg_short_link_url_problem()`: http/https or a path on this site, no `//` start, no backslash or control character, within the column; on every save path (classic screens, File Manager wizard, API, CSV import).
+- `pg_short_link_url_problem()`: http/https or a path on this site, no `//` start, no backslash or control character (`pg_web_address_problem()`, shared with the auto dialog URL: `core/web-address-rule.md`), within the column; on every save path (classic screens, File Manager wizard, API, CSV import).
 - Symptom before: the File Manager wizard (`pg_short_link_read_request()`) saved `javascript:`, `data:` or `//host`, which the other paths refused (`tests/explorer_short_link_url_test.php`).
 
 Tests: `tests/short_link_redirects_test.php`. PRs: #699, #1006, #1033.

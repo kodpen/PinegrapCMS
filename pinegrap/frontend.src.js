@@ -1580,6 +1580,20 @@ var software = {
         return content;
     },
 
+    // Whether a browser opens the address with no scheme or with http or
+    // https, so that it cannot run as script (javascript:, data:) in this
+    // page's origin. Read as the URL parser reads it: control characters and
+    // spaces around it dropped, tabs and line breaks dropped anywhere. The
+    // server's twin is pg_address_opens_as_web().
+    is_web_address: function(url) {
+        var address = String(url === undefined || url === null ? '' : url)
+            .replace(/^[\u0000-\u0020]+|[\u0000-\u0020]+$/g, '')
+            .replace(/[\t\n\r]/g, '');
+        var scheme = address.match(/^([a-z][a-z0-9+.\-]*):/i);
+
+        return !scheme || /^https?$/i.test(scheme[1]);
+    },
+
     init_accordions: function(selector) {
         if (typeof selector === 'undefined') {
             selector = 'ul.list-accordion, ol.list-accordion';
@@ -5423,6 +5437,12 @@ var software = {
         var url = properties.url;
         var width = properties.width;
         var height = properties.height;
+
+        // The iframe would run a javascript: or data: address in this page's
+        // origin; the server leaves such auto dialogs out too.
+        if (!software.is_web_address(url)) {
+            return false;
+        }
 
         if (class_name === undefined) {
             class_name = '';

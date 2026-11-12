@@ -161,8 +161,9 @@ function api_design_auto_dialog_values($row, $params) {
 }
 
 // The screen's checks (pg_auto_dialog_form_validate()): a name and a URL,
-// within their columns (422), the numbers within the screen's limits (422),
-// a name no other auto dialog has (409 name_taken).
+// within their columns (422), the URL a web address or a path on this site
+// (422), the numbers within the screen's limits (422), a name no other auto
+// dialog has (409 name_taken).
 function api_design_auto_dialog_prepare($params, $row) {
 
 	$values = api_design_auto_dialog_values($row, $params);
@@ -182,6 +183,19 @@ function api_design_auto_dialog_prepare($params, $row) {
 			api_fail_validation(lang(array('string' => '{var:1} can be at most {var:2} characters long.', 'vars' => array(lang(($field === 'name') ? 'Name' : 'URL'), $max))), $field);
 
 		}
+
+	}
+
+	// The URL opens in an iframe on the site: the screen's address rule (422)
+	// on a create and whenever a URL is sent. An update that leaves the URL
+	// out keeps a stored one saved before the rule, so that the dialog can
+	// still be disabled or renamed; the site never opens such an address
+	// (pg_auto_dialogs_for_page()).
+	$problem = (($row === null) || array_key_exists('url', $params)) ? pg_auto_dialog_url_problem($values['url']) : '';
+
+	if ($problem !== '') {
+
+		api_fail_validation($problem, 'url');
 
 	}
 

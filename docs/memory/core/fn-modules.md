@@ -61,7 +61,7 @@ description: Generated from the module field of the memory files: each includes/
 - `contacts`: [[affiliate-welcome-mail-link]], [[api-commission-writes]], [[contact-delete-refusals]], [[contact-holders]], [[contact-lead-source]], [[contact-merge-columns]], [[deleted-picture-fallback]], [[panel-avatar]], [[panel-avatar-sites]], [[panel-picture-change-stamp]]
 - `container_list_edit`: [[list-table-quick-edit-containers]]
 - `content`: [[submitted-form-content-helpers]]
-- `core`: [[app-screen-messages]], [[build-url-host-parts]], [[error-screen-language-and-status]], [[gift-card-code-in-site-log]], [[recurring-calendar-days]], [[schema-cache-file]], [[send-to-url-safety]], [[style-tag-css]], [[time-zone-list-labels]]
+- `core`: [[app-screen-messages]], [[build-url-host-parts]], [[error-screen-language-and-status]], [[gift-card-code-in-site-log]], [[recurring-calendar-days]], [[schema-cache-file]], [[send-to-url-safety]], [[style-tag-css]], [[time-zone-list-labels]], [[web-address-rule]]
 - `country_list_edit`: [[list-table-quick-edit-countries]]
 - `cron`: [[job-script-claims]], [[scheduled-job-resume]]
 - `currency_list_edit`: [[list-table-quick-edit-currencies]]

@@ -3,8 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The auto dialog save, shared by the create and the edit screens
- * (add_auto_dialog.php, edit_auto_dialog.php): the required and name
- * checks, the page clean-up and the values a save writes. Both screens draw
+ * (add_auto_dialog.php, edit_auto_dialog.php): the required, address and
+ * name checks, the page clean-up and the values a save writes. Both screens draw
  * includes/templates/edit_auto_dialog.php; they keep the record load, the
  * preview link, delete, the INSERT/UPDATE, the log and the redirects.
  *
@@ -20,9 +20,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 /**
  * The checks a save runs: name and URL required, the text fields no longer
- * than their columns, the four number fields blank or a whole number inside
- * their limit, and a name not used by another auto dialog. The uniqueness
- * query runs only when a name was given.
+ * than their columns, the URL a web address or a path on this site
+ * (pg_auto_dialog_url_problem()), the four number fields blank or a whole
+ * number inside their limit, and a name not used by another auto dialog. The
+ * uniqueness query runs only when a name was given.
  *
  * @param liveform $liveform
  * @param string|null $id  The auto dialog being edited, null on create
@@ -38,6 +39,14 @@ function pg_auto_dialog_form_validate($liveform, $id)
         if (!$liveform->check_field_error($field)
             && (mb_strlen((string) $liveform->get_field_value($field), 'UTF-8') > $rule[1])) {
             $liveform->mark_error($field, lang(array('string'=>'{var:1} can be at most {var:2} characters long.','vars'=>array(lang($rule[0]), $rule[1]))));
+        }
+    }
+
+    if (!$liveform->check_field_error('url')) {
+        $problem = pg_auto_dialog_url_problem($liveform->get_field_value('url'));
+
+        if ($problem !== '') {
+            $liveform->mark_error('url', $problem);
         }
     }
 
@@ -63,6 +72,23 @@ function pg_auto_dialog_form_validate($liveform, $id)
             $liveform->mark_error('name', lang('Sorry, the name that you entered is already in use, so please enter a different name.'));
         }
     }
+}
+
+/**
+ * What is wrong with an auto dialog's URL, or '' when it can be saved. The
+ * site opens the URL in an iframe on every page the dialog shows on, so a
+ * javascript: or data: address would run as script in the site's own origin
+ * for every visitor. It takes the short link destination's rule
+ * (pg_web_address_problem()): an http or https address or a path on this
+ * site, no other scheme, no "//host", no backslash, no space. The create and
+ * edit screens and the external API ask this.
+ *
+ * @param mixed $url
+ * @return string
+ */
+function pg_auto_dialog_url_problem($url)
+{
+    return pg_web_address_problem($url);
 }
 
 /**

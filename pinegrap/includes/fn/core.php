@@ -1603,6 +1603,58 @@ function escape_url($url)
     return false;
 }
 
+/**
+ * Why an address typed for a visitor's browser is not a web address or a
+ * path on this site: '' when it is one, else the message to show. The save
+ * rule of the address fields a site page opens (a short link's destination,
+ * an auto dialog's URL): no space or control character (a browser drops a
+ * tab or a line break, so "java\tscript:" is "javascript:"), no scheme but
+ * http and https, no protocol-relative "//host" and no backslash (a browser
+ * reads "\" as "/" in a web address). Trimmed first; the caller checks that
+ * an address was given.
+ *
+ * @param  mixed  $url
+ * @return string
+ */
+function pg_web_address_problem($url)
+{
+    $url = trim(is_scalar($url) ? (string) $url : '');
+
+    if (preg_match('/[\x00-\x20\x7f]/', $url) === 1) {
+        return lang('Sorry, you may not enter a space in the URL.');
+    }
+
+    if (((preg_match('/^([A-Za-z][A-Za-z0-9+.-]*):/', $url, $found) === 1) && !in_array(strtolower($found[1]), array('http', 'https'), true))
+        || (strpos($url, '//') === 0) || (strpos($url, '\\') !== false)) {
+        return lang('The address must be a web address or a path on this site.');
+    }
+
+    return '';
+}
+
+/**
+ * Whether a browser opens a stored address with no scheme or with http or
+ * https: the check where such an address is printed for a page, so that a
+ * row saved before its field had pg_web_address_problem() cannot run as
+ * script (javascript:, data:, vbscript:) in the site's origin. The address
+ * is read as a browser's URL parser reads it: control characters and spaces
+ * around it dropped, tabs and line breaks dropped anywhere. A "//host" or a
+ * backslash is let through here: it keeps the page's own http or https.
+ *
+ * @param  mixed $url
+ * @return bool
+ */
+function pg_address_opens_as_web($url)
+{
+    $url = str_replace(array("\t", "\n", "\r"), '', trim(is_scalar($url) ? (string) $url : '', "\x00..\x20"));
+
+    if (preg_match('/^([A-Za-z][A-Za-z0-9+.-]*):/', $url, $found) !== 1) {
+        return true;
+    }
+
+    return in_array(strtolower($found[1]), array('http', 'https'), true);
+}
+
 function unhtmlspecialchars($string)
 {
     if (function_exists('htmlspecialchars_decode')) {

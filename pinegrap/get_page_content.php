@@ -6432,6 +6432,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     FROM auto_dialogs
                     WHERE id = '" . e($_GET['preview_auto_dialog']) . "'");
 
+                // An address that would run as script is never opened.
+                $auto_dialogs = pg_auto_dialogs_for_page($auto_dialogs);
+
                 // If an auto dialog was found for that id,
                 // then continue to init auto dialogs.
                 if ($auto_dialogs) {
@@ -6456,6 +6459,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     FROM auto_dialogs
                     WHERE enabled = '1'
                     ORDER BY id");
+
+                // An address that would run as script is never opened.
+                $auto_dialogs = pg_auto_dialogs_for_page($auto_dialogs);
 
                 // If there is at least one enabled auto dialog, then init them.
                 if ($auto_dialogs) {
