@@ -22,5 +22,5 @@ description: Steps WM10-WM14 of plans/workspace-mail-screen.md (owner 2026-11-11
 - WM13 (M) Done #8985. A mailbox kept in no channel. After WM11. Topic `workspace/mail-room.md`.
   - The box form's "Kept in": a channel, or the mailbox itself. The second makes a room of kind `mailbox` named after the box; the people and departments chosen on the box are its members. No channel list, picker, search or API channel list shows it: every reader of `ws_channels` by kind is checked, with a test.
   - The E-mails screen is its face: read, answer, New e-mail, files; its notices open the screen. Routes by address or +tag into channels stay.
-- WM14 (S) A plain box. After WM13.
+- WM14 (S) Done #PRNUM. A plain box. After WM13. Topic `workspace/mail-support-box.md`.
   - A box says whether it is a support box (in `settings`, no column). Status, holder, the first-answer time, the overdue filter and the automatic answer show only for one. A box kept in no channel starts plain; today's boxes stay support boxes.

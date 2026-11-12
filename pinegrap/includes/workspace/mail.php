@@ -1067,7 +1067,8 @@ function ws_mail_ingest($raw, $box)
  *
  * @param array[] $rows ws_messages rows
  * @return array item id => ws_mail_items row, with a 'conversation' key (the
- *               ws_mail_conversations row or null)
+ *               ws_mail_conversations row or null), its box's
+ *               first_reply_hours and support (ws_mail_box_is_support())
  */
 function ws_mail_items_map($rows)
 {
@@ -1102,17 +1103,21 @@ function ws_mail_items_map($rows)
             $box_ids[(int) $conversation['box_id']] = (int) $conversation['box_id'];
         }
 
-        // Each box's first-response target, for the card's due word.
+        // Each box's first-response target, for the card's due word, and
+        // whether it is a support box, for the card's state.
         $hours = array();
+        $support = array();
 
         foreach ((array) db_items("SELECT id, settings FROM ws_mail_boxes WHERE id IN (" . implode(',', array_merge(array(0), $box_ids)) . ")") as $box) {
             $hours[(int) $box['id']] = function_exists('ws_mail_first_reply_hours') ? ws_mail_first_reply_hours($box) : 0;
+            $support[(int) $box['id']] = !function_exists('ws_mail_box_is_support') || ws_mail_box_is_support($box);
         }
 
         foreach ($items as $id => $item) {
             $conversation = $conversations[(int) $item['conversation_id']] ?? null;
             $items[$id]['conversation'] = $conversation;
             $items[$id]['first_reply_hours'] = $conversation ? (int) ($hours[(int) $conversation['box_id']] ?? 0) : 0;
+            $items[$id]['support'] = $conversation ? ($support[(int) $conversation['box_id']] ?? true) : true;
         }
     }
 
@@ -1209,7 +1214,7 @@ function ws_mail_card_html($row, $item)
     $html = '<div class="ws-mail-card">'
         . '<div class="small fg-secondary mb-1">' . $badge . ' <span class="ms-1">'
         . h($out ? lang(array('string' => 'To {var:1}', 'vars' => (string) $item['to_list'])) : (string) $item['from_email']) . '</span>'
-        . (($card && function_exists('ws_mail_status_html'))
+        . (($card && ($item['support'] ?? true) && function_exists('ws_mail_status_html'))
             ? ws_mail_status_html($conversation, ((int) ($conversation['assignee_id'] ?? 0) > 0) ? ws_person_name((int) $conversation['assignee_id']) : '',
                 (int) ($item['first_reply_hours'] ?? 0), time())
             : '')
