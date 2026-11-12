@@ -13,6 +13,10 @@
  *   --pg-primary-fg / --pg-secondary-fg      the colour as text on the page
  *   --pg-primary-hover / -active (+ -rgb)    button states
  *   --pg-primary-focus-border                border of a focused control
+ * A palette whose colour is too pale to be seen on a white page sets two
+ * more, and nothing changes without them:
+ *   --pg-primary-line / --pg-secondary-line  the colour as a line (+ -rgb)
+ *   --pg-check-mark, -radio-, -dash-, -switch-   the marks of a checked control
  */
 
 /* ── Buttons ─────────────────────────────────────────────────────────────── */
@@ -24,7 +28,7 @@
     --bs-btn-hover-color: var(--pg-on-primary, #fff);
     --bs-btn-hover-bg: var(--pg-primary-hover, #0b5ed7);
     --bs-btn-hover-border-color: var(--pg-primary-hover, #0a58ca);
-    --bs-btn-focus-shadow-rgb: var(--bs-primary-rgb);
+    --bs-btn-focus-shadow-rgb: var(--pg-primary-line-rgb, var(--bs-primary-rgb));
     --bs-btn-active-color: var(--pg-on-primary, #fff);
     --bs-btn-active-bg: var(--pg-primary-active, #0a58ca);
     --bs-btn-active-border-color: var(--pg-primary-active, #0a53be);
@@ -35,16 +39,16 @@
 
 .btn-outline-primary {
     --bs-btn-color: var(--pg-primary-fg, var(--bs-primary));
-    --bs-btn-border-color: var(--bs-primary);
+    --bs-btn-border-color: var(--pg-primary-line, var(--bs-primary));
     --bs-btn-hover-color: var(--pg-on-primary, #fff);
     --bs-btn-hover-bg: var(--bs-primary);
     --bs-btn-hover-border-color: var(--bs-primary);
-    --bs-btn-focus-shadow-rgb: var(--bs-primary-rgb);
+    --bs-btn-focus-shadow-rgb: var(--pg-primary-line-rgb, var(--bs-primary-rgb));
     --bs-btn-active-color: var(--pg-on-primary, #fff);
     --bs-btn-active-bg: var(--bs-primary);
     --bs-btn-active-border-color: var(--bs-primary);
     --bs-btn-disabled-color: var(--pg-primary-fg, var(--bs-primary));
-    --bs-btn-disabled-border-color: var(--bs-primary);
+    --bs-btn-disabled-border-color: var(--pg-primary-line, var(--bs-primary));
 }
 
 .btn-secondary {
@@ -54,7 +58,7 @@
     --bs-btn-hover-color: var(--pg-on-secondary, #fff);
     --bs-btn-hover-bg: var(--pg-secondary-hover, #5c636a);
     --bs-btn-hover-border-color: var(--pg-secondary-hover, #565e64);
-    --bs-btn-focus-shadow-rgb: var(--bs-secondary-rgb);
+    --bs-btn-focus-shadow-rgb: var(--pg-secondary-line-rgb, var(--bs-secondary-rgb));
     --bs-btn-active-color: var(--pg-on-secondary, #fff);
     --bs-btn-active-bg: var(--pg-secondary-active, #565e64);
     --bs-btn-active-border-color: var(--pg-secondary-active, #51585e);
@@ -65,20 +69,20 @@
 
 .btn-outline-secondary {
     --bs-btn-color: var(--pg-secondary-fg, var(--bs-secondary));
-    --bs-btn-border-color: var(--bs-secondary);
+    --bs-btn-border-color: var(--pg-secondary-line, var(--bs-secondary));
     --bs-btn-hover-color: var(--pg-on-secondary, #fff);
     --bs-btn-hover-bg: var(--bs-secondary);
     --bs-btn-hover-border-color: var(--bs-secondary);
-    --bs-btn-focus-shadow-rgb: var(--bs-secondary-rgb);
+    --bs-btn-focus-shadow-rgb: var(--pg-secondary-line-rgb, var(--bs-secondary-rgb));
     --bs-btn-active-color: var(--pg-on-secondary, #fff);
     --bs-btn-active-bg: var(--bs-secondary);
     --bs-btn-active-border-color: var(--bs-secondary);
     --bs-btn-disabled-color: var(--pg-secondary-fg, var(--bs-secondary));
-    --bs-btn-disabled-border-color: var(--bs-secondary);
+    --bs-btn-disabled-border-color: var(--pg-secondary-line, var(--bs-secondary));
 }
 
 .btn-link {
-    --bs-btn-focus-shadow-rgb: var(--bs-primary-rgb);
+    --bs-btn-focus-shadow-rgb: var(--pg-primary-line-rgb, var(--bs-primary-rgb));
 }
 
 .btn-close {
@@ -170,8 +174,28 @@
     border-color: var(--bs-primary);
 }
 
-/* The switch knob is drawn as an image, which a variable cannot colour; on
-   focus it keeps its resting grey instead of turning Bootstrap blue. */
+/* The tick, the radio's dot, the dash of an indeterminate checkbox and the
+   knob of a switch that is on are images, white in Bootstrap. A palette
+   whose primary is too pale to carry white gives its own in the text colour
+   of the primary; without them they stay Bootstrap's. */
+.form-check-input:checked[type=checkbox] {
+    --bs-form-check-bg-image: var(--pg-check-mark, url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e"));
+}
+
+.form-check-input:checked[type=radio] {
+    --bs-form-check-bg-image: var(--pg-radio-mark, url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='2' fill='%23fff'/%3e%3c/svg%3e"));
+}
+
+.form-check-input[type=checkbox]:indeterminate {
+    --bs-form-check-bg-image: var(--pg-dash-mark, url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10h8'/%3e%3c/svg%3e"));
+}
+
+.form-switch .form-check-input:checked {
+    --bs-form-switch-bg: var(--pg-switch-mark, url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e"));
+}
+
+/* The knob of a switch that is off is an image as well; on focus it keeps
+   its resting grey instead of turning Bootstrap blue. */
 .form-switch .form-check-input:focus:not(:checked) {
     --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='rgba%280, 0, 0, 0.25%29'/%3e%3c/svg%3e");
 }
@@ -181,11 +205,11 @@
 }
 
 .form-range::-webkit-slider-thumb {
-    background-color: var(--bs-primary);
+    background-color: var(--pg-primary-line, var(--bs-primary));
 }
 
 .form-range::-moz-range-thumb {
-    background-color: var(--bs-primary);
+    background-color: var(--pg-primary-line, var(--bs-primary));
 }
 
 .form-range::-webkit-slider-thumb:active {
