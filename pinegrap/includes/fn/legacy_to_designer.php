@@ -9,6 +9,8 @@
  * conversion (dynamic regions, custom layouts), what stops one (the
  * refusal of pg_classic_style_refusal(), PHP in the style's code, a page
  * somebody holds in the designer) and a ready / needs-attention state.
+ * Styles that load the same stylesheets and scripts with the same settings
+ * form a set (pg_ltd_set_key(), pg_ltd_sets()), moved as one Legacy design.
  *
  * Read only: nothing here writes a row. The conversions stay the existing
  * ones (includes/fn/classic_style_design.php and the region converters).
@@ -68,6 +70,189 @@ function pg_ltd_style_tags($style_code)
         }
     }
     return $out;
+}
+
+/**
+ * The external stylesheets and scripts a classic style's code loads, in
+ * document order: each <link> whose rel names a stylesheet, by its href, and
+ * each <script> with a src. A tag inside a comment (a conditional comment
+ * too), a script or a style block is text there, as the HTML importer reads
+ * the code. {path} and {software_directory} are filled the way a design's
+ * linked row is filled (pg_designer_resolve_output_placeholders()), so
+ * "{path}x.css" and "/x.css" are one file; each address counts once, where
+ * it first stands. Inline <style> and <script> blocks are not listed.
+ *
+ * Pure: no query.
+ *
+ * @param string $style_code
+ * @param string $path                PATH
+ * @param string $software_directory  SOFTWARE_DIRECTORY
+ * @return array  'css' (addresses), 'js' (addresses)
+ */
+function pg_ltd_style_refs($style_code, $path, $software_directory)
+{
+    $out = array('css' => array(), 'js' => array());
+    $code = preg_replace('~<!--.*?-->~s', '', (string)$style_code);
+    $attr = function ($attrs, $name) {
+        if (!preg_match('~\s' . $name . '\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s"\'>]+))~i', ' ' . $attrs, $m)) return null;
+        $value = (string)$m[1];
+        if (isset($m[2]) && $m[2] !== '') $value = $m[2];
+        if (isset($m[3]) && $m[3] !== '') $value = $m[3];
+        return html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    };
+    preg_match_all('~<script\b([^>]*)>.*?</script\s*>|<style\b[^>]*>.*?</style\s*>|<link\b([^>]*)>~is', (string)$code, $hits, PREG_SET_ORDER);
+    foreach ($hits as $hit) {
+        if (isset($hit[2]) && $hit[2] !== '') {
+            $rel = $attr($hit[2], 'rel');
+            if ($rel === null || stripos($rel, 'stylesheet') === false) continue;
+            $kind = 'css';
+            $address = $attr($hit[2], 'href');
+        } elseif (isset($hit[1]) && stripos($hit[0], '<script') === 0) {
+            $kind = 'js';
+            $address = $attr($hit[1], 'src');
+        } else {
+            continue;
+        }
+        $address = trim(pg_designer_resolve_output_placeholders(trim((string)$address), (string)$path, (string)$software_directory));
+        if ($address !== '' && !in_array($address, $out[$kind], true)) $out[$kind][] = $address;
+    }
+    return $out;
+}
+
+/**
+ * A classic style's set key: the ordered stylesheet and script addresses
+ * (pg_ltd_style_refs()), the collection and the theme file. Order counts;
+ * inline blocks do not (they become rows kept to the pages of the style that
+ * had them). The layout override and the sharing buttons' position do not
+ * split a set either: the design holds the value most of its styles carry
+ * (pg_ltd_set_setting()), and the dry run names each style that differs.
+ *
+ * Pure: no query.
+ *
+ * @param array $refs  pg_ltd_style_refs()
+ * @param array $row   collection, theme_id
+ * @return string  sixteen hex characters
+ */
+function pg_ltd_set_key($refs, $row)
+{
+    $r = (array)$row;
+    $parts = array(
+        'css'        => array_values(array_map('strval', (array)($refs['css'] ?? array()))),
+        'js'         => array_values(array_map('strval', (array)($refs['js'] ?? array()))),
+        'collection' => (string)($r['collection'] ?? ''),
+        'theme'      => (int)($r['theme_id'] ?? 0),
+    );
+    return substr(sha1((string)json_encode($parts)), 0, 16);
+}
+
+/**
+ * The value of a setting a set's design holds once: the one most of its
+ * styles carry, the first of them on a tie.
+ *
+ * Pure: no query.
+ *
+ * @param array $values  the styles' values, in the report's order
+ * @return string
+ */
+function pg_ltd_set_setting($values)
+{
+    // Counted in the order each value first stands, so the first of the
+    // values with the highest count wins.
+    $counts = array();
+    foreach ((array)$values as $v) {
+        $v = (string)$v;
+        $counts[$v] = (isset($counts[$v]) ? $counts[$v] : 0) + 1;
+    }
+    $best = '';
+    $most = 0;
+    foreach ($counts as $v => $n) {
+        if ($n > $most) {
+            $most = $n;
+            $best = (string)$v;
+        }
+    }
+    return $best;
+}
+
+/**
+ * The name a set's design is shown under: its first style's.
+ *
+ * @param string $first_style_name
+ */
+function pg_ltd_set_name($first_style_name)
+{
+    return lang(array('string' => '{var:1} set', 'vars' => array((string)$first_style_name)));
+}
+
+/**
+ * The report's styles grouped into sets: two or more styles with the same
+ * set key. A style the designer refuses and a style no other style shares
+ * its files with move alone, as before. A style some folder or page uses as
+ * its mobile style joins its set like any other: a set's move leaves every
+ * classic style row as it is, so phones keep getting it. Sets with the most
+ * styles come first, then by their first style's name.
+ *
+ * Pure: no query.
+ *
+ * @param array $report  pg_ltd_report() entries: id, name, state, set_key,
+ *                       own, folder, refs, theme, theme_id, collection,
+ *                       social_position, layout_type
+ * @return array  'sets' (list of array('key', 'name', 'styles' (ids in
+ *                report order), 'pages', 'refs', 'theme', 'theme_id',
+ *                'collection', 'settings' (social_networking_position and
+ *                layout_type the design holds, pg_ltd_set_setting()))),
+ *                'alone' (style id => 'blocked' or 'single')
+ */
+function pg_ltd_sets($report)
+{
+    $groups = array();
+    $alone = array();
+    foreach ((array)$report as $s) {
+        $id = (int)($s['id'] ?? 0);
+        if ((string)($s['state'] ?? '') === 'blocked') {
+            $alone[$id] = 'blocked';
+            continue;
+        }
+        $groups[(string)($s['set_key'] ?? '')][] = $s;
+    }
+    $sets = array();
+    foreach ($groups as $key => $members) {
+        if (count($members) < 2) {
+            $alone[(int)$members[0]['id']] = 'single';
+            continue;
+        }
+        $ids = array();
+        $pages = 0;
+        $social = array();
+        $layout = array();
+        foreach ($members as $m) {
+            $ids[] = (int)$m['id'];
+            $pages += count((array)($m['own'] ?? array())) + count((array)($m['folder'] ?? array()));
+            $social[] = (string)($m['social_position'] ?? '');
+            $layout[] = (string)($m['layout_type'] ?? '');
+        }
+        $first = $members[0];
+        $sets[] = array(
+            'key'        => (string)$key,
+            'name'       => pg_ltd_set_name((string)$first['name']),
+            'first'      => (string)$first['name'],
+            'styles'     => $ids,
+            'pages'      => $pages,
+            'refs'       => (array)($first['refs'] ?? array('css' => array(), 'js' => array())),
+            'theme'      => (string)($first['theme'] ?? ''),
+            'theme_id'   => (int)($first['theme_id'] ?? 0),
+            'collection' => (string)($first['collection'] ?? ''),
+            'settings'   => array('social_networking_position' => pg_ltd_set_setting($social), 'layout_type' => pg_ltd_set_setting($layout)),
+        );
+    }
+    // usort() is not stable before PHP 8: the order is spelled out in full.
+    usort($sets, function ($a, $b) {
+        if (count($a['styles']) !== count($b['styles'])) return count($b['styles']) - count($a['styles']);
+        $by_name = strcasecmp($a['first'], $b['first']);
+        return $by_name !== 0 ? $by_name : $a['styles'][0] - $b['styles'][0];
+    });
+    foreach ($sets as $i => $set) unset($sets[$i]['first']);
+    return array('sets' => $sets, 'alone' => $alone);
 }
 
 /**
@@ -239,12 +424,20 @@ function pg_ltd_stays_classic($report, $frozen_gateway = '')
  *                (page rows), 'trees' (pages already drawn from a tree),
  *                'page_regions', 'custom_layouts', 'locked' (page rows
  *                with 'holder'), 'open' (user names with the style open),
- *                'state', 'reasons', 'notes')
+ *                'state', 'reasons', 'notes', 'refs' (pg_ltd_style_refs()),
+ *                'set_key', 'theme_id', 'collection', 'social_position',
+ *                'layout_type', 'mobile' (folders and
+ *                pages naming it as their mobile style), 'mobile_pages' (its
+ *                pages that have a mobile style), 'style_head' (bool),
+ *                'body_classes', 'set' (its set's key, '' when it moves
+ *                alone), 'alone' (pg_ltd_sets()'s reason, '' in a set))
  */
 function pg_ltd_report()
 {
     $styles = db_items(
         "SELECT style.style_id, style.style_name, style.style_type, style.style_layout, style.style_code,
+                style.collection, style.layout_type, style.social_networking_position, style.theme_id,
+                style.style_head, style.additional_body_classes,
                 files.name AS theme_name
          FROM style
          LEFT JOIN files ON style.theme_id = files.id
@@ -253,8 +446,21 @@ function pg_ltd_report()
     $styles = is_array($styles) ? $styles : array();
     if (!$styles) return array();
 
-    $folders = db_items("SELECT folder_id, folder_parent, folder_style, folder_level FROM folder");
-    $folder_styles = pg_classic_style_folder_styles(is_array($folders) ? $folders : array());
+    $folders = db_items("SELECT folder_id, folder_parent, folder_style, folder_level, mobile_style_id FROM folder");
+    $folders = is_array($folders) ? $folders : array();
+    $folder_styles = pg_classic_style_folder_styles($folders);
+    // The mobile style each folder works out to, walked as get_style()
+    // walks it for a phone, and how many folders and pages name each style
+    // as their own mobile style.
+    $mobile_of = array();
+    $mobile_folders = array();
+    foreach ($folders as $f) {
+        $mobile = (int)$f['mobile_style_id'];
+        if ($mobile > 0) $mobile_of[$mobile] = (isset($mobile_of[$mobile]) ? $mobile_of[$mobile] : 0) + 1;
+        $f['folder_style'] = $mobile;
+        $mobile_folders[] = $f;
+    }
+    $folder_mobile = pg_classic_style_folder_styles($mobile_folders);
 
     $tree_ready = pg_multi_page_design_ready();
     $region_counts = array();
@@ -262,7 +468,7 @@ function pg_ltd_report()
         $region_counts[(int)$r['pregion_page']] = (int)$r['n'];
     }
     $rows = db_items(
-        "SELECT page_id, page_name, page_folder, page_style, page_type, layout_type"
+        "SELECT page_id, page_name, page_folder, page_style, mobile_style_id, page_type, layout_type"
         . ($tree_ready ? ", (page_tree_json IS NOT NULL AND page_tree_json <> '') AS has_tree" : ", 0 AS has_tree") . "
          FROM page
          WHERE 1" . pg_designer_not_binned_sql() . "
@@ -270,11 +476,15 @@ function pg_ltd_report()
     $pages = array();
     foreach ((is_array($rows) ? $rows : array()) as $r) {
         $id = (int)$r['page_id'];
+        $mobile = (int)$r['mobile_style_id'];
+        if ($mobile > 0) $mobile_of[$mobile] = (isset($mobile_of[$mobile]) ? $mobile_of[$mobile] : 0) + 1;
+        if ($mobile <= 0 && isset($folder_mobile[(int)$r['page_folder']])) $mobile = (int)$folder_mobile[(int)$r['page_folder']];
         $pages[] = array(
             'page_id'       => $id,
             'page_name'     => (string)$r['page_name'],
             'page_folder'   => (int)$r['page_folder'],
             'page_style'    => (int)$r['page_style'],
+            'mobile_style'  => $mobile,
             'has_tree'      => (bool)(int)$r['has_tree'],
             'custom_layout' => (string)$r['layout_type'] === 'custom' && check_if_page_type_supports_layout((string)$r['page_type']),
             'page_regions'  => isset($region_counts[$id]) ? $region_counts[$id] : 0,
@@ -317,8 +527,10 @@ function pg_ltd_report()
         $trees = 0;
         $page_regions = 0;
         $custom_layouts = 0;
+        $mobile_pages = 0;
         $locked = array();
         foreach (array_merge($own, $folder) as $p) {
+            if ($p['mobile_style'] > 0) ++$mobile_pages;
             if ($p['has_tree']) {
                 ++$trees;
                 continue;
@@ -341,6 +553,7 @@ function pg_ltd_report()
             'custom_layouts' => $custom_layouts,
             'pages'          => count($own) + count($folder),
         ));
+        $refs = pg_ltd_style_refs((string)$s['style_code'], defined('PATH') ? PATH : '/', defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '');
         $out[] = array(
             'id'             => $id,
             'name'           => (string)$s['style_name'],
@@ -359,7 +572,27 @@ function pg_ltd_report()
             'state'          => $state['state'],
             'reasons'        => $state['reasons'],
             'notes'          => $state['notes'],
+            'refs'           => $refs,
+            'set_key'        => pg_ltd_set_key($refs, $s),
+            'theme_id'       => (int)$s['theme_id'],
+            'collection'     => (string)$s['collection'],
+            'social_position' => (string)$s['social_networking_position'],
+            'layout_type'    => (string)$s['layout_type'],
+            'mobile'         => isset($mobile_of[$id]) ? $mobile_of[$id] : 0,
+            'mobile_pages'   => $mobile_pages,
+            'style_head'     => trim((string)$s['style_head']) !== '',
+            'body_classes'   => trim((string)$s['additional_body_classes']),
         );
+    }
+
+    $sets = pg_ltd_sets($out);
+    $set_of = array();
+    foreach ($sets['sets'] as $set) {
+        foreach ($set['styles'] as $id) $set_of[$id] = $set['key'];
+    }
+    foreach ($out as $i => $s) {
+        $out[$i]['set'] = isset($set_of[$s['id']]) ? $set_of[$s['id']] : '';
+        $out[$i]['alone'] = isset($sets['alone'][$s['id']]) ? $sets['alone'][$s['id']] : '';
     }
     return $out;
 }

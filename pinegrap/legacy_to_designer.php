@@ -53,15 +53,19 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST') && (($_POST['ajax'] ?? '') === '1'))
 $user = validate_user();
 validate_area_access($user, 'designer');
 
-// The dry run of the chosen styles writes nothing. Convert starts the run
-// of the styles a dry run listed, then the screen works it.
+// The dry run of the chosen sets and styles writes nothing. Convert starts
+// the run of the styles a dry run listed alone, then the screen works it.
 $chosen = array();
+$chosen_sets = array();
 $plan = null;
 $run_error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     validate_token_field();
     foreach ((array)($_POST['styles'] ?? array()) as $id) {
         if ((int)$id > 0) $chosen[(int)$id] = true;
+    }
+    foreach ((array)($_POST['sets'] ?? array()) as $key) {
+        if (is_string($key) && preg_match('/^[0-9a-f]{16}$/', $key)) $chosen_sets[$key] = true;
     }
     if (!empty($_POST['convert'])) {
         $run_error = pg_ltd_run_start(array_keys($chosen), $user);
@@ -71,11 +75,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
     }
-    $plan = pg_ltd_plan(array_keys($chosen));
+    $plan = pg_ltd_plan(array_keys($chosen), array_keys($chosen_sets));
 }
 
 $running = pg_ltd_state_read();
 $report = pg_ltd_report();
+$sets = pg_ltd_sets($report);
 
 $state_badges = array(
     'ready'     => array('theme-success', lang('Ready')),
@@ -116,11 +121,14 @@ $page_list = function ($pages, $summary) {
     return '<details><summary>' . h($summary) . '</summary><ul class="mb-0 mt-1 ps-12">' . $items . '</ul></details>';
 };
 
-$output_rows = '';
 foreach ($report as $s) {
     ++$totals[$s['state']];
-    $pages = count($s['own']) + count($s['folder']);
-    $total_pages += $pages;
+    $total_pages += count($s['own']) + count($s['folder']);
+}
+
+// One row per style, under its set's head row or under the styles that
+// move alone.
+$style_row = function ($s) use ($state_badges, $region_labels, $page_list, $chosen) {
     $badge = $state_badges[$s['state']];
 
     $output_pages = $page_list($s['own'], lang(array('string' => '{var:1} own', 'vars' => array(pg_format_number(count($s['own']), 0)))))
@@ -173,6 +181,9 @@ foreach ($report as $s) {
                 break;
         }
     }
+    if ($s['mobile'] > 0 && defined('MOBILE') && MOBILE) {
+        $lines[] = array('fg-secondary', lang('A folder or page uses it as its mobile style: the classic style stays and keeps serving phones.'));
+    }
     $output_notes = '';
     foreach ($lines as $l) {
         $output_notes .= '<div class="small ' . $l[0] . '">' . h($l[1]) . '</div>';
@@ -184,7 +195,7 @@ foreach ($report as $s) {
         $output_action .= '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . h(lang('Open in the visual designer')) . '" href="edit_system_style.php?id=' . (int)$s['id'] . '&amp;classic=1"><i class="bi bi-magic"></i></a>';
     }
 
-    $output_rows .= '
+    return '
         <tr>
             <td class="align-middle text-start">' . $output_action . '</td>
             <td class="align-middle"><a href="edit_' . h($s['type']) . '_style.php?id=' . (int)$s['id'] . '">' . h($s['name']) . '</a>'
@@ -194,6 +205,50 @@ foreach ($report as $s) {
             <td class="align-middle">' . $output_regions . '</td>
             <td class="align-middle">' . $output_notes . '</td>
         </tr>';
+};
+
+// A set: its box (for the dry run), its design's name, how many styles and
+// pages, its theme file and the stylesheets and scripts its styles share,
+// then its styles. The styles that move alone close the table.
+$by_id = array();
+foreach ($report as $s) $by_id[$s['id']] = $s;
+$output_rows = '';
+foreach ($sets['sets'] as $set) {
+    $files = '';
+    foreach (array('css' => 'bi-filetype-css', 'js' => 'bi-filetype-js') as $kind => $icon) {
+        foreach ($set['refs'][$kind] as $address) {
+            $files .= '<li class="text-break"><i class="bi ' . $icon . ' me-1" aria-hidden="true"></i>' . h($address) . '</li>';
+        }
+    }
+    $summary = lang(array('string' => '{var:1} stylesheets, {var:2} scripts', 'vars' => array(count($set['refs']['css']), count($set['refs']['js']))));
+    $output_rows .= '
+        <tbody class="ltd-set">
+        <tr class="ltd-set-head">
+            <td class="align-middle text-start"><input class="check m-1" type="checkbox" name="sets[]" value="' . h($set['key']) . '" form="ltd_dry_run" aria-label="' . h($set['name']) . '"' . (isset($chosen_sets[$set['key']]) ? ' checked' : '') . '></td>
+            <th scope="rowgroup" colspan="5" class="align-middle fw-normal">
+                <span class="fw-semibold">' . h($set['name']) . '</span>
+                <span class="small fg-secondary ms-2">' . h(lang(array('string' => '{var:1} styles, {var:2} pages', 'vars' => array(pg_format_number(count($set['styles']), 0), pg_format_number($set['pages'], 0))))) . '</span>
+                <div class="small fg-secondary">' . h($set['theme'] !== '' ? lang(array('string' => 'Theme file: {var:1}', 'vars' => array($set['theme']))) : lang('The site\'s activated theme')) . '</div>'
+                . ($files !== '' ? '<details class="small"><summary>' . h($summary) . '</summary><ol class="mb-0 mt-1 ps-12">' . $files . '</ol></details>' : '') . '
+            </th>
+        </tr>';
+    foreach ($set['styles'] as $id) $output_rows .= $style_row($by_id[$id]);
+    $output_rows .= '
+        </tbody>';
+}
+if ($sets['alone']) {
+    $output_rows .= '
+        <tbody>
+        <tr class="ltd-set-head">
+            <td></td>
+            <th scope="rowgroup" colspan="5" class="align-middle fw-normal"><span class="fw-semibold">' . h(lang('Styles that move alone')) . '</span>
+                <div class="small fg-secondary">' . h(lang('No other style loads the same files with the same theme file and collection, or the visual designer cannot open the style.')) . '</div></th>
+        </tr>';
+    foreach ($report as $s) {
+        if (isset($sets['alone'][$s['id']])) $output_rows .= $style_row($s);
+    }
+    $output_rows .= '
+        </tbody>';
 }
 
 $output_summary = '';
@@ -224,7 +279,7 @@ $output_table = $report
                     <th>' . lang('Notes') . '</th>
                 </tr>
             </thead>
-            <tbody>' . $output_rows . '</tbody>
+            ' . $output_rows . '
         </table>'
     : '<p class="p-7 mb-0">' . h(lang('There is no classic style left: every style is a visual design.')) . '</p>';
 
@@ -265,19 +320,27 @@ if ($output_classic !== '') {
 
 $output_plan = '';
 if ($plan !== null) {
-    $output_plan = $plan ? '' : '<p class="mb-0">' . h(lang('Choose the styles to move first.')) . '</p>';
+    $output_plan = $plan ? '' : '<p class="mb-0">' . h(lang('Choose a set or the styles to move first.')) . '</p>';
     foreach ($plan as $p) {
         $output_plan .= pg_ltd_plan_html($p);
     }
     $output_convert = '';
     if ($plan && $running === null) {
         $hidden = '';
+        $has_set = false;
         foreach ($plan as $p) {
-            if ($p['skip'] === '') $hidden .= '<input type="hidden" name="styles[]" value="' . (int)$p['id'] . '">';
+            if ($p['kind'] === 'style' && $p['skip'] === '') $hidden .= '<input type="hidden" name="styles[]" value="' . (int)$p['id'] . '">';
+            if ($p['kind'] === 'set') $has_set = true;
+        }
+        // A set's own run is not offered here yet: Convert moves the styles
+        // chosen alone, as before.
+        if ($has_set) {
+            $output_convert = '
+        <div class="card-footer small fg-secondary">' . h(lang('A set is shown as a dry run only: Move to the visual designer moves the styles chosen alone.')) . '</div>';
         }
         if ($hidden !== '') {
-            $output_convert = '
-        <form method="post" action="legacy_to_designer.php" class="card-footer d-flex align-items-center gap-3">' . get_token_field() . $hidden . '
+            $output_convert .= '
+        <form method="post" action="legacy_to_designer.php" class="card-footer d-flex flex-wrap align-items-center gap-3">' . get_token_field() . $hidden . '
             <button type="submit" name="convert" value="1" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-magic me-1"></i>' . h(lang('Move to the visual designer')) . '</button>
             <span class="small fg-secondary">' . h(lang('Writes what is listed above. A page somebody holds is skipped; undo is a page\'s revision history and deleting a shared component.')) . '</span>
         </form>';
@@ -286,7 +349,7 @@ if ($plan !== null) {
     $output_plan = '
     <div class="card my-7" id="ltd-dry-run">
         <div class="card-header"><h2 class="h5 mb-0">' . h(lang('Dry run')) . '</h2>
-            <div class="small fg-secondary">' . h(lang('What moving the chosen styles would write. Nothing has been changed.')) . '</div></div>
+            <div class="small fg-secondary">' . h(lang('What moving the chosen sets and styles would write. Nothing has been changed.')) . '</div></div>
         <div class="card-body">' . ($run_error !== '' ? '<div class="fg-danger mb-3">' . h($run_error) . '</div>' : '') . $output_plan . '</div>' . $output_convert . '
     </div>';
 }
@@ -360,7 +423,7 @@ $toolbar_primary = '';
 $toolbar_grow = '';
 if ($report && $running === null) {
     $toolbar_primary = '<button type="submit" form="ltd_dry_run" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-clipboard-check me-2" aria-hidden="true"></i>' . h(lang('Dry run')) . '</button>';
-    $toolbar_grow = '<span class="small fg-secondary">' . h(lang('Tick the styles to move, then see what would be written for each.')) . '</span>';
+    $toolbar_grow = '<span class="small fg-secondary">' . h(lang('Tick a set or the styles to move, then see what would be written for each.')) . '</span>';
     $output_form = '<form id="ltd_dry_run" method="post" action="legacy_to_designer.php#ltd-dry-run" hidden>' . get_token_field() . '</form>';
 }
 
@@ -381,7 +444,9 @@ pg_page_shell([
     )) . '
     <div class="row g-7 my-7">' . $output_summary . '</div>
     ' . $output_form . $output_run . $output_plan . '
-    <div class="card my-7">
+    <div class="card my-7" id="ltd-styles">
+        <div class="card-header"><h2 class="h5 mb-0">' . h(lang('Styles')) . '</h2>
+            <div class="small fg-secondary">' . h(lang(array('string' => 'Sets: {var:1}. Styles that load the same stylesheets and scripts in the same order, with the same theme file and collection, form a set and move as one Legacy design.', 'vars' => array(count($sets['sets']))))) . '</div></div>
         <div class="card-body p-0 table-responsive">' . $output_table . '</div>
     </div>
     ' . $output_classic . $output_runs . '

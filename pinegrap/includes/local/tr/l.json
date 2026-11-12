@@ -362,6 +362,8 @@
     "Layout could not be found.": "Düzen bulunamadı.",
     "Layout of fields in advanced search{var:1}": "{var:1}Gelişmiş aramada alanların düzeni",
     "Layout shift (CLS)": "Düzen kayması (CLS)",
+    "Layout type override: {var:1}": "Düzen türü üzerine yazma: {var:1}",
+    "Layout type override: {var:1} on its classic pages, {var:2} in the design.": "Düzen türü üzerine yazma: klasik sayfalarında {var:1}, tasarımda {var:2}.",
     "Layouts copied to backup directory. Creating .htaccess for security reason, please wait...": "Düzenler yedek dizinine kopyalandı. Güvenlik için .htaccess oluşturuluyor, lütfen bekleyin...",
     "Lazy": "Gecikmeli",
     "Lead": "Giriş Paragrafı",
