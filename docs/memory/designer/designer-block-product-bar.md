@@ -4,7 +4,8 @@ description: The Product Bar blocks (spotlight-bar, spotlight-bar-dark) in Marke
 ---
 
 ## What does Product Bar draw?
-- `spotlight-bar` (palette "Product Bar") and `spotlight-bar-dark` ("Product Bar: Dark"), one builder in `createFromPalette()` (PR #8804). A `section.bg-body.text-body.border-bottom.py-2` with the Sticky interaction, inside a container one flex line: the product name (`h2` drawn `fs-5 fw-semibold text-truncate me-auto`), a `nav` (`aria-label` "Product sections", `d-none d-md-block`) with a `ul.nav.small` of anchor links (`#overview`, `#features`, `#specs`, `nav-link px-2 link-body-emphasis`), and one `btn btn-primary btn-sm` link.
+- `spotlight-bar` (palette "Product Bar") and `spotlight-bar-dark` ("Product Bar: Dark"), one builder in `createFromPalette()` (PR #8804).
+- A `section.bg-body.text-body.border-bottom.py-2` with the Sticky interaction; inside a container one flex line: the product name (`h2` drawn `fs-5 fw-semibold text-truncate me-auto`), a `nav` (`aria-label` "Product sections", `d-none d-md-block`) with a `ul.nav.small` of anchor links (`#overview`, `#features`, `#specs`, `nav-link px-2 link-body-emphasis`), and one `btn btn-primary btn-sm` link.
 - The dark entry adds `data-bs-theme="dark"` to the section; both follow the palette ([[designer-block-theme-colours]]). No block CSS rule: the bar is opaque `bg-body`, unlike CTA: Sticky Bar's blurred `pg-sticky-bar` ([[designer-blocks-cta]]), which lives in a family file a core block cannot name.
 
 ## Why offset 56?
