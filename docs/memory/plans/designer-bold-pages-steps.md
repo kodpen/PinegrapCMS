@@ -20,6 +20,6 @@ description: Steps B1 to B6 of the designer bold pages plan: full-bleed and gian
 - B4 (M, done #8781): a general variant picker. `launch-colours` becomes the general block "Variant Picker" (Marketing): colour dots or text pills, two to six choices, a picture each, radios and `:has()` as now; Launch places it, no copy left behind.
 - B4 files: `style_designer_blocks_launch.js`, the core palette, the launch home builder. Tests: `tests/designer_block_families_test.php`, `tests/design_template_launch_assembly_test.php`.
 
-- B5 (S, free): product bar. A general block "Product Bar": name, anchor links, one call-to-action button, `sticky` with an offset below a sticky site header, dark and light variants. Core palette and builder; test `tests/designer_blocks_test.php`.
+- B5 (S, done #8804): product bar. A general block "Product Bar": name, anchor links, one call-to-action button, `sticky` with an offset below a sticky site header, dark and light variants. Core palette and builder; test `tests/designer_blocks_test.php`.
 
 - B6 (S, free): wide gallery slides. `scroller-cards` gets an option "Wide slides" (one large picture per slide, 80 to 90 percent of the window, snap centre): an option, not a new block. Builder and options panel; test `tests/designer_blocks_test.php`.
