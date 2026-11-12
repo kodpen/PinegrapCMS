@@ -17,7 +17,7 @@ description: Checklist questions over a poll; reading ticks (checks) and an appl
 - A deleted message has no `checks`; `text`/`body` stay as written.
 - A tick touches the message, so it comes under sync `changed`: `php tools/ws_wait.php --changed=<id>` wakes on it and prints the message with its `checks`.
 
-## How does an application tick a line? (#PRNUM)
+## How does an application tick a line? (#8847)
 - `POST /workspace/messages/{id}/checks` with `item` and `checked` (default true), scope `workspace:write`, also an MCP tool, with a dry run. Allowed where the key's owner may post in the channel, by the panel box's rules (`ws_check_check()`, `ws_check_set()`).
 - With an application key or an OAuth connection the tick keeps the application in `ws_checks.app_id` (`user_id` stays the owner) and the line shows the application's name. From a team devices session it is the person's. A later tick by a person or guest sets `app_id` to 0 (`ws_check_who()`).
 - A roll call ("are all agents up?", owner 2026-11-11, #8762, `workflow/decisions-made-workspace-16.md`) is a checklist with a line per agent, each ticked by its agent when it next wakes; nothing is woken for it.
