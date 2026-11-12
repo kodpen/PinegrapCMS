@@ -129,7 +129,7 @@ $list = pg_list_table_printed(array(
 echo
 pg_page_shell([
         'title'=> lang('All Shipping Methods'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-list',
         'icon'=>'store',
         'heading'=>lang('All Shipping Methods'),
         'heading_description' => lang('All shipping options and fees, based on the carrier, product, destination, and arrival date.'),

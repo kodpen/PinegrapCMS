@@ -89,7 +89,7 @@ $list = pg_list_table_printed(array(
 print 
 pg_page_shell([
         'title'=> lang('All Shipping Arrival Dates'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-list',
         'icon'=>'store',
         'heading'=>lang('All Shipping Arrival Dates'),
         'heading_description' => lang('All arrival dates for determining shipping methods for all deliveries.'),

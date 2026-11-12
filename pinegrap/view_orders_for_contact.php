@@ -131,7 +131,7 @@ echo
 pg_page_shell(
     array(
         'title'=> lang('All Orders for Contact') . ' : ' . h($first_name . ' ' . $last_name),
-        'extra classes'=>'contact',
+        'extra classes'=>'contact pg-measure-list',
         'icon'=>'contact',
         'heading'=>lang('All Orders for Contact'),
         'heading_description' => lang('All orders for this contact.'),

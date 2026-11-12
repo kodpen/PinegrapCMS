@@ -205,7 +205,7 @@ print
     pg_page_shell(
         array(
             'title'=> lang('Comments'),
-            'extra classes'=>'page',
+            'extra classes'=>'page pg-measure-list',
             'icon'=>'page', 
             'heading'=>lang('Comments'),
             'heading_description' => lang('All site-wide comments and reviews that I can edit.'),

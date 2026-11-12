@@ -729,7 +729,9 @@ function pg_list_table_row_html(array $row, array $columns)
     $output = '<tr role="row" data-pg-id="' . h($data['id']) . '"' . (($data['class'] !== '') ? ' class="' . h($data['class']) . '"' : '') . '>';
 
     foreach ($data['cells'] as $key => $cell) {
-        $class = trim($cell['class'] . (($columns[$key]['align'] !== 'start') ? ' text-' . $columns[$key]['align'] : ''));
+        // A picture cell is marked, so the look sizes its thumbnail.
+        $class = trim($cell['class'] . (($columns[$key]['align'] !== 'start') ? ' text-' . $columns[$key]['align'] : '')
+            . (($columns[$key]['kind'] === 'image') ? ' pg-list-col-image' : ''));
         $output .= '<td role="cell" data-pg-col="' . h($key) . '"' . (($class !== '') ? ' class="' . h($class) . '"' : '');
 
         foreach ($cell['attrs'] ?? array() as $name => $value) {
@@ -830,7 +832,7 @@ function pg_list_table_html(array $source, array $page, $label, $actions = '')
     $columns = $source['columns'];
     $json = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE;
 
-    $output = '<div class="pg-list-table" data-pg-list-table="' . h($source['list']) . '"'
+    $output = '<div class="pg-list-table pg-card" data-pg-list-table="' . h($source['list']) . '"'
         . ' data-pg-list-mode="' . ($source['all'] ? 'browser' : 'server') . '"'
         . (!empty($source['printed']) ? ' data-pg-list-printed="1"' : '')
         . (!empty($source['ids_field']) ? ' data-pg-list-ids-field="' . h($source['ids_field']) . '"' : '')
@@ -845,18 +847,20 @@ function pg_list_table_html(array $source, array $page, $label, $actions = '')
 
     // The bar stays above the rows: the selection's count and bulk actions
     // while rows are selected, the columns menu and the details switch
-    // always. The rows scroll in their own box under a sticky heading row,
+    // always (quick edit and columns as icon buttons, Details by its name). The rows scroll in their own box under a sticky heading row,
     // so the list fills the window; the details panel stands beside them.
     $output .= '<div class="pg-list-table-bar is-empty"><span class="pg-list-table-count" aria-live="polite"></span>'
         . '<span class="pg-list-table-actions">' . $actions . '</span>'
         . '<span class="pg-list-table-tools">'
-        . ($source['edit'] ? '<button type="button" class="btn btn-sm btn-text theme-secondary pg-list-table-quick" aria-pressed="false" aria-keyshortcuts="F2" title="F2">'
-            . '<i class="bi bi-pencil-square me-1" aria-hidden="true"></i>' . h(lang('Quick edit')) . '</button>' : '')
-        . '<span class="pg-menu-wrap"><button type="button" class="btn btn-sm btn-text theme-secondary pg-list-table-columns" data-bs-toggle="menu" data-bs-auto-close="outside" aria-expanded="false">'
-        . '<i class="bi bi-layout-three-columns me-1" aria-hidden="true"></i>' . h(lang('Columns')) . '</button>'
+        . ($source['edit'] ? '<button type="button" class="pg-icon-button pg-icon-button-sm pg-list-table-quick" aria-pressed="false" aria-keyshortcuts="F2"'
+            . ' aria-label="' . h(lang('Quick edit')) . '" title="' . h(lang('Quick edit')) . ' (F2)">'
+            . '<i class="bi bi-pencil-square" aria-hidden="true"></i></button>' : '')
+        . '<span class="pg-menu-wrap"><button type="button" class="pg-icon-button pg-icon-button-sm pg-list-table-columns" data-bs-toggle="menu" data-bs-auto-close="outside" aria-expanded="false"'
+        . ' aria-label="' . h(lang('Columns')) . '" title="' . h(lang('Columns')) . '">'
+        . '<i class="bi bi-layout-three-columns" aria-hidden="true"></i></button>'
         . '<div class="menu pg-menu-end pg-list-table-columns-menu"></div></span>'
-        . '<button type="button" class="btn btn-sm btn-text theme-secondary pg-list-table-details-switch" aria-pressed="false">'
-        . '<i class="bi bi-layout-sidebar-reverse me-1" aria-hidden="true"></i>' . h(lang('Details')) . '</button>'
+        . '<button type="button" class="pg-button pg-button-ghost pg-button-sm pg-list-table-details-switch" aria-pressed="false">'
+        . '<i class="bi bi-layout-sidebar-reverse" aria-hidden="true"></i>' . h(lang('Details')) . '</button>'
         . '</span></div>';
     $output .= '<div class="pg-list-table-body">';
     $output .= '<div class="pg-list-table-scroll" tabindex="-1">';
@@ -886,7 +890,7 @@ function pg_list_table_html(array $source, array $page, $label, $actions = '')
     $output .= '<div class="pg-list-table-foot"></div></div>';
     $output .= '<aside class="pg-list-table-details" aria-label="' . h(lang('Details')) . '" hidden>'
         . '<div class="pg-list-table-details-head"><strong>' . h(lang('Details')) . '</strong>'
-        . '<button type="button" class="btn btn-sm btn-text theme-secondary pg-list-table-details-close" aria-label="' . h(lang('Close')) . '" title="' . h(lang('Close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>'
+        . '<button type="button" class="pg-icon-button pg-icon-button-sm pg-list-table-details-close" aria-label="' . h(lang('Close')) . '" title="' . h(lang('Close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>'
         . '<div class="pg-list-table-details-body"></div></aside></div>';
     $output .= '<div class="visually-hidden" aria-live="polite" data-pg-list-live></div>';
 

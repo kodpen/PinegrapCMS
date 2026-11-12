@@ -87,7 +87,7 @@ $list = pg_list_table_printed(array(
 echo
     pg_page_shell([
         'title'=> lang('All Ship Date Adjustments'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-list',
         'icon'=>'store',
         'heading'=>lang('All Ship Date Adjustments'),
         'heading_description' => lang('Allow a ship date for a recipient to be adjusted for a particular zip code prefix and shipping method.'),

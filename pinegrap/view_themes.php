@@ -108,7 +108,7 @@ $list = pg_list_table_printed(array(
 print
 pg_page_shell([
         'title'=> lang('All Themes'),
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-list',
         'icon'=>'design',
         'heading'=>lang('All Themes'),
         'heading_description' => lang('All CSS stylesheet files used to add consistency to design and content.'),

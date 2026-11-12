@@ -157,7 +157,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Key Codes') {
 
     echo pg_page_shell([
         'title'=> lang('All Key Codes'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-list',
         'icon'=>'store',
         'heading'=>lang('All Key Codes'),
         'heading_description' => lang('Discount and access key codes'),

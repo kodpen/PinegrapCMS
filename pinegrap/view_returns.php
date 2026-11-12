@@ -164,7 +164,7 @@ $output_customer_switch = (pg_returns_customer_enabled() || !$ready) ? '' : '
 echo
     pg_page_shell(array(
         'title'               => lang('Returns'),
-        'extra classes'       => 'store',
+        'extra classes'       => 'store pg-measure-list',
         'icon'                => 'store',
         'heading'             => lang('Returns'),
         'heading_description' => lang('Answer the customers\' return requests and follow the goods back.'),

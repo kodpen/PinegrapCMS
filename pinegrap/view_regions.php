@@ -146,7 +146,7 @@ $list = pg_list_table_printed(array(
 echo
     pg_page_shell([
         'title'=> $heading,
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-list',
         'icon'=>'design',
         'heading'=>$heading,
         'heading_description' => $subheading,

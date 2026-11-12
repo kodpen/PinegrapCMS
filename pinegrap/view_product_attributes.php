@@ -70,7 +70,7 @@ $list = pg_list_table_printed(array(
 echo
     pg_page_shell([
         'title'=> lang('All Product Attributes'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-list',
         'icon'=>'store',
         'heading'=>lang('All Product Attributes'),
         'heading_description' => lang('All attributes that can be assigned to products.'),

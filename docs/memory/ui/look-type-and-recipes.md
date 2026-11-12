@@ -16,7 +16,7 @@ description: Look A's typeface (self-hosted Inter 4.1), the type scale and tone 
 - Type: `--pg-text-count` 11, `-meta` 12, `-2` 13, `-base` 14, `-status-title` 15, `-section-title` 17, `-screen-title` 24 px; `--pg-weight-regular` 400, `-medium` 500, `-strong` 550, `-title` 650; `--pg-leading` 1.45.
 - Surfaces: `--pg-surface-1`/`-2` (card gradient), `-hi`, `-inset`, `-float`, `--pg-hover`, `--pg-quiet`, `--pg-shadow-card`, `--pg-shadow-float`, `--pg-radius-card` 16, `--pg-radius-sheet` 20.
 - Accent of the look: `--pg-accent`, `--pg-accent-1`/`-2` (gradient), `--pg-accent-glow`, `--pg-on-accent-fill`. Fields: `--pg-field-bg`, `-line`, `-shadow`; `--pg-thumb`, `--pg-thumb-shadow`.
-- Colours flip with `light-dark()` (colours only); the tint strengths (`--pg-tint-from`, `-to`, `-line`) and shadows sit in the light and dark theme blocks.
+- Colours flip with `light-dark()` (colours only); the tint strengths (`--pg-tint-from`, `-to`, `-line`, `-select`) and shadows sit in the light and dark theme blocks.
 
 ## Which tones are there?
 - `--pg-tone-blue`, `-violet`, `-amber`, `-teal`, `-rose`, `-gray`; by module `team` blue, `shop` teal, `content` rose, `accounting` and `warning` amber, `reports` violet, `system` gray. A class `.pg-tone-<name>` sets `--pg-tone`, which the pill and the tile read (gray without one). A new module gets its line in the token block, never a colour in a screen.

@@ -23018,18 +23018,20 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 /* List table driver (assets/js/pg_list_table.js, includes/fn/list_table.php):
    the list fills the window from where it starts; its rows scroll in their
    own box under a sticky heading row, the selection bar stays above them.
-   The list is one framed surface: the bar is its header strip, the rows and
-   the details panel its body. */
+   The list is one framed surface, look A's card (.pg-card on the root): the
+   bar is its header strip, the rows and the details panel its body. The
+   rows sit on the card's top surface; a sticky cell paints it under its own
+   hover or selection tint, so the columns that scroll never show through. */
 .pg-list-table {
   --pg-list-table-label: 8rem;
   --pg-list-table-cell-max: 22rem;
+  --pg-list-table-bg: var(--pg-surface-1);
+  --pg-list-table-line: var(--pg-border-color-translucent);
+  --pg-list-table-row-tint: transparent;
   display: flex;
   flex-direction: column;
   min-height: 16rem;
   max-height: calc(100dvh - var(--pg-list-table-top, 12rem) - 1rem);
-  border: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
-  border-radius: var(--pg-radius-lg);
-  background: var(--pg-card-bg);
   overflow: hidden;
 }
 .pg-list-table-scroll {
@@ -23041,6 +23043,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
+  background: var(--pg-list-table-bg);
 }
 .pg-list-table-grid {
   width: max-content;
@@ -23048,28 +23051,53 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   margin-top: 0;
   margin-bottom: 0;
 }
+/* The heading row: 38 px, small strong text in the third text colour; the
+   sorted column's heading in the text colour. */
 .pg-list-table-grid > thead > tr > th {
   position: sticky;
   top: 0;
   z-index: 2;
-  padding-block: 0.625rem;
-  background: var(--pg-card-bg);
-  box-shadow: inset 0 -1px 0 var(--pg-border-color);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--pg-fg-2);
+  height: 38px;
+  padding: 0 14px;
+  border-bottom: 0;
+  background: var(--pg-list-table-bg);
+  box-shadow: inset 0 -1px 0 var(--pg-list-table-line);
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
+  color: var(--pg-fg-3);
   white-space: nowrap;
-  vertical-align: bottom;
+  vertical-align: middle;
+}
+.pg-list-table-grid > thead > tr > th[aria-sort] {
+  color: var(--pg-fg-body);
 }
 /* One line per row, so every row has the same height: a long text stops at
    the cell's widest size with an ellipsis (the details panel and the phone
    card show it whole); numbers and money keep their figures aligned. */
 .pg-list-table-grid > tbody > tr > td {
+  height: 52px;
   max-width: var(--pg-list-table-cell-max);
+  padding: 0 14px;
+  border-bottom: 1px solid var(--pg-list-table-line);
+  background: linear-gradient(var(--pg-list-table-row-tint), var(--pg-list-table-row-tint));
+  box-shadow: none;
+  color: var(--pg-fg-body);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   vertical-align: middle;
+}
+/* A thumbnail is a 32 px square with the icon tile's corners; the details
+   panel and the phone card show the picture whole. The cells print their
+   pictures with an inline 50 px size, hence !important. */
+@media (min-width: 768px) {
+  .pg-list-table-grid > tbody > tr > td.pg-list-col-image :is(img, svg) {
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0;
+    object-fit: cover;
+    border-radius: 9px;
+  }
 }
 .pg-list-table-grid > thead > tr > th.text-end,
 .pg-list-table-grid > tbody > tr > td.text-end {
@@ -23092,25 +23120,42 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   .pg-list-table-grid > * > tr > [data-pg-col="actions"] {
     position: sticky;
     z-index: 1;
-    background: var(--pg-card-bg);
+  }
+  .pg-list-table-grid > tbody > tr > :first-child,
+  .pg-list-table-grid > tbody > tr > [data-pg-col="actions"] {
+    background: linear-gradient(var(--pg-list-table-row-tint), var(--pg-list-table-row-tint)), var(--pg-list-table-bg);
   }
   .pg-list-table-grid > * > tr > :first-child {
     inset-inline-start: 0;
-    box-shadow: inset -1px 0 0 var(--pg-border-color);
+    box-shadow: inset -1px 0 0 var(--pg-list-table-line);
   }
   .pg-list-table-grid > * > tr > [data-pg-col="actions"] {
     inset-inline-end: 0;
-    box-shadow: inset 1px 0 0 var(--pg-border-color);
+    box-shadow: inset 1px 0 0 var(--pg-list-table-line);
+  }
+  .pg-list-table-grid > thead > tr > :first-child {
+    box-shadow: inset -1px 0 0 var(--pg-list-table-line), inset 0 -1px 0 var(--pg-list-table-line);
+  }
+  .pg-list-table-grid > thead > tr > [data-pg-col="actions"] {
+    box-shadow: inset 1px 0 0 var(--pg-list-table-line), inset 0 -1px 0 var(--pg-list-table-line);
   }
   .pg-list-table-grid > thead > tr > :first-child,
   .pg-list-table-grid > thead > tr > [data-pg-col="actions"] {
     z-index: 3;
   }
 }
+/* The row's own buttons: small, at the row's right end. */
 .pg-list-table-grid > tbody > tr > td[data-pg-col="actions"] {
-  padding-block: 0.25rem;
+  padding-inline: 10px;
+  text-align: end;
 }
 .pg-list-table-grid > tbody > tr > td[data-pg-col="actions"] .btn {
+  --bs-btn-min-height: 28px;
+  --bs-btn-padding-y: 0;
+  --bs-btn-padding-x: 11px;
+  --bs-btn-font-size: var(--pg-text-2);
+  --bs-btn-font-weight: var(--pg-weight-strong);
+  --bs-btn-border-radius: 8px;
   margin-block: 0 !important;
 }
 /* The SEO column: the score bar with its number, never under the name. */
@@ -23139,8 +23184,8 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 }
 .pg-list-table-grid th[aria-sort] .pg-list-table-sort::after {
   content: "\2191";
-  margin-inline-start: 0.25rem;
-  color: var(--pg-fg-2);
+  margin-inline-start: 4px;
+  font-size: var(--pg-text-count);
 }
 .pg-list-table-grid th[aria-sort="descending"] .pg-list-table-sort::after {
   content: "\2193";
@@ -23153,8 +23198,11 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   outline: var(--pg-focus-ring-width) solid var(--pg-focus-ring-color);
   outline-offset: calc(var(--pg-focus-ring-width) * -1);
 }
-.pg-list-table-grid > tbody > tr.pg-list-table-selected > td {
-  background: color-mix(in srgb, var(--pg-primary) 14%, var(--pg-card-bg));
+.pg-list-table-grid > tbody > tr:hover {
+  --pg-list-table-row-tint: var(--pg-hover);
+}
+.pg-list-table-grid > tbody > tr.pg-list-table-selected {
+  --pg-list-table-row-tint: color-mix(in srgb, var(--pg-accent) var(--pg-tint-select), transparent);
 }
 /* The selection bar, the list's header strip: the clear button, the count
    and the screen's bulk actions at the left while rows are selected, the
@@ -23165,29 +23213,34 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   flex: 0 0 auto;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
-  min-height: 3rem;
-  padding: 0.375rem 0.75rem;
-  border-bottom: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
-  background: color-mix(in srgb, var(--pg-primary) 10%, var(--pg-card-bg));
+  gap: 6px;
+  min-height: 48px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--pg-list-table-line);
+  background: color-mix(in srgb, var(--pg-accent) 7%, transparent);
 }
 .pg-list-table-bar.is-empty {
-  background: var(--pg-card-bg);
+  background: none;
 }
 .pg-list-table-count {
-  font-weight: 600;
-  color: var(--pg-primary-ink);
+  font-weight: var(--pg-weight-title);
+  color: var(--pg-accent);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .pg-list-table-count:not(:empty) {
-  padding-inline-end: 0.75rem;
-  border-inline-end: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
+  padding-inline: 4px 14px;
+  margin-inline-end: 6px;
+  border-inline-end: 1px solid var(--pg-list-table-line);
 }
+/* A screen's bulk buttons, sized as the bar's small buttons. */
 .pg-list-table-actions .btn {
-  --bs-btn-min-height: 2rem;
-  --bs-btn-padding-y: 0.25rem;
-  --bs-btn-padding-x: 0.75rem;
-  --bs-btn-font-size: 0.875rem;
+  --bs-btn-min-height: 28px;
+  --bs-btn-padding-y: 0;
+  --bs-btn-padding-x: 11px;
+  --bs-btn-font-size: var(--pg-text-2);
+  --bs-btn-font-weight: var(--pg-weight-strong);
+  --bs-btn-border-radius: 8px;
   margin: 0 !important;
 }
 .pg-list-table-bar.is-empty > .pg-list-table-count,
@@ -23197,7 +23250,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 .pg-list-table-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: 6px;
 }
 /* The columns menu and the details switch keep the bar's right end. On a
    phone four labelled tools are wider than the bar: they wrap inside it
@@ -23208,7 +23261,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
-  gap: 0.25rem;
+  gap: 6px;
   min-width: 0;
   margin-inline-start: auto;
 }
@@ -23255,8 +23308,8 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   flex-direction: column;
   flex: 0 0 20rem;
   min-height: 0;
-  border-inline-start: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
-  background: var(--pg-card-bg);
+  border-inline-start: 1px solid var(--pg-list-table-line);
+  background: var(--pg-list-table-bg);
 }
 .pg-list-table-details[hidden] {
   display: none;
@@ -23265,10 +23318,11 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 2.75rem;
-  padding: 0.25rem 0.5rem 0.25rem 1rem;
-  border-bottom: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
-  font-size: 0.8125rem;
+  min-height: 48px;
+  padding: 6px 10px 6px 16px;
+  border-bottom: 1px solid var(--pg-list-table-line);
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-strong);
   color: var(--pg-fg-2);
 }
 .pg-list-table-details-body {
@@ -23281,8 +23335,8 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 }
 .pg-list-table-details-title {
   margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: var(--pg-text-status-title);
+  font-weight: var(--pg-weight-title);
   line-height: 1.5rem;
   overflow-wrap: anywhere;
 }
@@ -23300,24 +23354,24 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   display: grid;
   grid-template-columns: var(--pg-list-table-label) minmax(0, 1fr);
   margin: 0;
-  border-bottom: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
+  border-bottom: 1px solid var(--pg-list-table-line);
 }
 .pg-list-table-details dt,
 .pg-list-table-details dd {
   margin: 0;
   padding-block: 0.5rem;
-  border-top: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
+  border-top: 1px solid var(--pg-list-table-line);
 }
 .pg-list-table-details dt {
   padding-inline-end: 0.75rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
   line-height: 1.5rem;
-  color: var(--pg-fg-2);
+  color: var(--pg-fg-3);
 }
 .pg-list-table-details dd {
   min-width: 0;
-  font-size: 0.875rem;
+  font-size: var(--pg-text-base);
   line-height: 1.5rem;
   overflow-wrap: anywhere;
 }
@@ -23337,7 +23391,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     inset-inline-end: 0;
     z-index: 1045;
     width: min(22rem, 100vw);
-    box-shadow: var(--pg-shadow-lg);
+    box-shadow: var(--pg-shadow-float);
   }
 }
 /* Below 768 px a row is a card: every shown cell under its column's name. */
@@ -23358,13 +23412,16 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   }
   .pg-list-table-grid > tbody > tr {
     margin: 0.5rem 0;
-    border: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
-    border-radius: var(--pg-radius);
+    border: 1px solid var(--pg-list-table-line);
+    border-radius: var(--pg-radius-card);
+    overflow: hidden;
   }
   .pg-list-table-grid > tbody > tr > td {
     display: flex;
     gap: 0.75rem;
+    height: auto;
     max-width: none;
+    padding: 6px 14px;
     text-align: start;
     white-space: normal;
     overflow-wrap: anywhere;
@@ -23376,18 +23433,24 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   .pg-list-table-grid > tbody > tr > td::before {
     content: attr(data-pg-label);
     flex: 0 0 var(--pg-list-table-label);
-    font-size: 0.8125rem;
+    font-size: var(--pg-text-meta);
     text-align: start;
-    font-weight: 600;
-    color: var(--pg-fg-2);
+    font-weight: var(--pg-weight-strong);
+    color: var(--pg-fg-3);
   }
 }
+/* The foot: what is loading at the left, "Show more" at the right. */
 .pg-list-table-foot {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem;
+  gap: 10px;
+  padding: 8px 14px;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-3);
+}
+.pg-list-table-more {
+  margin-inline-start: auto;
 }
 .pg-list-table-status:empty,
 .pg-list-table-more[hidden] {
@@ -23395,23 +23458,23 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 }
 .pg-list-table-status {
   margin: 0;
+  color: var(--pg-fg-3);
 }
 .pg-list-table-sentinel {
   height: 1px;
 }
 .pg-list-table-empty {
-  padding: 1rem;
+  padding: 24px 14px;
   margin: 0;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-3);
   text-align: center;
 }
 /* Quick edit mode (pg_list_table_edit.js): each editable cell holds a
-   field; a refused value is marked and its reason stands under it. */
-.pg-list-table-quick[aria-pressed="true"] {
-  color: var(--pg-primary-ink);
-  background: color-mix(in srgb, var(--pg-primary) 14%, transparent);
-}
+   field; a refused value is marked and its reason stands under it. Its
+   switch in the bar is an icon button, pressed while the mode is on. */
 .pg-list-table.is-quick-edit .pg-list-table-bar.is-empty.has-quick {
-  background: color-mix(in srgb, var(--pg-primary) 8%, transparent);
+  background: color-mix(in srgb, var(--pg-accent) 7%, transparent);
 }
 .pg-list-table-field {
   min-width: 6rem;
@@ -23465,8 +23528,8 @@ select.pg-list-table-field option.private {
 }
 .pg-list-table-field-note {
   margin-top: 0.125rem;
-  font-size: 0.8125rem;
-  color: var(--pg-danger-ink);
+  font-size: var(--pg-text-meta);
+  color: var(--pg-tone-rose);
   white-space: normal;
   text-align: start;
 }
@@ -24943,6 +25006,7 @@ select.pg-list-table-field option.private {
   --pg-tint-from: 17%;
   --pg-tint-to: 8%;
   --pg-tint-line: 20%;
+  --pg-tint-select: 7%;
   --pg-shadow-card: 0 1px 0 var(--pg-surface-hi) inset, 0 10px 28px -18px rgba(15, 23, 42, 0.2), 0 1px 2px rgba(15, 23, 42, 0.04);
   --pg-shadow-float: 0 1px 0 var(--pg-surface-hi) inset, 0 18px 44px -14px rgba(15, 23, 42, 0.3), 0 2px 6px rgba(15, 23, 42, 0.06);
   --pg-thumb-shadow: 0 1px 2px rgba(15, 23, 42, 0.14), 0 0 0 1px rgba(15, 23, 42, 0.05);
@@ -24951,6 +25015,7 @@ select.pg-list-table-field option.private {
   --pg-tint-from: 26%;
   --pg-tint-to: 11%;
   --pg-tint-line: 22%;
+  --pg-tint-select: 10%;
   --pg-shadow-card: 0 1px 0 var(--pg-surface-hi) inset, 0 14px 34px -18px rgba(0, 0, 0, 0.65);
   --pg-shadow-float: 0 1px 0 var(--pg-surface-hi) inset, 0 18px 44px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(0, 0, 0, 0.3);
   --pg-thumb-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 1px 3px rgba(0, 0, 0, 0.5);
@@ -25649,6 +25714,11 @@ body.pg-measure-list #content {
    its width. */
 body.pg-measure-list .pg-list-table-grid > thead > tr > th:first-child {
   width: auto !important;
+}
+/* The search above a list is 300 px; on a phone it takes the toolbar's
+   whole line as every toolbar search does. */
+body.pg-measure-list .pg-toolbar-search {
+  width: 300px;
 }
 
 }

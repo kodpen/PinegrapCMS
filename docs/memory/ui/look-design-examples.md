@@ -13,8 +13,9 @@ module: look_examples
 - A screen step copies its markup from a section; the look itself stays in the recipe block of `backend.src.css`. The screen's own classes (`.pg-look-*`, before the `.alert p.notice` rules) only place the examples.
 
 ## What does the top card say is not done?
-- Drawn in the sheet, not a recipe yet: figure cards with a trend line, the list table (DL5b), the 12-column field grid (DL5c), the bell row's avatar and verb.
+- Drawn in the sheet, not a recipe yet: figure cards with a trend line, the 12-column field grid (DL5c), the bell row's avatar and verb.
 - Not drawn yet: dialogs and drawers (the settings modal), dashboard cards, report screens, Workspace, phone widths.
+- The list table is drawn by the driver itself (`list-table-layout.md`, #8921), so it left the list.
 - A new recipe adds its section here in the same PR; a part that is done leaves the list.
 
 ## What keeps it honest?

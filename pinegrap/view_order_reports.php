@@ -117,7 +117,7 @@ echo
     pg_page_shell(
         array(
             'title'=> lang('All Order Reports'),
-            'extra classes'=>'store',
+            'extra classes'=>'store pg-measure-list',
             'icon'=>'store', 
             'heading'=> lang('All Order Reports'),
             'heading_description' => lang('Create real-time reports on all website order activity.'),

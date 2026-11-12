@@ -101,7 +101,7 @@ print
     pg_page_shell(
         array(
             'title'=> lang('Saved visitor reports'),
-            'extra classes'=>'visitor',
+            'extra classes'=>'visitor pg-measure-list',
             'icon'=>'visitor', 
             'heading'=> lang('Saved visitor reports'),
             'heading_description' => lang('Create real-time reports on all website visitor activities.'),

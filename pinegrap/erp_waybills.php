@@ -161,7 +161,7 @@ $list = pg_list_table_printed(array(
 echo
 pg_page_shell([
         'title' => lang('Delivery Notes'),
-        'extra classes' => 'erp erp_waybills',
+        'extra classes' => 'erp erp_waybills pg-measure-list',
         'icon' => 'erp',
         'heading' => lang('Delivery Notes'),
         'heading_description' => lang('Delivery notes and the invoices they turn into.'),

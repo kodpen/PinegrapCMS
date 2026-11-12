@@ -176,7 +176,7 @@ print
     pg_page_shell(
         array(
             'title'=> lang('All Contact Groups'),
-            'extra classes'=>'contact',
+            'extra classes'=>'contact pg-measure-list',
             'icon'=>'contact', 
             'heading'=>lang('All Contact Groups'),
             'heading_description' => lang('All contact groups used to collect and organize contacts and subscribers'),

@@ -587,7 +587,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Site Log'),
-            'extra classes'=>'setting',
+            'extra classes'=>'setting pg-measure-list',
             'icon'=>'setting',
             'heading'=> lang('Site Log'),
             'heading_description' => lang('Audit all website events and changes by any site visitor or user.'),

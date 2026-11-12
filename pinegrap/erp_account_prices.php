@@ -174,7 +174,7 @@ $discount_refused = $liveform->check_field_error('account_discount');
 echo
 pg_page_shell([
     'title' => lang('Account prices'),
-    'extra classes' => 'erp erp_accounts',
+    'extra classes' => 'erp erp_accounts pg-measure-list',
     'icon' => 'erp',
     'heading' => h(lang(array('string' => 'Prices for {var:1}', 'vars' => (string) $account['title']))),
     'heading_description' => lang('A discount on everything, and products at a price or a discount of their own. Invoices and quotes for this account are filled with them when a product is picked; the store\'s campaigns do not add to them.'),

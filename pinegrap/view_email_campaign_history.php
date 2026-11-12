@@ -38,7 +38,7 @@ echo
 pg_page_shell(
     array(
         'title'=> lang('My Campaign History'),
-        'extra classes'=>'campaign',
+        'extra classes'=>'campaign pg-measure-list',
         'icon'=>'campaign', 
         'heading'=>lang('My Campaign History'),
         'heading_description' => lang('All completed and cancelled e-mail campaigns that I can manage.'),
