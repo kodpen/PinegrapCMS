@@ -1,0 +1,25 @@
+---
+name: decisions-made-workspace-19
+description: Decisions list, workspace part 19 (2026-11-12): a discussion follows the agent that wrote its root message, a request closed without text reads "saw it", an agent may leave a fitting emoji
+---
+
+## Where are the rules and the earlier parts?
+- `decisions-made.md` holds the rules; `DECISIONS.md` lists the entries of every part. The owner's words of this part stand on #8871, #8872 and #8873.
+
+## Whom does a discussion under an agent's own message follow? (owner, 2026-11-12, #8871)
+- The agent that wrote the message, whether the message answered a request or was the agent's own, while a row of the agent reaches the discussion. It comes before "the agent the root message names".
+- Owner (2026-11-12), in the architect's window with a picture of the channel: "ajan kanalında gördüğün gibi senin ile tartışma başlattım ama sana ulaşmadı". His answer to the question asked there: "Mesajı yazan ajan (Önerilen)".
+- It widens `workspace/agent-discussion-follow.md`, which started the follow only from an answer or a name. One followed agent per discussion, Stop and Follow again and the brakes stay.
+- Step A19 of `plans/agent-channel-steps-6.md`.
+
+## What does the line read when an agent closes a request without text? (owner, 2026-11-12, #8872)
+- "saw it · no answer needed" (Turkish "gördü · yanıt gerekmedi") with the eye kept. The tick and "answered" show only when the agent wrote a message.
+- Owner (2026-11-12), his answer in the architect's window: "Gördü · yanıt gerekmedi (Önerilen)". Earlier that day, with a picture of the tick and "`@mimar` yanıtladı" boxed in red: "buradaki uygulamadan gelen mesaj ayrışmamayı çözmek gerekiyor".
+- It replaces the line of `workspace/agent-shown.md` that shows a request closed with `no_answer` as answered.
+- Step A20 of `plans/agent-channel-steps-6.md`.
+
+## May an agent leave an emoji on a message? (owner, 2026-11-12, #8873)
+- Yes: one that fits the moment, on the message that asked, beside its text or in place of it.
+- Owner (2026-11-12): "ajanlar kanallarda duruma göre varklı ifadeler de kullanabilsin. mesela kutlama ikonu veya kalp gibi". After the how below was put to him: "uygun, plana ekle".
+- The architect's, approved by him as written: at most one emoji per request, never on the agent's own message; the brief tells every agent; the answer route takes `emoji`; a model assistant gets the same choice; the automatic eye and tick stay.
+- Step A21 of `plans/agent-channel-steps-6.md`.

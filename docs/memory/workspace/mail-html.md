@@ -15,7 +15,7 @@ module: mail_html
 
 ## What can its CSS do?
 - Inline styles and the mail's `<style>` sheets (one `<style>` first) keep only declarations passing `pg_mail_html_css_ok()`: no url (data: too), image-set, cross-fade, element(), image(), src(), attr(), expression, javascript, behavior, binding, escapes, comments, `@`, `<` or braces.
-- A sheet keeps plain rules and @media / @supports three deep; @import, @font-face, @keyframes and every other at-rule are left out. The kept HTML fetches nothing by itself; WM12 shows it in the guarded frame, which holds `position: fixed` and the like.
+- A sheet keeps plain rules and @media / @supports three deep; @import, @font-face, @keyframes and every other at-rule are left out. The kept HTML fetches nothing by itself; the pane shows it in the guarded frame, which holds `position: fixed` and the like (`mail-html-preview.md`).
 
 ## How are pictures named?
 - An outside address in `src` or `background` moves to `data-pg-src` / `data-pg-background`, so nothing loads (WM12's "Show pictures" puts it back). `cid:x` becomes `data-pg-cid` (`pg_mail_html_cid()`: decoded, small letters, plain characters only). A `data:image/png|jpeg|gif|webp;base64` src stays; any other `img` is left out.

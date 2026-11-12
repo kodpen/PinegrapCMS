@@ -9,6 +9,7 @@ description: Decisions list, panel part 7 (2026-11-12 on): look A's second pass 
 ## Is the second pass of look A the reference? (owner, 2026-11-12, #8860)
 - Yes: depth on surfaces, a filled button with a gradient, a segmented control in place of filter chips, status pills with a dot, an icon tile on each settings row, headings in Inter's Display cut. Numbers: `plans/panel-design-language-look.md`; pages: `plans/panel-design-language-sheet.md`.
 - Owner (2026-11-12), who had asked for a more modern drawing ("tasarımları biraz daha modernize edermisin"), on the second pass: "bunları sevdim".
+- The bell's drawer redrawn in the second pass (`plans/panel-design-language/bell-drawer.html`), owner (2026-11-12): "uygun, çekmeceyi de plana ekle".
 
 ## How wide is an add or edit screen? (owner, 2026-11-12, #8860)
 - The content is centred and at most 1120 px: form column 760, status column 336, 24 between. A field is as wide as its content asks; an input never runs the width of the window. The save bar sits at the bottom, as wide as the content.

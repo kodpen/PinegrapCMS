@@ -8,7 +8,7 @@ description: The reference sheet of the panel's design language: its pages (basi
 - `basics`: type, buttons, the segmented control, status pills, icon tiles, fields; a small list with figure cards; a settings card.
 - `add-page`: an add or edit screen on a 1920 px window.
 - `table-page`: a list on the table driver on a 1920 px window.
-- `bell-drawer`: the bell's drawer, first pass (#8842); it is redrawn in the second pass before DL3.
+- `bell-drawer`: the bell's drawer in the second pass (#8860): the head's icon buttons, the filter row (a segmented control with counts, the "Unread" button), day groups, the rows, a fold as gathered rows, the foot's device switch.
 - Still to draw, each with the owner: dialogs and drawers (the settings modal), dashboard cards, report screens, Workspace, phone widths.
 
 ## What is only a placeholder in a picture?
