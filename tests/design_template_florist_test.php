@@ -67,10 +67,8 @@ function _test_fl_load()
 		'money'              => $money,
 		'texts'              => array(
 			'bouquet' => $bouquet_price_text,
-			'plan'    => $plan_price_text,
 			'total'   => $plan_total_text,
 			'event'   => $event_price_text,
-			'zone'    => $zone_fee_text,
 			'flowers' => $work_flowers_text,
 		),
 		'lists'              => array(
@@ -232,9 +230,14 @@ function test_florist_price_is_written_as_the_shop_writes_it()
 	};
 	pg_assert_same($pick($d['bouquet_prices']['blush']), call_user_func($d['money'], $d['bouquet_prices']['blush']));
 	pg_assert_same(sprintf(lang('From %s'), $pick($d['bouquet_prices']['blush'])), call_user_func($d['texts']['bouquet'], 'blush'), 'the bouquet line');
-	pg_assert_same(sprintf(lang('%s per delivery'), $pick($d['plan_prices']['weekly'])), call_user_func($d['texts']['plan'], 'weekly'), 'the plan line');
+	pg_assert_true(strpos(json_encode($d['cards']['plan']['weekly']), json_encode($pick($d['plan_prices']['weekly']))) !== false, 'the plan card shows the price of one delivery');
+	$fee = 0;
+	foreach ($d['more_cards'] as $card) {
+		$json = json_encode($card);
+		if (strpos($json, json_encode($d['zones']['centre']['title'])) !== false && strpos($json, json_encode($pick($d['zone_fees']['centre']))) !== false) $fee++;
+	}
+	pg_assert_same(1, $fee, 'the centre card shows its delivery fee');
 	pg_assert_same(sprintf(lang('Starting at %s'), $pick($d['event_prices']['weddings'])), call_user_func($d['texts']['event'], 'weddings'), 'the event line');
-	pg_assert_same(sprintf(lang('Delivery %s'), $pick($d['zone_fees']['centre'])), call_user_func($d['texts']['zone'], 'centre'), 'the delivery fee line');
 	foreach ($d['plans'] as $key => $p) {
 		$total = call_user_func($d['plan_total'], $key);
 		foreach ($d['plan_prices'][$key] as $cur => $amount) pg_assert_same($amount * $p['deliveries'], $total[$cur], "plan $key: three months in $cur");

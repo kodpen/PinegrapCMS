@@ -115,6 +115,18 @@ $lang_switcher = function ($class = '', $variant = 'secondary') {
     ), 'children' => array());
 };
 
+// Motion: a node's interaction (props._fx, played by pg_fx.src.js, which
+// honours reduced motion). $rise lets the items of a row or a list slide up
+// one after another as they scroll in; $fade_in fades a heading in.
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+$rise = function ($node, $stagger = 90) use ($fx) {
+    return $fx($node, array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => $stagger));
+};
+$fade_in = array('effect' => 'fade', 'trigger' => 'view', 'duration' => 700);
+
 // A sample picture with a fixed seed, so the same picture comes back on
 // every opening until the florist puts its own photographs in its place.
 $photo = function ($seed, $width, $height) {
@@ -233,15 +245,15 @@ $sizes = array(
 // every two weeks or every month. 'deliveries' is how many a three-month
 // subscription brings; the price is per delivery.
 $plans = array(
-    'weekly'      => array('icon' => 'bi-calendar-week', 'title' => lang('Weekly Flowers'), 'every' => lang('Every week'), 'deliveries' => 12,
+    'weekly'      => array('title' => lang('Weekly Flowers'), 'every' => lang('Every week'), 'deliveries' => 12,
         'text'     => lang('A fresh bouquet every week, so the vase is never empty.'),
         'includes' => array(lang('A new seasonal bouquet each time'), lang('Free delivery on your chosen day'), lang('Pause or skip a week when you are away'), lang('A care card with every bouquet')),
         'featured' => false),
-    'fortnightly' => array('icon' => 'bi-calendar2-range', 'title' => lang('Fortnightly Flowers'), 'every' => lang('Every two weeks'), 'deliveries' => 6,
+    'fortnightly' => array('title' => lang('Fortnightly Flowers'), 'every' => lang('Every two weeks'), 'deliveries' => 6,
         'text'     => lang('Our most loved plan: a bouquet every other week, while the last one fades.'),
         'includes' => array(lang('A new seasonal bouquet each time'), lang('Free delivery on your chosen day'), lang('Pause or skip a delivery when you are away'), lang('A care card with every bouquet')),
         'featured' => true),
-    'monthly'     => array('icon' => 'bi-calendar-heart', 'title' => lang('Monthly Flowers'), 'every' => lang('Every month'), 'deliveries' => 3,
+    'monthly'     => array('title' => lang('Monthly Flowers'), 'every' => lang('Every month'), 'deliveries' => 3,
         'text'     => lang('A treat once a month, for your home, your office or someone you love.'),
         'includes' => array(lang('A larger seasonal bouquet each time'), lang('Free delivery on your chosen day'), lang('A vase with the first delivery'), lang('A care card with every bouquet')),
         'featured' => false),
@@ -275,11 +287,11 @@ $event_prices = array(
 // Where the florist delivers and what it costs. 'same_day' says whether an
 // order before the cut-off arrives the same day.
 $zones = array(
-    'centre' => array('icon' => 'bi-geo-alt', 'title' => lang('City Centre'), 'same_day' => true,
+    'centre' => array('title' => lang('City Centre'), 'same_day' => true,
         'text' => lang('The old town and the streets around it, by our own van.')),
-    'city'   => array('icon' => 'bi-signpost-split', 'title' => lang('Rest of the City'), 'same_day' => true,
+    'city'   => array('title' => lang('Rest of the City'), 'same_day' => true,
         'text' => lang('Every neighbourhood inside the ring road.')),
-    'nearby' => array('icon' => 'bi-truck', 'title' => lang('Nearby Towns'), 'same_day' => false,
+    'nearby' => array('title' => lang('Nearby Towns'), 'same_day' => false,
         'text' => lang('Towns within an hour\'s drive, delivered the next day.')),
 );
 $zone_fees = array(
@@ -287,21 +299,18 @@ $zone_fees = array(
     'city'   => array('USD' => 9, 'EUR' => 8, 'GBP' => 7, 'TRY' => 250),
     'nearby' => array('USD' => 15, 'EUR' => 14, 'GBP' => 12, 'TRY' => 450),
 );
-// The delivery times an order request may ask for.
+// The delivery times an order request may ask for: the title is the
+// answer the request keeps; the delivery page shows the name and the hours.
 $slots = array(
-    'morning'   => array('icon' => 'bi-sunrise', 'title' => lang('Morning, 09:00 to 12:00')),
-    'afternoon' => array('icon' => 'bi-sun', 'title' => lang('Afternoon, 12:00 to 17:00')),
-    'evening'   => array('icon' => 'bi-sunset', 'title' => lang('Evening, 17:00 to 20:00')),
+    'morning'   => array('icon' => 'bi-sunrise', 'title' => lang('Morning, 09:00 to 12:00'), 'name' => lang('Morning'), 'from' => '09:00', 'to' => '12:00'),
+    'afternoon' => array('icon' => 'bi-sun', 'title' => lang('Afternoon, 12:00 to 17:00'), 'name' => lang('Afternoon'), 'from' => '12:00', 'to' => '17:00'),
+    'evening'   => array('icon' => 'bi-sunset', 'title' => lang('Evening, 17:00 to 20:00'), 'name' => lang('Evening'), 'from' => '17:00', 'to' => '20:00'),
 );
 
-// A bouquet's "From …", a plan's "… per delivery" and the price of its
-// three months paid at once, an event service's "Starting at …", a delivery
-// area's fee.
+// A bouquet's "From …", the price of a plan's three months paid at once,
+// an event service's "Starting at …".
 $bouquet_price_text = function ($key) use ($bouquet_prices, $money) {
     return sprintf(lang('From %s'), $money($bouquet_prices[$key]));
-};
-$plan_price_text = function ($key) use ($plan_prices, $money) {
-    return sprintf(lang('%s per delivery'), $money($plan_prices[$key]));
 };
 $plan_total = function ($key) use ($plans, $plan_prices) {
     $out = array();
@@ -313,9 +322,6 @@ $plan_total_text = function ($key) use ($plans, $plan_total, $money) {
 };
 $event_price_text = function ($key) use ($event_prices, $money) {
     return sprintf(lang('Starting at %s'), $money($event_prices[$key]));
-};
-$zone_fee_text = function ($key) use ($zone_fees, $money) {
-    return sprintf(lang('Delivery %s'), $money($zone_fees[$key]));
 };
 
 // The seasons, with the flowers each brings. Our Work's second filter.
@@ -804,28 +810,44 @@ $occasion_card = function ($key) use ($el, $heading, $para, $link, $col, $icon_t
     ), '6', '4');
 };
 
-// A subscription plan's card (the home and the subscriptions page): the
-// icon, the name, how often, what it includes, the price per delivery and
-// for three months, and a link that opens the subscription request with
-// the plan chosen.
-$plan_card = function ($key) use ($el, $heading, $para, $link, $span, $col, $icon_tile, $check_list, $plans, $plan_price_text, $plan_total_text, $query) {
+// A subscription plan as the Florist: Flower Subscription block draws it
+// (the home and the subscriptions page), an item of its list: the name, how
+// often, a line, the twelve weeks as a strip with a flower on each week a
+// bouquet comes (decoration: the total under the price says it), the price
+// per delivery and for three months, what it includes and a link that opens
+// the subscription request with the plan chosen. The three links share
+// their words; each one's label names its plan.
+$plan_card = function ($key) use ($el, $heading, $para, $link, $span, $icon, $attr, $fx, $check_list, $plans, $plan_prices, $money, $plan_total_text, $query) {
     $p = $plans[$key];
+    $every = max(1, (int)round(12 / max(1, (int)$p['deliveries'])));
+    $weeks = array();
+    for ($w = 0; $w < 12; $w++) {
+        $weeks[] = $w % $every === 0
+            ? $el('div', 'pg-florist-week text-bg-primary', lang('Delivery Week'), array($icon('bi-flower1')))
+            : $el('div', 'pg-florist-week bg-body-secondary', lang('Week'));
+    }
     $head = array($heading('h3', $p['title'], 'pfl-display h3 mb-0'));
-    if ($p['featured']) $head[] = $span(lang('Most loved'), 'badge rounded-pill text-bg-primary', lang('Badge'));
-    return $col(array(
-        $el('article', 'card h-100 rounded-4 pfl-lift ' . ($p['featured'] ? 'border-primary border-2 shadow' : 'border-0 shadow-sm'), lang('Plan Card'), array(
-            $el('div', 'card-body d-flex flex-column p-4', lang('Card Body'), array(
-                $icon_tile($p['icon'], 'mb-3 align-self-start'),
-                $el('div', 'd-flex align-items-center justify-content-between gap-2 mb-1', lang('Plan Heading'), $head),
-                $span($p['every'], 'pfl-eyebrow d-block small text-uppercase fw-semibold text-primary mb-2', lang('How Often')),
-                $para($p['text'], 'mb-3'),
-                $check_list($p['includes'], 'list-unstyled small mb-4'),
-                $para($plan_price_text($key), 'pfl-price fs-5 fw-semibold mt-auto mb-1'),
-                $para($plan_total_text($key), 'small text-body-secondary mb-3'),
-                $link(lang('Start this subscription'), '{{page:subscribe}}?' . $query(array('plan' => $p['title'])), 'btn ' . ($p['featured'] ? 'btn-primary' : 'btn-outline-primary') . ' rounded-pill'),
+    if ($p['featured']) $head[] = $span(lang('Most loved'), 'badge rounded-pill text-bg-primary text-wrap', lang('Badge'));
+    return $el('li', 'col', $p['title'], array(
+        $el('article', 'card h-100 p-4 rounded-4 ' . ($p['featured'] ? 'border-primary border-2 shadow-lg' : 'border-0 shadow-sm'), lang('Plan Card'), array(
+            $el('div', 'd-flex flex-wrap align-items-center gap-2 mb-1', lang('Plan Heading'), $head),
+            $span($p['every'], 'pfl-eyebrow d-block small text-uppercase fw-semibold text-primary mb-3', lang('How Often')),
+            $para($p['text'], 'small text-body-secondary mb-4'),
+            $fx($el('div', 'pg-florist-weeks mb-4', lang('Twelve Weeks'), $weeks, array('_attrs' => array($attr('aria-hidden', 'true')))),
+                array('effect' => 'scale', 'trigger' => 'view', 'duration' => 400, 'delay' => 200, 'stagger' => 60)),
+            $el('div', 'd-flex flex-wrap align-items-baseline gap-1', lang('Price'), array(
+                $span($money($plan_prices[$key]), 'pfl-price pg-florist-figure fs-2 fw-bold text-body-emphasis', lang('Price')),
+                $span(lang('per delivery'), 'small text-body-secondary', lang('Text')),
+            )),
+            $para($plan_total_text($key), 'small text-body-secondary mb-4'),
+            $check_list($p['includes'], 'list-unstyled small mb-4'),
+            $el('div', 'mt-auto', lang('Buttons'), array(
+                $link(lang('Start this subscription'), '{{page:subscribe}}?' . $query(array('plan' => $p['title'])),
+                    'btn ' . ($p['featured'] ? 'btn-primary' : 'btn-outline-primary') . ' rounded-pill',
+                    array($attr('aria-label', sprintf(lang('Start this subscription: %s'), $p['title'])))),
             )),
         )),
-    ), '', '4');
+    ));
 };
 
 // A wedding or event service's card (the home and the events page): the
@@ -847,24 +869,34 @@ $event_card = function ($key) use ($el, $heading, $para, $link, $col, $icon_tile
     ), '', '4');
 };
 
-// A delivery area's card (the delivery page): the icon, the name, where it
-// reaches, whether it is same day, and the fee.
-$zone_card = function ($key) use ($el, $heading, $para, $span, $col, $icon, $icon_tile, $zones, $zone_fee_text) {
+// A delivery area as the Locations: Zones block draws it (the delivery
+// page), an item of its list: a key in the colour of the area's ring on
+// the drawing beside the list (hidden from a screen reader, which reads the
+// name), the name and the fee, where it reaches and whether it is same
+// day. The rings go from the studio outwards in the order of $zones.
+$zone_rings = array(
+    1 => 'text-bg-primary',
+    2 => 'bg-primary-subtle border border-2 border-primary-subtle',
+    3 => 'pg-zone-z3 border border-2 border-primary',
+);
+$zone_card = function ($key) use ($el, $heading, $para, $span, $attr, $zones, $zone_fees, $zone_rings, $money) {
     $z = $zones[$key];
-    return $col(array(
-        $el('article', 'card h-100 border-0 shadow-sm rounded-4', lang('Delivery Area Card'), array(
-            $el('div', 'card-body d-flex flex-column p-4', lang('Card Body'), array(
-                $icon_tile($z['icon'], 'mb-3 align-self-start'),
-                $heading('h3', $z['title'], 'pfl-display h4 mb-2'),
-                $para($z['text'], 'small text-body-secondary mb-3'),
-                $el('p', 'd-flex align-items-center gap-1 small fw-semibold mb-2', lang('When'), array(
-                    $icon($z['same_day'] ? 'bi-lightning-charge' : 'bi-calendar-event', 'text-primary'),
-                    $span($z['same_day'] ? lang('Same-day delivery') : lang('Next-day delivery'), '', lang('Text')),
+    $ring = $zone_rings[min(3, (int)array_search($key, array_keys($zones), true) + 1)];
+    return $el('li', 'd-flex gap-3 py-3 border-bottom', lang('Delivery Area Card'), array(
+        $el('div', 'pg-zone-key ' . $ring, lang('Zone Mark'), array(), array('_attrs' => array($attr('aria-hidden', 'true')))),
+        $el('div', 'flex-grow-1', lang('Zone Text'), array(
+            $el('div', 'd-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-1', lang('Title'), array(
+                $heading('h3', $z['title'], 'pfl-display h4 mb-0'),
+                $el('div', '', lang('Fee'), array(
+                    $span(lang('Fee'), 'small text-body-secondary me-1', lang('Text')),
+                    $span($money($zone_fees[$key]), 'pfl-price fw-bold', lang('Price')),
                 )),
-                $para($zone_fee_text($key), 'pfl-price fw-semibold mt-auto mb-0'),
             )),
+            $para($z['text'], 'small text-body-secondary mb-2'),
+            $span($z['same_day'] ? lang('Same-day delivery') : lang('Next-day delivery'),
+                'badge rounded-pill text-wrap ' . ($z['same_day'] ? 'text-bg-primary' : 'bg-body-secondary text-body-emphasis'), lang('When')),
         )),
-    ), '', '4');
+    ));
 };
 
 // A season's card (the home and the care page): the icon, the season and

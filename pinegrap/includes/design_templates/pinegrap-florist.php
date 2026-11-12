@@ -3,11 +3,13 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Design template "Florist": a flower shop with its own studio. A home page
- * with the bouquets, the occasions, Our Work and what customers say; the
- * bouquets with their sizes and prices, flowers for each special occasion,
- * flower subscriptions, wedding and event flowers, the delivery areas with
- * their fees and the day's cut-off, flower care, the about page and the
- * questions; Our Work with filters by event type and season and a page
+ * drawn on the Florist blocks (a hero with the bouquet in an arched frame,
+ * the gift card and the occasions, the subscription plans on their twelve
+ * weeks, the card message) with the bouquets, Our Work and what customers
+ * say; the bouquets with their sizes and prices, flowers for each special
+ * occasion, flower subscriptions, wedding and event flowers, the delivery
+ * areas as rings with their fees, times and the day's cut-off, flower
+ * care, the about page and the questions; Our Work with filters by event type and season and a page
  * each; a bouquet order request with its delivery date and card message,
  * event enquiries and subscription requests the customer follows from
  * their account, with the status and the florist's answers; a first
@@ -175,7 +177,7 @@ $florist_css = implode("\n", array(
 
 return array(
     'name'        => lang('Florist'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 121,
     'icon'        => 'bi-flower1',
@@ -231,10 +233,12 @@ return array(
         'email_footer'  => array('name' => lang('Florist E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pfl- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the rules of the blocks its home, occasions,
+    // subscriptions and delivery pages are drawn on (the Florist hero, card
+    // message and subscription, Locations: Zones) and its pfl- rules in one
+    // User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $florist_css),
+        'css'   => pg_design_template_user_styles(array('florist-hero', 'florist-card', 'florist-subscription', 'locations-zones'), $florist_css),
         'fonts' => json_encode($florist_fonts),
     ),
 );

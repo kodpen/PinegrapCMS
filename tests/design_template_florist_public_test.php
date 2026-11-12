@@ -33,7 +33,7 @@ function _test_flp_load()
 	$public_part = include PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-florist/pages_public.php';
 	$out = array('part' => $public_part, 'bouquets' => $bouquets, 'occasions' => $occasions, 'plans' => $plans,
 		'event_services' => $event_services, 'zones' => $zones, 'slots' => $slots, 'care' => $care, 'seasons' => $seasons,
-		'sizes' => $sizes, 'bouquet_choices' => $bouquet_choices, 'cutoff' => $cutoff_text());
+		'sizes' => $sizes, 'bouquet_choices' => $bouquet_choices, 'cutoff' => $cutoff_text(), 'cutoff_time' => $florist['cutoff']);
 	return $out;
 }
 
@@ -136,13 +136,26 @@ function test_florist_public_pages_show_their_data()
 	pg_assert_same(count($d['bouquets']), $count('bouquets', 'Bouquet Card'), 'every bouquet on the bouquets page');
 	pg_assert_same($featured, $count('home', 'Bouquet Card'), 'the featured bouquets on the home');
 	pg_assert_same(count($d['occasions']), $count('occasions', 'Special Occasion Card'), 'every occasion on the occasions page');
-	pg_assert_same(count($d['occasions']), $count('home', 'Special Occasion Card'), 'every occasion on the home');
+	$ways = array();
+	$nodes = array();
+	_test_flp_nodes(_test_flp_pages()['home']['tree'], $nodes);
+	foreach ($nodes as $n) {
+		$href = (string)($n['props']['href'] ?? '');
+		if (strpos($href, '{{page:order_request}}?') !== 0) continue;
+		parse_str(substr($href, strlen('{{page:order_request}}?')), $q);
+		if (isset($q['occasion'])) $ways[] = $q['occasion'];
+	}
+	pg_assert_same(array_column($d['occasions'], 'title'), $ways, 'every occasion on the home, once, as a way into the request');
 	pg_assert_same(count($d['plans']), $count('subscriptions', 'Plan Card'), 'every plan on the subscriptions page');
 	pg_assert_same(count($d['event_services']), $count('events', 'Event Service Card'), 'every event service on the events page');
 	pg_assert_same(count($d['zones']), $count('delivery', 'Delivery Area Card'), 'every area on the delivery page');
 	pg_assert_same(count($d['seasons']), $count('care', 'Season Card'), 'every season on the care page');
 	$json = json_encode(_test_flp_pages()['delivery']['tree'], JSON_UNESCAPED_UNICODE);
-	foreach ($d['slots'] as $key => $s) pg_assert_contains(json_encode($s['title'], JSON_UNESCAPED_UNICODE), $json, "delivery time $key on the delivery page");
+	foreach ($d['slots'] as $key => $s) {
+		foreach (array('name', 'from', 'to') as $field) {
+			pg_assert_contains(json_encode($s[$field], JSON_UNESCAPED_UNICODE), $json, "delivery time $key on the delivery page: $field");
+		}
+	}
 	$json = json_encode(_test_flp_pages()['care']['tree'], JSON_UNESCAPED_UNICODE);
 	foreach ($d['care'] as $n => $c) pg_assert_contains(json_encode($c['title'], JSON_UNESCAPED_UNICODE), $json, "care step $n on the care page");
 	$json = json_encode(_test_flp_pages()['bouquets']['tree'], JSON_UNESCAPED_UNICODE);
@@ -167,15 +180,24 @@ function test_florist_public_custom_bouquet_opens_the_request()
 	pg_assert_same(1, $found, 'one link asks for a bouquet of one\'s own');
 }
 
-// The same-day cut-off reads the same on the home, delivery and questions
-// pages.
+// The same-day cut-off reads the same on the delivery and questions pages;
+// the home's hero shows the same time in a time element.
 function test_florist_public_cutoff_reads_one_time()
 {
 	$d = _test_flp_load();
 	$pages = _test_flp_pages();
-	foreach (array('home', 'delivery', 'faq') as $key) {
+	foreach (array('delivery', 'faq') as $key) {
 		pg_assert_contains($d['cutoff'], json_encode($pages[$key]['tree'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), "$key names the cut-off");
 	}
+	$nodes = array();
+	_test_flp_nodes($pages['home']['tree'], $nodes);
+	$times = 0;
+	foreach ($nodes as $n) {
+		if (($n['props']['tag'] ?? '') !== 'time' || ($n['props']['text'] ?? '') !== $d['cutoff_time']) continue;
+		pg_assert_same(array(array('name' => 'datetime', 'value' => $d['cutoff_time'])), $n['props']['_attrs'] ?? null, 'the cut-off on the home is machine-readable');
+		$times++;
+	}
+	pg_assert_same(1, $times, 'the home shows the cut-off time once');
 }
 
 // Search anchors and ids carry the template's prefix, classes are its own
