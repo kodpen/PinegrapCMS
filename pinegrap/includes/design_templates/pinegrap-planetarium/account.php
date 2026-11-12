@@ -127,7 +127,7 @@ $account_pages[] = array(
                         $para(lang('The visit requests, the dome shows, the telescope nights, the conversations and the news are kept here. Open a request and press Change Status when you confirm it; what you write under it reaches the teacher by e-mail. Call a telescope night off on its own page, before the visitors set out.'), 'lead text-body-secondary mb-4'),
                         $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
                             $link(lang('Visit Requests'), '{{page:staff_visits}}', 'btn btn-primary px-4'),
-                            $link(lang('Telescope Nights'), '{{page:nights}}', 'btn btn-outline-light px-4'),
+                            $link(lang('Telescope Nights'), '{{page:nights}}', 'btn btn-secondary px-4'),
                             $link(lang('Open the control panel'), $panel_url, 'btn btn-outline-secondary px-4'),
                         )),
                     ), '', '8'),
@@ -354,7 +354,7 @@ $account_widgets = array(
         'tree'   => $widget_root(array(
             $el('div', 'd-flex align-items-center gap-2', lang('Signed Out'), array(
                 $link(lang('Log In'), '#', 'btn btn-sm btn-link link-body-emphasis text-decoration-none text-nowrap', array(), array('_bindings' => array('href' => '__login_url'))),
-                $link(lang('Sign Up'), '#', 'btn btn-sm btn-outline-light text-nowrap', array(), array('_bindings' => array('href' => '__register_url'))),
+                $link(lang('Sign Up'), '#', 'btn btn-sm btn-secondary text-nowrap', array(), array('_bindings' => array('href' => '__register_url'))),
             ), $show_when('is_signed_out')),
             $el('div', 'dropdown', lang('Signed In'), array(
                 $el('button', 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none dropdown-toggle', lang('Account Button'), array(
@@ -406,7 +406,7 @@ $account_widgets = array(
                             $para(lang('Welcome back'), 'small text-body-secondary mb-1'),
                             $heading('h1', lang('Jane Cooper'), 'ppm-display h4 fw-semibold mb-1', $bind('__display_name')),
                             $para(lang('jane.cooper@example.com'), 'small text-body-secondary mb-3', $bind('email_address')),
-                            $link(lang('Log out'), '#', 'btn btn-sm btn-outline-light', array(), array('_bindings' => array('href' => '__logout_url'))),
+                            $link(lang('Log out'), '#', 'btn btn-sm btn-secondary', array(), array('_bindings' => array('href' => '__logout_url'))),
                         ), array('_attrs' => array($attr('data-bs-theme', 'dark')))),
                         $el('nav', 'list-group', lang('Account Menu'), $account_links, array('_attrs' => array($attr('aria-label', lang('My Account'))))),
                     ), '', '4'),

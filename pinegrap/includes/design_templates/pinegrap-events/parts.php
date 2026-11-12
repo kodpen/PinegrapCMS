@@ -326,7 +326,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2 fw-bold', lang('Brand'), array(
-                    $el('span', 'd-inline-flex p-2 rounded-3 bg-primary text-white lh-1', lang('Icon Box'), array($icon('bi-calendar2-event', 'fs-5'))),
+                    $el('span', 'd-inline-flex p-2 rounded-3 text-bg-primary lh-1', lang('Icon Box'), array($icon('bi-calendar2-event', 'fs-5'))),
                     $span('{{site_name}}', 'fs-4 pev-brand', lang('Name')),
                 ), array('href' => '{{page:home}}')),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
@@ -424,7 +424,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $venue, $a
 // The register band: a full-width band in the palette's colour with the way
 // to register. Shared, so every page that ends with it carries the same
 // offer.
-$register_band = function () use ($el, $heading, $para, $link, $container, $row, $col, $attr) {
+$register_band = function () use ($el, $heading, $para, $link, $container, $row, $col) {
     return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
@@ -440,7 +440,7 @@ $register_band = function () use ($el, $heading, $para, $link, $container, $row,
                 ), '', '4'),
             ), '4', '', 'align-items-center'),
         )),
-    ), array('_attrs' => array($attr('data-bs-theme', 'dark'))));
+    ));
 };
 
 // A page of the site: the account bar, the shared header, the page's own

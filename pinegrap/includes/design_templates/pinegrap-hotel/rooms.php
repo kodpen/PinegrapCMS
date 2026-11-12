@@ -328,7 +328,7 @@ $room_widgets['room_detail'] = array(
                 )),
                 $el('div', 'd-flex flex-wrap gap-2 mb-2', lang('Badges'), array(
                     $span($room_types[$room_sample['type']]['title'], 'badge rounded-pill bg-primary-subtle text-primary-emphasis', lang('Room Type'), $bind('type')),
-                    $span($views[$room_sample['view']]['title'], 'badge rounded-pill text-bg-light border', lang('Room View'), $bind('view')),
+                    $span($views[$room_sample['view']]['title'], 'badge rounded-pill bg-body text-body-emphasis border', lang('Room View'), $bind('view')),
                 )),
                 $heading('h1', $room_sample['name'], 'pht-display display-6 mb-2', $bind('name')),
                 $para($room_sample['summary'], 'lead text-body-secondary mb-3', $bind('summary')),

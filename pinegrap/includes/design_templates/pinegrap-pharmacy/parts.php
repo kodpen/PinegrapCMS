@@ -524,7 +524,7 @@ $account_bar_tree = function () use ($el, $widget, $shared, $lang_switcher) {
 // The pharmacy's name with its cross, in the header and the footer.
 $brand = function ($class) use ($el, $span, $attr) {
     return $el('a', $class, lang('Brand'), array(
-        $el('span', 'prx-cross d-inline-flex align-items-center justify-content-center rounded-3 bg-primary text-white', lang('Pharmacy Cross'), array(
+        $el('span', 'prx-cross d-inline-flex align-items-center justify-content-center rounded-3 text-bg-primary', lang('Pharmacy Cross'), array(
             $el('i', 'bi bi-plus-lg', lang('Icon'), array(), array('_attrs' => array($attr('aria-hidden', 'true')))),
         )),
         $span('{{site_name}}', 'prx-brand', lang('Name')),

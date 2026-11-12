@@ -22,6 +22,7 @@ description: Owner (2026-11-11): during the template pause his own line polishes
 - `tools/free_work.php` keeps printing the low-priority list as paused: the steps are taken from the order file.
 
 ## Where do the designer features go?
-- Into a feature plan of their own, named `designer-bold-pages`, written into `plans/` from an inspection of the Visual Page Editor. It is an ordinary feature plan, not a template plan: any coordinator's workers take its free steps.
+- Into a feature plan of their own, written into `plans/` from an inspection of the Visual Page Editor. It is an ordinary feature plan, not a template plan: any coordinator's workers take its free steps.
+- The first one, `designer-bold-pages` (twelve steps, #8685 to #8976), is finished and deleted. What it built is in the `designer/` files: full-screen media and giant type, scroll-linked effects, counting numbers, the Variant Picker, the Product Bar, wide slides, the Pinned Story, the product looks and palettes, the hero video, colour chapters, a design's colour mode, and template files without fixed colour classes.
 
 Related: docs/memory/workflow/coordinator-no-plans.md, docs/memory/designer/design-template-own-look.md, docs/memory/plans/design-template-own-looks.md

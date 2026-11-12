@@ -138,7 +138,7 @@ $recruitment_css = implode("\n", array(
 
 return array(
     'name'        => lang('Recruitment Agency'),
-    'version'     => '1.0.0',
+    'version'     => '1.0.1',
     'framework'   => 'bootstrap5',
     'order'       => 137,
     'icon'        => 'bi-person-workspace',

@@ -922,7 +922,7 @@ $project_card = function ($sample_key = 'harbour_view') use ($el, $para, $span, 
                     $span($p['location'], '', lang('Location'), $bind('location')),
                 )),
                 $para($p['summary'], 'small text-body-secondary mb-3', $bind('summary')),
-                $span($project_statuses[$p['status']], 'badge text-bg-dark align-self-start mt-auto', lang('Status'), $bind('status')),
+                $span($project_statuses[$p['status']], 'badge text-bg-secondary align-self-start mt-auto', lang('Status'), $bind('status')),
             )),
         )),
     ), '6', '4');

@@ -805,8 +805,8 @@ $video_card = function ($n) use ($el, $span, $image, $icon, $col, $attr, $photo,
             $el('span', 'd-block position-relative ratio ratio-16x9 rounded-4 overflow-hidden bg-body-tertiary mb-2', lang('Picture Frame'), array(
                 $image($photo('video-' . $n, 800, 450), $v['title'], 'w-100 h-100 object-fit-cover', array('_attrs' => array($attr('loading', 'lazy')))),
                 $el('span', 'd-flex align-items-center justify-content-center', lang('Play'), array(
-                    $icon('bi-play-circle-fill', 'display-4 text-white'),
-                )),
+                    $icon('bi-play-circle-fill', 'display-4 text-body-emphasis'),
+                ), array('_attrs' => array($attr('data-bs-theme', 'dark')))),
             )),
             $span($v['title'], 'd-block fw-semibold', lang('Video Title')),
         ), array('href' => $v['href'], 'target' => '_blank', 'rel' => 'noopener')),

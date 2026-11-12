@@ -80,7 +80,7 @@ $service_card = function ($key, $lg = '6') use ($el, $heading, $para, $link, $ic
 $quick_search = function () use ($el, $link, $icon, $span, $query, $deals, $property_types) {
     $chips = array();
     foreach ($property_types as $t) {
-        $chips[] = $el('a', 'btn btn-sm btn-light rounded-pill d-inline-flex align-items-center gap-1', $t['title'], array(
+        $chips[] = $el('a', 'btn btn-sm btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-1', $t['title'], array(
             $icon($t['icon'], 'text-primary'),
             $span($t['title'], '', lang('Link Text')),
         ), array('href' => '{{page:listings}}?' . $query(array('type' => $t['title']))));

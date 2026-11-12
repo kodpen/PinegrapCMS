@@ -598,7 +598,7 @@ $tour_widgets['tour_detail'] = array(
                 $fx($el('header', 'col-lg-9 mb-4', lang('Section Header'), array(
                     $el('div', 'd-flex flex-wrap gap-2 mb-3', lang('Badges'), array(
                         $span($styles[$tour_sample['style']]['title'], 'badge rounded-pill bg-primary-subtle text-primary-emphasis', lang('Travel Style'), $bind('style')),
-                        $span($destinations[$tour_sample['destination']]['name'], 'badge rounded-pill text-bg-light border', lang('Tour Destination'), $bind('destination')),
+                        $span($destinations[$tour_sample['destination']]['name'], 'badge rounded-pill bg-body text-body-emphasis border', lang('Tour Destination'), $bind('destination')),
                     )),
                     $heading('h1', $tour_sample['name'], 'ptv-display display-5 mb-3', $bind('name')),
                     $para($tour_sample['summary'], 'lead text-body-secondary mb-3', $bind('summary')),

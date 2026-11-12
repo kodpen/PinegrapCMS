@@ -189,7 +189,7 @@ $skiresort_css = implode("\n", array(
 
 return array(
     'name'        => lang('Ski Resort'),
-    'version'     => '1.0.0',
+    'version'     => '1.0.1',
     'framework'   => 'bootstrap5',
     'order'       => 135,
     'icon'        => 'bi-snow',

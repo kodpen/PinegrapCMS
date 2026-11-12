@@ -836,7 +836,7 @@ $testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $
         $el('figure', 'card h-100 border-0 shadow-sm rounded-4 p-4 mb-0', lang('Testimonial'), array(
             $el('div', 'd-flex justify-content-between align-items-start gap-2', lang('Card Top'), array(
                 $stars(),
-                $span($testimonial_kinds[$t['kind']], 'badge rounded-pill text-bg-light border', lang('Badge')),
+                $span($testimonial_kinds[$t['kind']], 'badge rounded-pill bg-body text-body-emphasis border', lang('Badge')),
             )),
             $el('blockquote', 'mb-4', lang('Quote'), array($para($t['quote'], 'prc-quote mb-0'))),
             $el('figcaption', 'd-flex align-items-center gap-3 mt-auto', lang('Person'), array(

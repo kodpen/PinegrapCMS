@@ -683,7 +683,7 @@ $order_band = function () use ($el, $heading, $para, $link, $container, $row, $c
 $bake_item = function ($key) use ($el, $para, $span, $bakes, $diet_tags, $money) {
     $b = $bakes[$key];
     $badges = array();
-    foreach ($b['tags'] as $t) $badges[] = $span($diet_tags[$t], 'badge rounded-pill text-bg-light border', lang('Badge'));
+    foreach ($b['tags'] as $t) $badges[] = $span($diet_tags[$t], 'badge rounded-pill bg-body text-body-emphasis border', lang('Badge'));
     return $el('li', 'list-group-item d-flex align-items-start gap-3 py-3 px-0 bg-transparent', lang('Bake'), array(
         $el('div', 'flex-grow-1', lang('Bake Details'), array(
             $el('div', 'd-flex flex-wrap align-items-center gap-2 mb-1', lang('Name Line'), array_merge(array(

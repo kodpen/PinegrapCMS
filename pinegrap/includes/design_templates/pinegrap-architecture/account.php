@@ -116,12 +116,12 @@ $account_pages[] = array(
             $container(array(
                 $row(array(
                     $col(array(
-                        $span(lang('Staff only'), 'badge rounded-0 text-bg-dark mb-3', lang('Badge')),
+                        $span(lang('Staff only'), 'badge rounded-0 text-bg-primary mb-3', lang('Badge')),
                         $heading('h1', lang('Welcome to the staff area'), 'pai-display display-6 mb-3'),
                         $para(lang('The project enquiries, the consultation requests, the job applications and the conversations are kept here. Open a request, set its status and write under it; what you write reaches the client by e-mail.'), 'lead text-body-secondary mb-4'),
                         $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('Open the control panel'), $panel_url, 'btn btn-dark rounded-0 px-4'),
-                            $link(lang('All Project Enquiries'), '{{page:staff_enquiries}}', 'btn btn-outline-dark rounded-0 px-4'),
+                            $link(lang('Open the control panel'), $panel_url, 'btn btn-primary rounded-0 px-4'),
+                            $link(lang('All Project Enquiries'), '{{page:staff_enquiries}}', 'btn btn-secondary rounded-0 px-4'),
                         )),
                     ), '', '8'),
                 )),
@@ -374,7 +374,7 @@ $account_widgets = array(
         'tree'   => $widget_root(array(
             $el('div', 'd-flex align-items-center gap-2', lang('Signed Out'), array(
                 $link(lang('Log In'), '#', 'btn btn-sm btn-link link-body-emphasis text-decoration-none text-nowrap', array(), array('_bindings' => array('href' => '__login_url'))),
-                $link(lang('Sign Up'), '#', 'btn btn-sm btn-outline-dark rounded-0 text-nowrap', array(), array('_bindings' => array('href' => '__register_url'))),
+                $link(lang('Sign Up'), '#', 'btn btn-sm btn-outline-primary rounded-0 text-nowrap', array(), array('_bindings' => array('href' => '__register_url'))),
             ), $show_when('is_signed_out')),
             $el('div', 'dropdown', lang('Signed In'), array(
                 $el('button', 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none dropdown-toggle', lang('Account Button'), array(
@@ -435,17 +435,17 @@ $account_widgets = array(
                     $col(array(
                         $account_card('bi-folder2-open', lang('Enquiries Card'), lang('Your projects with us'),
                             lang('Follow your project enquiries, send drawings and photos of the site and read your architect\'s messages.'), array(
-                                $link(lang('My Enquiries'), '{{page:my_enquiries}}', 'btn btn-dark rounded-0 px-4'),
-                                $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-outline-dark rounded-0 px-4'),
+                                $link(lang('My Enquiries'), '{{page:my_enquiries}}', 'btn btn-primary rounded-0 px-4'),
+                                $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-outline-primary rounded-0 px-4'),
                             )),
                         $account_card('bi-calendar2-check', lang('Consultations Card'), lang('Your consultations'),
                             lang('See the time the studio proposed for each consultation and answer it.'), array(
-                                $link(lang('My Consultations'), '{{page:my_consultations}}', 'btn btn-outline-dark rounded-0 px-4'),
-                                $link(lang('Book a Consultation'), '{{page:consultation}}', 'btn btn-outline-dark rounded-0 px-4'),
+                                $link(lang('My Consultations'), '{{page:my_consultations}}', 'btn btn-outline-primary rounded-0 px-4'),
+                                $link(lang('Book a Consultation'), '{{page:consultation}}', 'btn btn-outline-primary rounded-0 px-4'),
                             )),
                         $account_card('bi-person-workspace', lang('Applications Card'), lang('Your job applications'),
                             lang('See where each job application stands and read our messages about it.'), array(
-                                $link(lang('My Applications'), '{{page:my_applications}}', 'btn btn-outline-dark rounded-0 px-4'),
+                                $link(lang('My Applications'), '{{page:my_applications}}', 'btn btn-outline-primary rounded-0 px-4'),
                             )),
                         $el('div', 'p-4 bg-body-tertiary', lang('Inbox Card'), array(
                             $el('p', 'd-flex align-items-center gap-2 fw-semibold mb-2', lang('Title'), array(
@@ -453,7 +453,7 @@ $account_widgets = array(
                                 $span(lang('A question that is not about a project?'), '', lang('Text')),
                             )),
                             $para(lang('Invoices, press or anything else: write from the contact page, and the answer comes to your inbox.'), 'small text-body-secondary mb-3'),
-                            $link(lang('Open my inbox'), '{{page:inbox}}', 'btn btn-sm btn-outline-dark rounded-0'),
+                            $link(lang('Open my inbox'), '{{page:inbox}}', 'btn btn-sm btn-secondary rounded-0'),
                         )),
                     ), '', '8'),
                 ), '4', '', 'g-lg-5'),

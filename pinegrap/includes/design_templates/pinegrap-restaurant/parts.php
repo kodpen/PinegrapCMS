@@ -757,7 +757,7 @@ $dish_card = function ($sample_key = 'lamb') use ($el, $span, $para, $link, $col
                     $image($photo('dish-' . $sample_key, 800, 600), $d['name'], 'w-100 h-100 object-fit-cover',
                         array('_bindings' => array('src' => 'photo', 'alt' => 'name'), '_attrs' => array($attr('loading', 'lazy')))),
                 )),
-                $span($d['badge'] !== '' ? $d['badge'] : lang('New'), 'pg-hide-if-empty badge text-bg-light position-absolute top-0 start-0 m-3', lang('Badge'), $bind('badge')),
+                $span($d['badge'] !== '' ? $d['badge'] : lang('New'), 'pg-hide-if-empty badge bg-body text-body-emphasis position-absolute top-0 start-0 m-3', lang('Badge'), $bind('badge')),
             )),
             $el('div', 'card-body d-flex flex-column p-4', lang('Card Body'), array(
                 $span($courses[$d['course']]['title'], 'prt-eyebrow small text-uppercase fw-semibold text-primary mb-1', lang('Menu Course'), $bind('course')),

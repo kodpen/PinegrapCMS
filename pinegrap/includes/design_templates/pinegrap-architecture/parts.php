@@ -701,7 +701,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
                     $el('ul', 'navbar-nav ms-lg-auto me-lg-3 column-gap-lg-2 py-3 py-lg-0', lang('Nav Menu'), $items, array('smartActive' => true)),
                     $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center gap-2 pb-2 pb-lg-0', lang('Header Actions'), array(
-                        $el('a', 'btn btn-dark rounded-0 d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
+                        $el('a', 'btn btn-primary rounded-0 d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
                             $span(lang('Start a Project'), '', lang('Link Text')),
                             $icon('bi-arrow-right'),
                         ), array('href' => '{{page:enquiry}}')),
@@ -887,7 +887,7 @@ $project_card = function ($sample_key = 'courtyard_house') use ($el, $para, $spa
                     array('_bindings' => array('text' => 'name', 'href' => 'form_item_view'))),
             )),
             $para($p['summary'], 'small text-body-secondary mb-3', $bind('summary')),
-            $span($project_stages[$p['stage']], 'badge rounded-0 text-bg-dark align-self-start mt-auto', lang('Stage'), $bind('stage')),
+            $span($project_stages[$p['stage']], 'badge rounded-0 text-bg-primary align-self-start mt-auto', lang('Stage'), $bind('stage')),
         )),
     ), '6', '4');
 };
@@ -1040,7 +1040,7 @@ $select = function ($id, $name, $prompt, $options, $required = true, $selected =
     if ($cf) $props['_cf'] = $cf;
     return $el('select', 'form-select', lang('Field'), $children, $props);
 };
-$submit = function ($text, $class = 'btn btn-dark rounded-0 px-4') use ($el, $attr) {
+$submit = function ($text, $class = 'btn btn-primary rounded-0 px-4') use ($el, $attr) {
     return $el('button', $class, lang('Send Button'), array(), array('text' => $text, '_attrs' => array($attr('type', 'submit'))));
 };
 $captcha = function () use ($el) {

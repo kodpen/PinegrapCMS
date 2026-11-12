@@ -76,7 +76,7 @@ $ask_band = function ($title, $text) use ($el, $heading, $para, $link, $containe
                     $heading('h2', $title, 'pai-display h4 mb-1'),
                     $para($text, 'text-body-secondary mb-0'),
                 )),
-                $link(lang('Contact Us'), '{{page:contact}}', 'btn btn-outline-dark rounded-0 px-4 text-nowrap'),
+                $link(lang('Contact Us'), '{{page:contact}}', 'btn btn-outline-primary rounded-0 px-4 text-nowrap'),
             )),
         )),
     ));
@@ -122,13 +122,13 @@ foreach (array_keys($press) as $n) $press_cols[] = $press_card($n);
 $type_tiles = array();
 foreach ($project_types as $t) {
     $type_tiles[] = $feature_tile($t['icon'], $t['title'], $t['text'], '4', array(
-        $link(lang('See the projects'), '{{page:projects}}?' . $query(array('type' => $t['title'])), 'd-inline-block small fw-semibold link-dark mt-3'),
+        $link(lang('See the projects'), '{{page:projects}}?' . $query(array('type' => $t['title'])), 'd-inline-block small fw-semibold link-body-emphasis mt-3'),
     ));
 }
 // The places the studio has built, each opening the project list there.
 $place_links = array();
 foreach ($locations as $title) {
-    $place_links[] = $link($title, '{{page:projects}}?' . $query(array('location' => $title)), 'btn btn-outline-dark rounded-0 btn-sm px-3');
+    $place_links[] = $link($title, '{{page:projects}}?' . $query(array('location' => $title)), 'btn btn-outline-primary rounded-0 btn-sm px-3');
 }
 $place_row = $el('div', 'd-flex flex-wrap gap-2', lang('Locations'), $place_links);
 
@@ -144,8 +144,8 @@ $public_pages[] = array(
         // The way in: the studio in a sentence above one wide photograph,
         // captioned like a plate with the project it shows.
         $plate_hero(lang('Architecture and interiors'), lang('Buildings shaped by light, place and the people inside'), $studio['tagline'] . '.', array(
-            $link(lang('See Our Projects'), '{{page:projects}}', 'btn btn-dark rounded-0 px-4'),
-            $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-outline-dark rounded-0 px-4'),
+            $link(lang('See Our Projects'), '{{page:projects}}', 'btn btn-primary rounded-0 px-4'),
+            $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-outline-primary rounded-0 px-4'),
         ), $photo('hero', 1800, 770), lang('The courtyard of a stone house in the late afternoon light'), array(
             'no'    => '01',
             'name'  => $projects['courtyard_house']['name'],
@@ -178,7 +178,7 @@ $public_pages[] = array(
                         $para(lang('Step by step'), 'pai-eyebrow text-uppercase fw-semibold text-body-secondary mb-2'),
                         $heading('h2', lang('From a conversation to the keys'), 'pai-display h2 mb-4'),
                         $rise($stage_list('list-unstyled mb-4')),
-                        $link(lang('How We Work'), '{{page:process}}', 'btn btn-outline-dark rounded-0 px-4'),
+                        $link(lang('How We Work'), '{{page:process}}', 'btn btn-outline-primary rounded-0 px-4'),
                     ), '', '6'),
                     $col(array($fx($framed($photo('home-process', 1200, 1500), lang('Sketches and a cardboard model on a studio table'), '4x5'),
                         array('effect' => 'fade', 'trigger' => 'view', 'duration' => 900))), '', '6'),
@@ -273,8 +273,8 @@ foreach ($services as $key => $s) {
                             $heading('h2', lang('What it covers'), 'pai-display h4 mb-3'),
                             $check_list($s['points'], 'list-unstyled mb-4'),
                             $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                                $link(lang('Start a Project'), '{{page:enquiry}}?' . $query(array('service' => $s['title'])), 'btn btn-dark rounded-0 px-4'),
-                                $link(lang('Book a Consultation'), '{{page:consultation}}?' . $query(array('service' => $s['title'])), 'btn btn-outline-dark rounded-0 px-4'),
+                                $link(lang('Start a Project'), '{{page:enquiry}}?' . $query(array('service' => $s['title'])), 'btn btn-primary rounded-0 px-4'),
+                                $link(lang('Book a Consultation'), '{{page:consultation}}?' . $query(array('service' => $s['title'])), 'btn btn-outline-primary rounded-0 px-4'),
                             )),
                         ), '', '6'),
                         $col(array($framed($photo('service-' . $key, 1200, 900), $s['title'])), '', '6'),
@@ -352,7 +352,7 @@ $public_pages[] = array(
         $story_band('ai-join-us', lang('Careers'), lang('Draw with us'),
             array(lang('Young architects and designers join a project team from their first week and follow their projects onto site.')),
             $photo('team-careers', 1200, 900), lang('Two designers working on a large model'), true,
-            array($link(lang('See the open jobs'), '{{page:careers}}', 'btn btn-dark rounded-0 px-4')),
+            array($link(lang('See the open jobs'), '{{page:careers}}', 'btn btn-primary rounded-0 px-4')),
             lang('jobs, vacancies, work for us, internship'), 'py-5 bg-body-tertiary'),
     )),
 );
@@ -372,7 +372,7 @@ $public_pages[] = array(
                 $row(array(
                     $col(array(
                         $stage_list('list-unstyled mb-4'),
-                        $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-dark rounded-0 px-4'),
+                        $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-primary rounded-0 px-4'),
                     ), '', '6'),
                     $col(array($framed($photo('process', 1200, 1500), lang('An architect and a client walking a building site'), '4x5')), '', '6'),
                 ), '4', '', 'g-lg-5'),

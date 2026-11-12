@@ -846,7 +846,7 @@ $room_card = function ($key) use ($el, $heading, $para, $span, $link, $image, $c
 };
 
 // The availability of a title as a badge, bound to its Availability field.
-$availability_badge = function ($text, $class = 'badge rounded-pill text-bg-light border') use ($span, $bind) {
+$availability_badge = function ($text, $class = 'badge rounded-pill bg-body text-body-emphasis border') use ($span, $bind) {
     return $span($text, $class, lang('Availability'), $bind('availability'));
 };
 

@@ -47,7 +47,7 @@ $mail_para = function ($text, $class = 'mb-3', $style = 'margin:0 0 16px') use (
 };
 $mail_button = function ($text, $href, $extra = array()) use ($el, $link, $mail_style, $attr) {
     return $el('p', 'my-4', lang('Button'), array(
-        $link($text, $href, 'btn btn-dark rounded-0 px-4', array($attr('style',
+        $link($text, $href, 'btn btn-primary rounded-0 px-4', array($attr('style',
             'display:inline-block;padding:10px 22px;border-radius:0;font-weight:600;text-decoration:none;'
             . 'background-color:#18181b;color:#ffffff')), $extra),
     ), $mail_style('margin:24px 0'));
