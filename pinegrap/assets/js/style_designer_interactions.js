@@ -4,7 +4,8 @@
  * Visual Page Editor - the interactions part: the rows of the properties
  * panel's Interactions section (the effect, its trigger and timing, the
  * sticky offset, the parallax speed, the start of a scroll-linked effect,
- * the duration and delay of a count), the fields that write a node's
+ * the duration and delay of a count, the duration of a chapter's colour
+ * change), the fields that write a node's
  * props._fx and the "Play on the canvas" button. Not needed to open a
  * page: the core draws the section with an empty body and runs this file
  * the first time an open section is shown (_sdPartLoad(),
@@ -47,9 +48,13 @@ StyleDesigner.definePart('interactions', function (K) {
     // The content types a count is offered on: those that hold a text.
     var _SD_FX_COUNT_TEXT = ['heading', 'paragraph', 'span', 'text', 'link'];
 
+    // The nodes a chapter is offered on: the page's bands.
+    var _SD_FX_CHAPTER_TYPES = ['semantic', 'container'];
+
     // The section's rows for the node: the effect, then the rows that
     // follow from it and its trigger. Count up is offered on text nodes,
-    // and kept in the list on a node that has it.
+    // and kept in the list on a node that has it; Colour chapter likewise
+    // on sections and containers.
     function _sdFxRows(n) {
         var fx = _sdFxNormalize(n.props._fx) || { effect: '' };
         var spec = _sdFxSpec();
@@ -75,6 +80,9 @@ StyleDesigner.definePart('interactions', function (K) {
         ];
         if (fx.effect === 'count' || (n.type === 'content' && _SD_FX_COUNT_TEXT.indexOf(n.props.contentType) !== -1)) {
             effects.push(['count', _sdT('Count up')]);
+        }
+        if (fx.effect === 'chapter' || _SD_FX_CHAPTER_TYPES.indexOf(n.type) !== -1) {
+            effects.push(['chapter', _sdT('Colour chapter')]);
         }
         // A video that plays by itself is set in the Video panel, which
         // also mutes it and adds its pause button; kept in the list here
@@ -117,6 +125,12 @@ StyleDesigner.definePart('interactions', function (K) {
                 esc(_sdT('Counts up from zero to the first number in the text once the element is seen, keeping its separators and the words around it. The page holds the number itself.')) +
                 '</div></div>';
         }
+        if (fx.effect === 'chapter') {
+            h += row(_sdT('Duration'), number('duration', 'ms'));
+            h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
+                esc(_sdT('While the element holds the middle of the window, the whole page takes its background and text colour, and takes its own back when it leaves.')) +
+                '</div></div>';
+        }
         if (fx.trigger || fx.effect === 'count') {
             h += row('', '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-fx-play>' +
                 '<span class="bi bi-play-fill"></span> ' + esc(_sdT('Play on the canvas')) + '</button>');
@@ -128,7 +142,9 @@ StyleDesigner.definePart('interactions', function (K) {
         }
         if (fx.effect) {
             h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
-                esc(_sdT('Plays on the published page and in Preview. Visitors who ask for less motion see the element without it.')) +
+                esc(fx.effect === 'chapter'
+                    ? _sdT('Plays on the published page and in Preview. Visitors who ask for less motion see the colours change at once.')
+                    : _sdT('Plays on the published page and in Preview. Visitors who ask for less motion see the element without it.')) +
                 '</div></div>';
         }
         return h;
