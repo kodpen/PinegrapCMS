@@ -35,9 +35,11 @@ StyleDesigner.registerBlockFamily(function (kit) {
                        '.pg-zone-map .pg-zone-ring { aspect-ratio: 1 / 1; padding: 15%; border-radius: 50%; } ' +
                        '.pg-zone-map .pg-zone-z1 { display: flex; align-items: center; justify-content: center; padding: 0; }',
         // A zone's key in the list, drawn like its ring; the outer zone's
-        // line is dashed (the border utilities read the style from it).
+        // line is dashed (the border utilities read the style from it); the
+        // rings drawn inside it inherit the property and are set back.
         'pg-zone-key': '.pg-zone-key { width: 1.25rem; height: 1.25rem; flex-shrink: 0; margin-top: .25rem; border-radius: 50%; } ' +
                        '.pg-zone-z3 { --bs-border-style: dashed; } ' +
+                       '.pg-zone-z3 .pg-zone-ring { --bs-border-style: solid; } ' +
                        '.pg-zone-list { font-variant-numeric: tabular-nums; }'
     };
 
