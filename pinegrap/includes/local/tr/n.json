@@ -1,5 +1,6 @@
 {
     "NEW": "YENİ",
+    "NOT A FORM PAGE": "FORM SAYFASI DEĞİL",
     "NOTE: A chat message waits a minute before it is sent, so that a message somebody has already read on screen does not arrive on their phone as well. The delay an operator feels is that wait plus however often this job runs.": "NOT: Sohbet mesajı gönderilmeden önce bir dakika bekler; böylece ekranında zaten okunmuş bir mesaj ayrıca telefona da düşmez. Kullanıcının hissettiği gecikme, bu bekleme süresi artı bu görevin çalışma sıklığıdır.",
     "NOTE: Auto Backup feature is available by default but can be disabled by a developer from the config.php file. This feature can only be operated once a day.": "NOT: Otomatik Yedekleme özelliği varsayılan olarak kullanılabilir ancak bir geliştirici tarafından config.php dosyasından devre dışı bırakılabilir. Bu özellik yalnızca günde bir kez çalıştırılabilir.",
     "NOTE: Schedule the command below only if you want an event delivered within a minute of it happening, without waiting for the general job. It is the same work either way; a dedicated task simply runs it more often.": "NOT: Aşağıdaki komutu yalnızca bir olayın, genel görevi beklemeden, gerçekleştikten sonraki bir dakika içinde iletilmesini istiyorsanız zamanlayın. Yapılan iş her iki durumda da aynıdır; ayrı görev sadece daha sık çalıştırır.",
