@@ -1,10 +1,10 @@
 ---
 name: workflow-tables-column-rename
-description: Renaming a workflow table column that formulas name (#9029): formulas rewritten with the new name in one transaction; a name that would change one is refused
+description: Renaming a workflow table column that formulas name (#9029, PR #9062): formulas rewritten with the new name in one transaction; a name that would change one is refused
 ---
 
 ## What happens to formulas when a column is renamed?
-- Every other formula column of the table that names it is rewritten with the new name, as a spreadsheet does: `Adet * Tutar ₺` becomes `Miktar Ğ * Tutar ₺` (`ws_wtable_formulas_renamed()` in `wtable_rows.php`, `ws_calc_rename()` in `calc.php`). Before #9029 only the column's `name` changed, and since formulas are bound by name on every read, each one naming it showed `#REF` until the old name came back.
+- Every other formula column of the table that names it is rewritten with the new name, as a spreadsheet does: `Adet * Tutar ₺` becomes `Miktar Ğ * Tutar ₺` (PR #9062: `ws_wtable_formulas_renamed()` in `wtable_rows.php`, `ws_calc_rename()` in `calc.php`). Before it, only the column's `name` changed, and since formulas are bound by name on every read, each one naming it showed `#REF` until the old name came back.
 - Only the places where the old name is bound are rewritten: the same boundaries and longest-first order as `ws_calc_bind()` (both read `ws_calc_bind_spans()`), so `Net total` stays whole when `Net` is renamed, a call `ADET(…)` (the count function) stays, and a name typed in another case (`adet`) is rewritten too.
 - The renamed column's own expression, when it is a formula, is what the form or the API sends.
 

@@ -87,7 +87,7 @@
 - workflow-tables-api.md: Workflow tables in the external API and MCP (api_wtables.php, T1d1 #2890, T1d2 #2931): routes, which are tools, dry run, errors, rows paging, Claude's reach, shares, workspace.wtable.row.* webhooks
 - workflow-tables-bin-screens.md: Where the workflow table bin shows (TB2): Deleted tables and Deleted rows cards on workspace_wtables.php, the delete confirmations, and the deleted-tables / deleted-rows API routes
 - workflow-tables-bin.md: The bin of workflow tables (11.0.178, #8412): a deleted row goes to ws_wtable_row_bin, a deleted table gets ws_wtables.deleted_at; restore, purge, privacy and contact readers [decision: decisions-made-schema-14.md, decisions-made-workspace-10.md]
-- workflow-tables-column-rename.md: Renaming a workflow table column that formulas name (#9029): formulas rewritten with the new name in one transaction; a name that would change one is refused
+- workflow-tables-column-rename.md: Renaming a workflow table column that formulas name (#9029, PR #9062): formulas rewritten with the new name in one transaction; a name that would change one is refused
 - workflow-tables-column-type.md: Changing a workflow table column's type (wtable_retype.php, PR #8512): which types, how each cell converts, decimals and times never lost, the refusal listing cells, binned rows, screen, API
 - workflow-tables-conditions.md: Conditions over workflow table rows (wtable_where.php, PR #8400): comparisons per column type, how each type compares, all or any, sorting with empty cells last, sum/average/smallest/largest
 - workflow-tables-export.md: A workflow table downloads as an Excel file (TX1): who may, what each cell becomes, the shared xlsx writer the ERP export also uses
