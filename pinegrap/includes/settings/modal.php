@@ -54,6 +54,23 @@ function pg_settings_modal_reader($user)
 
 
 /**
+ * The address the dialog asks for its panes, carrying the stamp of the panel
+ * script this page is drawn with. A page left open across an update still
+ * runs the script it loaded; settings_pane.php compares the stamp with the
+ * files it serves now and answers such a page with a Reload line instead of
+ * cards that script may not know how to run.
+ *
+ * @return string
+ */
+function pg_settings_pane_url()
+{
+    $stamp = pg_js_bundle_stamp('assets/js/backend.min.js');
+
+    return OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_pane.php' . (($stamp !== '') ? '?v=' . $stamp : '');
+}
+
+
+/**
  * The button that opens it, for the header.
  *
  * @param array|null $user the row validate_user() returned
@@ -153,7 +170,7 @@ function pg_settings_modal_markup($user)
 
     return '
 <dialog class="dialog pg-settings-modal dialog-xl pg-dialog-centered lg-down:dialog-fullscreen pg-sm" id="pg_settings_modal" aria-labelledby="pg_settings_modal_title"
-    data-pgurl="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_pane.php') . '"
+    data-pgurl="' . h(pg_settings_pane_url()) . '"
     data-pganchors="' . h(json_encode($output_anchors)) . '"
     data-pghelp="' . h(json_encode($output_help)) . '"
     data-pgleavetitle="' . h(lang('Unsaved Changes')) . '"

@@ -68,7 +68,60 @@ function pg_picker_kinds()
         'page' => array('source' => 'pages', 'types' => array(), 'public' => false, 'design' => false, 'archived' => true, 'value' => 'id', 'role' => 3, 'tree' => true, 'pictures' => false, 'upload' => false),
     );
 
+    foreach (pg_picker_page_type_kinds() as $name => $types) {
+        $kinds[$name] = array_merge($kinds['page'], array('types' => $types));
+    }
+
     return $kinds;
+}
+
+/**
+ * The page kinds kept to some page types, for the settings that take only
+ * those (a catalog's detail page, an order's receipt page). Pure.
+ *
+ * @return array name => page.page_type values
+ */
+function pg_picker_page_type_kinds()
+{
+    return array(
+        'page_catalog_detail' => array('catalog detail'),
+        'page_order_receipt' => array('order receipt'),
+        'page_shipping_step' => array('shipping address and arrival', 'express order'),
+        'page_billing_step' => array('billing information', 'express order'),
+        'page_shipping_method' => array('shipping method'),
+        'page_preview_step' => array('order preview', 'express order'),
+        'page_form_item_view' => array('form item view'),
+        'page_calendar_event_view' => array('calendar event view'),
+        'page_affiliate_confirmation' => array('affiliate sign up confirmation'),
+    );
+}
+
+/**
+ * The page kind that lists the given page types: 'page' for every type,
+ * '' when no kind lists exactly those. Pure.
+ *
+ * @param string|string[] $types one page type, a list, or '' for every page
+ * @return string
+ */
+function pg_picker_page_kind_for($types)
+{
+    $wanted = array_values(array_unique(array_map('strval', array_filter((array) $types, 'strlen'))));
+
+    if (!$wanted) {
+        return 'page';
+    }
+
+    sort($wanted);
+
+    foreach (pg_picker_page_type_kinds() as $name => $listed) {
+        sort($listed);
+
+        if ($listed === $wanted) {
+            return $name;
+        }
+    }
+
+    return '';
 }
 
 /** The picture types the image kind lists: the editor's image browser's. */
@@ -669,14 +722,16 @@ function pg_picker_page_details($items, $paths = false)
 /**
  * The binned pages that came from the folders a user may use, as
  * pg_picker_binned_page_row() tells them: those from one folder, or those
- * whose name holds a typed text (at most pg_picker_scan_limit()).
+ * whose name holds a typed text (at most pg_picker_scan_limit()), of the
+ * page types a kind lists.
  *
  * @param array    $user   validate_user()
  * @param int|null $folder the folder they came from
  * @param string   $query  the typed text; '' for no name match
+ * @param string[] $types  pg_picker_kind_types(); empty for every type
  * @return array rows
  */
-function pg_picker_binned_page_rows($user, $folder = null, $query = '')
+function pg_picker_binned_page_rows($user, $folder = null, $query = '', $types = array())
 {
     $bin = pg_picker_ids(pg_recycle_bin_folder_ids());
 
@@ -692,6 +747,10 @@ function pg_picker_binned_page_rows($user, $folder = null, $query = '')
 
     if ($query !== '') {
         $where .= " AND (LOWER(page.page_name) LIKE '%" . e(pg_picker_like_term($query)) . "%')";
+    }
+
+    if ($types) {
+        $where .= " AND (page.page_type IN ('" . implode("', '", array_map('e', $types)) . "'))";
     }
 
     $rows = db_items(
@@ -983,7 +1042,7 @@ function pg_picker_search_rows($kind_name, $query, $user)
 
     // Binned pages are found too, under their own names, after the others:
     // marked, so the person sees why the page they look for cannot be chosen.
-    return array_merge(pg_picker_matches(is_array($rows) ? $rows : array(), $query, 'page_name'), pg_picker_binned_page_rows($user, null, $query));
+    return array_merge(pg_picker_matches(is_array($rows) ? $rows : array(), $query, 'page_name'), pg_picker_binned_page_rows($user, null, $query, pg_picker_kind_types($kind)));
 }
 
 /**
@@ -1059,7 +1118,7 @@ function pg_picker_list_answer($request, $user)
     if (($kind['source'] === 'pages') && ($request['page'] === 1)) {
         $answer['binned'] = pg_picker_page_details(array_map(function ($row) use ($kind) {
             return pg_picker_item($kind, $row);
-        }, pg_picker_binned_page_rows($user, $request['folder'])));
+        }, pg_picker_binned_page_rows($user, $request['folder'], '', pg_picker_kind_types($kind))));
     }
 
     // Whether the dialog offers Upload in this folder, and if not, why.
@@ -1412,8 +1471,14 @@ function pg_picker_answer($request, $user)
             break;
 
         case 'tree':
-            // The dialog's title line names the kind's file types.
+            // The dialog's title line names the kind's file types, or the
+            // page types a page kind keeps to, by their labels.
             $answer['types'] = pg_picker_kind_types($kinds[$request['kind']]);
+
+            if ($kinds[$request['kind']]['source'] === 'pages') {
+                $answer['types'] = array_map('get_page_type_name', $answer['types']);
+            }
+
             $answer += $kinds[$request['kind']]['tree'] ? pg_picker_tree_answer($request, $user) : array('nodes' => array());
             break;
 
@@ -1611,20 +1676,21 @@ function pg_picker_field_view($kind, $value, $item)
 
     $state = is_array($item) ? (string) ($item['state'] ?? 'missing') : 'missing';
     $view['state'] = $state;
+    $page = ($kind['source'] === 'pages');
 
     if ($state === 'missing') {
         // A name stays as stored; an id has no name left to tell.
         $view['text'] = ($kind['value'] === 'id') ? '#' . $values[0] : (string) $values[0];
-        $view['meta'] = lang('Stored value · file not found');
+        $view['meta'] = $page ? lang('Stored value · page not found') : lang('Stored value · file not found');
         $view['icon'] = !empty($kind['pictures']) ? 'bi-image' : 'bi-file-earmark-x';
-        $view['note'] = lang('This file is no longer in Files; choose another.');
+        $view['note'] = $page ? lang('This page no longer exists; choose another.') : lang('This file is no longer in Files; choose another.');
         $view['tone'] = 'warning';
 
         return $view;
     }
 
     if ($state === 'hidden') {
-        $view['text'] = lang('A file in a folder you cannot open');
+        $view['text'] = $page ? lang('A page in a folder you cannot open') : lang('A file in a folder you cannot open');
         $view['icon'] = 'bi-lock';
 
         return $view;
@@ -1633,13 +1699,19 @@ function pg_picker_field_view($kind, $value, $item)
     $view['text'] = (string) ($item['text'] ?? '');
     $view['meta'] = pg_picker_field_meta($item);
     $view['thumb'] = (string) ($item['thumb'] ?? '');
-    $view['icon'] = ($kind['source'] === 'pages') ? 'bi-file-earmark-text' : pg_picker_file_icon($item['type'] ?? '');
+    $view['icon'] = $page ? 'bi-file-earmark-text' : pg_picker_file_icon($item['type'] ?? '');
 
     if ($state === 'binned') {
-        $view['note'] = lang('This file is in the Recycle Bin; visitors cannot open it. Restore it or choose another.');
+        $view['note'] = $page
+            ? lang('This page is in the Recycle Bin; visitors cannot open it. Restore it or choose another.')
+            : lang('This file is in the Recycle Bin; visitors cannot open it. Restore it or choose another.');
         $view['tone'] = 'danger';
     } elseif ($state === 'offline') {
-        $view['note'] = lang('Visitors cannot open this file; choose a picture everyone may see.');
+        // A page is offline in an archived folder (get_page.php shows it
+        // to editors only).
+        $view['note'] = $page
+            ? lang('This page is in an archived folder; visitors cannot open it. Choose another, or take its folder out of the archive.')
+            : lang('Visitors cannot open this file; choose a picture everyone may see.');
         $view['tone'] = 'warning';
     }
 
@@ -1729,6 +1801,10 @@ function pg_picker_field($kind_name, $name, $value, $options = array())
     $kind = $kinds[$kind_name];
     $item = null;
     $values = pg_picker_values(array($value), $kind['value']);
+
+    if (($kind['source'] === 'pages') && !isset($options['title'])) {
+        $options['title'] = lang('Choose a page');
+    }
 
     $user = null;
 

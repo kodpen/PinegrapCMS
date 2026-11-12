@@ -1244,7 +1244,7 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 lg:col-4">
                                             <label for="home_page" class="form-label">' . lang('User Start Page') . '</label>
-                                            <select class="form-control" name="home_page" id="home_page"><option value="0">[' . lang('None') . ']</option>' . select_page($home) . '</select>
+                                            ' . pg_picker_field('page', 'home_page', $home) . pg_picker_script() . '
                                             <div class="form-text">' . lang('Opened after signing in.') . '</div>
                                         </div>
                                     </div>

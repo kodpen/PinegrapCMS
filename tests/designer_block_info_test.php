@@ -81,7 +81,7 @@ function designer_block_info_test_sentence_faults($text)
 function designer_block_info_test_undescribed_families()
 {
 	return array(
-		'florist', 'launch', 'locations', 'marina', 'museum', 'music', 'pharmacy', 'photo', 'planetarium',
+		'florist', 'launch', 'locations', 'marina', 'museum', 'music', 'pharmacy', 'photo', 'planetarium', 'podcast',
 		'school', 'skiresort', 'sportsclub', 'travel', 'wedding', 'zoo',
 	);
 }
