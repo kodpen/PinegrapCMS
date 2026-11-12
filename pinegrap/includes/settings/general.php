@@ -27,7 +27,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 $pg_settings_cards[] = '
     <div id="pgset-organization" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Organization') . '
             </div>
             <div class="card-body">
@@ -86,7 +86,7 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
     <div id="pgset-server" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Server & Domain') . '
             </div>
             <div class="card-body">
@@ -125,7 +125,7 @@ if ($license_site_warning === 'local') {
 $pg_settings_cards[] = '
     <div id="pgset-software" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Software') . '
             </div>
             <div class="card-body">
@@ -151,7 +151,7 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
                         <div id="pgset-datetime" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Date & Time') . '
                                 </div>
                                 <div class="card-body">

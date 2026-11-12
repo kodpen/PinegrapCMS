@@ -39,7 +39,7 @@ $booking_card = function ($id, $title, $body) {
     return '
     <div id="' . $id . '" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . $title . '
             </div>
             <div class="card-body">

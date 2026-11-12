@@ -23,7 +23,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 $pg_settings_cards[] = '
                         <div id="pgset-features" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Feature Options') . '
                                 </div>
                                 <div class="card-body">
@@ -369,7 +369,7 @@ $pg_settings_cards[] = '
         $output_image_settings_card =
             '<div id="pgset-images" class="pg-set-card">
                 <div class="card">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <div class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Image Optimization') . '
                     </div>
                     <div class="card-body">
@@ -449,7 +449,7 @@ if (pg_schema_has('config_text')) {
     $pg_settings_cards[] = '
                         <div id="pgset-search-tuning" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Search Tuning') . '
                                 </div>
                                 <div class="card-body">
@@ -483,7 +483,7 @@ if (function_exists('pg_page_revisions_retention') && array_key_exists('page_rev
     $pg_settings_cards[] = '
                         <div id="pgset-revisions" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Page Revisions') . '
                                 </div>
                                 <div class="card-body">
@@ -521,7 +521,7 @@ if (function_exists('pg_page_cache_ttl')) {
     $pg_settings_cards[] = '
                         <div id="pgset-page-cache" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Page Cache') . '
                                 </div>
                                 <div class="card-body">
@@ -563,7 +563,7 @@ $signature_tsa_password = isset($row['signature_tsa_password']) ? (string) $row[
 $pg_settings_cards[] = '
                         <div id="pgset-signature" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Signature Time Stamp') . '
                                 </div>
                                 <div class="card-body">

@@ -2655,7 +2655,7 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null, $form = null
     <div id="pgset-ws-mcp" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center gap-3">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0 ws-grow">' . h(lang('MCP servers')) . '</span>
+                <span class="pg-title-section ws-grow">' . h(lang('MCP servers')) . '</span>
                 <a class="btn btn-sm btn-text theme-secondary" href="workspace_mcp.php" title="' . h(lang('Your own accounts in one place, and the tools that read run with a form')) . '"><i class="bi bi-person-gear me-1" aria-hidden="true"></i>' . h(lang('My MCP connections')) . '</a>
                 ' . ($admin ? '<button type="button" class="btn btn-sm btn-outline theme-primary rounded-pill" data-bs-toggle="drawer" data-bs-target="#pgset-ws-mcp-add" aria-controls="pgset-ws-mcp-add"' . ($reopen_add ? ' data-ws-mcp-reopen' : '') . '><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add a server')) . '</button>' : '') . '
             </div>
