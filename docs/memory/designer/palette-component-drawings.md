@@ -19,4 +19,4 @@ description: The Components tab's hover card drawings (_sdPalDrawing): every row
 
 ## How is it tested?
 - `tests/designer_pal_drawing_test.php` cuts `_sdPalInfo()`, `_sdPalDrawing()` and `_sdPalKey()` out of the core and runs them under Node: every entry has a `v` and a `d`, every `v` draws a whole SVG with at least three marks, every list source of the palette's Lists in a record group has its `l:` entry; an unknown key draws nothing.
-- HTML elements and Content added in #8833, Form fields, Regions and the lists in #8834.
+- HTML elements and Content added in #8833, Form fields, Regions and the lists in #8857.
