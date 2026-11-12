@@ -23,7 +23,7 @@ description: New e-mail in the Workspace (WM5, #8719): the form and its fields, 
 ## What is a mailbox's Signature?
 - Box form field "Signature" (Workspace settings, Mailboxes): plain text in `settings.signature`, no schema; `ws_mail_signature_input()` keeps line breaks, drops other control characters, a typed leading "-- " line and empty lines at the ends; at most 1,000 characters (`WS_MAIL_SIGNATURE_MAX`) and 12 lines (`WS_MAIL_SIGNATURE_LINES`), checked even for a box without servers.
 - A new mail's text (`ws_mail_send_body()`, from `ws_mail_send_properties()`): the text, "-- ", the writer's name, then the Signature in place of the box's name; without one, the box's name as before. Built when the mail leaves, so Send again carries the Signature of that moment. The form shows the same lines under the text.
-- Reply by e-mail keeps its own signature (writer and box name, `ws_mail_reply_body()`) until WM7 moves the answer to `ws_mail_send()`; that step decides whether answers take the Signature.
+- Answers take it too (WM7): `ws_mail_answer_body()` for the panel's and the API's answer, the quote under it (`mail-reply.md`).
 
 ## Tests?
 - `tests/workspace_mail_compose_test.php` (pure parts, Node for the kept form, wiring). PR #8719 ran it on a sandbox; never against a mail server.

@@ -630,6 +630,12 @@
                     return;
                 }
 
+                // A redraw replaces the button that had focus (a sent answer
+                // returns focus to its Reply button), so focus would fall to
+                // the page; the heading keeps the keyboard in the pane.
+                var focused = document.activeElement;
+                var keep = again && (focused === document.body || pane.contains(focused));
+
                 pane.innerHTML = data.html;
                 tools(data);
                 address(id);
@@ -642,6 +648,8 @@
                 if (!again) {
                     pane.scrollTop = 0;
                     pane.querySelector('h2').focus();
+                } else if (keep) {
+                    pane.querySelector('h2').focus({ preventScroll: true });
                 }
             }).catch(function (error) {
                 if (current === id) {
