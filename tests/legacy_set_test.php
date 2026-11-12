@@ -207,6 +207,19 @@ function test_lgs_plan_set_one_design_frames_per_style_and_writes()
 	$none = pg_ltd_plan_set(array('key' => 'k', 'name' => 'n', 'theme' => '', 'collection' => 'a', 'styles' => array($refused), 'assets' => array('css' => array(), 'js' => array())));
 	pg_assert_same('empty', $none['skip'], 'no style of the set can move');
 	pg_assert_same(0, $none['writes']);
+
+	$moved = array();
+	foreach (array(_lgs_plan_style(1, 'about'), _lgs_plan_style(2, 'blog')) as $s) {
+		$s['facts']['pages'] = array();
+		$s['facts']['frame_exists'] = true;
+		$moved[] = $s;
+	}
+	$again = pg_ltd_plan_set(array('key' => 'k', 'name' => 'n', 'theme' => '', 'collection' => 'a', 'styles' => $moved, 'assets' => array('css' => array(), 'js' => array())));
+	pg_assert_same('no_pages', $again['skip'], 'a set moved before has no page left on its classic styles');
+	pg_assert_same(0, $again['writes']);
+	$html = pg_ltd_plan_set_html($again);
+	pg_assert_contains('Skipped: no page uses a style of this set any more', $html);
+	pg_assert_same(false, strpos($html, '<details'), 'its styles are not listed');
 }
 
 function test_lgs_plan_set_regions_made_once()
@@ -262,5 +275,5 @@ function test_lgs_screen_offers_sets()
 	pg_assert_same(1, preg_match('/name="sets\[\]"[^>]*form="ltd_dry_run"/', $screen), 'a set is ticked for the dry run');
 	pg_assert_contains('pg_ltd_sets($report)', $screen);
 	pg_assert_contains("pg_ltd_plan(array_keys(\$chosen), array_keys(\$chosen_sets))", $screen);
-	pg_assert_contains("\$p['kind'] === 'style' && \$p['skip'] === ''", $screen, 'Convert carries single styles only');
+	pg_assert_contains("if (\$p['kind'] === 'set') \$hidden .= '<input type=\"hidden\" name=\"sets[]\"", $screen, 'Convert carries the sets too');
 }

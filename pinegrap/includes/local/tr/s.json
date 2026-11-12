@@ -3439,6 +3439,7 @@
     "Skipped by {var:1} after: {var:2}": "{var:1} tarafından atlandı, önceki sonuç: {var:2}",
     "Skipped: \"{var:1}\" is being edited by {var:2}.": "Atlandı: \"{var:1}\" sayfasını {var:2} düzenliyor.",
     "Skipped: \"{var:1}\" is being edited in the visual designer.": "Atlandı: \"{var:1}\" görsel tasarımcıda düzenleniyor.",
+    "Skipped: no page uses a style of this set any more. A set moved before keeps its classic styles.": "Atlandı: artık hiçbir sayfa bu setin bir stilini kullanmıyor. Daha önce taşınan bir set klasik stillerini korur.",
     "Skipped: no style of this set can be moved.": "Atlandı: bu setin hiçbir stili taşınamıyor.",
     "Skipped: the visual designer does not open this style.": "Atlandı: görsel tasarımcı bu stili açmıyor.",
     "Skipper": "Kaptan",

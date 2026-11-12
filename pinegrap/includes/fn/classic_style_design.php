@@ -129,6 +129,26 @@ function pg_classic_style_managed_files($list, $is_own_file, $output_path)
 }
 
 /**
+ * A frame's CSS and JS entries with the style's own design files made
+ * managed file entries (pg_classic_style_managed_files()): a design file of
+ * the site that is not a theme.
+ *
+ * @param array $frame  pg_classic_style_frame()
+ * @return array  'css', 'js'
+ */
+function pg_classic_style_frame_assets($frame)
+{
+    $is_own_file = function ($name) {
+        $file = db_item("SELECT theme FROM files WHERE design = '1' AND name = '" . e($name) . "' LIMIT 1");
+        return is_array($file) && (string)$file['theme'] !== '1';
+    };
+    return array(
+        'css' => pg_classic_style_managed_files($frame['css'], $is_own_file, OUTPUT_PATH),
+        'js'  => pg_classic_style_managed_files($frame['js'], $is_own_file, OUTPUT_PATH),
+    );
+}
+
+/**
  * The tree of one page of a converted style: the style's body attributes
  * and title on the root, the frame component as its only child.
  *
@@ -236,12 +256,9 @@ function pg_classic_style_design_open($style_id, $user)
     $frame = pg_classic_style_frame((string)$row['style_code'], pg_classic_style_region_lookup());
 
     // The style's own design files stay editable in the designer.
-    $is_own_file = function ($name) {
-        $file = db_item("SELECT theme FROM files WHERE design = '1' AND name = '" . e($name) . "' LIMIT 1");
-        return is_array($file) && (string)$file['theme'] !== '1';
-    };
-    $frame['css'] = pg_classic_style_managed_files($frame['css'], $is_own_file, OUTPUT_PATH);
-    $frame['js']  = pg_classic_style_managed_files($frame['js'],  $is_own_file, OUTPUT_PATH);
+    $files = pg_classic_style_frame_assets($frame);
+    $frame['css'] = $files['css'];
+    $frame['js']  = $files['js'];
 
     $component = pg_classic_style_component($style_id, (string)$row['style_name'], $frame['frame'], $user);
     if (!is_array($component)) {
@@ -425,13 +442,16 @@ function pg_classic_style_folder_page_tree($root_props, $shared_id, $shared_name
  * the style from its folder gets page_style and a tree placing the frame
  * component, as the style's own pages got at open, and its body drawn. A
  * page given a style or a tree meanwhile is left alone. Only a designer.
+ * The move of a set gives the pages the set's design as their style.
  *
  * @param string $body_classes  the design-wide body classes being folded onto the pages
+ * @param int    $to_style      the page_style written, 0 for the style itself
  * @return array  page ids converted
  */
-function pg_classic_style_convert_folder_pages($style_id, $user, $body_classes = '')
+function pg_classic_style_convert_folder_pages($style_id, $user, $body_classes = '', $to_style = 0)
 {
     $style_id = (int)$style_id;
+    $target = ((int)$to_style > 0) ? (int)$to_style : $style_id;
     if ((int)$user['role'] > 1 || !pg_multi_page_design_ready()) return array();
     $pages = pg_classic_style_folder_pages($style_id);
     if (!$pages) return array();
@@ -457,7 +477,7 @@ function pg_classic_style_convert_folder_pages($style_id, $user, $body_classes =
         $page_id = (int)$p['page_id'];
         $code = generate_style_code_from_tree($tree, (string)$p['page_name'], '');
         db("UPDATE page
-            SET page_style = '$style_id',
+            SET page_style = '$target',
                 page_tree_json = '" . e($tree_json) . "',
                 page_tree_code = '" . e((string)$code) . "'
             WHERE page_id = '$page_id'

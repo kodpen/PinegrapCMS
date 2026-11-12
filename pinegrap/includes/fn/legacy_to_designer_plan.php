@@ -406,7 +406,8 @@ function pg_ltd_set_assets($styles)
  * design as their style. A common or designer region several styles place
  * becomes one shared component, listed (and counted) under the first of
  * them. A style the designer refuses is skipped with its reason; a set none
- * of whose styles can move is skipped as 'empty'.
+ * of whose styles can move is skipped as 'empty', one whose moving styles
+ * have no page (a set moved before) as 'no_pages'.
  *
  * Pure: no query.
  *
@@ -427,7 +428,7 @@ function pg_ltd_set_assets($styles)
  *                array('setting', 'from', 'to'): what its pages would show
  *                differently), 'writes' (its own, the design not counted)),
  *                'mobile_pages' (pages of its moving styles that have a
- *                mobile style), 'skip' ('' or 'empty'), 'writes'
+ *                mobile style), 'skip' ('', 'empty' or 'no_pages'), 'writes'
  */
 function pg_ltd_plan_set($facts)
 {
@@ -439,6 +440,7 @@ function pg_ltd_plan_set($facts)
                  'assets' => isset($f['assets']) && is_array($f['assets']) ? $f['assets'] : array('css' => array(), 'js' => array()),
                  'styles' => array(), 'mobile_pages' => 0, 'skip' => '', 'writes' => 0);
     $moving = 0;
+    $pages = 0;
     $made_common = array();
     $made_designer = array();
     foreach ((array)($f['styles'] ?? array()) as $s) {
@@ -482,11 +484,13 @@ function pg_ltd_plan_set($facts)
                   'writes' => $plan['skip'] === '' ? $plan['writes'] - 1 : 0));
         if ($plan['skip'] !== '') continue;
         ++$moving;
+        $pages += count($plan['pages']);
         $out['writes'] += $plan['writes'] - 1;
         if ($out['mobile_on']) $out['mobile_pages'] += (int)($s['mobile_pages'] ?? 0);
     }
-    if ($moving === 0) {
-        $out['skip'] = 'empty';
+    if ($moving === 0 || $pages === 0) {
+        // A set moved before keeps its classic styles, with no page left.
+        $out['skip'] = ($moving === 0) ? 'empty' : 'no_pages';
         $out['writes'] = 0;
     } else {
         ++$out['writes'];
@@ -524,12 +528,9 @@ function pg_ltd_plan_facts($s, $converted)
         $frame = pg_classic_style_frame($code, pg_classic_style_region_lookup());
         $facts['frame'] = pg_ltd_frame_targets($frame['frame']);
         $facts['warnings'] = $frame['warnings'];
-        $is_own_file = function ($name) {
-            $file = db_item("SELECT theme FROM files WHERE design = '1' AND name = '" . e($name) . "' LIMIT 1");
-            return is_array($file) && (string)$file['theme'] !== '1';
-        };
-        $facts['_css'] = pg_classic_style_managed_files($frame['css'], $is_own_file, OUTPUT_PATH);
-        $facts['_js'] = pg_classic_style_managed_files($frame['js'], $is_own_file, OUTPUT_PATH);
+        $files = pg_classic_style_frame_assets($frame);
+        $facts['_css'] = $files['css'];
+        $facts['_js'] = $files['js'];
         foreach ($facts['frame']['designer'] as $name) {
             $made = db_value("SELECT sc.id FROM shared_components sc
                               JOIN cregion ON sc.category = CONCAT('cregion:', cregion.cregion_id)
@@ -773,6 +774,8 @@ function pg_ltd_plan_set_html($p)
     $items = '';
     if ($p['skip'] === 'empty') {
         $items .= $line(lang('Skipped: no style of this set can be moved.'), 'fg-danger');
+    } elseif ($p['skip'] === 'no_pages') {
+        $items .= $line(lang('Skipped: no page uses a style of this set any more. A set moved before keeps its classic styles.'), 'fg-secondary');
     } else {
         $items .= $line(lang(array('string' => 'One Legacy design "{var:1}" is made for these {var:2} styles: their pages take it as their style, and the classic styles stay as they are.', 'vars' => array($p['name'], count($p['styles'])))));
         $items .= $line($p['theme'] !== ''
@@ -792,7 +795,8 @@ function pg_ltd_plan_set_html($p)
         }
     }
     $styles = '';
-    foreach ($p['styles'] as $s) {
+    // A set moved before writes nothing; its styles have nothing to show.
+    foreach (($p['skip'] === 'no_pages' ? array() : $p['styles']) as $s) {
         $only = array();
         foreach ($kept as $a) {
             if (in_array($s['name'], (array)($a['styles'] ?? array()), true)) $only[] = (string)$a['name'];
