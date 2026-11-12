@@ -89,8 +89,12 @@ function test_settings_organization_card_draws_every_field()
 {
 	$card = settings_organization_test_card('includes/settings/general.php', 'pgset-organization');
 
+	$prep = settings_organization_test_source('includes/settings/prep.php');
+
 	foreach (array_keys(settings_organization_test_moved()) as $field) {
-		pg_assert_contains('name="' . $field . '"', $card . settings_organization_test_source('includes/settings/prep.php'), $field . ' keeps its post name');
+		// The logo is a picker field: pg_picker_field() writes the hidden input's name.
+		$drawn = ($field === 'organization_logo') ? "pg_picker_field('public_image', 'organization_logo'" : 'name="' . $field . '"';
+		pg_assert_contains($drawn, $card . $prep, $field . ' keeps its post name');
 	}
 
 	foreach (array('organization_name', 'organization_address_1', 'organization_country', 'erp_seller_vkn', 'erp_seller_tax_office') as $field) {

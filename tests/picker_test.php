@@ -368,7 +368,8 @@ function test_picker_dialog_texts_and_script()
 	pg_assert_contains("'assets/js/pg_picker.min.js'              => array('assets/js/pg_picker.js')", picker_test_source('includes/fn/output.php'));
 	pg_assert_contains('id="pg_picker_config"', $module);
 	pg_assert_contains('JSON_HEX_TAG', $module, 'the settings cannot close their script tag');
-	pg_assert_contains("pg_picker_browse_button('site_icon', 'site_icon'", picker_test_source('includes/settings/prep.php'));
+	pg_assert_contains("pg_picker_field('site_icon', 'site_icon', pg_site_icon_name()", picker_test_source('includes/settings/prep.php'));
+	pg_assert_false(strpos(picker_test_source('includes/settings/prep.php'), 'pg_picker_script()') !== false, 'prep.php runs before every settings screen: the screens print the script');
 	pg_assert_contains('pgUI.dialog.hide(self.root)', $script);
 	pg_assert_contains("root.pgUI.on(picker.root, 'dialog', 'hidden'", $script, 'the pick is handed over once the dialog has closed');
 }
@@ -445,4 +446,74 @@ function test_picker_upload_wired()
 	pg_assert_contains('pg_file_store_upload(', $module, 'stored as Upload File stores');
 	pg_assert_contains("\$answer['upload'] = array('ok'", $module, 'the list says whether Upload is offered');
 	pg_assert_contains("data.append('token'", picker_test_source('assets/js/pg_picker.js'));
+}
+
+// The picker field: what a stored value shows, and the markup the script
+// reads.
+function test_picker_field_view_and_markup()
+{
+	$kinds = pg_picker_kinds();
+
+	pg_assert_same('bi-file-earmark-pdf', pg_picker_file_icon('PDF'));
+	pg_assert_same('bi-file-earmark-image', pg_picker_file_icon('webp'));
+	pg_assert_same('bi-file-earmark', pg_picker_file_icon('xyz'));
+	pg_assert_same('Logos · 512 × 512 · 48 KB', pg_picker_field_meta(array('path' => array(array('name' => 'Files'), array('name' => 'Logos')), 'width' => 512, 'height' => 512, 'size_label' => '48 KB')));
+	pg_assert_same('/about · Company', pg_picker_field_meta(array('address' => '/about', 'path' => array(array('name' => 'Pages'), array('name' => 'Company')))));
+
+	$empty = pg_picker_field_view($kinds['public_image'], '', null);
+	pg_assert_same('empty', $empty['state']);
+	pg_assert_same('', $empty['note']);
+
+	$missing = pg_picker_field_view($kinds['public_image'], 'old-logo.png', array('value' => 'old-logo.png', 'state' => 'missing'));
+	pg_assert_same(array('missing', 'old-logo.png', 'bi-image', 'warning'), array($missing['state'], $missing['text'], $missing['icon'], $missing['tone']), 'a lost name stays as stored');
+	pg_assert_true($missing['note'] !== '');
+
+	$gone = pg_picker_field_view($kinds['file'], 42, null);
+	pg_assert_same(array('missing', '#42', 'bi-file-earmark-x'), array($gone['state'], $gone['text'], $gone['icon']), 'an id kind has no name left to tell');
+
+	$ok = array('value' => 'logo.png', 'text' => 'logo.png', 'state' => 'ok', 'thumb' => '/thumb/logo.png', 'type' => 'png', 'path' => array(array('name' => 'Files')), 'width' => 64, 'height' => 64, 'size_label' => '2 KB');
+	$view = pg_picker_field_view($kinds['public_image'], 'logo.png', $ok);
+	pg_assert_same(array('ok', 'logo.png', 'Files · 64 × 64 · 2 KB', '/thumb/logo.png', '', ''), array($view['state'], $view['text'], $view['meta'], $view['thumb'], $view['note'], $view['tone']));
+
+	$binned = pg_picker_field_view($kinds['file'], 7, array('state' => 'binned', 'text' => 'price-list.pdf', 'type' => 'pdf'));
+	pg_assert_same(array('danger', 'bi-file-earmark-pdf'), array($binned['tone'], $binned['icon']));
+	pg_assert_same('warning', pg_picker_field_view($kinds['public_image'], 'x.png', array('state' => 'offline', 'text' => 'x.png'))['tone']);
+
+	$hidden = pg_picker_field_view($kinds['file'], 9, array('state' => 'hidden'));
+	pg_assert_same(array('bi-lock', ''), array($hidden['icon'], $hidden['tone']), 'a file in a closed folder is not named');
+
+	$html = pg_picker_field_markup('public_image', 'app_icon', 'old-logo.png', $missing, array('title' => 'Choose a picture', 'describedby' => 'app_icon_help'));
+	pg_assert_contains('<input type="hidden" name="app_icon" value="old-logo.png" data-pg-picker-value/>', $html, 'the stored value is posted unchanged');
+	pg_assert_contains('class="pg-pfield is-warning" data-pg-picker-field data-pg-picker-kind="public_image" data-pg-picker-title="Choose a picture"', $html);
+	pg_assert_contains('id="app_icon" class="pg-pfield-input" value="old-logo.png"', $html, 'the label names the text input');
+	pg_assert_contains('aria-controls="app_icon_list" aria-describedby="app_icon_meta app_icon_help app_icon_note"', $html);
+	pg_assert_contains('id="app_icon_note"', $html);
+	pg_assert_contains('<span class="bi bi-image"></span>', $html);
+
+	$html = pg_picker_field_markup('file', 'file_id', '', $empty, array('id' => 'sl_file', 'invalid' => true));
+	pg_assert_contains('class="pg-pfield is-empty is-error"', $html);
+	pg_assert_contains('name="file_id" value=""', $html);
+	pg_assert_contains('id="sl_file" class="pg-pfield-input" value=""', $html);
+	pg_assert_contains('aria-invalid="true"', $html);
+	pg_assert_false(strpos($html, 'pg-pfield-note') !== false, 'no note for an empty field');
+
+	$html = pg_picker_field_markup('public_image', 'logo', 'logo.png', $view);
+	pg_assert_contains('<img src="/thumb/logo.png" alt="" loading="lazy"/>', $html);
+	pg_assert_false(strpos($html, 'pg_picker_config') !== false, 'the field never prints the script');
+	pg_assert_same('', pg_picker_field('nope', 'x', ''), 'an unknown kind draws nothing');
+}
+
+function test_picker_field_box_and_typed_state()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	$start = strpos($css, '.pg-pfield-box {');
+	$box = substr($css, $start, strpos($css, '}', $start) - $start);
+	pg_assert_contains('background-color: var(--bs-btn-input-bg);', $box, 'the box has the input background');
+	pg_assert_contains('border: var(--bs-border-width) solid var(--bs-border-color);', $box, 'and the input border');
+	pg_assert_contains('.pg-pfield-input:focus-visible {', $css, 'one focus ring, drawn by the box');
+	pg_assert_contains('.collapse.show:has(.pg-pfield.is-open) {', $css, 'an open list is not clipped by a collapse');
+
+	// A paste fires no keydown before its input event, so the Field may be
+	// made after the text changed: the chosen name comes from the attribute.
+	pg_assert_contains('this.text = this.input.defaultValue;', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_picker.js'));
 }

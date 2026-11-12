@@ -24327,6 +24327,286 @@ select.pg-list-table-field option.private {
 .pg-picker-sheet .pg-picker-strip .pg-picker-thumb:nth-child(n+3) {
   display: none;
 }
+/* The picker field (pg_picker_field()): the chosen value with its picture
+   and line in a form-control box, clear and caret inside it, Browse beside
+   it. A search's list drops below the row without a top of its own, so a
+   note under the field stays below the list. */
+.pg-pfield {
+  position: relative;
+}
+.pg-pfield-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+.pg-pfield-box {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  min-height: 3rem;
+  padding: 0.3rem 0.5rem 0.3rem 0.4rem;
+  color: var(--bs-btn-input-fg);
+  cursor: text;
+  /* A div, not a .form-control: the same tokens draw the same box. */
+  background-color: var(--bs-btn-input-bg);
+  border: var(--bs-border-width) solid var(--bs-border-color);
+  border-radius: var(--bs-radius-5);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pg-pfield-box {
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  }
+}
+/* v6's unlayered .collapse overflow-y: clip cut off an open field's list
+   (the short link File field sits in the destination collapse); a layered
+   !important beats it, only while the list is open. */
+.collapse.show:has(.pg-pfield.is-open) {
+  overflow: visible !important;
+}
+.pg-pfield.is-empty .pg-pfield-box,
+.pg-pfield.is-typing .pg-pfield-box {
+  padding-left: 0.75rem;
+}
+.pg-pfield-box:focus-within {
+  border-color: var(--pg-primary);
+  box-shadow: 0 0 0 var(--pg-focus-ring-width) var(--pg-focus-ring-color);
+}
+.pg-pfield.is-warning .pg-pfield-box {
+  border-color: var(--pg-warning);
+}
+.pg-pfield:is(.is-danger, .is-error) .pg-pfield-box {
+  border-color: var(--pg-danger);
+}
+.pg-pfield-thumb {
+  display: flex;
+  flex: 0 0 2.25rem;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  overflow: hidden;
+  border-radius: var(--pg-radius);
+  background: var(--pg-bg-1);
+  font-size: 1.1rem;
+  color: var(--pg-fg-2);
+}
+.pg-pfield-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pg-pfield.is-empty .pg-pfield-box > .pg-pfield-thumb,
+.pg-pfield.is-typing .pg-pfield-box > .pg-pfield-thumb {
+  display: none;
+}
+.pg-pfield-text,
+.pg-pfield-words {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+.pg-pfield-input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  font: inherit;
+  color: var(--pg-fg-emphasis);
+  text-overflow: ellipsis;
+}
+/* The box draws the focus ring (:focus-within); the global input ring
+   would draw a second one inside it. */
+.pg-pfield-input:focus-visible {
+  outline: 0;
+}
+.pg-pfield-input::placeholder {
+  color: var(--pg-fg-2);
+}
+.pg-pfield-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--pg-fg-2);
+}
+.pg-pfield-box .pg-pfield-meta:empty,
+.pg-pfield.is-typing .pg-pfield-box .pg-pfield-meta {
+  display: none;
+}
+.pg-pfield.is-warning .pg-pfield-box .pg-pfield-meta,
+.pg-pfield.is-warning .pg-pfield-note {
+  color: var(--pg-warning-ink);
+}
+.pg-pfield.is-danger .pg-pfield-note {
+  color: var(--pg-danger-ink);
+}
+.pg-pfield-clear {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  font-size: 0.8rem;
+  color: var(--pg-fg-2);
+}
+.pg-pfield-clear:hover {
+  background: var(--pg-bg-1);
+  color: var(--pg-fg-emphasis);
+}
+.pg-pfield.is-empty .pg-pfield-clear {
+  display: none;
+}
+.pg-pfield-caret {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  color: var(--pg-fg-2);
+  transition: transform 0.15s ease;
+}
+.pg-pfield.is-open .pg-pfield-caret {
+  transform: rotate(180deg);
+}
+.pg-pfield-browse {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.4rem;
+}
+.pg-pfield-pop {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 30;
+  margin-top: 0.25rem;
+  overflow: hidden;
+  border: var(--pg-border-width) solid var(--pg-border-color);
+  border-radius: var(--pg-radius-lg);
+  background: var(--pg-bg-body);
+  box-shadow: var(--pg-shadow-lg);
+}
+.pg-pfield-status {
+  padding: 0.45rem 0.75rem;
+  border-bottom: var(--pg-border-width) solid var(--pg-border-color);
+  font-size: 0.75rem;
+  color: var(--pg-fg-2);
+}
+.pg-pfield-status:empty {
+  display: none;
+}
+.pg-pfield-list {
+  max-height: min(24rem, 55vh);
+  padding: 0.25rem;
+  overflow-y: auto;
+}
+.pg-pfield-option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--pg-radius);
+  cursor: pointer;
+}
+.pg-pfield-option:hover,
+.pg-pfield-option.is-active {
+  background: var(--pg-primary-bg-subtle);
+}
+.pg-pfield-option .pg-picker-name {
+  font-size: 0.875rem;
+}
+.pg-pfield-more {
+  min-height: 2.5rem;
+  color: var(--pg-primary-ink);
+}
+.pg-pfield-option + .pg-pfield-more {
+  margin-top: 0.25rem;
+  border-top: var(--pg-border-width) solid var(--pg-border-color);
+  border-radius: 0 0 var(--pg-radius) var(--pg-radius);
+}
+.pg-pfield-more > .bi {
+  flex: 0 0 2.25rem;
+  text-align: center;
+  font-size: 1.1rem;
+}
+.pg-pfield-more kbd {
+  flex: 0 0 auto;
+  padding: 0.1rem 0.4rem;
+  border: var(--pg-border-width) solid var(--pg-border-color);
+  border-radius: var(--pg-radius-sm);
+  background: var(--pg-bg-1);
+  font-size: 0.7rem;
+  color: var(--pg-fg-2);
+}
+.pg-pfield-note {
+  display: flex;
+  align-items: baseline;
+}
+@media (max-width: 575.98px) {
+  .pg-pfield-browse .pg-btn-label {
+    display: none;
+  }
+  .pg-pfield-box {
+    cursor: pointer;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-pfield-caret {
+    transition: none;
+  }
+}
+/* The field's phone search: a half sheet from the bottom edge. */
+.dialog.pg-pfield-sheet {
+  --bs-dialog-margin: 0;
+  width: 100%;
+  max-width: 100%;
+  height: min(36rem, 75%);
+  max-height: none;
+  margin: auto 0 0;
+  border-width: 0;
+  border-radius: var(--pg-radius-xl) var(--pg-radius-xl) 0 0;
+}
+.pg-pfield-sheet::before {
+  content: "";
+  align-self: center;
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 0.3rem;
+  margin-top: 0.45rem;
+  border-radius: var(--pg-radius-pill);
+  background: var(--pg-border-color);
+}
+.pg-pfield-sheet .dialog-header {
+  padding: 0.5rem 1rem;
+}
+.pg-pfield-sheet .dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+  padding: 0.25rem 1rem 1rem;
+  overflow: hidden;
+}
+.pg-pfield-sheet .pg-pfield-status {
+  padding: 0;
+  border: 0;
+}
+.pg-pfield-sheet .pg-pfield-list {
+  flex: 1 1 auto;
+  max-height: none;
+  margin: 0 -0.5rem;
+}
+.pg-pfield-sheet .pg-pfield-option {
+  min-height: 3rem;
+  padding: 0.45rem 0.5rem;
+}
 }
 
 /* Unlayered: Bootstrap 6 gives .fixed-top 1020 in its helpers layer, which
