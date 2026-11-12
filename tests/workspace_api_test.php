@@ -1290,6 +1290,11 @@ function test_ws_api_message_asks_assistants()
 	pg_assert_false(ws_api_message_asks_assistants(7, 'message'), 'an application\'s message does not ask');
 	pg_assert_false(ws_api_message_asks_assistants(0, 'decision'), 'a decision does not ask');
 	pg_assert_false(ws_api_message_asks_assistants(0, 'note'), 'a note does not ask');
+
+	pg_assert_true(ws_api_message_wakes_agents(7, 'message'), 'an application\'s message wakes the agents it names');
+	pg_assert_true(ws_api_message_wakes_agents(0, 'message', 3), 'so does one through an OAuth connection');
+	pg_assert_false(ws_api_message_wakes_agents(0, 'message'), 'a person\'s message asks through ws_message_ask_assistants()');
+	pg_assert_false(ws_api_message_wakes_agents(7, 'decision'), 'a decision wakes nobody');
 }
 
 // Pinegrap AI and an MCP agent asked from a device: after the answer where

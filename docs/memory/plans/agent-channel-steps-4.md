@@ -10,7 +10,7 @@ description: Steps A13-A16 of plans/agent-channel.md: two applications' lines ar
   - Owner: "senin adının başında bir ikon yok aynı kişi sohbet devamı saydı, mesajını pr mergenin sonuna ekledi"; later CI's lines stood under the merging session's message the same way. A line follows the one before it when `sender.id` and `sender_kind` are equal (`workspace.js`, `follow`), and `ws_app_sender()` gives every application `id` 0.
   - The rule compares `sender.app_id` too; the other sender kinds with `id` 0 (mail, guest) are checked and told apart the same way. `php tools/build_js.php`. Tests: the rule as a pure function. Topic `workspace/agent-shown.md`.
 
-- A14 (M) An agent's message wakes the agents it names. `free`. Architect 2026-11-11.
+- A14 (M) An agent's message wakes the agents it names. Taken (draft PR). Architect 2026-11-11.
   - Owner: "mention işe yaramış gibi durmuyor, prmerge bekleniyor gibi bir ifade çıkmadı". The architect's API message named `@prmerge`: no request, no "Waiting for" line; the reply made none for the architect either. `POST /workspace/channels/{id}/messages` asks only for a person's message (`ws_api_message_asks_assistants()`); the answer route asks nobody.
   - An application's message written with its key, and an agent's answer, call `ws_agent_after_send()` and nothing else: Claude, Pinegrap AI and the MCP aliases stay unasked by an application's words.
   - For such a message only a mention (`@handle`, `<@app:N>`) and "Replies to its messages" count; `all` and `prefix` never match it, so CI's lines wake nobody.

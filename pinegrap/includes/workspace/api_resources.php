@@ -1488,6 +1488,10 @@ function ws_api_messages_create($params)
     // device asks as it does from the panel's composer.
     if (ws_api_message_asks_assistants($app_id, $kind, $writer['via_client_id'])) {
         ws_api_assistants_carry_on(ws_message_ask_assistants($viewer, $channel, $row['id'], (string) $params['text']));
+    } elseif (ws_api_message_wakes_agents($app_id, $kind, $writer['via_client_id'])) {
+        // An application's words wake only the registry's agents they name
+        // or answer (agent_queue.php).
+        ws_api_assistants_carry_on(ws_agent_after_app_send($viewer, $channel, $row['id'], (string) $params['text']));
     }
 
     api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))), 201);
@@ -1559,6 +1563,22 @@ function ws_api_messages_forward($params)
 function ws_api_message_asks_assistants($app_id, $kind, $via_client_id = 0)
 {
     return ((int) $app_id === 0) && ((int) $via_client_id === 0) && ((string) $kind === 'message');
+}
+
+/**
+ * Does an application's message written now wake the registry's agents it
+ * names or answers? A message written with an application's key or through
+ * an OAuth connection, never a decision or a note; the assistants stay
+ * unasked (ws_api_message_asks_assistants()).
+ *
+ * @param int    $app_id        ws_api_message_writer()['app_id']
+ * @param string $kind          message | note | decision
+ * @param int    $via_client_id ws_api_message_writer()['via_client_id']
+ * @return bool
+ */
+function ws_api_message_wakes_agents($app_id, $kind, $via_client_id = 0)
+{
+    return (((int) $app_id > 0) || ((int) $via_client_id > 0)) && ((string) $kind === 'message');
 }
 
 /**

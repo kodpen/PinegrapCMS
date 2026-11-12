@@ -87,6 +87,74 @@ function test_workspace_agent_wake_matches()
 	pg_assert_true(!ws_agent_wake_matches($replies, 'ok, go on', false));
 }
 
+function test_workspace_agent_wake_matches_by_writer_kind()
+{
+	$row = array('handle' => 'prmerge', 'app_id' => 7, 'wake_rule' => 'mention', 'wake_prefix' => '');
+
+	pg_assert_true(ws_agent_wake_matches($row, 'ready for @prmerge', false, true), 'an agent naming it wakes it');
+	pg_assert_true(ws_agent_wake_matches($row, 'see <@app:7>', false, true), 'its application tag from an agent');
+	pg_assert_true(!ws_agent_wake_matches($row, 'ready for review', false, true), 'naming nobody wakes nobody');
+
+	pg_assert_true(!ws_agent_wake_matches(array('wake_rule' => 'all') + $row, '[ci] build 12 green', false, true), 'all never matches an application\'s line');
+	pg_assert_true(ws_agent_wake_matches(array('wake_rule' => 'all') + $row, 'anything', false, false), 'all still matches a person');
+	pg_assert_true(ws_agent_wake_matches(array('wake_rule' => 'all') + $row, 'ping @prmerge', false, true), 'a mention still wakes under all');
+
+	$prefix = array('wake_rule' => 'prefix', 'wake_prefix' => '[ci]') + $row;
+	pg_assert_true(!ws_agent_wake_matches($prefix, '[ci] build 12 red', false, true), 'prefix never matches an application\'s line');
+	pg_assert_true(ws_agent_wake_matches($prefix, '[ci] build 12 red', false, false), 'prefix still matches a person');
+
+	$replies = array('wake_rule' => 'replies') + $row;
+	pg_assert_true(ws_agent_wake_matches($replies, 'done', true, true), 'an agent answering its message wakes it');
+	pg_assert_true(!ws_agent_wake_matches($replies, 'done', false, true));
+}
+
+function test_workspace_agent_brake_line_due()
+{
+	pg_assert_true(ws_agent_brake_line_due(false, false), 'under a person\'s message');
+	pg_assert_true(ws_agent_brake_line_due(false, true), 'under every person\'s message');
+	pg_assert_true(ws_agent_brake_line_due(true, false), 'between agents the first time');
+	pg_assert_true(!ws_agent_brake_line_due(true, true), 'between agents once an hour, not per message');
+}
+
+function test_workspace_agent_asker_app()
+{
+	pg_assert_same(13, ws_agent_asker_app(array('sender_kind' => 'app', 'sender_id' => '13')));
+	pg_assert_same(0, ws_agent_asker_app(array('sender_kind' => 'user', 'sender_id' => 4)), 'a person');
+	pg_assert_same(0, ws_agent_asker_app(null), 'a wake has no message');
+
+	$tags = array(13 => array('handle' => 'mimar', 'name' => 'ADNAN Mimar'));
+	pg_assert_same(array('app_id' => 13, 'handle' => 'mimar', 'name' => 'ADNAN Mimar'), ws_agent_asker_named(13, $tags, 'Architect app'));
+	pg_assert_same(array('app_id' => 9, 'handle' => '', 'name' => 'CI'), ws_agent_asker_named(9, $tags, ' CI '), 'an application with no agent');
+
+	pg_assert_same('the agent @mimar (ADNAN Mimar)', ws_agent_brief_asker_name(ws_agent_asker_named(13, $tags, '')));
+	pg_assert_same('the application CI', ws_agent_brief_asker_name(ws_agent_asker_named(9, $tags, 'CI')));
+
+	$lines = implode("\n", ws_agent_brief_asker_lines(ws_agent_asker_named(13, $tags, '')));
+	pg_assert_contains('not from a person', $lines);
+	pg_assert_contains('@mimar or <@app:13>', $lines, 'how to wake the asker');
+	pg_assert_contains('no_answer', $lines);
+}
+
+function test_workspace_agent_answer_text()
+{
+	pg_assert_same('<@user:4> done', ws_agent_answer_text('done', 4, false), 'the person who asked is mentioned');
+	pg_assert_same('thanks <@user:4>', ws_agent_answer_text('thanks <@user:4>', 4, false), 'not twice');
+	pg_assert_same('done', ws_agent_answer_text('done', 4, true), 'an agent\'s request or a wake mentions nobody');
+}
+
+function test_workspace_agent_answer_route_wakes()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_agent_requests.php');
+	$answer = substr($source, strpos($source, 'function ws_api_agent_request_answer('));
+	$answer = substr($answer, 0, strpos($answer, 'function ws_api_agent_request_fail('));
+
+	pg_assert_contains('ws_agent_after_app_send($place[\'writer\'], $place[\'channel\'], $reply_id, $text)', $answer, 'an agent\'s answer wakes the agents it names');
+	pg_assert_true(strpos($answer, 'ws_message_ask_assistants(') === false, 'and asks no assistant');
+
+	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_resources.php');
+	pg_assert_contains('ws_agent_after_app_send($viewer, $channel, $row[\'id\'], (string) $params[\'text\'])', $api, 'an application\'s message wakes the agents it names');
+}
+
 function test_workspace_agent_knock_body_and_headers()
 {
 	$body = ws_agent_knock_body('https://site.example/integration.php', 'ci', 12);

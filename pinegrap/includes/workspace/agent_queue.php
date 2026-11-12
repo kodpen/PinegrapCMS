@@ -55,12 +55,18 @@ function ws_agent_request_value($agent)
  * answer to one of the agent's own messages. A mention wakes it under every
  * rule.
  *
+ * An application's words (an agent's message, CI's lines, a message written
+ * through an OAuth connection) wake an agent only by a mention or as an
+ * answer to its own message: all and prefix never match them, so a line
+ * that names nobody wakes nobody.
+ *
  * @param array  $row         wake_rule, wake_prefix, handle, app_id
  * @param string $body        the message, tags normalised
  * @param bool   $replies_own the message answers one of the agent's messages
+ * @param bool   $by_app      an application wrote it
  * @return bool
  */
-function ws_agent_wake_matches($row, $body, $replies_own)
+function ws_agent_wake_matches($row, $body, $replies_own, $by_app = false)
 {
     $body = (string) $body;
     $handle = (string) ($row['handle'] ?? '');
@@ -73,7 +79,13 @@ function ws_agent_wake_matches($row, $body, $replies_own)
         return true;
     }
 
-    switch ((string) ($row['wake_rule'] ?? 'mention')) {
+    $rule = (string) ($row['wake_rule'] ?? 'mention');
+
+    if ($by_app && ($rule !== 'replies')) {
+        return false;
+    }
+
+    switch ($rule) {
         case 'all':
             return trim($body) !== '';
 
@@ -344,8 +356,9 @@ function ws_agent_after_send($viewer, $channel, $message_id, $body, $followed = 
         return (int) $row['app_id'];
     }, $rows)));
     $chain = ws_agent_chain($message_id, $apps);
-    $sender = $chain[0] ?? array('sender_kind' => 'user', 'sender_id' => 0);
+    $sender = $chain[0] ?? array('sender_kind' => 'user', 'sender_id' => 0, 'by_agent' => false);
     $parent = $chain[1] ?? null;
+    $by_app = ($sender['sender_kind'] === 'app') || !empty($sender['by_agent']);
     $made = array();
 
     foreach ($rows as $row) {
@@ -363,7 +376,7 @@ function ws_agent_after_send($viewer, $channel, $message_id, $body, $followed = 
 
         $replies_own = $parent && ($own_app > 0) && ($parent['sender_kind'] === 'app') && ($parent['sender_id'] === $own_app);
 
-        if (($followed === '') && !ws_agent_wake_matches($row, $body, $replies_own)) {
+        if (($followed === '') && !ws_agent_wake_matches($row, $body, $replies_own, $by_app)) {
             continue;
         }
 
@@ -371,9 +384,20 @@ function ws_agent_after_send($viewer, $channel, $message_id, $body, $followed = 
         $brake = ws_agent_brake(ws_agent_chain_depth($chain), $last_hour);
 
         if ($brake !== '') {
-            ws_message_system((int) $channel['id'], ($brake === 'depth')
+            $line = ($brake === 'depth')
                 ? lang(array('string' => '@{var:1} was not woken: agents have answered one another too many times in a row. A person\'s message starts the count again.', 'vars' => (string) $row['handle']))
-                : lang(array('string' => '@{var:1} was not woken: it was woken too often in the last hour.', 'vars' => (string) $row['handle'])));
+                : lang(array('string' => '@{var:1} was not woken: it was woken too often in the last hour.', 'vars' => (string) $row['handle']));
+
+            // Between agents the line is said once, not under every message
+            // of a chain that goes on without the braked agent.
+            $said = $by_app && ((int) db_value("SELECT COUNT(*) FROM ws_messages
+                WHERE channel_id = '" . (int) $channel['id'] . "' AND sender_kind = 'system' AND body = '" . e($line) . "'
+                    AND created_at > '" . (time() - 3600) . "'") > 0);
+
+            if (ws_agent_brake_line_due($by_app, $said)) {
+                ws_message_system((int) $channel['id'], $line);
+            }
+
             continue;
         }
 
@@ -400,6 +424,123 @@ function ws_agent_after_send($viewer, $channel, $message_id, $body, $followed = 
     }
 
     return $made;
+}
+
+/**
+ * Is a braked wake's system line written? Under a person's message every
+ * time; between agents once an hour in the channel, as the same line said
+ * already stands for the whole chain. Pure.
+ *
+ * @param bool $by_app an application wrote the message
+ * @param bool $said   the same line was written in the channel this hour
+ * @return bool
+ */
+function ws_agent_brake_line_due($by_app, $said)
+{
+    return !$by_app || !$said;
+}
+
+/**
+ * After an application's message was written (an agent's message with its
+ * key, an agent's answer, a message through an OAuth connection): only the
+ * registry's agents it names or answers are woken, within the brakes.
+ * Claude, Pinegrap AI and the MCP aliases are never asked by an
+ * application's words. ws_message_ask_assistants()'s shape, for
+ * ws_api_assistants_carry_on().
+ *
+ * @param array  $viewer the writer (the application's owner, or the person it writes through)
+ * @param array  $channel
+ * @param int    $message_id
+ * @param string $body as written
+ * @return array claude, agent, ai (false), agents, models
+ */
+function ws_agent_after_app_send($viewer, $channel, $message_id, $body)
+{
+    $woken = ws_agent_after_send($viewer, $channel, $message_id, ws_tokens_normalise(trim((string) $body)));
+
+    return array(
+        'claude' => false,
+        'agent'  => false,
+        'ai'     => false,
+        'agents' => $woken,
+        'models' => !empty(array_filter($woken, function ($value) {
+            return strpos($value, 'model:') === 0;
+        })),
+    );
+}
+
+/**
+ * The application that asked a request: the writer of the asking message
+ * when an application wrote it, 0 for a person (or a wake). Pure.
+ *
+ * @param array|null $message ws_messages row: sender_kind, sender_id
+ * @return int
+ */
+function ws_agent_asker_app($message)
+{
+    return (is_array($message) && ((string) ($message['sender_kind'] ?? '') === 'app')) ? (int) $message['sender_id'] : 0;
+}
+
+/**
+ * How the asking application is named: its agent's @handle and name when it
+ * is a registry agent's, else the application's own name. Pure.
+ *
+ * @param int    $app_id
+ * @param array  $tags     ws_agent_tags(): app_id => handle, name
+ * @param string $app_name the application's name in api_apps
+ * @return array app_id, handle ('' when no agent), name
+ */
+function ws_agent_asker_named($app_id, $tags, $app_name)
+{
+    $tag = $tags[(int) $app_id] ?? null;
+    $name = trim((string) ($tag['name'] ?? ''));
+
+    return array(
+        'app_id' => (int) $app_id,
+        'handle' => $tag ? (string) $tag['handle'] : '',
+        'name'   => ($name !== '') ? $name : trim((string) $app_name),
+    );
+}
+
+/**
+ * The asking application of a request, named, or null when a person asked.
+ *
+ * @param array $row ws_ai_requests
+ * @return array|null app_id, handle, name
+ */
+function ws_agent_request_asker_app($row)
+{
+    $app_id = ((int) ($row['message_id'] ?? 0) > 0) ? ws_agent_asker_app(ws_message($row['message_id'])) : 0;
+
+    if ($app_id <= 0) {
+        return null;
+    }
+
+    return ws_agent_asker_named($app_id, function_exists('ws_agent_tags') ? ws_agent_tags() : array(),
+        (string) db_value("SELECT name FROM api_apps WHERE id = '" . $app_id . "'"));
+}
+
+/**
+ * The text an agent's answer (or its reason for giving up) is written with:
+ * the person who asked is mentioned in front unless the text names them; a
+ * wake and an application's request mention nobody, as the asking agent is
+ * woken only when the text names it. Pure.
+ *
+ * @param string $text
+ * @param int    $requested_by
+ * @param bool   $plain a wake or a request an application asked
+ * @return string
+ */
+function ws_agent_answer_text($text, $requested_by, $plain)
+{
+    $text = (string) $text;
+    $mention = '<@user:' . (int) $requested_by . '>';
+
+    if ($plain || (strpos($text, $mention) !== false)) {
+        return $text;
+    }
+
+    return $mention . ' ' . $text;
 }
 
 /* ---------------------------------------------------------------------------
@@ -614,6 +755,42 @@ function ws_agent_brief_wake_lines($wake, $channels, $channel_id)
 }
 
 /**
+ * The asking application as the brief names it. Pure.
+ *
+ * @param array $asker ws_agent_asker_named()
+ * @return string
+ */
+function ws_agent_brief_asker_name($asker)
+{
+    $name = trim(str_replace(array("\r", "\n"), ' ', (string) $asker['name']));
+    $handle = ((string) $asker['handle'] !== '') ? '@' . $asker['handle'] : '';
+
+    if ($handle === '') {
+        return 'the application ' . (($name !== '') ? $name : '#' . (int) $asker['app_id']);
+    }
+
+    return 'the agent ' . $handle . (($name !== '') ? ' (' . $name . ')' : '');
+}
+
+/**
+ * What the brief says of a request an application asked: no person asked,
+ * and the answer wakes the asker only when it names it. Pure.
+ *
+ * @param array $asker ws_agent_asker_named()
+ * @return string[]
+ */
+function ws_agent_brief_asker_lines($asker)
+{
+    $who = ws_agent_brief_asker_name($asker);
+    $tag = '<@app:' . (int) $asker['app_id'] . '>';
+    $name = ((string) $asker['handle'] !== '') ? '@' . $asker['handle'] . ' or ' . $tag : $tag;
+
+    return array(
+        'This request comes from ' . $who . ', not from a person. Your answer wakes it only when it names ' . $name . ' (or when its rule wakes it on answers to its messages); close the request with no_answer when nothing needs saying.',
+    );
+}
+
+/**
  * What an app agent is told before it starts on a request: who it is, now,
  * who asked, where, the request inside a data block (a wake's note), the
  * channel's memory, the loop-guard text unless the channel switched it off,
@@ -633,8 +810,13 @@ function ws_agent_brief($agent, $row, $scopes)
     $name = trim((string) $agent['name']);
     $name = (($name !== '') ? $name : (string) $agent['handle']) . ' (@' . (string) $agent['handle'] . ')';
     $request = '';
-    $lines = ws_ai_briefing_head(array('name' => $wake ? 'your schedule' : ws_person_name($row['requested_by'])), 'agent', $name);
+    $by_app = $wake ? null : ws_agent_request_asker_app($row);
+    $lines = ws_ai_briefing_head(array('name' => $wake ? 'your schedule' : ($by_app ? ws_agent_brief_asker_name($by_app) : ws_person_name($row['requested_by']))), 'agent', $name);
     $lines[] = '';
+
+    if ($by_app) {
+        $lines = array_merge($lines, ws_agent_brief_asker_lines($by_app), array(''));
+    }
 
     if ($wake) {
         $channels = (array) db_items("SELECT c.id, c.name FROM ws_channel_agents ca

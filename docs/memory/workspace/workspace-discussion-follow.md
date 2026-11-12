@@ -14,7 +14,7 @@ description: The assistant a discussion follows (ws_threads.follow_agent, step 1
 - Channels never follow: there only `@name`, `/name` or a reply to an answer asks an assistant (owner, 2026-10-21, Slack's way).
 
 ## Which message asks the followed agent?
-- `ws_thread_follow_decide()` (pure): a person's message (`sender_kind = 'user'`) that asks nobody and mentions nobody (no `@` token: person, team or app; `ws_thread_body_mentions()`). Answer 1b. A message of an application or bot asks nobody and changes nothing, so agents never answer each other.
+- `ws_thread_follow_decide()` (pure): a person's message (`sender_kind = 'user'`) that asks nobody and mentions nobody (no `@` token: person, team or app; `ws_thread_body_mentions()`). Answer 1b. A message of an application or bot asks no assistant and changes no follow; only the registry agents it names or answers are woken, within the brakes ([[agent-words-wake]]).
 - The hooks take a `followed` argument (`ws_claude_after_send(..., true)`, `ws_ai_after_send(..., true)`, `ws_mcp_agent_after_send(..., $server_id)`) that skips only the asked-by-name check. The usual checks stay; a refusal is not written in followed mode, else every message of the discussion would carry a line.
 - A scheduled message goes through `ws_message_ask_assistants()` too (scheduled_messages.php), so it follows and marks the channel's line like the writing box.
 
