@@ -33,14 +33,24 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 /** The longest a model agent's requests wait after a failed call, in seconds. */
 define('WS_MODEL_HOLD_MAX', 3600);
 
+/** The version of Anthropic's API the Messages calls are written for. */
+define('WS_MODEL_ANTHROPIC_VERSION', '2026-10-21');
+
+/** The answer's length limit of an Anthropic call that names none (the API requires one). */
+define('WS_MODEL_ANTHROPIC_MAX_TOKENS', 4096);
+
 /**
  * The chat APIs a model assistant can use. Each: name, base (the address
- * before /chat/completions; '' when the person gives it), key (required),
- * header (bearer, or api-key for Azure, which also takes the bearer), http
+ * before /chat/completions; '' when the person gives it), api (absent for an
+ * OpenAI-shaped chat API; anthropic for Anthropic's Messages API, whose
+ * request and answer ws_model_payload() and ws_model_http() translate),
+ * key (required), header (bearer; api-key for Azure, which also takes the
+ * bearer; x-api-key for Anthropic, which takes no bearer), http
  * (a plain http address allowed: only a custom server on the local network),
  * tokens (max_completion_tokens where the API wants it instead of
- * max_tokens), terms (what the provider does with what is sent, rechecked
- * 2026-11-08) and terms_url. Pure.
+ * max_tokens), model_hint (hint_lang when it is a sentence to translate,
+ * not a model name), terms (what the provider does with what is sent,
+ * rechecked 2026-11-08; Anthropic's checked 2026-11-12) and terms_url. Pure.
  *
  * @return array[] by provider id
  */
@@ -52,6 +62,12 @@ function ws_model_providers()
             'tokens' => 'max_completion_tokens', 'model_hint' => 'gpt-4.1-mini',
             'terms' => 'OpenAI does not train on what is sent through its API unless you opt in, and keeps it up to 30 days for abuse monitoring.',
             'terms_url' => 'https://openai.com/enterprise-privacy/',
+        ),
+        'anthropic' => array(
+            'name' => 'Anthropic', 'base' => 'https://api.anthropic.com/v1', 'api' => 'anthropic', 'key' => true, 'header' => 'x-api-key', 'http' => false,
+            'tokens' => 'max_tokens', 'model_hint' => 'a model name from Anthropic\'s model list', 'hint_lang' => true,
+            'terms' => 'Anthropic does not train on what is sent through its API unless you allow it, and deletes it within 30 days, keeping it longer only to enforce its usage policy or where the law requires it.',
+            'terms_url' => 'https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data',
         ),
         'gemini' => array(
             'name' => 'Google Gemini', 'base' => 'https://generativelanguage.googleapis.com/v1beta/openai', 'key' => true, 'header' => 'bearer', 'http' => false,
@@ -79,7 +95,7 @@ function ws_model_providers()
         ),
         'azure' => array(
             'name' => 'Azure OpenAI', 'base' => '', 'key' => true, 'header' => 'api-key', 'http' => false,
-            'tokens' => 'max_completion_tokens', 'model_hint' => 'your deployment name',
+            'tokens' => 'max_completion_tokens', 'model_hint' => 'your deployment name', 'hint_lang' => true,
             'terms' => 'Azure OpenAI does not use what is sent to train models; it is processed in the region of your resource.',
             'terms_url' => 'https://learn.microsoft.com/legal/cognitive-services/openai/data-privacy',
         ),
@@ -145,7 +161,27 @@ function ws_model_endpoint($provider, $base, $path = '/chat/completions')
         $base = substr($base, 0, -17);
     }
 
+    // Anthropic's Messages API answers the chat call; its model list keeps
+    // the path /models.
+    if ((ws_model_api($provider) === 'anthropic') && ($path === '/chat/completions')) {
+        $path = '/messages';
+    }
+
     return $base . $path;
+}
+
+/**
+ * The shape of a provider's API: chat (OpenAI's chat completions, which
+ * Pinegrap AI's loop writes and reads) or anthropic (the Messages API). Pure.
+ *
+ * @param string $provider
+ * @return string
+ */
+function ws_model_api($provider)
+{
+    $providers = ws_model_providers();
+
+    return (isset($providers[$provider]['api']) && ($providers[$provider]['api'] === 'anthropic')) ? 'anthropic' : 'chat';
 }
 
 /**
@@ -161,6 +197,19 @@ function ws_model_headers($provider, $key)
     $headers = array('Accept: application/json', 'Content-Type: application/json');
     $key = trim((string) $key);
 
+    // Anthropic reads the key from x-api-key, never a bearer, and wants the
+    // API version named; 2026-10-21 refuses temperature, which
+    // ws_model_anthropic_request() leaves out.
+    if (ws_model_api($provider) === 'anthropic') {
+        $headers[] = 'anthropic-version: ' . WS_MODEL_ANTHROPIC_VERSION;
+
+        if ($key !== '') {
+            $headers[] = 'x-api-key: ' . $key;
+        }
+
+        return $headers;
+    }
+
     if ($key !== '') {
         $headers[] = 'Authorization: Bearer ' . $key;
 
@@ -175,7 +224,8 @@ function ws_model_headers($provider, $key)
 /**
  * Pinegrap AI's call body made fit for another API: the model is the
  * assistant's, reasoning_effort goes (a model that does not reason refuses
- * it), and the token limit takes the name the API reads. Pure.
+ * it), and the token limit takes the name the API reads. For Anthropic the
+ * whole body is written as a Messages API request. Pure.
  *
  * @param string $provider
  * @param string $model
@@ -189,12 +239,309 @@ function ws_model_payload($provider, $model, $payload)
     $payload['model'] = (string) $model;
     unset($payload['reasoning_effort']);
 
+    if (ws_model_api($provider) === 'anthropic') {
+        return ws_model_anthropic_request($payload);
+    }
+
     if (isset($payload['max_tokens']) && isset($providers[$provider]) && ($providers[$provider]['tokens'] === 'max_completion_tokens')) {
         $payload['max_completion_tokens'] = $payload['max_tokens'];
         unset($payload['max_tokens']);
     }
 
     return $payload;
+}
+
+/**
+ * A chat completions body (as ws_ai_step() and ws_ai_final() write it)
+ * written as an Anthropic Messages API request: the system messages go to
+ * the top-level system; an assistant's tool_calls become tool_use blocks and
+ * tool messages tool_result blocks in one user message; messages of the
+ * same role in a row are joined, as the API wants the roles to alternate
+ * and the first to be the user's; tools become name, description and
+ * input_schema; tool_choice required becomes auto (the newest models refuse
+ * any, and Pinegrap AI's prompt already asks for a tool), none stays;
+ * temperature, top_p and stream go (the API version refuses sampling
+ * settings; the call is never streamed); max_tokens is required.
+ *
+ * A body with no tools whose history holds tool calls (ws_ai_final()) gets
+ * those calls and their answers as plain text, so the request never
+ * depends on tool definitions it does not send. Pure.
+ *
+ * @param array $payload a chat completions body, model set
+ * @return array
+ */
+function ws_model_anthropic_request($payload)
+{
+    $tools = array();
+
+    foreach ((isset($payload['tools']) && is_array($payload['tools'])) ? $payload['tools'] : array() as $tool) {
+        $function = (isset($tool['function']) && is_array($tool['function'])) ? $tool['function'] : (array) $tool;
+
+        if (!isset($function['name']) || ((string) $function['name'] === '')) {
+            continue;
+        }
+
+        $schema = (isset($function['parameters']) && is_array($function['parameters']) && ($function['parameters'] !== array())) ? $function['parameters'] : array('type' => 'object');
+
+        if (!isset($schema['type'])) {
+            $schema['type'] = 'object';
+        }
+
+        if (isset($schema['properties']) && ($schema['properties'] === array())) {
+            $schema['properties'] = new stdClass();
+        }
+
+        $one = array('name' => (string) $function['name'], 'input_schema' => $schema);
+
+        if (isset($function['description']) && ((string) $function['description'] !== '')) {
+            $one['description'] = (string) $function['description'];
+        }
+
+        $tools[] = $one;
+    }
+
+    $with_tools = ($tools !== array());
+    $system = array();
+    $messages = array();
+
+    foreach ((isset($payload['messages']) && is_array($payload['messages'])) ? $payload['messages'] : array() as $message) {
+        $role = (string) ($message['role'] ?? '');
+        $text = ws_model_anthropic_text($message['content'] ?? '');
+
+        if ($role === 'system') {
+            if ($text !== '') {
+                $system[] = $text;
+            }
+
+            continue;
+        }
+
+        $blocks = array();
+
+        if ($role === 'tool') {
+            $role = 'user';
+            $id = ws_model_anthropic_id($message['tool_call_id'] ?? '');
+
+            if ($with_tools) {
+                $blocks[] = array('type' => 'tool_result', 'tool_use_id' => $id, 'content' => ($text !== '') ? $text : '(empty)');
+            } else {
+                $blocks[] = array('type' => 'text', 'text' => 'Tool answer (' . $id . "):\n" . (($text !== '') ? $text : '(empty)'));
+            }
+        } elseif ($role === 'assistant') {
+            if ($text !== '') {
+                $blocks[] = array('type' => 'text', 'text' => $text);
+            }
+
+            foreach ((isset($message['tool_calls']) && is_array($message['tool_calls'])) ? $message['tool_calls'] : array() as $call) {
+                $function = (isset($call['function']) && is_array($call['function'])) ? $call['function'] : array();
+                $name = (string) ($function['name'] ?? '');
+                $arguments = $function['arguments'] ?? '';
+                $arguments = is_string($arguments) ? $arguments : (string) json_encode($arguments, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                $id = ws_model_anthropic_id($call['id'] ?? '');
+
+                if ($with_tools) {
+                    $blocks[] = array('type' => 'tool_use', 'id' => $id, 'name' => $name, 'input' => ws_model_anthropic_input($arguments));
+                } else {
+                    $blocks[] = array('type' => 'text', 'text' => 'Tool call ' . $id . ': ' . $name . ' ' . $arguments);
+                }
+            }
+        } else {
+            $role = 'user';
+
+            if ($text !== '') {
+                $blocks[] = array('type' => 'text', 'text' => $text);
+            }
+        }
+
+        if ($blocks === array()) {
+            continue;
+        }
+
+        $last = count($messages) - 1;
+
+        if (($last >= 0) && ($messages[$last]['role'] === $role)) {
+            $messages[$last]['content'] = ws_model_anthropic_join($messages[$last]['content'], $blocks);
+        } else {
+            $messages[] = array('role' => $role, 'content' => $blocks);
+        }
+    }
+
+    if (($messages === array()) || ($messages[0]['role'] !== 'user')) {
+        array_unshift($messages, array('role' => 'user', 'content' => array(array('type' => 'text', 'text' => 'Continue.'))));
+    }
+
+    $out = array(
+        'model'      => (string) ($payload['model'] ?? ''),
+        'max_tokens' => (isset($payload['max_tokens']) && ((int) $payload['max_tokens'] > 0)) ? (int) $payload['max_tokens'] : WS_MODEL_ANTHROPIC_MAX_TOKENS,
+        'messages'   => $messages,
+    );
+
+    if ($system !== array()) {
+        $out['system'] = implode("\n\n", $system);
+    }
+
+    if ($with_tools) {
+        $out['tools'] = $tools;
+        $choice = $payload['tool_choice'] ?? 'auto';
+        $out['tool_choice'] = array('type' => ($choice === 'none') ? 'none' : 'auto');
+    }
+
+    return $out;
+}
+
+/**
+ * Two runs of content blocks of one role joined: tool_result blocks first,
+ * as the API wants them at the head of a user message. Pure.
+ *
+ * @param array $before
+ * @param array $after
+ * @return array
+ */
+function ws_model_anthropic_join($before, $after)
+{
+    $results = array();
+    $rest = array();
+
+    foreach (array_merge($before, $after) as $block) {
+        if ($block['type'] === 'tool_result') {
+            $results[] = $block;
+        } else {
+            $rest[] = $block;
+        }
+    }
+
+    return array_merge($results, $rest);
+}
+
+/**
+ * A chat message's content as text: a string, or the text of its parts.
+ * Pure.
+ *
+ * @param mixed $content
+ * @return string
+ */
+function ws_model_anthropic_text($content)
+{
+    if (is_array($content)) {
+        $texts = array();
+
+        foreach ($content as $part) {
+            if (is_array($part) && isset($part['text']) && is_string($part['text'])) {
+                $texts[] = $part['text'];
+            }
+        }
+
+        $content = implode("\n", $texts);
+    }
+
+    return is_scalar($content) ? trim((string) $content) : '';
+}
+
+/**
+ * A tool call's id as Anthropic takes it (letters, digits, _ and -). Pure.
+ *
+ * @param mixed $id
+ * @return string
+ */
+function ws_model_anthropic_id($id)
+{
+    $id = preg_replace('/[^A-Za-z0-9_-]/', '_', is_scalar($id) ? (string) $id : '');
+
+    return ($id === '') ? 'call_0' : $id;
+}
+
+/**
+ * A tool call's JSON arguments as the object a tool_use block holds. Words
+ * that are no JSON object are kept under raw_arguments, so the model still
+ * sees what it wrote. Pure.
+ *
+ * @param string $arguments
+ * @return object
+ */
+function ws_model_anthropic_input($arguments)
+{
+    $arguments = trim((string) $arguments);
+
+    if ($arguments === '') {
+        return new stdClass();
+    }
+
+    $decoded = json_decode($arguments);
+
+    if ($decoded instanceof stdClass) {
+        return $decoded;
+    }
+
+    if (is_array($decoded) && ($decoded === array())) {
+        return new stdClass();
+    }
+
+    $out = new stdClass();
+    $out->raw_arguments = $arguments;
+
+    return $out;
+}
+
+/**
+ * An Anthropic Messages API answer written as the chat completions answer
+ * ws_ai_step() reads: choices[0].message with the text blocks as content
+ * and the tool_use blocks as tool_calls (arguments as JSON); thinking
+ * blocks are left out (they are never sent back, which the API accepts).
+ * usage stays as it came (input_tokens and output_tokens, which
+ * ws_ai_usage_tokens() reads); stop_reason gives finish_reason. Anything
+ * else (an error body) is returned as it came. Pure.
+ *
+ * @param mixed $json the decoded answer
+ * @return mixed
+ */
+function ws_model_anthropic_answer($json)
+{
+    if (!is_array($json) || !isset($json['content']) || !is_array($json['content'])) {
+        return $json;
+    }
+
+    $texts = array();
+    $calls = array();
+
+    foreach ($json['content'] as $block) {
+        $type = is_array($block) ? (string) ($block['type'] ?? '') : '';
+
+        if (($type === 'text') && isset($block['text']) && is_string($block['text'])) {
+            $texts[] = $block['text'];
+        } elseif ($type === 'tool_use') {
+            $input = $block['input'] ?? array();
+            $calls[] = array(
+                'id'       => (string) ($block['id'] ?? ''),
+                'type'     => 'function',
+                'function' => array(
+                    'name'      => (string) ($block['name'] ?? ''),
+                    'arguments' => (is_array($input) && ($input !== array())) ? (string) json_encode($input, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : '{}',
+                ),
+            );
+        }
+    }
+
+    $message = array('role' => 'assistant', 'content' => implode("\n\n", $texts));
+
+    if ($calls !== array()) {
+        $message['tool_calls'] = $calls;
+    }
+
+    $stop = (string) ($json['stop_reason'] ?? '');
+    $finish = array('tool_use' => 'tool_calls', 'max_tokens' => 'length', 'refusal' => 'content_filter');
+
+    $out = array(
+        'id'      => (string) ($json['id'] ?? ''),
+        'object'  => 'chat.completion',
+        'model'   => (string) ($json['model'] ?? ''),
+        'choices' => array(array('index' => 0, 'message' => $message, 'finish_reason' => $finish[$stop] ?? 'stop')),
+    );
+
+    if (isset($json['usage']) && is_array($json['usage'])) {
+        $out['usage'] = $json['usage'];
+    }
+
+    return $out;
 }
 
 /**
@@ -386,6 +733,11 @@ function ws_model_http($agent, $method, $path, $payload = null, $timeout = 60)
         $out['headers'] = $answer['headers'];
         $out['body'] = $answer['body'];
         $out['json'] = json_decode($out['body'], true);
+
+        // Pinegrap AI's loop reads chat completions answers.
+        if (ws_model_api($provider) === 'anthropic') {
+            $out['json'] = ws_model_anthropic_answer($out['json']);
+        }
     }
 
     return $out;
