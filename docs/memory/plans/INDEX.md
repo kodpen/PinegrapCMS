@@ -64,6 +64,6 @@
 - workspace-channel-look.md: Plan (owner 2026-11-10, handed to workers 2026-11-11): the Workspace channel screen in the dashboard's manner (one header card, colour wash, pill tabs, panes as cards); steps CL1-CL3 in order
 - workspace-channel-sound.md: Plan (owner 2026-11-11, #8720): a short sound in Workspace when something for the person arrives while that conversation is not in front of them; one step, CS1
 - workspace-mail-screen-sending.md: How the Workspace mail plan sends: one send path through the mail queue with an outcome hook, the item's send state, the schema step, limits, files, what a forward carries
-- workspace-mail-screen-steps-2.md: Steps of plans/workspace-mail-screen.md after the owner's words of 2026-11-11 (#8765): WM10 a row opens the mail, never a channel; the HTML view and a mailbox kept in no channel follow
+- workspace-mail-screen-steps-2.md: Steps WM10-WM14 of plans/workspace-mail-screen.md (owner 2026-11-11, #8765): a row opens the mail, the HTML kept and drawn in a guarded frame, a mailbox kept in no channel, a plain box
 - workspace-mail-screen-steps.md: Steps WM1-WM9 of plans/workspace-mail-screen.md: queue outcome hook, schema, send path, the screen with views and pane, New e-mail, Forward as e-mail, the answer on the same path, API, close-out
 - workspace-mail-screen.md: Plan (owner 2026-11-10): the Workspace's E-mails screen becomes a mail screen for the Workspace mailboxes: Incoming, Sent, Not sent, a reading pane, New e-mail, Forward as e-mail, the mail queue
