@@ -65,7 +65,7 @@ function test_visitor_report_settings_button_and_open_state()
 
 	pg_assert_contains('id="report_settings_button" data-bs-toggle="drawer" data-bs-target="#report_settings"', $source);
 	pg_assert_contains('$returned_with_error = ($liveform->check_form_errors() == true);', $source);
-	pg_assert_contains("\$open_settings_at_load = (isset(\$_GET['id']) == false) || \$returned_with_error;", $source);
+	pg_assert_contains("\$open_settings_at_load = ((isset(\$_GET['id']) == false) && (\$ready_report === null)) || \$returned_with_error;", $source);
 	pg_assert_contains("(\$open_settings_at_load ? ' data-pg-open-at-load=\"1\"' : '')", $source);
 }
 

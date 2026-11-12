@@ -27,13 +27,16 @@ function test_ready_reports_registry_shape()
 
 	foreach ($reports as $key => $report) {
 		pg_assert_same($key, $report['key'], $key . ' key');
-		pg_assert_same('order_report', $report['screen'], $key . ' screen');
+		pg_assert_true(in_array($report['screen'], array('order_report', 'visitor_report'), true), $key . ' screen');
 		pg_assert_true(is_string($report['title']) && ($report['title'] !== ''), $key . ' title');
 		pg_assert_true(is_array($report['levels']) && (count($report['levels']) >= 1) && (count($report['levels']) <= 3), $key . ' one to three levels');
 
 		foreach ($report['levels'] as $level) {
 			pg_assert_same(array('by', 'order'), array_keys($level), $key . ' level');
-			pg_assert_true(in_array($level['order'], array('alphabet', 'number of orders', 'total'), true), $key . ' order by');
+			$orders = ($report['screen'] === 'order_report')
+				? array('alphabet', 'number of orders', 'total')
+				: array('alphabet', 'number of visitors', 'number of page views', 'order total');
+			pg_assert_true(in_array($level['order'], $orders, true), $key . ' order by');
 		}
 
 		foreach ($report['filters'] as $filter) {
@@ -61,17 +64,26 @@ function test_ready_report_requested_reads_the_parameter()
 // Every entry's levels are levels the order report offers.
 function test_ready_reports_levels_exist_on_the_screen()
 {
-	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order_report.php');
+	$screens = array(
+		'order_report' => (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order_report.php'),
+		'visitor_report' => (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_visitor_report.php'),
+	);
 
 	foreach (pg_ready_reports() as $key => $report) {
+		$screen = $screens[$report['screen']];
+
 		foreach ($report['levels'] as $level) {
 			pg_assert_true(strpos($screen, "] = '" . $level['by'] . "';") !== false, $key . ': ' . $level['by'] . ' is a level of the screen');
 		}
 
-		pg_assert_same(pg_order_report_default_filters(), $report['filters'], $key . ': the orders the shop cards sum');
+		if ($report['screen'] === 'order_report') {
+			pg_assert_same(pg_order_report_default_filters(), $report['filters'], $key . ': the orders the shop cards sum');
+		}
 	}
 
-	pg_assert_same(array('sales_by_region', 'sales_over_time', 'sales_by_payment_method', 'sales_by_source'), array_keys(pg_ready_reports()));
+	pg_assert_same(array('sales_by_region', 'sales_over_time', 'sales_by_payment_method', 'sales_by_source'), array_keys(array_filter(pg_ready_reports(), function ($report) {
+		return $report['screen'] === 'order_report';
+	})));
 	pg_assert_same(array('year', 'month', 'day'), array_column(pg_ready_reports()['sales_over_time']['levels'], 'by'));
 	pg_assert_same(array('payment_method'), array_column(pg_ready_reports()['sales_by_payment_method']['levels'], 'by'));
 	pg_assert_same(array('utm_source'), array_column(pg_ready_reports()['sales_by_source']['levels'], 'by'));
@@ -119,7 +131,7 @@ function test_ready_report_strip()
 	$without = pg_ready_report_strip('order_report', array('year', 'month', 'day', 'payment_method'));
 
 	pg_assert_same(array('sales_over_time', 'sales_by_payment_method'), array_column($without, 'key'), 'only those the levels can give');
-	pg_assert_same(array(), pg_ready_report_strip('visitor_report', $levels), 'another screen');
+	pg_assert_same(array('visitors_over_time'), array_column(pg_ready_report_strip('visitor_report', $levels), 'key'), 'another screen: its own entries only');
 }
 
 // Sales by region: billing country, then billing state, both by total, so

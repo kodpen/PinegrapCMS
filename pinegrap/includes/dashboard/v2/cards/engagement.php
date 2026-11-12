@@ -194,6 +194,8 @@ function pg_dashboard_v2_card_engagement($user, $period, $compare)
         'nobody'     => ($active === 0) ? lang('Nobody is on the site right now.') : '',
         'last_title' => lang('Last visits'),
         'last'       => $last,
-        'url'        => 'view_visitor_reports.php',
+        // The pages people came in on, today's (the visitor report's
+        // ready report by landing page).
+        'url'        => pg_ready_report_url('visitors_by_page', 1),
     ));
 }

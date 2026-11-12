@@ -65,6 +65,11 @@ if (isset($id) && (((int) $id < 1) || ((int) db_value("SELECT COUNT(*) FROM visi
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
+// A ready report (?ready=<key>, includes/fn/ready_reports.php) opens as a
+// new, unsaved report; a saved report's id wins. Its period comes with the
+// address as a date changer preset (&p=), so it carries no date filter.
+$ready_report = isset($_GET['id']) ? null : pg_ready_report_requested($_GET['ready'] ?? null, 'visitor_report');
+
 // prepare query string with id if necessary
 $query_string_id = '';
 
@@ -105,8 +110,8 @@ if (!$_POST) {
 
     // The report's settings (name, summarize by, filters, Save & Run) sit in
     // a drawer from the right. A plain new report has nothing to show yet,
-    // so its drawer opens at once; a saved report shows its results.
-    $open_settings_at_load = (isset($_GET['id']) == false) || $returned_with_error;
+    // so its drawer opens at once; a saved or ready report shows its results.
+    $open_settings_at_load = ((isset($_GET['id']) == false) && ($ready_report === null)) || $returned_with_error;
 
     $output_edit_button = pg_screen_toolbar(array(
         'primary' => '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" id="report_settings_button" data-bs-toggle="drawer" data-bs-target="#report_settings" aria-controls="report_settings"><i class="bi bi-sliders me-2" aria-hidden="true"></i>' . h(lang('Report settings')) . '</button>',
@@ -126,10 +131,21 @@ if (!$_POST) {
 
     // if a visitor report is being created and this screen has not already been submitted, then set default values for form fields
     if ((isset($_GET['id']) == false) && !$form_submitted) {
-        // set default values for summarize by fields
-        $liveform->assign_field_value('summarize_by_1', 'year');
-        $liveform->assign_field_value('summarize_by_2', 'month');
-        $liveform->assign_field_value('summarize_by_3', 'day');
+        if ($ready_report !== null) {
+            // The ready report's levels (a level it does not name is none)
+            // and its name for a save.
+            for ($level = 1; $level <= 3; $level++) {
+                $liveform->assign_field_value('summarize_by_' . $level, $ready_report['levels'][$level - 1]['by'] ?? '');
+                $liveform->assign_field_value('order_by_' . $level, $ready_report['levels'][$level - 1]['order'] ?? '');
+            }
+
+            $liveform->assign_field_value('name', lang($ready_report['title']));
+        } else {
+            // set default values for summarize by fields
+            $liveform->assign_field_value('summarize_by_1', 'year');
+            $liveform->assign_field_value('summarize_by_2', 'month');
+            $liveform->assign_field_value('summarize_by_3', 'day');
+        }
     
     // else if a visitor report is being edited and this screen has not been submitted already, pre-populate fields with data
     } elseif ((isset($_GET['id']) == true) && ($liveform->field_in_session('id') == false)) {
@@ -574,6 +590,9 @@ if (!$_POST) {
 
             if (isset($id) == true) {
                 $preset_query['id'] = $id;
+            } elseif ($ready_report !== null) {
+                // Another period keeps the ready report open.
+                $preset_query['ready'] = $ready_report['key'];
             }
 
             $preset_current = ($preset_key === $active_preset);
@@ -1155,9 +1174,27 @@ if (!$_POST) {
             <td>&nbsp;</td>';
     }
     
-    // A new report is named "[new visitor report]".
-    if ($output_visitor_report_name == '') {
+    // A ready report is named by its title, another new report
+    // "[new visitor report]".
+    if (($output_visitor_report_name == '') && ($ready_report !== null)) {
+        $output_visitor_report_name = lang($ready_report['title']);
+    } elseif ($output_visitor_report_name == '') {
         $output_visitor_report_name = '[' . lang('new visitor report') . ']';
+    }
+
+    // The strip of ready reports over the report: those this screen's
+    // summarize-by levels can give, the open one marked.
+    $output_ready_strip = '';
+    $ready_strip = pg_ready_report_strip('visitor_report', array_values(array_filter($summarize_by_options, function ($value) {
+        return ($value !== '') && ($value !== '<optgroup>') && ($value !== '</optgroup>');
+    })), ($ready_report !== null) ? $ready_report['key'] : '');
+
+    if ($ready_strip) {
+        foreach ($ready_strip as $ready_item) {
+            $output_ready_strip .= '<li><a href="' . h($ready_item['url']) . '" class="btn btn-sm rounded-pill text-nowrap ' . ($ready_item['current'] ? 'btn-solid theme-primary" aria-current="page"' : 'btn-outline theme-secondary"') . '>' . h(lang($ready_item['title'])) . '</a></li>';
+        }
+
+        $output_ready_strip = '<nav class="pg-ready-strip mb-3" aria-label="' . h(lang('Ready reports')) . '"><ul class="list-unstyled d-flex flex-wrap gap-2 mb-0">' . $output_ready_strip . '</ul></nav>';
     }
     
     // The dashboard's stylesheet (pg_dashboard_v2_style_url()) draws them.
@@ -1226,6 +1263,7 @@ if (!$_POST) {
     ) . '
 <main id="content" class="container-fluid">
     ' . $output_edit_button . '
+    ' . $output_ready_strip . '
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '

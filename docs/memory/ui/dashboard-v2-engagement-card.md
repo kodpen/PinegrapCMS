@@ -21,4 +21,6 @@ description: New dashboard's Online Engagement card (engagement): what it shows 
 ## When does the card send empty?
 - Only when there is nothing to draw: nobody on, no visit in 30 minutes and no last visit (a site without visits). `pg_dash.js` then shows the line alone and calls no renderer. Otherwise `empty` is `''` and the renderer draws `nobody` as its heading.
 
+- "See all" opens the visitor report's ready report by landing page for today (`view_visitor_report.php?ready=visitors_by_page&p=today`, `visitors/visitor-report-ready-reports.md`); before #8800 the saved reports list.
+
 Pinned in `tests/dashboard_v2_engagement_test.php`. Related: docs/memory/ui/dashboard-v2-cards-look.md

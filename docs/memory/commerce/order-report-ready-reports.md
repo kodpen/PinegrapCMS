@@ -6,7 +6,7 @@ module: ready_reports
 
 ## What is a ready report?
 - A report defined in code, opened by an address parameter as a new, unsaved report; no table, no column. Saving it makes it the person's own saved report, as any new report (`plans/report-screens.md`).
-- The registry is `pg_ready_reports()` in `includes/fn/ready_reports.php` (pure, loaded by `functions.php`): each entry has `key`, `screen` (`order_report`), `title` (English, printed through `lang()`), `levels` (one to three, each `by` and `order`), `filters` (field, operator, value) and `period` (calendar days counted, today included; 0 for none).
+- The registry is `pg_ready_reports()` in `includes/fn/ready_reports.php` (pure, loaded by `functions.php`): each entry has `key`, `screen` (`order_report`; `visitor_report` for `visitors/visitor-report-ready-reports.md`), `title` (English, printed through `lang()`), `levels` (one to three, each `by` and `order`), `filters` (field, operator, value) and `period` (calendar days counted, today included; 0 for none).
 
 ## How does the order report open one?
 - `view_order_report.php?ready=<key>`: `pg_ready_report_requested($_GET['ready'] ?? null, 'order_report')` returns the entry, or null for a value that is not a string, an unknown key (keys are exact, case included) or another screen's key; null opens the plain new report (Year, Month, Day and `pg_order_report_default_filters()`). An `id` wins: a saved report ignores `ready`.
