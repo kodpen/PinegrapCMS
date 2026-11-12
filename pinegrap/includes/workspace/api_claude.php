@@ -433,6 +433,8 @@ function ws_api_claude_request_present($viewer, $row)
         // the application that asked, 0 and '' for a person.
         'requested_by'     => array('user_id' => (int) $row['requested_by'], 'name' => ws_person_name($row['requested_by'])) + ws_api_claude_request_asker($message),
         'reply_message_id' => ((int) $row['reply_message_id'] > 0) ? (int) $row['reply_message_id'] : null,
+        // Closed without text (no_answer): answered with no reply.
+        'no_answer'        => function_exists('ws_agent_request_no_answer') && ws_agent_request_no_answer($row),
         'error'            => (string) $row['error'],
         'created_at'       => api_time($row['created_at']),
         'claimed_at'       => ((int) $row['claimed_at'] > 0) ? api_time($row['claimed_at']) : null,
@@ -475,6 +477,7 @@ function ws_api_claude_request_schema()
         'wake'             => array('kind' => 'string', 'note' => 'string', 'due_at' => 'string?'),
         'requested_by'     => array('user_id' => 'integer', 'name' => 'string', 'app_id' => 'integer', 'app_handle' => 'string', 'app_name' => 'string'),
         'reply_message_id' => 'integer?',
+        'no_answer'        => 'boolean',
         'error'            => 'string',
         'created_at'       => 'string',
         'claimed_at'       => 'string?',
