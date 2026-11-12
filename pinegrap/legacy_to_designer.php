@@ -181,7 +181,7 @@ $style_row = function ($s) use ($state_badges, $region_labels, $page_list, $chos
                 break;
         }
     }
-    if ($s['mobile'] > 0) {
+    if ($s['mobile'] > 0 && defined('MOBILE') && MOBILE) {
         $lines[] = array('fg-secondary', lang('A folder or page uses it as its mobile style: the classic style stays and keeps serving phones.'));
     }
     $output_notes = '';

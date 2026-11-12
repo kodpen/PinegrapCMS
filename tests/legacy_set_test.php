@@ -173,7 +173,7 @@ function test_lgs_plan_set_one_design_frames_per_style_and_writes()
 	$refused = _lgs_plan_style(3, 'old');
 	$refused['facts']['refusal'] = 'No.';
 	$p = pg_ltd_plan_set(array(
-		'key' => 'k1', 'name' => 'about set', 'theme' => '', 'collection' => 'a', 'social_on' => true,
+		'key' => 'k1', 'name' => 'about set', 'theme' => '', 'collection' => 'a', 'social_on' => true, 'mobile_on' => true,
 		'settings' => array('social_networking_position' => 'bottom_left', 'layout_type' => ''),
 		'styles' => array(_lgs_plan_style(1, 'about'), $folder, $refused),
 		'assets' => array('css' => array(pg_di_asset_entry('external-css', 'a.css', '{path}a.css', false)), 'js' => array()),
@@ -198,6 +198,8 @@ function test_lgs_plan_set_one_design_frames_per_style_and_writes()
 	$off = pg_ltd_plan_set(array('key' => 'k', 'name' => 'n', 'theme' => '', 'collection' => 'a', 'social_on' => false,
 		'settings' => array('social_networking_position' => 'bottom_left', 'layout_type' => ''), 'styles' => array($folder), 'assets' => array('css' => array(), 'js' => array())));
 	pg_assert_same(array(array('setting' => 'layout_type', 'from' => 'custom', 'to' => '')), $off['styles'][0]['changes'], 'the sharing position matters only while sharing is on');
+	pg_assert_same(0, $off['mobile_pages'], 'mobile styles matter only while the site serves them');
+	pg_assert_same(0, $off['styles'][0]['mobile']);
 	pg_assert_same('refusal', $p['styles'][2]['skip']);
 	// The design once; per style its frame, its free pages and widgets; no style row flipped.
 	pg_assert_same(1 + (1 + 1) + (1 + 2 + 1), $p['writes']);

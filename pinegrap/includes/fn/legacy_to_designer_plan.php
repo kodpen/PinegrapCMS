@@ -413,7 +413,8 @@ function pg_ltd_set_assets($styles)
  * @param array $facts  'key', 'name' (the design's), 'theme' (its theme
  *                      file's name, '' for the activated theme),
  *                      'collection', 'settings' (pg_ltd_sets()'s), 'social_on'
- *                      (the site shows sharing buttons), 'styles' (list of
+ *                      (the site shows sharing buttons), 'mobile_on' (the
+ *                      site serves phones their mobile style), 'styles' (list of
  *                      array('id', 'name', 'state', 'facts'
  *                      (pg_ltd_plan_style()'s), 'body_classes', 'style_head'
  *                      (bool), 'mobile_pages', 'mobile', 'social_position',
@@ -434,6 +435,7 @@ function pg_ltd_plan_set($facts)
     $out = array('kind' => 'set', 'key' => (string)($f['key'] ?? ''), 'name' => (string)($f['name'] ?? ''),
                  'theme' => (string)($f['theme'] ?? ''), 'collection' => (string)($f['collection'] ?? ''),
                  'settings' => (array)($f['settings'] ?? array()), 'social_on' => !empty($f['social_on']),
+                 'mobile_on' => !empty($f['mobile_on']),
                  'assets' => isset($f['assets']) && is_array($f['assets']) ? $f['assets'] : array('css' => array(), 'js' => array()),
                  'styles' => array(), 'mobile_pages' => 0, 'skip' => '', 'writes' => 0);
     $moving = 0;
@@ -472,15 +474,16 @@ function pg_ltd_plan_set($facts)
             array('id' => (int)($s['id'] ?? 0), 'name' => (string)($s['name'] ?? ''), 'state' => (string)($s['state'] ?? '')),
             $plan,
             array('folder_pages' => $folder, 'body_classes' => trim((string)($s['body_classes'] ?? '')),
-                  'style_head' => !empty($s['style_head']), 'mobile_pages' => (int)($s['mobile_pages'] ?? 0),
-                  'mobile' => (int)($s['mobile'] ?? 0), 'changes' => $changes,
+                  // Mobile styles are read only while the site serves them.
+                  'style_head' => !empty($s['style_head']), 'mobile_pages' => $out['mobile_on'] ? (int)($s['mobile_pages'] ?? 0) : 0,
+                  'mobile' => $out['mobile_on'] ? (int)($s['mobile'] ?? 0) : 0, 'changes' => $changes,
                   // pg_ltd_plan_style() counts the style's flip; here the
                   // design is one row of its own, counted once below.
                   'writes' => $plan['skip'] === '' ? $plan['writes'] - 1 : 0));
         if ($plan['skip'] !== '') continue;
         ++$moving;
         $out['writes'] += $plan['writes'] - 1;
-        $out['mobile_pages'] += (int)($s['mobile_pages'] ?? 0);
+        if ($out['mobile_on']) $out['mobile_pages'] += (int)($s['mobile_pages'] ?? 0);
     }
     if ($moving === 0) {
         $out['skip'] = 'empty';
@@ -620,6 +623,7 @@ function pg_ltd_plan($style_ids, $set_keys = array())
         $out[] = pg_ltd_plan_set(array('key' => $set['key'], 'name' => $set['name'], 'theme' => $set['theme'],
                                        'collection' => $set['collection'], 'settings' => $set['settings'],
                                        'social_on' => defined('SOCIAL_NETWORKING') && SOCIAL_NETWORKING,
+                                       'mobile_on' => defined('MOBILE') && MOBILE,
                                        'styles' => $styles, 'assets' => pg_ltd_set_assets($assets)));
     }
     foreach ($report as $s) {
@@ -799,7 +803,7 @@ function pg_ltd_plan_set_html($p)
             if ($page['action'] === 'held') $look = true;
         }
         $styles .= '
-            <details class="mt-2"' . ($look ? ' open' : '') . '><summary><h4 class="d-inline small fw-semibold mb-0">' . h($s['name']) . '</h4>'
+            <details class="mt-2"' . ($look ? ' open' : '') . '><summary><h4 class="d-inline fs-sm fw-semibold mb-0">' . h($s['name']) . '</h4>'
             . ($s['skip'] === '' ? ' <span class="small fg-secondary">' . h(lang(array('string' => '{var:1} writes', 'vars' => array(pg_format_number($s['writes'], 0))))) . '</span>' : '') . '</summary>
             <ul class="small mb-0 mt-1 ps-12">' . pg_ltd_plan_items($s, true)
             . ($only && $s['skip'] === '' ? $line(lang(array('string' => 'Only on its pages: {var:1}', 'vars' => array(implode(', ', $only))))) : '') . '</ul></details>';
