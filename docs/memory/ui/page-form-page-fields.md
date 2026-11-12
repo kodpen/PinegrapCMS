@@ -1,6 +1,6 @@
 ---
 name: page-form-page-fields
-description: Create Page / Edit Page page settings are typed page picker fields (pg_page_form_page_field()); the designer's page type pane keeps selects; Settings and the user start page too (#8782)
+description: Create Page / Edit Page and the designer's page type pane: page settings are typed page picker fields (pg_page_form_page_field()); Settings and the user start page too (#8782)
 module: forms
 ---
 
@@ -10,7 +10,7 @@ module: forms
 ## How is one drawn?
 - `pg_page_form_page_field($name, $value, $types, $label)` in `includes/forms/page_form.php`: with `pg_page_form_picker_fields()` on, `pg_picker_field(pg_picker_page_kind_for($types), $name, $value)`; else a select of `select_page($value, $types)` with "-$label-" first.
 - `add_page.php` and `edit_page.php` pass `true` as the last argument of `pg_page_form_type_fields()`: it switches the fields on while it draws and appends `pg_picker_script()` to the properties.
-- The designer's page type pane (`page_type_pane.php`) passes nothing and keeps the selects: the designer loads neither the panel stylesheet nor the picker (PK8 moves it).
+- The designer's page type pane (`page_type_pane.php`) passes `true` too since PK8: its answer's markup carries the picker script, which the designer's screen has already loaded (`picker-designer-bridge.md`).
 
 ## Which pages does a setting offer?
 - A setting that takes some page types gets the page kind listing only those (`pg_picker_page_type_kinds()` in `includes/fn/picker.php`, `picker-registry.md`): the catalog's detail page `page_catalog_detail`, a next page in checkout (`page_shipping_step`, `page_billing_step`, `page_preview_step`, `page_shipping_method`, `page_order_receipt`), `page_form_item_view`, `page_calendar_event_view`, `page_affiliate_confirmation`. Any other setting: `page`.

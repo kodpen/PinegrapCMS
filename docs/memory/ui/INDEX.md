@@ -413,7 +413,7 @@
 - page-form-count-defaults.md: Create/Edit Page and the designer's Page Type pane save an emptied or zero Photo Gallery column count or Form View Directory summary box as the form's default (4 / 30 / 5), not 0
 - page-form-group-names.md: Create/Edit Page type properties and the ERP accounts import: radio questions are legends, the custom form's two e-mail blocks are named by their switch
 - page-form-number-ranges.md: Page form System Options number boxes refused out of range by pg_page_form_number_errors() instead of cut by their columns; whole-number boxes use the integer mask
-- page-form-page-fields.md: Create Page / Edit Page page settings are typed page picker fields (pg_page_form_page_field()); the designer's page type pane keeps selects; Settings and the user start page too (#8782)
+- page-form-page-fields.md: Create Page / Edit Page and the designer's page type pane: page settings are typed page picker fields (pg_page_form_page_field()); Settings and the user start page too (#8782)
 - page-form-refused-save.md: Create Page and Edit Page come back with what was typed when a save is refused: the stored post, the redraw helpers in includes/forms/page_form.php, what is not redrawn
 - page-list-paging.md: The pages list (view_pages.php) on the list table driver (paged since #6114, issues #6076 #6088): views, source, bulk actions by selection, folder access in SQL, inherited styles
 - page-shared-form.md: The page create and edit screens share includes/forms/page_form.php: the type picker and System Options card, and the save checks; what differs and what stays in the screens
@@ -475,6 +475,7 @@
 - pg-fields-speech.md: Screen readers and panel combobox/chip fields (pg_fields.js v6): toggle name and value, listbox options, no-match line, hidden select out of Tab, focused chip deleted, named remove buttons
 - pg-ui-adapter.md: pgUI (assets/js/pg_ui.js), the panel's one door to Bootstrap's JavaScript on 5.3 and 6: kinds, promises, both event names, dialog markup, overlay host, readiness, the Bootstrap 6 bridge
 - phone-width-rows.md: Phone-width fixes: v6 .input-group and .btn do not wrap (rate tiers, documents card, sign-in rows, product group default option), Login Region fields, inner clusters wrap, marketplace grid
+- picker-designer-bridge.md: The visual designer's bridge to the picker (PK8): link, file and picture fields through pgEditorPicker, the source choice, Browse under widget page selects, the page type pane's picker fields
 - picker-dialog.md: The picker dialog pgPicker.open() (assets/js/pg_picker.js, PK2): what it shows, how a pick is handed back, the keyboard, the phone sheet, the Browse button, what picker.php added for it
 - picker-editor-bridge.md: The rich text editor's bridge to the picker (PK7): CKEditor's Link dialog Page… and File…, short links in the page dialog, the Image dialog's Picture… and Unsplash…, the fallback without pgUI
 - picker-field.md: The picker field pg_picker_field() (PK5): combobox with the chosen value and its picture, search list, Browse, clear, phone sheet, marks; which screens use it and who prints the script

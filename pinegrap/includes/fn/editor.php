@@ -211,8 +211,8 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
             $folder_id
         );
         // The Link and Image dialogs choose through the picker, behind the
-        // same gate (pg_ckeditor_picker_script()).
-        $output_picker_bridge = $files_allowed ? pg_ckeditor_picker_script() : '';
+        // same gate (pg_editor_bridge_script()).
+        $output_picker_bridge = $files_allowed ? pg_editor_bridge_script() : '';
         $output_include_source_plugin = '';
         $output_remove_sourcedialog_plugin = '';
         $output_editor_initialization = '';
@@ -609,18 +609,19 @@ function _pg_wysiwyg_file_properties($allowed, $base, $token, $folder_id)
 }
 
 /**
- * The words the editor's bridge to the picker shows (the Link and Image
- * dialogs' buttons, the picker titles, the Unsplash dialog), by their
- * English text. Pure but for lang().
+ * The words the editors' bridge to the picker shows (the Link and Image
+ * dialogs' buttons, the designer's source choice, the picker titles, the
+ * Unsplash dialog), by their English text. Pure but for lang().
  *
  * @return array
  */
-function pg_ckeditor_picker_texts()
+function pg_editor_bridge_texts()
 {
     $texts = array();
 
     foreach (array(
         'Page…', 'File…', 'Picture…', 'Choose a page', 'Choose a file', 'Choose a picture', 'Short links',
+        'Choose a link', 'A page or a short link', 'A file', 'From the site',
         'Search', 'Load More', 'Cancel', 'Close', 'Loading', 'Select', '{var:1} result(s)',
         'Sorry, we could not find any images.',
     ) as $text) {
@@ -631,15 +632,15 @@ function pg_ckeditor_picker_texts()
 }
 
 /**
- * The rich text editor's bridge to the picker (assets/js/pg_ckeditor_picker.js
- * and the Unsplash dialog, in pg_editor_bridge.min.js) with its settings, and
- * the picker itself (pg_picker_script()), for get_wysiwyg_editor_code() when
- * the user may browse files. Short links are offered to a manager and up, as
+ * The editors' bridge to the picker (assets/js/pg_ckeditor_picker.js and the
+ * Unsplash dialog, in pg_editor_bridge.min.js) with its settings, and the
+ * picker itself (pg_picker_script()): for get_wysiwyg_editor_code() when the
+ * user may browse files, and for the visual designer's screen. Short links are offered to a manager and up, as
  * their screens are; the Unsplash key is the one the site set. Printed once.
  *
  * @return string
  */
-function pg_ckeditor_picker_script()
+function pg_editor_bridge_script()
 {
     static $printed = false;
 
@@ -654,7 +655,7 @@ function pg_ckeditor_picker_script()
         'path' => PATH,
         'short_links' => defined('USER_ROLE') && ((int) USER_ROLE <= 2),
         'unsplash' => (defined('UNSPLASH_ACCESS_KEY') && (UNSPLASH_ACCESS_KEY !== '')) ? (string) UNSPLASH_ACCESS_KEY : '',
-        'texts' => pg_ckeditor_picker_texts(),
+        'texts' => pg_editor_bridge_texts(),
     );
 
     return pg_picker_script()
