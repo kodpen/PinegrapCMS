@@ -6,7 +6,7 @@ description: Steps A13-A16 of plans/agent-channel.md: two applications' lines ar
 ## Which steps are there?
 - S under 400 product lines, M about 1,000; each step its tests and its memory topic. Earlier steps: `agent-channel-steps-3.md`. A13 to A15 come from the first exchange of two agents in the channel (the architect and the merging session, 2026-11-11).
 
-- A13 (S) Two applications' lines are two groups. `free`. Architect 2026-11-11.
+- A13 (S) Two applications' lines are two groups. Taken (draft PR). Architect 2026-11-11.
   - Owner: "senin adının başında bir ikon yok aynı kişi sohbet devamı saydı, mesajını pr mergenin sonuna ekledi"; later CI's lines stood under the merging session's message the same way. A line follows the one before it when `sender.id` and `sender_kind` are equal (`workspace.js`, `follow`), and `ws_app_sender()` gives every application `id` 0.
   - The rule compares `sender.app_id` too; the other sender kinds with `id` 0 (mail, guest) are checked and told apart the same way. `php tools/build_js.php`. Tests: the rule as a pure function. Topic `workspace/agent-shown.md`.
 
