@@ -655,13 +655,16 @@ function ws_agent_activity_request($request_id)
  * @param array    $viewer
  * @param string   $action agent_request_cancel | agent_request_retry | agent_request_knock
  * @param liveform $liveform
+ * @param int|null $request_id the Site Settings button's value; null reads request_id
+ * @param bool     $after_save the dialog ran it after its pane was saved: a
+ *                 refusal is a warning then
  */
-function ws_agent_activity_post($viewer, $action, $liveform)
+function ws_agent_activity_post($viewer, $action, $liveform, $request_id = null, $after_save = false)
 {
-    $found = ws_agent_activity_request((int) ($_POST['request_id'] ?? 0));
+    $found = ws_agent_activity_request(($request_id === null) ? (int) ($_POST['request_id'] ?? 0) : (int) $request_id);
 
     if (!$found) {
-        $liveform->add_error(lang('That request could not be found.'));
+        $after_save ? $liveform->add_warning(lang('That request could not be found.')) : $liveform->add_error(lang('That request could not be found.'));
         return;
     }
 
@@ -679,7 +682,7 @@ function ws_agent_activity_post($viewer, $action, $liveform)
     }
 
     if ($error !== '') {
-        $liveform->add_error(h($error));
+        $after_save ? $liveform->add_warning(h($error)) : $liveform->add_error(h($error));
         return;
     }
 
@@ -793,9 +796,12 @@ function ws_agent_activity_retry($viewer, $row, $agent)
  * @param array  $viewer
  * @param array  $agent  ws_agent_shape()
  * @param array  $counts ws_agent_activity_counts() of every agent
+ * @param string|null $form the Site Settings form's id: a row's buttons are
+ *                    named submit buttons of that form (ws_agent_request_cancel,
+ *                    _retry, _knock, value the request's id), not a form of their own
  * @return string
  */
-function ws_agent_activity_block($self_url, $viewer, $agent, $counts)
+function ws_agent_activity_block($self_url, $viewer, $agent, $counts, $form = null)
 {
     if (empty(ws_agent_activity_keys($agent))) {
         return '';
@@ -836,8 +842,10 @@ function ws_agent_activity_block($self_url, $viewer, $agent, $counts)
         $place = ws_agent_activity_place($row, is_array($channel) ? (string) $row['channel_name'] : null, is_array($channel) && ws_can_read_channel($viewer, $channel));
         $may = ws_agent_activity_actions($viewer, $row, $agent);
         $asker = ((int) $row['requested_by'] > 0) ? ws_person_name((int) $row['requested_by']) : '';
-        $button = function ($action, $label, $theme) {
-            return '<button type="submit" name="ws_action" value="' . $action . '" class="btn btn-sm btn-text ' . $theme . '">' . h($label) . '</button>';
+        $button = function ($action, $label, $theme) use ($form, $row) {
+            return ($form !== null)
+                ? '<button type="submit" name="ws_' . $action . '" value="' . (int) $row['id'] . '" form="' . h($form) . '" class="btn btn-sm btn-text ' . $theme . '">' . h($label) . '</button>'
+                : '<button type="submit" name="ws_action" value="' . $action . '" class="btn btn-sm btn-text ' . $theme . '">' . h($label) . '</button>';
         };
         $buttons = ($may['cancel'] ? $button('agent_request_cancel', lang('Cancel'), 'theme-danger') : '')
             . ($may['retry'] ? $button('agent_request_retry', lang('Ask again'), 'theme-primary') : '')
@@ -849,7 +857,7 @@ function ws_agent_activity_block($self_url, $viewer, $agent, $counts)
                 <i class="bi ' . h($state['icon']) . '" aria-hidden="true"></i>
                 <span class="ws-grow">' . h($state['label']) . '</span>
                 <span class="small fg-secondary">' . h(date('d.m.Y H:i', (int) $row['created_at'])) . (($asker !== '') ? ' · ' . h($asker) : '') . (($where !== '') ? ' · ' . $where : '') . '</span>
-                ' . (($buttons !== '') ? '<form method="post" action="' . h($self_url) . '#ws-agent-' . (int) $agent['id'] . '" class="d-inline-flex gap-1">' . get_token_field()
+                ' . (($buttons !== '' && $form !== null) ? '<span class="d-inline-flex gap-1">' . $buttons . '</span>' : '') . (($buttons !== '' && $form === null) ? '<form method="post" action="' . h($self_url) . '#ws-agent-' . (int) $agent['id'] . '" class="d-inline-flex gap-1">' . get_token_field()
                     . '<input type="hidden" name="request_id" value="' . (int) $row['id'] . '">' . $buttons . '</form>' : '') . '
             </li>';
     }

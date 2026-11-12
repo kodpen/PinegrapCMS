@@ -90,6 +90,7 @@
 - workflow-tables.md: Workflow tables (11.0.110, #2746): the four ws_wtable* tables column by column, ws_wtable_access(), column changes; JSON person/link cells and the privacy reader
 - workspace-agent-preamble.md: The site preamble an MCP agent (switch ws_mcp_servers.agent_preamble, 11.0.111, off by default) and an outside app (GET /workspace/messages/{id}/preamble) get, and what stays out
 - workspace-agent-replies.md: Replies over the API (parent_id on workspace.messages.create, parent_id on the message object) and "no answer needed" on Claude's answer route (no_answer): what each takes and refuses
+- workspace-agent-settings.md: The Workspace agents card in Site Settings (Assistants and agents) and on Workspace Settings: drawers, field and button names, the form by kind with Advanced, the shared check and write [decision: here]
 - workspace-ai-call-timeout.md: How long one Pinegrap AI model call may take (500 s, PG_AI_CALL_TIMEOUT 20-600), why it is no longer 55 s, what still cuts a call off, the levers to measure before changing limits [decision: here]
 - workspace-ai-rewrite.md: "Rewrite with AI" in the Workspace composer (ai_write target ws_message): what the model reads, the button, Use as one undo step, tags kept, no AI mark
 - workspace-api-callers.md: Which Workspace API writes the person must make themselves: ws_api_person_only() vs ws_api_own_words_only(), whose name a write carries, refusals, which are no MCP tools [decision: here]
