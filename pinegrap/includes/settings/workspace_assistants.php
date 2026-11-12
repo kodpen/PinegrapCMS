@@ -4,9 +4,10 @@
  *
  * Site Settings - Assistants and agents: Claude in the channels (its
  * connection, its key, the connection test, the latest requests and the
- * setup steps), the assistants' bulk changes, and a card linking the cards
- * still kept on the Workspace Settings screen (the Workspace agents,
- * Pinegrap AI and the MCP servers). They move here one at a time; each that
+ * setup steps), the Workspace agents (each edited in a drawer with its
+ * waiting and failed requests), the assistants' bulk changes, and a card
+ * linking the cards still kept on the Workspace Settings screen (Pinegrap AI
+ * and the MCP servers). They move here one at a time; each that
  * moves takes its link out of that card.
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
@@ -58,6 +59,26 @@ if ($ws_card !== '') {
     $pg_settings_cards[] = $ws_card;
 }
 
+// ── Workspace agents ──
+// Each agent's activity and form, and Add an agent, open in drawers whose
+// fields and buttons join the settings form by its id.
+$ws_card = ws_agents_settings_card('', $ws_viewer, $ws_form);
+
+if ($ws_card !== '') {
+    $pg_settings_cards[] = $ws_card;
+    $ws_apps = ws_agents_settings_apps();
+    $ws_agents = ws_agents_list();
+    $ws_counts = function_exists('ws_agent_activity_read_counts') ? ws_agent_activity_read_counts($ws_agents) : array();
+
+    foreach ($ws_agents as $ws_agent) {
+        $pg_settings_modals[] = ws_settings_agent_drawer($ws_agent, $ws_viewer, $ws_apps, $ws_counts, $ws_form, !empty($pg_settings_in_dialog));
+    }
+
+    if ((int) $ws_viewer['role'] === 0) {
+        $pg_settings_modals[] = ws_settings_agent_drawer(null, $ws_viewer, $ws_apps, $ws_counts, $ws_form, !empty($pg_settings_in_dialog));
+    }
+}
+
 // ── Bulk changes by the assistants ──
 $ws_card = ws_bulk_settings_card('', $ws_viewer, $ws_form);
 
@@ -66,7 +87,6 @@ if ($ws_card !== '') {
 }
 
 $pg_settings_cards[] = ws_settings_screen_links_card('pgset-ws-assistants-screen', array(
-    array('ws-agents', 'bi-robot', lang('Workspace agents')),
     array('ws-ai', 'bi-cpu', lang('Pinegrap AI in the channels')),
     array('ws-mcp', 'bi-plug', lang('MCP servers')),
 ));

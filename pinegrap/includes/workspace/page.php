@@ -1,0 +1,314 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Workspace - live pages: an HTML document an agent writes, kept as an
+ * .html file of the channel with its versions, shown in the guarded frame
+ * (includes/fn/guarded_frame.php, live_page.php). The routes are in
+ * api_page.php.
+ *
+ * What marks a page, with no column of its own: channels refuse an .html
+ * upload (ws_upload_refused_extensions()), so an .html file reaches a
+ * channel only through these routes, and each of its versions is a
+ * file_versions row of format html that the routes wrote. A file with no
+ * such row is no page and is never shown with its script.
+ *
+ * A version row keeps the page's bytes under data/file_versions/ and, as
+ * its document, who made it: {"page": 1, "by": {id, kind, handle}}.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
+
+/**
+ * How many versions of a page are kept: the first and the newest after it.
+ *
+ * @return int
+ */
+function ws_page_versions_keep()
+{
+    return 20;
+}
+
+/**
+ * The name a page's file is kept under: the name given without an
+ * extension or the letters a file name cannot carry, else "Page", always
+ * .html. Pure but for lang().
+ *
+ * @param mixed $name
+ * @return string
+ */
+function ws_page_file_name($name)
+{
+    $base = trim(preg_replace('/\.[a-z0-9]{2,5}$/i', '', is_string($name) ? $name : ''));
+    $base = trim(preg_replace('/[\\\\\/:*?"<>|\x00-\x1f]+/', ' ', $base));
+
+    if ($base === '') {
+        $base = lang('Page');
+    }
+
+    return mb_substr($base, 0, 120) . '.html';
+}
+
+/**
+ * Why a page's HTML is refused, or ''. Pure.
+ *
+ * @param mixed $html
+ * @return string '' when it may be kept; empty, too_large or not_utf8
+ */
+function ws_page_html_error($html)
+{
+    if (!is_string($html) || (trim($html) === '')) {
+        return 'empty';
+    }
+
+    if (strlen($html) > PG_GUARDED_FRAME_MAX_BYTES) {
+        return 'too_large';
+    }
+
+    if (!preg_match('//u', $html)) {
+        return 'not_utf8';
+    }
+
+    return '';
+}
+
+/**
+ * The refusal's words for ws_page_html_error().
+ *
+ * @param string $error
+ * @return string
+ */
+function ws_page_html_error_text($error)
+{
+    if ($error === 'too_large') {
+        return lang(array('string' => 'A page is at most {var:1} KB.', 'vars' => (int) (PG_GUARDED_FRAME_MAX_BYTES / 1024)));
+    }
+
+    if ($error === 'not_utf8') {
+        return lang('A page must be written in UTF-8.');
+    }
+
+    return lang('A page needs its HTML.');
+}
+
+/**
+ * The document a version row keeps: who made it. Pure.
+ *
+ * @param array $agent id, kind, handle
+ * @return string JSON
+ */
+function ws_page_version_doc($agent)
+{
+    return json_encode(array('page' => 1, 'by' => array(
+        'id'     => (int) ($agent['id'] ?? 0),
+        'kind'   => (string) ($agent['kind'] ?? ''),
+        'handle' => (string) ($agent['handle'] ?? ''),
+    )), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+}
+
+/**
+ * The agent a version's document names, or null. Pure.
+ *
+ * @param mixed $doc_json
+ * @return array|null id, kind, handle
+ */
+function ws_page_version_by($doc_json)
+{
+    $doc = json_decode((string) $doc_json, true);
+    $by = (is_array($doc) && isset($doc['by']) && is_array($doc['by'])) ? $doc['by'] : null;
+
+    if (!$by || !isset($by['handle']) || !is_string($by['handle']) || ($by['handle'] === '')) {
+        return null;
+    }
+
+    return array('id' => (int) ($by['id'] ?? 0), 'kind' => (string) ($by['kind'] ?? ''), 'handle' => $by['handle']);
+}
+
+/**
+ * The version ids the retention removes: all but version 1 and the newest
+ * ws_page_versions_keep() - 1, oldest first. Pure.
+ *
+ * @param array[] $rows version_id, version_no
+ * @return int[]
+ */
+function ws_page_versions_pruned($rows)
+{
+    $later = array();
+
+    foreach ($rows as $row) {
+        if ((int) $row['version_no'] > 1) {
+            $later[(int) $row['version_no']] = (int) $row['version_id'];
+        }
+    }
+
+    krsort($later);
+    $removed = array_slice($later, ws_page_versions_keep() - 1, null, true);
+    ksort($removed);
+
+    return array_values($removed);
+}
+
+/**
+ * The versions of a page, oldest first, without their bytes; empty for a
+ * file that is no page.
+ *
+ * @param int $file_id
+ * @return array[]
+ */
+function ws_page_versions($file_id)
+{
+    if (((int) $file_id <= 0) || !pg_file_versions_ready()) {
+        return array();
+    }
+
+    $rows = db_items("SELECT version_id, version_no, doc_json, size, user_id, source, created_at, stored_name
+        FROM file_versions WHERE file_id = '" . (int) $file_id . "' AND format = 'html' ORDER BY version_no");
+
+    return is_array($rows) ? $rows : array();
+}
+
+/**
+ * Is this file a page: an .html file with a version the routes wrote?
+ *
+ * @param int $file_id
+ * @return bool
+ */
+function ws_page_is_page($file_id)
+{
+    return ((int) $file_id > 0) && pg_file_versions_ready()
+        && ((int) db_value("SELECT COUNT(*) FROM file_versions WHERE file_id = '" . (int) $file_id . "' AND format = 'html'") > 0);
+}
+
+/**
+ * Keeps the page's bytes as its next version.
+ *
+ * @param int    $file_id
+ * @param string $html
+ * @param array  $agent   id, kind, handle
+ * @param int    $user_id the application's owner
+ * @return array|null the row, or null when it could not be written
+ */
+function ws_page_version_add($file_id, $html, $agent, $user_id)
+{
+    $dir = pg_file_versions_dir();
+
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+        return null;
+    }
+
+    $version_no = (int) db_value("SELECT MAX(version_no) FROM file_versions WHERE file_id = '" . (int) $file_id . "'") + 1;
+    $name = pg_file_versions_stored_name($file_id, $version_no, 'html', sha1(uniqid((string) mt_rand(), true) . $html));
+    $path = $dir . '/' . $name;
+
+    if (($name === '') || !pg_file_write_whole($path, $html)) {
+        return null;
+    }
+
+    $doc = ws_page_version_doc($agent);
+    $saved = db_q("INSERT INTO file_versions (file_id, version_no, doc_json, doc_hash, stored_name, format, width, height, size, redacted, user_id, source, created_at)
+        VALUES (?, ?, ?, ?, ?, 'html', 0, 0, ?, 0, ?, 'agent', UNIX_TIMESTAMP())", array(
+        (int) $file_id, $version_no, $doc, sha1($html), $name, strlen($html), (int) $user_id));
+
+    if (!$saved) {
+        @unlink($path);
+
+        return null;
+    }
+
+    return pg_file_versions_row($file_id, mysqli_insert_id(db::$con));
+}
+
+/**
+ * Keeps the first version and the newest after it.
+ *
+ * @param int $file_id
+ */
+function ws_page_versions_prune($file_id)
+{
+    $rows = ws_page_versions($file_id);
+    $ids = ws_page_versions_pruned($rows);
+
+    foreach ($rows as $row) {
+        if (in_array((int) $row['version_id'], $ids, true)) {
+            pg_file_versions_delete_row($row);
+        }
+    }
+}
+
+/**
+ * Writes a new version of a page into its file and keeps it.
+ *
+ * @param array  $message ws_messages row of the page
+ * @param string $html    checked by ws_page_html_error()
+ * @param array  $agent
+ * @param int    $user_id
+ * @return bool
+ */
+function ws_page_write($message, $html, $agent, $user_id)
+{
+    $file_id = (int) $message['file_id'];
+    $stored = (string) db_value("SELECT name FROM files WHERE id = '" . $file_id . "'");
+
+    // Every write goes to the file directory, which the general job takes
+    // as the file's bytes (pg_file_storage_reconcile_run()).
+    $name = basename($stored);
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
+
+    if (($stored === '') || !pg_file_write_whole($path, $html)) {
+        return false;
+    }
+
+    db_q("UPDATE files SET size = ?, timestamp = UNIX_TIMESTAMP() WHERE id = ?", array(strlen($html), $file_id));
+
+    if (function_exists('pg_file_cache_forget')) {
+        pg_file_cache_forget($file_id);
+    }
+
+    if (!ws_page_version_add($file_id, $html, $agent, $user_id)) {
+        return false;
+    }
+
+    ws_page_versions_prune($file_id);
+
+    if (function_exists('ws_message_touch')) {
+        ws_message_touch((int) $message['id']);
+    }
+
+    return true;
+}
+
+/**
+ * A page's versions as the API gives them, oldest first. Pure but for
+ * api_time() when given.
+ *
+ * @param array[]       $rows ws_page_versions()
+ * @param callable|null $time formats created_at
+ * @return array[] version, source, user_id, agent_id, agent, size, created_at
+ */
+function ws_page_versions_read($rows, $time = null)
+{
+    $read = array();
+
+    foreach ($rows as $row) {
+        $by = ws_page_version_by($row['doc_json'] ?? '');
+
+        $read[] = array(
+            'version'    => (int) $row['version_no'],
+            'source'     => (string) $row['source'],
+            'user_id'    => ((int) $row['user_id'] > 0) ? (int) $row['user_id'] : null,
+            'agent_id'   => ($by && ($by['id'] > 0)) ? $by['id'] : null,
+            'agent'      => $by ? $by['handle'] : null,
+            'size'       => (int) $row['size'],
+            'created_at' => $time ? $time((int) $row['created_at']) : (int) $row['created_at'],
+        );
+    }
+
+    return $read;
+}

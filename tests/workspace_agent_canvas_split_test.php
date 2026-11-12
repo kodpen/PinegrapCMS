@@ -243,7 +243,7 @@ function test_workspace_canvas_split_create()
 	pg_assert_same('empty', ws_canvas_from_svg('<svg xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="a"/></defs></svg>', '', true)['error'], 'definitions alone draw nothing');
 
 	$motion = ws_canvas_split_layers(pg_svg_sanitize('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><g class="pgm-1" transform="translate(10 0)"><text id="t" x="0" y="20">Hi</text></g></svg>'));
-	pg_assert_same(array('text', 't'), array($motion['layers'][0]['kind'], $motion['layers'][0]['name']), 'a saved motion group opens as its element');
+	pg_assert_same(array('text', 't', 'Hi'), array($motion['layers'][0]['type'], $motion['layers'][0]['name'], $motion['layers'][0]['text']), 'a saved motion group opens as its element, a text layer');
 }
 
 // An edit's add and svg with layers split.

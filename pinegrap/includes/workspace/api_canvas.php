@@ -46,14 +46,14 @@ function ws_canvas_api_routes()
             'status'      => 201,
             'returns'     => array('message' => 'WorkspaceMessage', 'canvas' => ws_api_canvas_returns()),
             'summary'     => 'Draw a canvas in a channel from SVG',
-            'description' => 'Posts a canvas into a channel as a message of the application: the SVG becomes a picture people see and open in the image editor, its layers editable. Only an agent of the channel draws one: an application with a row in GET /workspace/channels/{id}/agents (or Claude, where Claude may be asked), in a channel the owner may post in. The SVG is sanitized (scripts, outside addresses and events go), at most 1 MB; the artboard is its root\'s width and height (the view box when they are missing, 300 x 150 when both are), each side 16 to 8000 pixels, the drawing one layer covering it, or with layers split a layer per top-level element as the image editor\'s Break apart makes them (each where it was drawn, named by its element\'s id; a group stays one layer; definitions and style rules kept for the layers that use them). A picture inside it must be an address, not data. The canvas\'s picture is blank in the background colour until a member\'s browser draws it: canvas.picture is pending until then. Refusals: nothing left to draw, over 1 MB, a picture as data or a background that is no colour 422 validation_failed on svg or background; not an agent of the channel 403 forbidden.',
+            'description' => 'Posts a canvas into a channel as a message of the application: the SVG becomes a picture people see and open in the image editor, its layers editable. Only an agent of the channel draws one: an application with a row in GET /workspace/channels/{id}/agents (or Claude, where Claude may be asked), in a channel the owner may post in. The SVG is sanitized (scripts, outside addresses and events go), at most 1 MB; the artboard is its root\'s width and height (the view box when they are missing, 300 x 150 when both are), each side 16 to 8000 pixels, the drawing one layer covering it, or with layers split a layer per top-level element as the image editor\'s Break apart makes them (each where it was drawn, named by its element\'s id; a group stays one layer; definitions and style rules kept for the layers that use them): a text becomes a text layer when the editor can hold it (one colour, no outline, a font the editor offers, lines as tspans under one another), a picture whose address is a file of the site - one a message of the channel carries, or with files:read one any visitor may fetch - a picture layer; anything else stays an svg layer. A picture inside it must be an address, not data. The canvas\'s picture is blank in the background colour until a member\'s browser draws it: canvas.picture is pending until then. Refusals: nothing left to draw, over 1 MB, a picture as data or a background that is no colour 422 validation_failed on svg or background; not an agent of the channel 403 forbidden.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'svg', 'in' => 'body', 'type' => 'string', 'max_length' => 1048576, 'required' => true, 'description' => 'The drawing, a whole <svg> element with the SVG namespace.'),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'Words beside the canvas. Tags are written as tokens, as in a message.'),
                 array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 120, 'description' => 'The name of the canvas\'s file; Canvas when left out. Always a PNG.'),
                 array('name' => 'background', 'in' => 'body', 'type' => 'string', 'max_length' => 11, 'description' => 'The artboard\'s colour as #rrggbb, or transparent; white when left out.'),
-                array('name' => 'layers', 'in' => 'body', 'type' => 'enum', 'values' => array('split', 'one'), 'description' => 'split: a layer per top-level element, so one part can be changed by its layer later; one (the default): the drawing as one layer.'),
+                array('name' => 'layers', 'in' => 'body', 'type' => 'enum', 'values' => array('split', 'one'), 'description' => 'split: a layer per top-level element (texts as text layers, pictures of the site\'s files as picture layers), so one part can be changed by its layer later; one (the default): the drawing as one layer.'),
                 array('name' => 'parent_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The message the canvas answers, of this channel.'),
             ),
         ),
@@ -296,13 +296,16 @@ function ws_api_canvas_present($message, $made = null)
  * checked that), else an application with a row in the channel's agents.
  * A person's own device draws in the panel's editor, not here.
  *
- * @param array $channel
+ * The live page routes (api_page.php) ask the same, in their own words.
+ *
+ * @param array       $channel
+ * @param string|null $refused the refusal's words; the canvas's when null
  * @return array id, kind, handle (the document's by)
  */
-function ws_api_canvas_agent($channel)
+function ws_api_canvas_agent($channel, $refused = null)
 {
     $device = function_exists('api_current_device') ? api_current_device() : null;
-    $refused = lang('A canvas is drawn here only by an agent of the channel.');
+    $refused = ($refused !== null) ? $refused : lang('A canvas is drawn here only by an agent of the channel.');
 
     if (ws_api_device_writes_as_person($device)) {
         api_fail(403, 'forbidden', $refused);
@@ -349,7 +352,7 @@ function ws_api_canvases_create($params)
     }
 
     $mode = ws_canvas_split_mode($params['layers'] ?? null);
-    $made = ($mode === null) ? array('error' => 'layers') : ws_canvas_from_svg($params['svg'] ?? '', (string) ($params['background'] ?? ''), $mode === 'split');
+    $made = ($mode === null) ? array('error' => 'layers') : ws_canvas_from_svg($params['svg'] ?? '', (string) ($params['background'] ?? ''), $mode === 'split', ws_canvas_split_resolver((int) $channel['id'], api_has_scope(api_current_scopes(), 'files:read')));
 
     if ($made['error'] !== '') {
         api_fail_validation(ws_canvas_from_svg_error_text($made['error']), in_array($made['error'], array('background', 'layers'), true) ? $made['error'] : 'svg');
@@ -468,7 +471,7 @@ function ws_api_canvas_edit($params)
         api_fail(409, 'conflict', lang(array('string' => 'The canvas changed since: its newest version is {var:1}. Read it again.', 'vars' => $target['version'])));
     }
 
-    $edited = ws_canvas_edit_apply($target['doc'], $params['operations'] ?? null);
+    $edited = ws_canvas_edit_apply($target['doc'], $params['operations'] ?? null, ws_canvas_split_resolver((int) $target['channel']['id'], api_has_scope(api_current_scopes(), 'files:read')));
 
     if ($edited['error'] !== '') {
         $where = ($edited['index'] >= 0) ? lang(array('string' => 'Operation {var:1}', 'vars' => $edited['index'])) . ': ' : '';

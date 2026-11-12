@@ -10,7 +10,8 @@
  *   live_page.php?message=<id>&mode=static  the same, no script at all
  *
  * The message must be one the reader may read, not deleted, carrying a
- * .html or .htm file of at most 500 KB. Anything else, and a request that
+ * live page (ws_page_is_page(): an .html file with versions the page routes
+ * wrote) of at most 500 KB. Anything else, and a request that
  * says it is not a frame's, is answered 404 with nothing of the page.
  *
  * @author      Erdal Güral (Kodpen)
@@ -24,6 +25,7 @@ include('init.php');
 $user = validate_user();
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/page.php');
 
 /**
  * Answers 404 with a short line and stops.
@@ -57,7 +59,10 @@ $file = ((int) $message['file_id'] > 0)
     ? db_item("SELECT name, size FROM files WHERE id = '" . (int) $message['file_id'] . "'")
     : null;
 
-if (!is_array($file) || !pg_guarded_frame_is_page_name((string) $file['name']) || ((int) $file['size'] > PG_GUARDED_FRAME_MAX_BYTES)) {
+// Only a page the routes wrote (includes/workspace/page.php): an .html file
+// that reached a channel any other way is never run.
+if (!is_array($file) || !pg_guarded_frame_is_page_name((string) $file['name']) || ((int) $file['size'] > PG_GUARDED_FRAME_MAX_BYTES)
+    || !ws_page_is_page((int) $message['file_id'])) {
     live_page_refuse();
 }
 

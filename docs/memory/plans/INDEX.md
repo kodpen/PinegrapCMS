@@ -10,7 +10,7 @@
 - agent-channel-steps-5.md: Steps A17 and A18 of plans/agent-channel.md (owner 2026-11-11, #8762): an agent's last seen on its card, an application ticks a checklist line over the API
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
-- agent-live-page-steps.md: Steps LP1-LP5 of plans/agent-live-page.md: the guarded frame and its proofs in a browser, the agent's routes and the card, the assistants' tools, the site's libraries, close-out
+- agent-live-page-steps.md: Steps LP1-LP5 (LP2 as LP2a and LP2b) of plans/agent-live-page.md: the guarded frame and its proofs in a browser, the agent's routes and the card, the assistants' tools, the site's libraries, close-out
 - agent-live-page.md: Plan (owner 2026-11-11, #8762): an agent makes a live page (HTML, CSS, script) shown in a Workspace channel in a guarded frame: the guard, the card, versions, limits; steps LP1-LP5
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps

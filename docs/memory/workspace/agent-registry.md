@@ -14,7 +14,7 @@ description: The agent registry (ws_agents) and the channel-agent row (ws_channe
 - `ws_claude_config()` and `ws_claude_token()` read the row when it is there, config otherwise; the card writes the row once the tables exist. Enabled, the application, the hold and the error stay in config. The two config columns stay unread for one release; their DROP is its own question later.
 
 ## Where are agents managed?
-- The Agents card of Workspace settings (`includes/workspace/agents_settings.php`), administrators only: `ws_agent_save_check()` (pure) then `ws_agent_save()`. An `app` agent needs an application and a door; a `model` agent a provider, model and key, no door (the site runs it). Claude's row keeps kind, handle and door. Deleting an agent deletes its channel rows; Claude's row is never deleted. A changed schedule restarts `wake_next_at` from now.
+- The Agents card (`includes/workspace/agents_settings.php`, Workspace Settings and Site Settings: [[workspace-agent-settings]]), administrators only: `ws_agent_save_check()` (pure) then `ws_agent_save()`. An `app` agent needs an application and a door; a `model` agent a provider, model and key, no door (the site runs it). Claude's row keeps kind, handle and door. Deleting an agent deletes its channel rows; Claude's row is never deleted. A changed schedule restarts `wake_next_at` from now.
 
 ## Who may change a channel's agents?
 - `channel-agent-rights.md`: whoever may post there, in a private channel only a member; the tier and a private channel's new agent only its manager. It also holds the routes (`workspace.channels.agents.*`) and the "Agents in this channel" section of Channel settings.

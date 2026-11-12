@@ -35,6 +35,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *   design    files: design files listed too
  *   archived  pages: pages in an archived folder listed too, marked and not
  *             choosable (pg_picker_page_mark())
+ *   forms     pages: only form pages (pg_form_page_sql(): custom form pages
+ *             and visual designer pages holding a form)
+ *   access    'edit' (a role 3 user's folders they may edit) or 'view' (also
+ *             the folders they may view as a visitor, check_view_access())
  *   value     what a pick stores: 'name' (files.name) or 'id'
  *   role      the highest role that may ask (0 Administrator ... 3 User); a
  *             role 3 user only with edit rights, within the folders they may
@@ -65,8 +69,13 @@ function pg_picker_kinds()
         'image' => array_merge($file, array('types' => pg_picker_image_types(), 'value' => 'name', 'pictures' => true)),
         'public_image' => array_merge($file, array('types' => pg_public_image_file_types(), 'public' => true, 'value' => 'name', 'role' => 2, 'pictures' => true)),
         'site_icon' => array_merge($file, array('types' => array('png', 'svg'), 'public' => true, 'value' => 'name', 'role' => 2, 'pictures' => true)),
-        'page' => array('source' => 'pages', 'types' => array(), 'public' => false, 'design' => false, 'archived' => true, 'value' => 'id', 'role' => 3, 'tree' => true, 'pictures' => false, 'upload' => false),
+        'page' => array('source' => 'pages', 'types' => array(), 'public' => false, 'design' => false, 'archived' => true, 'forms' => false, 'access' => 'edit', 'value' => 'id', 'role' => 3, 'tree' => true, 'pictures' => false, 'upload' => false),
     );
+
+    // An e-mail campaign's body page: any page the sender may view.
+    $kinds['page_view'] = array_merge($kinds['page'], array('access' => 'view'));
+    // A form a campaign follows: custom form pages and designer form pages.
+    $kinds['page_form'] = array_merge($kinds['page'], array('forms' => true));
 
     foreach (pg_picker_page_type_kinds() as $name => $types) {
         $kinds[$name] = array_merge($kinds['page'], array('types' => $types));
@@ -85,6 +94,7 @@ function pg_picker_page_type_kinds()
 {
     return array(
         'page_catalog' => array('catalog'),
+        'page_custom_form' => array('custom form'),
         'page_catalog_detail' => array('catalog detail'),
         'page_order_receipt' => array('order receipt'),
         'page_shipping_step' => array('shipping address and arrival', 'express order'),
@@ -428,11 +438,17 @@ function pg_picker_files_where($kind, $public_where, $bin_ids, $folders, $folder
  * @param int[]      $bin_ids the Recycle Bin and its sub-folders
  * @param int[]|null $folders the folders a role 3 user may edit; null for all
  * @param int|null   $folder  one folder to list; null for every folder
+ * @param string     $forms   pg_form_page_sql() for a forms kind
  * @return string
  */
-function pg_picker_pages_where($kind, $bin_ids, $folders, $folder = null)
+function pg_picker_pages_where($kind, $bin_ids, $folders, $folder = null, $forms = '')
 {
     $where = array("(page.page_name != '')");
+
+    // A forms kind without its condition lists nothing.
+    if (!empty($kind['forms'])) {
+        $where[] = (trim((string) $forms) !== '') ? '(' . $forms . ')' : '(page.page_id IN (-1))';
+    }
 
     if (empty($kind['archived'])) {
         $where[] = "(folder.folder_archived = '0')";
@@ -730,9 +746,10 @@ function pg_picker_page_details($items, $paths = false)
  * @param int|null $folder the folder they came from
  * @param string   $query  the typed text; '' for no name match
  * @param string[] $types  pg_picker_kind_types(); empty for every type
+ * @param array    $kind   the kind asking (its access and forms rule)
  * @return array rows
  */
-function pg_picker_binned_page_rows($user, $folder = null, $query = '', $types = array())
+function pg_picker_binned_page_rows($user, $folder = null, $query = '', $types = array(), $kind = null)
 {
     $bin = pg_picker_ids(pg_recycle_bin_folder_ids());
 
@@ -754,6 +771,10 @@ function pg_picker_binned_page_rows($user, $folder = null, $query = '', $types =
         $where .= " AND (page.page_type IN ('" . implode("', '", array_map('e', $types)) . "'))";
     }
 
+    if (!empty($kind['forms'])) {
+        $where .= ' AND (' . pg_form_page_sql('page') . ')';
+    }
+
     $rows = db_items(
         "SELECT page.page_id, page.page_name, page.page_type, page.page_folder, page.page_timestamp, folder.folder_archived, recycle_bin.original_parent_id
         FROM recycle_bin
@@ -763,7 +784,7 @@ function pg_picker_binned_page_rows($user, $folder = null, $query = '', $types =
         ORDER BY page.page_name
         LIMIT " . pg_picker_scan_limit());
 
-    $granted = pg_picker_granted_folders($user);
+    $granted = pg_picker_granted_folders($user, $kind);
     $out = array();
 
     foreach ((is_array($rows) ? $rows : array()) as $row) {
@@ -959,14 +980,40 @@ function pg_picker_value_state($found, $visible, $binned, $offline)
 }
 
 /**
- * The folders a role 3 user may edit, null for a higher role (every folder).
+ * The folders a role 3 user may use in a kind, null for a higher role (every
+ * folder): those they may edit, and for a view kind also those they may view
+ * as a visitor (check_view_access(), which reads the signed-in user).
  *
- * @param array $user validate_user()
+ * @param array      $user validate_user()
+ * @param array|null $kind one of pg_picker_kinds(); null for an edit kind
  * @return int[]|null
  */
-function pg_picker_granted_folders($user)
+function pg_picker_granted_folders($user, $kind = null)
 {
-    return ((int) $user['role'] >= 3) ? pg_picker_ids(get_folders_that_user_has_access_to($user['id'])) : null;
+    if ((int) $user['role'] < 3) {
+        return null;
+    }
+
+    $granted = pg_picker_ids(get_folders_that_user_has_access_to($user['id']));
+
+    if (($kind['access'] ?? 'edit') !== 'view') {
+        return $granted;
+    }
+
+    static $viewable = array();
+    $key = (int) $user['id'];
+
+    if (!isset($viewable[$key])) {
+        $viewable[$key] = array();
+
+        foreach ((array) db_values("SELECT folder_id FROM folder") as $folder_id) {
+            if (check_view_access((int) $folder_id)) {
+                $viewable[$key][] = (int) $folder_id;
+            }
+        }
+    }
+
+    return pg_picker_ids(array_merge($granted, $viewable[$key]));
 }
 
 /**
@@ -999,14 +1046,14 @@ function pg_picker_select($kind, $where)
 function pg_picker_where_for($kind, $user, $folder = null)
 {
     if ($kind['source'] === 'pages') {
-        return pg_picker_pages_where($kind, pg_recycle_bin_folder_ids(), pg_picker_granted_folders($user), $folder);
+        return pg_picker_pages_where($kind, pg_recycle_bin_folder_ids(), pg_picker_granted_folders($user, $kind), $folder, !empty($kind['forms']) ? pg_form_page_sql('page') : '');
     }
 
     return pg_picker_files_where(
         $kind,
         !empty($kind['public']) ? pg_public_image_files_where() : '',
         pg_recycle_bin_folder_ids(),
-        pg_picker_granted_folders($user),
+        pg_picker_granted_folders($user, $kind),
         $folder);
 }
 
@@ -1043,7 +1090,7 @@ function pg_picker_search_rows($kind_name, $query, $user)
 
     // Binned pages are found too, under their own names, after the others:
     // marked, so the person sees why the page they look for cannot be chosen.
-    return array_merge(pg_picker_matches(is_array($rows) ? $rows : array(), $query, 'page_name'), pg_picker_binned_page_rows($user, null, $query, pg_picker_kind_types($kind)));
+    return array_merge(pg_picker_matches(is_array($rows) ? $rows : array(), $query, 'page_name'), pg_picker_binned_page_rows($user, null, $query, pg_picker_kind_types($kind), $kind));
 }
 
 /**
@@ -1085,14 +1132,14 @@ function pg_picker_list_answer($request, $user)
     $kind = $kinds[$request['kind']];
     $answer = array('folder' => $request['folder'], 'crumbs' => array(), 'items' => array(), 'page' => $request['page'], 'per_page' => $request['per_page'], 'more' => false);
 
-    if (!pg_picker_folder_allowed($request['folder'], pg_recycle_bin_folder_ids(), pg_picker_granted_folders($user))) {
+    if (!pg_picker_folder_allowed($request['folder'], pg_recycle_bin_folder_ids(), pg_picker_granted_folders($user, $kind))) {
         return $answer;
     }
 
     require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
 
     // The folders above a role 3 user's own stay unnamed, as in their tree.
-    $granted = pg_picker_granted_folders($user);
+    $granted = pg_picker_granted_folders($user, $kind);
 
     foreach (pg_picker_folder_path($request['folder'], pg_explorer_folder_map()) as $crumb) {
         if (($granted === null) || in_array($crumb['id'], $granted, true)) {
@@ -1119,7 +1166,7 @@ function pg_picker_list_answer($request, $user)
     if (($kind['source'] === 'pages') && ($request['page'] === 1)) {
         $answer['binned'] = pg_picker_page_details(array_map(function ($row) use ($kind) {
             return pg_picker_item($kind, $row);
-        }, pg_picker_binned_page_rows($user, $request['folder'], '', pg_picker_kind_types($kind))));
+        }, pg_picker_binned_page_rows($user, $request['folder'], '', pg_picker_kind_types($kind), $kind)));
     }
 
     // Whether the dialog offers Upload in this folder, and if not, why.
@@ -1148,7 +1195,8 @@ function pg_picker_tree_answer($request, $user)
 
     require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
 
-    $granted = pg_picker_granted_folders($user);
+    $kinds = pg_picker_kinds();
+    $granted = pg_picker_granted_folders($user, $kinds[$request['kind']]);
     $folders_that_user_has_access_to = ($granted !== null) ? $granted : array();
     $bin_ids = pg_recycle_bin_folder_ids();
 
@@ -1203,7 +1251,7 @@ function pg_picker_resolve_answer($request, $user)
     }
 
     $bin_ids = pg_recycle_bin_folder_ids();
-    $granted = pg_picker_granted_folders($user);
+    $granted = pg_picker_granted_folders($user, $kind);
     $found = array();
 
     if ($kind['source'] === 'pages') {

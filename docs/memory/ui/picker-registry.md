@@ -7,7 +7,7 @@ module: picker
 ## Where is the registry?
 - `pg_picker_kinds()` in `includes/fn/picker.php` (PK1 of `plans/one-picker.md`, PR #8515), loaded by `includes/fn/file_picker_search.php` with `require_once`, not by a manifest line.
 - Kinds: `file` (any type, stores the file id), `image` (`pg_picker_image_types()`: the editor image browser's types plus avif, stores the name), `public_image` and `site_icon` (public files only, store the name, role up to 2), `page` (stores the page id; pages in an archived folder and binned pages listed with a mark, never choosable: `picker-pages.md`).
-- Page kinds kept to some page types: `pg_picker_page_type_kinds()` (the `page` row with `types`), found by `pg_picker_page_kind_for($types)`; the page settings name them (`page-form-page-fields.md`); `page_catalog` is the short links' Catalog Page (`picker-page-fields-screens.md`). A new typed setting adds a row there.
+- Page kinds kept to some page types: `pg_picker_page_type_kinds()` (the `page` row with `types`), found by `pg_picker_page_kind_for($types)`; the page settings name them (`page-form-page-fields.md`); `page_view` (view access) and `page_form` (form pages): `picker-page-fields-screens.md`. A new typed setting adds a row there.
 - Fields: `source` (files, pages), `types`, `public`, `design`, `archived`, `value` (id or name), `role` (highest role), `tree`, `pictures`, `upload`. A later kind (a product, a contact) is one row with its own source.
 - `pg_file_picker_kinds()` is the registry's `site_icon`, `public_image` and `file` under their names; any other name stays 404 on `file_picker_search.php`, so its contract does not grow.
 

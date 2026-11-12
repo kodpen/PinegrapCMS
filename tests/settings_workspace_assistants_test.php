@@ -62,7 +62,7 @@ function test_settings_workspace_assistants_sections_and_anchors()
 	$card = settings_workspace_assistants_test_source('includes/settings/workspace_assistants.php');
 	pg_assert_false(strpos($card, "array('ws-claude'") !== false, 'no link to the old Claude card');
 	pg_assert_false(strpos($card, "array('ws-bulk'") !== false, 'no link to the old Bulk changes card');
-	pg_assert_contains("array('ws-agents'", $card, 'the agents are still linked');
+	pg_assert_contains("array('ws-ai'", $card, 'Pinegrap AI is still linked');
 
 	$category = array('group' => 'workspace', 'gate' => 'workspace');
 	pg_assert_false(pg_settings_category_open($category, array('manager' => true, 'workspace' => false)), 'a manager without the right');
