@@ -9,6 +9,7 @@ description: Scripts minified from a list (pg_js_bundles(), tools/build_js.php):
 
 ## How does a screen load a bundle?
 - Never by a source name: `pg_js_bundle_tags('assets/js/workspace.min.js')` (`<script defer>` tags) or `pg_js_bundle_urls()`; each URL carries the file's mtime as `?v=`.
+- `pg_js_bundle_stamp($bundle)` joins those `?v=` numbers (`pg_js_urls_stamp()`); `pg_js_stamp_stale()` tells a page drawn with another one. The settings dialog sends its page's (`ui/settings-pane-stale-page.md`).
 - `pg_js_bundle_files()` answers with the `.min.js` when the site runs minified (`ENVIRONMENT_SUFFIX` `min`), with the sources one by one in `src` mode, and with the sources too when the `.min.js` is missing.
 
 ## What does the test check?

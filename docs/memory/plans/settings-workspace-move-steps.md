@@ -22,4 +22,4 @@ description: Steps of plans/settings-workspace-move.md: SD1-SD2 the drawer insid
   - Close-out: the lasting rules to `ui/settings-modal-architecture.md` and a `workspace/workspace-settings-overview.md`; the plan's two files are deleted.
 
 ## Which order holds, and why?
-- SD1 before the frame: a card with a form of its own needs the drawer. The owner's two findings on the settings screens (the gap between cards, a page left open across an update) are `plans/settings-owner-look.md`, apart from this order.
+- SD1 before the frame: a card with a form of its own needs the drawer. The owner's two findings on the settings screens are done apart from this order: the gap between cards (`ui/settings-card-chrome.md`, #8768) and a page left open across an update (`ui/settings-pane-stale-page.md`, #8787).

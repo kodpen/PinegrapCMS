@@ -340,18 +340,7 @@ function get_random_string($properties = array())
 // they can edit.
 function select_page($page_id = '', $page_type = '')
 {
-    $options = pg_select_page_options($page_id, $page_type);
-
-    // The Create Page and Edit Page screens print a picker for every page
-    // type, hidden until its type is chosen; an untyped one listing every
-    // page was printed twenty-odd times. There it carries only its stored
-    // page, and the list comes from one template once it is opened
-    // (pg_page_picker_template()).
-    if (($page_type === '' || $page_type === null) && pg_page_picker_lazy()) {
-        return pg_page_select_lazy_html($options);
-    }
-
-    return pg_page_select_options_html($options);
+    return pg_page_select_options_html(pg_select_page_options($page_id, $page_type));
 }
 
 // The options of select_page() as array('id', 'label', 'selected') rows, in
@@ -436,70 +425,6 @@ function pg_page_select_options_html(array $options)
     return $output;
 }
 
-// An untyped picker that waits for the page list: its selected option, so
-// the form sends the stored page unopened, and a hidden, disabled marker the
-// filling script looks for. Pure.
-function pg_page_select_lazy_html(array $options)
-{
-    $kept = array();
-    foreach ($options as $option) {
-        if (!empty($option['selected'])) {
-            $kept[] = $option;
-        }
-    }
-    return '<option value="" hidden disabled data-pg-page-fill></option>' . pg_page_select_options_html($kept);
-}
-
-// Whether untyped page pickers wait for the template: $on switches it, the
-// call answers the setting in force. Set while pg_page_form_type_fields()
-// draws for the Create Page and Edit Page screens.
-function pg_page_picker_lazy($on = null)
-{
-    static $lazy = false;
-    if ($on !== null) {
-        $lazy = (bool) $on;
-    }
-    return $lazy;
-}
-
-// The template holding every page a lazy picker offers, and the script that
-// fills a picker from it when it is first focused or pressed. The stored
-// page keeps its own option when the list has none for it (an archived or
-// binned page); otherwise the list's option is selected in its place.
-function pg_page_picker_template()
-{
-    return '<template id="pg_page_picker_options">' . pg_page_select_options_html(pg_select_page_options()) . '</template>
-        <script>
-        (function () {
-            var template = document.getElementById("pg_page_picker_options");
-            if (!template) return;
-            function fill(select) {
-                var marker = select.querySelector("option[data-pg-page-fill]");
-                if (!marker) return;
-                var value = select.value;
-                var list = template.content.cloneNode(true);
-                marker.parentNode.removeChild(marker);
-                if (value !== "") {
-                    var same = list.querySelector("option[value=\"" + parseInt(value, 10) + "\"]");
-                    if (same) {
-                        var stored = select.querySelector("option[value=\"" + parseInt(value, 10) + "\"]");
-                        if (stored) stored.parentNode.removeChild(stored);
-                        same.setAttribute("selected", "selected");
-                    }
-                }
-                select.appendChild(list);
-                select.value = value;
-            }
-            function onEvent(event) {
-                var target = event.target;
-                if (target && target.tagName === "SELECT") fill(target);
-            }
-            ["focusin", "mousedown", "touchstart"].forEach(function (type) {
-                document.addEventListener(type, onEvent, true);
-            });
-        })();
-        </script>';
-}
 // outputs the form's <select> page list for selecting a custom form: the
 // labels of the Forms screen (a repeated form name gets its page name,
 // binned forms are marked and go last)

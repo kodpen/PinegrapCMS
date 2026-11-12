@@ -1285,8 +1285,8 @@ function _test_blocks_family_file_problems($label, $js)
 		}
 	}
 	// Every pg-* class the file writes comes with a rule its blocks need: the
-	// rule's key, or a class that rule's CSS names (pg-launch-colours styles
-	// pg-launch-shot).
+	// rule's key, or a class that rule's CSS names (pg-variant styles
+	// pg-variant-shot).
 	$needed = array();
 	$needed_css = '';
 	$all_rules = $own['rules'] + $core['rules'];
@@ -1298,7 +1298,7 @@ function _test_blocks_family_file_problems($label, $js)
 	}
 	$body = preg_replace('/^\\s*var _SD_BLOCK_CSS(?:_NEEDS)? = \\{.*?^    \\};/ms', '', $js);
 	preg_match_all("/'([^'\\n]*)'/", (string) $body, $literals);
-	// A literal ending in a class stem joined to a number ('pg-launch-pick-' + n)
+	// A literal ending in a class stem joined to a number ('pg-variant-pick-' + n)
 	// is left out: only whole class names are read.
 	foreach ($literals[1] as $literal) {
 		if (preg_match_all('/(?<![\\w-])pg-[a-z0-9-]*[a-z0-9](?![\\w-])/', $literal, $classes)) {

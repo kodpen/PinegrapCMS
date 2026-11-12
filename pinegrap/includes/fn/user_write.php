@@ -265,7 +265,7 @@ function pg_user_create($fields, $editor_id)
             " . $sql_password['password'] . ",
             {$sql_password['algo_value']}
             '" . escape($fields['role'] ?? '') . "',
-            '" . escape($fields['home_page'] ?? '') . "',
+            '" . (int) ($fields['home_page'] ?? 0) . "',
             '" . escape($fields['badge'] ?? '') . "',
             '" . escape($fields['badge_label'] ?? '') . "',
             '" . (int) pg_user_form_reward_points($fields['reward_points'] ?? null) . "',
@@ -472,7 +472,7 @@ function pg_user_update($user_id, $fields, $editor, $save_access = true)
             user_email = '" . escape($fields['email'] ?? '') . "',
             $sql_role
             $sql_disabled
-            user_home = '" . escape($fields['home_page'] ?? '') . "',
+            user_home = '" . (int) ($fields['home_page'] ?? 0) . "',
             user_badge = '" . escape($fields['badge'] ?? '') . "',
             user_badge_label = '" . escape($fields['badge_label'] ?? '') . "',
             " . pg_credit_points_staff_sql($fields['reward_points'] ?? null, $fields['reward_points_original'] ?? null) . "
