@@ -160,9 +160,8 @@ if (!$_POST) {
             'icon'        => $category['icon'],
             'sections'    => array(),
             'html'        => '
-<div class="alert theme-warning align-items-center flex-wrap" role="alert">
-    <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
-    <span class="flex-grow-1">' . h(lang('The panel was updated after this page was opened.')) . '</span>
+<div class="alert theme-warning d-flex flex-wrap align-items-center gap-3" role="alert">
+    <span class="flex-grow-1"><i class="bi bi-arrow-clockwise me-2" aria-hidden="true"></i>' . h(lang('The panel was updated after this page was opened.')) . '</span>
     <button type="button" class="btn btn-solid theme-warning btn-sm" onclick="window.location.reload()">' . h(lang('Reload')) . '</button>
 </div>',
             'modals'      => '',

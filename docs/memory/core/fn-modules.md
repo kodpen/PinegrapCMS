@@ -151,7 +151,7 @@ description: Generated from the module field of the memory files: each includes/
 - `order_list`: [[orders-list-amount-column]], [[orders-list-bulk-actions]], [[orders-list-state-filter]]
 - `order_report`: [[order-report-screen]], [[order-report-totals]]
 - `order_view`: [[order-screen-shipping-input]], [[order-screen-wide-layout]], [[order-view-screen-rows]], [[print-order-shipping-card]]
-- `output`: [[list-status-words]], [[panel-old-browser-notice]]
+- `output`: [[list-status-words]], [[panel-old-browser-notice]], [[settings-pane-stale-page]]
 - `page_audience`: [[audience-conditions]]
 - `page_bulk`: [[page-bulk-edit]], [[page-bulk-edit-dialog]]
 - `page_facts`: [[page-conditions]]
