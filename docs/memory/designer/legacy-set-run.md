@@ -21,11 +21,12 @@ module: legacy_to_designer_run
 
 ## What does the report say?
 - One line for the design, one per page moved ("The page "x" moved to the design "y"."), one per style ("the style itself stays as it was", counted in styles).
-- A set moved before is still listed (its classic styles stay, with no page): its dry run says "Skipped: no page uses a style of this set any more" (`skip` 'no_pages') without the style list, and Convert leaves it out.
+- The state's `origins` keeps each moved page's style and whether it came by its folder (`pg_ltd_state_origin()`), kept in the report for Back to classic (`legacy-to-classic.md`).
+- A set moved before is still listed (its classic styles stay, with no page): its dry run says "Skipped: no page uses a style of this set any more" (`skip` 'no_pages') without the style list, and Convert leaves it out. Back to classic gives its styles their pages again (`legacy-to-classic.md`); a move then makes a new design.
 
 ## What did the sandbox show (turkish_default, 50 styles)?
 - home-2 set (40 styles, 146 pages) killed after 4 s at style 10, resumed by the screen: 146 pages on the design, one frame per style, no second design, no PHP error. auto-dialog, home-1 and emailer-inline (27 pages) by the screen and the keyboard.
-- A moved home-1 page loads the classic head's files in their order, then theme_modern.css. Its slider and parallax photos are missing: see `plans/legacy-group-design-steps.md`.
+- A moved home-1 page loads the classic head's files in their order, then theme_modern.css. Its slider and parallax photos are missing: a `<picture>` around the region's `<img>`, still open (`legacy-overview.md`).
 
 ## Tests?
 - `tests/legacy_to_designer_run_test.php`: set steps, cursor with sets, the walk through a set, skips, the design row, the wiring. `tests/legacy_set_test.php`: the `no_pages` dry run.

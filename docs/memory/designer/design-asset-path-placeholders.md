@@ -5,7 +5,7 @@ module: designer
 ---
 
 ## What did it fix?
-- A design's linked stylesheet or script row written `{path}name` (as the HTML importer keeps a classic style's head files, `classic-style-import.md`) printed nothing on the site: `get_page_content.php` checked the address (an http(s) URL or root-relative) before the page filled the placeholders, and `{path}name` is neither. On the canvas the browser asked for `%7Bpath%7Dname`. Fixed in #8732 (LG2 of `plans/legacy-group-design.md`), for every design, not only moved ones.
+- A design's linked stylesheet or script row written `{path}name` (as the HTML importer keeps a classic style's head files, `classic-style-import.md`) printed nothing on the site: `get_page_content.php` checked the address (an http(s) URL or root-relative) before the page filled the placeholders, and `{path}name` is neither. On the canvas the browser asked for `%7Bpath%7Dname`. Fixed in #8732 (LG2, `legacy-overview.md`), for every design, not only moved ones.
 
 ## Where does the site fill them?
 - `pg_design_asset_address($content, $path, $software_directory)` (`includes/fn/designer.php`) gives the address an `external-css` / `external-js` row loads: it fills both placeholders without case (`pg_designer_resolve_output_placeholders()`), then keeps an http(s) URL or a root-relative path, else ''. The CSS and JS rows of `get_page_content.php` pass the raw `PATH` and `SOFTWARE_DIRECTORY`; the address is escaped once when printed.

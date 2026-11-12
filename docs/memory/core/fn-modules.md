@@ -119,6 +119,7 @@ description: Generated from the module field of the memory files: each includes/
 - `layout_convert`: [[layout-form-converter]]
 - `layouts`: [[layout-code-tab]], [[layout-editor-classic]]
 - `legacy_design_theme`: [[legacy-design-theme]]
+- `legacy_to_classic`: [[legacy-to-classic]]
 - `legacy_to_designer`: [[legacy-set]], [[legacy-to-designer-report]]
 - `legacy_to_designer_plan`: [[legacy-set]], [[legacy-to-designer-bulk-run]]
 - `legacy_to_designer_run`: [[legacy-set-run]], [[legacy-to-designer-run]]
