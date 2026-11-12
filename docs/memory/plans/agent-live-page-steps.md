@@ -18,7 +18,7 @@ description: Steps LP1-LP5 (LP2 as LP2a and LP2b) of plans/agent-live-page.md: t
   - How a message marks a page, without a schema change: channels refuse `.html` uploads (`ws_upload_refused_extensions()`), so a page is an `.html` file whose versions (`file_versions`, format `html`) the route wrote; `live_page.php` shows only those.
   - Topic `workspace/agent-page.md`.
 - LP2b (M) The card. Done in #8851 (`workspace/agent-page-card.md`). Name, maker, Open (the frame in the card, `pg_guarded_frame_panel_sandbox()`), Full screen, View source, Download, versions, "Edited by" and Undo. It runs only when opened and stops when the channel is left. Topic `workspace/agent-page-card.md`.
-- LP3 (S) The assistants' tools. `free` once #8815 has landed. Claude, Pinegrap AI and model assistants make, read and edit a page as they do a canvas (`workspace/agent-canvas-assistants.md`).
+- LP3 (S) The assistants' tools. Done in #8852 (`workspace/agent-page-assistants.md`).
 - LP4 (S) The site's libraries. Done in #8830 (`workspace/agent-page.md`). The list (Chart.js first), how a call names one, how the site puts its own copy into the document; a test that no address reaches a page.
 - LP5 (S) Close-out. The lasting rules into the topic files, the API's description, the PR body names the `[NEW]` changelog line, both plan files deleted.
 

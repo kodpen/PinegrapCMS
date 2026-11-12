@@ -4,7 +4,7 @@ description: Pinegrap AI and model assistants draw, read and edit Workspace canv
 ---
 
 ## Which tools, and when are they offered?
-- `includes/workspace/canvas_ai.php` (required at the end of `ai.php`): `draw_canvas` (svg, background, text, name), `read_canvas` (message_id), `edit_canvas` (message_id, version, operations). `ws_ai_tools()` adds them and `ws_ai_tool_run()` sends them to `ws_canvas_ai_tool_run()`; their names are in `ws_ai_tool_names()` so a call written into the words is made too.
+- `includes/workspace/canvas_ai.php` (required at the end of `ai.php`); the live page tools are their twins (`agent-page-assistants.md`): `draw_canvas` (svg, background, text, name), `read_canvas` (message_id), `edit_canvas` (message_id, version, operations). `ws_ai_tools()` adds them and `ws_ai_tool_run()` sends them to `ws_canvas_ai_tool_run()`; their names are in `ws_ai_tool_names()` so a call written into the words is made too.
 - `ws_canvas_ai_offered()`: a request asked in a channel (not a note, task, page or MCP server alias), the versions table there, the assistant's application set and `ws_assistant_writer()` finding a reader who may post in the channel. The same for Pinegrap AI and for a model assistant (`model:<id>` request, run through the same loop, `model-assistants.md`).
 - Read and edit reach only canvases of the request's own channel (`ws_canvas_ai_target()`: not deleted, not in an earlier version of the conversation).
 

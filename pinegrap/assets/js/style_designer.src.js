@@ -65338,11 +65338,11 @@ const StyleDesigner = (function () {
     // `from` is the start of a scroll-linked effect, its range per effect
     // (pg_fx_scroll_from()): a scale or an opacity in percent, a distance
     // in px. `count` holds the duration and delay of a count, its only
-    // fields (pg_fx_count_numbers()).
+    // fields (pg_fx_count_numbers()). A chapter keeps its duration alone.
     function _sdFxSpec() {
         return {
             effects: ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
-                'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay'],
+                'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay', 'chapter'],
             triggers: ['view', 'load', 'hover', 'click'],
             easings: ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'],
             numbers: {
@@ -65371,6 +65371,7 @@ const StyleDesigner = (function () {
         if (effect === 'parallax') { out.speed = num('speed'); return out; }
         if (spec.from[effect]) { out.from = num('from'); return out; }
         if (effect === 'count') { out.duration = num('duration'); out.delay = num('delay'); return out; }
+        if (effect === 'chapter') { out.duration = num('duration'); return out; }
         var trigger = typeof fx.trigger === 'string' ? fx.trigger.toLowerCase() : '';
         var easing = typeof fx.easing === 'string' ? fx.easing.toLowerCase() : '';
         out.trigger = spec.triggers.indexOf(trigger) !== -1 ? trigger : spec.triggers[0];

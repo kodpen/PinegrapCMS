@@ -33,6 +33,13 @@
  *     its state with aria-pressed (true while paused). Without the script
  *     or under reduced motion the video stays still on its first frame or
  *     poster; the block rule pg-video-toggle hides the button then.
+ *   • chapter: while the node holds the window's middle, the page's body
+ *     takes the node's background and text colour, changing over the
+ *     duration; it takes its own back once no chapter holds the middle.
+ *     A chapter in the page's last strip that cannot reach the middle
+ *     takes the page at its end. Under reduced motion the colours change
+ *     at once; without the script, and on the editor's canvas, the page
+ *     keeps its own colours.
  *
  * CSS transitions only. Under prefers-reduced-motion nothing moves (sticky
  * still sticks, a scroll effect shows its own state, a number does not
@@ -69,7 +76,7 @@
 
     // The same names, ranges and defaults as pg_fx_normalize().
     var EFFECTS  = ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
-        'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay'];
+        'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay', 'chapter'];
     var TRIGGERS = ['view', 'load', 'hover', 'click'];
     var EASINGS  = ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'];
     var NUMBERS  = {
@@ -95,6 +102,7 @@
         if (effect === 'sticky') { o.offset = num('offset'); return o; }
         if (effect === 'parallax') { o.speed = num('speed'); return o; }
         if (FROM[effect]) { o.from = num('from', FROM[effect]); o.scroll = true; return o; }
+        if (effect === 'chapter') { o.chapter = true; o.duration = num('duration'); return o; }
         if (effect === 'count') {
             o.count = true;
             o.duration = num('duration', COUNT.duration);
@@ -240,9 +248,32 @@
         return n.prefix + whole + out + (n.decimals ? n.point + digits[1] : '') + n.suffix;
     }
 
+    // The chapter the page wears: of the boxes [top, bottom] (in page
+    // order) in a window `view` high, the index of the last one that holds
+    // the window's middle, or -1 when none does. At the page's end (`end`)
+    // a box whose top is in the window's lower half counts too: it cannot
+    // scroll any higher.
+    function chapterAt(boxes, view, end) {
+        var mid = view / 2, at = -1;
+        boxes.forEach(function (b, i) {
+            if ((b[0] <= mid && b[1] > mid) || (end && b[0] > mid && b[0] < view)) at = i;
+        });
+        return at;
+    }
+
+    // The colours a chapter gives the page, from its computed background
+    // and text colour: '' where it has none of its own (a transparent
+    // background, the text colour the page already has), so the page
+    // keeps its own there.
+    function chapterColours(background, color, pageColor) {
+        var clear = !background || background === 'transparent' || /^rgba\([^)]*,\s*0(\.0+)?\)$/.test(background);
+        return { background: clear ? '' : background, color: color && color !== pageColor ? color : '' };
+    }
+
     window.pgFx = {
         read: read, shift: shift, transition: transition, parallax: parallax,
-        progress: progress, scrollState: scrollState, number: number, countText: countText
+        progress: progress, scrollState: scrollState, number: number, countText: countText,
+        chapterAt: chapterAt, chapterColours: chapterColours
     };
 
     if (typeof document === 'undefined') {
@@ -252,6 +283,13 @@
     var reduce = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
     var bound = [];
     var floating = [];
+    // The chapters, the one the page wears (null: its own colours; false:
+    // unknown, the one it wore was drawn again) and the body's own
+    // inline colours and transition, kept the first time one is written.
+    var chapters = [];
+    var painted = null;
+    var pageOwn = null;
+    var paintMs = 600;
     var seen = null;
     var queued = false;
     var binds = 0;
@@ -393,17 +431,62 @@
         });
     }
 
-    // One frame of parallax and the scroll-linked effects. Every box is
-    // measured before any is written, so the page is laid out once.
+    // How much further the page scrolls: a box's top at the page's end is
+    // its top now less that.
+    function scrollLeft(view) {
+        var root = document.documentElement;
+        var height = Math.max(root.scrollHeight || 0, document.body ? document.body.scrollHeight : 0);
+        return Math.max(0, height - view - (window.pageYOffset || root.scrollTop || 0));
+    }
+
+    // A chapter's colours, read from the page when it is bound.
+    function chapterRead(el) {
+        var cs = window.getComputedStyle ? window.getComputedStyle(el) : null;
+        var page = cs && document.body ? window.getComputedStyle(document.body) : null;
+        return cs ? chapterColours(cs.backgroundColor, cs.color, page ? page.color : '') : { background: '', color: '' };
+    }
+
+    // The page's body in the chapter's colours, or its own (rec null). The
+    // change runs over the coming chapter's duration (the leaving one's
+    // when the page takes its own back); at once under reduced motion.
+    function paint(rec) {
+        var body = document.body;
+        if (rec === painted || !body) return;
+        var s = body.style;
+        if (!pageOwn) pageOwn = { background: s.backgroundColor || '', color: s.color || '', transition: s.transition || '' };
+        if (rec) paintMs = rec.o.duration;
+        if (!rec && !chapters.length) {
+            s.transition = pageOwn.transition;
+        } else {
+            s.transition = reduced() ? 'none' : 'background-color ' + paintMs + 'ms ease,color ' + paintMs + 'ms ease';
+        }
+        s.backgroundColor = rec && rec.colours.background ? rec.colours.background : pageOwn.background;
+        s.color = rec && rec.colours.color ? rec.colours.color : pageOwn.color;
+        painted = rec;
+    }
+
+    // The chapter that holds the window's middle paints the page.
+    function chapter() {
+        var root = document.documentElement;
+        var view = window.innerHeight || root.clientHeight;
+        var boxes = chapters.map(function (rec) {
+            var r = rec.el.getBoundingClientRect();
+            return [r.top, r.bottom];
+        });
+        var at = chapterAt(boxes, view, scrollLeft(view) < 1);
+        paint(at === -1 ? null : chapters[at]);
+    }
+
+    // One frame of the chapters, parallax and the scroll-linked effects.
+    // Every box is measured before any is written, so the page is laid out
+    // once. Chapters change colour under reduced motion too, at once.
     function float() {
         queued = false;
+        if (chapters.length || painted !== null) chapter();
         if (reduced()) return;
         var root = document.documentElement;
         var view = window.innerHeight || root.clientHeight;
-        // How much further the page scrolls: a box's top at the page's end
-        // is its top now less that.
-        var height = Math.max(root.scrollHeight || 0, document.body ? document.body.scrollHeight : 0);
-        var down = Math.max(0, height - view - (window.pageYOffset || root.scrollTop || 0));
+        var down = scrollLeft(view);
         var writes = [];
         floating.forEach(function (rec) {
             var r = rec.el.getBoundingClientRect();
@@ -437,7 +520,7 @@
     }
 
     function floatSoon() {
-        if (queued || !floating.length) return;
+        if (queued || (!floating.length && !chapters.length && painted === null)) return;
         queued = true;
         (window.requestAnimationFrame || window.setTimeout)(float);
     }
@@ -505,6 +588,15 @@
         var el = rec.el, o = rec.o;
         if (o.video) {
             videoStart(rec);
+            return;
+        }
+        if (o.chapter) {
+            // The editor's canvas writes its body's style on every render
+            // and keeps the page in its own colours while it is edited;
+            // the Preview plays the chapters.
+            if (window.pgFxEditing) return;
+            rec.colours = chapterRead(el);
+            chapters.push(rec);
             return;
         }
         if (o.effect === 'sticky') {
@@ -578,6 +670,11 @@
             return false;
         });
         floating = floating.filter(function (rec) { return bound.indexOf(rec) !== -1; });
+        chapters = chapters.filter(function (rec) { return bound.indexOf(rec) !== -1; });
+        // The chapter the page wore was drawn again (the editor's canvas):
+        // the next frame finds the one it wears now, with no flash of the
+        // page's own colours between.
+        if (painted && chapters.indexOf(painted) === -1) painted = false;
         var list = root.querySelectorAll ? root.querySelectorAll('[data-pg-fx]') : [];
         for (var i = 0; i < list.length; i++) {
             var el = list[i];
@@ -589,6 +686,7 @@
             bound.push(rec);
             start(rec, later);
         }
+        floatSoon();
     }
 
     // Reduced motion turned on while the page is open: every node back to
@@ -600,6 +698,7 @@
                 if (rec.el.tagName === 'VIDEO') videoPause(rec.el);
                 return;
             }
+            if (rec.o.chapter) return;
             rec.el.classList.add('pg-fx-armed');
             rec.el.classList.remove('pg-fx-on');
             rec.y = 0;

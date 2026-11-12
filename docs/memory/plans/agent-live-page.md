@@ -25,7 +25,7 @@ description: Plan (owner 2026-11-11, #8762): an agent makes a live page (HTML, C
 - Limits: 500 KB a page, 20 versions kept, the frame's height bounded in the card.
 
 ## What is not in it?
-- A page that reads the site's records or the channel, a page a person writes, a page on the public site: each its own question, asked when wanted.
+- A page that reads the channel, a page a person writes, a page on the public site: each its own question, asked when wanted. Reading and writing workflow tables is decided (#8850): `canvas-one.md`.
 - A mail's HTML is shown by the same module in its mode without script (`workspace-mail-screen.md`); whichever lands first builds the module.
 
 ## Who holds it, where does it start?
