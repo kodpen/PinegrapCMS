@@ -11,7 +11,9 @@
  * placeholder names something the template defines, the contact page's
  * parts are search sections, the pfl- classes equal their rules, the
  * comment threads run on the Comments widget with the reply e-mail's card,
- * and the sample work, bouquets, bundles and extras survive the assembly.
+ * the sample work, bouquets, bundles and extras survive the assembly, and
+ * the home, occasions, subscriptions and delivery pages are drawn on the
+ * Florist and Locations: Zones blocks.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -235,4 +237,96 @@ function test_florist_assembly_google_reviews()
 	$home = json_encode(_tpl_threads_page($tpl, 'home')['tree'], JSON_UNESCAPED_UNICODE);
 	pg_assert_true(strpos($home, '"templateWidget":"google_reviews"') !== false, 'the home places the Google reviews');
 	pg_assert_true(strpos($home, '"templateWidget":"home_work"') !== false && strpos($home, '"templateWidget":"home_posts"') !== false, 'the home places Our Work and the journal');
+}
+
+// Version 2.0.0 draws the home, occasions, subscriptions and delivery pages
+// on the Florist blocks and the Locations: Zones block: every block class
+// they place ships its rule in the template's User Styles, every
+// interaction is kept as written by pg_fx_normalize(), each page has one
+// h1, a plan's twelve weeks mark its deliveries and are hidden from screen
+// readers, and the delivery areas are rings inside each other, one per
+// area, with a key per area in the list.
+function test_florist_assembly_pages_on_florist_blocks()
+{
+	$tpl = _test_fl_asm_tpl();
+	pg_assert_true(version_compare($tpl['version'], '2.0.0', '>='), 'version 2.0.0');
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	include PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-florist/parts.php';
+	$keys = array('home', 'occasions', 'subscriptions', 'delivery');
+	$trees = array();
+	foreach ($tpl['pages'] as $p) if (in_array($p['key'], $keys, true)) $trees[$p['key']] = $p['tree'];
+	pg_assert_same(count($keys), count($trees), 'the four pages');
+	$wanted = array(
+		'home'          => array('pg-florist-frame', 'pg-florist-arch', 'pg-florist-tuck', 'pg-florist-note', 'pg-florist-figure', 'pg-florist-weeks', 'pg-florist-week'),
+		'occasions'     => array('pg-florist-note'),
+		'subscriptions' => array('pg-florist-weeks', 'pg-florist-week', 'pg-florist-figure'),
+		'delivery'      => array('pg-zone-map', 'pg-zone-ring', 'pg-zone-z1', 'pg-zone-z3', 'pg-zone-key', 'pg-zone-list'),
+	);
+	$blocks = array(
+		'home'          => array('Florist Hero', 'Florist Flower Subscription', 'Florist Card Message'),
+		'occasions'     => array('Florist Card Message'),
+		'subscriptions' => array('Florist Flower Subscription'),
+		'delivery'      => array('Locations (Zones)'),
+	);
+	foreach ($trees as $key => $tree) {
+		$nodes = array();
+		_test_fl_asm_tpl_nodes($tree, $nodes);
+		$class_list = '';
+		$labels = array();
+		$effects = 0;
+		$h1 = 0;
+		foreach ($nodes as $n) {
+			$class_list .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			if (isset($n['props']['_label'])) $labels[] = $n['props']['_label'];
+			if ((isset($n['props']['tag']) ? $n['props']['tag'] : '') === 'h1') $h1++;
+			if (!isset($n['props']['_fx'])) continue;
+			$effects++;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, $key . ': ' . $field . ' is kept as written');
+			}
+		}
+		preg_match_all('/(?<![\w-])pg-(?:florist|zone)-[a-z0-9-]+(?![\w-])/', $class_list, $m);
+		foreach (array_unique($m[0]) as $class) pg_assert_contains('.' . $class, $css, $key . ': the rule of ' . $class . ' ships');
+		foreach ($wanted[$key] as $class) {
+			pg_assert_true((bool)preg_match('/(?<![\w-])' . preg_quote($class, '/') . '(?![\w-])/', $class_list), $key . ': places ' . $class);
+		}
+		foreach ($blocks[$key] as $label) pg_assert_true(in_array(lang($label), $labels, true), $key . ': the ' . $label . ' block');
+		pg_assert_same(1, $h1, $key . ': one h1');
+		pg_assert_true($effects >= 2, $key . ': moves as it opens or scrolls in');
+	}
+
+	// A plan's strip: twelve weeks, a flower on each delivery week, hidden
+	// from screen readers (the words under it say it).
+	foreach (array_keys($plans) as $pkey) {
+		$card = $plan_card($pkey);
+		$nodes = array();
+		_test_fl_asm_tpl_nodes($card, $nodes);
+		$strip = null;
+		foreach ($nodes as $n) if (strpos(' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '') . ' ', ' pg-florist-weeks ') !== false) $strip = $n;
+		pg_assert_true($strip !== null, $pkey . ': the week strip');
+		pg_assert_same(array(array('name' => 'aria-hidden', 'value' => 'true')), $strip['props']['_attrs'], $pkey . ': the strip is hidden from screen readers');
+		pg_assert_same(12, count($strip['children']), $pkey . ': twelve weeks');
+		$marked = 0;
+		foreach ($strip['children'] as $w) if (strpos($w['props']['cssClass'], 'text-bg-primary') !== false) $marked++;
+		pg_assert_same($plans[$pkey]['deliveries'], $marked, $pkey . ': a flower on each delivery week');
+	}
+
+	// The delivery areas: three rings inside each other, the map hidden from
+	// screen readers, a key per area in the list.
+	$nodes = array();
+	_test_fl_asm_tpl_nodes($trees['delivery'], $nodes);
+	$rings = 0;
+	$keys_drawn = 0;
+	foreach ($nodes as $n) {
+		$class = ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '') . ' ';
+		if (strpos($class, ' pg-zone-map ') !== false) {
+			pg_assert_same(array(array('name' => 'aria-hidden', 'value' => 'true')), $n['props']['_attrs'], 'the map is hidden from screen readers');
+		}
+		if (strpos($class, ' pg-zone-ring ') !== false) $rings++;
+		if (strpos($class, ' pg-zone-key ') !== false) $keys_drawn++;
+	}
+	pg_assert_same(count($zones), $rings, 'a ring per area');
+	pg_assert_same(count($zones), $keys_drawn, 'a key per area');
 }

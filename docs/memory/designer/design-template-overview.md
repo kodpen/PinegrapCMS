@@ -26,7 +26,7 @@ description: Start file for the design-template(s)-* files: the Choose a Templat
 - `design-template-<name>.md`: appstudio, architecture, bakery, brewery, campsite, carrental, charity, cityhall, construction, courses, coworking, dealership, drivingschool, events, ferry, filmstudio, florist, forum, gallery, gym, hello, homeservices, hotel, launch, law, library;
   magazine, marina, market, museum, music, news, pharmacy, photo, planetarium, podcast, portfolio, realestate, recruitment, restaurant, salon, school, skiresort, social, sportsclub, theatre, travel, veterinary, wedding, zoo.
 - Cafe and Clinic: `design-template-cafe.md`; Bookshop events: `-bookshop-events.md`.
-- Pages rebuilt on a block family: `design-template-<name>-pages.md` (or `-home`) for architecture, campsite, cityhall, construction, coworking, drivingschool, ferry, gym, hotel, launch, marina, museum, music, pharmacy, photo, school, sportsclub, travel, wedding.
+- Pages on a block family (`design-template-<name>-pages.md` or `-home`): architecture, campsite, carrental, cityhall, construction, coworking, drivingschool, ferry, florist, gym, hotel, launch, marina, museum, music, pharmacy, photo, school, sportsclub, travel, wedding.
 - More topics: forum (`-blog`, `-decisions`, `-layout`, `-moderation`, `-private-threads`, `-replies`), magazine (`-a11y`, `-issues`, `-layout`, `-publishing`), news (`-layout`, `-publishing`), events and salon (`-words`).
 - Boutique, Store, Playground: only in the shared files.
 
@@ -34,4 +34,4 @@ description: Start file for the design-template(s)-* files: the Choose a Templat
 1. Its plan starts with the block family, then the pages (`design-template-own-look.md`); while the pause holds, none is started.
 2. Write the file to `design-templates-file-format.md`, the standard pages and e-mails to `design-templates-standard-pages.md`, every text through `lang()` (Turkish via `php tools/tr_add.php`).
 3. Tests `tests/design_template_<name>_*_test.php` (account, public, standard…) beside the shared ones (comment labels, text contrast, alert links).
-4. Write `design-template-<name>.md` and add the name here; the plan growing the cluster keeps it current.
+4. Write `design-template-<name>.md` and add the name here.

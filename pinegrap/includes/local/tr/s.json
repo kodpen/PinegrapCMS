@@ -4623,6 +4623,7 @@
     "Start this plan": "Bu planla başlayın",
     "Start this plan: {var}": "Bu planla başlayın: {var}",
     "Start this subscription": "Bu aboneliği başlat",
+    "Start this subscription: %s": "Bu aboneliği başlat: %s",
     "Start time": "Başlangıç saati",
     "Start training": "Antrenmana başlayın",
     "Start with \"Start manually\" in the palette, add tasks and an end, then drag from the dot on the right of a box to the box that comes after it.": "Paletteki \"Elle başlat\" ile başlayın, görevler ve bir bitiş ekleyin, sonra bir kutunun sağındaki noktadan ondan sonra gelen kutuya sürükleyin.",
