@@ -144,6 +144,7 @@
 - design-template-gym-home.md: Gym template's home, classes and timetable pages on the Gym blocks (1.1.0, #8655): sections, motion, the parallax picture layer, pgy-anchor and pgy-depth, what the editor cannot do yet, tests
 - design-template-gym.md: Gym template (pinegrap-gym): classes and a timetable, trainers, plans, class booking and join requests, memberships in the shop with a members' area, pgy- look, tests.
 - design-template-hello.md: Hello template 2.6.0: threads and the reply e-mail card on the Comments widget, product reviews, the Favourites page and its shop-only links, Google Reviews beside the testimonials [decision: decisions-made-product-16.md]
+- design-template-homeservices-fit.md: Home Services 2.0.0 browser fixes: the header opens out at 1200 px, the price tables' scroll boxes are positioned, dark tertiary bands take the emphasis tint; why and the numbers
 - design-template-homeservices-pages.md: Home Services 2.0.0: home on the Home Services blocks and Arrival Windows, service areas on the Zones block, motion elsewhere; builders, data, limits, test
 - design-template-homeservices.md: Home Services template (pinegrap-homeservices): services and team as collections, visit bookings and estimate requests, service areas, price guide, care plans in the shop, phs- look, tests.
 - design-template-hotel-pages.md: Hotel template 2.0.0: home, rooms and rates on the Hotel blocks: the builders, each page's composition, motion, what left, the test

@@ -29,4 +29,4 @@ description: Home Services 2.0.0: home on the Home Services blocks and Arrival W
 ## How is it tested?
 - `test_homeservices_assembly_pages_on_homeservices_blocks` (`tests/design_template_homeservices_assembly_test.php`): version, every block class's rule ships, interactions kept by `pg_fx_normalize()`, one `h1` per page, block labels, search ids, motion on home, areas and prices, the sheet's facts, a window card per form window with `datetime`s, the dark band's `tel:` link and four safety steps, three `aria-hidden` rings and keys, every area in the zones with the charge where it applies.
 
-Related: docs/memory/designer/design-template-homeservices.md, docs/memory/designer/design-template-own-look.md
+Related: [[design-template-homeservices-fit]] (header, price tables, dark bands), docs/memory/designer/design-template-homeservices.md, docs/memory/designer/design-template-own-look.md

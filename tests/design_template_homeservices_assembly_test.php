@@ -433,3 +433,34 @@ function test_homeservices_assembly_pages_on_homeservices_blocks()
 		pg_assert_true($block !== null && isset($block['props']['_fx']), $ckey . ': its table rises on view');
 	}
 }
+
+// The header opens out from 1200 px, where its six links and two buttons
+// fit, and leaves Get an Estimate to the collapsed menu from 1200 to 1399
+// px; the price tables' scroll boxes are positioned, so the hidden heading
+// of their last column gives a phone no sideways scroll; on the dark
+// theme's tertiary bands coloured text takes the palette's emphasis tint.
+function test_homeservices_assembly_header_tables_and_dark_bands()
+{
+	$tpl = _test_hs_asm_tpl();
+	include PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-homeservices/parts.php';
+	$head = $header();
+	$navs = _test_hs_asm_with_class($head, 'navbar');
+	pg_assert_same(1, count($navs), 'one navbar');
+	pg_assert_contains('navbar-expand-xl', $navs[0]['props']['cssClass'], 'the menu opens out from 1200 px');
+	$estimate = null;
+	foreach (_test_hs_asm_with_class($head, 'btn-outline-primary') as $b) $estimate = $b;
+	pg_assert_true($estimate !== null, 'the header asks for an estimate');
+	pg_assert_contains('d-xl-none d-xxl-inline-block', $estimate['props']['cssClass'], 'Get an Estimate waits for 1400 px in the open bar');
+
+	$prices = null;
+	foreach ($tpl['pages'] as $p) if ($p['key'] === 'prices') $prices = $p['tree'];
+	$boxes = _test_hs_asm_with_class($prices, 'table-responsive');
+	pg_assert_same(count($categories), count($boxes), 'a scroll box per category');
+	foreach ($boxes as $b) pg_assert_contains('position-relative', $b['props']['cssClass'], 'the scroll box holds its hidden heading');
+
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	pg_assert_contains('[data-bs-theme=dark] .bg-body-tertiary :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}', $css, 'primary text on a dark tertiary band');
+	pg_assert_contains('[data-bs-theme=dark] .bg-body-tertiary .link-secondary{color:var(--bs-secondary-text-emphasis)!important}', $css, 'secondary links on a dark tertiary band');
+	pg_assert_contains('[data-bs-theme=dark] .bg-body-tertiary .btn-outline-primary{--bs-btn-color:var(--bs-primary-text-emphasis)}', $css, 'outline buttons on a dark tertiary band');
+}

@@ -545,7 +545,8 @@ $public_pages[] = array(
 
 // A table per category, rising on view: a row for each sample service, its
 // starting price and a button opening the visit booking with the service
-// chosen.
+// chosen. The scroll box is positioned so the hidden heading of the last
+// column stays inside it and a phone gets no sideways scroll.
 $price_tables = array();
 foreach ($categories as $ckey => $c) {
     $rows = array();
@@ -565,7 +566,7 @@ foreach ($categories as $ckey => $c) {
             $icon($c['icon'], 'fs-4 text-primary'),
             $heading('h2', $c['title'], 'phs-display h4 mb-0'),
         )),
-        $el('div', 'table-responsive', lang('Table'), array(
+        $el('div', 'table-responsive position-relative', lang('Table'), array(
             $el('table', 'table align-middle mb-0', lang('Price Table'), array(
                 $el('thead', '', lang('Table Head'), array(
                     $el('tr', '', lang('Row'), array(

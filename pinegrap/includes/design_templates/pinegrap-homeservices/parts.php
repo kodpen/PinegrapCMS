@@ -537,7 +537,10 @@ $account_bar_tree = function () use ($el, $widget, $shared, $lang_switcher) {
 // and the way to book a visit. The links to the current page are marked
 // active on the server (smart active state), so one header serves every
 // page. The care plans are the shop's and are linked from the shop pages
-// only, so the header stands on a site without the shop.
+// only, so the header stands on a site without the shop. The menu opens
+// out from 1200 px: six links and two buttons are wider than the 960 px
+// container, and from 1200 to 1399 px Get an Estimate is left out of the
+// bar (it stays in the collapsed menu and returns from 1400 px).
 $header = function () use ($el, $link, $icon, $span, $attr) {
     $items = array();
     foreach (array(
@@ -551,7 +554,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link($n[1], '{{page:' . $n[0] . '}}', 'nav-link text-nowrap')));
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
-        $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
+        $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $icon('bi-tools', 'fs-4 text-primary'),
@@ -568,9 +571,9 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
                     $attr('aria-label', lang('Toggle navigation')),
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
-                    $el('ul', 'navbar-nav ms-lg-auto me-lg-3 column-gap-lg-2 py-3 py-lg-0', lang('Nav Menu'), $items, array('smartActive' => true)),
-                    $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center gap-2 pb-2 pb-lg-0', lang('Header Actions'), array(
-                        $link(lang('Get an Estimate'), '{{page:estimate}}', 'btn btn-outline-primary text-nowrap'),
+                    $el('ul', 'navbar-nav ms-xl-auto me-xl-3 column-gap-xl-2 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
+                    $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
+                        $link(lang('Get an Estimate'), '{{page:estimate}}', 'btn btn-outline-primary text-nowrap d-xl-none d-xxl-inline-block'),
                         $el('a', 'btn btn-primary d-inline-flex align-items-center justify-content-center gap-2 px-3 text-nowrap', lang('Call to Action'), array(
                             $icon('bi-calendar-check'),
                             $span(lang('Book a Visit'), '', lang('Link Text')),

@@ -172,6 +172,13 @@ $homeservices_css = implode("\n", array(
     '.phs-lift{transition:transform .2s ease,box-shadow .2s ease}',
     '.phs-lift:hover,.phs-lift:focus-visible,.phs-lift:focus-within{transform:translateY(-3px);box-shadow:var(--bs-box-shadow)}',
     '@media (prefers-reduced-motion:reduce){.phs-lift{transition:none}.phs-lift:hover,.phs-lift:focus-visible,.phs-lift:focus-within{transform:none}}',
+    // In the dark theme a palette's text colour is made for the page
+    // background and can fall under 4.5:1 on the tertiary bands (the account
+    // bar, the page headers, the grey sections; Steel gives 4.2:1). Small
+    // coloured text and links there take the palette's emphasis tint.
+    '[data-bs-theme=dark] .bg-body-tertiary :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}',
+    '[data-bs-theme=dark] .bg-body-tertiary .link-secondary{color:var(--bs-secondary-text-emphasis)!important}',
+    '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-primary{--bs-btn-color:var(--bs-primary-text-emphasis)}',
 ));
 
 return array(
