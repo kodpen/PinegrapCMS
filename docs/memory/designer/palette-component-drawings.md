@@ -16,4 +16,4 @@ description: The Components tab's hover card drawings (_sdPalDrawing): which row
 
 ## How is it tested?
 - `tests/designer_pal_drawing_test.php` cuts `_sdPalInfo()` and `_sdPalDrawing()` out of the core and runs them under Node: every row but `f:` and `r:` has a `v`, and every `v` draws a whole SVG with at least three marks; an unknown key draws nothing. P8 drops the `f:`/`r:` exception.
-- Added in P7 of [[designer-palette-drawings]] (#PR).
+- Added in P7 of [[designer-palette-drawings]] (#8833).

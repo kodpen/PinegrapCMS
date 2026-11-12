@@ -22,7 +22,7 @@ description: Plan (owner 2026-11-11): one Components tab with a Blocks switch, a
 
 - P6 (M, done #8797): family blocks L to Z (launch to zoo, podcast included) and `florist`, 55 blocks, as P5; `designer_block_info_test_undescribed_families()` is empty.
 
-- P7 (M, free): Components items with a description but no drawing: HTML elements (section, article, main, header, footer, aside, nav, div, pre, input, checkbox, radio, textarea, select), Content (heading, paragraph, span, image, divider, spacer, custom HTML, SVG, custom PHP, carousel, messages, breadcrumb, variant attribute, applied offers, link, icon). Drawings in `_sdPalDrawing()`.
+- P7 (M, done #8833): Components items with a description but no drawing: HTML elements (section, article, main, header, footer, aside, nav, div, pre, input, checkbox, radio, textarea, select), Content (heading, paragraph, span, image, divider, spacer, custom HTML, SVG, custom PHP, carousel, messages, breadcrumb, variant attribute, applied offers, link, icon). Drawings in `_sdPalDrawing()`.
 
 - P8 (M, waits for P7: same map): the Form fields (27) and Regions (13) drawings, and the 26 Lists in a record rows, which have no tip card at all (key `loop_area` is one for all): a drawing and a line each. Test: every Components row has a card with a drawing.
 
