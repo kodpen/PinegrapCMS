@@ -7785,6 +7785,54 @@ function pg_js_bundle_tags($bundle, $defer = true)
 }
 
 /**
+ * One stamp for a list of script addresses: the ?v= number of each, in load
+ * order, joined by a dot. An update that rewrites any of the files changes it.
+ *
+ * @param array $urls addresses as pg_js_bundle_urls() returns them
+ * @return string '' when no address carries a number stamp
+ */
+function pg_js_urls_stamp($urls)
+{
+    $stamps = array();
+
+    foreach (is_array($urls) ? $urls : array() as $url) {
+        if (preg_match('/[?&]v=([0-9]+)(?:[&#]|$)/', (string) $url, $match)) {
+            $stamps[] = $match[1];
+        }
+    }
+
+    return implode('.', $stamps);
+}
+
+/**
+ * The stamp of one of pg_js_bundles() as a page drawn now loads it.
+ *
+ * @param string $bundle a key of pg_js_bundles()
+ * @return string
+ */
+function pg_js_bundle_stamp($bundle)
+{
+    return pg_js_urls_stamp(pg_js_bundle_urls($bundle));
+}
+
+/**
+ * Whether a page drawn with one script stamp runs older script than the
+ * server serves now. A page that sent no stamp (drawn before pages carried
+ * one) is not called stale: nothing is known about it.
+ *
+ * @param mixed  $page the stamp the page was drawn with
+ * @param string $now  pg_js_bundle_stamp() of the same bundle
+ * @return bool
+ */
+function pg_js_stamp_stale($page, $now)
+{
+    $page = is_string($page) ? trim($page) : '';
+    $now = is_string($now) ? trim($now) : '';
+
+    return ($page !== '') && ($now !== '') && ($page !== $now);
+}
+
+/**
  * X-Content-Type-Options: nosniff, once. The firewall's copy leaves the header
  * to the web server where its rules add it already (waf_send_nosniff());
  * before waf.php is loaded, PHP sends it.
