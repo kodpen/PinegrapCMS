@@ -17,7 +17,7 @@ description: Steps A10 and A11 of plans/agent-channel.md: an agent waits while t
   - "Decisions in this channel" lists the newest 10 (today up to 40, `ws_memory_brief()`), then one line with how many more there are. The brief's line on reading more names `limit` and asks for only as many messages as the request needs; the route's default (50) and most (100) stay.
   - Tests: the bound and the count line. Topic `workspace/channel-memory.md` corrected.
 
-- A12 (S, tools only) A session waits on its request queue. `free`. Architect 2026-11-11 (`workflow/agent-channel-wake.md`).
+- A12 (S, tools only) A session waits on its request queue. Done #8767 (`workflow/agent-channel-request-wait.md`). Architect 2026-11-11 (`workflow/agent-channel-wake.md`).
   - `tools/ws_wait.php --requests`: reads `GET /workspace/agent-requests` with the key every `--interval` seconds (15 by default in this mode, at least 5) and exits 0 on the first queued request, the oldest first, printing one JSON line: the request's id, its message id, the channel, whether it is a wake, who asked, the first 500 characters of the words. Exit 3 on timeout, 1 when the site refuses; never the key. It needs no channel; the text rules and `--changed` stay as they are.
   - Why: an answer to the agent's message and a scheduled wake make a request and carry no `@handle`, so a waiter on the text misses them (the owner's reply of 2026-11-11 waited until he said so).
   - Tests: which row of an answer wakes (queued only), the printed line, the interval's floor. `workflow/agent-channel-wake.md` corrected to name the mode. No product code.

@@ -78,9 +78,11 @@ function ws_client_options($argv)
  *
  * @param array<string,string|bool> $options
  * @param array<string,string> $env
+ * @param bool $need_channel false for a call that reads no channel (the
+ *             request queue of tools/ws_wait.php --requests)
  * @return array{site: string, key: string, secret: string, channel: int, missing: string[]}
  */
-function ws_client_settings($options, $env)
+function ws_client_settings($options, $env, $need_channel = true)
 {
 	$get = function ($name) use ($env) {
 		return isset($env[$name]) ? trim((string) $env[$name]) : '';
@@ -102,7 +104,7 @@ function ws_client_settings($options, $env)
 		}
 	}
 
-	if ($out['channel'] < 1) {
+	if ($need_channel && $out['channel'] < 1) {
 		$out['missing'][] = 'PG_WS_CHANNEL';
 	}
 
