@@ -166,8 +166,8 @@ function test_panel_text_size_calendar_card_bell_and_sales_map_in_rem()
 	// A bell row's title and its second line (pg_bell_row()).
 	pg_assert_contains('font-size: 0.8125rem;', panel_text_size_test_rule($css, '#notifications .pg-bell-title'));
 	pg_assert_contains('font-size: 0.75rem;', panel_text_size_test_rule($css, '#notifications .pg-bell-sub'));
-	// The one inbox is wider than the old 350px, still in rem.
-	pg_assert_contains('width: 26rem;', panel_text_size_test_rule($css, '#notifications'));
+	// The bell's drawer: 30rem, the whole width on a phone.
+	pg_assert_contains('--pg-drawer-width: min(30rem, 100vw);', panel_text_size_test_rule($css, '#notifications.pg-bell-drawer'));
 }
 
 function test_panel_text_size_dashboard_skeleton_in_rem()

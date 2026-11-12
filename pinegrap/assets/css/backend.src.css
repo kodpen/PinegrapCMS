@@ -4391,16 +4391,78 @@ a.link-top-row {
 }
 
 /*NOTIFICATIONS*/
-/* The one inbox of the panel: the site's notices and what the workspace told
-   the person, so it has room for a sentence and its filters. */
-#notifications {
-  width: 26rem;
-  right: 2px !important;
-  left: auto;
-  top: calc(var(--pg-navbar-h) + 2px) !important;
-
-  max-height: calc(100vh - 60px);
-  max-width: calc(100% - 57px);
+/* The bell's drawer (output.php): the panel's one inbox, the site's notices
+   and what the workspace told the person, at the right edge and full height.
+   30rem wide, the whole width on a phone. */
+#notifications.pg-bell-drawer {
+  --pg-drawer-width: min(30rem, 100vw);
+}
+/* The head: the name, then "Mark all as read", the menu holding "Delete All
+   Notifications" and the close button at the right. */
+#notifications .pg-bell-head {
+  gap: 0.25rem;
+  padding: 0.75rem 0.75rem 0.75rem 1rem;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+#notifications .pg-bell-heading {
+  margin-inline-end: auto;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+#notifications .pg-bell-head-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+  height: 2rem;
+  padding: 0 0.625rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: none;
+  color: var(--pg-primary-fg-emphasis);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+#notifications .pg-bell-head-btn > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#notifications .pg-bell-head-btn:hover {
+  background: var(--pg-tint-hover);
+}
+#notifications .pg-bell-head .pg-bell-menu-toggle {
+  width: 2rem;
+  height: 2rem;
+}
+#notifications .pg-bell-close {
+  flex: 0 0 auto;
+  margin-block: 0;
+  margin-inline-start: 0.25rem;
+}
+#notifications .pg-bell-menu-item.pg-bell-delete-all {
+  color: var(--pg-danger-fg-emphasis);
+}
+/* The body: the filters, the list (the only part that scrolls) and the push
+   line at the foot. min-height: 0 lets the list shrink below its content, so
+   the foot stays on screen however long the list gets. */
+#notifications .pg-bell-body {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+#notifications .pg-bell-scroll {
+  position: relative;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+#notifications #push_row,
+#notifications #push_hint {
+  flex: 0 0 auto;
+  margin-top: auto;
 }
 
 /* Quick note beside the bell (ws_notes_quick_markup()): placed like the
@@ -4434,34 +4496,6 @@ a.link-top-row {
   font-size: 20px;
   font-family: "Material Icons" !important;
   font-weight: normal !important;
-}
-
-#notifications .menu-scroll-area {
-  max-height: inherit;
-  border-radius: var(--bs-menu-border-radius);
-  width: 100%;
-}
-
-/* The dropdown is capped at the viewport, and the list inside it used to be
-   free to take that whole height - which pushed anything sitting after the list
-   past the bottom of the screen. On a phone that is every row after the third
-   notification. Laying the open dropdown out as a column, with the list as the
-   only part allowed to shrink, keeps the footer reachable however long the list
-   gets. min-height:0 is what actually permits the shrink: a flex item defaults
-   to min-height:auto and refuses to be smaller than its content. */
-#notifications.show {
-  display: flex;
-  flex-direction: column;
-}
-
-#notifications.show .menu-scroll-area {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-#notifications #push_row,
-#notifications #push_hint {
-  flex: 0 0 auto;
 }
 
 /* The filters over the list (output.php, backend.src.js): All, the site's
@@ -4533,14 +4567,15 @@ a.link-top-row {
   border-left: 2px solid var(--pg-border-color-translucent);
 }
 
-/* A bell row drawn as the dashboard's Next up row (pg_bell_row()): the
-   module's tag, the title over one second line, then the one button, the
-   unread dot and the row's menu. Day headings stand over the rows. */
+/* A bell row laid out for the drawer (pg_bell_row()): line one the module's
+   tag as a small mark, the unread dot and the title; line two the place and
+   the time, with the one button and the row's menu at the right; then the
+   excerpt, two lines at most. Day headings stand over the rows. */
 #notifications .pg-bell-list {
   padding-bottom: 0.25rem;
 }
 #notifications .pg-bell-day {
-  padding: 0.75rem 0.875rem 0.25rem;
+  padding: 0.75rem 1rem 0.25rem;
   color: var(--pg-fg-3);
   font-size: 0.6875rem;
   font-weight: 700;
@@ -4561,24 +4596,32 @@ a.link-top-row {
   border-top: 1px solid var(--pg-border-color-translucent);
 }
 #notifications .pg-bell-card {
-  display: grid;
-  grid-template-columns: 3.75rem minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.625rem 0.5rem 0.625rem 0.875rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.625rem 0.75rem 0.625rem 1rem;
+}
+#notifications .pg-bell-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.375rem;
+  min-width: 0;
 }
 #notifications .pg-bell-tag {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 2.125rem;
-  padding: 0 0.25rem;
+  display: inline-block;
+  flex: 0 0 auto;
+  max-width: 6.5rem;
+  height: 1.125rem;
+  margin-top: 0.0625rem;
+  padding: 0 0.375rem;
   overflow: hidden;
-  border-radius: 0.625rem;
+  border-radius: 0.3125rem;
   background: var(--pg-bell-tag-system-bg);
   color: var(--pg-bell-tag-system-fg);
-  font-size: 0.6875rem;
-  font-weight: 800;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1.125rem;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -4598,15 +4641,10 @@ a.link-top-row {
   background: var(--pg-bell-tag-team-bg);
   color: var(--pg-bell-tag-team-fg);
 }
-#notifications .pg-bell-text {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  min-width: 0;
-}
 #notifications .pg-bell-title {
   display: block;
-  max-width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
   padding: 0;
   border: 0;
   background: none;
@@ -4625,22 +4663,54 @@ a.link-top-row {
   text-decoration: underline;
 }
 /* The second line wraps like the title: an order's number and total stay
-   readable in the narrow bell instead of ending in an ellipsis. */
+   readable in the drawer instead of ending in an ellipsis. */
 #notifications .pg-bell-sub {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   max-width: 100%;
   color: var(--pg-fg-3);
   font-size: 0.75rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
+#notifications .pg-bell-meta {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.375rem;
+  min-width: 0;
+}
+#notifications .pg-bell-place {
+  min-width: 0;
+}
+#notifications .pg-bell-place + .pg-bell-time::before {
+  content: "\00b7";
+  content: "\00b7" / "";
+  margin-right: 0.375rem;
+}
 #notifications .pg-bell-time {
   white-space: nowrap;
 }
+/* The excerpt: two lines at most; the whole text is at the row's place. */
+#notifications .pg-bell-excerpt {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--pg-fg-2);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
 #notifications .pg-bell-more {
   display: inline-flex;
+  align-self: flex-start;
   align-items: center;
   gap: 0.25rem;
-  margin-top: 0.125rem;
   padding: 0;
   border: 0;
   background: none;
@@ -4649,34 +4719,38 @@ a.link-top-row {
 }
 #notifications .pg-bell-side {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 0.125rem;
+  margin-left: auto;
 }
 #notifications .pg-bell-act {
   display: inline-flex;
   align-items: center;
-  height: 2.125rem;
+  height: 1.75rem;
   margin-right: 0.25rem;
   padding: 0 0.625rem;
   border: 1px solid var(--pg-border-color);
-  border-radius: 0.5625rem;
+  border-radius: 0.5rem;
   background: var(--pg-tint);
   color: var(--pg-fg-body);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   white-space: nowrap;
 }
 #notifications .pg-bell-act:hover {
   border-color: var(--pg-primary);
   background: var(--pg-tint-hover);
 }
-/* The unread dot is a button ("Mark as read"); a read row keeps its place. */
+/* The unread dot is a button ("Mark as read"); a read row keeps its place.
+   Its target reaches past the line's height without moving the title. */
 #notifications .pg-bell-dot {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   width: 1.5rem;
-  height: 2.125rem;
+  height: 1.5rem;
+  margin: -0.125rem -0.25rem;
   padding: 0;
   border: 0;
   border-radius: 0.5rem;
@@ -4705,8 +4779,8 @@ a.link-top-row {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2.125rem;
+  width: 1.75rem;
+  height: 1.75rem;
   padding: 0;
   border: 0;
   border-radius: 0.5rem;
@@ -4758,22 +4832,9 @@ a.link-top-row {
 #notifications .pg-bell-menu-item.pg-bell-delete {
   color: var(--pg-danger-fg-emphasis);
 }
-#notifications :is(.pg-bell-title, .pg-bell-act, .pg-bell-dot, .pg-bell-menu-toggle, .pg-bell-menu-item, .pg-bell-more):focus-visible {
+#notifications :is(.pg-bell-title, .pg-bell-act, .pg-bell-dot, .pg-bell-menu-toggle, .pg-bell-menu-item, .pg-bell-more, .pg-bell-head-btn):focus-visible {
   outline: 2px solid var(--pg-primary);
   outline-offset: 1px;
-}
-/* A phone: the tag stands over the text, as on the dashboard. */
-@media (max-width: 639.98px) {
-  #notifications .pg-bell-card {
-    grid-template-columns: minmax(0, 1fr) auto;
-    row-gap: 0.375rem;
-  }
-  #notifications .pg-bell-tag {
-    grid-column: 1 / -1;
-    justify-self: start;
-    height: 1.5rem;
-    padding: 0 0.5rem;
-  }
 }
 /* A workspace row's icon, in the workspace's colour. */
 #notifications .pg-bell-glyph {

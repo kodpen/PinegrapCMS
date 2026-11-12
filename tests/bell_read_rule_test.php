@@ -106,10 +106,15 @@ function test_bell_read_rule_the_script_reads_on_open()
 	pg_assert_contains('function get_notifications(keep_place)', $get, 'no read_mark argument');
 	pg_assert_false(strpos($get, 'read_mark') !== false, 'the list request asks to read nothing');
 	pg_assert_false(strpos($get, "\$('#notification_toggle .has-notification-icon').html('');") !== false, 'opening the bell keeps the count');
-	pg_assert_contains('pg-bell-mark-all', $get, 'Mark all as read is drawn');
-	pg_assert_contains("lang('Mark all as read')", $get, 'its label');
-	pg_assert_true(strpos($get, 'pg-bell-mark-all') < strpos($get, 'notification-remove-btn'), 'Mark all as read stands before Delete All');
-	pg_assert_true(strpos($get, 'notification-remove-btn') < strpos($get, '<ul class="list-group'), 'both stand above the list');
+	// "Mark all as read" and "Delete All Notifications" stand in the
+	// drawer's head (output.php), no longer drawn with the list.
+	$output = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php');
+	$at = strpos($output, '<div class="drawer-header pg-bell-head">');
+	$head = ($at === false) ? '' : substr($output, $at, strpos($output, 'drawer-body', $at) - $at);
+	pg_assert_false(strpos($get, 'notification-remove-btn') !== false, 'the list draws no actions');
+	pg_assert_contains('pg-bell-mark-all', $head, 'Mark all as read is in the head');
+	pg_assert_contains("h(lang('Mark all as read'))", $head, 'its label');
+	pg_assert_true(strpos($head, 'pg-bell-mark-all') < strpos($head, 'pg-bell-delete-all'), 'Mark all as read stands before Delete All');
 	pg_assert_contains('pg_bell_row(', $get, 'every row is drawn by pg_bell_row()');
 	pg_assert_contains('pg_bell_read_button(', bell_read_rule_js_function('pg_bell_row'), 'every row has the unread dot');
 	pg_assert_contains('var load = ++pgBellLoad;', $get, 'each list request is numbered');
