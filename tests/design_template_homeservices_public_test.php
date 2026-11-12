@@ -201,10 +201,13 @@ function test_homeservices_public_no_fixed_dates()
 }
 
 // Every literal has its Turkish; a service reads "hizmet", a visit
-// "ziyaret", an estimate "teklif", and none says "rezervasyon".
+// "ziyaret", an estimate "teklif", and none says "rezervasyon" but the
+// name of the palette block a section is drawn on, which the editor's
+// layer tree shows in the palette's own words.
 function test_homeservices_public_turkish_words()
 {
 	$map = pg_test_language_map('tr');
+	$block_names = array('Booking (Arrival Windows)');
 	$src = file_get_contents(PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-homeservices/pages_public.php');
 	preg_match_all("/lang\\('((?:[^'\\\\]|\\\\.)*)'\\)/", $src, $m);
 	foreach (array_unique($m[1]) as $raw) {
@@ -215,6 +218,7 @@ function test_homeservices_public_turkish_words()
 		if (preg_match('/\b[Ss]ervices?\b/', $key)) pg_assert_true(mb_stripos($tr, 'hizmet', 0, 'UTF-8') !== false, "'$key' says hizmet");
 		if (preg_match('/\b[Vv]isits?\b/', $key)) pg_assert_true(mb_stripos($tr, 'ziyaret', 0, 'UTF-8') !== false, "'$key' says ziyaret");
 		if (preg_match('/\b[Ee]stimates?\b/', $key)) pg_assert_true(mb_stripos($tr, 'teklif', 0, 'UTF-8') !== false, "'$key' says teklif");
+		if (in_array($key, $block_names, true)) continue;
 		pg_assert_false(mb_stripos($tr, 'rezervasyon', 0, 'UTF-8') !== false, "'$key' never says rezervasyon");
 	}
 }

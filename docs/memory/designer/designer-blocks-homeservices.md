@@ -22,7 +22,7 @@ description: The Home Services block family (homeservices- prefix, own palette g
 
 ## Which blocks does a home services site place instead?
 - Price guide: `services-price-list`. How it works: `steps-numbered`. Why us: `features-grid`. Figures: `stats-icons`. Team: `team-grid`. Reviews: `testimonial-grid`. Book or call: `booking-cta`. Questions: `faq-accordion`.
-- Service areas with a call-out charge share their structure with a florist's delivery zones (zone, places, charge, days), so no family block was added for them: `homeservices-2` places the general `locations-zones` (Locations: Zones, added by `florist-1`, PR #8763, made general by PR #8784) or `locations-cards`.
+- Service areas with a call-out charge share their structure with a florist's delivery zones (zone, places, charge, days), so no family block was added for them: `homeservices-2` (PR #8826) places the general `locations-zones` (Locations: Zones, added by `florist-1`, PR #8763, made general by PR #8784).
 
 ## What do its rules and texts follow?
 - Each rule colours with a theme variable; no `!important`, no `>` or `+` (the canvas's `.sd-wrap`, [[bootstrap-direct-child-canvas]]). Small eyebrows are `text-primary-emphasis`: `text-primary` is under 4.5:1 on `bg-body-tertiary`. The template's Turkish: "usta" for technician, "ziyaret talep edin", "fiyat teklifi"; "Job sheet" is "İş emri". The shared "Arrival" reads "Giriş" (hotels), so the fact is "Arrival time" ("Geliş saati"). No year or month; the weekday is plain text.
