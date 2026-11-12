@@ -126,6 +126,9 @@ $carrental_css = implode("\n", array(
     '.pcr-lift{transition:transform .2s ease,box-shadow .2s ease}',
     '.pcr-lift:hover,.pcr-lift:focus-visible,.pcr-lift:focus-within{transform:translateY(-3px);box-shadow:var(--bs-box-shadow)}',
     '@media (prefers-reduced-motion:reduce){.pcr-lift{transition:none}.pcr-lift:hover,.pcr-lift:focus-visible,.pcr-lift:focus-within{transform:none}}',
+    // From 1200 to 1400 px the header's links and buttons share one row with
+    // the name: the links are set a size smaller and closer together.
+    '@media (min-width:1200px) and (max-width:1399.98px){.pcr-nav{--bs-nav-link-font-size:.875rem;--bs-navbar-nav-link-padding-x:.375rem}}',
 ));
 
 return array(
