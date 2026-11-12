@@ -22,7 +22,12 @@ function look_recipes_test_block()
 	$css = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/css/backend.src.css');
 	$start = strpos($css, 'Look A: the panel\'s type and recipes.');
 
-	return $start === false ? '' : substr($css, $start);
+	if ($start === false) {
+		return '';
+	}
+	$end = strpos($css, 'Look A: page widths.', $start);
+
+	return $end === false ? substr($css, $start) : substr($css, $start, $end - $start);
 }
 
 function test_look_inter_is_self_hosted_with_its_licence()
