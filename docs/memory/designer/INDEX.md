@@ -254,6 +254,7 @@
 - designer-blocks-carrental.md: The Car Rental block family (carrental- prefix, own palette group): trip hero, class line-up, cover levels, sample quote; the driving car, the excess meter; general blocks placed instead; test
 - designer-blocks-cityhall.md: The City Hall block family (cityhall- prefix, own palette group): task hero, service guide, council agenda; general blocks placed instead; rules, test
 - designer-blocks-clinic.md: The Clinic block family (clinic- prefix, own palette group): doctors' week, care guide; general blocks placed instead; rules, test
+- designer-blocks-conference.md: The Conference block family (conference- prefix): opening hero with a badge on its lanyard, day agenda with parallel sessions, speaker line-up as a poster; blocks placed instead; tests
 - designer-blocks-construction.md: The Construction block family (construction- prefix, own palette group): site board hero, project progress, neighbour notice; general blocks placed instead; rules, test
 - designer-blocks-coworking.md: The coworking- block family (Coworking group): the workspace hero, what it reuses instead (spaces, plans, amenities, floors), its pg-cw-* rules, its test
 - designer-blocks-cta.md: General CTA blocks in a family file (cta- prefix, core Marketing group): the sticky bar; where it sticks, its rule, who uses it
