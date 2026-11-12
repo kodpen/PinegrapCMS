@@ -9,7 +9,7 @@ description: The card of an agent's live page (#8851): Open, Full screen, View s
 - A guest's room page draws its own file line (a download link), with no Open.
 
 ## When does a page run?
-- Only on Open: the frame (`live_page.php?message=<id>`, sandbox from `pg_guarded_frame_panel_sandbox('script')`, `allow-scripts` only) is made then. Close removes it; `app.open()` calls `PGWsPageCard.stopAll()`, so leaving the channel stops every page. A message drawn again while open (an edit, Undo) opens again with the newest version.
+- Only on Open: the frame (`PATH . SOFTWARE_DIRECTORY . '/live_page.php?message=<id>'`; until #8960 the folder was missing and a site framed its own 404 page, sandbox from `pg_guarded_frame_panel_sandbox('script')`, `allow-scripts` only) is made then. Close removes it; `app.open()` calls `PGWsPageCard.stopAll()`, so leaving the channel stops every page. A message drawn again while open (an edit, Undo) opens again with the newest version.
 - The agent's line sits above the frame, outside it, in the card and in Full screen (the box with the line goes full screen, `requestFullscreen()`); nothing in the page can cover it.
 - The panel posts the frame's size to the shell on load and resize; it takes a height only when `event.source` is a frame the card made, bounded to 120-640 px in the card.
 
