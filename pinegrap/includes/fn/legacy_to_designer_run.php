@@ -473,8 +473,9 @@ function pg_ltd_run_step($state, $user)
 }
 
 /**
- * The style to a design: the frame component and the trees of its own
- * pages, each saved through pg_designer_save_page() (validated first, a page
+ * The style to a design: the frame's shared components and the trees of its
+ * own pages, their page regions taken in (pg_ltd_page_regions_into_tree()),
+ * each saved through pg_designer_save_page() (validated first, a page
  * somebody holds skipped), the folder pages, then the style flipped. The
  * design-wide body classes go onto the pages, as the editor's Save puts them.
  */
@@ -497,12 +498,15 @@ function pg_ltd_run_design($state, $row, $user)
             $state = pg_ltd_state_line($state, 'skipped', lang(array('string' => 'Skipped: "{var:1}" is being edited in the visual designer.', 'vars' => array($page['page_name']))));
             continue;
         }
-        if ($classes !== '') {
-            $page['tree_json'] = pg_designer_tree_encode(pg_ltd_fold_body_classes(json_decode((string)$page['tree_json'], true), $classes));
-        }
+        $tree = json_decode((string)$page['tree_json'], true);
+        $into = is_array($tree) ? pg_ltd_page_regions_into_tree($page, $tree) : array('tree' => null, 'skipped' => '', 'warnings' => array());
+        if ($into['skipped'] !== '') $state = pg_ltd_state_line($state, 'skipped', $into['skipped']);
+        if ($into['tree'] !== null) $tree = $into['tree'];
+        if (is_array($tree)) $page['tree_json'] = pg_designer_tree_encode(pg_ltd_fold_body_classes($tree, $classes));
         $saved = pg_ltd_save_page($style_id, $page, $user);
         if ($saved['ok']) {
             $state = pg_ltd_state_line($state, 'made', lang(array('string' => 'The page "{var:1}" now has a tree.', 'vars' => array($page['page_name']))), 'pages');
+            foreach ($into['warnings'] as $w) $state = pg_ltd_state_line($state, 'skipped', $page['page_name'] . ': ' . $w);
         } else {
             $state = pg_ltd_state_line($state, 'failed', $page['page_name'] . ': ' . implode(' ', (array)$saved['errors']));
         }
@@ -519,15 +523,21 @@ function pg_ltd_run_design($state, $row, $user)
 }
 
 /**
- * The page regions of the style's pages that had a tree of their own moved
- * into it (pg_page_region_blocks(), pg_ltd_page_region_splice()). A page
+ * The page regions still in the trees of the style's pages moved into them
+ * (pg_page_region_blocks(), pg_ltd_page_region_splice()): pages that had a
+ * tree of their own, and folder pages given the split frame's tree. A page
  * whose page regions sit in a shared component, or that somebody holds,
  * keeps them.
+ *
+ * @param array|null $page_ids  only these pages of the style, null for all
  */
-function pg_ltd_run_page_regions($state, $style_id, $user)
+function pg_ltd_run_page_regions($state, $style_id, $user, $page_ids = null)
 {
     require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
+    $only = ($page_ids === null) ? null : array_flip(array_map('intval', (array)$page_ids));
+    if ($only === array()) return $state;
     foreach (pg_designer_load_pages($style_id, '', true) as $page) {
+        if ($only !== null && !isset($only[(int)$page['page_id']])) continue;
         $tree = json_decode((string)$page['tree_json'], true);
         if (!is_array($tree)) continue;
         if (pg_ltd_page_regions($tree, array())['own'] === 0) continue;
@@ -616,24 +626,24 @@ function pg_ltd_shared_ids($tree)
 }
 
 /**
- * The frame component's designer regions made shared components and its
+ * The frame components' designer regions made shared components and their
  * named menu, menu sequence, ad and tag cloud regions made widgets (one per
- * region), each put in the region node's place; the frame row written once.
- * A frame already done has no such nodes left, so nothing is made twice.
+ * region), each put in the region node's place; each frame row written once.
+ * The frame components are the parts of a split frame (pg_ltd_frame_rows()),
+ * else the whole frame. A frame already done has no such nodes left, so
+ * nothing is made twice.
  */
 function pg_ltd_run_frame($state, $row, $user)
 {
-    $style_id = (int)$row['style_id'];
-    $frame_row = db_item("SELECT id, tree_json FROM shared_components
-                          WHERE category = '" . e(pg_classic_style_component_category($style_id)) . "'
-                            AND (system_region_config IS NULL OR system_region_config = '')
-                          ORDER BY id ASC LIMIT 1");
-    if (!is_array($frame_row)) return $state;
-    $frame = json_decode((string)$frame_row['tree_json'], true);
-    if (!is_array($frame)) return $state;
+    $frames = array();
+    foreach (pg_ltd_frame_rows((int)$row['style_id']) as $frame_row) {
+        $tree = json_decode((string)$frame_row['tree_json'], true);
+        if (is_array($tree)) $frames[(int)$frame_row['id']] = $tree;
+    }
+    if (!$frames) return $state;
 
     require_once(PG_FUNCTIONS_DIR . '/includes/designer_region_import.php');
-    $targets = pg_ltd_frame_targets($frame);
+    $targets = pg_ltd_frame_targets(pg_di_root(array_values($frames)));
     $made = array();
     foreach ($targets['designer'] as $name) {
         $warnings = array();
@@ -663,13 +673,32 @@ function pg_ltd_run_frame($state, $row, $user)
     }
     if (!$made) return $state;
 
-    $count = 0;
-    $frame = pg_ltd_frame_splice($frame, $made, $count);
-    $json = pg_designer_tree_encode($frame);
-    if ($count > 0 && $json !== '') {
-        db("UPDATE shared_components SET tree_json = '" . e($json) . "', updated_at = '" . time() . "' WHERE id = '" . (int)$frame_row['id'] . "' LIMIT 1");
+    foreach ($frames as $id => $frame) {
+        $count = 0;
+        $frame = pg_ltd_frame_splice($frame, $made, $count);
+        $json = pg_designer_tree_encode($frame);
+        if ($count > 0 && $json !== '') {
+            db("UPDATE shared_components SET tree_json = '" . e($json) . "', updated_at = '" . time() . "' WHERE id = '" . (int)$id . "' LIMIT 1");
+        }
     }
     return $state;
+}
+
+/**
+ * The frame components of a classic style: the parts of its split frame
+ * (category "classic_style:<id>:<part>"), else the whole frame's row.
+ *
+ * @return array  rows: id, tree_json
+ */
+function pg_ltd_frame_rows($style_id)
+{
+    $no_widget = "(system_region_config IS NULL OR system_region_config = '')";
+    $parts = db_items("SELECT id, tree_json FROM shared_components
+                       WHERE category LIKE '" . e(pg_classic_style_part_category_like((int)$style_id)) . "' AND $no_widget ORDER BY id ASC");
+    if (is_array($parts) && $parts) return $parts;
+    $whole = db_item("SELECT id, tree_json FROM shared_components
+                      WHERE category = '" . e(pg_classic_style_component_category((int)$style_id)) . "' AND $no_widget ORDER BY id ASC LIMIT 1");
+    return is_array($whole) ? array($whole) : array();
 }
 
 // ── A set ───────────────────────────────────────────────────────────────
@@ -774,13 +803,14 @@ function pg_ltd_run_set_design($state, $at, $user)
 }
 
 /**
- * A style of a set moved to the set's design: its frame component made (or
- * the one made before), then each of its own pages saved to the design
+ * A style of a set moved to the set's design: its frame components made (or
+ * the ones made before), then each of its own pages saved to the design
  * through pg_ltd_save_page(), which moves its page_style: a page with no
- * tree gets the tree placing the frame, a page that had one keeps it with
- * its page regions taken in, a page somebody holds is skipped. Its folder
- * pages follow (pg_classic_style_convert_folder_pages()). The style's body
- * classes go on its pages; the classic style row stays as it is.
+ * tree gets the tree of the split frame, a page that had one keeps it; the
+ * page regions are taken in, a page somebody holds is skipped. Its folder
+ * pages follow (pg_classic_style_convert_folder_pages()), then their page
+ * regions (pg_ltd_run_page_regions()). The style's body classes go on its
+ * pages; the classic style row stays as it is.
  */
 function pg_ltd_run_set_pages($state, $row, $user, $set)
 {
@@ -811,7 +841,7 @@ function pg_ltd_run_set_pages($state, $row, $user, $set)
         }
         $tree = json_decode((string)$page['tree_json'], true);
         $warnings = array();
-        if (empty($page['converted']) && is_array($tree)) {
+        if (is_array($tree)) {
             $into = pg_ltd_page_regions_into_tree($page, $tree);
             if ($into['skipped'] !== '') $state = pg_ltd_state_line($state, 'skipped', $into['skipped']);
             if ($into['tree'] !== null) $tree = $into['tree'];
@@ -826,8 +856,10 @@ function pg_ltd_run_set_pages($state, $row, $user, $set)
         $state = $moved($state, (string)$page['page_name']);
         foreach ($warnings as $w) $state = pg_ltd_state_line($state, 'skipped', $page['page_name'] . ': ' . $w);
     }
-    foreach (pg_classic_style_convert_folder_pages($style_id, $user, $classes, $design_id) as $page_id) {
+    $folder = pg_classic_style_convert_folder_pages($style_id, $user, $classes, $design_id);
+    foreach ($folder as $page_id) {
         $state = $moved($state, (string)db_value("SELECT page_name FROM page WHERE page_id = '" . (int)$page_id . "' LIMIT 1"));
     }
+    $state = pg_ltd_run_page_regions($state, $design_id, $user, $folder);
     return pg_ltd_state_line($state, 'made', lang(array('string' => 'The style\'s pages now use the design "{var:1}"; the style itself stays as it was.', 'vars' => array($set['name']))), 'styles');
 }

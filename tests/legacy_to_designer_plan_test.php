@@ -162,10 +162,43 @@ function test_ltdp_plan_style_actions_and_writes()
 	pg_assert_same(array('tree', 'held', 'keep', 'regions'), $actions);
 	pg_assert_same(array(array('kind' => 'common', 'name' => 'Footer', 'exists' => false), array('kind' => 'designer', 'name' => 'Header', 'exists' => true)), $p['components']);
 	pg_assert_same(4, count($p['widgets']));
-	pg_assert_same(1, $p['frame_page_regions']);
+	pg_assert_false($p['frame_split'], 'a frame with no split fact stays whole');
+	pg_assert_same(0, $p['frame_parts']);
 	// One component, frame and style, two pages, four widgets.
 	pg_assert_same(1 + 2 + 2 + 4, $p['writes']);
 	pg_assert_same(array('w'), $p['warnings']);
+}
+
+function test_ltdp_plan_style_split_frame_writes()
+{
+	$p = pg_ltd_plan_style(array(
+		'refusal' => '', 'common' => array(), 'frame' => array('designer' => array(), 'widgets' => array(), 'page_regions' => 0),
+		'frame_split' => true, 'frame_parts' => 3, 'frame_exists' => false,
+		'pages' => array(
+			array('page_id' => 1, 'page_name' => 'Home', 'source' => 'own', 'has_tree' => false, 'holder' => ''),
+			array('page_id' => 2, 'page_name' => 'About', 'source' => 'folder', 'has_tree' => false, 'holder' => ''),
+			array('page_id' => 3, 'page_name' => 'Mixed', 'source' => 'folder', 'has_tree' => true, 'holder' => '', 'own_regions' => 1),
+		),
+	));
+	pg_assert_true($p['frame_split']);
+	pg_assert_same(3, $p['frame_parts']);
+	pg_assert_same('make', $p['frame']);
+	// Three parts and the style; three pages, the folder page given a tree
+	// written again when its page regions are taken in.
+	pg_assert_same(3 + 1 + 3 + 1, $p['writes']);
+
+	$items = pg_ltd_plan_items(array_merge($p, array('name' => 'Main')));
+	pg_assert_true(strpos($items, 'split into 3 shared components') !== false, 'the split line');
+	pg_assert_true(strpos($items, 'go into each page') !== false, 'where page content is edited now');
+	pg_assert_false(strpos($items, 'frame is made a shared component') !== false, 'not the whole frame line');
+
+	$none = pg_ltd_plan_style(array('refusal' => '', 'frame' => array('designer' => array(), 'widgets' => array(), 'page_regions' => 0),
+		'frame_split' => true, 'frame_parts' => 0, 'pages' => array()));
+	pg_assert_same(1, $none['writes'], 'no part: the style alone');
+	pg_assert_true(strpos(pg_ltd_plan_items(array_merge($none, array('name' => 'Main'))), 'holds nothing but the page content') !== false);
+
+	$whole = pg_ltd_plan_style(array('refusal' => '', 'frame' => array('designer' => array(), 'widgets' => array(), 'page_regions' => 0), 'pages' => array()));
+	pg_assert_true(strpos(pg_ltd_plan_items(array_merge($whole, array('name' => 'Main'))), 'frame is made a shared component') !== false);
 }
 
 function test_ltdp_plan_style_refused()

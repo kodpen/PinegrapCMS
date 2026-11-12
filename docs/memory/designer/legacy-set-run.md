@@ -12,8 +12,8 @@ module: legacy_to_designer_run
 - `pg_ltd_steps(true)`: `set_design`, `regions`, `set_pages`, `frame`. `pg_ltd_state_set()` tells which set the style moves with (-1 alone).
 - `set_design`, at the set's first style only (`design` 0): `save_system_style(pg_ltd_set_design_row())`: framework `legacy`, the set's theme_id and collection, the majority sharing position, asset rows from `pg_ltd_set_assets()` (read again by `pg_ltd_set_design_assets()`, the dry run's `styles` names dropped) and the fonts; then the majority `layout_type`.
 - `regions` and `frame`: as for a style alone.
-- `set_pages`: `pg_classic_style_design_open()` makes the frame component; each own page is saved to the design (`pg_ltd_save_page($design_id, …)` moves `page_style`): a page with no tree gets root + `shared_ref` to its style's frame, a page that had a tree keeps it with its page regions taken in (`pg_ltd_page_regions_into_tree()`), a held page is skipped.
-- Folder pages: `pg_classic_style_convert_folder_pages($id, $user, $classes, $design_id)`. The style's body classes go on its pages; its row is not touched.
+- `set_pages`: `pg_classic_style_design_open()` makes the frame's parts (`legacy-frame-split.md`); each own page is saved to the design (`pg_ltd_save_page($design_id, …)` moves `page_style`): a page with no tree gets the split frame's tree, a page that had a tree keeps it; the page regions are taken in first (`pg_ltd_page_regions_into_tree()`), a held page is skipped.
+- Folder pages: `pg_classic_style_convert_folder_pages($id, $user, $classes, $design_id)`, then `pg_ltd_run_page_regions()` on those pages. The style's body classes go on its pages; its row is not touched.
 
 ## What does a resume skip?
 - A step marks `skip` ('style' or 'set'), read once by `pg_ltd_state_next()`. A design that cannot be saved or is gone skips the rest of the set.

@@ -11,9 +11,10 @@ module: legacy_to_designer_run
 ## What does it do per style?
 - `pg_ltd_steps()`, in this order:
   - `regions`: the style's common regions through `pg_common_region_component()`.
-  - `design`: `pg_classic_style_design_open()`, each converted page through `pg_designer_save_page()` (a dry run first; a page somebody holds skipped, `pg_collab_may_edit_page('', id)`); the folder pages through `pg_classic_style_convert_folder_pages()`; the design-wide body classes folded onto the pages and cleared as the editor's Save does; then `pg_classic_style_mark_design($id, 'legacy', ...)` (the `legacy` key since LG3: `legacy-design-framework.md`).
-  - `page_regions`: pages that had their own tree get the blocks spliced in; skipped when some page region sits in a shared component.
-  - `frame`: the frame's designer regions through `pg_designer_region_component()`, one widget row per region with `pg_ltd_widget_tree()`, `pg_ltd_widget_config()`, a unique `pg_ltd_widget_name()`, all spliced into the frame row at once.
+  - `design`: `pg_classic_style_design_open()` (the frame split, `legacy-frame-split.md`), each converted page, its page regions taken in, through `pg_designer_save_page()` (a dry run first; a page somebody holds skipped, `pg_collab_may_edit_page('', id)`).
+  - Then in `design`: the folder pages through `pg_classic_style_convert_folder_pages()`; the design-wide body classes folded onto the pages and cleared as the editor's Save does; then `pg_classic_style_mark_design($id, 'legacy', ...)` (the `legacy` key since LG3: `legacy-design-framework.md`).
+  - `page_regions`: page regions still in a page's tree (a page that had its own, a folder page) get the blocks spliced in; skipped when some page region sits in a shared component.
+  - `frame`: the frame's parts (`pg_ltd_frame_rows()`): their designer regions through `pg_designer_region_component()`, one widget row per region with `pg_ltd_widget_tree()`, `pg_ltd_widget_config()`, a unique `pg_ltd_widget_name()`, spliced into each part row at once.
 - A refused or missing style is skipped with its reason; a style already a visual design skips `regions` and `design`. A step that skips its style marks `skip` and `pg_ltd_state_next()` moves on; before LG5 a failed `design` also skipped the next style's `regions`.
 
 ## Where is its state, who works it?

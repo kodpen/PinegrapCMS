@@ -202,12 +202,13 @@ function test_classic_style_folder_styles()
 
 function test_classic_style_folder_page_tree()
 {
-	$t = pg_classic_style_folder_page_tree(array('cssClass' => 'home  dark', 'title' => 'Site'), 12, 'Frame', 'wide home');
+	$t = pg_classic_style_folder_page_tree(pg_classic_style_page_tree(array('cssClass' => 'home  dark', 'title' => 'Site'), 12, 'Frame'), 'wide home');
 	pg_assert_same('wide home dark', $t['props']['cssClass'], 'the design classes first, each once');
 	pg_assert_same('Site', $t['props']['title']);
 	pg_assert_same('shared_ref', $t['children'][0]['type']);
 	pg_assert_same(12, $t['children'][0]['props']['sharedId']);
 
-	$plain = pg_classic_style_folder_page_tree(array(), 3, 'Frame', '');
+	$plain = pg_classic_style_folder_page_tree(pg_classic_style_page_tree(array(), 3, 'Frame'), '');
 	pg_assert_same(pg_classic_style_page_tree(array(), 3, 'Frame'), $plain, 'no classes: the style\'s own page tree');
+	pg_assert_same(array('cssClass' => 'x'), pg_classic_style_folder_page_tree(pg_di_root(array()), 'x')['props'], 'a root with no class');
 }

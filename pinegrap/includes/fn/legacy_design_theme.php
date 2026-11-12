@@ -32,6 +32,13 @@ function pg_classic_style_component_category($style_id)
     return 'classic_style:' . (int)$style_id;
 }
 
+// A LIKE pattern (to be passed through e()) matching the categories of a
+// classic style's split frame parts: "classic_style:<id>:<part>".
+function pg_classic_style_part_category_like($style_id)
+{
+    return addcslashes(pg_classic_style_component_category($style_id) . ':', '\\%_') . '%';
+}
+
 /**
  * The file name a classic style's link to one of the site's own files
  * names ({path}custom.css, or the same under the site's output path), or ''

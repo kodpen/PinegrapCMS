@@ -4,12 +4,14 @@
  *
  * A classic style (a `style` row whose style_code is edited as text) opened
  * in the visual designer. The style's code is the frame around every page
- * that uses it, so it becomes one shared component, read by the HTML
- * importer (pg_designer_import_html()): the region placeholders stay region
- * nodes and print the same tags, so the page regions, the system region and
- * its custom layout are filled on each page as before. Every page of the
- * style gets a tree of its own placing that component, with the style's
- * body attributes and title on its root.
+ * that uses it, read by the HTML importer (pg_designer_import_html()): the
+ * region placeholders stay region nodes and print the same tags, so the page
+ * regions, the system region and its custom layout are filled on each page
+ * as before. The frame is split around the page regions
+ * (pg_classic_style_frame_split()): what comes before and after them becomes
+ * shared components, the page regions and the nodes enclosing them go into
+ * each page's own tree, with the style's body attributes and title on its
+ * root. A frame with no page region stays one shared component.
  *
  * Nothing on the site changes when the editor opens: the component is made
  * (or an unused one made before is brought back to the style's code), the
@@ -164,18 +166,189 @@ function pg_classic_style_page_tree($root_props, $shared_id, $shared_name)
 }
 
 /**
- * The shared component drawing a classic style's frame: the one made before
- * (category "classic_style:<id>"), brought back to the style's code while no
+ * A classic style's frame split around the page's own content, so that the
+ * page regions sit in each page's tree and the rest stays shared. The content
+ * is the run of children, from the first to the last that holds a page
+ * region, of the deepest node above every page region. The nodes enclosing
+ * it are copied into each page's tree; on every level the siblings before
+ * them are a "top" part and the siblings after them a "bottom" part, each
+ * part one shared component. A wrapper holding both the chrome and the
+ * content (a main container with the footer inside) gives a part per side on
+ * its own level, so a frame can have more than one top or bottom part.
+ *
+ * Pure: no query.
+ *
+ * @param array $frame  pg_classic_style_frame()'s 'frame'
+ * @return array|null  null when the frame holds no page region (it stays one
+ *                     component); else 'parts' (in document order: 'side'
+ *                     'top' or 'bottom', 'key' such as 'top:1', 'number' and
+ *                     'of' within its side, 'nodes'), 'children' (the page
+ *                     tree's children, a part's place an array('_part' => its
+ *                     index in 'parts'))
+ */
+function pg_classic_style_frame_split($frame)
+{
+    $children = array_values(is_array($frame) ? (array)($frame['children'] ?? array()) : array());
+    $paths = array();
+    $find = function ($nodes, $path) use (&$find, &$paths) {
+        foreach (array_values((array)$nodes) as $i => $n) {
+            if (!is_array($n)) continue;
+            $type = (string)($n['type'] ?? '');
+            if ($type === 'region' && (string)($n['props']['regionType'] ?? '') === 'page') {
+                $paths[] = array_merge($path, array($i));
+                continue;
+            }
+            // A placed component is drawn from its own row: what it holds is not the frame's.
+            if ($type === 'shared_ref') continue;
+            $find($n['children'] ?? array(), array_merge($path, array($i)));
+        }
+    };
+    $find($children, array());
+    if (!$paths) return null;
+
+    // The deepest node above every page region, as child indexes from the root.
+    $above = $paths[0];
+    array_pop($above);
+    foreach ($paths as $p) {
+        $k = 0;
+        while ($k < count($above) && $k < count($p) - 1 && $above[$k] === $p[$k]) $k++;
+        $above = array_slice($above, 0, $k);
+    }
+    $level_of_content = count($above);
+    $first = $last = $paths[0][$level_of_content];
+    foreach ($paths as $p) {
+        $first = min($first, $p[$level_of_content]);
+        $last  = max($last, $p[$level_of_content]);
+    }
+
+    $parts = array();
+    $slot = function ($nodes, $side) use (&$parts) {
+        if (!$nodes) return array();
+        $parts[] = array('side' => $side, 'nodes' => array_values($nodes));
+        return array(array('_part' => count($parts) - 1));
+    };
+    $build = function ($nodes, $level) use (&$build, $slot, $above, $first, $last, $level_of_content) {
+        $nodes = array_values((array)$nodes);
+        if ($level === $level_of_content) {
+            $top     = $slot(array_slice($nodes, 0, $first), 'top');
+            $content = array_slice($nodes, $first, $last - $first + 1);
+            $bottom  = $slot(array_slice($nodes, $last + 1), 'bottom');
+            return array_merge($top, $content, $bottom);
+        }
+        $i = $above[$level];
+        $top = $slot(array_slice($nodes, 0, $i), 'top');
+        $wrapper = $nodes[$i];
+        $wrapper['children'] = $build($wrapper['children'] ?? array(), $level + 1);
+        $bottom = $slot(array_slice($nodes, $i + 1), 'bottom');
+        return array_merge($top, array($wrapper), $bottom);
+    };
+    $tree_children = $build($children, 0);
+
+    $of = array('top' => 0, 'bottom' => 0);
+    foreach ($parts as $part) $of[$part['side']]++;
+    $seen = array('top' => 0, 'bottom' => 0);
+    foreach ($parts as $i => $part) {
+        $n = ++$seen[$part['side']];
+        $parts[$i]['key']    = $part['side'] . ':' . $n;
+        $parts[$i]['number'] = $n;
+        $parts[$i]['of']     = $of[$part['side']];
+    }
+    return array('parts' => $parts, 'children' => $tree_children);
+}
+
+/**
+ * The name of a frame part's shared component: "<style> top", "<style>
+ * bottom", numbered when its side has more than one part.
+ *
+ * @param string $style_name
+ * @param array  $part  a pg_classic_style_frame_split() part
+ */
+function pg_classic_style_part_name($style_name, $part)
+{
+    $top = ($part['side'] ?? '') === 'top';
+    if ((int)($part['of'] ?? 1) > 1) {
+        return lang(array('string' => $top ? '{var:1} top {var:2}' : '{var:1} bottom {var:2}', 'vars' => array((string)$style_name, (int)$part['number'])));
+    }
+    return lang(array('string' => $top ? '{var:1} top' : '{var:1} bottom', 'vars' => array((string)$style_name)));
+}
+
+/**
+ * The tree of one page of a split frame: the style's body attributes and
+ * title on the root, the content and the nodes enclosing it, each part
+ * placed as its shared component. The first ref keeps the id "sd_frame".
+ *
+ * Pure: no query.
+ *
+ * @param array $root_props  pg_classic_style_frame()'s 'root_props'
+ * @param array $split       pg_classic_style_frame_split()
+ * @param array $made        part index => array('id' => int, 'name' => string)
+ */
+function pg_classic_style_split_page_tree($root_props, $split, $made)
+{
+    $n = 0;
+    $fill = function ($nodes) use (&$fill, &$n, $made) {
+        $out = array();
+        foreach ((array)$nodes as $node) {
+            if (is_array($node) && array_key_exists('_part', $node)) {
+                $c = $made[$node['_part']] ?? null;
+                if (!is_array($c)) continue;
+                $ref = pg_di_mk('shared_ref', array('sharedId' => (int)$c['id'], 'sharedName' => (string)$c['name']));
+                $ref['_id'] = (++$n === 1) ? 'sd_frame' : 'sd_frame_' . $n;
+                $out[] = $ref;
+                continue;
+            }
+            if (is_array($node) && !empty($node['children'])) $node['children'] = $fill($node['children']);
+            $out[] = $node;
+        }
+        return $out;
+    };
+    return pg_di_root($fill($split['children'] ?? array()), is_array($root_props) ? $root_props : array());
+}
+
+/**
+ * The page tree of a classic style's pages, its shared components written:
+ * one per part of the split frame (pg_classic_style_frame_split()), or the
+ * whole frame as one when it holds no page region.
+ *
+ * @param int    $style_id
+ * @param string $style_name
+ * @param array  $frame  pg_classic_style_frame()
+ * @param array  $user
+ * @return array|null  the page tree, null when a component could not be written
+ */
+function pg_classic_style_frame_page_tree($style_id, $style_name, $frame, $user)
+{
+    $split = pg_classic_style_frame_split($frame['frame']);
+    if ($split === null) {
+        $c = pg_classic_style_component($style_id, $style_name, $frame['frame'], $user);
+        return is_array($c) ? pg_classic_style_page_tree($frame['root_props'], $c['id'], $c['name']) : null;
+    }
+    $made = array();
+    foreach ($split['parts'] as $i => $part) {
+        $root = pg_di_root($part['nodes']);
+        if (!empty($frame['frame']['_id'])) $root['_id'] = $frame['frame']['_id'];
+        $c = pg_classic_style_component($style_id, pg_classic_style_part_name($style_name, $part), $root, $user, $part['key']);
+        if (!is_array($c)) return null;
+        $made[$i] = $c;
+    }
+    return pg_classic_style_split_page_tree($frame['root_props'], $split, $made);
+}
+
+/**
+ * The shared component drawing a classic style's frame, or one part of it:
+ * the one made before (category "classic_style:<id>", a part's
+ * "classic_style:<id>:<part>"), brought back to the style's code while no
  * page or other component places it, else a new designer-only row. A row a
  * saved page places is left as it is: it is the design's now.
  *
+ * @param string $part  '' for the whole frame, else a part's key ('top:1')
  * @return array|null  array('id' => int, 'name' => string), null when it could not be written
  */
-function pg_classic_style_component($style_id, $name, $frame, $user)
+function pg_classic_style_component($style_id, $name, $frame, $user, $part = '')
 {
     $tree_json = pg_designer_tree_encode($frame);
     if ($tree_json === '') return null;
-    $marker = pg_classic_style_component_category($style_id);
+    $marker = pg_classic_style_component_category($style_id) . ((string)$part !== '' ? ':' . $part : '');
     $now = time();
 
     $have = db_item("SELECT id, name FROM shared_components
@@ -223,7 +396,7 @@ function pg_classic_style_region_lookup()
 
 /**
  * A classic style opened in the visual designer (edit_system_style.php
- * ?classic=1): the frame component made, and every page that names the
+ * ?classic=1): the frame's shared components made, and every page that names the
  * style as its own (page_style) with its converted tree, not yet saved; a
  * page with a tree of its own keeps it.
  * A page that takes the style from its folder is not one of the design's
@@ -235,12 +408,13 @@ function pg_classic_style_region_lookup()
  *                (the assets panel lists, JSON), 'warnings', 'folder_pages'
  *                (pg_classic_style_folder_pages()), 'frame_tree' (the
  *                page tree placing the frame, JSON, for the editor's blank
- *                tab when no page names the style as its own)
+ *                tab when no page names the style as its own), 'split'
+ *                (bool: the frame was split around the page content)
  */
 function pg_classic_style_design_open($style_id, $user)
 {
     $style_id = (int)$style_id;
-    $out = array('error' => '', 'pages' => array(), 'css' => '', 'js' => '', 'fonts' => '', 'warnings' => array(), 'folder_pages' => array(), 'frame_tree' => '');
+    $out = array('error' => '', 'pages' => array(), 'css' => '', 'js' => '', 'fonts' => '', 'warnings' => array(), 'folder_pages' => array(), 'frame_tree' => '', 'split' => false);
 
     if ((int)$user['role'] > 1) {
         $out['error'] = lang('Only a designer can open a classic style in the visual designer.');
@@ -260,13 +434,13 @@ function pg_classic_style_design_open($style_id, $user)
     $frame['css'] = $files['css'];
     $frame['js']  = $files['js'];
 
-    $component = pg_classic_style_component($style_id, (string)$row['style_name'], $frame['frame'], $user);
-    if (!is_array($component)) {
+    $page_tree = pg_classic_style_frame_page_tree($style_id, (string)$row['style_name'], $frame, $user);
+    if (!is_array($page_tree)) {
         $out['error'] = lang('The style\'s frame could not be saved as a shared component.');
         return $out;
     }
 
-    $tree_json = pg_designer_tree_encode(pg_classic_style_page_tree($frame['root_props'], $component['id'], $component['name']));
+    $tree_json = pg_designer_tree_encode($page_tree);
     foreach (pg_designer_load_pages($style_id, '', true) as $page) {
         // A page that already has a tree of its own keeps it.
         if ($page['tree_json'] !== '') {
@@ -286,6 +460,7 @@ function pg_classic_style_design_open($style_id, $user)
     // With no page of its own the editor opens a blank tab: it starts with
     // this tree, so the frame is on the canvas (pg_designer_blank_page()).
     $out['frame_tree'] = $tree_json;
+    $out['split'] = pg_classic_style_frame_split($frame['frame']) !== null;
     return $out;
 }
 
@@ -418,17 +593,19 @@ function pg_classic_style_folder_pages_field($pages)
 
 /**
  * The tree of a page that took the converted style from its folder: the
- * same tree as the style's own pages (pg_classic_style_page_tree()), with
- * the design-wide body classes the save folds onto every page added to the
- * root's classes.
+ * same tree as the style's own pages (pg_classic_style_frame_page_tree()),
+ * with the design-wide body classes the save folds onto every page added to
+ * the root's classes.
  *
  * Pure: no query.
  *
+ * @param array  $tree          the style's page tree
  * @param string $body_classes  space-separated classes, '' for none
  */
-function pg_classic_style_folder_page_tree($root_props, $shared_id, $shared_name, $body_classes)
+function pg_classic_style_folder_page_tree($tree, $body_classes)
 {
-    $tree = pg_classic_style_page_tree($root_props, $shared_id, $shared_name);
+    if (!is_array($tree)) return $tree;
+    if (!isset($tree['props']) || !is_array($tree['props'])) $tree['props'] = array();
     $merged = array();
     foreach (preg_split('/\s+/', (string)$body_classes . ' ' . (string)($tree['props']['cssClass'] ?? '')) as $cls) {
         if ($cls !== '' && !in_array($cls, $merged, true)) $merged[] = $cls;
@@ -459,10 +636,10 @@ function pg_classic_style_convert_folder_pages($style_id, $user, $body_classes =
     $row = db_item("SELECT style_name, style_code FROM style WHERE style_id = '$style_id' LIMIT 1");
     if (!is_array($row) || trim((string)$row['style_code']) === '') return array();
     $frame = pg_classic_style_frame((string)$row['style_code'], pg_classic_style_region_lookup());
-    $component = pg_classic_style_component($style_id, (string)$row['style_name'], $frame['frame'], $user);
-    if (!is_array($component)) return array();
+    $page_tree = pg_classic_style_frame_page_tree($style_id, (string)$row['style_name'], $frame, $user);
+    if (!is_array($page_tree)) return array();
 
-    $tree = pg_classic_style_folder_page_tree($frame['root_props'], $component['id'], $component['name'], $body_classes);
+    $tree = pg_classic_style_folder_page_tree($page_tree, $body_classes);
     $tree_json = pg_designer_tree_encode($tree);
     if ($tree_json === '') return array();
 

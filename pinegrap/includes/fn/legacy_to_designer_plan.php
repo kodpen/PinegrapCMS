@@ -261,8 +261,11 @@ function pg_ltd_widget_config($target)
  *
  * @param array $facts  'refusal' (string), 'common' (names of the style's
  *                      common regions still to make components), 'frame'
- *                      (pg_ltd_frame_targets() of the frame tree),
- *                      'frame_exists' (bool), 'designer_made' (names of
+ *                      (pg_ltd_frame_targets() of the frame's shared
+ *                      parts), 'frame_split' (bool: the page regions go
+ *                      into the pages' trees), 'frame_parts' (shared
+ *                      components of a split frame), 'frame_exists'
+ *                      (bool), 'designer_made' (names of
  *                      designer regions already components), 'pages'
  *                      (rows: page_id, page_name, source 'own'|'folder',
  *                      has_tree, holder ('' when free), own_regions (page
@@ -271,16 +274,18 @@ function pg_ltd_widget_config($target)
  *                      classic head loaded CSS after it, else '')
  * @return array  'skip' ('' or a reason code), 'components' (list of
  *                array('kind' => 'common'|'designer', 'name', 'exists')),
- *                'frame' ('make'|'update'), 'pages' (rows with 'action':
- *                'tree', 'keep', 'regions' or 'held'), 'widgets',
- *                'frame_page_regions', 'warnings', 'writes' (int)
+ *                'frame' ('make'|'update'), 'frame_split', 'frame_parts',
+ *                'pages' (rows with 'action': 'tree', 'keep', 'regions' or
+ *                'held'), 'widgets', 'warnings', 'writes' (int)
  */
 function pg_ltd_plan_style($facts)
 {
     $f = (array)$facts;
     $frame = isset($f['frame']) && is_array($f['frame']) ? $f['frame'] : array('designer' => array(), 'widgets' => array(), 'page_regions' => 0);
+    $split = !empty($f['frame_split']);
     $out = array('skip' => '', 'components' => array(), 'frame' => empty($f['frame_exists']) ? 'make' : 'update',
-                 'pages' => array(), 'widgets' => $frame['widgets'], 'frame_page_regions' => (int)$frame['page_regions'],
+                 'frame_split' => $split, 'frame_parts' => $split ? (int)($f['frame_parts'] ?? 0) : 0,
+                 'pages' => array(), 'widgets' => $frame['widgets'],
                  'warnings' => array_values((array)($f['warnings'] ?? array())), 'writes' => 0);
     if ((string)($f['refusal'] ?? '') !== '') {
         $out['skip'] = 'refusal';
@@ -302,6 +307,7 @@ function pg_ltd_plan_style($facts)
     }
 
     $free = 0;
+    $folder_trees = 0;
     foreach ((array)($f['pages'] ?? array()) as $p) {
         $p = (array)$p;
         if ((string)($p['holder'] ?? '') !== '') {
@@ -312,14 +318,17 @@ function pg_ltd_plan_style($facts)
             $p['action'] = 'tree';
         }
         if ($p['action'] === 'tree' || $p['action'] === 'regions') ++$free;
+        if ($p['action'] === 'tree' && (string)($p['source'] ?? '') === 'folder') ++$folder_trees;
         $out['pages'][] = $p;
     }
 
     foreach ($out['components'] as $c) {
         if (!$c['exists']) ++$out['writes'];
     }
-    // The frame component, the style itself, the pages and the widgets.
-    $out['writes'] += 2 + $free + count($out['widgets']);
+    // The frame's components, the style itself, the pages and the widgets.
+    // A split frame's folder page is written twice: its tree, then its page
+    // regions taken in.
+    $out['writes'] += ($split ? $out['frame_parts'] : 1) + 1 + $free + ($split ? $folder_trees : 0) + count($out['widgets']);
     return $out;
 }
 
@@ -524,9 +533,20 @@ function pg_ltd_plan_facts($s, $converted)
         $facts['common'] = array_keys($common);
 
         // Common regions still to convert are placed as components by
-        // the run; read as region nodes here, they change no target.
+        // the run; read as region nodes here, they change no target. Of a
+        // split frame only the shared parts are worked: a region in the
+        // page content stays a region node in each page's tree.
         $frame = pg_classic_style_frame($code, pg_classic_style_region_lookup());
-        $facts['frame'] = pg_ltd_frame_targets($frame['frame']);
+        $split = pg_classic_style_frame_split($frame['frame']);
+        $shared = $frame['frame'];
+        if ($split !== null) {
+            $shared = pg_di_root(array_map(function ($part) {
+                return pg_di_root($part['nodes']);
+            }, $split['parts']));
+        }
+        $facts['frame'] = pg_ltd_frame_targets($shared);
+        $facts['frame_split'] = $split !== null;
+        $facts['frame_parts'] = $split !== null ? count($split['parts']) : 0;
         $facts['warnings'] = $frame['warnings'];
         $files = pg_classic_style_frame_assets($frame);
         $facts['_css'] = $files['css'];
@@ -537,8 +557,10 @@ function pg_ltd_plan_facts($s, $converted)
                               WHERE cregion.cregion_name = '" . e($name) . "' AND cregion.cregion_designer_type = 'yes' LIMIT 1");
             if ($made) $facts['designer_made'][] = $name;
         }
-        $facts['frame_exists'] = (bool)db_value("SELECT id FROM shared_components
-            WHERE category = '" . e(pg_classic_style_component_category($s['id'])) . "' LIMIT 1");
+        $facts['frame_exists'] = (bool)db_value("SELECT id FROM shared_components WHERE "
+            . ($split !== null
+                ? "category LIKE '" . e(pg_classic_style_part_category_like($s['id'])) . "'"
+                : "category = '" . e(pg_classic_style_component_category($s['id'])) . "'") . " LIMIT 1");
         // The theme the design will load, when the head loaded CSS after it.
         if (pg_legacy_style_css_after_theme($code)) {
             $active = pg_legacy_design_activated_themes();
@@ -667,7 +689,18 @@ function pg_ltd_plan_items($p, $in_set = false)
             ? lang(array('string' => 'The common region "{var:1}" becomes a shared component.', 'vars' => array($c['name'])))
             : lang(array('string' => 'The designer region "{var:1}" becomes a shared component in the frame.', 'vars' => array($c['name']))));
     }
-    $items .= $line($p['frame'] === 'make' ? lang('The style\'s frame is made a shared component.') : lang('The style\'s frame component made before is used.'));
+    if (empty($p['frame_split'])) {
+        $items .= $line($p['frame'] === 'make' ? lang('The style\'s frame is made a shared component.') : lang('The style\'s frame component made before is used.'));
+    } elseif ($p['frame_parts'] === 0) {
+        $items .= $line(lang('The style\'s frame holds nothing but the page content: each page gets all of it in its tree.'));
+    } elseif ($p['frame'] === 'make') {
+        $items .= $line(lang(array('string' => 'The style\'s frame is split into {var:1} shared components: what comes before and after the page content.', 'vars' => array($p['frame_parts']))));
+    } else {
+        $items .= $line(lang('The style\'s frame components made before are used.'));
+    }
+    if (!empty($p['frame_split'])) {
+        $items .= $line(lang('The page regions go into each page\'s own tree: their content is edited in the page in the visual designer, no longer on the site itself.'), 'fg-secondary');
+    }
     $by = array('tree' => array(), 'keep' => array(), 'regions' => array(), 'held' => array());
     foreach ($p['pages'] as $page) $by[$page['action']][] = $page;
     if ($by['tree']) {
@@ -684,9 +717,6 @@ function pg_ltd_plan_items($p, $in_set = false)
     }
     foreach ($p['widgets'] as $w) {
         $items .= $line(lang(array('string' => 'The region "{var:1}" becomes a widget you design: {var:2}', 'vars' => array($w['name'], pg_ltd_widget_name($p['name'], $w['kind'])))));
-    }
-    if ($p['frame_page_regions'] > 0) {
-        $items .= $line(lang('Page regions inside the frame stay: each page fills them from its own content.'), 'fg-secondary');
     }
     if (!$in_set) {
         $items .= $line(lang('The style becomes a visual design.'));
