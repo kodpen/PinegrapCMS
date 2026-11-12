@@ -1,6 +1,6 @@
 ---
 name: agent-last-seen
-description: An agent's last seen: ws_agents.seen_at set by every call with an app agent's own key, once a minute at most, and the words on the Agents card and in "Agents in this channel" (A17)
+description: An agent's last seen: ws_agents.seen_at set by every call with an app agent's own key, once a minute at most, and the words on the Agents card and in "Agents in this channel" (#8828)
 ---
 
 ## Why is there a last seen?
