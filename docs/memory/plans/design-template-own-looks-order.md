@@ -40,7 +40,7 @@ description: Order of the polishing round after Launch: every shipped template's
 
 - Homeservices: `-1` #8773 done; `-2` open.
 
-- Library: `-1`, `-2` open.
+- Library: `-1` #8794 done; `-2` open.
 
 - Podcast: `-1`, `-2` open.
 

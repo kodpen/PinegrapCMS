@@ -29,11 +29,13 @@ StyleDesigner.registerBlockFamily(function (kit) {
     var _SD_BLOCK_CSS = {
         // The shelf: a grid that gives every spine a column of the same
         // width, so any number of books fits a phone screen, standing on a
-        // plank drawn as the bottom border. The spines' heights are fixed
-        // (a share of the shelf's height would collapse inside the canvas's
-        // wrappers); English spines read from the top down.
+        // plank drawn as the bottom border. The tallest spine sets the
+        // shelf's height, so no book stands over the plank. The spines'
+        // heights are fixed (a share of the shelf's height would collapse
+        // inside the canvas's wrappers); English spines read from the top
+        // down.
         'pg-library-shelf':   '.pg-library-shelf { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: end; gap: .25rem; ' +
-                              'height: 15rem; padding-inline: .5rem; border-bottom: .75rem solid var(--bs-secondary-color); } ' +
+                              'padding-inline: .5rem; border-bottom: .75rem solid var(--bs-secondary-color); } ' +
                               '.pg-library-shelf .pg-library-spine { display: flex; align-items: center; justify-content: center; height: 15rem; overflow: hidden; border-radius: .25rem .25rem 0 0; } ' +
                               '.pg-library-shelf .pg-library-mid { height: 12.5rem; } ' +
                               '.pg-library-shelf .pg-library-low { height: 10.5rem; } ' +
@@ -312,7 +314,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
                                 ]),
                                 kit.div('d-flex flex-wrap gap-2', _sdT('Buttons'), [
                                     kit.btn(_sdT('Join the Library'), 'primary', 'lg'),
-                                    kit.btn(_sdT('Renew Your Loans'), 'outline-primary', 'lg')
+                                    kit.btn(_sdT('Renew Your Loans'), 'secondary', 'lg')
                                 ])
                             ], '7')
                         ], 'align-items-center g-4 g-lg-5')
