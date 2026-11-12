@@ -460,18 +460,20 @@ function pg_settings_categories()
                 'pgset-ws-departments' => lang('Departments'),
                 'pgset-ws-people'      => lang('Team members'),
                 'pgset-ws-defaults'    => lang('Defaults'),
-                'pgset-ws-team-screen' => lang('On the Workspace Settings screen'),
+                'pgset-ws-calendar'    => lang('Working calendar'),
             ),
             'keywords' => array(
                 'pgset-ws-departments' => pg_settings_keywords(lang('workspace, department, departments, team lead, own department, channel, archive')),
                 'pgset-ws-people'      => pg_settings_keywords(lang('workspace, team, team members, job title, hours a day, working days, not in the team')),
                 'pgset-ws-defaults'    => pg_settings_keywords(lang('workspace, working day, working days, hours, week, estimate, planning board, default')),
-                'pgset-ws-team-screen' => pg_settings_keywords(lang('workspace, holiday, holidays, days off, working calendar, calendar feed')),
+                'pgset-ws-calendar'    => pg_settings_keywords(lang('workspace, holiday, holidays, days off, working calendar, calendar feed')),
             ),
             'lists' => array(
                 'ws_workdays' => 1,
                 'ws_people'   => 3,
                 'ws_dept'     => 3,
+                'ws_hol'      => 1,
+                'ws_feed'     => 1,
             ),
         ),
 
@@ -482,10 +484,22 @@ function pg_settings_categories()
             'icon'  => 'bi-robot',
             'description' => lang('Claude, the agents, Pinegrap AI, the MCP servers and bulk changes.'),
             'sections' => array(
-                'pgset-ws-assistants-screen' => lang('On the Workspace Settings screen'),
+                'pgset-ws-claude'            => lang('Claude in the channels'),
+                'pgset-ws-agents'            => lang('Workspace agents'),
+                'pgset-ws-ai'                => lang('Pinegrap AI in the channels'),
+                'pgset-ws-mcp'               => lang('MCP servers'),
+                'pgset-ws-bulk'              => lang('Bulk changes by the assistants'),
             ),
             'keywords' => array(
-                'pgset-ws-assistants-screen' => pg_settings_keywords(lang('workspace, claude, agent, agents, assistant, pinegrap ai, mcp, mcp server, bulk changes')),
+                'pgset-ws-claude'            => pg_settings_keywords(lang('workspace, claude, assistant, routine, key, secret, daily summary, connection')),
+                'pgset-ws-agents'            => pg_settings_keywords(lang('workspace, agent, agents, handle, push door, poll door, model, provider, token limit')),
+                'pgset-ws-ai'                => pg_settings_keywords(lang('workspace, pinegrap ai, assistant, licence, subscription key, key, connection')),
+                'pgset-ws-bulk'              => pg_settings_keywords(lang('workspace, bulk changes, assistant, delete in bulk, claude, pinegrap ai')),
+                'pgset-ws-mcp'               => pg_settings_keywords(lang('workspace, mcp, mcp server, tools')),
+            ),
+            'lists' => array(
+                'ws_agent' => 2,
+                'ws_mcp'   => 3,
             ),
         ),
 
@@ -855,6 +869,28 @@ function pg_settings_url($key)
 
 
 /**
+ * An address a save module hands over for the browser to go to once the
+ * save is done: a service's sign-in started by a card button (the MCP
+ * servers' Connect). The dialog's endpoint answers it as its reload address,
+ * the page path redirects to it instead of back to the screen. Called with
+ * an address to set it, without one to read it.
+ *
+ * @param string|null $url
+ * @return string '' when none was handed over
+ */
+function pg_settings_go($url = null)
+{
+    static $go = '';
+
+    if ($url !== null) {
+        $go = (string) $url;
+    }
+
+    return $go;
+}
+
+
+/**
  * Where a link written before the split should land.
  *
  * A #hash never reaches the server, so an old settings.php#pgset-waf cannot be
@@ -914,6 +950,13 @@ function pg_settings_legacy_anchors()
         'ws-departments'   => array('workspace_team', 'pgset-ws-departments'),
         'ws-people'        => array('workspace_team', 'pgset-ws-people'),
         'ws-defaults'      => array('workspace_team', 'pgset-ws-defaults'),
+        'ws-calendar'      => array('workspace_team', 'pgset-ws-calendar'),
+        // Workspace Settings cards moved into Assistants and agents.
+        'ws-claude'        => array('workspace_assistants', 'pgset-ws-claude'),
+        'ws-bulk'          => array('workspace_assistants', 'pgset-ws-bulk'),
+        'ws-agents'        => array('workspace_assistants', 'pgset-ws-agents'),
+        'ws-ai'            => array('workspace_assistants', 'pgset-ws-ai'),
+        'ws-mcp'           => array('workspace_assistants', 'pgset-ws-mcp'),
     );
 }
 

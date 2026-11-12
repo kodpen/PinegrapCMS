@@ -5,9 +5,10 @@ description: tools/merge_train.php (#2002): --start (the lock), --list (train or
 
 ## What does each mode do?
 - `--start`: refuses while an open `merge-train/*` PR exists (the lock), naming it; `--stack` starts on the tip of the newest open train instead ([[merger-wake]]). Creates `merge-train/<yyyymmdd-hhmm>` (UTC) from `origin/<ref>`, turns `rerere` on and records the start commit in `branch.<name>.mergeTrainBase`.
-- `--list`: open, non-draft PRs to `development`, not from a fork ([[merge-train-forks]]), that no open train carries (its title's `#n` and its merge commits' `(#n)`), green on their head (every check run completed as success, neutral or skipped) and labelled `ready` or quiet for an hour (the first check run's start). Printed as: docs-only PRs that land alone, the train and a later train (the rest), in the order and limits of [[merge-train-order]].
-- `--build [<n> …] [--no-push]`: on the current train branch (clean tree, no merge open, git identity Erdal Güral), each PR (the `--list` train when none is named): `git fetch origin refs/pull/<n>/head`, skipped when already in the branch, `git merge --no-ff --no-commit`, conflicts settled, changelog written, `git commit -m "<title> (#n)"`. Then `git push -u origin <train>` and the draft PR "Merge train <time>: #a #b" opened, or retitled.
-- `--land`: HEAD must be the pushed `origin/<train>`, `origin/development` its ancestor and its check runs green; then `git push origin <sha>:refs/heads/development`, a fast-forward ([[merge-train-landing]]).
+- `--list`: open, non-draft PRs to `development`, not from a fork ([[merge-train-forks]]), that no open train carries (its title's `#n` and its merge commits' `(#n)`), green on their head and labelled `ready` or quiet for an hour (the first check run's start). Printed as docs-only PRs landing alone, the train and a later train, in the order and limits of [[merge-train-order]].
+  - Green: every check run completed as success, neutral or skipped, but the channel report jobs of [[merge-train]], which move no time either.
+- `--build [<n> …] [--no-push]`: on the current train branch (clean tree, no merge open, identity Erdal Güral), each PR (the `--list` train when none is named): `git fetch origin refs/pull/<n>/head`, skipped when already in the branch, `git merge --no-ff --no-commit`, conflicts settled, changelog written, `git commit -m "<title> (#n)"`. Then `git push -u origin <train>` and the draft PR "Merge train <time>: #a #b" opened, or retitled.
+- `--land`: HEAD must be the pushed `origin/<train>`, `origin/development` its ancestor and its check runs green (the same function); then `git push origin <sha>:refs/heads/development`, a fast-forward ([[merge-train-landing]]).
 
 ## Which conflicts does it settle?
 - Language files: `php tools/tr_resolve.php --development=ours`. Memory `README.md` indexes and `core/fn-modules.md`: `php tools/memory_index.php`, only when no other memory file is in conflict. `.min.js` / `.min.css`: `php tools/build_js.php` / `build_css.php`, only when no `.js` / `.css` is in conflict. A path is staged only when no marker is left.
@@ -18,7 +19,7 @@ description: tools/merge_train.php (#2002): --start (the lock), --list (train or
 - A `[SCHEME]` item stops the run with the merge open: the version's one `[SCHEME]` sentence is widened by hand, then commit and `--build` again. Only an item under a `Changelog` heading stops it (#2095 named it elsewhere and went through), so a train touching `includes/migrations/` is checked for the sentence before CI.
 
 ## Why does it quote arguments itself on Windows?
-- `merge_train_run()` starts git, gh and PHP without cmd.exe, but Windows `escapeshellarg()` makes `%`, `!` and `"` spaces: `--format=%s` failed and `commit -m` lost quotes. Since #2193 `merge_train_windows_arg()` quotes for the C runtime, a copy of `check_pr_windows_arg()` (loading `check_pr.php` runs its checks); Linux keeps `escapeshellarg()`.
+- `merge_train_run()` starts git, gh and PHP without cmd.exe, but Windows `escapeshellarg()` makes `%`, `!` and `"` spaces: `--format=%s` failed and `commit -m` lost quotes. Since #2193 `merge_train_windows_arg()`, a copy of `check_pr_windows_arg()`, quotes for the C runtime; Linux keeps `escapeshellarg()`.
 
 ## What does it not do?
 - Review (`merge-review.md`), the PR body cleanup and footer (`pr-footer-and-trailers.md`), a bot PR's `--squash` merge and closing comment, landing a docs-only PR alone ([[merge-train]]). It pushes only its train branch and, in `--land`, `development`; GitHub goes through `gh api` (REST).

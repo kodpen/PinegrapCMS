@@ -4551,7 +4551,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     $output_submit_form_block = '' . '
                                                         <div class="col-12 my-1">
                                                             <label class="form-label" for="submit_form_custom_form_page_id">' . lang('Custom Form') . '</label>
-                                                            <select class="form-control collapse-if-selected" id="submit_form_custom_form_page_id" name="submit_form_custom_form_page_id" onchange="product_submit_form_update_custom_form_fields()" data-bs-target="#submit_form_custom_form_page_row"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Form')) )) . '-</option>' .  select_page($v('submit_form_custom_form_page_id'), 'custom form') . '</select>
+                                                            ' . pg_picker_field('page_custom_form', 'submit_form_custom_form_page_id', $v('submit_form_custom_form_page_id'), array('value_attributes' => array('class' => 'collapse-if-selected', 'data-bs-target' => '#submit_form_custom_form_page_row', 'onchange' => 'product_submit_form_update_custom_form_fields()'))) . '
                                                             <script>product_submit_form_update_custom_form_fields();</script>
                                                             <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="submit_form_custom_form_page_row">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
@@ -5131,9 +5131,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                 </div>
                                 <div class="col-12 lg:col-6">
                                     <label class="form-label" for="recurring_profile_disabled_email_page_id">' . lang('Page') . '</label>
-                                    <select name="recurring_profile_disabled_email_page_id" id="recurring_profile_disabled_email_page_id" class="form-control">
-                                        <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Page')))) . '-</option>' . select_page($v('recurring_profile_disabled_email_page_id')) . '
-                                    </select>
+                                    ' . pg_picker_field('page', 'recurring_profile_disabled_email_page_id', $v('recurring_profile_disabled_email_page_id')) . '
                                 </div>',
                         ))),
             )));
@@ -5985,9 +5983,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     </div>
                                                     <div class="col-12 md:col-6 lg:col-4">
                                                         <label class="form-label" for="send_to_page">' . lang('Set Customer\'s Start Page to') . '</label>
-                                                        <select class="form-control" id="send_to_page" name="send_to_page">
-                                                            <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Page')))) . '-</option>' . select_page($v('send_to_page')) . '
-                                                        </select>
+                                                        ' . pg_picker_field('page', 'send_to_page', $v('send_to_page')) . '
                                                     </div>',
                                             ))) . '
                                                 </div>
@@ -6047,9 +6043,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                                 <div class="row">
                                                                     <div class="col-12 lg:col-8">
                                                                         <label class="form-label" for="gift_card_email_page_id">' . lang('Page') . '</label>
-                                                                        <select class="form-control" id="gift_card_email_page_id" name="gift_card_email_page_id">
-                                                                            <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Page')))) . '-</option>' . select_page($v('gift_card_email_page_id')) . '
-                                                                        </select>
+                                                                        ' . pg_picker_field('page', 'gift_card_email_page_id', $v('gift_card_email_page_id')) . '
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -6075,9 +6069,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                     </div>
                                     <div class="col-12 lg:col-4 my-3">
                                         <label class="form-label" for="email_page">' . lang('E-mail Additional Page to Customer') . '</label>
-                                        <select class="form-control" id="email_page" name="email_page">
-                                            <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Page')))) . '-</option>' . select_page($v('email_page')) . '
-                                        </select>
+                                        ' . pg_picker_field('page', 'email_page', $v('email_page')) . '
                                     </div>
                                     <div class="col-12 lg:col-4 my-3">
                                         <label class="form-label" for="email_bcc">' . lang('BCC E-mail Address') . '</label>
@@ -6171,9 +6163,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                 'panel' =>
                                                     '<div class="col-12 lg:col-4">
                                                         <label class="form-label" for="add_comment_page_id">' . lang('Page') . '</label>
-                                                        <select class="form-control" id="add_comment_page_id" name="add_comment_page_id">
-                                                            <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Page')))) . '-</option>' . select_page($v('add_comment_page_id')) . '
-                                                        </select>
+                                                        ' . pg_picker_field('page', 'add_comment_page_id', $v('add_comment_page_id')) . '
                                                     </div>
                                                     <div class="col-12 lg:col-4">
                                                         <label class="form-label" for="add_comment_name">' . lang('Name') . '</label>
@@ -6370,6 +6360,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_name_check.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_name_check.js') . '"></script>
     ' . pg_ai_write_assets() . '
     ' . ($ai_marks_ready ? pg_ai_fields_assets() : '') . '
+    ' . pg_picker_script() . '
 </main>' . output_footer();
 
     $liveform->remove_form();

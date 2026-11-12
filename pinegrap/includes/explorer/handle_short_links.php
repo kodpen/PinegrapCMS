@@ -85,37 +85,52 @@ function pg_explorer_handle_short_links_list($type, $request, $user)
 
 // ── What the wizard offers, built from the classic screen's lists ─
 //
-// Products, groups, pages and files in the Recycle Bin are left
-// out, as on the classic screens. Asked with item_id, for a link
-// being changed, the one that link points at stays, marked as in the
-// bin: without it the window opened with nothing chosen and Save
-// asked for a product the link already had.
+// Products and groups in the Recycle Bin are left out, as on the
+// classic screens. Asked with item_id, for a link being changed, the
+// one that link points at stays, marked as in the bin: without it the
+// window opened with nothing chosen and Save asked for a product the
+// link already had. Pages and the file are picker fields drawn with the
+// link's own page or file (marked when binned); a new link opened from
+// a page's panel sends that page as page_id.
 function pg_explorer_handle_short_link_options($type, $request, $user)
 {
     $short_link_row = array_key_exists('item_id', $request) ? pg_short_link_by_id($user, $request['item_id']) : null;
     $short_link_keep_product = $short_link_row ? (int) $short_link_row['product_id'] : 0;
     $short_link_keep_group = $short_link_row ? (int) $short_link_row['product_group_id'] : 0;
-    $short_link_keep_page = $short_link_row ? (int) $short_link_row['page_id'] : 0;
     $short_link_keep_file = $short_link_row ? (int) $short_link_row['file_id'] : 0;
+
+    if ($short_link_row) {
+        $short_link_page_id = (int) $short_link_row['page_id'];
+        $short_link_page_type = ($short_link_page_id > 0) ? (string) db_value("SELECT page_type FROM page WHERE page_id = '" . $short_link_page_id . "'") : '';
+        $short_link_pages = pg_short_link_page_slots($short_link_row['destination_type'], $short_link_page_id, $short_link_page_type);
+    } else {
+        $short_link_pages = pg_short_link_page_slots('page', $request['page_id'] ?? 0, '');
+    }
+
+    $short_link_page_fields = array();
+
+    foreach (array('page' => array('page', 'page_id'), 'catalog_page' => array('page_catalog', 'catalog_page_id'), 'catalog_detail_page' => array('page_catalog_detail', 'catalog_detail_page_id')) as $slot => $field) {
+        $short_link_page_fields[$slot] = pg_picker_field($field[0], $field[1], $short_link_pages[$slot], array('id' => 'sl_' . $slot, 'user' => $user));
+    }
 
     respond(array(
         'status' => 'success',
         'request' => $type,
         'options' => array(
-            'page' => pg_short_link_options_list(get_page_options('', '', 'edit', false, $short_link_keep_page)),
-            'catalog_page' => pg_short_link_options_list(get_page_options('', 'catalog', 'edit', false, $short_link_keep_page)),
-            'catalog_detail_page' => pg_short_link_options_list(get_page_options('', 'catalog detail', 'edit', false, $short_link_keep_page)),
             'product_group' => pg_short_link_options_list(get_product_group_options(0, 0, 0, 0, array(), TRUE, 'array', TRUE, TRUE, FALSE, $short_link_keep_group)),
-            'product' => pg_short_link_options_list(get_product_options(true, $short_link_keep_product)),
-            // Only the link's own file, marked when binned; the field
-            // searches the rest (file_picker_search.php, kind file).
-            'file' => pg_short_link_options_list(pg_file_picker_id_options($short_link_keep_file))),
-        'file_source' => pg_file_picker_source('file'),
-        // The lists hold a binned entry kept for this one link, or this
-        // link's file, so the screen does not keep them for the next window.
+            'product' => pg_short_link_options_list(get_product_options(true, $short_link_keep_product))),
+        // The File field drawn with the link's own file (marked when
+        // binned); it searches and browses the rest (picker.php, kind file).
+        'file_field' => pg_picker_field('file', 'file_id', $short_link_keep_file, array('id' => 'sl_file', 'title' => lang('Choose a file'), 'user' => $user)),
+        // Page, Catalog Page and Catalog Detail Page, each drawn with the
+        // page it holds.
+        'page_fields' => $short_link_page_fields,
+        // The lists hold a binned entry kept for this one link, or the
+        // fields this link's page or file, so the screen does not keep
+        // them for the next window.
         'kept' => (($short_link_keep_product > 0) && pg_catalog_product_binned($short_link_keep_product))
             || (($short_link_keep_group > 0) && pg_catalog_group_binned($short_link_keep_group))
-            || (($short_link_keep_page > 0) && pg_recycle_page_binned($short_link_keep_page))
+            || (max($short_link_pages) > 0)
             || ($short_link_keep_file > 0),
         // Once or until a time (2026.4.5, 5.112).
         'modes' => pg_short_link_modes_ready(),

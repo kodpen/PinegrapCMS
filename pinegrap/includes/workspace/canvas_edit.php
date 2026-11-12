@@ -20,6 +20,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_svg.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_layer_write.php');
 
 /**
  * The operations an edit takes.
@@ -28,7 +29,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_svg.php');
  */
 function ws_canvas_edit_ops()
 {
-    return array('add', 'replace', 'remove', 'text', 'box', 'svg');
+    return array('add', 'replace', 'remove', 'text', 'box', 'svg', 'style', 'order', 'name', 'lock');
 }
 
 /**
@@ -95,7 +96,8 @@ function ws_canvas_new_layer_id($doc)
 }
 
 /**
- * The index of a layer in the document by its id, or -1. Pure.
+ * The index of a layer in the document by its id, else by its name when
+ * one layer alone has it; -1 when none. Pure.
  *
  * @param array $doc
  * @param mixed $id
@@ -107,13 +109,20 @@ function ws_canvas_layer_index($doc, $id)
         return -1;
     }
 
+    $named = array();
+
     foreach ((array) ($doc['layers'] ?? array()) as $i => $layer) {
         if (is_array($layer) && ((string) ($layer['id'] ?? '') === $id)) {
             return (int) $i;
         }
+
+        if (is_array($layer) && isset($layer['name']) && ((string) $layer['name'] === $id)) {
+            $named[] = (int) $i;
+        }
     }
 
-    return -1;
+    // A name two layers share names neither.
+    return (count($named) === 1) ? $named[0] : -1;
 }
 
 /**
@@ -173,6 +182,20 @@ function ws_canvas_fit_box($w, $h, $board)
 }
 
 /**
+ * The layers word of an add or svg operation; null when it is neither
+ * split nor one. Pure.
+ *
+ * @param array $op
+ * @return string|null
+ */
+function ws_canvas_edit_split_mode($op)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_split.php');
+
+    return ws_canvas_split_mode($op['layers'] ?? null);
+}
+
+/**
  * Applies an agent's operations to a canvas document, in order; all or
  * none. Pure but for the sanitizer.
  *
@@ -183,13 +206,26 @@ function ws_canvas_fit_box($w, $h, $board)
  *   box      layer; x, y, w, h, rot: move, resize or turn a layer
  *   svg      svg; background optional: the whole canvas anew
  *
+ *   style    layer; a text's, shape's or icon's look, any layer's opacity
+ *   order    layer, to (front, back, above, below), target
+ *   name     layer, name
+ *   lock     layer, locked (true or false; also on a locked layer)
+ *
+ * add takes type: svg (the default), text, picture, shape or icon
+ * (canvas_layer_write.php), and name and lock for any of them.
+ * add and svg take layers: split for a layer per top-level element
+ * (canvas_split.php), one (the default) for one imported layer.
  * A locked layer is not changed. The result is marked picture: pending.
  *
  * @param array $doc        the newest version's document, decoded as arrays
  * @param mixed $operations list of operation objects, decoded as arrays
+ * @param callable|null $resolve with layers split: a picture's href => the
+ *                               file it names (ws_canvas_split_file())
+ * @param callable|null $file    a picture add's file or file_id => the file
+ *                               (ws_canvas_write_file_resolver())
  * @return array error ('' or the refusal), index (of the refused operation, -1), doc (array)
  */
-function ws_canvas_edit_apply($doc, $operations)
+function ws_canvas_edit_apply($doc, $operations, $resolve = null, $file = null)
 {
     $fail = function ($error, $index = -1) {
         return array('error' => $error, 'index' => $index, 'doc' => null);
@@ -210,15 +246,48 @@ function ws_canvas_edit_apply($doc, $operations)
             return $fail('op', $i);
         }
 
+        $mode = in_array($kind, array('svg', 'add'), true) ? ws_canvas_edit_split_mode($op) : 'one';
+
+        if ($mode === null) {
+            return $fail('layers', $i);
+        }
+
         if ($kind === 'svg') {
             $current = (string) ($doc['artboard']['background'] ?? '#ffffff');
-            $made = ws_canvas_from_svg($op['svg'] ?? '', array_key_exists('background', $op) ? $op['background'] : $current);
+            $made = ws_canvas_from_svg($op['svg'] ?? '', array_key_exists('background', $op) ? $op['background'] : $current, $mode === 'split', $resolve);
 
             if ($made['error'] !== '') {
                 return $fail($made['error'], $i);
             }
 
             $doc = json_decode(json_encode($made['doc']), true);
+            continue;
+        }
+
+        if (($kind === 'add') && array_key_exists('type', $op) && ($op['type'] !== 'svg')) {
+            if (!in_array($op['type'], ws_canvas_write_types(), true)) {
+                return $fail('type', $i);
+            }
+
+            $layer = ws_canvas_write_layer($doc, $op, $file, ws_canvas_split_google_fonts() + ws_canvas_split_site_fonts());
+
+            if (!is_array($layer)) {
+                return $fail($layer, $i);
+            }
+
+            $layer = ws_canvas_box_apply($layer, ($layer['type'] === 'line') ? array_intersect_key($op, array('rot' => 0)) : $op);
+
+            if ($layer === null) {
+                return $fail('box', $i);
+            }
+
+            $made = ws_canvas_edit_named(array('id' => ws_canvas_new_layer_id($doc)) + $layer, $doc, $op);
+
+            if (!is_array($made)) {
+                return $fail($made, $i);
+            }
+
+            $doc['layers'][] = $made;
             continue;
         }
 
@@ -229,7 +298,27 @@ function ws_canvas_edit_apply($doc, $operations)
                 return $fail(is_string($svg) ? 'too_large' : 'empty', $i);
             }
 
+            if ($mode === 'split') {
+                // The layers go where the one imported layer would have
+                // gone, as Break apart leaves them.
+                $parts = ws_canvas_split_svg($svg, ws_canvas_taken_ids($doc), $resolve);
+
+                if ($parts === null) {
+                    return $fail('empty', $i);
+                }
+
+                $frame = ws_canvas_box_apply(ws_canvas_fit_box($parts['w'], $parts['h'], (array) ($doc['artboard'] ?? array())) + array('rot' => 0), $op);
+
+                if ($frame === null) {
+                    return $fail('box', $i);
+                }
+
+                $doc = ws_canvas_split_into($doc, $parts, $frame);
+                continue;
+            }
+
             $clean = pg_svg_sanitize($svg);
+
             $made = ($clean === '') ? null : ws_canvas_svg_layer($clean, ws_canvas_taken_ids($doc));
 
             if ($made === null) {
@@ -255,8 +344,56 @@ function ws_canvas_edit_apply($doc, $operations)
 
         $layer = $doc['layers'][$at];
 
-        if (!empty($layer['locked'])) {
+        // Naming and unlocking a locked layer draw nothing.
+        if (!empty($layer['locked']) && !in_array($kind, array('lock', 'name'), true)) {
             return $fail('locked', $i);
+        }
+
+        if ($kind === 'lock') {
+            if (!isset($op['locked']) || !is_bool($op['locked'])) {
+                return $fail('lock', $i);
+            }
+
+            if ($op['locked']) {
+                $doc['layers'][$at]['locked'] = true;
+            } else {
+                unset($doc['layers'][$at]['locked']);
+            }
+
+            continue;
+        }
+
+        if ($kind === 'name') {
+            $named = ws_canvas_edit_named($layer, $doc, $op);
+
+            if (!is_array($named) || !array_key_exists('name', $op)) {
+                return $fail(is_array($named) ? 'name' : $named, $i);
+            }
+
+            $doc['layers'][$at] = $named;
+            continue;
+        }
+
+        if ($kind === 'order') {
+            $ordered = ws_canvas_write_order($doc, $at, $op);
+
+            if (!is_array($ordered)) {
+                return $fail($ordered, $i);
+            }
+
+            $doc = $ordered;
+            continue;
+        }
+
+        if ($kind === 'style') {
+            $fields = ws_canvas_write_style_fields($layer, $op, ws_canvas_split_google_fonts() + ws_canvas_split_site_fonts());
+
+            if (!is_array($fields) || ($fields === array())) {
+                return $fail(is_array($fields) ? 'style' : $fields, $i);
+            }
+
+            $doc['layers'][$at] = ws_canvas_edit_text_refit(array_merge($layer, $fields));
+            continue;
         }
 
         if ($kind === 'remove') {
@@ -321,6 +458,70 @@ function ws_canvas_edit_apply($doc, $operations)
 }
 
 /**
+ * A layer with the name and lock an add or a name operation gives: a name
+ * no other layer has as its name or id. Pure.
+ *
+ * @param array $layer
+ * @param array $doc
+ * @param array $op
+ * @return array|string the layer, or the refusal (name, lock)
+ */
+function ws_canvas_edit_named($layer, $doc, $op)
+{
+    if (array_key_exists('name', $op)) {
+        $name = ws_canvas_write_name($op['name']);
+
+        if (($name === null) || !ws_canvas_write_name_free($doc, $name, (string) ($layer['id'] ?? ''))) {
+            return 'name';
+        }
+
+        $layer['name'] = $name;
+    }
+
+    if (($op['op'] ?? '') === 'add' && array_key_exists('lock', $op)) {
+        if (!is_bool($op['lock'])) {
+            return 'lock';
+        }
+
+        if ($op['lock']) {
+            $layer['locked'] = true;
+        }
+    }
+
+    return $layer;
+}
+
+/**
+ * A text layer's box after its style changed, by the estimated layout,
+ * the side it is aligned to kept where it was (M.textFit()); any other
+ * layer as it is. Pure.
+ *
+ * @param array $layer
+ * @return array
+ */
+function ws_canvas_edit_text_refit($layer)
+{
+    if (($layer['type'] ?? '') !== 'text') {
+        return $layer;
+    }
+
+    $fields = array_merge(array('text' => '', 'size' => 16, 'lineHeight' => 1.25, 'spacing' => 0, 'bg' => '', 'pad' => 0.3), $layer);
+    $box = ws_canvas_write_text_box($fields);
+    $w0 = (float) ($layer['w'] ?? 0);
+    $x = (float) ($layer['x'] ?? 0);
+
+    if ($w0 && (($layer['align'] ?? '') === 'center')) {
+        $x += ($w0 - $box['w']) / 2;
+    } elseif ($w0 && (($layer['align'] ?? '') === 'right')) {
+        $x += $w0 - $box['w'];
+    }
+
+    $layer['x'] = ws_canvas_split_round(floor($x * 100 + 0.5) / 100);
+
+    return array_merge($layer, $box);
+}
+
+/**
  * The words of a refusal of ws_canvas_edit_apply().
  *
  * @param string $error
@@ -334,7 +535,7 @@ function ws_canvas_edit_error_text($error)
         case 'too_many':
             return lang(array('string' => 'At most {var:1} operations at once.', 'vars' => ws_canvas_edit_max_ops()));
         case 'op':
-            return lang('An operation is one of add, replace, remove, text, box or svg.');
+            return lang('An operation is one of add, replace, remove, text, box, svg, style, order, name or lock.');
         case 'layer':
             return lang('That layer is not on the canvas.');
         case 'locked':
@@ -347,6 +548,28 @@ function ws_canvas_edit_error_text($error)
             return lang('A colour is written as #rrggbb.');
         case 'not_svg':
             return lang('Only an svg layer takes new SVG.');
+        case 'type':
+            return lang('A layer to add is of type svg, text, picture, shape or icon.');
+        case 'picture':
+            return lang('The picture is a file of this channel, or with files:read a public file of the site, named by file_id or its address.');
+        case 'shape':
+            return lang('A shape is rectangle, ellipse or line.');
+        case 'line':
+            return lang('A line takes x1, y1, x2 and y2.');
+        case 'icon':
+            return lang('There is no Bootstrap icon of that name.');
+        case 'font':
+            return lang('That font is not offered: see GET /workspace/canvas/fonts.');
+        case 'style':
+            return lang('That style does not fit this layer, or a value is out of its range.');
+        case 'order':
+            return lang('to is front, back, above or below; above and below take a target layer.');
+        case 'name':
+            return lang('A name is 1 to 80 letters that no other layer has as its name or id.');
+        case 'lock':
+            return lang('locked is true or false.');
+        case 'layers':
+            return ws_canvas_from_svg_error_text('layers');
         default:
             return ws_canvas_from_svg_error_text($error);
     }

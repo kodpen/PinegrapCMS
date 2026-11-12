@@ -4,11 +4,12 @@
  * The visual designer's Product Launch blocks (prefix launch-): the sections
  * of a product page in the manner of a phone launch. A dark hero that comes
  * in on load, a sticky picture beside panels revealed on scroll, a camera
- * band with parallax, finish swatches that switch the picture without
- * script, a spec comparison with a sticky head row, an in-the-box strip and
- * the buy band. Motion comes from the nodes' interactions (props._fx, played
- * by pg_fx.src.js, which honours reduced motion); the feature tile grid is
- * the Creative group's bento-features with an interaction on its row.
+ * band with parallax, a spec comparison with a sticky head row, an
+ * in-the-box strip and the buy band. Motion comes from the nodes'
+ * interactions (props._fx, played by pg_fx.src.js, which honours reduced
+ * motion); the feature tile grid is the Creative group's bento-features with
+ * an interaction on its row, and the finish switch is the Marketing group's
+ * Variant Picker (variant-picker).
  *
  * Registered with StyleDesigner.registerBlockFamily() and bundled after the
  * designer core (pg_designer_js_sources()); see
@@ -40,29 +41,13 @@ StyleDesigner.registerBlockFamily(function (kit) {
         // The spec table: scrolls sideways on a phone; from 992 px up it fits
         // and its head row stays at the top of the window while the rows pass.
         'pg-launch-specs':   '.pg-launch-specs { overflow-x: auto; } .pg-launch-specs table { font-variant-numeric: tabular-nums; } ' +
-                             '@media (min-width: 992px) { .pg-launch-specs { overflow: visible; } .pg-launch-specs thead th { position: sticky; top: 0; z-index: 1; background-color: var(--bs-body-bg); } }',
-        // Finish swatches: radio buttons whose labels carry a colour dot. The
-        // checked one shows its picture (pictures stacked in one grid cell) and
-        // rings its dot; :has() and descendant selectors only, so it works in the
-        // canvas too. The dot colours are the product's finishes, the same under
-        // any palette.
-        'pg-launch-colours': '.pg-launch-colours .pg-launch-stage { display: grid; } ' +
-                             '.pg-launch-colours .pg-launch-shot { grid-area: 1 / 1; opacity: 0; transition: opacity .4s ease; } ' +
-                             '.pg-launch-colours:has(.pg-launch-pick-1:checked) .pg-launch-shot-1, .pg-launch-colours:has(.pg-launch-pick-2:checked) .pg-launch-shot-2, ' +
-                             '.pg-launch-colours:has(.pg-launch-pick-3:checked) .pg-launch-shot-3, .pg-launch-colours:has(.pg-launch-pick-4:checked) .pg-launch-shot-4 { opacity: 1; } ' +
-                             '.pg-launch-colours .pg-launch-dot { display: inline-block; width: 2.25rem; height: 2.25rem; border-radius: 50%; border: 2px solid var(--bs-border-color); cursor: pointer; } ' +
-                             '.pg-launch-colours .pg-launch-swatch:has(.btn-check:checked) .pg-launch-dot { outline: 2px solid currentColor; outline-offset: 3px; } ' +
-                             '.pg-launch-colours .pg-launch-swatch:has(.btn-check:focus-visible) .pg-launch-dot { outline: 2px dashed currentColor; outline-offset: 3px; } ' +
-                             '.pg-launch-colours .pg-launch-dot-1 { background: #2b2f36; } .pg-launch-colours .pg-launch-dot-2 { background: #e8e4dc; } ' +
-                             '.pg-launch-colours .pg-launch-dot-3 { background: #7d8fa6; } .pg-launch-colours .pg-launch-dot-4 { background: #c9a7b4; } ' +
-                             '@media (prefers-reduced-motion: reduce) { .pg-launch-colours .pg-launch-shot { transition: none; } }'
+                             '@media (min-width: 992px) { .pg-launch-specs { overflow: visible; } .pg-launch-specs thead th { position: sticky; top: 0; z-index: 1; background-color: var(--bs-body-bg); } }'
     };
 
     var _SD_BLOCK_CSS_NEEDS = {
         'launch-hero':       ['pg-launch-device', 'pg-launch-glow', 'pg-launch-figure'],
         'launch-showcase':   ['pg-launch-panel', 'pg-ratio-1x1'],
         'launch-camera':     ['pg-launch-band', 'pg-shade-bottom', 'pg-launch-figure'],
-        'launch-colours':    ['pg-launch-colours'],
         'launch-specs':      ['pg-launch-specs'],
         'launch-box':        ['pg-ratio-1x1'],
         'launch-buy':        ['pg-launch-figure', 'pg-ratio-1x1']
@@ -87,13 +72,18 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'launch-',
         group: { title: _sdT('Product Launch'), icon: 'bi-phone' },
         items: [
-            { label: _sdT('Launch: Product Hero'),     type: 'component', icon: 'bi-phone',              extra: { componentType: 'launch-hero' } },
-            { label: _sdT('Launch: Sticky Showcase'),  type: 'component', icon: 'bi-layout-sidebar',     extra: { componentType: 'launch-showcase' } },
-            { label: _sdT('Launch: Camera Band'),      type: 'component', icon: 'bi-camera',             extra: { componentType: 'launch-camera' } },
-            { label: _sdT('Launch: Colours'),          type: 'component', icon: 'bi-palette',            extra: { componentType: 'launch-colours' } },
-            { label: _sdT('Launch: Spec Comparison'),  type: 'component', icon: 'bi-table',              extra: { componentType: 'launch-specs' } },
-            { label: _sdT('Launch: In the Box'),       type: 'component', icon: 'bi-box-seam',           extra: { componentType: 'launch-box' } },
-            { label: _sdT('Launch: Buy Band'),         type: 'component', icon: 'bi-bag',                extra: { componentType: 'launch-buy' } }
+            { label: _sdT('Launch: Product Hero'),     type: 'component', icon: 'bi-phone',              extra: { componentType: 'launch-hero' },
+              desc: _sdT('A dark band with the product name, a line, the price and two buttons that rise in on load, beside a large phone that scales in.') },
+            { label: _sdT('Launch: Sticky Showcase'),  type: 'component', icon: 'bi-layout-sidebar',     extra: { componentType: 'launch-showcase' },
+              desc: _sdT('A heading over a picture that stays in view beside three panels for the display, chip and battery, each sliding up as it comes in.') },
+            { label: _sdT('Launch: Camera Band'),      type: 'component', icon: 'bi-camera',             extra: { componentType: 'launch-camera' },
+              desc: _sdT('A tall dark photo band that moves slower than the page, with a heading, a line and three camera figures over a shade at its foot.') },
+            { label: _sdT('Launch: Spec Comparison'),  type: 'component', icon: 'bi-table',              extra: { componentType: 'launch-specs' },
+              desc: _sdT('A table comparing three models with their prices, specs grouped under display, camera and battery, its head row staying at the top.') },
+            { label: _sdT('Launch: In the Box'),       type: 'component', icon: 'bi-box-seam',           extra: { componentType: 'launch-box' },
+              desc: _sdT('A centred heading over a row of four pictures of what comes in the box, each with its name.') },
+            { label: _sdT('Launch: Buy Band'),         type: 'component', icon: 'bi-bag',                extra: { componentType: 'launch-buy' },
+              desc: _sdT('A card per model with its picture, a line, the price from and per month, and buy and learn more buttons, shown one after another.') }
         ],
         build: function (ctype) {
 
@@ -180,44 +170,6 @@ StyleDesigner.registerBlockFamily(function (kit) {
                         ])
                     ], dark)
                 ], [{ name: 'style', value: 'background-image: url(https://picsum.photos/seed/launch-camera/1920/1080);' }]), { effect: 'parallax', speed: 20 });
-            }
-
-            // Launch: Colours — finish swatches over the phone; the checked
-            // one shows its picture, with no script (pg-launch-colours).
-            if (ctype === 'launch-colours') {
-                var _lcName = kit.uid('lx_colour');
-                var _lcShot = function (n, seed, alt) {
-                    return kit.img(seed, 900, 900, alt, 'img-fluid w-100 rounded-4 object-fit-cover pg-launch-shot pg-launch-shot-' + n);
-                };
-                var _lcPick = function (n, label, checked) {
-                    var id = _lcName + '_' + n;
-                    var attrs = [{ name: 'type', value: 'radio' }, { name: 'name', value: _lcName }, { name: 'id', value: id }, { name: 'autocomplete', value: 'off' }];
-                    if (checked) attrs.push({ name: 'checked', value: 'checked' });
-                    return kit.div('pg-launch-swatch', _sdT('Swatch {var}', n), [
-                        kit.tag('input', 'btn-check pg-launch-pick-' + n, _sdT('Swatch Choice'), [], attrs),
-                        kit.tag('label', 'd-flex flex-column align-items-center gap-2', _sdT('Swatch Label'), [
-                            kit.div('pg-launch-dot pg-launch-dot-' + n, _sdT('Swatch Dot')),
-                            kit.h('span', label, 'small text-body-secondary')
-                        ], [{ name: 'for', value: id }])
-                    ]);
-                };
-                return kit.section('py-5 pg-launch-colours text-center', _sdT('Launch Colours'), [
-                    kit.h('h2', _sdT('Pick your finish'), 'display-5 fw-bold mb-2'),
-                    kit.p(_sdT('Four colours, each with a matte glass back.'), 'lead text-body-secondary mb-4'),
-                    kit.div('pg-launch-stage mx-auto mb-4 col-12 col-md-8 col-lg-6', _sdT('Picture Stage'), [
-                        _lcShot(1, 'launch-colour-graphite', _sdT('The ACME One in Graphite')),
-                        _lcShot(2, 'launch-colour-sand', _sdT('The ACME One in Sand')),
-                        _lcShot(3, 'launch-colour-blue', _sdT('The ACME One in Mist Blue')),
-                        _lcShot(4, 'launch-colour-rose', _sdT('The ACME One in Rose'))
-                    ]),
-                    kit.tag('fieldset', 'd-flex justify-content-center flex-wrap gap-4 border-0 p-0 m-0', _sdT('Swatches'), [
-                        kit.tag('legend', 'visually-hidden', _sdT('Swatches Legend'), [ kit.h('span', _sdT('Finish')) ]),
-                        _lcPick(1, _sdT('Graphite'), true),
-                        _lcPick(2, _sdT('Sand'), false),
-                        _lcPick(3, _sdT('Mist Blue'), false),
-                        _lcPick(4, _sdT('Rose'), false)
-                    ])
-                ]);
             }
 
             // Launch: Spec Comparison — the models side by side, specs grouped

@@ -1012,18 +1012,19 @@ function ws_api_message_thread_schema()
 // One item of a message's checklist (ws_api_message_checks()).
 function ws_api_message_check_schema()
 {
-    return array('item' => 'integer', 'text' => 'string', 'checked' => 'boolean', 'by' => 'WorkspaceMessageSender?', 'at' => 'string?');
+    return array('item' => 'integer', 'text' => 'string', 'checked' => 'boolean', 'by' => 'WorkspaceMessageSender?', 'at' => 'string?', 'app_id' => 'integer?');
 }
 
 /**
  * A message's checklist as the API shows it: one entry per "- [ ] item"
  * line, in order, with the tick someone gave it since over the state it was
  * written with, as the channel screen draws it (ws_render_body()). by and at
- * are null for an item nobody ticked or cleared; a guest has no user id.
+ * are null for an item nobody ticked or cleared; a guest has no user id, nor
+ * has an application, whose name is in by and whose id is app_id.
  *
  * @param string $body   the message text
  * @param array  $checks ws_checks_map() entry of the message: item => state
- * @return array[] item, text, checked, by, at
+ * @return array[] item, text, checked, by, at, app_id
  */
 function ws_api_message_checks($body, $checks)
 {
@@ -1037,10 +1038,11 @@ function ws_api_message_checks($body, $checks)
             'text'    => (string) $entry['text'],
             'checked' => is_array($state) ? !empty($state['checked']) : !empty($entry['checked']),
             'by'      => is_array($state) ? array(
-                'user_id' => (empty($state['guest']) && ((int) $state['user_id'] > 0)) ? (int) $state['user_id'] : null,
+                'user_id' => (empty($state['guest']) && empty($state['app_id']) && ((int) $state['user_id'] > 0)) ? (int) $state['user_id'] : null,
                 'name'    => (string) $state['name'],
             ) : null,
             'at'      => is_array($state) ? api_time((int) ($state['updated_at'] ?? 0)) : null,
+            'app_id'  => (is_array($state) && ((int) ($state['app_id'] ?? 0) > 0)) ? (int) $state['app_id'] : null,
         );
     }
 
@@ -1488,6 +1490,10 @@ function ws_api_messages_create($params)
     // device asks as it does from the panel's composer.
     if (ws_api_message_asks_assistants($app_id, $kind, $writer['via_client_id'])) {
         ws_api_assistants_carry_on(ws_message_ask_assistants($viewer, $channel, $row['id'], (string) $params['text']));
+    } elseif (ws_api_message_wakes_agents($app_id, $kind, $writer['via_client_id'])) {
+        // An application's words wake only the registry's agents they name
+        // or answer (agent_queue.php).
+        ws_api_assistants_carry_on(ws_agent_after_app_send($viewer, $channel, $row['id'], (string) $params['text']));
     }
 
     api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))), 201);
@@ -1559,6 +1565,22 @@ function ws_api_messages_forward($params)
 function ws_api_message_asks_assistants($app_id, $kind, $via_client_id = 0)
 {
     return ((int) $app_id === 0) && ((int) $via_client_id === 0) && ((string) $kind === 'message');
+}
+
+/**
+ * Does an application's message written now wake the registry's agents it
+ * names or answers? A message written with an application's key or through
+ * an OAuth connection, never a decision or a note; the assistants stay
+ * unasked (ws_api_message_asks_assistants()).
+ *
+ * @param int    $app_id        ws_api_message_writer()['app_id']
+ * @param string $kind          message | note | decision
+ * @param int    $via_client_id ws_api_message_writer()['via_client_id']
+ * @return bool
+ */
+function ws_api_message_wakes_agents($app_id, $kind, $via_client_id = 0)
+{
+    return (((int) $app_id > 0) || ((int) $via_client_id > 0)) && ((string) $kind === 'message');
 }
 
 /**
@@ -1959,6 +1981,66 @@ function ws_api_messages_react($params)
 
     if (!$result['ok']) {
         api_fail_validation($result['error'], 'emoji');
+    }
+
+    $row = ws_message($message['id']);
+
+    api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))));
+}
+
+/**
+ * Ticks a checklist line of a message, or clears it, as the box in the
+ * channel does: with an application key or an OAuth connection the tick is
+ * the application's and the line shows its name; from a team devices session
+ * it is the person's.
+ *
+ * @param array $params
+ */
+function ws_api_messages_check($params)
+{
+    $viewer = ws_api_viewer();
+    $message = ws_message((int) $params['id']);
+
+    if (!$message || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    $item = (int) $params['item'];
+    $checked = !array_key_exists('checked', $params) || !empty($params['checked']);
+
+    // The checks ws_check_set() makes, made first so that a dry run meets
+    // the same refusals.
+    $check = ws_check_check($viewer, $message, $item);
+
+    if (!$check['ok']) {
+        if ($check['field'] === 'item') {
+            api_fail_validation($check['error'], 'item');
+        }
+
+        api_fail(403, 'forbidden', $check['error']);
+    }
+
+    $state = ws_api_message_checks($message['body'], ws_checks_map(array($message['id']))[(int) $message['id']] ?? array());
+    $now = false;
+
+    foreach ($state as $entry) {
+        if ($entry['item'] === $item) {
+            $now = $entry['checked'];
+        }
+    }
+
+    api_dry_run_stop('updated', 'workspace_check', array(
+        'message_id' => (int) $message['id'],
+        'channel_id' => (int) $message['channel_id'],
+        'item'       => $item,
+        'checked'    => $checked,
+        'changes'    => ($now !== $checked),
+    ));
+
+    $result = ws_check_set($viewer, $message, $item, $checked, ws_api_writer_app_id());
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], 'item');
     }
 
     $row = ws_message($message['id']);

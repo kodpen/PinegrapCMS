@@ -1285,8 +1285,8 @@ function _test_blocks_family_file_problems($label, $js)
 		}
 	}
 	// Every pg-* class the file writes comes with a rule its blocks need: the
-	// rule's key, or a class that rule's CSS names (pg-launch-colours styles
-	// pg-launch-shot).
+	// rule's key, or a class that rule's CSS names (pg-variant styles
+	// pg-variant-shot).
 	$needed = array();
 	$needed_css = '';
 	$all_rules = $own['rules'] + $core['rules'];
@@ -1298,7 +1298,7 @@ function _test_blocks_family_file_problems($label, $js)
 	}
 	$body = preg_replace('/^\\s*var _SD_BLOCK_CSS(?:_NEEDS)? = \\{.*?^    \\};/ms', '', $js);
 	preg_match_all("/'([^'\\n]*)'/", (string) $body, $literals);
-	// A literal ending in a class stem joined to a number ('pg-launch-pick-' + n)
+	// A literal ending in a class stem joined to a number ('pg-variant-pick-' + n)
 	// is left out: only whole class names are read.
 	foreach ($literals[1] as $literal) {
 		if (preg_match_all('/(?<![\\w-])pg-[a-z0-9-]*[a-z0-9](?![\\w-])/', $literal, $classes)) {
@@ -1388,4 +1388,79 @@ function test_designer_blocks_full_screen_media_hero()
 	pg_assert_true(in_array('data-bs-theme', $strings, true) && in_array('dark', $strings, true), 'the scrim turns its text light');
 	$noWrap = _test_blocks_slice('var _noWrapCtypes = [', '];');
 	pg_assert_true(strpos($noWrap, "'" . $ctype . "'") !== false, $ctype . ' is dropped without a container around it');
+}
+
+// Product Bar (light and dark): a sticky bar under a sticky site header with
+// the product's name, section links and one call to action.
+function test_designer_blocks_product_bar()
+{
+	foreach (array('spotlight-bar', 'spotlight-bar-dark') as $ctype) {
+		pg_assert_true(in_array($ctype, _test_blocks_palette_ctypes(), true), 'the palette lists ' . $ctype);
+		pg_assert_same('Marketing', _test_blocks_group_of($ctype), $ctype . ' sits in the Marketing group');
+		pg_assert_true(_test_blocks_builder_has_classes($ctype, array('bg-body', 'text-body', 'border-bottom')), $ctype . ' is a band of the page colour');
+		pg_assert_true(_test_blocks_builder_has_classes($ctype, array('nav', 'small')), $ctype . ' has a list of section links');
+		pg_assert_true(_test_blocks_builder_has_classes($ctype, array('d-none', 'd-md-block')), $ctype . ' hides the links on a phone');
+		pg_assert_true(_test_blocks_builder_has_classes($ctype, array('btn', 'btn-primary')), $ctype . ' has its call to action');
+		$strings = _test_blocks_builder_strings($ctype);
+		pg_assert_true(in_array('#features', $strings, true), $ctype . ' links point at the page\'s sections');
+		pg_assert_true(in_array('aria-label', $strings, true), $ctype . ' names its link list');
+		$noWrap = _test_blocks_slice('var _noWrapCtypes = [', '];');
+		pg_assert_true(strpos($noWrap, "'" . $ctype . "'") !== false, $ctype . ' is dropped without a container around it');
+	}
+	$body = _test_blocks_palette_body();
+	pg_assert_true(strpos($body, "_sdT('Product Bar')") !== false && strpos($body, "_sdT('Product Bar: Dark')") !== false, 'both palette labels are translated');
+	$at = _test_blocks_builder_at('spotlight-bar');
+	$block = $at === false ? null : _test_blocks_block($at);
+	pg_assert_true((bool) $block, 'the Product Bar builder is found');
+	$src = $block ? substr(_test_blocks_js(), $block[0], $block[1] - $block[0]) : '';
+	pg_assert_true(strpos($src, "barDark ? [{ name: 'data-bs-theme', value: 'dark' }] : []") !== false, 'only the dark entry turns the band dark');
+	pg_assert_true((bool) preg_match("/_fx\\s*=\\s*\\{\\s*effect:\\s*'sticky',\\s*offset:\\s*56\\s*\\}/", $src), 'the bar sticks 56 px down, under a sticky navbar');
+	require_once __DIR__ . '/../pinegrap/includes/fn/designer_fx.php';
+	pg_assert_same(array('effect' => 'sticky', 'offset' => 56), pg_fx_normalize(array('effect' => 'sticky', 'offset' => 56)), 'the normalizer keeps the offset');
+}
+
+// Scroller: Snap Cards' "Wide slides" option: pg-snap-wide on the row makes
+// each item a large slide, most of the window wide, that stops in the middle.
+function test_designer_blocks_scroller_wide_slides()
+{
+	$rules = _test_blocks_css_rules();
+	pg_assert_true(isset($rules['pg-snap-wide']), 'the block stylesheet has pg-snap-wide');
+	$rule = isset($rules['pg-snap-wide']) ? $rules['pg-snap-wide'] : '';
+	pg_assert_true(strpos($rule, '.pg-snap-wide .pg-snap-item') !== false, 'the items are matched by class, also through a canvas wrapper');
+	pg_assert_true((bool) preg_match('/width:\s*(8[0-9]|90)vw/', $rule), 'a slide is 80 to 90 percent of the window');
+	pg_assert_true(strpos($rule, 'max-width: 100%') !== false, 'a slide is never wider than its row');
+	pg_assert_true(strpos($rule, 'scroll-snap-align: center') !== false, 'a slide stops in the middle');
+	$needs = _test_blocks_css_needs();
+	pg_assert_true(!in_array('pg-snap-wide', isset($needs['scroller-cards']) ? $needs['scroller-cards'] : array(), true), 'the rule joins the styles only when the option is turned on');
+
+	$js = _test_blocks_js();
+	pg_assert_true(strpos($js, "var isScrollerRow = clsList.indexOf('pg-snap') !== -1;") !== false, 'a scroller row is found by pg-snap');
+	pg_assert_true(strpos($js, "(isScrollerRow ? propsScrollerOptions(n) : '')") !== false, 'the row shows the Scroller section');
+	pg_assert_true(strpos($js, "_sdT('Wide slides')") !== false, 'the option is labelled and translated');
+	pg_assert_true(strpos($js, "_sdEnsureBlockStyles(['pg-snap-wide'])") !== false, 'turning it on adds the rule');
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+	if ($code !== 0) {
+		return;
+	}
+	$start = strpos($js, 'function _sdScrollerIsWide(');
+	$end = strpos($js, '// ── Block stylesheet', $start);
+	pg_assert_true($start !== false && $end !== false, 'the helpers are found');
+	$script = "'use strict';\nvar _sdPaletteDry = false, ensured = [];\n"
+		. "function _sdEnsureBlockStyles(n) { ensured.push(n.join(',')); }\n"
+		. substr($js, $start, $end - $start) . "\n"
+		. "var row = { props: { cssClass: 'row g-4 flex-nowrap pg-snap' } }, calls = 0, before = function () { calls++; };\n"
+		. "var r = [_sdScrollerSetWide(row, true, before), row.props.cssClass, _sdScrollerIsWide(row), _sdScrollerSetWide(row, true, before),\n"
+		. "  _sdScrollerSetWide(row, false, before), row.props.cssClass, _sdScrollerIsWide(row), calls, ensured];\n"
+		. "console.log(JSON.stringify(r));\n";
+	$file = tempnam(sys_get_temp_dir(), 'pgscroller');
+	file_put_contents($file, $script);
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+	pg_assert_same(0, $code, implode("\n", $out));
+	pg_assert_same(array(true, 'row g-4 flex-nowrap pg-snap pg-snap-wide', true, false, true, 'row g-4 flex-nowrap pg-snap', false, 2, array('pg-snap-wide')),
+		json_decode((string) end($out), true), 'the option adds and removes pg-snap-wide once, with one undo snapshot each, and adds the rule');
 }

@@ -15982,7 +15982,11 @@ const StyleDesigner = (function () {
                 // <a> is innerEl itself — edit directly, no span wrapper
                 editableTargets.push({ el: innerEl, prop: 'text' });
             }
-        } else if (node.type === 'semantic' && !_sdIsSentence(node) && (node.props.text !== undefined || !(node.children && node.children.length))) {
+        } else if (node.type === 'semantic' && !_sdIsSentence(node) && !/^(video|audio)$/i.test(String(node.props.tag || '')) &&
+                   (node.props.text !== undefined || !(node.children && node.children.length))) {
+            // A player is left out: text typed into it is fallback content
+            // no current browser shows, and a double-click on it belongs to
+            // its own controls.
             // A sentence with values is written in the panel: typing across
             // it would take its values' words for its own.
             // Semantic elements with direct text (e.g. <button>, <a> with text
@@ -17143,6 +17147,13 @@ const StyleDesigner = (function () {
             return srcTag === 'td' || srcTag === 'th';
         }
 
+        // Rule 7: a player holds only its <source> and <track> elements:
+        // anything else inside <video> or <audio> is fallback content that no
+        // current browser shows, so a heading dropped there would vanish.
+        if (tgtTag === 'video' || tgtTag === 'audio') {
+            return srcTag === 'source' || srcTag === 'track';
+        }
+
         // ────────────────────────────────────────────────────────────────────
 
         // ── loop_area scope guard — can't escape its system widget ───────────
@@ -17601,6 +17612,48 @@ const StyleDesigner = (function () {
                             ])
                         ])
                     ]);
+                }
+
+                // Product Bar — a slim bar that stays at the top of the window
+                // under a sticky site header (offset 56 px, a Bootstrap
+                // navbar's height; 0 in the Interactions panel when the header
+                // scrolls away): the product's name, links to the page's own
+                // sections and one call to action. The links show from md up,
+                // so a phone keeps the name and the button on one line. The
+                // dark entry is a dark band (data-bs-theme plus bg-body
+                // text-body), so both follow the palette.
+                if (ctype === 'spotlight-bar' || ctype === 'spotlight-bar-dark') {
+                    var barDark = ctype === 'spotlight-bar-dark';
+                    var barLink = function (text, href) {
+                        return createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Nav Item') }, [
+                            createNode('semantic', { tag: 'a', cssClass: 'nav-link px-2 link-body-emphasis', href: href, target: '', text: text, customName: _sdT('Section Link') })
+                        ]);
+                    };
+                    var bar = createNode('semantic', { tag: 'section', cssClass: 'bg-body text-body border-bottom py-2', customName: barDark ? _sdT('Product Bar (Dark)') : _sdT('Product Bar'),
+                        _attrs: barDark ? [{ name: 'data-bs-theme', value: 'dark' }] : [] }, [
+                        createNode('container', { fluid: false, cssClass: '' }, [
+                            createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center gap-3', customName: _sdT('Bar') }, [
+                                createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('Aurora One'), cssClass: 'fs-5 fw-semibold text-truncate mb-0 me-auto' }),
+                                createNode('semantic', { tag: 'nav', cssClass: 'd-none d-md-block', customName: _sdT('Section Links'),
+                                    _attrs: [{ name: 'aria-label', value: _sdT('Product sections') }] }, [
+                                    createNode('semantic', { tag: 'ul', cssClass: 'nav small', customName: _sdT('Nav List') }, [
+                                        barLink(_sdT('Overview'), '#overview'),
+                                        barLink(_sdT('Features'), '#features'),
+                                        barLink(_sdT('Specifications'), '#specs')
+                                    ])
+                                ]),
+                                createNode('semantic', { tag: 'a', cssClass: 'btn btn-primary btn-sm px-3 flex-shrink-0', href: '#', target: '', text: _sdT('Buy Now'), customName: _sdT('Primary Link') })
+                            ])
+                        ])
+                    ]);
+                    bar.props._fx = { effect: 'sticky', offset: 56 };
+                    return bar;
+                }
+
+                // Variant Picker — choices that switch the picture above them
+                // without script; Variant Picker Options adds, removes and restyles them.
+                if (ctype === 'variant-picker') {
+                    return _sdVariantPicker();
                 }
 
                 // CTA: Simple — centered banner on subtle bg, h2 + lead + 2 CTAs
@@ -23609,7 +23662,14 @@ const StyleDesigner = (function () {
             }).map(function (k) {
                 var c = CONTENT[k];
                 return { label: c.label, type: 'content', icon: c.icon, extra: { contentType: k } };
-            })},
+            }).concat([
+                // A <video> with the player's own controls; the Video panel
+                // (propsVideoOptions()) picks its file and poster. preload
+                // "metadata" loads the first frame and the length, not the
+                // film; playsinline keeps it in the page on a phone.
+                { label: _sdT('Video'), type: 'semantic', icon: 'bi-camera-video', extra: { tag: 'video', cssClass: 'd-block w-100 h-auto',
+                    customName: _sdT('Video'), _attrs: [{ name: 'controls', value: '' }, { name: 'preload', value: 'metadata' }, { name: 'playsinline', value: '' }] } }
+            ])},
             // Plain form controls. Each lands as <div class="mb-5"><label><control>
             // (a group as <fieldset><legend>…) with a Turkish default label
             // and a seeded name. Inside a custom form widget the block is a
@@ -44910,6 +44970,9 @@ const StyleDesigner = (function () {
         var isDropdownTrigger = _bsToggleAttr === 'dropdown';
         // Navbar root (nav.navbar — composite exploded navbar; shows dedicated Navbar Options)
         var isNavbarRoot = tag === 'nav' && clsList.indexOf('navbar') !== -1;
+        var isVariantPicker = clsList.indexOf('pg-variant') !== -1;
+        // The sideways row of a scroller block (Scroller: Snap Cards).
+        var isScrollerRow = clsList.indexOf('pg-snap') !== -1;
         // Carousel root (has 'carousel' class, not carousel-inner/item/indicators/control)
         var isCarousel   = clsList.indexOf('carousel') !== -1
             && clsList.indexOf('carousel-inner')       === -1
@@ -45053,11 +45116,14 @@ const StyleDesigner = (function () {
                (isCard ? propsCardOptions(n) : '') +
                (isCardGroup ? propsCardGroupOptions(n) : '') +
                (isCarousel ? propsCarouselOptions(n) : '') +
+               (isVariantPicker ? propsVariantOptions(n) : '') +
+               (isScrollerRow ? propsScrollerOptions(n) : '') +
                (isAlertRoot ? propsAlertOptions(n) : '') +
                (isPopoverTrigger ? propsPopoverOptions(n) : '') +
                (isTable ? propsTableOptions(n) : '') +
                (isTableRow ? propsTableRowOptions(n) : '') +
                (isTableCell ? propsTableCellOptions(n) : '') +
+               (String(n.props.tag || '').toLowerCase() === 'video' ? propsVideoOptions(n) : '') +
                rowSection +
                colSection +
                stateSection +
@@ -45218,6 +45284,183 @@ const StyleDesigner = (function () {
             row(_sdT('Novalidate'),       swAttr('data-form-bool-attr="novalidate"',              ha('novalidate'))) +
             row('needs-validation', swAttr('data-util-toggle="needs-validation"',           cls.indexOf('needs-validation') !== -1)) +
             row('was-validated',    swAttr('data-util-toggle="was-validated"',              cls.indexOf('was-validated') !== -1))
+        );
+    }
+
+    // ── Video Options ─────────────────────────────────────────────────────────
+    // The classes that lay a video over the whole of its box, behind the
+    // box's content, the way a background picture sits: absolutely placed,
+    // cropped to cover, one layer under the content (z-n1). Its box gets
+    // position-relative and z-0 (_sdVideoFillHostClass()), so the layer is
+    // the box's own and the video paints above the box's background.
+    /* @pg-site-output */
+    var _SD_VIDEO_FILL = ['position-absolute', 'top-0', 'start-0', 'w-100', 'h-100', 'object-fit-cover', 'z-n1'];
+
+    // Whether a video's class list `cls` lays it over its box.
+    function _sdVideoFills(cls) {
+        var have = String(cls || '').split(/\s+/);
+        return _SD_VIDEO_FILL.every(function (c) { return have.indexOf(c) !== -1; });
+    }
+
+    // A video's class list `cls` with the fill turned on or off. On, a class
+    // of the same family (another position, size, inset, fit or layer)
+    // gives way, as h-auto would beat h-100 in the stylesheet. Off, the
+    // video goes back to the palette item's own size: the column's width at
+    // the film's own height.
+    /* @pg-site-output */
+    function _sdVideoFillClass(cls, on) {
+        var list = String(cls || '').split(/\s+/).filter(Boolean);
+        var family = /^(position-|top-|bottom-|start-|end-|w-|h-|object-fit-|z-)/;
+        if (on) {
+            list = list.filter(function (c) { return !family.test(c); }).concat(_SD_VIDEO_FILL);
+        } else {
+            list = list.filter(function (c) { return _SD_VIDEO_FILL.indexOf(c) === -1; });
+            ['w-100', 'h-auto'].forEach(function (c) { if (list.indexOf(c) === -1) list.push(c); });
+        }
+        return list.join(' ');
+    }
+
+    // The class list `cls` of the box a filling video sits in: placed
+    // (position-relative unless a position class already places it) and a
+    // layer of its own (z-0 unless a z class gives one). Without the
+    // layer the video's z-n1 would drop it behind the box's background.
+    /* @pg-site-output */
+    function _sdVideoFillHostClass(cls) {
+        var list = String(cls || '').split(/\s+/).filter(Boolean);
+        var placed = /^(position-(relative|absolute|fixed|sticky)|fixed-(top|bottom)|sticky-(top|bottom))$/;
+        if (!list.some(function (c) { return placed.test(c); })) {
+            list = list.filter(function (c) { return c !== 'position-static'; });
+            list.push('position-relative');
+        }
+        if (!list.some(function (c) { return /^z-(n1|[0-9])$/.test(c); })) list.push('z-0');
+        return list.join(' ');
+    }
+
+    // The pause button of a video that plays by itself (_sdVideoSetAutoplay()):
+    // pg_fx.src.js finds the video through aria-controls and writes
+    // aria-pressed; the block rule pg-video-toggle shows the pause or the
+    // play icon from it, and hides the button where the video cannot play
+    // by itself (no script, reduced motion).
+    /* @pg-site-output */
+    function _sdVideoPauseButton(videoId) {
+        var icon = function (name, cls) {
+            return createNode('content', { contentType: 'icon', iconName: name, cssClass: cls, fontSize: '',
+                _attrs: [{ name: 'aria-hidden', value: 'true' }] });
+        };
+        return createNode('semantic', { tag: 'button', customName: _sdT('Pause Button'),
+            cssClass: 'btn btn-secondary btn-sm rounded-circle position-absolute bottom-0 end-0 m-3 z-1 pg-video-toggle',
+            _attrs: [
+                { name: 'type', value: 'button' },
+                { name: 'data-pg-video-toggle', value: '' },
+                { name: 'aria-controls', value: videoId },
+                { name: 'aria-pressed', value: 'false' }
+            ] }, [
+            icon('bi-pause-fill', 'pg-video-pause'),
+            icon('bi-play-fill', 'pg-video-play'),
+            createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Pause video'), cssClass: 'visually-hidden' })
+        ]);
+    }
+
+    // Whether node is the pause button of the video with id `videoId`.
+    function _sdVideoIsToggleFor(node, videoId) {
+        if (!node || !node.props) return false;
+        var attrs = node.props._attrs || [];
+        var toggle = attrs.some(function (a) { return a.name === 'data-pg-video-toggle'; });
+        return toggle && attrs.some(function (a) { return a.name === 'aria-controls' && a.value === videoId; });
+    }
+
+    // Turns a video's playing by itself on or off. On: the autoplay
+    // interaction, muted, looping, inline on a phone, no controls (the
+    // pause button stands for them), an id the button names, the button
+    // right after the video in its box `host` (once), and the box placed
+    // as a filling video's box is. Off: the interaction and the button go,
+    // the controls come back unless the video fills its box. Muted and
+    // loop stay as they are. The caller adds the pg-video-toggle rule.
+    /* @pg-site-output */
+    function _sdVideoSetAutoplay(video, host, on) {
+        if (!video.props._attrs) video.props._attrs = [];
+        var bool = function (name, want) {
+            var list = video.props._attrs, has = list.some(function (a) { return a.name === name; });
+            if (want && !has) list.push({ name: name, value: '' });
+            if (!want && has) video.props._attrs = list.filter(function (a) { return a.name !== name; });
+        };
+        var idAttr = video.props._attrs.filter(function (a) { return a.name === 'id'; })[0];
+        var id = video.props.id || (idAttr && idAttr.value) || '';
+        var kids = host && Array.isArray(host.children) ? host.children : null;
+        if (on) {
+            video.props._fx = { effect: 'autoplay' };
+            bool('autoplay', false);
+            bool('controls', false);
+            bool('muted', true);
+            bool('loop', true);
+            bool('playsinline', true);
+            if (!id) id = video.props.id = 'pg-video-' + Math.random().toString(36).substr(2, 6);
+            if (kids && !kids.some(function (k) { return _sdVideoIsToggleFor(k, id); })) {
+                var at = kids.indexOf(video);
+                kids.splice(at === -1 ? kids.length : at + 1, 0, _sdVideoPauseButton(id));
+            }
+            if (host && host.props && ['semantic', 'container', 'row', 'col'].indexOf(host.type) !== -1) {
+                host.props.cssClass = _sdVideoFillHostClass(host.props.cssClass);
+            }
+        } else {
+            delete video.props._fx;
+            if (kids && id) host.children = kids.filter(function (k) { return !_sdVideoIsToggleFor(k, id); });
+            bool('controls', !_sdVideoFills(video.props.cssClass));
+        }
+    }
+
+    // Whether the video plays by itself.
+    function _sdVideoAutoplays(n) {
+        return !!(n && n.props && n.props._fx && n.props._fx.effect === 'autoplay');
+    }
+
+    // The Video panel of a <video> node: its file and poster from the
+    // file manager, the player's switches and how much of the file the
+    // browser loads up front. "Play by itself" is the only autoplay: muted
+    // and looping, with a pause button, still under reduced motion
+    // (_sdVideoSetAutoplay(), pg_fx.src.js). A src or poster bound to a
+    // record field is edited in the Data panel, so its row only says so.
+    function propsVideoOptions(n) {
+        var b = n.props._bindings || {};
+        function ga(nm) { return getNodeAttr(n, nm); }
+        function fInp(id, dAttr, ph) {
+            return '<input type="text" class="form-control form-control-sm"' + (id ? ' id="' + id + '"' : '') +
+                ' data-form-input-attr="' + dAttr + '" value="' + esc(ga(dAttr)) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + '>';
+        }
+        function bound() {
+            return '<span class="sd-prop-static" style="color:#888">' + esc(_sdT('From a record field')) + '</span>';
+        }
+        function pick(id, dAttr, ph, onclick) {
+            return '<div class="sd-pick-group">' + fInp(id, dAttr, ph) +
+                '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" onclick="' + onclick + '">' + esc(_sdT('Select')) + '</button>' +
+                '</div>';
+        }
+        var fills = _sdVideoFills(n.props.cssClass);
+        var auto = _sdVideoAutoplays(n);
+        var pre = ga('preload');
+        var preOpts = [['', _sdT('Browser default')], ['none', _sdT('None')], ['metadata', _sdT('Metadata only')], ['auto', _sdT('Whole file')]];
+        var preSel = '<select class="form-control form-control-sm" data-form-input-attr="preload">';
+        preOpts.forEach(function (o) { preSel += '<option value="' + o[0] + '"' + (o[0] === pre ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; });
+        preSel += '</select>';
+
+        return sect('bi-camera-video', _sdT('Video'),
+            row(_sdT('Video file'), b.src ? bound()
+                : pick('sd-prop-video-src', 'src', '/film.mp4', "window.sdOpenFilePicker('sd-prop-video-src','src','file')")) +
+            row(_sdT('Poster image'), b.poster ? bound()
+                : pick('sd-prop-video-poster', 'poster', '', "window.sdOpenImagePicker('sd-prop-video-poster')")) +
+            row(_sdT('Title'), fInp('', 'title', '')) +
+            (fills || auto ? '' : row(_sdT('Controls'), swAttr('data-form-bool-attr="controls"', hasNodeBoolAttr(n, 'controls')))) +
+            row(_sdT('Loop'), swAttr('data-form-bool-attr="loop"', hasNodeBoolAttr(n, 'loop'))) +
+            row(_sdT('Muted'), swAttr('data-form-bool-attr="muted"', hasNodeBoolAttr(n, 'muted'))) +
+            row(_sdT('Preload'), preSel) +
+            row(_sdT('Fill its box'), swAttr('data-video-fill', fills) +
+                '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
+                esc(_sdT('Covers the box it sits in, behind the content of the box, like a background picture. Its controls go off, as the content would cover them.')) +
+                '</div>') +
+            row(_sdT('Play by itself'), swAttr('data-video-autoplay', auto) +
+                '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
+                esc(_sdT('Muted and looping, with a pause button in the corner of its box. It stays still for visitors who ask for less motion. Meant for a hero video.')) +
+                '</div>')
         );
     }
 
@@ -45579,6 +45822,7 @@ const StyleDesigner = (function () {
                                      'footer-minimal', 'footer-multi-col', 'footer-newsletter',
                                      'carousel', 'modal', 'offcanvas', 'dropdown',
                                      'hero-centered', 'hero-split', 'hero-image-bg', 'spotlight-media',
+                                     'variant-picker', 'spotlight-bar', 'spotlight-bar-dark',
                                      'cta-simple', 'cta-inline', 'cta-gradient',
                                      'features-grid', 'features-alt', 'features-list',
                                      'testimonial-single', 'testimonial-grid', 'testimonial-carousel',
@@ -46983,6 +47227,44 @@ const StyleDesigner = (function () {
             if (node.children) node.children.forEach(walk);
         })(scope);
         return ids;
+    }
+
+    /**
+     * The Variant Picker section of a selected Variant Picker block (class
+     * pg-variant): its look (colour dots or text pills) and its number of
+     * choices, two to six (_sdVariantAddChoice() / _sdVariantRemoveChoice()).
+     */
+    function propsVariantOptions(n) {
+        var count = _sdVariantParts(n).choices.length;
+        var look = _sdVariantLook(n);
+        var lookBtn = function (value, text) {
+            return '<button type="button" class="btn btn-outline theme-secondary' + (look === value ? ' active' : '') + '" data-vp-action="look" data-vp-look="' + value + '" data-vp-node-id="' + n._id + '" aria-pressed="' + (look === value ? 'true' : 'false') + '">' + esc(text) + '</button>';
+        };
+        var h = '';
+        h += row(_sdT('Look'),
+            '<div class="btn-group btn-group-sm w-100">' + lookBtn('dots', _sdT('Colour dots')) + lookBtn('pills', _sdT('Text pills')) + '</div>');
+        h += row(_sdT('Choices'),
+            '<div class="btn-group btn-group-sm w-100">' +
+            '<button type="button" class="btn btn-outline theme-secondary" data-vp-action="remove" data-vp-node-id="' + n._id + '" title="' + esc(_sdT('Remove last choice')) + '" aria-label="' + esc(_sdT('Remove last choice')) + '"' + (count <= _SD_VARIANT_MIN ? ' disabled' : '') + '><i class="bi bi-dash-lg"></i></button>' +
+            '<span class="btn btn-outline theme-secondary disabled" style="cursor:default">' + count + '</span>' +
+            '<button type="button" class="btn btn-outline theme-secondary" data-vp-action="add" data-vp-node-id="' + n._id + '" title="' + esc(_sdT('Add choice')) + '" aria-label="' + esc(_sdT('Add choice')) + '"' + (count < 1 || count >= _SD_VARIANT_MAX ? ' disabled' : '') + '><i class="bi bi-plus-lg"></i></button>' +
+            '</div>');
+        return sect('bi-palette', _sdT('Variant Picker'), h);
+    }
+
+    /**
+     * The Scroller section of a selected scroller row (class pg-snap): cards
+     * side by side, or wide slides, one large item per slide stopping in the
+     * middle (_sdScrollerSetWide()).
+     */
+    function propsScrollerOptions(n) {
+        var wide = _sdScrollerIsWide(n);
+        var btn = function (value, text) {
+            var on = wide === (value === 'wide');
+            return '<button type="button" class="btn btn-outline theme-secondary' + (on ? ' active' : '') + '" data-sc-action="' + value + '" data-sc-node-id="' + n._id + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(text) + '</button>';
+        };
+        return sect('bi-collection', _sdT('Scroller'), row(_sdT('Slides'),
+            '<div class="btn-group btn-group-sm w-100">' + btn('cards', _sdT('Cards')) + btn('wide', _sdT('Wide slides')) + '</div>'));
     }
 
     /**
@@ -50368,6 +50650,36 @@ const StyleDesigner = (function () {
             }
         });
 
+        // Variant Picker: look, add or remove a choice. The undo snapshot is
+        // taken only when the helper changes the tree.
+        document.querySelectorAll('#sd-properties [data-vp-action]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var hit = _findNodeAnywhereById(this.getAttribute('data-vp-node-id') || '');
+                if (!hit) return;
+                var action = this.getAttribute('data-vp-action');
+                var before = function () { saveState(); };
+                var done = action === 'add' ? _sdVariantAddChoice(hit.node, before)
+                    : action === 'remove' ? _sdVariantRemoveChoice(hit.node, before)
+                    : action === 'look' ? _sdVariantSetLook(hit.node, this.getAttribute('data-vp-look'), before)
+                    : false;
+                if (!done) return;
+                if (hit.sid) _sharedDirty[hit.sid] = true;
+                render();
+            });
+        });
+
+        // Scroller: cards or wide slides. The undo snapshot is taken only
+        // when the helper changes the tree.
+        document.querySelectorAll('#sd-properties [data-sc-action]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var hit = _findNodeAnywhereById(this.getAttribute('data-sc-node-id') || '');
+                if (!hit) return;
+                if (!_sdScrollerSetWide(hit.node, this.getAttribute('data-sc-action') === 'wide', function () { saveState(); })) return;
+                if (hit.sid) _sharedDirty[hit.sid] = true;
+                render();
+            });
+        });
+
         // Carousel: add/remove slide
         document.querySelectorAll('#sd-properties [data-cr-action]').forEach(function(btn) {
             btn.addEventListener('click', function() {
@@ -51504,6 +51816,46 @@ const StyleDesigner = (function () {
                 // Re-render properties so type-dependent rows update
                 renderCanvas(); renderProperties(); renderAttrsPanel(); renderHtmlTree();
             });
+        });
+
+        // ── Video: fill its box (propsVideoOptions()) ──
+        // The video lays itself over its box and the box becomes the place
+        // and the layer it is laid in. Its controls go off with it: the
+        // box's content covers them. A box that is the page itself or a
+        // placed component has no class of its own to take.
+        var _vfIn = document.querySelector('#sd-properties input[data-video-fill]');
+        if (_vfIn) _vfIn.addEventListener('change', function () {
+            if (!selectedNode) return;
+            saveState();
+            var on = this.checked;
+            selectedNode.props.cssClass = _sdVideoFillClass(selectedNode.props.cssClass, on);
+            setNodeBoolAttr(selectedNode, 'controls', !on);
+            if (on) {
+                var _vfP = _sdAnyParent(selectedNode);
+                var host = _vfP && _vfP.parent;
+                if (host && host.props && ['semantic', 'container', 'row', 'col'].indexOf(host.type) !== -1) {
+                    host.props.cssClass = _sdVideoFillHostClass(host.props.cssClass);
+                    _sdSharedMarkEdited(host);
+                }
+            }
+            renderCanvas(); renderProperties(); renderAttrsPanel(); renderHtmlTree();
+        });
+
+        // ── Video: play by itself (propsVideoOptions()) ──
+        // The video and its pause button change together; the button sits
+        // in the video's box, so a box that is the page itself or a placed
+        // component gets none.
+        var _vaIn = document.querySelector('#sd-properties input[data-video-autoplay]');
+        if (_vaIn) _vaIn.addEventListener('change', function () {
+            if (!selectedNode) return;
+            saveState();
+            var _vaP = _sdAnyParent(selectedNode);
+            var host = _vaP && _vaP.parent;
+            if (!host || !host.props || ['semantic', 'container', 'row', 'col'].indexOf(host.type) === -1) host = null;
+            _sdVideoSetAutoplay(selectedNode, host, this.checked);
+            if (host) _sdSharedMarkEdited(host); else _sdSharedMarkEdited(selectedNode);
+            if (this.checked) _sdEnsureBlockStyles(['pg-video-toggle']);
+            render();
         });
 
         // ── Input ID field (data-form-input-id: sets both _attrs.id and node.props.id) ──
@@ -64990,7 +65342,7 @@ const StyleDesigner = (function () {
     function _sdFxSpec() {
         return {
             effects: ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
-                'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count'],
+                'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay'],
             triggers: ['view', 'load', 'hover', 'click'],
             easings: ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'],
             numbers: {
@@ -65014,6 +65366,7 @@ const StyleDesigner = (function () {
             return Math.max(r[0], Math.min(r[1], v));
         };
         var out = { effect: effect };
+        if (effect === 'autoplay') return out;
         if (effect === 'sticky') { out.offset = num('offset'); return out; }
         if (effect === 'parallax') { out.speed = num('speed'); return out; }
         if (spec.from[effect]) { out.from = num('from'); return out; }
@@ -73469,7 +73822,8 @@ const StyleDesigner = (function () {
     //   prefix  the componentType prefix of its blocks ('launch-')
     //   group   { title, icon }: its own palette group; left out when its
     //           blocks sit in a core group under that group's prefix
-    //   items   its palette items, the shape of _sdBlockPaletteItems()
+    //   items   its palette items, the shape of _sdBlockPaletteItems(), each
+    //           with a desc: the one line shown in the hover card
     //   build   function (ctype) -> the block's node tree, or null
     //   css     rule name -> CSS text, added to _SD_BLOCK_CSS
     //   needs   ctype -> rule names, added to _SD_BLOCK_CSS_NEEDS
@@ -73478,6 +73832,7 @@ const StyleDesigner = (function () {
     var _sdBlockFamilyFactories = [];
     var _sdBlockFamilyList = null;
     var _sdBlockFamilyByType = {};
+    var _sdBlockFamilyDesc = {};
 
     function _sdRegisterBlockFamily(factory) {
         if (typeof factory !== 'function') return;
@@ -73487,7 +73842,7 @@ const StyleDesigner = (function () {
 
     function _sdBlockFamilies() {
         if (_sdBlockFamilyList) return _sdBlockFamilyList;
-        var list = [], byType = {}, kit = _sdBlockKit();
+        var list = [], byType = {}, descs = {}, kit = _sdBlockKit();
         _sdBlockFamilyFactories.forEach(function (factory) {
             var fam = null;
             try { fam = factory(kit); } catch (e) { console.error('[SD] block family', e); }
@@ -73497,6 +73852,7 @@ const StyleDesigner = (function () {
                 var ct = (it && it.extra && it.extra.componentType) || '';
                 if (!ct || byType[ct]) return false;
                 byType[ct] = fam;
+                if (typeof it.desc === 'string' && it.desc) descs[ct] = it.desc;
                 return true;
             });
             [[fam.css, _SD_BLOCK_CSS], [fam.needs, _SD_BLOCK_CSS_NEEDS]].forEach(function (pair) {
@@ -73507,6 +73863,7 @@ const StyleDesigner = (function () {
             list.push(fam);
         });
         _sdBlockFamilyByType = byType;
+        _sdBlockFamilyDesc = descs;
         _sdBlockFamilyList = list;
         return list;
     }
@@ -73590,7 +73947,10 @@ const StyleDesigner = (function () {
             { label: _sdT('Hero: Split'),                 type: 'component', icon: 'bi-layout-split', extra: { componentType: 'hero-split' } },
             { label: _sdT('Hero: Image Background'),       type: 'component', icon: 'bi-image-alt',    extra: { componentType: 'hero-image-bg' } },
             { label: _sdT('Hero: Full-Screen Media'),      type: 'component', icon: 'bi-fullscreen',   extra: { componentType: 'spotlight-media' } },
-            { label: _sdT('CTA: Banner'),                 type: 'component', icon: 'bi-megaphone',    extra: { componentType: 'cta-simple' } },
+            { label: _sdT('Variant Picker'),               type: 'component', icon: 'bi-palette',      extra: { componentType: 'variant-picker' } },
+            { label: _sdT('Product Bar'),                  type: 'component', icon: 'bi-pin-angle',    extra: { componentType: 'spotlight-bar' } },
+            { label: _sdT('Product Bar: Dark'),            type: 'component', icon: 'bi-pin-angle-fill', extra: { componentType: 'spotlight-bar-dark' } },
+            { label: _sdT('CTA: Banner'),                type: 'component', icon: 'bi-megaphone',    extra: { componentType: 'cta-simple' } },
             { label: _sdT('CTA: Inline'),                 type: 'component', icon: 'bi-arrow-right-circle', extra: { componentType: 'cta-inline' } },
             { label: _sdT('CTA: Gradient'),               type: 'component', icon: 'bi-gem',          extra: { componentType: 'cta-gradient' } },
             { label: _sdT('Features: Grid'),              type: 'component', icon: 'bi-grid-3x3-gap',          extra: { componentType: 'features-grid' } },
@@ -73721,7 +74081,7 @@ const StyleDesigner = (function () {
     function _sdBlockPaletteGroups() {
         var groups = [
             { title: _sdT('Page Header'),      icon: 'bi-window-sidebar',     match: ['navbar-', 'hero-', 'breadcrumbs-'] },
-            { title: _sdT('Marketing'),        icon: 'bi-megaphone',          match: ['cta-', 'features-', 'stats-', 'pricing-', 'compare-', 'logos-', 'spotlight-'] },
+            { title: _sdT('Marketing'),        icon: 'bi-megaphone',          match: ['cta-', 'features-', 'stats-', 'pricing-', 'compare-', 'logos-', 'spotlight-', 'variant-'] },
             { title: _sdT('Creative'),         icon: 'bi-magic',              match: ['bento-', 'marquee-', 'showcase-', 'quote-', 'gallery-', 'scroller-'] },
             { title: _sdT('Social Proof'),     icon: 'bi-patch-check',        match: ['testimonial-', 'team-'] },
             { title: _sdT('Services & Booking'), icon: 'bi-calendar-check',   match: ['services-', 'steps-', 'booking-'] },
@@ -73755,6 +74115,215 @@ const StyleDesigner = (function () {
         var out = groups.filter(function (g) { return g.items.length; });
         if (other.items.length) out.push(other);
         return out;
+    }
+
+    // ── Variant Picker ──────────────────────────────────────────────────
+    // A general block (Marketing): two to six radio choices under a stage of
+    // pictures, one picture per choice. The pg-variant rule shows the checked
+    // choice's picture, so it works with no script, in the canvas too. The
+    // section's look class draws the choices as colour dots over their names
+    // (pg-variant-dots) or as text pills (pg-variant-pills). Choice n is the
+    // radio pg-variant-pick-n with the picture pg-variant-shot-n; Variant
+    // Picker Options adds, removes and restyles them through these helpers.
+    var _SD_VARIANT_MIN = 2;
+    var _SD_VARIANT_MAX = 6;
+
+    /* @pg-site-output */
+    function _sdVariantPicker() {
+        var kit = _sdBlockKit();
+        var name = kit.uid('vp');
+        var samples = [
+            [_sdT('Graphite'), 'variant-graphite', '#2b2f36'],
+            [_sdT('Sand'), 'variant-sand', '#e8e4dc'],
+            [_sdT('Mist Blue'), 'variant-blue', '#7d8fa6'],
+            [_sdT('Rose'), 'variant-rose', '#c9a7b4']
+        ];
+        var shots = [], choices = [];
+        samples.forEach(function (s, i) {
+            var n = i + 1, label = s[0];
+            shots.push(kit.img(s[1], 900, 900, _sdT('Shown in {var}', label), 'img-fluid w-100 rounded-4 object-fit-cover pg-variant-shot pg-variant-shot-' + n));
+            var attrs = [{ name: 'type', value: 'radio' }, { name: 'name', value: name }, { name: 'id', value: name + '-' + n }, { name: 'autocomplete', value: 'off' }];
+            if (n === 1) attrs.push({ name: 'checked', value: 'checked' });
+            choices.push(kit.div('pg-variant-choice', _sdT('Choice {var}', n), [
+                kit.tag('input', 'btn-check pg-variant-pick pg-variant-pick-' + n, _sdT('Radio'), [], attrs),
+                kit.tag('label', 'pg-variant-label', _sdT('Label'), [
+                    // The dot's colour sits in the style attribute, the Background control's store.
+                    kit.tag('span', 'pg-variant-dot', _sdT('Swatch Dot'), [], [{ name: 'aria-hidden', value: 'true' }, { name: 'style', value: 'background-color: ' + s[2] + ';' }]),
+                    kit.h('span', label, 'small fw-semibold')
+                ], [{ name: 'for', value: name + '-' + n }])
+            ]));
+        });
+        return kit.section('py-5 text-center pg-variant pg-variant-dots', _sdT('Variant Picker'), [
+            kit.h('h2', _sdT('Pick your finish'), 'display-6 fw-bold mb-2'),
+            kit.p(_sdT('Four colours, one design: choose the one that suits you.'), 'lead text-body-secondary mb-4'),
+            kit.div('mx-auto mb-4 col-12 col-md-8 col-lg-6', _sdT('Picture Stage'), shots),
+            kit.tag('fieldset', 'd-flex justify-content-center flex-wrap gap-3 border-0 p-0 m-0', _sdT('Choices'), [
+                kit.tag('legend', 'visually-hidden', _sdT('Legend'), [ kit.h('span', _sdT('Colour')) ])
+            ].concat(choices))
+        ]);
+    }
+
+    function _sdVariantHas(node, cls) {
+        return !!(node && node.props && (' ' + (node.props.cssClass || '') + ' ').indexOf(' ' + cls + ' ') !== -1);
+    }
+
+    function _sdVariantAttr(node, name) {
+        var attrs = (node && node.props && node.props._attrs) || [];
+        for (var i = 0; i < attrs.length; i++) if (attrs[i] && attrs[i].name === name) return attrs[i];
+        return null;
+    }
+
+    // The picker's choices and pictures, each with the node that holds it, in
+    // tree order. The search stops at a choice or a picture, and at another
+    // picker nested inside this one.
+    function _sdVariantParts(root) {
+        var parts = { choices: [], shots: [] };
+        (function walk(node) {
+            (node && node.children || []).forEach(function (c) {
+                if (_sdVariantHas(c, 'pg-variant-choice')) parts.choices.push({ node: c, parent: node });
+                else if (_sdVariantHas(c, 'pg-variant-shot')) parts.shots.push({ node: c, parent: node });
+                else if (!_sdVariantHas(c, 'pg-variant')) walk(c);
+            });
+        })(root);
+        return parts;
+    }
+
+    // 'pills' or 'dots' (also for a section with neither class).
+    function _sdVariantLook(root) {
+        return _sdVariantHas(root, 'pg-variant-pills') ? 'pills' : 'dots';
+    }
+
+    // The first node of the subtree (itself included) for which test is true, or null.
+    function _sdVariantFind(node, test) {
+        if (!node) return null;
+        if (test(node)) return node;
+        for (var i = 0; node.children && i < node.children.length; i++) {
+            var hit = _sdVariantFind(node.children[i], test);
+            if (hit) return hit;
+        }
+        return null;
+    }
+
+    function _sdVariantRadio(choice) {
+        return _sdVariantFind(choice, function (n) { return _sdVariantHas(n, 'pg-variant-pick') || String(n.props && n.props.tag || '') === 'input'; });
+    }
+
+    // cssClass with every class that starts with prefix and ends in digits
+    // replaced by prefix + n.
+    function _sdVariantRenumber(cls, prefix, n) {
+        var re = new RegExp('^' + prefix.replace(/-/g, '\\-') + '\\d+$');
+        return String(cls || '').split(/\s+/).filter(Boolean).map(function (c) { return re.test(c) ? prefix + n : c; }).join(' ');
+    }
+
+    // Adds choice n+1 after the last: a copy of the last choice and of the
+    // last picture, unchecked, renumbered, its id and name taken from n+1.
+    // before() runs just before the tree changes (the undo snapshot).
+    // False when the picker has no choice to copy or already holds six.
+    /* @pg-site-output */
+    function _sdVariantAddChoice(root, before) {
+        var parts = _sdVariantParts(root);
+        var count = parts.choices.length;
+        if (count < 1 || count >= _SD_VARIANT_MAX) return false;
+        if (before) before();
+        var n = count + 1;
+        var last = parts.choices[count - 1];
+        var choice = cloneTree(last.node);
+        (function fresh(node) { node._id = gid(); (node.children || []).forEach(fresh); })(choice);
+        choice.props.customName = _sdT('Choice {var}', n);
+        if (choice.props._label) choice.props._label = _sdT('Choice {var}', n);
+        var radio = _sdVariantRadio(choice);
+        var group = '', id = '';
+        if (radio) {
+            radio.props.cssClass = _sdVariantRenumber(radio.props.cssClass, 'pg-variant-pick-', n);
+            group = (_sdVariantAttr(radio, 'name') || {}).value || '';
+            id = (group || 'vp') + '-' + n;
+            radio.props.id = id;
+            radio.props._attrs = (radio.props._attrs || []).filter(function (a) { return a.name !== 'checked' && a.name !== 'id'; });
+        }
+        var label = _sdVariantFind(choice, function (node) { return String(node.props && node.props.tag || '') === 'label'; });
+        if (label && id) {
+            label.props._attrs = (label.props._attrs || []).filter(function (a) { return a.name !== 'for'; });
+            label.props._attrs.push({ name: 'for', value: id });
+        }
+        // The name: a heading node (the block) or a span with text (a template).
+        var holder = label || choice;
+        var text = _sdVariantFind(holder, function (node) { return node !== holder && !!node.props && typeof node.props.text === 'string'; });
+        if (text) text.props.text = _sdT('Choice {var}', n);
+        last.parent.children.splice(last.parent.children.indexOf(last.node) + 1, 0, choice);
+
+        var lastShot = parts.shots[parts.shots.length - 1];
+        if (lastShot) {
+            var shot = cloneTree(lastShot.node);
+            (function fresh(node) { node._id = gid(); (node.children || []).forEach(fresh); })(shot);
+            shot.props.cssClass = _sdVariantRenumber(shot.props.cssClass, 'pg-variant-shot-', n);
+            delete shot.props.id;
+            if (shot.props._label) shot.props._label = _sdT('Choice {var}', n);
+            // The picture itself, or the first one inside a figure.
+            var pic = _sdVariantFind(shot, function (node) { return !!node.props && typeof node.props.alt === 'string'; });
+            if (pic) pic.props.alt = _sdT('Shown in {var}', _sdT('Choice {var}', n));
+            lastShot.parent.children.splice(lastShot.parent.children.indexOf(lastShot.node) + 1, 0, shot);
+        }
+        return true;
+    }
+
+    // Removes the last choice and its picture (pg-variant-shot-n, else the
+    // last picture); when the removed choice was checked, the first is.
+    // False at two choices.
+    function _sdVariantRemoveChoice(root, before) {
+        var parts = _sdVariantParts(root);
+        var count = parts.choices.length;
+        if (count <= _SD_VARIANT_MIN) return false;
+        if (before) before();
+        var last = parts.choices[count - 1];
+        var radio = _sdVariantRadio(last.node);
+        var wasChecked = !!_sdVariantAttr(radio, 'checked');
+        last.parent.children.splice(last.parent.children.indexOf(last.node), 1);
+        var shot = null;
+        parts.shots.forEach(function (s) { if (_sdVariantHas(s.node, 'pg-variant-shot-' + count)) shot = s; });
+        // Without its own picture the last one goes only while the pictures
+        // outnumber the choices that stay.
+        if (!shot && parts.shots.length >= count) shot = parts.shots[parts.shots.length - 1];
+        if (shot) shot.parent.children.splice(shot.parent.children.indexOf(shot.node), 1);
+        var first = wasChecked ? _sdVariantRadio(parts.choices[0].node) : null;
+        if (first && !_sdVariantAttr(first, 'checked')) {
+            first.props._attrs = (first.props._attrs || []).concat([{ name: 'checked', value: 'checked' }]);
+        }
+        return true;
+    }
+
+    // Puts the look class 'dots' or 'pills' on the section. False for any
+    // other look, or when the section already has it.
+    /* @pg-site-output */
+    function _sdVariantSetLook(root, look, before) {
+        if ((look !== 'dots' && look !== 'pills') || !root || !root.props) return false;
+        if (_sdVariantLook(root) === look && _sdVariantHas(root, 'pg-variant-' + look)) return false;
+        if (before) before();
+        root.props.cssClass = String(root.props.cssClass || '').split(/\s+/).filter(function (c) {
+            return c && c !== 'pg-variant-dots' && c !== 'pg-variant-pills';
+        }).concat(['pg-variant-' + look]).join(' ');
+        return true;
+    }
+
+    // ── Scroller: wide slides ───────────────────────────────────────────
+    // A scroller row (pg-snap) with pg-snap-wide shows one large item per
+    // slide, most of the window wide, stopping in the middle; without it the
+    // items keep their own column widths. The rule joins the User Styles the
+    // first time the option is turned on.
+    function _sdScrollerIsWide(row) {
+        return !!(row && row.props && (' ' + (row.props.cssClass || '') + ' ').indexOf(' pg-snap-wide ') !== -1);
+    }
+
+    // Adds (wide true) or removes pg-snap-wide on the row. before() runs just
+    // before the tree changes. False when the row already is as asked.
+    /* @pg-site-output */
+    function _sdScrollerSetWide(row, wide, before) {
+        if (!row || !row.props || _sdScrollerIsWide(row) === !!wide) return false;
+        if (before) before();
+        var cls = String(row.props.cssClass || '').split(/\s+/).filter(function (c) { return c && c !== 'pg-snap-wide'; });
+        if (wide) cls.push('pg-snap-wide');
+        row.props.cssClass = cls.join(' ');
+        if (wide && !_sdPaletteDry) _sdEnsureBlockStyles(['pg-snap-wide']);
+        return true;
     }
 
     // ── Block stylesheet ────────────────────────────────────────────────
@@ -73865,10 +74434,52 @@ const StyleDesigner = (function () {
         // A sideways card row that stops on a card edge after each swipe.
         'pg-snap':         '.pg-snap { scroll-snap-type: x mandatory; }',
         'pg-snap-item':    '.pg-snap-item { scroll-snap-align: start; }',
+        // Wide slides: each item 85% of the window (no wider than the row),
+        // stopping in the middle. Items are matched by their class, not as
+        // children: on the canvas a wrapper sits between the row and its items.
+        // The pause button of a video that plays by itself: the pause icon
+        // while it plays, the play icon once paused (aria-pressed, written
+        // by pg_fx.src.js); none where the video cannot play by itself.
+        'pg-video-toggle': '.pg-video-toggle .pg-video-play, .pg-video-toggle[aria-pressed="true"] .pg-video-pause { display: none; }\n' +
+                           '.pg-video-toggle[aria-pressed="true"] .pg-video-play { display: inline-block; }\n' +
+                           '@media (prefers-reduced-motion: reduce), (scripting: none) { .pg-video-toggle.pg-video-toggle { display: none; } }',
+        'pg-snap-wide':    '.pg-snap-wide .pg-snap-item { flex: 0 0 auto; width: 85vw; max-width: 100%; scroll-snap-align: center; }',
         // A chevron that points the reading direction: mirrored on an RTL
         // page, where previous / next controls swap sides. An <i> is inline,
         // which a transform skips.
         'pg-flip-rtl':     '[dir="rtl"] .pg-flip-rtl { display: inline-block; transform: scaleX(-1); }',
+
+        // Variant Picker: the checked choice's picture shows (the others are
+        // display:none, so a screen reader meets only that one) and fades in;
+        // :has() and descendant selectors only, so the canvas matches too.
+        // Without :has() the first picture stays. pg-variant-dots draws a
+        // colour dot over each name (its colour is the dot's inline
+        // background-color, the Background control's store), pg-variant-pills
+        // a rounded pill, the checked one in the text colour. The labels and
+        // dots carry no display utility: these rules set their display. The
+        // dot's default colour has one class only, so a design's own colour
+        // class written after it (Product Launch's plx-swatch-<key>) wins.
+        // The hiding rule names the block's class twice: the canvas's image
+        // rule (.sd-wrap[data-content-type="image"] > img, display:block)
+        // weighs two classes and an element and would otherwise show every
+        // picture there; the fallback and reduced-motion rules match it.
+        'pg-variant':      '.pg-variant.pg-variant .pg-variant-shot { display: none; animation: pg-variant-in .4s ease; }\n' +
+                           '.pg-variant:has(.pg-variant-pick-1:checked) .pg-variant-shot-1, .pg-variant:has(.pg-variant-pick-2:checked) .pg-variant-shot-2, ' +
+                           '.pg-variant:has(.pg-variant-pick-3:checked) .pg-variant-shot-3, .pg-variant:has(.pg-variant-pick-4:checked) .pg-variant-shot-4, ' +
+                           '.pg-variant:has(.pg-variant-pick-5:checked) .pg-variant-shot-5, .pg-variant:has(.pg-variant-pick-6:checked) .pg-variant-shot-6 { display: block; }\n' +
+                           '@supports not selector(:has(a)) { .pg-variant.pg-variant .pg-variant-shot-1 { display: block; } }\n' +
+                           '@keyframes pg-variant-in { from { opacity: 0; } }\n' +
+                           '.pg-variant .pg-variant-label { display: inline-flex; align-items: center; gap: .5rem; cursor: pointer; }\n' +
+                           '.pg-variant-dots .pg-variant-label { flex-direction: column; }\n' +
+                           '.pg-variant-dot { background-color: var(--bs-secondary-bg); }\n' +
+                           '.pg-variant .pg-variant-dot { display: inline-block; width: 2.25rem; height: 2.25rem; border: 2px solid var(--bs-border-color); border-radius: 50%; }\n' +
+                           '.pg-variant .pg-variant-choice:has(.pg-variant-pick:checked) .pg-variant-dot { outline: 2px solid currentColor; outline-offset: 3px; }\n' +
+                           '.pg-variant .pg-variant-choice:has(.pg-variant-pick:focus-visible) .pg-variant-dot { outline: 2px dashed currentColor; outline-offset: 3px; }\n' +
+                           '.pg-variant-pills .pg-variant-dot { display: none; }\n' +
+                           '.pg-variant-pills .pg-variant-label { padding: .5rem 1.25rem; border: 1px solid var(--bs-border-color); border-radius: 50rem; }\n' +
+                           '.pg-variant-pills .pg-variant-choice:has(.pg-variant-pick:checked) .pg-variant-label { color: var(--bs-body-bg); background-color: var(--bs-emphasis-color); border-color: var(--bs-emphasis-color); }\n' +
+                           '.pg-variant-pills .pg-variant-choice:has(.pg-variant-pick:focus-visible) .pg-variant-label { outline: 2px dashed var(--bs-emphasis-color); outline-offset: 3px; }\n' +
+                           '@media (prefers-reduced-motion: reduce) { .pg-variant.pg-variant .pg-variant-shot { animation: none; } }',
 
         'pg-brand-center': '@media (min-width: 992px) { .pg-brand-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; z-index: 1; } }'
     };
@@ -73877,6 +74488,7 @@ const StyleDesigner = (function () {
     var _SD_BLOCK_CSS_NEEDS = {
         'hero-image-bg':        ['pg-hero-tall', 'pg-shade-bottom'],
         'spotlight-media':      ['pg-screen', 'pg-bleed', 'pg-shade-bottom', 'pg-shade-tint', 'pg-display-xxl'],
+        'variant-picker':       ['pg-variant'],
         'testimonial-carousel': ['pg-carousel-ink'],
         'image-carousel':       ['pg-shade-bottom', 'pg-carousel-photo'],
         'image-grid':           ['pg-ratio-1x1'],
@@ -73984,33 +74596,33 @@ const StyleDesigner = (function () {
             'col':                { v: 'col', h: '<div class="col">', k: 'col column grid layout cell',
                                     d: _sdT('A column inside a row. Its width is set per screen size, in twelfths of the row.') },
             // HTML elements
-            's:section':          { h: '<section>', k: 'section block html5 semantic',
+            's:section':          { v: 'section', h: '<section>', k: 'section block html5 semantic',
                                     d: _sdT('A part of the page about one subject, usually with its own heading: About Us, Services.') },
-            's:article':          { h: '<article>', k: 'article post entry html5 semantic',
+            's:article':          { v: 'article', h: '<article>', k: 'article post entry html5 semantic',
                                     d: _sdT('Content that stands on its own: a blog post, a news item, a comment.') },
-            's:main':             { h: '<main>', k: 'main content html5 semantic',
+            's:main':             { v: 'main', h: '<main>', k: 'main content html5 semantic',
                                     d: _sdT('The main content of the page. Use it once per page.') },
-            's:header':           { h: '<header>', k: 'header top masthead html5 semantic',
+            's:header':           { v: 'header', h: '<header>', k: 'header top masthead html5 semantic',
                                     d: _sdT('The top of a page or a section: logo, title, menu.') },
-            's:footer':           { h: '<footer>', k: 'footer bottom html5 semantic',
+            's:footer':           { v: 'footer', h: '<footer>', k: 'footer bottom html5 semantic',
                                     d: _sdT('The bottom of a page or a section: contact details, copyright, links.') },
-            's:aside':            { h: '<aside>', k: 'aside sidebar html5 semantic',
+            's:aside':            { v: 'aside', h: '<aside>', k: 'aside sidebar html5 semantic',
                                     d: _sdT('Content beside the main content, such as a sidebar.') },
-            's:nav':              { h: '<nav>', k: 'nav navigation menu links html5 semantic',
+            's:nav':              { v: 'nav', h: '<nav>', k: 'nav navigation menu links html5 semantic',
                                     d: _sdT('A group of navigation links, such as a menu.') },
-            's:div':              { h: '<div>', k: 'div box block wrapper group container element',
+            's:div':              { v: 'div', h: '<div>', k: 'div box block wrapper group container element',
                                     d: _sdT('A plain box with no meaning of its own, for grouping and styling elements.') },
-            's:pre':              { h: '<pre><code>', k: 'pre code block snippet preformatted',
+            's:pre':              { v: 'pre', h: '<pre><code>', k: 'pre code block snippet preformatted',
                                     d: _sdT('Text that keeps its spaces and line breaks, with a code element inside: for code samples.') },
-            's:input:text':       { h: '<input type="text">', k: 'input text field textbox control',
+            's:input:text':       { v: 'input-text', h: '<input type="text">', k: 'input text field textbox control',
                                     d: _sdT('A one-line text box on its own, without a label; handy for binding inside a widget.') },
-            's:input:checkbox':   { h: '<input type="checkbox">', k: 'checkbox check tick input control',
+            's:input:checkbox':   { v: 'checkbox', h: '<input type="checkbox">', k: 'checkbox check tick input control',
                                     d: _sdT('A tick box on its own, without a label.') },
-            's:input:radio':      { h: '<input type="radio">', k: 'radio option input control',
+            's:input:radio':      { v: 'radio', h: '<input type="radio">', k: 'radio option input control',
                                     d: _sdT('One option button on its own; buttons with the same name make one choice.') },
-            's:textarea':         { h: '<textarea>', k: 'textarea multiline text control',
+            's:textarea':         { v: 'textarea', h: '<textarea>', k: 'textarea multiline text control',
                                     d: _sdT('A multi-line text box on its own, without a label.') },
-            's:select':           { h: '<select>', k: 'select dropdown option list combobox control',
+            's:select':           { v: 'select', h: '<select>', k: 'select dropdown option list combobox control',
                                     d: _sdT('A drop-down list of choices on its own, without a label.') },
             // Bootstrap components
             'c:navbar':           { v: 'navbar', h: '<nav class="navbar">', k: 'navbar navigation menu header bar',
@@ -74090,124 +74702,336 @@ const StyleDesigner = (function () {
             'c:vstack':           { v: 'vstack', h: '<div class="vstack">', k: 'vstack vertical stack flex column gap',
                                     d: _sdT('Items one under the other with an even gap between them.') },
             // Content
-            't:heading':          { h: '<h1> … <h6>', k: 'heading title headline h1 h2 h3 h4 h5 h6',
+            't:heading':          { v: 'heading', h: '<h1> … <h6>', k: 'heading title headline h1 h2 h3 h4 h5 h6',
                                     d: _sdT('A title, from H1 (the page title, once per page) down to H6.') },
-            't:paragraph':        { h: '<p>', k: 'paragraph text p body copy',
+            't:paragraph':        { v: 'paragraph', h: '<p>', k: 'paragraph text p body copy',
                                     d: _sdT('A block of running text. Links in it are edited in its options.') },
-            't:span':             { h: '<span>', k: 'span inline text word',
+            't:span':             { v: 'span', h: '<span>', k: 'span inline text word',
                                     d: _sdT('A piece of text within a line, for styling a word or a phrase.') },
-            't:image':            { h: '<img>', k: 'image img picture photo graphic',
+            't:image':            { v: 'image', h: '<img>', k: 'image img picture photo graphic',
                                     d: _sdT('A picture from the file manager or from an address.') },
-            't:divider':          { h: '<hr>', k: 'divider hr line separator rule',
+            's:video':            { v: 'video', h: '<video controls>', k: 'video movie film clip mp4 webm player media',
+                                    d: _sdT('A video from the file manager, with a poster and playback controls. It does not play by itself.') },
+            't:divider':          { v: 'divider', h: '<hr>', k: 'divider hr line separator rule',
                                     d: _sdT('A horizontal line.') },
-            't:spacer':           { k: 'spacer gap space margin blank',
+            't:spacer':           { v: 'spacer', k: 'spacer gap space margin blank',
                                     d: _sdT('Empty space of a set height.') },
-            't:custom_html':      { k: 'html code embed raw custom snippet',
+            't:custom_html':      { v: 'custom-html', k: 'html code embed raw custom snippet',
                                     d: _sdT('HTML code of your own, written out as it is.') },
-            't:svg':              { h: '<svg>', k: 'svg vector drawing graphic icon',
+            't:svg':              { v: 'svg', h: '<svg>', k: 'svg vector drawing graphic icon',
                                     d: _sdT('A vector drawing written as SVG code.') },
-            't:custom_php':       { k: 'php code server dynamic custom',
+            't:custom_php':       { v: 'custom-php', k: 'php code server dynamic custom',
                                     d: _sdT('PHP code that runs on the server each time the page is shown.') },
-            't:carousel':         { k: 'carousel slider slideshow gallery images',
+            't:carousel':         { v: 'carousel', k: 'carousel slider slideshow gallery images',
                                     d: _sdT('A slideshow of images.') },
-            't:messages':         { k: 'messages alerts notices errors feedback form',
+            't:messages':         { v: 'messages', k: 'messages alerts notices errors feedback form',
                                     d: _sdT('Where a form shows its messages after it is sent: errors and confirmations.') },
-            't:breadcrumb':       { k: 'breadcrumb path trail navigation',
+            't:breadcrumb':       { v: 'breadcrumb', k: 'breadcrumb path trail navigation',
                                     d: _sdT('The path from the home page to this page, filled in by the site.') },
-            't:variant_attr':     { k: 'variant attribute option size colour color product',
+            't:variant_attr':     { v: 'variant', k: 'variant attribute option size colour color product',
                                     d: _sdT('The choices of a product variant, such as colour or size; repeated for each attribute.') },
-            't:applied_offers':   { k: 'offers discount promotion cart coupon',
+            't:applied_offers':   { v: 'applied-offers', k: 'offers discount promotion cart coupon',
                                     d: _sdT('The offers applied to the cart, for the shopping cart widget.') },
-            't:link':             { h: '<a href="…">', k: 'link a anchor href url hyperlink',
+            't:link':             { v: 'link', h: '<a href="…">', k: 'link a anchor href url hyperlink',
                                     d: _sdT('A clickable link to another page, a file or an address.') },
-            't:icon':             { h: '<i class="bi …">', k: 'icon bi glyph symbol bootstrap icons',
+            't:icon':             { v: 'icon', h: '<i class="bi …">', k: 'icon bi glyph symbol bootstrap icons',
                                     d: _sdT('An icon from the Bootstrap Icons set.') },
             // Form fields (label + control)
-            'f:text':             { h: '<input type="text">', k: 'input text field textbox',
+            'f:text':             { v: 'f-text', h: '<input type="text">', k: 'input text field textbox',
                                     d: _sdT('A one-line text field with its label.') },
-            'f:email':            { h: '<input type="email">', k: 'email mail input',
+            'f:email':            { v: 'f-email', h: '<input type="email">', k: 'email mail input',
                                     d: _sdT('An email address field with its label; the browser checks the format.') },
-            'f:tel':              { h: '<input type="tel">', k: 'tel phone telephone mobile input',
+            'f:tel':              { v: 'f-tel', h: '<input type="tel">', k: 'tel phone telephone mobile input',
                                     d: _sdT('A phone number field with its label; phones show the number pad.') },
-            'f:number':           { h: '<input type="number">', k: 'number numeric integer input',
+            'f:number':           { v: 'f-number', h: '<input type="number">', k: 'number numeric integer input',
                                     d: _sdT('A field that takes numbers only.') },
-            'f:url':              { h: '<input type="url">', k: 'url link website address input',
+            'f:url':              { v: 'f-url', h: '<input type="url">', k: 'url link website address input',
                                     d: _sdT('A web address field with its label.') },
-            'f:password':         { h: '<input type="password">', k: 'password secret input',
+            'f:password':         { v: 'f-password', h: '<input type="password">', k: 'password secret input',
                                     d: _sdT('A field that hides what is typed into it.') },
-            'f:textarea':         { h: '<textarea>', k: 'textarea multiline message text',
+            'f:textarea':         { v: 'f-textarea', h: '<textarea>', k: 'textarea multiline message text',
                                     d: _sdT('A multi-line text field with its label, for longer messages.') },
-            'f:select':           { h: '<select>', k: 'select dropdown option combobox list',
+            'f:select':           { v: 'f-select', h: '<select>', k: 'select dropdown option combobox list',
                                     d: _sdT('A drop-down list with its label; one choice is picked.') },
-            'f:multi':            { h: '<select multiple>', k: 'select multiple multiselect list',
+            'f:multi':            { v: 'f-multi', h: '<select multiple>', k: 'select multiple multiselect list',
                                     d: _sdT('A list in which several choices can be picked.') },
-            'f:checkbox':         { h: '<input type="checkbox">', k: 'checkbox check tick consent agree',
+            'f:checkbox':         { v: 'f-checkbox', h: '<input type="checkbox">', k: 'checkbox check tick consent agree',
                                     d: _sdT('One tick box with its label, for a yes or no answer.') },
-            'f:checkgroup':       { h: '<fieldset>', k: 'checkbox group checkboxes multiple fieldset',
+            'f:checkgroup':       { v: 'f-checkgroup', h: '<fieldset>', k: 'checkbox group checkboxes multiple fieldset',
                                     d: _sdT('A question with several tick boxes; more than one can be ticked.') },
-            'f:radiogroup':       { h: '<fieldset>', k: 'radio group options choice fieldset',
+            'f:radiogroup':       { v: 'f-radiogroup', h: '<fieldset>', k: 'radio group options choice fieldset',
                                     d: _sdT('A question with option buttons; only one can be picked.') },
-            'f:toggle':           { h: '<div class="form-switch">', k: 'switch toggle checkbox on off',
+            'f:toggle':           { v: 'f-toggle', h: '<div class="form-switch">', k: 'switch toggle checkbox on off',
                                     d: _sdT('An on/off switch with its label.') },
-            'f:date':             { h: '<input type="date">', k: 'date calendar picker input',
+            'f:date':             { v: 'f-date', h: '<input type="date">', k: 'date calendar picker input',
                                     d: _sdT('A date field with a calendar to pick from.') },
-            'f:time':             { h: '<input type="time">', k: 'time clock hour input',
+            'f:time':             { v: 'f-time', h: '<input type="time">', k: 'time clock hour input',
                                     d: _sdT('A time-of-day field.') },
-            'f:datetime':         { h: '<input type="datetime-local">', k: 'datetime date time local input',
+            'f:datetime':         { v: 'f-datetime', h: '<input type="datetime-local">', k: 'datetime date time local input',
                                     d: _sdT('A field for a date and a time together.') },
-            'f:file':             { h: '<input type="file">', k: 'file upload attachment input',
+            'f:file':             { v: 'f-file', h: '<input type="file">', k: 'file upload attachment input',
                                     d: _sdT('A field for uploading a file.') },
-            'f:color':            { h: '<input type="color">', k: 'color colour picker input',
+            'f:color':            { v: 'f-color', h: '<input type="color">', k: 'color colour picker input',
                                     d: _sdT('A field for picking a colour.') },
-            'f:range':            { h: '<input type="range">', k: 'range slider input',
+            'f:range':            { v: 'f-range', h: '<input type="range">', k: 'range slider input',
                                     d: _sdT('A slider for picking a number between two limits.') },
-            'f:hidden':           { h: '<input type="hidden">', k: 'hidden input value',
+            'f:hidden':           { v: 'f-hidden', h: '<input type="hidden">', k: 'hidden input value',
                                     d: _sdT('A field the visitor does not see; it sends a fixed value with the form.') },
-            'f:floating':         { h: '<div class="form-floating">', k: 'floating label input',
+            'f:floating':         { v: 'f-floating', h: '<div class="form-floating">', k: 'floating label input',
                                     d: _sdT('A text field whose label sits inside it and moves up when typing starts.') },
-            'f:label':            { h: '<label>', k: 'label caption field name',
+            'f:label':            { v: 'f-label', h: '<label>', k: 'label caption field name',
                                     d: _sdT('A label on its own, to name a field.') },
-            'f:group':            { k: 'group fieldset wrapper fields',
+            'f:group':            { v: 'f-group', k: 'group fieldset wrapper fields',
                                     d: _sdT('A box that keeps several fields together.') },
-            'f:submit':           { h: '<button type="submit">', k: 'submit button send',
+            'f:submit':           { v: 'f-submit', h: '<button type="submit">', k: 'submit button send',
                                     d: _sdT('The button that sends the form.') },
-            'f:reset':            { h: '<button type="reset">', k: 'reset clear button',
+            'f:reset':            { v: 'f-reset', h: '<button type="reset">', k: 'reset clear button',
                                     d: _sdT('A button that clears what was typed into the form.') },
-            'f:captcha':          { k: 'captcha spam robot verify security',
+            'f:captcha':          { v: 'f-captcha', k: 'captcha spam robot verify security',
                                     d: _sdT('A check that keeps automated spam out of the form.') },
-            'f:form':             { h: '<form>', k: 'form fields submit',
+            'f:form':             { v: 'f-form', h: '<form>', k: 'form fields submit',
                                     d: _sdT('A form: the box that holds the fields and sends them.') },
             // Regions
-            'r:page':             { k: 'page region content area editable',
+            'r:page':             { v: 'r-page', k: 'page region content area editable',
                                     d: _sdT('An editable content area of the page, filled in the content editor.') },
-            'r:system':           { k: 'system region page type catalog cart form',
+            'r:system':           { v: 'r-system', k: 'system region page type catalog cart form',
                                     d: _sdT('Where the page type shows its built-in content: catalog, cart, forms and the like.') },
-            'r:common':           { k: 'common region shared content',
+            'r:common':           { v: 'r-common', k: 'common region shared content',
                                     d: _sdT('A block of content shared by many pages and edited once.') },
-            'r:designer':         { k: 'designer region html block',
+            'r:designer':         { v: 'r-designer', k: 'designer region html block',
                                     d: _sdT('A block of HTML kept by designers and placed on pages.') },
-            'r:dynamic':          { k: 'dynamic region php code',
+            'r:dynamic':          { v: 'r-dynamic', k: 'dynamic region php code',
                                     d: _sdT('A block whose output comes from PHP code on every visit.') },
-            'r:menu':             { k: 'menu region navigation links',
+            'r:menu':             { v: 'nav', k: 'menu region navigation links',
                                     d: _sdT('One of the site menus, as set up under Menus.') },
-            'r:menu_sequence':    { k: 'menu sequence previous next pager',
+            'r:menu_sequence':    { v: 'r-menu-sequence', k: 'menu sequence previous next pager',
                                     d: _sdT('Previous and next links through the pages of a menu.') },
-            'r:login':            { k: 'login sign in account region',
+            'r:login':            { v: 'r-login', k: 'login sign in account region',
                                     d: _sdT('The sign-in area: a link to sign in, or the visitor once signed in.') },
-            'r:ad':               { k: 'ad ads advert banner region',
+            'r:ad':               { v: 'r-ad', k: 'ad ads advert banner region',
                                     d: _sdT('An ad slot filled from the Ads screen.') },
-            'r:cart':             { k: 'cart basket shopping region',
+            'r:cart':             { v: 'r-cart', k: 'cart basket shopping region',
                                     d: _sdT('A link to the shopping cart with the number of items in it.') },
-            'r:tag_cloud':        { k: 'tag cloud tags region',
+            'r:tag_cloud':        { v: 'r-tag-cloud', k: 'tag cloud tags region',
                                     d: _sdT('The tags of the site, sized by how often they are used.') },
-            'r:mobile_switch':    { k: 'mobile switch desktop view region',
+            'r:mobile_switch':    { v: 'r-mobile-switch', k: 'mobile switch desktop view region',
                                     d: _sdT('A link that switches between the mobile and the desktop look of the site.') },
-            'r:pdf':              { k: 'pdf download print region',
+            'r:pdf':              { v: 'r-pdf', k: 'pdf download print region',
                                     d: _sdT('A link that offers the page as a PDF file.') },
-            'r:comments_block':   { k: 'comments block comment form region',
-                                    d: _sdT('The comments of the page and the form for adding one.') }
+            'r:comments_block':   { v: 'r-comments', k: 'comments block comment form region',
+                                    d: _sdT('The comments of the page and the form for adding one.') },
+            // Lists in a record, keyed by their list source
+            'l:form_record.values': { v: 'l-values', k: 'values field list repeat loop record',
+                                    d: _sdT('Repeats its row for each value of a field that holds several, such as the ticked boxes of a check box group.') },
+            'l:form_record.split': { v: 'l-split', k: 'split comma parts field list repeat loop record',
+                                    d: _sdT('Repeats its row for each part of a field text, split at the commas.') },
+            'l:form_record.files': { v: 'l-files', k: 'attachments files uploads list repeat loop record',
+                                    d: _sdT('Repeats its row for each file attached to the record.') },
+            'l:product.images': { v: 'l-images', k: 'product images gallery thumbnails list repeat loop',
+                                    d: _sdT('Repeats its row for each image of the product, such as the thumbnails under the large picture.') },
+            'l:product.attributes': { v: 'l-attributes', k: 'product attributes specifications list repeat loop',
+                                    d: _sdT('Repeats its row for each attribute of the product, with its name and value.') },
+            'l:product.related': { v: 'l-related', k: 'related products bought together cross sell list repeat loop',
+                                    d: _sdT('Repeats its row for each product often bought together with this one.') },
+            'l:product.bundle_items': { v: 'l-bundle', k: 'bundle contents items product list repeat loop',
+                                    d: _sdT('Repeats its row for each product inside the bundle, with how many come in it.') },
+            'l:catalog.crumbs': { v: 'l-crumbs', k: 'breadcrumb crumbs catalog path list repeat loop',
+                                    d: _sdT('Repeats its row for each step of the path from the catalog home to this category or product.') },
+            'l:catalog.active_filters': { v: 'l-filters', k: 'active filters chips catalog attributes list repeat loop',
+                                    d: _sdT('Repeats its row for each attribute filter the visitor has turned on, with a way to remove it.') },
+            'l:calendar.weeks': { v: 'l-weeks', k: 'month grid weeks calendar list repeat loop',
+                                    d: _sdT('Repeats its row for each week of the month shown.') },
+            'l:calendar.weekdays': { v: 'l-weekdays', k: 'weekdays days of the week calendar header list repeat loop',
+                                    d: _sdT('Repeats its row for each day name of the week, the header of the month grid.') },
+            'l:calendar.days': { v: 'l-days', k: 'days calendar grid cells list repeat loop',
+                                    d: _sdT('Repeats its row for each day of the month grid.') },
+            'l:calendar.events': { v: 'l-events', k: 'events day calendar list repeat loop',
+                                    d: _sdT('Repeats its row for each event of one day.') },
+            'l:order.shipments': { v: 'l-shipments', k: 'recipients shipments addresses order list repeat loop',
+                                    d: _sdT('Repeats its row for each recipient of the order, with the address the items go to.') },
+            'l:order.items': { v: 'l-order-items', k: 'order items products lines list repeat loop',
+                                    d: _sdT('Repeats its row for each item of the order, with its quantity and price.') },
+            'l:order.parcels': { v: 'l-parcels', k: 'parcels shipments tracking cargo order list repeat loop',
+                                    d: _sdT('Repeats its row for each parcel sent for the order, with its tracking number.') },
+            'l:order.steps': { v: 'l-steps', k: 'order steps status progress tracking list repeat loop',
+                                    d: _sdT('Repeats its row for each step of the order, from placed to delivered.') },
+            'l:account.orders': { v: 'l-account-orders', k: 'member orders history account list repeat loop',
+                                    d: _sdT('Repeats its row for each order of the signed-in member.') },
+            'l:cart.items': { v: 'l-cart-items', k: 'cart items products basket list repeat loop',
+                                    d: _sdT('Repeats its row for each product in the cart, with its quantity and price.') },
+            'l:checkout.offers': { v: 'l-offers', k: 'applied offers discounts checkout list repeat loop',
+                                    d: _sdT('Repeats its row for each offer applied to the order, with the amount it takes off.') },
+            'l:checkout.suggestions': { v: 'l-suggestions', k: 'suggested offers upsell checkout list repeat loop',
+                                    d: _sdT('Repeats its row for each offer the visitor could still get, such as spending a little more for free shipping.') },
+            'l:checkout.gift_cards': { v: 'l-gift-cards', k: 'gift cards applied checkout list repeat loop',
+                                    d: _sdT('Repeats its row for each gift card applied to the order, with the amount used.') },
+            'l:checkout.recipients': { v: 'l-recipients', k: 'recipients cart checkout ship to list repeat loop',
+                                    d: _sdT('Repeats its row for each recipient in the cart, with the items going to them.') },
+            'l:menu.children': { v: 'l-menu-children', k: 'menu sub items children submenu list repeat loop',
+                                    d: _sdT('Repeats its row for each sub-item of a menu item.') },
+            'l:folder_view.children': { v: 'l-folder', k: 'folder entries pages files list repeat loop',
+                                    d: _sdT('Repeats its row for each page or folder inside the folder.') },
+            'l:security.passkeys': { v: 'l-passkeys', k: 'passkeys security sign in member list repeat loop',
+                                    d: _sdT('Repeats its row for each passkey of the signed-in member, with a way to remove it.') },
+            'l:paging.pages': { v: 'l-pages', k: 'paging pages pagination page links list repeat loop',
+                                    d: _sdT('Repeats its row for each page number of a list spread over several pages.') }
         };
         return _sdPalInfoMap;
+    }
+
+    // Ready-made blocks: one line each on what the block adds, keyed by its
+    // componentType and shown under the block's drawing in the hover card.
+    // Every core block of _sdBlockPaletteItems() has its line here
+    // (tests/designer_block_info_test.php fails for one without).
+    // Built on first use: the lines are read through _sdT().
+    var _sdBlockInfoMap = null;
+    function _sdBlockInfo() {
+        if (_sdBlockInfoMap) return _sdBlockInfoMap;
+        _sdBlockInfoMap = {
+            'navbar-light-cta':              _sdT('A light top bar: the brand, three page links, and Login and Sign Up buttons on the right.'),
+            'navbar-search':                 _sdT('A top bar with the brand, a search box and an account menu that drops down.'),
+            'navbar-dark-center':            _sdT('A dark top bar with the brand on the left and the page links in the middle.'),
+            'hero-centered':                 _sdT('An opening section centred on the page: a badge, a large headline, a short text and two buttons.'),
+            'hero-split':                    _sdT('An opening section in two halves: a headline, a text and two buttons beside a picture.'),
+            'hero-image-bg':                 _sdT('A tall opening section on a background photo, with the headline, text and two buttons over it.'),
+            'spotlight-media':               _sdT('An opening section that fills the screen with a photo from edge to edge, the headline and buttons at its foot.'),
+            'variant-picker':                _sdT('A picture over two to six choices shown as colour dots or text pills: picking one shows its own picture.'),
+            'spotlight-bar':                 _sdT('A slim bar that stays under the site header while the page scrolls: the product name, links to its sections and one button.'),
+            'spotlight-bar-dark':            _sdT('The Product Bar on a dark band: the product name, links to its sections and one button.'),
+            'cta-simple':                    _sdT('A band that asks the visitor to act: a headline, one line of text and two buttons.'),
+            'cta-inline':                    _sdT('A slim band with a headline and a short text on one side and a button on the other.'),
+            'cta-gradient':                  _sdT('A band in the main colour of the design: a badge, a large offer headline, a short text and two buttons.'),
+            'features-grid':                 _sdT('Three features side by side, each an icon with a title and a short explanation.'),
+            'features-alt':                  _sdT('Features in rows that alternate sides: a label, a title and a text beside a picture that changes sides each row.'),
+            'features-list':                 _sdT('A heading and an introduction, then a list of features with an icon, a title and a short explanation each.'),
+            'testimonial-single':            _sdT('One customer quote in large type, with the photo, name and role of the person who said it.'),
+            'testimonial-grid':              _sdT('Customer reviews in cards side by side: five stars, the quote, a photo, a name and a role.'),
+            'testimonial-carousel':          _sdT('Customer quotes in a slideshow, one at a time, each with a photo, a name and a role.'),
+            'image-carousel':                _sdT('A slideshow of large pictures with a caption on each, arrows and position marks.'),
+            'image-grid':                    _sdT('Six pictures of the same size in an even grid.'),
+            'image-masonry':                 _sdT('Six pictures of mixed heights in columns, like a pinboard.'),
+            'pricing-tiers':                 _sdT('Price plans in cards side by side, each with a price, a feature list and a button; the middle one marked Most Popular.'),
+            'pricing-comparison':            _sdT('A table that sets the plans against each other feature by feature, with a button under each plan.'),
+            'pricing-toggle':                _sdT('Price plans in cards with a Monthly / Yearly switch above them and a discount badge on yearly billing.'),
+            'stats-counter':                 _sdT('Four large figures in a row, each with a short label, such as users or uptime.'),
+            'stats-icons':                   _sdT('Four figures in a row, each with an icon above it and a short label.'),
+            'stats-progress':                _sdT('Figures shown as progress bars: a title, a percentage, a bar and a short note each.'),
+            'team-grid':                     _sdT('Team members in cards: a photo, the name, the role and social media icons.'),
+            'team-minimal':                  _sdT('A compact team list: a round photo, a name and a role for each person, several to a row.'),
+            'team-leadership':               _sdT('Large cards for the leaders: a photo, a role badge, the name and title, a short quote and social media icons.'),
+            'faq-accordion':                 _sdT('Frequently asked questions as panels that open one at a time to show the answer.'),
+            'faq-categorized':               _sdT('Questions grouped by subject: a list of categories on the side and the questions of each in opening panels.'),
+            'faq-twocol':                    _sdT('Questions with their answers always open, in two columns, each with an icon.'),
+            'timeline-vertical':             _sdT('Milestones one under the other: a date on the left, a title and a short text on the right.'),
+            'timeline-alternating':          _sdT('Milestones in cards on both sides of a centre line, each with a date badge, a title and a text.'),
+            'timeline-horizontal':           _sdT('Numbered steps in one row from left to right, each with a title and a short text.'),
+            'blog-grid':                     _sdT('Post cards side by side: a picture, a category badge, the title, a summary and the author.'),
+            'blog-featured':                 _sdT('One large featured post with a picture and a summary, beside a list of the latest posts with their dates.'),
+            'blog-list':                     _sdT('Posts one under the other: a picture on the side, then the category, title, summary and post details.'),
+            'logos-grid':                    _sdT('A short heading and six customer logos in a grid.'),
+            'logos-divider':                 _sdT('A one-line caption and six logos in a slim strip between two sections.'),
+            'logos-marquee-static':          _sdT('A heading and ten logos in one long row that does not move.'),
+            'compare-vs':                    _sdT('Two cards set against each other: the old way with its drawbacks and the new way with its gains.'),
+            'compare-table':                 _sdT('A table of ticks and crosses that sets your product against others, feature by feature.'),
+            'compare-side-by-side':          _sdT('Two plans side by side to choose from: a picture, the name, the price, a feature list and a button each.'),
+            'footer-minimal':                _sdT('A one-line page footer: the copyright line and social media icons.'),
+            'footer-multi-col':              _sdT('A page footer with four columns of links under titles, then the copyright line and social media icons.'),
+            'footer-newsletter':             _sdT('A page footer with a newsletter sign-up, an email box and a button, then the copyright line and social icons.'),
+            'contact-form':                  _sdT('A contact form: name, email, subject and message fields with a Send button.'),
+            'contact-info':                  _sdT('Address, phone and email with icons on one side, a short contact form on the other.'),
+            'contact-map':                   _sdT('A place for a map beside a short contact form.'),
+            'newsletter-inline':             _sdT('A newsletter sign-up on one band: an icon, a heading, a text and an email box with its button.'),
+            'newsletter-split':              _sdT('A newsletter sign-up in two halves: the heading and text on one side, the email box and button on the other.'),
+            'newsletter-card':               _sdT('A newsletter sign-up in a card with a picture: a badge, a heading, a text and an email box with its button.'),
+            'login-centered':                _sdT('A sign-in card in the middle: email, password, Remember me, a forgotten password link and Google and Apple buttons.'),
+            'login-split':                   _sdT('A sign-in page in two halves: a welcome text with the main benefits on one side, the sign-in form on the other.'),
+            'login-minimal':                 _sdT('A small sign-in form: email, password, a button and a link for creating an account.'),
+            'footer-columns':                _sdT('A page footer with the brand, a short text and social icons, three columns of links, and the copyright and legal links.'),
+            'footer-minimal-2':              _sdT('A slim page footer: the brand and a short text, a few links and social icons, then the copyright line.'),
+            'footer-newsletter-2':           _sdT('A page footer that opens with a newsletter sign-up, then the brand, three columns of links and the copyright line.'),
+            'navbar-mega':                   _sdT('A top bar whose menu opens a wide panel with three columns of links.'),
+            'navbar-double':                 _sdT('A top bar in two rows: phone, email and social icons above; the brand, links and a button below.'),
+            'navbar-centered-logo':          _sdT('A top bar with the brand in the middle, links on both sides of it and a sign-in button.'),
+            'error-404-simple':              _sdT('A page not found message: a large 404, a heading, a short text and buttons back.'),
+            'error-404-illustration':        _sdT('A page not found message beside a large icon drawing, with a button back to the home page.'),
+            'error-404-search':              _sdT('A page not found message with a search box and links to often visited pages.'),
+            'breadcrumbs-simple':            _sdT('The path from the home page to the current page, as linked steps.'),
+            'breadcrumbs-with-header':       _sdT('A page head: the path to the page above a large title and a short introduction.'),
+            'breadcrumbs-icons':             _sdT('The path to the current page with an icon before each step.'),
+            'alert-info':                    _sdT('An information box with an icon, a short title and a line of text.'),
+            'alert-success-toast':           _sdT('A success box that confirms something went well: an icon, a title and a short message.'),
+            'alert-warning-actions':         _sdT('A warning box with an icon, a title, a short message and two buttons to act on it.'),
+            'theme-switcher-dropdown':       _sdT('A button that opens a menu for choosing the light, dark or system colour mode.'),
+            'theme-switcher-toggle':         _sdT('A single small button that switches the site between light and dark mode.'),
+            'theme-switcher-switch':         _sdT('An on/off switch labelled Dark theme that turns dark mode on and off.'),
+            'services-icon-cards':           _sdT('Service cards with an icon, a title, a short text and a Learn more link.'),
+            'services-image-cards':          _sdT('Service cards with a picture, a duration badge, a text, a starting price and a Book now button.'),
+            'services-price-list':           _sdT('A price list grouped under headings: each service with a short note and its price.'),
+            'steps-numbered':                _sdT('Numbered steps side by side, each with an icon, a title and a short text.'),
+            'booking-cta':                   _sdT('A band that invites the visitor to book: a heading, a short text, a booking button and a phone link.'),
+            'booking-split':                 _sdT('A picture beside a booking invitation: a heading, a text, three short reasons and two buttons.'),
+            'hours-card':                    _sdT('A card of opening hours day by day, with a note about public holidays.'),
+            'hours-location':                _sdT('A place for a map beside the address, opening hours, phone and a directions button.'),
+            'locations-cards':               _sdT('One card per branch: a picture, the name, the address, opening hours, phone and a directions button.'),
+            'menu-tabs':                     _sdT('A menu in tabs, one per category, listing each dish with its price and a short description.'),
+            'menu-list':                     _sdT('A menu in two columns, such as hot and cold drinks, each item with its price and an optional note.'),
+            'menu-cards':                    _sdT('Menu favourites as picture cards, each with a badge, a name, a price and a short description.'),
+            'menu-board':                    _sdT('A dark price board as a table: drinks down the side, sizes across the top, a note below.'),
+            'menu-specials':                 _sdT('The special of the day with a large picture and its price, followed by two more offers.'),
+            'events-list':                   _sdT('Upcoming events in rows: a date block, the name, the day, time and place, and a reservation button.'),
+            'notice-bar':                    _sdT('A slim coloured bar across the page with an icon, an urgent message and a link.'),
+            'team-profiles':                 _sdT('Wide profile cards: a photo, the name, the speciality, a short bio, tags and a booking button.'),
+            'testimonial-ratings':           _sdT('An average rating with stars and a review button, beside review cards with stars, a quote and a name.'),
+            'menu-legend':                   _sdT('A key to the menu symbols: vegetarian, vegan, gluten free, nuts and spicy.'),
+            'menu-origins':                  _sdT('Coffee origin cards: the country, the region with its process and altitude, tasting notes and a roast level bar.'),
+            'catering-packages':             _sdT('Catering packages in cards: a price per person, the minimum number of people, what is included and a quote button.'),
+            'loyalty-stamps':                _sdT('A loyalty card offer: the perks on one side, a card with ten stamp places on the other.'),
+            'events-cards':                  _sdT('Upcoming events as picture cards with a date tag, a kind badge, the time and place and a reservation button.'),
+            'notice-promo':                  _sdT('A slim announcement bar with a New badge, a short message, a link and a close button.'),
+            'maintenance-centered':          _sdT('A centred page for planned maintenance: the return time, a progress bar and how to reach support.'),
+            'maintenance-split':             _sdT('A maintenance page in two halves: a checklist of the work with the state of each step beside a picture.'),
+            'maintenance-status':            _sdT('A maintenance status page: a notice, the time window of the work and the state of each service.'),
+            'maintenance-dark':              _sdT('A dark maintenance page: a short message, three reassurances and a button to write to support.'),
+            'coming-soon-launch':            _sdT('A full-screen launch page: the opening date in large tiles and an email box to hear when it opens.'),
+            'coming-soon-split':             _sdT('A launch page in two halves: what is coming and an email sign-up beside a picture with an opening day offer.'),
+            'news-ticker':                   _sdT('A strip of headlines that scrolls across the page, with a Breaking label and a pause button.'),
+            'news-ticker-rotator':           _sdT('A strip that shows one latest headline at a time with its time, and buttons to move between them.'),
+            'news-trending':                 _sdT('A row of linked topic tags under a Trending label.'),
+            'news-weather-card':             _sdT('A weather card for one city: the temperature, the sky, humidity, wind and rain, and the next hours.'),
+            'news-weather-strip':            _sdT('A slim strip with the temperature in several cities, the date and a link to the full forecast.'),
+            'news-weather-forecast':         _sdT('A week of weather: today in a large card, then one row a day with the sky and a temperature range bar.'),
+            'news-markets':                  _sdT('Market figures in a row, each with its change up or down, and a delay note.'),
+            'news-lead-grid':                _sdT('A front page grid: one lead story on a large picture beside four smaller stories with their own pictures.'),
+            'news-latest-mostread':          _sdT('The latest stories with a picture, section and time, beside a numbered list of the most read.'),
+            'news-category-columns':         _sdT('One column per news section, each with a lead story with a picture and more headlines below.'),
+            'news-live-blog':                _sdT('Live coverage of an event: timed updates down a line, with key moments, pictures and quotes.'),
+            'news-article-header':           _sdT('The top of a news article: the path, headline, summary, author, date, reading time, share icons and a large picture.'),
+            'news-author-box':               _sdT('A card about the author of an article: a photo, the name, the role, social icons and a link to more articles.'),
+            'bento-features':                _sdT('Features in tiles of different sizes fitted into one grid, some with an icon, a picture or a figure.'),
+            'bento-gallery':                 _sdT('Pictures in tiles of different sizes fitted into one grid, each with a short caption.'),
+            'marquee-words':                 _sdT('Large words that scroll across the page in a loop, with a pause button.'),
+            'marquee-logos':                 _sdT('Logos that scroll across the page in a loop under a heading, with a pause button.'),
+            'showcase-floating':             _sdT('A product picture with small figure badges floating over it, beside a heading, three points and two buttons.'),
+            'showcase-tabs':                 _sdT('A list of tabs down the side; each tab shows its own picture with a short caption.'),
+            'quote-pull':                    _sdT('One quotation in large type, centred, with the name and role of the person who said it and the source.'),
+            'quote-spotlight':               _sdT('A customer quote on the main colour with five stars, beside a round photo of the customer.'),
+            'gallery-polaroid':              _sdT('Photos framed like instant prints and slightly turned, each with a caption and a date.'),
+            'scroller-cards':                _sdT('A row of story cards that scrolls sideways and stops on each card, with arrow buttons.'),
+            'legal-accessibility-statement': _sdT('An accessibility statement: its scope, the standard followed, known limits, how to give feedback and how the site was checked.')
+        };
+        return _sdBlockInfoMap;
+    }
+
+    // The description line of a palette item that is a ready-made block: a
+    // core block's from _sdBlockInfo(), a family block's from the desc of its
+    // item in the family file; '' for any other item.
+    function _sdBlockDesc(it) {
+        var ct = it && it.type === 'component' && it.extra ? String(it.extra.componentType || '') : '';
+        if (!ct) return '';
+        var map = _sdBlockInfo();
+        if (Object.prototype.hasOwnProperty.call(map, ct)) return map[ct];
+        _sdBlockFamilies();
+        return Object.prototype.hasOwnProperty.call(_sdBlockFamilyDesc, ct) ? _sdBlockFamilyDesc[ct] : '';
     }
 
     function _sdPalKey(it) {
@@ -74217,6 +75041,7 @@ const StyleDesigner = (function () {
             case 'content':   return 't:' + (x.contentType || '');
             case 'cf_field':  return 'f:' + (x.cfType || '');
             case 'region':    return 'r:' + (x.regionType || '');
+            case 'loop_area': return 'l:' + (x.listSource || '');
             case 'semantic': {
                 var tag = String(x.tag || '').toLowerCase();
                 if (tag !== 'input') return 's:' + tag;
@@ -74300,6 +75125,32 @@ const StyleDesigner = (function () {
                    'L' + (x + w * .74) + ' ' + (y + h * .62) + 'L' + (x + w) + ' ' + (y + h) + 'Z', '', 0, hill || '#adb5bd');
         }
         var DIM = ' fill-opacity=".42"';
+        // Form fields: a label bar over a control box; the control's inside
+        // comes from the caller.
+        function Fld(y, inner, h) {
+            return L(40, y, 44, D) + R(40.5, y + 6.5, 119, (h || 22) - 1, W, 4, T) + (inner || '');
+        }
+        // A list in a record: its row drawn three times, the first framed as
+        // the repeated template and the others faded.
+        function Rows(y0, step, h, row) {
+            var out = '';
+            [0, 1, 2].forEach(function (i) {
+                var y = y0 + i * step, r = row(y, i);
+                out += i ? '<g opacity=".45">' + r + '</g>' : r + R(14.5, y - 3.5, 171, h, 'none', 3, P, DASH);
+            });
+            return out;
+        }
+        // The same, side by side.
+        function Cols(x0, step, w, y, h, cell, n) {
+            var out = '';
+            for (var i = 0; i < (n || 3); i++) {
+                var x = x0 + i * step, c = cell(x, i);
+                out += i ? '<g opacity=".45">' + c + '</g>' : c + R(x - 3.5, y - 3.5, w, h, 'none', 3, P, DASH);
+            }
+            return out;
+        }
+        function Person(cx, cy, c) { return C(cx, cy - 3, 3.2, c || S) + Pa('M' + (cx - 5.5) + ' ' + (cy + 6) + 'a5.5 5 0 0 1 11 0z', '', 0, c || S); }
+        function Tag(x, y) { return Pa('M' + x + ' ' + y + 'h12l6 6 -6 6h-12z', '#198754', 1.3, '#d1e7dd') + C(x + 13, y + 6, 1.5, '#198754'); }
         var draw = {
             'container': function () {
                 return R(0, 0, 200, 110, LG) + R(30, 0, 140, 110, W) + R(30.5, 6.5, 139, 97, 'none', 3, P, DASH) +
@@ -74494,6 +75345,446 @@ const StyleDesigner = (function () {
                 var out = R(0, 0, 200, 110, W);
                 [10, 42, 74].forEach(function (y) { out += R(40.5, y + .5, 119, 25, LG, 0, B) + L(50, y + 11, 60); });
                 return out;
+            },
+            // HTML elements: the element is the dashed blue frame, the page
+            // around it stays grey.
+            'section': function () {
+                return R(0, 0, 200, 110, W) + R(10, 6, 180, 14, G, 3) + R(10.5, 26.5, 179, 57, PL, 4, P, DASH) +
+                    Hd(22, 36, 64) + L(22, 50, 150) + L(22, 58, 132) + L(22, 66, 144) + R(10, 90, 180, 14, G, 3);
+            },
+            'article': function () {
+                return R(0, 0, 200, 110, LG) + R(30.5, 6.5, 139, 97, W, 4, P, DASH) + Hd(40, 15, 84) + L(40, 27, 36, S) +
+                    Pic(40, 38, 50, 34) + L(98, 40, 62) + L(98, 48, 54) + L(98, 56, 60) + L(98, 64, 40) + L(40, 82, 120) + L(40, 90, 96);
+            },
+            'main': function () {
+                return R(0, 0, 200, 110, W) + R(0, 0, 200, 16, G) + R(10, 5, 24, 6, T, 2) + R(10.5, 22.5, 179, 66, W, 4, P, DASH) +
+                    Hd(22, 31, 70) + L(22, 45, 150) + L(22, 53, 136) + R(22, 63, 70, 18, G, 3) + R(98, 63, 80, 18, G, 3) + R(0, 94, 200, 16, G);
+            },
+            'header': function () {
+                return R(0, 0, 200, 110, W) + R(4.5, 4.5, 191, 30, PL, 4, P, DASH) + R(14, 15, 28, 9, P, 2) +
+                    L(100, 17.5, 18, P) + L(124, 17.5, 22, P) + L(152, 17.5, 16, P) + Hd(14, 48, 80, T) +
+                    L(14, 62, 170, G) + L(14, 70, 150, G) + R(14, 82, 82, 22, G, 3) + R(104, 82, 82, 22, G, 3);
+            },
+            'footer': function () {
+                var out = R(0, 0, 200, 110, W) + Hd(14, 8, 80, T) + L(14, 22, 170, G) + L(14, 30, 150, G) +
+                    R(4.5, 44.5, 191, 61, '#212529', 4, P, DASH);
+                [16, 76, 136].forEach(function (x) { out += L(x, 56, 34, W) + L(x, 66, 44, S) + L(x, 74, 38, S) + L(x, 82, 40, S); });
+                return out + R(16, 93, 168, 1, '#495057') + L(16, 97, 50, '#495057');
+            },
+            'aside': function () {
+                return R(0, 0, 200, 110, W) + Hd(10, 12, 70, T) + L(10, 26, 112, G) + L(10, 34, 104, G) + L(10, 42, 112, G) +
+                    R(10, 54, 112, 46, G, 3) + R(132.5, 8.5, 59, 93, PL, 4, P, DASH) + L(141, 18, 30, D) +
+                    L(141, 32, 40, P) + L(141, 42, 34, P) + L(141, 52, 42, P) + L(141, 62, 28, P);
+            },
+            'nav': function () {
+                return R(0, 0, 200, 110, W) + R(14.5, 40.5, 171, 29, PL, 4, P, DASH) + L(28, 53, 26, P) + L(66, 53, 30, P) +
+                    L(108, 53, 22, P) + L(142, 53, 30, P) + R(28, 59, 26, 1.4, P) + L(14, 84, 120, G) + L(14, 92, 90, G);
+            },
+            'div': function () {
+                return R(0, 0, 200, 110, W) + R(30.5, 14.5, 139, 81, 'none', 4, P, DASH) + R(42, 26, 116, 24, G, 3) + R(42, 58, 116, 26, G, 3);
+            },
+            'pre': function () {
+                return R(0, 0, 200, 110, W) + R(20, 14, 160, 82, '#212529', 5) + L(32, 28, 40, '#6ea8fe') + L(76, 28, 60, '#adb5bd') +
+                    L(44, 40, 52, '#ffc107') + L(100, 40, 44, '#75b798') + L(56, 52, 72, '#adb5bd') + L(56, 64, 50, '#75b798') +
+                    L(44, 76, 30, '#ffc107') + L(32, 88, 12, '#6ea8fe');
+            },
+            'input-text': function () {
+                return R(0, 0, 200, 110, W) + R(30.5, 42.5, 139, 25, W, 4, T) + L(40, 53, 60, T) + R(104, 48, 1.4, 14, D);
+            },
+            'checkbox': function () {
+                return R(0, 0, 200, 110, W) + R(62, 30, 18, 18, P, 4) + Pa('M66 39l4 4 7 -8', W, 2) + L(88, 37, 50, D) +
+                    R(62.5, 62.5, 17, 17, W, 4, T) + L(88, 69, 40, D);
+            },
+            'radio': function () {
+                return R(0, 0, 200, 110, W) + C(71, 39, 8.5, W, P, ' stroke-width="1.5"') + C(71, 39, 4, P) + L(88, 37, 50, D) +
+                    C(71, 71, 8.5, W, T, ' stroke-width="1.5"') + L(88, 69, 40, D);
+            },
+            'textarea': function () {
+                return R(0, 0, 200, 110, W) + R(30.5, 16.5, 139, 77, W, 4, T) + L(40, 27, 110, S) + L(40, 36, 96, S) +
+                    L(40, 45, 104, S) + L(40, 54, 60, S) + Pa('M156 89l9 -9M161 89l4 -4', '#adb5bd', 1.2);
+            },
+            'select': function () {
+                return R(0, 0, 200, 110, W) + R(40.5, 10.5, 119, 23, W, 4, T) + L(50, 20, 56, D) + Chev(146, 22) +
+                    R(40.5, 37.5, 119, 62, W, 4, B) + L(50, 46, 60, D) + R(41, 55, 118, 14, P) + L(50, 60, 48, W) + L(50, 76, 70, D) + L(50, 88, 52, D);
+            },
+            // Content
+            'heading': function () {
+                return R(0, 0, 200, 110, W) + Tx(18, 29, 'H1', 10, S) + R(42, 18, 128, 13, D, 3) + Tx(18, 55, 'H2', 10, S) +
+                    R(42, 45, 104, 10, D, 3) + Tx(18, 79, 'H3', 10, S) + Hd(42, 71, 84) + L(42, 90, 120) + L(42, 98, 96);
+            },
+            'paragraph': function () {
+                return R(0, 0, 200, 110, W) + L(24, 28, 152) + L(24, 37, 144) + L(24, 46, 40) + L(68, 46, 34, P) + R(68, 51, 34, 1.2, P) +
+                    L(106, 46, 70) + L(24, 55, 148) + L(24, 64, 150) + L(24, 73, 132) + L(24, 82, 80);
+            },
+            'span': function () {
+                return R(0, 0, 200, 110, W) + L(18, 44, 44) + R(66, 38, 60, 16, PL, 3, P, DASH) + L(72, 44, 48, P) + L(130, 44, 52) +
+                    L(18, 62, 150) + L(18, 71, 110);
+            },
+            'image': function () {
+                return R(0, 0, 200, 110, W) + Pic(30, 10, 140, 90);
+            },
+            'video': function () {
+                return R(0, 0, 200, 110, W) + Pic(30, 8, 140, 80, '#495057', '#343a40') + C(100, 46, 14, W, '', ' fill-opacity=".9"') +
+                    Pa('M96 39v14l11 -7z', '', 0, D) + R(30, 88, 140, 14, '#212529') + Pa('M37 91.5v7l5.5 -3.5z', '', 0, W) +
+                    R(50, 94, 90, 2, '#6c757d', 1) + R(50, 94, 34, 2, W, 1) + R(146, 92, 16, 6, '#6c757d', 2);
+            },
+            'spacer': function () {
+                return R(0, 0, 200, 110, W) + R(30, 8, 140, 22, G, 3) + R(30.5, 36.5, 139, 37, 'none', 3, '#adb5bd', DASH) +
+                    Pa('M100 42v25M100 42l-3 4M100 42l3 4M100 67l-3 -4M100 67l3 -4', S, 1.2) + R(30, 80, 140, 22, G, 3);
+            },
+            'custom-html': function () {
+                return R(0, 0, 200, 110, W) + R(40.5, 20.5, 119, 69, LG, 5, B) + Tx(100, 63, '&lt;/&gt;', 24, P, 'middle');
+            },
+            'svg': function () {
+                return R(0, 0, 200, 110, W) + C(64, 55, 22, PL, P, ' stroke-width="1.5"') +
+                    Pa('M96 78L118 34L140 78Z', '#198754', 1.5, '#d1e7dd') + Pa('M150 74C156 30 176 30 182 74', D, 1.5) +
+                    R(147, 71, 6, 6, W, 0, D) + R(179, 71, 6, 6, W, 0, D) + C(166, 36, 2.5, D);
+            },
+            'custom-php': function () {
+                return R(0, 0, 200, 110, W) + R(30, 18, 140, 74, '#212529', 5) + Tx(42, 40, '&lt;?php', 11, '#a370f7') +
+                    L(54, 52, 64, '#adb5bd') + L(54, 62, 44, '#ffc107') + L(54, 72, 76, '#adb5bd') + Tx(42, 86, '?&gt;', 11, '#a370f7');
+            },
+            'messages': function () {
+                return R(0, 0, 200, 110, W) + R(20.5, 14.5, 159, 34, '#d1e7dd', 5, '#a3cfbb') + Pa('M31 31l4 4 7 -8', '#0f5132', 2) +
+                    L(50, 29, 100, '#0f5132') + R(20.5, 58.5, 159, 34, '#f8d7da', 5, '#f1aeb5') + C(36, 75.5, 6.5, '#842029') +
+                    Pa('M33.5 73l5 5M38.5 73l-5 5', '#f8d7da', 1.4) + L(50, 73, 110, '#842029');
+            },
+            'variant': function () {
+                var out = R(0, 0, 200, 110, W) + L(30, 18, 40, D) + C(38, 38, 8, D) + C(60, 38, 8, '#dc3545') + C(82, 38, 8, P) +
+                    C(38, 38, 11, 'none', P, ' stroke-width="1.5"') + L(30, 62, 30, D);
+                [30, 62, 94, 126].forEach(function (x, i) {
+                    out += R(x + .5, 72.5, 27, 19, i === 1 ? PL : W, 4, i === 1 ? P : T) + L(x + 8, 80, 12, i === 1 ? P : S);
+                });
+                return out;
+            },
+            'applied-offers': function () {
+                function tag(x, y) {
+                    return Pa('M' + x + ' ' + y + 'h12l6 6 -6 6h-12z', '#198754', 1.3, '#d1e7dd') + C(x + 13, y + 6, 1.5, '#198754');
+                }
+                return R(0, 0, 200, 110, W) + R(20.5, 10.5, 159, 89, W, 4, B) + L(32, 22, 80, D) + L(140, 22, 28, D) + R(21, 34, 158, 1, B) +
+                    tag(32, 41) + L(56, 45, 70, '#198754') + L(140, 45, 28, '#198754') + tag(32, 61) + L(56, 65, 56, '#198754') +
+                    L(140, 65, 28, '#198754') + R(21, 80, 158, 1, B) + Hd(32, 86, 40) + Hd(134, 86, 34);
+            },
+            'link': function () {
+                return R(0, 0, 200, 110, W) + L(24, 44, 50) + L(80, 44, 60, P) + R(80, 50, 60, 1.4, P) + L(146, 44, 30) + L(24, 62, 130) +
+                    Pa('M118 54v18l4.5 -4.5 3.5 7 3 -1.5 -3.5 -7h6z', D, 1.1, W);
+            },
+            'icon': function () {
+                return R(0, 0, 200, 110, W) +
+                    Pa('M58 36l5.3 10.8 11.9 1.7 -8.6 8.4 2 11.8 -10.6 -5.6 -10.6 5.6 2 -11.8 -8.6 -8.4 11.9 -1.7z', P, 1.2, P) +
+                    Pa('M100 70c-14 -9 -18 -16 -18 -22a9 9 0 0 1 18 -3a9 9 0 0 1 18 3c0 6 -4 13 -18 22z', '#dc3545', 1.2, '#dc3545') +
+                    C(146, 53, 15, '#198754') + Pa('M139 53l5 5 9 -10', W, 2.2);
+            },
+            // Form fields: a label over its control.
+            'f-text': function () {
+                return R(0, 0, 200, 110, W) + Fld(34, L(48, 49, 56) + R(108, 45, 1.4, 12, D));
+            },
+            'f-email': function () {
+                return R(0, 0, 200, 110, W) + Fld(34, Tx(52, 55, '@', 11, S, 'middle') + L(62, 49, 70));
+            },
+            'f-tel': function () {
+                var out = R(0, 0, 200, 110, W) + Fld(34, L(66, 49, 70));
+                [0, 1, 2].forEach(function (r) { [0, 1, 2].forEach(function (c) { out += C(49 + c * 4, 50 + r * 4 - 4, 1.2, S); }); });
+                return out;
+            },
+            'f-number': function () {
+                return R(0, 0, 200, 110, W) + Fld(34, Tx(48, 55, '42', 10, D) + Chev(150, 48, true) + Chev(150, 54));
+            },
+            'f-url': function () {
+                return R(0, 0, 200, 110, W) + Fld(34, R(47.5, 48.5, 9, 6, 'none', 3, P) + R(53.5, 48.5, 9, 6, 'none', 3, P) + L(68, 49, 70, P));
+            },
+            'f-password': function () {
+                var out = R(0, 0, 200, 110, W) + Fld(34, '');
+                for (var i = 0; i < 6; i++) out += C(50 + i * 9, 51, 2.6, D);
+                return out + Pa('M140 51c4 -5 10 -5 14 0c-4 5 -10 5 -14 0z', S, 1.2) + C(147, 51, 1.8, S);
+            },
+            'f-textarea': function () {
+                return R(0, 0, 200, 110, W) + Fld(16, L(48, 34, 100, S) + L(48, 43, 86, S) + L(48, 52, 94, S) + L(48, 61, 50, S) +
+                    Pa('M146 84l9 -9M151 84l4 -4', '#adb5bd', 1.2), 66);
+            },
+            'f-select': function () {
+                return R(0, 0, 200, 110, W) + Fld(34, L(48, 49, 60, D) + Chev(148, 51));
+            },
+            'f-multi': function () {
+                return R(0, 0, 200, 110, W) + Fld(14, R(41, 26, 118, 14, PL) + L(48, 31, 60, P) + L(48, 45, 50, D) +
+                    R(41, 54, 118, 14, PL) + L(48, 59, 66, P) + L(48, 73, 44, D), 72);
+            },
+            'f-checkbox': function () {
+                return R(0, 0, 200, 110, W) + R(46, 46, 18, 18, P, 4) + Pa('M50 55l4 4 7 -8', W, 2) + L(72, 53, 82, D);
+            },
+            'f-checkgroup': function () {
+                var out = R(0, 0, 200, 110, W) + L(40, 14, 70, D);
+                [30, 54, 78].forEach(function (y, i) {
+                    out += i === 1 ? R(40.5, y + .5, 15, 15, W, 3, T) : R(40, y, 16, 16, P, 3) + Pa('M43.5 ' + (y + 8) + 'l3.5 3.5 6 -7', W, 1.8);
+                    out += L(64, y + 6, 60 + i * 10, D);
+                });
+                return out;
+            },
+            'f-radiogroup': function () {
+                var out = R(0, 0, 200, 110, W) + L(40, 14, 70, D);
+                [38, 62, 86].forEach(function (cy, i) {
+                    out += C(48, cy, 7.5, W, i === 0 ? P : T, ' stroke-width="1.5"') + (i === 0 ? C(48, cy, 3.5, P) : '') + L(64, cy - 2, 60 + i * 10, D);
+                });
+                return out;
+            },
+            'f-toggle': function () {
+                return R(0, 0, 200, 110, W) + R(46, 45, 34, 20, P, 10) + C(70, 55, 7, W) + L(90, 53, 70, D);
+            },
+            'f-date': function () {
+                var out = R(0, 0, 200, 110, W) + Fld(8, L(48, 23, 56, D) + R(141.5, 20.5, 11, 10, 'none', 1.5, S) + R(141.5, 20.5, 11, 3, S)) +
+                    R(90.5, 38.5, 69, 64, W, 4, B);
+                for (var r = 0; r < 4; r++) for (var c = 0; c < 5; c++) {
+                    out += R(97 + c * 12, 46 + r * 13, 8, 8, (r === 1 && c === 2) ? P : G, 2);
+                }
+                return out;
+            },
+            'f-time': function () {
+                return R(0, 0, 200, 110, W) + Fld(34, Tx(48, 55, '09:30', 10, D) + C(147, 51, 6, 'none', S, ' stroke-width="1.2"') +
+                    Pa('M147 47.5V51l2.5 1.5', S, 1.2));
+            },
+            'f-datetime': function () {
+                return R(0, 0, 200, 110, W) + Fld(34, L(48, 49, 34, D) + R(86, 46, 1, 10, T) + Tx(94, 55, '09:30', 10, D) +
+                    R(141.5, 46.5, 11, 10, 'none', 1.5, S) + R(141.5, 46.5, 11, 3, S));
+            },
+            'f-file': function () {
+                return R(0, 0, 200, 110, W) + Fld(34, R(41, 41, 40, 21, G, 3.5) + R(74, 41, 7, 21, G) + R(81, 41, 1, 21, T) + L(49, 53, 24, D) + L(90, 53, 50)) +
+                    Pa('M100 98V82M100 82l-5 5M100 82l5 5', P, 1.5) + R(92, 99, 16, 1.5, P);
+            },
+            'f-color': function () {
+                return R(0, 0, 200, 110, W) + Fld(34, R(46, 44, 30, 14, '#6f42c1', 2) + Tx(84, 54.5, '#6f42c1', 9, S));
+            },
+            'f-range': function () {
+                return R(0, 0, 200, 110, W) + L(40, 36, 44, D) + R(40, 54, 120, 5, G, 2.5) + R(40, 54, 76, 5, P, 2.5) + C(116, 56.5, 8, P) +
+                    Tx(40, 80, '0', 9, S) + Tx(160, 80, '100', 9, S, 'end');
+            },
+            'f-hidden': function () {
+                return R(0, 0, 200, 110, W) + R(40.5, 44.5, 119, 21, LG, 4, '#adb5bd', DASH) + L(50, 53, 60, T) +
+                    Pa('M136 55c4 -5 10 -5 14 0c-4 5 -10 5 -14 0zM136 49l14 12', S, 1.2);
+            },
+            'f-floating': function () {
+                return R(0, 0, 200, 110, W) + R(40.5, 34.5, 119, 39, W, 4, T) + L(50, 43, 40, S) + R(50, 43, 40, 3, S, 1.5) + L(50, 57, 70, D);
+            },
+            'f-label': function () {
+                return R(0, 0, 200, 110, W) + R(36.5, 26.5, 56, 15, PL, 3, P, DASH) + L(42, 32, 44, P) +
+                    '<g opacity=".45">' + R(40.5, 48.5, 119, 21, W, 4, T) + L(48, 57, 56) + '</g>';
+            },
+            'f-group': function () {
+                return R(0, 0, 200, 110, W) + R(26.5, 6.5, 147, 97, 'none', 5, P, DASH) + Fld(16, L(48, 31, 50)) + Fld(58, L(48, 73, 64));
+            },
+            'f-submit': function () {
+                return R(0, 0, 200, 110, W) + '<g opacity=".45">' + Fld(14, L(48, 29, 56)) + '</g>' + R(40, 62, 56, 22, P, 4) + L(52, 71, 32, W);
+            },
+            'f-reset': function () {
+                return R(0, 0, 200, 110, W) + '<g opacity=".45">' + Fld(14, L(48, 29, 56)) + '</g>' + R(40.5, 62.5, 63, 21, W, 4, S) +
+                    Pa('M54 70a4.5 4.5 0 1 1 -1.3 6.5M54 70v3.5h-3.5', S, 1.3) + L(64, 71, 30, S);
+            },
+            'f-captcha': function () {
+                return R(0, 0, 200, 110, W) + R(30.5, 34.5, 139, 41, LG, 4, B) + R(42.5, 46.5, 17, 17, W, 3, '#adb5bd') + L(68, 53, 50, D) +
+                    Pa('M146 47a8 8 0 1 1 -6 2.5M146 47v4h-4', P, 1.6) + Pa('M146 51l-2.5 3', P, 1.3);
+            },
+            'f-form': function () {
+                return R(0, 0, 200, 110, LG) + R(30.5, 4.5, 139, 101, W, 5, B) + L(40, 12, 40, D) + R(40.5, 20.5, 119, 15, W, 3, T) +
+                    L(40, 44, 50, D) + R(40.5, 52.5, 119, 15, W, 3, T) + R(40, 78, 48, 18, P, 4) + L(50, 85, 28, W);
+            },
+            // Regions: where the site fills the page.
+            'r-page': function () {
+                return R(0, 0, 200, 110, LG) + R(0, 0, 200, 16, G) + R(20.5, 24.5, 159, 71, W, 4, P, DASH) + Hd(32, 34, 70) + L(32, 48, 132) +
+                    L(32, 56, 120) + L(32, 64, 128) + L(32, 72, 80) + Pa('M150 88l14 -14 4 4 -14 14h-4z', P, 1.3, PL);
+            },
+            'r-system': function () {
+                var out = R(0, 0, 200, 110, LG) + R(10.5, 6.5, 179, 97, W, 4, P, DASH);
+                [20, 76, 132].forEach(function (x) { out += R(x, 16, 48, 34, G, 3) + L(x, 56, 40, D) + L(x, 64, 24, P) + R(x, 76, 48, 13, P, 3); });
+                return out;
+            },
+            'r-common': function () {
+                function page(x) {
+                    return R(x + .5, 8.5, 75, 93, W, 4, B) + R(x + 6, 15, 64, 16, PL, 3, P) + L(x + 12, 21, 40, P) + L(x + 8, 42, 58) +
+                        L(x + 8, 50, 50) + R(x + 8, 62, 58, 28, G, 3);
+                }
+                return R(0, 0, 200, 110, LG) + page(16) + page(108) + Pa('M88 23h20', P, 1.3) + Pa('M104 20l4 3 -4 3', P, 1.3);
+            },
+            'r-designer': function () {
+                return R(0, 0, 200, 110, LG) + R(30.5, 16.5, 139, 77, W, 4, P, DASH) + Tx(100, 62, '&lt;/&gt;', 22, P, 'middle');
+            },
+            'r-dynamic': function () {
+                return R(0, 0, 200, 110, W) + R(30, 16, 120, 78, '#212529', 5) + L(42, 30, 50, '#a370f7') + L(52, 42, 64, '#adb5bd') +
+                    L(52, 54, 44, '#ffc107') + L(52, 66, 70, '#adb5bd') + L(42, 78, 30, '#a370f7') +
+                    C(164, 55, 15, W, P, ' stroke-width="1.5"') + Pa('M171 50a8 8 0 1 0 1 7M171 50v-5M171 50h-5', P, 1.5);
+            },
+            'r-menu-sequence': function () {
+                return R(0, 0, 200, 110, W) + L(30, 24, 140, G) + L(30, 32, 120, G) + R(24.5, 58.5, 63, 21, W, 4, B) + Tx(36, 73, '‹', 14, P, 'middle') +
+                    L(46, 67, 32, P) + R(112.5, 58.5, 63, 21, W, 4, B) + L(122, 67, 32, P) + Tx(164, 73, '›', 14, P, 'middle');
+            },
+            'r-login': function () {
+                return R(0, 0, 200, 110, W) + R(0, 0, 200, 26, LG) + R(0, 26, 200, 1, B) + R(10, 9, 30, 8, T, 2) +
+                    C(140, 13, 7, PL) + Person(140, 13, P) + L(152, 11, 34, D) + R(116.5, 30.5, 74, 44, W, 4, B) + L(124, 40, 50, D) +
+                    L(124, 50, 44) + R(124, 58, 40, 10, P, 3);
+            },
+            'r-ad': function () {
+                return R(0, 0, 200, 110, W) + L(20, 10, 160, G) + L(20, 18, 120, G) + R(20.5, 30.5, 159, 57, LG, 4, '#adb5bd', DASH) +
+                    Pic(28, 38, 70, 42) + Hd(108, 44, 60) + L(108, 58, 56) + Btn(108, 68, 40, P) + R(160, 33, 16, 9, '#ffc107', 2) +
+                    L(20, 96, 140, G);
+            },
+            'r-cart': function () {
+                return R(0, 0, 200, 110, W) + Pa('M70 38h10l8 30h34l7 -22H84', D, 2.2) + C(92, 76, 4, D) + C(118, 76, 4, D) +
+                    C(128, 36, 10, P) + Tx(128, 40, '3', 11, W, 'middle');
+            },
+            'r-tag-cloud': function () {
+                var out = R(0, 0, 200, 110, W);
+                [[20, 22, 40, 13], [66, 20, 58, 17], [130, 24, 46, 11], [26, 50, 54, 17], [86, 52, 36, 11], [128, 48, 52, 19],
+                 [34, 78, 42, 11], [82, 74, 64, 19], [152, 78, 28, 11]].forEach(function (t) {
+                    out += R(t[0], t[1], t[2], t[3], PL, t[3] / 2) + L(t[0] + 7, t[1] + t[3] / 2 - 2, t[2] - 14, P);
+                });
+                return out;
+            },
+            'r-mobile-switch': function () {
+                return R(0, 0, 200, 110, W) + R(34.5, 22.5, 33, 62, W, 5, D, ' stroke-width="1.5"') + R(46, 78, 10, 2, D, 1) +
+                    L(40, 32, 22) + L(40, 40, 18) + R(40, 48, 22, 18, G, 2) + Pa('M80 48h36M80 48l5 -4M80 48l5 4M116 60H80M116 60l-5 -4M116 60l-5 4', P, 1.5) +
+                    R(128.5, 28.5, 55, 40, W, 3, D, ' stroke-width="1.5"') + R(150, 69, 12, 8, D) + R(144, 77, 24, 3, D, 1) +
+                    L(134, 36, 40) + R(134, 46, 20, 16, G, 2) + R(158, 46, 20, 16, G, 2);
+            },
+            'r-pdf': function () {
+                return R(0, 0, 200, 110, W) + Pa('M70 10h44l16 16v74h-60z', B, 1.2, W) + Pa('M114 10v16h16', B, 1.2) +
+                    R(60, 54, 44, 18, '#dc3545', 3) + Tx(82, 67, 'PDF', 11, W, 'middle') + L(78, 34, 30) + L(78, 82, 44) + L(78, 90, 36) +
+                    Pa('M150 66v20M150 86l-6 -6M150 86l6 -6', P, 1.8) + R(141, 92, 18, 2, P, 1);
+            },
+            'r-comments': function () {
+                function bubble(y, x) {
+                    return C(x + 8, y + 8, 7, G) + Person(x + 8, y + 8) + R(x + 20, y, 120 - x + 20, 22, LG, 5) +
+                        L(x + 28, y + 5, 40, D) + L(x + 28, y + 13, 90 - x + 20);
+                }
+                return R(0, 0, 200, 110, W) + bubble(6, 20) + bubble(34, 40) + R(20.5, 66.5, 159, 23, W, 4, T) + L(28, 76, 70, T) +
+                    R(140, 93, 40, 12, P, 3);
+            },
+            // Lists in a record: the row the list repeats, framed, and its
+            // copies faded.
+            'l-values': function () {
+                return R(0, 0, 200, 110, W) + Rows(22, 28, 20, function (y) { return C(28, y + 6, 3, P) + L(38, y + 4, 90, D); });
+            },
+            'l-split': function () {
+                return R(0, 0, 200, 110, W) + R(20.5, 12.5, 159, 21, W, 4, T) + Tx(28, 27, 'a, b, c', 10, S) + Pa('M100 40v12M100 52l-4 -4M100 52l4 -4', S, 1.2) +
+                    Cols(34, 46, 42, 66, 22, function (x) { return R(x, 66, 35, 15, PL, 7.5) + L(x + 8, 71.5, 19, P); });
+            },
+            'l-files': function () {
+                return R(0, 0, 200, 110, W) + Rows(16, 30, 24, function (y) {
+                    return Pa('M' + 26 + ' ' + (y + 15) + 'l8 -8a3.5 3.5 0 0 0 -5 -5l-9 9a2 2 0 0 0 3 3l7 -7', S, 1.3) +
+                        L(44, y + 4, 80, P) + L(140, y + 4, 30, S);
+                });
+            },
+            'l-images': function () {
+                return R(0, 0, 200, 110, W) + Pic(30, 6, 140, 62) + Cols(34, 34, 33, 78, 30, function (x) { return Pic(x, 78, 26, 22); }, 4);
+            },
+            'l-attributes': function () {
+                return R(0, 0, 200, 110, W) + Rows(18, 28, 22, function (y) { return L(24, y + 5, 50, S) + L(100, y + 5, 64, D) + R(18, y + 19, 164, 1, B); });
+            },
+            'l-related': function () {
+                return R(0, 0, 200, 110, W) + Cols(18, 60, 54, 14, 86, function (x) { return Pic(x, 14, 47, 40) + L(x, 62, 40, D) + L(x, 72, 24, P) + R(x, 82, 47, 11, P, 3); });
+            },
+            'l-bundle': function () {
+                return R(0, 0, 200, 110, W) + Rows(14, 32, 28, function (y) { return Pic(22, y, 26, 20) + L(56, y + 4, 70, D) + Tx(170, y + 13, '×2', 10, S, 'end'); });
+            },
+            'l-crumbs': function () {
+                return R(0, 0, 200, 110, W) + R(10, 40, 180, 30, LG, 5) + Cols(22, 52, 46, 48, 15, function (x) {
+                    return L(x, 52.5, 34, P) + Tx(x + 42, 58, '/', 10, S, 'middle');
+                });
+            },
+            'l-filters': function () {
+                return R(0, 0, 200, 110, W) + Cols(22, 54, 50, 46, 22, function (x) {
+                    return R(x, 46, 43, 15, PL, 7.5) + L(x + 7, 51.5, 20, P) + Pa('M' + (x + 32) + ' 50.5l5 5M' + (x + 37) + ' 50.5l-5 5', P, 1.2);
+                });
+            },
+            'l-weeks': function () {
+                return R(0, 0, 200, 110, W) + Rows(18, 30, 26, function (y) {
+                    var o = '';
+                    for (var c = 0; c < 7; c++) o += R(22 + c * 23, y, 19, 19, G, 2);
+                    return o;
+                });
+            },
+            'l-weekdays': function () {
+                var out = R(0, 0, 200, 110, W);
+                for (var r = 0; r < 3; r++) for (var c = 0; c < 7; c++) out += R(22 + c * 23, 42 + r * 22, 19, 17, G, 2);
+                return out + Cols(22, 23, 26, 20, 16, function (x) { return L(x + 2, 24, 15, D); }, 7);
+            },
+            'l-days': function () {
+                var out = R(0, 0, 200, 110, W);
+                for (var r = 0; r < 4; r++) for (var c = 0; c < 7; c++) {
+                    if (r === 1 && c === 2) continue;
+                    out += R(22 + c * 23, 14 + r * 23, 19, 19, G, 2, '', ' fill-opacity=".6"');
+                }
+                return out + R(68, 37, 19, 19, W, 2, B) + Tx(71, 46, '9', 7, D) + R(64.5, 33.5, 26, 26, 'none', 3, P, DASH);
+            },
+            'l-events': function () {
+                return R(0, 0, 200, 110, W) + R(40.5, 6.5, 119, 97, W, 4, B) + Tx(48, 22, '12', 12, D) +
+                    Rows(32, 22, 20, function (y, i) { return R(48, y, 104, 14, i === 1 ? '#d1e7dd' : PL, 3) + L(54, y + 5, 60, i === 1 ? '#198754' : P); });
+            },
+            'l-shipments': function () {
+                return R(0, 0, 200, 110, W) + Rows(8, 34, 30, function (y) { return C(30, y + 10, 8, G) + Person(30, y + 10) + L(46, y + 3, 60, D) + L(46, y + 12, 110) + L(46, y + 19, 80); });
+            },
+            'l-order-items': function () {
+                return R(0, 0, 200, 110, W) + Rows(12, 32, 28, function (y) { return Pic(22, y, 26, 20) + L(56, y + 4, 64, D) + L(56, y + 13, 30) + Hd(146, y + 7, 30); });
+            },
+            'l-parcels': function () {
+                return R(0, 0, 200, 110, W) + Rows(12, 32, 28, function (y) {
+                    return R(22.5, y + 2.5, 18, 15, '#f1e3c6', 1.5, '#a07f3c') + R(31, y + 3, 1.2, 14, '#a07f3c') + L(50, y + 3, 60, D) + L(50, y + 12, 90, P);
+                });
+            },
+            'l-steps': function () {
+                return R(0, 0, 200, 110, W) + R(40, 43, 120, 2, B) + Cols(32, 45, 30, 32, 44, function (x, i) {
+                    return C(x + 11, 44, 9, i < 2 ? P : W, i < 2 ? '' : T, ' stroke-width="1.5"') + L(x, 60, 22, i < 2 ? D : T);
+                }, 4);
+            },
+            'l-account-orders': function () {
+                return R(0, 0, 200, 110, W) + R(14, 10, 172, 14, LG, 2) + L(20, 15, 24, D) + L(60, 15, 30, D) + L(110, 15, 28, D) + L(156, 15, 24, D) +
+                    Rows(32, 26, 22, function (y, i) {
+                        return Tx(20, y + 9, '#10' + (3 - i), 9, P) + L(60, y + 4, 34) + R(108, y + 1, 36, 10, i ? '#d1e7dd' : '#fff3cd', 5) + L(156, y + 4, 24, D);
+                    });
+            },
+            'l-cart-items': function () {
+                return R(0, 0, 200, 110, W) + Rows(12, 32, 28, function (y) {
+                    return Pic(22, y, 26, 20) + L(56, y + 4, 54, D) + R(118.5, y + 3.5, 28, 13, W, 3, T) + Tx(132.5, y + 13, '1', 8, D, 'middle') + Hd(154, y + 6, 24);
+                });
+            },
+            'l-offers': function () {
+                return R(0, 0, 200, 110, W) + Rows(16, 30, 24, function (y) { return Tag(24, y + 2) + L(50, y + 6, 80, '#198754') + L(146, y + 6, 30, '#198754'); });
+            },
+            'l-suggestions': function () {
+                return R(0, 0, 200, 110, W) + Rows(12, 32, 28, function (y) {
+                    return R(22, y, 20, 20, '#fff3cd', 4) + Pa('M27 ' + (y + 8) + 'h3l7 -4v12l-7 -4h-3z', '#997404', 1.2, '#ffda6a') +
+                        L(50, y + 4, 80, D) + L(50, y + 13, 50) + Btn(144, y + 4, 34, P, true);
+                });
+            },
+            'l-gift-cards': function () {
+                return R(0, 0, 200, 110, W) + Rows(12, 32, 28, function (y) {
+                    return R(22, y, 34, 21, '#d63384', 3) + R(36, y, 3, 21, '#f7d6e6') + R(22, y + 9, 34, 3, '#f7d6e6') +
+                        L(64, y + 4, 60, D) + L(64, y + 13, 40) + Hd(146, y + 7, 30, '#198754');
+                });
+            },
+            'l-recipients': function () {
+                return R(0, 0, 200, 110, W) + Rows(8, 34, 30, function (y) {
+                    return C(30, y + 10, 8, PL) + Person(30, y + 10, P) + L(46, y + 4, 54, D) + R(46, y + 14, 16, 10, G, 2) + L(68, y + 17, 70);
+                });
+            },
+            'l-menu-children': function () {
+                return R(0, 0, 200, 110, W) + L(24, 10, 60, D) + Pa('M30 18v76', B, 1.2) +
+                    Rows(26, 26, 20, function (y) { return Pa('M30 ' + (y + 6) + 'h12', B, 1.2) + L(50, y + 4, 70, P); });
+            },
+            'l-folder': function () {
+                return R(0, 0, 200, 110, W) + Rows(16, 30, 24, function (y, i) {
+                    return (i === 1 ? Pa('M24 ' + y + 'h10l3 3h-13zM24 ' + (y + 3) + 'h22v12h-22z', '#997404', 1, '#ffda6a')
+                                    : Pa('M26 ' + y + 'h12l5 5v12h-17z', S, 1.1, W)) + L(54, y + 6, 80, i === 1 ? D : P) + L(146, y + 6, 30, S);
+                });
+            },
+            'l-passkeys': function () {
+                return R(0, 0, 200, 110, W) + Rows(14, 32, 26, function (y) {
+                    return C(28, y + 9, 5, 'none', D, ' stroke-width="1.6"') + Pa('M33 ' + (y + 9) + 'h12v4M41 ' + (y + 9) + 'v3', D, 1.6) +
+                        L(54, y + 3, 64, D) + L(54, y + 12, 44) + R(150.5, y + 3.5, 26, 13, W, 3, '#dc3545') + L(156, y + 8, 15, '#dc3545');
+                });
+            },
+            'l-pages': function () {
+                return R(0, 0, 200, 110, W) + Cols(38, 26, 32, 43, 31, function (x, i) {
+                    var on = i === 0;
+                    return R(x + .5, 43.5, 24, 24, on ? P : W, 0, on ? P : B) + Tx(x + 12.5, 59, String(i + 1), 10, on ? W : P, 'middle');
+                }, 5);
             }
         };
         if (!draw[key]) return '';
@@ -75203,7 +76494,8 @@ const StyleDesigner = (function () {
         var info = _sdPalInfo()[_sdPalKey(it)];
         // A ready-made block without a drawing of its own is drawn from its tree.
         var sketch = (info && info.v) ? '' : _sdBlockSketchOf(it);
-        if (!info && !sketch) return '';
+        var desc = (info && info.d) || _sdBlockDesc(it);
+        if (!info && !sketch && !desc) return '';
         info = info || {};
         var en = _sdEnglishOf(it.label).filter(function (k) { return _sdFold(k) !== _sdFold(it.label); })
             .sort(function (a, b) { return a.length - b.length; })[0] || '';
@@ -75215,7 +76507,7 @@ const StyleDesigner = (function () {
                 (en ? '<span class="sd-pal-tip-en">' + esc(en) + '</span>' : '') +
             '</div>' +
             (info.h ? '<code class="sd-pal-tip-code">' + esc(info.h) + '</code>' : '') +
-            (info.d ? '<div class="sd-pal-tip-desc">' + esc(info.d) + '</div>' : '');
+            (desc ? '<div class="sd-pal-tip-desc">' + esc(desc) + '</div>' : '');
     }
 
     function _sdPalTipHide() {
@@ -76754,7 +78046,9 @@ const StyleDesigner = (function () {
     // Without touching the PHP, we install a fake CKEDITOR object on this window
     // to capture the URL.
     var _sdPickerFuncNum = 0;
-    window.sdOpenFilePicker = function (fieldId, propName) {
+    // kind ('page' | 'file') opens the picker on that tab; without it the
+    // picker keeps the tab it showed last.
+    window.sdOpenFilePicker = function (fieldId, propName, kind) {
         var inp = document.getElementById(fieldId);
         if (!inp) return;
 
@@ -76779,7 +78073,8 @@ const StyleDesigner = (function () {
         };
 
         window.open(
-            'editor_select_page_or_file.php?CKEditorFuncNum=' + funcNum,
+            'editor_select_page_or_file.php?CKEditorFuncNum=' + funcNum +
+                (kind === 'page' || kind === 'file' ? '&type=' + kind : ''),
             'sdPicker_' + funcNum,
             'width=820,height=640,resizable=1,scrollbars=1'
         );

@@ -35,6 +35,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *   design    files: design files listed too
  *   archived  pages: pages in an archived folder listed too, marked and not
  *             choosable (pg_picker_page_mark())
+ *   forms     pages: only form pages (pg_form_page_sql(): custom form pages
+ *             and visual designer pages holding a form)
+ *   access    'edit' (a role 3 user's folders they may edit) or 'view' (also
+ *             the folders they may view as a visitor, check_view_access())
  *   value     what a pick stores: 'name' (files.name) or 'id'
  *   role      the highest role that may ask (0 Administrator ... 3 User); a
  *             role 3 user only with edit rights, within the folders they may
@@ -65,10 +69,70 @@ function pg_picker_kinds()
         'image' => array_merge($file, array('types' => pg_picker_image_types(), 'value' => 'name', 'pictures' => true)),
         'public_image' => array_merge($file, array('types' => pg_public_image_file_types(), 'public' => true, 'value' => 'name', 'role' => 2, 'pictures' => true)),
         'site_icon' => array_merge($file, array('types' => array('png', 'svg'), 'public' => true, 'value' => 'name', 'role' => 2, 'pictures' => true)),
-        'page' => array('source' => 'pages', 'types' => array(), 'public' => false, 'design' => false, 'archived' => true, 'value' => 'id', 'role' => 3, 'tree' => true, 'pictures' => false, 'upload' => false),
+        'page' => array('source' => 'pages', 'types' => array(), 'public' => false, 'design' => false, 'archived' => true, 'forms' => false, 'access' => 'edit', 'value' => 'id', 'role' => 3, 'tree' => true, 'pictures' => false, 'upload' => false),
     );
 
+    // An e-mail campaign's body page: any page the sender may view.
+    $kinds['page_view'] = array_merge($kinds['page'], array('access' => 'view'));
+    // A form a campaign follows: custom form pages and designer form pages.
+    $kinds['page_form'] = array_merge($kinds['page'], array('forms' => true));
+
+    foreach (pg_picker_page_type_kinds() as $name => $types) {
+        $kinds[$name] = array_merge($kinds['page'], array('types' => $types));
+    }
+
     return $kinds;
+}
+
+/**
+ * The page kinds kept to some page types, for the settings that take only
+ * those (a catalog's detail page, an order's receipt page). Pure.
+ *
+ * @return array name => page.page_type values
+ */
+function pg_picker_page_type_kinds()
+{
+    return array(
+        'page_catalog' => array('catalog'),
+        'page_custom_form' => array('custom form'),
+        'page_catalog_detail' => array('catalog detail'),
+        'page_order_receipt' => array('order receipt'),
+        'page_shipping_step' => array('shipping address and arrival', 'express order'),
+        'page_billing_step' => array('billing information', 'express order'),
+        'page_shipping_method' => array('shipping method'),
+        'page_preview_step' => array('order preview', 'express order'),
+        'page_form_item_view' => array('form item view'),
+        'page_calendar_event_view' => array('calendar event view'),
+        'page_affiliate_confirmation' => array('affiliate sign up confirmation'),
+    );
+}
+
+/**
+ * The page kind that lists the given page types: 'page' for every type,
+ * '' when no kind lists exactly those. Pure.
+ *
+ * @param string|string[] $types one page type, a list, or '' for every page
+ * @return string
+ */
+function pg_picker_page_kind_for($types)
+{
+    $wanted = array_values(array_unique(array_map('strval', array_filter((array) $types, 'strlen'))));
+
+    if (!$wanted) {
+        return 'page';
+    }
+
+    sort($wanted);
+
+    foreach (pg_picker_page_type_kinds() as $name => $listed) {
+        sort($listed);
+
+        if ($listed === $wanted) {
+            return $name;
+        }
+    }
+
+    return '';
 }
 
 /** The picture types the image kind lists: the editor's image browser's. */
@@ -80,7 +144,7 @@ function pg_picker_image_types()
 /** The requests the endpoint answers; upload is the one sent by POST. */
 function pg_picker_requests()
 {
-    return array('list', 'search', 'tree', 'resolve', 'upload');
+    return array('list', 'search', 'tree', 'resolve', 'upload', 'short_links');
 }
 
 /**
@@ -374,11 +438,17 @@ function pg_picker_files_where($kind, $public_where, $bin_ids, $folders, $folder
  * @param int[]      $bin_ids the Recycle Bin and its sub-folders
  * @param int[]|null $folders the folders a role 3 user may edit; null for all
  * @param int|null   $folder  one folder to list; null for every folder
+ * @param string     $forms   pg_form_page_sql() for a forms kind
  * @return string
  */
-function pg_picker_pages_where($kind, $bin_ids, $folders, $folder = null)
+function pg_picker_pages_where($kind, $bin_ids, $folders, $folder = null, $forms = '')
 {
     $where = array("(page.page_name != '')");
+
+    // A forms kind without its condition lists nothing.
+    if (!empty($kind['forms'])) {
+        $where[] = (trim((string) $forms) !== '') ? '(' . $forms . ')' : '(page.page_id IN (-1))';
+    }
 
     if (empty($kind['archived'])) {
         $where[] = "(folder.folder_archived = '0')";
@@ -669,14 +739,17 @@ function pg_picker_page_details($items, $paths = false)
 /**
  * The binned pages that came from the folders a user may use, as
  * pg_picker_binned_page_row() tells them: those from one folder, or those
- * whose name holds a typed text (at most pg_picker_scan_limit()).
+ * whose name holds a typed text (at most pg_picker_scan_limit()), of the
+ * page types a kind lists.
  *
  * @param array    $user   validate_user()
  * @param int|null $folder the folder they came from
  * @param string   $query  the typed text; '' for no name match
+ * @param string[] $types  pg_picker_kind_types(); empty for every type
+ * @param array    $kind   the kind asking (its access and forms rule)
  * @return array rows
  */
-function pg_picker_binned_page_rows($user, $folder = null, $query = '')
+function pg_picker_binned_page_rows($user, $folder = null, $query = '', $types = array(), $kind = null)
 {
     $bin = pg_picker_ids(pg_recycle_bin_folder_ids());
 
@@ -694,6 +767,14 @@ function pg_picker_binned_page_rows($user, $folder = null, $query = '')
         $where .= " AND (LOWER(page.page_name) LIKE '%" . e(pg_picker_like_term($query)) . "%')";
     }
 
+    if ($types) {
+        $where .= " AND (page.page_type IN ('" . implode("', '", array_map('e', $types)) . "'))";
+    }
+
+    if (!empty($kind['forms'])) {
+        $where .= ' AND (' . pg_form_page_sql('page') . ')';
+    }
+
     $rows = db_items(
         "SELECT page.page_id, page.page_name, page.page_type, page.page_folder, page.page_timestamp, folder.folder_archived, recycle_bin.original_parent_id
         FROM recycle_bin
@@ -703,7 +784,7 @@ function pg_picker_binned_page_rows($user, $folder = null, $query = '')
         ORDER BY page.page_name
         LIMIT " . pg_picker_scan_limit());
 
-    $granted = pg_picker_granted_folders($user);
+    $granted = pg_picker_granted_folders($user, $kind);
     $out = array();
 
     foreach ((is_array($rows) ? $rows : array()) as $row) {
@@ -899,14 +980,40 @@ function pg_picker_value_state($found, $visible, $binned, $offline)
 }
 
 /**
- * The folders a role 3 user may edit, null for a higher role (every folder).
+ * The folders a role 3 user may use in a kind, null for a higher role (every
+ * folder): those they may edit, and for a view kind also those they may view
+ * as a visitor (check_view_access(), which reads the signed-in user).
  *
- * @param array $user validate_user()
+ * @param array      $user validate_user()
+ * @param array|null $kind one of pg_picker_kinds(); null for an edit kind
  * @return int[]|null
  */
-function pg_picker_granted_folders($user)
+function pg_picker_granted_folders($user, $kind = null)
 {
-    return ((int) $user['role'] >= 3) ? pg_picker_ids(get_folders_that_user_has_access_to($user['id'])) : null;
+    if ((int) $user['role'] < 3) {
+        return null;
+    }
+
+    $granted = pg_picker_ids(get_folders_that_user_has_access_to($user['id']));
+
+    if (($kind['access'] ?? 'edit') !== 'view') {
+        return $granted;
+    }
+
+    static $viewable = array();
+    $key = (int) $user['id'];
+
+    if (!isset($viewable[$key])) {
+        $viewable[$key] = array();
+
+        foreach ((array) db_values("SELECT folder_id FROM folder") as $folder_id) {
+            if (check_view_access((int) $folder_id)) {
+                $viewable[$key][] = (int) $folder_id;
+            }
+        }
+    }
+
+    return pg_picker_ids(array_merge($granted, $viewable[$key]));
 }
 
 /**
@@ -939,14 +1046,14 @@ function pg_picker_select($kind, $where)
 function pg_picker_where_for($kind, $user, $folder = null)
 {
     if ($kind['source'] === 'pages') {
-        return pg_picker_pages_where($kind, pg_recycle_bin_folder_ids(), pg_picker_granted_folders($user), $folder);
+        return pg_picker_pages_where($kind, pg_recycle_bin_folder_ids(), pg_picker_granted_folders($user, $kind), $folder, !empty($kind['forms']) ? pg_form_page_sql('page') : '');
     }
 
     return pg_picker_files_where(
         $kind,
         !empty($kind['public']) ? pg_public_image_files_where() : '',
         pg_recycle_bin_folder_ids(),
-        pg_picker_granted_folders($user),
+        pg_picker_granted_folders($user, $kind),
         $folder);
 }
 
@@ -983,7 +1090,7 @@ function pg_picker_search_rows($kind_name, $query, $user)
 
     // Binned pages are found too, under their own names, after the others:
     // marked, so the person sees why the page they look for cannot be chosen.
-    return array_merge(pg_picker_matches(is_array($rows) ? $rows : array(), $query, 'page_name'), pg_picker_binned_page_rows($user, null, $query));
+    return array_merge(pg_picker_matches(is_array($rows) ? $rows : array(), $query, 'page_name'), pg_picker_binned_page_rows($user, null, $query, pg_picker_kind_types($kind), $kind));
 }
 
 /**
@@ -1025,14 +1132,14 @@ function pg_picker_list_answer($request, $user)
     $kind = $kinds[$request['kind']];
     $answer = array('folder' => $request['folder'], 'crumbs' => array(), 'items' => array(), 'page' => $request['page'], 'per_page' => $request['per_page'], 'more' => false);
 
-    if (!pg_picker_folder_allowed($request['folder'], pg_recycle_bin_folder_ids(), pg_picker_granted_folders($user))) {
+    if (!pg_picker_folder_allowed($request['folder'], pg_recycle_bin_folder_ids(), pg_picker_granted_folders($user, $kind))) {
         return $answer;
     }
 
     require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
 
     // The folders above a role 3 user's own stay unnamed, as in their tree.
-    $granted = pg_picker_granted_folders($user);
+    $granted = pg_picker_granted_folders($user, $kind);
 
     foreach (pg_picker_folder_path($request['folder'], pg_explorer_folder_map()) as $crumb) {
         if (($granted === null) || in_array($crumb['id'], $granted, true)) {
@@ -1059,7 +1166,7 @@ function pg_picker_list_answer($request, $user)
     if (($kind['source'] === 'pages') && ($request['page'] === 1)) {
         $answer['binned'] = pg_picker_page_details(array_map(function ($row) use ($kind) {
             return pg_picker_item($kind, $row);
-        }, pg_picker_binned_page_rows($user, $request['folder'])));
+        }, pg_picker_binned_page_rows($user, $request['folder'], '', pg_picker_kind_types($kind), $kind)));
     }
 
     // Whether the dialog offers Upload in this folder, and if not, why.
@@ -1088,7 +1195,8 @@ function pg_picker_tree_answer($request, $user)
 
     require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
 
-    $granted = pg_picker_granted_folders($user);
+    $kinds = pg_picker_kinds();
+    $granted = pg_picker_granted_folders($user, $kinds[$request['kind']]);
     $folders_that_user_has_access_to = ($granted !== null) ? $granted : array();
     $bin_ids = pg_recycle_bin_folder_ids();
 
@@ -1143,7 +1251,7 @@ function pg_picker_resolve_answer($request, $user)
     }
 
     $bin_ids = pg_recycle_bin_folder_ids();
-    $granted = pg_picker_granted_folders($user);
+    $granted = pg_picker_granted_folders($user, $kind);
     $found = array();
 
     if ($kind['source'] === 'pages') {
@@ -1412,17 +1520,131 @@ function pg_picker_answer($request, $user)
             break;
 
         case 'tree':
-            // The dialog's title line names the kind's file types.
+            // The dialog's title line names the kind's file types, or the
+            // page types a page kind keeps to, by their labels.
             $answer['types'] = pg_picker_kind_types($kinds[$request['kind']]);
+
+            if ($kinds[$request['kind']]['source'] === 'pages') {
+                $answer['types'] = array_map('get_page_type_name', $answer['types']);
+            }
+
             $answer += $kinds[$request['kind']]['tree'] ? pg_picker_tree_answer($request, $user) : array('nodes' => array());
             break;
 
         case 'resolve':
             $answer += pg_picker_resolve_answer($request, $user);
             break;
+
+        case 'short_links':
+            $answer['items'] = pg_picker_short_link_entries($user);
+            break;
     }
 
     return $answer;
+}
+
+/**
+ * Where a short link sends its visitor, as the link dialog shows it beside
+ * the short link: the page, product group or product address with the
+ * tracking code, or the address it was given. Pure.
+ *
+ * @param array  $row  destination_type, page_name, product_group_address_name,
+ *                     product_address_name, url, tracking_code
+ * @param string $path the site's path (PATH)
+ * @return string
+ */
+function pg_picker_short_link_destination($row, $path)
+{
+    $type = (string) ($row['destination_type'] ?? '');
+    $page = $path . (string) ($row['page_name'] ?? '');
+
+    switch ($type) {
+        case 'page':
+            $destination = $page;
+            break;
+
+        case 'product_group':
+            $destination = $page . '/' . (string) ($row['product_group_address_name'] ?? '');
+            break;
+
+        case 'product':
+            $destination = $page . '/' . (string) ($row['product_address_name'] ?? '');
+            break;
+
+        default:
+            return (string) ($row['url'] ?? '');
+    }
+
+    $code = (string) ($row['tracking_code'] ?? '');
+
+    return ($code !== '') ? $destination . '?t=' . $code : $destination;
+}
+
+/**
+ * A short link as an entry of the page dialog's own list (pgPicker.open()
+ * extra): its name is the value the editor turns into an address, its
+ * destination the note. Pure.
+ *
+ * @param array  $row  name and the columns pg_picker_short_link_destination() reads
+ * @param string $path the site's path (PATH)
+ * @param string $label the type's name ("Short link")
+ * @return array value, text, type, type_group, type_label, note
+ */
+function pg_picker_short_link_entry($row, $path, $label)
+{
+    $destination = pg_picker_short_link_destination($row, $path);
+
+    return array(
+        'value' => (string) ($row['name'] ?? ''),
+        'text' => (string) ($row['name'] ?? ''),
+        'type' => 'short link',
+        'type_group' => 'short_link',
+        'type_label' => $label,
+        'note' => ($destination !== '') ? '→ ' . $destination : '',
+    );
+}
+
+/**
+ * The short links the link dialog offers beside the pages (request
+ * short_links): every named one not in the Recycle Bin, the first 2,000
+ * by name. Short links are a manager area, so a
+ * user (role 3) gets none, as the editor's old link window gave them none.
+ *
+ * @param array $user validate_user()
+ * @return array pg_picker_short_link_entry() rows
+ */
+function pg_picker_short_link_entries($user)
+{
+    if ((int) $user['role'] > 2) {
+        return array();
+    }
+
+    $rows = db_items(
+        "SELECT
+            short_links.name,
+            short_links.destination_type,
+            page.page_name,
+            product_groups.address_name AS product_group_address_name,
+            products.address_name AS product_address_name,
+            short_links.tracking_code,
+            short_links.url
+        FROM short_links
+        LEFT JOIN page ON short_links.page_id = page.page_id
+        LEFT JOIN product_groups ON short_links.product_group_id = product_groups.id
+        LEFT JOIN products ON short_links.product_id = products.id
+        WHERE (short_links.name <> '') AND (short_links.name NOT LIKE '%*%')"
+        . (pg_schema_has('short_links', 'recycled') ? " AND (short_links.recycled = '0')" : '') . "
+        ORDER BY short_links.name ASC
+        LIMIT 2000");
+
+    $label = lang('Short link');
+    $entries = array();
+
+    foreach (is_array($rows) ? $rows : array() as $row) {
+        $entries[] = pg_picker_short_link_entry($row, PATH, $label);
+    }
+
+    return $entries;
 }
 
 /**
@@ -1453,6 +1675,8 @@ function pg_picker_texts()
         '{n} chosen', 'A click adds or removes, Shift+click adds a row',
         'Choose a page', 'Pages', 'Page', 'Address', 'Archived', 'In the Recycle Bin', 'All', 'Page types', 'Not saved yet',
         'Pages you choose appear here.', 'Archived pages and pages in the Recycle Bin cannot be chosen.',
+        'Type to search…', '1 result · in every folder', '{n} results · in every folder', '{n}+ results · in every folder',
+        'All results for “{q}” in Browse', 'Browse…',
     ) as $text) {
         $texts[$text] = lang($text);
     }
@@ -1531,4 +1755,235 @@ function pg_picker_script()
 function pg_picker_browse_button($kind, $field_id, $title)
 {
     return '<button type="button" class="btn btn-outline theme-secondary pg-picker-browse" data-pg-picker-browse data-pg-picker-kind="' . h($kind) . '" data-pg-picker-for="' . h($field_id) . '" data-pg-picker-title="' . h($title) . '" aria-label="' . h(lang('Browse…') . ': ' . $title) . '"><span class="bi bi-folder2-open" aria-hidden="true"></span><span class="pg-btn-label">' . lang('Browse…') . '</span></button>';
+}
+
+/**
+ * The icon of a file that has no picture of its own, as the dialog draws
+ * it (fileIcon() in pg_picker.js). Pure.
+ *
+ * @param string $type the file's extension
+ * @return string a Bootstrap Icons class
+ */
+function pg_picker_file_icon($type)
+{
+    $type = strtolower((string) $type);
+    $map = array('pdf' => 'pdf', 'zip' => 'zip', 'rar' => 'zip', 'doc' => 'word', 'docx' => 'word', 'xls' => 'excel', 'xlsx' => 'excel', 'csv' => 'spreadsheet', 'ppt' => 'ppt', 'pptx' => 'ppt', 'txt' => 'text', 'md' => 'text', 'mp3' => 'music', 'wav' => 'music', 'ogg' => 'music', 'mp4' => 'play', 'webm' => 'play', 'mov' => 'play', 'js' => 'code', 'css' => 'code', 'html' => 'code', 'json' => 'code', 'xml' => 'code');
+
+    if (preg_match('/^(jpe?g|png|gif|webp|avif|svg|bmp)$/', $type)) {
+        return 'bi-file-earmark-image';
+    }
+
+    return isset($map[$type]) ? 'bi-file-earmark-' . $map[$type] : 'bi-file-earmark';
+}
+
+/**
+ * The line under a chosen item's name: its folder (the top folder left out
+ * once there is one below it), its picture size and its file size; a
+ * page's address first. Pure.
+ *
+ * @param array $item a resolve, search or list item
+ * @return string
+ */
+function pg_picker_field_meta($item)
+{
+    $parts = array();
+
+    if (isset($item['address'])) {
+        $parts[] = (string) $item['address'];
+    }
+
+    $path = (isset($item['path']) && is_array($item['path'])) ? $item['path'] : array();
+    $names = array();
+
+    foreach ((count($path) > 1) ? array_slice($path, 1) : $path as $crumb) {
+        $names[] = (string) $crumb['name'];
+    }
+
+    $parts[] = implode(' / ', $names);
+
+    if (!empty($item['width']) && !empty($item['height'])) {
+        $parts[] = (int) $item['width'] . ' × ' . (int) $item['height'];
+    }
+
+    $parts[] = (string) ($item['size_label'] ?? '');
+
+    return implode(' · ', array_filter($parts, 'strlen'));
+}
+
+/**
+ * What a field shows for its stored value: the state the resolve request
+ * gives it, the name, the line under it, the picture or an icon, and the
+ * note under the field for a value visitors or the site cannot use. The
+ * stored value stays whatever its state. Pure.
+ *
+ * @param array      $kind  one of pg_picker_kinds()
+ * @param mixed      $value the stored value
+ * @param array|null $item  its pg_picker_resolve_answer() item
+ * @return array state ('empty' or a pg_picker_value_state()), text, meta,
+ *               thumb, icon, note, tone ('', 'warning' or 'danger')
+ */
+function pg_picker_field_view($kind, $value, $item)
+{
+    $view = array('state' => 'empty', 'text' => '', 'meta' => '', 'thumb' => '', 'icon' => '', 'note' => '', 'tone' => '');
+    $values = pg_picker_values(array($value), $kind['value']);
+
+    if (!$values) {
+        return $view;
+    }
+
+    $state = is_array($item) ? (string) ($item['state'] ?? 'missing') : 'missing';
+    $view['state'] = $state;
+    $page = ($kind['source'] === 'pages');
+
+    if ($state === 'missing') {
+        // A name stays as stored; an id has no name left to tell.
+        $view['text'] = ($kind['value'] === 'id') ? '#' . $values[0] : (string) $values[0];
+        $view['meta'] = $page ? lang('Stored value · page not found') : lang('Stored value · file not found');
+        $view['icon'] = !empty($kind['pictures']) ? 'bi-image' : 'bi-file-earmark-x';
+        $view['note'] = $page ? lang('This page no longer exists; choose another.') : lang('This file is no longer in Files; choose another.');
+        $view['tone'] = 'warning';
+
+        return $view;
+    }
+
+    if ($state === 'hidden') {
+        $view['text'] = $page ? lang('A page in a folder you cannot open') : lang('A file in a folder you cannot open');
+        $view['icon'] = 'bi-lock';
+
+        return $view;
+    }
+
+    $view['text'] = (string) ($item['text'] ?? '');
+    $view['meta'] = pg_picker_field_meta($item);
+    $view['thumb'] = (string) ($item['thumb'] ?? '');
+    $view['icon'] = $page ? 'bi-file-earmark-text' : pg_picker_file_icon($item['type'] ?? '');
+
+    if ($state === 'binned') {
+        $view['note'] = $page
+            ? lang('This page is in the Recycle Bin; visitors cannot open it. Restore it or choose another.')
+            : lang('This file is in the Recycle Bin; visitors cannot open it. Restore it or choose another.');
+        $view['tone'] = 'danger';
+    } elseif ($state === 'offline') {
+        // A page is offline in an archived folder (get_page.php shows it
+        // to editors only).
+        $view['note'] = $page
+            ? lang('This page is in an archived folder; visitors cannot open it. Choose another, or take its folder out of the archive.')
+            : lang('Visitors cannot open this file; choose a picture everyone may see.');
+        $view['tone'] = 'warning';
+    }
+
+    return $view;
+}
+
+/**
+ * The field's markup: the posted value in a hidden input, the combobox the
+ * label names (the text input carries the field's id), the chosen value's
+ * picture and line, clear, Browse, the list the search fills and the note.
+ * pg_picker.js adds no markup of its own to the field and listens on the
+ * document, so the field also works where a screen injects it. Pure.
+ *
+ * @param string $kind_name a kind of pg_picker_kinds()
+ * @param string $name      the posted name
+ * @param mixed  $value     the stored value
+ * @param array  $view      pg_picker_field_view()
+ * @param array  $options   id (default the name), title (the dialog's),
+ *                          placeholder, describedby (ids of the help text),
+ *                          invalid (a form's check refused the value: a red
+ *                          box until another is chosen; the form shows the
+ *                          message), value_attributes (name => value,
+ *                          more attributes of the posted hidden input, such
+ *                          as a screen script's data-on hook)
+ * @return string
+ */
+function pg_picker_field_markup($kind_name, $name, $value, $view, $options = array())
+{
+    $id = (string) ($options['id'] ?? $name);
+    $title = (string) ($options['title'] ?? lang('Choose a file'));
+    $placeholder = (string) ($options['placeholder'] ?? lang('Type to search…'));
+    $empty = ($view['state'] === 'empty');
+    $note = ($view['note'] !== '');
+    $described = trim($id . '_meta ' . ($options['describedby'] ?? '') . ($note ? ' ' . $id . '_note' : ''));
+    $invalid = !empty($options['invalid']);
+    $classes = 'pg-pfield' . ($empty ? ' is-empty' : '') . (($view['tone'] !== '') ? ' is-' . $view['tone'] : '') . ($invalid ? ' is-error' : '');
+    $thumb = '';
+    $value_attributes = '';
+
+    foreach ((array) ($options['value_attributes'] ?? array()) as $attribute => $attribute_value) {
+        if (preg_match('/^[a-z][a-z0-9-]*$/', (string) $attribute)) {
+            $value_attributes .= ' ' . $attribute . '="' . h((string) $attribute_value) . '"';
+        }
+    }
+
+    if ($view['thumb'] !== '') {
+        $thumb = '<img src="' . h($view['thumb']) . '" alt="" loading="lazy"/>';
+    } elseif ($view['icon'] !== '') {
+        $thumb = '<span class="bi ' . h($view['icon']) . '"></span>';
+    }
+
+    return '<div class="' . $classes . '" data-pg-picker-field data-pg-picker-kind="' . h($kind_name) . '" data-pg-picker-title="' . h($title) . '">'
+        . '<input type="hidden" name="' . h($name) . '" value="' . h($empty ? '' : (string) $value) . '"' . $value_attributes . ' data-pg-picker-value/>'
+        . '<div class="pg-pfield-row">'
+        . '<div class="pg-pfield-box">'
+        . '<span class="pg-pfield-thumb" aria-hidden="true">' . $thumb . '</span>'
+        . '<span class="pg-pfield-text">'
+        . '<input type="text" id="' . h($id) . '" class="pg-pfield-input" value="' . h($view['text']) . '" placeholder="' . h($placeholder) . '" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="' . h($id) . '_list" aria-describedby="' . h($described) . '"' . ($invalid ? ' aria-invalid="true"' : '') . ' autocomplete="off" spellcheck="false"/>'
+        . '<span class="pg-pfield-meta" id="' . h($id) . '_meta">' . h($view['meta']) . '</span>'
+        . '</span>'
+        . '<button type="button" class="pg-pfield-clear" aria-label="' . h(lang('Clear the choice')) . '" title="' . h(lang('Clear the choice')) . '"><span class="bi bi-x-lg" aria-hidden="true"></span></button>'
+        . '<span class="pg-pfield-caret bi bi-chevron-down" aria-hidden="true"></span>'
+        . '</div>'
+        . '<button type="button" class="btn btn-outline theme-secondary pg-pfield-browse" aria-label="' . h(lang('Browse…') . ': ' . $title) . '" title="' . h(lang('Browse…')) . '"><span class="bi bi-folder2-open" aria-hidden="true"></span><span class="pg-btn-label">' . lang('Browse…') . '</span></button>'
+        . '</div>'
+        . '<div class="pg-pfield-pop" hidden>'
+        . '<div class="pg-pfield-status" role="status" aria-live="polite"></div>'
+        . '<div class="pg-pfield-list" id="' . h($id) . '_list" role="listbox" aria-label="' . h($title) . '"></div>'
+        . '</div>'
+        . ($note ? '<div class="form-text pg-pfield-note" id="' . h($id) . '_note"><span class="bi ' . (($view['tone'] === 'danger') ? 'bi-trash3' : 'bi-exclamation-triangle-fill') . ' me-1" aria-hidden="true"></span>' . h($view['note']) . '</div>' : '')
+        . '</div>';
+}
+
+/**
+ * The picker field (the second face of the picker): a type-to-search
+ * combobox for a kind with Browse beside it, showing the stored value with
+ * its picture, folder and size, or marked when it is missing, offline or
+ * binned. The stored value is posted unchanged until another is chosen.
+ * The screen prints pg_picker_script() once where the field is shown.
+ *
+ * @param string $kind_name a kind of pg_picker_kinds()
+ * @param string $name      the posted name
+ * @param mixed  $value     the stored value (a name or an id, as the kind stores)
+ * @param array  $options   pg_picker_field_markup(); user (id, role) where
+ *                          the request has no USER_ID / USER_ROLE
+ * @return string
+ */
+function pg_picker_field($kind_name, $name, $value, $options = array())
+{
+    $kinds = pg_picker_kinds();
+
+    if (!isset($kinds[$kind_name])) {
+        return '';
+    }
+
+    $kind = $kinds[$kind_name];
+    $item = null;
+    $values = pg_picker_values(array($value), $kind['value']);
+
+    if (($kind['source'] === 'pages') && !isset($options['title'])) {
+        $options['title'] = lang('Choose a page');
+    }
+
+    $user = null;
+
+    if (isset($options['user']['id'], $options['user']['role'])) {
+        $user = array('id' => $options['user']['id'], 'role' => $options['user']['role']);
+    } elseif (defined('USER_ID') && defined('USER_ROLE')) {
+        $user = array('id' => USER_ID, 'role' => USER_ROLE);
+    }
+
+    if ($values && $user) {
+        $answer = pg_picker_resolve_answer(array('kind' => $kind_name, 'values' => $values), $user);
+        $item = $answer['items'][0] ?? null;
+    }
+
+    return pg_picker_field_markup($kind_name, $name, $value, pg_picker_field_view($kind, $value, $item), $options);
 }

@@ -119,9 +119,17 @@ jobs:
         if: ${{ hashFiles('tools/build_code_editor.php') != '' }}
         run: php tools/build_code_editor.php --check
 
+      # The long-line rule of the memory files compares with the commit the
+      # change starts from: the pull request's base, or the branch head before
+      # a push. The checkout is one commit deep, so that commit is fetched; a
+      # base that cannot be fetched fails the step, never skips the rule.
       - name: Memory index matches its files (tools/memory_index.php --check)
         if: ${{ hashFiles('tools/memory_index.php') != '' }}
-        run: php tools/memory_index.php --check
+        env:
+          MEMORY_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$MEMORY_BASE"
+          php tools/memory_index.php --check "--base=$MEMORY_BASE"
 
   # What the pull request's branch carries (tools/check_pr.php): no commit
   # with a Co-Authored-By: or Claude-Session: trailer, Erdal Güral as every

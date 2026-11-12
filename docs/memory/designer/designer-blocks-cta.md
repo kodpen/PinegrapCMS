@@ -9,7 +9,7 @@ description: General CTA blocks in a family file (cta- prefix, core Marketing gr
 ## What does CTA: Sticky Bar draw?
 - `cta-sticky`: `section.pg-sticky-bar border-bottom py-2` with the Sticky interaction (`_fx {effect: 'sticky'}`, pg_fx's `position: sticky; top: 0`). Inside a container: `h2` title drawn as `h6` (`me-auto`), a small line shown from md up, two small buttons (btn-primary, btn-outline-secondary).
 - Sticky holds only inside the element the bar sits in: put it at the top of a wrapper that holds the rest of the page. The Car Dealership home wraps everything after the first panel in a "Showroom" div for that.
-- A header that is sticky too would cover it; the bar has no offset of its own (the interaction's offset field gives one).
+- A header that is sticky too would cover it; the bar has no offset of its own (the interaction's offset field gives one). For a product page, Product Bar sticks 56 px down with section links ([[designer-block-product-bar]]).
 
 ## What does its rule do?
 - `pg-sticky-bar`: the page colour (`var(--bs-body-bg)`); where the browser can blur behind (`@supports backdrop-filter`), `rgba(var(--bs-body-bg-rgb), .86)` with a blur, so the page shows faintly through. No fixed colour, so it follows the palette in both themes.

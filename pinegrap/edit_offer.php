@@ -57,7 +57,6 @@ $editor = array(
     'product_groups'   => _pg_offer_product_groups(),
     'condition_types'  => _pg_offer_condition_types(),
     'action_types'     => _pg_offer_action_types(),
-    'pages_html'       => select_page($state['offer']['upsell']['page_id']),
     'labels'           => array(
         'save'                   => lang('Save'),
         'create'                 => lang('Create'),

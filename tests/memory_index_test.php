@@ -5,7 +5,7 @@
  * Tests for the pure parts of tools/memory_index.php: the module field of a
  * memory file's frontmatter, the size a memory file is measured by, the
  * generated list of includes/fn/ modules, the decision marks, the clusters
- * and the links to memory files that do not exist.
+ * and their start files, and the links to memory files that do not exist.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -179,6 +179,24 @@ function test_memory_index_clusters_name_and_start()
 	pg_assert_same(array(array('ab-cd', 6, null)), memory_index_clusters($files), 'a tie goes to the shorter form; no start file');
 }
 
+// A cluster of ten or more needs a start file in either form; nine do not,
+// and a plan's files are never held to it.
+function test_memory_index_cluster_errors()
+{
+	pg_assert_same(array(), memory_index_cluster_errors('ui', array(
+		array('list-table', 44, 'list-table-overview.md'),
+		array('bootstrap-6', 12, 'bootstrap-6.md'),
+		array('main-menu', 9, null),
+	)), 'a start file in either form, or fewer than ten files');
+
+	$errors = memory_index_cluster_errors('ui', array(array('main-menu', 9, null), array('picker-field', 10, null), array('image-editor', 67, null)));
+	pg_assert_same(2, count($errors), 'one error per cluster of ten or more');
+	pg_assert_contains('docs/memory/ui/picker-field-*: 10 files and no start file; add picker-field-overview.md', $errors[0]);
+	pg_assert_contains('docs/memory/ui/image-editor-*: 67 files', $errors[1]);
+
+	pg_assert_same(array(), memory_index_cluster_errors('plans', array(array('design-template', 12, null))), 'plans are left out');
+}
+
 function test_memory_index_folder_lists_clusters()
 {
 	$readme = memory_index_folder('ui', '- A rule.', array(array('list-table', 44, 'list-table-overview.md'), array('image-editor', 9, null)));
@@ -210,4 +228,56 @@ function test_memory_index_broken_links_ignore_other_paths()
 		. "`designer-blocks-<prefix>.md`, `erp/<name>.md`, `![[file]]`, `[[name]]`, [[Name]], tools/z.md, a.md\n";
 
 	pg_assert_same(array(), memory_index_broken_links($text, array()));
+}
+
+// A line of $n characters, made of $char.
+function memory_index_test_line($n, $char = 'a')
+{
+	return '- ' . str_repeat($char, $n - 2);
+}
+
+// The long-line rule: a line over MAX_LINE_CHARS characters the branch
+// adds or rewrites is refused; one that stands word for word in the file at
+// the base is let through, wherever it now stands.
+function test_memory_index_long_lines_compare()
+{
+	$long = memory_index_test_line(501);
+	$old = memory_index_test_line(600, 'b');
+	$base = "---\nname: x\n---\n\n## Q?\n$old\n- short\n";
+
+	pg_assert_same(500, MAX_LINE_CHARS, 'the limit of workflow/memory-writing.md');
+	pg_assert_same(array(), memory_index_long_lines($base, $base), 'unchanged');
+	pg_assert_same(array(), memory_index_long_lines("---\nname: x\n---\n\n## New?\n- added\n\n## Q?\n- short\n$old\n", $base), 'an old line moved is let through');
+	pg_assert_same(array(array(7, $long)), memory_index_long_lines("---\nname: x\n---\n\n## Q?\n$old\n$long\n- short\n", $base), 'an added line');
+	$rewritten = $old . ' And more.';
+	pg_assert_same(array(array(6, $rewritten)), memory_index_long_lines("---\nname: x\n---\n\n## Q?\n$rewritten\n- short\n", $base), 'a rewritten line');
+	pg_assert_same(array(array(6, $old)), memory_index_long_lines($base, null), 'a new or renamed file has no base');
+	pg_assert_same(array(array(7, $old)), memory_index_long_lines("---\nname: x\n---\n\n## Q?\n$old\n$old\n", $base), 'an old line written twice: the copy is new');
+}
+
+function test_memory_index_long_lines_counts_characters()
+{
+	pg_assert_same(array(), memory_index_long_lines(memory_index_test_line(500) . "\n", null), 'exactly 500 passes');
+	pg_assert_same(array(array(1, memory_index_test_line(501))), memory_index_long_lines(memory_index_test_line(501) . "\n", null), '501 is refused');
+	$turkish = memory_index_test_line(500, 'ş');
+	pg_assert_true(strlen($turkish) > 500, 'more than 500 bytes');
+	pg_assert_same(array(), memory_index_long_lines($turkish . "\n", null), 'characters are counted, not bytes');
+	pg_assert_same(array(), memory_index_long_lines(memory_index_test_line(500) . "\r\n", null), 'a carriage return is not a character of the line');
+}
+
+// A folder README: only the hand-written key rules block counts; the
+// generated part under it does not.
+function test_memory_index_long_lines_readme_key_rules()
+{
+	$long = memory_index_test_line(520);
+	$generated = memory_index_test_line(900, 'g');
+	$readme = function ($rules) use ($generated) {
+		return "# x\n\n" . KEY_RULES_START . "\n$rules\n" . KEY_RULES_END . "\n\n## Clusters\n$generated\n";
+	};
+
+	pg_assert_same(array(), memory_index_readme_long_lines($readme('- short'), null), 'the generated part is not counted');
+	pg_assert_same(array(array(5, $long)), memory_index_readme_long_lines($readme("- short\n$long"), $readme('- short')), 'a long key rule');
+	pg_assert_same(array(), memory_index_readme_long_lines($readme("- short\n$long"), $readme($long)), 'a key rule already at the base');
+	pg_assert_same(array(array(4, $long)), memory_index_readme_long_lines($readme($long), null), 'a new README');
+	pg_assert_same(array(), memory_index_readme_long_lines("# x\n$long\n", null), 'no key rules block: nothing hand-written');
 }

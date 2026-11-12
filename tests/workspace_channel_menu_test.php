@@ -20,8 +20,8 @@ if (!defined('PG_TEST_RUNNER')) {
 // customer channel's sales quote (it is about the channel's own customer), a
 // mailbox channel's New e-mail (the mail becomes a card in that channel) and,
 // where the header is narrow, the header's own buttons (the tour among them),
-// and the reader's own choices for the channel in this browser (answers read
-// aloud, how an application's one-line messages read).
+// and the reader's own choices in this browser (answers read aloud, the sound
+// when something comes for them, how an application's one-line messages read).
 // Creating or changing other records is a / command or the record's own
 // screen, never an item here: a new key is added only for an item that
 // belongs to the channel itself (docs/memory/workspace/README.md key rules).
@@ -32,7 +32,7 @@ function workspace_channel_menu_test_allowed()
 		'edit_channel', 'sales_quote_new', 'mail_new',
 		'notify_all', 'notify_mentions', 'notify_none',
 		'apl_folded', 'apl_all', 'apl_hidden',
-		'voice_speak', 'claude_allow', 'ai_allow', 'voice_allow',
+		'voice_speak', 'sound_on', 'claude_allow', 'ai_allow', 'voice_allow',
 		'make_private', 'make_public', 'grp_move_channel',
 		'tpl_apply', 'tpl_from_channel', 'share_start',
 		'era_list', 'era_clear', 'chx_menu', 'archive', 'unarchive', 'leave_channel',

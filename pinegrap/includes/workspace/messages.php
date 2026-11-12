@@ -393,7 +393,9 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         // The conversation a mail card answers by e-mail (mail_reply.php), 0 for none.
         'mail_reply'  => ($mail && !$deleted && function_exists('ws_mail_reply_offer')) ? ws_mail_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post) : 0,
         // An outgoing mail that could not leave, offered to send again (mail_send.php), 0 for none.
-        'mail_resend' => ($mail && !$deleted && function_exists('ws_mail_resend_offer')) ? ws_mail_resend_offer($extra['mail'][(int) $row['sender_id']] ?? null, $can_post, $viewer) : 0,
+        'mail_resend' => ($mail && !$deleted && function_exists('ws_mail_resend_offer')) ? ws_mail_resend_offer($extra['mail'][(int) $row['sender_id']] ?? null, $can_post, $viewer, $row) : 0,
+        // The mail its text offers to forward as e-mail (mail_forward.php), 0 for none.
+        'mail_forward' => ($mail && !$deleted && function_exists('ws_mail_forward_offer')) ? ws_mail_forward_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $viewer) : 0,
         // Its status and holder, for the same reader (mail_status.php), null for none.
         'mail_state'  => ($mail && !$deleted && function_exists('ws_mail_state_offer'))
             ? ws_mail_state_offer($extra['mail'][(int) $row['sender_id']] ?? null, ws_mail_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post), (int) $viewer['id']) : null,
@@ -455,6 +457,10 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
                 // checks it again).
                 'canvas_edit'    => function_exists('ws_canvas_edit_mark') ? ws_canvas_edit_mark($canvas, (string) $row['sender_kind'],
                     !empty($payload['can_edit']) && $can_post) : null,
+                // An agent's live page (page_card.php): its card instead of
+                // the file line; null for any other file.
+                'page'     => (($extension === 'html') && function_exists('ws_page_card'))
+                    ? ws_page_card($id, (int) $row['file_id'], $can_post) : null,
                 'image'    => ($kind === 'image'),
                 'kind'     => $kind,
                 'ext'      => $extension,

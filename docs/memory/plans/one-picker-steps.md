@@ -6,23 +6,27 @@ description: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry an
 ## Which steps are there?
 - S under 400 product lines, M about 1,000; each step with its tests and its topic file `ui/picker-<part>.md`; from the tenth such file on, `ui/picker-overview.md`.
 
-- PKV (S, no product code) The screens. Done in #8511: the dialog and the field drawn as pictures in `plans/one-picker/`, desktop and phone: files as a grid and as a list, pages, an empty folder, search results, Upload, a chosen value, a missing or binned value; what each shows and which step builds it: `one-picker-visuals.md`. Approved by the owner (2026-11-10, #8514).
+- PKV (S, no product code) The screens, drawn in `plans/one-picker/` (`one-picker-visuals.md`). Done in #8511, approved by the owner (2026-11-10, #8514).
 
-- PK1 (M) Registry and endpoint. `includes/fn/picker.php` and `picker.php`: the kinds `file`, `image`, `public_image`, `site_icon` and `page`; the requests `list`, `search`, `tree` and `resolve`; the access verdict, the folded name match, paging. `file_picker_search.php` answers through it with its contract unchanged. No screen changes. Done (#8515, ui/picker-registry.md)
+- PK1 (M) Registry and endpoint: `includes/fn/picker.php`, `picker.php`, the kinds and the requests. Done (#8515, ui/picker-registry.md)
 
-- PK2 (M) The dialog. After PKV and PK1. `assets/js/pg_picker.js` and its styles in the panel bundle: tree, grid and list, search, sort, one pick, keyboard, the phone sheet; the file kinds. Shown on one screen (Settings, Site Icon) behind a Browse button; the owner approves the built dialog the same way. Done (#8562, ui/picker-dialog.md)
+- PK2 (M) The dialog: `assets/js/pg_picker.js`, tree, grid and list, search, keyboard, the phone sheet. Done (#8562, ui/picker-dialog.md)
 
-- PK3 (M) Upload, Recent and several picks. Upload by drop or by choice into the open folder under the folder's edit right; a person's recent picks, kept in the browser; `multiple` for the product pictures. Done in #8630 (`ui/picker-upload.md`).
+- PK3 (M) Upload, Recent and several picks. Done in #8630 (`ui/picker-upload.md`).
 
 - PK4 (M) Pages in the dialog. Kind `page`: folders, the page type filter, search, archived and binned marks (neither can be chosen, owner 2026-11-10, #8514), and extra entries a caller hands in (the designer's unsaved tabs, `tab:<key>`). Done in #8727 (`ui/picker-pages.md`).
 
-- PK5 (M) The field. `pg_picker_field()`: the combobox with Browse and the chosen value with its picture; the Settings pictures and the short link File fields move to it. This delivers what F3 of the search plan asked for.
+- PK5 (M) The field. `pg_picker_field()`: the combobox with Browse and the chosen value with its picture; the Settings pictures and the short link File fields move to it. This delivers what F3 of the search plan asked for. Done in #8751 (`ui/picker-field.md`).
 
-- PK6 (M) Page fields. `select_page()` and the selects built from `get_page_options()` move to `pg_picker_field('page', …)`; Create Page and Edit Page drop their `<template>` fill; a stored archived or binned page stays, marked.
+- PK6 (M) Page fields, first part. Typed page kinds and the field's page wording; Create Page and Edit Page move to `pg_picker_field()` and drop their `<template>` fill (the designer's page type pane keeps its selects until PK8); Settings (Commerce, Privacy, Security) and the User Start Page; a stored archived or binned page stays, marked, and Browse opens on its folder. Done in #8782 (`ui/page-form-page-fields.md`).
 
-- PK7 (M) The editor bridge. CKEditor's Link and Image dialogs open the picker (pages, files, short links, pictures; Unsplash kept as a source); `editor_select_image.php` and `editor_select_page_or_file.php` are retired.
+- PK6b (M) Page fields, second part. The rest of `select_page()` and `get_page_options()`: the product builder, Edit Offer, the short link form and the File Manager short link window, the menu item, the calendar event; whether quick edit keeps its own lists. Done in #8803 (`ui/picker-page-fields-screens.md`).
 
-- PK8 (M) The designer bridge. `sdOpenFilePicker()` and `sdOpenImagePicker()` call `pgPicker` and the fake `CKEDITOR` goes; the widget page pickers (`_swPageOptions()`) get Browse; texts through `_sdT()`.
+- PK6c (S) The e-mail campaign profile's Body Page (by view access) and the form page selects (`any form`, the product builder's custom form). Done in #8824 (`ui/picker-page-fields-screens.md`).
+
+- PK7 (M) The editor bridge: CKEditor's Link and Image dialogs open the picker; TinyMCE 3 keeps its lists (#8835). Done in #8858 (`ui/picker-editor-bridge.md`).
+
+- PK8 (M) The designer bridge. `sdOpenFilePicker()` and `sdOpenImagePicker()` call `pgPicker` and the fake `CKEDITOR` goes; the widget page pickers (`_swPageOptions()`) get Browse; the page type pane's page selects become picker fields (`pg_page_form_type_fields()` with `true`); texts through `_sdT()`. Then `editor_select_image.php` and `editor_select_page_or_file.php` are deleted with what only they use, no redirect (#8836).
 
 - PK9 (M) The remaining screens. The product builder's pictures, the contact photo, the image editor's From the site lists, the theme designer's file list, and the Workspace's "from the files" picker with its chat attachment refusal kept (`platform/file-copy-chat-attachments.md`).
 
@@ -34,5 +38,4 @@ description: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry an
 
 ## Which questions are open?
 - Each is asked as an `architect` issue before the step that needs it.
-- PK7: is the previous editor (TinyMCE 3) bridged to the picker, or does it keep its own lists until it is removed?
-- PK7: do the two retired browser addresses answer with a redirect for one release, or go at once?
+- None now: the two PK7 questions are decided on #8835 and #8836 (the PK7 and PK8 lines).

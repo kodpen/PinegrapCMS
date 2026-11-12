@@ -99,7 +99,8 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'coworking-',
         group: { title: _sdT('Coworking'), icon: 'bi-laptop' },
         items: [
-            { label: _sdT('Coworking: Workspace Hero'), type: 'component', icon: 'bi-signpost-split', extra: { componentType: 'coworking-hero' } }
+            { label: _sdT('Coworking: Workspace Hero'), type: 'component', icon: 'bi-signpost-split', extra: { componentType: 'coworking-hero' },
+              desc: _sdT('A headline over four ways to work, each with an icon, a starting price and an arrow, beside a mosaic of two photos.') }
         ],
         build: function (ctype) {
             if (ctype === 'coworking-hero') return buildHero();

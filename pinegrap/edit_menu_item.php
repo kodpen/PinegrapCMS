@@ -54,8 +54,6 @@ $menu_id = $row['id'];
 $menu_name = $row['name'];
 $menu_item_name = $row['menu_item_name'];
 $parent_id = $row['parent_id'];
-// The stored page stays in the page picker, so a plain Save keeps the link.
-$stored_link_page_id = (int) $row['link_page_id'];
 
 // if user has a user role and if they do not have access to this menu, output error
 if (($user['role'] == 3) && (in_array($menu_id, get_items_user_can_edit('menus', $user['id'])) == FALSE)) {
@@ -171,7 +169,6 @@ if (!$_POST) {
                     ' . pg_menu_item_form_layout(
                         pg_menu_item_form_cards($liveform, array(
                             'parent_id_options' => $parent_id_options,
-                            'keep_page_id' => $stored_link_page_id,
                             'menu_name' => $menu_name,
                             'menu_url' => h($items_url),
                             'status' => pg_menu_item_form_children_status($child_count),

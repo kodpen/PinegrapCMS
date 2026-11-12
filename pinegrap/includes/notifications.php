@@ -355,7 +355,11 @@ function pg_notification_display($notification, $reader_role = null)
 		'kind'        => '',
 		'glyph'       => '',
 		'join'        => '',
-		'fold'        => ''
+		'fold'        => '',
+		// The bell's short title and the channel under it (ws_bell_title());
+		// the push banner keeps the whole sentence in title.
+		'short'       => '',
+		'place'       => ''
 	);
 
 	if ($action == 'new_order') {
@@ -471,6 +475,8 @@ function pg_notification_display($notification, $reader_role = null)
 				$display['glyph']       = (string) ($described['icon'] ?? '');
 				$display['join']        = (string) ($described['join'] ?? '');
 				$display['fold']        = (string) ($described['fold'] ?? '');
+				$display['short']       = h((string) ($described['short'] ?? ''));
+				$display['place']       = h((string) ($described['place'] ?? ''));
 			}
 		}
 
@@ -893,6 +899,18 @@ function pg_notification_module($action)
 	}
 
 	return 'system';
+}
+
+// Whether a bell row asks something of its reader, for the bell's "Asked of
+// me" chip: a Workspace row that mentions them, asks them a question or asks
+// them to approve. Pure.
+function pg_notification_asks($action, $kind = '')
+{
+	if ((string) $action !== 'workspace') {
+		return false;
+	}
+
+	return in_array((string) $kind, array('mention', 'question_asked', 'approval_requested'), true);
 }
 
 // The day heading a bell row stands under: today, yesterday or earlier, read

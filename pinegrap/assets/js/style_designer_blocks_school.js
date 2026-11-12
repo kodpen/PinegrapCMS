@@ -237,9 +237,12 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'school-',
         group: { title: _sdT('School'), icon: 'bi-backpack' },
         items: [
-            { label: _sdT('School: Hero'),        type: 'component', icon: 'bi-backpack',      extra: { componentType: 'school-hero' } },
-            { label: _sdT('School: Age Ladder'),  type: 'component', icon: 'bi-bar-chart-steps', extra: { componentType: 'school-ages' } },
-            { label: _sdT('School: School Year'), type: 'component', icon: 'bi-calendar3',     extra: { componentType: 'school-year' } }
+            { label: _sdT('School: Hero'),        type: 'component', icon: 'bi-backpack',      extra: { componentType: 'school-hero' },
+              desc: _sdT('A headline, a short text and two buttons with a finder of programmes by age, beside a photograph of the school garden.') },
+            { label: _sdT('School: Age Ladder'),  type: 'component', icon: 'bi-bar-chart-steps', extra: { componentType: 'school-ages' },
+              desc: _sdT('Programmes laid on a scale of ages from two to ten, each spanning its years as a link, with the class groups as pills below.') },
+            { label: _sdT('School: School Year'), type: 'component', icon: 'bi-calendar3',     extra: { componentType: 'school-year' },
+              desc: _sdT('Three term cards with their length, name, highlights and the report home at the end, a holiday after each and a summer school button.') }
         ],
         build: function (ctype) {
             if (ctype === 'school-hero') return buildHero();

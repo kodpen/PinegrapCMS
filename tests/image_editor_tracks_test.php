@@ -175,10 +175,10 @@ function test_image_editor_tracks_edit_out_and_loop()
 	}
 
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
-	pg_assert_same(array('delay' => 900, 'ms' => 600), $r['move'], 'moved 0.5 s earlier: its delay from the end grows');
-	pg_assert_same(array('delay' => 0, 'ms' => 600), $r['toEnd'], 'no later than the end');
-	pg_assert_same(array('delay' => 400, 'ms' => 1000), $r['start'], 'the start end keeps the end');
-	pg_assert_same(array('delay' => 200, 'ms' => 800), $r['end'], 'the end end changes its delay and length');
+	pg_assert_same(array('delay' => 900, 'ms' => 600, 'at' => 4100), $r['move'], 'moved 0.5 s earlier: its delay from the end grows, and it keeps that end');
+	pg_assert_same(array('delay' => 0, 'ms' => 600, 'at' => 5000), $r['toEnd'], 'no later than the end');
+	pg_assert_same(array('delay' => 400, 'ms' => 1000, 'at' => 4600), $r['start'], 'the start end keeps the end');
+	pg_assert_same(array('delay' => 200, 'ms' => 800, 'at' => 4800), $r['end'], 'the end end changes its delay and length');
 	pg_assert_same(array('delay' => 400), $r['loop'], 'the loop starts later after the entrance');
 	pg_assert_same(array('delay' => 0), $r['loopBack'], 'never before the entrance ends');
 	pg_assert_same(array('delay' => 3100), $r['loopPast'], 'a tenth of a second before the exit at most');

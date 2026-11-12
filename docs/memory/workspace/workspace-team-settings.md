@@ -6,7 +6,7 @@ description: Departments and Team members in Site Settings (Team and working hou
 ## What moved, and what stays on the old screen?
 - PR #8721 (SW2a): the Departments card (`pgset-ws-departments`, each department in a drawer) and the Team members card (`pgset-ws-people`) are in Team and working hours. Their old cards keep working on `workspace_settings.php` until SW7; `pg_settings_legacy_anchors()` maps `ws-departments`, `ws-people`, `ws-defaults` to the new cards.
 - "Who is in the team" was an info card on the old screen; its text is the Team members card's footnote, and the choice is that table's "Not in the team" column.
-- The Working calendar is the next step (SW2b); until then the category's link card links only it.
+- The Working calendar followed (SW2b): [[workspace-holiday-settings]]. With it the category's card linking the old screen (`pgset-ws-team-screen`) went: nothing of the team part is left to link.
 
 ## Where are the checks and writes?
 - `includes/workspace/team_settings.php` (PR #8721): `ws_settings_candidates()`, `ws_settings_people_check()` (pure: rank rule, hours, nobody takes themselves out, default stored as 0) and `ws_settings_people_write()`, `ws_settings_department_check()` / `_save()` / `_archive()`, and the markup `ws_settings_department_fields()` and `ws_settings_people_rows_html()`, which take a callback naming each field.

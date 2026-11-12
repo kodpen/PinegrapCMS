@@ -8,7 +8,7 @@ description: Order of the polishing round after Launch: every shipped template's
 - From when L3 lands, up to four templates at a time, in the order below; a template's `-2` waits for its `-1`.
 
 ## In which order, and why?
-0. G1, G2 (after L1): general blocks the sector templates share, each checked against the existing groups first, so the later families stay small and reuse them. Done in #8082: eight of ten were already palette blocks; spaces to hire and seasonal hours were added. Which block covers each: [[designer-blocks-general]].
+0. G1, G2 (after L1): general blocks the sector templates share, checked against the existing groups first, so later families stay small. Done in #8082: eight of ten were already palette blocks; spaces to hire and seasonal hours were added. Which block covers each: [[designer-blocks-general]].
 1. Built on the shared builders (`$story_band`, `$framed`, `$ask_band`, `$figures`, `$testimonials`): they make the set look alike. Most builders first: wedding, photo, school, architecture, campsite, cityhall, construction, museum, hotel, travel, gym, music.
 2. Sector templates with the same eyebrow, figures, lift-card and FAQ pattern, in the picker's order: clinic, salon, cafe, events, courses, law, realestate, portfolio, appstudio, dealership, market, social, charity.
 3. The shop templates: store, boutique, bookshop.
@@ -32,17 +32,17 @@ description: Order of the polishing round after Launch: every shipped template's
 
 - Brewery: `-1` #8666, `-2` #8714 done.
 
-- Carrental: `-1` #8669 done.
+- Carrental: `-1` #8669, `-2` #8747 done.
 
-- Filmstudio: `-1` #8689 done; `-2` open.
+- Filmstudio: `-1` #8689, `-2` #8739 done.
 
-- Florist: `-1`, `-2` open.
+- Florist: `-1` #8763, `-2` #8820 done.
 
-- Homeservices: `-1`, `-2` open.
+- Homeservices: `-1` #8773, `-2` #8826 done.
 
-- Library: `-1`, `-2` open.
+- Library: `-1` #8794, `-2` #8846 done.
 
-- Podcast: `-1`, `-2` open.
+- Podcast: `-1` #8785, `-2` #8845 done.
 
 - Recruitment: `-1`, `-2` open.
 

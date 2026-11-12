@@ -60,7 +60,8 @@
  * A folder README also lists the folder's clusters (MIN_CLUSTER_FILES or
  * more files sharing their first two name tokens, a plural s aside) with the
  * count and the start file, <prefix>.md or <prefix>-overview.md, when the
- * folder has one, so a session sees where a large topic begins.
+ * folder has one, so a session sees where a large topic begins. A cluster of
+ * MIN_OVERVIEW_FILES or more with no start file stops the run (plans aside).
  *
  * A folder index that exists without the two markers (an older copy taken
  * during a merge) stops the run, so the rules are never dropped in silence;
@@ -86,7 +87,9 @@
  *         outside a known folder, a module field names no module file, a
  *         folder index has no key rules block or a merge conflict inside it,
  *         a topic file or decisions part links a memory file that does not
- *         exist ([[name]] or folder/file.md; plans are exempt), or, with --check, an index differs from what the files produce.
+ *         exist ([[name]] or folder/file.md; plans are exempt), a cluster of
+ *         MIN_OVERVIEW_FILES files or more has no start file, or, with
+ *         --check, an index differs from what the files produce.
  *
  * Line endings do not count: files are read with CR removed and the indexes
  * are written with LF endings, so a checkout that turned them into CRLF passes.
@@ -106,6 +109,11 @@ if (PHP_SAPI !== 'cli') {
 const MAX_MEMORY_BYTES = 4096;
 const MAX_DESCRIPTION_CHARS = 200;
 
+// The longest memory line, in characters: the search tool shows a longer one
+// as "[Omitted long matching line]" (workflow/memory-writing.md). Only a line
+// the branch adds or rewrites is refused; one already at the base passes.
+const MAX_LINE_CHARS = 500;
+
 // The lines around the hand-written key rules of a folder index.
 const KEY_RULES_START = '<!-- key-rules:start -->';
 const KEY_RULES_END = '<!-- key-rules:end -->';
@@ -120,6 +128,11 @@ const DECISION_PART_PREFIX = 'decisions-made';
 
 // The fewest files sharing their first two name tokens that a README lists as a cluster.
 const MIN_CLUSTER_FILES = 6;
+
+// The fewest files of a cluster that must have a start file: read file by
+// file, a large cluster costs a session more calls than its start file costs
+// to keep (workflow/memory-writing.md).
+const MIN_OVERVIEW_FILES = 10;
 
 // Memory folders and what they hold, as listed in the top index.
 const FOLDERS = array(
@@ -150,6 +163,28 @@ $repository = dirname(__DIR__);
 $docs = $repository . '/docs';
 
 $errors = array();
+
+// The base the long-line rule compares with: --base=<commit> (tools/pre_push.sh
+// passes where the pushed branch left development), else where HEAD left
+// origin/development. Only the memory files changed since then are read.
+$base_given = '';
+foreach (array_slice($argv, 1) as $arg) {
+	if (strncmp($arg, '--base=', 7) === 0) {
+		$base_given = substr($arg, 7);
+	}
+}
+$base = memory_index_base($repository, $base_given, $base_error);
+$changed = ($base === null) ? array() : memory_index_changed_files($repository, $base);
+
+if ($base === null) {
+	$base_note = "the long-line check cannot read the base ($base_error): fetch origin/development"
+		. ' (git fetch origin development) or pass --base=<commit>';
+	if ($check) {
+		$errors[] = $base_note;
+	} else {
+		fwrite(STDERR, "Warning: $base_note; long lines were not checked.\n");
+	}
+}
 $folders = array();
 $others = array();
 $names = array();
@@ -202,6 +237,11 @@ foreach (memory_index_files($docs) as $relative) {
 			}
 			$modules[$stem] = $listed;
 		}
+	}
+
+	if ($in_memory && isset($changed['docs/' . $relative])) {
+		$errors = array_merge($errors, memory_index_long_line_errors('docs/' . $relative,
+			memory_index_long_lines($content, memory_index_git_file($repository, $base, 'docs/' . $relative))));
 	}
 
 	if ($in_memory) {
@@ -294,12 +334,22 @@ foreach ($folders as $folder => $entries) {
 	$relative = "memory/$folder/README.md";
 	$rules = memory_index_key_rules($docs . '/' . $relative, $error);
 
+	// Its hand-written key rules follow the long-line rule; the generated
+	// part does not.
+	if (isset($changed['docs/' . $relative]) && is_file($docs . '/' . $relative)) {
+		$errors = array_merge($errors, memory_index_long_line_errors('docs/' . $relative, memory_index_readme_long_lines(
+			(string) file_get_contents($docs . '/' . $relative), memory_index_git_file($repository, $base, 'docs/' . $relative))));
+	}
+
 	if ($rules === null) {
 		$errors[] = "docs/$relative: $error";
 		continue;
 	}
 
-	$indexes[$relative] = memory_index_folder($folder, $rules, memory_index_clusters(array_keys($entries)));
+	$clusters = memory_index_clusters(array_keys($entries));
+	$errors = array_merge($errors, memory_index_cluster_errors($folder, $clusters));
+
+	$indexes[$relative] = memory_index_folder($folder, $rules, $clusters);
 	$indexes["memory/$folder/INDEX.md"] = memory_index_folder_files($folder, $entries);
 }
 
@@ -877,6 +927,31 @@ function memory_index_clusters($files) {
 }
 
 /**
+ * The errors for the clusters of a folder that have MIN_OVERVIEW_FILES files
+ * or more and no start file (<prefix>-overview.md, or <prefix>.md as the
+ * older clusters have it), one per cluster. $clusters is what
+ * memory_index_clusters() returns. Plans are left out: a plan is deleted when
+ * it is finished, so its files are no lasting topic.
+ */
+function memory_index_cluster_errors($folder, $clusters) {
+
+	$errors = array();
+
+	if ($folder === 'plans') {
+		return $errors;
+	}
+
+	foreach ($clusters as $cluster) {
+		if ($cluster[1] >= MIN_OVERVIEW_FILES && $cluster[2] === null) {
+			$errors[] = 'docs/memory/' . $folder . '/' . $cluster[0] . '-*: ' . $cluster[1] . ' files and no start file; add '
+				. $cluster[0] . '-overview.md (workflow/memory-writing.md, "When does a cluster get an overview?")';
+		}
+	}
+
+	return $errors;
+}
+
+/**
  * The references in a memory file's text to memory files that do not exist,
  * each once, in the order met: a [[name]] link (a file name without .md, in
  * any folder) and a folder/file.md path whose folder is in FOLDERS, with or
@@ -927,4 +1002,176 @@ function memory_index_prefixed($items, $prefix) {
 	}
 
 	return $result;
+}
+
+/**
+ * The lines of $content over MAX_LINE_CHARS characters that do not stand
+ * word for word in $base, the same file where the branch left development
+ * (null: a new or renamed file, every long line counts). A line written
+ * more often than at the base counts for each extra copy. Returns
+ * array(array(line number, line), ...), in file order.
+ */
+function memory_index_long_lines($content, $base) {
+
+	$known = array();
+
+	if ($base !== null) {
+		foreach (explode("\n", str_replace("\r", '', (string) $base)) as $line) {
+			$known[$line] = isset($known[$line]) ? $known[$line] + 1 : 1;
+		}
+	}
+
+	$long = array();
+
+	foreach (explode("\n", str_replace("\r", '', (string) $content)) as $i => $line) {
+		if (mb_strlen($line, 'UTF-8') <= MAX_LINE_CHARS) {
+			continue;
+		}
+		if (!empty($known[$line])) {
+			$known[$line]--;
+			continue;
+		}
+		$long[] = array($i + 1, $line);
+	}
+
+	return $long;
+}
+
+/**
+ * The long lines of a folder README's hand-written key rules block, as
+ * memory_index_long_lines() finds them, numbered in the README; the
+ * generated part is not counted. $base is the README at the base, null
+ * when there was none.
+ */
+function memory_index_readme_long_lines($content, $base) {
+
+	$block = function ($text) {
+		$lines = explode("\n", str_replace("\r", '', (string) $text));
+		$starts = array_keys(array_map('trim', $lines), KEY_RULES_START, true);
+		$ends = array_keys(array_map('trim', $lines), KEY_RULES_END, true);
+		if (count($starts) !== 1 || count($ends) !== 1 || $ends[0] < $starts[0]) {
+			return null;
+		}
+		return array($starts[0] + 1, array_slice($lines, $starts[0] + 1, $ends[0] - $starts[0] - 1));
+	};
+
+	$now = $block($content);
+
+	if ($now === null) {
+		return array();
+	}
+
+	$then = ($base === null) ? null : $block($base);
+	$long = array();
+
+	foreach (memory_index_long_lines(implode("\n", $now[1]), ($then === null) ? null : implode("\n", $then[1])) as $found) {
+		$long[] = array($found[0] + $now[0], $found[1]);
+	}
+
+	return $long;
+}
+
+/**
+ * The error lines for the long lines of one file: its path, the line
+ * number, the length and the line's start, so the line is found.
+ */
+function memory_index_long_line_errors($path, $long) {
+
+	$errors = array();
+
+	foreach ($long as $found) {
+		$errors[] = $path . ':' . $found[0] . ': a line of ' . mb_strlen($found[1], 'UTF-8') . ' characters, more than '
+			. MAX_LINE_CHARS . '; split it ("' . mb_substr($found[1], 0, 60, 'UTF-8') . '...")';
+	}
+
+	return $errors;
+}
+
+/**
+ * Runs git in $repository; its standard output (null when git is missing or
+ * fails), with every byte kept.
+ */
+function memory_index_git($repository, $args) {
+
+	$command = 'git -C ' . escapeshellarg($repository);
+	foreach ($args as $arg) {
+		$command .= ' ' . escapeshellarg($arg);
+	}
+
+	if (!function_exists('proc_open')) {
+		return null;
+	}
+
+	$process = @proc_open($command, array(1 => array('pipe', 'w'), 2 => array('pipe', 'w')), $pipes);
+
+	if (!is_resource($process)) {
+		return null;
+	}
+
+	$out = stream_get_contents($pipes[1]);
+	stream_get_contents($pipes[2]);
+	fclose($pipes[1]);
+	fclose($pipes[2]);
+
+	return (proc_close($process) === 0) ? (string) $out : null;
+}
+
+/**
+ * The commit the long-line rule compares with: $given when set, else where
+ * HEAD left origin/development. null, with $error set, when there is none
+ * (no git, no origin/development, a shallow clone without the fork point).
+ */
+function memory_index_base($repository, $given, &$error) {
+
+	$error = '';
+
+	if ($given !== '') {
+		$sha = memory_index_git($repository, array('rev-parse', '--verify', '--quiet', $given . '^{commit}'));
+		if ($sha === null || trim($sha) === '') {
+			$error = "no commit $given here";
+			return null;
+		}
+		return trim($sha);
+	}
+
+	$sha = memory_index_git($repository, array('merge-base', 'HEAD', 'origin/development'));
+
+	if ($sha === null || trim($sha) === '') {
+		$error = 'no git, or no common commit with origin/development';
+		return null;
+	}
+
+	return trim($sha);
+}
+
+/**
+ * The files changed under docs/memory since $base, committed or not, new
+ * ones included, as path => true (paths from the repository root).
+ */
+function memory_index_changed_files($repository, $base) {
+
+	$changed = array();
+	$lists = array(
+		memory_index_git($repository, array('-c', 'core.quotePath=false', 'diff', '-z', '--name-only', '--no-renames', $base, '--', 'docs/memory')),
+		memory_index_git($repository, array('-c', 'core.quotePath=false', 'ls-files', '-z', '--others', '--exclude-standard', '--', 'docs/memory')),
+	);
+
+	foreach ($lists as $list) {
+		foreach (explode("\0", (string) $list) as $path) {
+			if ($path !== '') {
+				$changed[$path] = true;
+			}
+		}
+	}
+
+	return $changed;
+}
+
+/**
+ * A file as it stood at $base, null when it did not exist there (a new or
+ * renamed file).
+ */
+function memory_index_git_file($repository, $base, $path) {
+
+	return memory_index_git($repository, array('show', $base . ':' . $path));
 }

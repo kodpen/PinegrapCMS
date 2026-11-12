@@ -3,9 +3,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Ready reports: reports defined in code that a report screen opens by an
- * address parameter (view_order_report.php?ready=<key>) as a new, unsaved
- * report. Saving one makes it the person's own saved report. Every function
- * here is pure; the screen applies the entry to its form.
+ * address parameter (view_order_report.php?ready=<key>,
+ * view_visitor_report.php?ready=<key>) as a new, unsaved report. Saving
+ * one makes it the person's own saved report. Every function here is pure;
+ * the screen applies the entry to its form.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -34,6 +35,11 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * own period (pg_ready_report_url($key, $days)). sales_by_payment_method and
  * sales_by_source (the UTM source) are the strip's other entries. The order
  * report has no product level, so there is no sales by product.
+ *
+ * The visitor report's entries count visitors over time, by referring host
+ * name, by landing page and by country. They carry no date filter: their
+ * period is the screen's own preset (pg_ready_report_visitor_preset()), so
+ * the date changer stays, as on any visitor report without a date filter.
  *
  * @return array
  */
@@ -85,7 +91,64 @@ function pg_ready_reports()
             'filters' => pg_order_report_default_filters(),
             'period' => 30,
         ),
+        'visitors_over_time' => array(
+            'key' => 'visitors_over_time',
+            'screen' => 'visitor_report',
+            'title' => 'Visitors over time',
+            'levels' => array(
+                array('by' => 'year', 'order' => 'alphabet'),
+                array('by' => 'month', 'order' => 'alphabet'),
+                array('by' => 'day', 'order' => 'alphabet'),
+            ),
+            'filters' => array(),
+            'period' => 30,
+        ),
+        'visitors_by_source' => array(
+            'key' => 'visitors_by_source',
+            'screen' => 'visitor_report',
+            'title' => 'Visitors by source',
+            'levels' => array(
+                array('by' => 'referring_host_name', 'order' => 'number of visitors'),
+            ),
+            'filters' => array(),
+            'period' => 30,
+        ),
+        'visitors_by_page' => array(
+            'key' => 'visitors_by_page',
+            'screen' => 'visitor_report',
+            'title' => 'Visitors by landing page',
+            'levels' => array(
+                array('by' => 'landing_page_name', 'order' => 'number of visitors'),
+            ),
+            'filters' => array(),
+            'period' => 30,
+        ),
+        'visitors_by_country' => array(
+            'key' => 'visitors_by_country',
+            'screen' => 'visitor_report',
+            'title' => 'Visitors by country',
+            'levels' => array(
+                array('by' => 'country', 'order' => 'number of visitors'),
+            ),
+            'filters' => array(),
+            'period' => 30,
+        ),
     );
+}
+
+/**
+ * The visitor report's period preset (pg_visitor_report_preset_keys()) for
+ * a number of days counted, today included: 1 today, 7, 30 or 90 the last
+ * days; '' for a count no preset gives. Pure.
+ *
+ * @param int $days
+ * @return string
+ */
+function pg_ready_report_visitor_preset($days)
+{
+    $presets = array(1 => 'today', 7 => '7d', 30 => '30d', 90 => '90d');
+
+    return $presets[(int) $days] ?? '';
 }
 
 /**
@@ -117,7 +180,7 @@ function pg_ready_report_days($value)
  * The strip of a screen's ready reports: each one whose levels the screen
  * offers, with its address and whether it is the one open. Pure.
  *
- * @param string $screen  the screen ('order_report')
+ * @param string $screen  the screen ('order_report', 'visitor_report')
  * @param array  $levels  the summarize-by values the screen offers
  * @param string $current the key of the ready report open, '' for none
  * @return array of key, title (English), url, current
@@ -154,7 +217,7 @@ function pg_ready_report_strip($screen, $levels, $current = '')
  * the plain new report. Pure.
  *
  * @param mixed  $value  the parameter as sent ($_GET['ready'] ?? null)
- * @param string $screen the screen asking ('order_report')
+ * @param string $screen the screen asking ('order_report', 'visitor_report')
  * @return array|null
  */
 function pg_ready_report_requested($value, $screen)
@@ -215,12 +278,27 @@ function pg_ready_report_filters($report, $days = 0)
 /**
  * The address that opens a ready report on its screen. Pure.
  *
+ * An order report counts its days by a date filter (&days=N); a visitor
+ * report by its date changer's preset (&p=<preset>), its own period's when
+ * no days are given, none when the count has no preset (the range the
+ * person last chose stays).
+ *
  * @param string $key  a key of pg_ready_reports()
  * @param int    $days days to count instead of its period (0: its own)
  * @return string relative to the software directory
  */
 function pg_ready_report_url($key, $days = 0)
 {
+    $reports = pg_ready_reports();
+    $report = $reports[(string) $key] ?? null;
+
+    if (($report !== null) && ($report['screen'] === 'visitor_report')) {
+        $url = 'view_visitor_report.php?ready=' . rawurlencode((string) $key);
+        $preset = pg_ready_report_visitor_preset(((int) $days > 0) ? (int) $days : (int) $report['period']);
+
+        return ($preset !== '') ? $url . '&p=' . $preset : $url;
+    }
+
     $url = 'view_order_report.php?ready=' . rawurlencode((string) $key);
 
     if ((int) $days > 0) {

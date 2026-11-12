@@ -321,7 +321,7 @@ function pg_panel_actions()
         'ws_channel_decisions', 'ws_channel_files', 'ws_channel_tasks',
         'ws_memory_list', 'ws_memory_save', 'ws_memory_delete',
         'ws_channel_agents_list', 'ws_channel_agents_set', 'ws_channel_agents_remove',
-        'ws_canvas_undo',
+        'ws_canvas_undo', 'ws_page_source', 'ws_page_undo',
         'ws_search', 'ws_palette', 'ws_channel_board', 'ws_ref_search',
         'ws_record_refs', 'ws_record_fields', 'ws_record_fields_save',
         'ws_record_create',
@@ -364,7 +364,7 @@ function pg_panel_actions()
         'ws_channel_customer', 'ws_channel_customer_history',
         'ws_channel_customer_followup',
         'ws_mail_reply', 'ws_mail_resend', 'ws_mail_conversation', 'ws_mail_rows', 'ws_mail_pane', 'ws_mail_read_all',
-        'ws_mail_compose', 'ws_mail_new',
+        'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward', 'ws_mail_reply_form',
     ) as $ws_action) {
         $actions[$ws_action] = array('file' => 'workspace.php', 'handler' => 'pg_panel_ws', 'exempt' => true, 'token' => true, 'write' => true);
     }

@@ -6,8 +6,9 @@
  * in the order they came and went, each with who wrote it, to and Cc, its
  * text, its files and, under an answer, whether it was not sent, waits to
  * be sent or came back undelivered. Whoever may read the conversation's
- * channel may read the pane (ws_can_read_channel()); the screen's script
- * draws the answer and the status controls over it for whoever may write.
+ * channel may read the pane (ws_can_read_channel()). The server draws it for
+ * the screen's address (?conversation=), the screen's script in place, and
+ * the script adds the answer and the status controls for whoever may write.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -89,14 +90,60 @@ function ws_mail_pane($viewer, $conversation_id)
 }
 
 /**
+ * A conversation opened in the pane: read from then on for the person, its
+ * mails' Forward offered (mail_forward.php). The screen's address and its
+ * script both open it so.
+ *
+ * @param array $viewer
+ * @param int   $conversation_id
+ * @return array|null ws_mail_pane()
+ */
+function ws_mail_pane_open($viewer, $conversation_id)
+{
+    $pane = ws_mail_pane($viewer, $conversation_id);
+
+    if (!$pane) {
+        return null;
+    }
+
+    ws_mail_read_mark((int) $viewer['id'], (int) $pane['conversation']['id'], $pane['last_id']);
+
+    return ws_mail_forward_pane($pane, ws_mail_forward_may($viewer));
+}
+
+/**
+ * The pane the server draws for the screen's address (?conversation=), so
+ * a row opens its mail with or without the script; Close leads back to the
+ * list. The script reads the pane again and adds the answer and the status
+ * controls (workspace_mail.js).
+ *
+ * @param array|null $pane  ws_mail_pane_open(), null when it cannot be opened
+ * @param string     $base  the panel's address, ending in /
+ * @param string     $close the list's address without the conversation
+ * @return string HTML
+ */
+function ws_mail_pane_page_html($pane, $base, $close)
+{
+    $shut = '<a class="btn btn-sm btn-text theme-secondary" href="' . h($close) . '" data-ws-mail-close>'
+        . '<i class="bi bi-x-lg me-1" aria-hidden="true"></i>' . h(lang('Close')) . '</a>';
+
+    if (!$pane) {
+        return '<div class="ws-mail-pane-tools">' . $shut . '</div><p class="ws-empty">' . h(lang('This conversation cannot be opened.')) . '</p>';
+    }
+
+    return ws_mail_pane_html($pane, $base, $shut);
+}
+
+/**
  * The pane: the conversation's heading and its mails. Pure but for the
  * words and the time labels.
  *
- * @param array  $pane ws_mail_pane()
- * @param string $base the panel's address, ending in /
+ * @param array  $pane  ws_mail_pane()
+ * @param string $base  the panel's address, ending in /
+ * @param string $tools more of the heading's tools, HTML
  * @return string HTML
  */
-function ws_mail_pane_html($pane, $base)
+function ws_mail_pane_html($pane, $base, $tools = '')
 {
     $conversation = $pane['conversation'];
     $subject = (trim((string) $conversation['subject']) !== '') ? (string) $conversation['subject'] : lang('(no subject)');
@@ -106,7 +153,7 @@ function ws_mail_pane_html($pane, $base)
     $html = '<header class="ws-mail-pane-head"><h2 class="h5 mb-1" tabindex="-1">' . h($subject) . '</h2>'
         . '<div class="small fg-secondary">' . h($customer)
         . (($pane['box_name'] !== '') ? ' · ' . h($pane['box_name']) : '') . ' · ' . h('#' . (string) $pane['channel']['name']) . '</div>'
-        . '<div class="ws-mail-pane-tools"><a class="btn btn-sm btn-text theme-secondary" href="' . h($url) . '"><i class="bi bi-hash me-1" aria-hidden="true"></i>' . h(lang('Open in channel')) . '</a></div>'
+        . '<div class="ws-mail-pane-tools"><a class="btn btn-sm btn-text theme-secondary" href="' . h($url) . '"><i class="bi bi-hash me-1" aria-hidden="true"></i>' . h(lang('Open in channel')) . '</a>' . $tools . '</div>'
         . '</header>';
 
     if (count($pane['items']) >= WS_MAIL_PANE_MAX) {
@@ -173,6 +220,12 @@ function ws_mail_pane_item_html($item)
             . ((trim((string) $bounce['body_text']) !== '') ? ' ' . h((string) $bounce['body_text']) : '') . '</div>';
     }
 
+    // Forward as e-mail (mail_forward.php, ws_mail_forward_pane()).
+    if (!empty($item['forward'])) {
+        $html .= '<div class="ws-mail-item-tools mt-2"><button type="button" class="btn btn-sm btn-text theme-secondary px-0" data-ws-mail-forward="' . (int) $item['id'] . '">'
+            . '<i class="bi bi-envelope-arrow-up me-1" aria-hidden="true"></i>' . h(lang('Forward')) . '</button></div>';
+    }
+
     return $html . '</article>';
 }
 
@@ -183,18 +236,27 @@ function ws_mail_pane_item_html($item)
  * @param array $pane   ws_mail_pane()
  * @param array $viewer
  * @return array reply (the conversation id, 0 when the person may not
- *               write), to, channel_id, state, members
+ *               write), to, channel_id, state, members, others (how many
+ *               Reply to all adds, mail_reply.php)
  */
 function ws_mail_pane_tools($pane, $viewer)
 {
     $conversation = $pane['conversation'];
     $members = array();
+    $others = 0;
 
     if ($pane['can_post']) {
         $ids = (array) db_values("SELECT user_id FROM ws_channel_members WHERE channel_id = '" . (int) $pane['channel']['id'] . "' ORDER BY user_id LIMIT 100");
 
         foreach (ws_people($ids) as $person) {
             $members[] = array('id' => (int) $person['id'], 'name' => (string) $person['name']);
+        }
+
+        $box = ws_mail_box((int) $conversation['box_id']);
+
+        if ($box) {
+            $others = count(ws_mail_answer_others(ws_mail_reply_answered((int) $conversation['id']), (string) $conversation['customer_email'],
+                (string) $box['address'], ws_mail_answer_aliases($box)));
         }
     }
 
@@ -204,6 +266,7 @@ function ws_mail_pane_tools($pane, $viewer)
         'channel_id' => (int) $pane['channel']['id'],
         'state'      => $pane['can_post'] ? ws_mail_state_offer(array('conversation' => $conversation), (int) $conversation['id'], (int) $viewer['id']) : null,
         'members'    => $members,
+        'others'     => $others,
     );
 }
 

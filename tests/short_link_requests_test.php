@@ -113,7 +113,7 @@ function test_short_link_wizard_lists_leave_the_bin_out_but_keep_the_links_own()
 
 	pg_assert_contains("item_id: shortLinkEditing ? shortLinkEditing.id : 0", $screen, 'asked with the link');
 	pg_assert_contains('if (!response.kept) { shortLinkOptions = lists; }', $screen, 'lists kept for one link are not kept for the next window');
-	pg_assert_contains('shortLinkOptions && !shortLinkTargetMissing(shortLinkEditing)', $screen, 'a link whose product or group is not on the kept lists asks again');
+	pg_assert_contains('shortLinkOptions && !seedPage && !shortLinkTargetMissing(shortLinkEditing)', $screen, 'a link whose product or group is not on the kept lists asks again');
 }
 
 // liveform keeps a list as it came; escape() and preg_match() then stopped
@@ -158,27 +158,30 @@ function test_short_link_lists_leave_binned_pages_and_files_out_but_keep_the_lin
 
 	$explorer = short_link_requests_test_source('includes/explorer/handle_short_links.php');
 
-	pg_assert_contains("get_page_options('', '', 'edit', false, \$short_link_keep_page)", $explorer, 'wizard: pages');
-	pg_assert_contains("get_page_options('', 'catalog detail', 'edit', false, \$short_link_keep_page)", $explorer, 'wizard: catalog detail pages');
-	pg_assert_contains('pg_file_picker_id_options($short_link_keep_file)', $explorer, 'wizard: only the link\'s own file, marked when binned; the field searches the rest');
-	pg_assert_contains("'file_source' => pg_file_picker_source('file')", $explorer, 'wizard: the file field searches kind file');
+	pg_assert_false(strpos($explorer, 'get_page_options(') !== false, 'wizard: no list of every page');
+	pg_assert_contains("pg_picker_field(\$field[0], \$field[1], \$short_link_pages[\$slot], array('id' => 'sl_' . \$slot, 'user' => \$user))", $explorer, 'wizard: the page fields are picker fields with the link\'s own page');
+	pg_assert_contains("'file_field' => pg_picker_field('file', 'file_id', \$short_link_keep_file, array('id' => 'sl_file'", $explorer, 'wizard: the File field is the picker field with the link\'s own file, marked when binned');
 	pg_assert_false(strpos($explorer, 'get_file_options(') !== false, 'wizard: no longer lists every file');
-	pg_assert_contains('pg_recycle_page_binned($short_link_keep_page)', $explorer, 'wizard: lists kept for a binned page are for one link');
+	pg_assert_contains('|| (max($short_link_pages) > 0)', $explorer, 'wizard: fields holding a link\'s page are for one link');
 	pg_assert_contains('|| ($short_link_keep_file > 0),', $explorer, 'wizard: lists holding a link\'s file are for one link');
 
 	$screen = short_link_requests_test_source('view_folders.php');
 
-	pg_assert_contains("return !listed(shortLinkOptions.page, item.page_id);", $screen, 'a page link asks again when its page is not on the kept lists');
+	pg_assert_contains("case 'product':\n                return true;", $screen, 'a link with a page always asks for its own page fields');
 	pg_assert_contains("case 'file':\n                return true;", $screen, 'a file link always asks for its own file, as the kept lists hold none');
-	pg_assert_contains("shortLinkSelectHtml('sl_file', L.file, options.file, '', options.file_source)", $screen, 'the wizard\'s file field is a searching combobox');
+	pg_assert_contains("(options.file_field || '')", $screen, 'the wizard\'s File field is the server\'s picker field');
+	pg_assert_contains("document.querySelector('#sl_fields input[name=\"' + name + '\"][data-pg-picker-value]')", $screen, 'the wizard posts the fields\' hidden values');
+	pg_assert_contains('pg_picker_script()', $screen, 'the File Manager prints the picker script');
 	pg_assert_contains("if (window.pgFields) { window.pgFields.init(fields); }", $screen, 'the wizard draws its fields through pgFields');
 
 	$form = short_link_requests_test_function_body(short_link_requests_test_source('includes/forms/short_link_form.php'), 'pg_short_link_form_cards');
 
-	pg_assert_contains("get_page_options('', '', 'edit', FALSE, \$keep['page_id'])", $form, 'classic: pages');
-	pg_assert_contains("get_page_options('', 'catalog', 'edit', FALSE, \$keep['page_id'])", $form, 'classic: catalog pages');
-	pg_assert_contains("pg_file_picker_id_options(\$liveform->get_field_value('file'))", $form, 'classic: the file picker prints its chosen file, marked when binned, and searches the rest');
-	pg_assert_contains("array('page_id' => 0, 'product_group_id' => array(), 'product_id' => 0)", $form, 'classic add keeps nothing');
+	pg_assert_contains("pg_picker_field('page', 'page_id', \$liveform->get_field_value('page_id')", $form, 'classic: pages');
+	pg_assert_contains("pg_picker_field('page_catalog', 'catalog_page_id', \$liveform->get_field_value('catalog_page_id')", $form, 'classic: catalog pages');
+	pg_assert_contains("pg_picker_field('page_catalog_detail', 'catalog_detail_page_id', \$liveform->get_field_value('catalog_detail_page_id')", $form, 'classic: catalog detail pages');
+	pg_assert_contains("pg_picker_field('file', 'file', \$liveform->get_field_value('file')", $form, 'classic: the File field is the picker field, its file marked when binned');
+	pg_assert_contains("'invalid' => \$liveform->check_field_error('file')", $form, 'classic: a refused file shows on the field');
+	pg_assert_contains("array('product_group_id' => array(), 'product_id' => 0)", $form, 'classic add keeps nothing');
 
 	$picker = short_link_requests_test_function_body(short_link_requests_test_source('includes/fn/file_picker_search.php'), 'pg_file_picker_id_options');
 
@@ -187,7 +190,7 @@ function test_short_link_lists_leave_binned_pages_and_files_out_but_keep_the_lin
 
 	$edit = short_link_requests_test_source('edit_short_link.php');
 
-	pg_assert_contains("'page_id' => \$short_link['page_id'],", $edit, 'classic edit: pages');
+	pg_assert_false(strpos($edit, "'page_id' => \$short_link['page_id'],") !== false, 'classic edit: the page fields hold the stored page, no list keeps it');
 }
 
 // The classic edit screen deleted the row outright while the File Manager and

@@ -103,10 +103,12 @@ $style = array(
     'meta_tags'                         => isset($row['style_meta_tags']) ? (string)$row['style_meta_tags'] : '',
 );
 
-// ?classic=1: a classic style opened from the style list. Its code becomes
-// one shared component framing every page that names the style, each with a
-// tree placing it; nothing is written to the pages or the style until Save,
-// which makes the style a visual design (includes/fn/classic_style_design.php).
+// ?classic=1: a classic style opened from the style list. Its code is split
+// around the page content into shared components framing every page that
+// names the style, each page with a tree placing them around its own content
+// (one component when the code has no page region); nothing is written to the
+// pages or the style until Save, which makes the style a visual design
+// (includes/fn/classic_style_design.php).
 $classic = null;
 if (!$_POST && !$component && !empty($_GET['classic'])) {
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/classic_style_design.php');
@@ -115,13 +117,17 @@ if (!$_POST && !$component && !empty($_GET['classic'])) {
         output_error(h($classic['error']) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 403);
     }
     // The theme is not written for the designer's Bootstrap 5, and the
-    // style's head files are the design's files now.
-    $style['framework']          = 'custom';
+    // style's head files are the design's files now. The legacy key loads
+    // no framework files, like a custom design, and marks the design as a
+    // moved classic style; Save writes it (pg_classic_style_mark_design()).
+    $style['framework']          = 'legacy';
     $style['style_custom_css']   = $classic['css'];
     $style['style_custom_js']    = $classic['js'];
     $style['style_custom_fonts'] = $classic['fonts'];
     $pages = $classic['pages'];
-    $liveform->add_notice(h(lang('The style opened in the visual designer. Its code is now the shared component that frames its pages. Nothing changes on the site until you save; saving makes the style a visual design.')));
+    $liveform->add_notice(h($classic['split']
+        ? lang('The style opened in the visual designer. The code before and after the page content is now shared components that frame its pages, and each page holds its own content in its tree. Nothing changes on the site until you save; saving makes the style a visual design.')
+        : lang('The style opened in the visual designer. Its code is now the shared component that frames its pages. Nothing changes on the site until you save; saving makes the style a visual design.')));
     foreach ($classic['warnings'] as $classic_warning) {
         $liveform->add_warning(h($classic_warning));
     }

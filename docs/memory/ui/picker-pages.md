@@ -14,16 +14,22 @@ module: picker
 - The `page` kind has `archived => true`: pages in archived folders are listed (`pg_picker_pages_where()` no longer drops them).
 
 ## Where does a binned page show?
-- In the folder it came from, under its own name: the first page of a list answer has `binned` (`pg_picker_binned_page_rows($user, $folder)`, rows from `recycle_bin` with `item_type = 'page'`, name unparked by `pg_recycle_parked_original()`), and search adds matches after the others.
+- In the folder it came from, under its own name: the first page of a list answer has `binned` (`pg_picker_binned_page_rows($user, $folder, '', $types)`, rows from `recycle_bin` with `item_type = 'page'`, name unparked by `pg_recycle_parked_original()`), and search adds matches after the others. A typed page kind gets only its page types there too (#8782).
 - Only pages binned by themselves have a record; a page inside a binned folder is not listed, and resolve tells it `binned` in the bin.
 - A role 3 user sees a binned page only when its origin folder is one of theirs (`pg_picker_folder_allowed()`).
 
 ## How does the type filter work?
 - Chips above the list: All, then one per group present in the view (Standard, Forms, Catalog, Calendars, Cart and checkout, Search Results, Sign-in and account, Other), from `pg_picker_page_type_group()` and `pg_picker_page_groups()` (config `page_groups`).
 - Client side: `groupChips()` and `inGroup()`; folders always stay; the chips hide below two groups unless one is chosen. A page type no group names is Other (a test checks every `get_page_type_names()` type has a chip).
+- The chips hide on the phone's folder list too (`showFolderList()`); a chip or a column heading pressed keeps the focus after the redraw (`refocus()`), or it fell to the page under the dialog. The Type sort goes by `type_label` ("Özel Form" after "Giriş Yap"), not the inner key (found by #8727's browser check, fixed in #8751).
 
 ## How does a caller hand in its own entries?
 - `pgPicker.open({kind: 'page', extra: [{value, text, type, type_group, note}], extraLabel})`: the designer's unsaved tabs (`tab:<key>`), shown under a tree row (default "Not saved yet"), first in search results (`extraMatches()`), never resolved and never kept in Recent.
 - A stored value that is one of them opens the dialog on that row.
+
+## What does a page field do with marked pages?
+- The field's search list shows an archived or binned match greyed with its mark (`aria-disabled`); clicking or Enter on it only says why in the status line, and Enter with no row active takes the first choosable one (#8782).
+- Browse with a stored archived or binned page opens its folder, or the folder it was binned from (resolve gives that `folder`), where it is listed marked; before, the dialog opened at the top.
+- A kind kept to some page types (`page_catalog_detail` …) names their labels on the dialog's title line, as a file kind names its extensions.
 
 Tests: `test_picker_page_marks_and_groups` in `tests/picker_test.php`, `test_picker_js_pages` in `tests/picker_js_test.php`. Related: picker-registry.md, picker-dialog.md

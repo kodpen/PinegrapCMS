@@ -177,6 +177,9 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_agent_sessions();       // 11.0.184
 	upgrade_2026_11_0_ws_mail_send();            // 11.0.185
 	upgrade_2026_11_0_design_color_mode();       // 11.0.186
+	upgrade_2026_11_0_legacy_design_key();       // 11.0.187
+	upgrade_2026_11_0_ws_mail_html();            // 11.0.188
+	upgrade_2026_11_0_ws_agent_seen();           // 11.0.189
 
 }
 
@@ -5983,5 +5986,89 @@ function upgrade_2026_11_0_design_color_mode() {
 	install_add_column('style', 'style_color_mode', "VARCHAR(8) NOT NULL DEFAULT ''");
 
 	install_note('Visual Page Editor: a design can be light, dark or follow the visitor\'s system, chosen under Settings, Theme; existing designs are unchanged.');
+
+}
+
+// The legacy design key (2026.11.0, 11.0.187; includes/fn/designer.php,
+// pg_design_frameworks()). A classic style moved into the Visual Page Editor
+// was given the framework key 'custom'; from this version the move writes
+// 'legacy', which loads no framework files either and marks the design as a
+// moved classic style (the Legacy badge on the Visual Designs screen, the
+// activated theme on its pages). This step gives the key to the styles moved
+// before it: a custom visual design that still has the shared component
+// made from it (category classic_style:<style_id>). A design made custom in
+// the editor has no such component and stays custom. Re-runnable: a marked
+// row is no longer custom. A copy of a moved style made before this step
+// has no component of its own id and stays custom.
+function upgrade_2026_11_0_legacy_design_key() {
+
+	db("UPDATE style SET style_framework = 'legacy'
+		WHERE style_framework = 'custom'
+			AND style_layout = 'visual_designer'
+			AND EXISTS (SELECT 1 FROM shared_components
+				WHERE shared_components.category = CONCAT('classic_style:', style.style_id))");
+
+	install_note('Visual Page Editor: classic styles moved into the editor are marked Legacy on the Visual Designs screen; they look and work as before.');
+
+}
+
+
+// An agent's last seen and an application's tick (11.0.189;
+// includes/workspace/agents.php and the checklist routes).
+// ws_agents.seen_at is the time of the agent's last call with its own key,
+// written at most once a minute, 0 for an agent never seen. ws_checks.app_id
+// is the application that set a checklist tick, 0 when a person did
+// (user_id). Both default to 0, so existing rows read as never seen and
+// ticked by a person.
+function upgrade_2026_11_0_ws_agent_seen() {
+
+	if (install_table_exists('ws_agents')) {
+		install_add_column('ws_agents', 'seen_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	} else {
+		install_skipped('ws_agents does not exist, skipped');
+	}
+
+	if (install_table_exists('ws_checks')) {
+		install_add_column('ws_checks', 'app_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	} else {
+		install_skipped('ws_checks does not exist, skipped');
+	}
+
+	install_note('Workspace: the Agents card and a channel\'s agents show when each agent last called the site with its key; a checklist line can say which application ticked it.');
+
+}
+
+// A mail's HTML and a mailbox kept in no channel (2026.11.0, 11.0.188;
+// includes/fn/mail_html.php, includes/workspace/mail.php).
+// ws_mail_items.body_html holds the HTML part of a mail after the allowlist
+// cleaner, NULL for a mail with no HTML part or one over the 1 MB limit;
+// body_text stays what the search, the card and the answer quote read.
+// ws_channels.kind gains 'mailbox', the room of a mailbox kept in no
+// channel: widened only when the value is missing, as 'guest' (2026.4.5)
+// and 'thread' (2026.4.8) were, so a second run rebuilds nothing. Mail that
+// came in earlier is filled in by the recurring job from its kept .eml.
+function upgrade_2026_11_0_ws_mail_html() {
+
+	if (!install_table_exists('ws_mail_items') || !install_table_exists('ws_channels')) {
+
+		install_skipped('ws_mail_items or ws_channels does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_mail_items', 'body_html', "MEDIUMTEXT NULL");
+
+	$kind = install_column_info('ws_channels', 'kind');
+
+	if (!is_array($kind)) {
+		install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => 'ws_channels.kind')));
+	} elseif (strpos((string) $kind['Type'], "'mailbox'") === false) {
+		install_modify_column('ws_channels', 'kind', "ENUM('public','private','guest','thread','mailbox') NOT NULL DEFAULT 'public'");
+	} else {
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'ws_channels.kind mailbox')));
+	}
+
+	install_note('Workspace mail: the HTML of incoming mail is kept, cleaned, beside its text; mail that came in earlier is filled in from its kept copy in the background.');
 
 }

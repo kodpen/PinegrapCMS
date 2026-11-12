@@ -4,13 +4,16 @@
  *
  * Site Settings - what Team and working hours writes: the team members' rows
  * and the Workspace defaults with the pane's Save, then the job of the card
- * button that asked for the save: a department's drawer (ws_department_save)
- * or a department's archive button (ws_department_archive).
+ * button that asked for the save: a department's drawer (ws_department_save),
+ * a department's archive button (ws_department_archive) or a Working calendar
+ * button (ws_holidays_settings_request(): a holiday or a calendar address
+ * added from its drawer, removed, read again, or one of its days left out).
  *
  * Runs in the scope of includes/settings/screen.php or of
  * pg_settings_apply(), after the token check and after post_value() is
  * defined. The checks and the writes are the ones Workspace Settings uses
- * (includes/workspace/team_settings.php, ws_settings_defaults_save()), so a
+ * (includes/workspace/team_settings.php, ws_settings_defaults_save(),
+ * ws_holidays_settings_post()), so a
  * form still open there saves the same way. Everything is checked before
  * anything is written: a refused value is marked on its field and nothing is
  * stored.
@@ -50,6 +53,17 @@ if (($ws_department_id !== null) && is_scalar($ws_department_id)) {
 
     if ($ws_department['error'] !== '') {
         $liveform->mark_error('ws_dept[' . $ws_department_id . '][name]', $ws_department['error']);
+    }
+}
+
+// The Working calendar's button that asked for this save, if any. A holiday
+// or a calendar address to add is checked with the rest, before anything is
+// written, and refused on its drawer's field.
+$ws_calendar = ws_holidays_settings_request($_POST);
+
+if ($ws_calendar !== null) {
+    foreach (ws_holidays_settings_refused($ws_calendar[0], $ws_calendar[1]) as $ws_field => $ws_sentence) {
+        $liveform->mark_error(ws_holidays_settings_field($ws_calendar[0], $ws_field), $ws_sentence);
     }
 }
 
@@ -98,4 +112,10 @@ if (($ws_archive_id !== null) && is_scalar($ws_archive_id)) {
     } elseif ($ws_archived['notice'] !== '') {
         $liveform->add_notice($ws_archived['notice']);
     }
+}
+
+// The Working calendar's job: the rest of the pane is saved by now, so a
+// refusal is a warning.
+if ($ws_calendar !== null) {
+    ws_holidays_settings_post($ws_viewer, $ws_calendar[0], $liveform, $ws_calendar[1], true);
 }

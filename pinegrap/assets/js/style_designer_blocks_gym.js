@@ -180,8 +180,10 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'gym-',
         group: { title: _sdT('Gym'), icon: 'bi-lightning-charge' },
         items: [
-            { label: _sdT('Gym: Free Pass Hero'), type: 'component', icon: 'bi-ticket-perforated', extra: { componentType: 'gym-hero' } },
-            { label: _sdT('Gym: Class Finder'),   type: 'component', icon: 'bi-speedometer2',      extra: { componentType: 'gym-classes' } }
+            { label: _sdT('Gym: Free Pass Hero'), type: 'component', icon: 'bi-ticket-perforated', extra: { componentType: 'gym-hero' },
+              desc: _sdT('A large headline, the opening hours of the day and two buttons beside a tall training photo with a free trial pass card.') },
+            { label: _sdT('Gym: Class Finder'),   type: 'component', icon: 'bi-speedometer2',      extra: { componentType: 'gym-classes' },
+              desc: _sdT('A heading with three focus pills over class cards, each with its icon, length, level, a five-step intensity meter and a link.') }
         ],
         build: function (ctype) {
             if (ctype === 'gym-hero') return buildHero();

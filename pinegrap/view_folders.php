@@ -2239,7 +2239,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 <div class="visually-hidden" id="explorer_search_status" role="status" aria-live="polite"></div>
 
 <?php echo pg_code_editor_includes(); ?>
-<?php echo get_date_picker_format() . pg_fields_script(); ?>
+<?php echo get_date_picker_format() . pg_fields_script() . pg_picker_script(); ?>
 <script type="text/javascript">
 (function () {
     'use strict';
@@ -10270,17 +10270,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // renaming it: the moment somebody knows what to call a link is the moment
     // they have just said where it points.
 
-    // source: the address of a server search (file_picker_search.php); the
-    // select is then drawn as a searching combobox by pgFields.init().
-    function shortLinkSelectHtml(id, label, list, note, source) {
-
-        var searching = source
-            ? ' data-pg-combobox data-pg-source="' + esc(source) + '" data-pg-min-length="1"'
-            : '';
+    function shortLinkSelectHtml(id, label, list, note) {
 
         var html = '<div class="mb-5">' +
             '<label class="form-label" for="' + id + '">' + esc(label) + '</label>' +
-            '<select class="form-control" id="' + id + '"' + searching + '>' +
+            '<select class="form-control" id="' + id + '">' +
             '<option value="">- ' + esc(L.select_one) + ' -</option>';
 
         (list || []).forEach(function (option) {
@@ -10294,6 +10288,24 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         return html + '</div>';
     }
 
+    // A page field the server drew (explorer_short_link_options) with the
+    // page the link holds, under its label.
+    function shortLinkPageHtml(slot, label) {
+
+        return '<div class="mb-5">' +
+            '<label class="form-label" for="sl_' + slot + '">' + esc(label) + '</label>' +
+            (((shortLinkLists || {}).page_fields || {})[slot] || '') +
+            '</div>';
+    }
+
+    // What a picker field of the window holds, by its posted name.
+    function shortLinkPicked(name) {
+
+        var field = document.querySelector('#sl_fields input[name="' + name + '"][data-pg-picker-value]');
+
+        return field ? field.value : '';
+    }
+
     function renderShortLinkFields() {
 
         var type = document.getElementById('sl_type').value;
@@ -10304,19 +10316,19 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         switch (type) {
 
             case 'page':
-                html = shortLinkSelectHtml('sl_page', L.page, options.page);
+                html = shortLinkPageHtml('page', L.page);
                 break;
 
             case 'product_group':
                 // One of the two, never both: the group is shown either on a
                 // catalog page or on a catalog detail page.
-                html = shortLinkSelectHtml('sl_catalog_page', L.catalog_page, options.catalog_page) +
-                    shortLinkSelectHtml('sl_catalog_detail_page', L.catalog_detail_page, options.catalog_detail_page) +
+                html = shortLinkPageHtml('catalog_page', L.catalog_page) +
+                    shortLinkPageHtml('catalog_detail_page', L.catalog_detail_page) +
                     shortLinkSelectHtml('sl_product_group', L.product_group_word, options.product_group);
                 break;
 
             case 'product':
-                html = shortLinkSelectHtml('sl_catalog_detail_page', L.catalog_detail_page, options.catalog_detail_page) +
+                html = shortLinkPageHtml('catalog_detail_page', L.catalog_detail_page) +
                     shortLinkSelectHtml('sl_product', L.product, options.product);
                 break;
 
@@ -10330,8 +10342,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 break;
 
             case 'file':
-                // Only the link's own file is listed; the rest is searched.
-                html = shortLinkSelectHtml('sl_file', L.file, options.file, '', options.file_source);
+                // The server draws the picker field with the link's own file.
+                html = '<div class="mb-5">' +
+                    '<label class="form-label" for="sl_file">' + esc(L.file) + '</label>' +
+                    (options.file_field || '') +
+                    '</div>';
                 break;
         }
 
@@ -10340,20 +10355,20 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (window.pgFields) { window.pgFields.init(fields); }
 
         // A product group is shown either on a catalog page or on a catalog
-        // detail page, never on both, so picking in one list empties the
+        // detail page, never on both, so picking in one field empties the
         // other. The classic add screen does the same thing; doing it here
         // means the error about picking both can no longer be reached.
-        var catalogPick = document.getElementById('sl_catalog_page');
-        var detailPick = document.getElementById('sl_catalog_detail_page');
+        var catalogPick = fields.querySelector('input[name="catalog_page_id"][data-pg-picker-value]');
+        var detailPick = fields.querySelector('input[name="catalog_detail_page_id"][data-pg-picker-value]');
 
-        if ((catalogPick) && (detailPick)) {
+        if (catalogPick && detailPick && window.pgPicker) {
 
             catalogPick.addEventListener('change', function () {
-                if (catalogPick.value !== '') { detailPick.value = ''; }
+                if (catalogPick.value !== '') { window.pgPicker.clear(detailPick); }
             });
 
             detailPick.addEventListener('change', function () {
-                if (detailPick.value !== '') { catalogPick.value = ''; }
+                if (detailPick.value !== '') { window.pgPicker.clear(catalogPick); }
             });
         }
 
@@ -10363,16 +10378,6 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         document.getElementById('sl_tracking_wrap').classList.toggle('d-none', !tracked);
         document.getElementById('short_link_create_button').disabled = (type === '');
-    }
-
-    // Which of the two page pick lists an existing product group link was made
-    // with. The row stores one page id and not which list it came from, so it
-    // is found by looking for the id in each.
-    function shortLinkPageField(pageId) {
-
-        var inCatalog = ((shortLinkLists.catalog_page) || []).some(function (option) { return String(option.v) === String(pageId); });
-
-        return inCatalog ? 'sl_catalog_page' : 'sl_catalog_detail_page';
     }
 
     function fillShortLinkWizard(item) {
@@ -10391,20 +10396,20 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         switch (item.destination_type) {
 
-            case 'page': set('sl_page', item.page_id); break;
-
+            // The page fields come drawn with the link's page
+            // (explorer_short_link_options).
             case 'product_group':
-                set(shortLinkPageField(item.page_id), item.page_id);
                 set('sl_product_group', item.product_group_id);
                 break;
 
             case 'product':
-                set('sl_catalog_detail_page', item.page_id);
                 set('sl_product', item.product_id);
                 break;
 
             case 'url': set('sl_url', item.link_url); break;
-            case 'file': set('sl_file', item.file_id); break;
+
+            // A file link's field comes drawn with its file
+            // (explorer_short_link_options).
         }
 
         set('sl_tracking', item.tracking_code || '');
@@ -10557,17 +10562,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 renderShortLinkFields();
 
                 // Opened from a page's panel, which already knows where the
-                // link should point. The type is set first and the fields
-                // redrawn: the page list only exists once the destination is
-                // a page.
+                // link should point: the server drew the Page field with it
+                // (page_id), shown once the destination is a page.
                 if (seedPage) {
 
                     document.getElementById('sl_type').value = 'page';
                     renderShortLinkFields();
-
-                    var seeded = document.getElementById('sl_page');
-
-                    if (seeded) { seeded.value = seedPage; }
                 }
             }
 
@@ -10583,13 +10583,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // out what is in the Recycle Bin, so a link that points at a binned
         // product, group, page or file is opened with lists asked for that
         // link, which keep it, marked; those are not kept for the next window.
-        if (shortLinkOptions && !shortLinkTargetMissing(shortLinkEditing)) {
+        if (shortLinkOptions && !seedPage && !shortLinkTargetMissing(shortLinkEditing)) {
             shortLinkLists = shortLinkOptions;
             draw();
             return;
         }
 
-        api({ type: 'explorer_short_link_options', item_id: shortLinkEditing ? shortLinkEditing.id : 0 }, function (response) {
+        api({ type: 'explorer_short_link_options', item_id: shortLinkEditing ? shortLinkEditing.id : 0, page_id: shortLinkEditing ? 0 : seedPage }, function (response) {
 
             if (response.status !== 'success') { toast(response.message || L.request_failed, false); return; }
 
@@ -10604,7 +10604,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             lists.answers = response.answers || [];
             lists.name_max = parseInt(response.name_max, 10) || 255;
             lists.url_max = parseInt(response.url_max, 10) || 255;
-            lists.file_source = response.file_source || '';
+            lists.file_field = response.file_field || '';
+            lists.page_fields = response.page_fields || {};
 
             if (!response.kept) { shortLinkOptions = lists; }
 
@@ -10615,7 +10616,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     // Whether the kept lists lack the product, the group, the page or the
     // file a link points at: it went to the Recycle Bin, or it is newer than
-    // the lists.
+    // the lists. The kept page fields are empty, so a link with a page asks
+    // for its own.
     function shortLinkTargetMissing(item) {
 
         if (!item) { return false; }
@@ -10627,15 +10629,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         switch (item.destination_type) {
 
             case 'page':
-                return !listed(shortLinkOptions.page, item.page_id);
-
             case 'product_group':
-                return !listed(shortLinkOptions.product_group, item.product_group_id)
-                    || !(listed(shortLinkOptions.catalog_page, item.page_id) || listed(shortLinkOptions.catalog_detail_page, item.page_id));
-
             case 'product':
-                return !listed(shortLinkOptions.product, item.product_id)
-                    || !listed(shortLinkOptions.catalog_detail_page, item.page_id);
+                return true;
 
             // The kept lists never hold a link's file (only the search
             // brings files), so its window asks for that one file.
@@ -10698,17 +10694,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         switch (destinationType) {
 
             case 'page':
-                payload.page_id = value('sl_page');
+                payload.page_id = shortLinkPicked('page_id');
                 break;
 
             case 'product_group':
-                payload.catalog_page_id = value('sl_catalog_page');
-                payload.catalog_detail_page_id = value('sl_catalog_detail_page');
+                payload.catalog_page_id = shortLinkPicked('catalog_page_id');
+                payload.catalog_detail_page_id = shortLinkPicked('catalog_detail_page_id');
                 payload.product_group_id = value('sl_product_group');
                 break;
 
             case 'product':
-                payload.catalog_detail_page_id = value('sl_catalog_detail_page');
+                payload.catalog_detail_page_id = shortLinkPicked('catalog_detail_page_id');
                 payload.product_id = value('sl_product');
                 break;
 
@@ -10717,7 +10713,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 break;
 
             case 'file':
-                payload.file_id = value('sl_file');
+                payload.file_id = shortLinkPicked('file_id');
                 break;
         }
 

@@ -17,7 +17,8 @@ description: The Workspace channel screen as redrawn (C1–C8, 2026-10-31): what
 - A misaligned or poorly drawn workspace part met on the way is fixed in the change that meets it, as the drawing would have it: one look for cards, rows and badges, nothing stuck one under the other.
 
 ## How is a Workspace card titled?
-- As the overview's `homeCard()`: an `h3.h6.mb-0` with a `me-1` icon in the `.card-header`, never the uppercase `text-uppercase h5 fg-primary fw-bold` form card heading (`ui/form-card-headings.md`). The Summary tab's Time spent (`workspace_task_time.js`) and Customer (`workspace_customer.js`) cards drew that until #5195; `tests/workspace_card_titles_test.php` pins it.
+- As the channel's Summary card (`drawSummary()`): an `h3.h6.mb-0` with a `me-1` icon in the `.card-header`, never the uppercase `text-uppercase h5 fg-primary fw-bold` form card heading (`ui/form-card-headings.md`). The Summary tab's Time spent (`workspace_task_time.js`) and Customer (`workspace_customer.js`) cards drew that until #5195; `tests/workspace_card_titles_test.php` pins them.
+- Today's cards are dashboard cards (`todayCard()`, `.pg-dash-card-title`); the overview's `homeCard()` this rule first named is gone.
 
 ## What must hold on a phone?
 - The writing box rides on the keyboard: it moves up with it and the message list shrinks above it; 16 px text, the send button and drafts unchanged.

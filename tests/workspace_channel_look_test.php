@@ -151,14 +151,28 @@ function test_workspace_channel_panes_tasks_are_cards_in_a_grid()
 
 	$css = workspace_channel_look_css();
 	$grid = workspace_channel_look_block($css, '.ws-task-grid');
-	pg_assert_contains('display: grid;', $grid, 'the tasks are a grid');
-	pg_assert_contains('minmax(min(100%, ', $grid, 'one column on a phone');
+	pg_assert_contains('columns: var(--ws-flow-col);', $grid, 'the tasks flow in columns, top to bottom, as the decisions do');
+	pg_assert_contains('.ws-task-grid > .ws-empty {' . "\n" . '  column-span: all;', $css, 'the empty state spans the columns');
 
 	$card = workspace_channel_look_block($css, '.ws-task-grid > .ws-list-row');
+	pg_assert_contains('break-inside: avoid;', $card, 'a card is never cut between two columns');
 	pg_assert_contains('border: 1px solid', $card, 'a task is a card');
 	pg_assert_contains('border-radius:', $card, 'with round corners');
+	pg_assert_contains('box-shadow: var(--ws-shadow-soft);', $card, 'and a soft shadow');
 	pg_assert_false(strpos($card, 'border-bottom') !== false, 'and no rule under it');
-	pg_assert_false(strpos($grid . $card, 'max-width') !== false, 'the grid fills the pane');
+	pg_assert_false(strpos($grid . $card, 'max-width') !== false, 'the columns fill the pane');
+}
+
+// The width of a card in the flowing columns of Decisions and Tasks: about
+// twice the 22rem and 20rem the grids had, columns growing up to twice that
+// to fill the pane, one column on a phone.
+function test_workspace_channel_panes_flow_width()
+{
+	$css = workspace_channel_look_css();
+	pg_assert_true((bool) preg_match('/--ws-flow-col: (\d+)rem;/', $css, $m), 'one column width for both panes');
+	pg_assert_true(isset($m[1]) && (int) $m[1] >= 28 && (int) $m[1] <= 44, 'about twice the old card');
+	pg_assert_contains('--ws-shadow-soft:', $css, 'the soft card shadow is a token, light and dark');
+	pg_assert_same(2, substr_count($css, '--ws-shadow-soft: '), 'defined for the light and the dark theme');
 }
 
 function test_workspace_channel_panes_decisions_are_a_card_grid()
@@ -166,16 +180,19 @@ function test_workspace_channel_panes_decisions_are_a_card_grid()
 	$css = workspace_channel_look_css();
 	$pane = workspace_channel_look_block($css, '.ws-pane-decisions');
 
-	pg_assert_contains('display: grid;', $pane, 'the decisions are a grid');
-	pg_assert_contains('minmax(min(100%, ', $pane, 'one column on a phone');
-	pg_assert_contains('.ws-pane-decisions > :is(.ws-empty, .ws-skeleton) {', $css, 'the empty state and the skeleton span the grid');
+	pg_assert_contains('columns: var(--ws-flow-col);', $pane, 'the decisions flow in columns: no gap under a short card');
+	pg_assert_contains(".ws-pane-decisions > :is(.ws-empty, .ws-skeleton) {\n  column-span: all;", $css, 'the empty state and the skeleton span the columns');
 
 	$card = workspace_channel_look_block($css, '.ws-pane-decisions > .ws-msg');
-	pg_assert_contains('border-block: 1px solid', $card, 'each decision is a card');
-	pg_assert_contains('border-inline-end: 1px solid', $card, 'framed on three sides');
-	pg_assert_false(strpos($card, 'border: ') !== false, 'the start edge stays the colour of its kind');
-	pg_assert_contains('border-inline-start: 3px solid var(--pg-success);', workspace_channel_look_block($css, '.ws-pane-decisions > .ws-msg-decision,' . "\n" . '.ws-pane-decisions > .ws-msg-note'), 'a decision keeps its green edge on the reading side');
-	pg_assert_contains(".ws-pane-decisions > .ws-msg-note {\n  border-inline-start-color: var(--pg-info);\n}", $css, 'a note its blue one');
+	pg_assert_contains('break-inside: avoid;', $card, 'a decision is never cut between two columns');
+	pg_assert_contains('border: 1px solid var(--pg-border-color);', $card, 'each decision is a card framed on four sides');
+	pg_assert_contains('box-shadow: var(--ws-shadow-soft);', $card, 'with a soft shadow');
+	pg_assert_false(strpos($css, '.ws-pane-decisions > .ws-msg-decision') !== false, 'no green start edge on a decision');
+	pg_assert_false(strpos($css, '.ws-pane-decisions > .ws-msg-note') !== false, 'no blue one on a note');
+	pg_assert_false((bool) preg_match('/\.ws-pane-decisions[^{]*\{[^}]*border-(inline-start|left)/', $css), 'no coloured start edge on the tab at all');
+	pg_assert_contains('border-left: 3px solid var(--pg-success);', workspace_channel_look_block($css, '.ws-msg-status'), 'a status update in the conversation keeps its edge');
+	pg_assert_contains('margin-inline-start: auto;', workspace_channel_look_block($css, '.ws-pane-decisions > .ws-msg .ws-msg-meta > .btn'), 'Show in conversation ends the head line');
+	pg_assert_false((bool) preg_match('/\.ws-pane-decisions[^{]*\.btn[^{]*\{[^}]*(opacity: 0|visibility: hidden|display: none)/', $css), 'and is always shown, not only on hover');
 
 	preg_match('/\n        loadList: function \(action, emptyText\) \{\n(.*?)\n        \},\n/s', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'), $match);
 	$list = $match[1] ?? '';
@@ -242,7 +259,14 @@ function test_workspace_channel_panes_board_toolbar_is_chips_and_columns_cards()
 	$col = workspace_channel_look_block($css, '.ws-pane-board .ws-cb-col');
 	pg_assert_contains('border: 1px solid', $col, 'a column of the channel\'s board is a card');
 	pg_assert_contains('background: var(--pg-card-bg);', $col, 'on the card background');
+	pg_assert_contains('flex: 1 1 17rem;', $col, 'a column of the channel\'s board grows to fill the width');
+	pg_assert_contains('max-width: 34rem;', $col, 'up to twice its old width');
+	pg_assert_contains('flex: 0 0 17rem;', workspace_channel_look_block($css, '.ws-cb-col'), 'the workflow table\'s board keeps its width');
 	pg_assert_contains('border: 2px solid transparent;', workspace_channel_look_block($css, '.ws-cb-col'), 'the workflow table\'s board keeps its columns');
+	$card = workspace_channel_look_block($css, '.ws-pane-board .ws-cb-card');
+	pg_assert_contains('box-shadow: var(--ws-shadow-soft);', $card, 'a card of the channel\'s board in the panes\' manner');
+	pg_assert_contains('inset-inline-start: 0;', workspace_channel_look_block($css, '.ws-pane-board .ws-cb-card::before'), 'its priority stripe on the side reading starts from');
+	pg_assert_contains('.ws-cb-card.ws-cb-pri-urgent::before {', $css, 'the priority still shows');
 	pg_assert_contains("    .ws-cb-col.ws-cb-col-current {\n        display: flex;", $css, 'a phone still shows the picked column');
 }
 

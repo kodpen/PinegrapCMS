@@ -206,7 +206,7 @@ function test_ai_prompt_framing_briefing_agent()
 	$briefing = ai_prompt_framing_test_source('ws_ai_briefing');
 
 	pg_assert_contains("\$claude ? 'ws_claude_channel_allowed' : 'ws_ai_loop_channel_allowed'", $briefing, 'the channel check per agent');
-	pg_assert_contains('GET /workspace/channels/{id}/context reads them', $briefing, 'Claude reads more of a channel over the API');
+	pg_assert_contains('GET /workspace/channels/{id}/context?limit=<n> reads them', $briefing, 'Claude reads more of a channel over the API');
 	pg_assert_false(strpos($briefing, 'ws_ai_channel_allowed($channel)') !== false, 'no channel check by Pinegrap AI\'s rule alone');
 }
 

@@ -27,6 +27,12 @@
  *     duration, after the delay, keeping its group and decimal separators,
  *     its decimals and the words around it; at the end the text is the
  *     markup's again. Without the script the number simply shows.
+ *   • autoplay: a <video> plays by itself, muted and looping. A button
+ *     with data-pg-video-toggle (aria-controls naming the video, else the
+ *     nearest such video around it) pauses and plays it again and tells
+ *     its state with aria-pressed (true while paused). Without the script
+ *     or under reduced motion the video stays still on its first frame or
+ *     poster; the block rule pg-video-toggle hides the button then.
  *
  * CSS transitions only. Under prefers-reduced-motion nothing moves (sticky
  * still sticks, a scroll effect shows its own state, a number does not
@@ -63,7 +69,7 @@
 
     // The same names, ranges and defaults as pg_fx_normalize().
     var EFFECTS  = ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
-        'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count'];
+        'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay'];
     var TRIGGERS = ['view', 'load', 'hover', 'click'];
     var EASINGS  = ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'];
     var NUMBERS  = {
@@ -85,6 +91,7 @@
             return isNaN(v) ? r[2] : Math.max(r[0], Math.min(r[1], v));
         };
         var o = { effect: effect, trigger: '' };
+        if (effect === 'autoplay') { o.video = true; return o; }
         if (effect === 'sticky') { o.offset = num('offset'); return o; }
         if (effect === 'parallax') { o.speed = num('speed'); return o; }
         if (FROM[effect]) { o.from = num('from', FROM[effect]); o.scroll = true; return o; }
@@ -435,8 +442,71 @@
         (window.requestAnimationFrame || window.setTimeout)(float);
     }
 
+    // ── Autoplay video ──────────────────────────────────────────────────
+    // The video a pause button works: the one its aria-controls names,
+    // else the nearest autoplay video in the boxes around the button.
+    function videoOf(btn) {
+        var id = btn.getAttribute('aria-controls');
+        var v = id ? document.getElementById(id) : null;
+        if (v && v.tagName === 'VIDEO') return v;
+        for (var box = btn.parentNode; box && box.querySelector; box = box.parentNode) {
+            v = box.querySelector('video[data-pg-fx="autoplay"]');
+            if (v) return v;
+        }
+        return null;
+    }
+
+    // Every pause button of the video says whether it is paused.
+    function videoPressed(v, paused) {
+        var list = document.querySelectorAll('[data-pg-video-toggle]');
+        for (var i = 0; i < list.length; i++) {
+            if (videoOf(list[i]) === v) list[i].setAttribute('aria-pressed', paused ? 'true' : 'false');
+        }
+    }
+
+    // Plays the video; a browser that refuses (no muted autoplay) leaves
+    // it paused, and its button says so.
+    function videoPlay(v) {
+        videoPressed(v, false);
+        var p;
+        try { p = v.play(); } catch (e) { videoPressed(v, true); return; }
+        if (p && typeof p.then === 'function') p.then(null, function () { videoPressed(v, true); });
+    }
+
+    function videoPause(v) {
+        if (typeof v.pause === 'function') v.pause();
+        videoPressed(v, true);
+    }
+
+    function videoStart(rec) {
+        var v = rec.el;
+        if (v.tagName !== 'VIDEO' || typeof v.play !== 'function') return;
+        // Muted and looping whatever the markup says: only such a video
+        // may start by itself.
+        v.muted = true;
+        v.loop = true;
+        v.playsInline = true;
+        v.setAttribute('playsinline', '');
+        if (reduced()) videoPause(v); else videoPlay(v);
+    }
+
+    // A press on a pause button, caught before the editor's canvas or a
+    // link around it takes the click. A visitor's own press plays the
+    // video under reduced motion too.
+    function videoToggle(e) {
+        var t = e.target, btn = t && t.closest ? t.closest('[data-pg-video-toggle]') : null;
+        var v = btn ? videoOf(btn) : null;
+        if (!v) return;
+        e.preventDefault();
+        if (v.paused) videoPlay(v); else videoPause(v);
+    }
+
     function start(rec, later) {
         var el = rec.el, o = rec.o;
+        if (o.video) {
+            videoStart(rec);
+            return;
+        }
         if (o.effect === 'sticky') {
             // The page's head style makes it sticky; a page without it (the
             // editor's canvas) gets it here.
@@ -526,6 +596,10 @@
     function still() {
         if (!reduced()) return;
         bound.forEach(function (rec) {
+            if (rec.o.video) {
+                if (rec.el.tagName === 'VIDEO') videoPause(rec.el);
+                return;
+            }
             rec.el.classList.add('pg-fx-armed');
             rec.el.classList.remove('pg-fx-on');
             rec.y = 0;
@@ -582,6 +656,7 @@
     window.pgFxBind = bind;
     window.addEventListener('scroll', floatSoon, { passive: true });
     window.addEventListener('resize', floatSoon);
+    document.addEventListener('click', videoToggle, true);
     // Pictures that arrive late move the boxes under them.
     window.addEventListener('load', floatSoon);
     if (reduce) {

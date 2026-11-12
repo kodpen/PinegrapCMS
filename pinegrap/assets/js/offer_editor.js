@@ -721,7 +721,6 @@
         if (document.activeElement !== $('#pg-if-upsell-subtotal')) { $('#pg-if-upsell-subtotal').value = centsToInput(S.offer.upsell.trigger_subtotal); }
         if (document.activeElement !== $('#pg-if-upsell-quantity')) { $('#pg-if-upsell-quantity').value = S.offer.upsell.trigger_quantity || ''; }
         if (document.activeElement !== $('#pg-if-upsell-button')) { $('#pg-if-upsell-button').value = S.offer.upsell.button_label; }
-        $('#pg-if-upsell-page').value = String(S.offer.upsell.page_id || '');
         upsellError('#pg-if-upsell-subtotal-error', upsellSubtotalError() || serverErrors['offer.upsell.trigger_subtotal']);
         upsellError('#pg-if-upsell-quantity-error', upsellQuantityError() || serverErrors['offer.upsell.trigger_quantity']);
         show($('#pg-if-upsell-quantity-wrap'), S.conditions.some(function (c) { return c.type === 'products' || c.type === 'product group'; }));

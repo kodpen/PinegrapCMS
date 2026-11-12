@@ -158,7 +158,7 @@
 - erp-translation-traps.md: Short translation keys that read wrong as ERP labels (Quote, By, From, To, Count, Record, Due, Net, Method) and the longer keys ERP screens use instead.
 - erp-typed-line-numbers.md: How the document editors refuse a signed or lettered quantity or rate and a line amount past the cap
 - erp-vat-per-rate-group.md: How the ERP takes a document's VAT, withholding and second tax per rate group, as Paraşüt does (owner decision 2026-10-21), where the rule applies, and where the checkout and charge decisions are kept [decision: here]
-- erp-vat-report.md: ERP VAT report: the one place tax totals are added up (vat_report.php), calculated, deductible and difference, what never counts, and the report's name in the menu.
+- erp-vat-report.md: ERP VAT report: the one place tax totals are added up (vat_report.php), calculated, deductible and difference, what never counts, the figures and chart on top, the menu name.
 - erp-vat-withholding.md: VAT withholding (tevkifat, migration 4.68) on ERP documents: what tax_total, withholding_total and grand_total hold, the line columns, the code list rule, returns, document type.
 - erp-vuk-509-fields.md: VUK 509 e-Arsiv fields on erp_invoices: what the order bridge derives for each, where orders.paid_at comes from, the carrier columns, and what a return copies. [decision: here]
 - erp-waybill-save-checks.md: What a delivery note's save checks and fills (named invoice, empty recipient, field-level refusals), the one unit list, the list's three invoice states and the shipment-date term (PR #5708).

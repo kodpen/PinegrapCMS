@@ -397,7 +397,7 @@ function ws_handle_action($action, $request)
     if (function_exists('ws_message_in_past') && ws_eras_ready()) {
         $touched = null;
 
-        if (in_array($action, array('ws_edit', 'ws_canvas_undo', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request'), true)
+        if (in_array($action, array('ws_edit', 'ws_canvas_undo', 'ws_page_undo', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request'), true)
             || (($action === 'ws_delete') && ((string) ($request['scope'] ?? '') !== 'me'))) {
             $touched = ws_message((int) ($request['message_id'] ?? 0));
         } elseif (in_array($action, array('ws_poll_edit', 'ws_poll_vote', 'ws_poll_close'), true)) {
@@ -2002,6 +2002,12 @@ function ws_handle_action($action, $request)
                 $out['groups'] = ws_groups_for($viewer);
                 $out['threads'] = ws_threads_for($viewer);
                 $out['inbox'] = ws_inbox_unread_count($viewer['id']);
+
+                // The person's new inbox lines, for the sound when one is
+                // for them (asked only while their switch is on).
+                if (!empty($request['sound'])) {
+                    $out['sound'] = ws_sound_lines($viewer['id'], (int) ($request['sound_after'] ?? -1));
+                }
             }
 
             // A scheduled action is due: the screen starts a run (ws_tick)
@@ -2129,6 +2135,37 @@ function ws_handle_action($action, $request)
             }
 
             $result = ws_canvas_undo($viewer, $message, (int) ($request['version'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
+
+            return ws_action_ok(array('message' => $payload[0]));
+
+        // A live page's source, one version of it (page_card.php).
+        case 'ws_page_source':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!$message || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            $result = ws_page_source($message, (int) ($request['version'] ?? 0));
+
+            return $result['ok'] ? ws_action_ok(array('html' => $result['html'], 'version' => $result['version'], 'versions' => $result['versions']))
+                : ws_action_error($result['error']);
+
+        // Undo of an agent's edit on a live page (page_card.php).
+        case 'ws_page_undo':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!$message) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            $result = ws_page_undo($viewer, $message, (int) ($request['version'] ?? 0));
 
             if (!$result['ok']) {
                 return ws_action_error($result['error']);
@@ -2457,22 +2494,40 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('message' => $payload[0]));
 
-        // An answer to an e-mail conversation, sent by e-mail (mail_reply.php).
+        // An answer to an e-mail conversation, with copies and files, through
+        // the mail queue like a new mail (mail_send.php, ws_mail_send() with
+        // the conversation); ws_mail_reply_form is what the drawer shows first.
+        case 'ws_mail_reply_form':
         case 'ws_mail_reply':
-            if (!function_exists('ws_mail_reply_send') || !ws_mail_ready()) {
+            if (!function_exists('ws_mail_send') || !ws_mail_send_ready()) {
                 return ws_action_error(lang('The database has not been upgraded yet.'));
             }
 
-            $result = ws_mail_reply_send($viewer, (int) ($request['conversation_id'] ?? 0), (string) ($request['text'] ?? ''));
+            $conversation_id = (int) ($request['conversation_id'] ?? 0);
 
-            if (!$result['ok']) {
-                return ws_action_error(ws_mail_reply_error_text($result['error']) . (($result['detail'] !== '') ? ' ' . $result['detail'] : ''), 'text');
+            if ($action === 'ws_mail_reply_form') {
+                $form = ws_mail_answer_form($viewer, $conversation_id);
+
+                return $form['ok']
+                    ? ws_action_ok(array('to' => $form['to'], 'name' => $form['name'], 'others' => $form['others']))
+                    : ws_action_error(ws_mail_reply_error_text($form['error']));
             }
 
-            return ws_action_ok(array(
-                'message_id' => $result['message_id'],
-                'copy_note'  => ($result['copy'] === 'failed') ? lang('The e-mail was sent, but no copy could be put into the mailbox\'s sent folder.') : '',
-            ));
+            $files = ws_mail_compose_files($_FILES['files'] ?? null);
+
+            if (!$files['ok']) {
+                return ws_action_error($files['error'], 'files');
+            }
+
+            $mail = ws_mail_compose_mail($request, $files['files']);
+            $result = ws_mail_send($viewer, array('conversation_id' => $conversation_id, 'cc' => $mail['cc'], 'bcc' => $mail['bcc'],
+                'text' => $mail['text'], 'files' => $mail['files']));
+
+            if (!$result['ok']) {
+                return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']), in_array($result['error'], array('empty', 'too_long'), true) ? 'text' : '');
+            }
+
+            return ws_action_ok(array('message_id' => $result['message_id'], 'state' => $result['state']));
 
         // Send again: an outgoing mail that could not leave (mail_send.php).
         case 'ws_mail_resend':
@@ -2512,18 +2567,50 @@ function ws_handle_action($action, $request)
                 return ws_action_error($files['error'], 'files');
             }
 
-            $mail = ws_mail_compose_mail($request, $files['files']);
+            // A forward's source is read again; its files go first (mail_forward.php).
+            $forward = ws_mail_forward_request($viewer, $request);
+
+            if (!$forward['ok']) {
+                return ws_action_error($forward['error']);
+            }
+
+            $mail = ws_mail_compose_mail($request, array_merge($forward['files'], $files['files']));
             $result = ws_mail_send($viewer, $mail);
 
             if (!$result['ok']) {
                 return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']));
             }
 
+            ws_mail_forward_line($viewer, $forward['source'], (int) $result['item_id']);
+
             return ws_action_ok(array(
                 'conversation_id' => $result['conversation_id'],
                 'message_id'      => $result['message_id'],
                 'channel_id'      => $mail['channel_id'],
                 'state'           => $result['state'],
+            ));
+
+        // Forward as e-mail: the New e-mail form filled from chosen channel
+        // messages or one mail (mail_forward.php); sent by ws_mail_new.
+        case 'ws_mail_forward':
+            if (!function_exists('ws_mail_send') || !ws_mail_send_ready()) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            if (empty($viewer['member'])) {
+                return ws_action_error(ws_mail_send_error_text('no_box'));
+            }
+
+            $source = ws_mail_forward_source($viewer, is_scalar($request['kind'] ?? '') ? (string) ($request['kind'] ?? '') : '', $request['ids'] ?? '');
+
+            if (!$source['ok']) {
+                return ws_action_error($source['error']);
+            }
+
+            return ws_action_ok(array(
+                'boxes'   => ws_mail_compose_boxes(ws_mail_send_boxes($viewer)),
+                'writer'  => ws_person_name((int) $viewer['id']),
+                'forward' => ws_mail_forward_fill($source),
             ));
 
         // A conversation's status or holder (mail_status.php).
@@ -2564,18 +2651,16 @@ function ws_handle_action($action, $request)
                 $list = ws_mail_list($viewer, $filters, time());
 
                 return ws_action_ok(array(
-                    'html' => ws_mail_list_rows_html($list['rows'], OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', time()),
+                    'html' => ws_mail_list_rows_html($list['rows'], $filters, time()),
                     'more' => ws_mail_list_more_html($filters, $list['next']),
                 ));
             }
 
-            $pane = ws_mail_pane($viewer, (int) ($request['conversation_id'] ?? 0));
+            $pane = ws_mail_pane_open($viewer, (int) ($request['conversation_id'] ?? 0));
 
             if (!$pane) {
                 return ws_action_error(lang('This conversation cannot be opened.'));
             }
-
-            ws_mail_read_mark((int) $viewer['id'], (int) $pane['conversation']['id'], $pane['last_id']);
 
             return ws_action_ok(array_merge(ws_mail_pane_tools($pane, $viewer), array(
                 'html'   => ws_mail_pane_html($pane, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/'),

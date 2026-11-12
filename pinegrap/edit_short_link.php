@@ -151,7 +151,6 @@ if (!$_POST) {
                 'extra_rows' => pg_short_link_form_redirect_code_row($liveform),
                 'status' => $output_short_link_qr_card,
                 'keep' => array(
-                    'page_id' => $short_link['page_id'],
                     'product_group_id' => $liveform->get_field_value('product_group_id'),
                     'product_id' => $liveform->get_field_value('product_id')))),
             '

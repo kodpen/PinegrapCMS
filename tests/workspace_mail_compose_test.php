@@ -64,9 +64,10 @@ function test_workspace_mail_send_body_signature()
 {
 	pg_assert_same("Hello\n\n-- \nAyşe\nSupport", ws_mail_send_body("Hello\r\n", 'Ayşe', 'Support', ''), 'no Signature: the box\'s name');
 	pg_assert_same("Hello\n\n-- \nAyşe\nKodpen Support\n+90 212", ws_mail_send_body('Hello', 'Ayşe', 'Support', "Kodpen Support\n+90 212"), 'the Signature in the name\'s place');
-	pg_assert_contains("ws_mail_send_body((string) \$item['body_text'], (string) \$item['from_name'], (string) \$box['name'], ws_mail_box_signature(\$box))",
+	pg_assert_contains("'body'               => ws_mail_answer_body((string) \$item['body_text'], (string) \$item['from_name'], \$box,",
 		workspace_mail_compose_test_source('includes/workspace/mail_send.php'), 'the mail is built with it');
-	pg_assert_true(strpos(workspace_mail_compose_test_source('includes/workspace/mail_reply.php'), 'signature(') === false, 'the answer keeps its own signature');
+	pg_assert_contains("ws_mail_send_body(\$text, \$writer, (string) \$box['name'], ws_mail_box_signature(\$box));",
+		workspace_mail_compose_test_source('includes/workspace/mail_reply.php'), 'an answer takes it too');
 }
 
 function workspace_mail_compose_test_entry($box_id, $own, $channels)
@@ -152,7 +153,7 @@ function test_workspace_mail_compose_toolbar_and_menu()
 
 	$mail = workspace_mail_compose_test_source('assets/js/workspace_mail.js');
 	pg_assert_contains("h.api('ws_mail_compose')", $mail, 'the form asks for the boxes');
-	pg_assert_contains("form.append('action', 'ws_mail_new');", $mail, 'and sends');
+	pg_assert_contains("formPost(h, 'ws_mail_new', post, files)", $mail, 'and sends');
 	pg_assert_contains("form.append('files[]', file, file.name);", $mail, 'files as form parts');
 	pg_assert_contains("[data-ws-mail-new]", $mail, 'the screen\'s button');
 	pg_assert_contains('ws_mail_compose_js_strings()', workspace_mail_compose_test_source('includes/workspace/screen.php'), 'its words');

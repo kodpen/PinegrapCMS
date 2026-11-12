@@ -26,6 +26,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_svg.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_edit.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_split.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_layer_write.php');
 
 /**
  * The canvas routes, merged into ws_api_routes().
@@ -45,13 +47,14 @@ function ws_canvas_api_routes()
             'status'      => 201,
             'returns'     => array('message' => 'WorkspaceMessage', 'canvas' => ws_api_canvas_returns()),
             'summary'     => 'Draw a canvas in a channel from SVG',
-            'description' => 'Posts a canvas into a channel as a message of the application: the SVG becomes a picture people see and open in the image editor, its layers editable. Only an agent of the channel draws one: an application with a row in GET /workspace/channels/{id}/agents (or Claude, where Claude may be asked), in a channel the owner may post in. The SVG is sanitized (scripts, outside addresses and events go), at most 1 MB; the artboard is its root\'s width and height (the view box when they are missing, 300 x 150 when both are), each side 16 to 8000 pixels, the drawing one layer covering it. A picture inside it must be an address, not data. The canvas\'s picture is blank in the background colour until a member\'s browser draws it: canvas.picture is pending until then. Refusals: nothing left to draw, over 1 MB, a picture as data or a background that is no colour 422 validation_failed on svg or background; not an agent of the channel 403 forbidden.',
+            'description' => 'Posts a canvas into a channel as a message of the application: the SVG becomes a picture people see and open in the image editor, its layers editable. Only an agent of the channel draws one: an application with a row in GET /workspace/channels/{id}/agents (or Claude, where Claude may be asked), in a channel the owner may post in. The SVG is sanitized (scripts, outside addresses and events go), at most 1 MB; the artboard is its root\'s width and height (the view box when they are missing, 300 x 150 when both are), each side 16 to 8000 pixels, the drawing one layer covering it, or with layers split a layer per top-level element as the image editor\'s Break apart makes them (each where it was drawn, named by its element\'s id; a group stays one layer; definitions and style rules kept for the layers that use them): a text becomes a text layer when the editor can hold it (one colour, no outline, a font the editor offers, lines as tspans under one another), a picture whose address is a file of the site - one a message of the channel carries, or with files:read one any visitor may fetch - a picture layer; anything else stays an svg layer. A picture inside it must be an address, not data. The canvas\'s picture is blank in the background colour until a member\'s browser draws it: canvas.picture is pending until then. Refusals: nothing left to draw, over 1 MB, a picture as data or a background that is no colour 422 validation_failed on svg or background; not an agent of the channel 403 forbidden.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'svg', 'in' => 'body', 'type' => 'string', 'max_length' => 1048576, 'required' => true, 'description' => 'The drawing, a whole <svg> element with the SVG namespace.'),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'Words beside the canvas. Tags are written as tokens, as in a message.'),
                 array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 120, 'description' => 'The name of the canvas\'s file; Canvas when left out. Always a PNG.'),
                 array('name' => 'background', 'in' => 'body', 'type' => 'string', 'max_length' => 11, 'description' => 'The artboard\'s colour as #rrggbb, or transparent; white when left out.'),
+                array('name' => 'layers', 'in' => 'body', 'type' => 'enum', 'values' => array('split', 'one'), 'description' => 'split: a layer per top-level element (texts as text layers, pictures of the site\'s files as picture layers), so one part can be changed by its layer later; one (the default): the drawing as one layer.'),
                 array('name' => 'parent_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The message the canvas answers, of this channel.'),
             ),
         ),
@@ -64,7 +67,7 @@ function ws_canvas_api_routes()
             'handler'     => 'ws_api_canvas_get',
             'returns'     => ws_api_canvas_returns(),
             'summary'     => 'Read the canvas of a message',
-            'description' => 'The canvas a message carries, drawn by an agent or by a person in the image editor: its artboard, the address of its picture (an agent that sees pictures looks at it too; pending until a member\'s browser has drawn it), the number of its newest version and who made each version kept, and its layers from the bottom up - each with its box on the artboard; a text layer\'s text and colour; an svg layer\'s markup. A message whose picture is no canvas, or was changed outside the editor since, answers 404 not_found.',
+            'description' => 'The canvas a message carries, drawn by an agent or by a person in the image editor: its artboard, the address of its picture (an agent that sees pictures looks at it too; pending until a member\'s browser has drawn it), the number of its newest version and who made each version kept, and its layers from the bottom up - each with its id, kind, box on the artboard and name (null when it has none); a text layer\'s text and colour; an svg layer\'s markup. A message whose picture is no canvas, or was changed outside the editor since, answers 404 not_found.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
@@ -80,12 +83,27 @@ function ws_canvas_api_routes()
             'dry_run'      => true,
             'returns'      => ws_api_canvas_returns(),
             'summary'      => 'Edit a canvas in place',
-            'description'  => 'Changes a canvas of the channel - an agent\'s or a person\'s - with operations applied in order to its newest version, all or none: add (svg; x, y, w, h, rot optional: a new layer on top, its own size made to fit and centred when no box is given), replace (layer, svg: an svg layer\'s drawing, its box kept), remove (layer), text (layer, text; color #rrggbb optional: a text layer\'s words), box (layer; any of x, y, w, h, rot: move, resize or turn a layer) and svg (svg; background optional: the whole canvas anew). Layer ids and the version come from GET /workspace/messages/{id}/canvas. version is the newest version you read: when somebody saved since, the call answers 409 conflict; read again and redo. The edit is a new version made by the agent, kept with the original and the last ten; its picture is pending again until a member\'s browser draws it. A person whose canvas an agent edited is told. Only an agent of the channel edits, as for POST /workspace/channels/{id}/canvases (403 forbidden). A refused operation answers 422 validation_failed on operations, its message naming the operation by its place (from 0); a locked layer is not changed. PATCH is accepted as well.',
+            'description'  => 'Changes a canvas of the channel - an agent\'s or a person\'s - with operations applied in order to its newest version, all or none: add (svg; x, y, w, h, rot optional: a new layer on top, its own size made to fit and centred when no box is given; layers split: a layer per top-level element, placed where that one layer would have been), replace (layer, svg: an svg layer\'s drawing, its box kept), remove (layer), text (layer, text; color #rrggbb optional: a text layer\'s words), box (layer; any of x, y, w, h, rot: move, resize or turn a layer), svg (svg; background and layers optional: the whole canvas anew), style (layer and the look to change: a text\'s font, size, weight, italic, align, color, bg, lineHeight, spacing; a shape\'s color, fill none, solid or soft, stroke, dash solid, dashed or dotted, radius; an icon\'s color; any layer\'s opacity 0 to 1), order (layer, to front, back, above or below, target for above and below), name (layer, name: 1 to 80 letters no other layer has) and lock (layer, locked true or false; the only change a locked layer takes besides its name). add also takes type: text (text; font from GET /workspace/canvas/fonts, size, weight, italic, align, color, bg, lineHeight, spacing), picture (file_id or file, the address of a file of this channel, or with files:read of a public file), shape (shape rectangle or ellipse with x, y, w, h, or line with x1, y1, x2, y2; color, fill, stroke, dash, radius) or icon (icon, a Bootstrap Icons name such as bar-chart; color); the look\'s defaults are the image editor\'s, a layer without x and y is centred; and name and lock for any type. A layer is named by its id, or by its name when one layer alone has it. Layer ids and the version come from GET /workspace/messages/{id}/canvas. version is the newest version you read: when somebody saved since, the call answers 409 conflict; read again and redo. The edit is a new version made by the agent, kept with the original and the last ten; its picture is pending again until a member\'s browser draws it. A person whose canvas an agent edited is told. Only an agent of the channel edits, as for POST /workspace/channels/{id}/canvases (403 forbidden). A refused operation answers 422 validation_failed on operations, its message naming the operation by its place (from 0); a locked layer is not changed. PATCH is accepted as well.',
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'version', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The newest version you read.'),
-                array('name' => 'operations', 'in' => 'body', 'type' => 'list', 'of' => array('op' => 'string', 'layer' => 'string', 'svg' => 'string', 'text' => 'string', 'color' => 'string', 'background' => 'string', 'x' => 'number', 'y' => 'number', 'w' => 'number', 'h' => 'number', 'rot' => 'number'), 'max_items' => 20, 'required' => true, 'description' => 'Objects of {op, ...}, applied in order; see the description.'),
+                array('name' => 'operations', 'in' => 'body', 'type' => 'list', 'of' => array('op' => 'string', 'layer' => 'string', 'type' => 'string', 'svg' => 'string', 'text' => 'string', 'color' => 'string', 'background' => 'string', 'layers' => 'string', 'x' => 'number', 'y' => 'number', 'w' => 'number', 'h' => 'number', 'rot' => 'number',
+                    'font' => 'string', 'size' => 'number', 'weight' => 'integer', 'italic' => 'boolean', 'align' => 'string', 'bg' => 'string', 'lineHeight' => 'number', 'spacing' => 'number', 'opacity' => 'number',
+                    'shape' => 'string', 'fill' => 'string', 'stroke' => 'number', 'dash' => 'string', 'radius' => 'number', 'x1' => 'number', 'y1' => 'number', 'x2' => 'number', 'y2' => 'number',
+                    'icon' => 'string', 'file' => 'string', 'file_id' => 'integer', 'name' => 'string', 'lock' => 'boolean', 'locked' => 'boolean', 'to' => 'string', 'target' => 'string'), 'max_items' => 20, 'required' => true, 'description' => 'Objects of {op, ...}, applied in order; see the description.'),
             ),
+        ),
+
+        array(
+            'id'          => 'workspace.canvas.fonts',
+            'method'      => 'GET',
+            'path'        => '/workspace/canvas/fonts',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_canvas_fonts',
+            'returns'     => array('fonts' => array(array('font' => 'string', 'family' => 'string', 'source' => 'string'))),
+            'summary'     => 'List the fonts a canvas text may use',
+            'description' => 'The fonts the image editor offers for a text layer, each with the value to give as font in a canvas edit: the editor\'s system stacks (sans, serif, hand, display, mono), then the families the site\'s styles load and the Google Fonts catalogue, as g:<family>. source is system, site or google.',
+            'params'      => array(),
         ),
     );
 }
@@ -110,6 +128,7 @@ function ws_api_canvas_returns()
             'id'     => 'string',
             'type'   => 'string',
             'kind'   => 'string?',
+            'name'   => 'string?',
             'x'      => 'number',
             'y'      => 'number',
             'w'      => 'number',
@@ -171,6 +190,7 @@ function ws_canvas_layer_read($layer)
         'id'     => (string) $layer['id'],
         'type'   => $type,
         'kind'   => (isset($layer['kind']) && is_string($layer['kind'])) ? $layer['kind'] : null,
+        'name'   => (isset($layer['name']) && is_string($layer['name']) && ($layer['name'] !== '')) ? $layer['name'] : null,
         'x'      => $number('x'),
         'y'      => $number('y'),
         'w'      => $number('w'),
@@ -292,13 +312,16 @@ function ws_api_canvas_present($message, $made = null)
  * checked that), else an application with a row in the channel's agents.
  * A person's own device draws in the panel's editor, not here.
  *
- * @param array $channel
+ * The live page routes (api_page.php) ask the same, in their own words.
+ *
+ * @param array       $channel
+ * @param string|null $refused the refusal's words; the canvas's when null
  * @return array id, kind, handle (the document's by)
  */
-function ws_api_canvas_agent($channel)
+function ws_api_canvas_agent($channel, $refused = null)
 {
     $device = function_exists('api_current_device') ? api_current_device() : null;
-    $refused = lang('A canvas is drawn here only by an agent of the channel.');
+    $refused = ($refused !== null) ? $refused : lang('A canvas is drawn here only by an agent of the channel.');
 
     if (ws_api_device_writes_as_person($device)) {
         api_fail(403, 'forbidden', $refused);
@@ -344,10 +367,11 @@ function ws_api_canvases_create($params)
         api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
     }
 
-    $made = ws_canvas_from_svg($params['svg'] ?? '', (string) ($params['background'] ?? ''));
+    $mode = ws_canvas_split_mode($params['layers'] ?? null);
+    $made = ($mode === null) ? array('error' => 'layers') : ws_canvas_from_svg($params['svg'] ?? '', (string) ($params['background'] ?? ''), $mode === 'split', ws_canvas_split_resolver((int) $channel['id'], api_has_scope(api_current_scopes(), 'files:read')));
 
     if ($made['error'] !== '') {
-        api_fail_validation(ws_canvas_from_svg_error_text($made['error']), ($made['error'] === 'background') ? 'background' : 'svg');
+        api_fail_validation(ws_canvas_from_svg_error_text($made['error']), in_array($made['error'], array('background', 'layers'), true) ? $made['error'] : 'svg');
     }
 
     $doc = $made['doc'];
@@ -407,6 +431,13 @@ function ws_api_canvases_create($params)
     ), 201);
 }
 
+function ws_api_canvas_fonts($params)
+{
+    ws_api_viewer();
+
+    api_ok(array('fonts' => ws_canvas_write_fonts()));
+}
+
 function ws_api_canvas_get($params)
 {
     $viewer = ws_api_viewer();
@@ -463,7 +494,7 @@ function ws_api_canvas_edit($params)
         api_fail(409, 'conflict', lang(array('string' => 'The canvas changed since: its newest version is {var:1}. Read it again.', 'vars' => $target['version'])));
     }
 
-    $edited = ws_canvas_edit_apply($target['doc'], $params['operations'] ?? null);
+    $edited = ws_canvas_edit_apply($target['doc'], $params['operations'] ?? null, ws_canvas_split_resolver((int) $target['channel']['id'], api_has_scope(api_current_scopes(), 'files:read')), ws_canvas_write_file_resolver((int) $target['channel']['id'], api_has_scope(api_current_scopes(), 'files:read')));
 
     if ($edited['error'] !== '') {
         $where = ($edited['index'] >= 0) ? lang(array('string' => 'Operation {var:1}', 'vars' => $edited['index'])) . ': ' : '';

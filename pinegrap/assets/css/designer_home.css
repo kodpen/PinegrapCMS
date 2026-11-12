@@ -376,6 +376,16 @@
   text-underline-offset: .2em;
 }
 
+/* "Legacy" beside a moved classic style's name: it follows the last word and
+   wraps with it, at the size of the small text whatever the heading's. */
+.sdh-legacy {
+  margin-left: .5rem;
+  font-size: .75rem;
+  font-weight: 500;
+  vertical-align: .125em;
+  white-space: nowrap;
+}
+
 .sdh-more {
   flex: 0 0 auto;
   margin-left: auto;

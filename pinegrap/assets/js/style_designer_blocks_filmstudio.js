@@ -42,13 +42,16 @@ StyleDesigner.registerBlockFamily(function (kit) {
                                   '.pg-filmstudio-chapters time { font-family: var(--bs-font-monospace); font-variant-numeric: tabular-nums; }',
         // A wide still at the cinema's 2.39:1 with the play mark in its
         // middle; the mark grows on hover and keyboard focus, and stays put
-        // under reduced motion.
+        // under reduced motion. Its halo replaces the button's focus ring, so
+        // keyboard focus draws a ring of its own: the page's background
+        // inside the primary colour, seen on a dark or a light still.
         'pg-filmstudio-scope':    '.pg-filmstudio-scope { position: relative; } ' +
                                   '.pg-filmstudio-scope .ratio { --bs-aspect-ratio: 41.84%; background-color: var(--bs-tertiary-bg); } ' +
                                   '.pg-filmstudio-scope .pg-filmstudio-play { position: absolute; top: 50%; left: 50%; z-index: 2; display: inline-flex; align-items: center; justify-content: center; ' +
                                   'width: 4.5rem; height: 4.5rem; padding: 0; font-size: 2rem; transform: translate(-50%, -50%); transition: transform .25s ease; ' +
                                   'box-shadow: 0 0 0 .5rem rgba(var(--bs-primary-rgb), .25); } ' +
                                   '.pg-filmstudio-scope .pg-filmstudio-play:hover, .pg-filmstudio-scope .pg-filmstudio-play:focus-visible { transform: translate(-50%, -50%) scale(1.12); } ' +
+                                  '.pg-filmstudio-scope .pg-filmstudio-play:focus-visible { outline: 0; box-shadow: 0 0 0 .25rem var(--bs-body-bg), 0 0 0 .5rem var(--bs-primary); } ' +
                                   '@media (prefers-reduced-motion: reduce) { .pg-filmstudio-scope .pg-filmstudio-play { transition: none; } }',
         // End credits: each role set to the right of a centre line, each
         // name to its left, the way a film's credits roll.
@@ -266,9 +269,12 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'filmstudio-',
         group: { title: _sdT('Film Studio'), icon: 'bi-film' },
         items: [
-            { label: _sdT('Film Studio: Showreel Hero'),          type: 'component', icon: 'bi-play-btn',     extra: { componentType: 'filmstudio-reel' } },
-            { label: _sdT('Film Studio: Title Card and Credits'), type: 'component', icon: 'bi-camera-reels', extra: { componentType: 'filmstudio-credits' } },
-            { label: _sdT('Film Studio: Cuts for Every Screen'),  type: 'component', icon: 'bi-aspect-ratio', extra: { componentType: 'filmstudio-formats' } }
+            { label: _sdT('Film Studio: Showreel Hero'),          type: 'component', icon: 'bi-play-btn',     extra: { componentType: 'filmstudio-reel' },
+              desc: _sdT('A dark band with a huge title and two buttons over a video player with its slate, then the films of the reel on a timeline.') },
+            { label: _sdT('Film Studio: Title Card and Credits'), type: 'component', icon: 'bi-camera-reels', extra: { componentType: 'filmstudio-credits' },
+              desc: _sdT('A film title card and its facts over a wide cinema still with a play button, then the credits around a centre line and a quote.') },
+            { label: _sdT('Film Studio: Cuts for Every Screen'),  type: 'component', icon: 'bi-aspect-ratio', extra: { componentType: 'filmstudio-formats' },
+              desc: _sdT('Four delivery formats, each drawn as a frame at its aspect ratio with where it is shown and its lengths, and a project button.') }
         ],
         build: function (ctype) {
             if (ctype === 'filmstudio-reel') return buildReel();

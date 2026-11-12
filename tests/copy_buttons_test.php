@@ -86,7 +86,7 @@ function test_copy_buttons_status_beside_button()
 {
 	// The status sits in the same wrapper as the button, so a modal dialog
 	// or open sheet that makes the rest of the page inert still hears it.
-	pg_assert_contains("aria-label=\"' . h(lang('Copy')) . '\"><i class=\"bi bi-clipboard\" aria-hidden=\"true\"></i></button>'\n            . '<span class=\"visually-hidden\" role=\"status\" aria-live=\"polite\"", copy_buttons_source('includes/workspace/claude.php'));
+	pg_assert_contains("aria-label=\"' . h(lang('Copy')) . '\"><i class=\"bi bi-clipboard\" aria-hidden=\"true\"></i></button>'\n        . '<span class=\"visually-hidden\" role=\"status\" aria-live=\"polite\"", copy_buttons_source('includes/workspace/claude.php'));
 	pg_assert_contains('trigger.parentNode.querySelector(\\\'[role="status"]\\\')', copy_buttons_source('includes/workspace/claude.php'));
 }
 

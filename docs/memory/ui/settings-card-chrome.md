@@ -1,6 +1,6 @@
 ---
 name: settings-card-chrome
-description: Settings dialog visual details: acrylic glass mode (advanced-visuals, pg-settings-open) and the pg-alert-dismissible padding rule.
+description: Settings dialog visual details: acrylic glass mode (advanced-visuals, pg-settings-open), the pg-alert-dismissible padding rule and the gap between cards.
 ---
 
 ## How does the settings dialog behave with the acrylic effect on?
@@ -20,3 +20,8 @@ Related: docs/memory/ui/settings-card-row-layout.md
 
 ## Why do long category names wrap in the section list?
 - `.pg-sm-link span` wraps (`overflow-wrap: anywhere`) instead of an ellipsis: at tablet width the list is 12rem and names were cut ("Güncellemeler ve Bak…") with the full name shown nowhere; its tooltip holds the description (#5028).
+
+## What keeps the gap between two cards?
+- The cards' container: `.pg-settings-body` is a flex column with `gap: 1.5rem` (`backend.src.css`, "The cards of a category screen"), on the page (`#pg_settings_sections`, `includes/settings/screen.php`) and in the dialog (`#pg_settings_modal_pane`, `includes/settings/modal.php`).
+- An element that draws nothing (a card's inline `<script>`, a hidden Connect form, a card the filter hides with `d-none`) takes no part in a flex gap; one that draws gets the same gap as a card.
+- The gap was a top margin on a card right after another card. Cron Jobs ends in an inline `<script>`, so Backups on "Updates and maintenance" touched it (owner, #8677). A gap is never set on a card again; `tests/settings_card_rows_test.php` fails on the old rule.

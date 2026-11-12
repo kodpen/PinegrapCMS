@@ -13,7 +13,7 @@ description: Decisions list, product part 43 (2026-11-11 on): classic styles sha
 - Reason: a style moved alone opened with CSS and JS that did not fit, and a site's classic styles mostly share one set (49 styles, 7 sets on the starting site).
 - What stays (#6006, #6251; `decisions-made-product-21.md`, `decisions-made-product-23.md`): nothing classic is removed; the classic `style` rows and their code stay; a move starts only from a designer, after the dry run.
 - Not a duplicate to clean up: several frame components (`classic_style:<style_id>`) in one Legacy design, and a classic style still standing beside the design its pages moved to.
-- Built by `plans/legacy-group-design.md`.
+- Built by steps LG1-LG7: `designer/legacy-overview.md`.
 
 ## What does the badge of a Legacy design read? (owner, 2026-11-11, #8671)
 - "Legacy", Turkish "Eski". Owner (2026-11-11): "Legacy / Eski (Önerilen)". Not chosen: "Classic / Klasik" and an untranslated "Legacy".

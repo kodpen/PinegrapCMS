@@ -20,6 +20,7 @@
 include('init.php');
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer_run.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_classic.php');
 
 // The run's short requests (ajax=1) are read by the screen's script as JSON:
 // an ended session, a missing right or a stale token is answered in that
@@ -53,29 +54,58 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST') && (($_POST['ajax'] ?? '') === '1'))
 $user = validate_user();
 validate_area_access($user, 'designer');
 
-// The dry run of the chosen styles writes nothing. Convert starts the run
-// of the styles a dry run listed, then the screen works it.
+// The dry run of the chosen sets and styles writes nothing. Convert starts
+// the run of the sets and styles a dry run listed, then the screen works it.
 $chosen = array();
+$chosen_sets = array();
 $plan = null;
 $run_error = '';
+$liveform = new liveform('legacy_to_designer');
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     validate_token_field();
+    // Back to classic: a set's design, or one page of it, returns to the
+    // classic styles its pages came from. Not while a move runs.
+    if (!empty($_POST['back'])) {
+        $back_page = (int)($_POST['page'] ?? 0);
+        if (pg_ltd_state_read() !== null) {
+            $liveform->add_error(h(lang('A move is running: send pages back when it has ended.')));
+        } else {
+            $back = pg_ltc_back((int)($_POST['design'] ?? 0), ($back_page > 0) ? array($back_page) : null, $user);
+            if ($back['moved']) {
+                $liveform->add_notice(h(lang(array('string' => '{var:1} pages went back to their classic styles: {var:2}',
+                    'vars' => array(count($back['moved']), implode(', ', $back['moved']))))));
+            }
+            foreach ($back['skipped'] as $line) {
+                $liveform->add_warning(h($line));
+            }
+            if (!$back['moved'] && !$back['skipped']) {
+                $liveform->add_error(h(lang('No page went back.')));
+            }
+        }
+        header('Location: ' . PATH . SOFTWARE_DIRECTORY . '/legacy_to_designer.php#ltd-back-result');
+        exit;
+    }
     foreach ((array)($_POST['styles'] ?? array()) as $id) {
         if ((int)$id > 0) $chosen[(int)$id] = true;
     }
+    foreach ((array)($_POST['sets'] ?? array()) as $key) {
+        if (is_string($key) && preg_match('/^[0-9a-f]{16}$/', $key)) $chosen_sets[$key] = true;
+    }
     if (!empty($_POST['convert'])) {
-        $run_error = pg_ltd_run_start(array_keys($chosen), $user);
+        $run_error = pg_ltd_run_start(array_keys($chosen), $user, array_keys($chosen_sets));
         if ($run_error === '') {
-            log_activity(lang(array('string' => 'the move of {var:1} styles to the visual designer was started', 'vars' => array(count($chosen)))), $_SESSION['sessionusername']);
+            $started = pg_ltd_state_read();
+            log_activity(lang(array('string' => 'the move of {var:1} styles to the visual designer was started', 'vars' => array(count((array)($started['styles'] ?? array()))))), $_SESSION['sessionusername']);
             header('Location: ' . PATH . SOFTWARE_DIRECTORY . '/legacy_to_designer.php#ltd-run');
             exit;
         }
     }
-    $plan = pg_ltd_plan(array_keys($chosen));
+    $plan = pg_ltd_plan(array_keys($chosen), array_keys($chosen_sets));
 }
 
 $running = pg_ltd_state_read();
 $report = pg_ltd_report();
+$sets = pg_ltd_sets($report);
 
 $state_badges = array(
     'ready'     => array('theme-success', lang('Ready')),
@@ -116,11 +146,14 @@ $page_list = function ($pages, $summary) {
     return '<details><summary>' . h($summary) . '</summary><ul class="mb-0 mt-1 ps-12">' . $items . '</ul></details>';
 };
 
-$output_rows = '';
 foreach ($report as $s) {
     ++$totals[$s['state']];
-    $pages = count($s['own']) + count($s['folder']);
-    $total_pages += $pages;
+    $total_pages += count($s['own']) + count($s['folder']);
+}
+
+// One row per style, under its set's head row or under the styles that
+// move alone.
+$style_row = function ($s) use ($state_badges, $region_labels, $page_list, $chosen) {
     $badge = $state_badges[$s['state']];
 
     $output_pages = $page_list($s['own'], lang(array('string' => '{var:1} own', 'vars' => array(pg_format_number(count($s['own']), 0)))))
@@ -173,6 +206,9 @@ foreach ($report as $s) {
                 break;
         }
     }
+    if ($s['mobile'] > 0 && defined('MOBILE') && MOBILE) {
+        $lines[] = array('fg-secondary', lang('A folder or page uses it as its mobile style: the classic style stays and keeps serving phones.'));
+    }
     $output_notes = '';
     foreach ($lines as $l) {
         $output_notes .= '<div class="small ' . $l[0] . '">' . h($l[1]) . '</div>';
@@ -184,7 +220,7 @@ foreach ($report as $s) {
         $output_action .= '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . h(lang('Open in the visual designer')) . '" href="edit_system_style.php?id=' . (int)$s['id'] . '&amp;classic=1"><i class="bi bi-magic"></i></a>';
     }
 
-    $output_rows .= '
+    return '
         <tr>
             <td class="align-middle text-start">' . $output_action . '</td>
             <td class="align-middle"><a href="edit_' . h($s['type']) . '_style.php?id=' . (int)$s['id'] . '">' . h($s['name']) . '</a>'
@@ -194,6 +230,50 @@ foreach ($report as $s) {
             <td class="align-middle">' . $output_regions . '</td>
             <td class="align-middle">' . $output_notes . '</td>
         </tr>';
+};
+
+// A set: its box (for the dry run), its design's name, how many styles and
+// pages, its theme file and the stylesheets and scripts its styles share,
+// then its styles. The styles that move alone close the table.
+$by_id = array();
+foreach ($report as $s) $by_id[$s['id']] = $s;
+$output_rows = '';
+foreach ($sets['sets'] as $set) {
+    $files = '';
+    foreach (array('css' => 'bi-filetype-css', 'js' => 'bi-filetype-js') as $kind => $icon) {
+        foreach ($set['refs'][$kind] as $address) {
+            $files .= '<li class="text-break"><i class="bi ' . $icon . ' me-1" aria-hidden="true"></i>' . h($address) . '</li>';
+        }
+    }
+    $summary = lang(array('string' => '{var:1} stylesheets, {var:2} scripts', 'vars' => array(count($set['refs']['css']), count($set['refs']['js']))));
+    $output_rows .= '
+        <tbody class="ltd-set">
+        <tr class="ltd-set-head">
+            <td class="align-middle text-start"><input class="check m-1" type="checkbox" name="sets[]" value="' . h($set['key']) . '" form="ltd_dry_run" aria-label="' . h($set['name']) . '"' . (isset($chosen_sets[$set['key']]) ? ' checked' : '') . '></td>
+            <th scope="rowgroup" colspan="5" class="align-middle fw-normal">
+                <span class="fw-semibold">' . h($set['name']) . '</span>
+                <span class="small fg-secondary ms-2">' . h(lang(array('string' => '{var:1} styles, {var:2} pages', 'vars' => array(pg_format_number(count($set['styles']), 0), pg_format_number($set['pages'], 0))))) . '</span>
+                <div class="small fg-secondary">' . h($set['theme'] !== '' ? lang(array('string' => 'Theme file: {var:1}', 'vars' => array($set['theme']))) : lang('The site\'s activated theme')) . '</div>'
+                . ($files !== '' ? '<details class="small"><summary>' . h($summary) . '</summary><ol class="mb-0 mt-1 ps-12">' . $files . '</ol></details>' : '') . '
+            </th>
+        </tr>';
+    foreach ($set['styles'] as $id) $output_rows .= $style_row($by_id[$id]);
+    $output_rows .= '
+        </tbody>';
+}
+if ($sets['alone']) {
+    $output_rows .= '
+        <tbody>
+        <tr class="ltd-set-head">
+            <td></td>
+            <th scope="rowgroup" colspan="5" class="align-middle fw-normal"><span class="fw-semibold">' . h(lang('Styles that move alone')) . '</span>
+                <div class="small fg-secondary">' . h(lang('No other style loads the same files with the same theme file and collection, or the visual designer cannot open the style.')) . '</div></th>
+        </tr>';
+    foreach ($report as $s) {
+        if (isset($sets['alone'][$s['id']])) $output_rows .= $style_row($s);
+    }
+    $output_rows .= '
+        </tbody>';
 }
 
 $output_summary = '';
@@ -224,7 +304,7 @@ $output_table = $report
                     <th>' . lang('Notes') . '</th>
                 </tr>
             </thead>
-            <tbody>' . $output_rows . '</tbody>
+            ' . $output_rows . '
         </table>'
     : '<p class="p-7 mb-0">' . h(lang('There is no classic style left: every style is a visual design.')) . '</p>';
 
@@ -265,7 +345,7 @@ if ($output_classic !== '') {
 
 $output_plan = '';
 if ($plan !== null) {
-    $output_plan = $plan ? '' : '<p class="mb-0">' . h(lang('Choose the styles to move first.')) . '</p>';
+    $output_plan = $plan ? '' : '<p class="mb-0">' . h(lang('Choose a set or the styles to move first.')) . '</p>';
     foreach ($plan as $p) {
         $output_plan .= pg_ltd_plan_html($p);
     }
@@ -273,11 +353,13 @@ if ($plan !== null) {
     if ($plan && $running === null) {
         $hidden = '';
         foreach ($plan as $p) {
-            if ($p['skip'] === '') $hidden .= '<input type="hidden" name="styles[]" value="' . (int)$p['id'] . '">';
+            if ($p['skip'] !== '') continue;
+            if ($p['kind'] === 'style') $hidden .= '<input type="hidden" name="styles[]" value="' . (int)$p['id'] . '">';
+            if ($p['kind'] === 'set') $hidden .= '<input type="hidden" name="sets[]" value="' . h($p['key']) . '">';
         }
         if ($hidden !== '') {
-            $output_convert = '
-        <form method="post" action="legacy_to_designer.php" class="card-footer d-flex align-items-center gap-3">' . get_token_field() . $hidden . '
+            $output_convert .= '
+        <form method="post" action="legacy_to_designer.php" class="card-footer d-flex flex-wrap align-items-center gap-3">' . get_token_field() . $hidden . '
             <button type="submit" name="convert" value="1" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-magic me-1"></i>' . h(lang('Move to the visual designer')) . '</button>
             <span class="small fg-secondary">' . h(lang('Writes what is listed above. A page somebody holds is skipped; undo is a page\'s revision history and deleting a shared component.')) . '</span>
         </form>';
@@ -286,7 +368,7 @@ if ($plan !== null) {
     $output_plan = '
     <div class="card my-7" id="ltd-dry-run">
         <div class="card-header"><h2 class="h5 mb-0">' . h(lang('Dry run')) . '</h2>
-            <div class="small fg-secondary">' . h(lang('What moving the chosen styles would write. Nothing has been changed.')) . '</div></div>
+            <div class="small fg-secondary">' . h(lang('What moving the chosen sets and styles would write. Nothing has been changed.')) . '</div></div>
         <div class="card-body">' . ($run_error !== '' ? '<div class="fg-danger mb-3">' . h($run_error) . '</div>' : '') . $output_plan . '</div>' . $output_convert . '
     </div>';
 }
@@ -352,6 +434,59 @@ if ($output_runs !== '') {
     </div>';
 }
 
+// Back to classic: each set's design with its pages, the whole design or one
+// page sent back to the classic style it came from. No button while a move
+// runs.
+$output_back = '';
+foreach (pg_ltc_designs() as $d) {
+    $rows = '';
+    $ready = 0;
+    foreach ($d['pages'] as $p) {
+        if ($p['refusal'] === '') {
+            $ready++;
+            $action = '<form method="post" action="legacy_to_designer.php" class="d-inline">' . get_token_field()
+                . '<input type="hidden" name="back" value="1"><input type="hidden" name="design" value="' . (int)$d['id'] . '">'
+                . '<input type="hidden" name="page" value="' . (int)$p['page_id'] . '">'
+                . '<button type="submit" class="btn btn-sm btn-outline theme-secondary rounded-pill px-4"'
+                . ' aria-label="' . h(lang(array('string' => 'Send {var:1} back to {var:2}', 'vars' => array($p['page_name'], $p['origin_name'])))) . '"'
+                . ($running !== null ? ' disabled' : '') . '>' . h(lang('Send back')) . '</button></form>';
+        } else {
+            $action = '<span class="small fg-secondary">' . h(pg_ltc_refusal_text($p['refusal'])) . '</span>';
+        }
+        // Below md the classic style goes under the page name, so the button
+        // column stays in view without scrolling the table.
+        $rows .= '<tr><td>' . h($p['page_name'])
+            . '<div class="small fg-secondary md:d-none">' . h($p['origin_name']) . '</div></td>'
+            . '<td class="d-none md:d-table-cell">' . h($p['origin_name']) . '</td>'
+            . '<td class="text-end">' . $action . '</td></tr>';
+    }
+    $all = '';
+    if ($ready > 0) {
+        $all = '<form method="post" action="legacy_to_designer.php" class="mb-3">' . get_token_field()
+            . '<input type="hidden" name="back" value="1"><input type="hidden" name="design" value="' . (int)$d['id'] . '">'
+            . '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"' . ($running !== null ? ' disabled' : '') . '>'
+            . '<i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i>'
+            . h(lang(array('string' => 'Send {var:1} pages back', 'vars' => array($ready)))) . '</button></form>';
+    }
+    $output_back .= '
+        <div class="mb-7">
+            <h3 class="h6">' . h($d['name']) . '</h3>
+            ' . $all . '
+            <details><summary>' . h(lang(array('string' => '{var:1} pages', 'vars' => array(count($d['pages']))))) . '</summary>
+                <div class="table-responsive"><table class="table table-sm align-middle mb-0 mt-3">
+                    <thead><tr><th scope="col">' . h(lang('Page')) . '</th><th scope="col" class="d-none md:d-table-cell">' . h(lang('Classic style')) . '</th><th scope="col" class="text-end">' . h(lang('Back to classic')) . '</th></tr></thead>
+                    <tbody>' . $rows . '</tbody></table></div></details>
+        </div>';
+}
+if ($output_back !== '') {
+    $output_back = '
+    <div class="card my-7" id="ltd-back">
+        <div class="card-header"><h2 class="h5 mb-0">' . h(lang('Back to classic')) . '</h2>
+            <div class="small fg-secondary">' . h(lang('A set\'s design sends its pages back to the classic styles they came from. Each page\'s design is kept in its History; the design stays for a later move.')) . '</div></div>
+        <div class="card-body">' . $output_back . '</div>
+    </div>';
+}
+
 // Dry run is the toolbar's primary action; it submits this hidden form, which
 // carries the token and the ticked styles (their checkboxes name it in form=).
 // Neither is drawn while a move runs.
@@ -360,7 +495,7 @@ $toolbar_primary = '';
 $toolbar_grow = '';
 if ($report && $running === null) {
     $toolbar_primary = '<button type="submit" form="ltd_dry_run" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-clipboard-check me-2" aria-hidden="true"></i>' . h(lang('Dry run')) . '</button>';
-    $toolbar_grow = '<span class="small fg-secondary">' . h(lang('Tick the styles to move, then see what would be written for each.')) . '</span>';
+    $toolbar_grow = '<span class="small fg-secondary">' . h(lang('Tick a set or the styles to move, then see what would be written for each.')) . '</span>';
     $output_form = '<form id="ltd_dry_run" method="post" action="legacy_to_designer.php#ltd-dry-run" hidden>' . get_token_field() . '</form>';
 }
 
@@ -381,10 +516,15 @@ pg_page_shell([
     )) . '
     <div class="row g-7 my-7">' . $output_summary . '</div>
     ' . $output_form . $output_run . $output_plan . '
-    <div class="card my-7">
+    <div class="card my-7" id="ltd-styles">
+        <div class="card-header"><h2 class="h5 mb-0">' . h(lang('Styles')) . '</h2>
+            <div class="small fg-secondary">' . h(lang(array('string' => 'Sets: {var:1}. Styles that load the same stylesheets and scripts in the same order, with the same theme file and collection, form a set and move as one Legacy design.', 'vars' => array(count($sets['sets']))))) . '</div></div>
         <div class="card-body p-0 table-responsive">' . $output_table . '</div>
     </div>
-    ' . $output_classic . $output_runs . '
+    <div id="ltd-back-result">' . $liveform->output_errors() . $liveform->output_notices() . $liveform->get_warnings() . '</div>
+    ' . $output_back . $output_classic . $output_runs . '
 </main>
 ' .
 output_footer();
+
+$liveform->remove_form('legacy_to_designer');

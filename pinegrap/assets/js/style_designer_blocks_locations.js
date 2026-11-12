@@ -9,7 +9,11 @@
  * The core's Locations: Cards keeps the branch cards (address, hours,
  * phone). The floor directory: a building's floors from the top down, each
  * with its level, what is on it and who may go up, for a coworking house,
- * a hotel, a museum or a shopping arcade.
+ * a hotel, a museum or a shopping arcade. Zones: the rings around a base
+ * drawn beside each zone's places, its fee and how soon it is served, then
+ * the time slots and the cut-off time for the same day. The labels name no
+ * trade: a florist, a bakery or a pharmacy places it as delivery zones, a
+ * plumber, a cleaner or a repair service as the areas it calls out to.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -23,12 +27,26 @@ StyleDesigner.registerBlockFamily(function (kit) {
     var _SD_BLOCK_CSS = {
         'pg-space-facts': '.pg-space-facts { font-variant-numeric: tabular-nums; }',
         // A floor's level: a square of one size whatever its figure or word.
-        'pg-floor-level': '.pg-floor-level { display: inline-flex; align-items: center; justify-content: center; width: 4rem; height: 4rem; flex-shrink: 0; font-variant-numeric: tabular-nums; }'
+        'pg-floor-level': '.pg-floor-level { display: inline-flex; align-items: center; justify-content: center; width: 4rem; height: 4rem; flex-shrink: 0; font-variant-numeric: tabular-nums; }',
+        // The zones as rings around the base, each inside the next: a ring
+        // keeps its round shape from its width, and its padding is the
+        // band the zone covers, so no ring is placed by position.
+        'pg-zone-map': '.pg-zone-map { max-width: 22rem; margin-inline: auto; } ' +
+                       '.pg-zone-map .pg-zone-ring { aspect-ratio: 1 / 1; padding: 15%; border-radius: 50%; } ' +
+                       '.pg-zone-map .pg-zone-z1 { display: flex; align-items: center; justify-content: center; padding: 0; }',
+        // A zone's key in the list, drawn like its ring; the outer zone's
+        // line is dashed (the border utilities read the style from it); the
+        // rings drawn inside it inherit the property and are set back.
+        'pg-zone-key': '.pg-zone-key { width: 1.25rem; height: 1.25rem; flex-shrink: 0; margin-top: .25rem; border-radius: 50%; } ' +
+                       '.pg-zone-z3 { --bs-border-style: dashed; } ' +
+                       '.pg-zone-z3 .pg-zone-ring { --bs-border-style: solid; } ' +
+                       '.pg-zone-list { font-variant-numeric: tabular-nums; }'
     };
 
     var _SD_BLOCK_CSS_NEEDS = {
         'locations-spaces': ['pg-ratio-16x9', 'pg-space-facts'],
-        'locations-floors': ['pg-floor-level']
+        'locations-floors': ['pg-floor-level'],
+        'locations-zones': ['pg-zone-map', 'pg-zone-key']
     };
 
     // ── Spaces to hire ──────────────────────────────────────────────────
@@ -125,15 +143,103 @@ StyleDesigner.registerBlockFamily(function (kit) {
         ]);
     };
 
+    // ── Zones ───────────────────────────────────────────────────────────
+    // The colours of a zone's ring and of its key in the list, from the
+    // base outwards; the outer zone is drawn with a dashed line.
+    var rings = {
+        1: 'text-bg-primary',
+        2: 'bg-primary-subtle border border-2 border-primary-subtle',
+        3: 'pg-zone-z3 border border-2 border-primary'
+    };
+    // A zone: its key (hidden from a screen reader, which reads the name),
+    // its name and fee, the places it covers and how soon it is served.
+    var zone = function (n, name, text, when, today, fee) {
+        return kit.tag('li', 'd-flex gap-3 py-3 border-bottom', _sdT('Zone {var}', n), [
+            kit.div('pg-zone-key ' + rings[n], _sdT('Zone Mark'), [], [{ name: 'aria-hidden', value: 'true' }]),
+            kit.div('flex-grow-1', _sdT('Zone Text'), [
+                kit.div('d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-1', _sdT('Title'), [
+                    kit.h('h3', name, 'h5 fw-bold mb-0'),
+                    kit.div('', _sdT('Fee'), [
+                        kit.h('span', _sdT('Fee'), 'small text-body-secondary me-1'),
+                        kit.h('span', fee, 'fw-bold')
+                    ])
+                ]),
+                kit.p(text, 'small text-body-secondary mb-2'),
+                kit.h('span', when, 'badge rounded-pill text-wrap ' + (today ? 'text-bg-primary' : 'bg-body-secondary text-body-emphasis'))
+            ])
+        ]);
+    };
+    // A time slot: its name and the hours it runs.
+    var slot = function (icon, name, from, to) {
+        return kit.tag('li', 'col', name, [
+            kit.div('h-100 p-3 rounded-3 border text-center', _sdT('Time Slot'), [
+                kit.icon(icon, 'd-block text-primary fs-4 mb-1'),
+                kit.h('span', name, 'd-block fw-semibold'),
+                kit.div('small text-body-secondary', _sdT('Hours'), [
+                    kit.time(from, from, '', _sdT('Start Time')),
+                    kit.h('span', '–', 'mx-1'),
+                    kit.time(to, to, '', _sdT('End Time'))
+                ])
+            ])
+        ]);
+    };
+    var buildZones = function () {
+        var map = kit.div('pg-zone-map', _sdT('Zone Drawing'), [
+            kit.div('pg-zone-ring ' + rings[3], _sdT('Zone {var}', 3), [
+                kit.div('pg-zone-ring ' + rings[2], _sdT('Zone {var}', 2), [
+                    kit.div('pg-zone-ring pg-zone-z1 ' + rings[1], _sdT('Zone {var}', 1), [
+                        kit.icon('bi-geo-alt-fill', 'fs-3')
+                    ])
+                ])
+            ])
+        ], [{ name: 'aria-hidden', value: 'true' }]);
+        var row = kit.row(_sdT('Zones Row'), [
+            kit.col(_sdT('Zone Drawing'), [ map ], '5'),
+            kit.col(_sdT('Zones'), [
+                kit.tag('ul', 'pg-zone-list list-unstyled mb-4 border-top', _sdT('Zones'), [
+                    zone(1, _sdT('Town Centre'), _sdT('The streets within three kilometres of us.'), _sdT('Same day'), true, _sdT('$5')),
+                    zone(2, _sdT('Rest of the City'), _sdT('Every neighbourhood inside the ring road.'), _sdT('Same day'), true, _sdT('$9')),
+                    zone(3, _sdT('Nearby Towns'), _sdT('Towns up to an hour away.'), _sdT('Next day'), false, _sdT('$15'))
+                ]),
+                kit.h('h3', _sdT('Time slots'), 'h6 fw-semibold text-uppercase text-body-secondary mb-3'),
+                kit.tag('ul', 'pg-zone-list list-unstyled row row-cols-1 row-cols-sm-3 g-3 mb-4', _sdT('Time Slots'), [
+                    slot('bi-sunrise', _sdT('Morning'), '09:00', '12:00'),
+                    slot('bi-sun', _sdT('Afternoon'), '12:00', '17:00'),
+                    slot('bi-sunset', _sdT('Evening'), '17:00', '20:00')
+                ]),
+                kit.div('pg-zone-list d-flex align-items-center gap-3 p-3 rounded-3 bg-primary-subtle text-primary-emphasis', _sdT('Cut-off Time'), [
+                    kit.icon('bi-clock-history', 'fs-3'),
+                    kit.div('', _sdT('Text'), [
+                        kit.div('d-flex flex-wrap align-items-baseline gap-2', _sdT('Title'), [
+                            kit.h('span', _sdT('Same day for orders until'), 'fw-semibold'),
+                            kit.time('14:00', '14:00', 'fs-5 fw-bold', _sdT('Cut-off Time'))
+                        ]),
+                        kit.p(_sdT('Orders after this time are seen to the next day.'), 'small mb-0')
+                    ])
+                ])
+            ], '7')
+        ], 'align-items-center g-4 g-lg-5');
+        row.props._fx = { effect: 'slide-up', trigger: 'view', stagger: 150 };
+        return kit.section('py-5', _sdT('Locations (Zones)'), [
+            kit.intro(_sdT('Areas we cover'), _sdT('Three zones around us: the nearer you are, the sooner we are there and the less it costs.')),
+            row
+        ]);
+    };
+
     return {
         prefix: 'locations-',
         items: [
-            { label: _sdT('Locations: Spaces to Hire'), type: 'component', icon: 'bi-door-open', extra: { componentType: 'locations-spaces' } },
-            { label: _sdT('Locations: Floor Directory'), type: 'component', icon: 'bi-building', extra: { componentType: 'locations-floors' } }
+            { label: _sdT('Locations: Spaces to Hire'), type: 'component', icon: 'bi-door-open', extra: { componentType: 'locations-spaces' },
+              desc: _sdT('Three cards of rooms to hire, each with its photo, guests, floor area and layout, its amenities, the price from and an enquiry button.') },
+            { label: _sdT('Locations: Floor Directory'), type: 'component', icon: 'bi-building', extra: { componentType: 'locations-floors' },
+              desc: _sdT('A floor directory from the roof down, each level with its number, its name and line, what is on it as pills and who may go up.') },
+            { label: _sdT('Locations: Zones'), type: 'component', icon: 'bi-bullseye', extra: { componentType: 'locations-zones' },
+              desc: _sdT('Nested rings drawn beside a list of zones with the places each covers, its fee and how soon it is served, and three time slots below.') }
         ],
         build: function (ctype) {
             if (ctype === 'locations-spaces') return buildSpaces();
             if (ctype === 'locations-floors') return buildFloors();
+            if (ctype === 'locations-zones') return buildZones();
             return null;
         },
         css: _SD_BLOCK_CSS,

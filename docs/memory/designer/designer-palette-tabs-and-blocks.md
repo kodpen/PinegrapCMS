@@ -13,6 +13,7 @@ description: Designer palette Components tab with a Components / Blocks list swi
 ## How do I add a block?
 - **Write it into the `_sdBlockPaletteItems()` list; do not touch grouping.** `_sdBlockPaletteGroups()` buckets blocks by `componentType` prefix (`navbar-`, `hero-`, `cta-` ...). A block matching no prefix appears under "Diğer", so no block is invisible in the palette.
 - Opening a new family: its own file `style_designer_blocks_<family>.js` with its group and prefix ([[designer-block-family-files]]); never hand-place a single block. Only a block of a family already in the core goes into the core list.
+- A core block also gets its one-line description in `_sdBlockInfo()` and its Turkish through `tr_add.php` in the same PR; `tests/designer_block_info_test.php` fails without it ([[palette-block-info]]).
 
 ## What plumbing is shared?
 - Three lists (component palette, block palette, recents strip) share `_sdPaletteItemHTML`, `_sdPaletteCategoriesHTML`, `_sdWirePaletteItems`, `_sdWirePaletteSearch`. When adding a fourth list, do not write your own copy.
@@ -25,4 +26,5 @@ description: Designer palette Components tab with a Components / Blocks list swi
 - Do not shorten a title to fix it: they are shared `_sdT()` keys.
 - Rail buttons derive from this strip, so the rail has no Blocks button: see docs/memory/designer/designer-sticky-panel-layout.md.
 
-Plan for drawings and descriptions on looks, blocks and components: [[designer-palette-drawings]].
+## What does every palette row show on hover?
+- Owner (2026-11-11): every look, ready block and Components row shows a small drawing and one line of description in the tip card: looks [[design-theme-look-drawing]], blocks [[palette-block-sketch]] and [[palette-block-info]], Components rows [[palette-component-drawings]].

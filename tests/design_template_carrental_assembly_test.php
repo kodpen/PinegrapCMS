@@ -10,7 +10,8 @@
  * unique and the contact page is one; the pcr- classes match their rules;
  * the comment threads keep their page settings and the requests' messages
  * are as private as the requests; the Google reviews sit under the
- * renters' words; the sample cars are seeded.
+ * renters' words; the sample cars are seeded; the home and the extras
+ * page are drawn on the Car Rental blocks.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -226,4 +227,154 @@ function test_carrental_assembly_google_reviews()
 	foreach (array('google_reviews', 'home_cars', 'home_posts') as $w) {
 		pg_assert_true(strpos($home, '"templateWidget":"' . $w . '"') !== false, 'the home places ' . $w);
 	}
+}
+
+// Every node of a tree whose class list holds the class.
+function _test_cr_asm_with_class($tree, $class)
+{
+	$nodes = array();
+	_test_cr_asm_nodes($tree, $nodes);
+	$out = array();
+	foreach ($nodes as $n) {
+		if (preg_match('/(?<![\w-])' . preg_quote($class, '/') . '(?![\w-])/', isset($n['props']['cssClass']) ? (string)$n['props']['cssClass'] : '')) $out[] = $n;
+	}
+	return $out;
+}
+
+// The words of a tree, joined.
+function _test_cr_asm_words($tree)
+{
+	$nodes = array();
+	_test_cr_asm_nodes($tree, $nodes);
+	$words = array();
+	foreach ($nodes as $n) if (isset($n['props']['text']) && is_string($n['props']['text'])) $words[] = $n['props']['text'];
+	return implode(' | ', $words);
+}
+
+// Version 2.0.0 draws the home and the extras page on the Car Rental
+// blocks: every block class they place ships its rule in the template's
+// User Styles, every interaction is kept as written by pg_fx_normalize(),
+// each page has one h1, the hero comes in on load with its car driving a
+// road screen readers skip, the line-up lists every class from the
+// cheapest up with its rate and deposit, the three cover levels lower the
+// excess in turn, and the sample quote's lines add up to its total.
+function test_carrental_assembly_pages_on_carrental_blocks()
+{
+	$tpl = _test_cr_asm_tpl();
+	pg_assert_true(version_compare($tpl['version'], '2.0.0', '>='), 'version 2.0.0');
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	include PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-carrental/parts.php';
+	$trees = array();
+	foreach ($tpl['pages'] as $p) if (in_array($p['key'], array('home', 'extras'), true)) $trees[$p['key']] = $p['tree'];
+	pg_assert_same(2, count($trees), 'the home and the extras page');
+	$wanted = array(
+		'home'   => array('pg-carrental-slip', 'pg-carrental-trip', 'pg-carrental-road', 'pg-carrental-car', 'pg-carrental-photo',
+			'pg-carrental-rail', 'pg-carrental-lineup', 'pg-carrental-class', 'pg-carrental-receipt', 'pg-carrental-figure', 'pg-ratio-16x9'),
+		'extras' => array('pg-carrental-figure'),
+	);
+	$blocks = array(
+		'home'   => array('Car Rental Hero', 'Car Rental Class Line-up', 'Car Rental Sample Quote', 'Car Rental Cover Levels'),
+		'extras' => array('Car Rental Cover Levels'),
+	);
+	$search = array(
+		'home'   => array('cr-home-classes', 'cr-home-quote'),
+		'extras' => array('cr-cover', 'cr-extras'),
+	);
+	foreach ($trees as $key => $tree) {
+		$nodes = array();
+		_test_cr_asm_nodes($tree, $nodes);
+		$class_list = '';
+		$labels = array();
+		$ids = array();
+		$effects = 0;
+		$h1 = 0;
+		foreach ($nodes as $n) {
+			$class_list .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			if (isset($n['props']['_label'])) $labels[] = $n['props']['_label'];
+			if (!empty($n['props']['searchSection'])) $ids[] = $n['props']['id'];
+			if ((isset($n['props']['tag']) ? $n['props']['tag'] : '') === 'h1') $h1++;
+			if (!isset($n['props']['_fx'])) continue;
+			$effects++;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, $key . ': ' . $field . ' is kept as written');
+			}
+		}
+		preg_match_all('/(?<![\w-])pg-(?:carrental|ratio)-[a-z0-9-]+(?![\w-])/', $class_list, $m);
+		foreach (array_unique($m[0]) as $class) pg_assert_contains('.' . $class, $css, $key . ': the rule of ' . $class . ' ships');
+		foreach ($wanted[$key] as $class) {
+			pg_assert_true((bool)preg_match('/(?<![\w-])' . preg_quote($class, '/') . '(?![\w-])/', $class_list), $key . ': places ' . $class);
+		}
+		foreach ($blocks[$key] as $label) pg_assert_true(in_array($label, $labels, true), $key . ': the ' . $label . ' block');
+		foreach ($search[$key] as $id) pg_assert_true(in_array($id, $ids, true), $key . ': the search section ' . $id);
+		pg_assert_same(1, $h1, $key . ': one h1');
+		pg_assert_true($effects >= 4, $key . ': opens and scrolls in motion');
+
+		// The cover levels: three cards, the excess lower at each, one
+		// marked as the most chosen; the bars are hidden from screen readers.
+		$band = null;
+		foreach ($nodes as $n) if (isset($n['props']['_label']) && $n['props']['_label'] === 'Car Rental Cover Levels') $band = $n;
+		pg_assert_true($band !== null, $key . ': the cover levels');
+		$cards = array();
+		$band_nodes = array();
+		_test_cr_asm_nodes($band, $band_nodes);
+		foreach ($band_nodes as $n) if ((isset($n['props']['tag']) ? $n['props']['tag'] : '') === 'article') $cards[] = $n;
+		pg_assert_same(count($covers), count($cards), $key . ': a card per cover');
+		$i = 0;
+		foreach ($covers as $ckey => $c) {
+			$words = _test_cr_asm_words($cards[$i]);
+			pg_assert_contains($c['title'], $words, $key . ': cover ' . $ckey . ' in order');
+			pg_assert_contains($money($c['excess']), $words, $key . ': cover ' . $ckey . ' names its excess');
+			pg_assert_same($c['chosen'], strpos($cards[$i]['props']['cssClass'], 'border-primary') !== false, $key . ': cover ' . $ckey . ' marked as chosen or not');
+			$i++;
+		}
+		foreach (_test_cr_asm_with_class($band, 'progress') as $bar) {
+			pg_assert_contains('{"name":"aria-hidden","value":"true"}', json_encode(isset($bar['props']['_attrs']) ? $bar['props']['_attrs'] : array()), $key . ': a cover bar is hidden from screen readers');
+		}
+	}
+	$keys = array_keys($covers);
+	foreach (array_keys($covers['basic']['excess']) as $code) {
+		for ($i = 1; $i < count($keys); $i++) {
+			pg_assert_true($covers[$keys[$i]]['excess'][$code] < $covers[$keys[$i - 1]]['excess'][$code], $keys[$i] . ': a lower excess in ' . $code);
+		}
+	}
+	pg_assert_same(1, count(array_filter(array_column($covers, 'chosen'))), 'one cover is the most chosen');
+	pg_assert_same($extras['cover']['price'], $covers['full']['price'], 'Full Cover costs what the extra costs');
+
+	// The hero: its line comes in on load and a car drives the road.
+	$home = $trees['home'];
+	pg_assert_contains('"trigger":"load"', json_encode($home), 'the hero comes in on load');
+	$road = _test_cr_asm_with_class($home, 'pg-carrental-road');
+	pg_assert_same(1, count($road), 'one road on the trip slip');
+	pg_assert_contains('{"name":"aria-hidden","value":"true"}', json_encode(isset($road[0]['props']['_attrs']) ? $road[0]['props']['_attrs'] : array()), 'the road is hidden from screen readers');
+	$car = _test_cr_asm_with_class($home, 'pg-carrental-car');
+	pg_assert_same('load', isset($car[0]['props']['_fx']['trigger']) ? $car[0]['props']['_fx']['trigger'] : '', 'the car drives on load');
+
+	// The line-up: a tile per class, cheapest first, each with its rate
+	// and its deposit.
+	$tiles = _test_cr_asm_with_class($home, 'pg-carrental-class');
+	$sorted = $classes;
+	uasort($sorted, function ($a, $b) { return $a['rate']['USD'] - $b['rate']['USD']; });
+	pg_assert_same(array_column($sorted, 'title'), array_map(function ($t) { return $t['props']['_label']; }, $tiles), 'a tile per class, cheapest first');
+	$i = 0;
+	foreach ($sorted as $ckey => $c) {
+		$words = _test_cr_asm_words($tiles[$i++]);
+		pg_assert_contains($money($c['rate']), $words, $ckey . ': the tile names the day rate');
+		pg_assert_contains($money($c['deposit']), $words, $ckey . ': the tile names the deposit');
+	}
+
+	// The quote: a mid-size car and Full Cover for seven days, a day off
+	// for the weekly deal; the total is the sum of the lines.
+	$receipt = _test_cr_asm_with_class($home, 'pg-carrental-receipt');
+	pg_assert_same(1, count($receipt), 'one receipt');
+	$words = _test_cr_asm_words($receipt[0]);
+	$rate = $classes['compact']['rate'];
+	$cover = $extras['cover']['price'];
+	$total = array();
+	foreach ($rate as $code => $amount) $total[$code] = $amount * 6 + $cover[$code] * 7;
+	foreach (array($money($times($rate, 7)), $money($times($cover, 7)), "\xE2\x88\x92" . $money($rate), $money($total)) as $figure) {
+		pg_assert_contains($figure, $words, 'the receipt shows ' . $figure);
+	}
+	pg_assert_contains($money($times($classes['compact']['deposit'], $covers['full']['deposit'])), $words, 'the receipt names the smaller deposit');
 }

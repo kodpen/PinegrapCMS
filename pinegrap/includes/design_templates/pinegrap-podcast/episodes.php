@@ -269,11 +269,18 @@ $episode_widgets['episode_detail'] = array(
             $el('article', '', lang('Episode Details'), array(
                 $pd_toolbar('episodes', lang('All Episodes')),
                 $row(array(
+                    // The podcast's cover over the sound wave of the
+                    // Podcast: Episode Hero block: the cover grows in and
+                    // the wave slides in under it as the page opens.
                     $col(array(
-                        $el('span', 'pg-field-value d-block ratio ratio-1x1 rounded-4 overflow-hidden shadow-sm bg-body-tertiary', lang('Picture Frame'), array(
-                            $image($photo('cover-' . $episode_sample['podcast'], 800, 800), $episode_podcast['title'], 'w-100 h-100 object-fit-cover',
-                                $pd_podcast_ref(array('src' => 'cover', 'alt' => 'title'))),
-                        )),
+                        $fx($el('div', 'pg-podcast-cover', lang('Cover'), array(
+                            $el('span', 'pg-field-value d-block ratio ratio-1x1 rounded-4 overflow-hidden shadow-sm bg-body-tertiary', lang('Picture Frame'), array(
+                                $image($photo('cover-' . $episode_sample['podcast'], 800, 800), $episode_podcast['title'], 'w-100 h-100 object-fit-cover',
+                                    $pd_podcast_ref(array('src' => 'cover', 'alt' => 'title'))),
+                            )),
+                            $fx($el('div', 'pg-podcast-wave', lang('Sound Wave'), array(), array('_attrs' => array($attr('aria-hidden', 'true')))),
+                                array('effect' => 'slide-right', 'trigger' => 'load', 'duration' => 1200, 'delay' => 500, 'distance' => 60)),
+                        )), array('effect' => 'scale', 'trigger' => 'load', 'duration' => 900)),
                     ), '', '4'),
                     $col(array(
                         $el('p', 'd-flex flex-wrap gap-2 mb-2', lang('Episode Facts'), array(

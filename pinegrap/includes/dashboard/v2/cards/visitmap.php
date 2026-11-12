@@ -94,7 +94,7 @@ function pg_dashboard_v2_visitmap_countries($rows)
  * @param array  $cities    pg_visitor_breakdown('city', …)
  * @param string $period    the period's name, "Last 30 Days"
  * @param string $maps_url  the address of assets/maps/, with a trailing slash
- * @param string $url       the Visitors screen for the period
+ * @param string $url       See all: the ready report by country for the period
  * @param int    $limit     bars drawn
  * @return array
  */
@@ -211,7 +211,6 @@ function pg_dashboard_v2_card_visitmap($user, $period, $compare)
     require_once(PG_FUNCTIONS_DIR . '/includes/sales_map.php');
 
     $days = array(0 => 1, 1 => 7, 2 => 30);
-    $keys = array(0 => 'today', 1 => '7d', 2 => '30d');
     $period = isset($days[$period]) ? (int) $period : 2;
     $now = time();
 
@@ -232,5 +231,5 @@ function pg_dashboard_v2_card_visitmap($user, $period, $compare)
         $cities,
         pg_dashboard_v2_periods()[$period],
         OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/maps/',
-        'visitors.php?p=' . $keys[$period]));
+        pg_ready_report_url('visitors_by_country', $days[$period])));
 }

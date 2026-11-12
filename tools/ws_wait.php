@@ -14,9 +14,21 @@
  *                               [--changed=ID[,ID…]]
  *                               [--after-id=N] [--timeout=SECONDS]
  *                               [--interval=SECONDS]
- * Exit:   0 a message matched (printed on stdout); 1 the site refused or the
- *         channel can no longer be read; 2 usage or missing settings;
- *         3 the timeout passed with no match.
+ *         php tools/ws_wait.php --requests [--timeout=SECONDS]
+ *                               [--interval=SECONDS]
+ * Exit:   0 a message matched, or a request is queued (printed on stdout);
+ *         1 the site refused or the channel can no longer be read; 2 usage
+ *         or missing settings; 3 the timeout passed with no match.
+ *
+ * --requests waits on the application's own request queue instead of a
+ * channel's text: it asks GET /workspace/agent-requests every --interval
+ * seconds (15 by default, at least 5) and prints the oldest queued request
+ * as one JSON line (request_id, message_id, channel_id, channel, wake,
+ * wake_kind, requested_by, text: the first 500 characters of the words, a
+ * wake's note when it has no message). An answer to the agent's message and
+ * a scheduled wake make a request without naming the agent, so only this
+ * mode sees them. It needs no channel and takes no text rule or --changed.
+ * A request not yet claimed wakes it again at once each time it starts.
  *
  * Only messages written after the first answer count, unless --after-id
  * names an earlier id: the first answer carries the channel's newest 50,
@@ -28,7 +40,7 @@
  * included; with --changed alone new messages do not wake, with a rule as
  * well either does. Settings come from the environment
  * (tools/ws_client.php). --timeout defaults to 600, --interval to 5 (at
- * least 2).
+ * least 2) for a channel's text.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -47,11 +59,12 @@ require_once(__DIR__ . '/ws_client.php');
  * The matching rule, the waiting limits and an error line from the options.
  *
  * @param array<string,string|bool> $options
- * @return array{rule: array<string,string>, after_id: int, timeout: int, interval: int, error: string}
+ * @return array{rule: array<string,string>, changed: int[], requests: bool, after_id: int, timeout: int, interval: int, error: string}
  */
 function ws_wait_plan($options)
 {
-	$out = array('rule' => array(), 'changed' => array(), 'after_id' => -1, 'timeout' => 600, 'interval' => 5, 'error' => '');
+	$requests = !empty($options['requests']);
+	$out = array('rule' => array(), 'changed' => array(), 'requests' => $requests, 'after_id' => -1, 'timeout' => 600, 'interval' => $requests ? 15 : 5, 'error' => '');
 
 	foreach (array('prefix', 'contains', 'regex', 'from', 'mention') as $name) {
 		if (isset($options[$name]) && is_string($options[$name]) && $options[$name] !== '') {
@@ -101,7 +114,17 @@ function ws_wait_plan($options)
 		$out[$field] = (int) $options[$name];
 	}
 
-	$out['interval'] = max(2, $out['interval']);
+	// The request queue is read as a whole on every ask (no ETag), so it is
+	// asked less often than a channel.
+	$out['interval'] = max($requests ? 5 : 2, $out['interval']);
+
+	if ($requests && ($out['rule'] || isset($options['changed']) || isset($options['after-id']))) {
+		$out['error'] = '--requests takes no text rule, --changed or --after-id';
+	}
+
+	if ($requests && !is_bool($options['requests'])) {
+		$out['error'] = '--requests takes no value';
+	}
 
 	return $out;
 }
@@ -146,11 +169,117 @@ function ws_wait_pick($sync, $rule, $after_id, $changed = array())
 	return null;
 }
 
+/**
+ * The request a waiter on the queue wakes on, null when none: the oldest
+ * (smallest id) of the queued ones in a GET /workspace/agent-requests
+ * answer. A request already handed out (sent, running) is someone's work.
+ *
+ * @param mixed $list the decoded answer, {data: [...], page: {...}}
+ * @return array<string,mixed>|null
+ */
+function ws_wait_request_pick($list)
+{
+	$found = null;
+
+	foreach ((is_array($list) && isset($list['data']) && is_array($list['data'])) ? $list['data'] : array() as $row) {
+		if (!is_array($row) || ($row['status'] ?? '') !== 'queued' || (int) ($row['id'] ?? 0) < 1) {
+			continue;
+		}
+
+		if ($found === null || (int) $row['id'] < (int) $found['id']) {
+			$found = $row;
+		}
+	}
+
+	return $found;
+}
+
+/**
+ * The line printed for a queued request: what the session needs to decide
+ * whether to take it. The words are the message's plain text (its tags as
+ * names), or a wake's note when no message made it; at most 500 characters,
+ * never cut inside one.
+ *
+ * @param array<string,mixed> $row a row of GET /workspace/agent-requests
+ * @return array<string,mixed>
+ */
+function ws_wait_request_line($row)
+{
+	$message = (isset($row['message']) && is_array($row['message'])) ? $row['message'] : array();
+	$channel = (isset($row['channel']) && is_array($row['channel'])) ? $row['channel'] : array();
+	$wake = (isset($row['wake']) && is_array($row['wake'])) ? $row['wake'] : array();
+	$by = (isset($row['requested_by']) && is_array($row['requested_by'])) ? $row['requested_by'] : array();
+	$words = (string) ($message['text'] ?? '');
+
+	if ($words === '') {
+		$words = (string) ($wake['note'] ?? '');
+	}
+
+	// The u modifier counts characters; text that is not UTF-8 is cut by bytes.
+	$words = preg_match('/^.{0,500}/su', $words, $m) ? $m[0] : substr($words, 0, 500);
+
+	return array(
+		'request_id'   => (int) ($row['id'] ?? 0),
+		'message_id'   => (int) ($message['id'] ?? 0),
+		'channel_id'   => (int) ($channel['id'] ?? 0),
+		'channel'      => (string) ($channel['name'] ?? ''),
+		'wake'         => (string) ($wake['kind'] ?? '') !== '',
+		'wake_kind'    => (string) ($wake['kind'] ?? ''),
+		'requested_by' => array('user_id' => isset($by['user_id']) ? (int) $by['user_id'] : null, 'name' => (string) ($by['name'] ?? '')),
+		'text'         => $words,
+	);
+}
+
+/**
+ * Waits on the application's request queue (--requests).
+ *
+ * @param array<string,mixed> $settings
+ * @param array<string,mixed> $plan
+ * @return int exit code
+ */
+function ws_wait_requests($settings, $plan)
+{
+	$deadline = time() + $plan['timeout'];
+
+	while (true) {
+		$answer = ws_client_request('GET', $settings['site'] . '/workspace/agent-requests', $settings, null, array());
+
+		if ($answer['status'] === 200) {
+			$list = json_decode($answer['body'], true);
+
+			if (!is_array($list)) {
+				fwrite(STDERR, "ws_wait: the answer is not JSON\n");
+				return WS_CLIENT_EXIT_HTTP;
+			}
+
+			$row = ws_wait_request_pick($list);
+
+			if ($row !== null) {
+				fwrite(STDOUT, json_encode(ws_wait_request_line($row), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n");
+				return WS_CLIENT_EXIT_OK;
+			}
+		} elseif ($answer['status'] === 401 || $answer['status'] === 403 || $answer['status'] === 404 || $answer['status'] === 400) {
+			fwrite(STDERR, 'ws_wait: ' . ws_client_failure($answer) . "\n");
+			return WS_CLIENT_EXIT_HTTP;
+		} else {
+			// A network blip or a busy server is waited out.
+			fwrite(STDERR, 'ws_wait: ' . ws_client_failure($answer) . ", trying again\n");
+		}
+
+		if (time() + $plan['interval'] > $deadline) {
+			fwrite(STDERR, "ws_wait: no queued request before the timeout\n");
+			return WS_CLIENT_EXIT_TIMEOUT;
+		}
+
+		sleep($plan['interval']);
+	}
+}
+
 function ws_wait_main($argv)
 {
 	list($options, $rest) = ws_client_options($argv);
-	$settings = ws_client_settings($options, getenv());
 	$plan = ws_wait_plan($options);
+	$settings = ws_client_settings($options, getenv(), !$plan['requests']);
 
 	if ($settings['missing']) {
 		fwrite(STDERR, 'ws_wait: not set: ' . implode(', ', $settings['missing']) . "\n");
@@ -160,6 +289,10 @@ function ws_wait_main($argv)
 	if ($plan['error'] !== '' || $rest) {
 		fwrite(STDERR, 'ws_wait: ' . ($plan['error'] !== '' ? $plan['error'] : 'unexpected argument ' . $rest[0]) . "\n");
 		return WS_CLIENT_EXIT_USAGE;
+	}
+
+	if ($plan['requests']) {
+		return ws_wait_requests($settings, $plan);
 	}
 
 	$deadline = time() + $plan['timeout'];

@@ -149,7 +149,8 @@ function api_form_present($row, $fields = null, $facts = null) {
 // The facts GET /forms/{id} adds about a form's page:
 //
 //   framework           the framework of the form page's design
-//                       (pg_design_frameworks(): bootstrap5 or custom). A page
+//                       (pg_design_frameworks(): bootstrap5, custom or
+//                       legacy, a classic style moved into the editor). A page
 //                       without a design of its own takes its folder's, as the
 //                       page itself does. Rich text cannot carry classes: the
 //                       visitor profile removes them (html_allowed).

@@ -335,6 +335,12 @@
 
             shown.textContent = seconds(n);
             patch[field] = n;
+
+            // The exit's delay counts back from the end again: its own end goes.
+            if ((phase === 'out') && (field === 'delay')) {
+                patch.at = 0;
+            }
+
             self.setMotion(phase, patch, 'motion-' + phase + '-' + field);
         });
         slider.addEventListener('change', function () {

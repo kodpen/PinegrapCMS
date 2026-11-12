@@ -12,7 +12,7 @@ description: The channel's messages as drawn (C4 of workspace-channel-screen.md)
 - A phone shows the same bar under the tapped message (`.ws-msg-active`).
 
 ## How is a decision marked?
-- By its tag alone (`.ws-msg-flag`, no icon; the lock stays on a record change's trace). The coloured edge belongs to the Decisions tab's cards only (`.ws-pane-decisions > .ws-msg-decision`).
+- By its tag alone (`.ws-msg-flag`, no icon; the lock stays on a record change's trace), in the conversation and on the Decisions tab: the tab's cards lost their coloured edge (owner 2026-11-11, #8759).
 
 ## What does the discussion line say?
 - `threadBar()`: up to three faces, then "No replies yet", "1 reply" or "3 replies · last reply 15:20" (`th_bar_*`; "Concluded" first when closed), the unread count, Join for a person not in it. The title is the tooltip and a `visually-hidden` "Discussion: title:" read first; a click opens the panel. The assistant and follow notes stay under it.

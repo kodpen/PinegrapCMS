@@ -246,42 +246,67 @@ function ws_mail_send_boxes($viewer)
  * anything is written. Reads the box, the channel, the bounce list and the
  * person's last hour; sends nothing.
  *
+ * An answer names its conversation (conversation_id) instead of a box and a
+ * channel: it leaves from the conversation's mailbox, is kept in its
+ * channel, goes to its customer with the conversation's subject, and only
+ * those who may write in that channel may send it (ws_mail_reply_target()).
+ *
  * @param array $viewer
- * @param array $mail box_id, channel_id, to, cc, bcc, subject, text, files (each name and bytes)
- * @return array ok, error, detail, box, route, channel, input (ws_mail_send_input())
+ * @param array $mail box_id, channel_id, to, cc, bcc, subject, text, files (each name and bytes); or conversation_id, cc, bcc, text, files
+ * @return array ok, error, detail, box, route, channel, input (ws_mail_send_input()), conversation and answered (an answer's, else null)
  */
 function ws_mail_send_check($viewer, $mail)
 {
-    $out = array('ok' => false, 'error' => '', 'detail' => '', 'box' => null, 'route' => null, 'channel' => null, 'input' => null);
+    $out = array('ok' => false, 'error' => '', 'detail' => '', 'box' => null, 'route' => null, 'channel' => null, 'input' => null,
+        'conversation' => null, 'answered' => null);
 
     if (!ws_mail_send_ready()) {
         return array_merge($out, array('error' => 'not_ready'));
     }
 
-    $box_id = (int) ($mail['box_id'] ?? 0);
-    $channel_id = (int) ($mail['channel_id'] ?? 0);
-    $found = null;
+    $conversation = null;
+    $answered = null;
 
-    foreach (ws_mail_send_boxes($viewer) as $entry) {
-        if ((int) $entry['box']['id'] === $box_id) {
-            $found = $entry;
+    if ((int) ($mail['conversation_id'] ?? 0) > 0) {
+        $target = ws_mail_reply_target($viewer, (int) $mail['conversation_id']);
+
+        if (!$target['ok']) {
+            // The conversation's own mailbox is off: not "you cannot send from it".
+            return array_merge($out, array('error' => ($target['error'] === 'no_box') ? 'box_off' : $target['error']));
         }
-    }
 
-    if (!$found) {
-        return array_merge($out, array('error' => 'no_box'));
-    }
+        $conversation = $target['conversation'];
+        $answered = ws_mail_reply_answered((int) $conversation['id']);
+        $found = array('box' => $target['box'], 'route' => $target['route']);
+        $channel = $target['channel'];
+        $mail['to'] = (string) $conversation['customer_email'];
+        $mail['subject'] = ws_mail_reply_subject($answered ? (string) $answered['subject'] : (string) $conversation['subject'], (int) $conversation['id']);
+    } else {
+        $box_id = (int) ($mail['box_id'] ?? 0);
+        $channel_id = (int) ($mail['channel_id'] ?? 0);
+        $found = null;
 
-    $channel = null;
-
-    foreach ($found['channels'] as $candidate) {
-        if ((int) $candidate['id'] === $channel_id) {
-            $channel = $candidate;
+        foreach (ws_mail_send_boxes($viewer) as $entry) {
+            if ((int) $entry['box']['id'] === $box_id) {
+                $found = $entry;
+            }
         }
-    }
 
-    if (!$channel) {
-        return array_merge($out, array('error' => 'no_access'));
+        if (!$found) {
+            return array_merge($out, array('error' => 'no_box'));
+        }
+
+        $channel = null;
+
+        foreach ($found['channels'] as $candidate) {
+            if ((int) $candidate['id'] === $channel_id) {
+                $channel = $candidate;
+            }
+        }
+
+        if (!$channel) {
+            return array_merge($out, array('error' => 'no_access'));
+        }
     }
 
     $input = ws_mail_send_input($mail);
@@ -297,7 +322,8 @@ function ws_mail_send_check($viewer, $mail)
         return array_merge($out, array('error' => $limits['error'], 'detail' => $limits['detail']));
     }
 
-    return array('ok' => true, 'error' => '', 'detail' => '', 'box' => $found['box'], 'route' => $found['route'], 'channel' => $channel, 'input' => $input);
+    return array('ok' => true, 'error' => '', 'detail' => '', 'box' => $found['box'], 'route' => $found['route'], 'channel' => $channel, 'input' => $input,
+        'conversation' => $conversation, 'answered' => $answered);
 }
 
 /**
@@ -329,8 +355,13 @@ function ws_mail_send_error_text($error, $detail = '')
         'not_sent'        => lang('The e-mail could not be sent.'),
     );
 
-    if (in_array($error, array('no_smtp', 'domain', 'connection'), true)) {
+    // An answer's conversation: its mailbox off, no customer address, no route.
+    if (in_array($error, array('no_smtp', 'domain', 'connection', 'no_customer'), true)) {
         return ws_mail_reply_error_text($error);
+    }
+
+    if ($error === 'box_off') {
+        return ws_mail_reply_error_text('no_box');
     }
 
     return (isset($texts[$error]) && ($texts[$error] !== '')) ? $texts[$error] : $texts['not_sent'];
@@ -525,10 +556,28 @@ function ws_mail_send_outcome($outbox_id, $outcome, $ref, $error, $mime)
 }
 
 /**
+ * The threading headers of an outgoing item: its Message-ID, and for an
+ * answer (in_reply_to kept) In-Reply-To and References as they were when it
+ * was written. Pure.
+ *
+ * @param array $item ws_mail_items row (rfc_message_id, in_reply_to, reference_ids)
+ * @return array
+ */
+function ws_mail_send_headers($item)
+{
+    $answered = ((string) ($item['in_reply_to'] ?? '') !== '')
+        ? array('rfc_message_id' => (string) $item['in_reply_to'], 'reference_ids' => (string) ($item['reference_ids'] ?? ''))
+        : null;
+
+    return ws_mail_reply_headers($answered, (string) $item['rfc_message_id']);
+}
+
+/**
  * What email() is given for an outgoing item: the box's address and route,
  * the item's addresses, subject and Message-ID, the text with the writer's
- * name and the box's Signature (or its name) under it, and the files of the item's messages by
- * path, read when the mail leaves.
+ * name and the box's Signature (or its name) under it, an answer's quote of
+ * the mail it answers, and the files of the item's messages by path, read
+ * when the mail leaves.
  *
  * @param array $item  ws_mail_items row
  * @param array $box   ws_mail_boxes row
@@ -537,6 +586,13 @@ function ws_mail_send_outcome($outbox_id, $outcome, $ref, $error, $mime)
  */
 function ws_mail_send_properties($item, $box, $route)
 {
+    // An answer quotes the mail it answers, read again when it leaves.
+    $answered = ((string) ($item['in_reply_to'] ?? '') !== '')
+        ? db_item("SELECT * FROM ws_mail_items
+            WHERE conversation_id = '" . (int) $item['conversation_id'] . "' AND direction = 'in' AND rfc_message_id = '" . e((string) $item['in_reply_to']) . "'
+            ORDER BY id DESC LIMIT 1")
+        : null;
+
     $properties = array(
         'to'                 => ws_mail_send_addresses((string) $item['to_list']),
         'cc'                 => ws_mail_send_addresses((string) $item['cc_list']),
@@ -544,8 +600,8 @@ function ws_mail_send_properties($item, $box, $route)
         'from_name'          => (string) $box['name'],
         'from_email_address' => (string) $box['address'],
         'subject'            => (string) $item['subject'],
-        'body'               => ws_mail_send_body((string) $item['body_text'], (string) $item['from_name'], (string) $box['name'], ws_mail_box_signature($box)),
-        'headers'            => ws_mail_reply_headers(null, (string) $item['rfc_message_id']),
+        'body'               => ws_mail_answer_body((string) $item['body_text'], (string) $item['from_name'], $box, (is_array($answered) && $answered) ? $answered : null),
+        'headers'            => ws_mail_send_headers($item),
         'type'               => 'workspace',
         // The text stays out of failure notices and the Site Log; the writer
         // hears in the Workspace, not by mail.
@@ -630,9 +686,55 @@ function ws_mail_send_dispatch($item, $previous)
 }
 
 /**
+ * The host of a Message-ID: the site's, else the mailbox's domain.
+ *
+ * @param array $box ws_mail_boxes row
+ * @return string
+ */
+function ws_mail_send_host($box)
+{
+    $host = pg_mail_hostname();
+
+    return ($host !== '') ? $host : (string) substr(strrchr((string) $box['address'], '@'), 1);
+}
+
+/**
+ * Keeps a mail's files as messages of their own under its card, as an
+ * incoming mail's attachments are; the mail takes them from there.
+ *
+ * @param array   $channel   ws_channels row
+ * @param int     $parent_id the card
+ * @param int     $item_id
+ * @param array[] $files     ws_mail_send_input()'s (name, extension, bytes)
+ * @param int     $user_id
+ * @param int     $now
+ * @return string[] the names that could not be kept
+ */
+function ws_mail_send_keep_files($channel, $parent_id, $item_id, $files, $user_id, $now)
+{
+    $refused = array();
+
+    foreach ((array) $files as $file) {
+        $stored = ws_store_file_bytes($channel, $file['name'], $file['extension'], $file['bytes'], (int) $user_id);
+
+        if (!$stored['ok'] || (ws_mail_message_write($channel['id'], (int) $parent_id, (int) $item_id, '', $stored['file_id'], $stored['name'], $now) <= 0)) {
+            if ($stored['ok']) {
+                ws_upload_discard($stored['file_id']);
+            }
+
+            $refused[] = $file['name'];
+        }
+    }
+
+    return $refused;
+}
+
+/**
  * Sends a new mail: checks it, writes the conversation (its customer the
  * first To, waiting, held by the writer), its card in the channel, the
- * outgoing item (queued) and its files, then hands it to the mail.
+ * outgoing item (queued) and its files, then hands it to the mail. With a
+ * conversation_id it sends an answer in that conversation instead
+ * (ws_mail_send_answer()).
  *
  * @param array $viewer
  * @param array $mail ws_mail_send_check()'s
@@ -652,6 +754,10 @@ function ws_mail_send($viewer, $mail)
     $now = time();
     $writer = mb_substr(ws_person_name((int) $viewer['id']), 0, 255);
 
+    if ($check['conversation']) {
+        return ws_mail_send_answer($viewer, $check, $writer, $now);
+    }
+
     db("INSERT INTO ws_mail_conversations (box_id, channel_id, subject, customer_email, status, assignee_id, last_out_at, created_at, updated_at)
         VALUES ('" . (int) $box['id'] . "', '" . (int) $channel['id'] . "', '" . e($input['subject']) . "', '" . e($input['to'][0]) . "',
             'waiting', '" . (int) $viewer['id'] . "', '" . $now . "', '" . $now . "', '" . $now . "')");
@@ -662,13 +768,7 @@ function ws_mail_send($viewer, $mail)
         return array('ok' => false, 'error' => 'not_sent', 'detail' => '', 'conversation_id' => 0, 'item_id' => 0, 'message_id' => 0, 'state' => '');
     }
 
-    $host = pg_mail_hostname();
-
-    if ($host === '') {
-        $host = (string) substr(strrchr((string) $box['address'], '@'), 1);
-    }
-
-    $message_id = ws_mail_reply_message_id($conversation_id, bin2hex(random_bytes(8)), $host);
+    $message_id = ws_mail_reply_message_id($conversation_id, bin2hex(random_bytes(8)), ws_mail_send_host($box));
 
     db("INSERT INTO ws_mail_items (box_id, conversation_id, direction, rfc_message_id, rfc_message_hash, from_email, from_name,
             to_list, cc_list, bcc_list, subject, body_text, auth, user_id, send_state, created_at)
@@ -685,21 +785,7 @@ function ws_mail_send($viewer, $mail)
     }
 
     $card = ws_mail_message_write($channel['id'], 0, $item_id, ws_mail_message_body($input['text']), 0, '', $now);
-    $refused = array();
-
-    // Each file is a message of its own under the card, as an incoming
-    // mail's attachments are; the mail takes them from there.
-    foreach ($input['files'] as $file) {
-        $stored = ws_store_file_bytes($channel, $file['name'], $file['extension'], $file['bytes'], (int) $viewer['id']);
-
-        if (!$stored['ok'] || (ws_mail_message_write($channel['id'], $card, $item_id, '', $stored['file_id'], $stored['name'], $now) <= 0)) {
-            if ($stored['ok']) {
-                ws_upload_discard($stored['file_id']);
-            }
-
-            $refused[] = $file['name'];
-        }
-    }
+    $refused = ws_mail_send_keep_files($channel, $card, $item_id, $input['files'], (int) $viewer['id'], $now);
 
     db("UPDATE ws_mail_conversations SET message_id = '" . (int) $card . "' WHERE id = '" . $conversation_id . "'");
     db("UPDATE ws_mail_items SET message_id = '" . (int) $card . "', refused_files = '" . e(implode("\n", $refused)) . "' WHERE id = '" . $item_id . "'");
@@ -711,17 +797,86 @@ function ws_mail_send($viewer, $mail)
 }
 
 /**
+ * Sends an answer, checked by ws_mail_send_check(): the outgoing item
+ * (queued) in the conversation with the answered mail's threading, its text
+ * and files under the conversation's card, the conversation waiting for the
+ * customer (the first answer's time noted once), then the mail.
+ *
+ * @param array  $viewer
+ * @param array  $check  ws_mail_send_check() with a conversation
+ * @param string $writer
+ * @param int    $now
+ * @return array as ws_mail_send(); message_id is the answer's own message
+ */
+function ws_mail_send_answer($viewer, $check, $writer, $now)
+{
+    $box = $check['box'];
+    $channel = $check['channel'];
+    $input = $check['input'];
+    $conversation = $check['conversation'];
+    $answered = $check['answered'];
+    $conversation_id = (int) $conversation['id'];
+
+    $message_id = ws_mail_reply_message_id($conversation_id, bin2hex(random_bytes(8)), ws_mail_send_host($box));
+    $headers = ws_mail_reply_headers($answered, $message_id);
+    $references = isset($headers['References']) ? trim(str_replace(array('<', '>'), '', $headers['References'])) : '';
+
+    db("INSERT INTO ws_mail_items (box_id, conversation_id, direction, rfc_message_id, rfc_message_hash, in_reply_to, reference_ids,
+            from_email, from_name, to_list, cc_list, bcc_list, subject, body_text, auth, user_id, send_state, created_at)
+        VALUES ('" . (int) $box['id'] . "', '" . $conversation_id . "', 'out', '" . e($message_id) . "', '" . e(ws_mail_hash($message_id, '')) . "',
+            '" . e($answered ? (string) $answered['rfc_message_id'] : '') . "', '" . e($references) . "',
+            '" . e((string) $box['address']) . "', '" . e($writer) . "', '" . e(implode(', ', $input['to'])) . "',
+            '" . e(implode(', ', $input['cc'])) . "', '" . e(implode(', ', $input['bcc'])) . "',
+            '" . e(ws_mail_send_subject($input['subject'], $conversation_id)) . "', '" . e($input['text']) . "', 'pass', '" . (int) $viewer['id'] . "',
+            'queued', '" . (int) $now . "')");
+
+    $item_id = (int) mysqli_insert_id(db::$con);
+
+    if ($item_id <= 0) {
+        return array('ok' => false, 'error' => 'not_sent', 'detail' => '', 'conversation_id' => $conversation_id, 'item_id' => 0, 'message_id' => 0, 'state' => '');
+    }
+
+    // Under the card, as today's answers are; a card gone or moved leaves
+    // the answer in the channel on its own, its files under it.
+    $card = ws_message((int) $conversation['message_id']);
+    $parent_id = ($card && ((int) $card['channel_id'] === (int) $channel['id']) && ((int) $card['deleted_at'] === 0)) ? (int) $card['id'] : 0;
+    $message = ws_mail_message_write($channel['id'], $parent_id, $item_id, ws_mail_message_body($input['text']), 0, '', $now);
+    $refused = ws_mail_send_keep_files($channel, ($parent_id > 0) ? $parent_id : $message, $item_id, $input['files'], (int) $viewer['id'], $now);
+
+    if ($parent_id > 0) {
+        ws_message_touch($parent_id);
+    }
+
+    db("UPDATE ws_mail_items SET message_id = '" . (int) $message . "', refused_files = '" . e(implode("\n", $refused)) . "' WHERE id = '" . $item_id . "'");
+    // Answered: the conversation waits for the customer, whose next mail opens it again.
+    db("UPDATE ws_mail_conversations SET last_out_at = '" . (int) $now . "', status = 'waiting', closed_at = 0,
+            first_reply_at = IF(first_reply_at = 0, '" . (int) $now . "', first_reply_at), updated_at = '" . (int) $now . "'
+        WHERE id = '" . $conversation_id . "'");
+
+    $item = db_item("SELECT * FROM ws_mail_items WHERE id = '" . $item_id . "'");
+    $state = is_array($item) ? ws_mail_send_dispatch($item, 0) : 'failed';
+
+    return array('ok' => true, 'error' => '', 'detail' => '', 'conversation_id' => $conversation_id, 'item_id' => $item_id, 'message_id' => (int) $message, 'state' => $state);
+}
+
+/**
  * The outgoing item a message offers to send again: a mail that could not
- * leave, for a team member who may post in its channel. Pure.
+ * leave, for a team member who may post in its channel, on the item's own
+ * message (a new mail's card, an answer's text), not on its files. Pure.
  *
  * @param array|null $item     ws_mail_items_map() entry
  * @param bool       $can_post
  * @param array      $viewer
+ * @param array|null $row      the ws_messages row asking; null for the item itself
  * @return int item id, 0 for none
  */
-function ws_mail_resend_offer($item, $can_post, $viewer)
+function ws_mail_resend_offer($item, $can_post, $viewer, $row = null)
 {
     if (!$can_post || empty($viewer['member']) || (ws_mail_send_state($item) !== 'failed')) {
+        return 0;
+    }
+
+    if (is_array($row) && ((int) $row['id'] !== (int) ($item['message_id'] ?? 0))) {
         return 0;
     }
 

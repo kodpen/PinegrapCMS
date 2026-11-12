@@ -5,7 +5,7 @@ description: A model assistant's monthly token limit (ws_agents.token_limit): se
 
 ## Where is it?
 - Column `ws_agents.token_limit` INT UNSIGNED, 0 for none (step 11.0.182, #8482). Helpers in `includes/workspace/agent_activity.php`; tests in `tests/workspace_agent_activity_test.php`.
-- It lives apart from `ws_agent_shape()` / `ws_agent_save_check()` (`agents.php`): read by `ws_agent_token_limit()`, written by `ws_agent_token_limit_save()` after `ws_agent_save()` in `ws_agents_settings_post()`, and only for a model agent.
+- It lives apart from `ws_agent_shape()` / `ws_agent_save_check()` (`agents.php`): read by `ws_agent_token_limit()`, written by `ws_agent_token_limit_save()` after `ws_agent_save()` in `ws_agents_settings_write()` (both screens), and only for a model agent; checked with the form in `ws_agents_settings_check()`.
 
 ## How is it set?
 - The "Monthly token limit" field of a model assistant's form (and of a new agent's, used only when its kind is model). `ws_agent_token_limit_check()`: empty is 0, spaces, dots and commas are dropped, a whole number up to 4,294,967,295; anything else refuses the save.

@@ -6,7 +6,7 @@ description: Create on the Claude and Pinegrap AI cards, Claude's "Reset secret"
 ## What does "Create Claude's key" make?
 - `ws_claude_key_post()` (`includes/workspace/claude.php`) calls `api_app_create()` (`includes/api/keys.php`): an `api_apps` row named Claude, kind `server`, active, 120/min, owner and creator = the presser, the secret kept only as `api_secret_hash()` and a 4-character hint. Audit `create` (api_* masked), Site Log "API application (Claude) was created."
 - Linked in `config.ws_claude_app_id` (error and hold cleared). No schema change.
-- Application Access uses the same helpers (`api/application-access-keys.md`).
+- Application Access shares the helpers (`api/application-access-keys.md`).
 
 ## What does "Create Pinegrap AI's key" make?
 - `ws_ai_key_post()` (`includes/workspace/ai.php`, action `ai_key_create`): the same row named Pinegrap AI without a secret (hash and hint empty), linked in `config.ws_ai_app_id`; same audit and log lines. No window, no reset (owner answer 3a).
@@ -24,16 +24,16 @@ description: Create on the Claude and Pinegrap AI cards, Claude's "Reset secret"
 - Not added (owner, 2026-10-24): `design:write`, `translations:write` (live writes); Application Access adds them.
 
 ## Who may press the buttons, and who sees the key?
-- Role 0 only (POST, `validate_token_field()` in workspace_settings.php). Role-3 settings holders see the cards without key, prompt or buttons.
-- Claude: key, `Secret: ••••` + hint, prompt, copyable. Pinegrap AI: name, id, whether it can sign in.
+- Role 0 only, on both screens. Role-3 settings holders see the cards without key, prompt or buttons.
+- Claude: key, `Secret: ••••` + hint, prompt. Pinegrap AI: name, id, whether it can sign in.
 
 ## What does "Reset secret" do?
 - Claude only: `api_app_rotate_secret($id, 0, $username)`, id from `ws_claude_app()`, never the post; non-`server` refused. Audit `rotate`, Site Log line.
 - Grace 0: the old secret and one still in an Application Access 24 h grace stop at once; the confirm warns other users of a hand-linked key.
 
 ## How is Claude's secret shown only once?
-- `$_SESSION['software']['ws_assistant_credentials']` (agent, name, key, secret, rotated) to the next request, never the address or a field; workspace_settings.php reads and unsets it, sends `Cache-Control: no-store`.
-- A static `modal fade show` window (no modal JS): key, secret, domain, prompt; "I have copied it…" unlocks Close, which removes it. Unfetched, it lasts until the session ends.
+- `$_SESSION['software']['ws_assistant_credentials']` (agent, name, key, secret, rotated) to the next request, never the address or a field; the next draw of either screen reads and unsets it, sends `Cache-Control: no-store`.
+- A window of its own on the old screen, a drawer in the dialog ([[workspace-assistant-settings]]): key, secret, domain, prompt; "I have copied it…" unlocks Close, which removes it. Unfetched, it lasts until the session ends.
 
 ## What must stay so, and what was never tried?
 - Both selects stay inside the Save form ("Use another application"): outside it, a Save posts 0 and unlinks the key.

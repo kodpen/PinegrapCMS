@@ -96,6 +96,7 @@
 - important-files-and-js-twins.md: Key product files and their roles; which scripts have a .src/.min twin chosen by ENVIRONMENT_SUFFIX (edit both) and which are served as written; where front-end JS lives. [decision: decisions-made-files.md, decisions-made-workspace-6.md]
 - init-constants-and-config-file.md: Constants defined in init.php (CONFIG_FILE_PATH, OUTPUT_PATH, ECOMMERCE, ADS ...) and how data/config.php is written (installer, settings screens, escaping, closing tag).
 - js-bundles.md: Scripts minified from a list (pg_js_bundles(), tools/build_js.php): the bundles, how a screen prints one, src mode, the CI check, the test, the Workspace drawer's loader on record screens.
+- js-function-name-twins.md: A test fails when a script source declares one function name twice in a scope (tests/js_function_names_test.php): why node --check misses it, what the scanner reads, the known twin
 - json-endpoint-rules.md: Endpoints that speak JSON: rejections and CSRF failures in JSON with the right status, api.php reads a JSON body (FormData gets "Invalid action."), no pg_post_body_discarded() on a JSON body.
 - jsonld-script-escaping.md: How JSON-LD is printed inside <script type="application/ld+json"> so no value can break out of the element or swallow the page.
 - lang-compiled-cache.md: The compiled language cache data/temp/lang_<code>.php that pg_lang_map() reads through opcache: speed, the signature that rebuilds it, atomic write, no writable data/temp, the gate (PR #1933)

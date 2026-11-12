@@ -4391,16 +4391,78 @@ a.link-top-row {
 }
 
 /*NOTIFICATIONS*/
-/* The one inbox of the panel: the site's notices and what the workspace told
-   the person, so it has room for a sentence and its filters. */
-#notifications {
-  width: 26rem;
-  right: 2px !important;
-  left: auto;
-  top: calc(var(--pg-navbar-h) + 2px) !important;
-
-  max-height: calc(100vh - 60px);
-  max-width: calc(100% - 57px);
+/* The bell's drawer (output.php): the panel's one inbox, the site's notices
+   and what the workspace told the person, at the right edge and full height.
+   30rem wide, the whole width on a phone. */
+#notifications.pg-bell-drawer {
+  --pg-drawer-width: min(30rem, 100vw);
+}
+/* The head: the name, then "Mark all as read", the menu holding "Delete All
+   Notifications" and the close button at the right. */
+#notifications .pg-bell-head {
+  gap: 0.25rem;
+  padding: 0.75rem 0.75rem 0.75rem 1rem;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+#notifications .pg-bell-heading {
+  margin-inline-end: auto;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+#notifications .pg-bell-head-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+  height: 2rem;
+  padding: 0 0.625rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: none;
+  color: var(--pg-primary-fg-emphasis);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+#notifications .pg-bell-head-btn > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#notifications .pg-bell-head-btn:hover {
+  background: var(--pg-tint-hover);
+}
+#notifications .pg-bell-head .pg-bell-menu-toggle {
+  width: 2rem;
+  height: 2rem;
+}
+#notifications .pg-bell-close {
+  flex: 0 0 auto;
+  margin-block: 0;
+  margin-inline-start: 0.25rem;
+}
+#notifications .pg-bell-menu-item.pg-bell-delete-all {
+  color: var(--pg-danger-fg-emphasis);
+}
+/* The body: the filters, the list (the only part that scrolls) and the push
+   line at the foot. min-height: 0 lets the list shrink below its content, so
+   the foot stays on screen however long the list gets. */
+#notifications .pg-bell-body {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+#notifications .pg-bell-scroll {
+  position: relative;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+#notifications #push_row,
+#notifications #push_hint {
+  flex: 0 0 auto;
+  margin-top: auto;
 }
 
 /* Quick note beside the bell (ws_notes_quick_markup()): placed like the
@@ -4436,36 +4498,9 @@ a.link-top-row {
   font-weight: normal !important;
 }
 
-#notifications .menu-scroll-area {
-  max-height: inherit;
-  border-radius: var(--bs-menu-border-radius);
-  width: 100%;
-}
-
-/* The dropdown is capped at the viewport, and the list inside it used to be
-   free to take that whole height - which pushed anything sitting after the list
-   past the bottom of the screen. On a phone that is every row after the third
-   notification. Laying the open dropdown out as a column, with the list as the
-   only part allowed to shrink, keeps the footer reachable however long the list
-   gets. min-height:0 is what actually permits the shrink: a flex item defaults
-   to min-height:auto and refuses to be smaller than its content. */
-#notifications.show {
-  display: flex;
-  flex-direction: column;
-}
-
-#notifications.show .menu-scroll-area {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-#notifications #push_row,
-#notifications #push_hint {
-  flex: 0 0 auto;
-}
-
-/* The filters over the list (output.php, backend.src.js): All, the site's
-   notices, what the workspace told the person, each with its unread count. */
+/* The filters over the list (output.php, backend.src.js): All, a chip for
+   each module that has a row and "Asked of me", each with its unread count;
+   then the search box and the "Unread only" switch. */
 /* One row however narrow the phone: it scrolls sideways before it wraps. */
 #notifications .pg-bell-filters {
   display: flex;
@@ -4491,6 +4526,9 @@ a.link-top-row {
   line-height: 1.2;
   white-space: nowrap;
   transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+#notifications .pg-bell-filter[hidden] {
+  display: none;
 }
 #notifications .pg-bell-filter:hover {
   background: var(--pg-tint);
@@ -4521,8 +4559,34 @@ a.link-top-row {
   background: color-mix(in srgb, var(--pg-on-accent) 16%, transparent);
   color: inherit;
 }
-/* A row of another filter, and a flow's older runs while its newest is
-   closed. */
+/* The search box takes the room the switch leaves. */
+#notifications .pg-bell-tools {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+#notifications .pg-bell-search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+#notifications .pg-bell-unread-only {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--pg-fg-2);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+#notifications .pg-bell-unread-only label {
+  margin: 0;
+  cursor: pointer;
+}
+/* A row the chips, the switch or the search leave out, and a flow's older
+   runs while its newest is closed. */
 #notifications .software_notification:is(.pg-bell-off, .pg-bell-shut) {
   display: none;
 }
@@ -4533,14 +4597,15 @@ a.link-top-row {
   border-left: 2px solid var(--pg-border-color-translucent);
 }
 
-/* A bell row drawn as the dashboard's Next up row (pg_bell_row()): the
-   module's tag, the title over one second line, then the one button, the
-   unread dot and the row's menu. Day headings stand over the rows. */
+/* A bell row laid out for the drawer (pg_bell_row()): line one the module's
+   tag as a small mark, the unread dot and the title; line two the place and
+   the time, with the one button and the row's menu at the right; then the
+   excerpt, two lines at most. Day headings stand over the rows. */
 #notifications .pg-bell-list {
   padding-bottom: 0.25rem;
 }
 #notifications .pg-bell-day {
-  padding: 0.75rem 0.875rem 0.25rem;
+  padding: 0.75rem 1rem 0.25rem;
   color: var(--pg-fg-3);
   font-size: 0.6875rem;
   font-weight: 700;
@@ -4561,24 +4626,32 @@ a.link-top-row {
   border-top: 1px solid var(--pg-border-color-translucent);
 }
 #notifications .pg-bell-card {
-  display: grid;
-  grid-template-columns: 3.75rem minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.625rem 0.5rem 0.625rem 0.875rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.625rem 0.75rem 0.625rem 1rem;
+}
+#notifications .pg-bell-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.375rem;
+  min-width: 0;
 }
 #notifications .pg-bell-tag {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 2.125rem;
-  padding: 0 0.25rem;
+  display: inline-block;
+  flex: 0 0 auto;
+  max-width: 6.5rem;
+  height: 1.125rem;
+  margin-top: 0.0625rem;
+  padding: 0 0.375rem;
   overflow: hidden;
-  border-radius: 0.625rem;
+  border-radius: 0.3125rem;
   background: var(--pg-bell-tag-system-bg);
   color: var(--pg-bell-tag-system-fg);
-  font-size: 0.6875rem;
-  font-weight: 800;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1.125rem;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -4598,15 +4671,10 @@ a.link-top-row {
   background: var(--pg-bell-tag-team-bg);
   color: var(--pg-bell-tag-team-fg);
 }
-#notifications .pg-bell-text {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  min-width: 0;
-}
 #notifications .pg-bell-title {
   display: block;
-  max-width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
   padding: 0;
   border: 0;
   background: none;
@@ -4625,22 +4693,49 @@ a.link-top-row {
   text-decoration: underline;
 }
 /* The second line wraps like the title: an order's number and total stay
-   readable in the narrow bell instead of ending in an ellipsis. */
+   readable in the drawer instead of ending in an ellipsis. */
 #notifications .pg-bell-sub {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   max-width: 100%;
   color: var(--pg-fg-3);
   font-size: 0.75rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
+/* Place and time run as one line of text: a long place wraps at its own
+   spaces and the time stays whole after it, its dot included. */
+#notifications .pg-bell-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+#notifications .pg-bell-place + .pg-bell-time::before {
+  content: "\00b7";
+  content: "\00b7" / "";
+  margin: 0 0.375rem;
+}
 #notifications .pg-bell-time {
   white-space: nowrap;
 }
+/* The excerpt: two lines at most; the whole text is at the row's place. */
+#notifications .pg-bell-excerpt {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--pg-fg-2);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
 #notifications .pg-bell-more {
   display: inline-flex;
+  align-self: flex-start;
   align-items: center;
   gap: 0.25rem;
-  margin-top: 0.125rem;
   padding: 0;
   border: 0;
   background: none;
@@ -4649,34 +4744,38 @@ a.link-top-row {
 }
 #notifications .pg-bell-side {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 0.125rem;
+  margin-left: auto;
 }
 #notifications .pg-bell-act {
   display: inline-flex;
   align-items: center;
-  height: 2.125rem;
+  height: 1.75rem;
   margin-right: 0.25rem;
   padding: 0 0.625rem;
   border: 1px solid var(--pg-border-color);
-  border-radius: 0.5625rem;
+  border-radius: 0.5rem;
   background: var(--pg-tint);
   color: var(--pg-fg-body);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   white-space: nowrap;
 }
 #notifications .pg-bell-act:hover {
   border-color: var(--pg-primary);
   background: var(--pg-tint-hover);
 }
-/* The unread dot is a button ("Mark as read"); a read row keeps its place. */
+/* The unread dot is a button ("Mark as read"); a read row keeps its place.
+   Its target reaches past the line's height without moving the title. */
 #notifications .pg-bell-dot {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   width: 1.5rem;
-  height: 2.125rem;
+  height: 1.5rem;
+  margin: -0.125rem -0.25rem;
   padding: 0;
   border: 0;
   border-radius: 0.5rem;
@@ -4705,8 +4804,8 @@ a.link-top-row {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2.125rem;
+  width: 1.75rem;
+  height: 1.75rem;
   padding: 0;
   border: 0;
   border-radius: 0.5rem;
@@ -4758,22 +4857,9 @@ a.link-top-row {
 #notifications .pg-bell-menu-item.pg-bell-delete {
   color: var(--pg-danger-fg-emphasis);
 }
-#notifications :is(.pg-bell-title, .pg-bell-act, .pg-bell-dot, .pg-bell-menu-toggle, .pg-bell-menu-item, .pg-bell-more):focus-visible {
+#notifications :is(.pg-bell-title, .pg-bell-act, .pg-bell-dot, .pg-bell-menu-toggle, .pg-bell-menu-item, .pg-bell-more, .pg-bell-head-btn):focus-visible {
   outline: 2px solid var(--pg-primary);
   outline-offset: 1px;
-}
-/* A phone: the tag stands over the text, as on the dashboard. */
-@media (max-width: 639.98px) {
-  #notifications .pg-bell-card {
-    grid-template-columns: minmax(0, 1fr) auto;
-    row-gap: 0.375rem;
-  }
-  #notifications .pg-bell-tag {
-    grid-column: 1 / -1;
-    justify-self: start;
-    height: 1.5rem;
-    padding: 0 0.5rem;
-  }
 }
 /* A workspace row's icon, in the workspace's colour. */
 #notifications .pg-bell-glyph {
@@ -10152,8 +10238,19 @@ body.pg-side-panel-open .pg-chat-launcher {
  *
    Full width lets each card use the grid it was written with: three fields
    across instead of three fields down. The screen is then as short as its
-   content allows, which is what makes it readable. */
-.pg-set-card + .pg-set-card { margin-top: 1.5rem; }
+   content allows, which is what makes it readable.
+ *
+   The gap is the container's, on the page (#pg_settings_sections) and in the
+   dialog (#pg_settings_modal_pane) alike. A card's inline script or a hidden
+   Connect form can stand between two cards, and a top margin on a card that
+   directly follows another card then left the next card touching the one
+   above. An element that draws nothing, a card the filter hides
+   included, takes no part in a flex gap. */
+.pg-settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
 
 /* Bootstrap's columns answer to the window, not to the box they are in. That
    is right at full width and wrong on a phone, where a card is the whole of a
@@ -10535,11 +10632,13 @@ body.pg-side-panel-open .pg-chat-launcher {
 
 .pg-set-card .pg-f-md > .form-control,
 .pg-set-card .pg-f-md > :is(select.form-control),
-.pg-set-card .pg-f-md > .input-group { max-width: 28rem; }
+.pg-set-card .pg-f-md > .input-group,
+.pg-set-card .pg-f-md > .pg-pfield { max-width: 28rem; }
 
 .pg-set-card .pg-f-lg > .form-control,
 .pg-set-card .pg-f-lg > :is(select.form-control),
-.pg-set-card .pg-f-lg > .input-group { max-width: 34rem; }
+.pg-set-card .pg-f-lg > .input-group,
+.pg-set-card .pg-f-lg > .pg-pfield { max-width: 34rem; }
 
 /* A form-adorn add-on keeps the type of the input-group add-on it replaced,
    the body size rather than the 13px of the field, so a converted row stays
@@ -11901,6 +12000,11 @@ body.workspace,
   --ws-avatar-lg: 3rem;
   --ws-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 10px 30px -14px rgba(0, 0, 0, .16);
   --ws-shadow-accent: 0 .75rem 1.5rem -.75rem rgba(var(--ws-accent-rgb), .45);
+  /* The channel panes' cards (Decisions, Tasks, Board): a lift lighter than
+     --ws-shadow, and the width of a column the Decisions and Tasks cards
+     flow in (about twice the grids' old 22rem and 20rem). */
+  --ws-shadow-soft: 0 1px 2px rgba(0, 0, 0, .04), 0 4px 14px -8px rgba(0, 0, 0, .14);
+  --ws-flow-col: 34rem;
   /* The graph canvas core's tokens (pgc-) on the Workspace's scale; set
      beside the --ws-* names so the dark values below reach them too. */
   --pgc-accent: var(--ws-accent);
@@ -11919,6 +12023,7 @@ html[data-bs-theme="dark"] [id^="ws-"] {
   --ws-soft: rgba(var(--ws-accent-rgb), .1);
   --ws-shadow: 0 1px 2px rgba(0, 0, 0, .2), 0 10px 30px -14px rgba(0, 0, 0, .5);
   --ws-shadow-accent: 0 .75rem 1.5rem -.75rem rgba(var(--ws-accent-rgb), .35);
+  --ws-shadow-soft: 0 1px 2px rgba(0, 0, 0, .25), 0 4px 14px -8px rgba(0, 0, 0, .5);
   --pgc-ring: #a78bfa;
 }
 /* Compact density, chosen per browser in the overview's header
@@ -13645,9 +13750,8 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   padding: .6rem 0;
   border-bottom: 1px solid var(--pg-border-color);
 }
-/* A decision's or a note's tag in its head line; in the conversation the
-   tag alone marks it, on the Decisions tab its card also has the colour at
-   its edge. */
+/* A decision's or a note's tag in its head line: it alone names the kind,
+   in the conversation and on the Decisions tab. */
 .ws-msg-flag {
   display: inline-flex;
   align-items: center;
@@ -13670,41 +13774,58 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   background: color-mix(in srgb, var(--pg-info) 15%, transparent);
   color: var(--pg-info-fg-emphasis);
 }
-/* On the Decisions tab each one is a card of its own in a grid that fills
-   the pane (one column on a phone): in the conversation they keep the rhythm
-   of the messages around them. A decision keeps its green edge and a note
-   its blue one, on the side reading starts from. */
+/* On the Decisions tab each one is a card of its own. The cards flow in
+   columns that fill the pane, top to bottom and then the next column, so a
+   short card leaves no gap under it; a column is --ws-flow-col wide or up
+   to about twice that, one on a phone. The tag names the kind: no coloured
+   edge (a status update's either). In the conversation they keep the
+   rhythm of the messages around them. */
 .ws-pane-decisions {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
-  align-items: start;
-  gap: .75rem;
+  columns: var(--ws-flow-col);
+  column-gap: 1rem;
 }
 .ws-pane-decisions > :is(.ws-empty, .ws-skeleton) {
-  grid-column: 1 / -1;
+  column-span: all;
 }
 .ws-pane-decisions > .ws-msg {
-  margin: 0;
-  padding: .7rem .9rem;
-  /* The start edge is left to the kind of message (decision, note, status
-     update), which draws it in its colour. */
-  border-block: 1px solid var(--pg-border-color);
-  border-inline-end: 1px solid var(--pg-border-color);
-  border-radius: .875rem;
+  break-inside: avoid;
+  margin: 0 0 1rem;
+  padding: .9rem 1.1rem 1rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: 1rem;
+  background: var(--pg-card-bg);
+  box-shadow: var(--ws-shadow-soft);
+}
+.ws-pane-decisions > .ws-msg:hover {
+  border-color: rgba(var(--ws-accent-rgb), .45);
   background: var(--pg-card-bg);
 }
-/* A card is narrower than the conversation: its name, time, tag and the
-   way back to the conversation wrap rather than run past the edge. */
+@media (prefers-reduced-motion: no-preference) {
+  .ws-pane-decisions > .ws-msg,
+  .ws-task-grid > .ws-list-row,
+  .ws-pane-board .ws-cb-card {
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+}
+/* The head line: the name, time and tag, with Show in conversation at its
+   end, always there (keyboard and touch reach it); it wraps in a narrow
+   card rather than running past the edge. */
 .ws-pane-decisions > .ws-msg .ws-msg-meta {
   flex-wrap: wrap;
+  align-items: center;
   row-gap: .15rem;
+  margin-bottom: .35rem;
 }
-.ws-pane-decisions > .ws-msg-decision,
-.ws-pane-decisions > .ws-msg-note {
-  border-inline-start: 3px solid var(--pg-success);
+.ws-pane-decisions > .ws-msg .ws-msg-meta > .btn {
+  margin-inline-start: auto;
+  padding-block: 0;
+  font-size: .78rem;
 }
-.ws-pane-decisions > .ws-msg-note {
-  border-inline-start-color: var(--pg-info);
+.ws-pane-decisions > .ws-msg .ws-msg-quote {
+  margin-bottom: .45rem;
+}
+.ws-pane-decisions > .ws-msg .ws-msg-body {
+  line-height: 1.55;
 }
 /* ── Workspace: status updates and check-ins (assets/js/workspace_status.js) ── */
 .ws-msg-status {
@@ -16397,28 +16518,30 @@ a.ws-chip:hover {
   color: var(--pg-fg-2);
 }
 /* The channel's Tasks tab (drawTasks()): a quiet toolbar row, then each
-   task a card in a grid that fills the pane, one column on a phone. My tasks
-   and a record's window draw the same .ws-list-row as a list and keep it. */
+   task a card; the cards flow in columns as the decisions do, one on a
+   phone. My tasks and a record's window draw the same .ws-list-row as a
+   list and keep it. */
 .ws-pane-toolbar {
   padding: 0;
   border-bottom: 0;
 }
 .ws-task-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
-  align-items: start;
-  gap: .75rem;
+  columns: var(--ws-flow-col);
+  column-gap: 1rem;
 }
 .ws-task-grid > .ws-empty {
-  grid-column: 1 / -1;
+  column-span: all;
 }
 .ws-task-grid > .ws-list-row {
+  break-inside: avoid;
   gap: .6rem;
   min-width: 0;
-  padding: .7rem .85rem;
+  margin: 0 0 1rem;
+  padding: .8rem 1rem;
   border: 1px solid var(--pg-border-color);
-  border-radius: .875rem;
+  border-radius: 1rem;
   background: var(--pg-card-bg);
+  box-shadow: var(--ws-shadow-soft);
 }
 .ws-task-grid > .ws-list-row:hover {
   border-color: rgba(var(--ws-accent-rgb), .45);
@@ -18010,7 +18133,8 @@ html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
   padding: .5rem 0;
   border-bottom: 1px solid var(--pg-border-color);
 }
-/* The MCP servers card carries two buttons beside its heading and up to
+/* The MCP servers card (Workspace Settings, and Site Settings' Assistants
+   and agents) carries two buttons beside its heading and up to
    four beside each server's name; on a phone they wrap under it instead of
    squeezing the name to nothing and pushing the last button off screen. */
 #ws-mcp > .card-header {
@@ -18020,6 +18144,9 @@ html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
   flex-wrap: wrap;
 }
 #ws-mcp > .card-body > .ws-dept-row > .ws-grow {
+  flex-basis: 12rem;
+}
+#pgset-ws-mcp .ws-dept-row > .ws-grow {
   flex-basis: 12rem;
 }
 .ws-dept-swatch {
@@ -20517,8 +20644,10 @@ html[data-bs-theme="dark"] .ws-cb-chip.active {
 /* On the channel's Board tab a column is a card like the panes' others; the
    workflow table's board (.ws-wt-board) keeps its own columns. */
 .ws-pane-board .ws-cb-col {
+    flex: 1 1 17rem;
+    max-width: 34rem;
     border: 1px solid var(--pg-border-color);
-    border-radius: .875rem;
+    border-radius: 1rem;
     background: var(--pg-card-bg);
 }
 .ws-pane-board .ws-cb-col.ws-cb-drop {
@@ -20687,6 +20816,25 @@ html[data-bs-theme="dark"] .ws-cb-chip.active {
     margin-bottom: .35rem;
     border-radius: var(--ws-radius-xs);
     object-fit: cover;
+}
+/* The channel's Board: its columns grow with the pane up to twice their
+   width, and a card takes the panes' card manner; the priority stripe
+   stands on the side reading starts from. The workflow table's board keeps
+   the cards above. */
+.ws-pane-board .ws-cb-card {
+    padding: .65rem .8rem .65rem .95rem;
+    border-color: var(--pg-border-color);
+    border-radius: .75rem;
+    background: var(--pg-card-bg);
+    box-shadow: var(--ws-shadow-soft);
+}
+.ws-pane-board .ws-cb-card::before {
+    inset-inline-start: 0;
+    top: .55rem;
+    bottom: .55rem;
+}
+.ws-pane-board .ws-cb-card:hover {
+    border-color: rgba(var(--ws-accent-rgb), .45);
 }
 .ws-cb-decision .ws-cb-kind-icon {
     color: var(--pg-success);
@@ -23864,8 +24012,11 @@ select.pg-list-table-field option.private {
 }
 .pg-picker-name-line {
   display: flex;
+  /* In a narrow name column the mark goes under the name instead of
+     squeezing it to one letter. */
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.1rem 0.4rem;
   min-width: 0;
 }
 .pg-picker-mark {
@@ -24270,6 +24421,316 @@ select.pg-list-table-field option.private {
 }
 .pg-picker-sheet .pg-picker-strip .pg-picker-thumb:nth-child(n+3) {
   display: none;
+}
+/* The picker field (pg_picker_field()): the chosen value with its picture
+   and line in a form-control box, clear and caret inside it, Browse beside
+   it. A search's list drops below the row without a top of its own, so a
+   note under the field stays below the list. */
+.pg-pfield {
+  position: relative;
+  /* A third of a form row is narrow: the queries below make room for the
+     name there. A contained box has no width of its own, so one inside a
+     box sized to its content (.collapse.popover) is given one. */
+  container-type: inline-size;
+  contain-intrinsic-inline-size: 20rem;
+}
+@container (max-width: 22rem) {
+  .pg-pfield-browse .pg-btn-label {
+    display: none;
+  }
+}
+@container (max-width: 14rem) {
+  .pg-pfield-box > .pg-pfield-thumb {
+    display: none;
+  }
+}
+/* Matches in a narrow field's list wrapped word by word: the list grows to
+   the left from the field's right edge, which keeps it inside the page. */
+@container (max-width: 18rem) {
+  .pg-pfield-pop {
+    left: auto;
+    width: 18rem;
+  }
+}
+.pg-pfield-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+.pg-pfield-box {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  min-height: 3rem;
+  padding: 0.3rem 0.5rem 0.3rem 0.4rem;
+  color: var(--bs-btn-input-fg);
+  cursor: text;
+  /* A div, not a .form-control: the same tokens draw the same box. */
+  background-color: var(--bs-btn-input-bg);
+  border: var(--bs-border-width) solid var(--bs-border-color);
+  border-radius: var(--bs-radius-5);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pg-pfield-box {
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  }
+}
+/* v6's unlayered .collapse overflow-y: clip cut off an open field's list
+   (the short link File field sits in the destination collapse); a layered
+   !important beats it, only while the list is open. */
+.collapse.show:has(.pg-pfield.is-open) {
+  overflow: visible !important;
+}
+.pg-pfield.is-empty .pg-pfield-box,
+.pg-pfield.is-typing .pg-pfield-box {
+  padding-left: 0.75rem;
+}
+.pg-pfield-box:focus-within {
+  border-color: var(--pg-primary);
+  box-shadow: 0 0 0 var(--pg-focus-ring-width) var(--pg-focus-ring-color);
+}
+.pg-pfield.is-warning .pg-pfield-box {
+  border-color: var(--pg-warning);
+}
+.pg-pfield:is(.is-danger, .is-error) .pg-pfield-box {
+  border-color: var(--pg-danger);
+}
+.pg-pfield-thumb {
+  display: flex;
+  flex: 0 0 2.25rem;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  overflow: hidden;
+  border-radius: var(--pg-radius);
+  background: var(--pg-bg-1);
+  font-size: 1.1rem;
+  color: var(--pg-fg-2);
+}
+.pg-pfield-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pg-pfield.is-empty .pg-pfield-box > .pg-pfield-thumb,
+.pg-pfield.is-typing .pg-pfield-box > .pg-pfield-thumb {
+  display: none;
+}
+.pg-pfield-text,
+.pg-pfield-words {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+.pg-pfield-input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  font: inherit;
+  color: var(--pg-fg-emphasis);
+  text-overflow: ellipsis;
+}
+/* The box draws the focus ring (:focus-within); the global input ring
+   would draw a second one inside it. */
+.pg-pfield-input:focus-visible {
+  outline: 0;
+}
+.pg-pfield-input::placeholder {
+  color: var(--pg-fg-2);
+}
+.pg-pfield-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--pg-fg-2);
+}
+.pg-pfield-box .pg-pfield-meta:empty,
+.pg-pfield.is-typing .pg-pfield-box .pg-pfield-meta {
+  display: none;
+}
+.pg-pfield.is-warning .pg-pfield-box .pg-pfield-meta,
+.pg-pfield.is-warning .pg-pfield-note {
+  color: var(--pg-warning-ink);
+}
+.pg-pfield.is-danger .pg-pfield-note {
+  color: var(--pg-danger-ink);
+}
+.pg-pfield-clear {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  font-size: 0.8rem;
+  color: var(--pg-fg-2);
+}
+.pg-pfield-clear:hover {
+  background: var(--pg-bg-1);
+  color: var(--pg-fg-emphasis);
+}
+.pg-pfield.is-empty .pg-pfield-clear {
+  display: none;
+}
+.pg-pfield-caret {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  color: var(--pg-fg-2);
+  transition: transform 0.15s ease;
+}
+.pg-pfield.is-open .pg-pfield-caret {
+  transform: rotate(180deg);
+}
+.pg-pfield-browse {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.4rem;
+}
+.pg-pfield-pop {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 30;
+  margin-top: 0.25rem;
+  overflow: hidden;
+  border: var(--pg-border-width) solid var(--pg-border-color);
+  border-radius: var(--pg-radius-lg);
+  background: var(--pg-bg-body);
+  box-shadow: var(--pg-shadow-lg);
+}
+.pg-pfield-status {
+  padding: 0.45rem 0.75rem;
+  border-bottom: var(--pg-border-width) solid var(--pg-border-color);
+  font-size: 0.75rem;
+  color: var(--pg-fg-2);
+}
+.pg-pfield-status:empty {
+  display: none;
+}
+.pg-pfield-list {
+  max-height: min(24rem, 55vh);
+  padding: 0.25rem;
+  overflow-y: auto;
+}
+.pg-pfield-option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--pg-radius);
+  cursor: pointer;
+}
+.pg-pfield-option:hover,
+.pg-pfield-option.is-active {
+  background: var(--pg-primary-bg-subtle);
+}
+.pg-pfield-option .pg-picker-name {
+  font-size: 0.875rem;
+}
+/* An archived or binned page: found, marked, never chosen. */
+.pg-pfield-option.is-marked {
+  cursor: default;
+}
+.pg-pfield-option.is-marked :is(.pg-pfield-thumb, .pg-pfield-words) {
+  opacity: 0.6;
+}
+.pg-pfield-more {
+  min-height: 2.5rem;
+  color: var(--pg-primary-ink);
+}
+.pg-pfield-option + .pg-pfield-more {
+  margin-top: 0.25rem;
+  border-top: var(--pg-border-width) solid var(--pg-border-color);
+  border-radius: 0 0 var(--pg-radius) var(--pg-radius);
+}
+.pg-pfield-more > .bi {
+  flex: 0 0 2.25rem;
+  text-align: center;
+  font-size: 1.1rem;
+}
+.pg-pfield-more kbd {
+  flex: 0 0 auto;
+  padding: 0.1rem 0.4rem;
+  border: var(--pg-border-width) solid var(--pg-border-color);
+  border-radius: var(--pg-radius-sm);
+  background: var(--pg-bg-1);
+  font-size: 0.7rem;
+  color: var(--pg-fg-2);
+}
+.pg-pfield-note {
+  display: flex;
+  align-items: baseline;
+}
+@media (max-width: 575.98px) {
+  .pg-pfield-browse .pg-btn-label {
+    display: none;
+  }
+  .pg-pfield-box {
+    cursor: pointer;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-pfield-caret {
+    transition: none;
+  }
+}
+/* The field's phone search: a half sheet from the bottom edge. */
+.dialog.pg-pfield-sheet {
+  --bs-dialog-margin: 0;
+  width: 100%;
+  max-width: 100%;
+  height: min(36rem, 75%);
+  max-height: none;
+  margin: auto 0 0;
+  border-width: 0;
+  border-radius: var(--pg-radius-xl) var(--pg-radius-xl) 0 0;
+}
+.pg-pfield-sheet::before {
+  content: "";
+  align-self: center;
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 0.3rem;
+  margin-top: 0.45rem;
+  border-radius: var(--pg-radius-pill);
+  background: var(--pg-border-color);
+}
+.pg-pfield-sheet .dialog-header {
+  padding: 0.5rem 1rem;
+}
+.pg-pfield-sheet .dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+  padding: 0.25rem 1rem 1rem;
+  overflow: hidden;
+}
+.pg-pfield-sheet .pg-pfield-status {
+  padding: 0;
+  border: 0;
+}
+.pg-pfield-sheet .pg-pfield-list {
+  flex: 1 1 auto;
+  max-height: none;
+  margin: 0 -0.5rem;
+}
+.pg-pfield-sheet .pg-pfield-option {
+  min-height: 3rem;
+  padding: 0.45rem 0.5rem;
 }
 }
 

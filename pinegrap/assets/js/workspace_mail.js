@@ -27,32 +27,129 @@
 (function () {
     'use strict';
 
-    // The drawer: who it goes to, the answer, Send. A draft fills the
-    // answer; nothing leaves before the member presses Send.
-    function compose(message, view, h, draft) {
+    // The drawer: whom the answer goes to, Reply to all, Cc and Bcc, the
+    // answer, its files, Send. The server says first whom it goes to and
+    // whom Reply to all adds (ws_mail_reply_form); the answer then leaves
+    // through the mail queue like a new mail (ws_mail_reply, mail_send.php)
+    // and reads Waiting to be sent or Not sent until it has left. A draft
+    // fills the answer; nothing leaves before the member presses Send. all:
+    // Reply to all is on from the start.
+    function replyForm(message, view, h, draft, all) {
+        h.api('ws_mail_reply_form', { conversation_id: message.mail_reply }).then(function (data) {
+            answerForm(message.mail_reply, data, view, h, draft, all);
+        }).catch(function (error) {
+            h.fail(error);
+        });
+    }
+
+    function answerForm(conversation, data, view, h, draft, all) {
         var t = h.t;
         var el = h.el;
         var node = h.offcanvas('ws-mail-reply', t('mail_reply'));
         var body = h.clear(node.querySelector('.drawer-body'));
         var footer = h.clear(node.querySelector('.drawer-footer'));
+        var others = data.others || [];
+        var files = [];
+        var form = el('form', 'ws-mail-answer');
+        var everyone = null;
 
         node.querySelector('.drawer-title').textContent = t('mail_reply');
         footer.classList.remove('d-none');
+        form.noValidate = true;
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+        });
+        body.appendChild(form);
+        form.appendChild(el('div', 'small fg-secondary mb-3', t('mail_reply_to', data.name ? data.name + ' <' + data.to + '>' : data.to)));
 
-        if (message.sender && message.sender.title) {
-            body.appendChild(el('div', 'small fg-secondary mb-3', t('mail_reply_to', message.sender.title)));
+        function addresses(name, label) {
+            var field = el('input', 'form-control form-control-sm');
+
+            field.type = 'text';
+            field.name = name;
+            field.autocomplete = 'off';
+            field.inputMode = 'email';
+            field.spellcheck = false;
+            field.setAttribute('autocapitalize', 'off');
+
+            return { field: field, row: h.formRow(label, field, t('mail_new_addresses')) };
         }
+
+        var cc = addresses('cc', t('mail_new_cc'));
+        var bcc = addresses('bcc', t('mail_new_bcc'));
+        var copies = el('div', 'ws-mail-new-copies');
+        var showCopies = h.button('btn btn-sm btn-text theme-secondary ws-mail-new-cc-toggle', t('mail_new_cc_bcc'), 'bi-plus-lg');
+
+        function setCopies(open) {
+            copies.hidden = !open;
+            showCopies.hidden = open;
+        }
+
+        // Reply to all: the answered mail's other people as copies, taken
+        // out of Cc again when it is switched off.
+        if (others.length) {
+            var allRow = el('div', 'form-field mb-3');
+
+            everyone = el('input', 'check');
+            everyone.type = 'checkbox';
+            everyone.id = h.nextId('ws-mail-reply-all-');
+
+            var allLabel = el('label', '', t('mail_reply_all'));
+
+            allLabel.htmlFor = everyone.id;
+            allRow.appendChild(everyone);
+            allRow.appendChild(allLabel);
+            form.appendChild(allRow);
+            form.appendChild(el('div', 'small fg-secondary mb-3 text-break', t('mail_reply_all_to', others.join(', '))));
+            everyone.addEventListener('change', function () {
+                var typed = cc.field.value.split(/[\s,;]+/).filter(function (address) {
+                    return address && (others.indexOf(address.toLowerCase()) === -1);
+                });
+
+                cc.field.value = (everyone.checked ? others.concat(typed) : typed).join(', ');
+                setCopies(!!(cc.field.value || bcc.field.value));
+            });
+        }
+
+        form.appendChild(showCopies);
+        copies.appendChild(cc.row);
+        copies.appendChild(bcc.row);
+        form.appendChild(copies);
+        showCopies.addEventListener('click', function () {
+            setCopies(true);
+            cc.field.focus();
+        });
 
         var text = el('textarea', 'form-control');
         text.id = h.nextId('ws-mail-reply-');
+        text.name = 'text';
         text.rows = 10;
         text.maxLength = 50000;
         text.value = draft || '';
 
         var box = el('div', 'ws-mail-reply-box position-relative');
         box.appendChild(text);
-        body.appendChild(h.formRow(t('mail_reply_text'), box, t('mail_reply_hint')));
+        form.appendChild(h.formRow(t('mail_reply_text'), box, t('mail_reply_hint')));
         savedReplies(text, box, view, h);
+
+        // Files, as New e-mail takes them.
+        var picker = el('input', 'form-control form-control-sm');
+        var list = el('ul', 'ws-mail-new-files list-unstyled mb-0');
+
+        picker.type = 'file';
+        picker.multiple = true;
+
+        var fileRow = h.formRow(t('mail_new_files'), picker, t('mail_new_files_hint'));
+
+        fileRow.appendChild(list);
+        form.appendChild(fileRow);
+        picker.addEventListener('change', function () {
+            Array.prototype.forEach.call(picker.files || [], function (file) {
+                files.push(file);
+            });
+            picker.value = '';
+            fileRows(h, list, [files]);
+        });
 
         var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_reply_send'), 'bi-send');
 
@@ -64,10 +161,9 @@
 
             send.disabled = true;
 
-            h.api('ws_mail_reply', { conversation_id: message.mail_reply, text: text.value }).then(function (data) {
+            formPost(h, 'ws_mail_reply', { conversation_id: conversation, cc: cc.field.value, bcc: bcc.field.value, text: text.value }, files).then(function (result) {
                 h.hideOffcanvas(node);
-                // Sent, but the mailbox's sent folder kept no copy.
-                h.toast(data.copy_note || t('mail_reply_sent'), data.copy_note ? 'warning' : 'success');
+                h.toast(result.state === 'failed' ? t('mail_new_failed') : t('mail_new_sent'), result.state === 'failed' ? 'warning' : 'success');
                 view.sync();
             }).catch(function (error) {
                 send.disabled = false;
@@ -76,8 +172,36 @@
         });
 
         footer.appendChild(send);
+        setCopies(false);
+
+        if (all && everyone) {
+            everyone.checked = true;
+            everyone.dispatchEvent(new Event('change'));
+        }
+
         h.showOffcanvas(node);
         text.focus();
+    }
+
+    // The files a form sends, each group's in order, each with a button that
+    // takes it out of its group.
+    function fileRows(h, list, groups) {
+        h.clear(list);
+        groups.forEach(function (group) {
+            group.forEach(function (file, index) {
+                var row = h.el('li', 'd-flex align-items-center gap-2 small mt-2');
+                var drop = h.button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', h.t('mail_new_remove') + ': ' + file.name);
+
+                row.appendChild(h.icon('bi-paperclip'));
+                row.appendChild(h.el('span', 'text-truncate', file.name));
+                drop.addEventListener('click', function () {
+                    group.splice(index, 1);
+                    fileRows(h, list, groups);
+                });
+                row.appendChild(drop);
+                list.appendChild(row);
+            });
+        });
     }
 
     // A saved reply as plain text for an e-mail: its tags by their names
@@ -226,17 +350,32 @@
         });
     }
 
-    // Under a conversation's card.
+    // Under a conversation's card: Reply, Forward, Send again, the status
+    // and holder. Under an answer that could not leave: Send again only.
     function node(message, view, h) {
         var row = h.el('div', 'ws-mail-reply mt-1');
-        var open = h.button('btn btn-sm btn-outline theme-primary py-0', h.t('mail_reply'), 'bi-reply');
 
-        open.addEventListener('click', function (event) {
-            event.stopPropagation();
-            compose(message, view, h);
-        });
+        if (message.mail_reply) {
+            var open = h.button('btn btn-sm btn-outline theme-primary py-0', h.t('mail_reply'), 'bi-reply');
 
-        row.appendChild(open);
+            open.addEventListener('click', function (event) {
+                event.stopPropagation();
+                replyForm(message, view, h);
+            });
+
+            row.appendChild(open);
+        }
+
+        // Forward as e-mail: the New e-mail form filled with this mail.
+        if (message.mail_reply && message.mail_forward && h.cfg.mail_forward) {
+            var pass = h.button('btn btn-sm btn-outline theme-secondary py-0 ms-2', h.t('mail_fwd'), 'bi-envelope-arrow-up');
+
+            pass.addEventListener('click', function (event) {
+                event.stopPropagation();
+                forward(h, { kind: 'mail', ids: [message.mail_forward] }, { sent: function () { view.sync(); } });
+            });
+            row.appendChild(pass);
+        }
 
         if (message.mail_resend) {
             row.appendChild(resend(message, view, h));
@@ -335,7 +474,7 @@
 
         open.addEventListener('click', function (event) {
             event.stopPropagation();
-            compose({ mail_reply: offer.conversation_id, sender: { title: offer.to } }, view, h, offer.text);
+            replyForm({ mail_reply: offer.conversation_id, sender: { title: offer.to } }, view, h, offer.text);
         });
 
         row.appendChild(open);
@@ -346,9 +485,10 @@
     // The E-mails screen (workspace_mail.php): a row opens its conversation
     // in the reading pane beside the list, Load more reads the next page
     // under the rows, Mark all as read clears the marks and the menu's
-    // number. Without the script a row opens its card in the channel. The
-    // pane's HTML is the server's, its texts escaped there
-    // (includes/workspace/mail_pane.php).
+    // number. A row's address is this screen with its conversation, whose
+    // pane the server draws, so before the script starts, or without it, a
+    // row still opens the mail, never a channel. The pane's HTML is the
+    // server's, its texts escaped there (includes/workspace/mail_pane.php).
     function screen(root, h) {
         var words = (h.cfg && h.cfg.mail && h.cfg.mail.strings) || {};
         var pane = root.querySelector('[data-ws-mail-pane]');
@@ -453,9 +593,20 @@
             var answer = h.button('btn btn-sm btn-outline theme-primary', h.t('mail_reply'), 'bi-reply');
 
             answer.addEventListener('click', function () {
-                compose(message, view, h);
+                replyForm(message, view, h);
             });
             place.insertBefore(answer, place.firstChild);
+
+            // Reply to all, when the last mail named anybody besides the
+            // customer and the mailbox.
+            if (data.others) {
+                var everyone = h.button('btn btn-sm btn-outline theme-primary', h.t('mail_reply_all'), 'bi-reply-all');
+
+                everyone.addEventListener('click', function () {
+                    replyForm(message, view, h, '', true);
+                });
+                place.insertBefore(everyone, answer.nextSibling);
+            }
 
             if (data.state) {
                 state(place, message, view, h);
@@ -480,6 +631,12 @@
                     return;
                 }
 
+                // A redraw replaces the button that had focus (a sent answer
+                // returns focus to its Reply button), so focus would fall to
+                // the page; the heading keeps the keyboard in the pane.
+                var focused = document.activeElement;
+                var keep = again && (focused === document.body || pane.contains(focused));
+
                 pane.innerHTML = data.html;
                 tools(data);
                 address(id);
@@ -492,6 +649,8 @@
                 if (!again) {
                     pane.scrollTop = 0;
                     pane.querySelector('h2').focus();
+                } else if (keep) {
+                    pane.querySelector('h2').focus({ preventScroll: true });
                 }
             }).catch(function (error) {
                 if (current === id) {
@@ -526,7 +685,7 @@
         }
 
         root.addEventListener('click', function (event) {
-            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-row], [data-ws-mail-new]');
+            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-forward], [data-ws-mail-close]');
 
             // A new tab or window keeps the link's own way.
             if (!target || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
@@ -538,10 +697,16 @@
             if (target.hasAttribute('data-ws-mail-new')) {
                 // The new conversation opens in the pane once sent.
                 compose(h, { sent: function (data) { open(data.conversation_id); } });
+            } else if (target.hasAttribute('data-ws-mail-forward')) {
+                // A mail of the pane forwarded; the new conversation opens.
+                forward(h, { kind: 'mail', ids: [parseInt(target.getAttribute('data-ws-mail-forward'), 10)] }, { sent: function (data) { open(data.conversation_id); } });
             } else if (target.hasAttribute('data-ws-mail-more')) {
                 more(target);
             } else if (target.hasAttribute('data-ws-mail-row')) {
                 open(parseInt(target.getAttribute('data-ws-mail-row'), 10));
+            } else if (target.hasAttribute('data-ws-mail-close')) {
+                // The server's Close, until the pane is read again.
+                close();
             } else {
                 target.disabled = true;
 
@@ -560,6 +725,13 @@
         var start = parseInt(new URLSearchParams(window.location.search).get('conversation') || '0', 10);
 
         if (start > 0) {
+            // The server drew this conversation's pane for the address
+            // (workspace_mail.php): it is read again for the answer and the
+            // status controls, without a loading line in between.
+            if (pane.querySelector('h2')) {
+                current = start;
+            }
+
             open(start);
         }
     }
@@ -574,6 +746,13 @@
     // through the mail queue (includes/workspace/mail_send.php). The unsent
     // form is kept in this browser, one slot per site and person, like the
     // composer's unsent text (workspace.js draftKey()).
+    //
+    // Forward as e-mail opens the same form filled from chosen channel
+    // messages or one mail (ws_mail_forward, includes/workspace/
+    // mail_forward.php): a subject, the original quoted under the person's
+    // words and its files carried. Send names the source again
+    // (forward_kind, forward_ids, forward_files) and the server reads it
+    // anew. An unsent forward has a slot of its own, kept for that source.
 
     var NEW_PREFIX = 'ws-mail-new:';
     var NEW_DAYS = 14;
@@ -584,7 +763,8 @@
     }
 
     // A kept form as { box, channel, to, cc, bcc, subject, text, at } while
-    // it is younger than NEW_DAYS and holds words; null otherwise.
+    // it is younger than NEW_DAYS and holds words; null otherwise. A kept
+    // forward also names its source.
     function newDraftFresh(stored, now) {
         var value = null;
 
@@ -600,6 +780,10 @@
 
         var out = { box: parseInt(value.box, 10) || 0, channel: parseInt(value.channel, 10) || 0, at: value.at };
         var words = false;
+
+        if (typeof value.source === 'string') {
+            out.source = value.source;
+        }
 
         NEW_FIELDS.forEach(function (field) {
             out[field] = (typeof value[field] === 'string') ? value[field] : '';
@@ -638,12 +822,12 @@
         }
     }
 
-    // The form posted with its files as form parts; read as api() reads an
-    // answer.
-    function newPost(h, fields, files) {
+    // A form posted with its files as form parts (New e-mail, the answer);
+    // read as api() reads an answer.
+    function formPost(h, action, fields, files) {
         var form = new FormData();
 
-        form.append('action', 'ws_mail_new');
+        form.append('action', action);
         form.append('token', h.cfg.token);
         Object.keys(fields).forEach(function (key) {
             form.append(key, fields[key]);
@@ -680,18 +864,46 @@
         });
     }
 
+    // source: { kind: 'messages' | 'mail', ids }. options.channel and
+    // options.sent as compose() takes them; the source's channel is the
+    // default.
+    function forward(h, source, options) {
+        options = options || {};
+
+        h.api('ws_mail_forward', { kind: source.kind, ids: source.ids.join(',') }).then(function (data) {
+            var fill = data.forward || null;
+
+            newForm(h, data.boxes || [], data.writer || '', {
+                channel: options.channel || (fill ? fill.channel_id : 0),
+                sent: options.sent,
+                fill: fill
+            });
+        }).catch(function (error) {
+            h.fail(error);
+        });
+    }
+
     function newForm(h, boxes, writer, options) {
         var t = h.t;
         var el = h.el;
-        var node = h.offcanvas('ws-mail-compose', t('mail_new'));
+        var fill = options.fill || null;
+        var title = fill ? t('mail_fwd') : t('mail_new');
+        var node = h.offcanvas('ws-mail-compose', title);
         var body = h.clear(node.querySelector('.drawer-body'));
         var footer = h.clear(node.querySelector('.drawer-footer'));
-        var key = newDraftKey(h.cfg.api_url, h.cfg.me);
+        // A forward keeps its unsent form apart, and only for its source.
+        var key = newDraftKey(h.cfg.api_url, h.cfg.me) + (fill ? '|fwd' : '');
         var kept = newDraftRead(key);
         var files = [];
+        // The source's files the forward carries; each can be taken out.
+        var carried = fill ? fill.files.slice() : [];
         var timer = 0;
 
-        node.querySelector('.drawer-title').textContent = t('mail_new');
+        if (fill && kept && (kept.source !== fill.source)) {
+            kept = null;
+        }
+
+        node.querySelector('.drawer-title').textContent = title;
 
         if (!boxes.length) {
             footer.classList.add('d-none');
@@ -712,10 +924,11 @@
         }
 
         // The mailbox: the one keeping its mail in the channel the form was
-        // opened from, else the kept form's, else the first.
-        var start = null;
+        // opened from, else the kept form's, else the first. A kept forward
+        // keeps the mailbox it was given.
+        var start = (fill && kept) ? boxOf(kept.box) : null;
 
-        if (options.channel) {
+        if (!start && options.channel) {
             start = boxes.filter(function (box) {
                 return box.channels.some(function (channel) { return channel.id === options.channel; });
             })[0] || null;
@@ -793,21 +1006,9 @@
         fileRow.appendChild(list);
         form.appendChild(fileRow);
 
+        // The forward's carried files first, then the person's own.
         function drawFiles() {
-            h.clear(list);
-            files.forEach(function (file, index) {
-                var row = el('li', 'd-flex align-items-center gap-2 small mt-2');
-                var drop = h.button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', t('mail_new_remove') + ': ' + file.name);
-
-                row.appendChild(h.icon('bi-paperclip'));
-                row.appendChild(el('span', 'text-truncate', file.name));
-                drop.addEventListener('click', function () {
-                    files.splice(index, 1);
-                    drawFiles();
-                });
-                row.appendChild(drop);
-                list.appendChild(row);
-            });
+            fileRows(h, list, [carried, files]);
         }
 
         picker.addEventListener('change', function () {
@@ -837,7 +1038,7 @@
         }
 
         function current() {
-            return {
+            var value = {
                 box: parseInt(from.value, 10) || 0,
                 channel: parseInt(where.value, 10) || 0,
                 to: to.field.value,
@@ -847,6 +1048,19 @@
                 text: text.value,
                 at: Date.now()
             };
+
+            if (fill) {
+                value.source = fill.source;
+            }
+
+            return value;
+        }
+
+        // The forward's subject and quote, the person's words to go above.
+        function filled() {
+            subject.field.value = fill.subject;
+            text.value = fill.text;
+            text.setSelectionRange(0, 0);
         }
 
         // Saved 400 ms after typing pauses; an empty form drops the slot.
@@ -870,10 +1084,20 @@
             bcc.field.value = kept.bcc;
             subject.field.value = kept.subject;
             text.value = kept.text;
+        } else if (fill) {
+            filled();
         }
 
-        drawBox(options.channel || ((kept && (start.id === kept.box)) ? kept.channel : 0));
+        var keptChannel = (kept && (start.id === kept.box)) ? kept.channel : 0;
+
+        drawBox(fill ? (keptChannel || options.channel || 0) : (options.channel || keptChannel));
         setCopies(!!(cc.field.value || bcc.field.value));
+        drawFiles();
+
+        // The source's files that do not fit a mail are named, not carried.
+        if (fill && fill.left.length) {
+            form.insertBefore(el('div', 'alert theme-warning small mb-5', t('mail_fwd_left', fill.left.join(', '))), form.firstChild);
+        }
 
         from.addEventListener('change', function () {
             drawBox(0);
@@ -896,6 +1120,12 @@
                 newDraftStore(key, null);
                 form.reset();
                 files = [];
+                carried = fill ? fill.files.slice() : [];
+
+                if (fill) {
+                    filled();
+                }
+
                 drawFiles();
                 drawBox(0);
                 setCopies(false);
@@ -921,10 +1151,18 @@
 
             send.disabled = true;
 
-            newPost(h, {
+            var post = {
                 box_id: fields.box, channel_id: fields.channel, to: fields.to, cc: fields.cc, bcc: fields.bcc,
                 subject: fields.subject, text: fields.text
-            }, files).then(function (data) {
+            };
+
+            if (fill) {
+                post.forward_kind = fill.kind;
+                post.forward_ids = fill.ids.join(',');
+                post.forward_files = carried.map(function (file) { return file.id; }).join(',');
+            }
+
+            formPost(h, 'ws_mail_new', post, files).then(function (data) {
                 window.clearTimeout(timer);
                 newDraftStore(key, null);
                 send.disabled = false;
@@ -951,6 +1189,7 @@
         plain: plain,
         screen: screen,
         compose: compose,
+        forward: forward,
         newDraftKey: newDraftKey,
         newDraftFresh: newDraftFresh
     };

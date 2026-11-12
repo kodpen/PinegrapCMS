@@ -5,7 +5,7 @@ description: New dashboard Visitor map card (cards/visitmap.php, #6464): data so
 
 ## Where does the card read?
 - `pg_visitor_breakdown('country' | 'city', $from, $to, 100)` (`visitors/visitor-figures-module.md`): whole past days from `visitor_stats_daily`, today from raw rows. No table of its own (#4896). Period: today, 7 or 30 days (default 30); compare is not used.
-- Link: `visitors.php?p=today|7d|30d`.
+- Link (See all): the visitor report's ready report by country with the card's days, `view_visitor_report.php?ready=visitors_by_country&p=today|7d|30d` (`visitors/visitor-report-ready-reports.md`).
 
 ## Who writes a visit's country and city?
 - `init_tracking()` (`includes/fn/seo.php`) inserts `country` = `pg_geo_country_code()` (edge header, web server, the site's IP list; Tor `T1` stored empty) and `city` = `pg_geo_city()` (`includes/geo.php`): Cloudflare's `CF-IPCity` only, believed only from an edge that sets it (`pg_geo_trusted_sources()`), cleaned by the pure `pg_geo_clean_city()` (valid UTF-8, no control characters, 50 characters, the column's length). There is no other city source.

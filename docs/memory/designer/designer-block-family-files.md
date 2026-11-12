@@ -9,7 +9,7 @@ description: Block families in their own files (style_designer_blocks_<family>.j
 
 ## What does a family file contain?
 - One call: `StyleDesigner.registerBlockFamily(function (kit) { var _sdT = kit._sdT; … return { prefix, group, items, build, css, needs }; });` (sample: `tests/fixtures/designer/style_designer_blocks_sample.js`).
-- `prefix` is the `componentType` prefix (`launch-`); `group: { title: _sdT('…'), icon }` gives it a palette group, placed after the core groups; a general family (G1, G2) leaves `group` out and uses a core group's prefix (`features-`). `items` have the shape of `_sdBlockPaletteItems()`; `build(ctype)` returns the tree or `null`.
+- `prefix` is the `componentType` prefix (`launch-`); `group: { title: _sdT('…'), icon }` gives it a palette group, placed after the core groups; a general family (G1, G2) leaves `group` out and uses a core group's prefix (`features-`). `items` have the shape of `_sdBlockPaletteItems()`, each closed by a `desc: _sdT('…')` line: the block's one-sentence description in the hover card ([[palette-block-info]]); `build(ctype)` returns the tree or `null`.
 - `css` and `needs` are `var _SD_BLOCK_CSS = {` / `var _SD_BLOCK_CSS_NEEDS = {` declared at four spaces inside the factory and closed by `\n    };`: the PHP reader parses that text.
 - `kit` holds `_sdT`, `createNode` and the block builders the core's block branch uses (`uid div tag section row col h p icon btn link time region iconLink img intro`, `_sdBlockKit()`); the branch takes them as `_bkDiv`, `_bkIntro`… Keys stay single-quoted `_sdT('…')` literals.
 

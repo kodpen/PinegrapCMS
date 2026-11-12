@@ -306,10 +306,14 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'planetarium-',
         group: { title: _sdT('Planetarium'), icon: 'bi-stars' },
         items: [
-            { label: _sdT('Planetarium: Tonight\'s Sky'),           type: 'component', icon: 'bi-moon-stars',  extra: { componentType: 'planetarium-tonight' } },
-            { label: _sdT('Planetarium: Dome Shows'),               type: 'component', icon: 'bi-film',        extra: { componentType: 'planetarium-shows' } },
-            { label: _sdT('Planetarium: Through the Telescope'),    type: 'component', icon: 'bi-binoculars',  extra: { componentType: 'planetarium-objects' } },
-            { label: _sdT('Planetarium: Moon and Observing Nights'), type: 'component', icon: 'bi-moon',       extra: { componentType: 'planetarium-moon' } }
+            { label: _sdT('Planetarium: Tonight\'s Sky'),           type: 'component', icon: 'bi-moon-stars',  extra: { componentType: 'planetarium-tonight' },
+              desc: _sdT('Tonight at the observatory: the telescope state, the dark hours, a cloud cover scale and the planets up with their rise and set times.') },
+            { label: _sdT('Planetarium: Dome Shows'),               type: 'component', icon: 'bi-film',        extra: { componentType: 'planetarium-shows' },
+              desc: _sdT('Dome shows under a row of days, each card with a still, its length, ages and language, and showtimes that link to tickets or say sold out.') },
+            { label: _sdT('Planetarium: Through the Telescope'),    type: 'component', icon: 'bi-binoculars',  extra: { componentType: 'planetarium-objects' },
+              desc: _sdT('Cards of what the telescope points at this season, each with its kind, a short line, its brightness and what you need to see it.') },
+            { label: _sdT('Planetarium: Moon and Observing Nights'), type: 'component', icon: 'bi-moon',       extra: { componentType: 'planetarium-moon' },
+              desc: _sdT('Eight moon phases in a row with the days until each, the telescope nights marked on them and a button for all the nights.') }
         ],
         build: function (ctype) {
             if (ctype === 'planetarium-tonight') return buildTonight();

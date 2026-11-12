@@ -289,6 +289,48 @@ function ws_inbox_unread_count($user_id)
 }
 
 /**
+ * A person's inbox lines that came since the channel screen's last look, for
+ * its sound (soundBatch() in workspace.js decides which of them sound). With
+ * $after below 0 (the first look) only the mark is given: the newest unread
+ * line, so lines waiting from before stay silent. A line read before the
+ * next look is not given; a line read in the same look (the conversation in
+ * front of the person, ws_channel_mark_read()) neither.
+ *
+ * @param int $user_id
+ * @param int $after the mark of the last look, -1 for the first
+ * @return array mark (int), lines (id, kind, channel_id, actor_id)
+ */
+function ws_sound_lines($user_id, $after)
+{
+    $user_id = (int) $user_id;
+    $after = (int) $after;
+
+    if (!ws_ready()) {
+        return array('mark' => max(0, $after), 'lines' => array());
+    }
+
+    if ($after < 0) {
+        return array('mark' => (int) db_value("SELECT MAX(id) FROM ws_inbox WHERE user_id = '" . $user_id . "' AND read_at = 0"), 'lines' => array());
+    }
+
+    $out = array('mark' => $after, 'lines' => array());
+
+    foreach ((array) db_items("SELECT id, kind, channel_id, actor_id FROM ws_inbox
+        WHERE user_id = '" . $user_id . "' AND read_at = 0 AND id > " . $after . "
+        ORDER BY id LIMIT 50") as $row) {
+        $out['mark'] = (int) $row['id'];
+        $out['lines'][] = array(
+            'id'         => (int) $row['id'],
+            'kind'       => (string) $row['kind'],
+            'channel_id' => (int) $row['channel_id'],
+            'actor_id'   => (int) $row['actor_id'],
+        );
+    }
+
+    return $out;
+}
+
+/**
  * The place an inbox line names: a channel as itself; a discussion (a
  * channel row of kind thread) by the channel it is in, flagged, so its title
  * is never written as a channel's name.
@@ -357,6 +399,8 @@ function ws_inbox_describe($viewer, $row)
                 'body'  => $message ? ws_voice_excerpt($viewer, $message, 140) : '',
                 'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'],
                 'icon'  => 'bi-at',
+                'who'   => $actor,
+                'place' => $place,
             );
 
         case 'assigned':
@@ -400,6 +444,8 @@ function ws_inbox_describe($viewer, $row)
                 'body'  => $channel ? (string) $channel['topic'] : '',
                 'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'],
                 'icon'  => 'bi-hash',
+                'who'   => $actor,
+                'place' => $place,
             );
 
         case 'note_shared':
@@ -560,6 +606,8 @@ function ws_inbox_describe($viewer, $row)
                 'body'  => $message ? mb_substr(trim(preg_replace('/\s+/u', ' ', (string) $message['body'])), 0, 140) : '',
                 'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . (($last > 0) ? '&message=' . $last : ''),
                 'icon'  => 'bi-door-open',
+                'who'   => $guest ? (string) $guest['name'] : lang('Guest'),
+                'place' => $place,
             );
 
         // An application asks with a checklist or a poll (interact.php).
@@ -572,6 +620,8 @@ function ws_inbox_describe($viewer, $row)
                 'body'  => $message ? ws_voice_excerpt($viewer, $message, 140) : '',
                 'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'],
                 'icon'  => 'bi-ui-checks',
+                'who'   => $asker,
+                'place' => $place,
             );
 
         // Approval requests (approvals.php): asked, settled, a day before
@@ -604,7 +654,7 @@ function ws_inbox_describe($viewer, $row)
         // An MCP agent answered what the person asked it (mcp_agent.php).
         case 'agent_answer':
             if (function_exists('ws_mcp_agent_inbox_describe')) {
-                return ws_mcp_agent_inbox_describe($viewer, $row, $channel_name, $base);
+                return ws_mcp_agent_inbox_describe($viewer, $row, $channel_name, $base) + array('place' => $place);
             }
             break;
 
@@ -626,6 +676,8 @@ function ws_inbox_describe($viewer, $row)
                 'body'  => $message ? ws_voice_excerpt($viewer, $message, 140) : '',
                 'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'],
                 'icon'  => 'bi-eye',
+                'who'   => $actor,
+                'place' => $place,
             );
 
         case 'note_answer_ai':
@@ -1259,6 +1311,64 @@ function ws_bell_user($session, $app)
 }
 
 /**
+ * A bell row's short title and the place under it. The bell's drawer says
+ * who did what on the row's first line ("Ada mentioned you") and puts the
+ * channel on the second, beside the time, so the title is no whole
+ * sentence. A kind without a short form, or a row with no one named,
+ * answers '' and keeps its whole sentence.
+ *
+ * @param string     $kind  the inbox row's kind
+ * @param string     $who   who set it off: a person, a guest or an agent
+ * @param array|null $place ws_inbox_place()
+ * @return array title, place ('#name', a discussion in it, or '')
+ */
+function ws_bell_title($kind, $who, $place)
+{
+    $who = trim((string) $who);
+    $name = is_array($place) ? (string) ($place['name'] ?? '') : '';
+    $none = array('title' => '', 'place' => '');
+
+    if ($who === '') {
+        return $none;
+    }
+
+    switch ((string) $kind) {
+        case 'mention':
+            $title = lang(array('string' => '{var:1} mentioned you', 'vars' => $who));
+            break;
+
+        case 'question_asked':
+            $title = lang(array('string' => '{var:1} asked you', 'vars' => $who));
+            break;
+
+        case 'ack_reminder':
+            $title = lang(array('string' => '{var:1} asked you to say you read it', 'vars' => $who));
+            break;
+
+        case 'guest_message':
+            $title = lang(array('string' => '{var:1} wrote', 'vars' => $who));
+            break;
+
+        case 'invited':
+            $title = lang(array('string' => '{var:1} added you to a channel', 'vars' => $who));
+            break;
+
+        case 'agent_answer':
+            $title = lang(array('string' => '{var:1} answered you', 'vars' => $who));
+            break;
+
+        default:
+            return $none;
+    }
+
+    if (($name !== '') && !empty($place['thread'])) {
+        $name = lang(array('string' => 'A discussion in {var:1}', 'vars' => $name));
+    }
+
+    return array('title' => $title, 'place' => $name);
+}
+
+/**
  * What a bell row about an inbox row says, for the person it is addressed
  * to. Null when the row is gone or no longer theirs to see.
  *
@@ -1284,9 +1394,12 @@ function ws_bell_describe($inbox_id, $user_id)
 
     $described = ws_inbox_describe($viewer, $row);
     $kind = (string) ($row['kind'] ?? '');
+    $short = ws_bell_title($kind, (string) ($described['who'] ?? ''), $described['place'] ?? null);
 
     return array(
         'title' => $described['title'],
+        'short' => $short['title'],
+        'place' => $short['place'],
         'body'  => $described['body'],
         'url'   => $described['url'],
         'kind'  => $kind,
@@ -1294,6 +1407,115 @@ function ws_bell_describe($inbox_id, $user_id)
         'join'  => (string) ($described['join'] ?? ''),
         'fold'  => ws_bell_fold_key($kind, ($kind === 'flow_finished') ? ws_inbox_flow_run((int) $row['id']) : null),
     );
+}
+
+/**
+ * Which in-place action a bell row of this kind may offer, before the
+ * reader's rights are checked: approve an approval request, try a failed
+ * run of a flow again, mark a task done. Pure.
+ *
+ * @param string $kind       the inbox row's kind
+ * @param string $run_status a flow_finished row's run status ('' for none)
+ * @return string approve | retry | done | ''
+ */
+function ws_bell_act_kind($kind, $run_status = '')
+{
+    $kind = (string) $kind;
+
+    if ($kind === 'approval_requested') {
+        return 'approve';
+    }
+
+    if ($kind === 'flow_finished') {
+        return ((string) $run_status === 'failed') ? 'retry' : '';
+    }
+
+    if (in_array($kind, array('assigned', 'task_reminder', 'task_overdue'), true)) {
+        return 'done';
+    }
+
+    return '';
+}
+
+/**
+ * The in-place action of a bell row, offered only when the reader may run
+ * it: the dry-run checks of the actions it calls (ws_approval_decide_check(),
+ * ws_flow_step_mend_check(), ws_task_set_status_check()), so the row never
+ * shows a button the action would refuse. An approval that asks for an
+ * answer is approved where it was asked, not from the bell.
+ *
+ * @param array $viewer ws_viewer() of the row's reader
+ * @param array $row    the ws_inbox row
+ * @return array|null kind (approve, retry, done) and its ids: approval_id;
+ *                    run_id, node_id; task_id
+ */
+function ws_bell_act($viewer, $row)
+{
+    $kind = (string) ($row['kind'] ?? '');
+    $run = null;
+
+    if ($kind === 'flow_finished') {
+        $known = ws_inbox_flow_run((int) $row['id']);
+        $run = is_array($known) ? ws_flow_run((int) $known['id']) : null;
+    }
+
+    switch (ws_bell_act_kind($kind, is_array($run) ? (string) $run['status'] : '')) {
+        case 'approve':
+            $approval = ws_approval_of_message((int) ($row['message_id'] ?? 0));
+
+            if (!$approval || !ws_approval_decide_check($viewer, $approval, 'approve', '')['ok']) {
+                return null;
+            }
+
+            return array('kind' => 'approve', 'approval_id' => (int) $approval['id']);
+
+        case 'retry':
+            $step = db_item("SELECT node_id FROM ws_flow_run_steps WHERE run_id = '" . (int) $run['id'] . "' AND status = 'failed' ORDER BY id DESC LIMIT 1");
+
+            if (!is_array($step) || !ws_flow_step_mend_check($viewer, $run, (string) $step['node_id'])['ok']) {
+                return null;
+            }
+
+            return array('kind' => 'retry', 'run_id' => (int) $run['id'], 'node_id' => (string) $step['node_id']);
+
+        case 'done':
+            $task = ws_task((int) ($row['task_id'] ?? 0));
+
+            if (!$task || ((string) $task['status'] === 'done') || !ws_can_see_task($viewer, $task) || !ws_task_set_status_check($viewer, $task, 'done')['ok']) {
+                return null;
+            }
+
+            return array('kind' => 'done', 'task_id' => (int) $task['id']);
+    }
+
+    return null;
+}
+
+/**
+ * The in-place action of the bell row that shows this inbox row to its
+ * person (ws_bell_act()), or null.
+ *
+ * @param int $inbox_id
+ * @param int $user_id
+ * @return array|null
+ */
+function ws_bell_row_act($inbox_id, $user_id)
+{
+    $row = db_item("SELECT * FROM ws_inbox WHERE id = '" . (int) $inbox_id . "' AND user_id = '" . (int) $user_id . "'");
+
+    if (!is_array($row) || (ws_bell_act_kind((string) $row['kind'], 'failed') === '')) {
+        return null;
+    }
+
+    $user = function_exists('pg_load_user_row') ? pg_load_user_row((int) $user_id) : null;
+
+    if (!is_array($user)) {
+        return null;
+    }
+
+    $viewer = ws_viewer($user);
+
+    return ws_inbox_row_visible($viewer, $row) ? ws_bell_act($viewer, $row) : null;
 }
 
 /**

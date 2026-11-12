@@ -56,7 +56,10 @@
  * components, 'catalog' and 'requires'.
  *
  * The version follows the template, not the software: raise it whenever the
- * pages change, so a design records which edition it started from.
+ * pages change, so a design records which edition it started from. 2.0.0
+ * draws the home on the Home Services blocks (the Hero with Job Sheet and
+ * the Emergency Line) and the Arrival Windows, and the service areas on
+ * the Zones.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -169,11 +172,18 @@ $homeservices_css = implode("\n", array(
     '.phs-lift{transition:transform .2s ease,box-shadow .2s ease}',
     '.phs-lift:hover,.phs-lift:focus-visible,.phs-lift:focus-within{transform:translateY(-3px);box-shadow:var(--bs-box-shadow)}',
     '@media (prefers-reduced-motion:reduce){.phs-lift{transition:none}.phs-lift:hover,.phs-lift:focus-visible,.phs-lift:focus-within{transform:none}}',
+    // In the dark theme a palette's text colour is made for the page
+    // background and can fall under 4.5:1 on the tertiary bands (the account
+    // bar, the page headers, the grey sections; Steel gives 4.2:1). Small
+    // coloured text and links there take the palette's emphasis tint.
+    '[data-bs-theme=dark] .bg-body-tertiary :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}',
+    '[data-bs-theme=dark] .bg-body-tertiary .link-secondary{color:var(--bs-secondary-text-emphasis)!important}',
+    '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-primary{--bs-btn-color:var(--bs-primary-text-emphasis)}',
 ));
 
 return array(
     'name'        => lang('Home Services'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 123,
     'icon'        => 'bi-tools',
@@ -228,10 +238,12 @@ return array(
         'email_footer' => array('name' => lang('Home Services E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its phs- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the rules of the blocks its home and service
+    // areas are drawn on (the Hero with Job Sheet, the Emergency Line, the
+    // Arrival Windows and the Zones) and its phs- rules in one User Styles
+    // entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $homeservices_css),
+        'css'   => pg_design_template_user_styles(array('homeservices-jobsheet', 'homeservices-emergency', 'booking-windows', 'locations-zones'), $homeservices_css),
         'fonts' => json_encode($homeservices_fonts),
     ),
 );

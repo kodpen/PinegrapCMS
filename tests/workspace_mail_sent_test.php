@@ -160,7 +160,10 @@ function test_workspace_mail_sent_copy_and_bounce_wiring()
 	pg_assert_contains("'keep_mime'          => true,", $reply, 'the answer asks for the mail as sent');
 	pg_assert_contains("pg_mail_last_sent_mime(\$mail->getSentMIMEMessage());", $mail, 'email() hands it back');
 	pg_assert_contains("'copy' => \$copy()", $reply, 'copied after the record is written');
-	pg_assert_contains('data.copy_note', $script, 'a missing copy is told');
+	$send = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail_send.php');
+
+	pg_assert_contains('ws_mail_reply_copy($box, $plan[\'folder\'], (string) $mime);', $send, 'a queued answer is copied once it has left');
+	pg_assert_true(strpos($script, 'copy_note') === false, 'the panel\'s answer is queued: no copy to tell of when Send is pressed');
 
 	// The failure is read before the loop gate would drop it as automatic.
 	pg_assert_true(strpos($ingest, '$dsn = ws_mail_dsn($parsed);') < strpos($ingest, '$loop = ws_mail_loop_reason($parsed'), 'before the loop gate');

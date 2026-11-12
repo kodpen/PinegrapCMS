@@ -2,9 +2,10 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Design template "Home Services", part 1 of its files: the node builders,
- * the company's own data (the service categories, the sample services with
- * their prices and what they include, the service areas, the team, how a
+ * Design template "Home Services", part 1 of its files: the node builders
+ * and the interactions the pages put on them, the company's own data (the
+ * service categories, the sample services with their prices and what they
+ * include, the service areas, the arrival windows, the team, how a
  * job goes, why customers choose the company, what they say, the care
  * plans and the answers of the forms' pick lists) and the parts every page
  * repeats (account bar, header, footer, visit band, service, area, team
@@ -61,6 +62,24 @@ $icon = function ($name, $class = '') use ($el, $attr) {
 $span = function ($text, $class, $name, $extra = array()) use ($el) {
     return $el('span', $class, $name, array(), array_merge(array('text' => $text), $extra));
 };
+// A time of day the operator edits like a link's words; 'datetime' keeps
+// the machine-readable value (the editor's kit.time()).
+$time = function ($datetime, $text, $class, $name) use ($el, $attr) {
+    return $el('time', $class, $name, array(), array('text' => $text, '_attrs' => array($attr('datetime', $datetime))));
+};
+// An interaction on a node (Interactions in the editor): the operator can
+// change or remove it there, and the platform keeps the node still for a
+// visitor who prefers reduced motion.
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+// A row whose items rise one after another as it scrolls into view.
+$rise = function ($node, $stagger = 90) use ($fx) {
+    return $fx($node, array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => $stagger));
+};
+// A section heading that fades in on view.
+$fade_in = array('effect' => 'fade', 'trigger' => 'view', 'duration' => 700);
 $container = function ($children, $class = '') {
     return array('type' => 'container', 'props' => array('fluid' => false, 'cssClass' => $class), 'children' => $children);
 };
@@ -293,7 +312,7 @@ $why_us = array(
     array('icon' => 'bi-tag', 'title' => lang('Prices agreed first'),
         'text' => lang('You know the price before we start, and it does not change halfway.')),
     array('icon' => 'bi-clock', 'title' => lang('On time'),
-        'text' => lang('A two-hour arrival window, and a call if we are running late.')),
+        'text' => lang('An arrival window you choose, and a call if we are running late.')),
     array('icon' => 'bi-shield-check', 'title' => lang('Twelve-month guarantee'),
         'text' => lang('If our work fails within a year, we come back and fix it at no charge.')),
 );
@@ -342,6 +361,18 @@ foreach ($areas as $a) $area_names[] = $a['name'];
 $team_roles = array_merge($category_titles, array($office_role));
 // The visit's time windows: the technician arrives within the window.
 $time_windows = array(lang('Morning, 8:00 to 12:00'), lang('Afternoon, 12:00 to 16:00'), lang('Evening, 16:00 to 19:00'));
+// The same windows in full, in the same order (the home's Arrival Windows
+// and the areas page's time slots): the icon, the hours, the class of its
+// bar on the working day's track (pg-window-am/-pm/-eve), what it suits,
+// the days it is offered and its tag, if any.
+$arrival_windows = array(
+    'morning'   => array('icon' => 'bi-sunrise', 'name' => lang('Morning'), 'from' => '08:00', 'to' => '12:00', 'span' => 'pg-window-am',
+        'text' => lang('The first visits of the day, so we are rarely held up on the way.'), 'days' => lang('Monday to Saturday'), 'tag' => lang('Most booked')),
+    'afternoon' => array('icon' => 'bi-sun', 'name' => lang('Afternoon'), 'from' => '12:00', 'to' => '16:00', 'span' => 'pg-window-pm',
+        'text' => lang('For when you are home after lunch, or can leave us a key.'), 'days' => lang('Monday to Saturday'), 'tag' => ''),
+    'evening'   => array('icon' => 'bi-sunset', 'name' => lang('Evening'), 'from' => '16:00', 'to' => '19:00', 'span' => 'pg-window-eve',
+        'text' => lang('After work, for the jobs that fit in a short visit.'), 'days' => lang('Monday to Friday'), 'tag' => ''),
+);
 $property_types = array(lang('Flat or apartment'), lang('House'), lang('Office or shop'), lang('Something else'));
 $property_sizes = array(lang('Studio or one bedroom'), lang('Two bedrooms'), lang('Three bedrooms'), lang('Four bedrooms or more'));
 $urgency_choices = array(lang('As soon as possible'), lang('Within a week'), lang('Within a month'), lang('No hurry'));
@@ -506,7 +537,10 @@ $account_bar_tree = function () use ($el, $widget, $shared, $lang_switcher) {
 // and the way to book a visit. The links to the current page are marked
 // active on the server (smart active state), so one header serves every
 // page. The care plans are the shop's and are linked from the shop pages
-// only, so the header stands on a site without the shop.
+// only, so the header stands on a site without the shop. The menu opens
+// out from 1200 px: six links and two buttons are wider than the 960 px
+// container, and from 1200 to 1399 px Get an Estimate is left out of the
+// bar (it stays in the collapsed menu and returns from 1400 px).
 $header = function () use ($el, $link, $icon, $span, $attr) {
     $items = array();
     foreach (array(
@@ -520,7 +554,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link($n[1], '{{page:' . $n[0] . '}}', 'nav-link text-nowrap')));
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
-        $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
+        $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $icon('bi-tools', 'fs-4 text-primary'),
@@ -537,9 +571,9 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
                     $attr('aria-label', lang('Toggle navigation')),
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
-                    $el('ul', 'navbar-nav ms-lg-auto me-lg-3 column-gap-lg-2 py-3 py-lg-0', lang('Nav Menu'), $items, array('smartActive' => true)),
-                    $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center gap-2 pb-2 pb-lg-0', lang('Header Actions'), array(
-                        $link(lang('Get an Estimate'), '{{page:estimate}}', 'btn btn-outline-primary text-nowrap'),
+                    $el('ul', 'navbar-nav ms-xl-auto me-xl-3 column-gap-xl-2 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
+                    $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
+                        $link(lang('Get an Estimate'), '{{page:estimate}}', 'btn btn-outline-primary text-nowrap d-xl-none d-xxl-inline-block'),
                         $el('a', 'btn btn-primary d-inline-flex align-items-center justify-content-center gap-2 px-3 text-nowrap', lang('Call to Action'), array(
                             $icon('bi-calendar-check'),
                             $span(lang('Book a Visit'), '', lang('Link Text')),

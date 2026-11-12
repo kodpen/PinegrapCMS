@@ -16,7 +16,7 @@ description: The Car Dealership block family (dealership- prefix, own palette gr
 
 ## Which general blocks does a dealer site place instead?
 - The sticky order and test-drive bar: `cta-sticky` ([[designer-blocks-cta]]). The dealer's figures: `stats-counter` (the template draws it with `pg-dl-type`). Services: `services-icon-cards`. Ways to pay: the template's finance cards or `pricing-tiers`. Customers' words: `testimonial-grid`. Questions: `faq-categorized`. Stock lists stay collection list widgets.
-- Colour switch on a vehicle page: `launch-colours` with the template's own swatch classes (step `dealership-2`). An exterior/interior word switch and a wheel switch do not exist yet.
+- Colour switch on a vehicle page: the Variant Picker (`variant-picker`, [[designer-block-variant-picker]]) with the template's own swatch classes (step `dealership-2`). An exterior/interior word switch and a wheel switch do not exist yet.
 
 ## What do its rules and texts follow?
 - Rules `pg-dl-panel`, `pg-dl-veil` (scrim in rgba black, as `pg-shade-bottom`), `pg-dl-type` (weight 300, tight tracking; also `.pg-dl-kicker`, wide tracking), `pg-dl-figures`, `pg-dl-shapes` (transition off under reduced motion), `pg-dl-ways`. No hex colour, no `!important`.

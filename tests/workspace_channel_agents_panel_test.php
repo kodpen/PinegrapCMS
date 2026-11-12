@@ -42,6 +42,8 @@ function test_workspace_channel_agent_panel_row()
 		'wake_prefix' => '[ci]',
 		'tier'        => 2,
 		'loop_guard'  => false,
+		'seen'        => '',
+		'not_seen'    => false,
 	), $row, 'no door, address or secret reaches the screen');
 }
 

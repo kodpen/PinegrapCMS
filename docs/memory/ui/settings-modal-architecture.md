@@ -12,7 +12,7 @@ includes/settings/registry.php   the ONE list: categories, groups, sections, key
 includes/settings/modal.php      shell: header button, list with headings, search box, empty pane
 settings_pane.php                GET ?pane=<cat> cards, ?search=1 index, POST saves; JSON
 includes/settings/fragment.php   pg_settings_fragment() / pg_settings_apply()
-includes/settings/search.php     search index (settings-modal-navigation.md)
+includes/settings/search.php     search index (settings-modal-search.md)
 includes/settings/prep.php       GET preparation (every category but a Workspace one)
 includes/settings/<cat>.php      cards -> $pg_settings_cards (+ modals, scripts)
 includes/settings/<cat>.save.php the columns that category writes

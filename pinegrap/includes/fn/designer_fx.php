@@ -6,7 +6,8 @@
  * node's props as `_fx`, written on the page as data-pg-fx-* attributes and
  * played by assets/js/pg_fx.src.js (CSS transitions and IntersectionObserver,
  * scroll-linked effects once per frame, a number that counts up once seen,
- * nothing under prefers-reduced-motion).
+ * a muted hero video that plays by itself with a pause button, nothing
+ * under prefers-reduced-motion).
  *
  * pg_fx_normalize() keeps the known fields in their ranges and drops the
  * rest; pg_fx_attrs() writes the effect, its trigger and only the values
@@ -34,7 +35,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 function pg_fx_effects()
 {
     return array('fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
-        'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count');
+        'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay');
 }
 
 /**
@@ -123,7 +124,8 @@ function pg_fx_numbers()
  * sticky, `speed` outside parallax, `from` outside the scroll-linked
  * effects, `distance` for fade, sticky, parallax and the scroll-linked
  * effects. Count keeps its duration and delay alone, in its own ranges
- * (pg_fx_count_numbers()).
+ * (pg_fx_count_numbers()). Autoplay (a <video> that plays by itself,
+ * muted and looping) has no field.
  *
  * @param mixed $fx props._fx
  * @return array|null
@@ -145,6 +147,9 @@ function pg_fx_normalize($fx)
         return (int) max($min, min($max, round((float) $fx[$name])));
     };
 
+    if ($effect === 'autoplay') {
+        return $out;
+    }
     if ($effect === 'sticky') {
         $out['offset'] = $num('offset');
         return $out;

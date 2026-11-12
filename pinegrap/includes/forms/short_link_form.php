@@ -151,17 +151,19 @@ function pg_short_link_form_label_blank($options, $label)
  * @param liveform $liveform
  * @param array $form  'extra_rows' (markup after the name row), 'status'
  *                     (cards under the summary in the status column),
- *                     'keep' (the page_id, product_group_id and product_id
- *                     the link points at, which stay on their lists while in
- *                     the Recycle Bin; nothing on create). The file picker
- *                     prints only its chosen file, marked when it is in the
- *                     bin, and searches the rest (pg_file_picker_id_options())
+ *                     'keep' (the product_group_id and product_id the link
+ *                     points at, which stay on their lists while in the
+ *                     Recycle Bin; nothing on create). The page and File
+ *                     fields are picker fields (pg_picker_field(), kinds
+ *                     page, page_catalog, page_catalog_detail and file):
+ *                     the chosen one marked when it is in the bin, the
+ *                     rest searched or browsed
  * @return string
  */
 function pg_short_link_form_cards($liveform, $form)
 {
     $form = array_merge(array('extra_rows' => '', 'status' => '', 'keep' => array()), $form);
-    $keep = array_merge(array('page_id' => 0, 'product_group_id' => array(), 'product_id' => 0), $form['keep']);
+    $keep = array_merge(array('product_group_id' => array(), 'product_id' => 0), $form['keep']);
     $style = pg_short_link_form_row_styles($liveform->get_field_value('destination_type'));
     $address_base = URL_SCHEME . HOSTNAME . OUTPUT_PATH;
     $name = (string) $liveform->get_field_value('name');
@@ -208,18 +210,18 @@ function pg_short_link_form_cards($liveform, $form)
                                         <div class="row">
                                             <div class="col-12 md:col-6 lg:col-4 my-3" id="page_id_row"' . $style['page_id'] . '>
                                                 <label for="page_id" class="form-label">' . lang('Page') . '</label>
-                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'page_id', 'id'=>'page_id', 'class'=>'form-control', 'options'=>get_page_options('', '', 'edit', FALSE, $keep['page_id']))) . '
+                                                ' . pg_picker_field('page', 'page_id', $liveform->get_field_value('page_id'), array('invalid' => $liveform->check_field_error('page_id'))) . '
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-5 my-3" id="catalog_page_id_row"' . $style['catalog_page_id'] . '>
                                                 <label for="catalog_page_id" class="form-label">' . lang('Catalog Page') . '</label>
-                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_page_id', 'id'=>'catalog_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'catalog', 'edit', FALSE, $keep['page_id']), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_detail_page_id\').selectedIndex = 0}' )) . '
+                                                ' . pg_picker_field('page_catalog', 'catalog_page_id', $liveform->get_field_value('catalog_page_id'), array('invalid' => $liveform->check_field_error('catalog_page_id'))) . '
                                             </div>
                                             <div class="col-12 lg:col-2 my-3 lg:text-center align-self-end" id="or_row"' . $style['or'] . '>
                                                 -' . lang('or') . '-
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-5 my-3" id="catalog_detail_page_id_row"' . $style['catalog_detail_page_id'] . '>
                                                 <label for="catalog_detail_page_id" class="form-label">' . lang('Catalog Detail Page') . '</label>
-                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_detail_page_id', 'id'=>'catalog_detail_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'catalog detail', 'edit', FALSE, $keep['page_id']), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_page_id\').selectedIndex = 0}' )) . '
+                                                ' . pg_picker_field('page_catalog_detail', 'catalog_detail_page_id', $liveform->get_field_value('catalog_detail_page_id'), array('invalid' => $liveform->check_field_error('catalog_detail_page_id'))) . '
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-5 my-3" id="product_group_id_row"' . $style['product_group_id'] . '>
                                                 <label for="product_group_id" class="form-label">' . lang('Product Group') . '</label>
@@ -238,9 +240,9 @@ function pg_short_link_form_cards($liveform, $form)
                                                 <label for="tracking_code" class="form-label">' . lang('Tracking Code') . '</label>
                                                 ' . $liveform->output_field(array('type'=>'text', 'name'=>'tracking_code', 'id'=>'tracking_code', 'class'=>'form-control', 'maxlength'=>pg_short_link_form_tracking_code_max())) . '
                                             </div>
-                                            <div class="col-12 md:col-6 lg:col-4 my-3" id="file_row"' . $style['file'] . '>
+                                            <div class="col-12 lg:col-8 my-3" id="file_row"' . $style['file'] . '>
                                                 <label for="file" class="form-label">' . lang('File') . '</label>
-                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'file', 'id'=>'file', 'class'=>'form-control', 'options'=>pg_file_picker_id_options($liveform->get_field_value('file'))) + pg_file_picker_field_attributes('file')) . pg_fields_script() . '
+                                                ' . pg_picker_field('file', 'file', $liveform->get_field_value('file'), array('title' => lang('Choose a file'), 'invalid' => $liveform->check_field_error('file'))) . pg_picker_script() . '
                                             </div>
                                         </div>
                                     </div>
@@ -284,6 +286,14 @@ function pg_short_link_form_cards($liveform, $form)
                                     $(\'#redirect_code\').val(\'301\');
                                 }
                             }
+                            // A product group is shown on a catalog page or on a
+                            // catalog detail page: choosing one empties the other.
+                            $(document).on(\'change\', \'input[name="catalog_page_id"], input[name="catalog_detail_page_id"]\', function () {
+                                var other = (this.name === \'catalog_page_id\') ? \'catalog_detail_page_id\' : \'catalog_page_id\';
+                                if (this.value !== \'\' && window.pgPicker) {
+                                    window.pgPicker.clear(document.getElementById(other));
+                                }
+                            });
                             $(document).ready(function() {
                                 change_short_link_destination_type($("select#destination_type option:selected").val());
                                 pg_short_link_pattern_answer();

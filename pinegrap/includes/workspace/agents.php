@@ -93,6 +93,11 @@ function ws_agent_door_problem($kind, $url)
 /** How many agent messages may answer one another in a row before the site stops waking agents in that chain. */
 define('WS_AGENT_DEPTH_MAX', 6);
 
+// An agent's last seen is written once a minute at most; a poll agent not
+// seen for ten minutes is marked as not seen.
+define('WS_AGENT_SEEN_EVERY', 60);
+define('WS_AGENT_NOT_SEEN_AFTER', 600);
+
 /** How many times one agent may be woken in an hour. */
 define('WS_AGENT_HOURLY_MAX', 30);
 
@@ -135,11 +140,11 @@ function ws_agent_wake_rules()
 function ws_agent_shape($row)
 {
     $row = (array) $row;
-    $int = array('id', 'app_id', 'door_failures', 'door_last_knock', 'wake_every', 'wake_next_at', 'created_by', 'created_at', 'updated_at');
+    $int = array('id', 'app_id', 'door_failures', 'door_last_knock', 'wake_every', 'wake_next_at', 'seen_at', 'created_by', 'created_at', 'updated_at');
     $out = array();
 
     foreach (array('id', 'kind', 'handle', 'name', 'avatar', 'app_id', 'provider', 'model', 'status', 'door_kind', 'door_url',
-        'door_failures', 'door_last_knock', 'door_error', 'wake_every', 'wake_next_at', 'wake_note', 'created_by', 'created_at', 'updated_at') as $field) {
+        'door_failures', 'door_last_knock', 'door_error', 'wake_every', 'wake_next_at', 'wake_note', 'seen_at', 'created_by', 'created_at', 'updated_at') as $field) {
         $out[$field] = in_array($field, $int, true) ? (int) ($row[$field] ?? 0) : (string) ($row[$field] ?? '');
     }
 
@@ -147,6 +152,75 @@ function ws_agent_shape($row)
     $out['door_secret_set'] = (strpos((string) ($row['door_secret_sealed'] ?? ''), ':') !== false);
 
     return $out;
+}
+
+/**
+ * Is an agent's last seen written again on this call? Once a minute at
+ * most, so an agent polling its queue writes its row seldom. Pure.
+ *
+ * @param int $seen_at the stored time, 0 for never
+ * @param int $now
+ * @return bool
+ */
+function ws_agent_seen_due($seen_at, $now)
+{
+    return ((int) $now - (int) $seen_at) >= WS_AGENT_SEEN_EVERY;
+}
+
+/**
+ * Marks an app agent as seen now: called for every call made with its own
+ * key (ws_api_agent_caller()). A site that has not run the step has no
+ * column, and the row read with * carries no seen_at: nothing is written.
+ *
+ * @param array $agent the raw ws_agents row
+ * @param int|null $now
+ */
+function ws_agent_seen_mark($agent, $now = null)
+{
+    $now = ($now === null) ? time() : (int) $now;
+
+    if (!array_key_exists('seen_at', (array) $agent) || !ws_agent_seen_due((int) $agent['seen_at'], $now)) {
+        return;
+    }
+
+    db("UPDATE ws_agents SET seen_at = '" . $now . "' WHERE id = '" . (int) $agent['id'] . "'");
+}
+
+/**
+ * What the Agents card and a channel's agents say of an agent's last call
+ * with its key. A poll agent unseen for ten minutes (or never) is marked
+ * not seen; a push agent is told by its knocks, and Claude and a model
+ * agent are run by the site, so they get no line. Pure but for lang().
+ *
+ * @param array $agent kind, door_kind, seen_at
+ * @param int   $now
+ * @return array label ('' for none), not_seen
+ */
+function ws_agent_seen_words($agent, $now)
+{
+    if (((string) ($agent['kind'] ?? '') !== 'app') || ((string) ($agent['door_kind'] ?? '') !== 'poll')) {
+        return array('label' => '', 'not_seen' => false);
+    }
+
+    $seen = (int) ($agent['seen_at'] ?? 0);
+
+    if ($seen <= 0) {
+        return array('label' => lang('Not seen yet'), 'not_seen' => true);
+    }
+
+    $age = max(0, (int) $now - $seen);
+
+    if ($age < 60) {
+        $label = lang('Last seen a moment ago');
+    } elseif ($age < 3600) {
+        $label = lang(array('string' => 'Last seen {var:1} min ago', 'vars' => (int) floor($age / 60)));
+    } elseif ($age < 86400) {
+        $label = lang(array('string' => 'Last seen {var:1} h ago', 'vars' => (int) floor($age / 3600)));
+    } else {
+        $label = lang(array('string' => 'Last seen {var:1}', 'vars' => date('d.m.Y H:i', $seen)));
+    }
+
+    return array('label' => $label, 'not_seen' => $age >= WS_AGENT_NOT_SEEN_AFTER);
 }
 
 /**

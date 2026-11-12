@@ -2,12 +2,13 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The report screens' shared view: from a report's result (its first
- * summarize-by level, the groups of that level, the grand total) the
- * summary figures and the chart the screen draws with the dashboard's
- * drawing (assets/js/pg_dash.js, assets/js/pg_report_view.js). The table
- * under them stays the screen's own. Every function here is pure: the
- * figures are the ones the table prints, read from the same buckets.
+ * The report screens' shared view (the order, visitor, shipping and ERP
+ * tax reports): from a report's result (its first summarize-by level, the
+ * groups of that level, the grand total) the summary figures and the
+ * chart the screen draws with the dashboard's drawing
+ * (assets/js/pg_dash.js, assets/js/pg_report_view.js). The table under
+ * them stays the screen's own. Every function here is pure: the figures
+ * are the ones the table prints, read from the same buckets.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -161,6 +162,214 @@ function pg_report_view_figures($grand, $charge_columns, $symbol)
 }
 
 /**
+ * The visitor report's summary figures, each the text of its cell in the
+ * table's Grand Total row: visitors, page views, the share of visitors who
+ * submitted a form and, with e-commerce, the share who completed an order,
+ * the order total and the average order amount. Pure.
+ *
+ * @param array  $grand     count, page_views, custom_form_submitted,
+ *                          order_completed, order_total (minor units)
+ * @param bool   $ecommerce whether the table shows its order columns
+ * @param string $symbol    the base currency's stored symbol
+ * @return array of label, text
+ */
+function pg_report_view_visitor_figures($grand, $ecommerce, $symbol)
+{
+    $count = (int) ($grand['count'] ?? 0);
+    $percent = function ($part) use ($count) {
+        return lang(array('string' => '{var:1}%', 'vars' => pg_format_number(($count > 0) ? $part / $count * 100 : 0, 2)));
+    };
+
+    $figures = array(
+        array('label' => lang('Visitors'), 'text' => pg_format_number($count, 0)),
+        array('label' => lang('Page Views'), 'text' => pg_format_number((int) ($grand['page_views'] ?? 0), 0)),
+        array('label' => lang('Custom Form Submitted') . ' %', 'text' => $percent((int) ($grand['custom_form_submitted'] ?? 0))),
+    );
+
+    if ($ecommerce) {
+        $total = (float) ($grand['order_total'] ?? 0);
+
+        $figures[] = array('label' => lang('Order Completed') . ' %', 'text' => $percent((int) ($grand['order_completed'] ?? 0)));
+        $figures[] = array('label' => lang('Order Total'), 'text' => pg_report_view_money($total, $symbol));
+        $figures[] = array('label' => lang('Average Order Amount'), 'text' => pg_money_text((($count > 0) ? $total / $count : 0) / 100, $symbol));
+    }
+
+    return $figures;
+}
+
+/**
+ * The shipping report's summary figures, from its Grand Total row: the
+ * products listed, then the units before the period, in it (the sum of its
+ * days), after it and in all. Units are those of the status chosen (to
+ * ship, shipped or either). Pure.
+ *
+ * @param array $totals   the screen's totals: 'before', each date, 'after',
+ *                        'total'
+ * @param array $dates    the period's dates (Y-m-d), in order
+ * @param int   $products the number of product rows
+ * @return array of label, text
+ */
+function pg_report_view_shipping_figures($totals, $dates, $products)
+{
+    $period = 0;
+
+    foreach ($dates as $date) {
+        $period += (int) ($totals[$date] ?? 0);
+    }
+
+    return array(
+        array('label' => lang('Products'), 'text' => pg_format_number((int) $products, 0)),
+        array('label' => lang('Before'), 'text' => pg_format_number((int) ($totals['before'] ?? 0), 0)),
+        array('label' => lang('In this period'), 'text' => pg_format_number($period, 0)),
+        array('label' => lang('After'), 'text' => pg_format_number((int) ($totals['after'] ?? 0), 0)),
+        array('label' => lang('Total'), 'text' => pg_format_number((int) ($totals['total'] ?? 0), 0)),
+    );
+}
+
+/**
+ * The shipping report's chart: a line of units over the period's ship
+ * dates, one point a day, as the table's day columns count them. None for
+ * a period of one day (a line of one point) or with no unit in it. Pure.
+ *
+ * @param array $totals the screen's totals, keyed by date among others
+ * @param array $dates  the period's dates (Y-m-d), in order
+ * @param array $names  each date's name as the table heads it, same keys
+ *                      as $dates
+ * @return array|null
+ */
+function pg_report_view_shipping_chart($totals, $dates, $names)
+{
+    if (count($dates) < 2) {
+        return null;
+    }
+
+    $groups = array();
+    $sum = 0;
+
+    foreach (array_values($dates) as $i => $date) {
+        $groups[$i] = array('count' => (int) ($totals[$date] ?? 0));
+        $sum += $groups[$i]['count'];
+    }
+
+    if ($sum <= 0) {
+        return null;
+    }
+
+    return pg_report_view_chart_by('line', $groups, array_values($names), lang('Units by ship date'), array(
+        'raw' => function ($group) {
+            return (int) ($group['count'] ?? 0);
+        },
+        'value' => function ($raw) {
+            return (int) $raw;
+        },
+        'note' => function ($raw) {
+            return pg_format_number($raw, 0);
+        },
+        'tip' => function ($name, $group) {
+            $count = (int) ($group['count'] ?? 0);
+
+            return $name . ': ' . lang(array('string' => '{var:1} unit{suffix:1}', 'vars' => pg_format_number($count, 0), 'suffix' => ($count == 1) ? '' : 's'));
+        },
+    ));
+}
+
+/**
+ * The ERP tax report's summary figures, the cards it had: calculated,
+ * deductible, the difference and, with withholding, the VAT withheld on
+ * sales; each with its note. Money is written by $money (erp_money_out()
+ * on the screen), so the figures read as the report's tables. Pure.
+ *
+ * @param array    $totals      erp_vat_report()['totals']
+ * @param bool     $withholding whether the report shows withholding
+ * @param array    $names       'calculated', 'deductible' (the tax's
+ *                              captions, erp_tax_label())
+ * @param callable $money       minor units => text
+ * @return array of label, text, note, tone
+ */
+function pg_report_view_vat_figures($totals, $withholding, $names, $money)
+{
+    $difference = (int) ($totals['difference'] ?? 0);
+    $hint = ($difference > 0)
+        ? lang('Calculated exceeds deductible')
+        : (($difference < 0) ? lang('Deductible exceeds calculated') : lang('Calculated and deductible are equal'));
+
+    $figures = array(
+        array('label' => (string) $names['calculated'], 'text' => $money((int) ($totals['calculated'] ?? 0)), 'note' => lang('Sales less sales returns'), 'tone' => ''),
+        array('label' => (string) $names['deductible'], 'text' => $money((int) ($totals['deductible'] ?? 0)), 'note' => lang(array('string' => 'Purchases {var:1} · expenses {var:2}', 'vars' => array($money((int) ($totals['deductible_purchases'] ?? 0)), $money((int) ($totals['deductible_expenses'] ?? 0))))), 'tone' => ''),
+        array('label' => lang('Difference'), 'text' => $money($difference), 'note' => $hint, 'tone' => ($difference < 0) ? 'bad' : ''),
+    );
+
+    if ($withholding) {
+        $figures[] = array('label' => lang('Withholding'), 'text' => $money((int) ($totals['withheld_sales'] ?? 0)), 'note' => lang(array('string' => 'On sales; on purchases {var:1}', 'vars' => $money((int) ($totals['withheld_purchases'] ?? 0)))), 'tone' => '');
+    }
+
+    return $figures;
+}
+
+/**
+ * The ERP tax report's chart. Over more than one month: a line of the
+ * calculated tax by month with the deductible tax dashed beside it, the
+ * gap between them the month's difference (both from the By month table).
+ * Over one month: the tax of each kind of document as rows (sales, sales
+ * returns, purchases, returns to suppliers, the expenses' deductible tax).
+ * The line draws from zero up, so a month below zero (more returns than
+ * sales) is drawn at zero; its tip says the real figure. Pure.
+ *
+ * @param array    $report erp_vat_report(): 'months', 'kinds', 'totals'
+ * @param array    $names  'calculated', 'deductible' captions, 'kinds'
+ *                         (erp_vat_kind_labels()), 'months' (month =>
+ *                         its name)
+ * @param callable $money  minor units => text
+ * @return array|null
+ */
+function pg_report_view_vat_chart($report, $names, $money)
+{
+    $months = (array) ($report['months'] ?? array());
+
+    if (count($months) > 1) {
+        $chart = array('kind' => 'line', 'label' => lang(array('string' => '{var:1} by month', 'vars' => $names['calculated'])), 'compare_label' => (string) $names['deductible'], 'values' => array(), 'compare' => array(), 'tips' => array());
+        $any = false;
+
+        foreach ($months as $month => $figures) {
+            $calculated = (int) ($figures['calculated'] ?? 0);
+            $deductible = (int) ($figures['deductible_purchases'] ?? 0) + (int) ($figures['deductible_expenses'] ?? 0);
+            $any = $any || ($calculated !== 0) || ($deductible !== 0);
+
+            $chart['values'][] = round(max(0, $calculated) / 100, 2);
+            $chart['compare'][] = round(max(0, $deductible) / 100, 2);
+            $chart['tips'][] = $names['months'][$month] . ': ' . $names['calculated'] . ' ' . $money($calculated) . ' · ' . $names['deductible'] . ' ' . $money($deductible) . ' · ' . lang('Difference') . ' ' . $money((int) ($figures['difference'] ?? 0));
+        }
+
+        if (!$any) {
+            return null;
+        }
+
+        $chart['first'] = (string) reset($names['months']);
+        $chart['last'] = (string) end($names['months']);
+
+        return $chart;
+    }
+
+    $kinds = (array) ($report['kinds'] ?? array());
+    $amounts = array(
+        'sales' => (int) ($kinds['sales']['vat'] ?? 0),
+        'sales_return' => (int) ($kinds['sales_return']['vat'] ?? 0),
+        'purchase' => (int) ($kinds['purchase']['vat'] ?? 0),
+        'purchase_return' => (int) ($kinds['purchase_return']['vat'] ?? 0),
+        'expense' => (int) ($report['totals']['deductible_expenses'] ?? 0),
+    );
+    $rows = array();
+
+    foreach ($amounts as $key => $amount) {
+        if ($amount > 0) {
+            $rows[] = array('text' => (string) $names['kinds'][$key], 'value' => round($amount / 100, 2), 'note' => $money($amount));
+        }
+    }
+
+    return $rows ? array('kind' => 'bars', 'label' => lang('Tax by document type'), 'rows' => $rows) : null;
+}
+
+/**
  * What the figure box says over one group: its name, its total and its
  * order count. Pure.
  *
@@ -223,19 +432,75 @@ function pg_report_view_steps($totals)
  */
 function pg_report_view_chart($kind, $groups, $names, $label, $symbol, $codes = array())
 {
+    return pg_report_view_chart_by($kind, $groups, $names, lang(array('string' => 'Total by {var:1}', 'vars' => $label)), array(
+        'raw' => function ($group) {
+            return (float) ($group['total'] ?? 0);
+        },
+        'value' => function ($raw) {
+            return round($raw / 100, 2);
+        },
+        'note' => function ($raw) use ($symbol) {
+            return pg_report_view_money($raw, $symbol);
+        },
+        'tip' => function ($name, $group) use ($symbol) {
+            return pg_report_view_tip($name, $group, $symbol);
+        },
+    ), $codes);
+}
+
+/**
+ * The visitor report's chart: the same kinds, measured in visitors (the
+ * group's count), with no money. Pure.
+ *
+ * @param string $kind   pg_report_view_chart_kind()
+ * @param array  $groups the first level's groups, each with its 'count'
+ * @param array  $names  their names as the table prints them, same keys
+ * @param string $label  the level's label ("Country")
+ * @param array  $codes  map: each group's country code, same keys
+ * @return array|null null when there is nothing to draw
+ */
+function pg_report_view_visitor_chart($kind, $groups, $names, $label, $codes = array())
+{
+    return pg_report_view_chart_by($kind, $groups, $names, lang(array('string' => 'Visitors by {var:1}', 'vars' => $label)), array(
+        'raw' => function ($group) {
+            return (int) ($group['count'] ?? 0);
+        },
+        'value' => function ($raw) {
+            return (int) $raw;
+        },
+        'note' => function ($raw) {
+            return pg_format_number($raw, 0);
+        },
+        'tip' => function ($name, $group) {
+            $count = (int) ($group['count'] ?? 0);
+
+            return $name . ': ' . lang(array('string' => '{var:1} visitor{suffix:1}', 'vars' => pg_format_number($count, 0), 'suffix' => ($count == 1) ? '' : 's'));
+        },
+    ), $codes);
+}
+
+/**
+ * The chart's data by one measure. Pure. $measure holds four callables:
+ * 'raw' (group => the number ranked and shaded), 'value' (raw => the number
+ * drawn), 'note' (raw => its text in a row) and 'tip' (name, group => the
+ * text over a point or a place). A map place sums its groups' 'total' and
+ * 'count', so both measures read it as a group.
+ */
+function pg_report_view_chart_by($kind, $groups, $names, $title, $measure, $codes = array())
+{
     if (($kind === 'none') || empty($groups)) {
         return null;
     }
 
-    $chart = array('kind' => $kind, 'label' => lang(array('string' => 'Total by {var:1}', 'vars' => $label)));
+    $chart = array('kind' => $kind, 'label' => $title);
 
     if ($kind === 'line') {
         $chart['values'] = array();
         $chart['tips'] = array();
 
         foreach ($groups as $key => $group) {
-            $chart['values'][] = round((float) ($group['total'] ?? 0) / 100, 2);
-            $chart['tips'][] = pg_report_view_tip((string) $names[$key], $group, $symbol);
+            $chart['values'][] = $measure['value']($measure['raw']($group));
+            $chart['tips'][] = $measure['tip']((string) $names[$key], $group);
         }
 
         $chart['first'] = (string) reset($names);
@@ -247,7 +512,7 @@ function pg_report_view_chart($kind, $groups, $names, $label, $symbol, $codes = 
     $totals = array();
 
     foreach ($groups as $key => $group) {
-        $totals[$key] = (float) ($group['total'] ?? 0);
+        $totals[$key] = $measure['raw']($group);
     }
 
     arsort($totals);
@@ -256,8 +521,8 @@ function pg_report_view_chart($kind, $groups, $names, $label, $symbol, $codes = 
     foreach (array_slice(array_keys($totals), 0, PG_REPORT_VIEW_ROWS) as $key) {
         $chart['rows'][] = array(
             'text' => (string) $names[$key],
-            'value' => round($totals[$key] / 100, 2),
-            'note' => pg_report_view_money($totals[$key], $symbol),
+            'value' => $measure['value']($totals[$key]),
+            'note' => $measure['note']($totals[$key]),
         );
     }
 
@@ -281,13 +546,13 @@ function pg_report_view_chart($kind, $groups, $names, $label, $symbol, $codes = 
         }
 
         $chart['map'] = 'world-countries.svg';
-        $chart['shades'] = (object) pg_report_view_steps(array_map(function ($place) {
-            return $place['total'];
+        $chart['shades'] = (object) pg_report_view_steps(array_map(function ($place) use ($measure) {
+            return $measure['raw']($place);
         }, $places));
         $chart['places'] = array();
 
         foreach ($places as $code => $place) {
-            $chart['places'][] = array('id' => (string) $code, 'text' => pg_report_view_tip($place['name'], $place, $symbol));
+            $chart['places'][] = array('id' => (string) $code, 'text' => $measure['tip']($place['name'], $place));
         }
     }
 

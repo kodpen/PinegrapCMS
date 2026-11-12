@@ -20,8 +20,8 @@ if (!defined('PG_TEST_RUNNER')) {
 function test_message_values_workspace_are_escaped()
 {
 	$lines = array(
-		array('includes/workspace/ai.php', '$liveform->add_error(h($error));', 2),
-		array('includes/workspace/claude.php', '$liveform->add_error(h($result[\'error\']));', 1),
+		array('includes/workspace/ai.php', '$refuse(h($error));', 2),
+		array('includes/workspace/claude.php', '$refuse(h($result[\'error\']));', 1),
 		array('includes/workspace/mail_settings.php', '$liveform->add_error(h(ws_mail_error_text($result[\'error\'], $result[\'detail\'], (string) ($settings[\'host\'] ?? \'\'))));', 1),
 		array('includes/workspace/mail_settings.php', '$liveform->add_notice(lang(array(\'string\' => \'Connected: {var:1} e-mails in {var:2}.\', \'vars\' => array(pg_format_number($result[\'exists\'], 0), h((string) $box[\'folder\'])))));', 1),
 		array('includes/workspace/mcp.php', '$liveform->add_error(h($flash[\'text\']));', 1),
@@ -33,10 +33,10 @@ function test_message_values_workspace_are_escaped()
 		array('includes/workspace/mcp_agent.php', ': \'The tool {var:1} cannot take the messages: it must take a text and be turned on as one that reads only. Pinegrap AI answers @{var:2} meanwhile.\', \'vars\' => array(h($wanted), $server[\'alias\']))));', 1),
 		array('includes/workspace/templates.php', ': lang(array(\'string\' => \'The template is back: {var:1}.\', \'vars\' => h($result[\'name\']))));', 1),
 		array('includes/workspace/templates.php', '? lang(array(\'string\' => \'The template was archived: {var:1}. The channels made from it keep what they were given.\', \'vars\' => h($result[\'name\'])))', 1),
-		array('includes/workspace/workdays.php', '$liveform->add_error(lang(array(\'string\' => \'The calendar could not be read: {var:1}\', \'vars\' => h($read[\'error\']))));', 1),
+		array('includes/workspace/workdays.php', '$liveform->$refuse(lang(array(\'string\' => \'The calendar could not be read: {var:1}\', \'vars\' => h($read[\'error\']))));', 1),
 		array('includes/workspace/workdays.php', '$liveform->add_notice(lang(array(\'string\' => \'The day counts as a day off again: {var:1}.\', \'vars\' => h($when))));', 1),
 		array('includes/workspace/workdays.php', '$liveform->add_notice(lang(array(\'string\' => \'The day is left out of the working calendar: {var:1}.\', \'vars\' => h($when))));', 1),
-		array('includes/workspace/workdays.php', '$liveform->add_notice(lang(array(\'string\' => \'The holiday was added: {var:1}.\', \'vars\' => h(trim((string) ($_POST[\'name\'] ?? \'\'))))));', 1),
+		array('includes/workspace/workdays.php', '$liveform->add_notice(lang(array(\'string\' => \'The holiday was added: {var:1}.\', \'vars\' => h(trim((string) ($input[\'name\'] ?? \'\'))))));', 1),
 		array('includes/workspace/workdays.php', '$liveform->add_warning(lang(array(\'string\' => \'The calendar was added, but it could not be read: {var:1}\', \'vars\' => h($added[\'error\']))));', 1),
 		array('workspace_mcp.php', '$liveform->add_error(h($flash[\'text\']));', 1),
 		array('workspace_mcp.php', '$liveform->add_error(h($run[\'error\']));', 1),
