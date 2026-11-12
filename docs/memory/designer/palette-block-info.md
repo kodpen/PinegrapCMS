@@ -1,12 +1,14 @@
 ---
 name: palette-block-info
-description: Visual Page Editor Blocks list hover card: the one-line description of every core ready-made block (_sdBlockInfo), how a line is written and translated, the test that holds a new block to it
+description: Blocks hover card: the one-line description of every ready-made block (core in _sdBlockInfo, family in its item's desc), how a line is written, the test that holds a new block to it
 ---
 
 ## Where does a block's description line come from?
 - From `_sdBlockInfo()` in `style_designer.src.js` (right after `_sdPalInfo()`): a map from `componentType` to one `_sdT()` line, built on first use. `_sdBlockDesc(item)` reads it for a palette row; `_sdPalTipHTML()` shows it under the block's drawing ([[palette-block-sketch]]).
 - A description `d` in `_sdPalInfo()` wins over it; the Components rows keep theirs.
-- It covers the core list of `_sdBlockPaletteItems()` only (127 blocks when it was added, #8758). Family blocks get a `desc` in their own file's `items` ([[designer-block-family-files]], [[designer-palette-drawings]] P5–P6).
+- It covers the core list of `_sdBlockPaletteItems()` only (127 blocks when it was added, #8758).
+- A family block's line is the `desc` of its item in the family file ([[designer-block-family-files]]): `_sdBlockFamilies()` keeps each item's `desc` by `componentType` and `_sdBlockDesc()` reads it when the core map has no line (#8777).
+- The families A to H have their lines (52 blocks, #8777); `booking` and the families from `launch` to `zoo` wait for [[designer-palette-drawings]] P6.
 
 ## How is a line written?
 - One sentence of at most 140 characters, ending in a full stop, no ". " inside: what the block adds, read from the tree its builder returns (the parts in order, columns, the band's colour), not its label again.
@@ -16,5 +18,6 @@ description: Visual Page Editor Blocks list hover card: the one-line description
 
 ## What holds a new block to it?
 - `tests/designer_block_info_test.php` reads the core list and the map from the source: it fails for a core block without a line, a line for no core block, a line that is not one `'type': _sdT('text')` literal, a line written twice, and a line that is not one short sentence.
-- `tests/designer_block_sketch_test.php` checks under Node that the hover card of a block shows its line.
-- A PR that adds a core block writes its line in the same PR; while two PRs race, the later one writes it.
+- It reads every family file's `items` too: a family block without a `desc` fails, unless its family is on `designer_block_info_test_undescribed_families()`; a family on that list with a line for every block fails until it is taken off. Every `desc` is one `desc: _sdT('text')` literal closing its item, one short sentence, never the same as a core or another family line.
+- `tests/designer_block_sketch_test.php` checks under Node that the hover card of a block shows its line, a family block's from its `desc`.
+- A PR that adds a core block or a block to a described family writes its line in the same PR; while two PRs race, the later one writes it. A new family file writes a `desc` for each block, or the test fails.
