@@ -395,3 +395,113 @@ function test_list_table_html_quick_edit_button_and_fields()
 	pg_assert_same(false, strpos($plain, 'data-pg-edit-url') !== false, 'no fields without quick edit');
 	pg_assert_same(false, strpos($plain, 'pg-list-table-quick') !== false, 'no button without quick edit');
 }
+
+// The variables a list screen hands pg_list_table_html() (its source and its
+// first page) are not the value or key of a foreach that runs between their
+// assignment and that call: after such a loop the variable holds the last
+// element, and the array-typed parameter throws a TypeError that turns the
+// whole screen into HTTP 500 (the audit trail's source filter loop did this
+// to $audit_view_source). A loop after the call, or in a branch before the
+// assignment, is left alone.
+function test_list_table_screens_keep_their_source_out_of_loops()
+{
+	$files = array_merge(glob(PG_FUNCTIONS_DIR . '/*.php'), glob(PG_FUNCTIONS_DIR . '/includes/templates/*.php'));
+	$screens = array();
+	$reused = array();
+
+	foreach ($files as $path) {
+		$code = (string) file_get_contents($path);
+
+		if (strpos($code, 'pg_list_table_html(') === false) {
+			continue;
+		}
+
+		$name = substr($path, strlen(PG_FUNCTIONS_DIR) + 1);
+		$tokens = array_values(array_filter(token_get_all($code), function ($token) {
+			return !is_array($token) || !in_array($token[0], array(T_WHITESPACE, T_COMMENT, T_DOC_COMMENT), true);
+		}));
+		$count = count($tokens);
+		$calls = array();
+		$assigned = array();
+		$looped = array();
+
+		for ($i = 0; $i < $count; $i++) {
+			$token = $tokens[$i];
+
+			if (!is_array($token)) {
+				continue;
+			}
+
+			// A call: the first variable of its first and of its second argument.
+			if (($token[0] === T_STRING) && ($token[1] === 'pg_list_table_html') && isset($tokens[$i + 1]) && ($tokens[$i + 1] === '(')) {
+				$argument = 0;
+				$depth = 0;
+				$handed = array();
+
+				for ($j = $i + 2; ($j < $count) && ($argument < 2); $j++) {
+					if (in_array($tokens[$j], array('(', '[', '{'), true)) {
+						$depth++;
+					} elseif (in_array($tokens[$j], array(')', ']', '}'), true)) {
+						if ($depth-- === 0) {
+							break;
+						}
+					} elseif (($tokens[$j] === ',') && ($depth === 0)) {
+						$argument++;
+					} elseif (is_array($tokens[$j]) && ($tokens[$j][0] === T_VARIABLE) && !isset($handed[$argument])) {
+						$handed[$argument] = $tokens[$j][1];
+					}
+				}
+
+				foreach ($handed as $variable) {
+					$calls[] = array($i, $variable);
+				}
+			}
+
+			if (($token[0] === T_VARIABLE) && isset($tokens[$i + 1]) && ($tokens[$i + 1] === '=')) {
+				$assigned[$token[1]][] = $i;
+			}
+
+			// The variables after "as" up to the foreach's closing parenthesis:
+			// key, value, a reference or a destructured list.
+			if ($token[0] === T_AS) {
+				$depth = 0;
+
+				for ($j = $i + 1; $j < $count; $j++) {
+					if (($tokens[$j] === '(') || ($tokens[$j] === '[')) {
+						$depth++;
+					} elseif (($tokens[$j] === ')') || ($tokens[$j] === ']')) {
+						if ($depth-- === 0) {
+							break;
+						}
+					} elseif (($tokens[$j] === ';') || ($tokens[$j] === '{')) {
+						break;
+					} elseif (is_array($tokens[$j]) && ($tokens[$j][0] === T_VARIABLE)) {
+						$looped[] = array($j, $tokens[$j][1], $tokens[$j][2]);
+					}
+				}
+			}
+		}
+
+		if (!$calls) {
+			continue;
+		}
+
+		$screens[$name] = array_values(array_unique(array_column($calls, 1)));
+
+		foreach ($calls as $call) {
+			foreach ($looped as $loop) {
+				if (($loop[1] !== $call[1]) || ($loop[0] > $call[0]) || !isset($assigned[$call[1]])) {
+					continue;
+				}
+
+				if (min($assigned[$call[1]]) < $loop[0]) {
+					$reused[] = $name . ':' . $loop[2] . ' ' . $loop[1];
+				}
+			}
+		}
+	}
+
+	pg_assert_true(count($screens) >= 40, 'the list screens are found');
+	pg_assert_same(array('$audit_view_source', '$audit_view_page'), isset($screens['view_audit_log.php']) ? $screens['view_audit_log.php'] : array(), 'the audit trail is among them');
+	pg_assert_same(array(), array_values(array_unique($reused)), 'a list source or page reused as a loop variable before the call');
+}
