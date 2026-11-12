@@ -225,9 +225,12 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'museum-',
         group: { title: _sdT('Museum'), icon: 'bi-bank2' },
         items: [
-            { label: _sdT('Museum: Exhibition Hero'),  type: 'component', icon: 'bi-easel',          extra: { componentType: 'museum-exhibition' } },
-            { label: _sdT('Museum: Look Closer'),      type: 'component', icon: 'bi-zoom-in',        extra: { componentType: 'museum-object' } },
-            { label: _sdT('Museum: Highlights Trail'), type: 'component', icon: 'bi-signpost-split', extra: { componentType: 'museum-trail' } }
+            { label: _sdT('Museum: Exhibition Hero'),  type: 'component', icon: 'bi-easel',          extra: { componentType: 'museum-exhibition' },
+              desc: _sdT('An exhibition title with its facts and two buttons and a list of the other exhibitions on, beside a tall picture of the work.') },
+            { label: _sdT('Museum: Look Closer'),      type: 'component', icon: 'bi-zoom-in',        extra: { componentType: 'museum-object' },
+              desc: _sdT('One painting shown large with numbered details to look for, each a close-up with what it is and why, and a link to the collection.') },
+            { label: _sdT('Museum: Highlights Trail'), type: 'component', icon: 'bi-signpost-split', extra: { componentType: 'museum-trail' },
+              desc: _sdT('A route of four numbered works not to miss, each with its picture, its maker and its room, and a button for the highlights tour.') }
         ],
         build: function (ctype) {
             if (ctype === 'museum-exhibition') return buildExhibition();

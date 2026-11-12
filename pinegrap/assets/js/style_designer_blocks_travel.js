@@ -197,8 +197,10 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'travel-',
         group: { title: _sdT('Travel'), icon: 'bi-airplane' },
         items: [
-            { label: _sdT('Travel: Day by Day'),        type: 'component', icon: 'bi-signpost-split', extra: { componentType: 'travel-itinerary' } },
-            { label: _sdT('Travel: Destination Guide'), type: 'component', icon: 'bi-geo-alt',        extra: { componentType: 'travel-destination' } }
+            { label: _sdT('Travel: Day by Day'),        type: 'component', icon: 'bi-signpost-split', extra: { componentType: 'travel-itinerary' },
+              desc: _sdT('A tour told day by day with numbered markers, what happens, the night and the meals, beside a card with the facts, price and two buttons.') },
+            { label: _sdT('Travel: Destination Guide'), type: 'component', icon: 'bi-geo-alt',        extra: { componentType: 'travel-destination' },
+              desc: _sdT('A destination photo with its region beside its name, a line, the seasons rated for going, travel facts and two buttons.') }
         ],
         build: function (ctype) {
             if (ctype === 'travel-itinerary') return buildItinerary();

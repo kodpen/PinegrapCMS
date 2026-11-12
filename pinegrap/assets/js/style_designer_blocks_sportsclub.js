@@ -287,10 +287,14 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'sportsclub-',
         group: { title: _sdT('Sports Club'), icon: 'bi-trophy' },
         items: [
-            { label: _sdT('Sports Club: Match Day'),             type: 'component', icon: 'bi-stopwatch',     extra: { componentType: 'sportsclub-matchday' } },
-            { label: _sdT('Sports Club: Fixtures and Results'),  type: 'component', icon: 'bi-calendar2-week', extra: { componentType: 'sportsclub-fixtures' } },
-            { label: _sdT('Sports Club: League Table'),          type: 'component', icon: 'bi-list-ol',       extra: { componentType: 'sportsclub-table' } },
-            { label: _sdT('Sports Club: Squad by Position'),     type: 'component', icon: 'bi-people',        extra: { componentType: 'sportsclub-squad' } }
+            { label: _sdT('Sports Club: Match Day'),             type: 'component', icon: 'bi-stopwatch',     extra: { componentType: 'sportsclub-matchday' },
+              desc: _sdT('A dark band with the next match as two crests and the kick-off between them, ticket and preview buttons, and the last result beside it.') },
+            { label: _sdT('Sports Club: Fixtures and Results'),  type: 'component', icon: 'bi-calendar2-week', extra: { componentType: 'sportsclub-fixtures' },
+              desc: _sdT('Two lists side by side, matches coming up marked home or away and matches played with the score and the result in words.') },
+            { label: _sdT('Sports Club: League Table'),          type: 'component', icon: 'bi-list-ol',       extra: { componentType: 'sportsclub-table' },
+              desc: _sdT('A league table with played, won, drawn, lost, goal difference and points, the club in bold, each move up or down shown and a key.') },
+            { label: _sdT('Sports Club: Squad by Position'),     type: 'component', icon: 'bi-people',        extra: { componentType: 'sportsclub-squad' },
+              desc: _sdT('The first team by position, goalkeepers to forwards, each player a card with a photo, shirt number, name and role.') }
         ],
         build: function (ctype) {
             if (ctype === 'sportsclub-matchday') return buildMatchday();

@@ -187,9 +187,12 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'photo-',
         group: { title: _sdT('Photo'), icon: 'bi-camera' },
         items: [
-            { label: _sdT('Photo: Filmstrip Hero'),       type: 'component', icon: 'bi-film',          extra: { componentType: 'photo-hero' } },
-            { label: _sdT('Photo: Proof Contact Sheet'),  type: 'component', icon: 'bi-grid-3x3',      extra: { componentType: 'photo-proofing' } },
-            { label: _sdT('Photo: Behind the Shot'),      type: 'component', icon: 'bi-camera',        extra: { componentType: 'photo-shot' } }
+            { label: _sdT('Photo: Filmstrip Hero'),       type: 'component', icon: 'bi-film',          extra: { componentType: 'photo-hero' },
+              desc: _sdT('A centred headline, a short text and two buttons over a filmstrip of numbered frames, each captioned with its kind of work.') },
+            { label: _sdT('Photo: Proof Contact Sheet'),  type: 'component', icon: 'bi-grid-3x3',      extra: { componentType: 'photo-proofing' },
+              desc: _sdT('A contact sheet of proofs with the chosen frames ringed and marked, beside the steps for picking favourites and a client area button.') },
+            { label: _sdT('Photo: Behind the Shot'),      type: 'component', icon: 'bi-camera',        extra: { componentType: 'photo-shot' },
+              desc: _sdT('A tall photograph beside the story of how it was lit, its camera settings as figures and a link to the gallery.') }
         ],
         build: function (ctype) {
             if (ctype === 'photo-hero')     return buildHero();

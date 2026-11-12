@@ -269,10 +269,14 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'zoo-',
         group: { title: _sdT('Zoo'), icon: 'bi-tree' },
         items: [
-            { label: _sdT('Zoo: Today\'s Schedule'),        type: 'component', icon: 'bi-clock',          extra: { componentType: 'zoo-today' } },
-            { label: _sdT('Zoo: Animal Spotlight'),         type: 'component', icon: 'bi-binoculars',     extra: { componentType: 'zoo-animal' } },
-            { label: _sdT('Zoo: Park Map'),                 type: 'component', icon: 'bi-map',            extra: { componentType: 'zoo-map' } },
-            { label: _sdT('Zoo: Conservation Projects'),    type: 'component', icon: 'bi-globe-americas', extra: { componentType: 'zoo-conservation' } }
+            { label: _sdT('Zoo: Today\'s Schedule'),        type: 'component', icon: 'bi-clock',          extra: { componentType: 'zoo-today' },
+              desc: _sdT('The day at the zoo as a list of feeding times and talks with their habitat, the next one marked, beside tips and a map button.') },
+            { label: _sdT('Zoo: Animal Spotlight'),         type: 'component', icon: 'bi-binoculars',     extra: { componentType: 'zoo-animal' },
+              desc: _sdT('One animal in a tall photo beside its name, species, facts, its place on the red list scale and buttons to adopt or find it.') },
+            { label: _sdT('Zoo: Park Map'),                 type: 'component', icon: 'bi-map',            extra: { componentType: 'zoo-map' },
+              desc: _sdT('A park map picture beside the habitats by area, a PDF download, the amenities along the way and a feeding times button.') },
+            { label: _sdT('Zoo: Conservation Projects'),    type: 'component', icon: 'bi-globe-americas', extra: { componentType: 'zoo-conservation' },
+              desc: _sdT('Conservation project cards, each with the status of the species, where and with whom, what it has achieved, and two buttons below.') }
         ],
         build: function (ctype) {
             if (ctype === 'zoo-today')        return buildToday();

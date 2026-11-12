@@ -200,6 +200,6 @@ function test_designer_block_sketch_cache_and_hover_card()
 	pg_assert_same(array(true, true, true), $got['tipBlock'], 'a block\'s hover card shows its drawing, its name and its description line');
 	pg_assert_same(array(true, true), $got['tipCard'], 'a component keeps its own drawing and description');
 	pg_assert_same('', $got['tipNone'], 'an item with neither a description nor a block drawing shows no card');
-	pg_assert_true($got['tipFamily'][0] >= 56, 'family blocks carry a desc in their item (' . $got['tipFamily'][0] . ')');
+	pg_assert_true($got['tipFamily'][0] >= 102, 'family blocks carry a desc in their item (' . $got['tipFamily'][0] . ')');
 	pg_assert_same(array(true, true), array_slice($got['tipFamily'], 1), 'a family block\'s hover card shows the desc of its item, and every desc is its block\'s line');
 }

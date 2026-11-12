@@ -198,9 +198,12 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'wedding-',
         group: { title: _sdT('Wedding'), icon: 'bi-balloon-heart' },
         items: [
-            { label: _sdT('Wedding: Invitation Hero'),     type: 'component', icon: 'bi-envelope-paper-heart', extra: { componentType: 'wedding-hero' } },
-            { label: _sdT('Wedding: Real Wedding Story'),  type: 'component', icon: 'bi-heart',                extra: { componentType: 'wedding-story' } },
-            { label: _sdT('Wedding: Planning Checklist'),  type: 'component', icon: 'bi-list-check',           extra: { componentType: 'wedding-checklist' } }
+            { label: _sdT('Wedding: Invitation Hero'),     type: 'component', icon: 'bi-envelope-paper-heart', extra: { componentType: 'wedding-hero' },
+              desc: _sdT('A wide photograph with an invitation card over it holding the headline, a short text, three facts and two buttons.') },
+            { label: _sdT('Wedding: Real Wedding Story'),  type: 'component', icon: 'bi-heart',                extra: { componentType: 'wedding-story' },
+              desc: _sdT('One real wedding in three pictures beside the couple, the day in facts, their story, a quote, the suppliers and a link to read more.') },
+            { label: _sdT('Wedding: Planning Checklist'),  type: 'component', icon: 'bi-list-check',           extra: { componentType: 'wedding-checklist' },
+              desc: _sdT('Planning stages as cards from twelve months before, each with its icon, when, its name and tasks to tick, and a services button.') }
         ],
         build: function (ctype) {
             if (ctype === 'wedding-hero')      return buildHero();

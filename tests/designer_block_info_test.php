@@ -80,10 +80,7 @@ function designer_block_info_test_sentence_faults($text)
 // line for every block.
 function designer_block_info_test_undescribed_families()
 {
-	return array(
-		'florist', 'launch', 'locations', 'marina', 'museum', 'music', 'pharmacy', 'photo', 'planetarium',
-		'school', 'skiresort', 'sportsclub', 'travel', 'wedding', 'zoo',
-	);
+	return array('launch');
 }
 
 // The items of every family file: family => componentType => its desc text,
@@ -176,7 +173,7 @@ function test_designer_block_info_every_family_block_has_a_line()
 			$missing[] = $family . ': ' . $type;
 		}
 	}
-	pg_assert_true($described >= 21, 'the described families are read (' . $described . ')');
+	pg_assert_true($described >= 35, 'the described families are read (' . $described . ')');
 	pg_assert_same(array(), $missing, 'family blocks without a desc line in their item');
 	pg_assert_same(array(), $done, 'families with a line for every block, still listed as undescribed');
 }

@@ -157,8 +157,10 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'marina-',
         group: { title: _sdT('Marina'), icon: 'bi-life-preserver' },
         items: [
-            { label: _sdT('Marina: Pontoon Plan'),    type: 'component', icon: 'bi-signpost-2', extra: { componentType: 'marina-pontoons' } },
-            { label: _sdT('Marina: Arrival by Sea'),  type: 'component', icon: 'bi-broadcast',  extra: { componentType: 'marina-arrival' } }
+            { label: _sdT('Marina: Pontoon Plan'),    type: 'component', icon: 'bi-signpost-2', extra: { componentType: 'marina-pontoons' },
+              desc: _sdT('Cards for four pontoons, each with its letter, who it is for, berths, berth length, largest boat and depth, and what every berth has.') },
+            { label: _sdT('Marina: Arrival by Sea'),  type: 'component', icon: 'bi-broadcast',  extra: { componentType: 'marina-arrival' },
+              desc: _sdT('A dark band with the radio channel, phone, position and entrance depth as tiles, beside the steps from the breakwater to your berth.') }
         ],
         build: function (ctype) {
             if (ctype === 'marina-pontoons') return buildPontoons();
