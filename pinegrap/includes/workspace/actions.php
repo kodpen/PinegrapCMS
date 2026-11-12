@@ -2512,18 +2512,50 @@ function ws_handle_action($action, $request)
                 return ws_action_error($files['error'], 'files');
             }
 
-            $mail = ws_mail_compose_mail($request, $files['files']);
+            // A forward's source is read again; its files go first (mail_forward.php).
+            $forward = ws_mail_forward_request($viewer, $request);
+
+            if (!$forward['ok']) {
+                return ws_action_error($forward['error']);
+            }
+
+            $mail = ws_mail_compose_mail($request, array_merge($forward['files'], $files['files']));
             $result = ws_mail_send($viewer, $mail);
 
             if (!$result['ok']) {
                 return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']));
             }
 
+            ws_mail_forward_line($viewer, $forward['source'], (int) $result['item_id']);
+
             return ws_action_ok(array(
                 'conversation_id' => $result['conversation_id'],
                 'message_id'      => $result['message_id'],
                 'channel_id'      => $mail['channel_id'],
                 'state'           => $result['state'],
+            ));
+
+        // Forward as e-mail: the New e-mail form filled from chosen channel
+        // messages or one mail (mail_forward.php); sent by ws_mail_new.
+        case 'ws_mail_forward':
+            if (!function_exists('ws_mail_send') || !ws_mail_send_ready()) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            if (empty($viewer['member'])) {
+                return ws_action_error(ws_mail_send_error_text('no_box'));
+            }
+
+            $source = ws_mail_forward_source($viewer, is_scalar($request['kind'] ?? '') ? (string) ($request['kind'] ?? '') : '', $request['ids'] ?? '');
+
+            if (!$source['ok']) {
+                return ws_action_error($source['error']);
+            }
+
+            return ws_action_ok(array(
+                'boxes'   => ws_mail_compose_boxes(ws_mail_send_boxes($viewer)),
+                'writer'  => ws_person_name((int) $viewer['id']),
+                'forward' => ws_mail_forward_fill($source),
             ));
 
         // A conversation's status or holder (mail_status.php).
@@ -2576,6 +2608,7 @@ function ws_handle_action($action, $request)
             }
 
             ws_mail_read_mark((int) $viewer['id'], (int) $pane['conversation']['id'], $pane['last_id']);
+            $pane = ws_mail_forward_pane($pane, ws_mail_forward_may($viewer));
 
             return ws_action_ok(array_merge(ws_mail_pane_tools($pane, $viewer), array(
                 'html'   => ws_mail_pane_html($pane, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/'),

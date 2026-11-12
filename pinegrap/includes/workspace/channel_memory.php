@@ -33,6 +33,12 @@ define('WS_MEMORY_TAGS_MAX', 10);
 define('WS_MEMORY_DIGEST_MAX', 6000);
 
 /**
+ * How many of the channel's decisions, the newest, the brief lists; a count
+ * line names the rest, which the agent lists with workspace.decisions.list.
+ */
+define('WS_MEMORY_BRIEF_DECISIONS', 10);
+
+/**
  * An entry's tags as stored: trimmed, lower case, without a leading #,
  * each once, in the order given. Pure.
  *
@@ -125,19 +131,25 @@ function ws_memory_entry_fault($entry, $now)
  * The index of a channel's memory for an agent's brief: the live entries,
  * pinned first and then the newest, each as "- #id title [tags]" on one
  * line (no texts: the agent reads the entries it needs with
- * workspace.memory.get), then the decision lines, newest first. A line that
+ * workspace.memory.get), then the newest WS_MEMORY_BRIEF_DECISIONS decision
+ * lines and a line counting the older ones. A line that
  * no longer fits is left out whole, never cut, with every line after it,
  * and the count left out closes the digest so the agent knows to read the
  * rest. Pure.
  *
  * @param array[] $entries   id, title, tags, pinned, expires_at, updated_at
- * @param array[] $decisions body, marked_at (newest first)
- * @param int     $now
- * @param int     $max       characters
+ * @param array[]  $decisions body, marked_at (newest first)
+ * @param int      $now
+ * @param int      $max       characters
+ * @param int|null $decisions_total the channel's decisions, when $decisions
+ *                                  holds only the newest; null counts $decisions
  * @return string '' when there is nothing to tell
  */
-function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MAX)
+function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MAX, $decisions_total = null)
 {
+    $given = count((array) $decisions);
+    $decisions = array_slice(array_values((array) $decisions), 0, WS_MEMORY_BRIEF_DECISIONS);
+    $older = max(0, (($decisions_total === null) ? $given : (int) $decisions_total) - count($decisions));
     $live = array();
 
     foreach ((array) $entries as $entry) {
@@ -177,7 +189,7 @@ function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MA
         $sections['memory'][] = $line;
     }
 
-    foreach ((array) $decisions as $decision) {
+    foreach ($decisions as $decision) {
         $body = $one_line($decision['body'] ?? '');
 
         if ($body !== '') {
@@ -185,7 +197,7 @@ function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MA
         }
     }
 
-    if (!$sections) {
+    if (!$sections && ($older === 0)) {
         return '';
     }
 
@@ -225,8 +237,12 @@ function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MA
         }
     }
 
+    // One count closes the digest: the lines the size left out and the
+    // older decisions together, or the older decisions alone.
     if ($left > 0) {
-        $out[] = '(' . $left . ' more not shown: list them with workspace.memory.list and workspace.decisions.list.)';
+        $out[] = '(' . ($left + $older) . ' more not shown: list them with workspace.memory.list and workspace.decisions.list.)';
+    } elseif ($older > 0) {
+        $out[] = '(' . $older . ' older decisions not shown: list them with workspace.decisions.list.)';
     }
 
     return implode("\n\n", $out);
@@ -578,15 +594,18 @@ function ws_memory_brief($viewer, $channel)
     }
 
     $decisions = array();
+    $where = "channel_id = '" . (int) $channel['id'] . "' AND kind = 'decision' AND deleted_at = 0";
 
     foreach ((array) db_items("SELECT body, marked_at FROM ws_messages
-        WHERE channel_id = '" . (int) $channel['id'] . "' AND kind = 'decision' AND deleted_at = 0
+        WHERE " . $where . "
         ORDER BY marked_at DESC, id DESC
-        LIMIT 40") as $row) {
+        LIMIT " . (int) WS_MEMORY_BRIEF_DECISIONS) as $row) {
         $decisions[] = array('body' => ws_plain_text($viewer, (string) $row['body']), 'marked_at' => (int) $row['marked_at']);
     }
 
-    return ws_memory_digest(ws_memory_rows($channel['id'], false), $decisions, time());
+    $total = (count($decisions) < WS_MEMORY_BRIEF_DECISIONS) ? count($decisions) : (int) db_value("SELECT COUNT(*) FROM ws_messages WHERE " . $where);
+
+    return ws_memory_digest(ws_memory_rows($channel['id'], false), $decisions, time(), WS_MEMORY_DIGEST_MAX, $total);
 }
 
 /**

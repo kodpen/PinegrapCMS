@@ -88,8 +88,8 @@ $fm_filter_bar = function ($groups) use ($el, $link, $span, $query) {
     return $el('nav', 'mb-4', lang('Filters'), $navs);
 };
 
-// A still of the project page, in a 16:9 frame that leaves when the record
-// has none.
+// One of the project page's other stills, in a 16:9 frame that leaves when the
+// record has none.
 $fm_still = function ($field, $seed) use ($optional_image, $photo) {
     return $optional_image($field, 'name', 'rounded-3 object-fit-cover', 'ratio ratio-16x9', $photo($seed, 1280, 720), lang('Still'));
 };
@@ -262,10 +262,11 @@ $project_widgets = array(
     ),
 );
 
-// One project: the industry and status, the name, the summary, the facts,
-// the first still with the way to watch the film, the other stills, the
-// credits, the client's words and beside them the way to start a project
-// with the same service or see more of the industry.
+// One project: a title card (the industry and status, the name, the
+// summary, the facts), the first still on a cinema-wide screen with the
+// play mark that opens the film, the other stills, the credits, the
+// client's words and beside them the way to start a project with the same
+// service or see more of the industry.
 $project_sample_key = 'night_drive';
 $project_sample = $projects[$project_sample_key];
 $project_not_found = lang('This film could not be found. It may have been renamed or taken off the list.');
@@ -294,30 +295,46 @@ $project_widgets['project_detail'] = array(
                     ), array('href' => '{{page:projects}}')),
                     $edit_button(),
                 )),
-                $el('div', 'd-flex flex-wrap gap-2 mb-2', lang('Badges'), array(
-                    $span($industries[$project_sample['industry']]['title'], 'badge rounded-pill bg-primary-subtle text-primary-emphasis', lang('Industry'), $bind('industry')),
-                    $span($project_statuses[$project_sample['status']], 'badge rounded-pill text-bg-dark', lang('Status'), $bind('status')),
-                )),
-                $heading('h1', $project_sample['name'], 'pfm-display display-6 mb-2', $bind('name')),
-                $para($project_sample['summary'], 'lead text-body-secondary mb-3', $bind('summary')),
-                $project_facts($project_sample_key, 'd-flex flex-wrap gap-3 text-body-secondary mb-4'),
-                $el('div', 'mb-3', lang('Stills'), array($fm_still('still_1', 'project-' . $project_sample_key))),
-                // The way to watch the film: its address, opening the
-                // video host in a new window. The row leaves when the
-                // record has no address (its hidden value is the address).
-                $el('p', 'pg-hide-if-empty mb-4', lang('Watch the Film'), array(
-                    $el('span', 'pg-field-value d-none', lang('Value'), array(), array_merge(
-                        array('text' => 'https://www.example.com/films/night-drive'), $bind('film_url'))),
-                    $el('a', 'btn btn-primary d-inline-flex align-items-center gap-2 px-4', lang('Link'), array(
-                        $icon('bi-play-circle'),
-                        $span(lang('Watch the film'), '', lang('Link Text')),
-                    ), array('href' => '#', 'target' => '_blank', 'rel' => 'noopener', '_bindings' => array('href' => 'film_url'))),
-                )),
+                // The title card: the film's name keeps the case it was
+                // typed in (capitals under a Turkish page would print a
+                // dotted capital I in an English title).
                 $row(array(
+                    $col(array(
+                        $fx($el('header', 'text-center mb-4', lang('Title Card'), array(
+                            $el('div', 'd-flex flex-wrap justify-content-center gap-2 mb-3', lang('Badges'), array(
+                                $span($industries[$project_sample['industry']]['title'], 'badge rounded-pill bg-primary-subtle text-primary-emphasis', lang('Industry'), $bind('industry')),
+                                $span($project_statuses[$project_sample['status']], 'badge rounded-pill text-bg-dark', lang('Status'), $bind('status')),
+                            )),
+                            $heading('h1', $project_sample['name'], 'display-5 fw-bold text-break mb-3', $bind('name')),
+                            $para($project_sample['summary'], 'lead text-body-secondary mb-3', $bind('summary')),
+                            $project_facts($project_sample_key, 'd-flex flex-wrap justify-content-center gap-3 small text-body-secondary mb-0'),
+                        )), array('effect' => 'fade', 'trigger' => 'load', 'duration' => 800)),
+                    ), '', '10'),
+                ), '', 'center'),
+                // The first still at the cinema's 2.39:1 (Film Studio: Title
+                // Card and Credits) with the round play mark that opens the
+                // film's address on the video host in a new window. The
+                // still and the mark each leave when the record has none
+                // (the mark's hidden value is the address), and the frame
+                // with them when both are empty.
+                $fx($el('div', 'pg-filmstudio-scope pg-hide-if-empty mb-4', lang('Still'), array(
+                    $el('div', 'ratio rounded-4 overflow-hidden shadow-lg', lang('Picture Frame'), array(
+                        $optional_image('still_1', 'name', 'w-100 h-100 object-fit-cover', 'h-100', $photo('project-' . $project_sample_key, 1600, 670), lang('Still')),
+                    )),
+                    $el('span', 'pg-hide-if-empty', lang('Watch the Film'), array(
+                        $el('span', 'pg-field-value d-none', lang('Value'), array(), array_merge(
+                            array('text' => 'https://www.example.com/films/night-drive'), $bind('film_url'))),
+                        $el('a', 'pg-filmstudio-play btn btn-primary rounded-circle', lang('Link'), array(
+                            $icon('bi-play-fill'),
+                            $span(lang('Watch the film'), 'visually-hidden', lang('Link Text')),
+                        ), array('href' => '#', 'target' => '_blank', 'rel' => 'noopener', '_bindings' => array('href' => 'film_url'))),
+                    )),
+                )), array('effect' => 'scale', 'trigger' => 'load', 'duration' => 1000, 'delay' => 200)),
+                $rise($row(array(
                     $col(array($fm_still('still_2', 'project-' . $project_sample_key . '-2')), '4'),
                     $col(array($fm_still('still_3', 'project-' . $project_sample_key . '-3')), '4'),
                     $col(array($fm_still('still_4', 'project-' . $project_sample_key . '-4')), '4'),
-                ), '3', '', 'mb-5'),
+                ), '3', '', 'mb-5'), 120),
                 $row(array(
                     $col(array(
                         $el('div', 'pg-hide-if-empty mb-4', lang('Credits'), array($credits_list($project_sample_key))),

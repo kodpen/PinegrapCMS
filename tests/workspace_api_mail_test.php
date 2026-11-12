@@ -59,6 +59,8 @@ function test_ws_api_mail_routes()
 		'workspace.mail_conversations.get'    => array('GET', '/workspace/mail/conversations/{id}', 'workspace:read'),
 		'workspace.mail_conversations.update' => array('POST', '/workspace/mail/conversations/{id}', 'workspace:write'),
 		'workspace.mail_conversations.reply'  => array('POST', '/workspace/mail/conversations/{id}/reply', 'workspace:write'),
+		'workspace.mail_conversations.read'   => array('POST', '/workspace/mail/conversations/{id}/read', 'workspace:write'),
+		'workspace.mail_messages.send'        => array('POST', '/workspace/mail/messages', 'workspace:write'),
 	);
 
 	pg_assert_same(array_keys($expected), array_keys($routes), 'the routes, in order');
@@ -72,6 +74,29 @@ function test_ws_api_mail_routes()
 	pg_assert_same(array('PATCH'), $routes['workspace.mail_conversations.update']['also_accepts'] ?? null);
 	pg_assert_same(201, $routes['workspace.mail_conversations.reply']['status'] ?? null);
 	pg_assert_same(WS_MAIL_REPLY_MAX, $routes['workspace.mail_conversations.reply']['params'][1]['max_length'], 'the panel\'s limit');
+	pg_assert_same(201, $routes['workspace.mail_messages.send']['status'] ?? null);
+
+	$send = array();
+
+	foreach ($routes['workspace.mail_messages.send']['params'] as $param) {
+		$send[$param['name']] = $param;
+	}
+
+	pg_assert_same(array('box_id', 'channel_id', 'to', 'cc', 'bcc', 'subject', 'text'), array_keys($send), 'the New e-mail form\'s fields, no files');
+	pg_assert_same(WS_MAIL_REPLY_MAX, $send['text']['max_length'], 'the panel\'s limit');
+	pg_assert_true(!empty($send['box_id']['required']) && !empty($send['to']['required']) && empty($send['channel_id']['required']), 'a box and To; the channel may be left out');
+
+	$list = array();
+
+	foreach ($routes['workspace.mail_conversations.list']['params'] as $param) {
+		$list[$param['name']] = $param;
+	}
+
+	pg_assert_same('all', $list['view']['default'], 'every conversation unless a view is asked');
+	pg_assert_same(array('all', 'incoming', 'sent', 'unsent'), $list['view']['values']);
+	pg_assert_same(WS_MAIL_LIST_QUERY_MAX, $list['q']['max_length'], 'the screen\'s search limit');
+	pg_assert_same('bool', $list['unread']['type']);
+	pg_assert_same('int', $list['box_id']['type']);
 }
 
 // Reading and changing a conversation are tools; an answer to a customer
@@ -81,7 +106,7 @@ function test_ws_api_mail_mcp_tools()
 	$routes = ws_api_mail_test_routes();
 
 	foreach ($routes as $id => $route) {
-		if ($id === 'workspace.mail_conversations.reply') {
+		if (in_array($id, array('workspace.mail_conversations.reply', 'workspace.mail_messages.send'), true)) {
 			pg_assert_same(false, $route['mcp'] ?? null, $id . ' carries \'mcp\' => false');
 			pg_assert_false(pg_mcp_route_is_offered($route), $id . ' is no tool');
 		} else {
@@ -95,6 +120,8 @@ function test_ws_api_mail_writes_check_before_the_rehearsal()
 	$writes = array(
 		'ws_api_mail_conversations_update' => array('ws_mail_conversation_check(', 'ws_mail_conversation_set('),
 		'ws_api_mail_conversations_reply'  => array('ws_mail_reply_check(', 'ws_mail_reply_send('),
+		'ws_api_mail_messages_send'        => array('ws_mail_send_check(', 'ws_mail_send($viewer, $mail)'),
+		'ws_api_mail_conversations_read'   => array('ws_api_mail_conversation_or_404(', 'ws_mail_read_mark('),
 	);
 
 	foreach ($writes as $handler => $calls) {
@@ -108,6 +135,16 @@ function test_ws_api_mail_writes_check_before_the_rehearsal()
 
 	$reply = ws_api_mail_test_source('ws_api_mail_conversations_reply');
 	pg_assert_true(strpos($reply, 'ws_api_own_words_only(') < strpos($reply, 'api_dry_run_stop('), 'the person\'s own before anything');
+
+	// A new mail: the person's own session only, the form's fields through
+	// the one send path, no second way out.
+	$send = ws_api_mail_test_source('ws_api_mail_messages_send');
+	pg_assert_true(strpos($send, 'ws_api_own_words_only(') < strpos($send, 'ws_mail_send_check('), 'the person\'s own before anything');
+	pg_assert_contains('$mail = ws_mail_compose_mail($params, array());', $send, 'the New e-mail form\'s fields, no files');
+	pg_assert_true(strpos($send, 'email(') === false && strpos($send, 'pg_mail_enqueue(') === false, 'no other way out');
+
+	// Read marks: a device session, never an application key.
+	pg_assert_contains('ws_api_person_only(', ws_api_mail_test_source('ws_api_mail_conversations_read'), 'the person marks read');
 
 	$panel = ws_api_mail_test_source('ws_mail_conversation_set');
 	pg_assert_contains('ws_mail_conversation_check($viewer, $conversation_id, $changes)', $panel, 'the panel runs the same check');
@@ -165,6 +202,18 @@ function test_ws_api_mail_present()
 	pg_assert_true($bounce['bounce']);
 	pg_assert_false($bounce['automatic']);
 
+	pg_assert_same(null, $mail['send_state'], 'no send state on mail that came in');
+	pg_assert_same(null, $mail['send_error']);
+	pg_assert_same('sent', ws_api_mail_present(array_merge($in, array('direction' => 'out', 'user_id' => 5)))['send_state'], 'an earlier answer left');
+	pg_assert_same('queued', ws_api_mail_present(array_merge($in, array('direction' => 'out', 'user_id' => 5, 'send_state' => 'queued')))['send_state']);
+	$failed = ws_api_mail_present(array_merge($in, array('direction' => 'out', 'user_id' => 5, 'send_state' => 'failed', 'send_error' => 'Mailbox full')));
+	pg_assert_same(array('failed', 'Mailbox full'), array($failed['send_state'], $failed['send_error']), 'failed with the queue\'s reason');
+	pg_assert_same('a@x.test, b@x.test', ws_api_mail_present(array_merge($in, array('to_list' => 'a@x.test, b@x.test')))['to']);
+
+	pg_assert_same(null, $present['unread'], 'no read marks: null');
+	pg_assert_same(true, ws_api_mail_conversation_present($conversation, 0, 5000, null, true)['unread']);
+	pg_assert_same(false, ws_api_mail_conversation_present($conversation, 0, 5000, null, false)['unread']);
+
 	pg_assert_same(array(1, 5, 9), array_column(ws_api_mail_items_order(array(array('id' => 9), array('id' => 1), array('id' => 5))), 'id'));
 }
 
@@ -190,4 +239,37 @@ function test_ws_api_mail_message_carries_its_mail()
 	pg_assert_true(isset(ws_api_message_schema()['mail']));
 	pg_assert_same(array('item_id', 'conversation_id', 'direction', 'from_email'), array_keys(ws_api_message_mail_schema()));
 	pg_assert_contains("\$row['sender_kind'] === 'mail'", ws_api_mail_test_source('ws_api_message_present'));
+}
+
+// The list's parameters become the E-mails screen's filters; with none the
+// answer is the one it always was (every view, every status).
+function test_ws_api_mail_list_filters()
+{
+	$none = ws_api_mail_list_filters(array());
+	pg_assert_same(array('all', 'all', 'all', 0, '', false), array($none['view'], $none['status'], $none['holder'], $none['box'], $none['q'], $none['unread']), 'nothing asked');
+
+	$asked = ws_api_mail_list_filters(array('view' => 'sent', 'box_id' => 3, 'q' => '  Teklif ', 'unread' => true, 'status' => 'waiting'));
+	pg_assert_same(array('sent', 'waiting', 3, 'Teklif', true), array($asked['view'], $asked['status'], $asked['box'], $asked['q'], $asked['unread']));
+	pg_assert_same('all', ws_api_mail_list_filters(array('view' => 'incoming'))['status'], 'the API\'s status default stays all in Incoming');
+
+	$where = ws_mail_list_where($asked, 7, array(4));
+	pg_assert_contains("box_id = '3'", $where, 'the mailbox');
+	pg_assert_contains("send_state IN ('', 'sent')", $where, 'the Sent view');
+
+	$source = ws_api_mail_test_source('ws_api_mail_conversations_list');
+	pg_assert_contains('ws_mail_unread_sql((int) $viewer[\'id\'], ws_mail_read_floor((int) $viewer[\'id\']))', $source, 'the screen\'s unread rule');
+	pg_assert_contains('ws_api_mail_channel_reached($viewer, ws_channel((int) $channel_id))', $source, 'the channel still decides');
+}
+
+function test_ws_api_mail_send_refusal()
+{
+	foreach (array('no_to' => 'to', 'too_many' => 'to', 'bad_address' => 'to', 'blocked' => 'to', 'no_subject' => 'subject', 'empty' => 'text', 'too_long' => 'text') as $error => $field) {
+		pg_assert_same(array('status' => 422, 'code' => 'validation_failed', 'field' => $field), ws_api_mail_send_refusal($error), $error);
+	}
+
+	pg_assert_same(array(403, 'box_id'), array(ws_api_mail_send_refusal('no_box')['status'], ws_api_mail_send_refusal('no_box')['field']), 'a mailbox the person may not send from');
+	pg_assert_same(array(403, 'channel_id'), array(ws_api_mail_send_refusal('no_access')['status'], ws_api_mail_send_refusal('no_access')['field']));
+	pg_assert_same(429, ws_api_mail_send_refusal('hourly')['status']);
+	pg_assert_same(503, ws_api_mail_send_refusal('not_ready')['status']);
+	pg_assert_same(array('status' => 409, 'code' => 'not_sent', 'field' => null), ws_api_mail_send_refusal('not_sent'));
 }

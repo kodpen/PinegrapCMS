@@ -7,7 +7,8 @@
  * the accordion's <h2><button>) or a sentence, but never into another link or
  * a button at any depth, a label holds one control, block content stays out
  * of headings and paragraphs, no form goes inside a form at any depth (nor
- * into a widget the server wraps in one), and a ready-made palette block is
+ * into a widget the server wraps in one), a player (<video>, <audio>) holds
+ * only its <source> and <track> elements, and a ready-made palette block is
  * judged by what it holds. canDrop() and its helpers, and _paletteInsert(),
  * are cut out of assets/js/style_designer.src.js and run under Node with stubs
  * for the lock, editing, shared-component, system widget and loop checks,
@@ -326,6 +327,32 @@ function test_designer_inline_drop_heading_button_takes_no_children()
 	}
 
 	pg_assert_same(array(false, false, false, false, false, true, true), $answer, 'no span, icon or link into the accordion header button; a span and an icon into a content link');
+}
+
+// A player holds only its <source> and <track> elements: a heading, a
+// paragraph or a picture dropped into <video> or <audio> would be fallback
+// content no browser shows. The Video palette item itself goes into a box.
+function test_designer_inline_drop_player_takes_source_and_track_only()
+{
+	$setup = designer_inline_drop_test_page()
+		. 'T.video = sem("video", [], { _attrs: [{ name: "controls", value: "" }] }); T.audio = sem("audio");'
+		. 'root.children.push(T.video, T.audio);';
+	$answer = designer_inline_drop_test_run($setup, array(
+		array('pal("semantic", { tag: "source" })', 'video'),
+		array('pal("semantic", { tag: "track" })', 'video'),
+		array('node(sem("source"))', 'audio'),
+		array('pal("content", { contentType: "heading" })', 'video'),
+		array('node(sem("p"))', 'video'),
+		array('pal("content", { contentType: "image" })', 'audio'),
+		array('pal("semantic", { tag: "div" })', 'video'),
+		array('pal("semantic", { tag: "video" })', 'div'),
+	));
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, true, true, false, false, false, false, true), $answer, 'source and track into a video, source into an audio; no heading, paragraph, picture or box into a player; the Video item into a div');
 }
 
 // What a link or a button holds is looked at all the way down, and a node's

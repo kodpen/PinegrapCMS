@@ -99,23 +99,21 @@ if (isset($id) == true) {
 
 // if the form has not been submitted, then display form and report
 if (!$_POST) {
-    $output_edit_button = '';
-    $output_edit_form_style = '';
-    
     // A save that came back with an error (the name already in use) shows
-    // the form open again with what was entered.
+    // the settings open again with what was entered.
     $returned_with_error = ($liveform->check_form_errors() == true);
+
+    // The report's settings (name, summarize by, filters, Save & Run) sit in
+    // a drawer from the right. A plain new report has nothing to show yet,
+    // so its drawer opens at once; a saved report shows its results.
+    $open_settings_at_load = (isset($_GET['id']) == false) || $returned_with_error;
+
+    $output_edit_button = pg_screen_toolbar(array(
+        'primary' => '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" id="report_settings_button" data-bs-toggle="drawer" data-bs-target="#report_settings" aria-controls="report_settings"><i class="bi bi-sliders me-2" aria-hidden="true"></i>' . h(lang('Report settings')) . '</button>',
+    ));
 
     // if the visitor report is being viewed
     if (isset($_GET['id']) == true) {
-        // nav#button_bar: Edit hides it by id, Cancel Edit shows it again.
-        $output_edit_button = pg_screen_toolbar(array(
-            'primary' => '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" id="edit_button" onclick="var edit_form = document.getElementById(\'edit_form\'); edit_form.style.display = \'block\'; document.getElementById(\'button_bar\').style.display = \'none\'; var first_field = edit_form.querySelector(\'input:not([type=hidden]), select, textarea\'); if (first_field) {first_field.focus();}"><i class="bi bi-pencil me-2" aria-hidden="true"></i>' . lang('Edit') . '</button>',
-        ));
-        if (!$returned_with_error) {
-            $output_edit_form_style = '; display: none';
-        }
-
         // The tab and the breadcrumb name the report as stored, not a name
         // typed into the form that may have failed to save.
         $output_visitor_report_name = (string) db_value("SELECT name FROM visitor_reports WHERE id = '" . (int) $_GET['id'] . "'");
@@ -513,16 +511,8 @@ if (!$_POST) {
         $count++;
     }
     
-    $output_cancel_button = '';
-    
-    // if the user is creating a visitor report, then prepare cancel button to send user back a page
-    if (isset($_GET['id']) == false) {
-        $output_cancel_button = '';
-    
-    // else the user is editing a visitor report, so prepare cancel button to hide edit form and show edit button
-    } else {
-        $output_cancel_button = '<button type="button" name="cancel" value="Cancel" onclick="document.getElementById(\'button_bar\').style.display = \'\'; document.getElementById(\'edit_button\').focus(); document.getElementById(\'edit_form\').style.display = \'none\';" class="btn my-1 btn-solid theme-secondary"><span class="material-icons me-3">close</span><span class="pg-btn-label" >' . lang(array('string'=>'Cancel Edit') ) . '</span></button>';
-    }
+    // Close shuts the drawer and keeps what was typed.
+    $output_cancel_button = '<button type="button" class="btn my-1 btn-solid theme-secondary" data-bs-dismiss="drawer"><span class="material-icons me-3" aria-hidden="true">close</span><span class="pg-btn-label">' . h(lang('Close')) . '</span></button>';
     
     $output_delete_button = '';
     
@@ -1170,6 +1160,56 @@ if (!$_POST) {
         $output_visitor_report_name = '[' . lang('new visitor report') . ']';
     }
     
+    // The dashboard's stylesheet (pg_dashboard_v2_style_url()) draws them.
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/layout.php');
+
+    // The figures and the chart over the table (includes/fn/report_view.php),
+    // read from what the table prints: the Grand Total row's sums and the
+    // first level's groups, still in the query's order (time for a date),
+    // as the table sorts them by Order by only when it prints them.
+    $report_view_level = ($number_of_summarize_bys >= 1) ? (string) $liveform->get_field_value('summarize_by_1') : '';
+    $report_view_kind = pg_report_view_chart_kind($report_view_level);
+    $report_view_names = array();
+    $report_view_codes = array();
+    $report_view_groups = $results;
+    $report_view_label = (string) array_search($report_view_level, $summarize_by_options, true);
+
+    if ($report_view_kind === 'line') {
+        $report_view_levels = array();
+
+        for ($level = 1; $level <= $number_of_summarize_bys; $level++) {
+            $report_view_levels[] = (string) $liveform->get_field_value('summarize_by_' . $level);
+        }
+
+        // The line runs over the finest date level the report starts with.
+        list($report_view_groups, $report_view_names, $report_view_last) = pg_report_view_time_groups($results, $report_view_levels, 'update_summarize_by_name');
+        $report_view_label = (string) array_search($report_view_last, $summarize_by_options, true);
+    } elseif ($report_view_kind !== 'none') {
+        if ($report_view_kind === 'map') {
+            require_once(PG_FUNCTIONS_DIR . '/includes/sales_map.php');
+        }
+
+        foreach ($results as $report_view_key => $report_view_group) {
+            $report_view_names[$report_view_key] = update_summarize_by_name($report_view_group['name'], $report_view_level);
+
+            if ($report_view_kind === 'map') {
+                $report_view_codes[$report_view_key] = pg_sales_map_country_code((string) $report_view_group['name']);
+            }
+        }
+    }
+
+    $report_view_grand = array('count' => $grand_count, 'page_views' => $grand_page_views, 'custom_form_submitted' => $grand_custom_form_submitted, 'order_completed' => $grand_order_completed, 'order_total' => $grand_order_total);
+
+    $report_view = array(
+        'figures' => pg_report_view_visitor_figures($report_view_grand, $output_order_cells, BASE_CURRENCY_SYMBOL),
+        'chart' => ($grand_count > 0) ? pg_report_view_visitor_chart($report_view_kind, $report_view_groups, $report_view_names, $report_view_label, $report_view_codes) : null,
+        'maps' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/maps/',
+        'strings' => array(
+            'figures' => lang('Summary'),
+            'legend' => array(lang('Few'), lang('Many')),
+        ),
+    );
+
     print
     pg_page_shell(
         array(
@@ -1178,6 +1218,7 @@ if (!$_POST) {
             'icon'=>'visitor', 
             'heading'=> lang('Visitor Report'),
             'heading_description' => lang('View or update this real-time visitor report.'),
+            'head' => '<link rel="stylesheet" href="' . h(pg_dashboard_v2_style_url()) . '">',
             'cancel'=>array('enable'=>'true','url'=>'view_visitor_reports.php')
         ,
             'breadcrumb' => array(array('label' => lang('Overview'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitors.php'), array('label' => lang('Saved visitor reports'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_reports.php'), array('label' => h($output_visitor_report_name))),
@@ -1190,14 +1231,20 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <form name="form" id="edit_form" action="view_visitor_report.php" method="post" style="' . $output_edit_form_style . '">
+                <form name="form" id="edit_form" action="view_visitor_report.php" method="post">
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'id'=>'last_filter_number', 'name'=>'last_filter_number', 'value'=>'0')) . '
                     ' . $output_hidden_id_field . '
+                    <dialog class="drawer drawer-end" id="report_settings" aria-labelledby="report_settings_title" style="width:min(760px,100%)"' . ($open_settings_at_load ? ' data-pg-open-at-load="1"' : '') . '>
+                    <div class="drawer-header">
+                        <h2 class="drawer-title h5 mb-0" id="report_settings_title">' . h(lang('Report settings')) . '</h2>
+                        <button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
+                    </div>
+                    <div class="drawer-body">
                     <div class="row">
-                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
-                            <div class="card my-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Visitor Report')) . '</h2>
+                        <div class="col-12 order-1">
+                            <div class="card my-4">
+                                <h3 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Visitor Report')) . '</h3>
                                 <div class="card-body pt-0">
                                     <div class="row">
                                         <div class="col-12 md:col-6 my-3">
@@ -1215,8 +1262,8 @@ if (!$_POST) {
                                     </div>
                                 </div>
                             </div>
-                            <div class="card my-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Visitor Report Layout')) . '</h2>
+                            <div class="card my-4">
+                                <h3 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Visitor Report Layout')) . '</h3>
                                 <div class="card-body pt-0">
                                     <div class="row g-2 align-items-center my-3">
                                         <label for="summarize_by_1" class="col-12 md:col form-label mb-0">' . lang('Summarize by') . '</label>
@@ -1238,8 +1285,8 @@ if (!$_POST) {
                                     </div>
                                 </div>
                             </div>
-                            <div class="card my-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Visitor Report Filters')) . '</h2>
+                            <div class="card my-4">
+                                <h3 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Visitor Report Filters')) . '</h3>
                                 <div class="card-body pt-0">
                                     <script type="text/javascript" language="JavaScript 1.2">
                                         //We add new language data to translate object
@@ -1285,9 +1332,9 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
-                            <div class="card my-7 position-sticky" style="top:3.3rem;">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('How It Works')) . '</h2>
+                        <div class="col-12 order-2">
+                            <div class="card my-4">
+                                <h3 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('How It Works')) . '</h3>
                                 <div class="card-body pt-0">
                                     <ul class="small ps-5 mb-0">
                                         <li class="mb-2">' . h(lang('The report groups visits by up to three levels, each sorted on its own.')) . '</li>
@@ -1298,17 +1345,19 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
-                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
-                                <div class="container">
+                    </div>
+                    </div>
+                    <div class="drawer-footer">
+                            <nav class="buttons navigation text-center w-100" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div>
                                     <div class="btn-group flex-wrap justify-content-center">
                                         <button type="submit" id="submit_save" name="submit_save" value="Save &amp; Run" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . h(lang('Save & Run')) . '</span></button>
                                         ' . $output_cancel_button . $output_delete_button . '
                                     </div>
                                 </div>
                             </nav>
-                        </div>
                     </div>
+                    </dialog>
                 </form>
                 <div class="row mb-3 flex-wrap">
                     <div class="col-12 sm:col-12 md:col-6 xl:col-8 text-center md:text-start"></div> 
@@ -1321,6 +1370,22 @@ if (!$_POST) {
                     </div>
                 </div>
                 ' . (($summary_notice !== '') ? '<div class="alert theme-info small d-flex gap-3 align-items-start mt-5 mb-0"><i class="bi bi-info-circle-fill" aria-hidden="true"></i><div>' . h($summary_notice) . '</div></div>' : '') . '
+                <style>
+                    @layer custom {
+                        .pg-report-view { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; margin-block: 1rem; }
+                        .pg-report-view > div, .pg-report-view .pg-dash-card { width: 100%; min-width: 0; }
+                        .pg-report-view .pg-dash-figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .75rem; }
+                        .pg-report-view .pg-dash-line { display: block; width: 100%; height: 11rem; }
+                        .pg-report-view .pg-report-view-ends { display: flex; justify-content: space-between; gap: 1rem; margin-top: .375rem; font-size: .75rem; color: var(--pgd-muted); }
+                        .pg-report-view .pg-dash-map svg { max-height: 24rem; }
+                    }
+                </style>
+                <section class="pg-dash pg-report-view" id="pg_report_view" aria-label="' . h(lang('Summary')) . '">
+                    <div class="pg-report-view-figures"></div>
+                    <div class="pg-report-view-chart"></div>
+                    <script type="application/json" id="pg_report_view_data">' . (string) json_encode($report_view, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) . '</script>
+                </section>
+                ' . pg_js_bundle_tags('assets/js/pg_dash.min.js') . pg_js_bundle_tags('assets/js/pg_report_view.min.js') . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative table-responsive">
                         <table class="table table-striped table-hover">

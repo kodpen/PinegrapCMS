@@ -5,7 +5,7 @@
  * Tests for the pure parts of tools/memory_index.php: the module field of a
  * memory file's frontmatter, the size a memory file is measured by, the
  * generated list of includes/fn/ modules, the decision marks, the clusters
- * and the links to memory files that do not exist.
+ * and their start files, and the links to memory files that do not exist.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -177,6 +177,24 @@ function test_memory_index_clusters_name_and_start()
 
 	$files = array('ab-cd-1.md', 'ab-cd-2.md', 'ab-cd-3.md', 'ab-cds-4.md', 'ab-cds-5.md', 'ab-cds-6.md');
 	pg_assert_same(array(array('ab-cd', 6, null)), memory_index_clusters($files), 'a tie goes to the shorter form; no start file');
+}
+
+// A cluster of ten or more needs a start file in either form; nine do not,
+// and a plan's files are never held to it.
+function test_memory_index_cluster_errors()
+{
+	pg_assert_same(array(), memory_index_cluster_errors('ui', array(
+		array('list-table', 44, 'list-table-overview.md'),
+		array('bootstrap-6', 12, 'bootstrap-6.md'),
+		array('main-menu', 9, null),
+	)), 'a start file in either form, or fewer than ten files');
+
+	$errors = memory_index_cluster_errors('ui', array(array('main-menu', 9, null), array('picker-field', 10, null), array('image-editor', 67, null)));
+	pg_assert_same(2, count($errors), 'one error per cluster of ten or more');
+	pg_assert_contains('docs/memory/ui/picker-field-*: 10 files and no start file; add picker-field-overview.md', $errors[0]);
+	pg_assert_contains('docs/memory/ui/image-editor-*: 67 files', $errors[1]);
+
+	pg_assert_same(array(), memory_index_cluster_errors('plans', array(array('design-template', 12, null))), 'plans are left out');
 }
 
 function test_memory_index_folder_lists_clusters()

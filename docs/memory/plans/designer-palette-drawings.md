@@ -16,7 +16,7 @@ description: Plan (owner 2026-11-11): one Components tab with a Blocks switch, a
 
 - P3 (M, done #8699): block drawings from the tree ([[palette-block-sketch]]). `_sdBlockSketch(tree)` draws a block as picture 1 does (heading dark bar, text grey lines, picture or card grey box, button accent pill, columns side by side) from the tree its `build()` returns, cached per `componentType`, shown in the tip card of every core and family block; the band walk of `PGProtoHotspots.sketch()` ([[prototype-thumbnails]]) is the model. Test: Node draws every core and family block, none empty.
 
-- P4 (M, waits for P3): descriptions of the 126 core blocks, one `_sdT()` line each in a block info map read by `_sdPalTipHTML()`; Turkish with `tr_add.php`. Test: fails for a block of `_sdBlockPaletteItems()` without a line.
+- P4 (M, done #8758): descriptions of the 127 core blocks, one `_sdT()` line each in the block info map `_sdBlockInfo()` read by `_sdPalTipHTML()` ([[palette-block-info]]); Turkish with `tr_add.php`. Test `tests/designer_block_info_test.php`: fails for a block of `_sdBlockPaletteItems()` without a line.
 
 - P5 (M, waits for P4): family blocks A to H (architecture to hours): a `desc` per item in the family's `items` ([[designer-block-family-files]]), the P4 test reads families.
 

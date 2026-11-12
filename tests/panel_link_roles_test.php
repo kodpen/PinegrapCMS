@@ -29,15 +29,13 @@ function panel_link_roles_source($path)
 // Cancel Edit brings it back to Edit.
 function test_report_edit_and_add_filter_are_buttons()
 {
-	// The order report opens its settings in a drawer instead
-	// (tests/order_report_screen_layout_test.php).
-	foreach (array('view_visitor_report.php') as $file) {
+	// Both reports open their settings with a button, in a drawer
+	// (tests/order_report_screen_layout_test.php,
+	// tests/visitor_report_screen_layout_test.php).
+	foreach (array('view_order_report.php', 'view_visitor_report.php') as $file) {
 		$source = panel_link_roles_source($file);
 
-		pg_assert_false(strpos($source, 'href="#" id="edit_button"') !== false, $file . ': Edit is a link');
-		pg_assert_true(strpos($source, '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" id="edit_button"') !== false, $file . ': Edit is a button');
-		pg_assert_true(strpos($source, "document.getElementById(\\'edit_button\\').focus();") !== false, $file . ': Cancel Edit returns focus to Edit');
-		pg_assert_true(strpos($source, "querySelector(\\'input:not([type=hidden]), select, textarea\\')") !== false, $file . ': Edit moves focus into the form');
+		pg_assert_true(strpos($source, '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" id="report_settings_button"') !== false, $file . ': Report settings is a button');
 	}
 
 	foreach (array('view_order_report.php', 'view_visitor_report.php', 'edit_form_list_view.php') as $file) {

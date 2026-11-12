@@ -8,10 +8,7 @@ description: Steps of plans/legacy-group-design.md: LG1 the theme, LG2 {path} ad
 
 - LG1 (M) The theme of a moved design. Done (#8694): `designer/legacy-design-theme.md`. Its sandbox move found that the bulk run writes no stylesheet or script rows, so every other file of the classic head is missing; no step below names it yet.
 - LG2 (M) `{path}` and `{software_directory}` in addresses, for every design. Done (#8732): `designer/design-asset-path-placeholders.md`.
-- LG3 (S) The `legacy` key and the badge.
-  - `pg_design_frameworks()` gets `legacy` (`bootstrap => false`, a `legacy` flag); `pg_design_framework_key()` accepts it; the literal tests (`=== 'custom'` in `includes/designer_ai.php`, `=== 'bootstrap5'` in `includes/designer_screen.php`) ask the flags; the callers of `pg_classic_style_mark_design()` pass `legacy`; LG1 asks the flag.
-  - A data-only migration step in the open version (rerun twice): a `custom` design holding a `classic_style:<style_id>` frame gets `legacy`.
-  - The Visual Designs list: the badge `lang('Legacy')`, Turkish "Eski". Topic `designer/legacy-design-framework.md`.
+- LG3 (S) The `legacy` key and the badge. Done (#8757): `designer/legacy-design-framework.md`.
 - LG4 (M) Sets in the report and the dry run.
   - A pure function gives a classic style's set key: its ordered external CSS and JS references (after LG2's expansion), `collection`, theme; order counts, inline blocks do not. `pg_ltd_report()` groups by it; the screen lists a set, its styles and page count; `pg_ltd_plan()` takes a set and shows the one design, the frame per style, the asset rows limited to a style's pages, and what blocks.
   - The PR shows how mobile styles, pages styled by their folder (`page_style = 0`), `style_head` and `additional_body_classes` fall; a style the set cannot hold moves alone as today.

@@ -31,7 +31,7 @@ Each (a) (architect, under the owner's delegation, #2444):
 - No licence; holders of the Workspace settings right add boxes (`mail-card.md`); the support channel is private.
 
 ## What is out of scope?
-- An own mail server or piping, POP3, IMAP IDLE (it holds a PHP worker), HTML rendering, a customer portal, a knowledge base, WhatsApp.
+- An own mail server or piping, POP3, IMAP IDLE (it holds a PHP worker), a customer portal, a knowledge base, WhatsApp.
 
 ## Which PR built each slice?
 - G1 core (parser, tables, ingest, card, `.eml` upload): #2586, #2676 (tables approved in #2677), #2710, #2738.

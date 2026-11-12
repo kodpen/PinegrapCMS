@@ -248,10 +248,10 @@ function test_workspace_mail_list_wiring()
 	pg_assert_contains("case 'ws_mail_rows':", $actions);
 	pg_assert_contains("case 'ws_mail_read_all':", $actions);
 	pg_assert_same(2, substr_count($actions, 'ws_mail_read_rows($viewer, $rows);'), 'a card shown in its channel is read, on opening and on the next sync');
-	pg_assert_contains("ws_mail_list_filters(array('view' => 'all',", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_mail.php'), 'the API keeps every conversation');
+	pg_assert_contains('\'view\'   => (string) ($params[\'view\'] ?? \'all\'),', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_mail.php'), 'the API keeps every conversation unless a view is asked');
 
 	pg_assert_contains("window.PGWsMail.screen(root, featureHelpers());", $boot, 'the screen starts the list');
 	pg_assert_contains("h.api('ws_mail_pane', { conversation_id: id })", $script);
-	pg_assert_contains("compose(message, view, h);", $script, 'Reply still opens the drawer');
+	pg_assert_contains("replyForm(message, view, h);", $script, 'Reply still opens the drawer');
 	pg_assert_contains('node.appendChild(countBadge(item.count, false));', $side, 'the tile draws the number');
 }

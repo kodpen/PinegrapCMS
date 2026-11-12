@@ -270,6 +270,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-14.md: Which tables and columns were approved?
 - decisions-made-schema-15.md: Where are the rules and the earlier parts?
 - decisions-made-schema-15.md: Which tables and columns were approved?
+- decisions-made-schema-16.md: Where are the rules and the earlier parts?
+- decisions-made-schema-16.md: Which tables and columns were approved?
 - decisions-made-schema-2.md: Where are the rules and the earlier steps?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-28?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-29 and later?
@@ -334,6 +336,16 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-15.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-15.md: Are the Workspace settings cards simplified as they move under Site Settings? (owner, 2026-11-11, #8750)
 - decisions-made-workspace-15.md: Is Claude (the Anthropic API) a provider of model assistants? (owner, 2026-11-11, #8750)
+- decisions-made-workspace-16.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-16.md: Does clearing a conversation delete the channel's memory and decisions? (owner, 2026-11-11, #8762)
+- decisions-made-workspace-16.md: How is it seen that an agent is up, and may an agent tick a checklist? (owner, 2026-11-11, #8762)
+- decisions-made-workspace-16.md: Is a chart or a design made by a tool of its own, or by the canvas? (owner, 2026-11-11, #8762)
+- decisions-made-workspace-16.md: What does the canvas plan hold beside layers? (owner, 2026-11-11, #8762)
+- decisions-made-workspace-16.md: Does an agent make a live page too? (owner, 2026-11-11, #8762)
+- decisions-made-workspace-17.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-17.md: Where does a mail open from the E-mails list, and how is it drawn? (owner, 2026-11-11, #8765)
+- decisions-made-workspace-17.md: How are pictures from outside shown in a mail? (owner, 2026-11-11, #8765)
+- decisions-made-workspace-17.md: May a mailbox be kept in no channel? (owner, 2026-11-11, #8765)
 - decisions-made-workspace-2.md: What may the channel menu hold?
 - decisions-made-workspace-2.md: Where are records created inside a chat?
 - decisions-made-workspace-2.md: Does the customer channel's "New sales quote" stay in the menu?
@@ -592,7 +604,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-channel-identity-motion.md: Workspace channel shell as one card in the channel colour (wash, pill tabs), day chip, writing box card (CL1 #8678); group colour chips; send pop, bounce, slide-in (#2094)
 - workspace/workspace-channel-messages.md: The channel's messages as drawn (C4 of workspace-channel-screen.md): grouped lines with their time on hover, the short hover bar, the decision tag, the discussion line, Convert to text
 - workspace/workspace-channel-panels.md: The side panels as drawn (C6 of workspace-channel-screen.md): the channel info beside the conversation in the discussion's place, its parts, the discussion's head and follow line
-- workspace/workspace-channel-panes.md: The channel's Tasks, Decisions and Files tabs as cards (CL2 #8688): task cards in a grid, decisions as a card grid, each kind of file a card; My tasks and a record's window keep their rows
+- workspace/workspace-channel-panes.md: The channel's Tasks, Decisions and Files tabs as cards (CL2 #8688, CL4 #8759): task and decision cards flowing in columns, each kind of file a card; My tasks and a record's window keep their rows
 - workspace/workspace-channel-summary-board-memory.md: The channel's Summary, Board and Memory tabs as cards and the channel panes' empty states in a dashed card (CL3 #8703); the workflow table's board and other screens' empty states unchanged
 - workspace/workspace-command-live-line.md: The live line under a /task and a /status (ws_command_suggest: "Will create: …", warnings), a typed @username assigning, and what the parser reads: next week, datives, 14:00, "1.5 saat" as an estimate
 - workspace/workspace-create-commands.md: /create (/oluştur) product|group and its alias /product (/ürün) in a channel: kind word, parsers, the single-create card through ws_quick_create_input()/_save(), what Create sends
