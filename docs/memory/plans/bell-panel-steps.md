@@ -9,7 +9,7 @@ description: Steps of plans/bell-panel.md: BP1 read when opened, BP2 the dashboa
 
 - BP1 (M) A row is read when it is opened. Done: #8682 (`ui/bell-read-rule.md`, `ui/notifications-menu.md`).
 - BP2 (M) The row drawn as the dashboard's Next up row. Done: #8722 (`ui/bell-row.md`). A row's module, day and button, the tag's hues, the dot and the row's menu stay; its layout in the 26rem dropdown was not accepted (#8754).
-- BP2b (M) The drawer, and the row that fits it. `free`. Owner 2026-11-11, #8754 (`workflow/decisions-made-panel-4.md`).
+- BP2b (M) The drawer, and the row that fits it. Done: #8783 (`ui/notifications-menu.md`, `ui/bell-row.md`). Owner 2026-11-11, #8754 (`workflow/decisions-made-panel-4.md`).
   - The panel: `#notifications` becomes a Bootstrap 6 drawer at the right edge through `pgUI` (`ui/pg-ui-adapter.md`), full height, 30rem wide, the whole width on a phone. Head: the name "Notifications", a close button, "Mark all as read", a menu holding "Delete All Notifications"; then the filters, the list (the only part that scrolls), the push line at the foot.
   - Opening: the bell, Ctrl+Q and `pgBellOpen()` open it, Escape and a click outside close it. One list load per open, the 20 s poll's rule and the bell's `show` class as today, on the drawer's events.
   - The row: line one the tag as a small mark, the dot, the title; line two the place and the time, the row's button and menu at the right; then the excerpt, two lines at most, whole in the row's place. No column of the row's height.

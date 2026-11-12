@@ -2588,6 +2588,36 @@ function output_header($properties = false)
         $output_bell_filters .= '</div>';
     }
 
+    // The bell's drawer at the right edge, full height: the head (the name,
+    // "Mark all as read", a menu holding "Delete All Notifications", close),
+    // then the filters, the list (the only part that scrolls) and the push
+    // line at the foot. Printed outside the header: Bootstrap 6 hides a
+    // drawer that sits inside a .navbar whenever the navbar resizes.
+    $output_bell_drawer = '
+        <dialog class="drawer drawer-end pg-bell-drawer pg-print-none" id="notifications" aria-labelledby="pg_bell_heading">
+            <div class="drawer-header pg-bell-head">
+                <h2 class="drawer-title pg-bell-heading" id="pg_bell_heading">' . h(lang('Notifications')) . '</h2>
+                <button type="button" class="pg-bell-head-btn pg-bell-mark-all no-popover d-none"><span class="bi bi-check2-all" aria-hidden="true"></span><span>' . h(lang('Mark all as read')) . '</span></button>
+                <div class="pg-bell-menu-wrap pg-bell-head-menu d-none">
+                    <button type="button" class="pg-bell-menu-toggle no-popover" aria-expanded="false" aria-controls="pg_bell_head_menu" aria-label="' . h(lang('More actions')) . '" title="' . h(lang('More actions')) . '"><span class="bi bi-three-dots" aria-hidden="true"></span></button>
+                    <div class="pg-bell-menu" id="pg_bell_head_menu" hidden>
+                        <button type="button" class="pg-bell-menu-item pg-bell-delete-all"><span class="bi bi-trash" aria-hidden="true"></span>' . h(lang('Delete All Notifications')) . '</button>
+                    </div>
+                </div>
+                <button type="button" class="btn-close pg-bell-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '" title="' . h(lang('Close')) . '"></button>
+            </div>
+            <div class="drawer-body pg-bell-body">
+                ' . $output_bell_filters . '
+                <div class="pg-bell-scroll"></div>
+                <div class="notifications_empty text-center my-3 py-3">' . lang('No Notification') . '<br><span class="bi fs-lg bi-wind"></span></div>
+                <div id="push_row" class="d-none align-items-center justify-content-between gap-3 border-top px-5 py-3">
+                    <span class="small fg-secondary">' . lang('Notifications on this device') . '</span>
+                    <button type="button" id="push_toggle" class="btn btn-sm btn-outline theme-secondary no-popover pg-push-toggle"><span class="pg-push-label">' . lang('Turn on') . '</span></button>
+                </div>
+                <div id="push_hint" class="d-none small fg-secondary border-top px-5 py-3">' . lang('Add the panel to your home screen first, then turn notifications on from there.') . '</div>
+            </div>
+        </dialog>';
+
     $output_home_page_link_url = '';
     // get home page(s)
     $query = "SELECT page_name FROM page WHERE page_home = 'yes'";
@@ -2893,21 +2923,11 @@ function output_header($properties = false)
                 ' . $output_help_button . '
                 ' . $output_settings_button . '
                 <ul class="navbar-nav">
-                    <li class="nav-item pg-menu-wrap no-arrow no-popover" title="' . lang('Notifications') . ' (Ctrl+Q)">
-                        <button type="button" id="notification_toggle" class="nav-link nav-link-sm no-popover pg-menu-caret" data-bs-toggle="menu" data-bs-display="static" data-bs-target="#notifications" data-bs-auto-close="outside" aria-expanded="false">
+                    <li class="nav-item no-popover" title="' . lang('Notifications') . ' (Ctrl+Q)">
+                        <button type="button" id="notification_toggle" class="nav-link nav-link-sm no-popover" data-bs-toggle="drawer" data-bs-target="#notifications" aria-controls="notifications" aria-haspopup="dialog">
                             <span class="visually-hidden">' . h(lang('Notifications')) . '</span>
                             <span class="has-notification-icon bi bi-bell"></span>
                         </button>
-                        <div id="notifications" class="menu shadow p-0 bg-body backdrop mt-nav-link-sm border-dropdown-menu position-fixed end-0 top-0" tabindex="-1" aria-labelledby="notification_toggle" aria-hidden="true">
-                            ' . $output_bell_filters . '
-                            <div class="menu-scroll-area position-relative overflow-auto h-100"></div>
-                            <div class="notifications_empty text-center my-3 py-3">' . lang('No Notification') . '<br><span class="bi fs-lg bi-wind"></span></div>
-                            <div id="push_row" class="d-none align-items-center justify-content-between gap-3 border-top px-5 py-3">
-                                <span class="small fg-secondary">' . lang('Notifications on this device') . '</span>
-                                <button type="button" id="push_toggle" class="btn btn-sm btn-outline theme-secondary no-popover pg-push-toggle"><span class="pg-push-label">' . lang('Turn on') . '</span></button>
-                            </div>
-                            <div id="push_hint" class="d-none small fg-secondary border-top px-5 py-3">' . lang('Add the panel to your home screen first, then turn notifications on from there.') . '</div>
-                        </div>
                         <script type="application/json" id="pg-push-config">' . json_encode(array(
                             // The worker is registered at this address, so a
                             // changed file is a changed registration and the
@@ -2943,7 +2963,7 @@ function output_header($properties = false)
                 </div>
             </nav>
         </div>
-        ' . $output_software_sidebar . $output_settings_modal . '
+        ' . $output_bell_drawer . $output_software_sidebar . $output_settings_modal . '
         <dialog class="dialog dialog-lg dialog-scrollable pg-dialog-centered shadow" id="SearchBox" aria-label="' . h(lang('Search')) . '">
               <div class="dialog-header border-0 px-5 py-3 gap-3 ">
                 <span class="bi bi-search fs-lg fg-secondary flex-shrink-0"></span>
@@ -7782,6 +7802,54 @@ function pg_js_bundle_tags($bundle, $defer = true)
     }
 
     return $tags;
+}
+
+/**
+ * One stamp for a list of script addresses: the ?v= number of each, in load
+ * order, joined by a dot. An update that rewrites any of the files changes it.
+ *
+ * @param array $urls addresses as pg_js_bundle_urls() returns them
+ * @return string '' when no address carries a number stamp
+ */
+function pg_js_urls_stamp($urls)
+{
+    $stamps = array();
+
+    foreach (is_array($urls) ? $urls : array() as $url) {
+        if (preg_match('/[?&]v=([0-9]+)(?:[&#]|$)/', (string) $url, $match)) {
+            $stamps[] = $match[1];
+        }
+    }
+
+    return implode('.', $stamps);
+}
+
+/**
+ * The stamp of one of pg_js_bundles() as a page drawn now loads it.
+ *
+ * @param string $bundle a key of pg_js_bundles()
+ * @return string
+ */
+function pg_js_bundle_stamp($bundle)
+{
+    return pg_js_urls_stamp(pg_js_bundle_urls($bundle));
+}
+
+/**
+ * Whether a page drawn with one script stamp runs older script than the
+ * server serves now. A page that sent no stamp (drawn before pages carried
+ * one) is not called stale: nothing is known about it.
+ *
+ * @param mixed  $page the stamp the page was drawn with
+ * @param string $now  pg_js_bundle_stamp() of the same bundle
+ * @return bool
+ */
+function pg_js_stamp_stale($page, $now)
+{
+    $page = is_string($page) ? trim($page) : '';
+    $now = is_string($now) ? trim($now) : '';
+
+    return ($page !== '') && ($now !== '') && ($page !== $now);
 }
 
 /**

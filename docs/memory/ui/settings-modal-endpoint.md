@@ -1,6 +1,6 @@
 ---
 name: settings-modal-endpoint
-description: settings_pane.php rules: always JSON, pg_error_throws, access gate, manual CSRF, remove_form, re-read after save, reload on a language change, Safe Mode scheme change.
+description: settings_pane.php rules: always JSON, pg_error_throws, access gate, manual CSRF, remove_form, re-read after save, reload on a language change, Safe Mode scheme change, a stale page.
 ---
 
 ## What must the endpoint (`settings_pane.php`) guarantee?
@@ -9,6 +9,7 @@ description: settings_pane.php rules: always JSON, pg_error_throws, access gate,
 - CSRF is compared by hand (`hash_equals`): `validate_token_field()` prints a screen. The token is renewed in every pane answer, because another tab can spend it while the dialog stays open. 403 carries `expired: true` and the browser reloads the page; the screen behind the dialog is stale at that point anyway.
 - Both branches hand over `notices`, `errors` and `warnings` (`get_warning_messages()`: a refused Paraşüt code, a maintenance allow list open to all, a product feed not built) before the drop; the dialog shows warnings in `theme-warning` above the green "saved". Before #5020 they were dropped unseen.
 - `liveform` form is dropped in both branches (`remove_form()`). `get_warnings()` / `output_notices()` read from the session and do not delete; unless dropped after the pane is drawn, the same notice returns on every open.
+- A pane read from a page whose panel script is older than the files served answers with a Reload line (`settings-pane-stale-page.md`).
 - The form carries `data-pg-no-curtain`, which keeps `pg_preloader_markup()`'s leaving bar off it; since the bar follows real navigations only and the form cancels its submit, the mark is a second guard (`loading-curtain.md`).
 
 ## What happens after a save?

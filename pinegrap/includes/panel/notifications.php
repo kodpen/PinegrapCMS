@@ -164,7 +164,10 @@ function pg_panel_get_notifications($request, $action)
         $item = array(
             'id' => $notification['id'],
             'type' => $notification['type'],
-            'title' => $display['title'],
+            // A Workspace row says who did what; its channel is the place
+            // on the row's second line (ws_bell_title()).
+            'title' => (($display['short'] !== '') ? $display['short'] : $display['title']),
+            'place' => $display['place'],
             'description' => $display['description'],
             'details' => $display['details'],
             'user' => $notification['user'],
