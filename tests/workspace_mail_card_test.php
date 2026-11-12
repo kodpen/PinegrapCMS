@@ -95,7 +95,7 @@ function test_workspace_mail_box_input()
 
 	pg_assert_true($ok['ok'], 'a full form');
 	pg_assert_same(array(
-		'name' => 'Support', 'address' => 'support@example.com', 'channel_id' => 4, 'auth_server' => 'mx.google.com', 'enabled' => 1,
+		'name' => 'Support', 'address' => 'support@example.com', 'kept_in' => 'channel', 'channel_id' => 4, 'auth_server' => 'mx.google.com', 'enabled' => 1,
 		'provider' => '', 'host' => '', 'port' => 993, 'user' => '', 'password' => '', 'folder' => 'INBOX', 'after_fetch' => 'seen', 'move_folder' => '',
 		'reply_via' => 'box', 'smtp_host' => '', 'smtp_port' => 0, 'sent_copy' => 0, 'sent_folder' => '', 'connection_id' => 0, 'reads_bounces' => 0, 'signature' => '',
 	), $ok['values'], 'cleaned; no server is an .eml-only box');
@@ -108,6 +108,14 @@ function test_workspace_mail_box_input()
 	pg_assert_same(lang('Give the mailbox a name of at most 100 characters.'), ws_mail_box_input(array_merge($base, array('name' => str_repeat('a', 101))))['error'], 'not too long');
 	pg_assert_same(lang('Enter the mailbox\'s e-mail address.'), ws_mail_box_input(array_merge($base, array('address' => 'support')))['error'], 'an address');
 	pg_assert_same(lang('Choose the channel its mail goes to.'), ws_mail_box_input(array_merge($base, array('channel_id' => '')))['error'], 'a channel');
+
+	// A box kept in no channel names none: its room is set by the save.
+	$room = ws_mail_box_input(array_merge($base, array('kept_in' => 'mailbox')));
+
+	pg_assert_true($room['ok'], 'kept in the mailbox itself');
+	pg_assert_same(array('mailbox', 0), array($room['values']['kept_in'], $room['values']['channel_id']), 'the channel posted with it is dropped');
+	pg_assert_true(ws_mail_box_input(array_merge($base, array('kept_in' => 'mailbox', 'channel_id' => '')))['ok'], 'and none is asked for');
+	pg_assert_same('channel', ws_mail_box_input(array_merge($base, array('kept_in' => 'nowhere')))['values']['kept_in'], 'an unknown word is a channel');
 	pg_assert_same(lang('The checking server is a host name such as mx.google.com.'), ws_mail_box_input(array_merge($base, array('auth_server' => 'mx google;com')))['error'], 'a host name');
 	pg_assert_true(!ws_mail_box_input(array_merge($base, array('auth_server' => 'localhost')))['ok'], 'with a dot');
 }
