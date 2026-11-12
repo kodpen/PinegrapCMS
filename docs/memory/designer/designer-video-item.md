@@ -4,7 +4,7 @@ description: Palette > Content > Video: a <video> with controls, no autoplay; it
 ---
 
 ## What does the Video item add?
-- Palette > Content > Video (#8744): `<video class="d-block w-100 h-auto" controls preload="metadata" playsinline>`, layer name "Video". No `autoplay`: only the hero video of step B9 plays by itself ([[designer-block-motion]]).
+- Palette > Content > Video (#8744): `<video class="d-block w-100 h-auto" controls preload="metadata" playsinline>`, layer name "Video". No `autoplay` attribute: the panel's Play by itself is the only way a video starts by itself ([[designer-video-autoplay]]).
 - `preload="metadata"` loads the first frame and the length, not the film; `playsinline` keeps it in the page on an iPhone.
 
 ## Where are its file and poster picked?

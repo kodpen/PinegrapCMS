@@ -10147,6 +10147,7 @@
     "Turned off": "Kapalı",
     "Turned off by the site": "Site tarafından kapatıldı",
     "Turned on (date)": "Açılış (tarih)",
+    "Turned on and off in the Video panel, with its pause button.": "Duraklatma düğmesiyle birlikte Video panelinden açılıp kapatılır.",
     "Turned on now: {var}": "Şu an açık olanlar: {var}",
     "Turning an application off stops it at once and keeps its connections for when it is turned on again. Removing it ends its connections. An application that registered itself can register again, and each person is then asked again on the consent screen.": "Uygulamayı kapatmak onu hemen durdurur; bağlantıları yeniden açılana kadar saklanır. Kaldırmak bağlantılarını sonlandırır. Kendini kaydeden bir uygulama yeniden kaydolabilir; o zaman her kişiye onay ekranında yeniden sorulur.",
     "Turning it off also signs out your other devices and this browser, because it signed in with a passkey.": "Kapatmak diğer cihazlarınızdaki oturumları ve bir geçiş anahtarıyla giriş yapıldığı için bu tarayıcıdaki oturumu da kapatır.",
