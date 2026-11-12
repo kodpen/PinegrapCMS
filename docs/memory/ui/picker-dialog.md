@@ -8,8 +8,7 @@ module: picker
 - `assets/js/pg_picker.js`, served as `assets/js/pg_picker.min.js` (`pg_js_bundles()`); styles in `backend.src.css` under "The picker dialog". PK2 of `plans/one-picker.md`, PR #8562.
 - A screen prints `pg_picker_script()` once (the `#pg_picker_config` JSON with the `picker.php` address and `pg_picker_texts()`, then the bundle); it works in markup injected with jQuery, as the Settings cards are.
 - `pgPicker.open({kind, value, title})` returns a promise of the picked item or null, settled once the dialog has closed (`dialog-result-after-close.md`).
-- `pg_picker_browse_button($kind, $field_id, $title)` prints Browse…: it opens the dialog at the field's value and writes the pick into the field (a select gets the option, then `pgCombobox.set()`, which fires `change`).
-- Used only on Settings › SEO › Site Icon (kind `site_icon`) until PK5 moves the other fields.
+- The field's Browse… opens it on the value or the typed text (`query`), `picker-field.md`. `pg_picker_browse_button()` (Browse beside a select) has no caller since PK5; PK10 removes it.
 
 ## What does it show?
 - Title and the kind's types (`types` of the tree answer), toolbar: Up, breadcrumb, search, sort, grid and list; folder tree with counts; the open folder's sub-folders as folder tiles, then its files; footer with the pick (picture, folder path, size), a hint, Cancel and Choose.

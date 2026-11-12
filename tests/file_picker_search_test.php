@@ -178,17 +178,20 @@ function test_file_picker_screens_wired()
 {
 	$fediverse = file_picker_search_test_source('includes/settings/fediverse.php');
 
-	pg_assert_contains("pg_file_picker_public_options(\$ap_stored['icon'], lang('(the organization logo)'))", $fediverse);
-	pg_assert_contains("id=\"ap_icon\" class=\"form-control\"' . pg_file_picker_attributes('public_image') . '>", $fediverse);
+	// The avatar, the settings pictures and the short link File field are
+	// picker fields (includes/fn/picker.php); their screens print its script.
+	pg_assert_contains("pg_picker_field('public_image', 'ap_icon', \$ap_stored['icon']", $fediverse);
+	pg_assert_contains('pg_fields_script() . pg_picker_script()', $fediverse, 'the forms and folders comboboxes keep their script');
 	pg_assert_false(strpos($fediverse, 'SELECT name FROM files') !== false, 'the avatar no longer lists every picture');
 
-	pg_assert_contains("\$seo_card[1] .= pg_fields_script();", file_picker_search_test_source('includes/settings/seo.php'));
-	pg_assert_contains("((\$output_organization_logo_picker !== '') ? pg_fields_script() : '')", file_picker_search_test_source('includes/settings/general.php'));
+	pg_assert_contains("\$seo_card[1] .= pg_picker_script();", file_picker_search_test_source('includes/settings/seo.php'));
+	pg_assert_contains("((\$output_organization_logo_picker !== '') ? pg_picker_script() : '')", file_picker_search_test_source('includes/settings/general.php'));
 
 	pg_assert_contains('id="ecommerce_first_data_global_gateway_pem_file_name" data-pg-combobox>', file_picker_search_test_source('includes/settings/commerce.php'), 'the short PEM list searches in the browser');
 	pg_assert_contains('pg_stored_file_option($ecommerce_first_data_global_gateway_pem_file_name, pg_stored_file_exists(', file_picker_search_test_source('includes/settings/prep.php'), 'a stored PEM name stays chosen');
 
 	$form = file_picker_search_test_source('includes/forms/short_link_form.php');
 
-	pg_assert_contains("+ pg_file_picker_field_attributes('file')) . pg_fields_script()", $form, 'the short link file picker searches the server');
+	pg_assert_contains("pg_picker_field('file', 'file', ", $form, 'the short link File field searches the server');
+	pg_assert_contains('pg_picker_script()', $form);
 }
