@@ -203,12 +203,16 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
         // endpoint accepts: a visitor on a form with a rich-text field got an
         // Upload tab that could only refuse, and the page carried the
         // session token in its upload addresses.
+        $files_allowed = (USER_LOGGED_IN == true) && ((USER_ROLE < 3) || (no_acl_check(USER_ID) == true));
         $output_filebrowser_properties = _pg_wysiwyg_file_properties(
-            (USER_LOGGED_IN == true) && ((USER_ROLE < 3) || (no_acl_check(USER_ID) == true)),
+            $files_allowed,
             OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY,
             $_SESSION['software']['token'] ?? '',
             $folder_id
         );
+        // The Link and Image dialogs choose through the picker, behind the
+        // same gate (pg_ckeditor_picker_script()).
+        $output_picker_bridge = $files_allowed ? pg_ckeditor_picker_script() : '';
         $output_include_source_plugin = '';
         $output_remove_sourcedialog_plugin = '';
         $output_editor_initialization = '';
@@ -270,6 +274,7 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
             '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/ckeditor_4_20/ckeditor.js"></script>
             ' . pg_code_editor_includes() . '
             <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_ckeditor_source.js?v=' . pg_code_editor_asset_version('/assets/js/pg_ckeditor_source.js') . '"></script>
+            ' . $output_picker_bridge . '
             <script>
                 var software_editor_version = "' . $page_editor_version . '";
                 CKEDITOR.config.language = "' . lang(array('info' => '')) . '";
@@ -601,6 +606,60 @@ function _pg_wysiwyg_file_properties($allowed, $base, $token, $folder_id)
                 filebrowserUploadMethod: "form",
                 filebrowserUploadUrl: "' . $upload . '",
                 filebrowserImageUploadUrl: "' . $upload . '",';
+}
+
+/**
+ * The words the editor's bridge to the picker shows (the Link and Image
+ * dialogs' buttons, the picker titles, the Unsplash dialog), by their
+ * English text. Pure but for lang().
+ *
+ * @return array
+ */
+function pg_ckeditor_picker_texts()
+{
+    $texts = array();
+
+    foreach (array(
+        'Page…', 'File…', 'Picture…', 'Choose a page', 'Choose a file', 'Choose a picture', 'Short links',
+        'Search', 'Load More', 'Cancel', 'Close', 'Loading', 'Select', '{var:1} result(s)',
+        'Sorry, we could not find any images.',
+    ) as $text) {
+        $texts[$text] = lang($text);
+    }
+
+    return $texts;
+}
+
+/**
+ * The rich text editor's bridge to the picker (assets/js/pg_ckeditor_picker.js
+ * and the Unsplash dialog, in pg_editor_bridge.min.js) with its settings, and
+ * the picker itself (pg_picker_script()), for get_wysiwyg_editor_code() when
+ * the user may browse files. Short links are offered to a manager and up, as
+ * their screens are; the Unsplash key is the one the site set. Printed once.
+ *
+ * @return string
+ */
+function pg_ckeditor_picker_script()
+{
+    static $printed = false;
+
+    if ($printed) {
+        return '';
+    }
+
+    $printed = true;
+
+    $config = array(
+        'endpoint' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/picker.php',
+        'path' => PATH,
+        'short_links' => defined('USER_ROLE') && ((int) USER_ROLE <= 2),
+        'unsplash' => (defined('UNSPLASH_ACCESS_KEY') && (UNSPLASH_ACCESS_KEY !== '')) ? (string) UNSPLASH_ACCESS_KEY : '',
+        'texts' => pg_ckeditor_picker_texts(),
+    );
+
+    return pg_picker_script()
+        . '<script type="application/json" id="pg_editor_bridge_config">' . json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . '</script>'
+        . pg_js_bundle_tags('assets/js/pg_editor_bridge.min.js');
 }
 
 /**
