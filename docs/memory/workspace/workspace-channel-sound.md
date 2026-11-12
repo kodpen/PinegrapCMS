@@ -19,7 +19,7 @@ description: The tone on the Workspace channel screen when something for the per
 
 ## Why does a hidden tab stay silent?
 - The screen asks nothing while the tab is hidden (`schedule()` stops on `document.hidden`; a look marks the person online, which holds push back). A line that came while hidden is not heard: the look on return (`soundQuiet`) only moves the mark, as the person is looking again and the marks show it.
-- Chrome also reports a window fully covered by another app as hidden; only a window still partly visible keeps looking and sounds. A look while hidden would be a request only for the sound, which the plan ruled out: the question went to the architect with the PR.
+- Chrome also reports a window fully covered by another app as hidden; only a window still partly visible keeps looking and sounds. A look while hidden would be a request only for the sound, which the plan ruled out; the background is web push's job. Whether a hidden tab should sound anyway is asked in #8798.
 
 ## Where is the switch?
 - The channel menu (⋯): "Play a sound when something comes for me", ticked when on, on by default. Kept per person and site in the browser: localStorage `ws-sound:<api url>:<user id>`, `off` when off, removed when on (`soundOn()`, `soundSet()`). Storage refused: on, and a choice lasts the page. Turning it off or on restarts the mark.
