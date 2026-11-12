@@ -613,7 +613,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/agent-last-seen.md: An agent's last seen: ws_agents.seen_at set by every call with an app agent's own key, once a minute at most, and the words on the Agents card and in "Agents in this channel" (#8828)
 - workspace/agent-page.md: Live pages an agent makes (#8815): what one is for and is not, the routes, the mark of a page without a column, versions (20 kept), 409, who may
 - workspace/agent-questions.md: How an agent asks the people with a poll or an approval; a one-answer question as a one-choice poll closed once the vote is read; why the outcome is written in the agent's name
-- workspace/agent-shown.md: How a registry agent shows (A4b2): the line under its waking message, its tag and @ picker entry, kept off tasks, its own edits, two applications' lines kept apart
+- workspace/agent-shown.md: How a registry agent shows (A4b2): the line under its waking message ("saw it · no answer needed", #8919), its tag and @ picker entry, kept off tasks, its own edits, two applications' lines kept apart
 - workspace/agent-words-wake.md: An application's API message and an agent's answer wake the agents they name or answer: only a mention or a reply counts, the asking application named, the braked line once an hour
 - workspace/channel-agent-rights.md: Who adds, changes or removes a channel's agents ("Agents in this channel" in Channel settings, workspace.channels.agents.*): who may post; the tier and a private channel's new agent only its manager
 - workspace/channel-memory.md: A channel's memory (ws_channel_memory) and the decision mark by a person or an agent (ws_messages.marked_by_kind): rows, routes, the index in the brief, the Memory tab
