@@ -1,41 +1,41 @@
 ---
 name: panel-design-language-look
-description: Look A's numbers for the panel's design language: type scale and weights, the row, the icon tile and its tones, button levels, chips, gathered rows, read and unread, what a title says
+description: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
 ---
 
 ## Where do these numbers come from?
-- From the drawing the owner chose (#8842): `plans/panel-design-language/bell-drawer.jpg`. `bell-drawer.html` beside it is the drawing's source and holds every value (open it with Inter installed); the picture is what counts.
-- DL1 of `panel-design-language-steps.md` turns them into `--pg-*` tokens and classes; where a Bootstrap 6 token gives the same pixel, the token is used.
+- From the sheet the owner approved (#8842, its second pass #8860): `plans/panel-design-language/`; `panel-design-language-sheet.md` lists its pages. `sheet.css` holds every token and shared part; a page's own style block only places things. The pictures are what counts.
+- DL1 turns them into `--pg-*` tokens and classes; where a Bootstrap 6 token gives the same pixel, the token is used.
 
 ## What is the type?
-- Inter. In a row: 14 px / 1.45 for the title, 13 px for the text under it, 12 px for time and place. A drawer's heading 16 px / 650; a count 11 px / 600.
-- Weights: 400 text, 500 chips, 550 titles and buttons, 650 headings. Nothing at 700 or above.
-- Figures that stand in a column are tabular.
+- Inter for text, its Display cut for headings (letter spacing -0.03em at 24 px, -0.015em at 17 px). Text 14 px / 1.45; second text and buttons 13 px; time, place, help and table headings 12 px; a count 11 px.
+- Screen title 24 / 650; section or card title 17 / 650 (15 / 650 in the status column); row title and label 550. Weights 400, 500, 550, 650; nothing at 700 or above. Figures in a column are tabular.
 
-## What is a row?
-- Padding 10 px 12 px, 8 px from the drawer's edge, corners 12 px, gap 11 px; no line between rows; hover is a faint fill (the text colour at 5%).
-- Left the icon tile; then the title on one line with the time at its right; under it at most two lines of text in the second text colour; then, only when the row asks for something, a line with its button and the place.
-- At the right edge the unread dot: 8 px, the accent. A read row has its title at 450 in the second text colour and a dimmed tile.
-- Hover shows the row's quick actions (Mark as read, More actions) in place of the time; on touch they stay in the row's menu.
+## What are surfaces and depth?
+- The page: its colour with two faint glows at the top (the accent, violet).
+- A card: a top-to-bottom gradient of two near surface colours, a 1 px line, a light line inside its top edge, a soft drop shadow; corners 16 px (20 px for a drawer or a sheet).
+- An inner card (settings rows): a faint tint with an inset line, corners 16 px, rows split by a line.
+- A floating bar (the save bar): a translucent surface with a 16 px blur, corners 16 px, a stronger shadow.
 
-## What is the icon tile?
-- 28 px, corners 8 px, a 14 px glyph in the tone's colour on that colour at 16% (dark) or 11% (light). A person is a round avatar of the same size.
-- A tone names the module: team blue, shop teal, content rose, accounting and warnings amber, system gray. A new module gets its tone in DL1's list, never a colour of its own in a screen.
+## What is a field?
+- 36 px high (32 px inside a row), corners 10 px, inset: the field colour, a 1 px line, an inner shadow. Focus: the accent as its line and a 4 px ring of it at 24%. Error: a rose line, a 4 px ring at 16%, the message under it in rose at 12 px.
+- Label above, 13 / 550, 6 px gap; help under, 12 px in the third text colour; a unit or a counter at the field's right end.
+- Switch 38 by 22 px, on is the accent gradient. Checkbox 17 px, corners 6 px.
 
 ## Which buttons are there?
-- Filled (the accent): at most one in a view, the answer the person is asked for.
-- Quiet (the text colour at 8%, no border): every other row action; 28 px high, corners 8 px, 13 px / 550.
-- Icon button: 32 px, corners 8 px, no border; a heading's actions.
-- No bordered button in a row.
+- Filled: the accent gradient with a light top edge and a soft glow under it; at most one in a view.
+- Quiet: the text colour at 6% with an inset line. Ghost: text only, in the second text colour. Danger: rose on rose at 12% with a rose line.
+- 34 px high, corners 10 px, 13 / 550; small 28 px, corners 8 px. Icon button 32 px (28 px small), corners 9 px; the chosen or hovered one gets the quiet fill.
 
-## What are chips, counts and day labels?
-- Filter chip: 28 px high, round; the chosen one filled with the text colour at 10%, the others bare; its count in the third text colour.
-- Count beside a title: 11 px / 600 on the text colour at 9%, round.
-- Day label: 12 px / 550 in the third text colour, sentence case, no line.
+## What are the segmented control, the status pill and the icon tile?
+- Segmented control (in place of filter chips): a quiet track with 3 px padding, corners 11 px; segments 26 px high, 13 / 500; the chosen one is a raised thumb; a count in the third text colour.
+- Status pill: 22 px high, round, 12 / 550, a 6 px dot with a halo, the tone as a faint fill with a line of it. Paid and live teal, waiting amber, on the way blue, cancelled and out of stock rose, draft gray.
+- Icon tile: 28 px (34 px in a settings row), corners 9 px (11 px), a 14 px glyph in the tone on a diagonal gradient of the tone (26% to 11% dark, 17% to 8% light) with a line of it. A person is a round avatar.
+- A tone names the module: team blue, shop teal, content rose, accounting and warnings amber, reports violet, system gray. A new module gets its tone in DL1's list, never a colour of its own in a screen.
 
-## How are rows of one kind gathered?
-- One row: the kind as its title with the count beside it, the sum or the newest fact as its text. "Show N …" opens the single lines under it (a 2 px line at the left, 13 px, the value at the right); "Hide" closes them.
+## What is a row, and how are rows gathered?
+- The bell's row (`bell-drawer.html`, first pass): tile, a title on one line with the time at its right, at most two lines of text, a button only when the row asks for something, the unread dot at the right; a read row is dimmed; hover shows the quick actions.
+- Rows of one kind: one row with the kind as its title and the count beside it; "Show N …" opens the single lines, "Hide" closes them.
 
 ## What does a title say?
-- What happened and with what, in a few words: "New order #SP-1044", "Ayşe Demir mentioned you". No greeting, no "Congratulations", no label with a colon ("Order number: …").
-- A state is told by the tile and the text, never by the title's colour.
+- What happened and with what, in a few words: "New order #SP-1044". No greeting, no label with a colon. A state is told by the tile, the pill and the text, never by the title's colour.
