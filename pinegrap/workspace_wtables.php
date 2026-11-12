@@ -150,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $result = ws_wtable_column_create($viewer, $table, $input + array('type' => $type));
             }
 
-            $result['ok'] ? $liveform->add_notice(h(lang('The column was saved.'))) : $refused($result);
+            $result['ok'] ? $liveform->add_notice(h(ws_wtable_screen_column_saved_text($result))) : $refused($result);
             $back .= '#ws-wt-columns';
             break;
 

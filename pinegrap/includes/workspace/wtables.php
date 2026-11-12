@@ -1618,15 +1618,20 @@ function ws_wtable_column($table_id, $column_id)
 }
 
 /**
- * May the person rename a column or change its options?
+ * May the person rename a column or change its options? A new name is
+ * written into the table's formulas that name the column
+ * (ws_wtable_formulas_renamed()): formulas holds what they become, and a
+ * name that would make one work out something else is refused (409, the
+ * formula columns in formula_names).
  *
  * @param array      $viewer
  * @param array|null $table
- * @param array|null $column ws_wtable_column()
- * @param mixed      $input  name, options (type stays)
- * @return array ok, sets, error, field, status
+ * @param array|null $column  ws_wtable_column()
+ * @param mixed      $input   name, options (type stays)
+ * @param array|null $columns the table's columns, read here when null
+ * @return array ok, sets, formulas (column id => expression), formula_names, error, field, status
  */
-function ws_wtable_column_update_check($viewer, $table, $column, $input)
+function ws_wtable_column_update_check($viewer, $table, $column, $input, $columns = null)
 {
     if (!ws_wtable_may(ws_wtable_access($viewer, $table), 'write') || !is_array($column)) {
         return ws_wtable_refusal('not_found', '', 404);
@@ -1648,11 +1653,29 @@ function ws_wtable_column_update_check($viewer, $table, $column, $input)
         $refused = ws_wtable_rollup_column_refusal($viewer, $table, array('type' => (string) $column['type']) + $check['sets']);
     }
 
-    return ($refused !== null) ? $refused : $check;
+    if ($refused !== null) {
+        return $refused;
+    }
+
+    $renamed = array('ok' => true, 'expressions' => array(), 'formula_names' => array());
+
+    if (isset($check['sets']['name']) && ($check['sets']['name'] !== (string) $column['name'])) {
+        $columns = is_array($columns) ? $columns : ws_wtable_columns((int) $table['id']);
+        $renamed = ws_wtable_formulas_renamed($columns, (int) $column['id'], $check['sets']['name']);
+    }
+
+    if (!$renamed['ok']) {
+        return ws_wtable_refusal($renamed['error'], 'name', 409) + array('formula_names' => $renamed['formula_names']);
+    }
+
+    return $check + array('formulas' => $renamed['expressions'], 'formula_names' => $renamed['formula_names']);
 }
 
 /**
- * Rename a column or change its options.
+ * Rename a column or change its options. A rename is checked again and
+ * written over the table's columns locked in one transaction, with the
+ * formulas it rewrites, so that a formula changed meanwhile is neither
+ * overwritten nor left with the old name.
  *
  * @param array      $viewer
  * @param array|null $table
@@ -1668,6 +1691,22 @@ function ws_wtable_column_update($viewer, $table, $column, $input)
         return $check;
     }
 
+    $table_id = (int) $table['id'];
+    $locked = isset($check['sets']['name']) && ($check['sets']['name'] !== (string) $column['name']);
+
+    if ($locked) {
+        db("START TRANSACTION");
+
+        $columns = ws_wtable_columns_locked($table_id);
+        $check = ws_wtable_column_update_check($viewer, $table, $columns[(string) (int) $column['id']] ?? null, $input, $columns);
+
+        if (!$check['ok']) {
+            db("ROLLBACK");
+
+            return $check;
+        }
+    }
+
     $sets = array();
 
     if (isset($check['sets']['name'])) {
@@ -1678,9 +1717,28 @@ function ws_wtable_column_update($viewer, $table, $column, $input)
         $sets[] = "options = '" . e(ws_wtable_options_encode($check['sets']['options'])) . "'";
     }
 
-    db("UPDATE ws_wtable_columns SET " . implode(', ', $sets) . " WHERE id = '" . (int) $column['id'] . "'");
+    $done = db("UPDATE ws_wtable_columns SET " . implode(', ', $sets) . " WHERE id = '" . (int) $column['id'] . "' AND table_id = '" . $table_id . "'");
 
-    ws_wtable_columns_changed((int) $table['id']);
+    foreach ($locked ? $check['formulas'] : array() as $id => $expression) {
+        if ($done === false) {
+            break;
+        }
+
+        $options = array('expression' => $expression) + $columns[(string) $id]['options'];
+        $done = db("UPDATE ws_wtable_columns SET options = '" . e(ws_wtable_options_encode($options)) . "' WHERE id = '" . (int) $id . "' AND table_id = '" . $table_id . "'");
+    }
+
+    if ($locked) {
+        if ($done === false) {
+            db("ROLLBACK");
+
+            return ws_wtable_refusal('not_saved', '', 500);
+        }
+
+        db("COMMIT");
+    }
+
+    ws_wtable_columns_changed($table_id);
 
     return $check;
 }

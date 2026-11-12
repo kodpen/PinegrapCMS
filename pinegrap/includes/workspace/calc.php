@@ -1125,9 +1125,61 @@ function ws_calc_call($name, $args)
 }
 
 /**
+ * Where the names a formula may use are written in it: each place a name
+ * stands, longest names first so that "Net total" is not read as "Net". A
+ * name followed by a bracket is a function, not the name. A place taken is
+ * masked as "@" and noughts of its length, which the names still to come
+ * read as they read a bound "@L<slot>": nothing is found inside it, and no
+ * name starts right after it.
+ *
+ * @param string  $expression
+ * @param array[] $known folded name => text (as written), slot
+ * @return array[] at (byte offset), length (bytes), slot; in order of at
+ */
+function ws_calc_bind_spans($expression, $known)
+{
+    $expression = (string) $expression;
+    $spans = array();
+
+    if (empty($known) || ($expression === '')) {
+        return $spans;
+    }
+
+    $names = array_values($known);
+    usort($names, function ($a, $b) {
+        return mb_strlen($b['text']) - mb_strlen($a['text']);
+    });
+
+    $masked = $expression;
+
+    foreach ($names as $name) {
+        if (($name['text'] === '') || (mb_stripos($masked, $name['text']) === false)) {
+            continue;
+        }
+
+        $pattern = '/(?<![\p{L}\p{N}_@])' . preg_quote($name['text'], '/') . '(?![\p{L}\p{N}_])(?!\s*\()/iu';
+
+        if (!preg_match_all($pattern, $masked, $matches, PREG_OFFSET_CAPTURE)) {
+            continue;
+        }
+
+        foreach ($matches[0] as $match) {
+            $length = strlen($match[0]);
+            $spans[] = array('at' => (int) $match[1], 'length' => $length, 'slot' => (int) $name['slot']);
+            $masked = substr_replace($masked, '@' . str_repeat('0', $length - 1), (int) $match[1], $length);
+        }
+    }
+
+    usort($spans, function ($a, $b) {
+        return $a['at'] - $b['at'];
+    });
+
+    return $spans;
+}
+
+/**
  * Puts the names a formula may use in its place: each name written in it
- * becomes a "@L<slot>" token, longest names first so that "Net total" is not
- * read as "Net". A name followed by a bracket is a function, not the name.
+ * (ws_calc_bind_spans()) becomes a "@L<slot>" token.
  *
  * @param string  $expression
  * @param array[] $known folded name => text (as written), slot
@@ -1136,33 +1188,65 @@ function ws_calc_call($name, $args)
 function ws_calc_bind($expression, $known)
 {
     $expression = (string) $expression;
+    $spans = ws_calc_bind_spans($expression, $known);
 
-    if (empty($known) || ($expression === '')) {
-        return array($expression, false);
+    foreach (array_reverse($spans) as $span) {
+        $expression = substr_replace($expression, '@L' . $span['slot'], $span['at'], $span['length']);
     }
 
-    $names = array_values($known);
-    usort($names, function ($a, $b) {
-        return mb_strlen($b['text']) - mb_strlen($a['text']);
-    });
+    return array($expression, !empty($spans));
+}
 
-    $used = false;
+/**
+ * An expression with one of its names renamed, as a spreadsheet keeps its
+ * formulas when a column is renamed: every place the name of $slot stands
+ * (bound with the names before) reads the new text, everything else stays
+ * as written. Faithful when the result, bound with the names after, puts
+ * the same slot at every place the names before did. Besides those it may
+ * bind the new name where it stood unbound, a name nobody gave (a ref
+ * error before), but only when the new name starts with a letter: one
+ * starting with a figure or a sign would take that figure out of a formula
+ * that worked.
+ *
+ * @param string  $expression
+ * @param array[] $before folded name => text, slot: the names before
+ * @param array[] $after  the names after the rename
+ * @param int     $slot   the slot renamed
+ * @param string  $text   its new name
+ * @return array expression, changed (bool), faithful (bool)
+ */
+function ws_calc_rename($expression, $before, $after, $slot, $text)
+{
+    $expression = (string) $expression;
+    $text = (string) $text;
+    $slot = (int) $slot;
+    $out = '';
+    $from = 0;
+    $kept = array();
 
-    foreach ($names as $name) {
-        if (($name['text'] === '') || (mb_stripos($expression, $name['text']) === false)) {
-            continue;
-        }
+    foreach (ws_calc_bind_spans($expression, $before) as $span) {
+        $written = ($span['slot'] === $slot) ? $text : substr($expression, $span['at'], $span['length']);
+        $out .= substr($expression, $from, $span['at'] - $from);
+        $kept[strlen($out)] = array('length' => strlen($written), 'slot' => $span['slot']);
+        $out .= $written;
+        $from = $span['at'] + $span['length'];
+    }
 
-        $pattern = '/(?<![\p{L}\p{N}_@])' . preg_quote($name['text'], '/') . '(?![\p{L}\p{N}_])(?!\s*\()/iu';
-        $replaced = preg_replace($pattern, '@L' . (int) $name['slot'], $expression);
+    $out .= substr($expression, $from);
+    $faithful = true;
+    $named = (bool) preg_match('/^[\p{L}_]/u', $text);
 
-        if (($replaced !== null) && ($replaced !== $expression)) {
-            $expression = $replaced;
-            $used = true;
+    foreach (ws_calc_bind_spans($out, $after) as $span) {
+        $was = isset($kept[$span['at']]) ? $kept[$span['at']] : null;
+
+        if ($was && ($was['length'] === $span['length']) && ($was['slot'] === $span['slot'])) {
+            unset($kept[$span['at']]);
+        } elseif (($span['slot'] !== $slot) || !$named) {
+            $faithful = false;
         }
     }
 
-    return array($expression, $used);
+    return array('expression' => $out, 'changed' => ($out !== $expression), 'faithful' => $faithful && empty($kept));
 }
 
 /**

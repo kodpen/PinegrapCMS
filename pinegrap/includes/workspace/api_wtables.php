@@ -212,7 +212,7 @@ function ws_wtable_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspaceTableColumn',
             'summary'      => 'Change a column of a workflow table',
-            'description'  => 'Renames a column or changes its options; its type stays (type_fixed). Cells already written that the new options no longer take are kept until their row is next written.' . $errors,
+            'description'  => 'Renames a column or changes its options; its type stays (type_fixed). Cells already written that the new options no longer take are kept until their row is next written. A rename is written into the expression of every formula column of the table that names the column, as a spreadsheet does (the dry run lists them in formulas, by id); a name that would make a formula work out something else (another column has it, or it would take a figure the formula holds) is refused with 409 name_changes_formula, one that would make a formula longer than ' . $limits['formula'] . ' characters with 409 name_formula_too_long, both naming the formula columns.' . $errors,
             'params'       => array_merge(array($id, $column_id), $column_fields),
         ),
 
@@ -819,6 +819,12 @@ function ws_api_wtable_message($code)
 
         case 'key_type':
             return lang('Only a text or number column can be the key.');
+
+        case 'name_changes_formula':
+            return lang('With this name a formula of the table would work out something else: choose another name.');
+
+        case 'name_formula_too_long':
+            return lang(array('string' => 'With this name a formula of the table would be longer than {var:1} characters.', 'vars' => ws_wtable_limits()['formula']));
     }
 
     return lang(array('string' => 'Refused: {var:1}.', 'vars' => (string) $code));
@@ -854,6 +860,11 @@ function ws_api_wtable_refused($result, $what)
             // The rows at fault, by the numbers the table shows.
             if (!empty($result['rows'])) {
                 $message .= ' ' . lang(array('string' => 'Rows by number: {var:1} ({var:2} in all).', 'vars' => array(implode(', ', array_map('intval', $result['rows'])), (int) ($result['rows_count'] ?? count($result['rows'])))));
+            }
+
+            // The formula columns a rename would change, by name.
+            if (!empty($result['formula_names'])) {
+                $message .= ' ' . lang(array('string' => 'Formulas: {var:1}.', 'vars' => implode(', ', (array) $result['formula_names'])));
             }
 
             api_fail(409, $code, $message, $field);
@@ -1297,7 +1308,7 @@ function ws_api_wtable_columns_update($params)
         ws_api_wtable_refused($checked, lang('Table column'));
     }
 
-    api_dry_run_stop('updated', 'workspace_table_column', array('id' => (int) $column['id'], 'fields' => array_keys($checked['sets'])));
+    api_dry_run_stop('updated', 'workspace_table_column', array('id' => (int) $column['id'], 'fields' => array_keys($checked['sets']), 'formulas' => array_map('intval', array_keys($checked['formulas']))));
 
     $result = ws_wtable_column_update($viewer, $table, $column, $data);
 
