@@ -180,9 +180,12 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'architecture-',
         group: { title: _sdT('Architecture'), icon: 'bi-rulers' },
         items: [
-            { label: _sdT('Architecture: Plate Hero'),     type: 'component', icon: 'bi-image',       extra: { componentType: 'architecture-hero' } },
-            { label: _sdT('Architecture: Project Sheet'),  type: 'component', icon: 'bi-card-list',   extra: { componentType: 'architecture-sheet' } },
-            { label: _sdT('Architecture: Material Board'), type: 'component', icon: 'bi-grid-3x2',    extra: { componentType: 'architecture-materials' } }
+            { label: _sdT('Architecture: Plate Hero'),     type: 'component', icon: 'bi-image',       extra: { componentType: 'architecture-hero' },
+              desc: _sdT('A headline, a short text and two buttons over a wide photograph captioned like a plate, with its number and a project link.') },
+            { label: _sdT('Architecture: Project Sheet'),  type: 'component', icon: 'bi-card-list',   extra: { componentType: 'architecture-sheet' },
+              desc: _sdT('A project photograph beside its name, a short text, a list of facts on hairlines and the credits of who built it.') },
+            { label: _sdT('Architecture: Material Board'), type: 'component', icon: 'bi-grid-3x2',    extra: { componentType: 'architecture-materials' },
+              desc: _sdT('Six material samples in a grid on a tinted band, each a square photo with its name, its finish and where it was used.') }
         ],
         build: function (ctype) {
             if (ctype === 'architecture-hero') return buildHero();

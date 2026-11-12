@@ -196,9 +196,12 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'dealership-',
         group: { title: _sdT('Car Dealership'), icon: 'bi-car-front' },
         items: [
-            { label: _sdT('Dealership: Showroom Panel'), type: 'component', icon: 'bi-car-front',  extra: { componentType: 'dealership-showroom' } },
-            { label: _sdT('Dealership: Stock Finder'),   type: 'component', icon: 'bi-funnel',     extra: { componentType: 'dealership-finder' } },
-            { label: _sdT('Dealership: Three Ways In'),  type: 'component', icon: 'bi-signpost-2', extra: { componentType: 'dealership-ways' } }
+            { label: _sdT('Dealership: Showroom Panel'), type: 'component', icon: 'bi-car-front',  extra: { componentType: 'dealership-showroom' },
+              desc: _sdT('A full-width car photo with the model name, cash price and two buttons over it, and three large figures along its foot.') },
+            { label: _sdT('Dealership: Stock Finder'),   type: 'component', icon: 'bi-funnel',     extra: { componentType: 'dealership-finder' },
+              desc: _sdT('A centred heading with new, used and all cars buttons, a row of body style tiles with large icons and links to the makes.') },
+            { label: _sdT('Dealership: Three Ways In'),  type: 'component', icon: 'bi-signpost-2', extra: { componentType: 'dealership-ways' },
+              desc: _sdT('Three tall photo tiles for a test drive, a trade-in value and finance, each with a heading, a line and a button at its foot.') }
         ],
         build: function (ctype) {
             if (ctype === 'dealership-showroom') return buildShowroom();

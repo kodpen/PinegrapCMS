@@ -53,7 +53,8 @@ StyleDesigner.registerBlockFamily(function (kit) {
     return {
         prefix: 'cta-',
         items: [
-            { label: _sdT('CTA: Sticky Bar'), type: 'component', icon: 'bi-pin-angle', extra: { componentType: 'cta-sticky' } }
+            { label: _sdT('CTA: Sticky Bar'), type: 'component', icon: 'bi-pin-angle', extra: { componentType: 'cta-sticky' },
+              desc: _sdT('A slim bar that stays at the top of the window while its section scrolls: a short title, one line and two small buttons.') }
         ],
         build: function (ctype) {
             if (ctype === 'cta-sticky') return buildSticky();

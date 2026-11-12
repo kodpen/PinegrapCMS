@@ -196,8 +196,10 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'bakery-',
         group: { title: _sdT('Bakery'), icon: 'bi-cake2' },
         items: [
-            { label: _sdT('Bakery: Fresh from the Oven Hero'), type: 'component', icon: 'bi-fire',         extra: { componentType: 'bakery-hero' } },
-            { label: _sdT('Bakery: Cake Sizes'),               type: 'component', icon: 'bi-cake2',        extra: { componentType: 'bakery-cakes' } }
+            { label: _sdT('Bakery: Fresh from the Oven Hero'), type: 'component', icon: 'bi-fire',         extra: { componentType: 'bakery-hero' },
+              desc: _sdT('A large headline, a text and two buttons over the oven times of the day, beside a tall photo with an order tag hung on it.') },
+            { label: _sdT('Bakery: Cake Sizes'),               type: 'component', icon: 'bi-cake2',        extra: { componentType: 'bakery-cakes' },
+              desc: _sdT('Four cake sizes drawn to scale with servings and a starting price, then sponges and fillings as pills and an order note.') }
         ],
         build: function (ctype) {
             if (ctype === 'bakery-hero') return buildHero();

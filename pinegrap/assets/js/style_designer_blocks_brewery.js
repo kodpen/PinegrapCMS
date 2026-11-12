@@ -107,10 +107,14 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'brewery-',
         group: { title: _sdT('Brewery'), icon: 'bi-cup-straw' },
         items: [
-            { label: _sdT('Brewery: Pour Hero'),     type: 'component', icon: 'bi-cup-straw',  extra: { componentType: 'brewery-hero' } },
-            { label: _sdT('Brewery: Tap Board'),     type: 'component', icon: 'bi-list-ol',    extra: { componentType: 'brewery-taps' } },
-            { label: _sdT('Brewery: Tasting Flight'), type: 'component', icon: 'bi-cup',       extra: { componentType: 'brewery-flight' } },
-            { label: _sdT('Brewery: Fresh Release'), type: 'component', icon: 'bi-stars',      extra: { componentType: 'brewery-release' } }
+            { label: _sdT('Brewery: Pour Hero'),     type: 'component', icon: 'bi-cup-straw',  extra: { componentType: 'brewery-hero' },
+              desc: _sdT('A dark band: a huge headline, text, two buttons and three facts beside a tall brewhouse photo with a glass that fills up.') },
+            { label: _sdT('Brewery: Tap Board'),     type: 'component', icon: 'bi-list-ol',    extra: { componentType: 'brewery-taps' },
+              desc: _sdT('A dark board of six numbered taps in two columns, each beer with a small glass of its colour, its style, strength and bitterness.') },
+            { label: _sdT('Brewery: Tasting Flight'), type: 'component', icon: 'bi-cup',       extra: { componentType: 'brewery-flight' },
+              desc: _sdT('Four tasting glasses on a paddle from light to dark that fill in turn, beside what a flight is and two buttons.') },
+            { label: _sdT('Brewery: Fresh Release'), type: 'component', icon: 'bi-stars',      extra: { componentType: 'brewery-release' },
+              desc: _sdT('A can photo with a sticker beside a new beer name in huge type, its strength, bitterness and batch, tasting notes and buttons.') }
         ],
         build: function (ctype) {
 

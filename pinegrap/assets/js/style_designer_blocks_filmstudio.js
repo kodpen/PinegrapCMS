@@ -269,9 +269,12 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'filmstudio-',
         group: { title: _sdT('Film Studio'), icon: 'bi-film' },
         items: [
-            { label: _sdT('Film Studio: Showreel Hero'),          type: 'component', icon: 'bi-play-btn',     extra: { componentType: 'filmstudio-reel' } },
-            { label: _sdT('Film Studio: Title Card and Credits'), type: 'component', icon: 'bi-camera-reels', extra: { componentType: 'filmstudio-credits' } },
-            { label: _sdT('Film Studio: Cuts for Every Screen'),  type: 'component', icon: 'bi-aspect-ratio', extra: { componentType: 'filmstudio-formats' } }
+            { label: _sdT('Film Studio: Showreel Hero'),          type: 'component', icon: 'bi-play-btn',     extra: { componentType: 'filmstudio-reel' },
+              desc: _sdT('A dark band with a huge title and two buttons over a video player with its slate, then the films of the reel on a timeline.') },
+            { label: _sdT('Film Studio: Title Card and Credits'), type: 'component', icon: 'bi-camera-reels', extra: { componentType: 'filmstudio-credits' },
+              desc: _sdT('A film title card and its facts over a wide cinema still with a play button, then the credits around a centre line and a quote.') },
+            { label: _sdT('Film Studio: Cuts for Every Screen'),  type: 'component', icon: 'bi-aspect-ratio', extra: { componentType: 'filmstudio-formats' },
+              desc: _sdT('Four delivery formats, each drawn as a frame at its aspect ratio with where it is shown and its lengths, and a project button.') }
         ],
         build: function (ctype) {
             if (ctype === 'filmstudio-reel') return buildReel();

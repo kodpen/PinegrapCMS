@@ -213,9 +213,12 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'construction-',
         group: { title: _sdT('Construction'), icon: 'bi-bricks' },
         items: [
-            { label: _sdT('Construction: Site Board Hero'),   type: 'component', icon: 'bi-image',       extra: { componentType: 'construction-hero' } },
-            { label: _sdT('Construction: Project Progress'),  type: 'component', icon: 'bi-bar-chart-steps', extra: { componentType: 'construction-progress' } },
-            { label: _sdT('Construction: Neighbour Notice'),  type: 'component', icon: 'bi-signpost',    extra: { componentType: 'construction-notice' } }
+            { label: _sdT('Construction: Site Board Hero'),   type: 'component', icon: 'bi-image',       extra: { componentType: 'construction-hero' },
+              desc: _sdT('A site photo beside a striped board with the headline, two square buttons and four facts about how the firm builds.') },
+            { label: _sdT('Construction: Project Progress'),  type: 'component', icon: 'bi-bar-chart-steps', extra: { componentType: 'construction-progress' },
+              desc: _sdT('A project text, a progress bar and the latest site photo, beside five stages marked done, on site now or coming next.') },
+            { label: _sdT('Construction: Neighbour Notice'),  type: 'component', icon: 'bi-signpost',    extra: { componentType: 'construction-notice' },
+              desc: _sdT('A striped notice to neighbours: working hours, deliveries, noisy work, how long it lasts and a button to call the site.') }
         ],
         build: function (ctype) {
             if (ctype === 'construction-hero') return buildHero();

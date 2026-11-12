@@ -29,8 +29,10 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'sample-',
         group: { title: _sdT('Sample Family'), icon: 'bi-box' },
         items: [
-            { label: _sdT('Sample: Band'),  type: 'component', icon: 'bi-square', extra: { componentType: 'sample-band' } },
-            { label: _sdT('Sample: Tiles'), type: 'component', icon: 'bi-grid',   extra: { componentType: 'sample-tiles' } }
+            { label: _sdT('Sample: Band'),  type: 'component', icon: 'bi-square', extra: { componentType: 'sample-band' },
+              desc: _sdT('A band with a heading over a wide picture.') },
+            { label: _sdT('Sample: Tiles'), type: 'component', icon: 'bi-grid',   extra: { componentType: 'sample-tiles' },
+              desc: _sdT('A heading over two rounded tiles side by side.') }
         ],
         build: function (ctype) {
             if (ctype === 'sample-band') {

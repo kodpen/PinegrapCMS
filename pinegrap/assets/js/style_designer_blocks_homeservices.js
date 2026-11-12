@@ -233,8 +233,10 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'homeservices-',
         group: { title: _sdT('Home Services'), icon: 'bi-tools' },
         items: [
-            { label: _sdT('Home Services: Hero with Job Sheet'), type: 'component', icon: 'bi-clipboard-check', extra: { componentType: 'homeservices-jobsheet' } },
-            { label: _sdT('Home Services: Emergency Line'),      type: 'component', icon: 'bi-telephone-plus',  extra: { componentType: 'homeservices-emergency' } }
+            { label: _sdT('Home Services: Hero with Job Sheet'), type: 'component', icon: 'bi-clipboard-check', extra: { componentType: 'homeservices-jobsheet' },
+              desc: _sdT('A headline, two buttons and the emergency number beside a job sheet with the visit facts, what is brought and the technician.') },
+            { label: _sdT('Home Services: Emergency Line'),      type: 'component', icon: 'bi-telephone-plus',  extra: { componentType: 'homeservices-emergency' },
+              desc: _sdT('A dark band with the emergency number, three promises and the jobs it covers, beside numbered steps to take before help arrives.') }
         ],
         build: function (ctype) {
             if (ctype === 'homeservices-jobsheet') return buildJobSheet();

@@ -97,10 +97,14 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'carrental-',
         group: { title: _sdT('Car Rental'), icon: 'bi-key' },
         items: [
-            { label: _sdT('Car Rental: Trip Hero'),     type: 'component', icon: 'bi-car-front',     extra: { componentType: 'carrental-hero' } },
-            { label: _sdT('Car Rental: Class Line-up'), type: 'component', icon: 'bi-layout-three-columns', extra: { componentType: 'carrental-lineup' } },
-            { label: _sdT('Car Rental: Cover Levels'),  type: 'component', icon: 'bi-shield-check',  extra: { componentType: 'carrental-cover' } },
-            { label: _sdT('Car Rental: Sample Quote'),  type: 'component', icon: 'bi-receipt',       extra: { componentType: 'carrental-quote' } }
+            { label: _sdT('Car Rental: Trip Hero'),     type: 'component', icon: 'bi-car-front',     extra: { componentType: 'carrental-hero' },
+              desc: _sdT('A very large headline over a trip slip of desks, dates, car class, day rate and two buttons, on a car photo, then three facts.') },
+            { label: _sdT('Car Rental: Class Line-up'), type: 'component', icon: 'bi-layout-three-columns', extra: { componentType: 'carrental-lineup' },
+              desc: _sdT('Car classes from small to big on a sideways rail, each card with a sample model, seats, bags, gearbox, day rate and deposit.') },
+            { label: _sdT('Car Rental: Cover Levels'),  type: 'component', icon: 'bi-shield-check',  extra: { componentType: 'carrental-cover' },
+              desc: _sdT('A dark band of three cover levels, each with its day price, the excess left as a filling meter and what it covers.') },
+            { label: _sdT('Car Rental: Sample Quote'),  type: 'component', icon: 'bi-receipt',       extra: { componentType: 'carrental-quote' },
+              desc: _sdT('What a week costs set out as a receipt, line by line, with the total and the deposit at its foot, beside a booking button.') }
         ],
         build: function (ctype) {
 

@@ -237,9 +237,12 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'drivingschool-',
         group: { title: _sdT('Driving School'), icon: 'bi-car-front' },
         items: [
-            { label: _sdT('Driving School: Licence Classes'), type: 'component', icon: 'bi-postcard',         extra: { componentType: 'drivingschool-licences' } },
-            { label: _sdT('Driving School: Theory Topics'),   type: 'component', icon: 'bi-sign-stop',        extra: { componentType: 'drivingschool-signs' } },
-            { label: _sdT('Driving School: Test Sheet'),      type: 'component', icon: 'bi-clipboard-check',  extra: { componentType: 'drivingschool-test-sheet' } }
+            { label: _sdT('Driving School: Licence Classes'), type: 'component', icon: 'bi-postcard',         extra: { componentType: 'drivingschool-licences' },
+              desc: _sdT('Four licence class cards, each with its letter on a number plate, the vehicle, minimum age, lessons, gearbox and a link.') },
+            { label: _sdT('Driving School: Theory Topics'),   type: 'component', icon: 'bi-sign-stop',        extra: { componentType: 'drivingschool-signs' },
+              desc: _sdT('The pass mark in a framed box with a practice button, beside six theory topics drawn as road signs with their question counts.') },
+            { label: _sdT('Driving School: Test Sheet'),      type: 'component', icon: 'bi-clipboard-check',  extra: { componentType: 'drivingschool-test-sheet' },
+              desc: _sdT('The six stages of the driving test with their minutes, beside a sample sheet of the faults marked per skill and the result.') }
         ],
         build: function (ctype) {
             if (ctype === 'drivingschool-licences')   return buildLicences();
