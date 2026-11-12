@@ -1,11 +1,12 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The report screens' shared view (view_order_report.php): the summary
- * figures and the chart over the report's table, drawn with the dashboard's
- * own drawing (assets/js/pg_dash.js: pgDash.tiles, line, rows, chartTips,
- * mapShapes). The data comes ready from the server in #pg_report_view_data
- * (includes/fn/report_view.php); every text is written with textContent.
+ * The report screens' shared view (the order, visitor, shipping and ERP
+ * tax reports): the summary figures and the chart over the report's table,
+ * drawn with the dashboard's own drawing (assets/js/pg_dash.js:
+ * pgDash.tiles, line, rows, chartTips, mapShapes). The data comes ready
+ * from the server in #pg_report_view_data (includes/fn/report_view.php);
+ * every text is written with textContent.
  *
  * It also opens the report's settings drawer at once where the server asked
  * for it (data-pg-open-at-load: a plain new report, a save that came back
@@ -32,7 +33,9 @@
     function line(box, chart) {
         var el = window.pgDash.el;
         var figure = el("figure", "pg-dash-chart pg-report-view-line");
-        figure.appendChild(window.pgDash.line(chart.values, null, chart.label, "", chart.tips));
+        // A second, dashed line where the report gives one (the ERP tax
+        // report's deductible tax beside the calculated).
+        figure.appendChild(window.pgDash.line(chart.values, chart.compare || null, chart.label, chart.compare_label || "", chart.tips));
         var ends = el("figcaption", "pg-report-view-ends");
         ends.setAttribute("aria-hidden", "true");
         ends.appendChild(el("span", "", chart.first));
@@ -112,7 +115,7 @@
         var figures = root.querySelector(".pg-report-view-figures");
         var tiles = card("pg-report-view-tiles");
         tiles.appendChild(window.pgDash.tiles((data.figures || []).map(function (figure) {
-            return {label: figure.label, text: figure.text};
+            return {label: figure.label, text: figure.text, note: figure.note || "", tone: figure.tone || ""};
         })));
         figures.appendChild(tiles);
 

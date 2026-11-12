@@ -711,6 +711,7 @@
     "{var:1} brought this channel back": "{var:1} bu kanalı arşivden geri getirdi",
     "{var:1} by folder": "{var:1} klasörden",
     "{var:1} by hand": "{var:1} elle",
+    "{var:1} by month": "Aylara göre {var:1}",
     "{var:1} bytes": "{var:1} bayt",
     "{var:1} calendars": "{var:1} takvim",
     "{var:1} call(s) to the object storage failed in the last hour. The last one: {var:2}": "Son bir saatte nesne depolamaya yapılan {var:1} çağrı başarısız oldu. Sonuncusu: {var:2}",
