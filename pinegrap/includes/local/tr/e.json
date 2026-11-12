@@ -2527,6 +2527,7 @@
     "emergencies": "acil-durumlar",
     "emergency, ambulance, urgent, poison": "acil, ambulans, ivedi, zehir",
     "emergency, urgent, flood, leak, power cut, out of hours": "acil, ivedi, su baskını, sızıntı, elektrik kesintisi, mesai dışı",
+    "emergency, urgent, flood, leak, power cut, out of hours, gas": "acil durum, acil, su baskını, sızıntı, elektrik kesintisi, mesai dışı, gaz",
     "emergency, urgent, night, weekend, out of hours": "acil, ivedi, gece, hafta sonu, mesai dışı",
     "emily.turner@example.com": "zeynep.demir@example.com",
     "employers": "isverenler",

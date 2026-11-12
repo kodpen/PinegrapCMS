@@ -56,7 +56,10 @@
  * components, 'catalog' and 'requires'.
  *
  * The version follows the template, not the software: raise it whenever the
- * pages change, so a design records which edition it started from.
+ * pages change, so a design records which edition it started from. 2.0.0
+ * draws the home on the Home Services blocks (the Hero with Job Sheet and
+ * the Emergency Line) and the Arrival Windows, and the service areas on
+ * the Zones.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -173,7 +176,7 @@ $homeservices_css = implode("\n", array(
 
 return array(
     'name'        => lang('Home Services'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 123,
     'icon'        => 'bi-tools',
@@ -228,10 +231,12 @@ return array(
         'email_footer' => array('name' => lang('Home Services E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its phs- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the rules of the blocks its home and service
+    // areas are drawn on (the Hero with Job Sheet, the Emergency Line, the
+    // Arrival Windows and the Zones) and its phs- rules in one User Styles
+    // entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $homeservices_css),
+        'css'   => pg_design_template_user_styles(array('homeservices-jobsheet', 'homeservices-emergency', 'booking-windows', 'locations-zones'), $homeservices_css),
         'fonts' => json_encode($homeservices_fonts),
     ),
 );

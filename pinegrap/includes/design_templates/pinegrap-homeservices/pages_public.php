@@ -122,6 +122,290 @@ foreach ($areas as $a) {
 }
 $emergency_link = 'tel:' . preg_replace('/[^0-9+]/', '', $company['emergency']);
 
+// ── The blocks ──────────────────────────────────────────────────────────
+// The trees below draw the palette's blocks (Home Services: Hero with Job
+// Sheet and Emergency Line, Booking: Arrival Windows, Locations: Zones)
+// with the company's data: the same structure, classes and interactions,
+// so the rules the template ships in User Styles style them as they style
+// a dropped block. Headings and eyebrows wear the look's phs- classes.
+
+// The home's way in, the Hero with Job Sheet block: the company in a line,
+// the two ways on and the emergency number come in on load; beside them a
+// visit's job sheet (a leak repair in the morning window at its agreed
+// price, the founder coming) scales in after them, and what the technician
+// brings is ticked off last.
+$jobsheet_hero = function () use ($el, $heading, $para, $link, $image, $span, $icon, $container, $row, $col, $fx,
+    $company, $services, $service_prices, $money, $time_windows, $team, $portrait, $visit_statuses, $emergency_link) {
+    $fact = function ($icon_name, $label, $text) use ($el, $icon, $span) {
+        return $el('div', 'pg-homeservices-fact', $label, array(
+            $el('dt', '', lang('Label'), array($icon($icon_name, 'text-primary'), $span($label, '', lang('Text')))),
+            $el('dd', '', lang('Value'), array($span($text, '', lang('Text')))),
+        ));
+    };
+    $tick = function ($text) use ($el, $icon, $span) {
+        return $el('li', 'd-flex align-items-start gap-2 mb-2', $text, array(
+            $icon('bi-check-circle-fill', 'text-success flex-shrink-0'),
+            $span($text, '', lang('Text')),
+        ));
+    };
+    $words = $fx($el('div', '', lang('Hero Text'), array(
+        $para(lang('One call for every job at home'), 'phs-eyebrow text-uppercase fw-semibold text-primary mb-3'),
+        $heading('h1', lang('Your home, looked after'), 'phs-display display-4 mb-3'),
+        $para($company['tagline'] . '.', 'lead text-body-secondary mb-4'),
+        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
+            $link(lang('Book a Visit'), '{{page:book}}', 'btn btn-primary btn-lg px-4'),
+            $link(lang('Get a Free Estimate'), '{{page:estimate}}', 'btn btn-outline-primary btn-lg px-4'),
+        )),
+        $el('div', 'd-flex flex-wrap align-items-center gap-2 small mt-4', lang('Emergency Line'), array(
+            $icon('bi-telephone-fill', 'text-danger'),
+            $span(lang('Burst pipe or no power? Our emergency line:'), 'text-body-secondary', lang('Text')),
+            $link($company['emergency'], $emergency_link, 'fw-semibold link-primary text-nowrap'),
+        )),
+    )), array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 800));
+    $m = $team[0];
+    $paper = $el('div', 'pg-homeservices-paper p-4', lang('Paper'), array(
+        $el('div', 'd-flex align-items-start justify-content-between gap-3 mb-3', lang('Job'), array(
+            $el('div', '', lang('Title'), array(
+                $el('div', 'd-flex gap-2 small text-body-secondary mb-1', lang('Job Number'), array(
+                    $span(lang('Job sheet'), '', lang('Text')),
+                    $span('#0427', 'pg-homeservices-no', lang('Text')),
+                )),
+                $heading('h2', $services['leak_repair']['name'], 'phs-display h4 mb-0'),
+            )),
+            $para($visit_statuses[1], 'pg-homeservices-stamp small flex-shrink-0 mt-1 mb-0'),
+        )),
+        $el('dl', 'pg-homeservices-facts mb-4', lang('Visit Details'), array(
+            $fact('bi-clock', lang('Arrival time'), $time_windows[0]),
+            $fact('bi-geo-alt', lang('Where'), lang('Kitchen, second-floor flat')),
+            $fact('bi-tag', lang('Price'), sprintf(lang('%s, agreed before we start'), $money($service_prices['leak_repair']))),
+            $fact('bi-shield-check', lang('Guarantee'), lang('Twelve months on the work')),
+        )),
+        $el('div', '', lang('Checklist'), array(
+            $heading('h3', lang('We bring'), 'h6 fw-semibold mb-2'),
+            $fx($el('ul', 'list-unstyled small mb-0', lang('List'), array(
+                $tick(lang('The parts the job is likely to need')),
+                $tick(lang('Shoe covers and dust sheets')),
+                $tick(lang('A message when we are on the way')),
+            )), array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 600, 'delay' => 900, 'stagger' => 150)),
+        )),
+        $el('div', 'd-flex align-items-center gap-3 pt-3 mt-3 border-top', lang('Technician'), array(
+            $image($portrait($m['name'], 96), lang('The technician coming to the visit'), 'rounded-circle object-fit-cover flex-shrink-0'),
+            $el('div', '', lang('Name'), array(
+                $para($m['name'], 'fw-semibold mb-0'),
+                $para(sprintf(lang('%1$s, %2$d years in the trade'), $m['role'], $m['years']), 'small text-body-secondary mb-0'),
+            )),
+        )),
+    ));
+    $sheet = $fx($el('div', 'pg-homeservices-sheet', lang('Job Sheet'), array($paper)),
+        array('effect' => 'scale', 'trigger' => 'load', 'duration' => 900, 'delay' => 250));
+    return $el('section', 'py-5 overflow-hidden', lang('Home Services (Hero with Job Sheet)'), array(
+        $container(array(
+            $row(array(
+                $col(array($words), '', '6'),
+                $col(array($sheet), '', '6'),
+            ), '4', '', 'align-items-center g-lg-5 py-lg-4'),
+        )),
+    ));
+};
+
+// The arrival windows, the Booking: Arrival Windows block: the heading
+// fades in, a card per window rises in turn (its hours on the working
+// day's track, a drawing screen readers skip: they read the times), and
+// the note with the booking button follows.
+$windows_band = function () use ($el, $heading, $para, $link, $span, $icon, $time, $container, $fx, $attr, $searchable, $arrival_windows) {
+    $cards = array();
+    foreach ($arrival_windows as $w) {
+        $top = array($el('span', 'pg-window-icon rounded-circle bg-primary-subtle text-primary-emphasis fs-4', lang('Icon'), array($icon($w['icon'])),
+            array('_attrs' => array($attr('aria-hidden', 'true')))));
+        if ($w['tag'] !== '') $top[] = $para($w['tag'], 'badge rounded-pill text-bg-primary mb-0');
+        $cards[] = $el('li', 'col', $w['name'], array(
+            $el('div', 'pg-window h-100 p-4 rounded-4 border bg-body', lang('Card'), array(
+                $el('div', 'd-flex align-items-start justify-content-between gap-2 mb-3', lang('Card Top'), $top),
+                $heading('h3', $w['name'], 'phs-display h5 mb-1'),
+                $el('div', 'fs-3 fw-bold mb-3', lang('Time Range'), array(
+                    $time($w['from'], $w['from'], '', lang('Start Time')),
+                    $span('–', 'mx-1 text-body-secondary', lang('Text')),
+                    $time($w['to'], $w['to'], '', lang('End Time')),
+                )),
+                $el('div', 'pg-window-day mb-4', lang('Drawing'), array($el('div', $w['span'], lang('Window'))),
+                    array('_attrs' => array($attr('aria-hidden', 'true')))),
+                $para($w['text'], 'text-body-secondary mb-3'),
+                $para($w['days'], 'small fw-semibold mb-0'),
+            )),
+        ));
+    }
+    return $el('section', 'py-5 bg-body-tertiary', lang('Booking (Arrival Windows)'), array(
+        $container(array(
+            $fx($el('div', 'row g-4 align-items-end mb-5', lang('Section Header'), array(
+                $el('div', 'col-lg-7', lang('Section Title'), array(
+                    $para(lang('Arrival windows'), 'phs-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+                    $heading('h2', lang('Choose when we come'), 'phs-display display-6 mb-0'),
+                )),
+                $el('div', 'col-lg-5', lang('Lead'), array(
+                    $para(lang('Pick a window when you book. We arrive inside it, send a message when we are on the way and call if we are running late.'), 'text-body-secondary mb-0'),
+                )),
+            )), array('effect' => 'fade', 'trigger' => 'view', 'duration' => 800)),
+            $fx($el('ul', 'list-unstyled row row-cols-1 row-cols-md-3 g-4 mb-4', lang('Windows'), $cards),
+                array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 700, 'stagger' => 120)),
+            $fx($el('div', 'd-flex flex-column flex-md-row align-items-md-center gap-3', lang('Note'), array(
+                $icon('bi-chat-dots', 'fs-4 text-primary d-none d-md-inline'),
+                $para(lang('Need us at an exact time? Ask when you book and we will tell you whether we can.'), 'flex-grow-1 text-body-secondary mb-0'),
+                $link(lang('Book a Visit'), '{{page:book}}', 'btn btn-primary px-4 flex-shrink-0'),
+            )), array('effect' => 'fade', 'trigger' => 'view', 'duration' => 800, 'delay' => 200)),
+        )),
+    ), $searchable('hs-home-windows', lang('arrival time, time window, morning, afternoon, evening, appointment')));
+};
+
+// The emergency line, the Emergency Line block: a dark band whatever the
+// visitor's theme. The company's emergency number beside a mark that rings
+// three times, its promises and the jobs it covers rise on view; beside
+// them, the steps to take safely before a technician arrives.
+$emergency_band = function () use ($el, $heading, $para, $link, $span, $icon, $container, $row, $col, $fx, $attr, $searchable, $company, $emergency_link) {
+    $promise = function ($icon_name, $text) use ($el, $icon, $span) {
+        return $el('li', 'd-inline-flex align-items-center gap-2', $text, array(
+            $icon($icon_name, 'text-danger-emphasis'),
+            $span($text, '', lang('Text')),
+        ));
+    };
+    $chip = function ($text) use ($el, $span) {
+        return $el('li', 'badge rounded-pill border bg-body-tertiary text-body fw-normal', $text, array($span($text, '', lang('Text'))));
+    };
+    $safe = function ($title, $text) use ($el, $para) {
+        return $el('li', '', $title, array(
+            $para($title, 'fw-semibold mb-1'),
+            $para($text, 'small text-body-secondary mb-0'),
+        ));
+    };
+    $words = $fx($el('div', '', lang('Text'), array(
+        $para(lang('Emergencies'), 'phs-eyebrow text-uppercase fw-semibold text-danger-emphasis mb-2'),
+        $heading('h2', lang('A burst pipe, a flood or no power?'), 'phs-display display-6 mb-3'),
+        $para(lang('Call the emergency line. A technician is on the way within the hour, day and night, every day.'), 'lead text-body-secondary mb-4'),
+        $el('div', 'd-flex align-items-center gap-3 mb-4', lang('Emergency Line'), array(
+            $el('span', 'pg-homeservices-call text-bg-danger', lang('Icon'), array($icon('bi-telephone-fill')),
+                array('_attrs' => array($attr('aria-hidden', 'true')))),
+            $el('div', '', lang('Phone Number'), array(
+                $para(lang('Emergency line, day and night'), 'small text-body-secondary mb-0'),
+                $link($company['emergency'], $emergency_link, 'fs-3 fw-bold link-body-emphasis link-underline-opacity-0 text-nowrap'),
+            )),
+        )),
+        $el('ul', 'list-unstyled d-flex flex-wrap gap-3 small mb-4', lang('Promises'), array(
+            $promise('bi-stopwatch', lang('On the way within the hour')),
+            $promise('bi-moon-stars', lang('Day and night, every day')),
+            $promise('bi-tag', lang('Emergency rate agreed on the phone')),
+        )),
+        $heading('h3', lang('We come out for'), 'h6 fw-semibold mb-2'),
+        $el('ul', 'list-unstyled d-flex flex-wrap gap-2 mb-4', lang('Emergencies'), array(
+            $chip(lang('Burst pipe')),
+            $chip(lang('Leak through the ceiling')),
+            $chip(lang('No power')),
+            $chip(lang('Blocked drain')),
+            $chip(lang('No heating or hot water')),
+            $chip(lang('Broken window')),
+        )),
+        $link(lang('Not urgent? Book a visit instead'), '{{page:book}}', 'small link-body-emphasis link-offset-2'),
+    )), array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 800));
+    $card = $fx($el('div', 'p-4 p-lg-5 rounded-4 border bg-body-tertiary', lang('Before We Arrive'), array(
+        $heading('h3', lang('Before we arrive'), 'phs-display h4 mb-1'),
+        $para(lang('What you can do safely while you wait.'), 'small text-body-secondary mb-4'),
+        $fx($el('ol', 'pg-homeservices-safety mb-4', lang('Steps'), array(
+            $safe(lang('Turn off the water'), lang('Close the stopcock, usually under the kitchen sink or beside the water meter.')),
+            $safe(lang('Make the electrics safe'), lang('If water is near sockets or lights, switch off the power at the fuse box. Do not touch wet switches.')),
+            $safe(lang('Catch the water'), lang('Put a bucket under the leak and move what you can out of its way.')),
+            $safe(lang('Take photos'), lang('Pictures of the damage help your insurer, and help the technician bring the right parts.')),
+        )), array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 600, 'delay' => 300, 'stagger' => 120)),
+        $el('div', 'd-flex gap-3 p-3 rounded-3 bg-warning-subtle text-warning-emphasis', lang('Gas Warning'), array(
+            $icon('bi-exclamation-triangle-fill', 'fs-5 flex-shrink-0'),
+            $para(lang('Smell gas? Do not use switches or flames. Leave the building first, then call the gas emergency number.'), 'small mb-0'),
+        )),
+    )), array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 800, 'delay' => 150));
+    return $el('section', 'py-5 bg-body text-body overflow-hidden', lang('Home Services (Emergency Line)'), array(
+        $container(array(
+            $row(array(
+                $col(array($words), '', '6'),
+                $col(array($card), '', '6'),
+            ), '4', '', 'align-items-center g-lg-5'),
+        ), 'py-lg-4'),
+    ), array_merge($searchable('hs-home-emergency', lang('emergency, urgent, flood, leak, power cut, out of hours, gas')),
+        array('_attrs' => array($attr('data-bs-theme', 'dark')))));
+};
+
+// The service areas as zones, the Locations: Zones block: three rings
+// around the centre (a drawing screen readers skip), and beside them the
+// core areas with no call-out charge, the outer areas with it on their
+// visit days and further afield by estimate; under them the arrival
+// windows as time slots and the rule of the charge. The row rises on view.
+$zones_band = function () use ($el, $heading, $para, $span, $icon, $time, $container, $row, $col, $fx, $fade_in, $attr, $searchable, $section_header,
+    $arrival_windows, $core_names, $outer_names, $call_out_text) {
+    $rings = array(
+        1 => 'text-bg-primary',
+        2 => 'bg-primary-subtle border border-2 border-primary-subtle',
+        3 => 'pg-zone-z3 border border-2 border-primary',
+    );
+    $zone = function ($n, $name, $text, $when, $today, $fee) use ($el, $heading, $para, $span, $attr, $rings) {
+        return $el('li', 'd-flex gap-3 py-3 border-bottom', sprintf(lang('Zone %s'), $n), array(
+            $el('div', 'pg-zone-key ' . $rings[$n], lang('Zone Mark'), array(), array('_attrs' => array($attr('aria-hidden', 'true')))),
+            $el('div', 'flex-grow-1', lang('Zone Text'), array(
+                $el('div', 'd-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-1', lang('Title'), array(
+                    $heading('h3', $name, 'phs-display h5 mb-0'),
+                    $el('div', '', lang('Fee'), array(
+                        $span(lang('Call-out charge'), 'small text-body-secondary me-1', lang('Text')),
+                        $span($fee, 'phs-price fw-bold', lang('Text')),
+                    )),
+                )),
+                $para($text, 'small text-body-secondary mb-2'),
+                $span($when, 'badge rounded-pill text-wrap ' . ($today ? 'text-bg-primary' : 'bg-body-secondary text-body-emphasis'), lang('Badge')),
+            )),
+        ));
+    };
+    $map = $el('div', 'pg-zone-map', lang('Zone Drawing'), array(
+        $el('div', 'pg-zone-ring ' . $rings[3], sprintf(lang('Zone %s'), 3), array(
+            $el('div', 'pg-zone-ring ' . $rings[2], sprintf(lang('Zone %s'), 2), array(
+                $el('div', 'pg-zone-ring pg-zone-z1 ' . $rings[1], sprintf(lang('Zone %s'), 1), array($icon('bi-geo-alt-fill', 'fs-3'))),
+            )),
+        )),
+    ), array('_attrs' => array($attr('aria-hidden', 'true'))));
+    $slots = array();
+    foreach ($arrival_windows as $w) {
+        $slots[] = $el('li', 'col', $w['name'], array(
+            $el('div', 'h-100 p-3 rounded-3 border text-center', lang('Time Slot'), array(
+                $icon($w['icon'], 'd-block text-primary fs-4 mb-1'),
+                $span($w['name'], 'd-block fw-semibold', lang('Text')),
+                $el('div', 'small text-body-secondary', lang('Hours'), array(
+                    $time($w['from'], $w['from'], '', lang('Start Time')),
+                    $span('–', 'mx-1', lang('Text')),
+                    $time($w['to'], $w['to'], '', lang('End Time')),
+                )),
+            )),
+        ));
+    }
+    $zone_row = $row(array(
+        $col(array($map), '', '5'),
+        $col(array(
+            $el('ul', 'pg-zone-list list-unstyled mb-4 border-top', lang('Zones'), array(
+                $zone(1, lang('Core areas'), implode(', ', $core_names) . '.', lang('Every day we are open'), true, lang('None')),
+                $zone(2, lang('Outer areas'), implode(', ', $outer_names) . '.', lang('Two or three days a week'), false, $call_out_text),
+                $zone(3, lang('Further afield'), lang('We sometimes travel further for a larger job. Ask for an estimate and tell us where you are; we answer within a working day.'),
+                    lang('By estimate'), false, lang('In the estimate')),
+            )),
+            $heading('h3', lang('Arrival windows'), 'h6 fw-semibold text-uppercase text-body-secondary mb-3'),
+            $el('ul', 'pg-zone-list list-unstyled row row-cols-1 row-cols-sm-3 g-3 mb-4', lang('Time Slots'), $slots),
+            $el('div', 'pg-zone-list d-flex align-items-center gap-3 p-3 rounded-3 bg-primary-subtle text-primary-emphasis', lang('Call-out Charge'), array(
+                $icon('bi-receipt', 'fs-3'),
+                $el('div', '', lang('Text'), array(
+                    $span(lang('One charge per visit'), 'd-block fw-semibold', lang('Text')),
+                    $para(lang('The charge is added once per visit, however many jobs we do while we are there.'), 'small mb-0'),
+                )),
+            )),
+        ), '', '7'),
+    ), '4', '', 'align-items-center g-lg-5');
+    return $el('section', 'py-5', lang('Locations (Zones)'), array(
+        $container(array(
+            $fx($section_header(lang('Where we work'), lang('Three zones around the city centre')), $fade_in),
+            $fx($zone_row, array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => 150)),
+        )),
+    ), $searchable('hs-call-out', lang('call-out fee, travel charge, distance, outside the city, zone')));
+};
+
 // ── Home ────────────────────────────────────────────────────────────────
 
 $public_pages[] = array(
@@ -131,84 +415,35 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('Cleaning, plumbing, electrical work and repairs at home, with the price agreed first and a twelve-month guarantee.'),
     'tree'             => $page(array(
-        // The way in: the company in a sentence, the two ways on, the
-        // emergency line and a photo of a technician at work.
-        $el('section', 'py-5 overflow-hidden', lang('Hero'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('One call for every job at home'), 'phs-eyebrow text-uppercase fw-semibold text-primary mb-3'),
-                        $heading('h1', lang('Your home, looked after'), 'phs-display display-4 mb-3'),
-                        $para($company['tagline'] . '.', 'lead text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('Book a Visit'), '{{page:book}}', 'btn btn-primary btn-lg px-4'),
-                            $link(lang('Get a Free Estimate'), '{{page:estimate}}', 'btn btn-outline-primary btn-lg px-4'),
-                        )),
-                        $el('p', 'd-flex flex-wrap align-items-center gap-2 small mt-4 mb-0', lang('Emergency Line'), array(
-                            $icon('bi-telephone-forward', 'text-primary'),
-                            $span(lang('Burst pipe or no power? Our emergency line:'), 'text-body-secondary', lang('Text')),
-                            $link($company['emergency'], $emergency_link, 'fw-semibold link-primary text-nowrap'),
-                        )),
-                    ), '', '6'),
-                    $col(array(
-                        $framed($photo('hero', 1400, 1050), lang('A technician fixing the pipes under a kitchen sink'), '4x3', false),
-                    ), '', '6'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        )),
+        // The way in: the company in a sentence beside a visit's job sheet.
+        $jobsheet_hero(),
 
-        $el('section', 'py-4 border-top border-bottom bg-body-tertiary', lang('Figures'), array(
-            $container(array($figure_row())),
-        )),
-
-        $el('section', 'py-5', lang('Service Categories'), array(
+        $el('section', 'py-5 border-top', lang('Service Categories'), array(
             $container(array(
-                $section_header(lang('What we do'), lang('Every job at home, one team'), lang('All Services'), '{{page:services}}'),
-                $row($category_cols, '4'),
+                $fx($section_header(lang('What we do'), lang('Every job at home, one team'), lang('All Services'), '{{page:services}}'), $fade_in),
+                $rise($row($category_cols, '4')),
             )),
         ), $searchable('hs-home-categories', lang('cleaner, plumber, electrician, handyman, repairs'))),
 
+        // When a technician comes: the visit form's arrival windows.
+        $windows_band(),
+
         // The featured services, read from the Services collection.
-        $el('section', 'py-5 bg-body-tertiary', lang('Featured Services'), array(
+        $el('section', 'py-5', lang('Featured Services'), array(
             $container(array(
-                $section_header(lang('Booked most often'), lang('Popular services'), lang('See the prices'), '{{page:prices}}'),
+                $fx($section_header(lang('Booked most often'), lang('Popular services'), lang('See the prices'), '{{page:prices}}'), $fade_in),
                 $widget('home_services'),
             )),
         )),
 
-        $el('section', 'py-5', lang('How It Works'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('Simple from start to finish'), 'phs-eyebrow text-uppercase fw-semibold text-primary mb-2'),
-                        $heading('h2', lang('How it works'), 'phs-display h2 mb-4'),
-                        $how_steps(),
-                        $link(lang('Book a Visit'), '{{page:book}}', 'btn btn-primary px-4'),
-                    ), '', '6'),
-                    $col(array($framed($photo('home-how', 1200, 900), lang('A technician showing a customer the work on a tablet'))), '', '6'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        ), $searchable('hs-how-it-works', lang('how to book, steps, payment, arrival window'))),
-
-        $el('section', 'py-5 bg-body-tertiary', lang('Why Choose Us'), array(
-            $container(array(
-                $section_header(lang('Our promise'), lang('Why customers choose us'), lang('About Us'), '{{page:about}}'),
-                $row($why_tiles, '4'),
-            )),
-        ), $searchable('hs-why-us', lang('insured, vetted, guarantee, fixed price, punctual'))),
+        // The emergency line and what to do before the technician arrives.
+        $emergency_band(),
 
         // The team, read from the Team collection.
         $el('section', 'py-5', lang('Our Team'), array(
             $container(array(
-                $section_header(lang('The people who come'), lang('Meet the team'), lang('Our Team'), '{{page:team}}'),
+                $fx($section_header(lang('The people who come'), lang('Meet the team'), lang('Our Team'), '{{page:team}}'), $fade_in),
                 $widget('home_team'),
-            )),
-        )),
-
-        $el('section', 'py-5 bg-body-tertiary', lang('Service Areas'), array(
-            $container(array(
-                $section_header(lang('Where we work'), lang('Across the city and around it'), lang('Service Areas'), '{{page:areas}}'),
-                $para(sprintf(lang('No call-out charge in %s.'), implode(', ', $core_names)), 'text-body-secondary mb-0'),
             )),
         )),
 
@@ -216,17 +451,17 @@ $public_pages[] = array(
         // beside them its own Google reviews, which show once Google Reviews
         // is set up under Site Settings. Each service page carries its own
         // reviews.
-        $el('section', 'py-5', lang('Testimonials'), array(
+        $el('section', 'py-5 bg-body-tertiary', lang('Testimonials'), array(
             $container(array(
-                $section_header(lang('Our customers'), lang('What customers say'), lang('Customer Reviews'), '{{page:reviews}}'),
-                $row($testimonial_cols, '4'),
+                $fx($section_header(lang('Our customers'), lang('What customers say'), lang('Customer Reviews'), '{{page:reviews}}'), $fade_in),
+                $rise($row($testimonial_cols, '4'), 120),
                 $widget('google_reviews'),
             )),
         )),
 
-        $el('section', 'py-5 bg-body-tertiary', lang('From the Blog'), array(
+        $el('section', 'py-5', lang('From the Blog'), array(
             $container(array(
-                $section_header(lang('Home Care Tips'), lang('Keep your home in good shape'), lang('All tips'), '{{page:blog}}'),
+                $fx($section_header(lang('Home Care Tips'), lang('Keep your home in good shape'), lang('All tips'), '{{page:blog}}'), $fade_in),
                 $widget('home_posts'),
             )),
         )),
@@ -256,18 +491,18 @@ $public_pages[] = array(
             $photo('about-team', 1200, 900), lang('The team in front of the company vans'), false, array(),
             lang('history, founders, company, who we are')),
         $el('section', 'py-4 border-top border-bottom bg-body-tertiary', lang('Figures'), array(
-            $container(array($figure_row())),
+            $container(array($rise($figure_row(), 120))),
         )),
         $el('section', 'py-5', lang('Our Values'), array(
             $container(array(
-                $section_header(lang('How we work'), lang('What we care about'), lang('Our Team'), '{{page:team}}'),
-                $row($about_value_tiles, '4'),
+                $fx($section_header(lang('How we work'), lang('What we care about'), lang('Our Team'), '{{page:team}}'), $fade_in),
+                $rise($row($about_value_tiles, '4'), 120),
             )),
         ), $searchable('hs-values', lang('values, quality, tidy, training, respect'))),
         $el('section', 'py-5 bg-body-tertiary', lang('Why Choose Us'), array(
             $container(array(
-                $section_header(lang('Our promise'), lang('Why customers choose us')),
-                $row($why_tiles, '4'),
+                $fx($section_header(lang('Our promise'), lang('Why customers choose us')), $fade_in),
+                $rise($row($why_tiles, '4')),
             )),
         ), $searchable('hs-about-why', lang('insured, vetted, guarantee, fixed price, punctual'))),
         $ask_band(lang('A question about a job?'), lang('Write to us with a few words and a photo; the right technician answers, usually the same day.')),
@@ -284,37 +519,33 @@ $public_pages[] = array(
     'meta_description' => lang('The parts of the city we visit, on which days, and where a call-out charge applies.'),
     'tree'             => $page(array(
         $page_header(lang('Service Areas'), lang('Where our technicians go, on which days, and what a visit costs to get there.')),
-        $el('section', 'py-5', lang('Areas'), array(
+        // The areas as zones around the centre, with the call-out charge.
+        $zones_band(),
+        $el('section', 'py-5 bg-body-tertiary', lang('Areas'), array(
             $container(array(
-                $row($area_cols, '4'),
+                $fx($section_header(lang('Area by area'), lang('The days we visit each area')), $fade_in),
+                $rise($row($area_cols, '4')),
             )),
         ), $searchable('hs-areas', lang('district, neighbourhood, location, coverage, do you come to'))),
-        $el('section', 'py-5 bg-body-tertiary', lang('Call-out Charge'), array(
+        $el('section', 'py-5', lang('Outside these areas?'), array(
             $container(array(
-                $row(array(
-                    $col(array(
-                        $heading('h2', lang('When a call-out charge applies'), 'phs-display h3 mb-3'),
-                        $check_list(array(
-                            sprintf(lang('No call-out charge in %s.'), implode(', ', $core_names)),
-                            sprintf(lang('A call-out charge of %1$s per visit in %2$s.'), $call_out_text, implode(', ', $outer_names)),
-                            lang('The charge is added once per visit, however many jobs we do while we are there.'),
-                        )),
-                    ), '', '6'),
-                    $col(array(
-                        $heading('h2', lang('Outside these areas?'), 'phs-display h3 mb-3'),
-                        $para(lang('We sometimes travel further for a larger job. Ask for an estimate and tell us where you are; we answer within a working day.'), 'text-body-secondary mb-3'),
-                        $link(lang('Get an Estimate'), '{{page:estimate}}', 'btn btn-outline-primary px-4'),
-                    ), '', '6'),
-                ), '4', '', 'g-lg-5'),
+                $fx($el('div', 'd-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3', lang('Text'), array(
+                    $el('div', '', lang('Text'), array(
+                        $heading('h2', lang('Outside these areas?'), 'phs-display h4 mb-1'),
+                        $para(lang('Send us a few photos and a line about the job: we reply with a written estimate, free and with no obligation.'), 'text-body-secondary mb-0'),
+                    )),
+                    $link(lang('Get an Estimate'), '{{page:estimate}}', 'btn btn-outline-primary px-4 text-nowrap'),
+                )), $fade_in),
             )),
-        ), $searchable('hs-call-out', lang('call-out fee, travel charge, distance, outside the city'))),
+        )),
     )),
 );
 
 // ── Price guide ─────────────────────────────────────────────────────────
 
-// A table per category: a row for each sample service, its starting price
-// and a button opening the visit booking with the service chosen.
+// A table per category, rising on view: a row for each sample service, its
+// starting price and a button opening the visit booking with the service
+// chosen.
 $price_tables = array();
 foreach ($categories as $ckey => $c) {
     $rows = array();
@@ -329,7 +560,7 @@ foreach ($categories as $ckey => $c) {
             )),
         ));
     }
-    $price_tables[] = $el('div', 'mb-5', $c['title'], array(
+    $price_tables[] = $fx($el('div', 'mb-5', $c['title'], array(
         $el('div', 'd-flex align-items-center gap-2 mb-3', lang('Category Heading'), array(
             $icon($c['icon'], 'fs-4 text-primary'),
             $heading('h2', $c['title'], 'phs-display h4 mb-0'),
@@ -347,7 +578,7 @@ foreach ($categories as $ckey => $c) {
                 $el('tbody', '', lang('Table Body'), $rows),
             )),
         )),
-    ), array('id' => 'hs-prices-' . $ckey));
+    ), array('id' => 'hs-prices-' . $ckey)), array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 700));
 }
 
 $public_pages[] = array(
@@ -385,17 +616,34 @@ $public_pages[] = array(
                 ), '4', '', 'g-lg-5'),
             )),
         ), $searchable('hs-how-prices-work', lang('parts, materials, hourly rate, minimum charge, quote'))),
+        // How a job goes, from the booking to the payment: the steps come in
+        // one after another.
+        $el('section', 'py-5', lang('How It Works'), array(
+            $container(array(
+                $row(array(
+                    $col(array(
+                        $fx($el('div', '', lang('Section Title'), array(
+                            $para(lang('Simple from start to finish'), 'phs-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+                            $heading('h2', lang('How it works'), 'phs-display h2 mb-4'),
+                        )), $fade_in),
+                        $rise($how_steps(), 120),
+                        $link(lang('Book a Visit'), '{{page:book}}', 'btn btn-primary px-4'),
+                    ), '', '6'),
+                    $col(array($framed($photo('home-how', 1200, 900), lang('A technician showing a customer the work on a tablet'))), '', '6'),
+                ), '4', '', 'g-lg-5 align-items-center'),
+            )),
+        ), $searchable('hs-how-it-works', lang('how to book, steps, payment, arrival window'))),
     )),
 );
 
 // ── Questions ───────────────────────────────────────────────────────────
 // Three accordions: booking, on the day, prices and payment. Each question
-// is a search section of its own ($faq).
-$faq_group = function ($id, $title, $items) use ($el, $heading, $faq) {
+// is a search section of its own ($faq); each group's heading fades in.
+$faq_group = function ($id, $title, $items) use ($el, $heading, $faq, $fx, $fade_in) {
     $children = array();
     foreach ($items as $n => $q) $children[] = $faq($n + 1, $q[0], $q[1], $q[2], $id);
     return $el('div', 'mb-5', $title, array(
-        $heading('h2', $title, 'phs-display h4 mb-3'),
+        $fx($heading('h2', $title, 'phs-display h4 mb-3'), $fade_in),
         $el('div', 'accordion', lang('Questions'), $children, array('id' => $id)),
     ));
 };
@@ -452,7 +700,7 @@ $public_pages[] = array(
         // Settings.
         $el('section', 'py-5', lang('Testimonials'), array(
             $container(array(
-                $row($testimonial_cols, '4'),
+                $rise($row($testimonial_cols, '4'), 120),
             )),
         ), $searchable('hs-reviews', lang('reviews, ratings, testimonials, feedback, stars'))),
         $el('section', 'py-5 bg-body-tertiary', lang('Google Reviews'), array(
