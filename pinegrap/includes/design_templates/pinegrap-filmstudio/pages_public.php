@@ -8,6 +8,12 @@
  * Included after parts.php in the same scope (its builders and the
  * studio's data); returns array('pages' => ..., 'widgets' => ...).
  *
+ * The home and the services page place the palette's Film Studio blocks
+ * (Showreel Hero, Title Card and Credits, Cuts for Every Screen) and the
+ * general Timeline: Horizontal, drawn with the studio's own data; their
+ * rules ship in the template's User Styles. Motion is node interactions
+ * (props._fx) only.
+ *
  * Every figure comes from parts.php ($studio, $services, $industries,
  * $process, $spaces, $crew, $why_us, $figures, $testimonials), so a change
  * made there reaches every page here.
@@ -82,10 +88,11 @@ $ask_band = function ($title, $text) use ($el, $heading, $para, $link, $containe
     ));
 };
 
-// The band of figures under a page's opening.
-$figures_band = function () use ($el, $container, $figure_row) {
+// The band of figures under a page's opening; the figures rise in one
+// after another.
+$figures_band = function () use ($el, $container, $figure_row, $rise) {
     return $el('section', 'py-4 border-top border-bottom bg-body-tertiary', lang('Figures'), array(
-        $container(array($figure_row())),
+        $container(array($rise($figure_row(), 100))),
     ));
 };
 
@@ -113,6 +120,138 @@ foreach ($industries as $s) {
 
 // ── Home ────────────────────────────────────────────────────────────────
 
+// The showreel hero (Film Studio: Showreel Hero): the studio in a line over
+// a cinema screen that plays the reel, the slate with its running time and
+// format, and the films the reel is cut from, each at its timecode (a
+// duration from the reel's first frame).
+$reel_chapters = array();
+foreach (array('night_drive' => 0, 'thread_and_needle' => 24, 'slow_bloom' => 51, 'harvest_table' => 78, 'build_day' => 115) as $key => $at) {
+    $p = $projects[$key];
+    $reel_chapters[] = $el('li', 'col', $p['name'], array(
+        $el('time', 'd-block small text-primary mb-1', lang('Time'), array(),
+            array('text' => sprintf('%02d:%02d', intdiv($at, 60), $at % 60), '_attrs' => array($attr('datetime', 'PT' . $at . 'S')))),
+        $heading('h3', $p['name'], 'h6 fw-bold mb-1'),
+        $para($services[$p['service']]['title'], 'small text-body-secondary mb-0'),
+    ));
+}
+$home_reel = $el('section', 'pfm-hero py-5 bg-body text-body overflow-hidden', lang('Hero'), array(
+    $container(array(
+        $row(array(
+            $col(array(
+                $fx($el('div', 'text-center mb-5', lang('Hero Text'), array(
+                    $para(lang('Film and video production'), 'pfm-eyebrow text-uppercase fw-semibold text-primary mb-3'),
+                    $heading('h1', lang('Stories worth watching'), 'pfm-display display-2 mb-3'),
+                    $para($studio['tagline'] . '.', 'lead text-body-secondary mb-4'),
+                    // On the dark band an outline button is too faint
+                    // under some palettes, so the second way on is solid.
+                    $el('div', 'd-flex flex-wrap justify-content-center gap-2', lang('Buttons'), array(
+                        $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-primary btn-lg px-4'),
+                        $link(lang('See Our Work'), '{{page:projects}}', 'btn btn-secondary btn-lg px-4'),
+                    )),
+                )), array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 800)),
+                // The player never starts by itself: the visitor starts it.
+                $fx($el('div', 'pg-filmstudio-screen', lang('Screen'), array(
+                    $el('div', 'd-flex flex-wrap align-items-center gap-2 gap-md-4 px-1 pb-2 small text-body-secondary', lang('Facts'), array(
+                        $el('div', 'd-inline-flex align-items-center gap-2 fw-semibold text-body', lang('Title'), array(
+                            $icon('bi-record-circle', 'text-primary'),
+                            $span(lang('Showreel'), '', lang('Text')),
+                        )),
+                        $el('div', 'd-inline-flex align-items-center gap-1', lang('Running Time'), array(
+                            $icon('bi-clock'),
+                            $el('time', '', lang('Running Time'), array(), array('text' => '02:30', '_attrs' => array($attr('datetime', 'PT2M30S')))),
+                        )),
+                        $span('4K · 16:9', 'ms-md-auto', lang('Format')),
+                    )),
+                    $showreel('showreel', lang('Our showreel'), 'ratio ratio-16x9'),
+                )), array('effect' => 'scale', 'trigger' => 'load', 'duration' => 1000, 'delay' => 250)),
+                $el('div', 'mt-5', lang('Chapters'), array(
+                    $heading('h2', lang('In this reel'), 'h6 text-uppercase fw-semibold text-body-secondary mb-4'),
+                    $fx($el('ol', 'pg-filmstudio-chapters list-unstyled row row-cols-2 row-cols-md-3 row-cols-lg-5 g-4 mb-0', lang('Films'), $reel_chapters),
+                        array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 700, 'delay' => 700, 'stagger' => 100)),
+                )),
+            ), '', '10'),
+        ), '', 'center'),
+    ), 'py-lg-5'),
+), array_merge($searchable('fm-showreel', lang('showreel, reel, video production, film company')),
+    array('_attrs' => array($attr('data-bs-theme', 'dark')))));
+
+// One film in depth (Film Studio: Title Card and Credits): the sample
+// Night Drive as a title card, its still at the cinema's 2.39:1 with a play
+// mark, the crew who made it rolling up as end credits and the client's
+// words. Page content, not a record: the studio puts its own film here in
+// the editor. Until then the play mark opens the work of the film's kind.
+$home_film = $projects['night_drive'];
+$home_film_fact = function ($icon_name, $text) use ($el, $icon, $span) {
+    return $el('li', 'd-inline-flex align-items-center gap-1', $text, array(
+        $icon($icon_name, 'text-primary'),
+        $span($text, '', lang('Text')),
+    ));
+};
+$home_film_credits = array();
+foreach (array(array(lang('Directed by'), 0), array(lang('Director of Photography'), 1), array(lang('Producer'), 2),
+    array(lang('Editor'), 3), array(lang('Colourist'), 4)) as $c) {
+    $home_film_credits[] = $el('div', '', $c[0], array(
+        $el('dt', '', lang('Role'), array(), array('text' => $c[0])),
+        $el('dd', '', lang('Name'), array(), array('text' => $crew[$c[1]]['name'])),
+    ));
+}
+// The film's name keeps its own case, as every name does: capitals under a
+// Turkish page would print a dotted capital I in an English title.
+$home_featured = $el('section', 'py-5 overflow-hidden', lang('Featured film'), array(
+    $container(array(
+        $row(array(
+            $col(array(
+                $fade_in($el('div', 'text-center mb-4', lang('Title Card'), array(
+                    $para(lang('Featured film'), 'pfm-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+                    $heading('h2', $home_film['name'], 'display-4 fw-bold mb-3'),
+                    $para($home_film['summary'], 'lead text-body-secondary mb-3'),
+                    $el('ul', 'list-unstyled d-flex flex-wrap justify-content-center gap-3 small text-body-secondary mb-0', lang('Facts'), array(
+                        $home_film_fact($services[$home_film['service']]['icon'], $services[$home_film['service']]['title']),
+                        $home_film_fact($industries[$home_film['industry']]['icon'], $industries[$home_film['industry']]['title']),
+                        $el('li', 'd-inline-flex align-items-center gap-1', lang('Running Time'), array(
+                            $icon('bi-clock', 'text-primary'),
+                            $el('time', '', lang('Running Time'), array(), array('text' => $home_film['runtime'], '_attrs' => array($attr('datetime', 'PT60S')))),
+                        )),
+                    )),
+                ))),
+            ), '', '8'),
+        ), '', 'center'),
+        $fx($el('div', 'pg-filmstudio-scope mb-5', lang('Still'), array(
+            $el('div', 'ratio rounded-4 overflow-hidden shadow-lg', lang('Picture Frame'), array(
+                $image($photo('project-night_drive', 1600, 670), lang('A car\'s headlights on an empty coast road at night'), 'object-fit-cover',
+                    array('_attrs' => array($attr('loading', 'lazy')))),
+            )),
+            $el('a', 'pg-filmstudio-play btn btn-primary rounded-circle', lang('Link'), array(
+                $icon('bi-play-fill'),
+                $span(lang('See the work'), 'visually-hidden', lang('Link Text')),
+            ), array('href' => '{{page:projects}}?' . $query(array('service' => $services[$home_film['service']]['title'])))),
+        )), array('effect' => 'scale', 'trigger' => 'view', 'duration' => 900)),
+        $row(array(
+            $col(array(
+                $heading('h3', lang('Credits'), 'h6 text-center text-uppercase fw-semibold text-body-secondary mb-4'),
+                $rise($el('dl', 'pg-filmstudio-roll mb-5', lang('Credits'), $home_film_credits), 110),
+                $fade_in($el('figure', 'text-center mb-0', lang('Quote'), array(
+                    $el('blockquote', 'blockquote mb-2', lang('Text'), array($para($home_film['quote'], 'pfm-quote fst-italic mb-0'))),
+                    $el('figcaption', 'small text-body-secondary', lang('Client'), array(), array('text' => $home_film['client'])),
+                )), 300),
+            ), '', '8'),
+        ), '', 'center'),
+    )),
+), $searchable('fm-featured-film', lang('featured film, credits, director, car commercial, launch film')));
+
+// How a production runs (Timeline: Horizontal): the five stages side by
+// side, each under its number in a circle.
+$home_timeline = array();
+foreach ($process as $n => $s) {
+    $home_timeline[] = $el('li', 'col text-center', $s['title'], array(
+        $el('div', 'd-flex align-items-center justify-content-center rounded-circle text-bg-primary mx-auto mb-3 pg-circle-60', lang('Step Number'), array(
+            $span(sprintf('%02d', $n + 1), 'h4 fw-bold mb-0', lang('Text')),
+        )),
+        $heading('h3', $s['title'], 'h6 fw-semibold mb-2'),
+        $para($s['text'], 'small text-body-secondary mb-0'),
+    ));
+}
+
 $public_pages[] = array(
     'key'              => 'home',
     'name'             => lang('home'),
@@ -120,78 +259,46 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('A film and video production studio: commercials, brand films, music videos and documentaries, shot and finished in house.'),
     'tree'             => $page(array(
-        // The way in, on a dark band: the studio in a sentence, the two
-        // ways on, and the showreel.
-        $el('section', 'pfm-hero py-5 overflow-hidden bg-body text-body', lang('Hero'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('Film and video production'), 'pfm-eyebrow text-uppercase fw-semibold text-primary mb-3'),
-                        $heading('h1', lang('Stories worth watching'), 'pfm-display display-3 mb-3'),
-                        $para($studio['tagline'] . '.', 'lead text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-primary btn-lg px-4'),
-                            $link(lang('See Our Work'), '{{page:projects}}', 'btn btn-outline-light btn-lg px-4'),
-                        )),
-                    ), '', '5'),
-                    $col(array($showreel('showreel', lang('Our showreel'))), '', '7'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        ), array_merge($searchable('fm-showreel', lang('showreel, reel, video production, film company')),
-            array('_attrs' => array($attr('data-bs-theme', 'dark'))))),
-
+        $home_reel,
         $figures_band(),
+        $home_featured,
+
+        $el('section', 'py-5 bg-body-tertiary', lang('Our Services'), array(
+            $container(array(
+                $fade_in($section_header(lang('What we make'), lang('From the first idea to the final cut'), lang('All Services'), '{{page:services}}')),
+                $rise($row($service_cols, '4')),
+            )),
+        ), $searchable('fm-home-services', lang('commercial, advert, brand film, music video, documentary, corporate video, editing'))),
 
         // The featured projects, read from the Projects collection.
         $el('section', 'py-5', lang('Featured Work'), array(
             $container(array(
-                $section_header(lang('Our work'), lang('Films we are proud of'), lang('All Work'), '{{page:projects}}'),
+                $fade_in($section_header(lang('Our work'), lang('Films we are proud of'), lang('All Work'), '{{page:projects}}')),
                 $widget('home_projects'),
             )),
         )),
 
-        $el('section', 'py-5 bg-body-tertiary', lang('Our Services'), array(
+        $el('section', 'py-5 bg-body-tertiary', lang('How We Work'), array(
             $container(array(
-                $section_header(lang('What we make'), lang('From the first idea to the final cut'), lang('All Services'), '{{page:services}}'),
-                $row($service_cols, '4'),
-            )),
-        ), $searchable('fm-home-services', lang('commercial, advert, brand film, music video, documentary, corporate video, editing'))),
-
-        $el('section', 'py-5', lang('How We Work'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('Step by step'), 'pfm-eyebrow text-uppercase fw-semibold text-primary mb-2'),
-                        $heading('h2', lang('From the brief to the master'), 'pfm-display h2 mb-4'),
-                        $el('ol', 'list-unstyled mb-4', lang('Steps'), $process_items),
-                        $link(lang('How We Work'), '{{page:process}}', 'btn btn-outline-secondary px-4'),
-                    ), '', '6'),
-                    $col(array($framed($photo('home-process', 1280, 720), lang('A director and a camera operator watching a take on a monitor'))), '', '6'),
-                ), '4', '', 'g-lg-5 align-items-center'),
+                $fade_in($section_header(lang('Step by step'), lang('From the brief to the master'), lang('How We Work'), '{{page:process}}')),
+                $rise($el('ol', 'list-unstyled row row-cols-1 row-cols-sm-2 row-cols-lg-5 g-4 justify-content-center mb-0', lang('Steps'), $home_timeline), 120),
             )),
         ), $searchable('fm-home-process', lang('how it works, treatment, pre-production, shoot, edit, delivery'))),
-
-        $el('section', 'py-5 bg-body-tertiary', lang('Why Work with Us'), array(
-            $container(array(
-                $section_header(lang('The way we work'), lang('Why film with us'), lang('About Us'), '{{page:about}}'),
-                $row($why_tiles, '4'),
-            )),
-        ), $searchable('fm-why-us', lang('treatment, producer, in house, fixed budget, price'))),
 
         // What clients say: sample words for the studio to replace, and
         // beside them its own Google reviews, which show once Google
         // Reviews is set up under Site Settings.
         $el('section', 'py-5', lang('Testimonials'), array(
             $container(array(
-                $section_header(lang('Our clients'), lang('What clients say')),
-                $row($testimonial_cols, '4'),
+                $fade_in($section_header(lang('Our clients'), lang('What clients say'))),
+                $rise($row($testimonial_cols, '4')),
                 $widget('google_reviews'),
             )),
         )),
 
         $el('section', 'py-5 bg-body-tertiary', lang('From the Journal'), array(
             $container(array(
-                $section_header(lang('Journal'), lang('Stories from the set'), lang('All Stories'), '{{page:blog}}'),
+                $fade_in($section_header(lang('Journal'), lang('Stories from the set'), lang('All Stories'), '{{page:blog}}')),
                 $widget('home_posts'),
             )),
         )),
@@ -199,6 +306,47 @@ $public_pages[] = array(
 );
 
 // ── Services ────────────────────────────────────────────────────────────
+
+// The cuts a film is delivered in (Film Studio: Cuts for Every Screen):
+// each frame drawn at its aspect ratio (hidden from a screen reader, which
+// reads the ratio in words), where it is shown and the lengths it is cut to.
+$format_card = function ($shape, $ratio, $use, $lengths) use ($el, $heading, $para, $attr) {
+    $badges = array();
+    foreach ($lengths as $text) $badges[] = $el('li', 'badge rounded-pill text-bg-secondary fw-normal', $text, array(), array('text' => $text));
+    return $el('li', 'col', $ratio, array(
+        $el('div', 'h-100 p-3 rounded-4 border bg-body', lang('Card'), array(
+            $el('div', 'pg-filmstudio-frame mb-3', lang('Drawing'), array(
+                $el('div', $shape, lang('Frame')),
+            ), array('_attrs' => array($attr('aria-hidden', 'true')))),
+            $heading('h3', $ratio, 'h4 fw-bold mb-1'),
+            $para($use, 'small text-body-secondary mb-3'),
+            $el('ul', 'list-unstyled d-flex flex-wrap gap-1 mb-0', lang('Lengths'), $badges),
+        )),
+    ));
+};
+$services_formats = $el('section', 'py-5 bg-body-tertiary', lang('Formats'), array(
+    $container(array(
+        $fade_in($el('div', 'row g-4 align-items-end mb-5', lang('Section Header'), array(
+            $el('div', 'col-lg-7', lang('Section Title'), array(
+                $para(lang('Formats'), 'pfm-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+                $heading('h2', lang('A cut for every screen and length'), 'pfm-display display-5 mb-0'),
+            )),
+            $el('div', 'col-lg-5', lang('Lead'), array(
+                $para(lang('One shoot, delivered in every shape and length the film will be shown in. The frames are drawn to scale.'), 'lead text-body-secondary mb-0'),
+            )),
+        ))),
+        $fx($el('ul', 'list-unstyled row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3 g-lg-4 mb-4', lang('Formats'), array(
+            $format_card('pg-filmstudio-r239', '2.39:1', lang('Cinema, before the feature'), array(lang('60 s'), lang('30 s'))),
+            $format_card('pg-filmstudio-r169', '16:9', lang('Television and the web'), array(lang('60 s'), lang('30 s'), lang('15 s'))),
+            $format_card('pg-filmstudio-r45', '4:5', lang('Social media feeds'), array(lang('30 s'), lang('15 s'), lang('6 s'))),
+            $format_card('pg-filmstudio-r916', '9:16', lang('Vertical video on phones'), array(lang('15 s'), lang('6 s'))),
+        )), array('effect' => 'scale', 'trigger' => 'view', 'duration' => 700, 'stagger' => 120)),
+        $fade_in($el('div', 'd-flex flex-column flex-md-row align-items-md-center gap-3', lang('Note'), array(
+            $para(lang('Subtitles, captions and versions in other languages are cut from the same master.'), 'flex-grow-1 text-body-secondary mb-0'),
+            $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-primary px-4 flex-shrink-0'),
+        )), 200),
+    )),
+), $searchable('fm-formats', lang('aspect ratio, vertical video, cut-down, versions, subtitles, cinema, social media')));
 
 $public_pages[] = array(
     'key'              => 'services',
@@ -210,13 +358,14 @@ $public_pages[] = array(
         $page_header(lang('Our Services'), lang('Six kinds of film we make, from a six-second spot to a feature documentary.')),
         $el('section', 'py-5', lang('Our Services'), array(
             $container(array(
-                $row($service_cols, '4'),
+                $rise($row($service_cols, '4')),
             )),
         ), $searchable('fm-services', lang('video production, filming, advert, brand film, music video, documentary, editing, grading'))),
-        $el('section', 'py-5 bg-body-tertiary', lang('Industries'), array(
+        $services_formats,
+        $el('section', 'py-5', lang('Industries'), array(
             $container(array(
-                $section_header(lang('Who we film for'), lang('Industries we know'), lang('All Work'), '{{page:projects}}'),
-                $row($industry_tiles, '4'),
+                $fade_in($section_header(lang('Who we film for'), lang('Industries we know'), lang('All Work'), '{{page:projects}}')),
+                $rise($row($industry_tiles, '4')),
             )),
         ), $searchable('fm-industries', lang('cars, fashion, food, music, technology, charity'))),
         $ask_band(lang('Not sure what kind of film you need?'), lang('Tell us what the film must do and a producer calls you back within a working day.')),
@@ -263,7 +412,7 @@ foreach ($services as $key => $s) {
             $el('section', 'py-5 bg-body-tertiary', lang('How We Work'), array(
                 $container(array(
                     $section_header(lang('Step by step'), lang('How we make your film'), lang('How We Work'), '{{page:process}}'),
-                    $el('ol', 'list-unstyled mb-0', lang('Steps'), $process_items),
+                    $rise($el('ol', 'list-unstyled mb-0', lang('Steps'), $process_items), 120),
                 )),
             )),
         )),
@@ -284,7 +433,7 @@ $public_pages[] = array(
             $container(array(
                 $row(array(
                     $col(array(
-                        $el('ol', 'list-unstyled mb-4', lang('Steps'), $process_items),
+                        $rise($el('ol', 'list-unstyled mb-4', lang('Steps'), $process_items), 120),
                         $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-primary px-4'),
                     ), '', '6'),
                     $col(array($framed($photo('process', 1280, 720), lang('A storyboard pinned on the wall of the production office'))), '', '6'),
@@ -330,7 +479,7 @@ $public_pages[] = array(
         $el('section', 'py-5', lang('Our Spaces'), array(
             $container(array(
                 $section_header(lang('Under one roof'), lang('Our spaces'), lang('Hire the Studio'), '{{page:studio_hire}}'),
-                $row($space_cols, '4'),
+                $rise($row($space_cols, '4')),
             )),
         ), $searchable('fm-spaces', lang('sound stage, green screen, infinity cove, edit suite, colour grading, sound mix'))),
         $story_band('fm-hire', lang('For hire'), lang('Shoot in our studio'),
@@ -355,7 +504,7 @@ $public_pages[] = array(
         $page_header(lang('The Crew'), lang('The people behind the camera, in the edit and at the mixing desk.')),
         $el('section', 'py-5', lang('The Crew'), array(
             $container(array(
-                $row($crew_cols, '4'),
+                $rise($row($crew_cols, '4')),
             )),
         ), $searchable('fm-crew', lang('people, director, producer, editor, colourist, sound, team'))),
         $story_band('fm-join-us', lang('Crew calls'), lang('Make films with us'),
@@ -384,13 +533,13 @@ $public_pages[] = array(
         $el('section', 'py-5', lang('Why Work with Us'), array(
             $container(array(
                 $section_header(lang('The way we work'), lang('Why film with us')),
-                $row($why_tiles, '4'),
+                $rise($row($why_tiles, '4')),
             )),
         ), $searchable('fm-about-why', lang('treatment, producer, in house, fixed budget, price'))),
         $el('section', 'py-5 bg-body-tertiary', lang('The Crew'), array(
             $container(array(
                 $section_header(lang('Our people'), lang('The people who make your film'), lang('The Crew'), '{{page:crew}}'),
-                $row(array_slice($crew_cols, 0, 3), '4'),
+                $rise($row(array_slice($crew_cols, 0, 3), '4')),
             )),
         )),
         $ask_band(lang('Want to make a film with us?'), lang('Write to us about your idea, or see the crew calls open now.')),

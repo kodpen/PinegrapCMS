@@ -1833,6 +1833,7 @@
     "{var:1} views in the last {var:2} days": "son {var:2} günde {var:1} görüntüleme",
     "{var:1} visitor record(s) older than {var:2} days removed, {var:3} day(s) added to the daily summary, in {var:4} s.": "{var:2} günden eski {var:1} ziyaretçi kaydı silindi, {var:3} gün günlük özete eklendi ({var:4} sn).",
     "{var:1} visitors are on the site right now.": "Şu anda sitede {var:1} ziyaretçi var.",
+    "{var:1} visitor{suffix:1}": "{var:1} ziyaretçi",
     "{var:1} visit{suffix:1}": "{var:1} ziyaret",
     "{var:1} visit{suffix:1} in the last 30 minutes": "Son 30 dakikada {var:1} ziyaret",
     "{var:1} visual design styles and {var:2} visual design pages were not copied. Tick Visual Designs to carry them.": "{var:1} görsel tasarım stili ve {var:2} görsel tasarım sayfası taşınmadı. Bunları taşımak için Görsel Tasarımlar'ı işaretleyin.",

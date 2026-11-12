@@ -115,8 +115,10 @@ if (!$_POST && !$component && !empty($_GET['classic'])) {
         output_error(h($classic['error']) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 403);
     }
     // The theme is not written for the designer's Bootstrap 5, and the
-    // style's head files are the design's files now.
-    $style['framework']          = 'custom';
+    // style's head files are the design's files now. The legacy key loads
+    // no framework files, like a custom design, and marks the design as a
+    // moved classic style; Save writes it (pg_classic_style_mark_design()).
+    $style['framework']          = 'legacy';
     $style['style_custom_css']   = $classic['css'];
     $style['style_custom_js']    = $classic['js'];
     $style['style_custom_fonts'] = $classic['fonts'];

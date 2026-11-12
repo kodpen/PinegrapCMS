@@ -9,7 +9,7 @@ description: Plan: what the Visual Page Editor needs for bold product pages (scr
 
 ## What can a page do today?
 - Entrance on load or view, hover, click, `sticky` and `parallax` (a move only), from `props._fx` ([[designer-interactions]]). Nothing is tied to the scroll position beyond parallax: no scale or fade while scrolling, no pinned scene with steps.
-- Edge to edge: a photo hero (`hero-image-bg`, `pg-hero-tall`). No video item in the palette: a `<video>` exists only as a raw element (code view), and no block plays one.
+- Edge to edge: a photo hero (`hero-image-bg`, `pg-hero-tall`). Palette > Content > Video (B9a) gives a `<video>` with controls and no autoplay, which can fill a hero ([[designer-video-item]]); no block plays one.
 - Horizontal gallery with snap: `scroller-cards` (snap and previous/next buttons, [[designer-scroller-controls]]); cards only, no wide media slides.
 - Colour switch: `launch-colours` (radios and `:has()`, [[designer-blocks-launch]]), but only in the Product Launch family.
 - Sticky bar: any node with `sticky`; no ready product bar. Numbers that count: none (figures are static text).

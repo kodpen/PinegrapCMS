@@ -4,7 +4,7 @@ description: Visual Page Editor Blocks list hover card: the block drawn from the
 ---
 
 ## What does a block's hover card show?
-- Hovering or focusing a row of the Blocks list shows the tip card (`_sdPalTipHTML()`) with a drawing of the block and its name; the description line comes with the block info map ([[designer-palette-drawings]] P4–P6).
+- Hovering or focusing a row of the Blocks list shows the tip card (`_sdPalTipHTML()`) with a drawing of the block and its name, then the block's description line ([[palette-block-info]]; family blocks in [[designer-palette-drawings]] P5–P6).
 - The drawing is made from the tree the block's builder returns, not stored: a block added to the core or a family file is drawn unasked.
 - An item with its own drawing key `v` in `_sdPalInfo()` (the Components rows) keeps that drawing. An item with neither shows no card.
 

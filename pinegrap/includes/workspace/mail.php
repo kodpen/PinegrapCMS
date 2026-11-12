@@ -964,6 +964,11 @@ function ws_mail_card_html($row, $item)
         return '';
     }
 
+    // A forward of this mail: whom it went to and its own card (mail_forward.php).
+    if (function_exists('ws_mail_forward_is_line') && ws_mail_forward_is_line($row, $item)) {
+        return ws_mail_forward_line_html($item);
+    }
+
     // A delivery failure of an answer: whom it did not reach and the
     // receiving server's words.
     if (ws_mail_item_is_bounce($item)) {

@@ -34,7 +34,7 @@ description: Order of the polishing round after Launch: every shipped template's
 
 - Carrental: `-1` #8669, `-2` #8747 done.
 
-- Filmstudio: `-1` #8689 done; `-2` open.
+- Filmstudio: `-1` #8689, `-2` #8739 done.
 
 - Florist: `-1` #8763 done; `-2` open.
 

@@ -7726,7 +7726,9 @@ function _pg_smart_active_fragment($html, $target)
 // which is what every design was until then.
 //
 // A later framework (Bootstrap 6) is one more entry here: its files, and
-// whether the Bootstrap palette applies to it.
+// whether the Bootstrap palette applies to it. Callers ask an entry's flags
+// (pg_design_framework_has()), never its key text, so a new key only needs
+// its flags set right.
 
 function pg_design_frameworks()
 {
@@ -7740,6 +7742,8 @@ function pg_design_frameworks()
             // The grid, the Bootstrap components and the blocks are written
             // against this version.
             'bootstrap' => true,
+            // A classic (legacy) style moved into the editor.
+            'legacy'    => false,
         ),
         'custom' => array(
             'label'     => lang('Custom'),
@@ -7747,8 +7751,31 @@ function pg_design_frameworks()
             'js'        => '',
             'version'   => '',
             'bootstrap' => false,
+            'legacy'    => false,
+        ),
+        // A classic style moved into the editor (Design, Edit in Visual
+        // Page Editor, or the bulk move). It loads no framework files, like
+        // a custom design: the style's own CSS and the frame component carry
+        // the look. The key marks it so the editor and the Visual Designs
+        // list can tell it from a design made in the editor. Never offered
+        // for a new design.
+        'legacy' => array(
+            'label'     => lang('Legacy'),
+            'css'       => '',
+            'js'        => '',
+            'version'   => '',
+            'bootstrap' => false,
+            'legacy'    => true,
         ),
     );
+}
+
+// Whether a framework key carries a flag of its registry entry ('bootstrap',
+// 'legacy'). An unknown key reads as Bootstrap 5, like pg_design_framework().
+function pg_design_framework_has($key, $flag)
+{
+    $fw = pg_design_framework($key);
+    return !empty($fw[$flag]);
 }
 
 // A framework key the registry knows; anything else (an empty column, a key

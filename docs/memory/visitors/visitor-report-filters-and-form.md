@@ -14,7 +14,8 @@ module: visitor_report
 By `pg_visitor_paid_organic_sql()` (the old two-way split; the full channel is `visitor-channel-rule.md`), through `pg_visitor_report_channel_sql($filter)`: with an empty flag nothing is paid. The screen's own `LIKE "%flag%"` matched every visit when the setting was empty (#5783). Filter values stay `pay_per_click` / `organic` / `neither`; the grouping returns the English names `update_summarize_by_name()` translates.
 
 ## How does the form come back after a save error?
-"Submitted" is `field_in_session('last_filter_number')` (the hidden field posted with every save). It used to be `submit_button`, the Delete button's name, so defaults (Year/Month/Day) and the stored filters overwrote what was entered. An existing report opens its form again when `check_form_errors()` is true (#5781).
+"Submitted" is `field_in_session('last_filter_number')` (the hidden field posted with every save). It used to be `submit_button`, the Delete button's name, so defaults (Year/Month/Day) and the stored filters overwrote what was entered (#5781).
+- The form sits in the Report settings drawer (#8764, `ui/report-settings-drawer.md`); it opens by itself on a new report and, for a saved one too, when `check_form_errors()` is true.
 
 ## Where is the report name shown?
 On the tab (`Visitor Report: <name>`) and as the breadcrumb's last item (Overview › Saved visitor reports › name), both with `h()`; read from `visitor_reports`, not the form, so a name that failed to save is not shown. A new report reads "[new visitor report]" (#5784).

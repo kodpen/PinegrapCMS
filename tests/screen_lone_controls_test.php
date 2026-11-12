@@ -64,18 +64,16 @@ function test_screen_lone_controls_disk_usage_is_in_the_toolbar()
 	}
 }
 
-function test_screen_lone_controls_reports_keep_the_bar_id()
+// The order and visitor reports open their settings in a drawer
+// (tests/order_report_screen_layout_test.php,
+// tests/visitor_report_screen_layout_test.php): no Edit button hides the bar.
+function test_screen_lone_controls_reports_open_a_drawer()
 {
-	// The order report opens its settings in a drawer instead
-	// (tests/order_report_screen_layout_test.php).
-	foreach (array('view_visitor_report.php') as $file) {
+	foreach (array('view_order_report.php', 'view_visitor_report.php') as $file) {
 		$source = screen_lone_controls_source($file);
-		// Edit hides the bar and Cancel Edit shows it again, both by its id;
-		// the helper draws nav#button_bar.
-		pg_assert_contains("getElementById(\\'button_bar\\').style.display = \\'none\\'", $source, $file . ' Edit hides the bar by id');
-		pg_assert_contains("getElementById(\\'button_bar\\').style.display = \\'\\'", $source, $file . ' Cancel Edit gives the bar back its flex display');
-		pg_assert_false(strpos($source, "getElementById(\\'button_bar\\').style.display = \\'block\\'") !== false, $file . ' Cancel Edit does not force display block');
-		pg_assert_contains('id="edit_button"', $source, $file . ' keeps the Edit button id');
+		pg_assert_contains('id="report_settings_button" data-bs-toggle="drawer"', $source, $file . ' opens its settings drawer');
+		pg_assert_false(strpos($source, "getElementById(\\'button_bar\\').style.display") !== false, $file . ' never hides the bar');
+		pg_assert_false(strpos($source, 'id="edit_button"') !== false, $file . ' has no Edit button');
 	}
 }
 

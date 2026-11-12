@@ -368,7 +368,7 @@ $fm_record_tree = function ($r) use ($el, $heading, $para, $link, $span, $icon, 
                                 $el('div', 'd-flex flex-wrap align-items-start justify-content-between gap-2 mb-3', lang('Title'), array(
                                     $el('div', '', lang('Words'), array(
                                         $para($r['view_title'], 'pfm-eyebrow small text-uppercase fw-semibold text-primary mb-1'),
-                                        $heading('h1', $r['title_sample'], 'pfm-display h3 mb-0', $bind($r['title_field'])),
+                                        $heading('h1', $r['title_sample'], 'h3 mb-0', $bind($r['title_field'])),
                                     )),
                                     $span($r['status_sample'], 'badge rounded-pill bg-primary-subtle text-primary-emphasis fs-6', lang('Status'), $bind('status')),
                                 )),

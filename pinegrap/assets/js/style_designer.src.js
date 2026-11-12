@@ -15982,7 +15982,11 @@ const StyleDesigner = (function () {
                 // <a> is innerEl itself — edit directly, no span wrapper
                 editableTargets.push({ el: innerEl, prop: 'text' });
             }
-        } else if (node.type === 'semantic' && !_sdIsSentence(node) && (node.props.text !== undefined || !(node.children && node.children.length))) {
+        } else if (node.type === 'semantic' && !_sdIsSentence(node) && !/^(video|audio)$/i.test(String(node.props.tag || '')) &&
+                   (node.props.text !== undefined || !(node.children && node.children.length))) {
+            // A player is left out: text typed into it is fallback content
+            // no current browser shows, and a double-click on it belongs to
+            // its own controls.
             // A sentence with values is written in the panel: typing across
             // it would take its values' words for its own.
             // Semantic elements with direct text (e.g. <button>, <a> with text
@@ -17141,6 +17145,13 @@ const StyleDesigner = (function () {
         }
         if (tgtTag === 'tr') {
             return srcTag === 'td' || srcTag === 'th';
+        }
+
+        // Rule 7: a player holds only its <source> and <track> elements:
+        // anything else inside <video> or <audio> is fallback content that no
+        // current browser shows, so a heading dropped there would vanish.
+        if (tgtTag === 'video' || tgtTag === 'audio') {
+            return srcTag === 'source' || srcTag === 'track';
         }
 
         // ────────────────────────────────────────────────────────────────────
@@ -23609,7 +23620,14 @@ const StyleDesigner = (function () {
             }).map(function (k) {
                 var c = CONTENT[k];
                 return { label: c.label, type: 'content', icon: c.icon, extra: { contentType: k } };
-            })},
+            }).concat([
+                // A <video> with the player's own controls; the Video panel
+                // (propsVideoOptions()) picks its file and poster. preload
+                // "metadata" loads the first frame and the length, not the
+                // film; playsinline keeps it in the page on a phone.
+                { label: _sdT('Video'), type: 'semantic', icon: 'bi-camera-video', extra: { tag: 'video', cssClass: 'd-block w-100 h-auto',
+                    customName: _sdT('Video'), _attrs: [{ name: 'controls', value: '' }, { name: 'preload', value: 'metadata' }, { name: 'playsinline', value: '' }] } }
+            ])},
             // Plain form controls. Each lands as <div class="mb-5"><label><control>
             // (a group as <fieldset><legend>…) with a Turkish default label
             // and a seeded name. Inside a custom form widget the block is a
@@ -45058,6 +45076,7 @@ const StyleDesigner = (function () {
                (isTable ? propsTableOptions(n) : '') +
                (isTableRow ? propsTableRowOptions(n) : '') +
                (isTableCell ? propsTableCellOptions(n) : '') +
+               (String(n.props.tag || '').toLowerCase() === 'video' ? propsVideoOptions(n) : '') +
                rowSection +
                colSection +
                stateSection +
@@ -45218,6 +45237,100 @@ const StyleDesigner = (function () {
             row(_sdT('Novalidate'),       swAttr('data-form-bool-attr="novalidate"',              ha('novalidate'))) +
             row('needs-validation', swAttr('data-util-toggle="needs-validation"',           cls.indexOf('needs-validation') !== -1)) +
             row('was-validated',    swAttr('data-util-toggle="was-validated"',              cls.indexOf('was-validated') !== -1))
+        );
+    }
+
+    // ── Video Options ─────────────────────────────────────────────────────────
+    // The classes that lay a video over the whole of its box, behind the
+    // box's content, the way a background picture sits: absolutely placed,
+    // cropped to cover, one layer under the content (z-n1). Its box gets
+    // position-relative and z-0 (_sdVideoFillHostClass()), so the layer is
+    // the box's own and the video paints above the box's background.
+    /* @pg-site-output */
+    var _SD_VIDEO_FILL = ['position-absolute', 'top-0', 'start-0', 'w-100', 'h-100', 'object-fit-cover', 'z-n1'];
+
+    // Whether a video's class list `cls` lays it over its box.
+    function _sdVideoFills(cls) {
+        var have = String(cls || '').split(/\s+/);
+        return _SD_VIDEO_FILL.every(function (c) { return have.indexOf(c) !== -1; });
+    }
+
+    // A video's class list `cls` with the fill turned on or off. On, a class
+    // of the same family (another position, size, inset, fit or layer)
+    // gives way, as h-auto would beat h-100 in the stylesheet. Off, the
+    // video goes back to the palette item's own size: the column's width at
+    // the film's own height.
+    /* @pg-site-output */
+    function _sdVideoFillClass(cls, on) {
+        var list = String(cls || '').split(/\s+/).filter(Boolean);
+        var family = /^(position-|top-|bottom-|start-|end-|w-|h-|object-fit-|z-)/;
+        if (on) {
+            list = list.filter(function (c) { return !family.test(c); }).concat(_SD_VIDEO_FILL);
+        } else {
+            list = list.filter(function (c) { return _SD_VIDEO_FILL.indexOf(c) === -1; });
+            ['w-100', 'h-auto'].forEach(function (c) { if (list.indexOf(c) === -1) list.push(c); });
+        }
+        return list.join(' ');
+    }
+
+    // The class list `cls` of the box a filling video sits in: placed
+    // (position-relative unless a position class already places it) and a
+    // layer of its own (z-0 unless a z class gives one). Without the
+    // layer the video's z-n1 would drop it behind the box's background.
+    /* @pg-site-output */
+    function _sdVideoFillHostClass(cls) {
+        var list = String(cls || '').split(/\s+/).filter(Boolean);
+        var placed = /^(position-(relative|absolute|fixed|sticky)|fixed-(top|bottom)|sticky-(top|bottom))$/;
+        if (!list.some(function (c) { return placed.test(c); })) {
+            list = list.filter(function (c) { return c !== 'position-static'; });
+            list.push('position-relative');
+        }
+        if (!list.some(function (c) { return /^z-(n1|[0-9])$/.test(c); })) list.push('z-0');
+        return list.join(' ');
+    }
+
+    // The Video panel of a <video> node: its file and poster from the
+    // file manager, the player's switches and how much of the file the
+    // browser loads up front. No autoplay row: a video that plays by
+    // itself is the hero's job, with a pause button and off under reduced
+    // motion. A src or poster bound to a record field is edited in the
+    // Data panel, so its row only says so.
+    function propsVideoOptions(n) {
+        var b = n.props._bindings || {};
+        function ga(nm) { return getNodeAttr(n, nm); }
+        function fInp(id, dAttr, ph) {
+            return '<input type="text" class="form-control form-control-sm"' + (id ? ' id="' + id + '"' : '') +
+                ' data-form-input-attr="' + dAttr + '" value="' + esc(ga(dAttr)) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + '>';
+        }
+        function bound() {
+            return '<span class="sd-prop-static" style="color:#888">' + esc(_sdT('From a record field')) + '</span>';
+        }
+        function pick(id, dAttr, ph, onclick) {
+            return '<div class="sd-pick-group">' + fInp(id, dAttr, ph) +
+                '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" onclick="' + onclick + '">' + esc(_sdT('Select')) + '</button>' +
+                '</div>';
+        }
+        var fills = _sdVideoFills(n.props.cssClass);
+        var pre = ga('preload');
+        var preOpts = [['', _sdT('Browser default')], ['none', _sdT('None')], ['metadata', _sdT('Metadata only')], ['auto', _sdT('Whole file')]];
+        var preSel = '<select class="form-control form-control-sm" data-form-input-attr="preload">';
+        preOpts.forEach(function (o) { preSel += '<option value="' + o[0] + '"' + (o[0] === pre ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; });
+        preSel += '</select>';
+
+        return sect('bi-camera-video', _sdT('Video'),
+            row(_sdT('Video file'), b.src ? bound()
+                : pick('sd-prop-video-src', 'src', '/film.mp4', "window.sdOpenFilePicker('sd-prop-video-src','src','file')")) +
+            row(_sdT('Poster image'), b.poster ? bound()
+                : pick('sd-prop-video-poster', 'poster', '', "window.sdOpenImagePicker('sd-prop-video-poster')")) +
+            row(_sdT('Title'), fInp('', 'title', '')) +
+            (fills ? '' : row(_sdT('Controls'), swAttr('data-form-bool-attr="controls"', hasNodeBoolAttr(n, 'controls')))) +
+            row(_sdT('Loop'), swAttr('data-form-bool-attr="loop"', hasNodeBoolAttr(n, 'loop'))) +
+            row(_sdT('Muted'), swAttr('data-form-bool-attr="muted"', hasNodeBoolAttr(n, 'muted'))) +
+            row(_sdT('Preload'), preSel) +
+            row(_sdT('Fill its box'), swAttr('data-video-fill', fills) +
+                '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
+                esc(_sdT('Covers the box it sits in, behind the content of the box, like a background picture. Its controls go off, as the content would cover them.')) +
+                '</div>')
         );
     }
 
@@ -51504,6 +51617,29 @@ const StyleDesigner = (function () {
                 // Re-render properties so type-dependent rows update
                 renderCanvas(); renderProperties(); renderAttrsPanel(); renderHtmlTree();
             });
+        });
+
+        // ── Video: fill its box (propsVideoOptions()) ──
+        // The video lays itself over its box and the box becomes the place
+        // and the layer it is laid in. Its controls go off with it: the
+        // box's content covers them. A box that is the page itself or a
+        // placed component has no class of its own to take.
+        var _vfIn = document.querySelector('#sd-properties input[data-video-fill]');
+        if (_vfIn) _vfIn.addEventListener('change', function () {
+            if (!selectedNode) return;
+            saveState();
+            var on = this.checked;
+            selectedNode.props.cssClass = _sdVideoFillClass(selectedNode.props.cssClass, on);
+            setNodeBoolAttr(selectedNode, 'controls', !on);
+            if (on) {
+                var _vfP = _sdAnyParent(selectedNode);
+                var host = _vfP && _vfP.parent;
+                if (host && host.props && ['semantic', 'container', 'row', 'col'].indexOf(host.type) !== -1) {
+                    host.props.cssClass = _sdVideoFillHostClass(host.props.cssClass);
+                    _sdSharedMarkEdited(host);
+                }
+            }
+            renderCanvas(); renderProperties(); renderAttrsPanel(); renderHtmlTree();
         });
 
         // ── Input ID field (data-form-input-id: sets both _attrs.id and node.props.id) ──
@@ -74098,6 +74234,8 @@ const StyleDesigner = (function () {
                                     d: _sdT('A piece of text within a line, for styling a word or a phrase.') },
             't:image':            { h: '<img>', k: 'image img picture photo graphic',
                                     d: _sdT('A picture from the file manager or from an address.') },
+            's:video':            { h: '<video controls>', k: 'video movie film clip mp4 webm player media',
+                                    d: _sdT('A video from the file manager, with a poster and playback controls. It does not play by itself.') },
             't:divider':          { h: '<hr>', k: 'divider hr line separator rule',
                                     d: _sdT('A horizontal line.') },
             't:spacer':           { k: 'spacer gap space margin blank',
@@ -74208,6 +74346,154 @@ const StyleDesigner = (function () {
                                     d: _sdT('The comments of the page and the form for adding one.') }
         };
         return _sdPalInfoMap;
+    }
+
+    // Ready-made blocks: one line each on what the block adds, keyed by its
+    // componentType and shown under the block's drawing in the hover card.
+    // Every core block of _sdBlockPaletteItems() has its line here
+    // (tests/designer_block_info_test.php fails for one without).
+    // Built on first use: the lines are read through _sdT().
+    var _sdBlockInfoMap = null;
+    function _sdBlockInfo() {
+        if (_sdBlockInfoMap) return _sdBlockInfoMap;
+        _sdBlockInfoMap = {
+            'navbar-light-cta':              _sdT('A light top bar: the brand, three page links, and Login and Sign Up buttons on the right.'),
+            'navbar-search':                 _sdT('A top bar with the brand, a search box and an account menu that drops down.'),
+            'navbar-dark-center':            _sdT('A dark top bar with the brand on the left and the page links in the middle.'),
+            'hero-centered':                 _sdT('An opening section centred on the page: a badge, a large headline, a short text and two buttons.'),
+            'hero-split':                    _sdT('An opening section in two halves: a headline, a text and two buttons beside a picture.'),
+            'hero-image-bg':                 _sdT('A tall opening section on a background photo, with the headline, text and two buttons over it.'),
+            'spotlight-media':               _sdT('An opening section that fills the screen with a photo from edge to edge, the headline and buttons at its foot.'),
+            'cta-simple':                    _sdT('A band that asks the visitor to act: a headline, one line of text and two buttons.'),
+            'cta-inline':                    _sdT('A slim band with a headline and a short text on one side and a button on the other.'),
+            'cta-gradient':                  _sdT('A band in the main colour of the design: a badge, a large offer headline, a short text and two buttons.'),
+            'features-grid':                 _sdT('Three features side by side, each an icon with a title and a short explanation.'),
+            'features-alt':                  _sdT('Features in rows that alternate sides: a label, a title and a text beside a picture that changes sides each row.'),
+            'features-list':                 _sdT('A heading and an introduction, then a list of features with an icon, a title and a short explanation each.'),
+            'testimonial-single':            _sdT('One customer quote in large type, with the photo, name and role of the person who said it.'),
+            'testimonial-grid':              _sdT('Customer reviews in cards side by side: five stars, the quote, a photo, a name and a role.'),
+            'testimonial-carousel':          _sdT('Customer quotes in a slideshow, one at a time, each with a photo, a name and a role.'),
+            'image-carousel':                _sdT('A slideshow of large pictures with a caption on each, arrows and position marks.'),
+            'image-grid':                    _sdT('Six pictures of the same size in an even grid.'),
+            'image-masonry':                 _sdT('Six pictures of mixed heights in columns, like a pinboard.'),
+            'pricing-tiers':                 _sdT('Price plans in cards side by side, each with a price, a feature list and a button; the middle one marked Most Popular.'),
+            'pricing-comparison':            _sdT('A table that sets the plans against each other feature by feature, with a button under each plan.'),
+            'pricing-toggle':                _sdT('Price plans in cards with a Monthly / Yearly switch above them and a discount badge on yearly billing.'),
+            'stats-counter':                 _sdT('Four large figures in a row, each with a short label, such as users or uptime.'),
+            'stats-icons':                   _sdT('Four figures in a row, each with an icon above it and a short label.'),
+            'stats-progress':                _sdT('Figures shown as progress bars: a title, a percentage, a bar and a short note each.'),
+            'team-grid':                     _sdT('Team members in cards: a photo, the name, the role and social media icons.'),
+            'team-minimal':                  _sdT('A compact team list: a round photo, a name and a role for each person, several to a row.'),
+            'team-leadership':               _sdT('Large cards for the leaders: a photo, a role badge, the name and title, a short quote and social media icons.'),
+            'faq-accordion':                 _sdT('Frequently asked questions as panels that open one at a time to show the answer.'),
+            'faq-categorized':               _sdT('Questions grouped by subject: a list of categories on the side and the questions of each in opening panels.'),
+            'faq-twocol':                    _sdT('Questions with their answers always open, in two columns, each with an icon.'),
+            'timeline-vertical':             _sdT('Milestones one under the other: a date on the left, a title and a short text on the right.'),
+            'timeline-alternating':          _sdT('Milestones in cards on both sides of a centre line, each with a date badge, a title and a text.'),
+            'timeline-horizontal':           _sdT('Numbered steps in one row from left to right, each with a title and a short text.'),
+            'blog-grid':                     _sdT('Post cards side by side: a picture, a category badge, the title, a summary and the author.'),
+            'blog-featured':                 _sdT('One large featured post with a picture and a summary, beside a list of the latest posts with their dates.'),
+            'blog-list':                     _sdT('Posts one under the other: a picture on the side, then the category, title, summary and post details.'),
+            'logos-grid':                    _sdT('A short heading and six customer logos in a grid.'),
+            'logos-divider':                 _sdT('A one-line caption and six logos in a slim strip between two sections.'),
+            'logos-marquee-static':          _sdT('A heading and ten logos in one long row that does not move.'),
+            'compare-vs':                    _sdT('Two cards set against each other: the old way with its drawbacks and the new way with its gains.'),
+            'compare-table':                 _sdT('A table of ticks and crosses that sets your product against others, feature by feature.'),
+            'compare-side-by-side':          _sdT('Two plans side by side to choose from: a picture, the name, the price, a feature list and a button each.'),
+            'footer-minimal':                _sdT('A one-line page footer: the copyright line and social media icons.'),
+            'footer-multi-col':              _sdT('A page footer with four columns of links under titles, then the copyright line and social media icons.'),
+            'footer-newsletter':             _sdT('A page footer with a newsletter sign-up, an email box and a button, then the copyright line and social icons.'),
+            'contact-form':                  _sdT('A contact form: name, email, subject and message fields with a Send button.'),
+            'contact-info':                  _sdT('Address, phone and email with icons on one side, a short contact form on the other.'),
+            'contact-map':                   _sdT('A place for a map beside a short contact form.'),
+            'newsletter-inline':             _sdT('A newsletter sign-up on one band: an icon, a heading, a text and an email box with its button.'),
+            'newsletter-split':              _sdT('A newsletter sign-up in two halves: the heading and text on one side, the email box and button on the other.'),
+            'newsletter-card':               _sdT('A newsletter sign-up in a card with a picture: a badge, a heading, a text and an email box with its button.'),
+            'login-centered':                _sdT('A sign-in card in the middle: email, password, Remember me, a forgotten password link and Google and Apple buttons.'),
+            'login-split':                   _sdT('A sign-in page in two halves: a welcome text with the main benefits on one side, the sign-in form on the other.'),
+            'login-minimal':                 _sdT('A small sign-in form: email, password, a button and a link for creating an account.'),
+            'footer-columns':                _sdT('A page footer with the brand, a short text and social icons, three columns of links, and the copyright and legal links.'),
+            'footer-minimal-2':              _sdT('A slim page footer: the brand and a short text, a few links and social icons, then the copyright line.'),
+            'footer-newsletter-2':           _sdT('A page footer that opens with a newsletter sign-up, then the brand, three columns of links and the copyright line.'),
+            'navbar-mega':                   _sdT('A top bar whose menu opens a wide panel with three columns of links.'),
+            'navbar-double':                 _sdT('A top bar in two rows: phone, email and social icons above; the brand, links and a button below.'),
+            'navbar-centered-logo':          _sdT('A top bar with the brand in the middle, links on both sides of it and a sign-in button.'),
+            'error-404-simple':              _sdT('A page not found message: a large 404, a heading, a short text and buttons back.'),
+            'error-404-illustration':        _sdT('A page not found message beside a large icon drawing, with a button back to the home page.'),
+            'error-404-search':              _sdT('A page not found message with a search box and links to often visited pages.'),
+            'breadcrumbs-simple':            _sdT('The path from the home page to the current page, as linked steps.'),
+            'breadcrumbs-with-header':       _sdT('A page head: the path to the page above a large title and a short introduction.'),
+            'breadcrumbs-icons':             _sdT('The path to the current page with an icon before each step.'),
+            'alert-info':                    _sdT('An information box with an icon, a short title and a line of text.'),
+            'alert-success-toast':           _sdT('A success box that confirms something went well: an icon, a title and a short message.'),
+            'alert-warning-actions':         _sdT('A warning box with an icon, a title, a short message and two buttons to act on it.'),
+            'theme-switcher-dropdown':       _sdT('A button that opens a menu for choosing the light, dark or system colour mode.'),
+            'theme-switcher-toggle':         _sdT('A single small button that switches the site between light and dark mode.'),
+            'theme-switcher-switch':         _sdT('An on/off switch labelled Dark theme that turns dark mode on and off.'),
+            'services-icon-cards':           _sdT('Service cards with an icon, a title, a short text and a Learn more link.'),
+            'services-image-cards':          _sdT('Service cards with a picture, a duration badge, a text, a starting price and a Book now button.'),
+            'services-price-list':           _sdT('A price list grouped under headings: each service with a short note and its price.'),
+            'steps-numbered':                _sdT('Numbered steps side by side, each with an icon, a title and a short text.'),
+            'booking-cta':                   _sdT('A band that invites the visitor to book: a heading, a short text, a booking button and a phone link.'),
+            'booking-split':                 _sdT('A picture beside a booking invitation: a heading, a text, three short reasons and two buttons.'),
+            'hours-card':                    _sdT('A card of opening hours day by day, with a note about public holidays.'),
+            'hours-location':                _sdT('A place for a map beside the address, opening hours, phone and a directions button.'),
+            'locations-cards':               _sdT('One card per branch: a picture, the name, the address, opening hours, phone and a directions button.'),
+            'menu-tabs':                     _sdT('A menu in tabs, one per category, listing each dish with its price and a short description.'),
+            'menu-list':                     _sdT('A menu in two columns, such as hot and cold drinks, each item with its price and an optional note.'),
+            'menu-cards':                    _sdT('Menu favourites as picture cards, each with a badge, a name, a price and a short description.'),
+            'menu-board':                    _sdT('A dark price board as a table: drinks down the side, sizes across the top, a note below.'),
+            'menu-specials':                 _sdT('The special of the day with a large picture and its price, followed by two more offers.'),
+            'events-list':                   _sdT('Upcoming events in rows: a date block, the name, the day, time and place, and a reservation button.'),
+            'notice-bar':                    _sdT('A slim coloured bar across the page with an icon, an urgent message and a link.'),
+            'team-profiles':                 _sdT('Wide profile cards: a photo, the name, the speciality, a short bio, tags and a booking button.'),
+            'testimonial-ratings':           _sdT('An average rating with stars and a review button, beside review cards with stars, a quote and a name.'),
+            'menu-legend':                   _sdT('A key to the menu symbols: vegetarian, vegan, gluten free, nuts and spicy.'),
+            'menu-origins':                  _sdT('Coffee origin cards: the country, the region with its process and altitude, tasting notes and a roast level bar.'),
+            'catering-packages':             _sdT('Catering packages in cards: a price per person, the minimum number of people, what is included and a quote button.'),
+            'loyalty-stamps':                _sdT('A loyalty card offer: the perks on one side, a card with ten stamp places on the other.'),
+            'events-cards':                  _sdT('Upcoming events as picture cards with a date tag, a kind badge, the time and place and a reservation button.'),
+            'notice-promo':                  _sdT('A slim announcement bar with a New badge, a short message, a link and a close button.'),
+            'maintenance-centered':          _sdT('A centred page for planned maintenance: the return time, a progress bar and how to reach support.'),
+            'maintenance-split':             _sdT('A maintenance page in two halves: a checklist of the work with the state of each step beside a picture.'),
+            'maintenance-status':            _sdT('A maintenance status page: a notice, the time window of the work and the state of each service.'),
+            'maintenance-dark':              _sdT('A dark maintenance page: a short message, three reassurances and a button to write to support.'),
+            'coming-soon-launch':            _sdT('A full-screen launch page: the opening date in large tiles and an email box to hear when it opens.'),
+            'coming-soon-split':             _sdT('A launch page in two halves: what is coming and an email sign-up beside a picture with an opening day offer.'),
+            'news-ticker':                   _sdT('A strip of headlines that scrolls across the page, with a Breaking label and a pause button.'),
+            'news-ticker-rotator':           _sdT('A strip that shows one latest headline at a time with its time, and buttons to move between them.'),
+            'news-trending':                 _sdT('A row of linked topic tags under a Trending label.'),
+            'news-weather-card':             _sdT('A weather card for one city: the temperature, the sky, humidity, wind and rain, and the next hours.'),
+            'news-weather-strip':            _sdT('A slim strip with the temperature in several cities, the date and a link to the full forecast.'),
+            'news-weather-forecast':         _sdT('A week of weather: today in a large card, then one row a day with the sky and a temperature range bar.'),
+            'news-markets':                  _sdT('Market figures in a row, each with its change up or down, and a delay note.'),
+            'news-lead-grid':                _sdT('A front page grid: one lead story on a large picture beside four smaller stories with their own pictures.'),
+            'news-latest-mostread':          _sdT('The latest stories with a picture, section and time, beside a numbered list of the most read.'),
+            'news-category-columns':         _sdT('One column per news section, each with a lead story with a picture and more headlines below.'),
+            'news-live-blog':                _sdT('Live coverage of an event: timed updates down a line, with key moments, pictures and quotes.'),
+            'news-article-header':           _sdT('The top of a news article: the path, headline, summary, author, date, reading time, share icons and a large picture.'),
+            'news-author-box':               _sdT('A card about the author of an article: a photo, the name, the role, social icons and a link to more articles.'),
+            'bento-features':                _sdT('Features in tiles of different sizes fitted into one grid, some with an icon, a picture or a figure.'),
+            'bento-gallery':                 _sdT('Pictures in tiles of different sizes fitted into one grid, each with a short caption.'),
+            'marquee-words':                 _sdT('Large words that scroll across the page in a loop, with a pause button.'),
+            'marquee-logos':                 _sdT('Logos that scroll across the page in a loop under a heading, with a pause button.'),
+            'showcase-floating':             _sdT('A product picture with small figure badges floating over it, beside a heading, three points and two buttons.'),
+            'showcase-tabs':                 _sdT('A list of tabs down the side; each tab shows its own picture with a short caption.'),
+            'quote-pull':                    _sdT('One quotation in large type, centred, with the name and role of the person who said it and the source.'),
+            'quote-spotlight':               _sdT('A customer quote on the main colour with five stars, beside a round photo of the customer.'),
+            'gallery-polaroid':              _sdT('Photos framed like instant prints and slightly turned, each with a caption and a date.'),
+            'scroller-cards':                _sdT('A row of story cards that scrolls sideways and stops on each card, with arrow buttons.'),
+            'legal-accessibility-statement': _sdT('An accessibility statement: its scope, the standard followed, known limits, how to give feedback and how the site was checked.')
+        };
+        return _sdBlockInfoMap;
+    }
+
+    // The description line of a palette item that is a ready-made block; ''
+    // for any other item.
+    function _sdBlockDesc(it) {
+        var ct = it && it.type === 'component' && it.extra ? String(it.extra.componentType || '') : '';
+        var map = _sdBlockInfo();
+        return ct && Object.prototype.hasOwnProperty.call(map, ct) ? map[ct] : '';
     }
 
     function _sdPalKey(it) {
@@ -75203,7 +75489,8 @@ const StyleDesigner = (function () {
         var info = _sdPalInfo()[_sdPalKey(it)];
         // A ready-made block without a drawing of its own is drawn from its tree.
         var sketch = (info && info.v) ? '' : _sdBlockSketchOf(it);
-        if (!info && !sketch) return '';
+        var desc = (info && info.d) || _sdBlockDesc(it);
+        if (!info && !sketch && !desc) return '';
         info = info || {};
         var en = _sdEnglishOf(it.label).filter(function (k) { return _sdFold(k) !== _sdFold(it.label); })
             .sort(function (a, b) { return a.length - b.length; })[0] || '';
@@ -75215,7 +75502,7 @@ const StyleDesigner = (function () {
                 (en ? '<span class="sd-pal-tip-en">' + esc(en) + '</span>' : '') +
             '</div>' +
             (info.h ? '<code class="sd-pal-tip-code">' + esc(info.h) + '</code>' : '') +
-            (info.d ? '<div class="sd-pal-tip-desc">' + esc(info.d) + '</div>' : '');
+            (desc ? '<div class="sd-pal-tip-desc">' + esc(desc) + '</div>' : '');
     }
 
     function _sdPalTipHide() {
@@ -76754,7 +77041,9 @@ const StyleDesigner = (function () {
     // Without touching the PHP, we install a fake CKEDITOR object on this window
     // to capture the URL.
     var _sdPickerFuncNum = 0;
-    window.sdOpenFilePicker = function (fieldId, propName) {
+    // kind ('page' | 'file') opens the picker on that tab; without it the
+    // picker keeps the tab it showed last.
+    window.sdOpenFilePicker = function (fieldId, propName, kind) {
         var inp = document.getElementById(fieldId);
         if (!inp) return;
 
@@ -76779,7 +77068,8 @@ const StyleDesigner = (function () {
         };
 
         window.open(
-            'editor_select_page_or_file.php?CKEditorFuncNum=' + funcNum,
+            'editor_select_page_or_file.php?CKEditorFuncNum=' + funcNum +
+                (kind === 'page' || kind === 'file' ? '&type=' + kind : ''),
             'sdPicker_' + funcNum,
             'width=820,height=640,resizable=1,scrollbars=1'
         );
