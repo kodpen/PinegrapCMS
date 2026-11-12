@@ -11,7 +11,7 @@
 - agent-channel-steps-5.md: Steps A17 and A18 of plans/agent-channel.md (owner 2026-11-11, #8762): an agent's last seen on its card, an application ticks a checklist line over the API
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
-- agent-live-page-steps.md: Steps LP1-LP5 of plans/agent-live-page.md: the guarded frame and its proofs in a browser, the agent's routes and the card, the assistants' tools, the site's libraries, close-out
+- agent-live-page-steps.md: Steps LP1-LP5 (LP2 as LP2a and LP2b) of plans/agent-live-page.md: the guarded frame and its proofs in a browser, the agent's routes and the card, the assistants' tools, the site's libraries, close-out
 - agent-live-page.md: Plan (owner 2026-11-11, #8762): an agent makes a live page (HTML, CSS, script) shown in a Workspace channel in a guarded frame: the guard, the card, versions, limits; steps LP1-LP5
 - bell-panel-steps.md: Steps of plans/bell-panel.md: BP1 read when opened, BP2 the dashboard's row, BP2b the drawer and the row that fits it, BP3 the filters and the search, BP4 the in-place actions and the close-out
 - bell-panel.md: Plan (owner 2026-11-11): the bell as a drawer from the right, its rows after the dashboard's Next up rows, module chips, unread only, asked of me, search, day headings; read when opened; steps BP1-BP4
