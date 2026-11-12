@@ -399,6 +399,7 @@
     "Saved Products": "Kayıtlı Ürünler",
     "Saved addresses…": "Kayıtlı adresler…",
     "Saved and Reports Card": "Kaydedilenler ve Şikâyetler Kartı",
+    "Saved as a template: agents can make canvases from it.": "Şablon olarak kaydedildi: ajanlar bundan tuval yapabilir.",
     "Saved as {var:1}: a file name is its address, so letters an address cannot carry are replaced and a taken name gets a number.": "{var:1} olarak kaydedildi: dosyanın adı adresidir; adreste kullanılamayan harfler değiştirilir, kullanılan bir ada numara eklenir.",
     "Saved as {var:1}: a file name is its address, so letters an address cannot carry are replaced.": "{var:1} olarak kaydedildi: dosyanın adı adresidir; adreste kullanılamayan harfler değiştirilir.",
     "Saved barcode {var:1} for product #{var:2}.": "Ürün #{var:2} için {var:1} barkodu kaydedildi.",
