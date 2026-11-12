@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>canvas one: the first-write question, a refused write, a page stopped at its bounds</title>
+<script>if (location.search.indexOf('light') > -1) document.documentElement.setAttribute('data-theme', 'light');</script>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../panel-design-language/sheet.css">
+<link rel="stylesheet" href="canvas.css">
+<style>
+.over { position: relative; }
+.over .scrim { border-radius: 16px; }
+.over .dlg { position: absolute; left: 50%; top: 92px; transform: translateX(-50%); width: 440px; }
+.dim .pg { filter: saturate(.7); }
+</style>
+</head>
+<body>
+<div class="stage">
+<div class="cols">
+
+  <div>
+    <div class="cap"><b>İlk yazma sorusu</b>Panel sorar, sayfa değil: pencere çerçevenin dışında, kartın üstünde. Bu tuval ve sayfanın bu sürümü için bir kez.</div>
+    <div class="over" style="width: 640px">
+      <section class="cv dim" style="margin-top: 0">
+        <div class="cv-h"><span class="tile lg t-violet"><i class="bi bi-easel2"></i></span><div class="nm"><b>Satış panosu</b><small>Sürüm 7 · 12 dk önce</small></div><button class="ib sm"><i class="bi bi-arrows-fullscreen"></i></button><button class="ib sm"><i class="bi bi-x-lg"></i></button></div>
+        <div class="cv-by"><i class="bi bi-robot"></i><span><b>@stok-ajani</b> yaptı. Ajanın işidir, panelin değil.</span></div>
+        <div class="cv-stage"><div class="pg">
+          <h3>Bu hafta</h3>
+          <div class="kp"><div><small>Ciro</small><b>48.210 ₺</b></div><div><small>Sipariş</small><b>126</b></div><div><small>Bekleyen</small><b>9</b></div></div>
+          <div class="bars"><i style="height:46%"></i><i style="height:62%"></i><i style="height:55%"></i><i style="height:80%"></i><i class="hi" style="height:94%"></i><i style="height:38%"></i><i style="height:22%"></i></div>
+          <div class="ax"><span>Pzt</span><span>Sal</span><span>Çar</span><span>Per</span><span>Cum</span><span>Cmt</span><span>Paz</span></div>
+          <div class="rw"><b>#SP-1044</b><span>Mehmet Kaya · Bekliyor</span><span class="sp"></span><button class="pb">Kargoya verildi</button></div>
+        </div></div>
+        <div class="cv-tables"><span class="lb">Kullandığı tablolar</span><span class="tb w"><span class="tile t-teal"><i class="bi bi-table"></i></span>Siparişler <em>okur, yazar</em></span><span class="tb"><span class="tile t-teal"><i class="bi bi-table"></i></span>Ürünler <em>okur</em></span></div>
+      </section>
+      <div class="scrim"></div>
+      <section class="dlg">
+        <div class="dh"><span class="tile lg t-amber"><i class="bi bi-pencil-square"></i></span><div><h2>Satış panosu sizin adınıza yazsın mı?</h2><p>Bu sayfa, sizin hesabınız ve haklarınızla şu tabloya yazmak istiyor.</p></div></div>
+        <div class="db">
+          <div class="ilist">
+            <div class="row"><span class="tile t-teal"><i class="bi bi-table"></i></span><div class="t"><b>Siparişler</b><small>Satır ekler ve değiştirir · silemez</small></div><span class="st t-amber">Yazar</span></div>
+            <div class="row"><span class="tile t-teal"><i class="bi bi-table"></i></span><div class="t"><b>Ürünler</b><small>Yalnız okur</small></div><span class="st">Okur</span></div>
+          </div>
+          <div class="hint"><i class="bi bi-info-circle"></i>Her yazma tablonun geçmişinde "Satış panosu üzerinden" diye görünür. Yeni bir sayfa sürümü yeniden sorar.</div>
+        </div>
+        <div class="df"><span class="sp"></span><button class="btn quiet">İzin verme</button><button class="btn fill">İzin ver</button></div>
+      </section>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 34px">
+    <div>
+      <div class="cap"><b>İzin verilmedi</b>Sayfa okumaya devam eder; yazma isteği "consent" hatası alır. Karar karttan değiştirilir.</div>
+      <section class="cv" style="width: 560px; margin-top: 0">
+        <div class="cv-h"><span class="tile lg t-violet"><i class="bi bi-easel2"></i></span><div class="nm"><b>Satış panosu</b><small>Sürüm 7 · 12 dk önce</small></div><button class="ib sm"><i class="bi bi-x-lg"></i></button></div>
+        <div class="banner amber" style="margin-top: 0"><i class="bi bi-slash-circle"></i><span><b>Yazma izni verilmedi.</b> Sayfa yalnız okuyor.</span><button class="btn quiet sm">Değiştir</button></div>
+        <div class="cv-stage" style="margin-top: 10px"><div class="cv-rest" style="height: 120px"></div></div>
+        <div style="height: 14px"></div>
+      </section>
+    </div>
+    <div>
+      <div class="cap"><b>Sınırda durduruldu</b>Dakikadaki istek, okumadaki satır ya da cevap boyu aşılınca kabuk sayfayı durdurur ve söyler.</div>
+      <section class="cv" style="width: 560px; margin-top: 0">
+        <div class="cv-h"><span class="tile lg t-violet"><i class="bi bi-easel2"></i></span><div class="nm"><b>Satış panosu</b><small>Sürüm 7 · 12 dk önce</small></div><button class="ib sm"><i class="bi bi-x-lg"></i></button></div>
+        <div class="banner rose" style="margin-top: 0"><i class="bi bi-stop-circle"></i><span><b>Sayfa durduruldu:</b> bir dakikada 120 istekten fazlasını sordu.</span><button class="btn quiet sm">Yeniden aç</button></div>
+        <div class="cv-stage" style="margin-top: 10px"><div class="cv-rest" style="height: 120px"></div></div>
+        <div style="height: 14px"></div>
+      </section>
+      <div class="note">Sayılar örnektir; sınırlar CO5'in ölçümlerinden konur.</div>
+    </div>
+    <div>
+      <div class="cap"><b>Misafir</b>Misafir veri almaz: tablolar satırı yerine tek bir satır.</div>
+      <section class="cv" style="width: 560px; margin-top: 0">
+        <div class="cv-h"><span class="tile lg t-violet"><i class="bi bi-easel2"></i></span><div class="nm"><b>Satış panosu</b><small>Sürüm 7</small></div></div>
+        <div class="cv-tables"><i class="bi bi-lock" style="color: var(--fg3)"></i><span class="mut" style="font-size: 13px; color: var(--fg2)">Bu tuvalin verisi yalnız ekibe açık.</span></div>
+      </section>
+    </div>
+  </div>
+
+</div>
+</div>
+</body>
+</html>

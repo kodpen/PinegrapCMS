@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>canvas one: the card with its parts, the line of tables it uses, one list of versions</title>
+<script>if (location.search.indexOf('light') > -1) document.documentElement.setAttribute('data-theme', 'light');</script>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../panel-design-language/sheet.css">
+<link rel="stylesheet" href="canvas.css">
+</head>
+<body>
+<div class="stage">
+<div class="cols">
+
+  <div>
+    <div class="cap"><b>Kanalda tuval kartı (kapalı)</b>Bir ad, parçaları (Çizim · Sayfa · Veri), ajanın satırı, kullandığı tablolar. Sayfa yalnız Aç ile çalışır.</div>
+    <div class="chan">
+      <div class="msg"><span class="av c">AD</span><div class="bd"><div class="who">Ayşe Demir <small>14:02</small></div><div class="tx">@stok-ajani bu haftanın satışlarını bir panoda göster, sipariş durumunu oradan değiştirebilelim.</div></div></div>
+      <div class="msg"><span class="tile t-violet"><i class="bi bi-robot"></i></span><div class="bd"><div class="who">Stok ajanı <small>14:03</small></div><div class="tx">Panoyu hazırladım. Siparişler tablosuna yazabilmesi için açtığınızda izninizi soracak.</div>
+        <section class="cv">
+          <div class="cv-h"><span class="tile lg t-violet"><i class="bi bi-easel2"></i></span><div class="nm"><b>Satış panosu</b><small>Sürüm 7 · 12 dk önce</small></div>
+            <div class="parts"><span class="part"><i class="bi bi-vector-pen"></i>Çizim</span><span class="part"><i class="bi bi-window"></i>Sayfa</span><span class="part"><i class="bi bi-table"></i>Veri 2</span></div>
+            <button class="ib sm"><i class="bi bi-three-dots"></i></button></div>
+          <div class="cv-by"><i class="bi bi-robot"></i><span><b>@stok-ajani</b> yaptı. Ajanın işidir, panelin değil.</span></div>
+          <div class="cv-stage cv-rest"><div class="play"><span class="tile lg t-violet"><i class="bi bi-play-fill"></i></span>Sayfa açılınca çalışır</div></div>
+          <div class="cv-tables"><span class="lb">Kullandığı tablolar</span>
+            <span class="tb w"><span class="tile t-teal"><i class="bi bi-table"></i></span>Siparişler <em>okur, yazar</em></span>
+            <span class="tb"><span class="tile t-teal"><i class="bi bi-table"></i></span>Ürünler <em>okur</em></span></div>
+          <div class="cv-f"><button class="btn fill sm"><i class="bi bi-play-fill"></i>Aç</button><button class="btn quiet sm"><i class="bi bi-arrows-fullscreen"></i>Tam ekran</button><button class="btn ghost sm"><i class="bi bi-clock-history"></i>Sürümler</button></div>
+        </section>
+      </div></div>
+      <div class="sysline"><i class="bi bi-link-45deg"></i><span><b>@stok-ajani</b> Ürünler tablosunu <b>Satış panosu</b>na bağladı · okur</span><button class="btn ghost sm">Geri al</button></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="cap"><b>Açık kart: sayfa çalışıyor</b>Çizim ile Sayfa arasında geçiş; veri bir görünüm değil, tablolar satırı. Ajanın satırı çerçevenin dışında.</div>
+    <div class="chan" style="width: 640px">
+      <section class="cv" style="margin-top: 0">
+        <div class="cv-h"><span class="tile lg t-violet"><i class="bi bi-easel2"></i></span><div class="nm"><b>Satış panosu</b><small>Sürüm 7 · 12 dk önce</small></div>
+          <button class="ib sm"><i class="bi bi-arrows-fullscreen"></i></button><button class="ib sm"><i class="bi bi-code-slash"></i></button><button class="ib sm"><i class="bi bi-three-dots"></i></button><button class="ib sm"><i class="bi bi-x-lg"></i></button></div>
+        <div class="cv-by"><i class="bi bi-robot"></i><span><b>@stok-ajani</b> yaptı. Ajanın işidir, panelin değil.</span></div>
+        <div class="cv-tabs"><span class="seg"><span><i class="bi bi-vector-pen"></i>Çizim</span><span class="on"><i class="bi bi-window"></i>Sayfa</span></span></div>
+        <div class="cv-stage">
+          <div class="pg">
+            <h3>Bu hafta</h3>
+            <div class="kp"><div><small>Ciro</small><b>48.210 ₺</b></div><div><small>Sipariş</small><b>126</b></div><div><small>Bekleyen</small><b>9</b></div></div>
+            <div class="bars"><i style="height:46%"></i><i style="height:62%"></i><i style="height:55%"></i><i style="height:80%"></i><i class="hi" style="height:94%"></i><i style="height:38%"></i><i style="height:22%"></i></div>
+            <div class="ax"><span>Pzt</span><span>Sal</span><span>Çar</span><span>Per</span><span>Cum</span><span>Cmt</span><span>Paz</span></div>
+            <div class="rw"><b>#SP-1044</b><span>Mehmet Kaya · Bekliyor</span><span class="sp"></span><button class="pb">Kargoya verildi</button></div>
+          </div>
+        </div>
+        <div class="cv-tables"><span class="lb">Kullandığı tablolar</span>
+          <span class="tb w"><span class="tile t-teal"><i class="bi bi-table"></i></span>Siparişler <em>okur, yazar</em></span>
+          <span class="tb"><span class="tile t-teal"><i class="bi bi-table"></i></span>Ürünler <em>okur</em></span>
+          <button class="btn ghost sm"><i class="bi bi-plus-lg"></i>Tablo bağla</button></div>
+      </section>
+      <div class="note">Tablo çipine basınca tablo Veri altında açılır. Tablo bağla, hem tuvali hem tabloyu düzenleyebilen kişiye görünür.</div>
+    </div>
+  </div>
+
+  <div>
+    <div class="cap"><b>Tek sürüm listesi</b>Parçaların sürümleri zamana göre bir arada; her satır hangi parça olduğunu söyler.</div>
+    <section class="drw">
+      <div class="hd"><h2>Sürümler</h2><button class="ib"><i class="bi bi-x-lg"></i></button></div>
+      <div class="flt"><span class="seg"><span class="on">Tümü <em>9</em></span><span>Sayfa <em>7</em></span><span>Çizim <em>2</em></span></span></div>
+      <div class="vr on"><span class="tile t-violet"><i class="bi bi-window"></i></span><div class="bd"><div class="l1"><b>Sayfa · sürüm 7</b><span>12 dk</span></div><div class="tx">@stok-ajani düzenledi: durum düğmesi</div><div class="l3"><span class="st t-teal">Şu an</span></div></div></div>
+      <div class="vr"><span class="tile t-violet"><i class="bi bi-window"></i></span><div class="bd"><div class="l1"><b>Sayfa · sürüm 6</b><span>40 dk</span></div><div class="tx">@stok-ajani düzenledi: haftalık grafik</div><div class="l3"><button class="btn quiet sm">Göster</button><button class="btn ghost sm">Bu sürüme dön</button></div></div></div>
+      <div class="vr"><span class="tile t-blue"><i class="bi bi-vector-pen"></i></span><div class="bd"><div class="l1"><b>Çizim · sürüm 2</b><span>1 sa</span></div><div class="tx">Ayşe Demir kaydetti</div></div></div>
+      <div class="vr"><span class="tile t-violet"><i class="bi bi-window"></i></span><div class="bd"><div class="l1"><b>Sayfa · sürüm 5</b><span>2 sa</span></div><div class="tx">@stok-ajani düzenledi</div></div></div>
+      <div class="vr"><span class="tile t-blue"><i class="bi bi-vector-pen"></i></span><div class="bd"><div class="l1"><b>Çizim · sürüm 1</b><span>Dün</span></div><div class="tx">@stok-ajani çizdi</div></div></div>
+      <div class="vr"><span class="tile t-violet"><i class="bi bi-window"></i></span><div class="bd"><div class="l1"><b>Sayfa · sürüm 1</b><span>Dün</span></div><div class="tx">@stok-ajani yaptı</div></div></div>
+      <div style="height: 12px"></div>
+    </section>
+    <div class="note">Tablo bağlamak bir sürüm değildir; kanalda bir satırdır. Yeni bir sayfa sürümü yazma iznini yeniden sorar.</div>
+  </div>
+
+</div>
+</div>
+</body>
+</html>
