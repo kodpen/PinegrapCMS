@@ -18143,7 +18143,9 @@ html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
 #ws-mcp > .card-body > .ws-dept-row {
   flex-wrap: wrap;
 }
-#ws-mcp > .card-body > .ws-dept-row > .ws-grow,
+#ws-mcp > .card-body > .ws-dept-row > .ws-grow {
+  flex-basis: 12rem;
+}
 #pgset-ws-mcp .ws-dept-row > .ws-grow {
   flex-basis: 12rem;
 }
