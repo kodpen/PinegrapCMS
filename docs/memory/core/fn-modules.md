@@ -119,7 +119,7 @@ description: Generated from the module field of the memory files: each includes/
 - `language_redirect`: [[language-redirect-matching]]
 - `layout_convert`: [[layout-form-converter]]
 - `layouts`: [[layout-code-tab]], [[layout-editor-classic]]
-- `legacy_bootstrap`: [[legacy-bootstrap-map]]
+- `legacy_bootstrap`: [[legacy-bootstrap-map]], [[legacy-layouts-converter]]
 - `legacy_design_theme`: [[legacy-design-theme]]
 - `legacy_to_classic`: [[legacy-to-classic]]
 - `legacy_to_designer`: [[legacy-set]], [[legacy-to-designer-report]]

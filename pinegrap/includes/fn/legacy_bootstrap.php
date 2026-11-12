@@ -259,7 +259,8 @@ function pg_lbs_classes($class, $rules = array())
             $result[] = 'bi';
             $result[] = 'bi-' . $icons[$t];
             $icon_twin = true;
-            $count($out['converted'], $t);
+            // An icon kept beside its twin is not converted twice.
+            if (!isset($beside[$t]) || !isset($have['bi-' . $icons[$t]])) $count($out['converted'], $t);
             if (isset($beside[$t])) $result[] = $t;
             continue;
         }
@@ -800,7 +801,10 @@ function pg_lbs_layout_attributes($tag, $attrs, $html, $after, $scripted, &$acc,
         }
     }
 
-    $edits = array();   // offset => array(length, text)
+    // Applied from the end: key offset * 2, plus 1 for a replacement, so an
+    // attribute written twice at the end of one attribute never lands inside
+    // the next one's name when no white space parts them.
+    $edits = array();   // key => array(offset, length, text)
     if ($class !== null) {
         $value = $values['class'];
         // A class list PHP writes in part, in a layout file's text.
@@ -816,7 +820,8 @@ function pg_lbs_layout_attributes($tag, $attrs, $html, $after, $scripted, &$acc,
             $written = $found[$class][3][0];
             $new = $memo[$key]['class'];
             $quote = ($written[0] === '"' || $written[0] === "'") ? $written[0] : (($new === '' || strpos($new, ' ') !== false) ? '"' : '');
-            $edits[$found[$class][3][1]] = array(strlen($written), $quote . $new . $quote);
+            $at = $found[$class][3][1];
+            $edits[$at * 2 + 1] = array($at, strlen($written), $quote . $new . $quote);
         }
     }
 
@@ -834,16 +839,18 @@ function pg_lbs_layout_attributes($tag, $attrs, $html, $after, $scripted, &$acc,
             $acc['converted'][$old] = (isset($acc['converted'][$old]) ? $acc['converted'][$old] : 0) + 1;
             if (isset($scripted['attributes'][$old])) {
                 // A script reads the old name: the attribute is written twice.
-                $edits[$found[$k][0][1] + strlen($found[$k][0][0])] = array(0, ' ' . $new . substr($found[$k][0][0], strlen($found[$k][1][0])));
+                $at = $found[$k][0][1] + strlen($found[$k][0][0]);
+                $edits[$at * 2] = array($at, 0, ' ' . $new . substr($found[$k][0][0], strlen($found[$k][1][0])));
             } else {
-                $edits[$found[$k][1][1]] = array(strlen($found[$k][1][0]), $new);
+                $at = $found[$k][1][1];
+                $edits[$at * 2 + 1] = array($at, strlen($found[$k][1][0]), $new);
             }
         }
     }
 
     krsort($edits);
-    foreach ($edits as $at => $edit) {
-        $attrs = substr_replace($attrs, $edit[1], $at, $edit[0]);
+    foreach ($edits as $edit) {
+        $attrs = substr_replace($attrs, $edit[2], $edit[0], $edit[1]);
     }
     return $attrs;
 }
@@ -952,11 +959,34 @@ function pg_lbs_layout_source($code)
     // space, not a quote, and nothing a class name or a tag is made of.
     if (strpos($code, "\x01") !== false) return $failed;
     $blocks = array();
-    $marked = preg_replace_callback('/<\?.*?(?:\?>|\z)/s', function ($m) use (&$blocks) {
-        $blocks[] = $m[0];
-        return "\x01" . (count($blocks) - 1) . "\x01";
-    }, $code);
-    if ($marked === null) return $failed;
+    if (function_exists('token_get_all')) {
+        // As PHP reads the file: a closing tag written inside a PHP string
+        // ends no block.
+        $marked = '';
+        $php = null;
+        foreach (token_get_all($code) as $t) {
+            if (is_array($t) && $t[0] === T_INLINE_HTML) {
+                if ($php !== null) {
+                    $blocks[] = $php;
+                    $marked .= "\x01" . (count($blocks) - 1) . "\x01";
+                    $php = null;
+                }
+                $marked .= $t[1];
+            } else {
+                $php .= is_array($t) ? $t[1] : $t;
+            }
+        }
+        if ($php !== null) {
+            $blocks[] = $php;
+            $marked .= "\x01" . (count($blocks) - 1) . "\x01";
+        }
+    } else {
+        $marked = preg_replace_callback('/<\?.*?(?:\?>|\z)/s', function ($m) use (&$blocks) {
+            $blocks[] = $m[0];
+            return "\x01" . (count($blocks) - 1) . "\x01";
+        }, $code);
+        if ($marked === null) return $failed;
+    }
     $acc = array('converted' => array(), 'kept' => array(), 'by_hand' => array(), 'php' => 0);
     $out = pg_lbs_layout_pass($marked, $acc);
     if ($out !== null) {

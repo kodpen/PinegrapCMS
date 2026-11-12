@@ -19,12 +19,12 @@ description: Plan (owner 2026-11-12, #8942): the page types' custom layouts and 
 
 ## Which steps?
 - LL1 (S, no product code) The census. Done #8968 (`designer/legacy-layouts-*.md`), proposal on #8969. Per page type: is there a system widget twin; how many layouts differ from their template; where the layout's output joins the page; which names are built in PHP rather than written in a `class` attribute; the cost of mapping the output per request against converting files. It ends with a proposal the architect decides: map at output, converted copies, or both.
-- LL2 (M) The text converter: the map over a layout's or template's markup (`class` attributes, the `data-toggle` family; PHP-built names counted "by hand"), pure functions with tests on the starting sites' layouts; a second pass changes nothing.
+- LL2 (M) Done #8986 (`designer/legacy-layouts-converter.md`). The text converter: the map over a layout's or template's markup (`class` attributes, the `data-toggle` family; PHP-built names counted "by hand"), pure functions with tests on the starting sites' layouts; a second pass changes nothing.
 - LL3 (M to L, shaped after LL1) A page of a `bootstrap5` design gets converted markup from its page type; every other page is untouched.
 - LL4 (M) What the map cannot rename: `glyphicon` to Bootstrap Icons, `input-group-btn` and `input-group-addon`, `checkbox` and `radio` blocks, `help-block`, `panel` where met.
 - LL5 (S) The widget offer: where a page type has a system widget, the helper's report names it as the better move.
 - LL6 (S) Close-out: the compatibility sheet leaves the trial design where LL3 covers the page type; the lasting rules into `designer/`; this plan deleted.
 
 ## When does it start?
-- LL1 writes no product code and may run beside LB2 of `legacy-bootstrap-helper-steps.md`. LL2 waits for LB2 (the map). LL2 and LL3 wait for the answer on #8969 too.
+- LL1 writes no product code and may run beside LB2 of `legacy-bootstrap-helper-steps.md`. LL2 waits for LB2 (the map). #8969 is answered: map at output, no converted copies (`designer/legacy-layouts-converter.md`).
 - Claim as `[plan:legacy-layouts-bootstrap] <step> — <topic>`.

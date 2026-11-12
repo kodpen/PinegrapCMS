@@ -84,7 +84,10 @@ function test_lbs_layout_rules_of_a_class_list()
 	$again = pg_lbs_classes($r['class'], array('beside' => array('form-group')));
 	pg_assert_same($r['class'], $again['class']);
 	pg_assert_same(array(), $again['converted']);
-	pg_assert_same('bi bi-check-lg glyphicon-ok glyphicon', pg_lbs_classes('glyphicon-ok glyphicon', array('beside' => array('glyphicon-ok', 'glyphicon')))['class']);
+	$icon = pg_lbs_classes('glyphicon-ok glyphicon', array('beside' => array('glyphicon-ok', 'glyphicon')));
+	pg_assert_same('bi bi-check-lg glyphicon-ok glyphicon', $icon['class']);
+	pg_assert_same(array('glyphicon-ok' => 1), $icon['converted']);
+	pg_assert_same(array(), pg_lbs_classes($icon['class'], array('beside' => array('glyphicon-ok', 'glyphicon')))['converted']);
 }
 
 // The templates write the 5.3.8 colour beside btn-default and a theme writes
@@ -298,6 +301,10 @@ function test_lbs_layout_data_family_only_where_bootstrap_reads_the_tag()
 	foreach ($cases as $html => $want) {
 		pg_assert_same($want, pg_lbs_layout_html($html)['html']);
 	}
+	// Written twice with no white space before the next attribute: each
+	// attribute stays whole.
+	pg_assert_same('<a data-toggle="tab" data-bs-toggle="tab"data-target="#a" data-bs-target="#a">x</a><script>$("[data-toggle], [data-target]")</script>',
+		pg_lbs_layout_html('<a data-toggle="tab"data-target="#a">x</a><script>$("[data-toggle], [data-target]")</script>')['html']);
 	$r = pg_lbs_layout_html('<a data-toggle="tab" data-target="#a">x</a><a data-toggle="tab">y</a>');
 	pg_assert_same(array('data-toggle' => 2, 'data-target' => 1), $r['converted']);
 	// The triggers are names of the one family.
@@ -399,6 +406,11 @@ function test_lbs_layout_source_keeps_php_and_counts_what_it_writes()
 	pg_assert_same(3, $r['php']);
 	pg_assert_same(array('form-group' => 1, 'btn-default' => 1, 'btn-xs' => 1, 'text-right' => 1, 'checkbox' => 1), $r['converted']);
 	pg_assert_same($want, pg_lbs_layout_source($want)['code']);
+
+	// A closing tag inside a PHP string ends no block, as PHP reads it.
+	$r = pg_lbs_layout_source("<p class=\"text-right\"><?php echo '?><b class=\"pull-left\">'; ?><i class=\"pull-left\">");
+	pg_assert_same("<p class=\"text-end\"><?php echo '?><b class=\"pull-left\">'; ?><i class=\"float-start\">", $r['code']);
+	pg_assert_same(array('text-right' => 1, 'pull-left' => 1), $r['converted']);
 
 	// A file that ends inside PHP, a file with no PHP, a broken tag.
 	pg_assert_same('<p class="text-end"><?php echo 1;', pg_lbs_layout_source('<p class="text-right"><?php echo 1;')['code']);
