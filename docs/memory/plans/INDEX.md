@@ -40,6 +40,8 @@
 - one-picker-steps.md: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry and endpoint, dialog, upload, pages, the field, page fields, editor and designer bridges, remaining screens, close-out; open questions
 - one-picker-visuals.md: The one picker's screens (PKV, approved by the owner 2026-11-10): pictures in plans/one-picker/, what each shows and which step builds it
 - one-picker.md: Plan (owner 2026-11-10): one modern picker for choosing a file or a page on every screen (a dialog with tree, grid, search and upload; a field with search and Browse), ready for other records
+- panel-design-language-look.md: Look A's numbers for the panel's design language: type scale and weights, the row, the icon tile and its tones, button levels, chips, gathered rows, read and unread, what a title says
+- panel-design-language-steps.md: Steps DL1-DL6 of the panel's design language (look A, #8842): typeface and recipes, the Design examples screen, the bell's drawer as the first screen, the check, the screen families, close-out
 - report-screens-steps.md: Steps of plans/report-screens.md: RS1 the Sales map card's See all, RS2 the shared view on the order report, RS3 its ready reports, RS4-RS5 the visitor report, RS6 shipping, RS7 ERP VAT, RS8 close-out
 - report-screens.md: Plan (owner 2026-11-11, #8673): the order, visitor, shipping and ERP VAT report screens drawn as the dashboard: figures, a chart, the table, settings in a drawer, ready reports; steps RS1-RS8
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
