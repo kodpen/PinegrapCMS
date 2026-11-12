@@ -16,6 +16,11 @@
  *           moving the top window or the shell, a forged height
  *   leave   (script mode) moving itself to another address
  *   mail    (static mode) no script of the document runs at all
+ *   bridge  (script mode) a request goes through the shell and is asked
+ *           for the canvas of the shell that asked, whatever the page
+ *           names; past the shell (to the panel, into another canvas's
+ *           shell) nothing is taken
+ *   flood   (script mode) past the minute's bound the shell stops the page
  *   alone   the shell asked for as a page of its own is refused
  *
  * Needs Node, PHP on the PATH (or PG_PHP) and Playwright with its Chromium
@@ -72,7 +77,7 @@ function leaks() {
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function open(browser, page, mode) {
+async function open(browser, page, mode, extra) {
     const context = await browser.newContext({ acceptDownloads: true });
     const tab = await context.newPage();
     const seen = { downloads: 0, popups: 0, console: [] };
@@ -80,7 +85,7 @@ async function open(browser, page, mode) {
     tab.on('download', () => seen.downloads++);
     context.on('page', (p) => { if (p !== tab) { seen.popups++; } });
     tab.on('console', (m) => seen.console.push(m.text()));
-    await tab.goto(panel + '/panel?page=' + page + '&mode=' + mode);
+    await tab.goto(panel + '/panel?page=' + page + '&mode=' + mode + (extra || ''));
     await wait(2500);
 
     return { context, tab, seen };
@@ -171,6 +176,38 @@ async function proveMail(browser) {
     await context.close();
 }
 
+async function proveBridge(browser) {
+    console.log('bridge (script mode)');
+    const { context, tab } = await open(browser, 'bridge', 'script', '&second=quiet');
+    const { inner } = frames(tab);
+    const r = inner ? await inner.evaluate(() => window.__results) : {};
+    const calls = await tab.evaluate(() => window.__calls);
+    const ignored = await tab.evaluate(() => window.__ignored);
+    const shells = tab.frames().filter((f) => f.parentFrame() === tab.mainFrame());
+    const quiet = shells[1] && shells[1].childFrames()[0] ? await shells[1].childFrames()[0].evaluate(() => window.__got) : null;
+    check('the request reached the panel through the shell', calls.length === 1 && calls[0].call === 'who', JSON.stringify(calls));
+    check('as the canvas of the shell that asked, not the one the page named', calls.every((c) => c.canvas === 11), JSON.stringify(calls));
+    check('the answer came back to the page from its shell', r.answers && r.answers.length === 1
+        && r.answers[0] === JSON.stringify({ id: 'who', data: { name: 'Reader', canvas: 11 }, from: true }), JSON.stringify(r.answers));
+    check('a bad request is refused by the shell', r.errors && r.errors.indexOf('bad:invalid') >= 0, JSON.stringify(r.errors));
+    check('straight to the panel is not the shell', ignored.some((d) => d.indexOf('"id":"top"') >= 0) && !calls.some((c) => c.canvas === 22), JSON.stringify(ignored));
+    check('the other canvas\'s shell takes nothing from this page', quiet !== null && quiet.length === 0, JSON.stringify(quiet));
+    await context.close();
+}
+
+async function proveFlood(browser) {
+    console.log('flood (script mode)');
+    const { context, tab } = await open(browser, 'flood', 'script');
+    const calls = await tab.evaluate(() => window.__calls);
+    const stopped = await tab.evaluate(() => window.__stopped);
+    const { inner } = frames(tab);
+    // Sent at once, so no more than the waiting bound reach the panel.
+    check('no more than the waiting bound reached the panel', calls.length > 0 && calls.length <= 8, calls.length);
+    check('the shell stopped the page and told the panel', stopped.length === 1 && stopped[0] === 11, JSON.stringify(stopped));
+    check('the page is gone', !inner, inner && inner.url());
+    await context.close();
+}
+
 async function proveAlone(browser) {
     console.log('alone');
     const context = await browser.newContext();
@@ -201,6 +238,8 @@ async function proveAlone(browser) {
         await proveAttack(browser);
         await proveLeave(browser);
         await proveMail(browser);
+        await proveBridge(browser);
+        await proveFlood(browser);
         await proveAlone(browser);
 
         const got = leaks();

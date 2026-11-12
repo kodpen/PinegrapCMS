@@ -321,7 +321,7 @@ function pg_panel_actions()
         'ws_channel_decisions', 'ws_channel_files', 'ws_channel_tasks',
         'ws_memory_list', 'ws_memory_save', 'ws_memory_delete',
         'ws_channel_agents_list', 'ws_channel_agents_set', 'ws_channel_agents_remove',
-        'ws_canvas_undo', 'ws_page_source', 'ws_page_undo',
+        'ws_canvas_undo', 'ws_page_source', 'ws_page_undo', 'ws_page_call',
         'ws_search', 'ws_palette', 'ws_channel_board', 'ws_ref_search',
         'ws_record_refs', 'ws_record_fields', 'ws_record_fields_save',
         'ws_record_create',

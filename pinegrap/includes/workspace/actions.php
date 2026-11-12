@@ -2157,6 +2157,13 @@ function ws_handle_action($action, $request)
             return $result['ok'] ? ws_action_ok(array('html' => $result['html'], 'version' => $result['version'], 'versions' => $result['versions']))
                 : ws_action_error($result['error']);
 
+        // One call of a live page through its bridge (page_bridge.php): the
+        // card names the canvas, the page never does. A refused call is an
+        // answer for the page, not an error of the panel.
+        case 'ws_page_call':
+            return ws_action_ok(array('answer' => ws_page_bridge_answer($viewer, ws_message((int) ($request['message_id'] ?? 0)),
+                $request['call'] ?? null, $request['args'] ?? null)));
+
         // Undo of an agent's edit on a live page (page_card.php).
         case 'ws_page_undo':
             $message = ws_message((int) ($request['message_id'] ?? 0));

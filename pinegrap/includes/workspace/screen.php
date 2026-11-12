@@ -806,7 +806,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
 
     // New canvas in a channel and in a note (includes/workspace/canvas.php).
     if (function_exists('ws_canvas_js_strings')) {
-        $strings = array_merge($strings, ws_canvas_js_strings(), ws_page_card_js_strings());
+        $strings = array_merge($strings, ws_canvas_js_strings(), ws_page_card_js_strings(), ws_page_bridge_js_strings());
     }
 
     // A file of the file manager picked under the paperclip (library.php).

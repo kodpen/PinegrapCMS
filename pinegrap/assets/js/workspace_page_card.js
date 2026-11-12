@@ -10,8 +10,10 @@
  * The page runs only once a person opens it: the frame (live_page.php,
  * sandboxed by file.page.sandbox) is made on Open and removed on Close and
  * when the channel is left (stopAll()). The panel gives the frame its size
- * and takes nothing from it but its height, and only from the frame's own
- * window (includes/fn/guarded_frame.php). The line naming the agent sits
+ * and takes nothing from it but its height and the data bridge's requests,
+ * and only from the frame's own window (includes/fn/guarded_frame.php); a
+ * request is answered by the site for this card's canvas (ws_page_call,
+ * includes/workspace/page_bridge.php). The line naming the agent sits
  * outside the frame, so nothing in the page can cover it, in full screen
  * too.
  *
@@ -63,13 +65,61 @@
         }
     }
 
-    // The shell's height report, taken only from a frame this card made;
-    // the page itself may post to the panel too, and that is dropped.
+    // The data bridge (includes/workspace/page_bridge.php): the shell passes
+    // a page's request; the site is asked for the canvas of the card that
+    // made this frame, whatever the request says, and the answer goes back
+    // to the same shell. A shell that stopped its page is closed here.
+    function bridge(entry, data) {
+        if (data.stopped) {
+            close(entry.message.id);
+
+            if (entry.onStop) {
+                entry.onStop();
+            }
+
+            return;
+        }
+
+        var id = data.id;
+        var answer = function (reply) {
+            // The frame may have been closed or opened again meanwhile.
+            if ((open[entry.message.id] === entry) && entry.frame.contentWindow) {
+                reply.pg = 'canvas-data';
+                reply.id = id;
+                entry.frame.contentWindow.postMessage(reply, '*');
+            }
+        };
+
+        entry.h.api('ws_page_call', {
+            message_id: entry.message.id,
+            call: String(data.call || ''),
+            args: JSON.stringify((data.args && (typeof data.args === 'object')) ? data.args : {})
+        }).then(function (result) {
+            var reply = (result && result.answer) || {};
+
+            answer(reply.ok ? { ok: true, data: reply.data } : { ok: false, error: reply.error || { code: 'failed', text: '' } });
+        }).catch(function (error) {
+            answer({ ok: false, error: { code: 'failed', text: String((error && error.message) || error || '') } });
+        });
+    }
+
+    // What the shell posts, taken only from a frame this card made: its
+    // height and the bridge's requests. The page itself may post to the
+    // panel too, and that is dropped.
     window.addEventListener('message', function (event) {
         var data = event.data;
         var entry = frameOf(event.source);
 
-        if (!entry || !data || (typeof data !== 'object') || (data.pg !== 'guarded-frame')) {
+        if (!entry || !data || (typeof data !== 'object')) {
+            return;
+        }
+
+        if (data.pg === 'canvas-data') {
+            bridge(entry, data);
+            return;
+        }
+
+        if (data.pg !== 'guarded-frame') {
             return;
         }
 
@@ -127,7 +177,8 @@
         Object.keys(open).forEach(close);
     }
 
-    function startFrame(message, box, h) {
+    // onStop: the shell stopped the page at a bound.
+    function startFrame(message, box, h, onStop) {
         var page = message.file.page;
         var frame = h.el('iframe', 'd-block w-100 border-0');
 
@@ -137,7 +188,7 @@
         frame.style.height = MIN_HEIGHT + 'px';
         frame.src = page.frame;
 
-        var entry = { frame: frame, box: box };
+        var entry = { frame: frame, box: box, message: message, h: h, onStop: onStop };
 
         frame.addEventListener('load', function () { sendSize(entry); });
         open[message.id] = entry;
@@ -274,6 +325,31 @@
         line.appendChild(h.el('span', '', h.t('page_by', page.by || '?')));
         box.appendChild(line);
 
+        // Shown when the shell stopped the page at a bound.
+        var stopped = h.el('div', 'small text-danger d-flex align-items-center gap-2 mt-2');
+
+        stopped.hidden = true;
+        stopped.appendChild(h.icon('bi-stop-circle'));
+        stopped.appendChild(h.el('span', '', h.t('page_stopped')));
+
+        var again = h.button('btn btn-sm btn-text theme-secondary py-0', h.t('page_open_again'), 'bi-arrow-repeat');
+
+        stopped.appendChild(again);
+
+        function onStop() {
+            setOpen(false);
+            stopped.hidden = false;
+        }
+
+        function start() {
+            stopped.hidden = true;
+            close(message.id);
+            startFrame(message, box, h, onStop);
+            setOpen(true);
+        }
+
+        again.addEventListener('click', start);
+
         function setOpen(on) {
             openButton.lastChild.textContent = on ? h.t('page_close') : h.t('page_open');
             openButton.firstChild.className = 'bi me-1 ' + (on ? 'bi-stop-fill' : 'bi-play-fill');
@@ -286,17 +362,13 @@
                 return;
             }
 
-            close(message.id);
-            startFrame(message, box, h);
-            setOpen(true);
+            start();
         });
 
         fullButton.hidden = !(box.requestFullscreen && document.fullscreenEnabled);
         fullButton.addEventListener('click', function () {
             if (!open[message.id] || (open[message.id].box !== box)) {
-                close(message.id);
-                startFrame(message, box, h);
-                setOpen(true);
+                start();
             }
 
             box.requestFullscreen().catch(h.fail);
@@ -311,14 +383,13 @@
         tools.appendChild(sourceButton);
         tools.appendChild(download);
         root.appendChild(tools);
+        root.appendChild(stopped);
         root.appendChild(box);
 
         // Drawn again while it was open (an edit, Undo): open again, with
         // the newest version.
         if (open[message.id]) {
-            close(message.id);
-            startFrame(message, box, h);
-            setOpen(true);
+            start();
         }
 
         return root;
