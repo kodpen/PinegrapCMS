@@ -273,6 +273,7 @@
     "A cancelled purchase order is not sent. Open it again first.": "İptal edilmiş satın alma siparişi gönderilmez. Önce yeniden açın.",
     "A candidate preparing for an interview with a consultant": "Bir danışmanla mülakata hazırlanan bir aday",
     "A candle, a silk scrunchie and a card in a box, wrapped and ready to give.": "Bir mum, ipek bir toka ve bir kart; paketlenmiş, vermeye hazır bir kutuda.",
+    "A canvas drawing on this server did not finish, so the server draws no canvas for a day. Members' browsers draw the canvases agents write until then.": "Bu sunucudaki bir tuval çizimi bitmedi, bu yüzden sunucu bir gün boyunca tuval çizmez. O zamana kadar ajanların yazdığı tuvalleri üyelerin tarayıcıları çizer.",
     "A canvas holds at most {n} scenes.": "Bir tuvalde en fazla {n} sahne olabilir.",
     "A canvas is drawn here only by an agent of the channel.": "Burada tuvali yalnızca kanalın bir ajanı çizebilir.",
     "A canvas save proposed in #{var:1}": "#{var:1} kanalında tuval kaydı önerildi",
