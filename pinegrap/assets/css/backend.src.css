@@ -24511,6 +24511,13 @@ select.pg-list-table-field option.private {
 .pg-pfield-option .pg-picker-name {
   font-size: 0.875rem;
 }
+/* An archived or binned page: found, marked, never chosen. */
+.pg-pfield-option.is-marked {
+  cursor: default;
+}
+.pg-pfield-option.is-marked :is(.pg-pfield-thumb, .pg-pfield-words) {
+  opacity: 0.6;
+}
 .pg-pfield-more {
   min-height: 2.5rem;
   color: var(--pg-primary-ink);

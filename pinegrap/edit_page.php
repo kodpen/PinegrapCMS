@@ -1062,7 +1062,7 @@ if (!$_POST) {
                                                                 <div class="row">
                                                                     <div class="col-12 md:col-6 lg:col-4 my-3">
                                                                         <label for="comments_submitter_email_page_id" class="form-label">' . lang('Page') . '</label>
-                                                                        <select name="comments_submitter_email_page_id" id="comments_submitter_email_page_id" class="form-control"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($comments_submitter_email_page_id) . '</select>
+                                                                        ' . pg_picker_field('page', 'comments_submitter_email_page_id', $comments_submitter_email_page_id) . '
                                                                     </div>
                                                                     <div class="col-12 md:col-6 lg:col-8 my-3">
                                                                         <label for="comments_submitter_email_subject" class="form-label">' . lang('Subject') . '</label>
@@ -1075,7 +1075,7 @@ if (!$_POST) {
                                                                 <div class="row">
                                                                     <div class="col-12 md:col-6 lg:col-4 my-3">
                                                                         <label for="comments_watcher_email_page_id" class="form-label">' . lang('Page') . '</label>
-                                                                        <select name="comments_watcher_email_page_id" id="comments_watcher_email_page_id" class="form-control"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($comments_watcher_email_page_id) . '</select>
+                                                                        ' . pg_picker_field('page', 'comments_watcher_email_page_id', $comments_watcher_email_page_id) . pg_picker_script() . '
                                                                     </div>
                                                                     <div class="col-12 md:col-6 lg:col-8 my-3">
                                                                         <label for="comments_watcher_email_subject" class="form-label">' . lang('Subject') . '</label>

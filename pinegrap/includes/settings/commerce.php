@@ -485,7 +485,7 @@ $pg_settings_cards[] = '
                                                                                         </div>
                                                                                         <div class="pg-f-md">
                                                                                             <label class="form-label" for="ecommerce_reward_program_email_page_id">' . lang('Page') . '</label>
-                                                                                            <select class="form-control" id="ecommerce_reward_program_email_page_id" name="ecommerce_reward_program_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($ecommerce_reward_program_email_page_id) . '</select>
+                                                                                            ' . pg_picker_field('page', 'ecommerce_reward_program_email_page_id', $ecommerce_reward_program_email_page_id) . pg_picker_script() . '
                                                                                         </div>
                                                                                     </div>
                                                                                 </div>
@@ -831,10 +831,7 @@ $pg_settings_cards[] = '
                                                         </div>
                                                         <div class="pg-f-lg">
                                                             <label class="form-label" for="ecommerce_retrieve_order_next_page_id">'. lang('Reorder/Retrieve Order Next Page') . '</label>
-                                                            <select class="form-control" id="ecommerce_retrieve_order_next_page_id" name="ecommerce_retrieve_order_next_page_id">
-                                                                <option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>
-                                                                ' . select_page($ecommerce_retrieve_order_next_page_id) . '
-                                                            </select>
+                                                            ' . pg_picker_field('page', 'ecommerce_retrieve_order_next_page_id', $ecommerce_retrieve_order_next_page_id) . pg_picker_script() . '
                                                         </div>
                                                         <div class="pg-f-md">
                                                             <label class="form-label" for="ecommerce_custom_product_field_1_label">'. lang(array('string'=>'Custom Product Field {var:1} Label','vars'=>array('#1') )) . '</label>
