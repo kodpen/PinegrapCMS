@@ -933,19 +933,6 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --pg-tint-soft: rgba(128, 128, 128, 0.06);
   --pg-rule: rgba(128, 128, 128, 0.16);
 
-  /* A bell row's module tag (pg_bell_row()): the hues of the dashboard's
-     Next up tags (.pg-dash-queue-tag[data-module] in pg_dash.src.css), held
-     equal by tests/bell_row_test.php. System is the dashboard's neutral. */
-  --pg-bell-tag-shop-bg: rgba(251, 191, 36, .16);
-  --pg-bell-tag-shop-fg: #b45309;
-  --pg-bell-tag-erp-bg: rgba(248, 113, 113, .14);
-  --pg-bell-tag-erp-fg: #b91c1c;
-  --pg-bell-tag-content-bg: rgba(217, 70, 239, .14);
-  --pg-bell-tag-content-fg: #a21caf;
-  --pg-bell-tag-team-bg: rgba(167, 139, 250, .18);
-  --pg-bell-tag-team-fg: #6d28d9;
-  --pg-bell-tag-system-bg: rgba(148, 163, 184, .16);
-  --pg-bell-tag-system-fg: var(--pg-fg-2);
   --pg-rule-strong: rgba(128, 128, 128, 0.18);
   --pg-rule-dashed: rgba(128, 128, 128, 0.35);
   --pg-scrollbar-thumb: #939393;
@@ -1014,12 +1001,6 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --pg-tint-hover: rgba(255, 255, 255, 0.1);
   --pg-tint-soft: rgba(255, 255, 255, 0.04);
   --pg-scrollbar-thumb: #5e5e5e;
-
-  /* The bell's module tags: the dashboard's dark ink on the same fills. */
-  --pg-bell-tag-shop-fg: #fde68a;
-  --pg-bell-tag-erp-fg: #fecaca;
-  --pg-bell-tag-content-fg: #f0abfc;
-  --pg-bell-tag-team-fg: #c4b5fd;
 
   --pg-body-bg-rgb: 16, 17, 20;
   --pg-navbar-bg-rgb: 14, 14, 14;
@@ -4585,32 +4566,18 @@ a.link-top-row {
   margin: 0;
   cursor: pointer;
 }
-/* A row the chips, the switch or the search leave out, and a flow's older
-   runs while its newest is closed. */
-#notifications .software_notification:is(.pg-bell-off, .pg-bell-shut) {
-  display: none;
-}
-/* An older run hangs under its newest. */
-#notifications .software_notification[data-pg-bell-fold] .notification-card {
-  margin-left: 0.875rem;
-  padding-left: 0.75rem;
-  border-left: 2px solid var(--pg-border-color-translucent);
-}
-
-/* A bell row laid out for the drawer (pg_bell_row()): line one the module's
-   tag as a small mark, the unread dot and the title; line two the place and
-   the time, with the one button and the row's menu at the right; then the
-   excerpt, two lines at most. Day headings stand over the rows. */
+/* A bell row in look A (pg_bell_row()): the recipes' .pg-list-row draws it
+   (tile, one-line title with the time, two lines of text, the button only
+   when the row asks, the unread dot, the quick actions on hover); the rules
+   here only place it in the drawer. Day headings stand over the rows. */
 #notifications .pg-bell-list {
   padding-bottom: 0.25rem;
 }
 #notifications .pg-bell-day {
-  padding: 0.75rem 1rem 0.25rem;
+  padding: 12px 20px 6px;
   color: var(--pg-fg-3);
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
   list-style: none;
 }
 #notifications .pg-bell-day.pg-bell-off {
@@ -4622,206 +4589,102 @@ a.link-top-row {
   background: transparent;
   color: var(--pg-fg-body);
 }
-#notifications .pg-bell-row + .pg-bell-row .pg-bell-card {
-  border-top: 1px solid var(--pg-border-color-translucent);
+#notifications .pg-bell-card.pg-list-row {
+  margin: 0 8px;
 }
-#notifications .pg-bell-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.625rem 0.75rem 0.625rem 1rem;
-}
-#notifications .pg-bell-line {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.375rem;
-  min-width: 0;
-}
-#notifications .pg-bell-tag {
-  display: inline-block;
-  flex: 0 0 auto;
-  max-width: 6.5rem;
-  height: 1.125rem;
-  margin-top: 0.0625rem;
-  padding: 0 0.375rem;
-  overflow: hidden;
-  border-radius: 0.3125rem;
-  background: var(--pg-bell-tag-system-bg);
-  color: var(--pg-bell-tag-system-fg);
-  font-size: 0.625rem;
-  font-weight: 700;
-  line-height: 1.125rem;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-#notifications .pg-bell-tag[data-module="shop"] {
-  background: var(--pg-bell-tag-shop-bg);
-  color: var(--pg-bell-tag-shop-fg);
-}
-#notifications .pg-bell-tag[data-module="erp"] {
-  background: var(--pg-bell-tag-erp-bg);
-  color: var(--pg-bell-tag-erp-fg);
-}
-#notifications .pg-bell-tag[data-module="content"] {
-  background: var(--pg-bell-tag-content-bg);
-  color: var(--pg-bell-tag-content-fg);
-}
-#notifications .pg-bell-tag[data-module="team"] {
-  background: var(--pg-bell-tag-team-bg);
-  color: var(--pg-bell-tag-team-fg);
-}
+/* The title is a button that opens the row; it keeps the recipe's type. */
 #notifications .pg-bell-title {
   display: block;
-  flex: 1 1 auto;
-  min-width: 0;
   padding: 0;
   border: 0;
   background: none;
-  color: var(--pg-fg-body);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 1.35;
+  color: inherit;
+  font: inherit;
   text-align: start;
-  white-space: normal;
-  overflow-wrap: anywhere;
 }
-#notifications .pg-bell-row.new .pg-bell-title {
-  font-weight: 700;
+#notifications .pg-list-row.is-read .pg-bell-title {
+  color: var(--pg-fg-2);
 }
 #notifications button.pg-bell-title:hover {
   text-decoration: underline;
 }
-/* The second line wraps like the title: an order's number and total stay
-   readable in the drawer instead of ending in an ellipsis. */
-#notifications .pg-bell-sub {
+/* A fold's head: the count stands right after the title. */
+#notifications .pg-bell-title-wrap {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  max-width: 100%;
-  color: var(--pg-fg-3);
-  font-size: 0.75rem;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
-}
-/* Place and time run as one line of text: a long place wraps at its own
-   spaces and the time stays whole after it, its dot included. */
-#notifications .pg-bell-meta {
-  flex: 1 1 auto;
+  flex: 1;
+  align-items: baseline;
   min-width: 0;
 }
-#notifications .pg-bell-place + .pg-bell-time::before {
-  content: "\00b7";
-  content: "\00b7" / "";
-  margin: 0 0.375rem;
+#notifications .pg-bell-title-wrap > .pg-bell-title {
+  flex: 0 1 auto;
 }
-#notifications .pg-bell-time {
-  white-space: nowrap;
+#notifications .pg-bell-title-wrap > .pg-count {
+  flex: none;
 }
-/* The excerpt: two lines at most; the whole text is at the row's place. */
 #notifications .pg-bell-excerpt {
-  display: -webkit-box;
-  margin: 0;
-  overflow: hidden;
-  color: var(--pg-fg-2);
-  font-size: 0.8125rem;
-  line-height: 1.4;
+  margin-bottom: 0;
   overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
   line-clamp: 2;
 }
-#notifications .pg-bell-more {
-  display: inline-flex;
-  align-self: flex-start;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--pg-primary-fg-emphasis);
-  font-size: 0.75rem;
+#notifications .pg-bell-place {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
-#notifications .pg-bell-side {
+#notifications .pg-bell-row.viewed .pg-bell-dot {
+  visibility: hidden;
+}
+/* Without hover (a phone) the quick actions stay in sight beside the time,
+   or the row's menu could not be reached. */
+@media (hover: none) {
+  #notifications .pg-bell-quick {
+    display: flex;
+  }
+  #notifications .pg-list-row .pg-bell-quick ~ .pg-bell-time {
+    display: inline;
+  }
+}
+
+/* A row the chips, the switch or the search leave out, and a flow's older
+   runs while its newest is closed. */
+#notifications .software_notification:is(.pg-bell-off, .pg-bell-shut) {
+  display: none;
+}
+/* An older run of a flow: a gathered line under its newest (pg_bell_run()),
+   lined up with the head's text (8 px margin, 12 px padding, the 28 px tile
+   and its 11 px gap). */
+#notifications .pg-bell-run .pg-gather-line {
+  align-items: center;
+  margin: 0 20px 0 59px;
+  padding: 3px 0 3px 10px;
+  border-left: 2px solid var(--pg-border-color-translucent);
+}
+#notifications .pg-bell-run .pg-bell-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#notifications .pg-bell-run .pg-gather-line-end {
   display: flex;
-  flex: 0 0 auto;
   align-items: center;
-  gap: 0.125rem;
-  margin-left: auto;
+  gap: 6px;
 }
-#notifications .pg-bell-act {
-  display: inline-flex;
-  align-items: center;
-  height: 1.75rem;
-  margin-right: 0.25rem;
-  padding: 0 0.625rem;
-  border: 1px solid var(--pg-border-color);
-  border-radius: 0.5rem;
-  background: var(--pg-tint);
-  color: var(--pg-fg-body);
-  font-size: 0.75rem;
-  white-space: nowrap;
+#notifications .pg-bell-run .pg-bell-quick {
+  margin: -4px 0;
 }
-#notifications .pg-bell-act:hover {
-  border-color: var(--pg-primary);
-  background: var(--pg-tint-hover);
-}
-/* The unread dot is a button ("Mark as read"); a read row keeps its place.
-   Its target reaches past the line's height without moving the title. */
-#notifications .pg-bell-dot {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  margin: -0.125rem -0.25rem;
-  padding: 0;
-  border: 0;
-  border-radius: 0.5rem;
-  background: none;
-}
-#notifications button.pg-bell-dot::before {
-  content: "";
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--pg-primary);
-}
-#notifications button.pg-bell-dot:hover {
-  background: var(--pg-tint-hover);
-}
-#notifications .pg-bell-row.warning button.pg-bell-dot::before {
-  background: var(--pg-warning);
-}
-#notifications .pg-bell-row.error button.pg-bell-dot::before {
-  background: var(--pg-danger);
+#notifications .pg-bell-run:is(:hover, :focus-within) .pg-bell-quick {
+  display: flex;
 }
 #notifications .pg-bell-menu-wrap {
   position: relative;
-}
-#notifications .pg-bell-menu-toggle {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  padding: 0;
-  border: 0;
-  border-radius: 0.5rem;
-  background: none;
-  color: var(--pg-fg-3);
-}
-#notifications .pg-bell-menu-toggle:hover,
-#notifications .pg-bell-menu-toggle[aria-expanded="true"] {
-  background: var(--pg-tint-hover);
-  color: var(--pg-fg-body);
 }
 #notifications .pg-bell-menu {
   position: absolute;
   top: calc(100% + 0.25rem);
   right: 0;
   z-index: 5;
+  display: block;
   min-width: 11rem;
   padding: 0.25rem;
   border: 1px solid var(--pg-border-color);
@@ -4857,17 +4720,9 @@ a.link-top-row {
 #notifications .pg-bell-menu-item.pg-bell-delete {
   color: var(--pg-danger-fg-emphasis);
 }
-#notifications :is(.pg-bell-title, .pg-bell-act, .pg-bell-dot, .pg-bell-menu-toggle, .pg-bell-menu-item, .pg-bell-more, .pg-bell-head-btn):focus-visible {
+#notifications :is(.pg-bell-title, .pg-bell-menu-item, .pg-bell-more, .pg-bell-head-btn):focus-visible {
   outline: 2px solid var(--pg-primary);
   outline-offset: 1px;
-}
-/* A workspace row's icon, in the workspace's colour. */
-#notifications .pg-bell-glyph {
-  margin-right: 0.375rem;
-  color: var(--workspace-color);
-}
-html[data-bs-theme="dark"] #notifications .pg-bell-glyph {
-  color: var(--workspace-color-highlight);
 }
 
 .alert p.notice,
@@ -22945,12 +22800,11 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     forced-color-adjust: none;
     background-color: ButtonText;
   }
-  /* A bell row's module tag and its unread dot (pg_bell_row()). */
-  #notifications .pg-bell-tag,
+  /* A bell row's menu (pg_bell_row()). */
   #notifications .pg-bell-menu {
     border: 1px solid CanvasText;
   }
-  #notifications button.pg-bell-dot::before {
+  #notifications .pg-bell-dot {
     forced-color-adjust: none;
     background-color: Highlight;
   }
