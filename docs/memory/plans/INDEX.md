@@ -19,7 +19,6 @@
 - designer-bold-pages-steps-2.md: Steps B7 to B12 of the designer bold pages plan: pinned scene, looks and palettes, video, dark and light chapters, design colour mode, template colour classes
 - designer-bold-pages-steps.md: Steps B1 to B6 of the designer bold pages plan: full-bleed and giant type blocks, scroll effects, count-up, variant picker, product bar, wide gallery slides
 - designer-bold-pages.md: Plan: what the Visual Page Editor needs for bold product pages (scroll scenes, edge-to-edge media, big type, dark and light chapters), from an inspection of the designer
-- designer-palette-drawings.md: Plan (owner 2026-11-11): one Components tab with a Blocks switch, a small drawing per look, a drawing and a short description for every ready block and component
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
@@ -32,8 +31,6 @@
 - kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md still to build: which keys verify (P5c) and P2's release workflow; the built check, pin, download and beta builds are in platform/
 - kodpen-vendor-api-client-steps.md: Steps P1-P8 of plans/kodpen-vendor-api-client.md: changes, files, tests, memory, size, order; claim as [plan:kodpen-vendor-api-client] P<n>
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): 2026.11.0 asks api.kodpen.com/v1 for licences and signed updates behind one switch line, no api2 fallback; steps P1-P8 in -steps, contract in platform/vendor-api-*.md
-- legacy-group-design-steps.md: Steps of plans/legacy-group-design.md: LG1 the theme, LG2 {path} addresses, LG3 the legacy key and badge, LG4 sets in the report and dry run, LG5 the run, LG6 the frame split, LG7 back to classic
-- legacy-group-design.md: Plan (owner 2026-11-11, #8671): classic styles that share a CSS/JS set move as one "Legacy" design that opens right in the visual designer; the theme and {path} fixes first; steps LG1-LG7
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - one-picker-inventory.md: What chooses a file, a picture, a page or a folder in the software today (2026-11-10, with call counts): what the one picker takes over, and the record searches that model its later kinds

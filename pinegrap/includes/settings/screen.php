@@ -373,6 +373,12 @@ if (!$_POST) {
     // arrived on.
     $pg_settings_scheme = isset($url_scheme) ? $url_scheme : URL_SCHEME;
 
+    // A card button that started a service's sign-in goes there instead.
+    if (pg_settings_go() !== '') {
+        header('Location: ' . pg_settings_go());
+        exit;
+    }
+
     header('Location: ' . $pg_settings_scheme . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . $pg_settings_self);
     exit;
 }
