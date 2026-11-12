@@ -45,6 +45,7 @@
 - mail-email-fields.md: What email() gained for Workspace mail (G3a #2846, #8646): cc and bcc, the threading headers it lets through, a box's own SMTP server, and the site's mark every mail carries for the loop gate
 - mail-fetch.md: Reading Workspace mailboxes over IMAP (ws_mail_fetch(), inline in job.php): what is searched, the UID position, held mail, limits, after-fetch, what the box records, the System status tile
 - mail-forward.md: Forward as e-mail in the Workspace (WM6): the buttons, the filled New e-mail form, what a forward quotes and carries, the line under a forwarded mail, the checks when it is sent
+- mail-html-preview.md: A mail's HTML in the E-mails reading pane (WM12, PR #8861): the guarded frame's mail mode, workspace_mail_frame.php, Plain text, Show pictures remembered per sender, the narrower rows
 - mail-html.md: A mail's HTML is kept (WM11, PR #8821): ws_mail_items.body_html, the allowlist cleaner, cid pictures kept as files, the fill of earlier mail from its .eml [decision: decisions-made-workspace-17.md]
 - mail-imap-client.md: The socket IMAP client pg_imap_*() (includes/fn/imap_client.php, G2a of incoming e-mail): why no imap extension, TLS and address check, sign-in, commands, error codes, limits, tests
 - mail-ingest.md: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loop gate, DMARC from the box's server, threading, card and answers, attachments and cid pictures, .eml for 30 days
