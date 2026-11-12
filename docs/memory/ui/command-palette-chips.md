@@ -18,4 +18,4 @@ description: Which Ctrl+K search chips a viewer gets (the main-menu entry's gate
 - A first-page search aborts the request still running and every answer carries a number (`searchSeq`); an older one is dropped. Before, a query typed while one loaded was never sent and the old results stayed. Load More still waits for the running request.
 
 ## What does the box show when it opens again?
-- The last query and its results, kept across close and reopen, with the query selected (the `shown` handler focuses the field and triggers `select`): Enter-free repeat of the last search, and the first key typed replaces it. Before, the caret sat at the end, so a new word was added to the old one ("pg-test-navayar", no results) (#8996, PR #PRNUM). The clear button still empties the box.
+- The last query and its results, kept across close and reopen, with the query selected (the `shown` handler focuses the field and triggers `select`): Enter-free repeat of the last search, and the first key typed replaces it. Before, the caret sat at the end, so a new word was added to the old one ("pg-test-navayar", no results) (#8996, PR #9071). The clear button still empties the box.

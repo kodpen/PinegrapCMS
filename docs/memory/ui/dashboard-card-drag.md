@@ -14,4 +14,4 @@ description: Dashboard card drag: the grip pinned to the right of the header is 
 - Unchanged: the arrow keys on the grip move the card (`sortable-init-pitfall.md`). `tests/keyboard_reorder_test.php` pins it; `tests/dashboard_drag_handle_test.php` pins the handle, the touch-only delay, the grip rule and the tip key ("…dragged by the grip at the right of their headers?", `brief.php`). Added in #3676.
 
 ## Who is told about the grip?
-- The greeting's tip "…dragged by the grip at the right of their headers?" (`pg_dashboard_brief_tips()`) goes on the old dashboard to role < 2 only, the readers `$widget_movable` draws the grip for; before, Managers and Users were told about a grip they do not have (#8995, PR #PRNUM). Pinned by `tests/dashboard_v2_brief_test.php`.
+- The greeting's tip "…dragged by the grip at the right of their headers?" (`pg_dashboard_brief_tips()`) goes on the old dashboard to role < 2 only, the readers `$widget_movable` draws the grip for; before, Managers and Users were told about a grip they do not have (#8995, PR #9071). Pinned by `tests/dashboard_v2_brief_test.php`.
