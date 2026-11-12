@@ -3348,6 +3348,8 @@
     "workspace template ({var:1}) was changed": "çalışma alanı şablonu ({var:1}) değiştirildi",
     "workspace template ({var:1}) was created": "çalışma alanı şablonu ({var:1}) oluşturuldu",
     "workspace, agent, agents, assistant, pinegrap ai, mcp, mcp server": "çalışma alanı, ajan, ajanlar, asistan, pinegrap ai, mcp, mcp sunucusu, workspace, agent, agents, assistant, mcp server",
+    "workspace, agent, agents, handle, push door, poll door, model, provider, token limit": "çalışma alanı, ajan, ajanlar, tanıtıcı, itme kapısı, yoklama kapısı, model, sağlayıcı, belirteç sınırı, workspace, agent, agents, handle, push door, poll door, model, provider, token limit",
+    "workspace, assistant, pinegrap ai, mcp, mcp server": "çalışma alanı, asistan, pinegrap ai, mcp, mcp sunucusu, workspace, assistant, mcp server",
     "workspace, bulk changes, assistant, delete in bulk, claude, pinegrap ai": "çalışma alanı, toplu değişiklikler, asistan, toplu silme, claude, pinegrap ai, workspace, bulk changes, assistant, delete in bulk",
     "workspace, channel template, templates, mailbox, mailboxes, e-mail, voice, transcript, github": "çalışma alanı, kanal şablonu, şablonlar, e-posta kutusu, e-posta kutuları, e-posta, ses, döküm, github, workspace, channel template, templates, mailbox, mailboxes, e-mail, voice, transcript",
     "workspace, claude, agent, agents, assistant, pinegrap ai, mcp, mcp server, bulk changes": "çalışma alanı, claude, ajan, ajanlar, asistan, pinegrap ai, mcp, mcp sunucusu, toplu değişiklikler, workspace, agent, agents, assistant, mcp server, bulk changes",

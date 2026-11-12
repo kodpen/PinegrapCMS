@@ -3,15 +3,20 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Site Settings - what Assistants and agents writes: Claude's connection and
- * the bulk delete switch with the pane's Save, then the job of the Claude
- * card's button that asked for the save (ws_claude_test, ws_claude_key_create,
- * ws_claude_key_reset).
+ * the bulk delete switch with the pane's Save, an agent from its drawer
+ * (ws_agent_save, value its id, 0 for a new one), then the job of the card
+ * button that asked for the save: Claude's (ws_claude_test,
+ * ws_claude_key_create, ws_claude_key_reset), an agent's (ws_agent_delete,
+ * ws_agent_test) or a request row's (ws_agent_request_cancel, _retry,
+ * _knock, value the request's id).
  *
  * Runs in the scope of includes/settings/screen.php or of
  * pg_settings_apply(), after the token check and after post_value() is
  * defined. The checks and the writes are the ones Workspace Settings uses
  * (ws_claude_settings_save(), ws_claude_settings_post(),
- * ws_bulk_settings_save()), so a form still open there saves the same way.
+ * ws_bulk_settings_save(), ws_agents_settings_check() and _write(),
+ * ws_agents_settings_act(), ws_agent_activity_post()), so a form still open
+ * there saves the same way.
  * Both cards are an administrator's: for anybody else their fields are drawn
  * disabled and not posted, and a posted one is left alone. Everything is
  * checked before anything is written: a refused value is marked on its field
@@ -61,6 +66,21 @@ if ($ws_admin && ws_bulk_ready() && (post_value('ws_bulk_card') !== null)) {
     }
 }
 
+// An agent's drawer asked for this save: its own fields, by its id, checked
+// before anything is written.
+$ws_agent_id = post_value('ws_agent_save');
+$ws_agent = null;
+
+if (($ws_agent_id !== null) && is_scalar($ws_agent_id)) {
+    $ws_agent_id = (int) $ws_agent_id;
+    $ws_agent = ws_agents_settings_check($ws_viewer, $ws_agent_id, ws_agents_settings_input(is_array($_POST['ws_agent'] ?? null) ? ($_POST['ws_agent'][$ws_agent_id] ?? array()) : array()));
+
+    if (!$ws_agent['ok']) {
+        $liveform->mark_error('ws_agent[' . $ws_agent_id . '][' . (($ws_agent['field'] !== '') ? $ws_agent['field'] : 'handle') . ']', h($ws_agent['error']));
+        return;
+    }
+}
+
 if ($ws_claude !== null) {
     $ws_refused = ws_claude_settings_save($ws_claude);
 
@@ -77,6 +97,32 @@ if ($ws_claude !== null) {
 
 if ($ws_bulk !== null) {
     ws_bulk_settings_save($ws_bulk);
+}
+
+if ($ws_agent !== null) {
+    ws_agents_settings_write($ws_viewer, $ws_agent);
+    $liveform->add_notice(lang('The agent was saved.'));
+}
+
+$ws_warn = function ($sentence) use ($liveform) {
+    $liveform->add_warning($sentence);
+};
+
+// An agent's Delete or Try, and a request row's buttons.
+foreach (array('agent_delete', 'agent_test') as $ws_action) {
+    $ws_value = post_value('ws_' . $ws_action);
+
+    if (($ws_value !== null) && is_scalar($ws_value)) {
+        ws_agents_settings_act($ws_viewer, $ws_action, (int) $ws_value, $liveform, $ws_warn);
+    }
+}
+
+foreach (array('agent_request_cancel', 'agent_request_retry', 'agent_request_knock') as $ws_action) {
+    $ws_value = post_value('ws_' . $ws_action);
+
+    if (($ws_value !== null) && is_scalar($ws_value)) {
+        ws_agent_activity_post($ws_viewer, $ws_action, $liveform, (int) $ws_value, true);
+    }
 }
 
 // The Claude card's button that asked for this save: the rest of the pane is

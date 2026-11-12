@@ -5,7 +5,7 @@ description: Claude in the channels and Bulk changes in Site Settings (Assistant
 
 ## Where are the two cards?
 - PR #8801 (SW3 of `plans/settings-workspace-move.md`): in Assistants and agents, sections `pgset-ws-claude` and `pgset-ws-bulk`, cards in `includes/settings/workspace_assistants.php`, writes in `workspace_assistants.save.php`. The old cards (`#ws-claude`, `#ws-bulk`) keep working on `workspace_settings.php` until SW7, as SW2 left its cards ([[workspace-holiday-settings]]).
-- `pg_settings_legacy_anchors()` maps `ws-claude` and `ws-bulk` to the new cards. The category's link card keeps the agents, Pinegrap AI and the MCP servers.
+- `pg_settings_legacy_anchors()` maps `ws-claude` and `ws-bulk` to the new cards. The category's link card keeps Pinegrap AI and the MCP servers; the agents moved in SW4a ([[workspace-agent-settings]]).
 
 ## How do the two screens share one card and one save?
 - `ws_claude_settings_card($self_url, $viewer, $credentials, $form)` and `ws_bulk_settings_card($self_url, $viewer, $form)` draw both: with `$form` (the settings form's id) no `<form>`, fields named `ws_*`, buttons named submit buttons of the settings form.
