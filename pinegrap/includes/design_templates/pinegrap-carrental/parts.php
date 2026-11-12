@@ -127,6 +127,19 @@ $portrait = function ($name, $size = 480) {
     foreach (array_slice(preg_split('/\s+/u', trim($name)), 0, 2) as $w) $initials .= mb_strtoupper(mb_substr($w, 0, 1, 'UTF-8'), 'UTF-8');
     return 'https://placehold.co/' . (int)$size . 'x' . (int)$size . '/fef3c7/92400e?text=' . rawurlencode($initials !== '' ? $initials : 'A');
 };
+
+// Motion from the interactions on the nodes (pg_fx; nothing moves under
+// reduced motion): $fx gives a node one effect, $rise brings the children
+// of a row or a list in one after another as they scroll into view, and
+// $fade_in is the way a section's heading comes in.
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+$rise = function ($node, $stagger = 90) use ($fx) {
+    return $fx($node, array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => $stagger));
+};
+$fade_in = array('effect' => 'fade', 'trigger' => 'view', 'duration' => 700);
 // ── The company: its fleet, its desks, its extras and its deals ─────────
 
 // The rental company itself. The about and locations pages tell its
@@ -147,6 +160,13 @@ $base_currency = defined('BASE_CURRENCY_CODE') ? strtoupper((string)BASE_CURRENC
 $money = function (array $prices) use ($base_currency) {
     $amount = isset($prices[$base_currency]) ? $prices[$base_currency] : $prices['USD'];
     return pg_money_text($amount, defined('BASE_CURRENCY_SYMBOL') ? (string)BASE_CURRENCY_SYMBOL : '$');
+};
+// A price list times $n, currency by currency: what $n days of a rate
+// come to, so a sum shows the same figures in every currency.
+$times = function (array $prices, $n) {
+    $out = array();
+    foreach ($prices as $code => $amount) $out[$code] = $amount * $n;
+    return $out;
 };
 
 // The car classes, in the order the fleet list and the home's tiles show
@@ -173,10 +193,6 @@ $classes = array(
         'text' => lang('Quiet, clean and charged when you collect it.'),
         'rate' => array('USD' => 49, 'EUR' => 45, 'GBP' => 39, 'TRY' => 1850), 'deposit' => array('USD' => 400, 'EUR' => 370, 'GBP' => 320, 'TRY' => 15000)),
 );
-// A class's "From … a day" words.
-$class_rate = function ($key) use ($classes, $money) {
-    return sprintf(lang('From %s a day'), $money($classes[$key]['rate']));
-};
 
 $fuels = array(
     'petrol'   => array('icon' => 'bi-fuel-pump', 'title' => lang('Gasoline')),
@@ -287,6 +303,26 @@ $extra_price = function ($key) use ($extras, $money) {
     $e = $extras[$key];
     return sprintf($e['unit'] === 'day' ? lang('%s a day') : lang('%s a rental'), $money($e['price']));
 };
+
+// The cover levels the extras page compares: the price a day against the
+// excess, the most a renter pays if the car comes back damaged. Basic
+// comes with every rental; Full is the Full Cover extra; Plus is asked for
+// in the booking request's notes. 'meter' is the excess drawn against
+// Basic's (a Bootstrap width class, '' for none); 'covers' says which of
+// the cover lines each level takes. Full Cover halves the class's deposit
+// ('deposit' is the share held), as the questions page promises a smaller
+// one.
+$covers = array(
+    'basic' => array('title' => lang('Basic Cover'), 'text' => lang('The cover every rental comes with.'),
+        'price' => null, 'excess' => array('USD' => 900, 'EUR' => 830, 'GBP' => 720, 'TRY' => 34000),
+        'meter' => 'w-100', 'covers' => array('glass' => false, 'deposit' => false), 'deposit' => 1, 'chosen' => false),
+    'plus'  => array('title' => lang('Plus Cover'), 'text' => lang('A lower excess, with glass and tyres covered.'),
+        'price' => array('USD' => 9, 'EUR' => 8, 'GBP' => 7, 'TRY' => 340), 'excess' => array('USD' => 450, 'EUR' => 415, 'GBP' => 360, 'TRY' => 17000),
+        'meter' => 'w-50', 'covers' => array('glass' => true, 'deposit' => false), 'deposit' => 1, 'chosen' => false),
+    'full'  => array('title' => $extras['cover']['title'], 'text' => $extras['cover']['text'],
+        'price' => $extras['cover']['price'], 'excess' => array('USD' => 0, 'EUR' => 0, 'GBP' => 0, 'TRY' => 0),
+        'meter' => '', 'covers' => array('glass' => true, 'deposit' => true), 'deposit' => 0.5, 'chosen' => true),
+);
 
 // The deals. Each opens the booking request with the deal chosen
 // (?deal=); the staff confirm the price by hand. No fixed date: a deal
@@ -751,17 +787,76 @@ $car_card = function ($sample_key = 'lumo-five') use ($el, $para, $span, $link, 
     ), '6', '4');
 };
 
-// A car class's tile (the home's "choose a class"): the icon, the name and
-// the lowest rate, opening the fleet list filtered on the class.
-$class_tile = function ($key) use ($el, $span, $icon, $col, $classes, $class_rate, $query) {
+// A line with an icon in front (the hero's facts, a class card's seats and
+// bags, the cover lines).
+$tick = function ($icon_name, $text, $class = '') use ($el, $icon, $span) {
+    return $el('li', trim('d-flex align-items-center gap-2 ' . $class), lang('Item'), array(
+        $icon($icon_name, 'text-primary'),
+        $span($text, '', lang('Text')),
+    ));
+};
+// The model a class is given with: its name and "or similar".
+$model_line = function ($car_key, $class = '') use ($el, $span, $car_title) {
+    return $el('div', trim('d-flex flex-wrap gap-1 ' . $class), lang('Model'), array(
+        $span($car_title($car_key), 'fw-semibold text-body-emphasis', lang('Name')),
+        $span(lang('or similar'), 'text-body-secondary', lang('Text')),
+    ));
+};
+// A day rate as a figure and "/day" after it.
+$day_rate = function ($prices, $size = 'fs-3') use ($el, $span, $money) {
+    return $el('div', 'd-flex align-items-baseline gap-1', lang('Daily rate'), array(
+        $span($money($prices), 'pg-carrental-figure fw-bold text-body-emphasis ' . $size, lang('Price')),
+        $span(lang('/day'), 'small text-body-secondary', lang('Unit')),
+    ));
+};
+// The first sample car of a class: the model the class is shown with.
+$class_car = function ($key) use ($cars) {
+    foreach ($cars as $car_key => $c) {
+        if ($c['class'] === $key) return $car_key;
+    }
+    return 'lumo-five';
+};
+
+// A car class's card on the home's class line-up (the Car Rental Class
+// Line-up block's card): the picture of its model, the name linking the
+// fleet list filtered on the class, the model "or similar", its seats,
+// bags and gearbox, the day rate and the deposit. Mid-size is marked as
+// the most chosen.
+$class_tile = function ($key) use ($el, $link, $span, $image, $attr, $tick, $model_line, $day_rate, $class_car, $classes, $cars, $transmissions, $money, $photo, $car_title, $query) {
     $c = $classes[$key];
-    return $col(array(
-        $el('a', 'card h-100 border-0 shadow-sm text-center text-decoration-none link-body-emphasis py-4 px-2 pcr-lift', lang('Car Class'), array(
-            $icon($c['icon'], 'fs-1 text-primary'),
-            $span($c['title'], 'd-block fw-semibold mt-2', lang('Name')),
-            $span($class_rate($key), 'd-block small text-body-secondary', lang('Price')),
-        ), array('href' => '{{page:fleet}}?' . $query(array('class' => $c['title'])))),
-    ), '4', '2', '', '6');
+    $car_key = $class_car($key);
+    $car = $cars[$car_key];
+    $head = array(
+        $el('h3', 'h4 fw-bold mb-0', lang('Name'), array(
+            $link($c['title'], '{{page:fleet}}?' . $query(array('class' => $c['title'])), 'stretched-link link-body-emphasis text-decoration-none'),
+        )),
+    );
+    if ($key === 'compact') $head[] = $span(lang('Most chosen'), 'badge rounded-pill text-bg-primary text-wrap', lang('Badge'));
+    return $el('li', 'pg-carrental-class', $c['title'], array(
+        $el('article', 'card h-100 border-0 shadow-sm overflow-hidden', lang('Car Class'), array(
+            $image($photo($car_key, 800, 450), $car_title($car_key), 'pg-ratio-16x9 w-100 object-fit-cover',
+                array('_attrs' => array($attr('loading', 'lazy')))),
+            $el('div', 'card-body p-4 d-flex flex-column', lang('Card Body'), array(
+                $el('div', 'd-flex flex-wrap align-items-center gap-2 mb-1', lang('Title'), $head),
+                $model_line($car_key, 'small mb-3'),
+                $el('ul', 'list-unstyled d-flex flex-wrap gap-3 small text-body-secondary mb-4', lang('Facts'), array(
+                    $tick('bi-people', str_replace('{var}', (string)$car['seats'], lang('{var} seats'))),
+                    $tick('bi-briefcase', str_replace('{var}', (string)$car['bags'], lang('{var} bags'))),
+                    $tick('bi-gear', $transmissions[$car['gearbox']]),
+                )),
+                $el('dl', 'd-flex align-items-end justify-content-between gap-3 mt-auto mb-0 pt-3 border-top', lang('Prices'), array(
+                    $el('div', '', lang('Daily rate'), array(
+                        $el('dt', 'small fw-normal text-body-secondary mb-1', lang('Label'), array($span(lang('Daily rate'), '', lang('Text')))),
+                        $el('dd', 'mb-0', lang('Price'), array($day_rate($c['rate']))),
+                    )),
+                    $el('div', 'text-end', lang('Security deposit'), array(
+                        $el('dt', 'small fw-normal text-body-secondary mb-1', lang('Label'), array($span(lang('Security deposit'), '', lang('Text')))),
+                        $el('dd', 'pg-carrental-figure fw-semibold mb-0', lang('Price'), array($span($money($c['deposit']), '', lang('Price')))),
+                    )),
+                )),
+            )),
+        )),
+    ));
 };
 
 // A desk's card (the home and the locations page): the place, its kind,
@@ -816,7 +911,7 @@ $deal_card = function ($key) use ($el, $heading, $para, $link, $span, $col, $ico
             $el('div', 'card-body d-flex flex-column p-4', lang('Card Body'), array(
                 $el('div', 'd-flex align-items-center justify-content-between gap-2 mb-3', lang('Badges'), array(
                     $icon($d['icon'], 'fs-3 text-primary'),
-                    $span($d['badge'], 'badge rounded-pill text-bg-primary', lang('Badge')),
+                    $span($d['badge'], 'badge rounded-pill text-bg-primary text-wrap', lang('Badge')),
                 )),
                 $heading('h3', $d['title'], 'h5 fw-bold mb-2'),
                 $para($d['text'], 'small text-body-secondary mb-3'),

@@ -41,10 +41,18 @@ function _test_cr_load()
 		$rates[$key] = $car_rate($key);
 	}
 	$class_tiles = array();
-	$class_rates = array();
+	$class_words = array();
 	foreach (array_keys($classes) as $key) {
 		$class_tiles[$key] = $class_tile($key);
-		$class_rates[$key] = $class_rate($key);
+		// The words a tile shows, joined: its rate and its deposit are read
+		// from them.
+		$tile_nodes = array();
+		_test_cr_nodes($class_tiles[$key], $tile_nodes);
+		$words = array();
+		foreach ($tile_nodes as $node) {
+			if (isset($node['props']['text']) && is_string($node['props']['text'])) $words[] = $node['props']['text'];
+		}
+		$class_words[$key] = implode(' ', $words);
 	}
 	$location_cards = array();
 	foreach (array_keys($locations) as $key) $location_cards[$key] = $location_card($key);
@@ -68,7 +76,7 @@ function _test_cr_load()
 		'cars'              => $cars,
 		'titles'            => $titles,
 		'rates'             => $rates,
-		'class_rates'       => $class_rates,
+		'class_words'       => $class_words,
 		'money'             => $money,
 		'locations'         => $locations,
 		'extras'            => $extras,
@@ -255,7 +263,8 @@ function test_carrental_rates_follow_the_base_currency()
 		pg_assert_true(strpos($d['rates'][$key], $money($c['rate'])) !== false, "car $key: the rate names the amount");
 	}
 	foreach ($d['classes'] as $key => $c) {
-		pg_assert_true(strpos($d['class_rates'][$key], $money($c['rate'])) !== false, "class $key: the rate names the amount");
+		pg_assert_true(strpos($d['class_words'][$key], $money($c['rate'])) !== false, "class $key: the tile names the day rate");
+		pg_assert_true(strpos($d['class_words'][$key], $money($c['deposit'])) !== false, "class $key: the tile names the deposit");
 	}
 	foreach ($d['extras'] as $key => $e) {
 		pg_assert_true(strpos($d['extra_prices'][$key], $money($e['price'])) !== false, "extra $key: the price names the amount");

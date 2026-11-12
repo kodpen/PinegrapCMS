@@ -3979,6 +3979,13 @@ button.pgie-sndfile:hover {
   inset: 0;
 }
 
+/* Picture in picture: the border inside the rounded box (M.clipFrame()). */
+.pgie-clipedge {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+}
+
 /* Six speeds on one row, the numbers lined up. */
 .pgie-seg.pgie-clipspeeds {
   margin-bottom: 0;
@@ -4140,6 +4147,7 @@ button.pgie-sndfile:hover {
   display: grid;
   grid-template-columns: 1fr 1fr;
   column-gap: 12px;
+  row-gap: 6px;
 }
 
 .pgie-clipcut .pgie-ic {

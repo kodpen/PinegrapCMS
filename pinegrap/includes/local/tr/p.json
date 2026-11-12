@@ -3245,6 +3245,7 @@
     "price, cost, quote, budget": "fiyat, maliyet, teklif, bütçe",
     "price, cost, quote, time, plan, project": "fiyat, maliyet, teklif, süre, plan, proje",
     "price, cost, rules, cancel, key": "fiyat, ücret, kurallar, iptal, anahtar",
+    "price, cost, total, week, quote, deposit": "fiyat, maliyet, toplam, hafta, teklif, depozito",
     "price, fare, ticket, cost, adult, child, senior, car, van, campervan, motorcycle, bicycle, cabin": "fiyat, ücret, bilet, tutar, yetişkin, çocuk, yaşlı, otomobil, kamyonet, karavan, motosiklet, bisiklet, kabin",
     "price, fare, ticket, cost, adult, child, senior, car, van, campervan, motorcycle, bicycle, cabin, included, luggage, wifi, group": "fiyat, ücret, bilet, tutar, yetişkin, çocuk, yaşlı, otomobil, minibüs, karavan, motosiklet, bisiklet, kabin, dahil, bagaj, wifi, grup",
     "price, fare, ticket, cost, car, passenger": "fiyat, ücret, bilet, tutar, otomobil, yolcu",

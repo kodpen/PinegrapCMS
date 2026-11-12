@@ -3,8 +3,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Design template "Car Rental": a car rental company with desks at the
- * airport and in town. A home page with the car classes, the featured
- * cars, the deals, the desks and what renters say; the fleet by class,
+ * airport and in town. A home page drawn on the Car Rental blocks (a hero
+ * with a trip slip, the class line-up, a sample week's quote and the cover
+ * levels) with the featured cars, the desks, the deals, what renters say
+ * and the journal; the fleet by class,
  * gearbox and fuel with a page for each car, shown "or similar"; the
  * pick-up desks, the extras, the deals, the rental terms, the about page
  * and the questions; a booking request the renter follows from their
@@ -120,7 +122,7 @@ $carrental_css = implode("\n", array(
     // The home page's first section: a soft wash of the primary colour from
     // the upper right corner, where the browser mixes colours.
     '@supports (background-color:color-mix(in srgb,red 8%,blue)){.pcr-hero{background-image:radial-gradient(ellipse 70% 80% at 100% 0%,color-mix(in srgb,var(--bs-primary) 14%,transparent) 0%,transparent 70%)}}',
-    // Car, class, desk, deal and staff cards rise a little under the pointer.
+    // Car, deal, contact and staff cards rise a little under the pointer.
     '.pcr-lift{transition:transform .2s ease,box-shadow .2s ease}',
     '.pcr-lift:hover,.pcr-lift:focus-visible,.pcr-lift:focus-within{transform:translateY(-3px);box-shadow:var(--bs-box-shadow)}',
     '@media (prefers-reduced-motion:reduce){.pcr-lift{transition:none}.pcr-lift:hover,.pcr-lift:focus-visible,.pcr-lift:focus-within{transform:none}}',
@@ -128,7 +130,7 @@ $carrental_css = implode("\n", array(
 
 return array(
     'name'        => lang('Car Rental'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 131,
     'icon'        => 'bi-key',
@@ -182,10 +184,12 @@ return array(
         'email_footer' => array('name' => lang('Car Rental E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pcr- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the rules of the Car Rental blocks its home
+    // and extras pages are drawn on (the hero, the class line-up, the cover
+    // levels and the sample quote) and its pcr- rules in one User Styles
+    // entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $carrental_css),
+        'css'   => pg_design_template_user_styles(array('carrental-hero', 'carrental-lineup', 'carrental-cover', 'carrental-quote'), $carrental_css),
         'fonts' => json_encode($carrental_fonts),
     ),
 );

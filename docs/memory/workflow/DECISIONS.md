@@ -38,6 +38,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-3.md: What opens from a card inside the Site Settings dialog? (owner, 2026-11-11)
 - decisions-made-panel-4.md: Where are the rules and the earlier parts?
 - decisions-made-panel-4.md: What does a bell row look like? (owner, 2026-11-11, #8670)
+- decisions-made-panel-4.md: How does the bell's panel open, and how is a row laid out in it? (owner, 2026-11-11, #8754)
 - decisions-made-panel-4.md: Which filters does the bell have? (owner, 2026-11-11, #8670)
 - decisions-made-panel-4.md: What does a bell row's button do? (owner, 2026-11-11, #8670)
 - decisions-made-panel-4.md: When is a notification read? (owner, 2026-11-11, #8670)
@@ -330,6 +331,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-14.md: When does a Workspace channel make a sound for a person? (owner, 2026-11-11, #8720)
 - decisions-made-workspace-14.md: What does an agent do while the message that asked it is being edited? (owner, 2026-11-11, #8723)
 - decisions-made-workspace-14.md: When are the coordinators connected to the agent channel? (owner, 2026-11-11, #8726)
+- decisions-made-workspace-15.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-15.md: Are the Workspace settings cards simplified as they move under Site Settings? (owner, 2026-11-11, #8750)
+- decisions-made-workspace-15.md: Is Claude (the Anthropic API) a provider of model assistants? (owner, 2026-11-11, #8750)
 - decisions-made-workspace-2.md: What may the channel menu hold?
 - decisions-made-workspace-2.md: Where are records created inside a chat?
 - decisions-made-workspace-2.md: Does the customer channel's "New sales quote" stay in the menu?
@@ -547,7 +551,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - waf/waf-self-rescue.md: CLI waf_unban.php lifts a ban from the server, Settings refuses a block entry covering your own address, the sign-in lock spares allow-listed addresses (#2187)
 - waf/waf-trusted-proxy-headers.md: Each Trusted Proxies entry names the header its proxy sets; new or edited entries without one read X-Forwarded-For only, stored ones keep every vendor header (#2750).
 - workflow/agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks
-- workflow/agent-channel-wake.md: How a session waits on the agent channel: on its request queue (every wake rule makes a request), tools/ws_wait.php for text and changes, the handles typed in it
+- workflow/agent-channel-wake.md: How a session waits on the agent channel: on its request queue (a person's message makes the request, an agent's not yet), tools/ws_wait.php for text and changes, the handles typed in it
 - workflow/architect.md: Decision questions (2026-10-27): an architect issue; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (erdal), records it
 - workflow/coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators
 - workflow/coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; no bug hunt and no bug issue as work
