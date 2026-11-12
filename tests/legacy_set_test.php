@@ -34,6 +34,7 @@ function _lgs_entry($id, $name, $key, $over = array())
 		'id' => $id, 'name' => $name, 'state' => 'ready', 'set_key' => $key, 'mobile' => 0,
 		'own' => array(array('page_id' => $id * 10, 'page_name' => $name . '-a')), 'folder' => array(),
 		'refs' => array('css' => array('/a.css'), 'js' => array()), 'theme' => '', 'theme_id' => 0, 'collection' => 'a',
+		'social_position' => 'bottom_left', 'layout_type' => '',
 	), $over);
 }
 
@@ -59,7 +60,7 @@ function test_lgs_style_refs_in_order_filled_once()
 	pg_assert_same(array('css' => array(), 'js' => array()), pg_ltd_style_refs('', '/', 'pinegrap'));
 }
 
-function test_lgs_set_key_counts_addresses_order_and_settings_not_inline()
+function test_lgs_set_key_counts_addresses_order_collection_theme_not_inline()
 {
 	$row = array('collection' => 'a', 'theme_id' => 4, 'layout_type' => '', 'social_networking_position' => 'top_left');
 	$a = pg_ltd_set_key(pg_ltd_style_refs(_lgs_head(array('{path}a.css', '{path}b.css'), array('{path}j.js'), '<style>p{}</style>'), '/', 'pinegrap'), $row);
@@ -71,11 +72,13 @@ function test_lgs_set_key_counts_addresses_order_and_settings_not_inline()
 	pg_assert_false($a === $swap, 'order counts');
 	$refs = pg_ltd_style_refs(_lgs_head(array('/a.css', '/b.css'), array('/j.js')), '/', 'pinegrap');
 	pg_assert_same($a, pg_ltd_set_key($refs, $row));
-	foreach (array('collection' => 'b', 'theme_id' => 5, 'layout_type' => 'system', 'social_networking_position' => 'bottom_right') as $field => $value) {
+	foreach (array('collection' => 'b', 'theme_id' => 5) as $field => $value) {
 		$other = $row;
 		$other[$field] = $value;
 		pg_assert_false($a === pg_ltd_set_key($refs, $other), $field . ' counts');
 	}
+	$other = array_merge($row, array('layout_type' => 'system', 'social_networking_position' => 'disabled'));
+	pg_assert_same($a, pg_ltd_set_key($refs, $other), 'settings the design holds once do not split a set: the dry run shows them');
 	$moved = array('css' => array('/a.css'), 'js' => array('/b.css', '/j.js'));
 	pg_assert_false($a === pg_ltd_set_key($moved, $row), 'a stylesheet and a script never swap places');
 }
@@ -87,24 +90,34 @@ function test_lgs_sets_group_by_key_and_leave_out_who_moves_alone()
 		_lgs_entry(2, 'blog', 'k2'),
 		_lgs_entry(3, 'contact', 'k1', array('folder' => array(array('page_id' => 77, 'page_name' => 'f')))),
 		_lgs_entry(4, 'gallery', 'k2'),
-		_lgs_entry(5, 'home', 'k1'),
-		_lgs_entry(6, 'mobile', 'k1', array('mobile' => 2)),
+		_lgs_entry(5, 'home', 'k1', array('social_position' => 'disabled')),
+		_lgs_entry(6, 'mobile', 'k1', array('mobile' => 2, 'social_position' => 'disabled', 'layout_type' => 'system')),
 		_lgs_entry(7, 'old', 'k1', array('state' => 'blocked')),
 		_lgs_entry(8, 'shop', 'k3'),
 	);
 	$r = pg_ltd_sets($report);
 	pg_assert_same(2, count($r['sets']));
 	pg_assert_same('k1', $r['sets'][0]['key'], 'the set with most styles first');
-	pg_assert_same(array(1, 3, 5), $r['sets'][0]['styles']);
-	pg_assert_same(4, $r['sets'][0]['pages'], 'own and folder pages');
+	pg_assert_same(array(1, 3, 5, 6), $r['sets'][0]['styles'], 'a mobile style joins its set: its classic row keeps serving phones');
+	pg_assert_same(5, $r['sets'][0]['pages'], 'own and folder pages');
+	pg_assert_same(array('social_networking_position' => 'bottom_left', 'layout_type' => ''), $r['sets'][0]['settings'],
+		'the value most of its styles carry; a tie goes to the first style');
 	pg_assert_same(pg_ltd_set_name('about'), $r['sets'][0]['name'], 'named after its first style');
 	pg_assert_same(array('css' => array('/a.css'), 'js' => array()), $r['sets'][0]['refs']);
 	pg_assert_same(array(2, 4), $r['sets'][1]['styles']);
-	pg_assert_same(array(6 => 'mobile', 7 => 'blocked', 8 => 'single'), $r['alone'], 'a mobile style, a refused one and one sharing its files with nobody');
+	pg_assert_same(array(7 => 'blocked', 8 => 'single'), $r['alone'], 'a refused style and one sharing its files with nobody');
 
 	$tie = pg_ltd_sets(array(_lgs_entry(1, 'b', 'x'), _lgs_entry(2, 'a', 'y'), _lgs_entry(3, 'b2', 'x'), _lgs_entry(4, 'a2', 'y')));
 	pg_assert_same('y', $tie['sets'][0]['key'], 'equal sizes: by the first style name');
 	pg_assert_same(array('sets' => array(), 'alone' => array()), pg_ltd_sets(array()));
+}
+
+function test_lgs_set_setting_most_common_first_on_a_tie()
+{
+	pg_assert_same('b', pg_ltd_set_setting(array('a', 'b', 'b', 'c')));
+	pg_assert_same('a', pg_ltd_set_setting(array('a', 'b', 'b', 'a')), 'a tie: the first');
+	pg_assert_same('', pg_ltd_set_setting(array('', '', 'system')));
+	pg_assert_same('', pg_ltd_set_setting(array()));
 }
 
 function test_lgs_set_assets_shared_once_inline_limited_to_pages()
@@ -140,7 +153,8 @@ function _lgs_plan_style($id, $name, $over = array())
 		'facts' => array('refusal' => '', 'common' => array(), 'frame' => array('designer' => array(), 'widgets' => array(), 'page_regions' => 0),
 			'frame_exists' => false, 'designer_made' => array(), 'warnings' => array(),
 			'pages' => array(array('page_id' => $id * 10, 'page_name' => $name . '-a', 'source' => 'own', 'has_tree' => false, 'holder' => '', 'own_regions' => 0))),
-		'body_classes' => '', 'style_head' => false, 'mobile_pages' => 0,
+		'body_classes' => '', 'style_head' => false, 'mobile_pages' => 0, 'mobile' => 0,
+		'social_position' => 'bottom_left', 'layout_type' => '',
 	), $over);
 }
 
@@ -153,10 +167,14 @@ function test_lgs_plan_set_one_design_frames_per_style_and_writes()
 	$folder['body_classes'] = 'blog dark';
 	$folder['style_head'] = true;
 	$folder['mobile_pages'] = 2;
+	$folder['mobile'] = 1;
+	$folder['social_position'] = 'disabled';
+	$folder['layout_type'] = 'custom';
 	$refused = _lgs_plan_style(3, 'old');
 	$refused['facts']['refusal'] = 'No.';
 	$p = pg_ltd_plan_set(array(
-		'key' => 'k1', 'name' => 'about set', 'theme' => '', 'collection' => 'a',
+		'key' => 'k1', 'name' => 'about set', 'theme' => '', 'collection' => 'a', 'social_on' => true,
+		'settings' => array('social_networking_position' => 'bottom_left', 'layout_type' => ''),
 		'styles' => array(_lgs_plan_style(1, 'about'), $folder, $refused),
 		'assets' => array('css' => array(pg_di_asset_entry('external-css', 'a.css', '{path}a.css', false)), 'js' => array()),
 	));
@@ -171,6 +189,13 @@ function test_lgs_plan_set_one_design_frames_per_style_and_writes()
 	pg_assert_same('blog dark', $p['styles'][1]['body_classes']);
 	pg_assert_same(true, $p['styles'][1]['style_head']);
 	pg_assert_same(2, $p['styles'][1]['mobile_pages']);
+	pg_assert_same(1, $p['styles'][1]['mobile']);
+	pg_assert_same(array(), $p['styles'][0]['changes'], 'nothing differs from the design');
+	pg_assert_same(array(array('setting' => 'social_networking_position', 'from' => 'disabled', 'to' => 'bottom_left'),
+		array('setting' => 'layout_type', 'from' => 'custom', 'to' => '')), $p['styles'][1]['changes'], 'what its pages would show differently');
+	$off = pg_ltd_plan_set(array('key' => 'k', 'name' => 'n', 'theme' => '', 'collection' => 'a', 'social_on' => false,
+		'settings' => array('social_networking_position' => 'bottom_left', 'layout_type' => ''), 'styles' => array($folder), 'assets' => array('css' => array(), 'js' => array())));
+	pg_assert_same(array(array('setting' => 'layout_type', 'from' => 'custom', 'to' => '')), $off['styles'][0]['changes'], 'the sharing position matters only while sharing is on');
 	pg_assert_same('refusal', $p['styles'][2]['skip']);
 	// The design once; per style its frame, its free pages and widgets; no style row flipped.
 	pg_assert_same(1 + (1 + 1) + (1 + 2 + 1), $p['writes']);
@@ -185,9 +210,11 @@ function test_lgs_plan_html_of_a_set()
 	$s = _lgs_plan_style(2, 'blog <b>');
 	$s['body_classes'] = 'blog';
 	$s['mobile_pages'] = 1;
+	$s['social_position'] = 'top_right';
 	$s['facts']['pages'][] = array('page_id' => 21, 'page_name' => 'blog-b', 'source' => 'folder', 'has_tree' => false, 'holder' => '', 'own_regions' => 0);
 	$p = pg_ltd_plan_set(array(
-		'key' => 'k1', 'name' => 'about set', 'theme' => 'theme_modern.css', 'collection' => 'a',
+		'key' => 'k1', 'name' => 'about set', 'theme' => 'theme_modern.css', 'collection' => 'a', 'social_on' => true,
+		'settings' => array('social_networking_position' => 'bottom_left', 'layout_type' => ''),
 		'styles' => array(_lgs_plan_style(1, 'about'), $s),
 		'assets' => array('css' => array(pg_di_asset_entry('external-css', 'a.css', '{path}a.css', false),
 			array_merge(pg_di_asset_entry('css', 'blog-inline.css', 'p{}', false), array('pages' => array(20), 'styles' => array('blog <b>')))), 'js' => array()),
@@ -201,6 +228,8 @@ function test_lgs_plan_html_of_a_set()
 	pg_assert_false(strpos($html, 'blog <b>') !== false);
 	pg_assert_contains('blog-b', $html, 'the folder page named');
 	pg_assert_same(2, substr_count($html, '<h4'), 'one heading per style');
+	pg_assert_contains(lang('Top Right'), $html, 'the sharing position it had');
+	pg_assert_contains(lang('Bottom Left'), $html, 'and the one the design holds');
 }
 
 function test_lgs_screen_offers_sets()

@@ -181,8 +181,8 @@ $style_row = function ($s) use ($state_badges, $region_labels, $page_list, $chos
                 break;
         }
     }
-    if ($s['alone'] === 'mobile') {
-        $lines[] = array('fg-secondary', lang('A folder or page uses it as its mobile style, so it moves alone.'));
+    if ($s['mobile'] > 0) {
+        $lines[] = array('fg-secondary', lang('A folder or page uses it as its mobile style: the classic style stays and keeps serving phones.'));
     }
     $output_notes = '';
     foreach ($lines as $l) {
@@ -242,7 +242,7 @@ if ($sets['alone']) {
         <tr class="ltd-set-head">
             <td></td>
             <th scope="rowgroup" colspan="5" class="align-middle fw-normal"><span class="fw-semibold">' . h(lang('Styles that move alone')) . '</span>
-                <div class="small fg-secondary">' . h(lang('No other style loads the same files with the same settings, or the style cannot join a set.')) . '</div></th>
+                <div class="small fg-secondary">' . h(lang('No other style loads the same files with the same theme file and collection, or the visual designer cannot open the style.')) . '</div></th>
         </tr>';
     foreach ($report as $s) {
         if (isset($sets['alone'][$s['id']])) $output_rows .= $style_row($s);
@@ -446,7 +446,7 @@ pg_page_shell([
     ' . $output_form . $output_run . $output_plan . '
     <div class="card my-7" id="ltd-styles">
         <div class="card-header"><h2 class="h5 mb-0">' . h(lang('Styles')) . '</h2>
-            <div class="small fg-secondary">' . h(lang(array('string' => 'Sets: {var:1}. Styles that load the same stylesheets and scripts in the same order, with the same theme, collection, layout and sharing settings, form a set and move as one Legacy design.', 'vars' => array(count($sets['sets']))))) . '</div></div>
+            <div class="small fg-secondary">' . h(lang(array('string' => 'Sets: {var:1}. Styles that load the same stylesheets and scripts in the same order, with the same theme file and collection, form a set and move as one Legacy design.', 'vars' => array(count($sets['sets']))))) . '</div></div>
         <div class="card-body p-0 table-responsive">' . $output_table . '</div>
     </div>
     ' . $output_classic . $output_runs . '

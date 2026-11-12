@@ -410,21 +410,26 @@ function pg_ltd_set_assets($styles)
  *
  * @param array $facts  'key', 'name' (the design's), 'theme' (its theme
  *                      file's name, '' for the activated theme),
- *                      'collection', 'styles' (list of array('id', 'name',
- *                      'state', 'facts' (pg_ltd_plan_style()'s), 'body_classes',
- *                      'style_head' (bool), 'mobile_pages')), 'assets'
- *                      (pg_ltd_set_assets())
+ *                      'collection', 'settings' (pg_ltd_sets()'s), 'social_on'
+ *                      (the site shows sharing buttons), 'styles' (list of
+ *                      array('id', 'name', 'state', 'facts'
+ *                      (pg_ltd_plan_style()'s), 'body_classes', 'style_head'
+ *                      (bool), 'mobile_pages', 'mobile', 'social_position',
+ *                      'layout_type')), 'assets' (pg_ltd_set_assets())
  * @return array  'kind' => 'set', 'key', 'name', 'theme', 'collection',
- *                'assets', 'styles' (each id, name, state,
- *                pg_ltd_plan_style()'s keys, 'folder_pages' (folder pages
- *                that move), 'body_classes', 'style_head', 'mobile_pages'),
- *                'skip' ('' or 'empty'), 'writes'
+ *                'settings', 'social_on', 'assets', 'styles' (each id, name,
+ *                state, pg_ltd_plan_style()'s keys, 'folder_pages' (folder
+ *                pages that move), 'body_classes', 'style_head',
+ *                'mobile_pages', 'mobile', 'changes' (list of
+ *                array('setting', 'from', 'to'): what its pages would show
+ *                differently)), 'skip' ('' or 'empty'), 'writes'
  */
 function pg_ltd_plan_set($facts)
 {
     $f = (array)$facts;
     $out = array('kind' => 'set', 'key' => (string)($f['key'] ?? ''), 'name' => (string)($f['name'] ?? ''),
                  'theme' => (string)($f['theme'] ?? ''), 'collection' => (string)($f['collection'] ?? ''),
+                 'settings' => (array)($f['settings'] ?? array()), 'social_on' => !empty($f['social_on']),
                  'assets' => isset($f['assets']) && is_array($f['assets']) ? $f['assets'] : array('css' => array(), 'js' => array()),
                  'styles' => array(), 'skip' => '', 'writes' => 0);
     $moving = 0;
@@ -434,11 +439,20 @@ function pg_ltd_plan_set($facts)
         foreach ($plan['pages'] as $p) {
             if (($p['source'] ?? '') === 'folder' && ($p['action'] === 'tree' || $p['action'] === 'regions')) ++$folder;
         }
+        // The settings the design holds once, where this style had another.
+        $changes = array();
+        foreach (array('social_networking_position' => 'social_position', 'layout_type' => 'layout_type') as $setting => $field) {
+            if ($setting === 'social_networking_position' && !$out['social_on']) continue;
+            $to = (string)($out['settings'][$setting] ?? '');
+            $from = (string)($s[$field] ?? '');
+            if ($from !== $to) $changes[] = array('setting' => $setting, 'from' => $from, 'to' => $to);
+        }
         $out['styles'][] = array_merge(
             array('id' => (int)($s['id'] ?? 0), 'name' => (string)($s['name'] ?? ''), 'state' => (string)($s['state'] ?? '')),
             $plan,
             array('folder_pages' => $folder, 'body_classes' => trim((string)($s['body_classes'] ?? '')),
-                  'style_head' => !empty($s['style_head']), 'mobile_pages' => (int)($s['mobile_pages'] ?? 0)));
+                  'style_head' => !empty($s['style_head']), 'mobile_pages' => (int)($s['mobile_pages'] ?? 0),
+                  'mobile' => (int)($s['mobile'] ?? 0), 'changes' => $changes));
         if ($plan['skip'] !== '') continue;
         ++$moving;
         // pg_ltd_plan_style() counts the style's flip; here the design is
@@ -574,13 +588,16 @@ function pg_ltd_plan($style_ids, $set_keys = array())
             unset($want[$id]);
             $facts = pg_ltd_plan_facts($s, $converted);
             $styles[] = array('id' => $s['id'], 'name' => $s['name'], 'state' => $s['state'], 'facts' => $facts,
-                              'body_classes' => $s['body_classes'], 'style_head' => $s['style_head'], 'mobile_pages' => $s['mobile_pages']);
+                              'body_classes' => $s['body_classes'], 'style_head' => $s['style_head'], 'mobile_pages' => $s['mobile_pages'],
+                              'mobile' => $s['mobile'], 'social_position' => $s['social_position'], 'layout_type' => $s['layout_type']);
             $pages = array();
             foreach (array_merge($s['own'], $s['folder']) as $p) $pages[] = (int)$p['page_id'];
             $assets[] = array('id' => $s['id'], 'name' => $s['name'], 'pages' => $pages, 'css' => $facts['_css'], 'js' => $facts['_js']);
         }
         $out[] = pg_ltd_plan_set(array('key' => $set['key'], 'name' => $set['name'], 'theme' => $set['theme'],
-                                       'collection' => $set['collection'], 'styles' => $styles, 'assets' => pg_ltd_set_assets($assets)));
+                                       'collection' => $set['collection'], 'settings' => $set['settings'],
+                                       'social_on' => defined('SOCIAL_NETWORKING') && SOCIAL_NETWORKING,
+                                       'styles' => $styles, 'assets' => pg_ltd_set_assets($assets)));
     }
     foreach ($report as $s) {
         if (!isset($want[$s['id']])) continue;
@@ -658,9 +675,37 @@ function pg_ltd_plan_items($p, $in_set = false)
         if ($p['mobile_pages'] > 0) {
             $items .= $line(lang(array('string' => '{var:1} of its pages have a mobile style: on a phone they are still drawn with that style, not with the design.', 'vars' => array($p['mobile_pages']))), 'fg-warning');
         }
+        if ($p['mobile'] > 0) {
+            $items .= $line(lang('A folder or page uses it as its mobile style: the classic style stays and keeps serving phones.'), 'fg-secondary');
+        }
+        foreach ($p['changes'] as $c) {
+            $vars = array(pg_ltd_setting_label($c['setting'], $c['from']), pg_ltd_setting_label($c['setting'], $c['to']));
+            $items .= $line($c['setting'] === 'layout_type'
+                ? lang(array('string' => 'Layout type override: {var:1} on its classic pages, {var:2} in the design.', 'vars' => $vars))
+                : lang(array('string' => 'Social Networking Position: {var:1} on its classic pages, {var:2} in the design.', 'vars' => $vars)), 'fg-warning');
+        }
     }
     foreach ($p['warnings'] as $w) $items .= $line((string)$w, 'fg-warning');
     return $items;
+}
+
+/**
+ * A setting's value as the custom style form names it.
+ *
+ * @param string $setting  'social_networking_position' or 'layout_type'
+ * @param string $value
+ * @return string
+ */
+function pg_ltd_setting_label($setting, $value)
+{
+    if ($setting === 'layout_type') {
+        if ($value === 'system') return lang('System');
+        if ($value === 'custom') return lang('Custom');
+        return lang('No override (the page type layout)');
+    }
+    $labels = array('top_left' => lang('Top Left'), 'top_right' => lang('Top Right'), 'bottom_left' => lang('Bottom Left'),
+                    'bottom_right' => lang('Bottom Right'), 'disabled' => lang('Disabled'));
+    return isset($labels[$value]) ? $labels[$value] : $labels['bottom_left'];
 }
 
 /**
@@ -711,6 +756,12 @@ function pg_ltd_plan_set_html($p)
             : lang('Theme file: none of its own, so the site\'s activated theme loads, as on the classic pages.'));
         if ($every) {
             $items .= $line(lang(array('string' => 'Stylesheets and scripts on every page ({var:1}): {var:2}', 'vars' => array(count($every), implode(', ', $every)))));
+        }
+        if ($p['social_on']) {
+            $items .= $line(lang(array('string' => 'Social Networking Position: {var:1}', 'vars' => array(pg_ltd_setting_label('social_networking_position', (string)($p['settings']['social_networking_position'] ?? ''))))));
+        }
+        if ((string)($p['settings']['layout_type'] ?? '') !== '') {
+            $items .= $line(lang(array('string' => 'Layout type override: {var:1}', 'vars' => array(pg_ltd_setting_label('layout_type', (string)$p['settings']['layout_type'])))));
         }
     }
     $styles = '';

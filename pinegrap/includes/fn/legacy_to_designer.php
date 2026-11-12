@@ -120,16 +120,17 @@ function pg_ltd_style_refs($style_code, $path, $software_directory)
 }
 
 /**
- * A classic style's set key: what one design row holds once for all of its
- * styles. The ordered stylesheet and script addresses (pg_ltd_style_refs()),
- * the collection, the theme file, the layout override and the sharing
- * buttons' position; order counts, inline blocks do not (they become rows
- * kept to the pages of the style that had them).
+ * A classic style's set key: the ordered stylesheet and script addresses
+ * (pg_ltd_style_refs()), the collection and the theme file. Order counts;
+ * inline blocks do not (they become rows kept to the pages of the style that
+ * had them). The layout override and the sharing buttons' position do not
+ * split a set either: the design holds the value most of its styles carry
+ * (pg_ltd_set_setting()), and the dry run names each style that differs.
  *
  * Pure: no query.
  *
  * @param array $refs  pg_ltd_style_refs()
- * @param array $row   collection, theme_id, layout_type, social_networking_position
+ * @param array $row   collection, theme_id
  * @return string  sixteen hex characters
  */
 function pg_ltd_set_key($refs, $row)
@@ -140,10 +141,37 @@ function pg_ltd_set_key($refs, $row)
         'js'         => array_values(array_map('strval', (array)($refs['js'] ?? array()))),
         'collection' => (string)($r['collection'] ?? ''),
         'theme'      => (int)($r['theme_id'] ?? 0),
-        'layout'     => (string)($r['layout_type'] ?? ''),
-        'social'     => (string)($r['social_networking_position'] ?? ''),
     );
     return substr(sha1((string)json_encode($parts)), 0, 16);
+}
+
+/**
+ * The value of a setting a set's design holds once: the one most of its
+ * styles carry, the first of them on a tie.
+ *
+ * Pure: no query.
+ *
+ * @param array $values  the styles' values, in the report's order
+ * @return string
+ */
+function pg_ltd_set_setting($values)
+{
+    // Counted in the order each value first stands, so the first of the
+    // values with the highest count wins.
+    $counts = array();
+    foreach ((array)$values as $v) {
+        $v = (string)$v;
+        $counts[$v] = (isset($counts[$v]) ? $counts[$v] : 0) + 1;
+    }
+    $best = '';
+    $most = 0;
+    foreach ($counts as $v => $n) {
+        if ($n > $most) {
+            $most = $n;
+            $best = (string)$v;
+        }
+    }
+    return $best;
 }
 
 /**
@@ -158,20 +186,22 @@ function pg_ltd_set_name($first_style_name)
 
 /**
  * The report's styles grouped into sets: two or more styles with the same
- * set key. A style the designer refuses, a style some folder or page uses
- * as its mobile style (the classic row keeps serving phones, so it is not
- * folded into a design of its pages) and a style no other style shares its
- * files with move alone, as before. Sets with the most styles come first,
- * then by their first style's name.
+ * set key. A style the designer refuses and a style no other style shares
+ * its files with move alone, as before. A style some folder or page uses as
+ * its mobile style joins its set like any other: a set's move leaves every
+ * classic style row as it is, so phones keep getting it. Sets with the most
+ * styles come first, then by their first style's name.
  *
  * Pure: no query.
  *
  * @param array $report  pg_ltd_report() entries: id, name, state, set_key,
- *                       mobile, own, folder, refs, theme, theme_id, collection
+ *                       own, folder, refs, theme, theme_id, collection,
+ *                       social_position, layout_type
  * @return array  'sets' (list of array('key', 'name', 'styles' (ids in
  *                report order), 'pages', 'refs', 'theme', 'theme_id',
- *                'collection')), 'alone' (style id => 'blocked', 'mobile' or
- *                'single')
+ *                'collection', 'settings' (social_networking_position and
+ *                layout_type the design holds, pg_ltd_set_setting()))),
+ *                'alone' (style id => 'blocked' or 'single')
  */
 function pg_ltd_sets($report)
 {
@@ -181,10 +211,6 @@ function pg_ltd_sets($report)
         $id = (int)($s['id'] ?? 0);
         if ((string)($s['state'] ?? '') === 'blocked') {
             $alone[$id] = 'blocked';
-            continue;
-        }
-        if ((int)($s['mobile'] ?? 0) > 0) {
-            $alone[$id] = 'mobile';
             continue;
         }
         $groups[(string)($s['set_key'] ?? '')][] = $s;
@@ -197,9 +223,13 @@ function pg_ltd_sets($report)
         }
         $ids = array();
         $pages = 0;
+        $social = array();
+        $layout = array();
         foreach ($members as $m) {
             $ids[] = (int)$m['id'];
             $pages += count((array)($m['own'] ?? array())) + count((array)($m['folder'] ?? array()));
+            $social[] = (string)($m['social_position'] ?? '');
+            $layout[] = (string)($m['layout_type'] ?? '');
         }
         $first = $members[0];
         $sets[] = array(
@@ -212,6 +242,7 @@ function pg_ltd_sets($report)
             'theme'      => (string)($first['theme'] ?? ''),
             'theme_id'   => (int)($first['theme_id'] ?? 0),
             'collection' => (string)($first['collection'] ?? ''),
+            'settings'   => array('social_networking_position' => pg_ltd_set_setting($social), 'layout_type' => pg_ltd_set_setting($layout)),
         );
     }
     // usort() is not stable before PHP 8: the order is spelled out in full.
@@ -394,7 +425,8 @@ function pg_ltd_stays_classic($report, $frozen_gateway = '')
  *                'page_regions', 'custom_layouts', 'locked' (page rows
  *                with 'holder'), 'open' (user names with the style open),
  *                'state', 'reasons', 'notes', 'refs' (pg_ltd_style_refs()),
- *                'set_key', 'theme_id', 'collection', 'mobile' (folders and
+ *                'set_key', 'theme_id', 'collection', 'social_position',
+ *                'layout_type', 'mobile' (folders and
  *                pages naming it as their mobile style), 'mobile_pages' (its
  *                pages that have a mobile style), 'style_head' (bool),
  *                'body_classes', 'set' (its set's key, '' when it moves
@@ -544,6 +576,8 @@ function pg_ltd_report()
             'set_key'        => pg_ltd_set_key($refs, $s),
             'theme_id'       => (int)$s['theme_id'],
             'collection'     => (string)$s['collection'],
+            'social_position' => (string)$s['social_networking_position'],
+            'layout_type'    => (string)$s['layout_type'],
             'mobile'         => isset($mobile_of[$id]) ? $mobile_of[$id] : 0,
             'mobile_pages'   => $mobile_pages,
             'style_head'     => trim((string)$s['style_head']) !== '',
