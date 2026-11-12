@@ -5,7 +5,7 @@ module: designer_fx
 ---
 
 ## How does a video play by itself?
-- Video panel > Play by itself (`_sdVideoSetAutoplay()`, PR #PRNUM), the only way: the owner's terms of 2026-11-11 ([[decisions-made-product-44]]). No `autoplay` attribute is ever written; the switch removes one.
+- Video panel > Play by itself (`_sdVideoSetAutoplay()`, PR #8831), the only way: the owner's terms of 2026-11-11 ([[decisions-made-product-44]]). No `autoplay` attribute is ever written; the switch removes one.
 - On: `props._fx = {effect: 'autoplay'}` (an interaction with no field, `pg_fx_normalize()` and `_sdFxNormalize()`), `muted`, `loop`, `playsinline`, no `controls`, an id (`pg-video-xxxxxx` when it has none), the box placed as for Fill its box (`_sdVideoFillHostClass()`), the `pg-video-toggle` rule added to the User Styles.
 - Off: the interaction and the pause button go; the controls come back unless the video fills its box; muted and loop stay.
 - The Interactions list shows "Play by itself" only on a video that has it, with a note that the Video panel turns it on and off.

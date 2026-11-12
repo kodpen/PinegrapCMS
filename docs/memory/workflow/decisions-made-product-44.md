@@ -11,7 +11,7 @@ description: Decisions list, product part 44 (2026-11-11 on): a muted, looping h
 - Only that video: the question was put as an exception to "no block plays by itself". Until then no block played a video, the marquee bands were the only motion that starts by itself, and no carousel autoplays (`designer/designer-block-motion.md`); all of that stays.
 - Why: the owner ordered bolder pages with motion the same day (the template line, recorded in workflow's design-template-owner-line file), and such a page opens on a moving picture. The pause button and the stop under reduced motion keep WCAG 2.2.2, the reason behind the motion rules.
 - The other answer, not taken: "Hayır, oynamasın" (no video plays by itself).
-- Built: step B9 (#PRNUM), [[designer-video-autoplay]].
+- Built: step B9 (#8831), [[designer-video-autoplay]].
 
 ## Can a whole design be light, dark or follow the system? (owner, 2026-11-11, #8687)
 - Owner (2026-11-11): yes ("Evet, eklensin"). The Theme pane gets a colour mode for the whole design: light, dark or follow the system.

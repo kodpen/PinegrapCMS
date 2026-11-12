@@ -19,7 +19,7 @@ description: Motion in designer blocks without JS: the shared pg-marquee contrac
 - Slide and control colours: `docs/memory/designer/designer-block-theme-surfaces.md`.
 
 ## May a video play by itself?
-- Owner (2026-11-11): only a muted, looping hero video with a pause button, and not when the visitor prefers reduced motion (`workflow/decisions-made-product-44.md`). Built in B9 (#PRNUM): [[designer-video-autoplay]].
+- Owner (2026-11-11): only a muted, looping hero video with a pause button, and not when the visitor prefers reduced motion (`workflow/decisions-made-product-44.md`). Built in B9 (#8831): [[designer-video-autoplay]].
 
 ## Why is there no countdown or live value?
 - A countdown needs JavaScript; a block shows a fixed date in `<time datetime>` the operator edits (`coming-soon-launch`). Weather and market values in the news blocks are sample values too: a live feed would be a system widget or a request-time component (like the language switcher placeholder), not a palette block.
