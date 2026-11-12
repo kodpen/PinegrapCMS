@@ -138,10 +138,11 @@ $launch_colours = function ($title, $lead, $captions = false, $more = array()) u
         $shot = array($picture);
         if ($captions) $shot[] = $el('figcaption', 'mt-3 text-body-secondary', lang('Caption'), array(), array('text' => $c['text']));
         $shots[] = $el('figure', 'mb-0 pg-variant-shot pg-variant-shot-' . $n, $c['name'], $shot);
-        $input = array($attr('type', 'radio'), $attr('name', 'lx-colour'), $attr('id', 'lx-colour-' . $key), $attr('autocomplete', 'off'));
+        // The id is props.id: the page render writes no id from _attrs.
+        $input = array($attr('type', 'radio'), $attr('name', 'lx-colour'), $attr('autocomplete', 'off'));
         if ($n === 1) $input[] = $attr('checked', 'checked');
         $picks[] = $el('div', 'pg-variant-choice', $c['name'], array(
-            $el('input', 'btn-check pg-variant-pick pg-variant-pick-' . $n, lang('Swatch Choice'), array(), array('_attrs' => $input)),
+            $el('input', 'btn-check pg-variant-pick pg-variant-pick-' . $n, lang('Swatch Choice'), array(), array('id' => 'lx-colour-' . $key, '_attrs' => $input)),
             $el('label', 'pg-variant-label', lang('Swatch Label'), array(
                 $el('span', 'pg-variant-dot plx-swatch-' . $key, lang('Swatch'), array(), array('_attrs' => array($attr('aria-hidden', 'true')))),
                 $span($c['name'], 'small fw-semibold', lang('Name')),

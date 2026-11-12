@@ -175,6 +175,11 @@ function test_designer_block_variant_picker_draws()
 	for ($n = 1; $n <= 6; $n++) {
 		pg_assert_contains('.pg-variant:has(.pg-variant-pick-' . $n . ':checked) .pg-variant-shot-' . $n, $got['rule'], "choice $n shows picture $n");
 	}
+	// The canvas wraps an image as .sd-wrap[data-content-type="image"] > img
+	// { display: block } (two classes and an element): the hiding rule outweighs it.
+	pg_assert_contains('.pg-variant.pg-variant .pg-variant-shot { display: none;', $got['rule'], 'the hiding rule outweighs the canvas image rule');
+	pg_assert_contains('@supports not selector(:has(a)) { .pg-variant.pg-variant .pg-variant-shot-1 { display: block; } }', $got['rule'], 'the fallback outweighs the hiding rule');
+	pg_assert_contains('{ .pg-variant.pg-variant .pg-variant-shot { animation: none; } }', $got['rule'], 'reduced motion outweighs the hiding rule');
 }
 
 function test_designer_block_variant_picker_add_and_remove()

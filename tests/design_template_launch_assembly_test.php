@@ -245,7 +245,9 @@ function test_launch_assembly_home_and_features_on_launch_blocks()
 			$attrs = array();
 			foreach (isset($n['props']['_attrs']) ? $n['props']['_attrs'] : array() as $a) $attrs[$a['name']] = $a['value'];
 			if (isset($n['props']['tag']) && $n['props']['tag'] === 'input' && isset($attrs['type']) && $attrs['type'] === 'radio') {
-				$radios[] = $attrs['id'];
+				// The page render writes props.id only, never an id in _attrs.
+				pg_assert_false(isset($attrs['id']), $p['key'] . ': the radio id is not in its attributes');
+				$radios[] = isset($n['props']['id']) ? $n['props']['id'] : '';
 				if (isset($attrs['checked'])) $checked++;
 			}
 			if (isset($n['props']['tag']) && $n['props']['tag'] === 'label' && isset($attrs['for'])) $labels[] = $attrs['for'];

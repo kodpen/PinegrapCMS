@@ -74254,11 +74254,15 @@ const StyleDesigner = (function () {
         // dots carry no display utility: these rules set their display. The
         // dot's default colour has one class only, so a design's own colour
         // class written after it (Product Launch's plx-swatch-<key>) wins.
-        'pg-variant':      '.pg-variant .pg-variant-shot { display: none; animation: pg-variant-in .4s ease; }\n' +
+        // The hiding rule names the block's class twice: the canvas's image
+        // rule (.sd-wrap[data-content-type="image"] > img, display:block)
+        // weighs two classes and an element and would otherwise show every
+        // picture there; the fallback and reduced-motion rules match it.
+        'pg-variant':      '.pg-variant.pg-variant .pg-variant-shot { display: none; animation: pg-variant-in .4s ease; }\n' +
                            '.pg-variant:has(.pg-variant-pick-1:checked) .pg-variant-shot-1, .pg-variant:has(.pg-variant-pick-2:checked) .pg-variant-shot-2, ' +
                            '.pg-variant:has(.pg-variant-pick-3:checked) .pg-variant-shot-3, .pg-variant:has(.pg-variant-pick-4:checked) .pg-variant-shot-4, ' +
                            '.pg-variant:has(.pg-variant-pick-5:checked) .pg-variant-shot-5, .pg-variant:has(.pg-variant-pick-6:checked) .pg-variant-shot-6 { display: block; }\n' +
-                           '@supports not selector(:has(a)) { .pg-variant .pg-variant-shot-1 { display: block; } }\n' +
+                           '@supports not selector(:has(a)) { .pg-variant.pg-variant .pg-variant-shot-1 { display: block; } }\n' +
                            '@keyframes pg-variant-in { from { opacity: 0; } }\n' +
                            '.pg-variant .pg-variant-label { display: inline-flex; align-items: center; gap: .5rem; cursor: pointer; }\n' +
                            '.pg-variant-dots .pg-variant-label { flex-direction: column; }\n' +
@@ -74270,7 +74274,7 @@ const StyleDesigner = (function () {
                            '.pg-variant-pills .pg-variant-label { padding: .5rem 1.25rem; border: 1px solid var(--bs-border-color); border-radius: 50rem; }\n' +
                            '.pg-variant-pills .pg-variant-choice:has(.pg-variant-pick:checked) .pg-variant-label { color: var(--bs-body-bg); background-color: var(--bs-emphasis-color); border-color: var(--bs-emphasis-color); }\n' +
                            '.pg-variant-pills .pg-variant-choice:has(.pg-variant-pick:focus-visible) .pg-variant-label { outline: 2px dashed var(--bs-emphasis-color); outline-offset: 3px; }\n' +
-                           '@media (prefers-reduced-motion: reduce) { .pg-variant .pg-variant-shot { animation: none; } }',
+                           '@media (prefers-reduced-motion: reduce) { .pg-variant.pg-variant .pg-variant-shot { animation: none; } }',
 
         'pg-brand-center': '@media (min-width: 992px) { .pg-brand-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; z-index: 1; } }'
     };
