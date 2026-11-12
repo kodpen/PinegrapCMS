@@ -12,6 +12,7 @@ description: Decisions list, panel part 6 (2026-11-12 on): the panel's design la
 - Why: the bell's drawer still looked outdated to the owner after #8783 ("tasarım hala demode. bu konuda çıkmazdayız bir tasarım sistemi mi geliştirsek?"); every step had read "like the new dashboard" its own way.
 - Not chosen: B, one card per notification; C, one-line inbox rows with the actions on hover.
 - The architect's reading, not the owner's words: 28 px tiles; the look as drawn (Inter, titles at medium weight, no title in a status colour, at most one filled button in a view).
+- Who draws: the architect with the owner; a step copies the reference and does not design. Owner (2026-11-12): "Panel tasarım dilini senle geliştirsek daha iyi olurdu", "opus 5.5 ne görürse onu yapıyor".
 - Reference: `plans/panel-design-language/bell-drawer.jpg`; the numbers in `plans/panel-design-language-look.md`; the steps in `plans/panel-design-language-steps.md`.
 
 ## What are the image editor and the visual page editor called? (owner, 2026-11-12, #8849)
