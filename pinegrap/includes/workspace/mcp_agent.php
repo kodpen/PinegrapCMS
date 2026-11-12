@@ -2219,6 +2219,7 @@ function ws_mcp_agent_inbox_describe($viewer, $row, $channel_name, $base)
         'body'  => $message ? ws_plain_excerpt($viewer, ws_mcp_agent_answer_split((string) $message['body'])['text'], 140) : '',
         'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'],
         'icon'  => $request ? ws_mcp_agent_identity($server, (int) $request['mcp_server_id'])['icon'] : 'bi-plug',
+        'who'   => '@' . ($server ? $server['alias'] : 'mcp'),
     );
 }
 

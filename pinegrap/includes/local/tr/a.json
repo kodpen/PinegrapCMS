@@ -686,6 +686,7 @@
     "A discussion Claude follows asks it at every message nobody else is asked in, so it costs runs too.": "Claude'un takip ettiği bir tartışma, kimsenin çağrılmadığı her mesajda onu çağırır; bu da koşu harcar.",
     "A discussion follows its channel; switch the channel itself.": "Bir tartışma kanalına uyar; anahtarı kanalın kendisinde değiştirin.",
     "A discussion has no message pinned to the top.": "Bir tartışmada en üste sabitlenmiş mesaj olmaz.",
+    "A discussion in {var:1}": "{var:1} kanalında bir tartışma",
     "A discussion is concluded, not archived.": "Bir tartışma arşivlenmez, sonuçlandırılır.",
     "A discussion is not in the channel list, so it cannot be pinned or put in order.": "Tartışma kanal listesinde yer almaz; sabitlenemez ve sıraya konamaz.",
     "A discussion is started from a message of a channel.": "Tartışma bir kanalın mesajından başlatılır.",
