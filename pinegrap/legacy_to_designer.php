@@ -453,7 +453,12 @@ foreach (pg_ltc_designs() as $d) {
         } else {
             $action = '<span class="small fg-secondary">' . h(pg_ltc_refusal_text($p['refusal'])) . '</span>';
         }
-        $rows .= '<tr><td>' . h($p['page_name']) . '</td><td>' . h($p['origin_name']) . '</td><td class="text-end">' . $action . '</td></tr>';
+        // Below md the classic style goes under the page name, so the button
+        // column stays in view without scrolling the table.
+        $rows .= '<tr><td>' . h($p['page_name'])
+            . '<div class="small fg-secondary md:d-none">' . h($p['origin_name']) . '</div></td>'
+            . '<td class="d-none md:d-table-cell">' . h($p['origin_name']) . '</td>'
+            . '<td class="text-end">' . $action . '</td></tr>';
     }
     $all = '';
     if ($ready > 0) {
@@ -469,7 +474,7 @@ foreach (pg_ltc_designs() as $d) {
             ' . $all . '
             <details><summary>' . h(lang(array('string' => '{var:1} pages', 'vars' => array(count($d['pages']))))) . '</summary>
                 <div class="table-responsive"><table class="table table-sm align-middle mb-0 mt-3">
-                    <thead><tr><th scope="col">' . h(lang('Page')) . '</th><th scope="col">' . h(lang('Classic style')) . '</th><th scope="col" class="text-end">' . h(lang('Back to classic')) . '</th></tr></thead>
+                    <thead><tr><th scope="col">' . h(lang('Page')) . '</th><th scope="col" class="d-none md:d-table-cell">' . h(lang('Classic style')) . '</th><th scope="col" class="text-end">' . h(lang('Back to classic')) . '</th></tr></thead>
                     <tbody>' . $rows . '</tbody></table></div></details>
         </div>';
 }

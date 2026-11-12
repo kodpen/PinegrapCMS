@@ -110,6 +110,7 @@ function test_ltc_wiring()
 	pg_assert_same(true, strpos($screen, 'pg_ltc_back(', $post) < strpos($screen, 'pg_ltd_plan(', $post), 'the back branch redirects before the dry run');
 	pg_assert_same(true, strpos($screen, 'id="ltd-back"') !== false);
 	pg_assert_same(true, strpos($screen, '#ltd-back-result') !== false);
+	pg_assert_same(2, substr_count($screen, 'class="d-none md:d-table-cell"'), 'below md the classic style column goes under the page name');
 	$module = (string)file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_classic.php');
 	pg_assert_same(true, strpos($module, 'pg_page_revision_record(') < strpos($module, 'page_tree_json = NULL'), 'the tree is kept as a revision before it leaves the page');
 	pg_assert_same(true, strpos($module, "(int)\$user['role'] > 1") !== false, 'only a designer');
