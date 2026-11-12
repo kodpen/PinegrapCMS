@@ -4,8 +4,8 @@ description: Add and edit screens in look A (DL5c, #8934): the edit width on eve
 ---
 
 ## Which screens are on it?
-- Every `add_*.php` and `edit_*.php` that prints the form and status columns (`lg:col-8 2xl:col-9 order-1`, `lg:col-4 2xl:col-3 order-2`), itself or through `includes/forms/`, plus `approve_affiliate.php`, `view_order.php`, `view_return.php`, `erp_receipt.php`, `erp_cheque.php`: `pg-measure-edit` in their `'extra classes'` (`look-page-widths.md`).
-- Not on it: screens with no `'extra classes'` (the code editors `edit_custom_style.php`, `edit_javascript.php`, `edit_theme_css.php`, `edit_page_layout.php`, `edit_contacts.php`), settings, imports and tools; they move with their family (DL5d settings).
+- Every `add_*.php` and `edit_*.php` that prints the form and status columns (`lg:col-8 2xl:col-9 order-1`, `lg:col-4 2xl:col-3 order-2`), itself or through `includes/forms/`, plus `approve_affiliate.php`, `erp_receipt.php`, `erp_cheque.php`: `pg-measure-edit` in their `'extra classes'` (`look-page-widths.md`).
+- Not on it: screens with no `'extra classes'` (the code editors `edit_custom_style.php`, `edit_javascript.php`, `edit_theme_css.php`, `edit_page_layout.php`, `edit_contacts.php`), settings, imports, tools and the order and return records (`view_order.php`, `view_return.php`: their item tables need more than 760 px); they move with their family (DL5d settings).
 - `tests/look_edit_screens_test.php` refuses an add or edit screen with the columns but without the class.
 
 ## How are the columns sized?

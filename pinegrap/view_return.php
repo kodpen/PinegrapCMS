@@ -725,7 +725,7 @@ if ((int) $return['decided_at'] > 0) {
 echo
     pg_page_shell(array(
         'title'               => lang(array('string' => 'Return request #{var:1}', 'vars' => array($return_id))),
-        'extra classes'       => 'store pg-measure-edit',
+        'extra classes'       => 'store',
         'icon'                => 'store',
         'heading'             => lang(array('string' => 'Return request #{var:1}', 'vars' => array($return_id))),
         'heading_description' => lang(array('string' => 'Order {var:1}', 'vars' => array($order_number))),
