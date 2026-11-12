@@ -4,7 +4,7 @@
  *
  * Tests for the general block families that extend the core's Hours &
  * Locations group: seasonal hours, spaces to hire, the floor directory and
- * the delivery zones (assets/js/style_designer_blocks_hours.js and
+ * the zones (assets/js/style_designer_blocks_hours.js and
  * style_designer_blocks_locations.js), run under Node by
  * helpers/designer_family_run.php (skipped on a machine without Node). A
  * general family opens no palette group of its own; each block draws a
@@ -26,7 +26,7 @@ require_once(__DIR__ . '/helpers/designer_family_run.php');
 
 function test_designer_blocks_general_families_join_core_groups()
 {
-	$expect = array('hours' => array('hours-', array('hours-seasons')), 'locations' => array('locations-', array('locations-spaces', 'locations-floors', 'locations-delivery')));
+	$expect = array('hours' => array('hours-', array('hours-seasons')), 'locations' => array('locations-', array('locations-spaces', 'locations-floors', 'locations-zones')));
 	foreach ($expect as $name => $want) {
 		$got = pg_test_designer_family_run($name);
 		if ($got === null) {
@@ -84,18 +84,31 @@ function test_designer_blocks_general_blocks_draw_sound_trees()
 	pg_assert_true(in_array('Everyone, 7 am to 10 pm', $floors['texts'], true) && in_array('Members, around the clock', $floors['texts'], true), 'who may go up, in words');
 	pg_assert_true(in_array('Roof', $floors['texts'], true) && in_array('0', $floors['texts'], true), 'from the roof down to the ground floor');
 
-	$delivery = $blocks['locations-delivery'];
-	pg_assert_same(4, count(array_keys($delivery['headings'], 'h3', true)), 'a heading per zone and one over the delivery times');
-	pg_assert_same(3, count(array_keys($delivery['classes'], 'pg-delivery-ring', true)), 'a ring per zone around the shop');
-	pg_assert_same(3, count(array_keys($delivery['classes'], 'pg-delivery-key', true)), 'a key per zone in the list');
-	pg_assert_same(3, count(array_keys($delivery['texts'], 'Delivery fee', true)), 'each zone says its fee');
-	pg_assert_same(array('$5', '$9', '$15'), array_values(preg_grep('/^\\$\\d+$/', $delivery['texts'])), 'the fee rises with the distance');
-	pg_assert_same(2, count(array_keys($delivery['texts'], 'Same day', true)), 'the two near zones get it the same day');
-	pg_assert_same(1, count(array_keys($delivery['texts'], 'Next day', true)), 'the far one the next day');
+	$zones = $blocks['locations-zones'];
+	pg_assert_same(4, count(array_keys($zones['headings'], 'h3', true)), 'a heading per zone and one over the time slots');
+	pg_assert_same(3, count(array_keys($zones['classes'], 'pg-zone-ring', true)), 'a ring per zone around the base');
+	pg_assert_same(3, count(array_keys($zones['classes'], 'pg-zone-key', true)), 'a key per zone in the list');
+	pg_assert_same(3, count(array_keys($zones['texts'], 'Fee', true)), 'each zone says its fee');
+	pg_assert_same(array('$5', '$9', '$15'), array_values(preg_grep('/^\\$\\d+$/', $zones['texts'])), 'the fee rises with the distance');
+	pg_assert_same(2, count(array_keys($zones['texts'], 'Same day', true)), 'the two near zones are served the same day');
+	pg_assert_same(1, count(array_keys($zones['texts'], 'Next day', true)), 'the far one the next day');
 	foreach (array('09:00', '12:00', '17:00', '20:00', '14:00') as $time) {
-		pg_assert_true(in_array($time, $delivery['texts'], true), 'the delivery times and the last order time say ' . $time);
+		pg_assert_true(in_array($time, $zones['texts'], true), 'the time slots and the cut-off time say ' . $time);
 	}
-	pg_assert_true(in_array('text-wrap', $delivery['classes'], true), 'a zone\'s badge wraps on a phone');
+	pg_assert_true(in_array('text-wrap', $zones['classes'], true), 'a zone\'s badge wraps on a phone');
+}
+
+// The zones are placed by a florist as delivery zones and by a home service
+// as the areas it calls out to, so no layer name, sample word or class of
+// theirs names one trade.
+function test_designer_blocks_general_zones_name_no_trade()
+{
+	$js = pg_test_designer_family_file('locations');
+	$start = strpos($js, '// ── Zones ─');
+	$end = strpos($js, 'return {', (int) $start);
+	pg_assert_true($start !== false && $end !== false, 'the zones block is found in its family file');
+	pg_assert_same(0, preg_match('/deliver|shop|call[- ]out/i', substr($js, (int) $start, (int) $end - (int) $start)), 'the zones block names no trade');
+	pg_assert_true(strpos($js, "{ label: _sdT('Locations: Zones'), type: 'component', icon: 'bi-bullseye', extra: { componentType: 'locations-zones' } }") !== false, 'the palette names it Locations: Zones');
 }
 
 // The rules the blocks need are read from the family files by the PHP
@@ -106,14 +119,14 @@ function test_designer_blocks_general_rules_reach_the_stylesheet()
 	pg_assert_same(array('pg-hours-table'), array_keys($hours['rules']), 'the hours family\'s rule');
 	pg_assert_same(array('pg-hours-table'), $hours['needs']['hours-seasons'], 'seasonal hours need it');
 	$spaces = _pg_designer_block_css_parse(pg_test_designer_family_file('locations'));
-	pg_assert_same(array('pg-space-facts', 'pg-floor-level', 'pg-delivery-map', 'pg-delivery-key'), array_keys($spaces['rules']), 'the locations family\'s rules');
-	pg_assert_same(array('pg-delivery-map', 'pg-delivery-key'), $spaces['needs']['locations-delivery'], 'the delivery zones need their rings and keys');
-	foreach (array('pg-delivery-map', 'pg-delivery-key') as $key) {
+	pg_assert_same(array('pg-space-facts', 'pg-floor-level', 'pg-zone-map', 'pg-zone-key'), array_keys($spaces['rules']), 'the locations family\'s rules');
+	pg_assert_same(array('pg-zone-map', 'pg-zone-key'), $spaces['needs']['locations-zones'], 'the zones need their rings and keys');
+	foreach (array('pg-zone-map', 'pg-zone-key') as $key) {
 		pg_assert_same(0, preg_match('/#[0-9a-f]{3,8}\\b|\\brgba?\\(|\\bhsla?\\(|!important|transition|animation/i', $spaces['rules'][$key]), $key . ' takes its colours from the palette and leaves motion to the interaction');
 		pg_assert_same(0, preg_match('/[>+~]\\s*\\.|:first-child|:last-child|:nth-/', $spaces['rules'][$key]), $key . ' uses descendant selectors only');
 	}
 	pg_assert_same(array('pg-floor-level'), $spaces['needs']['locations-floors'], 'the floor directory needs its level square');
 	pg_assert_same(array('pg-ratio-16x9', 'pg-space-facts'), $spaces['needs']['locations-spaces'], 'the space cards need the core picture ratio and their own rule');
 	$source = _pg_designer_block_css_source();
-	pg_assert_true(isset($source['rules']['pg-hours-table'], $source['rules']['pg-space-facts'], $source['rules']['pg-floor-level'], $source['rules']['pg-delivery-map']), 'the block stylesheet holds the rules');
+	pg_assert_true(isset($source['rules']['pg-hours-table'], $source['rules']['pg-space-facts'], $source['rules']['pg-floor-level'], $source['rules']['pg-zone-map']),'the block stylesheet holds the rules');
 }
