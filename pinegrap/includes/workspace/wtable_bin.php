@@ -11,7 +11,8 @@
  * them for good, a few at a time (workspace_recurring_job.php).
  *
  * Whoever may edit a table sees its binned rows, restores one or deletes it
- * for good; the owner alone restores a binned table. A binned table is out
+ * for good; the owner alone restores a binned table, and the managers of
+ * its channel one that belongs to a channel. A binned table is out
  * of every reader: ws_wtable() does not give it, so no screen, flow box or
  * API call reaches it, and it does not count in its owner's limit.
  *
@@ -444,8 +445,9 @@ function ws_wtable_binned($table_id)
 }
 
 /**
- * The person's own binned tables, the latest deleted first, each with when
- * it goes for good.
+ * The binned tables the person may restore, the latest deleted first, each
+ * with when it goes for good: their own, and those of the channels they
+ * manage (ws_wtables_binned_of_channels()).
  *
  * @param array $viewer
  * @return array[]
@@ -457,13 +459,19 @@ function ws_wtables_binned($viewer)
     }
 
     $days = ws_wtable_bin_days();
-    $rows = (array) db_items("SELECT id, user_id, name, description, row_count, revision, created_at, updated_at, deleted_at, deleted_by
-        FROM ws_wtables WHERE user_id = '" . (int) $viewer['id'] . "' AND deleted_at > 0 ORDER BY deleted_at DESC, id DESC");
+    $rows = (array) db_items("SELECT " . ws_wtables_select_sql() . ", deleted_at, deleted_by
+        FROM ws_wtables WHERE " . ws_wtable_own_sql((int) $viewer['id']) . " AND deleted_at > 0 ORDER BY deleted_at DESC, id DESC");
+
+    $rows = array_merge($rows, ws_wtables_binned_of_channels($viewer));
 
     foreach ($rows as $i => $row) {
         $rows[$i]['access'] = 'owner';
         $rows[$i]['expires_at'] = ws_wtable_bin_expires_at((int) $row['deleted_at'], $days);
     }
+
+    usort($rows, function ($a, $b) {
+        return array((int) $b['deleted_at'], (int) $b['id']) <=> array((int) $a['deleted_at'], (int) $a['id']);
+    });
 
     return $rows;
 }
@@ -489,8 +497,8 @@ function ws_wtable_bin_put($table, $actor_id)
 }
 
 /**
- * May the person bring a binned table back? Its owner, while under the
- * limit of tables.
+ * May the person bring a binned table back? Its owner, or whoever manages
+ * the channel it belongs to, while its home is under the limit of tables.
  *
  * @param array      $viewer
  * @param array|null $table ws_wtable_binned()
@@ -506,9 +514,10 @@ function ws_wtable_restore_check($viewer, $table)
         return ws_wtable_refusal('not_found', '', 404);
     }
 
-    $count = (int) db_value("SELECT COUNT(*) FROM ws_wtables WHERE user_id = '" . (int) $viewer['id'] . "'" . ws_wtable_live_sql());
+    // A binned table does not count (ws_wtable_live_sql() in the counter).
+    $home = ws_wtable_home($table);
 
-    if (!ws_wtable_limit_allows('tables', $count)) {
+    if (!ws_wtable_limit_allows('tables', ws_wtable_home_count((int) $viewer['id'], $home ? (int) $home['id'] : 0))) {
         return ws_wtable_refusal('too_many_tables', '', 409);
     }
 

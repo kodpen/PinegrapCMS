@@ -5,7 +5,9 @@
  * Workspace - workflow tables. A person keeps tables of typed columns (text,
  * number, money, date, person, status, checkbox, record link, formula) whose
  * rows feed their flows. A table is its owner's alone, like a note: an
- * administrator reaches it only through a share.
+ * administrator reaches it only through a share. A table may instead belong
+ * to a channel (ws_wtables.channel_id, 11.0.191): then the channel's rights
+ * decide, and nobody owns it (ws_wtable_home_access_level()).
  *
  * The first part needs no database: the column types, the options each
  * type takes, the check of one cell against its column and of a row's
@@ -873,6 +875,60 @@ function ws_wtable_access_level($facts)
 }
 
 /**
+ * The kinds of channel a table may belong to: a public or a private one, as
+ * a flow's home is. A discussion, a guest's room and a mailbox hold none.
+ *
+ * @return string[]
+ */
+function ws_wtable_home_kinds()
+{
+    return array('public', 'private');
+}
+
+/**
+ * What a person may do with a table that belongs to a channel, from the
+ * channel's rights alone:
+ *   member bool they are in the team (ws_rights())
+ *   read   bool they read the channel (ws_can_read_channel())
+ *   post   bool they may write in it (ws_can_post_channel())
+ *   manage bool they may manage it (ws_can_manage_channel())
+ * Whoever reads the channel reads the table, whoever may write in it changes
+ * the table's name, columns and rows, and whoever may manage it deletes,
+ * shares and moves the table. Nobody owns such a table: having made it gives
+ * nothing, and managing a channel one does not read gives nothing either.
+ *
+ * @param array $facts
+ * @return string owner | edit | view | ''
+ */
+function ws_wtable_home_access_level($facts)
+{
+    if (empty($facts['member']) || empty($facts['read'])) {
+        return '';
+    }
+
+    if (!empty($facts['manage'])) {
+        return 'owner';
+    }
+
+    return !empty($facts['post']) ? 'edit' : 'view';
+}
+
+/**
+ * The further reaching of two accesses.
+ *
+ * @param string $one
+ * @param string $other
+ * @return string owner | edit | view | ''
+ */
+function ws_wtable_access_higher($one, $other)
+{
+    $one = (ws_wtable_access_rank($one) > 0) ? (string) $one : '';
+    $other = (ws_wtable_access_rank($other) > 0) ? (string) $other : '';
+
+    return (ws_wtable_access_rank($other) > ws_wtable_access_rank($one)) ? $other : $one;
+}
+
+/**
  * May an access do a thing with a table? read: see it; write: change its
  * name, description, columns and rows; manage: delete it and its shares.
  *
@@ -1139,6 +1195,153 @@ function ws_wtable($table_id)
 }
 
 /**
+ * Can a table belong to a channel (step 11.0.191)? Before the upgrade runs
+ * every table is a person's own.
+ *
+ * @return bool
+ */
+function ws_wtable_home_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = ws_wtables_ready() && pg_schema_has('ws_wtables', 'channel_id');
+    }
+
+    return $ready;
+}
+
+/**
+ * A channel as a table's home: its row while it is a public or private
+ * channel, else null. Read once a request per channel, as a list asks it for
+ * every table; the membership generation is part of the key, so a request
+ * that changed who is in a channel reads the row again.
+ *
+ * @param int $channel_id
+ * @return array|null
+ */
+function ws_wtable_home_channel($channel_id)
+{
+    static $seen = array();
+
+    $channel_id = (int) $channel_id;
+
+    if ($channel_id <= 0) {
+        return null;
+    }
+
+    $key = (int) ($GLOBALS['ws_membership_generation'] ?? 0) . ':' . $channel_id;
+
+    if (!array_key_exists($key, $seen)) {
+        $channel = ws_channel($channel_id);
+
+        $seen[$key] = (is_array($channel) && in_array((string) $channel['kind'], ws_wtable_home_kinds(), true)) ? $channel : null;
+    }
+
+    return $seen[$key];
+}
+
+/**
+ * The channel a table belongs to, null for a person's own table. A home
+ * that names no public or private channel gives null too: the table is then
+ * its maker's, so that it never ends up out of everybody's reach.
+ *
+ * @param array|null $table ws_wtables row
+ * @return array|null ws_channels row
+ */
+function ws_wtable_home($table)
+{
+    if (!is_array($table) || ((int) ($table['channel_id'] ?? 0) <= 0) || !ws_wtable_home_ready()) {
+        return null;
+    }
+
+    return ws_wtable_home_channel((int) $table['channel_id']);
+}
+
+/**
+ * What the person may do with a table that belongs to a channel: what the
+ * channel's rights give (ws_wtable_home_access_level()), or what a share of
+ * the table gives them when that reaches further. The shares are read only
+ * when they could add something: a share gives edit at most.
+ *
+ * @param array $viewer
+ * @param array $table ws_wtables row
+ * @param array $home  ws_wtable_home()
+ * @return string owner | edit | view | ''
+ */
+function ws_wtable_home_access($viewer, $table, $home)
+{
+    $level = ws_wtable_home_access_level(array(
+        'member' => !empty($viewer['member']),
+        'read'   => ws_can_read_channel($viewer, $home),
+        'post'   => ws_can_post_channel($viewer, $home),
+        'manage' => ws_can_manage_channel($viewer, $home),
+    ));
+
+    if (empty($viewer['member']) || (ws_wtable_access_rank($level) >= ws_wtable_access_rank('edit'))) {
+        return $level;
+    }
+
+    $reach = ws_wtable_share_reach($viewer, (int) $table['id']);
+    $shared = ws_wtable_share_gives('user', $reach['person']);
+
+    if (($shared === '') && $reach['channel']) {
+        $shared = 'view';
+    }
+
+    return ws_wtable_access_higher($level, $shared);
+}
+
+/**
+ * Is a table there for those it reaches? A person's own table while its
+ * owner is in the team (ws_wtable_owner_present()); a channel's table
+ * always, whoever made it.
+ *
+ * @param array|null $table ws_wtables row
+ * @return bool
+ */
+function ws_wtable_present($table)
+{
+    if (!is_array($table)) {
+        return false;
+    }
+
+    return (ws_wtable_home($table) !== null) || ws_wtable_owner_present((int) $table['user_id']);
+}
+
+/**
+ * The condition that keeps a person's own tables in a WHERE on ws_wtables:
+ * the ones they made that belong to no channel, a home that names no public
+ * or private channel counted as none (ws_wtable_home()).
+ *
+ * @param int    $user_id
+ * @param string $alias the table's alias, '' for none
+ * @return string
+ */
+function ws_wtable_own_sql($user_id, $alias = '')
+{
+    $prefix = ($alias !== '') ? $alias . '.' : '';
+    $sql = $prefix . "user_id = '" . (int) $user_id . "'";
+
+    if (ws_wtable_home_ready()) {
+        $sql .= " AND (" . $prefix . "channel_id = 0 OR " . $prefix . "channel_id NOT IN (SELECT id FROM ws_channels WHERE kind IN ('" . implode("', '", ws_wtable_home_kinds()) . "')))";
+    }
+
+    return $sql;
+}
+
+/**
+ * The columns a list of tables reads, channel_id among them once it is
+ * there.
+ *
+ * @return string
+ */
+function ws_wtables_select_sql()
+{
+    return "id, user_id, " . (ws_wtable_home_ready() ? "channel_id, " : '') . "name, description, row_count, revision, created_at, updated_at";
+}
+
+/**
  * Is the owner of a table in the team still? Asked once a request per
  * owner: a list asks it for every table.
  *
@@ -1193,6 +1396,9 @@ function ws_wtable_share_reach($viewer, $table_id)
  *   ''     nothing: somebody else's table that reaches them in none of these
  *          ways, however high their role, and every table whose owner left
  *          the team
+ * A table that belongs to a channel is answered by the channel's rights
+ * instead (ws_wtable_home_access()): owner there means whoever may manage
+ * the channel.
  *
  * @param array      $viewer
  * @param array|null $table
@@ -1202,6 +1408,12 @@ function ws_wtable_access($viewer, $table)
 {
     if (!is_array($table) || empty($viewer['member'])) {
         return '';
+    }
+
+    $home = ws_wtable_home($table);
+
+    if ($home !== null) {
+        return ws_wtable_home_access($viewer, $table, $home);
     }
 
     $owner = ((int) $table['user_id'] === (int) $viewer['id']);
@@ -1263,7 +1475,7 @@ function ws_wtable_columns($table_id)
 
 /**
  * The tables the person owns, the latest changed first; binned ones are
- * left out.
+ * left out, and so are the ones they made that belong to a channel.
  *
  * @param array $viewer
  * @return array[] rows, each with access owner
@@ -1274,8 +1486,8 @@ function ws_wtables_own($viewer)
         return array();
     }
 
-    $rows = (array) db_items("SELECT id, user_id, name, description, row_count, revision, created_at, updated_at
-        FROM ws_wtables WHERE user_id = '" . (int) $viewer['id'] . "'" . ws_wtable_live_sql() . " ORDER BY updated_at DESC, id DESC");
+    $rows = (array) db_items("SELECT " . ws_wtables_select_sql() . "
+        FROM ws_wtables WHERE " . ws_wtable_own_sql((int) $viewer['id']) . ws_wtable_live_sql() . " ORDER BY updated_at DESC, id DESC");
 
     foreach ($rows as $i => $row) {
         $rows[$i]['access'] = 'owner';
@@ -1289,12 +1501,48 @@ function ws_wtables_own($viewer)
    --------------------------------------------------------------------------- */
 
 /**
- * May the person make a table, and is what they give right? The panel and
- * the API's dry run ask this alone.
+ * How many tables a home holds now, binned ones left out: a person's own
+ * tables, or the tables of a channel. Each home keeps at most
+ * ws_wtable_limits()['tables'].
+ *
+ * @param int $user_id    whose own tables, when the home is no channel
+ * @param int $channel_id the channel, 0 for a person's own
+ * @return int
+ */
+function ws_wtable_home_count($user_id, $channel_id = 0)
+{
+    $where = ((int) $channel_id > 0) ? "channel_id = '" . (int) $channel_id . "'" : ws_wtable_own_sql((int) $user_id);
+
+    return (int) db_value("SELECT COUNT(*) FROM ws_wtables WHERE " . $where . ws_wtable_live_sql());
+}
+
+/**
+ * Whether a channel may take a table from the person: a public or private
+ * channel they may write in, so not an archived one.
  *
  * @param array $viewer
- * @param mixed $input name, description
- * @return array ok, sets, error, field, status
+ * @param mixed $channel_id
+ * @return array|null the channel row, null when it may not
+ */
+function ws_wtable_home_writable($viewer, $channel_id)
+{
+    if (!is_numeric($channel_id) || ((string) (int) $channel_id !== (string) $channel_id) || !ws_wtable_home_ready()) {
+        return null;
+    }
+
+    $channel = ws_wtable_home_channel((int) $channel_id);
+
+    return ($channel && ws_can_post_channel($viewer, $channel)) ? $channel : null;
+}
+
+/**
+ * May the person make a table, and is what they give right? The panel and
+ * the API's dry run ask this alone. With channel_id the table is made as
+ * that channel's: the person must be able to write there.
+ *
+ * @param array $viewer
+ * @param mixed $input name, description, channel_id (0 or left out: their own)
+ * @return array ok, sets, channel_id, error, field, status
  */
 function ws_wtable_create_check($viewer, $input)
 {
@@ -1306,6 +1554,19 @@ function ws_wtable_create_check($viewer, $input)
         return ws_wtable_refusal('forbidden', '', 403);
     }
 
+    $channel_id = is_array($input) ? ($input['channel_id'] ?? 0) : 0;
+    $channel_id = (($channel_id === null) || ($channel_id === '') || ($channel_id === 0) || ($channel_id === '0')) ? 0 : $channel_id;
+
+    if ($channel_id !== 0) {
+        $channel = ws_wtable_home_writable($viewer, $channel_id);
+
+        if (!$channel) {
+            return ws_wtable_refusal('channel_unwritable', 'channel_id');
+        }
+
+        $channel_id = (int) $channel['id'];
+    }
+
     $check = ws_wtable_table_input_check($input, true);
 
     if (!$check['ok']) {
@@ -1313,20 +1574,19 @@ function ws_wtable_create_check($viewer, $input)
     }
 
     // A binned table does not count in the limit.
-    $count = (int) db_value("SELECT COUNT(*) FROM ws_wtables WHERE user_id = '" . (int) $viewer['id'] . "'" . ws_wtable_live_sql());
-
-    if (!ws_wtable_limit_allows('tables', $count)) {
-        return ws_wtable_refusal('too_many_tables', '', 409);
+    if (!ws_wtable_limit_allows('tables', ws_wtable_home_count((int) $viewer['id'], $channel_id))) {
+        return ws_wtable_refusal('too_many_tables', ($channel_id > 0) ? 'channel_id' : '', 409);
     }
 
-    return $check;
+    return $check + array('channel_id' => $channel_id);
 }
 
 /**
- * Make a table, owned by the person, with no columns yet.
+ * Make a table with no columns yet: the person's own, or with channel_id
+ * the table of a channel they may write in.
  *
  * @param array $viewer
- * @param mixed $input name, description
+ * @param mixed $input name, description, channel_id
  * @return array ok, error, field, status, table_id
  */
 function ws_wtable_create($viewer, $input)
@@ -1338,9 +1598,10 @@ function ws_wtable_create($viewer, $input)
     }
 
     $now = time();
+    $home = ((int) $check['channel_id'] > 0);
 
-    db("INSERT INTO ws_wtables (user_id, name, description, row_count, revision, created_at, updated_at)
-        VALUES ('" . (int) $viewer['id'] . "', '" . e($check['sets']['name']) . "', '" . e($check['sets']['description'] ?? '') . "',
+    db("INSERT INTO ws_wtables (user_id, " . ($home ? "channel_id, " : '') . "name, description, row_count, revision, created_at, updated_at)
+        VALUES ('" . (int) $viewer['id'] . "', " . ($home ? "'" . (int) $check['channel_id'] . "', " : '') . "'" . e($check['sets']['name']) . "', '" . e($check['sets']['description'] ?? '') . "',
             0, 1, '" . $now . "', '" . $now . "')");
 
     $table_id = (int) mysqli_insert_id(db::$con);

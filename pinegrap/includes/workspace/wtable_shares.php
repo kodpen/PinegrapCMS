@@ -12,7 +12,9 @@
  * person shared at edit changes the columns and rows but does not hand the
  * table on. Being an administrator gives nothing here, as for a note. A
  * table whose owner is gone (deleted, excluded, without the workspace right)
- * keeps its shares, and they give nothing until the owner is back.
+ * keeps its shares, and they give nothing until the owner is back. A table
+ * that belongs to a channel (wtable_channel.php) is shared by whoever may
+ * manage the channel, and its shares reach people the channel does not.
  *
  * Sharing writes a Site Log line, and a person a table is newly shared with
  * is told in their bell (wtable_shared), the sentence naming the table kept
@@ -275,7 +277,7 @@ function ws_wtable_flow_check($owner_rights, $table_id, $need)
     }
 
     return ws_wtable_flow_gate(array(
-        'present' => ws_wtable_owner_present((int) $table['user_id']),
+        'present' => ws_wtable_present($table),
         'access'  => ws_wtable_access($owner_rights, $table),
         'need'    => $need,
     ));
@@ -322,7 +324,8 @@ function ws_wtable_share_set_check($viewer, $table, $data)
         }
 
         $facts += array(
-            'is_owner' => ($type === 'user') && ($target_id === (int) $table['user_id']),
+            // Nobody owns a channel's table: its maker may be shared with.
+            'is_owner' => ($type === 'user') && ($target_id === (int) $table['user_id']) && (ws_wtable_home($table) === null),
             'member'   => ($type === 'user') && ws_is_team_member($target_id),
             'readable' => ($type === 'channel') && ws_flow_share_channel_readable($viewer, ws_channel($target_id)),
             'existing' => ($existing !== null),
@@ -519,13 +522,14 @@ function ws_wtable_share_remove($viewer, $table, $share_id)
    --------------------------------------------------------------------------- */
 
 /**
- * The tables the person reaches: their own, and those of others shared with
- * them or in a channel they read, the latest changed first, each with its
- * access (ws_wtable_access()). A table whose owner left the team is in
+ * The tables the person reaches: their own, those of the channels they read
+ * (ws_wtables_of_channels()), and those shared with them or in a channel
+ * they read, the latest changed first, each with its access
+ * (ws_wtable_access()). A person's table whose owner left the team is in
  * nobody's list, and so is a binned one.
  *
  * @param array  $viewer
- * @param string $scope all | mine | shared
+ * @param string $scope all | mine | channels | shared (a table they reach only through a share)
  * @return array[] ws_wtables rows with access
  */
 function ws_wtables_reached($viewer, $scope = 'all')
@@ -534,30 +538,43 @@ function ws_wtables_reached($viewer, $scope = 'all')
         return array();
     }
 
-    $rows = ($scope === 'shared') ? array() : ws_wtables_own($viewer);
+    $scope = in_array($scope, array('mine', 'channels', 'shared'), true) ? $scope : 'all';
 
     if ($scope === 'mine') {
-        return $rows;
+        return ws_wtables_own($viewer);
     }
 
-    $ids = array();
+    // What the person reaches without a share, by table id: never listed
+    // as shared with them.
+    $direct = array();
 
-    foreach ((array) db_items("SELECT table_id, target_type, target_id FROM ws_wtable_shares
-        WHERE (target_type = 'user' AND target_id = '" . (int) $viewer['id'] . "') OR target_type = 'channel'") as $share) {
-        if (((string) $share['target_type'] === 'user') || ws_flow_channel_readable($viewer, (int) $share['target_id'])) {
-            $ids[(int) $share['table_id']] = true;
+    foreach (array_merge(($scope === 'channels') ? array() : ws_wtables_own($viewer), ws_wtables_of_channels($viewer)) as $table) {
+        $direct[(int) $table['id']] = $table;
+    }
+
+    $rows = ($scope === 'shared') ? array() : array_values($direct);
+
+    if ($scope !== 'channels') {
+        $ids = array();
+
+        foreach ((array) db_items("SELECT table_id, target_type, target_id FROM ws_wtable_shares
+            WHERE (target_type = 'user' AND target_id = '" . (int) $viewer['id'] . "') OR target_type = 'channel'") as $share) {
+            if (!isset($direct[(int) $share['table_id']])
+                && (((string) $share['target_type'] === 'user') || ws_flow_channel_readable($viewer, (int) $share['target_id']))) {
+                $ids[(int) $share['table_id']] = true;
+            }
         }
-    }
 
-    if (!empty($ids)) {
-        $others = (array) db_items("SELECT id, user_id, name, description, row_count, revision, created_at, updated_at FROM ws_wtables
-            WHERE id IN ('" . implode("','", array_keys($ids)) . "') AND user_id <> '" . (int) $viewer['id'] . "'" . ws_wtable_live_sql());
+        if (!empty($ids)) {
+            $others = (array) db_items("SELECT " . ws_wtables_select_sql() . " FROM ws_wtables
+                WHERE id IN ('" . implode("','", array_keys($ids)) . "')" . ws_wtable_live_sql());
 
-        foreach ($others as $table) {
-            $table['access'] = ws_wtable_access($viewer, $table);
+            foreach ($others as $table) {
+                $table['access'] = ws_wtable_access($viewer, $table);
 
-            if ($table['access'] !== '') {
-                $rows[] = $table;
+                if ($table['access'] !== '') {
+                    $rows[] = $table;
+                }
             }
         }
     }
@@ -574,10 +591,11 @@ function ws_wtables_reached($viewer, $scope = 'all')
    --------------------------------------------------------------------------- */
 
 /**
- * The public channels a table is shared in, oldest share first: its rows'
- * events go out only for these, since every reader of the site's public
- * channels may read them. A table shared only with people or in private
- * channels is never announced.
+ * The public channels a table is read in: the one it belongs to first, then
+ * those it is shared in, oldest share first. Its rows' events go out only
+ * for these, since every reader of the site's public channels may read them.
+ * A table shared only with people or in private channels, and one that
+ * belongs to a private channel, is never announced.
  *
  * @param int $table_id
  * @return int[]
@@ -590,10 +608,21 @@ function ws_wtable_event_channels($table_id)
 
     $ids = array();
 
+    if (ws_wtable_home_ready()) {
+        $home = (int) db_value("SELECT c.id FROM ws_wtables t JOIN ws_channels c ON c.id = t.channel_id
+            WHERE t.id = '" . (int) $table_id . "' AND t.channel_id > 0 AND c.kind = 'public' AND c.archived_at = 0");
+
+        if ($home > 0) {
+            $ids[] = $home;
+        }
+    }
+
     foreach ((array) db_items("SELECT s.target_id FROM ws_wtable_shares s JOIN ws_channels c ON c.id = s.target_id
         WHERE s.table_id = '" . (int) $table_id . "' AND s.target_type = 'channel' AND c.kind = 'public' AND c.archived_at = 0
         ORDER BY s.id") as $share) {
-        $ids[] = (int) $share['target_id'];
+        if (!in_array((int) $share['target_id'], $ids, true)) {
+            $ids[] = (int) $share['target_id'];
+        }
     }
 
     return $ids;

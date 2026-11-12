@@ -4,7 +4,7 @@ description: Where the workflow table bin shows (TB2): Deleted tables view and D
 ---
 
 ## Which cards does the screen draw?
-- `workspace_wtables.php`: the Data list's Deleted tables view (`?view=deleted`, `#ws-wt-deleted`, owner's own; `workflow-tables-data-list.md`) with Restore per row.
+- `workspace_wtables.php`: the Data list's Deleted tables view (`?view=deleted`, `#ws-wt-deleted`, own tables and those of channels the person manages; `workflow-tables-data-list.md`) with Restore per row.
 - A table's "Deleted rows" card (`#ws-wt-deleted-rows`, edit access) with Restore and Delete for good. Actions `table_restore`, `row_restore`, `bin_row_delete` post `wt_table` / `wt_bin` through the shared action form. The delete confirmations name the bin's days (`ws_wtable_screen_delete_confirm()`); a binned row is shown by its first cells (`ws_wtable_screen_bin_summary()`).
 
 ## Which API routes reach the bin?

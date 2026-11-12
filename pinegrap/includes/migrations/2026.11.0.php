@@ -180,6 +180,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_legacy_design_key();       // 11.0.187
 	upgrade_2026_11_0_ws_mail_html();            // 11.0.188
 	upgrade_2026_11_0_ws_agent_seen();           // 11.0.189
+	upgrade_2026_11_0_ws_wtable_channel();       // 11.0.191
 
 }
 
@@ -6070,5 +6071,40 @@ function upgrade_2026_11_0_ws_mail_html() {
 	}
 
 	install_note('Workspace mail: the HTML of incoming mail is kept, cleaned, beside its text; mail that came in earlier is filled in from its kept copy in the background.');
+
+}
+
+// A workflow table that belongs to a channel (11.0.191;
+// includes/workspace/wtable_channel.php). ws_wtables.channel_id names the
+// table's home: 0 for a person's own table, as every table was, else a
+// public or private channel, whose readers read the table, whose writers
+// change it and whose managers delete, share and move it. user_id stays who
+// made it. The index lists a channel's tables, the latest changed first, and
+// counts them for the limit. No foreign key: a channel is archived, never
+// deleted, and a home that names no such channel leaves the table its
+// maker's.
+function upgrade_2026_11_0_ws_wtable_channel() {
+
+	if (!install_table_exists('ws_wtables')) {
+
+		install_skipped('ws_wtables does not exist, skipped');
+
+		return;
+
+	}
+
+	$columns = array(
+		'channel_id' => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('ws_wtables', $columns)) {
+
+		install_add_column('ws_wtables', 'channel_id', $columns['channel_id']);
+
+	}
+
+	install_add_index('ws_wtables', 'idx_channel', "KEY idx_channel (channel_id, updated_at)");
+
+	install_note('Workspace: a table can belong to a channel. Its readers read the table, its writers change it and its managers delete, share and move it. Tables made before stay their owners\' own.');
 
 }
