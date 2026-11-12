@@ -306,10 +306,14 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'ferry-',
         group: { title: _sdT('Ferry'), icon: 'bi-water' },
         items: [
-            { label: _sdT('Ferry: Departure Board'),  type: 'component', icon: 'bi-clock-history',   extra: { componentType: 'ferry-departures' } },
-            { label: _sdT('Ferry: Route Timetable'),  type: 'component', icon: 'bi-table',           extra: { componentType: 'ferry-timetable' } },
-            { label: _sdT('Ferry: Crossing Strip'),   type: 'component', icon: 'bi-arrow-left-right', extra: { componentType: 'ferry-crossings' } },
-            { label: _sdT('Ferry: Fares by Vehicle'), type: 'component', icon: 'bi-car-front',       extra: { componentType: 'ferry-fares' } }
+            { label: _sdT('Ferry: Departure Board'),  type: 'component', icon: 'bi-clock-history',   extra: { componentType: 'ferry-departures' },
+              desc: _sdT('A dark board of the next sailings with time, route, vessel and a status from boarding to cancelled, and two buttons.') },
+            { label: _sdT('Ferry: Route Timetable'),  type: 'component', icon: 'bi-table',           extra: { componentType: 'ferry-timetable' },
+              desc: _sdT('One route with its crossing time, distance, vessel and a booking button, then a grid of departure times from each port.') },
+            { label: _sdT('Ferry: Crossing Strip'),   type: 'component', icon: 'bi-arrow-left-right', extra: { componentType: 'ferry-crossings' },
+              desc: _sdT('Four routes drawn port to port, with the crossing time above the line, the distance below, the ship and the sailings a day.') },
+            { label: _sdT('Ferry: Fares by Vehicle'), type: 'component', icon: 'bi-car-front',       extra: { componentType: 'ferry-fares' },
+              desc: _sdT('What a fare includes and a booking button, beside a table of single fares for foot passengers, vehicles and extras.') }
         ],
         build: function (ctype) {
             if (ctype === 'ferry-departures') return buildDepartures();

@@ -231,9 +231,12 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'campsite-',
         group: { title: _sdT('Campsite'), icon: 'bi-tree' },
         items: [
-            { label: _sdT('Campsite: Hero'),          type: 'component', icon: 'bi-tree',         extra: { componentType: 'campsite-hero' } },
-            { label: _sdT('Campsite: Comfort Scale'), type: 'component', icon: 'bi-sliders',      extra: { componentType: 'campsite-comfort' } },
-            { label: _sdT('Campsite: Pitch Drawing'), type: 'component', icon: 'bi-bounding-box', extra: { componentType: 'campsite-pitch' } }
+            { label: _sdT('Campsite: Hero'),          type: 'component', icon: 'bi-tree',         extra: { componentType: 'campsite-hero' },
+              desc: _sdT('A wide lake photo under a lifted card with the headline, two buttons, arrival times and four tiles for the kinds of stay.') },
+            { label: _sdT('Campsite: Comfort Scale'), type: 'component', icon: 'bi-sliders',      extra: { componentType: 'campsite-comfort' },
+              desc: _sdT('Four ways to stay on a scale from closest to nature to most comfort, each card listing what you bring and what is ready.') },
+            { label: _sdT('Campsite: Pitch Drawing'), type: 'component', icon: 'bi-bounding-box', extra: { componentType: 'campsite-pitch' },
+              desc: _sdT('A pitch drawn from above with numbered markers for the car, the tent and the hook-up, beside a numbered legend and a button.') }
         ],
         build: function (ctype) {
             if (ctype === 'campsite-hero')    return buildHero();

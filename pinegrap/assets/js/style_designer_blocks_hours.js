@@ -104,7 +104,8 @@ StyleDesigner.registerBlockFamily(function (kit) {
     return {
         prefix: 'hours-',
         items: [
-            { label: _sdT('Hours: Seasons'), type: 'component', icon: 'bi-calendar3-range', extra: { componentType: 'hours-seasons' } }
+            { label: _sdT('Hours: Seasons'), type: 'component', icon: 'bi-calendar3-range', extra: { componentType: 'hours-seasons' },
+              desc: _sdT('A table of opening hours per day for summer and winter, a directions button and three notes on last entry, closures and groups.') }
         ],
         build: function (ctype) {
             if (ctype === 'hours-seasons') return buildSeasons();

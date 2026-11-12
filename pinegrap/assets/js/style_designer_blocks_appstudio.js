@@ -93,10 +93,14 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'appstudio-',
         group: { title: _sdT('App Studio'), icon: 'bi-app-indicator' },
         items: [
-            { label: _sdT('App Studio: Phone Fan Hero'),  type: 'component', icon: 'bi-phone',           extra: { componentType: 'appstudio-hero' } },
-            { label: _sdT('App Studio: App Switch'),      type: 'component', icon: 'bi-toggles',         extra: { componentType: 'appstudio-switch' } },
-            { label: _sdT('App Studio: Release Chapter'), type: 'component', icon: 'bi-rocket-takeoff',  extra: { componentType: 'appstudio-release' } },
-            { label: _sdT('App Studio: Two Platforms'),   type: 'component', icon: 'bi-phone-flip',      extra: { componentType: 'appstudio-platforms' } }
+            { label: _sdT('App Studio: Phone Fan Hero'),  type: 'component', icon: 'bi-phone',           extra: { componentType: 'appstudio-hero' },
+              desc: _sdT('A dark band with one very large line, a short text and two buttons, over three phones that rise one after another.') },
+            { label: _sdT('App Studio: App Switch'),      type: 'component', icon: 'bi-toggles',         extra: { componentType: 'appstudio-switch' },
+              desc: _sdT('A centred heading over a row of app choices that swap the phone screen and the line under it, with no script.') },
+            { label: _sdT('App Studio: Release Chapter'), type: 'component', icon: 'bi-rocket-takeoff',  extra: { componentType: 'appstudio-release' },
+              desc: _sdT('A dark release chapter: the version in very large type, its changes each with a tag, two buttons and a phone beside them.') },
+            { label: _sdT('App Studio: Two Platforms'),   type: 'component', icon: 'bi-phone-flip',      extra: { componentType: 'appstudio-platforms' },
+              desc: _sdT('Two cards side by side for iPhone and Android, each with its tools as pills and a phone peeking out of its foot.') }
         ],
         build: function (ctype) {
 

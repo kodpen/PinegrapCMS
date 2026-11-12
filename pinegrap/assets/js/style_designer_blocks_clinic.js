@@ -173,8 +173,10 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'clinic-',
         group: { title: _sdT('Clinic'), icon: 'bi-hospital' },
         items: [
-            { label: _sdT('Clinic: Doctors\' Week'), type: 'component', icon: 'bi-calendar-week', extra: { componentType: 'clinic-week' } },
-            { label: _sdT('Clinic: Care Guide'),     type: 'component', icon: 'bi-signpost-split', extra: { componentType: 'clinic-care' } }
+            { label: _sdT('Clinic: Doctors\' Week'), type: 'component', icon: 'bi-calendar-week', extra: { componentType: 'clinic-week' },
+              desc: _sdT('A week table of four doctors and their fields, each day marked morning, afternoon, all day or off, and a booking button.') },
+            { label: _sdT('Clinic: Care Guide'),     type: 'component', icon: 'bi-signpost-split', extra: { componentType: 'clinic-care' },
+              desc: _sdT('Three cards from an emergency to a visit that can wait, each with examples and its own button to call or to book.') }
         ],
         build: function (ctype) {
             if (ctype === 'clinic-week') return buildWeek();

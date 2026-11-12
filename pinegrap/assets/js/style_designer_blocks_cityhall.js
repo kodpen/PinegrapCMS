@@ -244,9 +244,12 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'cityhall-',
         group: { title: _sdT('City Hall'), icon: 'bi-building' },
         items: [
-            { label: _sdT('City Hall: Task Hero'),      type: 'component', icon: 'bi-signpost-split', extra: { componentType: 'cityhall-hero' } },
-            { label: _sdT('City Hall: Service Guide'),  type: 'component', icon: 'bi-card-checklist', extra: { componentType: 'cityhall-service' } },
-            { label: _sdT('City Hall: Council Agenda'), type: 'component', icon: 'bi-list-ol',        extra: { componentType: 'cityhall-council' } }
+            { label: _sdT('City Hall: Task Hero'),      type: 'component', icon: 'bi-signpost-split', extra: { componentType: 'cityhall-hero' },
+              desc: _sdT('A question as the headline over six task tiles with an icon each, then the citizen phone line, on a tinted band.') },
+            { label: _sdT('City Hall: Service Guide'),  type: 'component', icon: 'bi-card-checklist', extra: { componentType: 'cityhall-service' },
+              desc: _sdT('One service as a guide: who applies, where, how long and the fee, the papers to bring, two buttons and a department card.') },
+            { label: _sdT('City Hall: Council Agenda'), type: 'component', icon: 'bi-list-ol',        extra: { componentType: 'cityhall-council' },
+              desc: _sdT('The next council session with its time, place and two buttons, beside a numbered agenda whose items carry a status badge.') }
         ],
         build: function (ctype) {
             if (ctype === 'cityhall-hero') return buildHero();

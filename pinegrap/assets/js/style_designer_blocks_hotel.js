@@ -188,8 +188,10 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'hotel-',
         group: { title: _sdT('Hotel'), icon: 'bi-buildings' },
         items: [
-            { label: _sdT('Hotel: Room Showcase'), type: 'component', icon: 'bi-door-open', extra: { componentType: 'hotel-room' } },
-            { label: _sdT('Hotel: Stay Clock'),    type: 'component', icon: 'bi-clock',     extra: { componentType: 'hotel-stay' } }
+            { label: _sdT('Hotel: Room Showcase'), type: 'component', icon: 'bi-door-open', extra: { componentType: 'hotel-room' },
+              desc: _sdT('A gallery of room photos with a view badge beside the room name, price a night, its facts, amenities and two buttons.') },
+            { label: _sdT('Hotel: Stay Clock'),    type: 'component', icon: 'bi-clock',     extra: { componentType: 'hotel-stay' },
+              desc: _sdT('Arrival and departure times joined by a dashed line around what the stay offers, with notes for each and the reception phone.') }
         ],
         build: function (ctype) {
             if (ctype === 'hotel-room') return buildRoom();

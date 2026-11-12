@@ -308,10 +308,14 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'bikeshop-',
         group: { title: _sdT('Bike Shop'), icon: 'bi-bicycle' },
         items: [
-            { label: _sdT('Bike Shop: Workshop Board'), type: 'component', icon: 'bi-tools',         extra: { componentType: 'bikeshop-workshop' } },
-            { label: _sdT('Bike Shop: Frame Sizes'),    type: 'component', icon: 'bi-rulers',        extra: { componentType: 'bikeshop-sizes' } },
-            { label: _sdT('Bike Shop: Group Rides'),    type: 'component', icon: 'bi-people',        extra: { componentType: 'bikeshop-rides' } },
-            { label: _sdT('Bike Shop: Bike Fit'),       type: 'component', icon: 'bi-person-bounding-box', extra: { componentType: 'bikeshop-fit' } }
+            { label: _sdT('Bike Shop: Workshop Board'), type: 'component', icon: 'bi-tools',         extra: { componentType: 'bikeshop-workshop' },
+              desc: _sdT('The workshop load this week on a four-step scale, a card with the next free drop-off, and how long each repair takes.') },
+            { label: _sdT('Bike Shop: Frame Sizes'),    type: 'component', icon: 'bi-rulers',        extra: { componentType: 'bikeshop-sizes' },
+              desc: _sdT('A frame drawing with lettered measures beside a size table by rider height, stack, reach and tubes, and a fit button.') },
+            { label: _sdT('Bike Shop: Group Rides'),    type: 'component', icon: 'bi-people',        extra: { componentType: 'bikeshop-rides' },
+              desc: _sdT('Three group ride cards with day, start time, pace and drop badges, distance, climbing and speed, the next ride marked.') },
+            { label: _sdT('Bike Shop: Bike Fit'),       type: 'component', icon: 'bi-person-bounding-box', extra: { componentType: 'bikeshop-fit' },
+              desc: _sdT('A fitting photo beside five numbered contact points, a card of the measures you take home and a booking button.') }
         ],
         build: function (ctype) {
             if (ctype === 'bikeshop-workshop') return buildWorkshop();

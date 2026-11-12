@@ -9,8 +9,9 @@
  * without Node); every core and family block is built as a drag builds it
  * and drawn from that tree, and none comes out empty; a row's columns are
  * drawn side by side; the drawing is kept per componentType; the hover card
- * of a block shows it with the block's description line, a component keeps
- * its own drawing and an item with neither shows no card.
+ * of a block shows it with the block's description line (a family block's
+ * from the desc of its item), a component keeps its own drawing and an item
+ * with neither shows no card.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -121,6 +122,9 @@ var block = items[0];
 var tipBlock = _sdPalTipHTML(row(block));
 var tipCard = _sdPalTipHTML(row({ type: 'component', label: 'Card', icon: 'bi-card-heading', extra: { componentType: 'card' } }));
 var tipNone = _sdPalTipHTML(row({ type: 'component', label: 'X', extra: { componentType: 'no-such-thing' } }));
+var described = items.filter(function (it) { return typeof it.desc === 'string' && it.desc !== ''; });
+var famBlock = described[0];
+var tipFamily = famBlock ? _sdPalTipHTML(row(famBlock)) : '';
 
 console.log(JSON.stringify({
     total: items.length,
@@ -135,7 +139,9 @@ console.log(JSON.stringify({
     tipBlock: [tipBlock.indexOf(first[block.extra.componentType]) !== -1, tipBlock.indexOf('sd-pal-tip-name') !== -1,
                !!_sdBlockDesc(block) && tipBlock.indexOf('<div class="sd-pal-tip-desc">' + esc(_sdBlockDesc(block)) + '</div>') !== -1],
     tipCard: [tipCard.indexOf(_sdPalDrawing('card')) !== -1, tipCard.indexOf('sd-pal-tip-desc') !== -1],
-    tipNone: tipNone
+    tipNone: tipNone,
+    tipFamily: [described.length, !!famBlock && tipFamily.indexOf('<div class="sd-pal-tip-desc">' + esc(famBlock.desc) + '</div>') !== -1,
+                described.every(function (it) { return _sdBlockDesc(it) === it.desc; })]
 }));
 JS;
 
@@ -148,7 +154,7 @@ JS;
 	$read = $code === 0 ? json_decode((string) end($out), true) : null;
 	$got = (is_array($read) ? $read : array()) + array(
 		'total' => 0, 'built' => -1, 'empty' => null, 'thin' => null, 'broken' => null, 'cached' => false,
-		'nullTree' => null, 'bareTree' => null, 'bars' => array(), 'tipBlock' => null, 'tipCard' => null, 'tipNone' => null,
+		'nullTree' => null, 'bareTree' => null, 'bars' => array(), 'tipBlock' => null, 'tipCard' => null, 'tipNone' => null, 'tipFamily' => array(0, false, false),
 	);
 	return $got;
 }
@@ -194,4 +200,6 @@ function test_designer_block_sketch_cache_and_hover_card()
 	pg_assert_same(array(true, true, true), $got['tipBlock'], 'a block\'s hover card shows its drawing, its name and its description line');
 	pg_assert_same(array(true, true), $got['tipCard'], 'a component keeps its own drawing and description');
 	pg_assert_same('', $got['tipNone'], 'an item with neither a description nor a block drawing shows no card');
+	pg_assert_true($got['tipFamily'][0] >= 52, 'family blocks carry a desc in their item (' . $got['tipFamily'][0] . ')');
+	pg_assert_same(array(true, true), array_slice($got['tipFamily'], 1), 'a family block\'s hover card shows the desc of its item, and every desc is its block\'s line');
 }
