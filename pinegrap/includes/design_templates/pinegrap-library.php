@@ -59,8 +59,8 @@
  * pages change, so a design records which edition it started from. 2.0.0
  * draws the home, the visit page, the Central Library's page and the
  * catalogue on the Library blocks (the Shelf Hero, the Card and Loans,
- * the Shelf Mark Guide) and the general Seasonal Hours, Weekly Timetable
- * and Floor Directory.
+ * the Shelf Mark Guide) and the general Seasonal Hours and Floor
+ * Directory.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -241,10 +241,12 @@ return array(
         'email_footer' => array('name' => lang('Library E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its plb- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the rules of the blocks its pages are drawn
+    // on (the Shelf Hero, the Card and Loans, the Shelf Mark Guide, the
+    // Seasonal Hours and the Floor Directory) and its plb- rules in one
+    // User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $library_css),
+        'css'   => pg_design_template_user_styles(array('library-hero', 'library-card', 'library-shelfmark', 'hours-seasons', 'locations-floors'), $library_css),
         'fonts' => json_encode($library_fonts),
     ),
 );
