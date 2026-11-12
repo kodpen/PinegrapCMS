@@ -8,7 +8,7 @@ description: Blocks hover card: the one-line description of every ready-made blo
 - A description `d` in `_sdPalInfo()` wins over it; the Components rows keep theirs.
 - It covers the core list of `_sdBlockPaletteItems()` only (127 blocks when it was added, #8758).
 - A family block's line is the `desc` of its item in the family file ([[designer-block-family-files]]): `_sdBlockFamilies()` keeps each item's `desc` by `componentType` and `_sdBlockDesc()` reads it when the core map has no line (#8777).
-- The families A to H have their lines (52 blocks, #8777); `booking` and the families from `launch` to `zoo` wait for [[designer-palette-drawings]] P6.
+- The families A to H have their lines (56 blocks, #8777) but `florist`; it and the families from `launch` to `zoo` wait for [[designer-palette-drawings]] P6.
 
 ## How is a line written?
 - One sentence of at most 140 characters, ending in a full stop, no ". " inside: what the block adds, read from the tree its builder returns (the parts in order, columns, the band's colour), not its label again.

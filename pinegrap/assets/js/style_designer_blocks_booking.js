@@ -187,8 +187,10 @@ StyleDesigner.registerBlockFamily(function (kit) {
     return {
         prefix: 'booking-',
         items: [
-            { label: _sdT('Booking: Weekly Timetable'), type: 'component', icon: 'bi-calendar-week', extra: { componentType: 'booking-week' } },
-            { label: _sdT('Booking: Arrival Windows'),  type: 'component', icon: 'bi-clock',         extra: { componentType: 'booking-windows' } }
+            { label: _sdT('Booking: Weekly Timetable'), type: 'component', icon: 'bi-calendar-week', extra: { componentType: 'booking-week' },
+              desc: _sdT('A week of classes in seven day columns, each class with its start, name, teacher, studio, length and a link to book it.') },
+            { label: _sdT('Booking: Arrival Windows'),  type: 'component', icon: 'bi-clock',         extra: { componentType: 'booking-windows' },
+              desc: _sdT('Three arrival windows, each with its icon, its hours drawn on the working day, who it suits and the days, and a booking button.') }
         ],
         build: function (ctype) {
             if (ctype === 'booking-week') return buildWeek();
