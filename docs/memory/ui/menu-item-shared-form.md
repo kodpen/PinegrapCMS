@@ -5,11 +5,11 @@ description: The menu item create and edit screens share includes/forms/menu_ite
 
 ## Where is the menu item form?
 - `includes/forms/menu_item_form.php` (gate `PG_FUNCTIONS_DIR`). `add_menu_item.php` and `edit_menu_item.php` stay at the root and `require_once` it.
-- `pg_menu_item_form_cards($liveform, $form)` prints the form column (Menu Item, Link Menu Item To, Classes cards) and the sticky status column (`ui/edit-screen-wide-layout.md`); `pg_menu_item_form_layout($cards, $buttons)` wraps them with the sticky save bar. `$form` keys: `parent_id_options`, `extra` (after the parent: edit's Position select), `keep_page_id`, `menu_name`, `menu_url` (escaped), `status` (extra Summary rows).
-- The Summary shows the menu (linked to its items screen; the old "Menu: …" line above the form left), what the item links to (the chosen page's option text, else the URL, else "Nothing", kept live by the screen script) and the link target; edit adds `pg_menu_item_form_children_status()`, the count of items directly under it, because Delete removes them too.
+- `pg_menu_item_form_cards($liveform, $form)` prints the form column (Menu Item, Link Menu Item To, Classes cards) and the sticky status column (`ui/edit-screen-wide-layout.md`); `pg_menu_item_form_layout($cards, $buttons)` wraps them with the sticky save bar. `$form` keys: `parent_id_options`, `extra` (after the parent: edit's Position select), `menu_name`, `menu_url` (escaped), `status` (extra Summary rows).
+- The Summary shows the menu (linked to its items screen; the old "Menu: …" line above the form left), what the item links to (the page field's text, else the URL, else "Nothing", kept live by the screen script) and the link target; edit adds `pg_menu_item_form_children_status()`, the count of items directly under it, because Delete removes them too.
 
-## Why does edit pass a keep page id?
-- The page picker leaves out pages in archived folders and, for role 3, folders the user cannot edit. A stored link to such a page opened as "-Select Page-", and a plain Save wrote `link_page_id = ''`, `link_url = ''`. Edit now passes the STORED `link_page_id` (read with the menu lookup, never from the post), so it stays listed, marked "[ARCHIVED]" in an archived folder. Add passes 0. Campaign profile edit does the same for its Custom Form and Body Page pickers (`pg_email_campaign_profile_form_cards(..., $keep_pages)`). Test: `tests/page_options_keep_test.php`.
+## How is a stored page kept?
+- Page is a page picker field (`picker-page-fields-screens.md`): a stored page in an archived folder or one a role 3 user cannot edit is shown marked and posted unchanged. Before, the select dropped it and a plain Save wrote `link_page_id = ''`.
 - `pg_menu_item_form_link($post)` returns `link_page_id` / `link_url`: a chosen page wins and blanks the URL; the URL is trimmed.
 - `pg_menu_item_form_last_sort_order($menu_id, $parent_id)` is the sort order that puts an item last on its level (1 on an empty level); create uses it for every new item, edit when the parent changed.
 - `pg_menu_item_form_touch_menu($menu_id, $user_id)` stamps the menu's last modified columns.

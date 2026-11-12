@@ -110,7 +110,7 @@ function test_menu_item_form_wide_layout_columns_and_save_bar()
 
 	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_menu_item.php');
 	pg_assert_contains("'status' => pg_menu_item_form_children_status(\$child_count)", $edit, 'the edit screen counts the items under it');
-	pg_assert_contains("'keep_page_id' => \$stored_link_page_id", $edit, 'the stored page stays in the picker');
+	pg_assert_contains("pg_picker_field('page', 'link_page_id', \$liveform->get_field_value('link_page_id'))", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/menu_item_form.php'), 'the stored page stays in the page field');
 }
 
 function test_menu_item_form_children_status()

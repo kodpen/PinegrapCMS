@@ -625,11 +625,9 @@ function pg_calendar_event_stored_spots($calendar_event_id, $recurrence_number)
  * @param array    $calendars                pg_calendar_event_form_choices()['calendars']
  * @param array    $calendar_event_locations pg_calendar_event_form_choices()['calendar_event_locations']
  * @param int      $calendar_event_id        The event being edited, 0 on the create screen
- * @param int      $keep_next_page_id        The event's stored next page, kept in the Next Page
- *                                           picker whatever its folder (0 on the create screen)
  * @return string  HTML
  */
-function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_event_locations, $calendar_event_id = 0, $keep_next_page_id = 0)
+function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_event_locations, $calendar_event_id = 0)
 {
     $edit = ($calendar_event_id > 0);
 
@@ -1045,7 +1043,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                                         </div>
                                                         <div class="col-12 md:col-6 xl:col-4 my-3">
                                                             <label for="next_page_id" class="form-label">' . lang('Next Page') . '</label>
-                                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'next_page_id', 'id'=>'next_page_id', 'class'=>'form-control', 'options'=>get_page_options('', '', 'edit', true, $keep_next_page_id))) . '
+                                                            ' . pg_picker_field('page', 'next_page_id', $liveform->get_field_value('next_page_id')) . pg_picker_script() . '
                                                         </div>
                                                     </div>
                                                 </div>

@@ -2646,5 +2646,16 @@
         }
     });
 
-    root.pgPicker = { open: open, pure: pure };
+    // Empties a picker field from a screen's script (a typed address that
+    // replaces a chosen page, the other of two exclusive pages): the field
+    // under or around the given node, which fires change when it held a value.
+    function clear(target) {
+        var node = (target && target.closest) ? (target.closest('[data-pg-picker-field]') || target.querySelector('[data-pg-picker-field]')) : null;
+        var field = node ? fieldOf(node) : null;
+        if (field && field.value.value !== '') {
+            field.set(null);
+        }
+    }
+
+    root.pgPicker = { open: open, clear: clear, pure: pure };
 })(typeof window !== 'undefined' ? window : this);

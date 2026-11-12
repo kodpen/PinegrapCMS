@@ -10,13 +10,13 @@ module: picker
 - The value is posted from a hidden input with the field's name (`data-pg-picker-value`); the text input carries the id the label names (`role="combobox"`). A pick fires `change` on the hidden input.
 
 ## Which options does it take?
-- `id` (default the name), `title` (the dialog's), `placeholder` (default "Type to search…"), `describedby` (the help text's id), `invalid` (the form refused the value: red box and `aria-invalid` until another is chosen), `user` (id, role) where the request has no `USER_ID`/`USER_ROLE` (an AJAX handler).
+- `id` (default the name), `title` (the dialog's), `placeholder` (default "Type to search…"), `describedby` (the help text's id), `invalid` (refused: red box, `aria-invalid`), `user` (id, role) where the request has no `USER_ID`/`USER_ROLE` (an AJAX handler), `value_attributes` (hidden input).
 - An unknown kind prints ''. The stored value is resolved by `pg_picker_resolve_answer()` with the user's access.
 - It uses `is-error`, never `is-invalid`: the feedback injector (`pgInjectAriaAndRequiredMarkers`) would add text to an `.is-invalid` wrapper.
 
 ## How is a stored value marked?
 - `pg_picker_field_view()` (pure): missing (name kept, an id as `#42`, "Stored value · file not found", amber note "This file is no longer in Files; choose another."); hidden ("A file in a folder you cannot open", lock icon); binned (red note, restore or choose); offline (amber note, choose a picture everyone may see).
-- The note is a `.form-text` under the row, in `aria-describedby`; a pick removes it. The value is posted unchanged; the saves keep their checks (`settings-public-image-pickers.md`, `commerce/short-link-recycle-bin.md`).
+- The note is a `.form-text` under the row; a pick removes it. The value is posted unchanged; the saves keep their checks (`settings-public-image-pickers.md`, `commerce/short-link-recycle-bin.md`).
 
 ## How does typing search?
 - After 250 ms the kind's `search` request (8 rows) fills a list under the box: picture, name with the match highlighted, meta. The last row is "All results for “…” in Browse" (or "Browse…"), Alt+↓ too. A stale answer is dropped by a sequence number.
@@ -35,6 +35,6 @@ module: picker
 - Add/Edit Short Link: File (`file`, posted as `file`, `invalid` from liveform).
 - File Manager short link window: `handle_short_links.php` sends `file_field` (posted as `file_id`, id `sl_file`, the link's own file); `view_folders.php` places it and reads `#sl_fields [data-pg-picker-value]`.
 
-- Page settings: `page-form-page-fields.md`.
+- Page fields: `page-form-page-fields.md`, `picker-page-fields-screens.md`.
 
 Tests: `tests/picker_test.php`, `tests/picker_js_test.php`, `tests/short_link_requests_test.php`, `tests/settings_public_image_test.php`.

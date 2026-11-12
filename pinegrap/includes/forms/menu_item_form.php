@@ -31,16 +31,14 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * @param array $form  'parent_id_options' (<option> markup of
  *                     get_menu_item_options()), 'extra' (fields printed
  *                     after the parent: the edit screen's position),
- *                     'keep_page_id' (the page the stored item links to,
- *                     kept in the page picker even in an archived folder or
- *                     one the user cannot edit; 0 on create), 'menu_name',
+ *                     'menu_name',
  *                     'menu_url' (the menu items screen, escaped for HTML),
  *                     'status' (extra Summary rows, HTML)
  * @return string
  */
 function pg_menu_item_form_cards($liveform, $form = array())
 {
-    $form = array_merge(array('parent_id_options' => '', 'extra' => '', 'keep_page_id' => 0, 'menu_name' => '', 'menu_url' => '', 'status' => ''), $form);
+    $form = array_merge(array('parent_id_options' => '', 'extra' => '', 'menu_name' => '', 'menu_url' => '', 'status' => ''), $form);
 
     $link_target_options =
         array(
@@ -78,7 +76,7 @@ function pg_menu_item_form_cards($liveform, $form = array())
                                     <div class="row">
                                         <div class="col-12 xl:col-5 my-3">
                                             <label for="link_page_id" class="form-label">' . lang('Page') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_page_id', 'id'=>'link_page_id', 'class'=>'form-control', 'options'=>get_page_options('', '', 'edit', true, (int) $form['keep_page_id']))) . '
+                                            ' . pg_picker_field('page', 'link_page_id', $liveform->get_field_value('link_page_id')) . pg_picker_script() . '
                                             <div class="form-field mt-3">
                                                 <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'security', 'id'=>'security', 'value'=>'1', 'class'=>'no-bs', 'aria-describedby'=>'security_hint')) . '</div>
                                                 <label class="" for="security">' . lang('Enable Security') . '</label>
@@ -153,26 +151,26 @@ function pg_menu_item_form_cards($liveform, $form = array())
                                 // A chosen page blanks the URL and a typed URL resets the
                                 // page: the item links to one of them.
                                 function summarize() {
-                                    var page = document.getElementById(\'link_page_id\');
+                                    var page = $(\'input[name="link_page_id"]\');
                                     var url = $.trim($(\'#link_url\').val());
                                     var $link = $(\'#menu_item_summary_link\');
-                                    if (page.selectedIndex > 0) {
-                                        $link.text($.trim(page.options[page.selectedIndex].text));
+                                    if (page.val() !== \'\') {
+                                        $link.text($.trim($(\'#link_page_id\').val()));
                                     } else {
                                         $link.text(url !== \'\' ? url : $link.data(\'none\'));
                                     }
                                     var target = document.getElementById(\'link_target\');
                                     $(\'#menu_item_summary_target\').text(target.selectedIndex >= 0 ? $.trim(target.options[target.selectedIndex].text) : \'\');
                                 }
-                                $(document).on(\'change\', \'#link_page_id\', function () {
-                                    if (this.selectedIndex != 0) {
+                                $(document).on(\'change\', \'input[name="link_page_id"]\', function () {
+                                    if (this.value !== \'\') {
                                         $(\'#link_url\').val(\'\');
                                     }
                                     summarize();
                                 });
                                 $(document).on(\'input\', \'#link_url\', function () {
-                                    if (this.value != \'\') {
-                                        document.getElementById(\'link_page_id\').selectedIndex = 0;
+                                    if (this.value != \'\' && window.pgPicker) {
+                                        window.pgPicker.clear(document.getElementById(\'link_page_id\'));
                                     }
                                     summarize();
                                 });
