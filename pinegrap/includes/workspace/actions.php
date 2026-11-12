@@ -2002,6 +2002,12 @@ function ws_handle_action($action, $request)
                 $out['groups'] = ws_groups_for($viewer);
                 $out['threads'] = ws_threads_for($viewer);
                 $out['inbox'] = ws_inbox_unread_count($viewer['id']);
+
+                // The person's new inbox lines, for the sound when one is
+                // for them (asked only while their switch is on).
+                if (!empty($request['sound'])) {
+                    $out['sound'] = ws_sound_lines($viewer['id'], (int) ($request['sound_after'] ?? -1));
+                }
             }
 
             // A scheduled action is due: the screen starts a run (ws_tick)

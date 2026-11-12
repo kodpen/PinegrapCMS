@@ -289,6 +289,48 @@ function ws_inbox_unread_count($user_id)
 }
 
 /**
+ * A person's inbox lines that came since the channel screen's last look, for
+ * its sound (soundBatch() in workspace.js decides which of them sound). With
+ * $after below 0 (the first look) only the mark is given: the newest unread
+ * line, so lines waiting from before stay silent. A line read before the
+ * next look is not given; a line read in the same look (the conversation in
+ * front of the person, ws_channel_mark_read()) neither.
+ *
+ * @param int $user_id
+ * @param int $after the mark of the last look, -1 for the first
+ * @return array mark (int), lines (id, kind, channel_id, actor_id)
+ */
+function ws_sound_lines($user_id, $after)
+{
+    $user_id = (int) $user_id;
+    $after = (int) $after;
+
+    if (!ws_ready()) {
+        return array('mark' => max(0, $after), 'lines' => array());
+    }
+
+    if ($after < 0) {
+        return array('mark' => (int) db_value("SELECT MAX(id) FROM ws_inbox WHERE user_id = '" . $user_id . "' AND read_at = 0"), 'lines' => array());
+    }
+
+    $out = array('mark' => $after, 'lines' => array());
+
+    foreach ((array) db_items("SELECT id, kind, channel_id, actor_id FROM ws_inbox
+        WHERE user_id = '" . $user_id . "' AND read_at = 0 AND id > " . $after . "
+        ORDER BY id LIMIT 50") as $row) {
+        $out['mark'] = (int) $row['id'];
+        $out['lines'][] = array(
+            'id'         => (int) $row['id'],
+            'kind'       => (string) $row['kind'],
+            'channel_id' => (int) $row['channel_id'],
+            'actor_id'   => (int) $row['actor_id'],
+        );
+    }
+
+    return $out;
+}
+
+/**
  * The place an inbox line names: a channel as itself; a discussion (a
  * channel row of kind thread) by the channel it is in, flagged, so its title
  * is never written as a channel's name.

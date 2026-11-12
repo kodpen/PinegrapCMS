@@ -5,11 +5,11 @@ description: A Workspace channel screen as a whole: header, catch-up and pinned 
 
 ## What is it?
 - The screen a channel opens on in the Workspace (`drawCenter()` in `assets/js/workspace.js`): one card in the channel's colour holding the header and the tabs, the conversation, the writing box, and a side panel for the channel info or a discussion.
-- Redrawn in steps C1-C8 (2026-10-31) and given its card look in CL1-CL3 (2026-11-10); every feature stayed, a rare one moved behind More or the menu.
+- Redrawn in C1-C8 (2026-10-31), card look CL1-CL3 (2026-11-10); every feature stayed, a rare one moved behind More or the menu.
 
 ## Which decisions bind it?
 - The redraw, the phone rules and who changes the design: `workflow/decisions-made-workspace-5.md`, kept in `workspace-channel-screen.md`; the card look and who builds it: `workflow/decisions-made-workspace-13.md` (`plans/workspace-channel-look.md`).
-- What the channel menu may hold: `workflow/decisions-made-workspace-2.md` (a key rule). The tour: `workflow/decisions-made-workspace-6.md`. Export: `workflow/decisions-made-workspace-10.md`. When a channel makes a sound: `workflow/decisions-made-workspace-14.md`.
+- What the channel menu may hold: `workflow/decisions-made-workspace-2.md` (a key rule). The tour: `workflow/decisions-made-workspace-6.md`. Export: `workflow/decisions-made-workspace-10.md`. When a channel makes a sound: `workflow/decisions-made-workspace-14.md`, built in `workspace-channel-sound.md`.
 - Owner lines of their own: catch-up, composer, Decisions tab, messages, panels, panes, look, Summary/Board/Memory.
 
 ## Which parts are there? (label on screen, code name)

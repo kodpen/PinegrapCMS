@@ -61,7 +61,6 @@
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - workspace-channel-look-prototype.md: The style sheet tried on dev for step CL1 of plans/workspace-channel-look.md (one header card, colour wash, pill tabs, day chip, writing box card); a browser trial, not in the code
 - workspace-channel-look.md: Plan (owner 2026-11-10, handed to workers 2026-11-11): the Workspace channel screen in the dashboard's manner (one header card, colour wash, pill tabs, panes as cards); steps CL1-CL4 in order
-- workspace-channel-sound.md: Plan (owner 2026-11-11, #8720): a short sound in Workspace when something for the person arrives while that conversation is not in front of them; one step, CS1
 - workspace-mail-screen-sending.md: How the Workspace mail plan sends: one send path through the mail queue with an outcome hook, the item's send state, the schema step, limits, files, what a forward carries
 - workspace-mail-screen-steps-2.md: Steps WM10-WM14 of plans/workspace-mail-screen.md (owner 2026-11-11, #8765): a row opens the mail, the HTML kept and drawn in a guarded frame, a mailbox kept in no channel, a plain box
 - workspace-mail-screen-steps.md: Steps WM1-WM9 of plans/workspace-mail-screen.md: queue outcome hook, schema, send path, the screen with views and pane, New e-mail, Forward as e-mail, the answer on the same path, API, close-out
