@@ -26,7 +26,7 @@ module: mail_html
 
 ## How does earlier mail get its HTML?
 - `ws_mail_html_fill()` from `workspace_recurring_job.php`, before the `.eml` sweep: 200 mails or about 20 s a run, incoming mail with a `raw_path` and NULL `body_html`, ids up to MAX(id) at its first run. Its place is config_text `ws_mail_html_fill` (JSON ceiling, cursor, done); done stops it for good.
-- `.eml` files live 30 days, so older mail stays text only. Pictures are matched to the files the mail already brought by kept name (`ws_mail_html_fill_files()`); no file or message is added.
+- `.eml` files live 30 days, so older mail stays text only. Pictures are matched to the files the mail already brought by kept name, two of one name in turn (`ws_mail_html_fill_files()`); no file or message is added.
 
 ## Tests?
 - `tests/mail_html_test.php`, `workspace_mail_ingest_test.php` (cid sort, fill matching), `workspace_mail_html_fill_test.php` and `workspace_mail_html_schema_test.php` (child process, fake db, run twice).

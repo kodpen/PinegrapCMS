@@ -233,6 +233,7 @@ function test_workspace_mail_html_fill_files_matches_pictures_by_kept_name()
 		array('filename' => '', 'content_id' => 'nameless@x'),
 		array('filename' => 'report.pdf', 'content_id' => ''),
 		array('filename' => 'other.png', 'content_id' => 'other@x'),
+		array('filename' => 'logo.png', 'content_id' => 'second@x'),
 	);
 	$messages = array(
 		array('file_id' => 11, 'file_name' => 'logo.png'),
@@ -242,8 +243,9 @@ function test_workspace_mail_html_fill_files_matches_pictures_by_kept_name()
 		array('file_id' => 0, 'file_name' => 'other.png'),
 	);
 
-	pg_assert_same(array('logo@x' => 11, 'photo@x' => 12), ws_mail_html_fill_files($attachments, array('logo@x', 'photo@x', 'nameless@x', 'other@x'), $messages),
-		'the first message under the name the upload kept; a nameless picture and a message without a file give nothing');
+	pg_assert_same(array('logo@x' => 11, 'photo@x' => 12, 'second@x' => 14), ws_mail_html_fill_files($attachments, array('logo@x', 'photo@x', 'nameless@x', 'other@x', 'second@x'), $messages),
+		'by the name the upload kept, two of one name in turn; a nameless picture and a message without a file give nothing');
+	pg_assert_same(array('second@x' => 14), ws_mail_html_fill_files($attachments, array('second@x'), $messages), 'a picture not shown still takes its own file');
 	pg_assert_same(array(), ws_mail_html_fill_files($attachments, array(), $messages), 'no picture shown');
 }
 

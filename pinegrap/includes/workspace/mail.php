@@ -547,7 +547,9 @@ function ws_mail_html_ready()
  * The files a mail that came in before its HTML was kept already brought,
  * for the pictures its HTML shows: an attachment is matched to its message
  * by the name it was kept under (ws_upload_inspect(), cut as
- * ws_store_file_bytes() cuts it). A picture without a name had no file.
+ * ws_store_file_bytes() cuts it). Attachments were kept in the mail's order,
+ * so two of one name take that name's files in turn. A picture without a
+ * name had no file.
  *
  * @param array $attachments pg_mail_parse()'s
  * @param array $cids        pg_mail_html_cids()
@@ -561,8 +563,8 @@ function ws_mail_html_fill_files($attachments, $cids, $messages)
     foreach ((array) $messages as $message) {
         $name = (string) ($message['file_name'] ?? '');
 
-        if (($name !== '') && ((int) ($message['file_id'] ?? 0) > 0) && !isset($by_name[$name])) {
-            $by_name[$name] = (int) $message['file_id'];
+        if (($name !== '') && ((int) ($message['file_id'] ?? 0) > 0)) {
+            $by_name[$name][] = (int) $message['file_id'];
         }
     }
 
@@ -570,11 +572,17 @@ function ws_mail_html_fill_files($attachments, $cids, $messages)
     $files = array();
 
     foreach ((array) $attachments as $attachment) {
-        $cid = pg_mail_html_cid((string) ($attachment['content_id'] ?? ''));
         $name = mb_substr(trim(preg_replace('/[\x00-\x1F\x7F]/', '', pg_basename(str_replace('\\', '/', (string) ($attachment['filename'] ?? ''))))), 0, 200);
 
-        if (($cid !== '') && isset($shown[$cid]) && !isset($files[$cid]) && ($name !== '') && isset($by_name[$name])) {
-            $files[$cid] = $by_name[$name];
+        if (($name === '') || empty($by_name[$name])) {
+            continue;
+        }
+
+        $file_id = array_shift($by_name[$name]);
+        $cid = pg_mail_html_cid((string) ($attachment['content_id'] ?? ''));
+
+        if (($cid !== '') && isset($shown[$cid]) && !isset($files[$cid])) {
+            $files[$cid] = $file_id;
         }
     }
 
