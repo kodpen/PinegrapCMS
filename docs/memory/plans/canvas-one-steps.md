@@ -27,7 +27,7 @@ description: Steps CO0-CO9 of plans/canvas-one.md: model and screens drawn, the 
 - CO9 (S) Close-out: `workspace/canvas-overview.md`, the lasting rules in the topic files, the PR body names the `[NEW]` changelog line, both plan files and the folder deleted.
 
 ## What holds for every step?
-- CV3 to CV8 and LP2b, LP3, LP5 go on under their own plans; a CO step never rewrites what they build, it joins it.
+- What is left of the canvas-design and live-page plans goes on under those plans; a CO step never rewrites what they build, it joins it.
 - No schema change without the owner's answer on its issue; CO0 lists them.
 - A step that shows a screen is approved from a real panel's screenshots.
 
