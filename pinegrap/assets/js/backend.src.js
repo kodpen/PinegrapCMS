@@ -729,20 +729,14 @@ $(document).ready(function () {
 
                     break;
                 case 'q':
-                    var notification_toggle = document.getElementById('notification_toggle');
-                    if (notification_toggle && $('#notifications').length) {
+                    if (document.getElementById('notifications') && window.pgUI) {
                         event.preventDefault();
-                        // CTRL+Q on toolbar and backend shows notification panel. tested in chrome,edge(95.0+) and firefox.
-                        // Timeout is necessary in order to workaround Firefox bug
-                        // with Ctrl+Q where it would still open find area,
-                        // even though we run preventDefault above.
-                        // The bell is clicked rather than the menu toggled: a
-                        // Bootstrap 6 Menu made on the .menu box is a second
-                        // instance that ignores the bell's data-bs-display,
-                        // positions the panel inline for good and leaves its
-                        // own aria-expanded on the box.
+                        // Ctrl+Q opens and closes the bell's drawer, on the
+                        // panel and in the site's toolbar. The timeout works
+                        // around Firefox, which still opened its find bar
+                        // after preventDefault.
                         setTimeout(function () {
-                            notification_toggle.click();
+                            pgUI.drawer.toggle('#notifications');
                         }, 0);
                     }
 
@@ -1843,30 +1837,31 @@ $(document).ready(function () {
     }
 
 
-    //#notifications
-    $('#notification_toggle').on('click', function () {
-        if (pgUI.menu.isOpen(this)) {
-            get_notifications();
-        } else {
-            $('#notifications').scrollTop(0);
-        }
-    });
-    // Bootstrap 6 fires the menu events on the toggle, not on the .menu box.
-    //shown #notifications
-    pgUI.menu.on('#notification_toggle', 'shown', function () {
+    // The bell's drawer (output.php): one list load per opening, started on
+    // show so the list is on its way while the drawer slides in. The head's
+    // actions wait for the list's counts.
+    pgUI.drawer.on('#notifications', 'show', function () {
+        $('#notifications').find('.pg-bell-mark-all, .pg-bell-head-menu').addClass('d-none');
         $('#notification_toggle').addClass('show');
         get_notifications();
     });
-    //hidden #notifications
-    pgUI.menu.on('#notification_toggle', 'hidden', function () {
+    // showModal() finds nothing to focus while the slide-in starts from
+    // visibility: hidden, so the close button takes the focus once it is in.
+    pgUI.drawer.on('#notifications', 'shown', function () {
+        var drawer = document.getElementById('notifications');
+        if (drawer && !drawer.contains(document.activeElement)) {
+            $('#notifications .pg-bell-close').trigger('focus');
+        }
+    });
+    pgUI.drawer.on('#notifications', 'hidden', function () {
         $('#notification_toggle').removeClass('show');
-        $('#notifications').scrollTop(0);
+        $('#notifications .pg-bell-scroll').scrollTop(0);
         pgBellFilter = pg_bell_filter_kept();
         pg_bell_menu_close($('#notifications .pg-bell-menu-wrap'), false);
     });
-    // A row's menu keeps its keys: Escape closes it (not the bell) and the
-    // arrows, Home and End move between its items. Bound on the bell itself,
-    // so the keys stop before Bootstrap's menu handler on the document.
+    // A row's menu keeps its keys: Escape closes it (not the drawer) and the
+    // arrows, Home and End move between its items. Bound on the window's
+    // capture phase, so the keys stop before the drawer hears Escape.
     window.addEventListener('keydown', pg_bell_menu_key, true);
     // The menu closes when the focus leaves it.
     $('#notifications').on('focusout', '.pg-bell-menu-wrap', function (event) {
@@ -3056,7 +3051,7 @@ function pg_push_watch() {
         }
     });
 
-    pgUI.menu.on('#notification_toggle', 'shown', function () {
+    pgUI.drawer.on('#notifications', 'show', function () {
         pg_push_refresh();
     });
 }
@@ -3655,9 +3650,9 @@ function check_unread_notifications(refresh_type) {
 
 
                     //if notifications active, edit callback and there is no notifications, get it. fix a issue when last notification removed.
-                    if (pgUI.menu.isOpen('#notification_toggle')) {
+                    if (pgUI.drawer.isOpen('#notifications')) {
                         if (refresh_type == 'editcallback_check') {
-                            if ($('#notifications .menu-scroll-area .list-group li.software_notification').length <= 1) {
+                            if ($('#notifications .pg-bell-scroll .list-group li.software_notification').length <= 1) {
                                 get_notifications();
                             }
 
@@ -3669,7 +3664,7 @@ function check_unread_notifications(refresh_type) {
                     // this check system dont get notifications we dont wanna more traffic.
                     if ($unreads > 0) {
                         // An open list is redrawn when something new came in; drawing it reads nothing.
-                        if (pgUI.menu.isOpen('#notification_toggle')) {
+                        if (pgUI.drawer.isOpen('#notifications')) {
                             if ($unreads > $unreadsCallback && refresh_type != 'editcallback_check') {
                                 get_notifications(true);
                             }
@@ -3764,25 +3759,23 @@ function remove_all_notifications() {
 // the focus on the same notification row.
 function get_notifications(keep_place) {
     const notifications = $('#notifications');
-    const notifications_body = $('#notifications .menu-scroll-area');
-    const notifications_content = $('#notifications .menu-scroll-area *');
+    const notifications_body = $('#notifications .pg-bell-scroll');
+    const notifications_content = $('#notifications .pg-bell-scroll *');
     var notifications_empty = $('#notifications .notifications_empty');
     var scroll_area = notifications_body;
     var kept_scroll = 0;
-    var kept_scroll_outer = 0;
     var kept_row = '';
     var kept_index = -1;
 
     if (keep_place) {
         kept_scroll = scroll_area.scrollTop();
-        kept_scroll_outer = notifications.scrollTop();
         var focused_row = $(document.activeElement).closest('li[notification-id]');
         if (focused_row.length && notifications.has(focused_row[0]).length) {
             kept_row = String(focused_row.attr('notification-id'));
             kept_index = focused_row.find('button, a, [tabindex]').index(document.activeElement);
         }
     } else {
-        notifications.scrollTop(0);
+        scroll_area.scrollTop(0);
 
         notifications_empty.addClass('d-none');
 
@@ -3797,7 +3790,6 @@ function get_notifications(keep_place) {
     // redraw; a row that is gone leaves the focus where it was.
     var restore_place = function () {
         scroll_area.scrollTop(kept_scroll);
-        notifications.scrollTop(kept_scroll_outer);
         if (kept_row === '') {
             return;
         }
@@ -3864,19 +3856,13 @@ function get_notifications(keep_place) {
                     // notification loading spinner remove
                     spinner.remove();
 
-                    // Above the list: "Mark all as read" beside "Delete All
-                    // Notifications" (pg_bell_filter_apply() shows each when
-                    // it applies).
-                    output_notifications = '<div class="pg-bell-actions d-flex flex-wrap border-bottom">'
-                        + '<button type="button" class="menu-item w-auto flex-fill pg-bell-mark-all fg-emphasis-primary"><span class="bi bi-check2-all me-3" aria-hidden="true"></span>' + lang('Mark all as read') + '</button>'
-                        + ((data_length > 1) ? '<button type="button" onclick="remove_all_notifications();" class="menu-item w-auto flex-fill notification-remove-btn fg-danger"><span class="bi bi-trash me-3" aria-hidden="true"></span>' + lang('Delete All Notifications') + '</button>' : '')
-                        + '</div>';
-
-                    // than we create notification by data: each row as the
-                    // dashboard's Next up row (pg_bell_row()), under its day
-                    // heading. A fold's runs follow their head and carry its
-                    // day (pg_notification_fold()), so they never open one.
-                    output_notifications += '<ul class="list-group list-group-flush pg-bell-list">';
+                    // Each row laid out for the drawer (pg_bell_row()),
+                    // under its day heading. A fold's runs follow their head
+                    // and carry its day (pg_notification_fold()), so they
+                    // never open one. "Mark all as read" and "Delete All
+                    // Notifications" stand in the drawer's head
+                    // (pg_bell_filter_apply() shows each when it applies).
+                    output_notifications = '<ul class="list-group list-group-flush pg-bell-list">';
 
                     var notification_day = '';
                     var notification_days = pg_bell_words().day;
@@ -3900,7 +3886,7 @@ function get_notifications(keep_place) {
                     if (keep_place) {
                         restore_place();
                     } else {
-                        notifications.scrollTop(0);
+                        scroll_area.scrollTop(0);
                     }
                 } else {
                     // notification loading spinner remove
@@ -3908,7 +3894,7 @@ function get_notifications(keep_place) {
                     // show no notification content.
                     notifications_empty.removeClass('d-none');
                     pg_bell_filter_apply();
-                    notifications.scrollTop(0);
+                    scroll_area.scrollTop(0);
                 }
 
             } else {
@@ -3934,17 +3920,19 @@ function pg_bell_words() {
     };
 }
 
-// One bell row, drawn as the dashboard's Next up row: the module's tag, the
-// title over one second line (the excerpt, or the sender when there is none,
-// then the time), the one button named by its job, the unread dot ("Mark as
-// read") and the row's menu (Delete, "Mark as unread").
-// title, description and details arrive from the server as ready-made HTML
-// (pg_notification_display() escapes the row's values and adds the markup).
-// time is also server-built markup: get_relative_time() wraps the relative
-// time in a <time> element that carries the absolute time as a tooltip.
-// Everything else is a raw value and is escaped here before it becomes
-// markup. The target URL travels in a data attribute and is read by the
-// delegated click handler below, never spliced into an inline onclick.
+// One bell row, laid out for the drawer. Line one: the module's tag as a
+// small mark, the unread dot ("Mark as read") and the title. Line two: the
+// place (a Workspace row's channel, a site row's details, else the sender)
+// and the time, with the one button named by its job and the row's menu
+// (Delete, "Mark as unread") at the right. Then the excerpt, two lines at
+// most; the whole text is at the row's place.
+// title, place, description and details arrive from the server as
+// ready-made HTML (pg_notification_display() escapes the row's values and
+// adds the markup). time is also server-built markup: get_relative_time()
+// wraps the relative time in a <time> element that carries the absolute time
+// as a tooltip. Everything else is a raw value and is escaped here before it
+// becomes markup. The target URL travels in a data attribute and is read by
+// the delegated click handler below, never spliced into an inline onclick.
 function pg_bell_row(row) {
     var words = pg_bell_words();
     var id = parseInt(row.id, 10) || 0;
@@ -3964,15 +3952,16 @@ function pg_bell_row(row) {
     var menu_id = 'pg_bell_menu_' + id;
     var type = h(String(row.type || ''));
     var excerpt = String(row.description || '');
+    var place = String(row.place || '');
     var title;
     var button = '';
 
-    if (excerpt === '') {
-        excerpt = String(row.details || '').replace(/<br\s*\/?>/gi, ' · ');
+    if (place === '') {
+        place = String(row.details || '').replace(/<br\s*\/?>/gi, ' · ');
     }
 
-    if (excerpt === '') {
-        excerpt = h(String(row.user || ''));
+    if ((place === '') && (excerpt === '')) {
+        place = h(String(row.user || ''));
     }
 
     // A meeting without its call opens the row's place like Show.
@@ -3998,15 +3987,18 @@ function pg_bell_row(row) {
         + ' class="software_notification pg-bell-row list-group-item ' + (unread ? 'new' : 'viewed') + ' ' + type
         + (((fold_head > 0) && !pgBellOpenFolds[fold_head]) ? ' pg-bell-shut' : '') + '">'
         + '<div class="notification-card pg-bell-card">'
+        + '<div class="pg-bell-line">'
         + '<span class="pg-bell-tag" data-module="' + module + '">' + h(words.module[module]) + '</span>'
-        + '<div class="pg-bell-text">'
+        + pg_bell_read_button(id, unread)
         + title
-        + '<div class="pg-bell-sub">' + ((excerpt !== '') ? '<span class="pg-bell-excerpt">' + excerpt + '</span> ' : '') + '<span class="pg-bell-time">' + String(row.time || '') + '</span></div>'
-        + ((fold_count > 1) ? pg_bell_fold_button(id, fold_count) : '')
+        + '</div>'
+        + '<div class="pg-bell-sub">'
+        + '<div class="pg-bell-meta">'
+        + ((place !== '') ? '<span class="pg-bell-place">' + place + '</span>' : '')
+        + '<span class="pg-bell-time">' + String(row.time || '') + '</span>'
         + '</div>'
         + '<div class="pg-bell-side">'
         + button
-        + pg_bell_read_button(id, unread)
         + '<div class="pg-bell-menu-wrap">'
         + '<button type="button" class="pg-bell-menu-toggle no-popover" aria-expanded="false" aria-controls="' + menu_id + '" aria-label="' + h(lang('More actions')) + '" aria-describedby="' + title_id + '"><span class="bi bi-three-dots" aria-hidden="true"></span></button>'
         + '<div class="pg-bell-menu" id="' + menu_id + '" hidden>'
@@ -4015,6 +4007,9 @@ function pg_bell_row(row) {
         + '</div>'
         + '</div>'
         + '</div>'
+        + '</div>'
+        + ((excerpt !== '') ? '<p class="pg-bell-excerpt">' + excerpt + '</p>' : '')
+        + ((fold_count > 1) ? pg_bell_fold_button(id, fold_count) : '')
         + '</div>'
         + '</li>';
 }
@@ -4109,9 +4104,17 @@ function pg_bell_filter_apply() {
         $(box).find('.notifications_empty').toggleClass('d-none', shown > 0);
     }
 
-    // Deleting everything is offered only while everything is shown;
-    // marking everything read only while something is unread.
-    $(box).find('.notification-remove-btn').toggleClass('d-none', filter !== 'all');
+    // Deleting everything is offered only while everything is shown and
+    // there is more than one row; marking everything read only while
+    // something is unread.
+    var head_menu = $(box).find('.pg-bell-head-menu');
+    var no_delete = (filter !== 'all') || (rows.length < 2);
+
+    if (no_delete) {
+        pg_bell_menu_close(head_menu, false);
+    }
+
+    head_menu.toggleClass('d-none', no_delete);
     $(box).find('.pg-bell-mark-all').toggleClass('d-none', counts.all === 0);
 }
 
@@ -4165,22 +4168,20 @@ function pg_bell_fold_button(notification_id, count) {
 // (workspace.php?inbox=1) asks for 'workspace'. The kept choice comes back
 // when the bell closes.
 window.pgBellOpen = function (filter) {
-    var toggle = document.getElementById('notification_toggle');
-
-    if (!toggle || !document.getElementById('notifications')) {
+    if (!document.getElementById('notifications') || !window.pgUI) {
         return false;
     }
 
     pgBellFilter = (pgBellFilters.indexOf(filter) > -1) ? filter : pg_bell_filter_kept();
 
-    // Opened once the click that asked has finished: the bell closes on a
-    // click outside it, and that click is still on its way up.
-    if (pgUI.menu.isOpen('#notification_toggle')) {
+    // An open drawer only takes the filter; a page that asks while it loads
+    // waits for Bootstrap.
+    if (pgUI.drawer.isOpen('#notifications')) {
         pg_bell_filter_apply();
     } else {
-        setTimeout(function () {
-            toggle.click();
-        }, 0);
+        pgUI.ready(function () {
+            pgUI.drawer.show('#notifications');
+        });
     }
 
     return true;
@@ -4318,7 +4319,7 @@ $(document).on('click', '#notifications .pg-bell-menu-toggle', function () {
     $(this).attr('aria-expanded', 'true');
 
     // Opens upwards when the bell's list has no room left below the row.
-    var area = $(this).closest('.menu-scroll-area')[0];
+    var area = $(this).closest('.pg-bell-scroll')[0];
 
     if (area) {
         var room = area.getBoundingClientRect().bottom - this.getBoundingClientRect().bottom;
@@ -4363,11 +4364,19 @@ $(document).on('click', '#notifications .pg-bell-delete', function () {
     if ($next.length) {
         $next.find('.pg-bell-menu-toggle').trigger('focus');
     } else {
-        $('#notification_toggle').trigger('focus');
+        $('#notifications .pg-bell-close').trigger('focus');
     }
 });
 
-// "Mark all as read" above the list: every row the reader sees.
+// "Delete All Notifications" in the head's menu; the focus stays in the
+// drawer, on its close button.
+$(document).on('click', '#notifications .pg-bell-delete-all', function () {
+    pg_bell_menu_close($(this).closest('.pg-bell-menu-wrap'), false);
+    $('#notifications .pg-bell-close').trigger('focus');
+    remove_all_notifications();
+});
+
+// "Mark all as read" in the drawer's head: every row the reader sees.
 $(document).on('click', '#notifications .pg-bell-mark-all', function () {
     edit_notification(0, 'mark_all_read');
 });

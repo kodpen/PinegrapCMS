@@ -198,7 +198,7 @@ function test_bell_row_script_draws_the_row()
 	pg_assert_contains('class="pg-bell-tag" data-module="', $row, 'the tag');
 	pg_assert_contains('pg-bell-title', $row, 'the title');
 	pg_assert_contains('pg-bell-sub', $row, 'one second line');
-	pg_assert_contains("((excerpt !== '') ? '<span class=\"pg-bell-excerpt\">'", $row, 'an empty second line leaves no gap before the time');
+	pg_assert_contains("((excerpt !== '') ? '<p class=\"pg-bell-excerpt\">'", $row, 'an empty excerpt leaves no gap under the row');
 
 	// The details (an order's number and total) wrap in the narrow bell
 	// instead of ending in an ellipsis, as the title does.
@@ -207,7 +207,10 @@ function test_bell_row_script_draws_the_row()
 	$sub = ($at === false) ? '' : substr($css, $at, strpos($css, '}', $at) - $at);
 	pg_assert_contains('overflow-wrap: anywhere;', $sub, 'the second line wraps');
 	pg_assert_same(false, strpos($sub, 'ellipsis'), 'and never ends in an ellipsis');
-	pg_assert_same(false, strpos($css, '#notifications .pg-bell-excerpt {'), 'the excerpt has no one-line rule of its own');
+	$at = strpos($css, "\n#notifications .pg-bell-excerpt {");
+	$excerpt = ($at === false) ? '' : substr($css, $at, strpos($css, '}', $at) - $at);
+	pg_assert_contains('-webkit-line-clamp: 2;', $excerpt, 'the excerpt shows two lines at most');
+	pg_assert_contains('overflow-wrap: anywhere;', $excerpt, 'and wraps a long word');
 	pg_assert_contains('pg-bell-act', $row, 'the one button');
 	pg_assert_contains('pg_bell_read_button(id, unread)', $row, 'the dot');
 	pg_assert_contains("lang('Mark as read')", $dot, 'the dot is named');

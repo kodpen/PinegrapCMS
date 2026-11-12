@@ -357,6 +357,8 @@ function ws_inbox_describe($viewer, $row)
                 'body'  => $message ? ws_voice_excerpt($viewer, $message, 140) : '',
                 'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'],
                 'icon'  => 'bi-at',
+                'who'   => $actor,
+                'place' => $place,
             );
 
         case 'assigned':
@@ -400,6 +402,8 @@ function ws_inbox_describe($viewer, $row)
                 'body'  => $channel ? (string) $channel['topic'] : '',
                 'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'],
                 'icon'  => 'bi-hash',
+                'who'   => $actor,
+                'place' => $place,
             );
 
         case 'note_shared':
@@ -560,6 +564,8 @@ function ws_inbox_describe($viewer, $row)
                 'body'  => $message ? mb_substr(trim(preg_replace('/\s+/u', ' ', (string) $message['body'])), 0, 140) : '',
                 'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . (($last > 0) ? '&message=' . $last : ''),
                 'icon'  => 'bi-door-open',
+                'who'   => $guest ? (string) $guest['name'] : lang('Guest'),
+                'place' => $place,
             );
 
         // An application asks with a checklist or a poll (interact.php).
@@ -572,6 +578,8 @@ function ws_inbox_describe($viewer, $row)
                 'body'  => $message ? ws_voice_excerpt($viewer, $message, 140) : '',
                 'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'],
                 'icon'  => 'bi-ui-checks',
+                'who'   => $asker,
+                'place' => $place,
             );
 
         // Approval requests (approvals.php): asked, settled, a day before
@@ -604,7 +612,7 @@ function ws_inbox_describe($viewer, $row)
         // An MCP agent answered what the person asked it (mcp_agent.php).
         case 'agent_answer':
             if (function_exists('ws_mcp_agent_inbox_describe')) {
-                return ws_mcp_agent_inbox_describe($viewer, $row, $channel_name, $base);
+                return ws_mcp_agent_inbox_describe($viewer, $row, $channel_name, $base) + array('place' => $place);
             }
             break;
 
@@ -626,6 +634,8 @@ function ws_inbox_describe($viewer, $row)
                 'body'  => $message ? ws_voice_excerpt($viewer, $message, 140) : '',
                 'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'],
                 'icon'  => 'bi-eye',
+                'who'   => $actor,
+                'place' => $place,
             );
 
         case 'note_answer_ai':
@@ -1259,6 +1269,64 @@ function ws_bell_user($session, $app)
 }
 
 /**
+ * A bell row's short title and the place under it. The bell's drawer says
+ * who did what on the row's first line ("Ada mentioned you") and puts the
+ * channel on the second, beside the time, so the title is no whole
+ * sentence. A kind without a short form, or a row with no one named,
+ * answers '' and keeps its whole sentence.
+ *
+ * @param string     $kind  the inbox row's kind
+ * @param string     $who   who set it off: a person, a guest or an agent
+ * @param array|null $place ws_inbox_place()
+ * @return array title, place ('#name', a discussion in it, or '')
+ */
+function ws_bell_title($kind, $who, $place)
+{
+    $who = trim((string) $who);
+    $name = is_array($place) ? (string) ($place['name'] ?? '') : '';
+    $none = array('title' => '', 'place' => '');
+
+    if ($who === '') {
+        return $none;
+    }
+
+    switch ((string) $kind) {
+        case 'mention':
+            $title = lang(array('string' => '{var:1} mentioned you', 'vars' => $who));
+            break;
+
+        case 'question_asked':
+            $title = lang(array('string' => '{var:1} asked you', 'vars' => $who));
+            break;
+
+        case 'ack_reminder':
+            $title = lang(array('string' => '{var:1} asked you to say you read it', 'vars' => $who));
+            break;
+
+        case 'guest_message':
+            $title = lang(array('string' => '{var:1} wrote', 'vars' => $who));
+            break;
+
+        case 'invited':
+            $title = lang(array('string' => '{var:1} added you to a channel', 'vars' => $who));
+            break;
+
+        case 'agent_answer':
+            $title = lang(array('string' => '{var:1} answered you', 'vars' => $who));
+            break;
+
+        default:
+            return $none;
+    }
+
+    if (($name !== '') && !empty($place['thread'])) {
+        $name = lang(array('string' => 'A discussion in {var:1}', 'vars' => $name));
+    }
+
+    return array('title' => $title, 'place' => $name);
+}
+
+/**
  * What a bell row about an inbox row says, for the person it is addressed
  * to. Null when the row is gone or no longer theirs to see.
  *
@@ -1284,9 +1352,12 @@ function ws_bell_describe($inbox_id, $user_id)
 
     $described = ws_inbox_describe($viewer, $row);
     $kind = (string) ($row['kind'] ?? '');
+    $short = ws_bell_title($kind, (string) ($described['who'] ?? ''), $described['place'] ?? null);
 
     return array(
         'title' => $described['title'],
+        'short' => $short['title'],
+        'place' => $short['place'],
         'body'  => $described['body'],
         'url'   => $described['url'],
         'kind'  => $kind,

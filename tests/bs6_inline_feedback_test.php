@@ -296,8 +296,8 @@ function test_bs6_inline_feedback_forms()
 	pg_assert_contains("node.classList.remove('d-block')", $js);
 }
 
-// Toasts go into the top open dialog; Ctrl+Q clicks the bell and the menu
-// events are heard on the toggle.
+// Toasts go into the top open dialog; Ctrl+Q toggles the bell's drawer and
+// its events load the list.
 function test_bs6_toasts_and_notifications_menu()
 {
 	$js = pg_inline_feedback_test_backend();
@@ -307,11 +307,11 @@ function test_bs6_toasts_and_notifications_menu()
 	$folders = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_folders.php');
 	pg_assert_contains("pgUI.hostLayer(container);\n        container.appendChild(element);", $folders, 'explorer toast hosted in the top dialog');
 
-	pg_assert_contains('notification_toggle.click();', $js, 'Ctrl+Q clicks the bell');
-	pg_assert_false(strpos($js, 'pgUI.menu.toggle(notifications)') !== false, 'no second Menu on the .menu box');
-	pg_assert_false(strpos($js, "pgUI.menu.on('#notifications'") !== false, 'menu events heard on the toggle');
-	pg_assert_false(strpos($js, "pgUI.menu.isOpen('#notifications')") !== false, 'open state read from the toggle');
-	pg_assert_contains("if (pgUI.menu.isOpen(this)) {\n            get_notifications();", $js, 'the bell click refreshes the list');
-	pg_assert_contains("\$('#notification_toggle').addClass('show');\n        get_notifications();", $js, 'the shown handler refreshes the list');
+	pg_assert_contains("pgUI.drawer.toggle('#notifications');", $js, 'Ctrl+Q toggles the drawer');
+	pg_assert_false(strpos($js, 'notification_toggle.click();') !== false, 'Ctrl+Q no longer clicks the bell');
+	pg_assert_false(strpos($js, "pgUI.menu.on('#notification_toggle'") !== false, 'no menu events left on the bell');
+	pg_assert_false(strpos($js, "pgUI.menu.isOpen('#notification_toggle')") !== false, 'the open state is the drawer\'s');
+	pg_assert_contains("pgUI.drawer.on('#notifications', 'show', function () {", $js, 'the drawer\'s show event');
+	pg_assert_contains("\$('#notification_toggle').addClass('show');\n        get_notifications();", $js, 'the show handler loads the list');
 	pg_assert_same(0, substr_count($js, 'get_notifications(true, '), 'no list request asks to mark read');
 }

@@ -355,7 +355,11 @@ function pg_notification_display($notification, $reader_role = null)
 		'kind'        => '',
 		'glyph'       => '',
 		'join'        => '',
-		'fold'        => ''
+		'fold'        => '',
+		// The bell's short title and the channel under it (ws_bell_title());
+		// the push banner keeps the whole sentence in title.
+		'short'       => '',
+		'place'       => ''
 	);
 
 	if ($action == 'new_order') {
@@ -471,6 +475,8 @@ function pg_notification_display($notification, $reader_role = null)
 				$display['glyph']       = (string) ($described['icon'] ?? '');
 				$display['join']        = (string) ($described['join'] ?? '');
 				$display['fold']        = (string) ($described['fold'] ?? '');
+				$display['short']       = h((string) ($described['short'] ?? ''));
+				$display['place']       = h((string) ($described['place'] ?? ''));
 			}
 		}
 
