@@ -1,6 +1,6 @@
 ---
 name: designer-interactions
-description: Interactions of designer nodes: props._fx, data-pg-fx-* attributes, pg_fx.src.js (entrance, hover, click, sticky, parallax, scroll-linked, count, chapter), head style, fail-safe, twins, tests.
+description: Interactions of designer nodes: props._fx, data-pg-fx-* attributes, pg_fx.src.js (every effect), head style, fail-safe, twins, tests.
 module: designer_fx
 ---
 
@@ -11,7 +11,7 @@ module: designer_fx
 - In `props._fx` (next to `_attrs`): one effect per node. `pg_fx_normalize()` (`includes/fn/designer_fx.php`) and its twin `_sdFxNormalize()` keep the known fields in range and drop those that do not apply (no trigger or timing for sticky, parallax and the scroll-linked effects, `stagger` only for load/view, `repeat` only for view, no `distance` for fade). An unknown effect is no interaction.
 - Scroll-linked effects (B2 #8696): `scroll-zoom`, `scroll-fade`, `scroll-rise`, with only `from`, the start, whose range is per effect (`pg_fx_scroll_from()`, `_sdFxSpec().from`): scale 25–200 % (default 80), opacity 0–100 % (0), distance 0–400 px below (80).
 - Count up (B3 #8728): `count`, duration and delay only: `designer/designer-interactions-count.md`.
-- Colour chapter (B10): `chapter`, duration only (the colour change, default 600): `designer/designer-interactions-chapter.md`.
+- Colour chapter (B10): `chapter`, duration only: `designer/designer-interactions-chapter.md`.
 
 ## What does the page write?
 - `pg_fx_attrs()` / `_sdFxAttrs()`: `data-pg-fx="<effect>"`, `data-pg-fx-trigger`, then only values that differ from the defaults (duration 600, delay 0, easing ease-out, stagger 0, distance 0 = the script's own, offset 0, speed 20), `data-pg-fx-from` when not its effect's default, then `data-pg-fx-repeat`.
@@ -29,6 +29,6 @@ module: designer_fx
 - Entrance, hover, click, sticky, parallax and the scroll-linked effects on the page: `designer/designer-interactions-script.md`; the count: `designer/designer-interactions-count.md`.
 
 ## How is it tested?
-- `tests/designer_fx_test.php`: normalizer, attributes, render on nodes and components, nodes inside a widget, inject, Preview expression, editor twins and the script's reading of the page under Node; the panel under Node; the twin cases also in `tests/designer_node_attrs_test.php`, the code view in `tests/designer_code_view_attrs_test.php`.
+- `tests/designer_fx_test.php`: normalizer, attributes, render on nodes and components, widgets, inject, Preview expression, twins, the script and the panel under Node; the twin cases also in `tests/designer_node_attrs_test.php`, the code view in `tests/designer_code_view_attrs_test.php`.
 
 Related: docs/memory/designer/designer-interactions-panel.md, docs/memory/designer/designer-block-motion.md
