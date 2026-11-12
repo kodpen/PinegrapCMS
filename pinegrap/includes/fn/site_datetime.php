@@ -10,8 +10,9 @@
  * page has none, and the tags of assets/js/pg_datetime.js and
  * assets/js/pg_fields.js, which draw the hooked fields as in the panel.
  * Sites keep Bootstrap 5.3.8 and jQuery UI; a page without a hook gets
- * nothing. Asked once every shared component and system widget is drawn
- * in (get_page_content.php), like pg_fx_inject().
+ * nothing. Asked once every shared component, system widget and classic
+ * region (system, common and page regions) is drawn in
+ * (get_page_content.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com

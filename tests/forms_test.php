@@ -259,3 +259,26 @@ function test_forms_validate_date_whole_value()
 	pg_assert_true(validate_date_and_time('5/5/2027 5:05 PM'), 'still a date and time');
 	pg_assert_same('2027-05-05', prepare_form_data_for_input(' 5/5/2027 ', 'date'), 'stored without the white space');
 }
+
+// A date typed with dots ('13.11.2026', the Turkish way) is a date: the
+// date-and-time control reads it so, and a site form refused it with
+// "Please enter a valid date" while only '13/11/2026' passed.
+function test_forms_dotted_date()
+{
+	forms_test_date_format();
+
+	pg_assert_true(validate_date('13.11.2026'), 'a dotted date');
+	pg_assert_true(validate_date(' 5.5.2027 '), 'without leading zeros, white space around');
+	pg_assert_same('2026-11-13', prepare_form_data_for_input('13.11.2026', 'date'), 'stored the site\'s way');
+	pg_assert_same('2027-05-05', prepare_form_data_for_input(' 5.5.2027 ', 'date'));
+	pg_assert_false(validate_date('31.02.2026'), 'a day the month has not');
+	pg_assert_false(validate_date('13.11.26'), 'a two-digit year');
+	pg_assert_false(validate_date('13.11.2026.'), 'a dot after the year');
+	pg_assert_false(validate_date('1.2.3.2026'), 'four parts');
+
+	pg_assert_true(validate_date_and_time('13.11.2026 17:05'), 'a dotted date and time');
+	pg_assert_true(validate_date_and_time('13.11.2026 5:05 PM'), 'with a 12-hour time');
+	pg_assert_same('2026-11-13 17:05', prepare_form_data_for_input('13.11.2026 5:05 PM', 'date and time'));
+	pg_assert_same('2026-11-13 17:05', prepare_form_data_for_input('13.11.2026 17:05', 'date and time'));
+	pg_assert_same('2026-11-13', pg_native_date_value('13.11.2026', 'date'), 'a dotted default in a native date input');
+}

@@ -1650,7 +1650,9 @@ function validate_date($date)
 
     // The whole value is the date in the site's day and month order; a
     // date found inside longer text ('5/5/20271') was stored with a wrong year.
-    if (is_scalar($date) && (preg_match('/^\s*(\d{1,2})[-,\/](\d{1,2})[-,\/](\d{4})\s*$/', (string) $date, $date_parts) == 1)) {
+    // '.' is a separator as '/', '-' and ',' are: '13.11.2026' is how a date
+    // is typed in Turkish, and the date-and-time control reads it so too.
+    if (is_scalar($date) && (preg_match('/^\s*(\d{1,2})[-,\/.](\d{1,2})[-,\/.](\d{4})\s*$/', (string) $date, $date_parts) == 1)) {
         $year = $date_parts[3];
         if (DATE_FORMAT == 'month_day') {
             $month = $date_parts[1];
@@ -1674,9 +1676,9 @@ function validate_date($date)
  * is no real date. Reads ISO itself and the site's day and month order
  * (DATE_FORMAT) with any of the separators people type: '/', '-', ',' and
  * '.', so the Turkish "31.12.2026" is read too. The year has four digits:
- * "31/12/27" stood for the year 0027. prepare_form_data_for_input() turned
- * a dotted or impossible date into text MySQL stored as 0000-00-00 or
- * refused in a comparison.
+ * "31/12/27" stood for the year 0027. prepare_form_data_for_input() turns
+ * an impossible date into text MySQL stores as 0000-00-00 or refuses in a
+ * comparison; this gives '' for it instead.
  *
  * @param mixed $text the typed value
  * @return string
@@ -3505,7 +3507,8 @@ function prepare_form_data_for_input($data, $type)
                 if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', trim((string)$data), $iso)) {
                     return sprintf('%04d-%02d-%02d', $iso[1], $iso[2], $iso[3]);
                 }
-                $date_parts = preg_split('/[-,\/]/', trim((string) $data));
+                // Split on every separator validate_date() takes.
+                $date_parts = preg_split('/[-,\/.]/', trim((string) $data));
 
                 // A value that is not in a date format does not split into three parts.
                 $date_parts = $date_parts + array('', '', '');
@@ -3544,7 +3547,7 @@ function prepare_form_data_for_input($data, $type)
                     $date_and_time_parts = explode(' ', $data, 2) + array('', '');
                     $date = $date_and_time_parts[0];
                     $time = $date_and_time_parts[1];
-                    $date_parts = preg_split('/[-,\/]/', $date) + array('', '', '');
+                    $date_parts = preg_split('/[-,\/.]/', $date) + array('', '', '');
                     $year = $date_parts[2];
                     if (DATE_FORMAT == 'month_day') {
                         $month = $date_parts[0];

@@ -662,15 +662,6 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = pg_fx_inject($content);
     }
 
-    // ── Date and time fields ────────────────────────────────────────────────────
-    // A field with a date hook (data-pg-date, data-pg-datetime, data-pg-time,
-    // data-pg-date-selects) carries no script; the page brings the calendar,
-    // its stylesheet and the field hooks (pg_site_datetime_inject()),
-    // checked once everything is drawn in. Not in an e-mail.
-    if (!$email && stripos($content, 'data-pg-') !== false && function_exists('pg_site_datetime_inject')) {
-        $content = pg_site_datetime_inject($content);
-    }
-
     // ── Tooltips and popovers ───────────────────────────────────────────────────
     // Bootstrap starts neither by itself: a visual editor page holding a
     // tooltip (the panel's Tooltip option) or a popover gets the small script
@@ -5591,6 +5582,20 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             
             $content = preg_replace('/<pregion><\/pregion>/i', pg_regex_replacement($pregion_content), $content, 1);
         }
+    }
+
+    // ── Date and time fields ────────────────────────────────────────────────────
+    // A field with a date hook (data-pg-date, data-pg-datetime, data-pg-time,
+    // data-pg-date-selects), a bind marker or a native date input carries no
+    // script; the page brings the calendar, its stylesheet and the field
+    // hooks (pg_site_datetime_inject()). Checked here, once the system
+    // regions, common regions and page regions of a classic layout are drawn
+    // in: a classic custom form, form view or checkout screen arrives with
+    // its <system> region, after the designer content and the widgets above.
+    // Before the software's own scripts, which are added below. Not in an
+    // e-mail.
+    if (!$email && function_exists('pg_site_datetime_inject')) {
+        $content = pg_site_datetime_inject($content);
     }
 
     $item = array();

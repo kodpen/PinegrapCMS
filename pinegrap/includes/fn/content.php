@@ -1491,6 +1491,9 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                 break;
             case 'radio button':
                 $output_options = '';
+                // A refused submission's message comes once, after the last
+                // option label, so no option is parted from its label.
+                $feedback_id = $html_option_id_prefix . 'field_' . $field['id'] . '_feedback';
                 foreach ($options as $option) {
                     // if this radio button should be selected by default, prepare to select by default
                     if ($option['value'] == $default_value) {
@@ -1505,9 +1508,11 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                         'value' => $option['value'],
                         'checked' => $checked,
                         'class' => 'software_input_radio',
-                        'required' => $required
+                        'required' => $required,
+                        'feedback_id' => $feedback_id
                     )) . '<label for="' . $html_option_id_prefix . $option['id'] . '"> ' . h($option['label']) . '</label><br />';
                 }
+                $output_options .= $liveform->field_feedback($html_field_name, $feedback_id);
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
                         <td style="vertical-align: top; ' . $output_label_column_width . '">' . h($field['label']) . '</td>
@@ -1518,6 +1523,10 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                 break;
             case 'check box':
                 $output_options = '';
+                // The message after the last option label, as for radio
+                // buttons; looked up by the name without the group's [].
+                $feedback_id = $html_option_id_prefix . 'field_' . $field['id'] . '_feedback';
+                $output_feedback = $liveform->field_feedback($html_field_name, $feedback_id);
                 // if there is more than one option for this check box group, then prepare check boxes to support multiple check boxes
                 if (count($options) > 1) {
                     $html_field_name .= '[]';
@@ -1536,9 +1545,11 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                         'value' => $option['value'],
                         'checked' => $checked,
                         'class' => 'software_input_checkbox',
-                        'required' => $required
+                        'required' => $required,
+                        'feedback_id' => $feedback_id
                     )) . '<label for="' . $html_option_id_prefix . $option['id'] . '"> ' . h($option['label']) . '</label><br />';
                 }
+                $output_options .= $output_feedback;
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
                         <td style="vertical-align: top; ' . $output_label_column_width . '">' . h($field['label']) . '</td>

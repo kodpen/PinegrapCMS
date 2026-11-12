@@ -69,6 +69,28 @@ function test_site_datetime_inject_on()
 	pg_assert_contains('pg_site_datetime_inject($content)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php'), 'the published page asks for it');
 }
 
+// A classic layout's system region (custom form, form views, checkout),
+// common regions and page regions are drawn in after the designer content
+// and the widgets; the page asks for the control once they are in, before
+// the software's own scripts. Asked before them, a classic custom form page
+// carried the hooks but no calendar.
+function test_site_datetime_inject_after_classic_regions()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
+	$at = function ($needle, $last = false) use ($source) {
+		$pos = $last ? strrpos($source, $needle) : strpos($source, $needle);
+		pg_assert_true($pos !== false, 'found: ' . $needle);
+		return (int) $pos;
+	};
+	$inject = $at('pg_site_datetime_inject($content)');
+
+	pg_assert_same(1, substr_count($source, 'pg_site_datetime_inject($content)'), 'asked once');
+	pg_assert_true($inject > $at("preg_replace('/<system>' . \$system_page_name . '<\\/system>/i', pg_regex_replacement(\$system_output)"), 'after the system regions are drawn in');
+	pg_assert_true($inject > $at("preg_match_all('/<cregion>.*?<\\/cregion>/i', \$content, \$regions);", true), 'after the common regions');
+	pg_assert_true($inject > $at("preg_replace('/<pregion><\\/pregion>/i', pg_regex_replacement(\$pregion_content)"), 'after the page regions');
+	pg_assert_true($inject < $at('// If this page is not being prepared for an email, then add JS to bottom of page.'), 'before the software\'s own scripts');
+}
+
 function test_site_datetime_settings()
 {
 	$settings = pg_site_datetime_settings();

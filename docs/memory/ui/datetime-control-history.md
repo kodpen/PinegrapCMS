@@ -18,6 +18,5 @@ description: The one date-and-time control across panel and sites (#2693): which
 ## Which risks stay open?
 - The library is in the panel twice (Bootstrap 6's months-only copy and ours): pin both versions and test them together on a Bootstrap update (`core/vanilla-calendar-library.md`).
 - The calendar's "today" is the browser's date; stores are the site wall clock (`panel-times-user-time-zone.md`).
-- `26.10.2026` typed with dots is refused by `validate_date()`, as before the control.
 
 Related: docs/memory/ui/pg-datepicker.md, docs/memory/ui/pg-date-stores.md, docs/memory/ui/site-datetime-loader.md, docs/memory/ui/site-native-date-inputs.md, docs/memory/workflow/decisions-made-panel.md
