@@ -24,7 +24,7 @@ description: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry an
 
 - PK6c (S) The e-mail campaign profile's Body Page (by view access) and the form page selects (`any form`, the product builder's custom form). Done in #8824 (`ui/picker-page-fields-screens.md`).
 
-- PK7 (M) The editor bridge. CKEditor's Link and Image dialogs open the picker (pages, files, short links, pictures; Unsplash kept as a source). The previous editor (TinyMCE 3) keeps its own lists (#8835); the two browser screens stay for the designer until PK8 (#8836).
+- PK7 (M) The editor bridge: CKEditor's Link and Image dialogs open the picker; TinyMCE 3 keeps its lists (#8835). Done in #8858 (`ui/picker-editor-bridge.md`).
 
 - PK8 (M) The designer bridge. `sdOpenFilePicker()` and `sdOpenImagePicker()` call `pgPicker` and the fake `CKEDITOR` goes; the widget page pickers (`_swPageOptions()`) get Browse; the page type pane's page selects become picker fields (`pg_page_form_type_fields()` with `true`); texts through `_sdT()`. Then `editor_select_image.php` and `editor_select_page_or_file.php` are deleted with what only they use, no redirect (#8836).
 
