@@ -12,7 +12,7 @@ description: Steps CV1-CV8 of plans/agent-canvas-design.md: an SVG taken apart, 
   - The answer and `GET messages/{id}/canvas` list each layer's id, kind, box and name. Topic `workspace/agent-canvas-layers.md`.
 - CV2 (M) Text and pictures as their own layers. Done in #8823.
   - In a split a `text` element becomes a text layer (words, size, weight, colour, alignment, the font when the catalogue has it; else it stays an svg layer). An `image` naming a file of the channel, or of Files the agent may read, becomes a picture layer; an outside address is refused as today.
-- CV3 (M) Layer writes. After CV1.
+- CV3 (M) Layer writes. Claimed.
   - `add` with `type` text, picture, shape (rectangle, ellipse, line; fill, stroke, corner radius) or icon (a Bootstrap Icon by name, `ui/image-editor-glyph.md`); `style`, `order` (front, back, above or below a layer), `name`, `lock`. A layer is named by id or by name.
   - A route lists the fonts an agent may name: the editor's catalogue (`ui/image-editor-fonts.md`).
 - CV4 (S) Sizes and scenes. After CV3.
