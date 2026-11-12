@@ -1,6 +1,6 @@
 ---
 name: designer-blocks-florist
-description: The Florist block family (florist- prefix): bouquet hero with the tucked gift card, card message band, subscription with week strips; the general locations-delivery block; tests
+description: The Florist block family (florist- prefix): bouquet hero with tucked gift card, card message band, subscription with week strips; general locations-zones block (delivery or service areas)
 ---
 
 ## Where does it live?
@@ -17,8 +17,8 @@ description: The Florist block family (florist- prefix): bouquet hero with the t
 - `bakery-hero` is an order tag and oven batches; no hero holds a written card, no block shows a message as the product. `pricing-tiers` gives one price per tier; the strip shows how often a plan comes. Another sector's subscription places `pricing-tiers`.
 
 ## Which general block was added?
-- `locations-delivery` (Locations: Delivery Zones, "Hours & Locations", [[designer-blocks-general]]): three zones as rings around a shop icon (`pg-delivery-map`, `aria-hidden`) beside the zone list: key (`pg-delivery-key`), `h3`, fee, places, Same day / Next day badge.
-- Under the list the delivery times (three `<time>` ranges) and the same-day cut-off; one entrance, the row rises on view. The outer zone is dashed through `--bs-border-style`, since `.border` is `!important`. For a florist, bakery, market, pharmacy or restaurant.
+- `locations-zones` (Locations: Zones, "Hours & Locations", [[designer-blocks-general]]): three zones as rings around a pin (`pg-zone-map`, `aria-hidden`) beside the zone list: key (`pg-zone-key`), `h3`, Fee, places, Same day / Next day badge; then three time slots (`<time>`) and the same-day cut-off.
+- The row rises on view; the dashed outer zone uses `--bs-border-style` (`.border` is `!important`). Its layers, sample words and classes name no trade (tested): florists place it as delivery zones, `homeservices-2` as service areas.
 
 ## Which general blocks does a florist site place instead?
 - Bouquet sizes: `pricing-tiers`. Occasions grid: `services-image-cards`. Seasons and care: `features-grid`. Weddings: `services-*`, gallery blocks. Shop: `locations-cards`, `hours-card`. Words: `testimonial-grid`. Products stay shop widgets.
@@ -29,6 +29,6 @@ description: The Florist block family (florist- prefix): bouquet hero with the t
 
 ## How is it tested?
 - `tests/designer_blocks_florist_test.php` (Node runner `tests/helpers/designer_family_run.php`): shared checks (headings, no fixed colour or template class, `{var}` filled, no year or month, interactions kept); one frame, arch, tuck and card; six occasions; four samples; 36 week squares matching the counts in words; price × count = total; rules with no colour, motion or child selector.
-- `tests/designer_blocks_general_test.php` covers `locations-delivery`: rings, keys, fees rising with distance, badges, times.
+- `tests/designer_blocks_general_test.php` covers `locations-zones`: rings, keys, fees rising outward, badges, times, no trade word.
 
 Related: docs/memory/designer/design-template-own-look.md, docs/memory/designer/designer-blocks-overview.md

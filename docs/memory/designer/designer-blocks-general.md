@@ -12,7 +12,7 @@ description: General sections the sector templates share: the existing block tha
 - Team grid: `team-grid`, `team-minimal`, `team-profiles`, `team-leadership`.
 - Logo wall: `logos-grid`, `logos-divider`, `logos-marquee-static`, `marquee-logos` (moving).
 - Timeline: `timeline-vertical`, `timeline-alternating`, `timeline-horizontal`.
-- Venue cards: `locations-cards` (branches: address, hours, phone), `hours-location`; spaces to hire: `locations-spaces` (added); a building's floors: `locations-floors` (added with `coworking-1`); delivery zones: `locations-delivery` (added with `florist-1`, `designer-blocks-florist.md`).
+- Venue cards: `locations-cards` (branches: address, hours, phone), `hours-location`; spaces to hire: `locations-spaces` (added); a building's floors: `locations-floors` (added with `coworking-1`); zones (delivery zones, service areas): `locations-zones` (added with `florist-1`, `designer-blocks-florist.md`).
 - Opening hours: `hours-card` (one week); by season: `hours-seasons` (added).
 - Booking call: `booking-cta`, `booking-split`, `cta-inline`, `cta-simple`.
 - Weekly class timetable: `booking-week` (added with `gym-1`).
