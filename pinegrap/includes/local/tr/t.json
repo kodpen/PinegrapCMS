@@ -7909,6 +7909,7 @@
     "These files can be securely stored and downloaded from any page.": "Bu dosyalar güvenli bir şekilde saklanabilir ve herhangi bir sayfadan indirilebilir.",
     "These files can only be downloaded by website users who have been granted view access to the parent folder, or who have purchased a product that grants private access to the parent folder.": "Bu dosyalar yalnızca üst klasöre görüntüleme erişimi verilmiş veya üst klasöre özel erişim sağlayan bir ürün satın almış web sitesi kullanıcıları tarafından indirilebilir.",
     "These files cannot be read by the web server, so they cannot be backed up: {var:1}": "Bu dosyaları web sunucusu okuyamıyor, bu yüzden yedeklenemiyor: {var:1}",
+    "These formulas now use its new name: {var:1}.": "Şu formüller artık yeni adını kullanıyor: {var:1}.",
     "These image files can be embedded into any page or viewed in a slideshow using a photo gallery page.": "Bu görüntü dosyaları herhangi bir sayfaya gömülebilir veya bir fotoğraf galerisi sayfası kullanılarak bir slayt gösterisinde görüntülenebilir.",
     "These items were not imported:": "Bu öğeler içe aktarılmadı:",
     "These labels are with more than one carrier or contract at Sendcloud: request a pickup for each carrier separately.": "Bu etiketler Sendcloud'da birden fazla kargo firmasına ya da sözleşmeye ait: her kargo firması için ayrı kurye çağrısı yapın.",
