@@ -62,7 +62,10 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
 {
     $help_url = pg_help_url(array('topic' => (string) $help_topic));
 
-    if (defined('DB_CONNECTED')) {
+    // Read once a request: a panel screen that built its header and then
+    // stopped with output_error() asks for the panel's frame a second time
+    // (pg_error_panel_screen()), and a second define() is a warning.
+    if (defined('DB_CONNECTED') && !defined('CUSTOM_CSS')) {
         $query = "SELECT custom_css FROM config";
         $result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
         $row = mysqli_fetch_assoc($result);
