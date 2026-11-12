@@ -2751,6 +2751,7 @@
     "Workspace tasks ({var:1})": "Çalışma Alanı görevleri ({var:1})",
     "Workspace: a channel can ask chosen people to approve something; the result is written into the channel as a locked decision.": "Çalışma Alanı: bir kanalda seçilen kişilerden onay istenebilir; sonuç kanala kilitli bir karar olarak yazılır.",
     "Workspace: a message can ask its readers to confirm they read it; the writer sees who has and who has not.": "Çalışma Alanı: bir mesaj için okundu onayı istenebilir; yazan kimin okuduğunu ve okumadığını görür.",
+    "Workspace: channel and lists": "Çalışma Alanı: kanal ve listeler",
     "World": "Dünya",
     "World affairs": "Dünya gündemi",
     "Would ban": "Banlanacaktı",

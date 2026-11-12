@@ -1141,6 +1141,12 @@ function pg_settings_tool_groups($user)
 
     $tools[] = array('label' => lang('Mail queue'), 'icon' => 'bi-envelope-arrow-up', 'url' => 'mail_queue.php');
 
+    // Every part of the panel's look, live: for the Designer role and above,
+    // as the screen's own door (design_examples.php).
+    if ($role <= 1) {
+        $tools[] = array('label' => lang('Design examples'), 'icon' => 'bi-palette', 'url' => 'design_examples.php');
+    }
+
     // Reinstall needs the installer to still be on disk; once it is deleted
     // (which the panel recommends) the link would 404.
     if (is_dir(PG_FUNCTIONS_DIR . '/install')) {
@@ -1195,6 +1201,7 @@ function pg_settings_tool_keys()
         'clean_up.php'              => array('temizle', 'temizlik', 'clean', 'clean up', 'eski dosya', 'tem'),
         'database_engine.php'       => array('veritabani', 'veritabanı', 'database', 'innodb', 'myisam', 'tablo onar', 'motor', 'vt'),
         'purge_cache.php'           => array('onbellek', 'önbellek', 'cache', 'purge', 'purge cache', 'temizle cache', 'onb'),
+        'design_examples.php'       => array('tasarim ornekleri', 'tasarım örnekleri', 'design examples', 'gorunum', 'görünüm', 'look', 'recipe', 'tas'),
         'mail_queue.php'            => array('posta kuyrugu', 'posta kuyruğu', 'mail kuyruk', 'mail queue', 'queue', 'giden posta', 'kuy'),
         'install'                   => array('yeniden kur', 'kurulum', 'reinstall', 'upgrade', 'install', 'kur'),
         'backups.php'               => array('yedek', 'yedekler', 'backup', 'backups', 'bak', 'yed'),
