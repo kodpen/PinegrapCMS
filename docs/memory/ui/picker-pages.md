@@ -14,7 +14,7 @@ module: picker
 - The `page` kind has `archived => true`: pages in archived folders are listed (`pg_picker_pages_where()` no longer drops them).
 
 ## Where does a binned page show?
-- In the folder it came from, under its own name: the first page of a list answer has `binned` (`pg_picker_binned_page_rows($user, $folder)`, rows from `recycle_bin` with `item_type = 'page'`, name unparked by `pg_recycle_parked_original()`), and search adds matches after the others.
+- In the folder it came from, under its own name: the first page of a list answer has `binned` (`pg_picker_binned_page_rows($user, $folder, '', $types)`, rows from `recycle_bin` with `item_type = 'page'`, name unparked by `pg_recycle_parked_original()`), and search adds matches after the others. A typed page kind gets only its page types there too (#8782).
 - Only pages binned by themselves have a record; a page inside a binned folder is not listed, and resolve tells it `binned` in the bin.
 - A role 3 user sees a binned page only when its origin folder is one of theirs (`pg_picker_folder_allowed()`).
 

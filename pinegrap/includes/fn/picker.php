@@ -722,14 +722,16 @@ function pg_picker_page_details($items, $paths = false)
 /**
  * The binned pages that came from the folders a user may use, as
  * pg_picker_binned_page_row() tells them: those from one folder, or those
- * whose name holds a typed text (at most pg_picker_scan_limit()).
+ * whose name holds a typed text (at most pg_picker_scan_limit()), of the
+ * page types a kind lists.
  *
  * @param array    $user   validate_user()
  * @param int|null $folder the folder they came from
  * @param string   $query  the typed text; '' for no name match
+ * @param string[] $types  pg_picker_kind_types(); empty for every type
  * @return array rows
  */
-function pg_picker_binned_page_rows($user, $folder = null, $query = '')
+function pg_picker_binned_page_rows($user, $folder = null, $query = '', $types = array())
 {
     $bin = pg_picker_ids(pg_recycle_bin_folder_ids());
 
@@ -745,6 +747,10 @@ function pg_picker_binned_page_rows($user, $folder = null, $query = '')
 
     if ($query !== '') {
         $where .= " AND (LOWER(page.page_name) LIKE '%" . e(pg_picker_like_term($query)) . "%')";
+    }
+
+    if ($types) {
+        $where .= " AND (page.page_type IN ('" . implode("', '", array_map('e', $types)) . "'))";
     }
 
     $rows = db_items(
@@ -1036,7 +1042,7 @@ function pg_picker_search_rows($kind_name, $query, $user)
 
     // Binned pages are found too, under their own names, after the others:
     // marked, so the person sees why the page they look for cannot be chosen.
-    return array_merge(pg_picker_matches(is_array($rows) ? $rows : array(), $query, 'page_name'), pg_picker_binned_page_rows($user, null, $query));
+    return array_merge(pg_picker_matches(is_array($rows) ? $rows : array(), $query, 'page_name'), pg_picker_binned_page_rows($user, null, $query, pg_picker_kind_types($kind)));
 }
 
 /**
@@ -1112,7 +1118,7 @@ function pg_picker_list_answer($request, $user)
     if (($kind['source'] === 'pages') && ($request['page'] === 1)) {
         $answer['binned'] = pg_picker_page_details(array_map(function ($row) use ($kind) {
             return pg_picker_item($kind, $row);
-        }, pg_picker_binned_page_rows($user, $request['folder'])));
+        }, pg_picker_binned_page_rows($user, $request['folder'], '', pg_picker_kind_types($kind))));
     }
 
     // Whether the dialog offers Upload in this folder, and if not, why.

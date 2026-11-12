@@ -56,6 +56,48 @@ function test_page_form_page_fields_kind_for_types()
 	}
 }
 
+function test_page_form_page_fields_binned_pages_of_the_kind_types()
+{
+	$source = page_form_page_fields_test_source('includes/fn/picker.php');
+
+	// A typed kind listed a binned page of any type in search and in its
+	// origin folder.
+	pg_assert_contains('function pg_picker_binned_page_rows($user, $folder = null, $query = \'\', $types = array())', $source);
+	pg_assert_contains("AND (page.page_type IN ('\" . implode(\"', '\", array_map('e', \$types)) . \"'))", $source);
+	pg_assert_contains('pg_picker_binned_page_rows($user, null, $query, pg_picker_kind_types($kind))', $source, 'search');
+	pg_assert_contains('pg_picker_binned_page_rows($user, $request[\'folder\'], \'\', pg_picker_kind_types($kind))', $source, 'a folder\'s first page');
+}
+
+function test_page_form_page_fields_width()
+{
+	$css = str_replace("\r\n", "\n", page_form_page_fields_test_source('assets/css/backend.src.css'));
+
+	pg_assert_contains("container-type: inline-size;\n  contain-intrinsic-inline-size: 20rem;", $css, 'a size container keeps a width inside a box sized to its content');
+	pg_assert_contains('@container (max-width: 18rem)', $css, 'a narrow field\'s match list grows');
+	pg_assert_contains('.pg-set-card .pg-f-md > .pg-pfield { max-width: 28rem; }', $css);
+	pg_assert_contains('.pg-set-card .pg-f-lg > .pg-pfield { max-width: 34rem; }', $css);
+	pg_assert_contains('flex-wrap: wrap;', substr($css, (int) strpos($css, '.pg-picker-name-line {'), 200), 'a mark goes under a long name');
+
+	// The column a page setting sits in: the last div opened before it.
+	$form = page_form_page_fields_test_source('includes/forms/page_form.php');
+	$offset = 0;
+	$seen = 0;
+
+	while (($at = strpos($form, "pg_page_form_page_field('", $offset)) !== false) {
+		$offset = $at + 1;
+
+		if (!preg_match_all('/<div class="([^"]*)"/', substr($form, max(0, $at - 600), min($at, 600)), $divs)) {
+			continue;
+		}
+
+		$seen++;
+		$column = end($divs[1]);
+		pg_assert_false((bool) preg_match('/\b(?:sm|md|lg|xl):col-4\b/', $column), substr($form, $at, 70) . ' is not in a third of a row: ' . $column);
+	}
+
+	pg_assert_same(35, $seen, 'every page setting checked');
+}
+
 function test_page_form_page_fields_every_setting_has_a_kind()
 {
 	$source = page_form_page_fields_test_source('includes/forms/page_form.php');

@@ -1060,7 +1060,7 @@ if (!$_POST) {
                                                             <div class="col-12 my-3 mt-7' . $comments_submitter_email_row_style . '" id="comments_submitter_email_row">
                                                                 <h5>' . lang('E-mail custom form submitter when a comment is published') . '</h5>
                                                                 <div class="row">
-                                                                    <div class="col-12 md:col-6 lg:col-4 my-3">
+                                                                    <div class="col-12 lg:col-6 my-3">
                                                                         <label for="comments_submitter_email_page_id" class="form-label">' . lang('Page') . '</label>
                                                                         ' . pg_picker_field('page', 'comments_submitter_email_page_id', $comments_submitter_email_page_id) . '
                                                                     </div>
@@ -1073,7 +1073,7 @@ if (!$_POST) {
                                                             <div class="col-12 my-3 mt-7' . $comments_watcher_email_row_style . '" id="comments_watcher_email_row">
                                                                 <h5>' . lang('E-mail watchers when a comment is published') . '</h5>
                                                                 <div class="row">
-                                                                    <div class="col-12 md:col-6 lg:col-4 my-3">
+                                                                    <div class="col-12 lg:col-6 my-3">
                                                                         <label for="comments_watcher_email_page_id" class="form-label">' . lang('Page') . '</label>
                                                                         ' . pg_picker_field('page', 'comments_watcher_email_page_id', $comments_watcher_email_page_id) . pg_picker_script() . '
                                                                     </div>

@@ -21,6 +21,10 @@ module: forms
 - Browse opens on its folder, or the folder it was binned from, where it is listed marked and cannot be chosen (`picker-pages.md`).
 - Before, a role 3 user's select dropped a stored page in a folder they cannot edit, and a plain Save wrote the empty option over it.
 
+## How wide is a page field?
+- The page settings sit in `col-12 lg:col-6` columns (a third left ~45px for the name at 1024px). `.pg-pfield` is a size container: below 22rem Browse shows only its icon, below 14rem the box drops its picture, below 18rem the match list grows leftwards to 18rem from the field's right edge.
+- A size container has no content width, so `contain-intrinsic-inline-size: 20rem` keeps a field in a box sized to its content (`.collapse.popover`, the receipt e-mail page) from shrinking to its buttons. In Settings `.pg-f-md` / `.pg-f-lg` cap it at 28rem / 34rem like a select.
+
 ## Which other screens use the page field?
 - Edit Page: the two comment e-mail pages. Settings: Commerce (reward program e-mail page, Reorder/Retrieve Order Next Page), Privacy (KVKK Notice Page), Security (membership expiration warning page). Add User, Edit User, Import Users: User Start Page.
 - A cleared start page posts `''`, written as `(int)` 0 by `user_write.php` and `import_users.php`, as the old "[None]" option was.
