@@ -114,6 +114,7 @@
 - decisions-made-workspace-19.md: Decisions list, workspace part 19 (2026-11-12): a discussion follows its root message's agent, a textless close reads "saw it", a fitting emoji, agents among a channel's members and last seen
 - decisions-made-workspace-2.md: Decisions list, workspace part 2 (2026-10-29 on): the channel menu holds only the channel's own items; creates in a chat go through /oluştur (/create): its rights and kinds; the sales quote stays
 - decisions-made-workspace-20.md: Decisions list, workspace part 20 (2026-11-12 on): canvas-one drawings (#8929); Flows quick setup and the flow window (#8950); flows in the main menu, on without the Workspace (#8961)
+- decisions-made-workspace-21.md: Decisions list, workspace part 21 (2026-11-12 on): the incoming e-mail sits in the messages area, its boxes' settings in the settings, a mail still drops as a card into its channel (#8961)
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page

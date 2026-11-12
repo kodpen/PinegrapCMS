@@ -15,8 +15,8 @@ description: Plan (owner 2026-11-12, #8961): one messages area in place of My Ca
 - Automatic sends are flows (`automation-flows-menu.md`), with ready recipes and the quick setup (`flows-quick-setup.md`).
 - M2b: at the update every e-mail campaign profile is turned into a flow by itself and the profile screens go.
 
-## What waits for the owner?
-- The incoming e-mail moves out of the channels into this area, its boxes' settings into the settings (owner, #8961: "eposta iletişim altında da mantıklı aslında"). What happens to the e-mail cards in channels is asked; the step and the record in the decisions list follow the answer.
+## What else is decided, and what waits?
+- The incoming e-mail moves out of the channels into this area, its boxes' settings into the settings (owner, #8961: "eposta iletişim altında da mantıklı aslında"). A mail still drops as a card into the channel its box is set to, and a click on the card opens the e-mail in this area. Record: `workflow/decisions-made-workspace-21.md`; step MA10.
 - A WhatsApp campaign to many stays for later (`whatsapp-channel.md`); the Campaigns tab shows its place only.
 
 ## What does every step keep?

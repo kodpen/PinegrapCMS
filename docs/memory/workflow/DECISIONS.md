@@ -393,6 +393,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-20.md: Do Flows get a quick setup? (owner, 2026-11-12, #8950)
 - decisions-made-workspace-20.md: Is the flow window rearranged? (owner, 2026-11-12, #8950)
 - decisions-made-workspace-20.md: Do flows leave the Workspace's menu and switch? (owner, 2026-11-12, #8961)
+- decisions-made-workspace-21.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-21.md: Where does the incoming e-mail sit? (owner, 2026-11-12, #8961)
 - decisions-made-workspace-3.md: Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - decisions-made-workspace-3.md: How does a "For each" box loop over a list? (#3312)
 - decisions-made-workspace-3.md: What may a role-3 member's personal flow hold? (#3345)
