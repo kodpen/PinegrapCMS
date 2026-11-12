@@ -163,9 +163,8 @@ function test_panel_text_size_calendar_card_bell_and_sales_map_in_rem()
 		pg_assert_same(0, preg_match('/font-size:\s*[0-9.]+px/', $rule), 'no px font-size in ' . trim(strtok($rule, '{')));
 	}
 
-	// A bell row's title and its second line (pg_bell_row()).
-	pg_assert_contains('font-size: 0.8125rem;', panel_text_size_test_rule($css, '#notifications .pg-bell-title'));
-	pg_assert_contains('font-size: 0.75rem;', panel_text_size_test_rule($css, '#notifications .pg-bell-sub'));
+	// A bell row's title keeps the recipe's type (pg_bell_row(), look A).
+	pg_assert_contains('font-size: inherit;', panel_text_size_test_rule($css, '#notifications .pg-bell-title'));
 	// The bell's drawer: 30rem, the whole width on a phone.
 	pg_assert_contains('--pg-drawer-width: min(30rem, 100vw);', panel_text_size_test_rule($css, '#notifications.pg-bell-drawer'));
 }

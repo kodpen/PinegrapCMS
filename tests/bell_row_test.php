@@ -2,10 +2,10 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * A bell row drawn as the dashboard's Next up row: its module (from the
- * action), its day heading (today, yesterday, earlier in the site's time
- * zone) and its one button (from the action and the Workspace kind), the tag
- * hues equal to the dashboard's, and the script that draws the row. The pure
+ * A bell row in look A: its module (from the action), its day heading
+ * (today, yesterday, earlier in the site's time zone), its one button (from
+ * the action and the Workspace kind), its short title, the tile's tone, and
+ * the script that draws the row on the recipes. The pure
  * parts are run; the script and the stylesheets are pinned by source.
  *
  * @author      Erdal Güral (Kodpen)
@@ -156,70 +156,105 @@ function test_bell_row_endpoint_gives_module_day_and_button()
 	pg_assert_contains("'button' => pg_notification_button(\$display['action'], \$display['kind'], \$display['join'])", $list, 'button');
 }
 
-// The bell's tag hues are the dashboard's Next up tags, light and dark.
-function test_bell_row_tag_hues_equal_the_dashboard()
+// A site row's short title says what happened and with what; the device
+// banner keeps the sentence, and the bell's text does not repeat the title.
+function test_bell_row_short_titles_say_what_happened()
 {
-	$dash = bell_row_source('assets/css/pg_dash.src.css');
-	$bell = bell_row_source('assets/css/backend.src.css');
-	$light = substr($bell, strpos($bell, '--pg-bell-tag-shop-bg'));
-	$dark_at = strpos($bell, '/* The bell\'s module tags: the dashboard\'s dark ink');
-	$dark = ($dark_at === false) ? '' : substr($bell, $dark_at, 400);
-	$norm = function ($value) {
-		return strtolower(str_replace(array(' ', '0.'), array('', '.'), trim($value)));
-	};
+	$order = pg_notification_display(array('action' => 'new_order', 'title' => 'SP-1044', 'order_total' => '2.015,50 ₺', 'order_id' => '9'));
+	pg_assert_same('New order #SP-1044', $order['short']);
+	pg_assert_same('<b>2.015,50 ₺</b>', $order['brief'], 'the total is the text');
+	pg_assert_contains('Congratulations', $order['title'], 'the banner keeps its sentence');
 
-	pg_assert_true($dark !== '', 'the dark block names the bell tags');
+	$escaped = pg_notification_display(array('action' => 'new_order', 'title' => '<i>x</i>', 'order_total' => '<b>1</b>', 'order_id' => '9'));
+	pg_assert_contains('&lt;i&gt;x&lt;/i&gt;', $escaped['short'], 'the number is escaped');
+	pg_assert_same('<b>&lt;b&gt;1&lt;/b&gt;</b>', $escaped['brief'], 'and the total');
 
-	foreach (array('shop', 'erp', 'content', 'team') as $module) {
-		pg_assert_true(preg_match('/\.pg-dash-queue-tag\[data-module="' . $module . '"\]\s*\{\s*--pg-dash-tag-bg:\s*([^;]+);\s*--pg-dash-tag-fg:\s*([^;]+);/', $dash, $want) === 1, 'the dashboard has ' . $module);
-		pg_assert_true(preg_match('/html\[data-bs-theme="dark"\] \.pg-dash-queue-tag\[data-module="' . $module . '"\]\s*\{\s*--pg-dash-tag-fg:\s*([^;]+);/', $dash, $want_dark) === 1, 'and its dark ink');
-		pg_assert_true(preg_match('/--pg-bell-tag-' . $module . '-bg:\s*([^;]+);/', $light, $bg) === 1, 'the bell has ' . $module);
-		pg_assert_true(preg_match('/--pg-bell-tag-' . $module . '-fg:\s*([^;]+);/', $light, $fg) === 1, 'and its ink');
-		pg_assert_true(preg_match('/--pg-bell-tag-' . $module . '-fg:\s*([^;]+);/', $dark, $fg_dark) === 1, 'and its dark ink');
+	$return = pg_notification_display(array('action' => 'order_return', 'title' => '1044', 'order_total' => 'refund_overdue', 'order_id' => '9'));
+	pg_assert_same('Refund overdue #1044', $return['short']);
+	pg_assert_same($return['title'], $return['brief'], 'the sentence is the text');
 
-		pg_assert_same($norm($want[1]), $norm($bg[1]), $module . ' fill');
-		pg_assert_same($norm($want[2]), $norm($fg[1]), $module . ' ink');
-		pg_assert_same($norm($want_dark[1]), $norm($fg_dark[1]), $module . ' dark ink');
-		pg_assert_contains('#notifications .pg-bell-tag[data-module="' . $module . '"]', $bell, 'the tag reads the ' . $module . ' tokens');
+	pg_assert_same('Out of stock', pg_notification_display(array('action' => 'out_stock', 'title' => 'Mug', 'product_id' => '3'))['short']);
+
+	$form = pg_notification_display(array('action' => 'form_submited', 'title' => 'AB12', 'form_id' => '4'));
+	pg_assert_same('Form submitted', $form['short']);
+	pg_assert_same('Reference Code <b>AB12</b>', $form['brief']);
+
+	pg_assert_same('Order #1172 not invoiced', pg_notification_display(array('action' => 'erp_auto_invoice', 'title' => 'x', 'order_id' => '17', 'order_total' => '1172'))['short']);
+
+	// No short title is a label with a colon or a greeting.
+	foreach (array('new_order', 'order_return', 'out_stock', 'form_submited', 'erp_auto_invoice') as $action) {
+		$display = pg_notification_display(array('action' => $action, 'title' => '1', 'order_total' => '1', 'order_id' => '1', 'form_id' => '1', 'product_id' => '1'));
+		pg_assert_false(strpos($display['short'], ':') !== false, $action . ' has no colon');
 	}
 
-	pg_assert_true(preg_match('/\.pg-dash-queue-tag\s*\{\s*--pg-dash-tag-bg:\s*([^;]+);/', $dash, $neutral) === 1, 'the dashboard\'s neutral tag');
-	pg_assert_true(preg_match('/--pg-bell-tag-system-bg:\s*([^;]+);/', $light, $system) === 1, 'the bell\'s System tag');
-	pg_assert_same($norm($neutral[1]), $norm($system[1]), 'System takes the neutral fill');
+	$list = bell_row_function('includes/panel/notifications.php', 'pg_panel_get_notifications');
+	pg_assert_contains("'details' => ((\$display['brief'] !== '') ? \$display['brief'] : \$display['details'])", $list, 'the bell takes the brief text');
+}
+
+// The tile names the module by its tone, as the look's list does; the old
+// tag and its tokens are gone.
+function test_bell_row_tile_tone_names_the_module()
+{
+	$tile = bell_row_function('assets/js/backend.src.js', 'pg_bell_tile');
+	$css = bell_row_source('assets/css/backend.src.css');
+
+	pg_assert_contains("{ shop: 'teal', erp: 'amber', content: 'rose', team: 'blue', system: 'gray' }", $tile, 'the look\'s module tones');
+	pg_assert_contains('class="pg-icon-tile pg-tone-', $tile, 'the recipe\'s tile');
+	pg_assert_contains("tone = 'amber';", $tile, 'a warning is amber');
+	pg_assert_contains("tone = 'rose';", $tile, 'an error rose');
+	pg_assert_false(strpos($css, '--pg-bell-tag-') !== false, 'the tag tokens are gone');
+	pg_assert_false(strpos($css, '.pg-bell-tag') !== false, 'and the tag');
 }
 
 function test_bell_row_script_draws_the_row()
 {
 	$row = bell_row_function('assets/js/backend.src.js', 'pg_bell_row');
+	$quick = bell_row_function('assets/js/backend.src.js', 'pg_bell_quick');
+	$run = bell_row_function('assets/js/backend.src.js', 'pg_bell_run');
 	$get = bell_row_function('assets/js/backend.src.js', 'get_notifications');
 	$words = bell_row_function('assets/js/backend.src.js', 'pg_bell_words');
 	$dot = bell_row_function('assets/js/backend.src.js', 'pg_bell_read_button');
+	$fold = bell_row_function('assets/js/backend.src.js', 'pg_bell_fold_button');
 
-	pg_assert_contains('class="pg-bell-tag" data-module="', $row, 'the tag');
-	pg_assert_contains('pg-bell-title', $row, 'the title');
-	pg_assert_contains('pg-bell-sub', $row, 'one second line');
-	pg_assert_contains("((excerpt !== '') ? '<p class=\"pg-bell-excerpt\">'", $row, 'an empty excerpt leaves no gap under the row');
+	// The recipes' row draws it.
+	pg_assert_contains('pg-list-row', $row, 'the recipe row');
+	pg_assert_contains('pg_bell_tile(row, module)', $row, 'the tile');
+	pg_assert_contains('pg-list-row-title pg-bell-title', $row, 'the title');
+	pg_assert_contains('pg-list-row-time pg-bell-time', $row, 'the time at its right');
+	pg_assert_contains("((text !== '') ? '<p class=\"pg-list-row-text pg-bell-excerpt\">'", $row, 'an empty text leaves no gap under the row');
+	pg_assert_contains('pg-unread-dot pg-bell-dot', $row, 'the unread dot at the right');
+	pg_assert_contains('pg_bell_quick(id, unread, title_id)', $row, 'the quick actions');
 
-	// The details (an order's number and total) wrap in the narrow bell
-	// instead of ending in an ellipsis, as the title does.
+	// A button only when the row asks; one filled button in the view.
+	pg_assert_contains("(job === 'reply') || (job === 'approve') || (job === 'join')", $row, 'an answer, an approval, a call');
+	pg_assert_contains("((job === 'show') && unread && ((row.type === 'warning') || (row.type === 'error')))", $row, 'Show only for an unread warning');
+	pg_assert_contains('draw.fill = false;', $row, 'one filled button');
+	pg_assert_contains('pg-button pg-button-sm pg-button-quiet', $row, 'the others quiet');
+	pg_assert_contains("var draw = { fill: true };", $get, 'one per drawing');
+
+	// A fold: the count beside the title, the runs as gathered lines.
+	pg_assert_contains('<span class="pg-count">\' + fold_count', $row, 'the count beside the title');
+	pg_assert_contains('return pg_bell_run(', $row, 'a run is drawn as a line');
+	pg_assert_contains('pg-gather-line', $run, 'the recipe\'s gathered line');
+	pg_assert_contains("pg-bell-shut", $run, 'shut while its head is closed');
+	pg_assert_contains("lang('Hide')", $fold, 'Hide');
+	pg_assert_contains("lang('Show {var:1} more')", $fold, 'Show N more');
+	pg_assert_contains('pg-gather-toggle', $fold, 'the recipe\'s toggle');
+
 	$css = bell_row_source('assets/css/backend.src.css');
-	$at = strpos($css, "\n#notifications .pg-bell-sub {");
-	$sub = ($at === false) ? '' : substr($css, $at, strpos($css, '}', $at) - $at);
-	pg_assert_contains('overflow-wrap: anywhere;', $sub, 'the second line wraps');
-	pg_assert_same(false, strpos($sub, 'ellipsis'), 'and never ends in an ellipsis');
 	$at = strpos($css, "\n#notifications .pg-bell-excerpt {");
 	$excerpt = ($at === false) ? '' : substr($css, $at, strpos($css, '}', $at) - $at);
-	pg_assert_contains('-webkit-line-clamp: 2;', $excerpt, 'the excerpt shows two lines at most');
-	pg_assert_contains('overflow-wrap: anywhere;', $excerpt, 'and wraps a long word');
-	pg_assert_contains('pg-bell-act', $row, 'the one button');
-	pg_assert_contains('pg_bell_read_button(id, unread)', $row, 'the dot');
-	pg_assert_contains("lang('Mark as read')", $dot, 'the dot is named');
-	pg_assert_contains('<button type="button" class="pg-bell-dot', $dot, 'and is a button');
-	pg_assert_contains("aria-label=\"' + h(lang('More actions'))", $row, 'the menu button is named');
-	pg_assert_contains("lang('Mark as unread')", $row, 'the menu: Mark as unread');
-	pg_assert_contains("lang('Delete')", $row, 'the menu: Delete');
+	pg_assert_contains('overflow-wrap: anywhere;', $excerpt, 'the text wraps a long word');
+	pg_assert_contains('@media (hover: none)', $css, 'a phone keeps the quick actions in sight');
+
+	pg_assert_contains("lang('Mark as read')", $dot, 'Mark as read is named');
+	pg_assert_contains('<button type="button" class="pg-icon-button pg-icon-button-sm pg-bell-read', $dot, 'and is a button');
+	pg_assert_contains("aria-label=\"' + h(lang('More actions'))", $quick, 'the menu button is named');
+	pg_assert_contains("lang('Mark as unread')", $quick, 'the menu: Mark as unread');
+	pg_assert_contains("pg-bell-read-item", $quick, 'the menu: Mark as read, for a phone without hover');
+	pg_assert_contains("edit_notification(parseInt(\$(this).attr('data-pg-bell-read-item'), 10) || 0, 'mark_read')", bell_row_source('assets/js/backend.src.js'), 'which reads the row');
+	pg_assert_contains("lang('Delete')", $quick, 'the menu: Delete');
 	pg_assert_false(strpos($row, 'Go to the relevant page') !== false, 'the full-width link line is gone');
-	pg_assert_false(strpos($row, 'menu-item') !== false && strpos($row, 'pg-bell-menu-item') === false, 'no full-width menu items');
 
 	foreach (array('Shop', 'Accounting', 'Content', 'Team', 'System', 'Reply', 'Show', 'Join', 'Approve', 'Today', 'Yesterday', 'Earlier') as $word) {
 		pg_assert_contains("lang('" . $word . "')", $words, $word);
@@ -227,7 +262,7 @@ function test_bell_row_script_draws_the_row()
 
 	pg_assert_contains('class="pg-bell-day"', $get, 'day headings');
 	pg_assert_contains('fold_head', $get, 'a fold\'s runs open no heading of their own');
-	pg_assert_contains('pg_bell_row(response.data[i])', $get, 'each row');
+	pg_assert_contains('pg_bell_row(response.data[i], draw)', $get, 'each row');
 }
 
 function test_bell_row_menu_keeps_its_keys()
@@ -252,7 +287,7 @@ function test_bell_row_words_reach_the_script()
 {
 	$output = bell_row_source('includes/fn/output.php');
 
-	foreach (array('Shop', 'Accounting', 'Content', 'Team', 'System', 'Reply', 'Show', 'Join', 'Approve', 'Today', 'Yesterday', 'Earlier', 'Delete', 'More actions', 'Mark as read', 'Mark as unread') as $word) {
+	foreach (array('Shop', 'Accounting', 'Content', 'Team', 'System', 'Reply', 'Show', 'Join', 'Approve', 'Today', 'Yesterday', 'Earlier', 'Delete', 'More actions', 'Mark as read', 'Mark as unread', 'Show {var:1} more', 'Hide') as $word) {
 		pg_assert_contains("'" . $word . "' => lang('" . $word . "')", $output, $word . ' is in the run-time dictionary');
 	}
 }

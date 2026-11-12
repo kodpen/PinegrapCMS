@@ -164,12 +164,13 @@ function pg_panel_get_notifications($request, $action)
         $item = array(
             'id' => $notification['id'],
             'type' => $notification['type'],
-            // A Workspace row says who did what; its channel is the place
-            // on the row's second line (ws_bell_title()).
+            // The short title says what happened and with what ("New order
+            // #1044", "Ada asked you"); a Workspace row's channel is its
+            // place (ws_bell_title()). The device banner keeps the sentence.
             'title' => (($display['short'] !== '') ? $display['short'] : $display['title']),
             'place' => $display['place'],
             'description' => $display['description'],
-            'details' => $display['details'],
+            'details' => (($display['brief'] !== '') ? $display['brief'] : $display['details']),
             'user' => $notification['user'],
             'readed' => (pg_notification_is_read($notification, $user['id']) ? 1 : 0),
             'url' => $display['url'],

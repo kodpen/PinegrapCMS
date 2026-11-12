@@ -1,6 +1,6 @@
 ---
 name: bell-read-rule
-description: When a bell row is read: not on opening the bell; its button, title or Mark as read dot reads it, a fold head its runs; Mark all as read reads only rows the caller sees
+description: When a bell row is read: not on opening the bell; its button, title or Mark as read reads it, a fold head its runs; Mark all as read reads only rows the caller sees
 ---
 
 ## When is a bell row read?
@@ -22,7 +22,7 @@ description: When a bell row is read: not on opening the bell; its button, title
 - `get_notifications(keep_place)` (`backend.src.js`): no `read_mark`; the badge is left as it is.
 - Each list request is numbered (`pgBellLoad`) and only the latest answer is drawn: the bell's click and its shown event both ask on one opening, and the list (with the buttons above it) was drawn twice (#8682).
 - Above the list: "Mark all as read" (`.pg-bell-mark-all`, hidden while nothing is unread) beside "Delete All Notifications" (shown under All only, more than one row). Mark all turns the rows' classes in place, no redraw.
-- An unread row, custom ones too, has the dot `pg_bell_read_button()`, a button named "Mark as read"; a read row offers "Mark as unread" in its menu. `pg_bell_row_state()` turns the row's `new`/`viewed` classes, the dot and that menu item (`bell-row.md`).
+- An unread row, custom ones too, has `pg_bell_read_button()` in its quick actions, a check button named "Mark as read" (the dot at the right only shows the state since #8897); a read row offers "Mark as unread" in its menu. `pg_bell_row_state()` turns the row's `new`/`viewed` and `is-read` classes, that button and that menu item (`bell-row.md`).
 - The row's title, its one button and "Join" go through `pg_bell_open_row()`: an unread row sends `mark_read` and the page opens when the answer comes, success or not (`complete`); Join opens its tab at once (a popup must follow the click).
 - A refused read puts the row back and shows the bell's toast (`ui/bell-refusals.md`); after every answer `check_unread_notifications('editcallback_check')` sets the badge.
 

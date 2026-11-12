@@ -359,13 +359,18 @@ function pg_notification_display($notification, $reader_role = null)
 		// The bell's short title and the channel under it (ws_bell_title());
 		// the push banner keeps the whole sentence in title.
 		'short'       => '',
-		'place'       => ''
+		'place'       => '',
+		// The bell's text under a short title when the details would only
+		// repeat it ("Order Number: #1044" under "New order #1044").
+		'brief'       => ''
 	);
 
 	if ($action == 'new_order') {
 
 		$display['title']   = lang('Congratulations! There is a new successful order.');
 		$display['details'] = lang('Order Number') . ': #' . h($notification['title']) . '<br/>' . lang('Total') . ':' . h($notification['order_total']);
+		$display['short']   = lang(array('string' => 'New order #{var:1}', 'vars' => array(h($notification['title']))));
+		$display['brief']   = '<b>' . h($notification['order_total']) . '</b>';
 		$display['url']     = 'view_order.php?id=' . (int) $notification['order_id'];
 		$display['icon']     = 'assets/images/notification-order.png';
 		$display['badge']    = 'assets/images/notification-order-badge.png';
@@ -377,20 +382,26 @@ function pg_notification_display($notification, $reader_role = null)
 		// shipped when the customer sent the goods back; refund_due and
 		// refund_overdue from the daily reminder) and form_id the return
 		// (pg_return_notify_staff()), whose screen the line opens.
+		$number = h($notification['title']);
 		switch ((string) ($notification['order_total'] ?? '')) {
 			case 'shipped':
 				$display['title'] = lang('A customer sent back the goods of a return.');
+				$display['short'] = lang(array('string' => 'Return sent back #{var:1}', 'vars' => array($number)));
 				break;
 			case 'refund_due':
 				$display['title'] = lang(array('string' => 'The refund of a return is due within {var:1} days.', 'vars' => array(defined('PG_RETURN_REMIND_DAYS') ? PG_RETURN_REMIND_DAYS : 3)));
+				$display['short'] = lang(array('string' => 'Refund due #{var:1}', 'vars' => array($number)));
 				break;
 			case 'refund_overdue':
 				$display['title'] = lang('The refund of a return is overdue.');
+				$display['short'] = lang(array('string' => 'Refund overdue #{var:1}', 'vars' => array($number)));
 				break;
 			default:
 				$display['title'] = lang('A customer asked to return goods.');
+				$display['short'] = lang(array('string' => 'Return asked for #{var:1}', 'vars' => array($number)));
 		}
-		$display['details'] = lang('Order Number') . ': #' . h($notification['title']);
+		$display['details'] = lang('Order Number') . ': #' . $number;
+		$display['brief']   = $display['title'];
 		$display['url']     = ((int) ($notification['form_id'] ?? 0) > 0)
 			? 'view_return.php?id=' . (int) $notification['form_id']
 			: 'view_order.php?id=' . (int) $notification['order_id'];
@@ -402,6 +413,7 @@ function pg_notification_display($notification, $reader_role = null)
 
 		$display['title']   = lang('A product out of stock by purchased.');
 		$display['details'] = h($notification['title']);
+		$display['short']   = lang('Out of stock');
 		$display['url']     = 'edit_product.php?id=' . (int) $notification['product_id'];
 		$display['icon']     = 'assets/images/notification-order.png';
 		$display['badge']    = 'assets/images/notification-order-badge.png';
@@ -411,6 +423,8 @@ function pg_notification_display($notification, $reader_role = null)
 
 		$display['title']   = lang('A custom form was submitted.');
 		$display['details'] = lang('Reference Code') . ':' . h($notification['title']);
+		$display['short']   = lang('Form submitted');
+		$display['brief']   = lang('Reference Code') . ' <b>' . h($notification['title']) . '</b>';
 		$display['url']     = 'edit_submitted_form.php?id=' . (int) $notification['form_id'];
 		$display['icon']     = 'assets/images/notification-form.png';
 		$display['badge']    = 'assets/images/notification-form-badge.png';
@@ -442,8 +456,11 @@ function pg_notification_display($notification, $reader_role = null)
 
 		// A question about a product (includes/fn/product_questions.php)
 		// waits for staff to answer it on the comment's screen.
+		$display['short'] = lang('New comment');
+
 		if ($comment && ($comment['kind'] === 'question')) {
 			$display['title'] = lang('A product question is waiting for an answer.');
+			$display['short'] = lang('New product question');
 		}
 
 		$display['description'] = h($comments_label) . ': ' . h($notification['title']);
@@ -578,6 +595,7 @@ function pg_notification_display($notification, $reader_role = null)
 		// order_total its number (includes/erp/alerts.php). The link opens
 		// the order's documents card, where the invoice is issued by hand.
 		$display['title']       = lang('An order was not invoiced automatically');
+		$display['short']       = lang(array('string' => 'Order #{var:1} not invoiced', 'vars' => array(h($notification['order_total'] ?? ''))));
 		$display['description'] = lang(array('string' => 'Order #{var:1}: {var:2}', 'vars' => array(h($notification['order_total'] ?? ''), h($notification['title'] ?? ''))));
 		$display['url']         = 'view_order.php?id=' . (int) ($notification['order_id'] ?? 0) . '#erp_order_documents';
 		$display['icon']        = 'assets/images/notification-order.png';
