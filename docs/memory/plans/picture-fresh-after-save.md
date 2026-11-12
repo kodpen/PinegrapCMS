@@ -9,11 +9,11 @@ description: Plan (owner 2026-11-12, #8882): a picture saved again from the Desi
 - Not known yet: which cache answered the old bytes (the panel's service worker, an edge cache before the site, the answer's own `max-age`: `platform/image-same-address.md`), and whether the canvas wrote over the same file (`ui/image-editor-versions.md`).
 
 ## Which steps are there?
-- PF1 (S) Find it and fix the face. `free`.
+- PF1 (S) Find it and fix the face. `done` (#8917): the canvas replace writes over the same file; the old bytes came from the browser's and the edge's one-week copy; faces carry `?v=<filemtime>` (`platform/picture-change-stamp.md`).
   - Repeat it on dev first: a GIF as the profile picture, saved again from the canvas; say on #8882 which cache answers the old bytes and whether the save replaced the file. If the canvas wrote a new file beside the old one, stop and report there: then the save's target is the fault.
   - The address a face is printed with carries the file's change stamp (`?v=<change time>`): `ws_avatar_url()` and each place the panel prints a contact's picture by its bare address. A test for the pure part.
   - Memory: a topic in `platform/` for the rule ("a panel picture drawn by a file's bare address carries its change stamp").
-- PF2 (S) A save drops the site's own copies. After PF1, only if PF1 found a cache the site itself keeps (the service worker's): a save over a file (the canvas, File Manager's replace, rotate, optimize) drops that address from it. Skipped with a line on #8882 when PF1 shows the stamp is enough.
+- PF2 (S) `skipped` (#8917: the site keeps no copy; the stamp is enough). A save drops the site's own copies. After PF1, only if PF1 found a cache the site itself keeps (the service worker's): a save over a file (the canvas, File Manager's replace, rotate, optimize) drops that address from it. Skipped with a line on #8882 when PF1 shows the stamp is enough.
 
 ## Who holds it?
 - A coordinator's worker; claim as `[plan:picture-fresh-after-save] PF1 — the face's address carries the change stamp`. Close-out: the rule to `platform/`, this file deleted.
