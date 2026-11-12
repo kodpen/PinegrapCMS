@@ -65338,11 +65338,12 @@ const StyleDesigner = (function () {
     // `from` is the start of a scroll-linked effect, its range per effect
     // (pg_fx_scroll_from()): a scale or an opacity in percent, a distance
     // in px. `count` holds the duration and delay of a count, its only
-    // fields (pg_fx_count_numbers()). A chapter keeps its duration alone.
+    // fields (pg_fx_count_numbers()). A chapter keeps its duration alone;
+    // autoplay and scene have no field.
     function _sdFxSpec() {
         return {
             effects: ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
-                'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay', 'chapter'],
+                'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay', 'chapter', 'scene'],
             triggers: ['view', 'load', 'hover', 'click'],
             easings: ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'],
             numbers: {
@@ -65366,7 +65367,7 @@ const StyleDesigner = (function () {
             return Math.max(r[0], Math.min(r[1], v));
         };
         var out = { effect: effect };
-        if (effect === 'autoplay') return out;
+        if (effect === 'autoplay' || effect === 'scene') return out;
         if (effect === 'sticky') { out.offset = num('offset'); return out; }
         if (effect === 'parallax') { out.speed = num('speed'); return out; }
         if (spec.from[effect]) { out.from = num('from'); return out; }

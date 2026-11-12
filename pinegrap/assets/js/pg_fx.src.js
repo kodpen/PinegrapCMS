@@ -40,6 +40,15 @@
  *     takes the page at its end. Under reduced motion the colours change
  *     at once; without the script, and on the editor's canvas, the page
  *     keeps its own colours.
+ *   • scene: a section with two or more layers (elements under it marked
+ *     data-pg-scene-layer). The script writes the number of layers as
+ *     --pg-scene-steps on the section, then, each frame, the step its scroll
+ *     has reached as data-pg-scene-step, and marks that step's layer with
+ *     data-pg-scene-on. The block's CSS (pg-scene) makes the section that
+ *     many windows tall only while data-pg-scene-step is there, pins its
+ *     stage and shows the marked layer alone. Without the script, under
+ *     reduced motion and on the editor's canvas the layers stand one under
+ *     the other.
  *
  * CSS transitions only. Under prefers-reduced-motion nothing moves (sticky
  * still sticks, a scroll effect shows its own state, a number does not
@@ -76,7 +85,7 @@
 
     // The same names, ranges and defaults as pg_fx_normalize().
     var EFFECTS  = ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
-        'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay', 'chapter'];
+        'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay', 'chapter', 'scene'];
     var TRIGGERS = ['view', 'load', 'hover', 'click'];
     var EASINGS  = ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'];
     var NUMBERS  = {
@@ -102,6 +111,7 @@
         if (effect === 'sticky') { o.offset = num('offset'); return o; }
         if (effect === 'parallax') { o.speed = num('speed'); return o; }
         if (FROM[effect]) { o.from = num('from', FROM[effect]); o.scroll = true; return o; }
+        if (effect === 'scene') { o.scene = true; return o; }
         if (effect === 'chapter') { o.chapter = true; o.duration = num('duration'); return o; }
         if (effect === 'count') {
             o.count = true;
@@ -270,10 +280,21 @@
         return { background: clear ? '' : background, color: color && color !== pageColor ? color : '' };
     }
 
+    // The step (1 to n) a scene with n layers has reached: the scroll
+    // through it, from its top at the window's top to its bottom at the
+    // window's bottom, cut into n equal parts. A box no taller than the
+    // window has only its first step.
+    function sceneStep(top, height, view, n) {
+        var run = height - view;
+        if (n < 2 || run <= 0) return 1;
+        var p = Math.max(0, Math.min(1, -top / run));
+        return Math.min(n, Math.floor(p * n) + 1);
+    }
+
     window.pgFx = {
         read: read, shift: shift, transition: transition, parallax: parallax,
         progress: progress, scrollState: scrollState, number: number, countText: countText,
-        chapterAt: chapterAt, chapterColours: chapterColours
+        chapterAt: chapterAt, chapterColours: chapterColours, sceneStep: sceneStep
     };
 
     if (typeof document === 'undefined') {
@@ -439,6 +460,30 @@
         return Math.max(0, height - view - (window.pageYOffset || root.scrollTop || 0));
     }
 
+    // The layers of a scene, in page order.
+    function sceneLayers(el) {
+        return el.querySelectorAll ? Array.prototype.slice.call(el.querySelectorAll('[data-pg-scene-layer]')) : [];
+    }
+
+    // The scene at `step`: the number on the section, the mark on that
+    // step's layer alone.
+    function sceneSet(rec, step) {
+        if (rec.step === step) return;
+        rec.step = step;
+        rec.el.setAttribute('data-pg-scene-step', String(step));
+        rec.layers.forEach(function (layer, i) {
+            if (i === step - 1) layer.setAttribute('data-pg-scene-on', '');
+            else layer.removeAttribute('data-pg-scene-on');
+        });
+    }
+
+    // The scene back to its layers one under the other.
+    function sceneStop(rec) {
+        rec.step = 0;
+        rec.el.removeAttribute('data-pg-scene-step');
+        (rec.layers || []).forEach(function (layer) { layer.removeAttribute('data-pg-scene-on'); });
+    }
+
     // A chapter's colours, read from the page when it is bound.
     function chapterRead(el) {
         var cs = window.getComputedStyle ? window.getComputedStyle(el) : null;
@@ -490,6 +535,12 @@
         var writes = [];
         floating.forEach(function (rec) {
             var r = rec.el.getBoundingClientRect();
+            // A scene is measured wherever it is, so a fast scroll past it
+            // leaves it at its last step.
+            if (rec.o.scene) {
+                writes.push([rec, 'scene', sceneStep(r.top, r.height, view, rec.layers.length)]);
+                return;
+            }
             if (r.bottom < -view || r.top > view * 2) return;
             if (!rec.o.scroll) {
                 // The box measured without the shift it already has.
@@ -512,6 +563,10 @@
             writes.push([rec, rec.o.effect === 'scroll-rise' ? rise(rec.o, p) : 0, s]);
         });
         writes.forEach(function (w) {
+            if (w[1] === 'scene') {
+                sceneSet(w[0], w[2]);
+                return;
+            }
             w[0].y = w[1];
             put(w[0].el, w[2]);
             // At its own state the node has its own transition back.
@@ -588,6 +643,19 @@
         var el = rec.el, o = rec.o;
         if (o.video) {
             videoStart(rec);
+            return;
+        }
+        if (o.scene) {
+            // The canvas keeps the layers one under the other, each one
+            // there to edit; the Preview plays the scene.
+            if (window.pgFxEditing) return;
+            rec.layers = sceneLayers(el);
+            if (rec.layers.length < 2) return;
+            el.style.setProperty('--pg-scene-steps', String(rec.layers.length));
+            if (reduced()) return;
+            // The first step makes the section tall before it is measured.
+            sceneSet(rec, 1);
+            floating.push(rec);
             return;
         }
         if (o.chapter) {
@@ -699,6 +767,10 @@
                 return;
             }
             if (rec.o.chapter) return;
+            if (rec.o.scene) {
+                sceneStop(rec);
+                return;
+            }
             rec.el.classList.add('pg-fx-armed');
             rec.el.classList.remove('pg-fx-on');
             rec.y = 0;
