@@ -219,6 +219,7 @@
 - designer-block-full-bleed-giant-type.md: Block rules pg-display-xl / pg-display-xxl (giant type), pg-bleed (edge to edge), pg-screen (one screen tall), pg-shade-tint, and the Hero: Full-Screen Media block (spotlight-media) in Marketing
 - designer-block-markup.md: Heading levels and inline content in ready-made designer blocks: no skipped level, size from an h-class, no paragraph or block inside a button, label, span or heading.
 - designer-block-motion.md: Motion in designer blocks without JS: the shared pg-marquee contract (loop, pause by hover, focus and a CSS-only button, reduced motion, RTL), no carousel autoplay, no countdowns, the hero video rule. [decision: decisions-made-product-44.md]
+- designer-block-product-bar.md: The Product Bar blocks (spotlight-bar, spotlight-bar-dark) in Marketing: a sticky bar under a sticky site header with the product name, section links and one button; offset 56, light and dark
 - designer-block-sample-content.md: Canonical sample content (brand, companies, people, plans, domains, images, prices) to use when writing ready-made designer blocks.
 - designer-block-style.md: Where CSS for ready-made designer blocks may live: Bootstrap classes, _SD_BLOCK_CSS in the Styles panel, never inline style or a <style> element; how a design template ships them.
 - designer-block-theme-colours.md: Which classes keep a ready-made designer block in step with the design's look and colour palette, which ones break it, and the contrast traps measured on the ready-made blocks.

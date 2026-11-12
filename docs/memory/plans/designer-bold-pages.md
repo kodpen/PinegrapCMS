@@ -12,7 +12,7 @@ description: Plan: what the Visual Page Editor needs for bold product pages (scr
 - Edge to edge: a photo hero (`hero-image-bg`, `pg-hero-tall`). Palette > Content > Video (B9a) gives a `<video>` with controls and no autoplay, which can fill a hero ([[designer-video-item]]); no block plays one.
 - Horizontal gallery with snap: `scroller-cards` (snap and previous/next buttons, [[designer-scroller-controls]]); cards only, no wide media slides.
 - Colour switch: only `launch-colours` (radios and `:has()`) in the Product Launch family; B4 (#8781) made it the general Variant Picker ([[designer-block-variant-picker]]).
-- Sticky bar: any node with `sticky`; no ready product bar. Numbers that count: none (figures are static text).
+- Sticky bar: any node with `sticky`; B5 (#8804) added the Product Bar ([[designer-block-product-bar]]). Numbers that count: none (figures are static text).
 - Very large type: `display-1` stops at 80 px; templates' headings measured 56 to 64 px. A bigger size is a fixed pixel value in the Style panel, not one that follows the window.
 - Dark and light chapters: a band can be dark (`data-bs-theme="dark"`, [[designer-block-theme-colours]]); the change is a hard cut, and a design cannot be dark as a whole: only a visitor's theme switcher sets `<html>` dark.
 
