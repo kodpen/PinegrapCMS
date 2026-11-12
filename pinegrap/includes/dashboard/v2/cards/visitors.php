@@ -199,6 +199,8 @@ function pg_dashboard_v2_card_visitors($user, $period, $compare)
         'rows_title'    => lang('Most read'),
         'rows'          => $rows,
         'empty'         => (($visits === 0) && (array_sum((array) $compare_line) === 0)) ? lang('No visits in this period yet.') : '',
-        'url'           => 'view_visitor_reports.php',
+        // See all opens the visitor report's ready report over time with
+        // the card's days (1, 7 or 30: the date changer's own presets).
+        'url'           => pg_ready_report_url('visitors_over_time', count($range['dates'])),
     ));
 }

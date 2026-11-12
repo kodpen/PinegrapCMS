@@ -35,6 +35,7 @@
 - visitor-item-links-and-chart-labels.md: How visitor report rows build item URLs, why chart and tooltip numbers differ, and why the home page is stored under many names.
 - visitor-monthly-partitions.md: The visitors table split into one partition per month (step 10.7, #499): how months are dropped, opened, converted, and what happens without partitioning
 - visitor-report-filters-and-form.md: Visitor report filter checks (unknown field, date, day count), paid/organic rule, the form after a save error, the report name, the period presets, order columns, Visit Details landing page
+- visitor-report-ready-reports.md: The visitor report's ready reports (over time, by source, by landing page, by country), the &p= period, the strip, and the Visitor Summaries, Visitor map and On the site now cards' See all (#8800)
 - visitor-report-site-time.md: Why the Visitor Report's year/month/day groups and Date filter go through pg_site_time_sql(): the fixed session offset, daylight saving shifts per row, the window, what is left
 - visitor-report-sql-pitfalls.md: How the visitor report page aggregates in SQL not PHP, ONLY_FULL_GROUP_BY traps in rollup queries, and why only the visitors table left MyISAM.
 - visitor-retention-and-cleanup.md: How the visitors table is kept small: retention days, daily summary, chunked deletion, monthly partitions, move to InnoDB, automatic rebuild, bots not recorded, rowless backups, stepwise restore
