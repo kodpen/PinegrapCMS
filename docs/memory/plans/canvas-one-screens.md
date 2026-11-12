@@ -1,6 +1,6 @@
 ---
 name: canvas-one-screens
-description: CO0 drawings of plans/canvas-one.md in look A (plans/canvas-one/): the canvas card with its parts and line of tables, one list of versions, the first-write question and its states, the Data list, the phone
+description: CO0 drawings of plans/canvas-one.md in look A (plans/canvas-one/): the canvas card, one list of versions, the first-write question, the Data list, the phone
 ---
 
 ## Where are the drawings, and how are they made again?
