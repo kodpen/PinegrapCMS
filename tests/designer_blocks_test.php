@@ -1418,3 +1418,49 @@ function test_designer_blocks_product_bar()
 	require_once __DIR__ . '/../pinegrap/includes/fn/designer_fx.php';
 	pg_assert_same(array('effect' => 'sticky', 'offset' => 56), pg_fx_normalize(array('effect' => 'sticky', 'offset' => 56)), 'the normalizer keeps the offset');
 }
+
+// Scroller: Snap Cards' "Wide slides" option: pg-snap-wide on the row makes
+// each item a large slide, most of the window wide, that stops in the middle.
+function test_designer_blocks_scroller_wide_slides()
+{
+	$rules = _test_blocks_css_rules();
+	pg_assert_true(isset($rules['pg-snap-wide']), 'the block stylesheet has pg-snap-wide');
+	$rule = isset($rules['pg-snap-wide']) ? $rules['pg-snap-wide'] : '';
+	pg_assert_true(strpos($rule, '.pg-snap-wide .pg-snap-item') !== false, 'the items are matched by class, also through a canvas wrapper');
+	pg_assert_true((bool) preg_match('/width:\s*(8[0-9]|90)vw/', $rule), 'a slide is 80 to 90 percent of the window');
+	pg_assert_true(strpos($rule, 'max-width: 100%') !== false, 'a slide is never wider than its row');
+	pg_assert_true(strpos($rule, 'scroll-snap-align: center') !== false, 'a slide stops in the middle');
+	$needs = _test_blocks_css_needs();
+	pg_assert_true(!in_array('pg-snap-wide', isset($needs['scroller-cards']) ? $needs['scroller-cards'] : array(), true), 'the rule joins the styles only when the option is turned on');
+
+	$js = _test_blocks_js();
+	pg_assert_true(strpos($js, "var isScrollerRow = clsList.indexOf('pg-snap') !== -1;") !== false, 'a scroller row is found by pg-snap');
+	pg_assert_true(strpos($js, "(isScrollerRow ? propsScrollerOptions(n) : '')") !== false, 'the row shows the Scroller section');
+	pg_assert_true(strpos($js, "_sdT('Wide slides')") !== false, 'the option is labelled and translated');
+	pg_assert_true(strpos($js, "_sdEnsureBlockStyles(['pg-snap-wide'])") !== false, 'turning it on adds the rule');
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+	if ($code !== 0) {
+		return;
+	}
+	$start = strpos($js, 'function _sdScrollerIsWide(');
+	$end = strpos($js, '// ── Block stylesheet', $start);
+	pg_assert_true($start !== false && $end !== false, 'the helpers are found');
+	$script = "'use strict';\nvar _sdPaletteDry = false, ensured = [];\n"
+		. "function _sdEnsureBlockStyles(n) { ensured.push(n.join(',')); }\n"
+		. substr($js, $start, $end - $start) . "\n"
+		. "var row = { props: { cssClass: 'row g-4 flex-nowrap pg-snap' } }, calls = 0, before = function () { calls++; };\n"
+		. "var r = [_sdScrollerSetWide(row, true, before), row.props.cssClass, _sdScrollerIsWide(row), _sdScrollerSetWide(row, true, before),\n"
+		. "  _sdScrollerSetWide(row, false, before), row.props.cssClass, _sdScrollerIsWide(row), calls, ensured];\n"
+		. "console.log(JSON.stringify(r));\n";
+	$file = tempnam(sys_get_temp_dir(), 'pgscroller');
+	file_put_contents($file, $script);
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+	pg_assert_same(0, $code, implode("\n", $out));
+	pg_assert_same(array(true, 'row g-4 flex-nowrap pg-snap pg-snap-wide', true, false, true, 'row g-4 flex-nowrap pg-snap', false, 2, array('pg-snap-wide')),
+		json_decode((string) end($out), true), 'the option adds and removes pg-snap-wide once, with one undo snapshot each, and adds the rule');
+}

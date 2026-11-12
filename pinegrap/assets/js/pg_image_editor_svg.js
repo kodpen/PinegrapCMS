@@ -563,7 +563,7 @@
         node: svgNode,
         paint: svgPaint,
         ready: function (l) { return this.picture(svgPictureSrc(this.doc, l)).catch(function () { return null; }); },
-        name: function (l) { return l.fileName || t('svgKind_' + l.kind); },
+        name: function (l) { return l.name || l.fileName || t('svgKind_' + l.kind); },
         panel: function (body, layers) { this.svgPanel(body, layers); }
     };
 

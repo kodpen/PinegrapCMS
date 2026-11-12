@@ -1,6 +1,6 @@
 ---
 name: agent-shown
-description: How a registry agent shows (A4b2): the line under the message that woke it, its tag and @ picker entry, its ws_assistants() entry kept off tasks, its own message edits
+description: How a registry agent shows (A4b2): the line under its waking message, its tag and @ picker entry, kept off tasks, its own edits, two applications' lines kept apart
 ---
 
 ## Where is it?
@@ -8,6 +8,10 @@ description: How a registry agent shows (A4b2): the line under the message that 
 
 ## What does the message that woke it show?
 - The line under a message names the agent (`ws_claude_request_state()` hands an `app:`/`model:` row to `ws_agent_request_state()`: waiting, the next try of a failed push door or model, working, answered, could not). One line per message: the last request on it.
+
+## When do two lines read as one author's group?
+- `sameSender()` in `assets/js/workspace.js` (the `follow` rule, pure, `tests/workspace_message_follow_test.php`): same `sender_kind` and `sender.id`, and as every application, guest and outside mail sender has `id` 0, also the same `app_id`, `guest_id`, name (an OAuth client's proposal is drawn under the client's name) and, for a mail, address.
+- The symptom it fixed (owner, 2026-11-11; #8812): the architect's line stood under the merging session's message as its continuation, and CI's lines the same way.
 
 ## How is it tagged and picked?
 - Its tag `<@app:N>` reads as `@handle` with its name (`ws_agent_tags()` into `ws_app_tag()`); the channel's @ picker offers the agents the channel allows first, as that tag (`ws_agent_picker_entries()` in `ws_channel_app_picker()`), so the pick wakes it under any rule.

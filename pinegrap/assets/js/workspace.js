@@ -136,6 +136,25 @@
         }).observe(document.body, { childList: true, subtree: true });
     }
 
+    // Are two messages written by the same author, for a line following the
+    // one before it? The kind and id first; every application, guest and
+    // outside mail sender carries id 0, so they are told apart by their
+    // application, their guest, the name (an OAuth client's proposal is
+    // drawn under the client's own) and the mail address. Pure.
+    function sameSender(a, b) {
+        var x = a && a.sender;
+        var y = b && b.sender;
+
+        if (!x || !y || a.sender_kind !== b.sender_kind || x.id !== y.id) {
+            return false;
+        }
+
+        return (x.app_id || 0) === (y.app_id || 0)
+            && (x.guest_id || 0) === (y.guest_id || 0)
+            && (a.sender_kind === 'user' || (x.name || '') === (y.name || ''))
+            && (a.sender_kind !== 'mail' || (x.title || '') === (y.title || ''));
+    }
+
     function el(tag, className, text) {
         var node = document.createElement(tag);
 
@@ -10427,8 +10446,7 @@
             // face and the name once, a later line's time in the face's
             // column on hover. An answer, a decision, a note, a task and a
             // voice message start a group of their own.
-            var follow = previous && previous.kind !== 'system' && previous.sender && message.sender
-                && previous.sender.id === message.sender.id && previous.sender_kind === message.sender_kind
+            var follow = previous && previous.kind !== 'system' && sameSender(previous, message)
                 && (message.timestamp - previous.timestamp) < 300 && !message.parent_id
                 && message.kind === 'message' && previous.kind !== 'task' && !voiceFile(message.file);
 

@@ -22,6 +22,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_svg.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_edit.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_split.php');
 
 /**
  * The names of the canvas tools.
@@ -161,11 +162,12 @@ function ws_canvas_ai_tools($tool)
             'background' => array('type' => 'string', 'description' => 'The artboard\'s colour as #rrggbb, or transparent; white when left out.'),
             'text'       => array('type' => 'string', 'description' => 'Words beside the canvas, optional.'),
             'name'       => array('type' => 'string', 'description' => 'The canvas\'s name, optional.'),
+            'layers'     => array('type' => 'string', 'enum' => array('split', 'one'), 'description' => 'split: a layer per top-level element, each named by its id, so one part can be changed later; one (the default): the drawing as one layer.'),
         ), array('svg')),
-        $tool('read_canvas', 'Read a canvas of this channel, an assistant\'s or a person\'s: its artboard, its newest version and its layers (id, box, a text layer\'s text, an svg layer\'s markup). Read it before edit_canvas.', array(
+        $tool('read_canvas', 'Read a canvas of this channel, an assistant\'s or a person\'s: its artboard, its newest version and its layers (id, kind, box, name, a text layer\'s text, an svg layer\'s markup). Read it before edit_canvas.', array(
             'message_id' => array('type' => 'integer', 'description' => 'The message the canvas is in.'),
         ), array('message_id')),
-        $tool('edit_canvas', 'Change a canvas of this channel in place, only when the request asks to change it. The operations are applied in order, all or none, to the newest version: add (svg; x, y, w, h, rot optional: a new layer on top), replace (layer, svg: an svg layer\'s drawing, its box kept), remove (layer), text (layer, text; color #rrggbb optional), box (layer; any of x, y, w, h, rot: move, resize, turn) and svg (svg; background optional: the whole canvas anew). A locked layer is not changed. Still call answer at the end.', array(
+        $tool('edit_canvas', 'Change a canvas of this channel in place, only when the request asks to change it. The operations are applied in order, all or none, to the newest version: add (svg; x, y, w, h, rot optional: a new layer on top; layers split for a layer per element), replace (layer, svg: an svg layer\'s drawing, its box kept), remove (layer), text (layer, text; color #rrggbb optional), box (layer; any of x, y, w, h, rot: move, resize, turn) and svg (svg; background, layers optional: the whole canvas anew). A locked layer is not changed. Still call answer at the end.', array(
             'message_id' => array('type' => 'integer', 'description' => 'The message the canvas is in.'),
             'version'    => array('type' => 'integer', 'description' => 'The newest version, as read_canvas gave it.'),
             'operations' => array('type' => 'string', 'description' => 'A JSON list of at most 20 objects such as [{"op": "text", "layer": "l2", "text": "Q4"}, {"op": "box", "layer": "l0", "x": 40}].'),
@@ -248,7 +250,8 @@ function ws_canvas_ai_tool_run($row, &$state, $name, $args, $asker)
     $by = ws_canvas_ai_by(ws_model_running());
 
     if ($name === 'draw_canvas') {
-        $made = ws_canvas_from_svg((string) ($args['svg'] ?? ''), (string) ($args['background'] ?? ''));
+        $mode = ws_canvas_split_mode($args['layers'] ?? null);
+        $made = ($mode === null) ? array('error' => 'layers') : ws_canvas_from_svg((string) ($args['svg'] ?? ''), (string) ($args['background'] ?? ''), $mode === 'split');
 
         if ($made['error'] !== '') {
             return array('error' => ws_canvas_from_svg_error_text($made['error']));

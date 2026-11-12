@@ -22,4 +22,4 @@ description: Steps B1 to B6 of the designer bold pages plan: full-bleed and gian
 
 - B5 (S, done #8804): product bar. A general block "Product Bar": name, anchor links, one call-to-action button, `sticky` with an offset below a sticky site header, dark and light variants. Core palette and builder; test `tests/designer_blocks_test.php`.
 
-- B6 (S, free): wide gallery slides. `scroller-cards` gets an option "Wide slides" (one large picture per slide, 80 to 90 percent of the window, snap centre): an option, not a new block. Builder and options panel; test `tests/designer_blocks_test.php`.
+- B6 (S, done #8816): wide gallery slides. `scroller-cards` gets an option "Wide slides" (one large picture per slide, 80 to 90 percent of the window, snap centre): an option, not a new block. Builder and options panel; test `tests/designer_blocks_test.php`.
