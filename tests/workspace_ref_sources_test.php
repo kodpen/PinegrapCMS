@@ -251,7 +251,7 @@ function test_ws_ref_screens_draw_notes_and_rows()
 	$drawer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
 
 	pg_assert_contains("[['notes', t('notes'), 'bi-journal-text'], ['rows', t('wtables'), 'bi-table']]", $drawer, 'the two groups');
-	pg_assert_contains("'wtables'                => lang('Tables')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php'), 'the group\'s name');
+	pg_assert_contains("'wtables'                => lang('Data')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php'), 'the group\'s name');
 
 	$card = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_customer.js');
 
