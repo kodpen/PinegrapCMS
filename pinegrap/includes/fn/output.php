@@ -5366,6 +5366,77 @@ function pg_menu_tools_markup($groups, $base, $parent_target, $tone = '')
 }
 
 /**
+ * The Other entry of a row's panel and the second-level panel it opens: the
+ * entries kept one step further in. Under the Page Design Studio row these
+ * are the classic designer's screens and Ads.
+ *
+ * The entry's address is Other's first screen, for a middle click; a plain
+ * click opens the panel. It stands for a group and never for a page, so it is
+ * left out of the search for the page's entry (data-pg-menu-skip). Nothing is
+ * drawn when Other holds no link: the entry is there only for a person who
+ * may open one of its screens.
+ *
+ * On a screen of one of Other's entries ($here) the entry is marked the way a
+ * row is on its own screens (.active, with aria-current), which is what the
+ * menu's script reads to keep a panel open from one page to the next: Other
+ * stays open across its screens, those without an entry of their own
+ * included.
+ *
+ * @param int    $row           the slot of the row whose panel holds the entry
+ * @param string $entries       Other's entries, as output_menu() built them
+ * @param string $parent_target ' target=\'_parent\'' in the front-end toolbar
+ * @param string $tone          the row's module (pg_menu_tone()), for the
+ *                              panel's icons
+ * @param bool   $here          the page is a screen of one of Other's entries
+ * @return array entry and panel (markup) and panel_id; all '' when Other
+ *               holds no link
+ */
+function pg_menu_other_markup($row, $entries, $parent_target, $tone = '', $here = false)
+{
+    $entries = (string) $entries;
+
+    if (!preg_match('/<a\b[^>]*\shref\s*=\s*([\'"])(.*?)\1/i', $entries, $first)) {
+        return array('entry' => '', 'panel' => '', 'panel_id' => '');
+    }
+
+    $entry_id = 'menu_entry_' . (int) $row . '_other';
+    $panel_id = 'menu_panel_' . (int) $row . '_other';
+    $label = lang('Other');
+
+    $entry = '<a id=\'' . $entry_id . '\' href=\'' . h(html_entity_decode($first[2], ENT_QUOTES, 'UTF-8')) . '\'' . $parent_target
+        . ' data-pg-menu-skip class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-three-dots bi-me-2 pg-menu-parent' . ($here ? ' active\' aria-current=\'true' : '') . '\''
+        . ' data-pg-menu-panel=\'' . $panel_id . '\' aria-controls=\'' . $panel_id . '\' aria-expanded=\'false\'>' . h($label)
+        . '<i class=\'bi bi-chevron-right pg-menu-chevron\' aria-hidden=\'true\'></i></a>';
+
+    return array(
+        'entry'    => $entry,
+        'panel'    => pg_menu_panel($panel_id, $entry_id, $label, $entries, $tone),
+        'panel_id' => $panel_id,
+    );
+}
+
+/**
+ * The panel a click on a row of the main menu shows: the row's own, or the
+ * second-level panel the row names in 'opens'. A row names one on the screens
+ * of that panel's entries, where it stands open: the click lands in it, and
+ * its way back leads to the row's own panel.
+ *
+ * @param array  $options  the row, as output_menu() built it
+ * @param string $panel_id the row's panel (pg_menu_row_panel_id()), '' for none
+ * @return string the id of the panel the click shows, '' for a plain link
+ */
+function pg_menu_row_click_panel($options, $panel_id)
+{
+    $panel_id = (string) $panel_id;
+
+    if (($panel_id !== '') && isset($options['opens']) && preg_match('/^menu_panel_[a-z0-9_]+$/', (string) $options['opens'])) {
+        return (string) $options['opens'];
+    }
+
+    return $panel_id;
+}
+
+/**
  * Whether a row of the main menu opens a panel of its entries inside the menu
  * or is a plain link to its screen.
  *
