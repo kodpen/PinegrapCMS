@@ -2545,7 +2545,7 @@ function ws_claude_key_post($action, $liveform, $user, $username, $refuse = null
 {
     if ($refuse === null) {
         $refuse = function ($sentence) use ($liveform) {
-            $refuse($sentence);
+            $liveform->add_error($sentence);
         };
     }
 

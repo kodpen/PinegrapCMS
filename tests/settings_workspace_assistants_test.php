@@ -137,6 +137,10 @@ function test_settings_workspace_assistants_save_module()
 	pg_assert_contains('ws_claude_settings_save(ws_claude_settings_input($_POST));', $post, 'the old screen\'s save');
 	pg_assert_false(strpos($post, 'UPDATE config') !== false, 'no write of its own');
 
+	// A key refused on the old screen is an error there, as before.
+	$key = settings_workspace_assistants_test_function('includes/workspace/claude.php', 'ws_claude_key_post');
+	pg_assert_contains("\$refuse = function (\$sentence) use (\$liveform) {\n            \$liveform->add_error(\$sentence);", $key, 'the old screen\'s refusal');
+
 	$bulk = settings_workspace_assistants_test_function('includes/workspace/bulk.php', 'ws_bulk_settings_post');
 	pg_assert_contains("ws_bulk_settings_save(!empty(\$_POST['bulk_delete']));", $bulk, 'the old bulk save');
 }
