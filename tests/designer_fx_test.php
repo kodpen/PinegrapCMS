@@ -54,6 +54,8 @@ function _test_fx_cases()
 		'count with timing' => array('effect' => 'Count', 'duration' => '1500', 'delay' => 250, 'trigger' => 'hover', 'easing' => 'linear', 'from' => 5, 'repeat' => true, 'distance' => 9),
 		'count clamped' => array('effect' => 'count', 'duration' => 99999, 'delay' => -1),
 		'count at a transition\'s duration' => array('effect' => 'count', 'duration' => 600),
+		'autoplay' => array('effect' => 'autoplay'),
+		'autoplay drops every field' => array('effect' => 'AutoPlay', 'trigger' => 'view', 'duration' => 900, 'offset' => 10, 'from' => 50, 'repeat' => true),
 	);
 }
 
@@ -67,6 +69,8 @@ function test_designer_fx_normalize()
 	pg_assert_same(array('effect' => 'sticky', 'offset' => 72), pg_fx_normalize(array('effect' => 'sticky', 'offset' => 72, 'trigger' => 'view')), 'sticky has no trigger');
 	pg_assert_same(array('effect' => 'parallax', 'speed' => 5), pg_fx_normalize(array('effect' => 'parallax', 'speed' => 1)), 'parallax speed clamped');
 	pg_assert_same(651, pg_fx_normalize(array('effect' => 'scale', 'duration' => 650.5))['duration'], 'a half rounds up');
+	pg_assert_same(array('effect' => 'autoplay'), pg_fx_normalize(array('effect' => 'autoplay', 'trigger' => 'load', 'duration' => 900)), 'autoplay has no field');
+	pg_assert_same(' data-pg-fx="autoplay"', pg_fx_attrs(array('_fx' => array('effect' => 'autoplay'))), 'autoplay writes only its effect');
 }
 
 function test_designer_fx_attrs()
@@ -845,4 +849,91 @@ JS;
 	pg_assert_same(array('42', true), $got['calm'], 'bound under reduced motion: never counts');
 	pg_assert_same('0', $got['calmPlay'], 'the Play button counts it still');
 	pg_assert_same(array('42', 0), $got['calmPressed'], 'and a focus on it shows the number');
+}
+
+
+// Autoplay: pg_fx.src.js plays a <video> with the effect, muted, looping
+// and inline; its pause button (data-pg-video-toggle, aria-controls) pauses
+// and plays it and says so with aria-pressed; a refused play leaves it
+// paused; under reduced motion it stays still, and turning reduced motion
+// on while it plays pauses it. Another element with the effect is left alone.
+function test_designer_fx_script_autoplay_video()
+{
+	$script = <<<'JS'
+var reducedNow = false, mmChange = null, capture = null;
+function El(tag, attrs) {
+	var el = this;
+	this.tagName = tag; this.attrs = attrs; this.parentNode = null; this.listeners = {};
+	this.classList = { add: function () {}, remove: function () {}, contains: function () { return false; } };
+	this.style = { setProperty: function () {}, removeProperty: function () {} };
+	this.getAttribute = function (n) { return Object.prototype.hasOwnProperty.call(el.attrs, n) ? el.attrs[n] : null; };
+	this.setAttribute = function (n, v) { el.attrs[n] = String(v); };
+	this.addEventListener = function () {};
+	this.closest = function (sel) { return sel === '[data-pg-video-toggle]' && el.attrs['data-pg-video-toggle'] !== undefined ? el : null; };
+}
+function Video(attrs, refuse) {
+	El.call(this, 'VIDEO', attrs);
+	var v = this;
+	this.paused = true; this.plays = 0;
+	this.play = function () { v.plays++; if (refuse) return { then: function (ok, bad) { bad(new Error('no')); } }; v.paused = false; return { then: function (ok) { if (ok) ok(); } }; };
+	this.pause = function () { v.paused = true; };
+}
+var video = new Video({ 'data-pg-fx': 'autoplay', id: 'hero-film' });
+var refused = new Video({ 'data-pg-fx': 'autoplay', id: 'blocked' }, true);
+var div = new El('DIV', { 'data-pg-fx': 'autoplay' });
+var btn = new El('BUTTON', { 'data-pg-video-toggle': '', 'aria-controls': 'hero-film', 'aria-pressed': 'false' });
+var btn2 = new El('BUTTON', { 'data-pg-video-toggle': '', 'aria-controls': 'blocked', 'aria-pressed': 'false' });
+var all = [video, refused, div, btn, btn2];
+var document = {
+	readyState: 'complete',
+	querySelectorAll: function (sel) {
+		return all.filter(function (n) { return sel === '[data-pg-fx]' ? n.attrs['data-pg-fx'] !== undefined : n.attrs['data-pg-video-toggle'] !== undefined; });
+	},
+	getElementById: function (id) { return all.filter(function (n) { return n.attrs.id === id; })[0] || null; },
+	documentElement: { contains: function (el) { return all.indexOf(el) !== -1; }, clientHeight: 800, scrollHeight: 2000 },
+	addEventListener: function (t, f, c) { if (t === 'click' && c) capture = f; }
+};
+var mm = { addEventListener: function (t, f) { mmChange = f; } };
+Object.defineProperty(mm, 'matches', { get: function () { return reducedNow; } });
+var window = {
+	innerHeight: 800, pageYOffset: 0,
+	matchMedia: function () { return mm; },
+	getComputedStyle: function () { return { position: 'static' }; },
+	requestAnimationFrame: function (f) { f(); },
+	addEventListener: function () {}
+};
+JS;
+	$script .= (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_fx.src.js');
+	$script .= <<<'JS'
+var out = {};
+out.started = [video.paused, video.muted, video.loop, video.playsInline, video.attrs.playsinline, btn.attrs['aria-pressed']];
+out.refused = [refused.paused, btn2.attrs['aria-pressed']];
+out.div = div.plays === undefined && div.muted === undefined;
+var stopped = false, ev = function (t) { return { target: t, preventDefault: function () { stopped = true; } }; };
+capture(ev(btn));
+out.paused = [video.paused, btn.attrs['aria-pressed'], stopped];
+capture(ev(btn));
+out.again = [video.paused, btn.attrs['aria-pressed'], video.plays];
+reducedNow = true; mmChange();
+out.reduced = [video.paused, btn.attrs['aria-pressed']];
+var other = new El('A', {}); stopped = false; capture(ev(other));
+out.other = stopped;
+var still = new Video({ 'data-pg-fx': 'autoplay', id: 'still' });
+all.push(still); window.pgFxBind(document);
+out.still = [still.paused, still.plays];
+console.log(JSON.stringify(out));
+JS;
+	$got = _test_fx_node($script);
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(array(false, true, true, true, '', 'false'), $got['started'], 'the video plays muted, looping and inline; its button says it plays');
+	pg_assert_same(array(true, 'true'), $got['refused'], 'a refused play leaves it paused, and its button says so');
+	pg_assert_true($got['div'], 'an element that is not a video is left alone');
+	pg_assert_same(array(true, 'true', true), $got['paused'], 'the button pauses it');
+	pg_assert_same(array(false, 'false', 2), $got['again'], 'and plays it again');
+	pg_assert_same(array(true, 'true'), $got['reduced'], 'reduced motion turned on pauses it');
+	pg_assert_false($got['other'], 'another click is left alone');
+	pg_assert_same(array(true, 0), $got['still'], 'under reduced motion a video does not start');
 }

@@ -50,6 +50,10 @@ function designer_video_item_test_run($cases)
 		. 'function swAttr(a, on) { return "<input type=\\"checkbox\\" " + a + (on ? " checked" : "") + ">"; }'
 		. 'function getNodeAttr(n, nm) { var a = n.props._attrs || []; for (var i = 0; i < a.length; i++) if (a[i].name === nm) return a[i].value || ""; return ""; }'
 		. 'function hasNodeBoolAttr(n, nm) { return (n.props._attrs || []).some(function (a) { return a.name === nm; }); }'
+		. 'function createNode(type, props, kids) { return { type: type, props: props, children: kids || [] }; }'
+		. 'function auto(cls, attrs, kids) { var v = video(cls, attrs); var box = { type: "semantic", props: { tag: "section", cssClass: "d-flex pg-screen" }, children: [v].concat(kids || []) }; return { v: v, box: box }; }'
+		. 'function toggles(box) { return box.children.filter(function (k) { return (k.props._attrs || []).some(function (a) { return a.name === "data-pg-video-toggle"; }); }); }'
+		. 'function names(n) { return (n.props._attrs || []).map(function (a) { return a.name; }).sort().join(","); }'
 		. 'function video(cls, attrs, bindings) { return { type: "semantic", props: { tag: "video", cssClass: cls, _attrs: attrs || [], _bindings: bindings } }; }'
 		. substr($source, $from, $to - $from)
 		. 'console.log(JSON.stringify([' . implode(',', array_map(function ($c) {
@@ -154,7 +158,8 @@ function test_designer_video_item_panel()
 	pg_assert_true(strpos($plain, 'data-form-bool-attr="controls" checked') !== false, 'the Controls switch shows the attribute');
 	pg_assert_true(strpos($plain, '<option value="metadata" selected>') !== false, 'the preload select shows the attribute');
 	pg_assert_true(strpos($plain, 'data-video-fill>') !== false, 'the fill switch is off');
-	pg_assert_true(stripos($plain, 'autoplay') === false, 'the panel has no autoplay row');
+	pg_assert_true(strpos($plain, 'data-form-bool-attr="autoplay"') === false, 'the panel has no bare autoplay switch');
+	pg_assert_true(strpos($plain, 'data-video-autoplay>') !== false, 'the Play by itself switch is off');
 
 	pg_assert_true(strpos($r[1], 'data-form-bool-attr="controls"') === false, 'a filling video has no Controls row');
 	pg_assert_true(strpos($r[1], 'data-video-fill checked') !== false, 'the fill switch is on');
@@ -162,4 +167,50 @@ function test_designer_video_item_panel()
 	pg_assert_true(strpos($r[2], 'sd-prop-video-src') === false, 'a bound file has no address field');
 	pg_assert_true(strpos($r[2], 'sd-prop-video-poster') === false, 'a bound poster has no address field');
 	pg_assert_same(2, substr_count($r[2], 'From a record field'), 'both bound rows say where the value comes from');
+}
+
+
+// Play by itself: on, the video gets the autoplay interaction, muted, loop
+// and playsinline, loses its controls and any autoplay attribute, gets an
+// id, and its box gets one pause button right after it and is placed; a
+// second turn on adds no second button. Off, the interaction and the
+// button go and the controls come back (not on a filling video).
+function test_designer_video_item_play_by_itself()
+{
+	$r = designer_video_item_test_run(array(
+		'(function () { var a = auto("d-block w-100 h-auto", [{ name: "controls", value: "" }, { name: "autoplay", value: "" }]); _sdVideoSetAutoplay(a.v, a.box, true); _sdVideoSetAutoplay(a.v, a.box, true);'
+		. ' var t = toggles(a.box); return { fx: a.v.props._fx, attrs: names(a.v), id: /^pg-video-[a-z0-9]+$/.test(a.v.props.id), n: t.length, at: a.box.children.indexOf(t[0]),'
+		. ' controls: t[0] && t[0].props._attrs.filter(function (x) { return x.name === "aria-controls"; })[0].value === a.v.props.id,'
+		. ' pressed: t[0] && t[0].props._attrs.filter(function (x) { return x.name === "aria-pressed"; })[0].value, cls: t[0] && t[0].props.cssClass, kids: t[0] && t[0].children.length,'
+		. ' host: a.box.props.cssClass, panel: propsVideoOptions(a.v) }; })()',
+		'(function () { var a = auto("d-block w-100 h-auto", [{ name: "id", value: "film" }]); _sdVideoSetAutoplay(a.v, a.box, true); _sdVideoSetAutoplay(a.v, a.box, false);'
+		. ' return { fx: a.v.props._fx === undefined, attrs: names(a.v), n: toggles(a.box).length, kids: a.box.children.length, id: a.v.props.id === undefined }; })()',
+		'(function () { var a = auto(_sdVideoFillClass("d-block", true), []); _sdVideoSetAutoplay(a.v, a.box, true); _sdVideoSetAutoplay(a.v, a.box, false); return names(a.v); })()',
+		'(function () { var v = video("d-block", []); _sdVideoSetAutoplay(v, null, true); return [v.props._fx.effect, names(v)]; })()',
+	));
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_same(array('effect' => 'autoplay'), $r[0]['fx'], 'the autoplay interaction');
+	pg_assert_same('loop,muted,playsinline', $r[0]['attrs'], 'muted, looping, inline, no controls and no autoplay attribute');
+	pg_assert_true($r[0]['id'], 'the video gets an id');
+	pg_assert_same(1, $r[0]['n'], 'one pause button, also after a second turn on');
+	pg_assert_same(1, $r[0]['at'], 'right after the video');
+	pg_assert_true($r[0]['controls'], 'the button names the video');
+	pg_assert_same('false', $r[0]['pressed'], 'the button starts as playing');
+	pg_assert_true(strpos($r[0]['cls'], 'pg-video-toggle') !== false && strpos($r[0]['cls'], 'position-absolute') !== false, 'the button sits in the corner and takes the rule');
+	pg_assert_same(3, $r[0]['kids'], 'a pause icon, a play icon and the hidden name');
+	pg_assert_true(strpos($r[0]['host'], 'position-relative') !== false && strpos($r[0]['host'], 'z-0') !== false, 'the box places the button');
+	pg_assert_true(strpos($r[0]['panel'], 'data-video-autoplay checked') !== false, 'the switch shows it on');
+	pg_assert_true(strpos($r[0]['panel'], 'data-form-bool-attr="controls"') === false, 'no Controls row while it plays by itself');
+
+	pg_assert_same(array('fx' => true, 'attrs' => 'controls,id,loop,muted,playsinline', 'n' => 0, 'kids' => 1, 'id' => true), $r[1], 'off: the interaction and the button go, the controls come back, the id stays');
+	pg_assert_same('loop,muted,playsinline', $r[2], 'a filling video gets no controls back');
+	pg_assert_same(array('autoplay', 'loop,muted,playsinline'), $r[3], 'a video with no box of its own still plays by itself');
+
+	$js = designer_video_item_test_source();
+	pg_assert_true(strpos($js, "_sdEnsureBlockStyles(['pg-video-toggle'])") !== false, 'turning it on adds the button rule');
+	pg_assert_true((bool) preg_match("/'pg-video-toggle':[^\\n]*\\.pg-video-toggle\\[aria-pressed=\"true\"\\] \\.pg-video-pause/", $js), 'the rule swaps the icons by aria-pressed');
+	pg_assert_true(strpos($js, '@media (prefers-reduced-motion: reduce), (scripting: none) { .pg-video-toggle.pg-video-toggle { display: none; } }') !== false, 'the rule hides the button where the video cannot play by itself');
 }

@@ -45336,12 +45336,90 @@ const StyleDesigner = (function () {
         return list.join(' ');
     }
 
+    // The pause button of a video that plays by itself (_sdVideoSetAutoplay()):
+    // pg_fx.src.js finds the video through aria-controls and writes
+    // aria-pressed; the block rule pg-video-toggle shows the pause or the
+    // play icon from it, and hides the button where the video cannot play
+    // by itself (no script, reduced motion).
+    /* @pg-site-output */
+    function _sdVideoPauseButton(videoId) {
+        var icon = function (name, cls) {
+            return createNode('content', { contentType: 'icon', iconName: name, cssClass: cls, fontSize: '',
+                _attrs: [{ name: 'aria-hidden', value: 'true' }] });
+        };
+        return createNode('semantic', { tag: 'button', customName: _sdT('Pause Button'),
+            cssClass: 'btn btn-secondary btn-sm rounded-circle position-absolute bottom-0 end-0 m-3 z-1 pg-video-toggle',
+            _attrs: [
+                { name: 'type', value: 'button' },
+                { name: 'data-pg-video-toggle', value: '' },
+                { name: 'aria-controls', value: videoId },
+                { name: 'aria-pressed', value: 'false' }
+            ] }, [
+            icon('bi-pause-fill', 'pg-video-pause'),
+            icon('bi-play-fill', 'pg-video-play'),
+            createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Pause video'), cssClass: 'visually-hidden' })
+        ]);
+    }
+
+    // Whether node is the pause button of the video with id `videoId`.
+    function _sdVideoIsToggleFor(node, videoId) {
+        if (!node || !node.props) return false;
+        var attrs = node.props._attrs || [];
+        var toggle = attrs.some(function (a) { return a.name === 'data-pg-video-toggle'; });
+        return toggle && attrs.some(function (a) { return a.name === 'aria-controls' && a.value === videoId; });
+    }
+
+    // Turns a video's playing by itself on or off. On: the autoplay
+    // interaction, muted, looping, inline on a phone, no controls (the
+    // pause button stands for them), an id the button names, the button
+    // right after the video in its box `host` (once), and the box placed
+    // as a filling video's box is. Off: the interaction and the button go,
+    // the controls come back unless the video fills its box. Muted and
+    // loop stay as they are. The caller adds the pg-video-toggle rule.
+    /* @pg-site-output */
+    function _sdVideoSetAutoplay(video, host, on) {
+        if (!video.props._attrs) video.props._attrs = [];
+        var bool = function (name, want) {
+            var list = video.props._attrs, has = list.some(function (a) { return a.name === name; });
+            if (want && !has) list.push({ name: name, value: '' });
+            if (!want && has) video.props._attrs = list.filter(function (a) { return a.name !== name; });
+        };
+        var idAttr = video.props._attrs.filter(function (a) { return a.name === 'id'; })[0];
+        var id = video.props.id || (idAttr && idAttr.value) || '';
+        var kids = host && Array.isArray(host.children) ? host.children : null;
+        if (on) {
+            video.props._fx = { effect: 'autoplay' };
+            bool('autoplay', false);
+            bool('controls', false);
+            bool('muted', true);
+            bool('loop', true);
+            bool('playsinline', true);
+            if (!id) id = video.props.id = 'pg-video-' + Math.random().toString(36).substr(2, 6);
+            if (kids && !kids.some(function (k) { return _sdVideoIsToggleFor(k, id); })) {
+                var at = kids.indexOf(video);
+                kids.splice(at === -1 ? kids.length : at + 1, 0, _sdVideoPauseButton(id));
+            }
+            if (host && host.props && ['semantic', 'container', 'row', 'col'].indexOf(host.type) !== -1) {
+                host.props.cssClass = _sdVideoFillHostClass(host.props.cssClass);
+            }
+        } else {
+            delete video.props._fx;
+            if (kids && id) host.children = kids.filter(function (k) { return !_sdVideoIsToggleFor(k, id); });
+            bool('controls', !_sdVideoFills(video.props.cssClass));
+        }
+    }
+
+    // Whether the video plays by itself.
+    function _sdVideoAutoplays(n) {
+        return !!(n && n.props && n.props._fx && n.props._fx.effect === 'autoplay');
+    }
+
     // The Video panel of a <video> node: its file and poster from the
     // file manager, the player's switches and how much of the file the
-    // browser loads up front. No autoplay row: a video that plays by
-    // itself is the hero's job, with a pause button and off under reduced
-    // motion. A src or poster bound to a record field is edited in the
-    // Data panel, so its row only says so.
+    // browser loads up front. "Play by itself" is the only autoplay: muted
+    // and looping, with a pause button, still under reduced motion
+    // (_sdVideoSetAutoplay(), pg_fx.src.js). A src or poster bound to a
+    // record field is edited in the Data panel, so its row only says so.
     function propsVideoOptions(n) {
         var b = n.props._bindings || {};
         function ga(nm) { return getNodeAttr(n, nm); }
@@ -45358,6 +45436,7 @@ const StyleDesigner = (function () {
                 '</div>';
         }
         var fills = _sdVideoFills(n.props.cssClass);
+        var auto = _sdVideoAutoplays(n);
         var pre = ga('preload');
         var preOpts = [['', _sdT('Browser default')], ['none', _sdT('None')], ['metadata', _sdT('Metadata only')], ['auto', _sdT('Whole file')]];
         var preSel = '<select class="form-control form-control-sm" data-form-input-attr="preload">';
@@ -45370,13 +45449,17 @@ const StyleDesigner = (function () {
             row(_sdT('Poster image'), b.poster ? bound()
                 : pick('sd-prop-video-poster', 'poster', '', "window.sdOpenImagePicker('sd-prop-video-poster')")) +
             row(_sdT('Title'), fInp('', 'title', '')) +
-            (fills ? '' : row(_sdT('Controls'), swAttr('data-form-bool-attr="controls"', hasNodeBoolAttr(n, 'controls')))) +
+            (fills || auto ? '' : row(_sdT('Controls'), swAttr('data-form-bool-attr="controls"', hasNodeBoolAttr(n, 'controls')))) +
             row(_sdT('Loop'), swAttr('data-form-bool-attr="loop"', hasNodeBoolAttr(n, 'loop'))) +
             row(_sdT('Muted'), swAttr('data-form-bool-attr="muted"', hasNodeBoolAttr(n, 'muted'))) +
             row(_sdT('Preload'), preSel) +
             row(_sdT('Fill its box'), swAttr('data-video-fill', fills) +
                 '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
                 esc(_sdT('Covers the box it sits in, behind the content of the box, like a background picture. Its controls go off, as the content would cover them.')) +
+                '</div>') +
+            row(_sdT('Play by itself'), swAttr('data-video-autoplay', auto) +
+                '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
+                esc(_sdT('Muted and looping, with a pause button in the corner of its box. It stays still for visitors who ask for less motion. Meant for a hero video.')) +
                 '</div>')
         );
     }
@@ -51756,6 +51839,23 @@ const StyleDesigner = (function () {
                 }
             }
             renderCanvas(); renderProperties(); renderAttrsPanel(); renderHtmlTree();
+        });
+
+        // ── Video: play by itself (propsVideoOptions()) ──
+        // The video and its pause button change together; the button sits
+        // in the video's box, so a box that is the page itself or a placed
+        // component gets none.
+        var _vaIn = document.querySelector('#sd-properties input[data-video-autoplay]');
+        if (_vaIn) _vaIn.addEventListener('change', function () {
+            if (!selectedNode) return;
+            saveState();
+            var _vaP = _sdAnyParent(selectedNode);
+            var host = _vaP && _vaP.parent;
+            if (!host || !host.props || ['semantic', 'container', 'row', 'col'].indexOf(host.type) === -1) host = null;
+            _sdVideoSetAutoplay(selectedNode, host, this.checked);
+            if (host) _sdSharedMarkEdited(host); else _sdSharedMarkEdited(selectedNode);
+            if (this.checked) _sdEnsureBlockStyles(['pg-video-toggle']);
+            render();
         });
 
         // ── Input ID field (data-form-input-id: sets both _attrs.id and node.props.id) ──
@@ -65242,7 +65342,7 @@ const StyleDesigner = (function () {
     function _sdFxSpec() {
         return {
             effects: ['fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
-                'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count'],
+                'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay'],
             triggers: ['view', 'load', 'hover', 'click'],
             easings: ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'],
             numbers: {
@@ -65266,6 +65366,7 @@ const StyleDesigner = (function () {
             return Math.max(r[0], Math.min(r[1], v));
         };
         var out = { effect: effect };
+        if (effect === 'autoplay') return out;
         if (effect === 'sticky') { out.offset = num('offset'); return out; }
         if (effect === 'parallax') { out.speed = num('speed'); return out; }
         if (spec.from[effect]) { out.from = num('from'); return out; }
@@ -74336,6 +74437,12 @@ const StyleDesigner = (function () {
         // Wide slides: each item 85% of the window (no wider than the row),
         // stopping in the middle. Items are matched by their class, not as
         // children: on the canvas a wrapper sits between the row and its items.
+        // The pause button of a video that plays by itself: the pause icon
+        // while it plays, the play icon once paused (aria-pressed, written
+        // by pg_fx.src.js); none where the video cannot play by itself.
+        'pg-video-toggle': '.pg-video-toggle .pg-video-play, .pg-video-toggle[aria-pressed="true"] .pg-video-pause { display: none; }\n' +
+                           '.pg-video-toggle[aria-pressed="true"] .pg-video-play { display: inline-block; }\n' +
+                           '@media (prefers-reduced-motion: reduce), (scripting: none) { .pg-video-toggle.pg-video-toggle { display: none; } }',
         'pg-snap-wide':    '.pg-snap-wide .pg-snap-item { flex: 0 0 auto; width: 85vw; max-width: 100%; scroll-snap-align: center; }',
         // A chevron that points the reading direction: mirrored on an RTL
         // page, where previous / next controls swap sides. An <i> is inline,

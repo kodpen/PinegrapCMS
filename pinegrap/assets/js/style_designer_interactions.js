@@ -76,6 +76,10 @@ StyleDesigner.definePart('interactions', function (K) {
         if (fx.effect === 'count' || (n.type === 'content' && _SD_FX_COUNT_TEXT.indexOf(n.props.contentType) !== -1)) {
             effects.push(['count', _sdT('Count up')]);
         }
+        // A video that plays by itself is set in the Video panel, which
+        // also mutes it and adds its pause button; kept in the list here
+        // on the video that has it.
+        if (fx.effect === 'autoplay') effects.push(['autoplay', _sdT('Play by itself')]);
         var h = row(_sdT('Effect'), select('effect', effects));
         if (fx.trigger) {
             var entrance = fx.trigger === 'load' || fx.trigger === 'view';
@@ -116,6 +120,11 @@ StyleDesigner.definePart('interactions', function (K) {
         if (fx.trigger || fx.effect === 'count') {
             h += row('', '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-fx-play>' +
                 '<span class="bi bi-play-fill"></span> ' + esc(_sdT('Play on the canvas')) + '</button>');
+        }
+        if (fx.effect === 'autoplay') {
+            h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
+                esc(_sdT('Turned on and off in the Video panel, with its pause button.')) +
+                '</div></div>';
         }
         if (fx.effect) {
             h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
