@@ -13,5 +13,6 @@ description: Steps of plans/legacy-group-design.md: LG1 the theme, LG2 {path} ad
 - LG5 (M) The set's run. Done (#8795): `designer/legacy-set-run.md`. For LG7: a moved set's classic styles stay listed with no page.
   - Its sandbox found: a common region made a shared component draws its `<img>` in a `<picture data-pg-picture>`, and the classic theme's scripts.js reads `.background-image-holder` `children('img')` for the background, so a moved page (alone or in a set) loses those photos (`url(undefined)`). `designer/responsive-images.md` says imported markup keeps a bare `<img>`. No step names it yet.
 - LG6 (M) The frame split: page content in the page's tree. Starts from `designer/page-region-into-page-tree.md`; may be cut (LG6a the frame into two components, LG6b the regions into the tree).
+  - In progress (draft PR).
 - LG7 (S) "Back to classic" for a moved set or one page, by a designer: `page_style` back to the origin style, the trees kept for a later move.
   - Close-out: `designer/legacy-overview.md` lists the topics above, this plan's two files are deleted, the architect is told to write the Bootstrap 5.3.8 helper's plan.
