@@ -6,8 +6,9 @@
  * in the order they came and went, each with who wrote it, to and Cc, its
  * text, its files and, under an answer, whether it was not sent, waits to
  * be sent or came back undelivered. Whoever may read the conversation's
- * channel may read the pane (ws_can_read_channel()); the screen's script
- * draws the answer and the status controls over it for whoever may write.
+ * channel may read the pane (ws_can_read_channel()). The server draws it for
+ * the screen's address (?conversation=), the screen's script in place, and
+ * the script adds the answer and the status controls for whoever may write.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -89,14 +90,60 @@ function ws_mail_pane($viewer, $conversation_id)
 }
 
 /**
+ * A conversation opened in the pane: read from then on for the person, its
+ * mails' Forward offered (mail_forward.php). The screen's address and its
+ * script both open it so.
+ *
+ * @param array $viewer
+ * @param int   $conversation_id
+ * @return array|null ws_mail_pane()
+ */
+function ws_mail_pane_open($viewer, $conversation_id)
+{
+    $pane = ws_mail_pane($viewer, $conversation_id);
+
+    if (!$pane) {
+        return null;
+    }
+
+    ws_mail_read_mark((int) $viewer['id'], (int) $pane['conversation']['id'], $pane['last_id']);
+
+    return ws_mail_forward_pane($pane, ws_mail_forward_may($viewer));
+}
+
+/**
+ * The pane the server draws for the screen's address (?conversation=), so
+ * a row opens its mail with or without the script; Close leads back to the
+ * list. The script reads the pane again and adds the answer and the status
+ * controls (workspace_mail.js).
+ *
+ * @param array|null $pane  ws_mail_pane_open(), null when it cannot be opened
+ * @param string     $base  the panel's address, ending in /
+ * @param string     $close the list's address without the conversation
+ * @return string HTML
+ */
+function ws_mail_pane_page_html($pane, $base, $close)
+{
+    $shut = '<a class="btn btn-sm btn-text theme-secondary" href="' . h($close) . '" data-ws-mail-close>'
+        . '<i class="bi bi-x-lg me-1" aria-hidden="true"></i>' . h(lang('Close')) . '</a>';
+
+    if (!$pane) {
+        return '<div class="ws-mail-pane-tools">' . $shut . '</div><p class="ws-empty">' . h(lang('This conversation cannot be opened.')) . '</p>';
+    }
+
+    return ws_mail_pane_html($pane, $base, $shut);
+}
+
+/**
  * The pane: the conversation's heading and its mails. Pure but for the
  * words and the time labels.
  *
- * @param array  $pane ws_mail_pane()
- * @param string $base the panel's address, ending in /
+ * @param array  $pane  ws_mail_pane()
+ * @param string $base  the panel's address, ending in /
+ * @param string $tools more of the heading's tools, HTML
  * @return string HTML
  */
-function ws_mail_pane_html($pane, $base)
+function ws_mail_pane_html($pane, $base, $tools = '')
 {
     $conversation = $pane['conversation'];
     $subject = (trim((string) $conversation['subject']) !== '') ? (string) $conversation['subject'] : lang('(no subject)');
@@ -106,7 +153,7 @@ function ws_mail_pane_html($pane, $base)
     $html = '<header class="ws-mail-pane-head"><h2 class="h5 mb-1" tabindex="-1">' . h($subject) . '</h2>'
         . '<div class="small fg-secondary">' . h($customer)
         . (($pane['box_name'] !== '') ? ' · ' . h($pane['box_name']) : '') . ' · ' . h('#' . (string) $pane['channel']['name']) . '</div>'
-        . '<div class="ws-mail-pane-tools"><a class="btn btn-sm btn-text theme-secondary" href="' . h($url) . '"><i class="bi bi-hash me-1" aria-hidden="true"></i>' . h(lang('Open in channel')) . '</a></div>'
+        . '<div class="ws-mail-pane-tools"><a class="btn btn-sm btn-text theme-secondary" href="' . h($url) . '"><i class="bi bi-hash me-1" aria-hidden="true"></i>' . h(lang('Open in channel')) . '</a>' . $tools . '</div>'
         . '</header>';
 
     if (count($pane['items']) >= WS_MAIL_PANE_MAX) {

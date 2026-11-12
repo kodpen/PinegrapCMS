@@ -485,9 +485,10 @@
     // The E-mails screen (workspace_mail.php): a row opens its conversation
     // in the reading pane beside the list, Load more reads the next page
     // under the rows, Mark all as read clears the marks and the menu's
-    // number. Without the script a row opens its card in the channel. The
-    // pane's HTML is the server's, its texts escaped there
-    // (includes/workspace/mail_pane.php).
+    // number. A row's address is this screen with its conversation, whose
+    // pane the server draws, so before the script starts, or without it, a
+    // row still opens the mail, never a channel. The pane's HTML is the
+    // server's, its texts escaped there (includes/workspace/mail_pane.php).
     function screen(root, h) {
         var words = (h.cfg && h.cfg.mail && h.cfg.mail.strings) || {};
         var pane = root.querySelector('[data-ws-mail-pane]');
@@ -684,7 +685,7 @@
         }
 
         root.addEventListener('click', function (event) {
-            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-forward]');
+            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-forward], [data-ws-mail-close]');
 
             // A new tab or window keeps the link's own way.
             if (!target || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
@@ -703,6 +704,9 @@
                 more(target);
             } else if (target.hasAttribute('data-ws-mail-row')) {
                 open(parseInt(target.getAttribute('data-ws-mail-row'), 10));
+            } else if (target.hasAttribute('data-ws-mail-close')) {
+                // The server's Close, until the pane is read again.
+                close();
             } else {
                 target.disabled = true;
 
@@ -721,6 +725,13 @@
         var start = parseInt(new URLSearchParams(window.location.search).get('conversation') || '0', 10);
 
         if (start > 0) {
+            // The server drew this conversation's pane for the address
+            // (workspace_mail.php): it is read again for the answer and the
+            // status controls, without a loading line in between.
+            if (pane.querySelector('h2')) {
+                current = start;
+            }
+
             open(start);
         }
     }

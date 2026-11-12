@@ -5,7 +5,7 @@ description: The Workspace E-mails list (workspace_mail.php, mail_list.php): whi
 
 ## What does it show?
 - `workspace_mail.php` (behind `ws_screen_gate()`, and `ws_mail_reads_ready()`): the e-mail conversations of every channel the reader may read (`ws_mail_list_channels()`: distinct `ws_mail_conversations.channel_id`, each through `ws_can_read_channel()`), never decided by the box. Newest mail first (`GREATEST(last_in_at, last_out_at)`, then id).
-- Beside the list the reading pane opens a conversation (`workspace/mail-screen-pane.md`); without the script a row links to the card in the channel (`workspace.php?channel=&message=`).
+- Beside the list the reading pane opens a conversation (`workspace/mail-screen-pane.md`). A row's address (`ws_mail_list_page_url()`) is this screen with `conversation=<id>`, its filters and page (`before`) kept, and the server draws that pane, so a row opens the mail with or without the script, never a channel (WM10, #PRNUM; owner 2026-11-11, #8765). Open in channel is the pane's button.
 
 ## Which views and filters?
 - Address words, `ws_mail_list_filters()`: `view` incoming (default; `last_in_at > 0`) | sent (an outgoing item with `send_state` '' or sent) | unsent (an outgoing item queued or failed) | all (the API only); `status` open (default in Incoming, else all) | waiting | closed | all; `holder` all | me | none; `overdue=1`; `box` (a mailbox id); `q`; `before`. Unknown words fall back.
@@ -17,7 +17,7 @@ description: The Workspace E-mails list (workspace_mail.php, mail_list.php): whi
 - A page is `WS_MAIL_LIST_PAGE` (50) rows. The cursor `before=<time>-<id>` (`ws_mail_list_cursor()`) is the last row's newest mail time and id; `ws_mail_list()` returns `rows` and `next` ('' at the end). The link works without the script; with it the panel action `ws_mail_rows` adds the rows and the next link under the list.
 
 ## What does a row show?
-- `ws_mail_list_rows_html()`: the customer (bold and a hidden "Unread" while unread), the number of mails when more than one, the time (red when the first answer is late), the subject, the newest mail's first words (240 characters, `ws_mail_list_mails()`), a Not sent or Waiting to be sent badge, box name, channel and `ws_mail_status_html()`. The list itself writes nothing.
+- `ws_mail_list_rows_html($rows, $filters, $now, $open)` (`aria-current` on the open one): the customer (bold and a hidden "Unread" while unread), the number of mails when more than one, the time (red when the first answer is late), the subject, the newest mail's first words (240 characters, `ws_mail_list_mails()`), a Not sent or Waiting to be sent badge, box name, channel and `ws_mail_status_html()`. The list itself writes nothing.
 
 ## Where is it in the menu?
 - `ws_nav_groups()` key `mail` ("E-mails", group work), flag `ws_mail_list_visible()`: a box (or one of its routes) writes into a channel the person reads; checked on every panel page that draws the list, at most 50 boxes. Its tile shows the unread count (`mail_unread`, `workspace/mail-screen-pane.md`). `ws_side_screen('workspace_mail.php')` = `mail`; `output.php` lights menu 23.

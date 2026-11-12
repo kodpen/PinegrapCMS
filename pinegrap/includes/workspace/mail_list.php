@@ -6,9 +6,10 @@
  * conversations of every channel the reader may read, newest mail first,
  * in three views (Incoming, Sent, Not sent), narrowed by status, holder, an
  * overdue first answer, the mailbox and a search, a page at a time; each
- * row opens the conversation in the reading pane (mail_pane.php), or its
- * card in its channel without the script. Who may read a channel decides
- * which conversations appear (ws_can_read_channel()), never the box.
+ * row's address is this screen with its conversation, whose reading pane
+ * the server draws (mail_pane.php), so the mail opens with or without the
+ * script, never a channel. Who may read a channel decides which
+ * conversations appear (ws_can_read_channel()), never the box.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -385,27 +386,48 @@ function ws_mail_list_mails($viewer_id, $rows)
 }
 
 /**
- * The rows of a page of the list. A row opens the conversation's card in
- * its channel; the screen's script opens it in the pane instead.
+ * The address of a page of the list: the filters and the page, and the
+ * conversation open beside it. A row's address names its conversation, so
+ * the server draws the list as it was with the mail open; the pane's Close
+ * names none. Pure.
  *
- * @param array[] $rows ws_mail_list() rows
- * @param string  $base the panel's address, ending in /
+ * @param array $filters         ws_mail_list_filters() of the page
+ * @param int   $conversation_id 0 for none
+ * @return string relative to the panel
+ */
+function ws_mail_list_page_url($filters, $conversation_id = 0)
+{
+    $before = $filters['before'] ? (int) $filters['before'][0] . '-' . (int) $filters['before'][1] : '';
+    $query = ws_mail_list_query($filters, array('before' => $before, 'conversation' => ((int) $conversation_id > 0) ? (int) $conversation_id : ''));
+
+    return 'workspace_mail.php' . (($query !== '') ? '?' . $query : '');
+}
+
+/**
+ * The rows of a page of the list. A row opens its conversation on this
+ * screen (ws_mail_list_page_url()), never its channel; the screen's script
+ * opens it in the pane in place.
+ *
+ * @param array[] $rows    ws_mail_list() rows
+ * @param array   $filters ws_mail_list_filters() of the rows' page
  * @param int     $now
+ * @param int     $open    the conversation the pane shows, 0 for none
  * @return string HTML
  */
-function ws_mail_list_rows_html($rows, $base, $now)
+function ws_mail_list_rows_html($rows, $filters, $now, $open = 0)
 {
     $html = '';
 
     foreach ($rows as $row) {
-        $url = $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'];
+        $url = ws_mail_list_page_url($filters, (int) $row['id']);
         $subject = (trim((string) $row['subject']) !== '') ? (string) $row['subject'] : lang('(no subject)');
         $who = (trim((string) $row['customer_name']) !== '') ? (string) $row['customer_name'] : (string) $row['customer_email'];
         $last = max((int) $row['last_in_at'], (int) $row['last_out_at']);
         $unsent = (string) ($row['unsent'] ?? '');
         $classes = 'ws-mail-row' . (!empty($row['unread']) ? ' ws-mail-unread' : '') . (!empty($row['overdue']) ? ' ws-mail-overdue' : '');
+        $current = (((int) $open > 0) && ((int) $row['id'] === (int) $open)) ? ' aria-current="true"' : '';
 
-        $html .= '<a href="' . h($url) . '" class="' . $classes . '" data-ws-mail-row="' . (int) $row['id'] . '">'
+        $html .= '<a href="' . h($url) . '" class="' . $classes . '"' . $current . ' data-ws-mail-row="' . (int) $row['id'] . '">'
             . '<span class="ws-mail-row-head"><span class="ws-mail-who">' . h($who) . '</span>'
             . (!empty($row['unread']) ? '<span class="visually-hidden">' . h(lang('Unread')) . '</span>' : '')
             . (((int) ($row['mails'] ?? 0) > 1) ? '<span class="ws-count" title="' . h(lang('E-mails')) . '">' . (int) $row['mails'] . '</span>' : '')
@@ -428,19 +450,19 @@ function ws_mail_list_rows_html($rows, $base, $now)
  * The list, or a line saying it is empty, with Load more under it while
  * another page follows.
  *
- * @param array  $list    ws_mail_list()
- * @param array  $filters ws_mail_list_filters()
- * @param string $base    the panel's address, ending in /
- * @param int    $now
+ * @param array $list    ws_mail_list()
+ * @param array $filters ws_mail_list_filters()
+ * @param int   $now
+ * @param int   $open    the conversation the pane shows, 0 for none
  * @return string HTML
  */
-function ws_mail_list_html($list, $filters, $base, $now)
+function ws_mail_list_html($list, $filters, $now, $open = 0)
 {
     if (!$list['rows']) {
         return '<p class="fg-secondary my-5 px-3">' . h(lang('No e-mail conversation matches.')) . '</p>';
     }
 
-    return '<div class="ws-mail-rows" data-ws-mail-rows>' . ws_mail_list_rows_html($list['rows'], $base, $now) . '</div>'
+    return '<div class="ws-mail-rows" data-ws-mail-rows>' . ws_mail_list_rows_html($list['rows'], $filters, $now, $open) . '</div>'
         . ws_mail_list_more_html($filters, $list['next']);
 }
 

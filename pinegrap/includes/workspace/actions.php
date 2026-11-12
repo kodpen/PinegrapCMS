@@ -2614,19 +2614,16 @@ function ws_handle_action($action, $request)
                 $list = ws_mail_list($viewer, $filters, time());
 
                 return ws_action_ok(array(
-                    'html' => ws_mail_list_rows_html($list['rows'], OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', time()),
+                    'html' => ws_mail_list_rows_html($list['rows'], $filters, time()),
                     'more' => ws_mail_list_more_html($filters, $list['next']),
                 ));
             }
 
-            $pane = ws_mail_pane($viewer, (int) ($request['conversation_id'] ?? 0));
+            $pane = ws_mail_pane_open($viewer, (int) ($request['conversation_id'] ?? 0));
 
             if (!$pane) {
                 return ws_action_error(lang('This conversation cannot be opened.'));
             }
-
-            ws_mail_read_mark((int) $viewer['id'], (int) $pane['conversation']['id'], $pane['last_id']);
-            $pane = ws_mail_forward_pane($pane, ws_mail_forward_may($viewer));
 
             return ws_action_ok(array_merge(ws_mail_pane_tools($pane, $viewer), array(
                 'html'   => ws_mail_pane_html($pane, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/'),
