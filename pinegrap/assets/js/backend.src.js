@@ -2643,44 +2643,33 @@ $(document).ready(function () {
 
 
 //::::::::::::::::::File Picker::::::::::::::::::
-windowRef = null;
+// Pictures for the product builder and a contact's photo. {initialize: true}
+// opens the picker dialog (pgEditorPicker.pictures(), pg_ckeditor_picker.js;
+// the screen prints pg_editor_bridge_script()): several pictures, or one with
+// SingleImage. Each pick comes back through window.software_image_picker({
+// return: true, ...}), looked up at call time, so a screen that wraps the
+// function (the product builder's variant strips) still gets it.
 function software_image_picker(properties) {
     if (properties.initialize !== undefined) {
-        //if there is already window, first close it.
-        if (windowRef !== null) {
-            windowRef.close();
-        }
-        var urlparameters = '';
-        if (properties.SingleImage !== undefined && properties.SingleImage === true) {
-            urlparameters = '?SingleImage=true';
-        }
-
-        if (properties.file_input_name !== undefined && properties.file_input_name !== '') {
-            if (urlparameters !== null && urlparameters !== '') {
-                urlparameters = urlparameters + '&';
-            } else {
-                urlparameters = urlparameters + '?';
-            }
-            urlparameters = urlparameters + 'file_input_name=' + properties.file_input_name;
-        }
-
-
-        var
-            windowUrl = 'editor_select_image.php' + urlparameters,
-            windowId = 'NewWindow_' + new Date().getTime(),
-            windowFeatures = 'channelmode=no,directories=no,fullscreen=no,' + 'location=no,dependent=yes,menubar=no,resizable=no,scrollbars=yes,' + 'status=no,toolbar=no,titlebar=no,' + 'left=0,top=0,width=1000px,height=500px';
-
-        windowRef = window.open(windowUrl, windowId, windowFeatures);
-        // A blocked popup returns null; dereferencing it threw a TypeError that killed
-        // the rest of the handler. Safari blocks these far more eagerly than Chrome.
-        if (!windowRef) {
-            alert(pgLang('Please allow pop-up windows for this site.'));
+        var single = properties.SingleImage === true;
+        if (!window.pgEditorPicker || !window.pgEditorPicker.usable()) {
+            alert(pgLang('The picker is not loaded on this screen.'));
             return;
         }
-        windowRef.onload = function () {
-
-            windowRef.focus();
-        };
+        window.pgEditorPicker.pictures({ multiple: !single }).then(function (picks) {
+            (picks || []).forEach(function (pick) {
+                window.software_image_picker({
+                    'return': true,
+                    SingleImage: single,
+                    file_input_name: properties.file_input_name || '',
+                    // An Unsplash photo is no file: its address is the name
+                    // and its file id 0 (the save then reads image_url).
+                    image_name: pick.url ? pick.url : encodeURIComponent(pick.name),
+                    file_id: pick.url ? 0 : pick.id
+                });
+            });
+        });
+        return;
     }
     if (properties.return !== undefined) {
         if ($('#software_image_picker_container').length) {
@@ -9285,22 +9274,17 @@ function bindPageRenameRedirect(ids) {
                 pick.innerHTML = `<i class="bi bi-folder2-open"></i> ${pgLang('Browse')}`;
                 pick.addEventListener('click', () => {
                     const self = this;
-                    if (typeof window.software_image_picker !== 'undefined') {
-                        // Temporarily intercept the picker callback to capture the chosen image
-                        const _orig = window.software_image_picker;
-                        window.software_image_picker = function (props) {
-                            if (props.return) {
-                                window.software_image_picker = _orig;
-                                const imgPath = decodeURIComponent(props.image_name);
-                                el.src = (typeof OUTPUT_PATH !== 'undefined' ? OUTPUT_PATH : '/') + imgPath;
-                                inp.value = imgPath;
-                                self.render();
-                                self._fireChange();
-                                return;
-                            }
-                            _orig.call(window, props);
-                        };
-                        window.software_image_picker({ initialize: true, SingleImage: true });
+                    if (window.pgEditorPicker && window.pgEditorPicker.usable()) {
+                        // The picture picker: one picture of the site, or an
+                        // Unsplash photo by its address.
+                        window.pgEditorPicker.pictures({ multiple: false }).then(function (picks) {
+                            if (!picks || !picks.length) return;
+                            const imgPath = picks[0].url ? picks[0].url : picks[0].name;
+                            el.src = picks[0].url ? imgPath : (typeof OUTPUT_PATH !== 'undefined' ? OUTPUT_PATH : '/') + imgPath;
+                            inp.value = imgPath;
+                            self.render();
+                            self._fireChange();
+                        });
                     } else {
                         // Fallback: local file reader (data URL, not saved to server)
                         const fileInput = document.createElement('input');

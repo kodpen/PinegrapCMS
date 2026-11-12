@@ -19,7 +19,7 @@ description: Decisions list, access part: public pi.php/si.php and test_secure_m
 
 ## Which secrets and TLS choices are deliberate?
 - `includes/settings/prep.php` renders the Google Client Secret (stored encrypted) back into the Security form: operator preference (#62 item 13), the written exception to the never-shown-back rule of `core/security-helpers-and-secret-storage.md`.
-- `editor_select_image.php` prints `UNSPLASH_ACCESS_KEY` into the page: by design, the Access Key is Unsplash's client-side `client_id`; the Secret Key is the secret (#62 item 11).
+- The picker bridge (`pg_editor_bridge_script()`) prints `UNSPLASH_ACCESS_KEY`: by design, the Access Key is Unsplash's public `client_id`, the Secret Key the secret (#62 item 11).
 - `ALLOW_INSECURE_UPDATE_TLS` in `data/config.php` turns verification off in `pg_curl_tls()` for every call that uses it: the version and licence checks and, since PR #173 (2026-09-18), the card gateways of `submit_order.php` and `recurring_payment_job.php`, Givex and the carriers. It stays the operator's one explicit last resort; no separate helper without the flag (#70). Stripe and iyzico verify inside their bundled libraries, which the flag does not reach. Which calls use it: `platform/update-tls-verification.md`.
 - `pg_write_permission_repair()`: folders 0777, files 0666, because two users apply updates (panel = web server, FTP = hosting account); see `release/stale-migration-file-protection.md` (#59 item 7).
 - `escape_url()` validates for display and accepts `//`, `http://`, `https://` on purpose; tightening it breaks the screens that print `http_referer` (`platform/redirect-validator-context.md`).

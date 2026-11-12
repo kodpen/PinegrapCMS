@@ -256,7 +256,9 @@ function pg_contact_form_picture_card($is_new, $image_html)
     // own name, selected_images[], the create screen dropped the picture.
     $picker = 'software_image_picker({initialize:true,SingleImage:true,file_input_name:\'file_id\'});';
 
-    return '
+    // Change Image opens the picture picker (software_image_picker() in
+    // backend.src.js through pgEditorPicker); its scripts are printed once.
+    return pg_editor_bridge_script() . '
                                 <div class="card mb-7 display-on-hover overflow-hidden position-relative">
                                     <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Picture') . '

@@ -163,7 +163,6 @@ function test_panel_title_label_override_title_matches_name()
 function test_panel_title_label_override_unlabelled_hints_are_tooltips()
 {
 	$cases = array(
-		'editor_select_image.php' => array('select', array('folder_id' => 'Folder', 'access_control_type' => 'Access')),
 		'includes/forms/product_group_form.php' => array('input', array('select_all' => 'Select/Deselect All')),
 		'includes/panel/explorer.php' => array('input', array('select_all' => 'Select/Deselect All')),
 	);

@@ -49,7 +49,6 @@ function test_panel_accessible_names_icon_buttons()
 	$expect = array(
 		'cloudflare.php' => array("aria-label=\"' . h(lang('Edit')) . '\"", "aria-label=\"' . h(lang('Delete')) . '\""),
 		'view_parasut_inbox.php' => array("aria-label=\"' . h(lang('Invoice Detail')) . '\""),
-		'editor_select_image.php' => array("onclick=\"esiUnsplashSearch()\" aria-label=\"' . h(lang('Search')) . '\""),
 		'erp_account_prices.php' => array("<button type=\"submit\" class=\"btn btn-outline theme-secondary\" aria-label=\"' . h(lang('Search')) . '\">"),
 		'view_performance_log.php' => array("<button type=\"submit\" class=\"btn btn-sm btn-solid theme-primary\" aria-label=\"' . h(lang('Search')) . '\">"),
 		'includes/settings/screen.php' => array('disabled="disabled" aria-label="\' . h($pg_settings_step[2]) . \'"'),
@@ -122,7 +121,6 @@ function test_panel_accessible_names_filter_selects()
 		'view_ads.php' => array('ad_region_id' => 'Ad Region'),
 		'view_contacts.php' => array('contact_group' => 'Group', 'filter' => 'Content that viewed'),
 		'view_submitted_forms.php' => array('custom_form' => 'Custom Form', 'custom_form_fake' => 'Custom Form'),
-		'editor_select_image.php' => array('folder_id' => 'Folder', 'access_control_type' => 'Access'),
 	);
 
 	foreach ($expect as $path => $selects) {

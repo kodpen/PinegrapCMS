@@ -192,3 +192,42 @@ function test_editor_bridge_link_window_deleted()
 	pg_assert_same(false, strpos(file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/editor.php'), 'editor_select_page_or_file'), 'no setting names it');
 	pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/clean_up.php'), "    'editor_select_page_or_file.php',\n") !== false, 'Cleanup lists it');
 }
+
+// A screen that keeps files gets the picked pictures as names and ids, in
+// the order picked; an item without a name is left out.
+function test_editor_bridge_picture_items()
+{
+	$out = editor_bridge_js_test_run('return [
+		B.pictureItems({value: "a.png", text: "a.png", id: 7}),
+		B.pictureItems([{value: "b c.jpg", text: "b c.jpg", id: "12"}, {value: "", text: ""}, {value: "d.webp", id: 3}]),
+		B.pictureItems(null),
+		B.pictureItems([])
+	];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(array('name' => 'a.png', 'id' => 7)), $out[0]);
+	pg_assert_same(array(array('name' => 'b c.jpg', 'id' => 12), array('name' => 'd.webp', 'id' => 3)), $out[1]);
+	pg_assert_same(null, $out[2]);
+	pg_assert_same(null, $out[3]);
+}
+
+// The image window is gone: the product builder's pictures and a contact's
+// photo open the picker through software_image_picker(), the screens print
+// the bridge, no setting names the window and Cleanup lists it.
+function test_editor_bridge_image_window_deleted()
+{
+	pg_assert_false(is_file(PG_FUNCTIONS_DIR . '/editor_select_image.php'), 'the file is deleted');
+	pg_assert_same(false, strpos(file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/editor.php'), 'editor_select_image'), 'no setting names it');
+	pg_assert_same(false, strpos(file_get_contents(PG_FUNCTIONS_DIR . '/add_file.php'), 'editor_select_image'), 'no upload returns to it');
+	pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/clean_up.php'), "    'editor_select_image.php',\n") !== false, 'Cleanup lists it');
+
+	$backend = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+	pg_assert_same(false, strpos($backend, 'window.open(windowUrl'), 'no window');
+	pg_assert_true(strpos($backend, 'window.pgEditorPicker.pictures({ multiple: !single })') !== false, 'software_image_picker() opens the picker');
+
+	pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/product_builder.php'), 'pg_editor_bridge_script()') !== false, 'the product builder prints the bridge');
+	pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/contact_form.php'), 'return pg_editor_bridge_script()') !== false, 'the contact picture card prints the bridge');
+}

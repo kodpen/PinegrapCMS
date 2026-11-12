@@ -61,3 +61,14 @@ function test_theme_designer_entries_new_theme_opens_css_editor()
 	pg_assert_true(strpos($source, "new liveform('edit_theme_css')") !== false, 'the notice goes to the CSS editor\'s form');
 	pg_assert_true(strpos($source, "/edit_theme_css.php?id=' . \$theme_id . '&send_to=' . urlencode(PATH . SOFTWARE_DIRECTORY . '/view_themes.php')") !== false, 'a new theme opens in the CSS editor and returns to the theme list');
 }
+
+// The Background › File list of a theme designer module is a picker field of
+// pictures every visitor may open, stored by name as before; the screen
+// prints the picker's script.
+function test_theme_designer_background_is_a_picker_field()
+{
+	$module = file_get_contents(PG_FUNCTIONS_DIR . '/get_theme_designer_module.php');
+	pg_assert_same(false, strpos($module, 'select_files_for_theme_designer'), 'no file list of its own');
+	pg_assert_true(strpos($module, "pg_picker_field('public_image', \$name, (string) \$liveform->get_field_value(\$name)") !== false, 'picker field');
+	pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/theme_designer.php'), "' . pg_picker_script() . '") !== false, 'the screen prints the picker');
+}

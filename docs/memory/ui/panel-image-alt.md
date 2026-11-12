@@ -6,7 +6,6 @@ module: ecommerce, contact_list
 
 ## Which panel pictures carry an empty alt, and why?
 - A lazy `<img>` with no alt is read by its file name: first `loading.gif`, then the real file. Where the text beside it already names the thing, the picture gets `alt=""`:
-  - the image picker tile (`editor_select_image.php`): its alt was the file name, which the `.esi-caption` in the same button repeated ("photo.jpg Select photo.jpg");
   - the contacts list photo (`pg_contact_list_row()`, `includes/fn/contact_list.php`): the name is in the row;
   - the order view's Customer Information photo (`view_order.php`): the customer's name is in the card below it;
   - the liveform warning icon (`get_warnings()`, `liveform.class.php`): its alt was the English literal "Warning" before `lang('Warning')` / `lang('Warnings')`, so the heading read "Warning Uyarı:".
@@ -22,6 +21,5 @@ module: ecommerce, contact_list
 
 ## What keeps the picture picker's Unsplash Load More usable?
 - A failed request rolls `_unsplashPage` back, so Load More asks for the same page again; an empty later page keeps the count already shown instead of 'Sorry, we could not find any images.' over the photos.
-- When Load More hides while it holds focus, focus moves to the first new tile (the last tile when none came), not to `<body>` (`esiUnsplashShow()`, `tests/editor_select_image_unsplash_test.php`).
 
 Related: docs/memory/ui/list-row-names.md, docs/memory/ui/order-view-picker-links.md

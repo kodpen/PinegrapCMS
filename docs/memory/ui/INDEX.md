@@ -487,6 +487,7 @@
 - picker-page-fields-screens.md: Page picker fields outside the page form (#8803): product builder, Edit Offer, short links, menu item, calendar, e-mail campaign profile; why quick edit keeps its lists
 - picker-pages.md: Pages in the picker dialog (kind page, PK4): rows with address and type, the page type chips, archived and binned marks that cannot be chosen, a caller's own entries (extra) [decision: here]
 - picker-registry.md: The picker's registry pg_picker_kinds() and endpoint picker.php (list, search, tree, resolve, upload): kinds, request checks, paging, access rule, value states
+- picker-remaining-screens.md: The product builder's pictures, the contact photo and the theme designer's background file on the picker (PK9, #8904); the image window editor_select_image.php deleted with its add_file.php return
 - picker-upload.md: The picker dialog's Upload (picker.php request upload), its Recently used list kept in the browser, and several picks (multiple): rules, keys, where each is checked
 - print-order-product-links.md: The order print view's product name and image are real links to edit_product.php, reachable from the keyboard
 - print-views-light-paper.md: The order print view and packing slip force the light theme, carry their own title and the store icon; the packing slip's address lines; the campaign popups' title and icon

@@ -6360,7 +6360,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_name_check.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_name_check.js') . '"></script>
     ' . pg_ai_write_assets() . '
     ' . ($ai_marks_ready ? pg_ai_fields_assets() : '') . '
-    ' . pg_picker_script() . '
+    ' . pg_editor_bridge_script() . '
 </main>' . output_footer();
 
     $liveform->remove_form();

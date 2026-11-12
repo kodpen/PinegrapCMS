@@ -586,8 +586,8 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
 /**
  * The CKEditor settings that let the editor browse and upload files, for
  * get_wysiwyg_editor_code(): empty when $allowed is false (a visitor, or a
- * user with no folder to edit), so the Link and Image dialogs show no Browse
- * button and no Upload tab. $base is the software address, $folder_id the
+ * user with no folder to edit), so the Link and Image dialogs show no Upload
+ * tab. $base is the software address, $folder_id the
  * folder an upload goes to (0: the endpoint's default).
  */
 function _pg_wysiwyg_file_properties($allowed, $base, $token, $folder_id)
@@ -599,12 +599,9 @@ function _pg_wysiwyg_file_properties($allowed, $base, $token, $folder_id)
     $upload = escape_javascript($base . '/editor_add_file.php?token=' . rawurlencode((string) $token)
         . (((int) $folder_id > 0) ? '&folder_id=' . (int) $folder_id : ''));
 
-    // The Link dialog has no browse window of its own: its Browse Server
-    // opens the picker (pg_editor_bridge_script()).
-    return 'filebrowserImageBrowseUrl: "' . escape_javascript($base . '/editor_select_image.php') . '",
-                filebrowserWindowWidth: "850",
-                filebrowserWindowHeight: "740",
-                filebrowserUploadMethod: "form",
+    // Neither the Link nor the Image dialog has a browse window of its own:
+    // their Browse Server opens the picker (pg_editor_bridge_script()).
+    return 'filebrowserUploadMethod: "form",
                 filebrowserUploadUrl: "' . $upload . '",
                 filebrowserImageUploadUrl: "' . $upload . '",';
 }
