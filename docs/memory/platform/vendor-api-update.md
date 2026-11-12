@@ -1,10 +1,11 @@
 ---
 name: vendor-api-update
-description: The Kodpen API's release check (GET /releases/latest, PR #3282) behind PG_VENDOR_API_V1: how an answer is read, what it offers, the pin the later steps read, flag and notification, screen texts
+description: The Kodpen API's release check (GET /releases/latest, PR #3282, PG_VENDOR_API_V1 on): how an answer is read, what it offers, the pin the later steps read, flag and notification, screen texts
 ---
 
 ## Where is it asked?
-- Once `PG_VENDOR_API_V1` is on (`vendor-api-client.md`), `pg_update_server_version($mode)` (`includes/fn/update.php`) calls `pg_vendor_release_check()`: `GET <base>/releases/latest?channel=<pg_update_channel()>&from=<VERSION>`, `from` only for a release number (`pg_vendor_release_path()`). Callers: the daily check (`software_update_check()`), the updater screen through it, the `check` step of `pg_panel_software_update()` (update and Repair). With `SOFTWARE_UPDATE_CHECK` off nothing is asked. While the switch is off api2 answers as before.
+- With `PG_VENDOR_API_V1` on (`vendor-api-client.md`), `pg_update_server_version($mode)` (`includes/fn/update.php`) calls `pg_vendor_release_check()`: `GET <base>/releases/latest?channel=<pg_update_channel()>&from=<VERSION>`, `from` only for a release number (`pg_vendor_release_path()`).
+- Callers: the daily check (`software_update_check()`), the updater screen through it, the `check` step of `pg_panel_software_update()` (update and Repair). With `SOFTWARE_UPDATE_CHECK` off nothing is asked. The switch off is only the way back to api2 (plan step P9 removes the api2 branches; the switch line stays).
 
 ## How is an answer read?
 - `pg_vendor_release_read()`: status, problem code, and the release in the vectors' flat shape (`release.artifacts.update` as `update`, `build` '' when absent, sha256 lower-cased). A 200 needs `application/json` and a release object: version a release number, channel stable or beta. A blocked release needs only its stepping stone (a release number); any other needs build (`[0-9A-Za-z._-]{0,64}`), manifest and signature addresses, a 64-hex manifest_sha256, key id `^[a-z0-9][a-z0-9._-]{0,15}$`, package url, size (int > 0), sha256. Less is no release, and the answer is unusable.

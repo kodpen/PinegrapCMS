@@ -482,6 +482,77 @@
         return row;
     }
 
+    // ── A mail's HTML ──────────────────────────────────────────────────
+    //
+    // The pane draws a mail's kept HTML in a guarded frame (mail_pane.php
+    // ws_mail_pane_body_html(), includes/fn/guarded_frame.php's mail mode).
+    // The frame's height follows the mail once its shell reports it. Its
+    // pictures from outside wait for Show pictures, which loads the frame's
+    // second address and is remembered for the sender in this browser, one
+    // list per site and person.
+
+    var PICTURES_PREFIX = 'ws-mail-pictures:';
+    var PICTURES_MAX = 500;
+    var FRAME_MAX = 100000;
+
+    function picturesKey(site, viewer) {
+        return PICTURES_PREFIX + String(site || '') + '|' + (parseInt(viewer, 10) || 0);
+    }
+
+    // The remembered senders, lower case, newest first; [] for anything else.
+    function picturesSenders(stored) {
+        var value = null;
+        var out = [];
+
+        try {
+            value = JSON.parse(String(stored || ''));
+        } catch (error) {
+            return out;
+        }
+
+        if (!Array.isArray(value)) {
+            return out;
+        }
+
+        value.forEach(function (sender) {
+            if (typeof sender !== 'string') {
+                return;
+            }
+
+            sender = sender.trim().toLowerCase();
+
+            if (sender !== '' && sender.length <= 320 && out.indexOf(sender) < 0 && out.length < PICTURES_MAX) {
+                out.push(sender);
+            }
+        });
+
+        return out;
+    }
+
+    // The list with the sender first; the oldest fall off past the limit.
+    function picturesAdd(senders, sender) {
+        sender = String(sender || '').trim().toLowerCase();
+
+        var out = (sender !== '' && sender.length <= 320) ? [sender] : [];
+
+        (senders || []).forEach(function (one) {
+            if (one !== sender && out.length < PICTURES_MAX) {
+                out.push(one);
+            }
+        });
+
+        return out;
+    }
+
+    // A height a frame reports, as whole pixels within bounds; -1 if none.
+    function frameHeight(value) {
+        if (typeof value !== 'number' || !isFinite(value) || value < 0) {
+            return -1;
+        }
+
+        return Math.min(Math.round(value), FRAME_MAX);
+    }
+
     // The E-mails screen (workspace_mail.php): a row opens its conversation
     // in the reading pane beside the list, Load more reads the next page
     // under the rows, Mark all as read clears the marks and the menu's
@@ -561,6 +632,102 @@
             }
         }
 
+        var slot = picturesKey(h.cfg && h.cfg.api_url, h.cfg && h.cfg.me);
+
+        // Every read and write of the list may fail (a private window,
+        // blocked storage, a full quota): the pictures then show for this
+        // reading only.
+        function remembered() {
+            var stored = null;
+
+            try {
+                stored = window.localStorage.getItem(slot);
+            } catch (error) {
+                stored = null;
+            }
+
+            return picturesSenders(stored);
+        }
+
+        function remember(sender) {
+            try {
+                window.localStorage.setItem(slot, JSON.stringify(picturesAdd(remembered(), sender)));
+            } catch (error) {
+                // Shown, not remembered.
+            }
+        }
+
+        // Each of the sender's frames loads with its pictures; its line goes.
+        function pictures(sender) {
+            Array.prototype.forEach.call(pane.querySelectorAll('.ws-mail-frame[data-ws-mail-pictures-src]'), function (frame) {
+                if (frame.getAttribute('data-ws-mail-sender') !== sender) {
+                    return;
+                }
+
+                var body = frame.closest('[data-ws-mail-body]');
+                var line = body && body.querySelector('[data-ws-mail-pictures]');
+
+                frame.setAttribute('src', frame.getAttribute('data-ws-mail-pictures-src'));
+                frame.removeAttribute('data-ws-mail-pictures-src');
+
+                if (line) {
+                    line.parentNode.removeChild(line);
+                }
+            });
+        }
+
+        // A drawn pane: the senders whose pictures were asked for before.
+        function dress() {
+            var senders = remembered();
+
+            Array.prototype.forEach.call(pane.querySelectorAll('.ws-mail-frame[data-ws-mail-pictures-src]'), function (frame) {
+                var sender = frame.getAttribute('data-ws-mail-sender');
+
+                if (sender && senders.indexOf(sender) >= 0) {
+                    pictures(sender);
+                }
+            });
+        }
+
+        // Plain text and back: the frame or the mail's text, one at a time.
+        function plainText(button) {
+            var body = button.closest('[data-ws-mail-body]');
+            var on = button.getAttribute('aria-pressed') !== 'true';
+            var frame = body.querySelector('.ws-mail-frame');
+            var text = body.querySelector('.ws-mail-text');
+            var line = body.querySelector('[data-ws-mail-pictures]');
+
+            button.setAttribute('aria-pressed', on ? 'true' : 'false');
+            frame.hidden = on;
+            text.hidden = !on;
+
+            if (line) {
+                line.hidden = on;
+            }
+        }
+
+        // A frame's shell reports its mail's height; only a frame of this
+        // pane, from this site, is heard.
+        window.addEventListener('message', function (event) {
+            var data = event.data;
+
+            if (!data || typeof data !== 'object' || data.pg !== 'guarded-frame' || event.origin !== window.location.origin) {
+                return;
+            }
+
+            var height = frameHeight(data.height);
+
+            if (height < 0) {
+                return;
+            }
+
+            Array.prototype.forEach.call(pane.querySelectorAll('.ws-mail-frame'), function (frame) {
+                if (frame.contentWindow && frame.contentWindow === event.source) {
+                    frame.style.height = height + 'px';
+                }
+            });
+        });
+
         function close() {
             current = 0;
             pane.hidden = true;
@@ -638,6 +805,7 @@
                 var keep = again && (focused === document.body || pane.contains(focused));
 
                 pane.innerHTML = data.html;
+                dress();
                 tools(data);
                 address(id);
                 badge(data.unread || 0);
@@ -683,6 +851,38 @@
                 h.fail(error);
             });
         }
+
+        // The mail's own buttons, in the pane however it was drawn.
+        pane.addEventListener('click', function (event) {
+            var target = event.target.closest('[data-ws-mail-plain], [data-ws-mail-show-pictures]');
+
+            if (!target) {
+                return;
+            }
+
+            if (target.hasAttribute('data-ws-mail-plain')) {
+                plainText(target);
+
+                return;
+            }
+
+            var body = target.closest('[data-ws-mail-body]');
+            var frame = body && body.querySelector('.ws-mail-frame[data-ws-mail-sender]');
+            var sender = frame ? frame.getAttribute('data-ws-mail-sender') : '';
+            var plain = body && body.querySelector('[data-ws-mail-plain]');
+
+            if (!sender) {
+                return;
+            }
+
+            remember(sender);
+            pictures(sender);
+
+            // The pressed button is gone; the keyboard stays on the mail.
+            if (plain) {
+                plain.focus();
+            }
+        });
 
         root.addEventListener('click', function (event) {
             var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-forward], [data-ws-mail-close]');
@@ -730,6 +930,7 @@
             // status controls, without a loading line in between.
             if (pane.querySelector('h2')) {
                 current = start;
+                dress();
             }
 
             open(start);
@@ -1191,6 +1392,10 @@
         compose: compose,
         forward: forward,
         newDraftKey: newDraftKey,
-        newDraftFresh: newDraftFresh
+        newDraftFresh: newDraftFresh,
+        picturesKey: picturesKey,
+        picturesSenders: picturesSenders,
+        picturesAdd: picturesAdd,
+        frameHeight: frameHeight
     };
 })();

@@ -154,6 +154,7 @@
 - design-template-launch-pages.md: Launch template's camera, specs and compare pages on the Product Launch blocks: the spec comparison from $spec_groups, the differences-only compare, motion, what was dropped
 - design-template-launch.md: Phone Launch Site template (pinegrap-launch, 2.0.0): the Orbit in three models from one data file, pages on the launch- blocks, a buy page without the shop, requests, tests
 - design-template-law.md: Law Firm template (pinegrap-law): practice areas, lawyers, results, fees, a consultation request with a conflict check followed from the account, careers, no shop, plw- look, tests.
+- design-template-library-pages.md: Public Library 2.0.0 (#8846): home, visit, Central Library and catalogue drawn on the Library blocks and the general hours and floor blocks; the data behind them, motion, browser fixes, tests
 - design-template-library.md: Public Library template (pinegrap-library): branches as data, catalogue and events as collections, card, reservation, place and room requests, no shop, plb- look, tests.
 - design-template-magazine-a11y.md: Magazine accessibility: ink focus rings on links, buttons, fields and the shelf, headings that never repeat, e-mail frames light in the dark theme, the core items left open.
 - design-template-magazine-issues.md: Magazine issues: office pick list with the stored default Online only, ?issue= contents, index of live Editor's letters, value links, plain names, launching one.
@@ -178,6 +179,7 @@
 - design-template-photo-pages.md: Photography Studio template 2.0.0: home, how it works, packages and about on the Photo blocks: the builders, each page's composition, motion, what left, the test
 - design-template-photo.md: Photography Studio template (pinegrap-photo): galleries collection, shoot booking requests, private proofing folders and selections, deposits and vouchers, pph- look, tests.
 - design-template-planetarium.md: Planetarium template (pinegrap-planetarium): dome shows and telescope nights as dated collections, school visit requests, tickets and memberships, planetarium- blocks, ppm- look, tests.
+- design-template-podcast-pages.md: Podcast Network 2.0.0: home, sponsorship, listening and hosts pages on the Podcast blocks and Stats, Steps, Team blocks; builders, limits, phone and dark fixes, test
 - design-template-podcast.md: Podcast Network template (pinegrap-podcast): podcasts and episodes as collections, bound player, sponsorship and pitch requests, supporters' membership folder, ppd- look, tests.
 - design-template-portfolio.md: Web Designer Portfolio template (pinegrap-portfolio): case studies as a collection, services with three packages, a project brief followed from the account, pdp- look, tests.
 - design-template-realestate.md: Real Estate Agency template (pinegrap-realestate): listings as a collection, neighbourhoods, agents, viewing and valuation requests followed from the account, pre- look, tests.
@@ -311,11 +313,12 @@
 - designer-import-validation-theme.md: Designer HTML/ZIP import rules, SEO validation badges (client twin), theme as files row, canvas direct-child CSS rules, image placeholder and loop band.
 - designer-incremental-canvas.md: How a one-node edit redraws only that node's element on the designer canvas (_sdRenderNode, _sdCanvasRedrawNode), which edits keep the full rebuild, and what the in-place redraw keeps (D2, PR #8048)
 - designer-inline-text-editing.md: Canvas in-place text editing: button-label spaces, colour/date/file input labels, no hint on bound text, an ended edit's key handler, shared-component edits, <html lang>.
+- designer-interactions-chapter.md: The chapter interaction (Colour chapter): the page takes a section's background and text colour while it holds the window's middle; fields, script, reduced motion, canvas, panel, tests.
 - designer-interactions-count.md: The count interaction (Count up): fields, how pg_fx.src.js reads the first number and counts it, reduced motion, the canvas, the panel, tests.
 - designer-interactions-panel.md: Interactions section of the properties panel and on the canvas: nodes, rows, _sdFxSet(), undo, canvas binding, Play button, code view back to props._fx.
 - designer-interactions-part.md: The Interactions section of the designer's properties panel as the part 'interactions' (D5 part 7): what moved, what the core keeps, when it loads
 - designer-interactions-script.md: What pg_fx.src.js does: entrance start states and the observer, stagger, hover and click, parallax, scroll-linked effects, the node's own styles, reduced motion, pgFxBind.
-- designer-interactions.md: Interactions of designer nodes: props._fx, data-pg-fx-* attributes, pg_fx.src.js (entrance, hover, click, sticky, parallax, scroll-linked, count), head style, fail-safe, twins, tests.
+- designer-interactions.md: Interactions of designer nodes: props._fx, data-pg-fx-* attributes, pg_fx.src.js (every effect), head style, fail-safe, twins, tests.
 - designer-layer-names.md: Rules for node customName (layer names) in designer blocks: one name per role, contextual generic names, no embedded numbers, no empty names.
 - designer-lazy-dirty-checks.md: When the designer compares a page with its baseline (the 1.5 s poll, the tab strip, save) and how the answer for a page not open is kept (_pgDirtyMemo) (D4, PR #8091)
 - designer-live-preview.md: The designer's Preview and live preview: blob page, system widgets drawn by the server from the editor's unsaved trees (preview_widgets), background-render rules, hooks that refresh the preview.

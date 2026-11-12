@@ -1442,7 +1442,9 @@ function ws_guest_check($context, $message_id, $item, $checked)
 
     db("INSERT INTO ws_checks (message_id, item, checked, user_id, guest_id, updated_at)
         VALUES ('" . (int) $message['id'] . "', '" . $item . "', '" . ($checked ? 1 : 0) . "', 0, '" . (int) $context['guest']['id'] . "', '" . time() . "')
-        ON DUPLICATE KEY UPDATE checked = VALUES(checked), user_id = VALUES(user_id), guest_id = VALUES(guest_id), updated_at = VALUES(updated_at)");
+        ON DUPLICATE KEY UPDATE checked = VALUES(checked), user_id = VALUES(user_id), guest_id = VALUES(guest_id), updated_at = VALUES(updated_at)"
+        // A tick an application gave before is the guest's now.
+        . ((function_exists('ws_checks_app_ready') && ws_checks_app_ready()) ? ", app_id = 0" : ''));
 
     ws_message_touch($message['id']);
 

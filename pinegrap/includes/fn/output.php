@@ -7641,6 +7641,9 @@ function pg_js_bundles()
         // The picker dialog (window.pgPicker, includes/fn/picker.php), printed
         // by pg_picker_script() on the screens that open it.
         'assets/js/pg_picker.min.js'              => array('assets/js/pg_picker.js'),
+        // The rich text editor's bridge to the picker and the Unsplash
+        // dialog (pg_ckeditor_picker_script(), includes/fn/editor.php).
+        'assets/js/pg_editor_bridge.min.js'       => array('assets/js/pg_unsplash.js', 'assets/js/pg_ckeditor_picker.js'),
         // The report screens' figures and chart (view_order_report.php),
         // loaded after pg_dash.min.js, whose drawing they use.
         'assets/js/pg_report_view.min.js'         => array('assets/js/pg_report_view.js'),

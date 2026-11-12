@@ -39,8 +39,6 @@ function _test_ppd_load()
 	foreach (array_keys($episodes) as $key) $episode_rows[$key] = $episode_row($key);
 	$host_cards = array();
 	foreach (array_keys($hosts) as $key) $host_cards[] = $host_card($key);
-	$package_cards = array();
-	foreach (array_keys($packages) as $key) $package_cards[] = $package_card($key);
 	$tier_cards = array();
 	foreach (array_keys($tiers) as $key) $tier_cards[] = $tier_card($key, $link(lang('Support Us'), '{{page:support}}', 'btn btn-primary rounded-pill mt-auto'));
 	$quote_cards = array();
@@ -79,7 +77,6 @@ function _test_ppd_load()
 		'podcast_cards'    => $podcast_cards,
 		'episode_rows'     => $episode_rows,
 		'host_cards'       => $host_cards,
-		'package_cards'    => $package_cards,
 		'tier_cards'       => $tier_cards,
 		'quote_cards'      => $quote_cards,
 		'figure_tiles'     => $figure_tiles,
@@ -107,7 +104,7 @@ function _test_ppd_trees()
 {
 	$d = _test_ppd_load();
 	return array_merge(array($d['header'], $d['footer'], $d['player'], $d['listen_buttons']), $d['shared'],
-		array_values($d['podcast_cards']), array_values($d['episode_rows']), $d['host_cards'], $d['package_cards'],
+		array_values($d['podcast_cards']), array_values($d['episode_rows']), $d['host_cards'],
 		$d['tier_cards'], $d['quote_cards'], $d['figure_tiles']);
 }
 
@@ -309,8 +306,8 @@ function test_podcast_shared_parts_stand_without_the_shop()
 }
 
 // The footer opens the podcasts filtered on each category, in the words
-// the Category list uses; a package card opens the enquiry with its
-// package chosen.
+// the Category list uses. (Each package opens the enquiry with it chosen
+// on the sponsorship page: design_template_podcast_sponsors_test.php.)
 function test_podcast_links_open_filtered()
 {
 	$d = _test_ppd_load();
@@ -325,19 +322,6 @@ function test_podcast_links_open_filtered()
 		$seen[$q['category']] = true;
 	}
 	pg_assert_same(count($d['categories']), count($seen), 'a link per category');
-	$seen = array();
-	foreach ($d['package_cards'] as $card) {
-		$nodes = array();
-		_test_ppd_nodes($card, $nodes);
-		foreach ($nodes as $node) {
-			$href = (string)($node['props']['href'] ?? '');
-			if (strpos($href, '{{page:sponsor_enquiry}}?') !== 0) continue;
-			parse_str(substr($href, strlen('{{page:sponsor_enquiry}}?')), $q);
-			pg_assert_true(in_array($q['package'] ?? '', $d['lists']['package_titles'], true), 'the link names a package answer');
-			$seen[$q['package']] = true;
-		}
-	}
-	pg_assert_same(count($d['packages']), count($seen), 'a link per package');
 }
 
 // The values a card reads from its form's fields, and its texts.

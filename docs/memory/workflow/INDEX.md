@@ -29,6 +29,8 @@
 - decisions-made-panel-3.md: Decisions list, panel part 3: Bootstrap 6 choices of 2026-10-25 (multiselect kept, liked screens, Stepper, Avatar, password meter, old browser notice); the Site Settings dialog's drawer (2026-11-11)
 - decisions-made-panel-4.md: Decisions list, panel part 4: the bell (owner 2026-11-11): a right drawer, rows as the dashboard's Next up rows, module chips, unread only, asked of me, search, in-place actions, read when opened
 - decisions-made-panel-5.md: Decisions list, panel part 5 (2026-11-11 on): the dashboard's notes card as a My Notes shortcut, last online times, the world map without city names (#8672); the report screens' renewal (#8673)
+- decisions-made-panel-6.md: Decisions list, panel part 6 (2026-11-12 on): the panel's design language from look A (#8842); the names Design Canvas and Page Design Studio, the design menu with Other (#8849)
+- decisions-made-panel-7.md: Decisions list, panel part 7 (2026-11-12 on): look A's second pass as the reference; how wide add and edit screens and lists are, lists without a pager (#8860)
 - decisions-made-panel.md: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose; the one date-and-time picker; the main menu in category headings; navigator screens; the front-end editing button box
 - decisions-made-product-10.md: Decisions list, product part 10 (2026-10-30 evening on): Turkish i-fold in panel lists, public invoice PDF address, e-mail triage suggestion, Workspace uploads, no collection schedule columns
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log
@@ -68,6 +70,7 @@
 - decisions-made-product-42.md: Decisions list, product part 42 (2026-11-10 on): one modern picker for a file or a page (no "Choose from File Manager" button), its screens, archived pages; the image editor's clip timeline and length
 - decisions-made-product-43.md: Decisions list, product part 43 (2026-11-11 on): classic styles sharing a CSS/JS set move as one "Legacy" design, its badge "Legacy" / "Eski", what follows the move (#8671)
 - decisions-made-product-44.md: Decisions list, product part 44 (2026-11-11 on): a muted, looping hero video may play by itself, with a pause button; a colour mode (light, dark, follow the system) for a whole design
+- decisions-made-product-45.md: Decisions list, product part 45 (2026-11-11 on): the Kodpen API client goes on before its release keys exist; the api2 client branches leave in the next open version; the api2 server stays open
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
@@ -101,6 +104,7 @@
 - decisions-made-workspace-15.md: Decisions list, workspace part 15 (2026-11-11 on): the Workspace settings cards are simplified as they move under Site Settings, Anthropic as a provider of model assistants
 - decisions-made-workspace-16.md: Decisions list, workspace part 16 (2026-11-11): clearing a conversation keeps memory and decisions, an agent's last seen and ticks, the canvas and no second tool, the server may draw, live pages
 - decisions-made-workspace-17.md: Decisions list, workspace part 17 (2026-11-11): a mail opens as a preview drawn with its HTML and never in a channel, pictures from outside wait for the reader, a mailbox may be kept in no channel
+- decisions-made-workspace-18.md: Decisions list, workspace part 18 (2026-11-12): the channel sound silent in a hidden tab (#8798); one canvas with drawing, live page and data, the guarded bridge to data, the order (#8850)
 - decisions-made-workspace-2.md: Decisions list, workspace part 2 (2026-10-29 on): the channel menu holds only the channel's own items; creates in a chat go through /oluştur (/create): its rights and kinds; the sales quote stays
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain

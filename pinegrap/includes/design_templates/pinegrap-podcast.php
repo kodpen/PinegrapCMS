@@ -59,7 +59,12 @@
  * components, 'catalog' and 'requires'.
  *
  * The version follows the template, not the software: raise it whenever the
- * pages change, so a design records which edition it started from.
+ * pages change, so a design records which edition it started from. 2.0.0
+ * draws the home on the Podcast blocks (the Episode Hero with Chapters),
+ * the sponsorship page on the Sponsor Placements, the listening page on
+ * the Transcript and an episode's cover over the hero's sound wave; the
+ * hosts, the figures and the sponsorship steps are general blocks (Team:
+ * Profiles, Stats: Counter, Steps: Numbered).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -186,11 +191,22 @@ $podcast_css = implode("\n", array(
     '.ppd-lift{transition:transform .2s ease,box-shadow .2s ease}',
     '.ppd-lift:hover,.ppd-lift:focus-visible,.ppd-lift:focus-within{transform:translateY(-3px);box-shadow:var(--bs-box-shadow)}',
     '@media (prefers-reduced-motion:reduce){.ppd-lift{transition:none}.ppd-lift:hover,.ppd-lift:focus-visible,.ppd-lift:focus-within{transform:none}}',
+    // In the dark theme a palette's text colour is made for the page
+    // background and can fall under 4.5:1 on the tertiary bands (the account
+    // bar, the page headers, the grey sections; Sunset gives 4.26:1). Small
+    // coloured text and links there take the palette's emphasis tint; a
+    // secondary link or outline button (the breadcrumb, All Podcasts, Log
+    // out) takes the muted body colour, as the secondary tint stays under
+    // 4.5:1 too (Sunset's purple gives 3.97:1).
+    '[data-bs-theme=dark] .bg-body-tertiary :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}',
+    '[data-bs-theme=dark] .bg-body-tertiary .link-secondary{color:var(--bs-secondary-color)!important}',
+    '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-primary{--bs-btn-color:var(--bs-primary-text-emphasis)}',
+    '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-color)}',
 ));
 
 return array(
     'name'        => lang('Podcast Network'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 141,
     'icon'        => 'bi-mic',
@@ -250,10 +266,11 @@ return array(
         'email_footer'   => array('name' => lang('Podcast E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its ppd- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the rules of the Podcast blocks its pages are
+    // drawn on (the Episode Hero, the Sponsor Placements and the Transcript)
+    // and its ppd- rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $podcast_css),
+        'css'   => pg_design_template_user_styles(array('podcast-episode', 'podcast-sponsor', 'podcast-transcript'), $podcast_css),
         'fonts' => json_encode($podcast_fonts),
     ),
 );

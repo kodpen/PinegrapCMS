@@ -250,11 +250,18 @@ function test_library_shared_parts_have_no_shop()
 	$nodes = array();
 	_test_lb_nodes($d['header'], $nodes);
 	$menu = null;
+	$join = null;
 	foreach ($nodes as $n) {
 		if (!empty($n['props']['smartActive'])) $menu = $n;
+		if (isset($n['props']['href']) && $n['props']['href'] === '{{page:join}}' && isset($n['props']['cssClass']) && strpos($n['props']['cssClass'], 'btn') !== false) $join = $n;
 		pg_assert_false(isset($n['props']['active']), 'no page-specific active link');
 	}
 	pg_assert_true($menu !== null, 'the menu marks the current page on the server');
+	pg_assert_true($join !== null, 'the header has a card button');
+	pg_assert_contains('navbar-expand-xl', json_encode($d['header']), 'the bar opens from 1200 px');
+	// The brand, seven links and the button need about 1,320 px: from 1200 to
+	// 1399 px the button stays in the collapsed menu.
+	pg_assert_contains('d-xl-none d-xxl-inline-flex', $join['props']['cssClass'], 'Join the Library waits for 1400 px in the open bar');
 }
 
 // The links of a tree that open $page with a query, as parsed queries.

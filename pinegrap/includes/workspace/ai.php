@@ -1511,7 +1511,7 @@ function ws_ai_step($row)
         // model server's speed allows (ignored by models that do not).
         'reasoning_effort' => 'low',
         // A page written out as HTML takes more room than an answer.
-        'max_tokens'  => (!empty($state['design']) || !empty($state['design_tools'])) ? 8000 : 3000,
+        'max_tokens'  => (!empty($state['design']) || !empty($state['design_tools']) || !empty($state['live_page_tools'])) ? 8000 : 3000,
         'stream'      => false,
     ), ws_ai_call_timeout());
 
@@ -1848,10 +1848,11 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
         && ws_ai_asks_for_task($state) && ($steps < WS_AI_MAX_STEPS - 2)) {
         $result = array('ok' => false, 'error' => 'The request asks for a task: call propose_task for it first, then call answer again.');
         $state['task_nudged'] = 1;
-    } elseif (empty($state['proposals']['changes']) && empty($state['proposals']['pages']) && empty($state['proposals']['scheduled']) && empty($state['proposals']['flows']) && empty($state['canvas_done']) && empty($state['done_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && empty($state['design'])
+    } elseif (empty($state['proposals']['changes']) && empty($state['proposals']['pages']) && empty($state['proposals']['scheduled']) && empty($state['proposals']['flows']) && empty($state['canvas_done']) && empty($state['live_page_done']) && empty($state['done_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && empty($state['design'])
         && ws_ai_claims_done($text) && ($steps < WS_AI_MAX_STEPS - 2)) {
         // An answer that says a record was changed, with no change
-        // proposed (a canvas drawn or edited is done, not proposed):
+        // proposed (a canvas or live page made or edited is done, not
+        // proposed):
         // nothing was changed, and the words must not say so.
         $result = array('ok' => false, 'error' => 'You cannot change anything yourself, and nothing was changed. If the request asks for a change, find the record and propose it with propose_change, then answer that you propose it. Otherwise answer without saying that anything was changed.');
         $state['done_nudged'] = 1;
@@ -1967,7 +1968,7 @@ function ws_ai_claims_done($text)
  */
 function ws_ai_tool_names()
 {
-    return array('answer', 'fail', 'read_channel', 'read_task', 'search_records', 'read_record', 'propose_task', 'propose_change', 'propose_bulk_change', 'propose_scheduled_action', 'propose_flow', 'read_flow', 'add_task_note', 'send_voice_message', 'read_page', 'page_set', 'page_replace', 'page_insert', 'page_remove', 'page_css', 'page_rewrite', 'draw_canvas', 'read_canvas', 'edit_canvas');
+    return array('answer', 'fail', 'read_channel', 'read_task', 'search_records', 'read_record', 'propose_task', 'propose_change', 'propose_bulk_change', 'propose_scheduled_action', 'propose_flow', 'read_flow', 'add_task_note', 'send_voice_message', 'read_page', 'page_set', 'page_replace', 'page_insert', 'page_remove', 'page_css', 'page_rewrite', 'draw_canvas', 'read_canvas', 'edit_canvas', 'make_live_page', 'read_live_page', 'edit_live_page');
 }
 
 /**
@@ -3975,6 +3976,11 @@ function ws_ai_start($row)
         }
     }
 
+    // A live page is written out whole as HTML (page_ai.php).
+    if (ws_page_ai_offered($row, $asker)) {
+        $state['live_page_tools'] = 1;
+    }
+
     return array('ok' => true, 'error' => '', 'state' => $state);
 }
 
@@ -4135,6 +4141,11 @@ function ws_ai_tools($row)
         if (ws_canvas_ai_offered($row, $asker)) {
             $tools = array_merge($tools, ws_canvas_ai_tools($tool));
         }
+
+        // Live pages made and edited as whole documents (page_ai.php).
+        if (ws_page_ai_offered($row, $asker)) {
+            $tools = array_merge($tools, ws_page_ai_tools($tool));
+        }
     }
 
     return $tools;
@@ -4159,6 +4170,10 @@ function ws_ai_tool_run($row, &$state, $name, $args)
 
     if ((int) ($row['mcp_server_id'] ?? 0) > 0) {
         return function_exists('ws_mcp_ask_tool_run') ? ws_mcp_ask_tool_run($row, $state, $name, $args) : array('error' => 'The service cannot be reached.');
+    }
+
+    if (in_array($name, ws_page_ai_tool_names(), true)) {
+        return ws_page_ai_tool_run($row, $state, $name, $args, $asker);
     }
 
     if (($name === 'read_page') || (strpos($name, 'page_') === 0)) {
@@ -5224,3 +5239,6 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_activity.php');
 
 // Canvases the assistants draw and edit (tools of ws_ai_step()).
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_ai.php');
+
+// Live pages the assistants make and edit (tools of ws_ai_step()).
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/page_ai.php');

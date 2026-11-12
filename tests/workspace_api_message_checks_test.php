@@ -4,7 +4,8 @@
  *
  * Tests for a Workspace API message's checklist (checks): one entry per
  * item, the tick given since over the written state, who ticked it, a guest
- * with no user id, and the schema that declares it. Also whom an
+ * with no user id, an application's tick with its name and id, the route an
+ * application ticks with, and the schema that declares it. Also whom an
  * application's question rings and what counts as a question.
  *
  * @author      Erdal Güral (Kodpen)
@@ -36,11 +37,49 @@ function test_workspace_api_message_checks_ticks_over_written_state()
 	$out = ws_api_message_checks($body, $checks);
 
 	pg_assert_same(3, count($out), 'code lines are not items');
-	pg_assert_same(array('item' => 0, 'text' => 'Plan A', 'checked' => true, 'by' => array('user_id' => 4, 'name' => 'Ada'), 'at' => '2025-11-10T00:00:00Z'), $out[0]);
+	pg_assert_same(array('item' => 0, 'text' => 'Plan A', 'checked' => true, 'by' => array('user_id' => 4, 'name' => 'Ada'), 'at' => '2025-11-10T00:00:00Z', 'app_id' => null), $out[0]);
 	pg_assert_same(false, $out[1]['checked'], 'cleared since it was written ticked');
 	pg_assert_same(array('user_id' => null, 'name' => 'Visitor'), $out[1]['by'], 'a guest has no user id');
-	pg_assert_same(array('item' => 2, 'text' => 'Plan C', 'checked' => false, 'by' => null, 'at' => null), $out[2], 'untouched');
+	pg_assert_same(array('item' => 2, 'text' => 'Plan C', 'checked' => false, 'by' => null, 'at' => null, 'app_id' => null), $out[2], 'untouched');
 	pg_assert_same(array(), ws_api_message_checks('no list here', array()));
+}
+
+function test_workspace_api_message_checks_application_tick()
+{
+	// The owner's id stays in user_id; the application's name and id are shown.
+	$checks = array(0 => array('checked' => true, 'user_id' => 1, 'name' => 'Mimar', 'at' => 'now', 'updated_at' => 1762732800, 'guest' => false, 'app_id' => 7));
+	$out = ws_api_message_checks("- [ ] @mimar\n- [ ] @koordinator-a", $checks);
+
+	pg_assert_same(array('user_id' => null, 'name' => 'Mimar'), $out[0]['by'], 'an application has no user id');
+	pg_assert_same(7, $out[0]['app_id'], 'which application ticked it');
+	pg_assert_same(null, $out[1]['app_id'], 'nobody ticked the second line');
+}
+
+function test_workspace_check_who()
+{
+	pg_assert_same('app', ws_check_who(array('user_id' => 1, 'guest_id' => 0, 'app_id' => 7)), 'an application with its key');
+	pg_assert_same('guest', ws_check_who(array('user_id' => 0, 'guest_id' => 3, 'app_id' => 0)), 'the guest of the room');
+	pg_assert_same('user', ws_check_who(array('user_id' => 4, 'guest_id' => 0, 'app_id' => 0)), 'a person');
+	pg_assert_same('user', ws_check_who(array('user_id' => 4)), 'a row from before the schema step');
+}
+
+function test_workspace_messages_check_route()
+{
+	$route = null;
+
+	foreach (ws_api_routes() as $row) {
+		if ($row['id'] === 'workspace.messages.check') {
+			$route = $row;
+		}
+	}
+
+	pg_assert_true(is_array($route), 'the route is declared');
+	pg_assert_same('POST', $route['method']);
+	pg_assert_same('/workspace/messages/{id}/checks', $route['path']);
+	pg_assert_same('workspace:write', $route['scope'], 'where the application may post');
+	pg_assert_true(!empty($route['dry_run']), 'a write route takes a dry run');
+	pg_assert_true(!array_key_exists('mcp', $route) || ($route['mcp'] !== false), 'the same as an MCP tool');
+	pg_assert_true(function_exists($route['handler']));
 }
 
 function test_workspace_api_message_checks_schema()
@@ -50,7 +89,7 @@ function test_workspace_api_message_checks_schema()
 
 	pg_assert_same('WorkspaceMessageCheck[]', $schema['checks'] ?? null, 'checks on WorkspaceMessage');
 	pg_assert_same('ws_api_message_check_schema', $objects['WorkspaceMessageCheck'] ?? null, 'the component');
-	pg_assert_same(array('item', 'text', 'checked', 'by', 'at'), array_keys(ws_api_message_check_schema()));
+	pg_assert_same(array('item', 'text', 'checked', 'by', 'at', 'app_id'), array_keys(ws_api_message_check_schema()));
 	pg_assert_same(array_keys(ws_api_message_check_schema()), array_keys(ws_api_message_checks("- [ ] x", array())[0]), 'presenter and schema agree');
 }
 

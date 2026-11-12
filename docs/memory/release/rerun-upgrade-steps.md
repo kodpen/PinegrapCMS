@@ -19,6 +19,7 @@ description: How to re-run an open version's upgrade steps on a dev DB (config.v
 - A script posts `action=rerun_upgrades`, `version` and the page's token to the literal address `software_repair.php`: the form's `action` property returns its hidden input named `action`, not the address.
 
 ## What does the Repair Software package card do?
-- Downloads the channel's current package and overwrites all files (`api.php` `software_update` action, `repair: true`, role 0).
-- It does not run if the server gives no version, or gives one lower than `VERSION` while `SOFTWARE_UPDATE_CHECK === false` (`pg_update_repair_decision()`, pure, tested).
+- Overwrites all files with the package of the signed release the Kodpen API offers the channel (`api.php` `software_update` action, `repair: true`, role 0): the check step pins it (`pg_vendor_release_offer()`, mode `repair`), the download step verifies it (`platform/vendor-api-update-download.md`).
+- It does not run while `SOFTWARE_UPDATE_CHECK === false` (`pg_update_repair_decision()`'s text), when the server offers no release ("…cannot be repaired now") or one older than `VERSION`. Until the release keys ship (plan step P5c) an offered release is refused at `unknown_key_id`, so Repair installs nothing yet.
+- With `PG_VENDOR_API_V1` false (the way back until plan step P9) api2's package comes instead and `pg_update_repair_decision()` judges its version.
 - repair was removed from `download_assistant.php` (install / update / check remain).

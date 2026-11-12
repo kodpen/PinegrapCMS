@@ -49,6 +49,14 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-5.md: What does the Visitor map card draw without city names? (owner, 2026-11-11, #8672)
 - decisions-made-panel-5.md: Which report screens are renewed, and how do they look? (owner, 2026-11-11, #8673)
 - decisions-made-panel-5.md: Are there ready reports on a report screen? (owner, 2026-11-11, #8673)
+- decisions-made-panel-6.md: Where are the rules and the earlier parts?
+- decisions-made-panel-6.md: Does the panel get a design language, and from which look? (owner, 2026-11-12, #8842)
+- decisions-made-panel-6.md: What are the image editor and the visual page editor called? (owner, 2026-11-12, #8849)
+- decisions-made-panel-6.md: Where do the legacy designer's entries and Ads sit in the main menu? (owner, 2026-11-12, #8849)
+- decisions-made-panel-7.md: Where are the rules and the earlier parts?
+- decisions-made-panel-7.md: Is the second pass of look A the reference? (owner, 2026-11-12, #8860)
+- decisions-made-panel-7.md: How wide is an add or edit screen? (owner, 2026-11-12, #8860)
+- decisions-made-panel-7.md: How wide is a list, and how does it page? (owner, 2026-11-12, #8860)
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?
 - decisions-made-panel.md: Which date-and-time picker does the software use? (#2693, 2026-10-28)
@@ -230,6 +238,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-44.md: Where are the rules and the earlier parts?
 - decisions-made-product-44.md: May a hero video play by itself? (owner, 2026-11-11, #8687)
 - decisions-made-product-44.md: Can a whole design be light, dark or follow the system? (owner, 2026-11-11, #8687)
+- decisions-made-product-45.md: Where are the rules and the earlier parts?
+- decisions-made-product-45.md: Does the Kodpen API client go on before its release keys exist? (owner, 2026-11-11, #8755)
+- decisions-made-product-45.md: Does the api2 server stay open? (owner, 2026-11-11, #8755)
 - decisions-made-product-5.md: Which outside-account leftovers start in 2026.11.0? (#3180)
 - decisions-made-product-5.md: Do subscriptions start, and who runs the renewals? (#3183)
 - decisions-made-product-5.md: Does a beta site without a build file get the beta build of its own version? (#3204)
@@ -346,6 +357,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-17.md: Where does a mail open from the E-mails list, and how is it drawn? (owner, 2026-11-11, #8765)
 - decisions-made-workspace-17.md: How are pictures from outside shown in a mail? (owner, 2026-11-11, #8765)
 - decisions-made-workspace-17.md: May a mailbox be kept in no channel? (owner, 2026-11-11, #8765)
+- decisions-made-workspace-18.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-18.md: Does the channel sound play in a hidden tab? (owner, 2026-11-12, #8798)
+- decisions-made-workspace-18.md: Is the canvas one thing? (owner, 2026-11-12, #8850)
+- decisions-made-workspace-18.md: May a live page reach data? (owner, 2026-11-12, #8850)
+- decisions-made-workspace-18.md: In which order is it built? (owner, 2026-11-12, #8850)
 - decisions-made-workspace-2.md: What may the channel menu hold?
 - decisions-made-workspace-2.md: Where are records created inside a chat?
 - decisions-made-workspace-2.md: Does the customer channel's "New sales quote" stay in the menu?
@@ -583,7 +599,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/user-docs-writing.md: How a pinegrap.com documentation page is written and published: English only, the page's structure (sections, anchors, tables, notes), the editor route, Publish is live, release notes on /changelog
 - workspace/agent-canvas-svg.md: Agents draw Workspace canvases from SVG (POST channels/{id}/canvases) and read any canvas (GET messages/{id}/canvas): Import port, blank picture, pending, who may
 - workspace/agent-channel-flag.md: Agent channel switch (ws_channels.agent_channel, #8440): /agent-channel on|off, its decisions kept apart on the decisions screen, the dashboard and GET /workspace/decisions
-- workspace/agent-checklist-questions.md: When an agent asks with a checklist (several ticks, or agent to agent) and not a poll; the ticks over the API (checks), the wake on a tick, the closing decision; who a question rings (question_asked)
+- workspace/agent-checklist-questions.md: Checklist questions over a poll; reading ticks (checks) and an application ticking a line (POST …/checks, app_id), a roll call, the wake on a tick, the closing decision; who a question rings
 - workspace/agent-key-trial-memory.md: Channel memory written live on dev (2026-11-11) with an application agent's key: create, read, list, update and delete by POST, dry runs, refusals, the entry's line in the brief
 - workspace/agent-last-seen.md: An agent's last seen: ws_agents.seen_at set by every call with an app agent's own key, once a minute at most, and the words on the Agents card and in "Agents in this channel" (#8828)
 - workspace/agent-questions.md: How an agent asks the people with a poll or an approval; a one-answer question as a one-choice poll closed once the vote is read; why the outcome is written in the agent's name

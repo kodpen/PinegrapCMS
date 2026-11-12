@@ -56,7 +56,7 @@ function test_picker_kinds()
 		pg_assert_same($kinds[$name], $kind, $name . ' moved into the registry');
 	}
 
-	pg_assert_same(array('list', 'search', 'tree', 'resolve', 'upload'), pg_picker_requests());
+	pg_assert_same(array('list', 'search', 'tree', 'resolve', 'upload', 'short_links'), pg_picker_requests());
 }
 
 function test_picker_access_verdict()
@@ -516,4 +516,29 @@ function test_picker_field_box_and_typed_state()
 	// A paste fires no keydown before its input event, so the Field may be
 	// made after the text changed: the chosen name comes from the attribute.
 	pg_assert_contains('this.text = this.input.defaultValue;', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_picker.js'));
+}
+
+// A short link's destination as the link dialog shows it: the page, group or
+// product address with its tracking code, or the address it was given.
+function test_picker_short_link_destination()
+{
+	pg_assert_same('/about', pg_picker_short_link_destination(array('destination_type' => 'page', 'page_name' => 'about'), '/'));
+	pg_assert_same('/shop/mugs?t=spring', pg_picker_short_link_destination(array('destination_type' => 'product_group', 'page_name' => 'shop', 'product_group_address_name' => 'mugs', 'tracking_code' => 'spring'), '/'));
+	pg_assert_same('/site/shop/blue-mug', pg_picker_short_link_destination(array('destination_type' => 'product', 'page_name' => 'shop', 'product_address_name' => 'blue-mug'), '/site/'));
+	pg_assert_same('https://example.com/x', pg_picker_short_link_destination(array('destination_type' => 'url', 'url' => 'https://example.com/x', 'tracking_code' => 'ignored'), '/'), 'an address keeps no tracking code');
+	pg_assert_same('', pg_picker_short_link_destination(array(), '/'));
+}
+
+// A short link is an entry of the page dialog's own list, valued by its name.
+function test_picker_short_link_entry()
+{
+	$entry = pg_picker_short_link_entry(array('name' => 'yaz', 'destination_type' => 'page', 'page_name' => 'summer-sale'), '/', 'Short link');
+	pg_assert_same(array('value' => 'yaz', 'text' => 'yaz', 'type' => 'short link', 'type_group' => 'short_link', 'type_label' => 'Short link', 'note' => '→ /summer-sale'), $entry);
+	pg_assert_same('', pg_picker_short_link_entry(array('name' => 'x', 'destination_type' => 'url', 'url' => ''), '/', 'Short link')['note'], 'no destination, no note');
+}
+
+// A user (role 3) is offered no short links: they are a manager area.
+function test_picker_short_link_entries_role()
+{
+	pg_assert_same(array(), pg_picker_short_link_entries(array('id' => 5, 'role' => 3)));
 }

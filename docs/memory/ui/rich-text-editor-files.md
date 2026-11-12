@@ -6,6 +6,7 @@ module: editor
 
 ## Who gets Browse and Upload in the rich text editor?
 - `get_wysiwyg_editor_code()` (CKEditor branch) takes every file setting from `_pg_wysiwyg_file_properties()` (`includes/fn/editor.php`): the two browsers (`editor_select_page_or_file.php`, `editor_select_image.php`), the window size, `filebrowserUploadMethod` and both upload addresses (`editor_add_file.php?token=…&folder_id=…`).
+- Behind the same gate it prints the bridge to the picker (`pg_ckeditor_picker_script()`): in the panel the Link and Image dialogs choose through `pgPicker`, the two browsers stay only as the fallback without `pgUI` (`picker-editor-bridge.md`).
 - They come only for a logged-in user of role 1–2 or a role-3 user with edit access to a folder (`no_acl_check()`), the same gate `editor_add_file.php` applies. Anyone else, a visitor on a site form with a rich-text field included, gets none: no Browse button, no Upload tab in the Link and Image dialogs.
 - The TinyMCE ("previous") branch has no upload setting.
 

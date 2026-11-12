@@ -3,13 +3,15 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Design template "Podcast Network", part 1 of its files: the node
- * builders, the network's own data (the hosts, the categories, the sample
- * podcasts, the sample episodes dated back from the day the template opens
- * with their chapters and guests, the apps that play them, the audience,
+ * builders and the interactions the pages put on them, the network's own
+ * data (the hosts, the categories, the sample podcasts, the sample episodes
+ * dated back from the day the template opens with their chapters and
+ * guests, the newest one's guest and a part of its transcript, the apps
+ * that play them, the audience,
  * the sponsorship packages, the supporters' tiers and the answers of the
  * forms' pick lists) and the parts every page repeats (account bar,
- * header, footer, subscribe band, podcast, episode, host, package, tier
- * and sponsor cards, the chapter list, the player, page shells, section
+ * header, footer, subscribe band, podcast, episode, host, tier and
+ * sponsor cards, the chapter list, the player, page shells, section
  * headers, form fields, the comment thread).
  * The page files of the same folder are included after it in the same
  * scope and build their trees with these variables;
@@ -62,6 +64,19 @@ $icon = function ($name, $class = '') use ($el, $attr) {
 $span = function ($text, $class, $name, $extra = array()) use ($el) {
     return $el('span', $class, $name, array(), array_merge(array('text' => $text), $extra));
 };
+// An interaction on a node (Interactions in the editor): the operator can
+// change or remove it there, and the platform keeps the node still for a
+// visitor who prefers reduced motion.
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+// A row whose items rise one after another as it scrolls into view.
+$rise = function ($node, $stagger = 100) use ($fx) {
+    return $fx($node, array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => $stagger));
+};
+// A section heading that fades in on view.
+$fade_in = array('effect' => 'fade', 'trigger' => 'view', 'duration' => 700);
 $container = function ($children, $class = '') {
     return array('type' => 'container', 'props' => array('fluid' => false, 'cssClass' => $class), 'children' => $children);
 };
@@ -198,11 +213,24 @@ $aired_on = function ($days) {
 // The sample episodes, newest first: the podcast, the season and the
 // number in it, the length in minutes, the guests (words, empty for none)
 // and the chapters (where each starts, minutes:seconds, and its title).
+// The newest also has its guest in full (the home's episode hero) and a
+// part of its transcript (the listening page): the chapter it is from, by
+// its number, and each turn's start, speaker (host or guest) and words.
 $episodes = array(
     'kitchen-12' => array('podcast' => 'kitchen', 'season' => 2, 'number' => 12, 'days' => 2, 'minutes' => 58,
         'title' => lang('A Chef Who Cooks Only for Neighbours'), 'guests' => lang('Derya Aksoy, chef'),
         'summary' => lang('Derya closed her restaurant and opened her kitchen to the street. We talk about cooking for people you know by name.'),
         'chapters' => array(array('0:00', lang('Hello and welcome')), array('4:10', lang('Closing the restaurant')), array('21:45', lang('The first neighbour dinner')), array('47:30', lang('What she cooks at home'))),
+        'guest' => array('name' => lang('Derya Aksoy'), 'role' => lang('Chef, cooks for her neighbours'),
+            'quote' => lang('I know every plate\'s name before I cook it.')),
+        'script' => array('chapter' => 1, 'turns' => array(
+            array('4:12', 'host', lang('The restaurant was full most nights. Why close it?')),
+            array('4:18', 'guest', lang('Because I stopped knowing who I was cooking for. Two hundred plates a night, and not one name.')),
+            array('4:31', 'host', lang('And now?')),
+            array('4:33', 'guest', lang('Now it is twelve people on a Thursday. I know who leaves the onions and whose daughter has just started school.')),
+            array('4:52', 'host', lang('Does it pay the rent?')),
+            array('4:55', 'guest', lang('Just. Ask me again next spring.')),
+        )),
         'featured' => true),
     'signal-8' => array('podcast' => 'signal', 'season' => 1, 'number' => 8, 'days' => 5, 'minutes' => 42,
         'title' => lang('What Happens When You Press Send'), 'guests' => lang('Mert Uçar, network engineer'),
@@ -249,6 +277,14 @@ $episode_number_text = function ($key) use ($episodes) {
 $length_text = function ($key) use ($episodes) {
     return sprintf(lang('%d min'), $episodes[$key]['minutes']);
 };
+// A time in an episode, minutes:seconds, as a <time> whose datetime is its
+// duration from the start ("4:10" is PT4M10S); the operator edits its
+// words like a link's.
+$at = function ($time, $class = '', $name = '') use ($el, $attr) {
+    list($m, $s) = array_map('intval', explode(':', $time));
+    return $el('time', $class, $name !== '' ? $name : lang('Start'), array(), array('text' => $time,
+        '_attrs' => array($attr('datetime', 'PT' . $m . 'M' . $s . 'S'))));
+};
 // An episode's chapters as the value of its Chapters field: one line per
 // chapter, where it starts and its title.
 $chapters_text = function ($key) use ($episodes) {
@@ -287,19 +323,23 @@ $money = function (array $prices) use ($base_currency) {
 
 // The sponsorship packages (the sponsorship page): what a sponsor gets and
 // the price from which it starts, per episode or per season. Words and a
-// price, not products: a sponsorship is agreed after an enquiry.
+// price, not products: a sponsorship is agreed after an enquiry. 'when' is
+// how long and where it plays, 'at' where the placements drawing marks it.
 $packages = array(
-    'preroll' => array('icon' => 'bi-skip-start', 'title' => lang('Opening Mention'),
+    'preroll' => array('title' => lang('Opening Mention'),
+        'when'  => lang('30 seconds, before the episode starts'), 'at' => lang('Before the episode starts'),
         'text'  => lang('A thirty-second mention read by the host before the episode starts.'),
         'per'   => lang('per episode'),
         'price' => array('USD' => 250, 'EUR' => 230, 'GBP' => 200, 'TRY' => 9000),
         'perks' => array(lang('Read by the host in their own words'), lang('Link in the episode notes'), lang('Report of listens after thirty days'))),
-    'midroll' => array('icon' => 'bi-pause-circle', 'title' => lang('Mid-episode Story'),
+    'midroll' => array('title' => lang('Mid-episode Story'),
+        'when'  => lang('90 seconds, about halfway'), 'at' => lang('About halfway'),
         'text'  => lang('A ninety-second story in the middle of the episode, when listeners are most attentive.'),
         'per'   => lang('per episode'),
         'price' => array('USD' => 600, 'EUR' => 550, 'GBP' => 480, 'TRY' => 21000),
         'perks' => array(lang('Written with you, read by the host'), lang('Link and code in the episode notes'), lang('Report of listens after thirty days'))),
-    'season'  => array('icon' => 'bi-collection-play', 'title' => lang('Season Partner'),
+    'season'  => array('title' => lang('Season Partner'),
+        'when'  => lang('Named in every episode'), 'at' => lang('In every episode of the season'),
         'text'  => lang('The only sponsor of a whole season of one podcast, named in every episode.'),
         'per'   => lang('per season'),
         'price' => array('USD' => 6000, 'EUR' => 5500, 'GBP' => 4800, 'TRY' => 210000),
@@ -528,7 +568,9 @@ $account_bar_tree = function () use ($el, $widget, $shared, $lang_switcher) {
 // supporter. The links to the current page are marked active on the server
 // (smart active state), so one header serves every page. The support page
 // stands without the shop (it links the contact page then), so the header
-// stands on a site without the shop.
+// stands on a site without the shop. The menu opens out from 1200 px: six
+// links and the button need about 1,100 px, more than the 960 px container
+// between 992 and 1199 px, so there they stay behind the toggler.
 $header = function () use ($el, $link, $icon, $span, $attr) {
     $items = array();
     foreach (array(
@@ -542,7 +584,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link($n[1], '{{page:' . $n[0] . '}}', 'nav-link text-nowrap')));
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
-        $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
+        $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $icon('bi-mic', 'fs-4 text-primary'),
@@ -559,8 +601,8 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
                     $attr('aria-label', lang('Toggle navigation')),
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
-                    $el('ul', 'navbar-nav ms-lg-auto me-lg-3 column-gap-lg-2 py-3 py-lg-0', lang('Nav Menu'), $items, array('smartActive' => true)),
-                    $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center gap-2 pb-2 pb-lg-0', lang('Header Actions'), array(
+                    $el('ul', 'navbar-nav ms-xl-auto me-xl-3 column-gap-xl-2 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
+                    $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
                         $el('a', 'btn btn-primary rounded-pill d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
                             $icon('bi-heart'),
                             $span(lang('Support Us'), '', lang('Link Text')),
@@ -736,7 +778,7 @@ $episode_row = function ($sample_key = 'kitchen-12') use ($el, $span, $para, $li
     return $el('article', 'd-flex flex-column flex-md-row gap-3 gap-md-4 py-4 border-bottom', lang('Episode Row'), array(
         $el('span', 'pg-field-value d-block flex-shrink-0 ppd-thumb rounded-3 overflow-hidden bg-body-tertiary', lang('Picture Frame'), array(
             $image($photo('cover-' . $e['podcast'], 240, 240), $podcasts[$e['podcast']]['title'], 'w-100 h-100 object-fit-cover',
-                array_merge($pd_podcast_ref(array('src' => 'cover', 'alt' => 'title')), array('_attrs' => array($attr('loading', 'lazy'), $attr('width', '120'), $attr('height', '120'))))),
+                array_merge($pd_podcast_ref(array('src' => 'cover', 'alt' => 'title')), array('width' => '120', 'height' => '120', '_attrs' => array($attr('loading', 'lazy'))))),
         )),
         $el('div', 'flex-grow-1', lang('Episode Details'), array(
             $el('p', 'd-flex flex-wrap gap-2 small text-body-secondary mb-1', lang('Episode Facts'), array(
@@ -826,33 +868,12 @@ $host_card = function ($key) use ($el, $heading, $para, $image, $col, $attr, $po
     $h = $hosts[$key];
     return $col(array(
         $el('article', 'text-center', lang('Host Card'), array(
-            $image($portrait($h['name'], 320), $h['name'], 'rounded-circle mb-3', array('_attrs' => array($attr('width', '160'), $attr('height', '160'), $attr('loading', 'lazy')))),
+            $image($portrait($h['name'], 320), $h['name'], 'rounded-circle mb-3', array('width' => '160', 'height' => '160', '_attrs' => array($attr('loading', 'lazy')))),
             $heading('h3', $h['name'], 'ppd-display h5 mb-1'),
             $para($h['role'], 'small fw-semibold text-primary mb-2'),
             $para($h['bio'], 'small text-body-secondary mb-0'),
         )),
     ), '6', '3');
-};
-
-// A sponsorship package's card: what it is, the price it starts from and
-// what it includes, with the way to ask about it (the enquiry form opens
-// with the package chosen).
-$package_card = function ($key) use ($el, $heading, $para, $span, $link, $col, $icon_tile, $check_list, $packages, $money, $query) {
-    $p = $packages[$key];
-    return $col(array(
-        $el('article', 'card h-100 border-0 shadow-sm rounded-4 p-4 ppd-lift', lang('Package Card'), array(
-            $icon_tile($p['icon'], 'align-self-start mb-3'),
-            $heading('h3', $p['title'], 'ppd-display h4 mb-2'),
-            $para($p['text'], 'text-body-secondary mb-3'),
-            $el('p', 'mb-3', lang('Price'), array(
-                $span(lang('Starting from'), 'small text-body-secondary me-1', lang('Label')),
-                $span($money($p['price']), 'ppd-price h4 fw-bold', lang('Value')),
-                $span($p['per'], 'small text-body-secondary ms-1', lang('Label')),
-            )),
-            $check_list($p['perks'], 'list-unstyled small mb-4'),
-            $link(lang('Ask About It'), '{{page:sponsor_enquiry}}?' . $query(array('package' => $p['title'])), 'btn btn-outline-primary rounded-pill mt-auto'),
-        )),
-    ), '', '4');
 };
 
 // A supporters' tier card: what it costs each month and what it gives. The

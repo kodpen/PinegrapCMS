@@ -144,7 +144,7 @@ function pg_picker_image_types()
 /** The requests the endpoint answers; upload is the one sent by POST. */
 function pg_picker_requests()
 {
-    return array('list', 'search', 'tree', 'resolve', 'upload');
+    return array('list', 'search', 'tree', 'resolve', 'upload', 'short_links');
 }
 
 /**
@@ -1534,9 +1534,117 @@ function pg_picker_answer($request, $user)
         case 'resolve':
             $answer += pg_picker_resolve_answer($request, $user);
             break;
+
+        case 'short_links':
+            $answer['items'] = pg_picker_short_link_entries($user);
+            break;
     }
 
     return $answer;
+}
+
+/**
+ * Where a short link sends its visitor, as the link dialog shows it beside
+ * the short link: the page, product group or product address with the
+ * tracking code, or the address it was given. Pure.
+ *
+ * @param array  $row  destination_type, page_name, product_group_address_name,
+ *                     product_address_name, url, tracking_code
+ * @param string $path the site's path (PATH)
+ * @return string
+ */
+function pg_picker_short_link_destination($row, $path)
+{
+    $type = (string) ($row['destination_type'] ?? '');
+    $page = $path . (string) ($row['page_name'] ?? '');
+
+    switch ($type) {
+        case 'page':
+            $destination = $page;
+            break;
+
+        case 'product_group':
+            $destination = $page . '/' . (string) ($row['product_group_address_name'] ?? '');
+            break;
+
+        case 'product':
+            $destination = $page . '/' . (string) ($row['product_address_name'] ?? '');
+            break;
+
+        default:
+            return (string) ($row['url'] ?? '');
+    }
+
+    $code = (string) ($row['tracking_code'] ?? '');
+
+    return ($code !== '') ? $destination . '?t=' . $code : $destination;
+}
+
+/**
+ * A short link as an entry of the page dialog's own list (pgPicker.open()
+ * extra): its name is the value the editor turns into an address, its
+ * destination the note. Pure.
+ *
+ * @param array  $row  name and the columns pg_picker_short_link_destination() reads
+ * @param string $path the site's path (PATH)
+ * @param string $label the type's name ("Short link")
+ * @return array value, text, type, type_group, type_label, note
+ */
+function pg_picker_short_link_entry($row, $path, $label)
+{
+    $destination = pg_picker_short_link_destination($row, $path);
+
+    return array(
+        'value' => (string) ($row['name'] ?? ''),
+        'text' => (string) ($row['name'] ?? ''),
+        'type' => 'short link',
+        'type_group' => 'short_link',
+        'type_label' => $label,
+        'note' => ($destination !== '') ? '→ ' . $destination : '',
+    );
+}
+
+/**
+ * The short links the link dialog offers beside the pages (request
+ * short_links): every named one not in the Recycle Bin, the first 2,000
+ * by name. Short links are a manager area, so a
+ * user (role 3) gets none, as the editor's old link window gave them none.
+ *
+ * @param array $user validate_user()
+ * @return array pg_picker_short_link_entry() rows
+ */
+function pg_picker_short_link_entries($user)
+{
+    if ((int) $user['role'] > 2) {
+        return array();
+    }
+
+    $rows = db_items(
+        "SELECT
+            short_links.name,
+            short_links.destination_type,
+            page.page_name,
+            product_groups.address_name AS product_group_address_name,
+            products.address_name AS product_address_name,
+            short_links.tracking_code,
+            short_links.url
+        FROM short_links
+        LEFT JOIN page ON short_links.page_id = page.page_id
+        LEFT JOIN product_groups ON short_links.product_group_id = product_groups.id
+        LEFT JOIN products ON short_links.product_id = products.id
+        WHERE (short_links.name <> '') AND (short_links.name NOT LIKE '%*%')"
+        . (pg_schema_has('short_links', 'recycled') ? " AND (short_links.recycled = '0')" : '') . "
+        ORDER BY short_links.name ASC
+        LIMIT 2000");
+
+    $label = lang('Short link');
+    $entries = array();
+
+    foreach (is_array($rows) ? $rows : array() as $row) {
+        $entries[] = pg_picker_short_link_entry($row, PATH, $label);
+    }
+
+    return $entries;
 }
 
 /**
