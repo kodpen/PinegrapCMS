@@ -10208,8 +10208,19 @@ body.pg-side-panel-open .pg-chat-launcher {
  *
    Full width lets each card use the grid it was written with: three fields
    across instead of three fields down. The screen is then as short as its
-   content allows, which is what makes it readable. */
-.pg-set-card + .pg-set-card { margin-top: 1.5rem; }
+   content allows, which is what makes it readable.
+ *
+   The gap is the container's, on the page (#pg_settings_sections) and in the
+   dialog (#pg_settings_modal_pane) alike. A card's inline script or a hidden
+   Connect form can stand between two cards, and a top margin on a card that
+   directly follows another card then left the next card touching the one
+   above. An element that draws nothing, a card the filter hides
+   included, takes no part in a flex gap. */
+.pg-settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
 
 /* Bootstrap's columns answer to the window, not to the box they are in. That
    is right at full width and wrong on a phone, where a card is the whole of a
