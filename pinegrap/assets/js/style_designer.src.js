@@ -73605,7 +73605,8 @@ const StyleDesigner = (function () {
     //   prefix  the componentType prefix of its blocks ('launch-')
     //   group   { title, icon }: its own palette group; left out when its
     //           blocks sit in a core group under that group's prefix
-    //   items   its palette items, the shape of _sdBlockPaletteItems()
+    //   items   its palette items, the shape of _sdBlockPaletteItems(), each
+    //           with a desc: the one line shown in the hover card
     //   build   function (ctype) -> the block's node tree, or null
     //   css     rule name -> CSS text, added to _SD_BLOCK_CSS
     //   needs   ctype -> rule names, added to _SD_BLOCK_CSS_NEEDS
@@ -73614,6 +73615,7 @@ const StyleDesigner = (function () {
     var _sdBlockFamilyFactories = [];
     var _sdBlockFamilyList = null;
     var _sdBlockFamilyByType = {};
+    var _sdBlockFamilyDesc = {};
 
     function _sdRegisterBlockFamily(factory) {
         if (typeof factory !== 'function') return;
@@ -73623,7 +73625,7 @@ const StyleDesigner = (function () {
 
     function _sdBlockFamilies() {
         if (_sdBlockFamilyList) return _sdBlockFamilyList;
-        var list = [], byType = {}, kit = _sdBlockKit();
+        var list = [], byType = {}, descs = {}, kit = _sdBlockKit();
         _sdBlockFamilyFactories.forEach(function (factory) {
             var fam = null;
             try { fam = factory(kit); } catch (e) { console.error('[SD] block family', e); }
@@ -73633,6 +73635,7 @@ const StyleDesigner = (function () {
                 var ct = (it && it.extra && it.extra.componentType) || '';
                 if (!ct || byType[ct]) return false;
                 byType[ct] = fam;
+                if (typeof it.desc === 'string' && it.desc) descs[ct] = it.desc;
                 return true;
             });
             [[fam.css, _SD_BLOCK_CSS], [fam.needs, _SD_BLOCK_CSS_NEEDS]].forEach(function (pair) {
@@ -73643,6 +73646,7 @@ const StyleDesigner = (function () {
             list.push(fam);
         });
         _sdBlockFamilyByType = byType;
+        _sdBlockFamilyDesc = descs;
         _sdBlockFamilyList = list;
         return list;
     }
@@ -74488,12 +74492,16 @@ const StyleDesigner = (function () {
         return _sdBlockInfoMap;
     }
 
-    // The description line of a palette item that is a ready-made block; ''
-    // for any other item.
+    // The description line of a palette item that is a ready-made block: a
+    // core block's from _sdBlockInfo(), a family block's from the desc of its
+    // item in the family file; '' for any other item.
     function _sdBlockDesc(it) {
         var ct = it && it.type === 'component' && it.extra ? String(it.extra.componentType || '') : '';
+        if (!ct) return '';
         var map = _sdBlockInfo();
-        return ct && Object.prototype.hasOwnProperty.call(map, ct) ? map[ct] : '';
+        if (Object.prototype.hasOwnProperty.call(map, ct)) return map[ct];
+        _sdBlockFamilies();
+        return Object.prototype.hasOwnProperty.call(_sdBlockFamilyDesc, ct) ? _sdBlockFamilyDesc[ct] : '';
     }
 
     function _sdPalKey(it) {
