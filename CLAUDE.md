@@ -190,7 +190,7 @@ CI (`.github/workflows/php-checks.yml`) runs all of these without a
 database; run the ones your change touches and the tests of your area:
 `php tools/test.php [filter]` (`tests/*_test.php`), `lint.php`,
 `check_lang.php`, `check_bindings.php`, `check_api_schema.php`,
-`check_audit_rules.php`, `check_copies.php`, `check_bs6.php --strict`,
+`check_audit_rules.php`, `check_copies.php`, `check_bs6.php --strict`, `check_look.php`,
 `build_js.php --check`, `build_css.php --check`,
 `build_code_editor.php --check`, `memory_index.php --check` (all under
 `tools/`, run with `php`), and `bash tools/static_analysis.sh` (PHPStan
