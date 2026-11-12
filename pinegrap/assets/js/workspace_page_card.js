@@ -326,7 +326,7 @@
         box.appendChild(line);
 
         // Shown when the shell stopped the page at a bound.
-        var stopped = h.el('div', 'small text-danger d-flex align-items-center gap-2 mt-2');
+        var stopped = h.el('div', 'small fg-danger d-flex align-items-center gap-2 mt-2');
 
         stopped.hidden = true;
         stopped.appendChild(h.icon('bi-stop-circle'));
