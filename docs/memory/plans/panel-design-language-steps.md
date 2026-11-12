@@ -14,7 +14,7 @@ description: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860)
 
 - DL1 (M) Type and the recipes. Inter (variable, its optical size axis gives headings the Display cut; OFL; self-hosted under `assets/fonts/`); the type scale and weights as `--pg-*` tokens; the recipes as classes in `backend.src.css`. No screen changes but by the typeface. Done in #8879 (`ui/look-type-and-recipes.md`).
 
-- DL1b (M) The page widths (#8860) as `panel-design-language-sheet.md` sets them: the measures as tokens, an add or edit screen's centred content, the list frame's width rule. First screens `product_builder.php` and the products list, approved from a real panel's screenshots at 1920 and 1366 px. Rewrites the width lines of `ui/admin-screen-toolbar.md`, `ui/edit-screen-wide-layout.md`, `ui/list-table-layout.md`. Free now, beside DL1.
+- DL1b (M) The page widths (#8860) as `panel-design-language-sheet.md` sets them: the measures as tokens, an add or edit screen's centred content, the list frame's width rule. First screens `product_builder.php` and the products list, approved from a real panel's screenshots at 1920 and 1366 px. Rewrites the width lines of `ui/admin-screen-toolbar.md`, `ui/edit-screen-wide-layout.md`, `ui/list-table-layout.md`. Done in #8892 (`ui/look-page-widths.md`).
 
 - DL2 (M) The Design examples screen: a panel page for the Designer role and above that shows every recipe live in both themes, with its class names and what is not done. A step copies from it; the owner looks at it.
 

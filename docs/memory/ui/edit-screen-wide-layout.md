@@ -13,6 +13,9 @@ description: Owner decision for panel edit screens: a wide screen is not spent o
 | Status column | `col-12 lg:col-4 2xl:col-3 order-2`, with a `position-sticky` box inside | what is READ: status badges, numbers, summary, preview |
 | Save bar | `col-12 order-3 position-sticky` | the primary button |
 
+## How wide is it?
+- Centred, at most 1120 px: form 760, status 336, gap 24 (#8860); `look-page-widths.md`.
+
 ## What are the placement rules?
 - Below `lg` (1024px; `2xl` is 1536px) the columns stack in source order: write the status column AFTER the form column, so on a narrow screen the summary does not push the first field off screen.
 - Stickiness goes on the box inside the status column, not on the column (the column is as tall as the row); the save bar is sticky on its own column.

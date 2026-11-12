@@ -7,7 +7,7 @@ description: Panel screen basics (frame, notices, fields, width, icons, help), t
 - Bootstrap 6 (panel; sites stay on 5.3.8). `output_header([...])` / `output_footer()` = page frame. Cards are spaced with bottom margins on the v6 spacer scale: v5's `mb-5` (3rem) is `mb-12`; most screens use `mb-7` / `mb-5` (1.5rem / 1rem).
 - `$liveform->output_errors()` / `output_notices()` print messages, `add_notice()` / `add_error()` add one, `mark_error('field', 'message')` marks a field, then `go($url)`. A screen that adds notices prints them and calls `remove_form()` after drawing (`liveform-notices-trap.md`).
 - Fields: `$liveform->output_field([...])`, never a hand-written `<input>` (error marking, refill).
-- No `max-width` on an admin screen: screens are `container-fluid` wide; a field's width comes from the grid (`col-*`, `md:col-*`).
+- Width: `pg-measure-edit` (add or edit screen) or `pg-measure-list` (list), `look-page-widths.md`; other screens stay `container-fluid` until their family moves. Field width from the grid (`col-*`).
 - Icons: Bootstrap Icons `<i class="bi bi-…" aria-hidden="true"></i>`; Material Icons only in old code and the main menu (`main-menu-icons.md`).
 - Reference screens: `view_folders.php` (toolbar), `product_builder.php` (edit screen layout, `edit-screen-wide-layout.md`). Help link: `panel-help-links.md`.
 
