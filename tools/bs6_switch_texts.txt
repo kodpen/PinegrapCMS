@@ -35,7 +35,9 @@ The panel's own rules on the dropped modal boxes (.modal-dialog and
 }
 ===
 .pg-settings-modal.dialog {
-  --bs-dialog-width: min(1180px, calc(100vw - 3rem));
+  --bs-dialog-width: min(1040px, calc(100vw - 3rem));
+  --bs-dialog-backdrop-bg: var(--pg-scrim);
+  --bs-dialog-backdrop-blur: 2px;
 }
 >>>
 
