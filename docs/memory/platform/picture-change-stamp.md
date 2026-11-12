@@ -17,4 +17,4 @@ module: files
 - The header's face (`includes/fn/output.php`), `ws_avatar_url()` (Workspace people), `pg_chat_avatar_src()` (`chat.php`: the chat, Who is online widget 4), Edit Contact, Edit User's identity picture, the contacts list (`contact_list.php`), the order's customer (`view_order.php`), the site's account widget (`widgets_account.php`).
 - Not yet: the panel search's contact results (the script builds the address from the bare name, `includes/panel/search.php`).
 
-Tests: `tests/picture_stamp_test.php`. Built in PF1 (`plans/picture-fresh-after-save.md`).
+Tests: `tests/picture_stamp_test.php`. Built in #8914; the owner's case is in `workflow/decisions-made-product-46.md`.
