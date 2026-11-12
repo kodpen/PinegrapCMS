@@ -208,6 +208,19 @@ $podcast_css = implode("\n", array(
     '@supports (color:color-mix(in srgb,red 50%,blue)){'
         . '[data-bs-theme=dark] .bg-body-tertiary :is(.text-primary,.link-primary){color:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))!important}'
         . '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-primary{--bs-btn-color:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))}}',
+    // Pills, tabs and underlined links there (filters, the staff bar) read
+    // the link colour: they take the same tint.
+    '[data-bs-theme=dark] .bg-body-tertiary .nav{--bs-nav-link-color:var(--bs-primary-text-emphasis)}',
+    '@supports (color:color-mix(in srgb,red 50%,blue)){[data-bs-theme=dark] .bg-body-tertiary .nav{--bs-nav-link-color:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))}}',
+    // The primary's soft tint (the account card, soft bands): a palette's
+    // primary and second colours are made readable on the page background
+    // and fall under 4.5:1 here with several palettes (Coral 3.41:1, the
+    // second colour of Graphite 3.16:1). Text, links and outline buttons
+    // take the colour's emphasis tint, Bootstrap's pair for a soft tint.
+    '.bg-primary-subtle :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}',
+    '.bg-primary-subtle :is(.btn-outline-primary,.btn-link){--bs-btn-color:var(--bs-primary-text-emphasis)}',
+    '.bg-primary-subtle .link-secondary{color:var(--bs-secondary-text-emphasis)!important}',
+    '.bg-primary-subtle .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-text-emphasis)}',
     // From 1200 to 1400 px the header's links and buttons share one row with
     // the name: the links are set a size smaller and closer together.
     '@media (min-width:1200px) and (max-width:1399.98px){.ppd-nav{--bs-nav-link-font-size:.875rem;--bs-navbar-nav-link-padding-x:.375rem}}',

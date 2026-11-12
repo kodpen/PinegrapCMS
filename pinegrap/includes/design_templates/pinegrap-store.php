@@ -2944,6 +2944,39 @@ foreach ($pages as $i => $p) {
     $pages[$i]['tree'] = $searchable_tree($p['tree'], $search_sections[$p['key']], $used);
 }
 
+// The template's User Styles: the look and palette chosen for the design
+// draw everything else. They keep a palette's primary and second coloured
+// text readable where the page's own colours do not reach it.
+$store_css = implode("\n", array(
+    // Dark theme, grey sections (the account bar, the category bands, page
+    // headers): the palette's primary and second colours are made readable
+    // on the page background and fall to about 4:1 on this lighter grey
+    // (Coral 4.13:1). Links, eyebrows, the Log In link and outline buttons
+    // there take the primary's emphasis tint, lightened a fifth towards the
+    // text colour where the browser mixes colours, and the second colour
+    // gives way to the body's second text colour.
+    '[data-bs-theme=dark] .bg-body-tertiary :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}',
+    '[data-bs-theme=dark] .bg-body-tertiary :is(.btn-outline-primary,.btn-link){--bs-btn-color:var(--bs-primary-text-emphasis)}',
+    '@supports (color:color-mix(in srgb,red 50%,blue)){'
+        . '[data-bs-theme=dark] .bg-body-tertiary :is(.text-primary,.link-primary){color:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))!important}'
+        . '[data-bs-theme=dark] .bg-body-tertiary :is(.btn-outline-primary,.btn-link){--bs-btn-color:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))}}',
+    '[data-bs-theme=dark] .bg-body-tertiary .link-secondary{color:var(--bs-secondary-color)!important}',
+    '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-color)}',
+    // Pills, tabs and underlined links there (the staff bar) read the link
+    // colour: they take the same tint.
+    '[data-bs-theme=dark] .bg-body-tertiary .nav{--bs-nav-link-color:var(--bs-primary-text-emphasis)}',
+    '@supports (color:color-mix(in srgb,red 50%,blue)){[data-bs-theme=dark] .bg-body-tertiary .nav{--bs-nav-link-color:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))}}',
+    // The primary's soft tint (the account card, soft bands): a palette's
+    // primary and second colours are made readable on the page background
+    // and fall under 4.5:1 here with several palettes (Coral 3.41:1, the
+    // second colour of Graphite 3.16:1). Text, links and outline buttons
+    // take the colour's emphasis tint, Bootstrap's pair for a soft tint.
+    '.bg-primary-subtle :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}',
+    '.bg-primary-subtle :is(.btn-outline-primary,.btn-link){--bs-btn-color:var(--bs-primary-text-emphasis)}',
+    '.bg-primary-subtle .link-secondary{color:var(--bs-secondary-text-emphasis)!important}',
+    '.bg-primary-subtle .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-text-emphasis)}',
+));
+
 return array(
     'name'        => lang('Online Store'),
     'version'     => '1.2.4',
@@ -3008,5 +3041,9 @@ return array(
                 $link(lang('Visit the Store'), '{{page:home}}', 'link-secondary',
                     array($attr('style', 'color:#6b7280'))),
             ), $mail_style('padding:16px 24px;border-top:1px solid #e5e7eb;font-size:13px;color:#6b7280'))),
+    ),
+
+    'assets'      => array(
+        'css' => pg_design_template_user_styles(array(), $store_css),
     ),
 );

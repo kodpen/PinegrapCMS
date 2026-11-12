@@ -149,7 +149,7 @@ $event_pages[] = array(
                         $el('div', 'p-4 rounded-3 bg-body-tertiary', lang('Packages'), array(
                             $heading('h2', lang('Ways to support us'), 'psp-display h5 mb-3'),
                             $check_list($package_titles, 'list-unstyled small mb-3'),
-                            $link(lang('See the packages'), '{{page:sponsors}}', 'small fw-semibold'),
+                            $link(lang('See the packages'), '{{page:sponsors}}', 'small fw-semibold link-primary'),
                         )),
                     ), '', '4'),
                 ), '4', '', 'g-lg-5'),

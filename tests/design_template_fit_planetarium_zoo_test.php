@@ -6,9 +6,9 @@
  * and the dark theme: the header's menu opens out only where its links fit
  * beside the name, is set a size smaller where the row is tight and wraps
  * instead of running off the page, an image's size is in the props the page
- * writes (not in its attributes, which the page drops), and the grey
+ * writes (not in its attributes, which the page drops), the grey
  * sections give their primary and second coloured text a readable tint in
- * the dark theme.
+ * the dark theme, and so does the primary's soft tint in both themes.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -177,6 +177,49 @@ function test_design_template_fit_pz_dark_grey_sections()
 			'color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))',
 			'[data-bs-theme=dark] .bg-body-tertiary .link-secondary{color:var(--bs-secondary-color)!important}',
 			'[data-bs-theme=dark] .bg-body-tertiary .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-color)}',
+			'[data-bs-theme=dark] .bg-body-tertiary .nav{--bs-nav-link-color:var(--bs-primary-text-emphasis)}',
+		) as $rule) {
+			pg_assert_contains($rule, $css, "$id: $rule");
+		}
+	}
+	// The Online Store had no User Styles; its account bar's Log In is a
+	// btn-link, which takes the tint with the outline buttons.
+	$css = _test_tpl_fitpz_css(_test_tpl_fitpz_template('pinegrap-store'));
+	pg_assert_contains('[data-bs-theme=dark] .bg-body-tertiary :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}', $css, 'store: dark grey text');
+	pg_assert_contains('[data-bs-theme=dark] .bg-body-tertiary :is(.btn-outline-primary,.btn-link){--bs-btn-color:var(--bs-primary-text-emphasis)}', $css, 'store: dark grey buttons');
+	// Planetarium's account bar carries the dark theme on the grey bar
+	// itself, on a light site too.
+	$css = _test_tpl_fitpz_css(_test_tpl_fitpz_template('pinegrap-planetarium'));
+	pg_assert_contains('.bg-body-tertiary[data-bs-theme=dark] :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}', $css, 'planetarium: the dark account bar');
+}
+
+// Two templates colour with Bootstrap's fixed red or green, which no palette
+// changes: the veterinary's emergency line and band, the zoo's links and
+// outline buttons (2.94:1 on the dark grey before).
+function test_design_template_fit_pz_fixed_colours()
+{
+	$css = _test_tpl_fitpz_css(_test_tpl_fitpz_template('pinegrap-veterinary'));
+	pg_assert_contains('.bg-body-tertiary .link-danger{color:color-mix(in srgb,var(--bs-danger) 80%,black)!important}', $css, 'veterinary: emergency line on grey');
+	pg_assert_contains('[data-bs-theme=dark] .bg-body-tertiary .link-danger{color:var(--bs-danger-text-emphasis)!important}', $css, 'veterinary: emergency line, dark');
+	pg_assert_contains('[data-bs-theme=dark] .bg-danger-subtle .btn-outline-danger{--bs-btn-color:var(--bs-danger-text-emphasis)}', $css, 'veterinary: emergency band, dark');
+	$css = _test_tpl_fitpz_css(_test_tpl_fitpz_template('pinegrap-zoo'));
+	pg_assert_contains('.bg-success-subtle .btn-outline-success{--bs-btn-color:color-mix(in srgb,var(--bs-success) 80%,black)}', $css, 'zoo: outline buttons on the soft green');
+	pg_assert_contains('[data-bs-theme=dark] :is(.text-success,.link-success){color:var(--bs-success-text-emphasis)!important}', $css, 'zoo: green text, dark');
+	pg_assert_contains('[data-bs-theme=dark] .btn-outline-success{--bs-btn-color:var(--bs-success-text-emphasis)}', $css, 'zoo: outline buttons, dark');
+}
+
+// On the primary's soft tint (the account card with its Log out button,
+// soft bands) a palette's primary and second colours fall under 4.5:1 with
+// several palettes; their emphasis tints are 7.35:1 or more in light.
+function test_design_template_fit_pz_soft_tint()
+{
+	foreach (array_merge(_test_tpl_fitpz_ids(), array('pinegrap-store')) as $id) {
+		$css = _test_tpl_fitpz_css(_test_tpl_fitpz_template($id));
+		foreach (array(
+			'.bg-primary-subtle :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}',
+			'.bg-primary-subtle :is(.btn-outline-primary,.btn-link){--bs-btn-color:var(--bs-primary-text-emphasis)}',
+			'.bg-primary-subtle .link-secondary{color:var(--bs-secondary-text-emphasis)!important}',
+			'.bg-primary-subtle .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-text-emphasis)}',
 		) as $rule) {
 			pg_assert_contains($rule, $css, "$id: $rule");
 		}

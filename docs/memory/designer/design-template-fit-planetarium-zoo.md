@@ -1,6 +1,6 @@
 ---
 name: design-template-fit-planetarium-zoo
-description: Templates Planetarium to Zoo: header menu opens at 1200 px, smaller links to 1399 px, row wraps, image sizes in props, dark grey sections lift primary and second text; the numbers
+description: Templates Planetarium to Zoo: header menu opens at 1200 px, smaller links to 1399 px, row wraps, image sizes in props, restaurant hours, social counts; the numbers
 ---
 
 ## Why does the header menu open out at 1200 px?
@@ -20,13 +20,13 @@ description: Templates Planetarium to Zoo: header menu opens at 1200 px, smaller
 ## What else was fixed?
 - Restaurant footer: the opening hours (`prt-price`, `white-space:nowrap`) ran past their column at 1,000 to 1,060 px; that span takes `text-wrap`.
 - Social: the tile counts (`psc-tile-info`) show on hover only; under `@media (hover:none)` they stay in view.
-- Dark theme on `bg-body-tertiary`: the same User Styles rules as App Studio to Events (#8997): `text-primary`, `link-primary`, `btn-outline-primary` take `--bs-primary-text-emphasis`, mixed 80% with `--bs-emphasis-color` behind `@supports (color-mix)`; `link-secondary`, `btn-outline-secondary` take `--bs-secondary-color`. Podcast had the first part and got the mix.
+- Colours on grey and soft-tint sections: [[design-template-contrast-planetarium-zoo]].
 
 ## What is still open?
-- Zoo colours with Bootstrap's fixed `success` (`btn-success`, `link-success`, `btn-outline-success`, `text-success`), not the palette's primary: #198754 measures 4.3:1 on the light grey, 3.49:1 on `bg-success-subtle` and 2.94:1 on the dark grey.
-- Heading skips h1 to h3 on list pages, theatre's "180,000" sample in Turkish.
-- Shared, not template files: luxe and elegant looks set `btn-sm` text at 10.5 px; dark `--pg-primary-fg` is computed against the body, not the tertiary grey.
+- Heading skips h1 to h3 on list pages (card titles right under the page title).
+- Theatre's "180,000" and podcast's "1,200" figures keep the English thousands comma in Turkish; Courses writes such a figure through `lang()` with its own key.
+- Shared, not template files: the luxe and elegant looks set `btn-sm` text at 10.5 px.
 
 ## What tests it?
-- `tests/design_template_fit_planetarium_zoo_test.php`: header `navbar-expand-xl` with no `-lg-` class, container `flex-xl-wrap` (social not), the menu class rule, no image size in `_attrs` (store too), the dark rules.
+- `tests/design_template_fit_planetarium_zoo_test.php`: header `navbar-expand-xl` with no `-lg-` class, container `flex-xl-wrap` (social not), the menu class rule, no image size in `_attrs` (store too), and the colour rules.
 - Measured in headless Chromium on the sandbox: every preview page at 320 to 1,440 px, Turkish and English, light and dark.

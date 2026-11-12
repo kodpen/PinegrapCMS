@@ -119,6 +119,7 @@
 - design-template-comment-labels.md: Which comments labels the design templates set (singular nouns; `reply` on the forum topic and every conversation page, tested) and why not the verb key `Reply` (#3453, #4584).
 - design-template-construction-pages.md: Construction template 2.0.0: home, projects and safety on the Construction blocks: the builders, each page's composition, motion, what left, the test
 - design-template-construction.md: Construction Firm template 2.0.0 (pinegrap-construction): services, a projects portfolio collection, quote requests and careers followed from the account, News, no shop, pcn- look, tests.
+- design-template-contrast-planetarium-zoo.md: Planetarium to Zoo: User Styles keep palette text readable on dark grey and soft-tint sections in every palette; vet red and zoo green readable; store's User Styles
 - design-template-courses.md: Online Courses template (pinegrap-courses): courses as products granting a private folder, lessons as pages, membership library, enrolment and assignments, what is not built, pco- look, tests.
 - design-template-coworking-pages.md: Coworking template 2.0.0: home, plans and amenities on the palette blocks (workspace hero, spaces to hire, floor directory, alternating features), builders, motion, tests
 - design-template-coworking.md: Coworking template (pinegrap-coworking): spaces and events as collections, tour, office and event requests, meeting rooms booked online, memberships in the shop, pcw- look, tests.
@@ -131,7 +132,7 @@
 - design-template-ferry.md: Ferry template (pinegrap-ferry, 2.0.0): routes with a page each, ports, timetables and fares as words, Travel Notices collection, booking requests, group enquiries, no shop, pfy- look, tests.
 - design-template-filmstudio-pages.md: Film Studio template 2.0.0: home, services and project page on the Film Studio blocks, motion elsewhere, names in their own case; builders, pages, limits, test
 - design-template-filmstudio.md: Film Studio template (pinegrap-filmstudio): showreel, services, projects as a collection by industry and service, studio hire, crew, project enquiries, crew calls, no shop, pfm- look, tests.
-- design-template-fit-planetarium-zoo.md: Templates Planetarium to Zoo: header menu opens at 1200 px, smaller links to 1399 px, row wraps, image sizes in props, dark grey sections lift primary and second text; the numbers
+- design-template-fit-planetarium-zoo.md: Templates Planetarium to Zoo: header menu opens at 1200 px, smaller links to 1399 px, row wraps, image sizes in props, restaurant hours, social counts; the numbers
 - design-template-florist-pages.md: Florist template 2.0.0: home, occasions, subscriptions and delivery on the Florist blocks and Locations: Zones, motion elsewhere: builders, each page, limits, the test
 - design-template-florist.md: Florist template (pinegrap-florist): bouquets, occasions, subscriptions, event flowers, delivery, Our Work collection, order requests from the account, consultations, shop catalog, pfl- look, tests.
 - design-template-form-fees.md: Fees and branches of the template forms (FL7): hidden fee products in the catalog, {{product:<key>}}, the Events optional fee, Cafe deposit, Courses enrolment fee, Cafe and Clinic shown_when

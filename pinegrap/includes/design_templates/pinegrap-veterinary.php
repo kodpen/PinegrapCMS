@@ -187,6 +187,32 @@ $veterinary_css = implode("\n", array(
         . '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-primary{--bs-btn-color:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))}}',
     '[data-bs-theme=dark] .bg-body-tertiary .link-secondary{color:var(--bs-secondary-color)!important}',
     '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-color)}',
+    // Pills, tabs and underlined links there (filters, the staff bar) read
+    // the link colour: they take the same tint.
+    '[data-bs-theme=dark] .bg-body-tertiary .nav{--bs-nav-link-color:var(--bs-primary-text-emphasis)}',
+    '@supports (color:color-mix(in srgb,red 50%,blue)){[data-bs-theme=dark] .bg-body-tertiary .nav{--bs-nav-link-color:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))}}',
+    // The primary's soft tint (the account card, soft bands): a palette's
+    // primary and second colours are made readable on the page background
+    // and fall under 4.5:1 here with several palettes (Coral 3.41:1, the
+    // second colour of Graphite 3.16:1). Text, links and outline buttons
+    // take the colour's emphasis tint, Bootstrap's pair for a soft tint.
+    '.bg-primary-subtle :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}',
+    '.bg-primary-subtle :is(.btn-outline-primary,.btn-link){--bs-btn-color:var(--bs-primary-text-emphasis)}',
+    '.bg-primary-subtle .link-secondary{color:var(--bs-secondary-text-emphasis)!important}',
+    '.bg-primary-subtle .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-text-emphasis)}',
+    // The emergency line (account bar) and the emergency band use
+    // Bootstrap's fixed red, which no palette changes: 4.3:1 on the light
+    // grey and 3.39:1 on its soft tint, 2.94:1 on the dark grey. In light it
+    // is taken a fifth towards black where the browser mixes colours (its
+    // emphasis tint, a dark red, where it does not); in dark it takes its
+    // emphasis tint.
+    '.bg-body-tertiary .link-danger{color:var(--bs-danger-text-emphasis)!important}',
+    '.bg-danger-subtle .btn-outline-danger{--bs-btn-color:var(--bs-danger-text-emphasis)}',
+    '@supports (color:color-mix(in srgb,red 50%,blue)){'
+        . '.bg-body-tertiary .link-danger{color:color-mix(in srgb,var(--bs-danger) 80%,black)!important}'
+        . '.bg-danger-subtle .btn-outline-danger{--bs-btn-color:color-mix(in srgb,var(--bs-danger) 80%,black)}}',
+    '[data-bs-theme=dark] .bg-body-tertiary .link-danger{color:var(--bs-danger-text-emphasis)!important}',
+    '[data-bs-theme=dark] .bg-danger-subtle .btn-outline-danger{--bs-btn-color:var(--bs-danger-text-emphasis)}',
 ));
 
 return array(

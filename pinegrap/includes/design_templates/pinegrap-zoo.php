@@ -193,6 +193,32 @@ $zoo_css = implode("\n", array(
         . '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-primary{--bs-btn-color:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))}}',
     '[data-bs-theme=dark] .bg-body-tertiary .link-secondary{color:var(--bs-secondary-color)!important}',
     '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-color)}',
+    // Pills, tabs and underlined links there (filters, the staff bar) read
+    // the link colour: they take the same tint.
+    '[data-bs-theme=dark] .bg-body-tertiary .nav{--bs-nav-link-color:var(--bs-primary-text-emphasis)}',
+    '@supports (color:color-mix(in srgb,red 50%,blue)){[data-bs-theme=dark] .bg-body-tertiary .nav{--bs-nav-link-color:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))}}',
+    // The primary's soft tint (the account card, soft bands): a palette's
+    // primary and second colours are made readable on the page background
+    // and fall under 4.5:1 here with several palettes (Coral 3.41:1, the
+    // second colour of Graphite 3.16:1). Text, links and outline buttons
+    // take the colour's emphasis tint, Bootstrap's pair for a soft tint.
+    '.bg-primary-subtle :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}',
+    '.bg-primary-subtle :is(.btn-outline-primary,.btn-link){--bs-btn-color:var(--bs-primary-text-emphasis)}',
+    '.bg-primary-subtle .link-secondary{color:var(--bs-secondary-text-emphasis)!important}',
+    '.bg-primary-subtle .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-text-emphasis)}',
+    // The zoo's green is Bootstrap's fixed success colour, which no palette
+    // changes: 4.3:1 on the light grey and 3.49:1 on its soft tint, and in
+    // the dark theme 3.4:1 on the page and 2.94:1 on the grey. In light it is
+    // taken a fifth towards black on those two grounds where the browser
+    // mixes colours (its emphasis tint where it does not); in dark text,
+    // links and outline buttons take its emphasis tint everywhere.
+    '.bg-body-tertiary :is(.text-success,.link-success),.bg-success-subtle :is(.text-success,.link-success){color:var(--bs-success-text-emphasis)!important}',
+    '.bg-body-tertiary .btn-outline-success,.bg-success-subtle .btn-outline-success{--bs-btn-color:var(--bs-success-text-emphasis)}',
+    '@supports (color:color-mix(in srgb,red 50%,blue)){'
+        . '.bg-body-tertiary :is(.text-success,.link-success),.bg-success-subtle :is(.text-success,.link-success){color:color-mix(in srgb,var(--bs-success) 80%,black)!important}'
+        . '.bg-body-tertiary .btn-outline-success,.bg-success-subtle .btn-outline-success{--bs-btn-color:color-mix(in srgb,var(--bs-success) 80%,black)}}',
+    '[data-bs-theme=dark] :is(.text-success,.link-success){color:var(--bs-success-text-emphasis)!important}',
+    '[data-bs-theme=dark] .btn-outline-success{--bs-btn-color:var(--bs-success-text-emphasis)}',
 ));
 
 return array(
