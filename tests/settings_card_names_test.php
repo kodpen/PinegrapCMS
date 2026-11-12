@@ -44,14 +44,14 @@ function test_settings_card_radio_groups_have_a_legend()
 
 		foreach ($headings as $heading) {
 			$text = settings_card_names_quoted($heading);
-			pg_assert_true((bool) preg_match('/<legend class="form-label fs-md">\'\s*\.\s*lang\(\'' . $text . '\'\)/', $src), $file . ': "' . $heading . '" heads its radios as a legend');
+			pg_assert_true((bool) preg_match('/<legend class="form-label pg-field-label">\'\s*\.\s*lang\(\'' . $text . '\'\)/', $src), $file . ': "' . $heading . '" heads its radios as a legend');
 			pg_assert_false((bool) preg_match('/<label class="form-label">\'\s*\.\s*lang\(\'' . $text . '\'\)/', $src), $file . ': "' . $heading . '" is no longer a label that names nothing');
 		}
 	}
 
 	$commerce = settings_card_names_source('commerce.php');
-	pg_assert_same(3, preg_match_all('/<legend class="form-label fs-md">\'\s*\.\s*lang\(\'Mode\'\)/', $commerce), 'commerce.php: all three Mode groups have a legend');
-	pg_assert_same(2, preg_match_all('/<legend class="form-label fs-md">\'\s*\.\s*lang\(\'Transaction Type\'\)/', $commerce), 'commerce.php: both Transaction Type groups have a legend');
+	pg_assert_same(3, preg_match_all('/<legend class="form-label pg-field-label">\'\s*\.\s*lang\(\'Mode\'\)/', $commerce), 'commerce.php: all three Mode groups have a legend');
+	pg_assert_same(2, preg_match_all('/<legend class="form-label pg-field-label">\'\s*\.\s*lang\(\'Transaction Type\'\)/', $commerce), 'commerce.php: both Transaction Type groups have a legend');
 
 	$general = settings_card_names_source('general.php');
 	pg_assert_contains('<div class="form-label">\' . lang(\'Current Site Time\') . \'</div>', $general, 'Current Site Time names no control, so it is not a label');

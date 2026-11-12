@@ -177,7 +177,7 @@ $pg_settings_cards[] = $ap_card('pgset-fediverse-followers', lang('Followers and
                     <div class="col-12">
                         <div class="form-text mb-3">' . lang(array('string' => 'Followers: {var:1}', 'vars' => $ap_follower_count)) . (($ap_follower_count > count($ap_followers)) ? ' ' . lang(array('string' => '(the newest {var:1} are listed)', 'vars' => count($ap_followers))) : '') . '</div>' . ($ap_follower_rows !== '' ? '
                         <div class="table-responsive">
-                            <table class="table table-sm align-middle mb-0">
+                            <table class="table table-sm align-middle small mb-0">
                                 <thead><tr><th scope="col">' . lang('Name') . '</th><th scope="col">' . lang('Address') . '</th><th scope="col">' . lang('Since') . '</th></tr></thead>
                                 <tbody>' . $ap_follower_rows . '
                                 </tbody>
@@ -187,7 +187,7 @@ $pg_settings_cards[] = $ap_card('pgset-fediverse-followers', lang('Followers and
                     <div class="col-12">
                         <div class="form-label">' . lang('Blocked accounts and servers') . '</div>' . ($ap_block_rows !== '' ? '
                         <div class="table-responsive">
-                            <table class="table table-sm align-middle mb-0">
+                            <table class="table table-sm align-middle small mb-0">
                                 <tbody>' . $ap_block_rows . '
                                 </tbody>
                             </table>
@@ -228,7 +228,7 @@ foreach (pg_ap_delivery_log(50) as $ap_delivery) {
 $pg_settings_cards[] = $ap_card('pgset-fediverse-deliveries', lang('Deliveries'), '
                     <div class="col-12">' . ($ap_delivery_rows !== '' ? '
                         <div class="table-responsive">
-                            <table class="table table-sm align-middle mb-0">
+                            <table class="table table-sm align-middle small mb-0">
                                 <thead><tr><th scope="col">' . lang('Activity') . '</th><th scope="col">' . lang('Server') . '</th><th scope="col">' . lang('Status') . '</th><th scope="col" class="text-end">' . lang('Attempts') . '</th><th scope="col">' . lang('Queued') . '</th><th scope="col"><span class="visually-hidden">' . lang('Actions') . '</span></th></tr></thead>
                                 <tbody>' . $ap_delivery_rows . '
                                 </tbody>

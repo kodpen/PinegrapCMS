@@ -379,7 +379,7 @@ function ws_settings_department_fields($department, $primary_ids, $channel, $nam
                 </div>
             </div>
             <div class="table-responsive ws-dept-people">
-                <table class="table table-sm align-middle mb-3">
+                <table class="table table-sm align-middle small mb-3">
                     <thead>
                         <tr>
                             <th>' . h(lang('In the department')) . '</th>

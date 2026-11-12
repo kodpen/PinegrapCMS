@@ -1317,12 +1317,12 @@ function ws_holidays_rows_html($departments, $button)
     }
 
     if ($rows === '') {
-        $rows = '<tr><td colspan="4" class="fg-secondary small">' . h(lang('No holidays kept by hand yet.')) . '</td></tr>';
+        $rows = '<tr><td colspan="4" class="fg-secondary">' . h(lang('No holidays kept by hand yet.')) . '</td></tr>';
     }
 
     return '
                         <div class="table-responsive">
-                            <table class="table table-sm align-middle mb-3">
+                            <table class="table table-sm align-middle small mb-3">
                                 <thead><tr><th>' . h(lang('Holiday')) . '</th><th>' . h(lang('Date')) . '</th><th>' . h(lang('Who it is for')) . '</th><th></th></tr></thead>
                                 <tbody>' . $rows . '</tbody>
                             </table>
@@ -1345,7 +1345,7 @@ function ws_holidays_next_html($departments)
             . ((int) $item[2] > 0 ? '<span class="badge badge-subtle theme-secondary">' . ws_holidays_whom($departments, $item[2]) . '</span>' : '') . '</li>';
     }
 
-    return '<h3 class="h6">' . h(lang('Next days off')) . '</h3>'
+    return '<h3 class="pg-group-label">' . h(lang('Next days off')) . '</h3>'
         . ($next !== '' ? '<ul class="list-unstyled small mb-0 ws-next-off">' . $next . '</ul>' : '<div class="small fg-secondary">' . h(lang('No days off in the coming months.')) . '</div>');
 }
 
@@ -1426,7 +1426,7 @@ function ws_holiday_feeds_intro_html()
 {
     $example = 'https://calendar.google.com/calendar/ical/en.turkish%23holiday%40group.v.calendar.google.com/public/basic.ics';
 
-    return '<h3 class="h6">' . h(lang('Public holidays from a calendar address')) . '</h3>
+    return '<h3 class="pg-group-label">' . h(lang('Public holidays from a calendar address')) . '</h3>
                 <p class="small fg-secondary mb-3">' . h(lang('Paste the iCal address of a public holiday calendar: its days are read now and again every day. Google Calendar publishes one for every country, for example:')) . '
                     <code class="d-block text-break my-1">' . h($example) . '</code>'
                     . h(lang('Write the country in place of "turkish" (usa, uk, german, french…).')) . '</p>';

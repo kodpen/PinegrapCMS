@@ -293,7 +293,7 @@ function ws_claude_setup_guide($base, $host, $prompt, $copy)
     foreach ($steps as $step) {
         $html .= '
             <li class="ws-claude-step">
-                <div class="fw-semibold">' . $step['title'] . '</div>
+                <div class="small fw-semibold">' . $step['title'] . '</div>
                 <div class="small fg-secondary mb-3">' . $step['text'] . '</div>
                 ' . (!empty($step['more']) ? '<div class="small fg-secondary mb-3">' . $step['more'] . '</div>' : '') . '
                 ' . ws_claude_setup_picture($step['art'], $host) . '

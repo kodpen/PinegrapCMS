@@ -158,14 +158,14 @@ $pg_settings_cards[] = '
                                    <div class="row gy-5">
                                         <div class="col-12 ">
                                             <div class="form-label">' . lang('Current Site Time') . '</div>
-                                            <div class="w-100">' . get_absolute_time(array('timestamp' => time(), 'timezone_type' => 'site')) . '</div>
+                                            <div class="w-100 fs-sm">' . get_absolute_time(array('timestamp' => time(), 'timezone_type' => 'site')) . '</div>
                                         </div>
                                         <div class="col-12 ">
                                             <label for="timezone" class="form-label">' . lang('Timezone') . '</label>
                                             <select class="form-control" id="timezone" name="timezone">' . $output_timezone_options . '</select>
                                         </div>
                                         <div class="col-12 ">
-                                            <fieldset><legend class="form-label fs-md">'. lang('Date Format') . '</legend>
+                                            <fieldset><legend class="form-label pg-field-label">'. lang('Date Format') . '</legend>
                                             <div class="form-field">
                                                 <input value="month_day" class="radio" type="radio" id="date_format_month_day" name="date_format" ' . $date_format_month_day_checked . '>
                                                 <label class="" for="date_format_month_day">'. lang('month') . '/'. lang('day') . '/'. lang('year') . ' (2/14/' . date('Y') . ')</label>
@@ -177,7 +177,7 @@ $pg_settings_cards[] = '
                                             </fieldset>
                                         </div>
                                         <div class="col-12 ">
-                                            <fieldset><legend class="form-label fs-md">'. lang('Time Format') . '</legend>
+                                            <fieldset><legend class="form-label pg-field-label">'. lang('Time Format') . '</legend>
                                             <div class="form-field">
                                                 <input value="twelve_hours" class="radio" type="radio" id="time_format_twelve_hours" name="time_format" ' . $time_format_twelve_hours_checked . '>
                                                 <label class="" for="time_format_twelve_hours">'. lang('hour') . ':'. lang('minute') . ' am/pm (11:30 pm)</label>

@@ -307,8 +307,7 @@ $pg_settings_cards[] = '
                             <label class="" for="erp_edoc_autosend">' . lang('Hand the document to GİB in the same step') . '</label>
                         </div>
                         <div class="form-text">' . lang('A document created through a provider\'s API is only a draft there; it becomes a legal document when it is handed to the tax authority. Left on, one click does both. Turned off, the invoice screen gets a second button for the hand-over, so the draft can be looked over at the provider first.') . '</div>
-                    </div>
-                    <div class="col-12"><hr class="my-1"></div>' : '') . '
+                    </div>' : '') . '
                     <div class="col-12">
                                                             <div class="form-field">
                                                                 <div class="switch"><input value="1"' . $enable_parasut_checked . ' class="collapse-switcher" type="checkbox" id="enable_parasut" name="enable_parasut" data-bs-target="#ecommerce_parasut_configration_row"/></div>

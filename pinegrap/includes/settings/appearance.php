@@ -182,7 +182,7 @@ $pg_settings_cards[] = '
                                 <div class="card-body">
                                    <div class="row gy-5">
                                         <div class="col-12 ">
-                                            <fieldset><legend class="form-label fs-md">'. lang('Editor Version') . '</legend>
+                                            <fieldset><legend class="form-label pg-field-label">'. lang('Editor Version') . '</legend>
                                             <div class="form-field">
                                                 <input value="latest" class="radio" type="radio" id="page_editor_version_latest" name="page_editor_version" ' . $page_editor_version_latest_checked . '>
                                                 <label class="" for="page_editor_version_latest">'. lang('Latest') . '</label>
@@ -298,7 +298,7 @@ if ((int) $user['role'] === 0) {
                                                     <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="control_panel_stylesheet_url" id="control_panel_stylesheet_url" class="form-control" value="' . h($private_label_values['control_panel_stylesheet_url']) . '" />
                                                 </div>
                                                 <div class="col-12">
-                                                    <h3 class="h6 fw-bold mb-0">' . lang('Footer Links') . '</h3>
+                                                    <h3 class="pg-group-label mb-0">' . lang('Footer Links') . '</h3>
                                                 </div>' . $output_private_label_links . '
                                             </div>
                                         </div>

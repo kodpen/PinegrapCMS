@@ -148,14 +148,16 @@ $pg_settings_cards[] = '
 // ── Related screens ──
 // The screens that connect the site to other services, each under the gate
 // of the screen itself (pg_settings_integration_links()). No card when the
-// user may open none of them.
+// user may open none of them. The links are the rows of the card's inner card
+// (look A's inner card row), so the body has no padding of its own.
 $output_integration_links = '';
 
 foreach (pg_settings_integration_links($user) as $integration_link) {
     $output_integration_links .= '
-                        <a class="list-group-item list-group-item-action d-flex align-items-center gap-5" href="' . h($integration_link['url']) . '">
-                            <i class="bi ' . h($integration_link['icon']) . '" aria-hidden="true"></i>
-                            <span>' . h($integration_link['label']) . '</span>
+                        <a class="pg-card-inner-row fs-sm fw-medium fg-primary text-decoration-none" href="' . h($integration_link['url']) . '">
+                            <i class="bi ' . h($integration_link['icon']) . ' fg-secondary" aria-hidden="true"></i>
+                            <span class="flex-grow-1">' . h($integration_link['label']) . '</span>
+                            <i class="bi bi-chevron-right fg-secondary" aria-hidden="true"></i>
                         </a>';
 }
 
@@ -166,7 +168,7 @@ if ($output_integration_links !== '') {
             <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Related screens') . '
             </div>
-            <div class="list-group list-group-flush">' . $output_integration_links . '
+            <div class="card-body p-0">' . $output_integration_links . '
             </div>
         </div>
     </div>';

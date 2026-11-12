@@ -42,7 +42,7 @@ $pg_settings_cards[] = '
                                             <textarea name="meta_description" id="setting_meta_description" class="form-control" maxlength="255" >' . h($meta_description) . '</textarea>
                                             <div id="setting_seo_c_meta_description"></div>
                                         </div>
-                                        <div id="pgsub-sitemap" class="col-12  mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Site Map and Crawling') . '</h6></div>
+                                        <div id="pgsub-sitemap" class="col-12  mb-0"><h6 class="fg-secondary">' . lang('Site Map and Crawling') . '</h6></div>
                                         <div class="pg-f-lg">
                                             <label for="additional_sitemap_content" class="form-label">' . lang('Additional sitemap.xml Content') . '</label>
                                             <textarea name="additional_sitemap_content" id="additional_sitemap_content" class="form-control" >' . h($additional_sitemap_content) . '</textarea>
@@ -209,11 +209,11 @@ $pg_settings_cards[] = '
                                                 <div class="form-text">' . h(lang(array('string' => 'Lets {var:1} use the pages to train AI models. Turned off, robots.txt asks them to stay away and says ai-train=no. The firewall turns GPTBot, ClaudeBot and CCBot away either way, unless they are listed under Allowed Bots.', 'vars' => array(implode(', ', $ai_crawlers_catalog['train']))))) . '</div>
                                             </div>
                                         </div>
-                                        ' . (($output_waf_ai_block !== '') ? '<div class="col-12 mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Firewall') . '</h6></div>
+                                        ' . (($output_waf_ai_block !== '') ? '<div class="col-12 mb-0"><h6 class="fg-secondary">' . lang('Firewall') . '</h6></div>
                                         <div class="col-12">
                                             <div class="form-text">' . lang('Whether the firewall lets assistants and AI search in; robots.txt says the same for them.') . '</div>
                                         </div>' . $output_waf_ai_block : '') . '
-                                        <div class="col-12 mb-0"><h6 class="fg-secondary text-uppercase">llms.txt</h6></div>
+                                        <div class="col-12 mb-0"><h6 class="fg-secondary">llms.txt</h6></div>
                                         <div class="col-12">
                                             <div class="form-field">
                                                 <div class="switch"><input value="1"' . ($ai_crawlers['llms'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="llms_txt" name="llms_txt"/></div>

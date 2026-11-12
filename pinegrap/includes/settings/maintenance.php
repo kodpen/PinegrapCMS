@@ -70,7 +70,7 @@ $pg_settings_cards[] = '
                                         <div class="col-12" id="job_dispatch_jobs">
                                            <div class="row gy-5">
                                                 <div class="col-12 ">
-                                                    <div class="alert theme-secondary ">' . lang('The general job must have a scheduled task of its own for this to work, and it is the only one that then needs one. Its command for this server is below.') . '</div>
+                                                    <div class="alert theme-secondary py-3 small">' . lang('The general job must have a scheduled task of its own for this to work, and it is the only one that then needs one. Its command for this server is below.') . '</div>
                                                     <textarea id="cron_job_general_dispatch" aria-label="' . h(lang('General job command')) . '">' . $cron_job_general . '</textarea>
                                                     ' . pg_code_editor_attach(array('id' => 'cron_job_general_dispatch', 'code_type' => 'plain','readonly'=>true )) . '
                                                     <div class="form-text text-end">' . lang('Recommended Schedule: Every Minute') . '</div>
@@ -211,7 +211,7 @@ $pg_settings_modals[] = pg_settings_drawer('cron_jobs', lang('Cron Jobs') . ' (<
 // What the automatic backup keeps and where its copy goes. The controls exist
 // only once the 2026.4.8 columns do; before that the card says so, and the
 // save module writes nothing for it either.
-$output_backup_settings = '<div class="col-12"><div class="alert theme-secondary mb-0">' . lang('Run the upgrade to use this setting.') . '</div></div>';
+$output_backup_settings = '<div class="col-12"><div class="alert theme-secondary mb-0 py-3 small">' . lang('Run the upgrade to use this setting.') . '</div></div>';
 
 if ($backup_settings_ready) {
 
@@ -510,7 +510,7 @@ $pg_settings_cards[] = '
 if (!$object_storage_ready) {
 
     $output_object_storage_settings = '
-                    <div class="col-12"><div class="alert theme-secondary mb-0">' . lang('The storage keeps its secret key encrypted, which needs the site\'s encryption key and the connected accounts tables. Run the upgrade, and check that the encryption key is set.') . '</div></div>';
+                    <div class="col-12"><div class="alert theme-secondary mb-0 py-3 small">' . lang('The storage keeps its secret key encrypted, which needs the site\'s encryption key and the connected accounts tables. Run the upgrade, and check that the encryption key is set.') . '</div></div>';
 
 } else {
 
@@ -595,8 +595,8 @@ if (!$object_storage_ready) {
     }
 
     $output_object_storage_settings = '
-                    <input type="hidden" name="object_storage_card" value="1"/>
                     <div class="col-12">
+                        <input type="hidden" name="object_storage_card" value="1"/>
                         <div class="form-field">
                             <div class="switch"><input value="1"' . ($object_storage['enabled'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="object_storage_enabled" name="object_storage_enabled"/></div>
                             <label class="" for="object_storage_enabled">' . lang('Use object storage') . '</label><div class="form-text">' . lang('A bucket on any service with an S3-compatible API, hosted or on your own server. Switched off, nothing is sent there.') . '</div>
@@ -660,7 +660,7 @@ $pg_settings_cards[] = '
 // not a choice: an alert is a notification row, and the row is what makes it
 // once a day. Before the 2026.11.0 columns the card says so, and the save
 // module writes nothing for it either.
-$output_ops_alert_settings = '<div class="col-12"><div class="alert theme-secondary mb-0">' . lang('Run the upgrade to use this setting.') . '</div></div>';
+$output_ops_alert_settings = '<div class="col-12"><div class="alert theme-secondary mb-0 py-3 small">' . lang('Run the upgrade to use this setting.') . '</div></div>';
 
 if ($ops_alerts_ready) {
 
@@ -786,13 +786,13 @@ $notify_kinds = function_exists('pg_notify_channel_kinds') ? pg_notify_channel_k
 if (!$notify_ready) {
 
     $output_notify_settings = '
-                    <div class="col-12"><div class="alert theme-secondary mb-0">' . lang('Chat notifications keep their addresses and tokens encrypted, which needs the site\'s encryption key and the connected accounts tables. Run the upgrade, and check that the encryption key is set.') . '</div></div>';
+                    <div class="col-12"><div class="alert theme-secondary mb-0 py-3 small">' . lang('Chat notifications keep their addresses and tokens encrypted, which needs the site\'s encryption key and the connected accounts tables. Run the upgrade, and check that the encryption key is set.') . '</div></div>';
 
 } else {
 
     $output_notify_settings = '
-                    <input type="hidden" name="notify_channels_card" value="1"/>
                     <div class="col-12">
+                        <input type="hidden" name="notify_channels_card" value="1"/>
                         <div class="form-text">' . lang('Operations alerts and chosen Workspace events can also go to a Slack or Microsoft Teams channel through an incoming webhook, or to a Telegram chat through a bot. Messages go out with the webhook deliveries and are retried the same way.') . '</div>
                     </div>' . ($notify_job_on ? '' : '
                     <div class="col-12"><div class="alert theme-warning mb-0 py-5 small">' . lang('Messages are sent by the Webhook delivery job, which has to be selected under Cron Jobs. The test button sends at once.') . '</div></div>');
@@ -844,7 +844,7 @@ if (!$notify_ready) {
 
     $output_notify_settings .= '
                     <div class="col-12">
-                        <div class="h6 fw-bold mb-0">' . lang('Add a target') . '</div>
+                        <div class="pg-group-label">' . lang('Add a target') . '</div>
                     </div>
                     <div class="pg-f-sm">
                         <label for="notify_new_kind" class="form-label">' . lang('Service') . '</label>
@@ -915,7 +915,7 @@ $pg_settings_cards[] = '
 // (includes/fn/maintenance_mode.php), and the address an uptime monitor
 // polls. Before the 2026.11.0 columns the card says so and the save module
 // writes nothing for it.
-$output_maintenance_settings = '<div class="col-12"><div class="alert theme-secondary mb-0">' . lang('Run the upgrade to use this setting.') . '</div></div>';
+$output_maintenance_settings = '<div class="col-12"><div class="alert theme-secondary mb-0 py-3 small">' . lang('Run the upgrade to use this setting.') . '</div></div>';
 
 if ($maintenance_ready) {
 

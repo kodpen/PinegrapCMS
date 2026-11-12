@@ -1153,7 +1153,7 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
     }
 
     if ($rows === '') {
-        $rows = '<div class="ws-empty py-5"><i class="bi bi-envelope" aria-hidden="true"></i>' . h(lang('No mailboxes yet. A mailbox brings the e-mail sent to an address into a channel, where the team talks it over.')) . '</div>';
+        $rows = '<div class="ws-empty small py-5"><i class="bi bi-envelope" aria-hidden="true"></i>' . h(lang('No mailboxes yet. A mailbox brings the e-mail sent to an address into a channel, where the team talks it over.')) . '</div>';
     }
 
     $intro = '<div class="form-text mt-5">' . h(lang('A mailbox with a server is read every minute while the general scheduled job runs; an .eml file saved from a mail program can also be brought in by hand.')) . '</div>';

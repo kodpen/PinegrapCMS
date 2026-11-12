@@ -2972,7 +2972,7 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null, $form 
                             ' . ($admin ? ($dialog ? '' : '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>') : '<div class="form-text">' . h(lang('Only an administrator can connect Claude.')) . '</div>') . '
                         ' . ($dialog ? '</div>' : '</form>') . '
                         <details class="mt-7 ws-claude-guide"' . (empty($missing) ? '' : ' open') . '>
-                            <summary class="fw-semibold">' . h(lang('How to connect it')) . '</summary>
+                            <summary class="small fw-semibold">' . h(lang('How to connect it')) . '</summary>
                             <ol class="ws-claude-steps mt-5">' . $guide . '</ol>
                         </details>
                     </div>

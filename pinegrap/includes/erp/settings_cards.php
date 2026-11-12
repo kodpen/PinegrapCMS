@@ -179,7 +179,7 @@ function erp_settings_rules_fields()
                             </div>
                             <div class="form-text">' . lang('The invoices do not change: they carry the whole VAT and the withheld part either way. Only the difference the report works out does.') . '</div>
                         </fieldset>
-                        <div class="mb-7" style="max-width:36rem">
+                        <div class="mb-7">
                             <label class="form-label" for="vat_exemption_code">' . lang('Exemption code for zero-rated lines') . '</label>
                             <input type="text" class="form-control font-monospace" style="max-width:8rem" id="vat_exemption_code" name="vat_exemption_code" value="' . h($rules['vat_exemption_code']) . '" maxlength="3" inputmode="numeric" pattern="[0-9]{3}" placeholder="351" autocomplete="off" />
                             <div class="form-text">' . lang('A 0% line on an e-document has to say why it carries no VAT. A line takes its product\'s code when the product has one, otherwise this one; empty leaves the line without a code. Which code fits your sales is for your accountant to say.') . '</div>
@@ -187,7 +187,7 @@ function erp_settings_rules_fields()
     }
 
     $output .= '
-                        <p class="mb-0">' . lang('Whether an expense category takes its VAT back is set with the categories.') . '
+                        <p class="form-text mb-0">' . lang('Whether an expense category takes its VAT back is set with the categories.') . '
                             <a href="erp_expense_categories.php">' . lang('Expense categories') . '</a></p>';
 
     return $output;
@@ -214,7 +214,7 @@ function erp_settings_late_fee_fields()
 
     return '
                         <p class="fg-secondary">' . lang('A monthly rate on what a customer owes past the due date, counted day by day until it is paid. The account screen and the reconciliation letter screen show what an account has run up and write it on a sales invoice draft for you to check and issue; nothing is charged by itself.') . '</p>
-                        <div class="row g-5" style="max-width:36rem">
+                        <div class="row g-5">
                             <div class="col-12 sm:col-6">
                                 <label class="form-label" for="late_fee_rate">' . lang('Monthly rate (%)') . '</label>
                                 <input type="text" class="form-control text-end" id="late_fee_rate" name="late_fee_rate" value="' . (($late_fee['rate'] > 0) ? h($rate_out($late_fee['rate'])) : '') . '" inputmode="decimal" placeholder="0" autocomplete="off" />
@@ -245,7 +245,7 @@ function erp_settings_efatura_threshold_fields()
 
     return '
                         <p class="fg-secondary">' . lang('A seller outside e-Fatura must join it from the seventh month of the year after its gross sales reached one of these amounts. System Status weighs this year\'s completed orders against them and warns from four fifths on. The tax authority changes the amounts; enter the ones in force. 0 switches a warning off.') . '</p>
-                        <div class="row g-5" style="max-width:36rem">
+                        <div class="row g-5">
                             <div class="col-12 sm:col-6">
                                 <label class="form-label" for="erp_efatura_web_threshold">' . h(lang(array('string' => 'Sales over the internet ({var:1})', 'vars' => $currency))) . '</label>
                                 <input type="text" class="form-control text-end" id="erp_efatura_web_threshold" name="erp_efatura_web_threshold" value="' . (int) floor($limits['web'] / 100) . '" inputmode="numeric" pattern="[0-9]*" autocomplete="off" />
@@ -394,17 +394,19 @@ function erp_settings_templates_status($editor_url)
         $url = $editor_url . (($key === 'invoice') ? '' : '?doc=' . $key);
 
         $output .= '
-                        <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3">
-                            <span>' . h($document['label']) . '</span>
-                            <span class="d-flex align-items-center gap-3">
-                                <span class="badge ' . ($saved ? 'theme-primary' : 'theme-secondary') . '">' . ($saved ? lang('Saved template') : lang('Built-in template')) . '</span>
-                                <a href="' . h($url) . '">' . lang('Edit') . '</a>
+                        <li class="pg-card-inner-row px-0 flex-wrap">
+                            <span class="flex-grow-1 fs-sm fw-medium">' . h($document['label']) . '</span>
+                            <span class="d-flex align-items-center gap-3 ms-auto">
+                                <span class="pg-pill' . ($saved ? ' pg-tone-blue' : '') . '">' . ($saved ? lang('Saved template') : lang('Built-in template')) . '</span>
+                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . h($url) . '">' . lang('Edit') . '</a>
                             </span>
                         </li>';
     }
 
+    // The documents are rows of the card's inner card (look A's inner card
+    // row, without its side padding: the card body already has it).
     return '
                         <p class="fg-secondary">' . lang('The HTML the PDF documents are rendered from. They are edited, previewed and reset on the ERP Settings screen.') . '</p>
-                        <ul class="list-group mb-0">' . $output . '
+                        <ul class="list-unstyled mb-0">' . $output . '
                         </ul>';
 }

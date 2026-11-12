@@ -296,7 +296,7 @@ foreach ($booking_staff as $user_id => $member) {
                                 </div>
                                 <div class="col-12">
                                     <div class="table-responsive">
-                                    <table class="table table-sm align-middle mb-3">
+                                    <table class="table table-sm align-middle small mb-3">
                                         <caption class="visually-hidden">' . h(lang(array('string' => 'Weekly hours of {var:1}', 'vars' => $member['person']))) . '</caption>
                                         <thead><tr><th scope="col">' . lang('Day') . '</th><th scope="col">' . lang('Opens') . '</th><th scope="col">' . lang('Closes') . '</th><th scope="col">' . lang('Opens again') . '</th><th scope="col">' . lang('Closes again') . '</th></tr></thead>
                                         <tbody>' . $grid . '
@@ -308,7 +308,7 @@ foreach ($booking_staff as $user_id => $member) {
                                 <div class="col-12">
                                     <div class="form-label">' . lang('Days off and special hours') . '</div>
                                     <div class="table-responsive">
-                                    <table class="table table-sm align-middle mb-3">
+                                    <table class="table table-sm align-middle small mb-3">
                                         <caption class="visually-hidden">' . h(lang(array('string' => 'Days off and special hours of {var:1}', 'vars' => $member['person']))) . '</caption>
                                         <thead><tr><th scope="col">' . lang('First day') . '</th><th scope="col">' . lang('Last day') . '</th><th scope="col">' . lang('Opens') . '</th><th scope="col">' . lang('Closes') . '</th></tr></thead>
                                         <tbody data-pg-booking-exceptions>' . $exceptions . '

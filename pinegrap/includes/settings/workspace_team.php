@@ -53,7 +53,7 @@ foreach ($ws_departments as $ws_department) {
 $pg_settings_modals[] = ws_settings_department_drawer(null, array(), null, $ws_form, !empty($pg_settings_in_dialog));
 
 if ($ws_department_rows === '') {
-    $ws_department_rows = '<div class="ws-empty py-5"><i class="bi bi-diagram-3" aria-hidden="true"></i>' . h(lang('No departments yet. A department groups people so work can be handed to it and its lead sees its board.')) . '</div>';
+    $ws_department_rows = '<div class="ws-empty small py-5"><i class="bi bi-diagram-3" aria-hidden="true"></i>' . h(lang('No departments yet. A department groups people so work can be handed to it and its lead sees its board.')) . '</div>';
 }
 
 $pg_settings_cards[] = '
@@ -78,7 +78,7 @@ $pg_settings_cards[] = '
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-3">
+                    <table class="table table-sm align-middle small mb-3">
                         <thead>
                             <tr>
                                 <th>' . h(lang('Team member')) . '</th>
@@ -181,7 +181,7 @@ if (ws_workdays_ready()) {
             <div class="card-body">
                 ' . ws_holidays_settings_intro_html() . '
                 <div class="d-flex align-items-center gap-3 mb-2">
-                    <h3 class="h6 mb-0 ws-grow">' . h(lang('Holidays')) . '</h3>
+                    <h3 class="pg-group-label mb-0 ws-grow">' . h(lang('Holidays')) . '</h3>
                     ' . $ws_drawer_button('pgset-ws-holiday-new', 'btn btn-sm btn-outline theme-primary rounded-pill', '<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add a holiday'))) . '
                 </div>
                 ' . ws_holidays_rows_html($ws_calendar_departments, $ws_button) . '
