@@ -40,7 +40,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
                         '.pg-cn-stages > li:last-child { padding-bottom: 0; } ' +
                         '.pg-cn-stages > li:last-child::before { display: none; } ' +
                         '.pg-cn-stages .pg-cn-dot { position: absolute; left: 0; top: 0; display: flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; border: 2px solid var(--bs-border-color); background: var(--bs-body-bg); color: var(--bs-secondary-color); } ' +
-                        '.pg-cn-stages .pg-cn-done .pg-cn-dot { border-color: var(--bs-primary); background: var(--bs-primary); color: var(--bs-body-bg); } ' +
+                        '.pg-cn-stages .pg-cn-done .pg-cn-dot { border-color: var(--bs-primary); background: var(--bs-primary); color: var(--pg-on-primary, var(--bs-body-bg)); } ' +
                         '.pg-cn-stages .pg-cn-now .pg-cn-dot { border-color: var(--bs-primary); color: var(--bs-primary); box-shadow: 0 0 0 .25rem rgba(var(--bs-primary-rgb), .2); }',
         // The street notice: a framed sheet under the barrier stripe, the
         // times in tabular figures.

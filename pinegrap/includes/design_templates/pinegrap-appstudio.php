@@ -171,6 +171,20 @@ $appstudio_css = implode("\n", array(
     '.pma-lift{transition:transform .2s ease,box-shadow .2s ease}',
     '.pma-lift:hover,.pma-lift:focus-visible,.pma-lift:focus-within{transform:translateY(-3px);box-shadow:var(--bs-box-shadow)}',
     '@media (prefers-reduced-motion:reduce){.pma-lift{transition:none}.pma-lift:hover,.pma-lift:focus-visible,.pma-lift:focus-within{transform:none}}',
+    // Dark theme, grey sections (the account bar, page headers, grey bands):
+    // the palette's primary and second colours are made readable on the
+    // page background and fall to about 4:1 on this lighter grey. Links,
+    // eyebrows and outline buttons there take the primary's emphasis tint,
+    // lightened a fifth towards the text colour where the browser mixes
+    // colours (some palettes' tint is as dark as the primary itself), and
+    // the second colour gives way to the body's second text colour.
+    '[data-bs-theme=dark] .bg-body-tertiary :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}',
+    '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-primary{--bs-btn-color:var(--bs-primary-text-emphasis)}',
+    '@supports (color:color-mix(in srgb,red 50%,blue)){'
+        . '[data-bs-theme=dark] .bg-body-tertiary :is(.text-primary,.link-primary){color:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))!important}'
+        . '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-primary{--bs-btn-color:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))}}',
+    '[data-bs-theme=dark] .bg-body-tertiary .link-secondary{color:var(--bs-secondary-color)!important}',
+    '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-color)}',
 ));
 
 return array(

@@ -131,6 +131,7 @@
 - design-template-ferry.md: Ferry template (pinegrap-ferry, 2.0.0): routes with a page each, ports, timetables and fares as words, Travel Notices collection, booking requests, group enquiries, no shop, pfy- look, tests.
 - design-template-filmstudio-pages.md: Film Studio template 2.0.0: home, services and project page on the Film Studio blocks, motion elsewhere, names in their own case; builders, pages, limits, test
 - design-template-filmstudio.md: Film Studio template (pinegrap-filmstudio): showreel, services, projects as a collection by industry and service, studio hire, crew, project enquiries, crew calls, no shop, pfm- look, tests.
+- design-template-fit.md: Templates App Studio to Events (#8997): header menu opens at 1200 px and wraps, image sizes in props not _attrs, dark grey sections lift primary and second text
 - design-template-florist-pages.md: Florist template 2.0.0: home, occasions, subscriptions and delivery on the Florist blocks and Locations: Zones, motion elsewhere: builders, each page, limits, the test
 - design-template-florist.md: Florist template (pinegrap-florist): bouquets, occasions, subscriptions, event flowers, delivery, Our Work collection, order requests from the account, consultations, shop catalog, pfl- look, tests.
 - design-template-form-fees.md: Fees and branches of the template forms (FL7): hidden fee products in the catalog, {{product:<key>}}, the Events optional fee, Cafe deposit, Courses enrolment fee, Cafe and Clinic shown_when

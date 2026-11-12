@@ -41,7 +41,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
         'pg-campsite-plot':   '.pg-campsite-plot { background: var(--bs-success-bg-subtle); border: 2px dashed var(--bs-success-border-subtle); border-radius: var(--bs-border-radius-lg); }',
         'pg-campsite-area':   '.pg-campsite-area { display: flex; align-items: center; justify-content: center; font-size: .8125rem; font-weight: 600; border: 1px dashed var(--bs-success-text-emphasis); border-radius: var(--bs-border-radius); color: var(--bs-success-text-emphasis); }',
         // A numbered point on the drawing and the same number in its legend.
-        'pg-campsite-marker': '.pg-campsite-marker { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 1.75rem; height: 1.75rem; border-radius: 50%; background: var(--bs-primary); color: var(--bs-body-bg); font-size: .8125rem; font-weight: 700; font-variant-numeric: tabular-nums; }'
+        'pg-campsite-marker': '.pg-campsite-marker { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 1.75rem; height: 1.75rem; border-radius: 50%; background: var(--bs-primary); color: var(--pg-on-primary, var(--bs-body-bg)); font-size: .8125rem; font-weight: 700; font-variant-numeric: tabular-nums; }'
     };
 
     var _SD_BLOCK_CSS_NEEDS = {
