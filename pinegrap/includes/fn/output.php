@@ -3056,8 +3056,10 @@ function pg_account_menu($user, $options = array())
 
     $picture = '';
 
+    // The address carries the file's change stamp, so a picture saved again
+    // (the Design Canvas writes the same name) shows at once.
     if (!empty($person['contact_file_id']) && !empty($person['file_name'])) {
-        $picture = PATH . $person['file_name'];
+        $picture = pg_file_picture_url($person['file_name']);
     } elseif (!empty($person['contact_image'])) {
         $picture = (string) $person['contact_image'];
     }

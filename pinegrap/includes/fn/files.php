@@ -2463,3 +2463,51 @@ function pg_design_files_modify_dialog($user, $form_id)
             }());
         </script>';
 }
+
+/**
+ * An address with a change stamp: "?v=<stamp>" (or "&v=" after a query), so
+ * a browser or an edge cache that keeps the address for a week (get_file.php
+ * sends max-age=604800) asks again once the file changed. No stamp (0 or
+ * less) or no address leaves it as it is.
+ *
+ * @param string $url
+ * @param int    $stamp a Unix time
+ * @return string
+ */
+function pg_stamped_url($url, $stamp)
+{
+    $url = (string) $url;
+    $stamp = (int) $stamp;
+
+    if (($url === '') || ($stamp <= 0)) {
+        return $url;
+    }
+
+    return $url . ((strpos($url, '?') === false) ? '?' : '&') . 'v=' . $stamp;
+}
+
+/**
+ * A picture of the file manager at its bare address (PATH . name), stamped
+ * with the file's change time, the time get_file.php sends as Last-Modified:
+ * a save from the Design Canvas, a replace, a rotate or an optimize writes
+ * the same name, and the new pixels show at once wherever the panel draws
+ * the picture (a profile picture first of all). '' for no name.
+ *
+ * @param string      $name files.name
+ * @param string|null $base the address the name follows; PATH when null
+ * @return string
+ */
+function pg_file_picture_url($name, $base = null)
+{
+    $name = (string) $name;
+
+    if ($name === '') {
+        return '';
+    }
+
+    // init.php names the files folder; an entry that does not load it (the
+    // external API) reads the default one.
+    $path = (defined('FILE_DIRECTORY_PATH') ? FILE_DIRECTORY_PATH : PG_FUNCTIONS_DIR . '/data/files') . '/' . basename($name);
+
+    return pg_stamped_url((($base === null) ? PATH : (string) $base) . $name, is_file($path) ? (int) filemtime($path) : 0);
+}

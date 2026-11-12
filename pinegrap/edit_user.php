@@ -691,7 +691,7 @@ if (!$_POST) {
             $contact_picture_name = pg_contact_picture_name($contact_file_id);
 
             if ($contact_picture_name !== '') {
-                $identity_photo = PATH . $contact_picture_name;
+                $identity_photo = pg_file_picture_url($contact_picture_name);
             }
         } elseif ($contact_image != '') {
             $identity_photo = $contact_image;

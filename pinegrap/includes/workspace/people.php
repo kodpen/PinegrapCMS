@@ -49,8 +49,10 @@ function ws_display_name($row)
  */
 function ws_avatar_url($row)
 {
+    // Stamped with the file's change time: a picture saved again shows at
+    // once (pg_file_picture_url()).
     if (((int) ($row['image_file_id'] ?? 0) > 0) && ((string) ($row['image_file_name'] ?? '') !== '')) {
-        return PATH . $row['image_file_name'];
+        return pg_file_picture_url($row['image_file_name']);
     }
 
     if ((string) ($row['image'] ?? '') !== '') {

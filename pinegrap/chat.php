@@ -637,8 +637,10 @@ function pg_chat_role_label($role)
 // query, so there is no extra query per row.
 function pg_chat_avatar_src($image, $image_file_id, $image_file_name, $first_name = '', $last_name = '', $username = '', $seed = '')
 {
+    // Stamped with the file's change time: a picture saved again shows at
+    // once (pg_file_picture_url()).
     if (((int) $image_file_id > 0) && ($image_file_name != '')) {
-        return PATH . $image_file_name;
+        return pg_file_picture_url($image_file_name);
     }
 
     if ($image != '') {

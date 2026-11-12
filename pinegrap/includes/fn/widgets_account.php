@@ -2114,7 +2114,7 @@ function _render_system_widget_login_region($tree_json, $widget_id, $cfg = array
         // way the panel draws people (includes/fn/contacts.php).
         $avatar = '';
         if (!empty($row['image_file_id']) && (string)$row['image_file_name'] !== '') {
-            $avatar = $output . $row['image_file_name'];
+            $avatar = pg_file_picture_url($row['image_file_name'], $output);
         } elseif (!empty($row['image'])) {
             $image  = (string)$row['image'];
             $avatar = preg_match('#^(https?:)?/#i', $image) ? $image : $output . $image;
