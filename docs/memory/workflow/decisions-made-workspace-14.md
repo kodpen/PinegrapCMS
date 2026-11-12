@@ -10,7 +10,7 @@ description: Decisions list, workspace part 14 (2026-11-11 on): the channel soun
 - Only for what is for the person: a mention, a direct message, an answer to their own message or request (an agent's answer too), a question asked of them. Only while that conversation is not in front of them. One short tone; a per-person switch in the channel menu, on by default.
 - Owner (2026-11-11): "Yalnızca bana gelenlerde (Önerilen)", asked in the architect's window after his words in the agents channel: "kanaldan yanıt geldiğinde sesli mesaj sesi mi çıkartsa kanal teams teki gibi vs.".
 - Not chosen: a sound on every new message; no sound.
-- The architect's, not the owner's words: the tone is made in the browser with no sound file, several arrivals at once sound once, the switch is kept in the browser. Plan: `plans/workspace-channel-sound.md`.
+- The architect's, not the owner's words: the tone is made in the browser with no sound file, several arrivals at once sound once, the switch is kept in the browser. Built as `workspace/workspace-channel-sound.md`.
 
 ## What does an agent do while the message that asked it is being edited? (owner, 2026-11-11, #8723)
 - It waits while the writer has the message's edit box open; the line under the message says so. Saving hands the request on with the new words; cancelling, or two minutes without a keystroke, with the words of before. An agent that had already started stops and reads the new words. An answer already given is not asked again.

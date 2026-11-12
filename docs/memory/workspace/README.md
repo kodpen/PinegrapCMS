@@ -29,7 +29,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 
 - `workflow-tables-*`: 25 files; start at `workflow-tables.md`.
 - `workspace-api-*`: 12 files; start at `workspace-api-overview.md`.
-- `workspace-channel-*`: 18 files; start at `workspace-channel-overview.md`.
+- `workspace-channel-*`: 19 files; start at `workspace-channel-overview.md`.
 - `workspace-command-*`: 6 files.
 - `workspace-editor-*`: 6 files.
 - `workspace-flows-*`: 112 files; start at `workspace-flows-overview.md`.

@@ -258,6 +258,148 @@
         node.addEventListener('animationend', function () { node.classList.remove(className); }, { once: true });
     }
 
+    // ── The sound when something for the person arrives ──
+    // The inbox lines of a conversation that is for them: a mention (an
+    // assistant's answer mentions the asker), an MCP agent's answer, a
+    // question asked of them, a discussion started on their message, a
+    // guest's message, a customer writing again on a mail conversation they
+    // hold. Other channel traffic writes no line; a direct message is the
+    // panel chat's, which has a tone of its own.
+    var SOUND_KINDS = ['mention', 'agent_answer', 'question_asked', 'thread', 'guest_message', 'mail_customer'];
+    var SOUND_KEY = 'ws-sound';
+    var soundChosen = {};
+    var soundAudio = { ctx: null };
+
+    // Does an inbox line (ws_sound_lines()) sound for the viewer as the
+    // screen stands? view: on (the switch), me, visible (the tab), focused
+    // (the window), channelId (the channel whose conversation is shown, 0
+    // for none), threadId (the discussion open beside it, 0 for none). The
+    // conversation in front of them, or their own doing, stays silent.
+    function soundFor(line, view) {
+        if (!line || !view || !view.on || (SOUND_KINDS.indexOf(line.kind) < 0)) {
+            return false;
+        }
+
+        if (line.actor_id && (line.actor_id === view.me)) {
+            return false;
+        }
+
+        var shown = !!line.channel_id && ((line.channel_id === view.channelId) || (line.channel_id === view.threadId));
+
+        return !(shown && view.visible && view.focused);
+    }
+
+    // A look's lines play the tone once, however many of them sound; true
+    // when it played.
+    function soundBatch(lines, view, play) {
+        var any = (lines || []).some(function (line) {
+            return soundFor(line, view);
+        });
+
+        if (any) {
+            play();
+        }
+
+        return any;
+    }
+
+    function soundKey(site, viewer) {
+        return SOUND_KEY + ':' + String(site || '') + ':' + String(viewer || 0);
+    }
+
+    // The viewer's choice in this browser, not the channel's: on unless
+    // switched off. Storage refused, the choice lasts the page.
+    function soundOn(site, viewer) {
+        var key = soundKey(site, viewer);
+
+        if (Object.prototype.hasOwnProperty.call(soundChosen, key)) {
+            return soundChosen[key];
+        }
+
+        try {
+            return window.localStorage.getItem(key) !== 'off';
+        } catch (error) {
+            return true;
+        }
+    }
+
+    function soundSet(site, viewer, on) {
+        var key = soundKey(site, viewer);
+
+        soundChosen[key] = !!on;
+
+        try {
+            if (on) {
+                window.localStorage.removeItem(key);
+            } else {
+                window.localStorage.setItem(key, 'off');
+            }
+        } catch (error) {
+            // Nothing to remember it in; it holds for this screen.
+        }
+    }
+
+    // A browser lets a page sound only after it was clicked or typed in: the
+    // audio context is made on such a touch, and a page never touched stays
+    // silent with no error.
+    function soundUnlock() {
+        var Ctx = window.AudioContext || window.webkitAudioContext;
+
+        if (!soundAudio.ctx && Ctx) {
+            try {
+                soundAudio.ctx = new Ctx();
+            } catch (error) {
+                soundAudio.ctx = null;
+            }
+        }
+
+        if (soundAudio.ctx && (soundAudio.ctx.state === 'suspended')) {
+            try {
+                soundAudio.ctx.resume().catch(function () {});
+            } catch (error) {}
+        }
+    }
+
+    // The chat window's short tone (chat_backend.src.js), no sound file.
+    function soundTone() {
+        var ctx = soundAudio.ctx;
+
+        try {
+            var at = ctx.currentTime;
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, at);
+            osc.frequency.setValueAtTime(660, at + 0.09);
+            gain.gain.setValueAtTime(0.0001, at);
+            gain.gain.exponentialRampToValueAtTime(0.12, at + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.22);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(at);
+            osc.stop(at + 0.24);
+        } catch (error) {}
+    }
+
+    function soundPlay() {
+        var ctx = soundAudio.ctx;
+
+        if (!ctx) {
+            return;
+        }
+
+        if (ctx.state === 'suspended') {
+            try {
+                ctx.resume().then(soundTone).catch(function () {});
+            } catch (error) {}
+
+            return;
+        }
+
+        soundTone();
+    }
+
     // An icon with a small mark in its corner (ws_icon_badged_html() in
     // includes/workspace/channel_icons.php); the plain icon without one.
     function badgedIcon(name, badge, extra) {
@@ -6287,6 +6429,10 @@
         era: null,
         // The channel's info beside the conversation (showMembers()).
         infoOpen: false,
+        // The newest inbox line the sound has seen (soundHeard()), null
+        // before the first look; the look after the tab comes back is quiet.
+        soundMark: null,
+        soundQuiet: false,
         infoPanel: null,
         fit: function () {},
 
@@ -6388,10 +6534,20 @@
 
             document.addEventListener('visibilitychange', function () {
                 if (!document.hidden) {
+                    self.soundQuiet = true;
                     self.sync();
                 }
 
                 self.schedule();
+            });
+
+            // The sound's audio waits for the page's first touch.
+            ['pointerdown', 'keydown'].forEach(function (name) {
+                document.addEventListener(name, function () {
+                    if ((!soundAudio.ctx || (soundAudio.ctx.state === 'suspended')) && soundOn(CFG.api_url, CFG.me)) {
+                        soundUnlock();
+                    }
+                }, true);
             });
 
             window.addEventListener('focus', function () { self.sync(); });
@@ -9310,6 +9466,23 @@
                 }, '', speaking);
                 divider();
             }
+
+            // The viewer's own choice in this browser too: a tone when
+            // something for them arrives while its conversation is not in
+            // front of them (soundHeard()).
+            var sounding = soundOn(CFG.api_url, CFG.me);
+
+            item(t('sound_on'), 'bi-music-note-beamed', function () {
+                soundSet(CFG.api_url, CFG.me, !sounding);
+                self.soundMark = null;
+
+                if (!sounding) {
+                    soundUnlock();
+                }
+
+                toast(t(sounding ? 'sound_off_done' : 'sound_on_done'), 'info');
+            }, '', sounding);
+            divider();
 
             if (BOOT.claude && channel.claude && channel.can_manage && !channel.archived) {
                 item(t('claude_allow'), 'bi-stars', function () {
@@ -17447,6 +17620,32 @@
             this.timer = null;
         },
 
+        // A look's new inbox lines: one tone when any is for the person
+        // and its conversation is not in front of them (soundBatch()). The
+        // first look only sets the mark; so does the one after the tab
+        // comes back, as the page asks nothing while hidden and what came
+        // meanwhile is on the marks the person now sees.
+        soundHeard: function (sound) {
+            var self = this;
+            var quiet = (self.soundMark === null) || self.soundQuiet;
+
+            self.soundQuiet = false;
+            self.soundMark = Math.max(self.soundMark || 0, parseInt(sound.mark, 10) || 0);
+
+            if (quiet) {
+                return;
+            }
+
+            soundBatch(sound.lines, {
+                on: soundOn(CFG.api_url, CFG.me),
+                me: CFG.me,
+                visible: !document.hidden,
+                focused: document.hasFocus(),
+                channelId: (self.channel && (self.tab === 'messages') && !self.era) ? self.channel.id : 0,
+                threadId: self.openThreadId()
+            }, soundPlay);
+        },
+
         // timed: the look the timer takes; any other is asked for by
         // something done on the screen, after which the tabs are counted.
         sync: function (scroll, timed) {
@@ -17489,7 +17688,9 @@
                 read: (document.hasFocus() && !self.era) ? 1 : 0,
                 counts: (counts && !self.isThread) ? 1 : 0,
                 board: ((self.tab === 'board') && !self.isThread) ? 1 : 0,
-                panel: self.isThread ? 1 : 0
+                panel: self.isThread ? 1 : 0,
+                sound: (!self.isThread && soundOn(CFG.api_url, CFG.me)) ? 1 : 0,
+                sound_after: ((self.soundMark === null) || (self.soundMark === undefined)) ? -1 : self.soundMark
             }).then(function (data) {
                 self.syncing = false;
 
@@ -17630,6 +17831,10 @@
                     BOOT.groups = data.groups || [];
                     BOOT.threads = data.threads || [];
                     BOOT.inbox = data.inbox;
+
+                    if (data.sound) {
+                        self.soundHeard(data.sound);
+                    }
 
                     // The channel list is drawn again only when it changed: every
                     // few seconds from scratch it dropped a half-typed search, the
