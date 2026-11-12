@@ -556,7 +556,7 @@ pg_page_shell(array(
         <div class="row">
             <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 <div class="card mb-7">
-                    <div class="card-header d-flex justify-content-between align-items-center"><h2 class="h6 mb-0">' . h(lang('Customer')) . '</h2>' . $contact_link . '</div>
+                    <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center"><h2 class="pg-title-section">' . h(lang('Customer')) . '</h2>' . $contact_link . '</div>
                     <div class="card-body">
                         ' . $booking_field('name', lang('Name'), 'text', array('maxlength' => '100', 'required' => 'required', 'autocomplete' => 'off')) . '
                         <div class="row g-5">
@@ -571,7 +571,7 @@ pg_page_shell(array(
             <div class="col-12 lg:col-4 2xl:col-3 order-2">
                 <div class="position-sticky" style="top:3.3rem;">
                     <div class="card mb-7">
-                        <div class="card-header d-flex justify-content-between align-items-center"><h2 class="h6 mb-0">' . h(lang('Booking')) . '</h2>' . pg_booking_agenda_badge($booking['status']) . '</div>
+                        <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center"><h2 class="pg-title-status">' . h(lang('Booking')) . '</h2>' . pg_booking_agenda_badge($booking['status']) . '</div>
                         <div class="card-body">
                             <dl class="row small mb-5">' . $facts_html . '</dl>
                             ' . ($final ? '<p class="small fg-secondary mb-0">' . h(lang('This status is final.')) . '</p>' : $booking_field('status', lang('Status'), 'select', array('options' => $status_options)) . $cancel_field) . '

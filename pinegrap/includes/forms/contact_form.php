@@ -416,8 +416,6 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
         pg_contact_form_text_field($values, 'mobile_phone', lang('Mobile Phone'), 50, 'tel');
 
     return '
-                    <div class="row">
-                        <div class="col-12">
                             <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . ($is_new ? lang('New Contact\'s Work Information') : lang('Contact\'s Work Information')) . '
@@ -439,9 +437,7 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="col-12">
                             <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . ($is_new ? lang('New Contact\'s Home Information') : lang('Contact\'s Home Information')) . '
@@ -451,9 +447,7 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="col-12 xl:col-6">
                             <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Membership Access') . '
@@ -474,8 +468,6 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-12 xl:col-6">
                             <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Additional Notes') . '
@@ -490,11 +482,9 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
                         ' . pg_contact_form_affiliate_card($values) . '
 
-                        <div class="col-12">
                             <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Contact Groups & Subscriptions') . '
@@ -504,9 +494,7 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                                         ' . $groups_html . '
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>';
+                            </div>';
 }
 
 /**
@@ -521,7 +509,7 @@ function pg_contact_form_affiliate_card($values)
         return '';
     }
 
-    return '<div class="col-12">
+    return '
             <div class="card mb-7">
                 <h2 class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Affiliate Information') . '
@@ -554,8 +542,7 @@ function pg_contact_form_affiliate_card($values)
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>';
+            </div>';
 }
 
 /**

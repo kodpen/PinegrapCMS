@@ -319,7 +319,7 @@ function test_field_form_wide_layout()
 	$form = file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/field_form.php');
 	pg_assert_contains('col-12 lg:col-8 2xl:col-9 order-1', $form, 'form column');
 	pg_assert_contains('col-12 lg:col-4 2xl:col-3 order-2', $form, 'status column after the form column');
-	pg_assert_contains('<div class="collapse" id="options_field_row">', $form, 'the settings wait for a type inside the form column');
+	pg_assert_contains('<div class="card mb-7 collapse" id="options_field_row">', $form, 'the settings card waits for a type, straight in the form column');
 
 	foreach (array('add_field.php', 'edit_field.php') as $file) {
 		$screen = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);

@@ -388,10 +388,10 @@ function pg_credit_staff_panel_html($user_id, $send_to, $now)
     }
 
     return '
-                <div class="card mb-5" id="store_credit">
+                <div class="card pg-card mb-5" id="store_credit">
                     <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
                         <span>' . h(lang('Store Credit')) . '</span>
-                        <span class="small fg-secondary">' . h(lang('Balance')) . ': <strong>' . $money(pg_credit_balance($user_id, $now)) . '</strong></span>
+                        <span class="small fw-normal fg-secondary">' . h(lang('Balance')) . ': <strong>' . $money(pg_credit_balance($user_id, $now)) . '</strong></span>
                     </div>
                     <div class="card-body">
                         ' . (($rows !== '') ? '<div class="table-responsive mb-5">

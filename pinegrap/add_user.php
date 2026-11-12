@@ -182,9 +182,9 @@ if (!$_POST) {
                     <input type="hidden" name="contact_id" value="' . h($contact_id) . '" />
                     ' . pg_user_form_layout('
                     <div class="card mb-5">
-                        <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                        <div class="card-header bg-reset border-0 pg-title-section d-flex flex-wrap justify-content-between align-items-center gap-3 row-gap-1">
                             <span>' . lang('Role') . '</span>
-                            <span class="small fg-secondary">' . lang('The role decides which rights the account carries by itself.') . '</span>
+                            <span class="small fw-normal fg-secondary">' . lang('The role decides which rights the account carries by itself.') . '</span>
                         </div>
                         <div class="card-body">
                             ' . pg_user_role_cards(3, $user['role'], $role_cards_disabled) . '

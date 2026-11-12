@@ -854,8 +854,6 @@ if (!$_POST) {
                     <div class="row">
                         <!-- Form column first: below lg the columns stack in source order. -->
                         <div class="col-12 lg:col-8 2xl:col-9 order-1">
-                            <div class="row">
-                                <div class="col-12">
                                     <div class="card my-7">
                                         <div class="card-header bg-reset border-0 pg-title-section">
                                         ' . lang('Main Informations') . '
@@ -875,8 +873,6 @@ if (!$_POST) {
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="col-12">
                                     <div class="card my-7">
                                         <div class="card-header bg-reset border-0 pg-title-section">
                                             ' . lang('Content Options') . '
@@ -902,9 +898,7 @@ if (!$_POST) {
                                             </div>
                                         </div>
                                     </div>
-                                </div>
                                 ' . $output_page_type_properties . '
-                                <div class="col-12">
                                     <div class="card my-7">
                                         <div class="card-header bg-reset border-0 pg-title-section">
                                             ' . lang('Search Engine Optimization') . '
@@ -936,8 +930,6 @@ if (!$_POST) {
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="col-12">
                                     <div class="card my-7">
                                         <div class="card-header bg-reset border-0 pg-title-section">
                                             ' . lang('Site Search') . '
@@ -961,8 +953,6 @@ if (!$_POST) {
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="col-12">
                                     <div class="card my-7">
                                         <div class="card-header bg-reset border-0 pg-title-section">
                                             ' . lang('Comments Feature') . '
@@ -1089,8 +1079,6 @@ if (!$_POST) {
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
                         </div>
                         <div class="col-12 lg:col-4 2xl:col-3 order-2">
                             <!-- 3.3rem keeps the box below the fixed top bar. -->

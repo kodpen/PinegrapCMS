@@ -32,20 +32,20 @@ function test_product_group_form_layout_columns_in_order()
 		'row_class' => 'edit_product_group_container'));
 
 	$row = strpos($html, '<div class="row edit_product_group_container">');
-	$form = strpos($html, '<div class="col-12 lg:col-8 2xl:col-9 order-1"><div class="row"><i>FORM</i>');
+	$form = strpos($html, '<div class="col-12 lg:col-8 2xl:col-9 order-1"><i>FORM</i>');
 	$status = strpos($html, '<div class="col-12 lg:col-4 2xl:col-3 order-2">');
 	$sticky = strpos($html, '<div class="position-sticky" style="top:3.3rem;"><i>STATUS</i>');
 	$wide = strpos($html, '<div class="col-12 order-3"><div class="row"><i>PRODUCTS</i>');
-	$bar = strpos($html, '<div class="col-12 order-4 position-sticky" style="bottom:0; z-index:3;">');
+	$bar = strpos($html, '<div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">');
 	$buttons = strpos($html, '<b>BUTTONS</b>');
 	$extra = strpos($html, '<u>EXTRA</u>');
 
 	pg_assert_true($row !== false, 'row keeps the class the screen script reads');
-	pg_assert_true($form !== false && $form > $row, 'form column with its cards');
+	pg_assert_true($form !== false && $form > $row, 'form column with its cards straight in it');
 	pg_assert_true($status !== false && $status > $form, 'status column after the form column');
 	pg_assert_true($sticky !== false && $sticky > $status, 'sticky box inside the status column');
 	pg_assert_true($wide !== false && $wide > $sticky, 'products table under both columns');
-	pg_assert_true($bar !== false && $bar > $wide, 'save bar last');
+	pg_assert_true($bar !== false && $bar > $wide, 'save bar last, in an order-3 column after the table\'s');
 	pg_assert_true($buttons !== false && $buttons > $bar, 'buttons in the save bar');
 	pg_assert_true($extra !== false && $extra > $buttons, 'extra bar content after the buttons');
 	pg_assert_contains('<nav class="buttons navigation text-center mb-7"', $html, 'shared save bar component');

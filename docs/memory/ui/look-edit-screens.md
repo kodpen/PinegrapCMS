@@ -15,8 +15,13 @@ description: Add and edit screens in look A (DL5c, #8934): the edit width on eve
 - The cards straight in the form column (`.order-1 > .card`) and in the status column's sticky box (`.order-2 > .position-sticky > .card`) are the look card: their selectors sit beside `.pg-card` in the recipe block. 16 px apart; padding 20 / 22 (16 / 18 in the status column).
 - Card titles in `includes/forms/` and the add/edit screens are `h2.card-header.bg-reset.border-0.pg-title-section` (17 / 650, sentence case); in the status column the block sets the status title (15 / 650). The old `text-uppercase h5 fg-primary fw-bold` had to leave the markup: Bootstrap 6's utilities layer comes after `custom`, so no panel rule can beat them.
 
+## How does a card stay a look card when markup sits around it?
+- Only a card straight in its column takes the look; one inside a `div.row > div.col-12`, a `<form>` or a collapse box stays the flat grey card. Unwrap it; let the form hold the whole row (ERP account and till) or be the card or the bar column itself (`form.card`, `form.col-12.order-3`: Edit Invoice, Edit Delivery Note); put `collapse` and the id on the card (Field Settings, System Options).
+- A card that must stay outside the columns (a full-width table under them, the user strip, Store Credit) takes the recipe class `pg-card`. A status box that must not pin keeps `position-sticky` without an offset (`pg_user_form_layout()`, `#pg_fiv_status`).
+- The delivery note's line editor reads its settings from `erp_waybill_form_editor_attributes()`, which Create Delivery Note puts on the form column (`'wrap' => false`).
+
 ## What is the save bar?
-- The shared `nav.buttons.navigation` in the `order-3` column is the floating bar (selector beside `.pg-floatbar`): from 576 px 56 px high, buttons at the right, 34 px high with 10 px corners (the shared bar's pill `!important` is overridden). A phone keeps the shared two-per-row bar.
+- The shared `nav.buttons.navigation` straight in the `order-3` column is the floating bar; a bar left in the form column or in `order-4` stays the old centred pill. Under a full-width table the bar's column is a second `order-3` after the table's (product group) (selector beside `.pg-floatbar`): from 576 px 56 px high, buttons at the right, 34 px high with 10 px corners (the shared bar's pill `!important` is overridden). A phone keeps the shared two-per-row bar.
 
 ## What is not done yet?
 - Field widths on the 12-column grid (a price 3 columns, a code 4, a select 6) and the card's line under the title: per-field markup, screen by screen.

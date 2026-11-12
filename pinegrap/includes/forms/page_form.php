@@ -2744,78 +2744,76 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
 
     $output_page_type_properties =
         '<a name="interactive_page_feature"></a>
-        <div class="col-12 collapse" id="options_row">
-            <div class="card my-7">
-                <h2 class="card-header bg-reset border-0 pg-title-section">
-                    ' . lang('System Options') . '
-                </h2>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-12 my-3' . $layout_type_row_style . '" id="layout_type_row">
-                            <fieldset>
-                                <legend class="form-label fs-md">' . lang('Layout Type') . '</legend>
-                                <div class="form-field">
-                                    <input value="system" class="radio" type="radio" id="layout_type_system" name="layout_type"' . $layout_type_system_checked . '>
-                                    <label class="" for="layout_type_system">'. lang('System') . '</label>
-                                </div>
-                                <div class="form-field">
-                                    <input value="custom" class="radio" type="radio" id="layout_type_custom" name="layout_type"' . ($layout_type_custom_label_title !== '' ? ' aria-describedby="layout_type_custom_hint"' : '') . $layout_type_custom_option_disabled . $layout_type_custom_checked . '>
-                                    <label class="' . trim($layout_type_custom_label_class) . '" for="layout_type_custom">'. lang('Custom') . '</label>
-                                </div>' . ($layout_type_custom_label_title !== '' ? '
-                                <div class="form-text" id="layout_type_custom_hint">' . $layout_type_custom_label_title . '</div>' : '') . '
-                            </fieldset>
-                        </div>
-                        <div class="col-12 md:col-6 lg:col-4 my-3' . $email_a_friend_submit_button_label_row_style . '" id="email_a_friend_submit_button_label_row">
-                            <label for="email_a_friend_submit_button_label" class="form-label">' . lang('Submit Button Label') . '</label>
-                            <input value="' . h($email_a_friend_properties['submit_button_label'] ?? '') . '" type="text" name="email_a_friend_submit_button_label" id="email_a_friend_submit_button_label" placeholder="' . lang('Submit') . '"  class="form-control" maxlength="50"/>
-                        </div>
-                        <div class="col-12 lg:col-6 my-3' . $email_a_friend_next_page_id_row_style . '" id="email_a_friend_next_page_id_row">
-                            <label for="email_a_friend_next_page_id" class="form-label">' . lang('Next Page') . '</label>
-                            ' . pg_page_form_page_field('email_a_friend_next_page_id', ($email_a_friend_properties['next_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
-                        </div>
-                        <div class="col-12 my-3' . $folder_view_pages_row_style . '" id="folder_view_pages_row">
+        <div class="card my-7 collapse" id="options_row">
+            <h2 class="card-header bg-reset border-0 pg-title-section">
+                ' . lang('System Options') . '
+            </h2>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12 my-3' . $layout_type_row_style . '" id="layout_type_row">
+                        <fieldset>
+                            <legend class="form-label fs-md">' . lang('Layout Type') . '</legend>
                             <div class="form-field">
-                                <div class="switch"><input class="" type="checkbox" id="folder_view_pages" name="folder_view_pages" value="1"' . $folder_view_pages_checked . '></div>
-                                <label class="" for="folder_view_pages">' . lang('Include Pages') . '</label>
+                                <input value="system" class="radio" type="radio" id="layout_type_system" name="layout_type"' . $layout_type_system_checked . '>
+                                <label class="" for="layout_type_system">'. lang('System') . '</label>
                             </div>
-                        </div>
-                        <div class="col-12 my-3' . $folder_view_files_row_style . '" id="folder_view_files_row">
                             <div class="form-field">
-                                <div class="switch"><input class="" type="checkbox" id="folder_view_files" name="folder_view_files" value="1"' . $folder_view_files_checked . '></div>
-                                <label class="" for="folder_view_files">' . lang('Include Files') . '</label>
-                            </div>
-                        </div>
-                        <div class="col-12 md:col-4 lg:col-3 my-3' . $photo_gallery_number_of_columns_row_style . '" id="photo_gallery_number_of_columns_row">
-                            <label for="photo_gallery_number_of_columns" class="form-label">' . lang('Number of Columns') . '</label>
-                            <input value="' . $photo_gallery_number_of_columns . '" type="text" name="photo_gallery_number_of_columns" id="photo_gallery_number_of_columns" class="form-control" maxlength="2" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false"/>
-                        </div>
-                        <div class="col-12 md:col-8 lg:col-6 xl:col-4 my-3' . $photo_gallery_thumbnail_max_size_row_style . '" id="photo_gallery_thumbnail_max_size_row">
-                            <label for="photo_gallery_thumbnail_max_size" class="form-label">' . lang('Thumbnail Max Size') . '</label>
-                            <label class="form-control form-adorn form-adorn-end">
-                                <span class="form-adorn-text" aria-hidden="true">' . lang('pixels') . '</span>
-                                <input value="' . $photo_gallery_thumbnail_max_size . '" type="text" name="photo_gallery_thumbnail_max_size" id="photo_gallery_thumbnail_max_size" class="form-ghost" maxlength="4" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false" data-inputmask-placeholder="100"  style="text-align: right;" />
-                            </label>
-                        </div>
-                        ' . $output_search_results_page_type_properties . '
-                        <div class="col-12 my-3' . $update_address_book_address_type_row_style . '" id="update_address_book_address_type_row">
-                            <div class="form-field">
-                                <div class="switch"><input value="1"' . $update_address_book_address_type_checked . ' id="update_address_book_address_type" name="update_address_book_address_type" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#update_address_book_address_type_page_id_row" /></div>
-                                <label class="" for="update_address_book_address_type">' . lang('Enable Address Type') . '</label>
-                            </div>
-                            <div class="collapse border rounded p-5 mt-3 mb-3" id="update_address_book_address_type_page_id_row">
-                                <div class="row">
-                                    <div class="col-12 md:col-12 my-1">
-                                        <label for="update_address_book_address_type_page_id" class="form-label">' . lang('Address Type Page') . '</label>
-                                        ' . pg_page_form_page_field('update_address_book_address_type_page_id', ($update_address_book_properties['address_type_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        ' . $output_ecommerce_page_type_properties . '
-                        ' . $output_forms_page_type_properties . '
-                        ' . $output_calendars_page_type_properties . '
-                        ' . $output_affiliate_page_type_properties . '
+                                <input value="custom" class="radio" type="radio" id="layout_type_custom" name="layout_type"' . ($layout_type_custom_label_title !== '' ? ' aria-describedby="layout_type_custom_hint"' : '') . $layout_type_custom_option_disabled . $layout_type_custom_checked . '>
+                                <label class="' . trim($layout_type_custom_label_class) . '" for="layout_type_custom">'. lang('Custom') . '</label>
+                            </div>' . ($layout_type_custom_label_title !== '' ? '
+                            <div class="form-text" id="layout_type_custom_hint">' . $layout_type_custom_label_title . '</div>' : '') . '
+                        </fieldset>
                     </div>
+                    <div class="col-12 md:col-6 lg:col-4 my-3' . $email_a_friend_submit_button_label_row_style . '" id="email_a_friend_submit_button_label_row">
+                        <label for="email_a_friend_submit_button_label" class="form-label">' . lang('Submit Button Label') . '</label>
+                        <input value="' . h($email_a_friend_properties['submit_button_label'] ?? '') . '" type="text" name="email_a_friend_submit_button_label" id="email_a_friend_submit_button_label" placeholder="' . lang('Submit') . '"  class="form-control" maxlength="50"/>
+                    </div>
+                    <div class="col-12 lg:col-6 my-3' . $email_a_friend_next_page_id_row_style . '" id="email_a_friend_next_page_id_row">
+                        <label for="email_a_friend_next_page_id" class="form-label">' . lang('Next Page') . '</label>
+                        ' . pg_page_form_page_field('email_a_friend_next_page_id', ($email_a_friend_properties['next_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
+                    </div>
+                    <div class="col-12 my-3' . $folder_view_pages_row_style . '" id="folder_view_pages_row">
+                        <div class="form-field">
+                            <div class="switch"><input class="" type="checkbox" id="folder_view_pages" name="folder_view_pages" value="1"' . $folder_view_pages_checked . '></div>
+                            <label class="" for="folder_view_pages">' . lang('Include Pages') . '</label>
+                        </div>
+                    </div>
+                    <div class="col-12 my-3' . $folder_view_files_row_style . '" id="folder_view_files_row">
+                        <div class="form-field">
+                            <div class="switch"><input class="" type="checkbox" id="folder_view_files" name="folder_view_files" value="1"' . $folder_view_files_checked . '></div>
+                            <label class="" for="folder_view_files">' . lang('Include Files') . '</label>
+                        </div>
+                    </div>
+                    <div class="col-12 md:col-4 lg:col-3 my-3' . $photo_gallery_number_of_columns_row_style . '" id="photo_gallery_number_of_columns_row">
+                        <label for="photo_gallery_number_of_columns" class="form-label">' . lang('Number of Columns') . '</label>
+                        <input value="' . $photo_gallery_number_of_columns . '" type="text" name="photo_gallery_number_of_columns" id="photo_gallery_number_of_columns" class="form-control" maxlength="2" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false"/>
+                    </div>
+                    <div class="col-12 md:col-8 lg:col-6 xl:col-4 my-3' . $photo_gallery_thumbnail_max_size_row_style . '" id="photo_gallery_thumbnail_max_size_row">
+                        <label for="photo_gallery_thumbnail_max_size" class="form-label">' . lang('Thumbnail Max Size') . '</label>
+                        <label class="form-control form-adorn form-adorn-end">
+                            <span class="form-adorn-text" aria-hidden="true">' . lang('pixels') . '</span>
+                            <input value="' . $photo_gallery_thumbnail_max_size . '" type="text" name="photo_gallery_thumbnail_max_size" id="photo_gallery_thumbnail_max_size" class="form-ghost" maxlength="4" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false" data-inputmask-placeholder="100"  style="text-align: right;" />
+                        </label>
+                    </div>
+                    ' . $output_search_results_page_type_properties . '
+                    <div class="col-12 my-3' . $update_address_book_address_type_row_style . '" id="update_address_book_address_type_row">
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . $update_address_book_address_type_checked . ' id="update_address_book_address_type" name="update_address_book_address_type" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#update_address_book_address_type_page_id_row" /></div>
+                            <label class="" for="update_address_book_address_type">' . lang('Enable Address Type') . '</label>
+                        </div>
+                        <div class="collapse border rounded p-5 mt-3 mb-3" id="update_address_book_address_type_page_id_row">
+                            <div class="row">
+                                <div class="col-12 md:col-12 my-1">
+                                    <label for="update_address_book_address_type_page_id" class="form-label">' . lang('Address Type Page') . '</label>
+                                    ' . pg_page_form_page_field('update_address_book_address_type_page_id', ($update_address_book_properties['address_type_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    ' . $output_ecommerce_page_type_properties . '
+                    ' . $output_forms_page_type_properties . '
+                    ' . $output_calendars_page_type_properties . '
+                    ' . $output_affiliate_page_type_properties . '
                 </div>
             </div>
         </div>';
