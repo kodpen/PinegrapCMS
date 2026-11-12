@@ -121,6 +121,9 @@ function test_designer_blocks_general_rules_reach_the_stylesheet()
 	$spaces = _pg_designer_block_css_parse(pg_test_designer_family_file('locations'));
 	pg_assert_same(array('pg-space-facts', 'pg-floor-level', 'pg-zone-map', 'pg-zone-key'), array_keys($spaces['rules']), 'the locations family\'s rules');
 	pg_assert_same(array('pg-zone-map', 'pg-zone-key'), $spaces['needs']['locations-zones'], 'the zones need their rings and keys');
+	// The dashed style is a custom property, inherited by the rings inside
+	// the outer zone, so only the outer line is dashed when they set it back.
+	pg_assert_true(strpos($spaces['rules']['pg-zone-key'], '.pg-zone-z3 { --bs-border-style: dashed; } .pg-zone-z3 .pg-zone-ring { --bs-border-style: solid; }') !== false, 'only the outer ring is dashed');
 	foreach (array('pg-zone-map', 'pg-zone-key') as $key) {
 		pg_assert_same(0, preg_match('/#[0-9a-f]{3,8}\\b|\\brgba?\\(|\\bhsla?\\(|!important|transition|animation/i', $spaces['rules'][$key]), $key . ' takes its colours from the palette and leaves motion to the interaction');
 		pg_assert_same(0, preg_match('/[>+~]\\s*\\.|:first-child|:last-child|:nth-/', $spaces['rules'][$key]), $key . ' uses descendant selectors only');
