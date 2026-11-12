@@ -638,7 +638,7 @@ function pg_chat_role_label($role)
 function pg_chat_avatar_src($image, $image_file_id, $image_file_name, $first_name = '', $last_name = '', $username = '', $seed = '')
 {
     if (((int) $image_file_id > 0) && ($image_file_name != '')) {
-        return PATH . $image_file_name;
+        return pg_file_fresh_url($image_file_name);
     }
 
     if ($image != '') {

@@ -50,7 +50,7 @@ function ws_display_name($row)
 function ws_avatar_url($row)
 {
     if (((int) ($row['image_file_id'] ?? 0) > 0) && ((string) ($row['image_file_name'] ?? '') !== '')) {
-        return PATH . $row['image_file_name'];
+        return pg_file_fresh_url($row['image_file_name']);
     }
 
     if ((string) ($row['image'] ?? '') !== '') {

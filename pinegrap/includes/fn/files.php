@@ -288,6 +288,46 @@ function pg_file_name_stem($path)
     return ($dot === false) ? $base : substr($base, 0, $dot);
 }
 
+// An address with the file's change time added as v=: get_file.php lets the
+// browser and an edge cache keep a file's answer for a week, so a picture
+// saved again under the same name (the image editor, a canvas, an upload
+// over it) is fetched again only from an address that changed with it. A
+// time of 0 or false (no such file) leaves the address as it is; a fragment
+// stays last.
+function pg_url_change_stamp($url, $stamp)
+{
+    $url = (string) $url;
+    $stamp = (int) $stamp;
+
+    if (($url === '') || ($stamp <= 0)) {
+        return $url;
+    }
+
+    $fragment = '';
+    $hash = strpos($url, '#');
+
+    if ($hash !== false) {
+        $fragment = substr($url, $hash);
+        $url = substr($url, 0, $hash);
+    }
+
+    return $url . ((strpos($url, '?') === false) ? '?' : '&') . 'v=' . $stamp . $fragment;
+}
+
+// A stored file's address (PATH and its name, as the panel prints a
+// contact's picture) with its change stamp (pg_url_change_stamp()); the bare
+// address when the file is not on this server's disk.
+function pg_file_fresh_url($name)
+{
+    $name = (string) $name;
+
+    if ($name === '') {
+        return '';
+    }
+
+    return pg_url_change_stamp(PATH . $name, @filemtime(FILE_DIRECTORY_PATH . '/' . pg_basename($name)));
+}
+
 // Whether a name, as the operator or the visitor gave it, is one the rule
 // above refuses. Asked before prepare_file_name() so the refusal can name the
 // file as it was sent; a dotfile counts, because a name with nothing in front

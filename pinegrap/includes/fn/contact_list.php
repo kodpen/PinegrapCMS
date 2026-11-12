@@ -1189,7 +1189,7 @@ function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name,
     // A picture file deleted in the File Manager leaves file_id behind with
     // no name; that row gets the letters, not PATH alone.
     if (((int) $contact['file_id'] != 0) && ((string) $file_name !== '')) {
-        $picture = $lazy . PATH . h($file_name) . '" />';
+        $picture = $lazy . h(pg_file_fresh_url($file_name)) . '" />';
     } elseif (((int) $contact['file_id'] == 0) && $contact['image']) {
         $picture = $lazy . h($contact['image']) . '" />';
     } else {

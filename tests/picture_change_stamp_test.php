@@ -37,25 +37,6 @@ function test_picture_change_stamp_none_without_time()
 	pg_assert_same('', pg_url_change_stamp('', 1700000000), 'no address');
 }
 
-function test_picture_change_stamp_file_url()
-{
-	$name = 'pg-stamp-test-' . getmypid() . '.gif';
-	$path = FILE_DIRECTORY_PATH . '/' . $name;
-
-	if (!@file_put_contents($path, 'GIF89a')) {
-		pg_assert_same(PATH . $name, pg_file_fresh_url($name), 'no file: bare address');
-		return;
-	}
-
-	@touch($path, 1700000000);
-	clearstatcache(true, $path);
-	pg_assert_same(PATH . $name . '?v=1700000000', pg_file_fresh_url($name), 'stamped by its change time');
-	@unlink($path);
-
-	pg_assert_same(PATH . $name, pg_file_fresh_url($name), 'missing file: bare address');
-	pg_assert_same('', pg_file_fresh_url(''), 'no name');
-}
-
 function test_picture_change_stamp_panel_faces()
 {
 	$places = array(

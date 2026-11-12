@@ -3057,7 +3057,7 @@ function pg_account_menu($user, $options = array())
     $picture = '';
 
     if (!empty($person['contact_file_id']) && !empty($person['file_name'])) {
-        $picture = PATH . $person['file_name'];
+        $picture = pg_file_fresh_url($person['file_name']);
     } elseif (!empty($person['contact_image'])) {
         $picture = (string) $person['contact_image'];
     }
