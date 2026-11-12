@@ -21,7 +21,7 @@ module: picker
 ## How does typing search?
 - After 250 ms the kind's `search` request (8 rows) fills a list under the box: picture, name with the match highlighted, meta. The last row is "All results for “…” in Browse" (or "Browse…"), Alt+↓ too. A stale answer is dropped by a sequence number.
 - Keys: ↓/↑ open and move, Enter chooses the active or first row (never submits the form), Escape restores the stored value and closes the list. The keydown listener sits on the document in the capture phase: Bootstrap's Escape handler on a settings dialog would otherwise close the dialog.
-- Leaving the field restores the chosen text. A binned or archived stored page opening the dialog at the root: PK6.
+- Leaving the field restores the chosen text. A page kind's archived or binned match is marked and refused (`picker-pages.md`).
 
 ## What is drawn on a phone?
 - Below 576 px a tap on the box opens a half sheet (`.pg-pfield-sheet`, a `pgUI.dialog`) with its own search input and list; the box input is read-only so no keyboard pops up. Browse shows only its icon.
@@ -35,4 +35,6 @@ module: picker
 - Add/Edit Short Link: File (`file`, posted as `file`, `invalid` from liveform).
 - File Manager short link window: `handle_short_links.php` sends `file_field` (posted as `file_id`, id `sl_file`, the link's own file); `view_folders.php` places it and reads `#sl_fields [data-pg-picker-value]`.
 
-Tests: `tests/picker_test.php` (view and markup), `tests/picker_js_test.php` (field helpers), `tests/short_link_requests_test.php`, `tests/settings_public_image_test.php`.
+- Page settings: `page-form-page-fields.md`.
+
+Tests: `tests/picker_test.php`, `tests/picker_js_test.php`, `tests/short_link_requests_test.php`, `tests/settings_public_image_test.php`.

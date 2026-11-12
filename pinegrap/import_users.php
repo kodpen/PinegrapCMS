@@ -225,7 +225,7 @@ if (!$_POST) {
                             <div class="row g-5">
                                 <div class="col-12 xl:col-7">
                                     <label for="home_page" class="form-label">' . lang('User Start Page') . '</label>
-                                    <select class="form-control" name="home_page" id="home_page"><option value="0">[' . lang('None') . ']</option>' . select_page() . '</select>
+                                    ' . pg_picker_field('page', 'home_page', '') . pg_picker_script() . '
                                     <div class="form-text">' . lang('Opened after signing in.') . '</div>
                                 </div>
                                 <div class="col-12 sm:col-6 xl:col-5">
@@ -710,7 +710,7 @@ if (!$_POST) {
                 " . $sql_password['password'] . ",
                 {$sql_password['algo_value']}
                 '" . escape($_POST['role'] ?? '') . "',
-                '" . escape($_POST['home_page'] ?? '') . "',
+                '" . (int) ($_POST['home_page'] ?? 0) . "',
                 '" . escape($_POST['badge'] ?? '') . "',
                 '" . escape($_POST['badge_label'] ?? '') . "',
                 '" . (int) $reward_points . "',

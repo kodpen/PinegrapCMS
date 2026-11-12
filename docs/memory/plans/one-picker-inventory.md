@@ -13,7 +13,7 @@ description: What chooses a file, a picture, a page or a folder in the software 
 - The previous editor (TinyMCE 3): `get_file_list.php`, `get_image_list.php`, `get_media_list.php`, `get_page_list.php` and `get_folder_list.php` under `assets/lib/tiny_mce_3_5_10/`.
 
 ## How does a screen choose a page today?
-- `select_page()`: 56 calls in 12 files, 36 of them in `includes/forms/page_form.php` (Create Page and Edit Page fill them from one `<template>`, `ui/page-form-lazy-page-pickers.md`); the rest in the product builder, Settings (commerce, security, privacy), the user screens and Edit Offer.
+- `select_page()`: 56 calls in 12 files, 36 of them in `includes/forms/page_form.php` (Create Page and Edit Page: picker fields since #8782, `ui/page-form-page-fields.md`); the rest in the product builder, Settings (commerce, security, privacy), the user screens and Edit Offer.
 - `get_page_options()`: 19 calls in 9 files (short link forms, menu item, calendar event, e-mail campaign profile, panel actions).
 - The visual designer's widget settings: `_swPageOptions()`, 46 calls, a value being a page id or `tab:<key>` for an unsaved tab, the list from `list_all_pages` (`designer/designer-page-pickers.md`).
 - A link in content: the editor's link browser `editor_select_page_or_file.php` (638 lines, a pop-up with Pages, Files and Short links), opened by CKEditor's Link dialog and by the designer's `sdOpenFilePicker()` (8 calls), which plants a fake `CKEDITOR.tools.callFunction` on its window to catch the pick.
