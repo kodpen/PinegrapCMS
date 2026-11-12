@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Mail</title>
+<meta http-equiv="refresh" content="1;url=javascript:top.__ran='refresh'">
+<style>body{margin:0;font:16px sans-serif}#box{height:412px}</style>
+</head>
+<body>
+<div id="box">An inert mail</div>
+<script>top.__ran = 'script'; document.title = 'ran';</script>
+<img src="data:image/gif;base64,AAAA" onerror="top.__ran='onerror'">
+<svg onload="top.__ran='svg'"></svg>
+<a id="link" href="javascript:top.__ran='link'">a link</a>
+<iframe srcdoc="<script>top.__ran='nested'</script>"></iframe>
+<form action="%OUTSIDE%/form" method="post"><button id="send">send</button></form>
+<img src="%OUTSIDE%/pixel.png">
+<a id="out" href="%OUTSIDE%/clicked">outside</a>
+</body>
+</html>

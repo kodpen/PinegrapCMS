@@ -285,3 +285,4 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/auto_dialogs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/common_regions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/file_picker_search.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipping_label_rates.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/guarded_frame.php');

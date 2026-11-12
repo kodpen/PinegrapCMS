@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Attack</title>
+<style>body{margin:0;font:16px sans-serif}#box{height:321px;background:#eef}</style>
+</head>
+<body>
+<div id="box">A hostile page</div>
+<script>
+// Each attempt records how it ended; the proofs read window.__results and
+// the server's log, where any request that got out is written.
+var R = window.__results = {};
+var PANEL = '%PANEL%', OUT = '%OUTSIDE%';
+function t(name, fn) { try { R[name] = 'reached: ' + fn(); } catch (e) { R[name] = 'blocked: ' + e.name; } }
+function later(name, promise) { R[name] = 'pending'; promise.then(function () { R[name] = 'reached'; }, function (e) { R[name] = 'blocked: ' + (e && e.name); }); }
+function load(name, el, attr, url) { R[name] = 'pending'; el.onload = function () { R[name] = 'reached'; }; el.onerror = function () { R[name] = 'blocked'; }; el[attr] = url; document.body.appendChild(el); }
+
+window.addEventListener('message', function (e) { if (e.data && e.data.pg === 'guarded-frame') { R.size = JSON.stringify(e.data); } });
+
+t('cookie', function () { return document.cookie; });
+t('localStorage', function () { return localStorage.getItem('pgsecret'); });
+t('sessionStorage', function () { return sessionStorage.getItem('pgsecret'); });
+t('indexedDB', function () { return String(indexedDB.open('x')); });
+t('parentDocument', function () { return parent.document.title; });
+t('topDocument', function () { return top.document.title; });
+t('topCookie', function () { return top.document.cookie; });
+t('topLocation', function () { return top.location.href; });
+t('topFunction', function () { return String(top.localStorage); });
+
+later('panelFetch', fetch(PANEL + '/action?via=fetch', { method: 'POST', credentials: 'include' }));
+later('outsideFetch', fetch(OUT + '/fetch'));
+t('xhr', function () { var x = new XMLHttpRequest(); x.open('GET', OUT + '/xhr'); x.send(); return 'sent'; });
+t('beacon', function () { return navigator.sendBeacon(PANEL + '/action?via=beacon', 'x'); });
+t('socket', function () { var s = new WebSocket('%WS%/socket'); R.socketOpen = 'pending'; s.onopen = function () { R.socketOpen = 'reached'; }; s.onerror = function () { R.socketOpen = 'blocked'; }; return 'made'; });
+t('eventSource', function () { return String(new EventSource(OUT + '/events')); });
+t('worker', function () { return String(new Worker(OUT + '/worker.js')); });
+
+load('script', document.createElement('script'), 'src', OUT + '/script.js');
+load('picture', new Image(), 'src', OUT + '/picture.png');
+load('panelPicture', new Image(), 'src', PANEL + '/action?via=img');
+var css = document.createElement('link'); css.rel = 'stylesheet';
+load('styleSheet', css, 'href', OUT + '/style.css');
+var font = document.createElement('style');
+font.textContent = '@font-face{font-family:X;src:url(' + OUT + '/font.woff)}#f{font-family:X}.bg{background:url(' + OUT + '/bg.png)}';
+document.head.appendChild(font);
+var f = document.createElement('p'); f.id = 'f'; f.className = 'bg'; f.textContent = 'font'; document.body.appendChild(f);
+later('font', document.fonts.load('16px X'));
+var nested = document.createElement('iframe');
+load('frame', nested, 'src', OUT + '/frame');
+
+t('open', function () { return String(window.open(OUT + '/popup')); });
+t('download', function () { var a = document.createElement('a'); a.href = 'data:text/plain,secret'; a.download = 'x.txt'; document.body.appendChild(a); a.click(); return 'clicked'; });
+t('form', function () { var fm = document.createElement('form'); fm.method = 'post'; fm.action = PANEL + '/action?via=form'; document.body.appendChild(fm); fm.submit(); return 'submitted'; });
+t('fakeHeightToPanel', function () { top.postMessage({ pg: 'guarded-frame', height: 7777 }, '*'); return 'posted'; });
+t('textHeightToShell', function () { parent.postMessage({ pg: 'guarded-frame', height: '<b>9</b>' }, '*'); return 'posted'; });
+t('moveTop', function () { top.location = PANEL + '/action?via=top'; return 'assigned'; });
+t('moveParent', function () { parent.location = OUT + '/parent'; return 'assigned'; });
+R.alive = 'yes';
+</script>
+</body>
+</html>
