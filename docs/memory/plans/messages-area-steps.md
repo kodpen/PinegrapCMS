@@ -24,5 +24,5 @@ description: Steps MA0-MA10 of the messages area plan (#8961): census, shell and
 - Claim as `[plan:messages-area] <step> — <topic>`.
 
 ## What is asked of the owner along the way?
-- The incoming e-mail's place and its cards in channels (asked, #8961); then its step is added here.
+- What happens to the incoming e-mail's cards in channels (asked, #8961); then its step is added here.
 - MA9c's dry-run report on a real site's profiles before the update step lands.

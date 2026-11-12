@@ -16,7 +16,7 @@ description: Plan (owner 2026-11-12, #8961): one messages area in place of My Ca
 - M2b: at the update every e-mail campaign profile is turned into a flow by itself and the profile screens go.
 
 ## What waits for the owner?
-- The incoming e-mail: he asked for it to move from the channels to the menu and its settings to the settings; where it sits and what happens to the cards in channels is asked (#8961). Its step is written after the answer.
+- The incoming e-mail moves out of the channels into this area, its boxes' settings into the settings (owner, #8961: "eposta iletişim altında da mantıklı aslında"). What happens to the e-mail cards in channels is asked; the step and the record in the decisions list follow the answer.
 - A WhatsApp campaign to many stays for later (`whatsapp-channel.md`); the Campaigns tab shows its place only.
 
 ## What does every step keep?
