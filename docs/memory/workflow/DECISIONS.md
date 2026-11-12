@@ -359,6 +359,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-18.md: Is the canvas one thing? (owner, 2026-11-12, #8850)
 - decisions-made-workspace-18.md: May a live page reach data? (owner, 2026-11-12, #8850)
 - decisions-made-workspace-18.md: In which order is it built? (owner, 2026-11-12, #8850)
+- decisions-made-workspace-19.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-19.md: Whom does a discussion under an agent's own message follow? (owner, 2026-11-12, #8871)
+- decisions-made-workspace-19.md: What does the line read when an agent closes a request without text? (owner, 2026-11-12, #8872)
+- decisions-made-workspace-19.md: May an agent leave an emoji on a message? (owner, 2026-11-12, #8873)
 - decisions-made-workspace-2.md: What may the channel menu hold?
 - decisions-made-workspace-2.md: Where are records created inside a chat?
 - decisions-made-workspace-2.md: Does the customer channel's "New sales quote" stay in the menu?

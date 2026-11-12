@@ -104,6 +104,7 @@
 - decisions-made-workspace-16.md: Decisions list, workspace part 16 (2026-11-11): clearing a conversation keeps memory and decisions, an agent's last seen and ticks, the canvas and no second tool, the server may draw, live pages
 - decisions-made-workspace-17.md: Decisions list, workspace part 17 (2026-11-11): a mail opens as a preview drawn with its HTML and never in a channel, pictures from outside wait for the reader, a mailbox may be kept in no channel
 - decisions-made-workspace-18.md: Decisions list, workspace part 18 (2026-11-12): the channel sound silent in a hidden tab (#8798); one canvas with drawing, live page and data, the guarded bridge to data, the order (#8850)
+- decisions-made-workspace-19.md: Decisions list, workspace part 19 (2026-11-12): a discussion follows the agent that wrote its root message, a request closed without text reads "saw it", an agent may leave a fitting emoji
 - decisions-made-workspace-2.md: Decisions list, workspace part 2 (2026-10-29 on): the channel menu holds only the channel's own items; creates in a chat go through /oluştur (/create): its rights and kinds; the sales quote stays
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
