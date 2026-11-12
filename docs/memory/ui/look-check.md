@@ -1,6 +1,6 @@
 ---
 name: look-check
-description: tools/check_look.php (#8905): counts panel CSS outside look A's recipes (font size or weight off the scale, colour literals) against a baseline that may only fall; what it reads and skips, --update, the key rule
+description: tools/check_look.php (#8905): panel CSS outside look A's recipes (sizes or weights off the scale, colour literals) may only fall against its baseline; what it skips, --update
 ---
 
 ## What does it count?
