@@ -25614,3 +25614,78 @@ textarea.pg-input {
 [data-bs-theme] {
   --bs-body-font-family: var(--pg-font-sans);
 }
+
+/* ==========================================================================
+   Look A: page widths.
+   An add or edit screen's content is centred and at most 1120 px (form
+   column 760, status column 336, 24 between); a list is as wide as its
+   columns need, at least 1280 px or the window, at most the window. A screen
+   takes them with a class on <body> ('extra classes'): pg-measure-edit, with
+   pg-edit-columns on the row holding the form, status and save bar columns;
+   pg-measure-list.
+   ========================================================================== */
+@layer custom {
+
+:root {
+  --pg-measure-edit: 1120px;
+  --pg-measure-form: 760px;
+  --pg-measure-status: 336px;
+  --pg-measure-gap: 24px;
+  --pg-measure-list-min: 1280px;
+  /* The section rail beside a page from 1280 px: its width and the gap. */
+  --pg-measure-rail: calc(13rem + 1.5rem);
+}
+
+/* #content keeps its 1rem padding, so the box is the measure plus it. */
+body.pg-measure-edit #content {
+  max-width: calc(var(--pg-measure-edit) + 2rem);
+  margin-inline: auto;
+}
+/* A screen with a section rail centres the rail and its content as one
+   group, so the rail stays beside the form; the awaiting state books the
+   same width as the rail itself. */
+@media (min-width: 1280px) {
+  body.pg-measure-edit #content.pg-has-rail,
+  body.pg-measure-edit .pg-awaiting-rail > #content {
+    max-width: calc(var(--pg-measure-edit) + var(--pg-measure-rail) + 2rem);
+  }
+}
+/* From lg the two columns are a grid: the status column keeps its 336 px
+   while the form column gives way first; the save bar spans both. Below lg
+   they stack in source order as before. */
+@media (min-width: 1024px) {
+  .pg-edit-columns {
+    display: grid;
+    grid-template-columns: minmax(0, var(--pg-measure-form)) minmax(0, var(--pg-measure-status));
+    column-gap: var(--pg-measure-gap);
+    justify-content: center;
+    margin-inline: 0;
+  }
+  .pg-edit-columns > * {
+    width: auto;
+    max-width: none;
+    padding-inline: 0;
+  }
+  .pg-edit-columns > .order-3 {
+    grid-column: 1 / -1;
+  }
+}
+
+/* A list: the content box is as wide as the list's columns need, at least
+   the list measure (or the window when it is narrower), at most the window,
+   centred; the toolbar above takes the same width. */
+body.pg-measure-list #content {
+  width: fit-content;
+  min-width: min(100%, var(--pg-measure-list-min) + 2rem);
+  max-width: 100%;
+  margin-inline: auto;
+}
+/* Only the name column takes the slack: the table gives a wider box to its
+   columns without a width first, so the name's own width (the driver's
+   inline style, hence !important) is dropped and every other column keeps
+   its width. */
+body.pg-measure-list .pg-list-table-grid > thead > tr > th:first-child {
+  width: auto !important;
+}
+
+}
