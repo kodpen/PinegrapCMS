@@ -325,7 +325,9 @@ function pg_file_fresh_url($name)
         return '';
     }
 
-    return pg_url_change_stamp(PATH . $name, @filemtime(FILE_DIRECTORY_PATH . '/' . pg_basename($name)));
+    $stamp = defined('FILE_DIRECTORY_PATH') ? @filemtime(FILE_DIRECTORY_PATH . '/' . pg_basename($name)) : 0;
+
+    return pg_url_change_stamp(PATH . $name, $stamp);
 }
 
 // Whether a name, as the operator or the visitor gave it, is one the rule
