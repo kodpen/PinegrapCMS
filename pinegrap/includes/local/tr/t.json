@@ -5411,6 +5411,7 @@
     "The password has just been set": "Parola az önce belirlendi",
     "The password is '{var:1}'. The user has not been notified.": "Parola '{var:1}'. Kullanıcı bilgilendirilmedi.",
     "The password is stored and is not shown. Leave the box empty to keep it.": "Parola kayıtlı, ekranda gösterilmez. Korumak için kutuyu boş bırakın.",
+    "The password must be at least {var:1} characters long.": "Parola en az {var:1} karakter olmalıdır.",
     "The password of the sending server cannot be read; enter it again.": "Gönderme sunucusunun parolası okunamıyor; yeniden girin.",
     "The password reset e-mail page shows no set password link, so the built-in e-mail was sent.": "Parola sıfırlama e-postası sayfasında parola belirleme bağlantısı yok; bu yüzden yerleşik e-posta gönderildi.",
     "The password you entered does not meet the requirements. Please enter a different password.": "Girdiğiniz parola gereksinimleri karşılamıyor. Lütfen farklı bir parola girin.",

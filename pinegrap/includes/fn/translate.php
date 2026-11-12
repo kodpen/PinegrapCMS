@@ -358,6 +358,50 @@ function pg_tr_redirect_hook()
 }
 
 /**
+ * The address of a software script (logout.php, index.php,
+ * registration_entrance.php) that a page drawn in another language sends
+ * its visitor to, with that language as pg_lang. A link or a redirect to a
+ * script is not rewritten with the page's links (pg_tr_rewrite_links()
+ * leaves the software directory alone), so without it the script answered
+ * in the source language and sent the visitor on to a page in it: the
+ * sign-in redirect of a private page and the account menu's Log Out left
+ * /en/ for the Turkish pages (#9052). With it, init.php gives the script the
+ * language and its own redirect to a page gets the language's directory
+ * (pg_tr_redirect_hook()). In the source language the address is left as
+ * it is.
+ *
+ * Pure when $language is given.
+ *
+ * @param string      $url      the address, unescaped
+ * @param string|null $language the page's language code, '' for the source
+ *                              language; null for the page being drawn
+ * @return string
+ */
+function pg_tr_script_url($url, $language = null)
+{
+    if ($language === null) {
+        $language = pg_tr_active() ? pg_tr_language() : '';
+    }
+
+    $url = (string) $url;
+    $language = (string) $language;
+
+    if ($language === '') {
+        return $url;
+    }
+
+    $fragment = '';
+    $hash = strpos($url, '#');
+
+    if ($hash !== false) {
+        $fragment = (string) substr($url, $hash);
+        $url = (string) substr($url, 0, $hash);
+    }
+
+    return $url . ((strpos($url, '?') === false) ? '?' : '&') . 'pg_lang=' . rawurlencode($language) . $fragment;
+}
+
+/**
  * sitemap.xml with the other languages' addresses and their alternates
  * (get_sitemap_info.php).
  */

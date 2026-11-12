@@ -204,11 +204,35 @@ function test_designer_search_index_folder()
 
 // -- source checks -----------------------------------------------------------------
 
-// Bare record pages are skipped, and their host lists collected, before a
-// page is drawn as an item.
+// The widgets that keep a visual-editor page from being an item itself: the
+// record view, the product view (a bare product page was found as "Product
+// not found", #9053), the error page and the widgets of the page types the
+// index leaves out. The pages of the types it draws stay items.
+function test_designer_search_index_skipped_widget_types()
+{
+	$scope = pg_render_pass_scope('index', array('calendars' => true, 'ecommerce' => true));
+	$skipped = pg_search_index_skipped_widget_types($scope['types']);
+
+	foreach (array('form_item_view', 'catalog_item_view', 'error_page', 'calendar_event_view', 'order_view', 'email_preferences', 'set_password', 'order_preview', 'billing_information') as $type) {
+		pg_assert_true(in_array($type, $skipped, true), 'skipped: ' . $type);
+	}
+
+	foreach (array('login_form', 'logout', 'my_account', 'search_results', 'shopping_cart', 'express_order', 'folder_view', 'calendar_view', 'registration') as $type) {
+		pg_assert_false(in_array($type, $skipped, true), 'an item: ' . $type);
+	}
+
+	// A feature switched off leaves its pages out, as its legacy types are.
+	$plain = pg_render_pass_scope('index', array('calendars' => false, 'ecommerce' => false));
+	pg_assert_true(in_array('shopping_cart', pg_search_index_skipped_widget_types($plain['types']), true), 'a cart without the store');
+}
+
+// Bare record and product pages are skipped, and their host lists
+// collected, before a page is drawn as an item.
 function test_designer_search_index_page_loop_skips_record_pages()
 {
 	$source = _designer_search_index_source('update_search_index.php');
+	pg_assert_contains("\$search_index_skipped_widgets = pg_search_index_skipped_widget_types(\$index_scope['types']);", $source, 'read once, from the types the index draws');
+	pg_assert_contains("elseif (in_array(\$widget_type, \$search_index_skipped_widgets, true)) {", $source, 'each widget of the page compared');
 	$widgets = strpos($source, "pg_sw_page_widgets(\$page['id'])");
 	$skip    = strpos($source, "\$designer_record_page = true;");
 	$render  = strpos($source, "pg_search_index_render(\$page['id'])");

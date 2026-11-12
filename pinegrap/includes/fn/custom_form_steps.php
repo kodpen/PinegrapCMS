@@ -206,7 +206,8 @@ function _pg_cf_steps_nav_html($index, $total)
  * At load it shows the progress and the buttons and hides every step but the
  * first, or the one holding a control the server refused (aria-invalid).
  * Next checks the shown step's own controls (a disabled one, hidden by a
- * rule, is skipped) and reports the first failure; Back never checks. The
+ * rule, is skipped) and reports its failures in text beside each field (the
+ * validation script's form.pgFieldErrors()); Back never checks. The
  * focus moves to the new step's first control. The history is not touched,
  * so the browser's back key leaves the page as it always did. On submit a
  * control that fails in another step brings that step forward first, so the
@@ -273,7 +274,9 @@ function pg_cf_steps_script()
          . 'if(btn.hasAttribute("data-pg-step-back")){if(k>0){show(k-1,true);save();}return;}'
          . 'var bad=Array.prototype.filter.call(steps[k].elements,function(c){return usable(c)&&c.willValidate&&!c.checkValidity();})[0];'
          . 'steps[k].classList.add("was-validated");'
-         . 'if(bad){bad.reportValidity();if(bad.focus)bad.focus();return;}'
+         // The step's refused fields say why in text, as on submit
+         // (pg_cf_validation_script()); the browser's bubble without it.
+         . 'if(bad){if(form.pgFieldErrors){form.pgFieldErrors(steps[k]);}else{bad.reportValidity();}if(bad.focus)bad.focus();return;}'
          . 'if(k<steps.length-1){show(k+1,true);save();}});'
          . 'form.addEventListener("submit",function(){var bad=Array.prototype.filter.call(form.elements,function(c){'
          . 'return !c.disabled&&c.willValidate&&!c.checkValidity();})[0];if(bad){var k=index(bad);if(k>=0&&k!==cur)show(k,false);}},true);'

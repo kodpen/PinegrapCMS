@@ -336,7 +336,7 @@ case 'logout':
 	if (((isset($_GET['from']) == false) || (($_GET['from'] ?? '') != 'control_panel')) && (($_GET['logged_out'] ?? '') != true))
 	{
 		// The token lets logout.php sign the user out at once instead of asking for confirmation first.
-		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/logout.php?send_to=' . urlencode(REQUEST_URL) . '&token=' . urlencode($_SESSION['software']['token'] ?? ''));
+		header('Location: ' . URL_SCHEME . HOSTNAME . pg_tr_script_url(PATH . SOFTWARE_DIRECTORY . '/logout.php?send_to=' . urlencode(REQUEST_URL) . '&token=' . urlencode($_SESSION['software']['token'] ?? '')));
 		exit();
 	}
 break;
@@ -362,7 +362,7 @@ case 'my account':
 	// if user is not logged in, send user to registration entrance screen to login or register
 	if (pg_session_signed_in() == false)
 	{
-		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL));
+		header('Location: ' . URL_SCHEME . HOSTNAME . pg_tr_script_url(PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL)));
 		exit();
 	}
 break;
@@ -370,7 +370,7 @@ case 'my account profile':
 	// if user is not logged in, send user to registration entrance screen to login or register
 	if (pg_session_signed_in() == false)
 	{
-		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL));
+		header('Location: ' . URL_SCHEME . HOSTNAME . pg_tr_script_url(PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL)));
 		exit();
 	}
 break;
@@ -378,7 +378,7 @@ case 'view order':
 	// if user is not logged in, send user to registration entrance screen to login or register
 	if (pg_session_signed_in() == false)
 	{
-		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL));
+		header('Location: ' . URL_SCHEME . HOSTNAME . pg_tr_script_url(PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL)));
 		exit();
 	}
 break;
@@ -386,7 +386,7 @@ case 'affiliate sign up form':
 	// if user is not logged in, send user to registration entrance screen to login or register
 	if (pg_session_signed_in() == false)
 	{
-		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL));
+		header('Location: ' . URL_SCHEME . HOSTNAME . pg_tr_script_url(PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL)));
 		exit();
 	}
 break;
@@ -399,7 +399,7 @@ case 'custom form':
 	// then send user to registration entrance screen.
 	if ((!USER_LOGGED_IN) && ($properties['auto_registration'] == 0) && ((($properties['membership'] == 1) && ($properties['membership_days'] > 0)) || ($properties['private'] && $properties['private_folder_id'])))
 	{
-		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL));
+		header('Location: ' . URL_SCHEME . HOSTNAME . pg_tr_script_url(PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL)));
 		exit();
 	}
 break;
@@ -413,14 +413,18 @@ case 'form item view':
 		// if submitted form can be edited by a registered user, then send user to registration entrance screen
 		if ($properties['submitted_form_editable_by_registered_user'] == 1)
 		{
-			header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL));
+			header('Location: ' . URL_SCHEME . HOSTNAME . pg_tr_script_url(PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL)));
 			exit();
 		}
 	}
 break;
 }
 $access_control_type = get_access_control_type($folder_id);
-// do different things depending on access control type of page
+// do different things depending on access control type of page. On a page
+// in another language (/en/...) every script it sends the visitor to carries
+// that language (pg_tr_script_url()), and a designed sign-in page is that
+// language's (pg_sw_sign_in_url()), so the visitor does not land on the
+// source language's screens (#9052).
 switch ($access_control_type)
 {
 case 'private':
@@ -428,7 +432,7 @@ case 'private':
 	// designed sign-in page when it has one, see pg_sw_sign_in_url())
 	if (USER_LOGGED_IN == false)
 	{
-		header('Location: ' . URL_SCHEME . HOSTNAME . pg_sw_sign_in_url(REQUEST_URL, PATH . SOFTWARE_DIRECTORY . '/index.php?send_to=' . urlencode(REQUEST_URL), 'login', pg_sw_page_is_visual($page_id), $page_id));
+		header('Location: ' . URL_SCHEME . HOSTNAME . pg_sw_sign_in_url(REQUEST_URL, pg_tr_script_url(PATH . SOFTWARE_DIRECTORY . '/index.php?send_to=' . urlencode(REQUEST_URL)), 'login', pg_sw_page_is_visual($page_id), $page_id));
 		exit();
 		// else user is logged in
 	}
@@ -455,7 +459,7 @@ case 'guest':
 	// and, if the user is not browsing the site as a Guest
 	if ((pg_session_signed_in() == false) && (empty($_SESSION['software']['guest']) || ($_SESSION['software']['guest'] !== true)))
 	{
-		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?allow_guest=true&send_to=' . urlencode(REQUEST_URL));
+		header('Location: ' . URL_SCHEME . HOSTNAME . pg_tr_script_url(PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?allow_guest=true&send_to=' . urlencode(REQUEST_URL)));
 		exit();
 	}
 	break;
@@ -465,7 +469,7 @@ case 'registration':
 	// a form's confirmation page opens for the visitor who just submitted it
 	if ((pg_session_signed_in() == false) && !pg_cf_registration_gate_lets_submitter($page_id))
 	{
-		header('Location: ' . URL_SCHEME . HOSTNAME . pg_sw_sign_in_url(REQUEST_URL, PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL), 'registration entrance', pg_sw_page_is_visual($page_id), $page_id));
+		header('Location: ' . URL_SCHEME . HOSTNAME . pg_sw_sign_in_url(REQUEST_URL, pg_tr_script_url(PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL)), 'registration entrance', pg_sw_page_is_visual($page_id), $page_id));
 		exit();
 	}
 	break;
@@ -473,7 +477,7 @@ case 'membership':
 	// if user is not logged in or has an invalid login, then forward user to Membership Entrance page
 	if (pg_session_signed_in() == false)
 	{
-		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/membership_entrance.php?send_to=' . urlencode(REQUEST_URL));
+		header('Location: ' . URL_SCHEME . HOSTNAME . pg_tr_script_url(PATH . SOFTWARE_DIRECTORY . '/membership_entrance.php?send_to=' . urlencode(REQUEST_URL)));
 		exit();
 	}
 	// if user does not have edit rights to this folder, then we need to validate membership
