@@ -1,6 +1,6 @@
 ---
 name: agent-page-assistants
-description: Pinegrap AI and model assistants make, read and edit live pages as ws_ai_step() tools (page_ai.php): make_live_page, read_live_page in parts, edit_live_page whole or by replacements; Claude through the MCP tools
+description: Pinegrap AI and model assistants make, read and edit live pages as ws_ai_step() tools (page_ai.php): make_live_page, read_live_page, edit_live_page by replacements; Claude via MCP
 ---
 
 ## Which tools, and when are they offered?
