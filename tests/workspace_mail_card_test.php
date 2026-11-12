@@ -126,13 +126,8 @@ function test_workspace_mail_ingest_message_for_every_outcome()
 	}
 }
 
-function test_workspace_mail_settings_card_is_on_the_screen()
+function test_workspace_mail_settings_card_uploads_its_file()
 {
-	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_settings.php');
-
-	pg_assert_contains("case 'mail_box_save':\n        case 'mail_eml':\n        case 'mail_test':\n            ws_mail_settings_post(\$viewer, \$action, \$liveform);", $screen, 'its posts');
-	pg_assert_contains("' . ws_mail_settings_card(\$self_url, \$viewer) . '", $screen, 'its card');
-
 	$settings = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail_settings.php');
 
 	pg_assert_contains('enctype="multipart/form-data"', $settings, 'the .eml form uploads a file');

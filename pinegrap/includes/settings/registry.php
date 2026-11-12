@@ -447,9 +447,9 @@ function pg_settings_categories()
         ),
 
         // The Workspace's own settings, gated by the Workspace settings right
-        // rather than the manager role (pg_settings_category_open()). The
-        // cards come over from workspace_settings.php one at a time; until
-        // then each category links the ones still kept there.
+        // rather than the manager role (pg_settings_category_open()). The old
+        // Workspace Settings screen is an address sending here
+        // (pg_settings_workspace_link()).
         'workspace_team' => array(
             'label' => lang('Team and working hours'),
             'group' => 'workspace',
@@ -1014,7 +1014,7 @@ function pg_settings_integration_links($user, $facts = null)
     }
 
     if (!empty($facts['workspace_settings'])) {
-        $links[] = array('label' => lang('Workspace Settings'), 'icon' => 'bi-people', 'url' => 'workspace_settings.php');
+        $links[] = array('label' => lang('Workspace Settings'), 'icon' => 'bi-people', 'url' => pg_settings_workspace_link());
     }
 
     return $links;
@@ -1022,7 +1022,7 @@ function pg_settings_integration_links($user, $facts = null)
 
 
 /**
- * Whether workspace_settings.php would open for this user: the module on and
+ * Whether the Workspace settings would open for this user: the module on and
  * installed, a member of the team with the settings right (ws_screen_gate()).
  *
  * @param array $user the row validate_user() returned

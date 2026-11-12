@@ -137,7 +137,7 @@ function test_settings_workspace_mcp_relay()
 
 function test_settings_workspace_mcp_sign_in_is_handed_over()
 {
-	pg_assert_same('workspace_settings.php?mcp_connected=4#ws-mcp-4', ws_mcp_settings_return_url(4), 'the old screen comes back to the server');
+	pg_assert_same('settings_workspace_assistants.php?mcp_connected=4#pgset-ws-mcp', ws_mcp_settings_return_url(4), 'a sign-in comes back to the card in Site Settings');
 
 	ws_mcp_settings_place(array('return' => 'settings_workspace_assistants.php', 'anchor' => '#pgset-ws-mcp', 'hold' => true));
 	pg_assert_same('settings_workspace_assistants.php?mcp_connected=4#pgset-ws-mcp', ws_mcp_settings_return_url(4), 'Site Settings comes back to the card');
@@ -146,7 +146,7 @@ function test_settings_workspace_mcp_sign_in_is_handed_over()
 	ws_mcp_settings_go('https://service.test/authorize');
 	pg_assert_same('https://service.test/authorize', ws_mcp_settings_place()['go'], 'held, not sent');
 
-	ws_mcp_settings_place(array('return' => 'workspace_settings.php', 'anchor' => '', 'hold' => false, 'go' => ''));
+	ws_mcp_settings_place(array('return' => 'settings_workspace_assistants.php', 'anchor' => '#pgset-ws-mcp', 'hold' => false, 'go' => ''));
 
 	pg_assert_contains("pg_settings_go()", settings_workspace_mcp_test_source('settings_pane.php'), 'the dialog goes there');
 	pg_assert_contains("pg_settings_go()", settings_workspace_mcp_test_source('includes/settings/screen.php'), 'the page goes there');

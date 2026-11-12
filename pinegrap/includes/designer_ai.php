@@ -5041,7 +5041,7 @@ function pg_design_ai_editor_config($user)
         'enabled'     => true,
         'ready'       => pg_design_ai_ready(),
         'proposal'    => isset($_GET['ai_proposal']) ? max(0, (int) $_GET['ai_proposal']) : 0,
-        'settingsUrl' => $base . 'workspace_settings.php#ws-claude',
+        'settingsUrl' => $base . pg_settings_workspace_link('ws-claude'),
         'text'        => array(
             'title'          => lang('Assistant'),
             'close'          => lang('Close'),

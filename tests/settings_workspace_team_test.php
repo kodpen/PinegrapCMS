@@ -141,13 +141,6 @@ function test_settings_workspace_team_save_checks_before_it_writes()
 	pg_assert_contains("\$liveform->mark_error('ws_people[' . (int) \$ws_person_id . '][day_hours]', \$ws_sentence);", $save, 'refused hours marked on the field');
 	pg_assert_contains("\$liveform->mark_error('ws_dept[' . \$ws_department_id . '][name]', \$ws_department['error']);", $save, 'a refused department marked on its name');
 	pg_assert_contains("post_value('ws_department_archive')", $save, 'the archive button');
-
-	// The old screen saves through the same functions.
-	$old = settings_workspace_team_test_source('workspace_settings.php');
-
-	foreach (array('ws_settings_people_check(', 'ws_settings_people_write(', 'ws_settings_department_check(', 'ws_settings_department_save(', 'ws_settings_department_archive(') as $call) {
-		pg_assert_contains($call, $old, 'workspace_settings.php calls ' . $call);
-	}
 }
 
 function test_settings_workspace_team_people_check_rules()

@@ -903,7 +903,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
             // Where the site serves its files: a note line linking only to
             // one is drawn as the file (note_media.php, workspace_editor.js).
             'files'     => URL_SCHEME . HOSTNAME_SETTING . PATH,
-            'settings'  => $base . 'workspace_settings.php',
+            'settings'  => $base . pg_settings_workspace_link(),
             // Where a From OneNote Connect button posts (connect.php).
             'connect'   => $base . 'connect.php',
             'edit_user' => $base . 'edit_user.php',
@@ -1239,55 +1239,6 @@ function ws_record_drawer_assets($user, $type)
     }
 
     return ws_screen_assets($viewer, 'record');
-}
-
-/**
- * A refused Workspace Settings card form as the field names and values it
- * posted, so the page can fill that form again: a list as name[] with its
- * values in order, a keyed row as name[key]. The CSRF token, passwords,
- * secrets and keys are left out (never kept in the session); ws_action and
- * the record ids stay, they find the form.
- *
- * @param array  $post
- * @param string $prefix the enclosing name, for nested rows
- * @return array name => string, or name[] => string[]
- */
-function ws_settings_refused_fields($post, $prefix = '')
-{
-    $out = array();
-
-    foreach ((array) $post as $key => $value) {
-        $key = (string) $key;
-
-        if (preg_match('/token|password|secret|(^|_)key$/i', $key)) {
-            continue;
-        }
-
-        $name = ($prefix === '') ? $key : $prefix . '[' . $key . ']';
-
-        if (!is_array($value)) {
-            $out[$name] = (string) $value;
-            continue;
-        }
-
-        if ($value === array()) {
-            continue;
-        }
-
-        $list = (array_keys($value) === range(0, count($value) - 1));
-
-        foreach ($value as $item) {
-            $list = $list && !is_array($item);
-        }
-
-        if ($list) {
-            $out[$name . '[]'] = array_map('strval', array_values($value));
-        } else {
-            $out += ws_settings_refused_fields($value, $name);
-        }
-    }
-
-    return $out;
 }
 
 /**

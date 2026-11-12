@@ -1,11 +1,11 @@
 ---
 name: settings-workspace-gate
-description: The Workspace heading of the Site Settings dialog and its gate: who opens which category, where the gate is asked, the Defaults card moved, the link cards to the old screen
+description: The Workspace heading of the Site Settings dialog and its gate: who opens which category, where the gate is asked, the Defaults card moved
 ---
 
 ## Which categories sit under the Workspace heading?
-- `workspace_team` (Team and working hours), `workspace_assistants` (Assistants and agents), `workspace_channels` (Channels, mail and voice): heading `workspace`, the fifth, after Running the site. Plan `plans/settings-workspace-move.md`; owner's choice in `workflow/decisions-made-workspace-13.md`.
-- Each has `includes/settings/<key>.php`, `<key>.save.php`, `settings_<key>.php`, a `case` in `output_menu()` lighting the Workspace row (23, as `workspace_settings.php`) and a help row `workspace#workspace-settings`.
+- `workspace_team` (Team and working hours), `workspace_assistants` (Assistants and agents), `workspace_channels` (Channels, mail and voice): heading `workspace`, the fifth, after Running the site. Start file `workspace/workspace-settings-overview.md`; owner's choice in `workflow/decisions-made-workspace-13.md`.
+- Each has `includes/settings/<key>.php`, `<key>.save.php`, `settings_<key>.php`, a `case` in `output_menu()` lighting the Workspace row (23, as the old `workspace_settings.php` address) and a help row `workspace#workspace-settings`.
 
 ## Who opens them?
 - A registry entry with `'gate' => 'workspace'` opens for a holder of the Workspace settings right alone (`pg_settings_workspace_settings_allowed()`: module on and installed, `ws_rights()['settings']`, which roles 0-2 get as team members). Every other category opens for role 0-2 alone.
@@ -20,11 +20,10 @@ description: The Workspace heading of the Site Settings dialog and its gate: who
 - A Workspace category runs no `includes/settings/prep.php`: its cards read nothing of it, and a basic user never runs the managers' preparation.
 - Refusals: a Workspace category logs "access denied to the workspace settings", any other the manager refusal of `validate_area_access()`.
 
-## What moved, and what is left on the old screen?
-- Defaults (`pgset-ws-defaults`) is in Team and working hours, fields `ws_day_hours`, `ws_workdays[]` (a `lists` entry), `ws_default_task_hours`, saved with the pane's Save; a request without the two hour fields leaves the defaults alone. The checks and the write are `ws_settings_defaults_save()` (`includes/workspace/workdays.php`), which the old screen's `defaults` case calls too; a refused hour is marked on its field.
-- `ws_settings_mask()`, `ws_settings_days_html()` and `ws_settings_hours()` moved there from `workspace_settings.php`, so both screens draw them.
-- `workspace_settings.php` draws a line linking the card's new place where Defaults was.
+## What moved?
+- Defaults (`pgset-ws-defaults`) is in Team and working hours, fields `ws_day_hours`, `ws_workdays[]` (a `lists` entry), `ws_default_task_hours`, saved with the pane's Save; a request without the two hour fields leaves the defaults alone. The checks and the write are `ws_settings_defaults_save()` (`includes/workspace/workdays.php`); a refused hour is marked on its field.
+- `ws_settings_mask()`, `ws_settings_days_html()` and `ws_settings_hours()` are in `includes/workspace/workdays.php`.
 - Moved since: [[workspace-team-settings]], [[workspace-holiday-settings]], [[workspace-assistant-settings]], [[workspace-agent-settings]], [[workspace-mcp-settings-dialog]], [[workspace-channel-settings]], [[workspace-mail-settings-dialog]].
-- Every card is in the dialog now (SW6b), so the link cards to the old screen (`ws_settings_screen_links_card()`) are gone. The old screen keeps drawing its cards until SW7 turns `workspace_settings.php` into a redirect.
+- Every card is in the dialog; `workspace_settings.php` only redirects to it (PR #8931, [[workspace-settings-overview]]).
 
 Tests: `tests/settings_workspace_gate_test.php`.

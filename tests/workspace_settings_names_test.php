@@ -36,14 +36,6 @@ function test_workspace_settings_names_person_rows()
 	pg_assert_true(strpos($source, "'vars' => array(lang('Working days'), \$person['name'])") !== false, 'working days group does not name its person');
 }
 
-function test_workspace_settings_names_department_buttons()
-{
-	$source = workspace_settings_names_source('workspace_settings.php');
-
-	pg_assert_true(strpos($source, "'vars' => array(lang('Edit'), \$department['name'])") !== false, 'department Edit button does not name its department');
-	pg_assert_true(strpos($source, "'vars' => array(\$archive_label, \$department['name'])") !== false, 'department archive button has no name');
-}
-
 function test_workspace_settings_names_hours_separator()
 {
 	$source = workspace_settings_names_source('includes/workspace/workdays.php');

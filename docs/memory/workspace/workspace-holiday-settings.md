@@ -4,8 +4,8 @@ description: The Working calendar card in Site Settings (Team and working hours)
 ---
 
 ## Where is the Working calendar card?
-- PR #8741 (SW2b of `plans/settings-workspace-move.md`): in Team and working hours, section `pgset-ws-calendar`, cards in `includes/settings/workspace_team.php`. The old card (`#ws-calendar`, `ws_holidays_settings_card()`) keeps working on `workspace_settings.php` until SW7, as SW2a left Departments and Team members ([[workspace-team-settings]]).
-- `pg_settings_legacy_anchors()` maps `ws-calendar` to the new card. A calendar's days on the old screen (`?feed=N#ws-feed-N`) are not mapped: that anchor stays on the old screen until SW7 redirects it.
+- PR #8741 (SW2b of the Workspace settings move, [[workspace-settings-overview]]): in Team and working hours, section `pgset-ws-calendar`, cards in `includes/settings/workspace_team.php`. The old screen's address redirects here (PR #8931).
+- `pg_settings_legacy_anchors()` maps `ws-calendar` to the new card. An old `#ws-feed-N` lands on Team and working hours (PR #8931).
 
 ## How do the two screens share the save?
 - `ws_holidays_settings_post($viewer, $action, $liveform, $input, $after_save = false)` (`includes/workspace/workdays.php`) does every action: holiday_add, holiday_remove, feed_add, feed_sync, feed_remove, feed_day. It reads no `$_POST`; `$input` comes from `ws_holidays_settings_input($action, $source)`, which keeps the action's fields as scalars.

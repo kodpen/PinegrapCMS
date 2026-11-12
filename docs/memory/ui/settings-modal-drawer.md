@@ -26,4 +26,4 @@ description: A settings card's drawer: a panel that slides in from the Site Sett
 
 ## How does it look?
 - CSS in `backend.src.css`, after the settings modal: `.pg-sm-drawer` is `position: absolute; right: 0`, `width: min(42rem, 100%)`, the whole width below 576px; `.pg-sm-drawer-body` has `min-height: 0; overflow-y: auto`. Visibility is untimed on the way in (focus lands at once), delayed on the way out.
-- The owner looked at it on dev (SD1b, #8677) and asked for no change. No card of the Site Settings dialog opens a second dialog any more (SD2); the Workspace cards' dialogs move into drawers with their steps (`plans/settings-workspace-move-steps.md`).
+- The owner looked at it on dev (SD1b, #8677) and asked for no change. No card of the Site Settings dialog opens a second dialog any more (SD2); the Workspace cards' dialogs are drawers too (`workspace/workspace-settings-overview.md`).

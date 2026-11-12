@@ -971,7 +971,7 @@ function ws_ai_setup_hint()
         : lang('An administrator connects it on this card:');
 
     return lang('Pinegrap AI cannot answer yet.') . ' ' . $where . ' ['
-        . str_replace(array('[', ']'), '', lang('Workspace Settings › Pinegrap AI')) . '](' . $base . 'workspace_settings.php#ws-ai)';
+        . str_replace(array('[', ']'), '', lang('Workspace Settings › Pinegrap AI')) . '](' . $base . pg_settings_workspace_link('ws-ai') . ')';
 }
 
 /**
@@ -4682,7 +4682,7 @@ function ws_ai_voice($text, $change = null)
 }
 
 /* ---------------------------------------------------------------------------
-   The settings card (workspace_settings.php)
+   The settings card (Site Settings, Workspace)
    --------------------------------------------------------------------------- */
 
 /**

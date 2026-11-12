@@ -24,4 +24,4 @@ description: Decisions list, workspace part 13 (2026-11-10 on): the Workspace ma
 ## Where do the Workspace settings live? (owner, 2026-11-11)
 - Owner (2026-11-11): "workspace ayarları çok karıştı, site ayarları altına taşıyalım. dikkatli olunması için adım adım. workspace ayarları düğmesi tıklandığında ilgili ayarlara gitsin."
 - Asked how they stand in the Site Settings dialog, he chose "Ayrı başlık, 3 kategori": a fifth heading "Workspace" with Team and working hours; Assistants and agents; Channels, mail and voice. Not chosen: one category holding all 14 cards; the cards spread over the existing categories.
-- Architect (2026-11-11): who may change a Workspace setting stays (the Workspace settings right, not the manager role); no schema; one card at a time. The plan: `plans/settings-workspace-move.md`.
+- Architect (2026-11-11): who may change a Workspace setting stays (the Workspace settings right, not the manager role); no schema; one card at a time. The plan: `workspace/workspace-settings-overview.md`.

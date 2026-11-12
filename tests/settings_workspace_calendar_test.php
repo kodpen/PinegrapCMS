@@ -166,9 +166,5 @@ function test_settings_workspace_calendar_card_and_save()
 	pg_assert_true($request !== false && $mark !== false && $stop !== false && $post !== false, 'the request, the marks, the stop and the job are there');
 	pg_assert_true($request < $stop && $mark < $stop && $stop < $post, 'checked before the stop, run after the save');
 
-	// The old screen reads its own names through the same functions.
-	$old = settings_workspace_calendar_test_source('workspace_settings.php');
-
-	pg_assert_same(2, substr_count($old, 'ws_holidays_settings_post($viewer, $action, $liveform, ws_holidays_settings_input($action, $_POST));'), 'both of the old screen\'s calls');
 	pg_assert_same(0, preg_match('/\$_POST/', substr($fields, (int) strpos($fields, 'function ws_holidays_settings_post('), 4000)), 'the shared save reads no request');
 }

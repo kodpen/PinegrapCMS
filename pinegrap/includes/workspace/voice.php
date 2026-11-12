@@ -439,7 +439,7 @@ function ws_voice_channel_set($viewer, $channel, $allowed)
 }
 
 /* ---------------------------------------------------------------------------
-   The settings card (workspace_settings.php)
+   The settings card (Site Settings, Workspace)
    --------------------------------------------------------------------------- */
 
 /**

@@ -4,7 +4,7 @@ description: Claude, Pinegrap AI and Bulk changes in Site Settings (Assistants a
 ---
 
 ## Where are the two cards?
-- PR #8801 (SW3 of `plans/settings-workspace-move.md`): in Assistants and agents, sections `pgset-ws-claude` and `pgset-ws-bulk`, cards in `includes/settings/workspace_assistants.php`, writes in `workspace_assistants.save.php`. The old cards (`#ws-claude`, `#ws-bulk`) keep working on `workspace_settings.php` until SW7, as SW2 left its cards ([[workspace-holiday-settings]]).
+- PR #8801 (SW3 of the Workspace settings move, [[workspace-settings-overview]]): in Assistants and agents, sections `pgset-ws-claude` and `pgset-ws-bulk`, cards in `includes/settings/workspace_assistants.php`, writes in `workspace_assistants.save.php`. The old screen's address redirects here (PR #8931).
 - `pg_settings_legacy_anchors()` maps `ws-claude` and `ws-bulk` to the new cards. Pinegrap AI (`pgset-ws-ai`, anchor `ws-ai`) followed in PR #8832 (SW4b), the agents in SW4a ([[workspace-agent-settings]]), the MCP servers in SW5 ([[workspace-mcp-settings-dialog]]).
 
 ## How do the two screens share one card and one save?

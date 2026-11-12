@@ -1,15 +1,14 @@
 ---
 name: workspace-settings-card-saves
-description: Workspace Settings card saves: list allow-list, refused form refilled with its error, rank rule for team rows, hours and holiday checks, mailbox fields
+description: Workspace settings card saves: list fields, a refused save, rank rule for team rows, hours and holiday checks, mailbox fields
 ---
 
-## Which posted lists does the screen accept?
-- `workspace_settings.php` refuses any field posted as a list unless `pg_request_unexpected_lists()` is given its name (workdays, members, leads, primary, people, mcp_tool, route_match, route_channel). The mailbox routing rows (`route_match[]`, `route_channel[]`) came after the guard and were missing, so every mailbox save failed with "the value you entered for route_match, route_channel is not valid".
-- `tests/workspace_settings_lists_test.php` reads every `name="x[` of the card sources against that list: a new card field drawn as a list goes into both.
+## Which posted lists does a card accept?
+- A Workspace category refuses any field posted as a list unless its `lists` entry in `registry.php` names it (`ws_mail` 3, `ws_people` 3, …). A mailbox's routing rows once came after the old screen's guard and every mailbox save failed with "the value you entered for route_match, route_channel is not valid".
+- `tests/workspace_settings_lists_test.php` reads every `name="x[` of the card sources against those entries: a new card field drawn as a list goes into both.
 
 ## What does a refused card save show?
-- The redirect keeps the card's anchor, but the error used to sit only at the top of the page and the form came back from the database. Now, when the liveform holds an error after the switch, `ws_settings_refused_fields($_POST)` (`includes/workspace/screen.php`, pure) is kept in `$_SESSION['software']['ws_settings_refused']` for one page: field name => value (`name[]` for a list, `name[key]` for a row), never the token, a password, a secret or a key.
-- `ws_settings_refused_script()` finds the form by `ws_action` and `box_id` / `department_id` / `feed_id` (not a `d-inline` row form), fills it, opens its collapse and moves the `.software_error` alert into it (or into the card the anchor names) and scrolls to it. A mailbox password is typed again. Without JavaScript the error stays at the top.
+- The dialog keeps what was typed and marks the refused field (`$liveform->mark_error()`, `ui/settings-card-save-rules.md`). The old screen's refill (`ws_settings_refused_fields()`, `ws_settings_refused_script()`) went with it (PR #8931).
 
 ## Where are the department and team member saves?
 - In `includes/workspace/team_settings.php`, shared with the Site Settings dialog: [[workspace-team-settings]].

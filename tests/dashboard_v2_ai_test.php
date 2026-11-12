@@ -66,7 +66,7 @@ function test_dashboard_v2_ai_offline()
 {
 	$all = pg_dashboard_v2_ai_offline(true, true);
 	pg_assert_same(false, $all['connected'], 'not connected');
-	pg_assert_same(array('workspace_settings.php#ws-claude', 'api_settings.php'), array_column($all['buttons'], 'url'), 'both buttons');
+	pg_assert_same(array('settings_workspace_assistants.php#pgset-ws-claude', 'api_settings.php'), array_column($all['buttons'], 'url'), 'both buttons');
 	pg_assert_same('', $all['ask'], 'no line for somebody who connects it');
 
 	$manager = pg_dashboard_v2_ai_offline(false, true);

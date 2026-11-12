@@ -305,7 +305,7 @@ function ws_mail_connect_form($viewer, $form = null)
 
     return '
                 <form method="post" action="connect.php" class="mt-3 d-flex flex-wrap align-items-center gap-3">
-                    ' . pg_connect_start_fields('microsoft', 'mail_read', 'workspace_settings.php#ws-mail') . '
+                    ' . pg_connect_start_fields('microsoft', 'mail_read', pg_settings_workspace_link('ws-mail')) . '
                     <button type="submit" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-microsoft me-1" aria-hidden="true"></i>' . h(lang('Connect a Microsoft account for mailboxes')) . '</button>
                     <span class="form-text m-0">' . h(lang('Sign in with the mailbox\'s own account; the site\'s Microsoft application must be set up in Settings › Connections first.')) . '</span>
                 </form>';

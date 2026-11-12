@@ -17,7 +17,7 @@ description: Voice message transcripts (V3a #2674): ws_voice, the settings card 
 - The consent line names the provider (`ws_voice_provider_name()`): OpenAI, Groq by host suffix, any other host by itself, so a look-alike host is never shown as OpenAI. Azure OpenAI does not fit: its address needs `?api-version=`, which the check refuses.
 
 ## Who sets it, and what is logged?
-- Card `#ws-voice` on workspace_settings.php (`ws_voice_settings_card()`, action `voice` → `ws_voice_settings_post()`): role 0 only; role-3 settings holders see it disabled without the key field. The key is written, never shown; empty keeps it, a checkbox removes it.
+- Card `pgset-ws-voice` in Site Settings › Channels, mail and voice (`ws_voice_settings_card()`, [[workspace-channel-settings]]): role 0 only; role-3 settings holders see it disabled without the key field. The key is written, never shown; empty keeps it, a checkbox removes it.
 - Site Log line and `pg_audit('update', 'settings', 0, …, 'workspace_voice')` with `api_key` masked by `pg_audit_secret_key()`.
 
 ## Where may a recording be sent?

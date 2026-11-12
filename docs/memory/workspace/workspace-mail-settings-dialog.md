@@ -4,7 +4,7 @@ description: The Mailboxes card in Site Settings (Channels, mail and voice) and 
 ---
 
 ## Where is the Mailboxes card?
-- PR #8899 (SW6b of `plans/settings-workspace-move.md`): in Channels, mail and voice, section `pgset-ws-mail`, after Channel templates. It was the category's last link, so the "On the Workspace Settings screen" card and `ws_settings_screen_links_card()` are gone. The old card (`#ws-mail`) keeps working on `workspace_settings.php` until SW7.
+- PR #8899 (SW6b of the Workspace settings move, [[workspace-settings-overview]]): in Channels, mail and voice, section `pgset-ws-mail`, after Channel templates. It was the category's last link, so the "On the Workspace Settings screen" card and `ws_settings_screen_links_card()` are gone. The old screen's address redirects here (PR #8931).
 - `pg_settings_legacy_anchors()` maps `ws-mail` to the card.
 
 ## What opens in a drawer?

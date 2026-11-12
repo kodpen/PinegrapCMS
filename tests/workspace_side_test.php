@@ -62,6 +62,7 @@ function test_workspace_side_screen_names_the_workspace_screens()
 	pg_assert_same('mail', ws_side_screen('/pinegrap/workspace_mail.php'));
 	pg_assert_same('settings', ws_side_screen('/pinegrap/workspace_settings.php'));
 	pg_assert_same('settings', ws_side_screen('/pinegrap/workspace_template.php'), 'a template is written from the settings');
+	pg_assert_same('settings', ws_side_screen('/pinegrap/settings_workspace_channels.php'), 'the Workspace categories of Site Settings, as a page');
 	pg_assert_same('tasks', ws_side_screen('C:\\inetpub\\pinegrap\\workspace_tasks.php'), 'a Windows path');
 }
 
