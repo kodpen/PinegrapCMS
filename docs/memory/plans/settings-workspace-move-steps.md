@@ -16,8 +16,8 @@ description: Steps of plans/settings-workspace-move.md: SD1-SD2 the drawer insid
 - SW3 (M) Claude (`ws_claude_settings_card()`: settings, test, key create and reset, its dialogs into the drawer) and Bulk changes. Done (#8801): `workspace/workspace-assistant-settings.md`.
 - SW4 (M) Agents and Pinegrap AI, cut in two. Done (#8814, #8832):
   - SW4a Agents (save, delete, test; the request rows' cancel, retry, knock). Done (#8814): `workspace/workspace-agent-settings.md`.
-  - SW4b Pinegrap AI (settings, test, key). Done (#8832): `workspace/workspace-assistant-settings.md`. Next: SW5, open for any worker once #8832 lands.
-- SW5 (M) MCP servers (`ws_mcp_settings_card()`: eleven actions, the catalogue, a person's own connections, the links of `workspace_mcp.php`).  In progress.
+  - SW4b Pinegrap AI (settings, test, key). Done (#8832): `workspace/workspace-assistant-settings.md`.
+- SW5 (M) MCP servers (`ws_mcp_settings_card()`: eleven actions, the catalogue, a person's own connections, the links of `workspace_mcp.php`). Done (#8844): `workspace/workspace-mcp-settings-dialog.md`; the Assistants and agents link card went with it. Next: SW6, open for any worker once #8844 lands.
 - SW6 (M) Channels, mail and voice: Channel templates (archive, the links of `workspace_template.php`), Mailboxes (save, test, the .eml upload in the drawer), Voice transcripts, GitHub links.
 - SW7 (S) The button and the old screen. "Workspace Settings" in the Workspace menu and screen (`includes/workspace/nav.php`, `screen.php`) opens the first Workspace category the reader may open. Every link to `workspace_settings.php` is repointed with `pg_settings_link()`: the Workspace cards, `workspace_mcp.php`, `workspace_template.php`, `includes/designer_ai.php`, the system status rows, the dashboard's AI card, `pg_settings_integration_links()`.
   - `workspace_settings.php` stays as an address that redirects, its anchors mapped to the cards' new places; a POST to it is refused. Help rows follow (`ui/panel-help-links.md`).

@@ -2228,11 +2228,12 @@ function ws_mcp_agent_inbox_describe($viewer, $row, $channel_name, $base)
  * card: Pinegrap AI with the tools, or one of the tools that could take
  * them.
  *
- * @param array $server
- * @param bool  $admin
+ * @param array       $server
+ * @param bool        $admin
+ * @param string|null $form the Site Settings form's id (ws_mcp_settings_name())
  * @return string HTML, '' before the schema step
  */
-function ws_mcp_agent_settings_field($server, $admin)
+function ws_mcp_agent_settings_field($server, $admin, $form = null)
 {
     if (!ws_mcp_agent_ready()) {
         return '';
@@ -2275,21 +2276,22 @@ function ws_mcp_agent_settings_field($server, $admin)
     return '
         <div class="mb-5">
             <label class="form-label small fw-semibold" for="' . $field . '">' . h(lang(array('string' => 'Who answers @{var:1}', 'vars' => $server['alias']))) . '</label>
-            <select class="form-control form-control-sm" name="mcp_agent_tool" id="' . $field . '"' . ($admin ? '' : ' disabled') . '>' . $options . '</select>
+            <select class="form-control form-control-sm" ' . ws_mcp_settings_name('agent_tool', (string) (int) $server['id'], $form) . ' id="' . $field . '"' . ($admin ? '' : ' disabled') . '>' . $options . '</select>
             <div class="form-text">' . h(lang('A server that is an agent itself - another Pinegrap site, a company\'s own assistant - can answer on its own: a message written to the alias goes to the tool chosen here as it is, with the message it replies to, and the answer comes back under it. A task handed to the alias, or a note on a task that writes it, goes to it with the task\'s title and description, and the answer comes back in the task\'s Assistant part. Pinegrap AI is not needed.')) . ' ' . h($rule) . '</div>
             ' . $problem . '
-        </div>' . ws_mcp_agent_preamble_field($server, $admin);
+        </div>' . ws_mcp_agent_preamble_field($server, $admin, $form);
 }
 
 /**
  * The switch that sends the site's preamble to a server's agent, on the
  * settings card: off by default.
  *
- * @param array $server
- * @param bool  $admin
+ * @param array       $server
+ * @param bool        $admin
+ * @param string|null $form the Site Settings form's id (ws_mcp_settings_name())
  * @return string HTML, '' before the schema step
  */
-function ws_mcp_agent_preamble_field($server, $admin)
+function ws_mcp_agent_preamble_field($server, $admin, $form = null)
 {
     if (!ws_mcp_agent_preamble_ready()) {
         return '';
@@ -2299,8 +2301,8 @@ function ws_mcp_agent_preamble_field($server, $admin)
 
     return '
         <div class="form-field mb-5">
-            <input type="hidden" name="mcp_agent_preamble" value="0">
-            <div class="switch"><input class="" type="checkbox" name="mcp_agent_preamble" value="1" id="' . $field . '"' . (!empty($server['agent_preamble']) ? ' checked' : '') . ($admin ? '' : ' disabled') . '></div>
+            <input type="hidden" ' . ws_mcp_settings_name('agent_preamble', (string) (int) $server['id'], $form) . ' value="0"' . ($admin ? '' : ' disabled') . '>
+            <div class="switch"><input class="" type="checkbox" ' . ws_mcp_settings_name('agent_preamble', (string) (int) $server['id'], $form) . ' value="1" id="' . $field . '"' . (!empty($server['agent_preamble']) ? ' checked' : '') . ($admin ? '' : ' disabled') . '></div>
             <label class="" for="' . $field . '">' . h(lang('Tell the agent about this site before each message')) . '</label>
             <div class="form-text">' . h(lang('A short preamble goes before the message: this site\'s address, the time, who asked, the channel or task by name, the language to answer in and the rules Pinegrap AI follows. Nothing else written in the channel is sent.')) . '</div>
         </div>';
@@ -2314,17 +2316,20 @@ function ws_mcp_agent_preamble_field($server, $admin)
  * @param array    $server the row before the save
  * @param array    $rules  the rules just saved
  * @param liveform $liveform
+ * @param array|null $input the tools form's fields (null: what was posted)
  * @return bool saved as asked
  */
-function ws_mcp_agent_settings_save($server, $rules, $liveform)
+function ws_mcp_agent_settings_save($server, $rules, $liveform, $input = null)
 {
-    ws_mcp_agent_preamble_save($server);
+    $post = is_array($input) ? $input : $_POST;
 
-    if (!ws_mcp_agent_ready() || !isset($_POST['mcp_agent_tool']) || !is_scalar($_POST['mcp_agent_tool'])) {
+    ws_mcp_agent_preamble_save($server, $post);
+
+    if (!ws_mcp_agent_ready() || !isset($post['mcp_agent_tool']) || !is_scalar($post['mcp_agent_tool'])) {
         return true;
     }
 
-    $wanted = trim((string) $_POST['mcp_agent_tool']);
+    $wanted = trim((string) $post['mcp_agent_tool']);
     $candidates = ws_mcp_agent_candidates($server);
     $ok = true;
 
@@ -2355,15 +2360,18 @@ function ws_mcp_agent_settings_save($server, $rules, $liveform)
 /**
  * Saves the preamble switch of a server, with the tools form.
  *
- * @param array $server the row before the save
+ * @param array      $server the row before the save
+ * @param array|null $input  the tools form's fields (null: what was posted)
  */
-function ws_mcp_agent_preamble_save($server)
+function ws_mcp_agent_preamble_save($server, $input = null)
 {
-    if (!ws_mcp_agent_preamble_ready() || !isset($_POST['mcp_agent_preamble']) || !is_scalar($_POST['mcp_agent_preamble'])) {
+    $post = is_array($input) ? $input : $_POST;
+
+    if (!ws_mcp_agent_preamble_ready() || !isset($post['mcp_agent_preamble']) || !is_scalar($post['mcp_agent_preamble'])) {
         return;
     }
 
-    $wanted = ((string) $_POST['mcp_agent_preamble'] === '1') ? 1 : 0;
+    $wanted = ((string) $post['mcp_agent_preamble'] === '1') ? 1 : 0;
 
     if ($wanted !== (int) ($server['agent_preamble'] ?? 0)) {
         db("UPDATE ws_mcp_servers SET agent_preamble = '" . $wanted . "', updated_at = '" . time() . "' WHERE id = '" . (int) $server['id'] . "'");

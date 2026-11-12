@@ -125,7 +125,7 @@ function test_settings_modal_drawer_cards_hand_over_no_second_dialog()
 		}
 	}
 
-	pg_assert_same(12, $entries, 'Cron Jobs, the three Connect forms, the two department drawers, the Working calendar\'s three, Claude\'s new secret and the two agent drawers');
+	pg_assert_same(14, $entries, 'Cron Jobs, the three Connect forms, the two department drawers, the Working calendar\'s three, Claude\'s new secret, the two agent drawers and the two MCP server drawers');
 }
 
 function test_settings_modal_drawer_second_dialog_path_is_gone()
