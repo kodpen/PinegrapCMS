@@ -44971,6 +44971,8 @@ const StyleDesigner = (function () {
         // Navbar root (nav.navbar — composite exploded navbar; shows dedicated Navbar Options)
         var isNavbarRoot = tag === 'nav' && clsList.indexOf('navbar') !== -1;
         var isVariantPicker = clsList.indexOf('pg-variant') !== -1;
+        // The sideways row of a scroller block (Scroller: Snap Cards).
+        var isScrollerRow = clsList.indexOf('pg-snap') !== -1;
         // Carousel root (has 'carousel' class, not carousel-inner/item/indicators/control)
         var isCarousel   = clsList.indexOf('carousel') !== -1
             && clsList.indexOf('carousel-inner')       === -1
@@ -45115,6 +45117,7 @@ const StyleDesigner = (function () {
                (isCardGroup ? propsCardGroupOptions(n) : '') +
                (isCarousel ? propsCarouselOptions(n) : '') +
                (isVariantPicker ? propsVariantOptions(n) : '') +
+               (isScrollerRow ? propsScrollerOptions(n) : '') +
                (isAlertRoot ? propsAlertOptions(n) : '') +
                (isPopoverTrigger ? propsPopoverOptions(n) : '') +
                (isTable ? propsTableOptions(n) : '') +
@@ -47164,6 +47167,21 @@ const StyleDesigner = (function () {
             '<button type="button" class="btn btn-outline theme-secondary" data-vp-action="add" data-vp-node-id="' + n._id + '" title="' + esc(_sdT('Add choice')) + '" aria-label="' + esc(_sdT('Add choice')) + '"' + (count < 1 || count >= _SD_VARIANT_MAX ? ' disabled' : '') + '><i class="bi bi-plus-lg"></i></button>' +
             '</div>');
         return sect('bi-palette', _sdT('Variant Picker'), h);
+    }
+
+    /**
+     * The Scroller section of a selected scroller row (class pg-snap): cards
+     * side by side, or wide slides, one large item per slide stopping in the
+     * middle (_sdScrollerSetWide()).
+     */
+    function propsScrollerOptions(n) {
+        var wide = _sdScrollerIsWide(n);
+        var btn = function (value, text) {
+            var on = wide === (value === 'wide');
+            return '<button type="button" class="btn btn-outline theme-secondary' + (on ? ' active' : '') + '" data-sc-action="' + value + '" data-sc-node-id="' + n._id + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(text) + '</button>';
+        };
+        return sect('bi-collection', _sdT('Scroller'), row(_sdT('Slides'),
+            '<div class="btn-group btn-group-sm w-100">' + btn('cards', _sdT('Cards')) + btn('wide', _sdT('Wide slides')) + '</div>'));
     }
 
     /**
@@ -50562,6 +50580,18 @@ const StyleDesigner = (function () {
                     : action === 'look' ? _sdVariantSetLook(hit.node, this.getAttribute('data-vp-look'), before)
                     : false;
                 if (!done) return;
+                if (hit.sid) _sharedDirty[hit.sid] = true;
+                render();
+            });
+        });
+
+        // Scroller: cards or wide slides. The undo snapshot is taken only
+        // when the helper changes the tree.
+        document.querySelectorAll('#sd-properties [data-sc-action]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var hit = _findNodeAnywhereById(this.getAttribute('data-sc-node-id') || '');
+                if (!hit) return;
+                if (!_sdScrollerSetWide(hit.node, this.getAttribute('data-sc-action') === 'wide', function () { saveState(); })) return;
                 if (hit.sid) _sharedDirty[hit.sid] = true;
                 render();
             });
@@ -74173,6 +74203,28 @@ const StyleDesigner = (function () {
         return true;
     }
 
+    // ── Scroller: wide slides ───────────────────────────────────────────
+    // A scroller row (pg-snap) with pg-snap-wide shows one large item per
+    // slide, most of the window wide, stopping in the middle; without it the
+    // items keep their own column widths. The rule joins the User Styles the
+    // first time the option is turned on.
+    function _sdScrollerIsWide(row) {
+        return !!(row && row.props && (' ' + (row.props.cssClass || '') + ' ').indexOf(' pg-snap-wide ') !== -1);
+    }
+
+    // Adds (wide true) or removes pg-snap-wide on the row. before() runs just
+    // before the tree changes. False when the row already is as asked.
+    /* @pg-site-output */
+    function _sdScrollerSetWide(row, wide, before) {
+        if (!row || !row.props || _sdScrollerIsWide(row) === !!wide) return false;
+        if (before) before();
+        var cls = String(row.props.cssClass || '').split(/\s+/).filter(function (c) { return c && c !== 'pg-snap-wide'; });
+        if (wide) cls.push('pg-snap-wide');
+        row.props.cssClass = cls.join(' ');
+        if (wide && !_sdPaletteDry) _sdEnsureBlockStyles(['pg-snap-wide']);
+        return true;
+    }
+
     // ── Block stylesheet ────────────────────────────────────────────────
     // A ready-made block styles itself with Bootstrap. What Bootstrap has no
     // utility for (aspect-ratio, a fixed thumbnail size, a grayscale logo
@@ -74281,6 +74333,10 @@ const StyleDesigner = (function () {
         // A sideways card row that stops on a card edge after each swipe.
         'pg-snap':         '.pg-snap { scroll-snap-type: x mandatory; }',
         'pg-snap-item':    '.pg-snap-item { scroll-snap-align: start; }',
+        // Wide slides: each item 85% of the window (no wider than the row),
+        // stopping in the middle. Items are matched by their class, not as
+        // children: on the canvas a wrapper sits between the row and its items.
+        'pg-snap-wide':    '.pg-snap-wide .pg-snap-item { flex: 0 0 auto; width: 85vw; max-width: 100%; scroll-snap-align: center; }',
         // A chevron that points the reading direction: mirrored on an RTL
         // page, where previous / next controls swap sides. An <i> is inline,
         // which a transform skips.
