@@ -1321,7 +1321,9 @@ function ws_api_channel_or_404($viewer, $id)
 {
     $channel = ws_channel((int) $id);
 
-    if (!$channel || !ws_can_read_channel($viewer, $channel)) {
+    // The room of a mailbox kept in no channel is no channel to an
+    // application either: its mail is read through the mail endpoints.
+    if (!$channel || ws_channel_is_mailbox($channel) || !ws_can_read_channel($viewer, $channel)) {
         api_fail_not_found(lang('Channel'));
     }
 

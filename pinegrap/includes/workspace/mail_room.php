@@ -178,15 +178,40 @@ function ws_mail_room_plan($wanted, $current)
 }
 
 /**
- * The people a box's settings put in its room now. A department moved to
- * the archive brings nobody.
+ * The departments a box may name as its readers: the ones in use, and one
+ * moved to the archive while the box names it. An archived department keeps
+ * what it had, as with its tasks: its people go on reading the mailbox until
+ * somebody takes it off the box.
+ *
+ * @param array|null $box
+ * @return array id => name, an archived one marked
+ */
+function ws_mail_room_departments($box)
+{
+    $chosen = array_map('intval', (array) (ws_mail_box_settings($box)['room_departments'] ?? array()));
+    $out = array();
+
+    foreach (ws_departments(false, true) as $department) {
+        if (!$department['archived']) {
+            $out[(int) $department['id']] = (string) $department['name'];
+        } elseif (in_array((int) $department['id'], $chosen, true)) {
+            $out[(int) $department['id']] = (string) $department['name'] . ' ' . lang('(archived)');
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The people a box's settings put in its room now: the ones named and the
+ * people of the departments named, archived ones included.
  *
  * @param array $settings ws_mail_box_settings()
  * @return int[]
  */
 function ws_mail_room_wanted($settings)
 {
-    $departments = ws_departments(true);
+    $departments = ws_departments(true, true);
     $members = array();
 
     foreach ((array) ($settings['room_departments'] ?? array()) as $department_id) {
@@ -302,8 +327,8 @@ function ws_mail_room_save($viewer, $values, $settings)
 }
 
 /**
- * A department's people or its place in the archive changed: the rooms of
- * the mailboxes that name it follow.
+ * A department's people changed: the rooms of the mailboxes that name it
+ * follow.
  *
  * @param int $department_id
  * @return int rooms looked at
@@ -353,14 +378,15 @@ function ws_mail_room_url($base, $conversation_id = 0, $box_id = 0)
  * mail kept in a mailbox's own room, its conversation on the E-mails screen.
  *
  * @param string     $base       the panel's address, ending in /
- * @param array|null $channel    the line's channel
+ * @param int        $channel_id the line's channel
  * @param int        $message_id the card or the mail's message
+ * @param array|null $channel    the channel's row, when the caller has it
  * @return string
  */
-function ws_mail_notice_url($base, $channel, $message_id)
+function ws_mail_notice_url($base, $channel_id, $message_id, $channel = null)
 {
     if (!ws_channel_is_mailbox($channel)) {
-        return $base . 'workspace.php?channel=' . (int) ($channel['id'] ?? 0) . '&message=' . (int) $message_id;
+        return $base . 'workspace.php?channel=' . (int) $channel_id . '&message=' . (int) $message_id;
     }
 
     return ws_mail_room_url($base, ws_mail_room_conversation_id((int) $channel['id'], (int) $message_id));
@@ -424,34 +450,48 @@ function ws_mail_room_redirect($viewer, $query, $base)
  */
 function ws_mail_room_fields($prefix, $box, $options)
 {
-    $channel = function ($hidden) use ($prefix, $options) {
-        return '
-                <div class="md:col-6' . ($hidden ? ' d-none' : '') . '" data-ws-mail-when="kept_in=channel">
-                    <label class="form-label" for="' . $prefix . 'channel">' . h(lang('Channel')) . '</label>
-                    <select class="form-control form-control-sm" name="channel_id" id="' . $prefix . 'channel" required>' . $options . '</select>
-                    <div class="form-text">' . h(lang('Each new conversation becomes a card here; its answers go under the card.')) . '</div>
-                </div>';
-    };
-
     if (!ws_mail_room_ready()) {
-        return '<input type="hidden" name="kept_in" value="channel">' . $channel(false);
+        return ws_mail_room_fields_html($prefix, $box, $options, false, array(), array());
     }
 
-    $room = (ws_mail_box_kept_in($box) === 'mailbox');
-    $settings = ws_mail_box_settings($box);
-    $lists = array(
-        'room_people'      => array('label' => lang('People'), 'chosen' => array_map('intval', (array) ($settings['room_people'] ?? array())), 'rows' => array()),
-        'room_departments' => array('label' => lang('Departments'), 'chosen' => array_map('intval', (array) ($settings['room_departments'] ?? array())), 'rows' => array()),
-    );
+    $people = array();
 
     foreach (ws_team_members() as $person) {
-        $lists['room_people']['rows'][(int) $person['id']] = (string) $person['name'];
+        $people[(int) $person['id']] = (string) $person['name'];
     }
 
-    foreach (ws_departments() as $department) {
-        $lists['room_departments']['rows'][(int) $department['id']] = (string) $department['name'];
+    return ws_mail_room_fields_html($prefix, $box, $options, true, $people, ws_mail_room_departments($box));
+}
+
+/**
+ * ws_mail_room_fields() drawn. Pure but for the words. The channel shows
+ * only for a box kept in one and the readers only for a box kept in none
+ * (data-ws-mail-when, the card's script); without the choice a hidden
+ * kept_in says "channel", so the fields that follow it still show.
+ *
+ * @param string     $prefix
+ * @param array|null $box
+ * @param string     $options     the channel select's options, HTML
+ * @param bool       $ready       ws_mail_room_ready()
+ * @param array      $people      id => name, the team
+ * @param array      $departments ws_mail_room_departments()
+ * @return string HTML
+ */
+function ws_mail_room_fields_html($prefix, $box, $options, $ready, $people, $departments)
+{
+    $room = $ready && (ws_mail_box_kept_in($box) === 'mailbox');
+    $channel = '
+                <div class="md:col-6' . ($room ? ' d-none' : '') . '" data-ws-mail-when="kept_in=channel">
+                    <label class="form-label" for="' . $prefix . 'channel">' . h(lang('Channel')) . '</label>
+                    <select class="form-control form-control-sm" name="channel_id" id="' . $prefix . 'channel"' . ($room ? '' : ' required') . '>' . $options . '</select>
+                    <div class="form-text">' . h(lang('Each new conversation becomes a card here; its answers go under the card.')) . '</div>
+                </div>';
+
+    if (!$ready) {
+        return '<input type="hidden" name="kept_in" value="channel">' . $channel;
     }
 
+    $settings = ws_mail_box_settings($box);
     $html = '
                 <div class="md:col-6">
                     <label class="form-label" for="' . $prefix . 'kept_in">' . h(lang('Kept in')) . '</label>
@@ -460,15 +500,16 @@ function ws_mail_room_fields($prefix, $box, $options)
                         <option value="mailbox"' . ($room ? ' selected' : '') . '>' . h(lang('The mailbox itself')) . '</option>
                     </select>
                     <div class="form-text">' . h(lang('Kept in the mailbox itself, its mail is in no channel: the people chosen here read and answer it on the E-mails screen.')) . '</div>
-                </div>' . $channel($room);
+                </div>' . $channel;
 
-    foreach ($lists as $name => $list) {
+    foreach (array('room_people' => array(lang('People'), $people), 'room_departments' => array(lang('Departments'), $departments)) as $name => $list) {
+        $chosen = array_map('intval', (array) ($settings[$name] ?? array()));
         $rows = '';
 
-        foreach ($list['rows'] as $id => $label) {
+        foreach ((array) $list[1] as $id => $label) {
             $rows .= '
                         <div class="form-field mb-0">
-                            <input class="check" type="checkbox" name="' . $name . '[]" value="' . (int) $id . '" id="' . $prefix . $name . '_' . (int) $id . '"' . (in_array((int) $id, $list['chosen'], true) ? ' checked' : '') . '>
+                            <input class="check" type="checkbox" name="' . $name . '[]" value="' . (int) $id . '" id="' . $prefix . $name . '_' . (int) $id . '"' . (in_array((int) $id, $chosen, true) ? ' checked' : '') . '>
                             <label for="' . $prefix . $name . '_' . (int) $id . '">' . h($label) . '</label>
                         </div>';
         }
@@ -476,7 +517,7 @@ function ws_mail_room_fields($prefix, $box, $options)
         $html .= '
                 <div class="md:col-6' . ($room ? '' : ' d-none') . '" data-ws-mail-when="kept_in=mailbox">
                     <fieldset>
-                        <legend class="form-label">' . h($list['label']) . '</legend>
+                        <legend class="form-label">' . h($list[0]) . '</legend>
                         <div class="ws-dept-people">' . (($rows !== '') ? $rows : '<div class="form-text">' . h(lang('None yet')) . '</div>') . '</div>
                     </fieldset>
                 </div>';

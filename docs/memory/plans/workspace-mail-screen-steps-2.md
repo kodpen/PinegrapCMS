@@ -19,7 +19,7 @@ description: Steps WM10-WM14 of plans/workspace-mail-screen.md (owner 2026-11-11
 - WM12 (M) Done #8861. The preview draws the HTML. After WM11 and the guarded frame (built in #8802, `platform/guarded-frame.md`).
   - The pane shows a mail's HTML in the frame, its height following the mail; plain text when there is none, and a switch to it. Links open in a new tab. Pictures from outside wait for "Show pictures", remembered for the sender per reader in the browser (`workflow/decisions-made-workspace-17.md`).
   - With the pane open the list's rows narrow to who, subject, first words and time. Looked at in the sandbox, wide and phone, light and dark, with a newsletter, a plain mail and a mail with pictures; the PR links the pictures.
-- WM13 (M) A mailbox kept in no channel. After WM11.
+- WM13 (M) Done #8985. A mailbox kept in no channel. After WM11. Topic `workspace/mail-room.md`.
   - The box form's "Kept in": a channel, or the mailbox itself. The second makes a room of kind `mailbox` named after the box; the people and departments chosen on the box are its members. No channel list, picker, search or API channel list shows it: every reader of `ws_channels` by kind is checked, with a test.
   - The E-mails screen is its face: read, answer, New e-mail, files; its notices open the screen. Routes by address or +tag into channels stay.
 - WM14 (S) A plain box. After WM13.

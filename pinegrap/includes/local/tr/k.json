@@ -137,6 +137,7 @@
     "Kept in": "Tutulduğu yer",
     "Kept in a password manager or cloud account, so your other devices can use it too.": "Bir parola yöneticisinde ya da bulut hesabında saklanır; diğer cihazlarınız da kullanabilir.",
     "Kept in each record": "Her kaydın kendi içinde",
+    "Kept in the mailbox itself": "E-posta kutusunun kendisinde tutuluyor",
     "Kept in the mailbox itself, its mail is in no channel: the people chosen here read and answer it on the E-mails screen.": "E-posta kutusunun kendisinde tutulduğunda e-postaları hiçbir kanalda yer almaz: burada seçilen kişiler onları E-postalar ekranında okur ve yanıtlar.",
     "Kept in the notes when the status becomes Cancelled.": "Durum İptal edildi olduğunda notlara eklenir.",
     "Kept in {var:1}; movements at their booked base value, the opening figure left out.": "{var:1} olarak tutulur; hareketler kayıt kurundan, açılış rakamı dışarıda.",

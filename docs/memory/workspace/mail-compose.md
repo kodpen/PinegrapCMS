@@ -8,12 +8,12 @@ description: New e-mail in the Workspace (WM5, #8719): the form and its fields, 
 - From a channel the form starts on the first box keeping mail there and on that channel. After a send the screen opens the new conversation in the pane; the channel syncs and shows the card.
 
 ## Which fields, in which order?
-- From (a box, "name <address>"), Kept in (that box's channels: its own first, then its routes' channels the person may post in), To, "Cc and Bcc" (a link that opens both; open at once when a kept form has them), Subject, Text (plain, 50,000), the Signature preview under the text, Files (several, removable before sending).
+- From (a box, "name <address>"), Kept in (that box's channels: its own first, "The mailbox itself" for a box kept in no channel (`mail-room.md`), then its routes' channels the person may post in), To, "Cc and Bcc" (a link that opens both; open at once when a kept form has them), Subject, Text (plain, 50,000), the Signature preview under the text, Files (several, removable before sending).
 - Addresses are separated by commas; every check is the server's (`ws_mail_send_input()`).
 
 ## Which actions, and who may send?
 - `ws_mail_compose`: the boxes (`ws_mail_compose_boxes()`: id, name, address, signature, channels id and name; never the route or settings) and the writer's name. `ws_mail_new`: the form as `multipart/form-data` with `files[]` (`ws_mail_compose_files()`, each through `ws_upload_part_error()`), turned into `ws_mail_send()`'s array by `ws_mail_compose_mail()`.
-- Both refuse a guest ("You cannot send from this mailbox.") and answer "The database has not been upgraded yet." before 11.0.185. Everything else is `ws_mail_send_check()`: the box from `ws_mail_send_boxes()`, the channel one of its channels (`ws_can_post_channel()`), addresses, subject, text, files, the bounce list, the hourly limit (`mail-send.md`).
+- Both refuse a guest ("You cannot send from this mailbox.") and answer "The database has not been upgraded yet." before 11.0.185. Everything else is `ws_mail_send_check()`: the box from `ws_mail_send_boxes()`, the channel one of its channels (`ws_mail_can_answer()`), addresses, subject, text, files, the bounce list, the hourly limit (`mail-send.md`).
 - People only: the API route (`mail-api.md`) takes the same fields, no files; no MCP tool; assistants never send (`mail-decisions.md`).
 - Every `ws_mail_*` case is a row of `pg_panel_actions()` (`includes/panel/actions.php`), checked by the test below. Before #8719 none was, so `api.php` answered "Invalid action." to Reply by e-mail, Send again, the status controls, the pane, Load more and Mark all as read.
 

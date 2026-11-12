@@ -60,6 +60,7 @@
 - mail-notices-and-event.md: Who hears of a Workspace e-mail conversation (inbox kinds mail_assigned, mail_customer) and the workspace.mail.received event for scheduled actions and flows (G5b)
 - mail-parse.md: Incoming mail MIME parser pg_mail_parse() (G1a of incoming e-mail): result shape, charset fallback, limits, error codes, what it leaves to ws_mail_ingest()
 - mail-reply.md: Answering a Workspace e-mail by e-mail (WM7): the queued answer, Cc, Bcc, files, Reply to all, the drawer, route, headers and subject, the API's answer sent at once
+- mail-room.md: A mailbox kept in no channel (WM13, #8985): its room of kind mailbox, the box form's Kept in, who reads and answers, where the room never shows, the inventory test [decision: decisions-made-workspace-17.md]
 - mail-routing.md: Routing incoming Workspace e-mail (G6, mail_route.php): box routes by address or +tag to a channel, recipients read, the known customer's line in their channels
 - mail-screen-pane.md: The Workspace E-mails reading pane (mail_pane.php) and the per-person unread marks (mail_reads.php): the unread rule, the floor, where marks are written, the menu count
 - mail-send-outcome.md: How the queue's outcome reaches a Workspace mail (ws_mail_send_outcome(), #8646): sent is final, only the current attempt fails it, the unwritten row id race, a deleted queue row

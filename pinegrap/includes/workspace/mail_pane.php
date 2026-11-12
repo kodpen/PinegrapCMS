@@ -102,7 +102,7 @@ function ws_mail_pane($viewer, $conversation_id)
         'conversation' => $conversation,
         'channel'      => $channel,
         'box_name'     => (string) db_value("SELECT name FROM ws_mail_boxes WHERE id = '" . (int) $conversation['box_id'] . "'"),
-        'can_post'     => ws_can_post_channel($viewer, $channel),
+        'can_post'     => ws_mail_can_answer($viewer, $channel),
         'items'        => $items,
         'last_id'      => $ids ? max($ids) : 0,
     );
@@ -155,7 +155,9 @@ function ws_mail_pane_page_html($pane, $base, $close)
 
 /**
  * The pane: the conversation's heading and its mails. Pure but for the
- * words and the time labels.
+ * words and the time labels. A conversation of a mailbox kept in no channel
+ * names its mailbox only and has no "Open in channel": this screen is the
+ * one place it opens.
  *
  * @param array  $pane  ws_mail_pane()
  * @param string $base  the panel's address, ending in /
@@ -168,15 +170,18 @@ function ws_mail_pane_html($pane, $base, $tools = '')
     $subject = (trim((string) $conversation['subject']) !== '') ? (string) $conversation['subject'] : lang('(no subject)');
     $customer = trim((string) $conversation['customer_name'] . ' <' . (string) $conversation['customer_email'] . '>');
     $url = $base . 'workspace.php?channel=' . (int) $conversation['channel_id'] . '&message=' . (int) $conversation['message_id'];
+    $room = ws_channel_is_mailbox($pane['channel']);
 
     $html = '<header class="ws-mail-pane-head"><h2 class="h5 mb-1" tabindex="-1">' . h($subject) . '</h2>'
         . '<div class="small fg-secondary">' . h($customer)
-        . (($pane['box_name'] !== '') ? ' · ' . h($pane['box_name']) : '') . ' · ' . h('#' . (string) $pane['channel']['name']) . '</div>'
-        . '<div class="ws-mail-pane-tools"><a class="btn btn-sm btn-text theme-secondary" href="' . h($url) . '"><i class="bi bi-hash me-1" aria-hidden="true"></i>' . h(lang('Open in channel')) . '</a>' . $tools . '</div>'
+        . (($pane['box_name'] !== '') ? ' · ' . h($pane['box_name']) : '') . ($room ? '' : ' · ' . h('#' . (string) $pane['channel']['name'])) . '</div>'
+        . '<div class="ws-mail-pane-tools">' . ($room ? '' : '<a class="btn btn-sm btn-text theme-secondary" href="' . h($url) . '"><i class="bi bi-hash me-1" aria-hidden="true"></i>' . h(lang('Open in channel')) . '</a>') . $tools . '</div>'
         . '</header>';
 
     if (count($pane['items']) >= WS_MAIL_PANE_MAX) {
-        $html .= '<p class="small fg-secondary">' . h(lang(array('string' => 'The newest {var:1} e-mails are shown; the channel has them all.', 'vars' => WS_MAIL_PANE_MAX))) . '</p>';
+        $html .= '<p class="small fg-secondary">' . h($room
+            ? lang(array('string' => 'The newest {var:1} e-mails are shown.', 'vars' => WS_MAIL_PANE_MAX))
+            : lang(array('string' => 'The newest {var:1} e-mails are shown; the channel has them all.', 'vars' => WS_MAIL_PANE_MAX))) . '</p>';
     }
 
     foreach ($pane['items'] as $item) {

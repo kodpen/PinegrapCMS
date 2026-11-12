@@ -68,10 +68,13 @@ function ws_mail_providers()
 
 /**
  * A mailbox form as posted, checked and cleaned. Pure: whether the channel
- * may be chosen is asked by the caller. A chosen provider fills an empty
- * server, and an empty checking server, with its own.
+ * may be chosen, and who reads a box kept in no channel
+ * (ws_mail_room_input()), is asked by the caller. A chosen provider fills an
+ * empty server, and an empty checking server, with its own.
  *
- * @param array $input name, address, channel_id, auth_server, enabled,
+ * @param array $input name, address, kept_in (mailbox: the box keeps its
+ *                     mail in a room of its own and names no channel),
+ *                     channel_id, auth_server, enabled,
  *                     provider, host, port, user, password, folder,
  *                     after_fetch, move_folder, smtp_host, smtp_port,
  *                     reply_via, sent_copy, sent_folder, connection_id,
@@ -100,10 +103,12 @@ function ws_mail_box_input($input)
     $reply_via = in_array(($input['reply_via'] ?? ''), array('site', 'connection'), true) ? (string) $input['reply_via'] : 'box';
     $smtp_host = ($reply_via === 'box') ? strtolower($line('smtp_host', $preset['smtp_host'])) : '';
     $signature = ws_mail_signature_input($input['signature'] ?? '');
+    $kept_in = (($input['kept_in'] ?? '') === 'mailbox') ? 'mailbox' : 'channel';
     $values = array(
         'name'        => $line('name'),
         'address'     => strtolower($line('address')),
-        'channel_id'  => (int) ($input['channel_id'] ?? 0),
+        'kept_in'     => $kept_in,
+        'channel_id'  => ($kept_in === 'mailbox') ? 0 : (int) ($input['channel_id'] ?? 0),
         'auth_server' => $auth_server,
         'enabled'     => !empty($input['enabled']) ? 1 : 0,
         'provider'    => $provider,
@@ -136,7 +141,7 @@ function ws_mail_box_input($input)
         return $fail(lang('Enter the mailbox\'s e-mail address.'), 'address');
     }
 
-    if ($values['channel_id'] <= 0) {
+    if (($kept_in === 'channel') && ($values['channel_id'] <= 0)) {
         return $fail(lang('Choose the channel its mail goes to.'), 'channel_id');
     }
 
@@ -621,7 +626,8 @@ function ws_mail_settings_post($viewer, $action, $liveform, $input = null, $file
 
 /**
  * Every check of a mailbox's form, before anything is written: the fields,
- * the channel, the routes, the automatic reply, the first answer's target,
+ * the channel or, for a box kept in no channel, its readers
+ * (mail_room.php), the routes, the automatic reply, the first answer's target,
  * Pinegrap AI's sorting, the password and the connected account. Writes
  * nothing.
  *
@@ -645,10 +651,20 @@ function ws_mail_box_save_check($viewer, $box, $post)
 
     $values = $checked['values'];
     $channels = ws_mail_box_channels($viewer);
+    $room = ws_mail_room_input($post, ws_team_ids(), array_keys(ws_mail_room_departments($box)));
+
+    if (($room['kept_in'] === 'mailbox') && !ws_mail_room_ready()) {
+        return $fail(lang('The database has not been upgraded yet.'), 'kept_in');
+    }
+
+    if (!$room['ok']) {
+        return $fail($room['error'], $room['field']);
+    }
 
     // A box keeps a channel its editor cannot read, as long as nobody picks
-    // another one.
-    if (!isset($channels[$values['channel_id']]) && !($box && ((int) $box['channel_id'] === $values['channel_id']))) {
+    // another one. Its own room is never a channel to pick.
+    if (($room['kept_in'] === 'channel') && !isset($channels[$values['channel_id']])
+        && !($box && (ws_mail_box_kept_in($box) === 'channel') && ((int) $box['channel_id'] === $values['channel_id']))) {
         return $fail(lang('Choose the channel its mail goes to.'), 'channel_id');
     }
 
@@ -677,6 +693,24 @@ function ws_mail_box_save_check($viewer, $box, $post)
     $settings['routes'] = $routes['routes'];
     $settings['first_reply_hours'] = $first['hours'];
     $settings = ws_mail_triage_input($post, $settings, ws_mail_triage_ai_ready());
+
+    // Where the mail is kept and who reads a box kept in no channel. A box
+    // that never had a room keeps none of it; one that has keeps its room
+    // (room_id) and its readers when it moves to a channel.
+    unset($settings['kept_in']);
+
+    if ($room['kept_in'] === 'mailbox') {
+        $settings['kept_in'] = 'mailbox';
+
+        // A suggestion is a message under the card: nothing shows it in a
+        // room nobody opens as a channel.
+        $settings['ai_triage'] = false;
+    }
+
+    if (($room['kept_in'] === 'mailbox') || ((int) ($settings['room_id'] ?? 0) > 0)) {
+        $settings['room_people'] = $room['people'];
+        $settings['room_departments'] = $room['departments'];
+    }
 
     // A password typed now replaces the kept one; an empty box keeps it.
     if ($values['password'] !== '') {
@@ -720,7 +754,8 @@ function ws_mail_box_save_check($viewer, $box, $post)
 
 /**
  * Stores a mailbox ws_mail_box_save_check() passed, and writes its Site Log
- * line.
+ * line. A box kept in no channel gets its room first, and the room's
+ * members follow the choice (ws_mail_room_save()).
  *
  * @param array      $viewer
  * @param array|null $box     null for a new one
@@ -731,11 +766,12 @@ function ws_mail_box_save_write($viewer, $box, $checked, $username)
 {
     $values = $checked['values'];
     $auto = $checked['auto'];
-    $settings = $checked['settings'];
+    $kept = ws_mail_room_save($viewer, $values, $checked['settings']);
+    $settings = $kept['settings'];
 
     $now = time();
 
-    $set = "name = '" . e($values['name']) . "', address = '" . e($values['address']) . "', channel_id = '" . (int) $values['channel_id'] . "',
+    $set = "name = '" . e($values['name']) . "', address = '" . e($values['address']) . "', channel_id = '" . (int) $kept['channel_id'] . "',
         settings = '" . e(json_encode($settings)) . "', folder = '" . e($values['folder']) . "', after_fetch = '" . e($values['after_fetch']) . "',
         reply_via = '" . e($values['reply_via']) . "', auto_reply = '" . (int) $auto['auto_reply'] . "', auto_reply_text = '" . e($auto['auto_reply_text']) . "',
         enabled = '" . (int) $values['enabled'] . "', updated_at = '" . $now . "'";
@@ -754,7 +790,9 @@ function ws_mail_box_save_write($viewer, $box, $checked, $username)
  *
  * @param string     $self_url
  * @param array|null $box
- * @param array[]    $channels ws_mail_box_channels()
+ * @param array[]    $channels ws_mail_box_channels(); "Kept in" and the
+ *                             readers of a box kept in no channel are
+ *                             ws_mail_room_fields()
  * @param bool       $ai_ready Pinegrap AI can be asked (ws_mail_triage_ai_ready())
  * @param string|null $form    the Site Settings form's id: no form of its own,
  *                             fields ws_mail[<id>][...] joined to it
@@ -767,7 +805,8 @@ function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false, $form =
     $id = $box ? (int) $box['id'] : 0;
     $prefix = 'ws_mail_' . $id . '_';
     $settings = ws_mail_box_settings($box);
-    $channel_id = $box ? (int) $box['channel_id'] : 0;
+    // A box kept in no channel names its room as its channel: none is chosen.
+    $channel_id = ($box && (ws_mail_box_kept_in($box) === 'channel')) ? (int) $box['channel_id'] : 0;
     $options = '<option value="">' . h(lang('Choose')) . '</option>';
 
     if ($box && ($channel_id > 0) && !isset($channels[$channel_id])) {
@@ -789,11 +828,7 @@ function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false, $form =
                     <label class="form-label" for="' . $prefix . 'address">' . h(lang('E-mail address')) . '</label>
                     <input class="form-control form-control-sm" type="email" name="address" id="' . $prefix . 'address" maxlength="255" required value="' . h($box ? (string) $box['address'] : '') . '" placeholder="support@example.com">
                 </div>
-                <div class="md:col-6">
-                    <label class="form-label" for="' . $prefix . 'channel">' . h(lang('Channel')) . '</label>
-                    <select class="form-control form-control-sm" name="channel_id" id="' . $prefix . 'channel" required>' . $options . '</select>
-                    <div class="form-text">' . h(lang('Each new conversation becomes a card here; its answers go under the card.')) . '</div>
-                </div>
+                ' . ws_mail_room_fields($prefix, $box, $options) . '
                 <div class="md:col-6">
                     <label class="form-label" for="' . $prefix . 'auth">' . h(lang('Checking server')) . '</label>
                     <input class="form-control form-control-sm font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="auth_server" id="' . $prefix . 'auth" maxlength="255" value="' . h((string) ($settings['auth_server'] ?? '')) . '" placeholder="mx.google.com" autocomplete="off">
@@ -1114,11 +1149,18 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
     foreach (ws_mail_settings_boxes() as $box) {
         $id = (int) $box['id'];
         $channel = $channels[(int) $box['channel_id']] ?? null;
+        $place = $channel ? '<a href="workspace.php?channel=' . (int) $channel['id'] . '">#' . h((string) $channel['name']) . '</a>' : h(lang('A channel you do not see'));
+
+        // A box kept in no channel is read on the E-mails screen.
+        if (ws_mail_box_kept_in($box) === 'mailbox') {
+            $place = '<a href="' . h(ws_mail_room_url('', 0, $id)) . '">' . h(lang('Kept in the mailbox itself')) . '</a>';
+        }
+
         $line = '
                 <div class="ws-grow">
                     <div class="fw-semibold">' . h((string) $box['name']) . ' <span class="small fg-secondary">' . h((string) $box['address']) . '</span></div>
                     <div class="small fg-secondary">'
-                        . ($channel ? '<a href="workspace.php?channel=' . (int) $channel['id'] . '">#' . h((string) $channel['name']) . '</a>' : h(lang('A channel you do not see')))
+                        . $place
                         . ' · ' . h(((int) $box['last_mail_at'] > 0) ? lang(array('string' => 'Last e-mail {var:1}', 'vars' => date('d.m.Y H:i', (int) $box['last_mail_at']))) : lang('No e-mail yet')) . '
                     </div>
                     <div class="small fg-secondary">' . ws_mail_box_check_line($box) . '</div>
@@ -1258,8 +1300,9 @@ function ws_settings_mail_drawer($box, $viewer, $form, $in_dialog)
 /**
  * The card's script, bound once: a field that applies to one choice of a
  * select shows only with it; the connected account is required when answers
- * are sent through it (on Workspace Settings only: in Site Settings the save
- * checks it, as a required field in a drawer would stop the pane's Save).
+ * are sent through it, and the channel unless the box is kept in no channel
+ * (on Workspace Settings only: in Site Settings the save checks them, as a
+ * required field in a drawer would stop the pane's Save).
  *
  * @return string
  */
@@ -1291,6 +1334,13 @@ function ws_mail_settings_script()
                     part.classList.toggle(\'d-none\', !select || (select.value !== rule[1]));
                 });
 
+                var kept = field(form, \'kept_in\');
+                var channel = field(form, \'channel_id\');
+
+                if (kept && channel && !form.hasAttribute(\'data-ws-mail-dialog\')) {
+                    channel.required = (kept.value !== \'mailbox\');
+                }
+
                 var via = field(form, \'reply_via\');
                 var account = field(form, \'connection_id\');
 
@@ -1308,7 +1358,7 @@ function ws_mail_settings_script()
             }
 
             document.addEventListener(\'change\', function (event) {
-                var form = (event.target.closest && /(^|\\[)(after_fetch|reply_via)\\]?$/.test(event.target.name || \'\')) ? event.target.closest(\'.ws-mail-box-form\') : null;
+                var form = (event.target.closest && /(^|\\[)(after_fetch|reply_via|kept_in)\\]?$/.test(event.target.name || \'\')) ? event.target.closest(\'.ws-mail-box-form\') : null;
 
                 if (form) {
                     sync(form);

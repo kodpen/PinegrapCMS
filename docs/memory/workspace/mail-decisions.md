@@ -18,7 +18,7 @@ description: Incoming e-mail decisions: the name rule, IMAP chosen (#2444) and w
 Each (a) (architect, under the owner's delegation, #2444):
 - 2: connected-account reading for Microsoft 365 only, not Google (`mail-microsoft.md`).
 - 3: a conversation is a card in the box's channel, its thread the conversation; only the `.eml` is swept (`mail-card.md`, `mail-ingest.md`).
-- 4: several boxes per site, each with a channel; +tags and aliases route elsewhere (`mail-routing.md`).
+- 4: several boxes per site, each with a channel; +tags and aliases route elsewhere (`mail-routing.md`). Owner 2026-11-11 (#8765): a box may also be kept in no channel (`mail-room.md`).
 - 5: a known customer's mail goes to the box's channel plus a line in the customer's channel (`mail-routing.md`).
 - 6: answers leave from the box address via its SMTP or connected account, the writer's name in the signature (`mail-reply.md`).
 - 7: assistants never e-mail customers, drafts only (`mail-api.md`, `mail-triage.md`).
