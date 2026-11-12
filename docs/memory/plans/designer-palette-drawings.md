@@ -20,7 +20,7 @@ description: Plan (owner 2026-11-11): one Components tab with a Blocks switch, a
 
 - P5 (M, done #8777): family blocks A to H (appstudio to hours, 56 blocks) but `florist`: a `desc` per item in the family's `items` ([[designer-block-family-files]]), read by `_sdBlockDesc()`; the P4 test reads families, with a list of the families still without lines.
 
-- P6 (M, waits for P5): family blocks L to Z (launch to zoo), as P5, and `florist` (held by an open PR during P5); it empties `designer_block_info_test_undescribed_families()`.
+- P6 (M, done #8797): family blocks L to Z (launch to zoo, podcast included) and `florist`, 55 blocks, as P5; `designer_block_info_test_undescribed_families()` is empty.
 
 - P7 (M, free): Components items with a description but no drawing: HTML elements (section, article, main, header, footer, aside, nav, div, pre, input, checkbox, radio, textarea, select), Content (heading, paragraph, span, image, divider, spacer, custom HTML, SVG, custom PHP, carousel, messages, breadcrumb, variant attribute, applied offers, link, icon). Drawings in `_sdPalDrawing()`.
 

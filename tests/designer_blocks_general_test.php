@@ -108,7 +108,7 @@ function test_designer_blocks_general_zones_name_no_trade()
 	$end = strpos($js, 'return {', (int) $start);
 	pg_assert_true($start !== false && $end !== false, 'the zones block is found in its family file');
 	pg_assert_same(0, preg_match('/deliver|shop|call[- ]out/i', substr($js, (int) $start, (int) $end - (int) $start)), 'the zones block names no trade');
-	pg_assert_true(strpos($js, "{ label: _sdT('Locations: Zones'), type: 'component', icon: 'bi-bullseye', extra: { componentType: 'locations-zones' } }") !== false, 'the palette names it Locations: Zones');
+	pg_assert_true(strpos($js, "{ label: _sdT('Locations: Zones'), type: 'component', icon: 'bi-bullseye', extra: { componentType: 'locations-zones' }") !== false, 'the palette names it Locations: Zones');
 }
 
 // The rules the blocks need are read from the family files by the PHP

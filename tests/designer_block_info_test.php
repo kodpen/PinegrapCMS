@@ -75,15 +75,12 @@ function designer_block_info_test_sentence_faults($text)
 		: '';
 }
 
-// Families whose blocks have no description line yet; a family leaves the
-// list in the change that writes its lines, and a family not on it has a
-// line for every block.
+// Families whose blocks have no description line yet, empty since every
+// family file has its lines: a listed family is skipped by the check that
+// every block has a line, and one that has them all must leave the list.
 function designer_block_info_test_undescribed_families()
 {
-	return array(
-		'florist', 'launch', 'locations', 'marina', 'museum', 'music', 'pharmacy', 'photo', 'planetarium', 'podcast',
-		'school', 'skiresort', 'sportsclub', 'travel', 'wedding', 'zoo',
-	);
+	return array();
 }
 
 // The items of every family file: family => componentType => its desc text,
@@ -176,7 +173,7 @@ function test_designer_block_info_every_family_block_has_a_line()
 			$missing[] = $family . ': ' . $type;
 		}
 	}
-	pg_assert_true($described >= 21, 'the described families are read (' . $described . ')');
+	pg_assert_true($described >= 37, 'the described families are read (' . $described . ')');
 	pg_assert_same(array(), $missing, 'family blocks without a desc line in their item');
 	pg_assert_same(array(), $done, 'families with a line for every block, still listed as undescribed');
 }

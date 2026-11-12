@@ -229,9 +229,12 @@ StyleDesigner.registerBlockFamily(function (kit) {
     return {
         prefix: 'locations-',
         items: [
-            { label: _sdT('Locations: Spaces to Hire'), type: 'component', icon: 'bi-door-open', extra: { componentType: 'locations-spaces' } },
-            { label: _sdT('Locations: Floor Directory'), type: 'component', icon: 'bi-building', extra: { componentType: 'locations-floors' } },
-            { label: _sdT('Locations: Zones'), type: 'component', icon: 'bi-bullseye', extra: { componentType: 'locations-zones' } }
+            { label: _sdT('Locations: Spaces to Hire'), type: 'component', icon: 'bi-door-open', extra: { componentType: 'locations-spaces' },
+              desc: _sdT('Three cards of rooms to hire, each with its photo, guests, floor area and layout, its amenities, the price from and an enquiry button.') },
+            { label: _sdT('Locations: Floor Directory'), type: 'component', icon: 'bi-building', extra: { componentType: 'locations-floors' },
+              desc: _sdT('A floor directory from the roof down, each level with its number, its name and line, what is on it as pills and who may go up.') },
+            { label: _sdT('Locations: Zones'), type: 'component', icon: 'bi-bullseye', extra: { componentType: 'locations-zones' },
+              desc: _sdT('Nested rings drawn beside a list of zones with the places each covers, its fee and how soon it is served, and three time slots below.') }
         ],
         build: function (ctype) {
             if (ctype === 'locations-spaces') return buildSpaces();

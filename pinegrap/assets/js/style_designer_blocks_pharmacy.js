@@ -254,10 +254,14 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'pharmacy-',
         group: { title: _sdT('Pharmacy'), icon: 'bi-capsule' },
         items: [
-            { label: _sdT('Pharmacy: Duty Panel'),         type: 'component', icon: 'bi-moon-stars',     extra: { componentType: 'pharmacy-duty' } },
-            { label: _sdT('Pharmacy: Reference Readings'), type: 'component', icon: 'bi-heart-pulse',    extra: { componentType: 'pharmacy-readings' } },
-            { label: _sdT('Pharmacy: Travel Vaccines'),    type: 'component', icon: 'bi-airplane',       extra: { componentType: 'pharmacy-vaccines' } },
-            { label: _sdT('Pharmacy: Medicine Schedule'),  type: 'component', icon: 'bi-calendar2-week', extra: { componentType: 'pharmacy-schedule' } }
+            { label: _sdT('Pharmacy: Duty Panel'),         type: 'component', icon: 'bi-moon-stars',     extra: { componentType: 'pharmacy-duty' },
+              desc: _sdT('Three answers for when the pharmacy is closed, beside the steps at the night window, what to bring and a button to call 112.') },
+            { label: _sdT('Pharmacy: Reference Readings'), type: 'component', icon: 'bi-heart-pulse',    extra: { componentType: 'pharmacy-readings' },
+              desc: _sdT('Tables of blood pressure and blood sugar readings, each band with its figures, what it means in a word and what to do.') },
+            { label: _sdT('Pharmacy: Travel Vaccines'),    type: 'component', icon: 'bi-airplane',       extra: { componentType: 'pharmacy-vaccines' },
+              desc: _sdT('A table of travel vaccines with who needs each, the doses and how long before the trip to start, and a button to book a consultation.') },
+            { label: _sdT('Pharmacy: Medicine Schedule'),  type: 'component', icon: 'bi-calendar2-week', extra: { componentType: 'pharmacy-schedule' },
+              desc: _sdT('A day of medicines as a table, a row per medicine and a column per time of day, beside a short text and a review button.') }
         ],
         build: function (ctype) {
             if (ctype === 'pharmacy-duty')     return buildDuty();

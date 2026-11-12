@@ -258,9 +258,12 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'music-',
         group: { title: _sdT('Music'), icon: 'bi-music-note-beamed' },
         items: [
-            { label: _sdT('Music: Release Hero'), type: 'component', icon: 'bi-vinyl',              extra: { componentType: 'music-release' } },
-            { label: _sdT('Music: Tour Dates'),   type: 'component', icon: 'bi-ticket-perforated',  extra: { componentType: 'music-tour' } },
-            { label: _sdT('Music: Press Kit'),    type: 'component', icon: 'bi-newspaper',          extra: { componentType: 'music-presskit' } }
+            { label: _sdT('Music: Release Hero'), type: 'component', icon: 'bi-vinyl',              extra: { componentType: 'music-release' },
+              desc: _sdT('An album cover beside the title, buttons to listen and to buy the vinyl, and the track listing with the length of each song.') },
+            { label: _sdT('Music: Tour Dates'),   type: 'component', icon: 'bi-ticket-perforated',  extra: { componentType: 'music-tour' },
+              desc: _sdT('Tour dates as rows with the day, city and venue, the ticket state said with an icon and a word, and a ticket or waiting list link.') },
+            { label: _sdT('Music: Press Kit'),    type: 'component', icon: 'bi-newspaper',          extra: { componentType: 'music-presskit' },
+              desc: _sdT('A press kit with the band in facts, buttons to book the band or write to the press office, press photos to download and a list of files.') }
         ],
         build: function (ctype) {
             if (ctype === 'music-release') return buildRelease();

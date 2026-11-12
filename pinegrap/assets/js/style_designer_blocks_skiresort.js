@@ -321,11 +321,16 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'skiresort-',
         group: { title: _sdT('Ski Resort'), icon: 'bi-snow' },
         items: [
-            { label: _sdT('Ski Resort: Conditions Board'), type: 'component', icon: 'bi-speedometer2',   extra: { componentType: 'skiresort-conditions' } },
-            { label: _sdT('Ski Resort: Lift Status'),      type: 'component', icon: 'bi-arrow-up-right', extra: { componentType: 'skiresort-lifts' } },
-            { label: _sdT('Ski Resort: Slope Map'),        type: 'component', icon: 'bi-map',            extra: { componentType: 'skiresort-slope-map' } },
-            { label: _sdT('Ski Resort: Pass Cards'),       type: 'component', icon: 'bi-ticket-perforated', extra: { componentType: 'skiresort-passes' } },
-            { label: _sdT('Ski Resort: Snow Report'),      type: 'component', icon: 'bi-snow2',          extra: { componentType: 'skiresort-snow' } }
+            { label: _sdT('Ski Resort: Conditions Board'), type: 'component', icon: 'bi-speedometer2',   extra: { componentType: 'skiresort-conditions' },
+              desc: _sdT('A dark board with slopes and lifts open, snow depth, new snow, temperature and wind as tiles, the avalanche danger and two buttons.') },
+            { label: _sdT('Ski Resort: Lift Status'),      type: 'component', icon: 'bi-arrow-up-right', extra: { componentType: 'skiresort-lifts' },
+              desc: _sdT('Cards per area listing each lift with its kind, ride time and seats, its status said with an icon and a word.') },
+            { label: _sdT('Ski Resort: Slope Map'),        type: 'component', icon: 'bi-map',            extra: { componentType: 'skiresort-slope-map' },
+              desc: _sdT('A slope map picture beside a difficulty legend with slope counts, buttons per area, a PDF download and a button for all slopes.') },
+            { label: _sdT('Ski Resort: Pass Cards'),       type: 'component', icon: 'bi-ticket-perforated', extra: { componentType: 'skiresort-passes' },
+              desc: _sdT('Lift pass cards with prices by age group, what each includes and a buy button, the most chosen one marked.') },
+            { label: _sdT('Ski Resort: Snow Report'),      type: 'component', icon: 'bi-snow2',          extra: { componentType: 'skiresort-snow' },
+              desc: _sdT('Snow depth at three stations as bars beside new snow over a day, two days and a week, the last snowfall and the avalanche danger.') }
         ],
         build: function (ctype) {
             if (ctype === 'skiresort-conditions') return buildConditions();

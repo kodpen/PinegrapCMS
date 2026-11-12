@@ -95,9 +95,12 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'florist-',
         group: { title: _sdT('Florist'), icon: 'bi-flower1' },
         items: [
-            { label: _sdT('Florist: Bouquet Hero'),        type: 'component', icon: 'bi-flower1',        extra: { componentType: 'florist-hero' } },
-            { label: _sdT('Florist: Card Message'),        type: 'component', icon: 'bi-envelope-heart', extra: { componentType: 'florist-card' } },
-            { label: _sdT('Florist: Flower Subscription'), type: 'component', icon: 'bi-calendar-heart', extra: { componentType: 'florist-subscription' } }
+            { label: _sdT('Florist: Bouquet Hero'),        type: 'component', icon: 'bi-flower1',        extra: { componentType: 'florist-hero' },
+              desc: _sdT('A headline with two buttons and the last order time for same-day delivery, beside an arched bouquet photo, a gift card and occasion chips.') },
+            { label: _sdT('Florist: Card Message'),        type: 'component', icon: 'bi-envelope-heart', extra: { componentType: 'florist-card' },
+              desc: _sdT('A handwritten gift card beside a heading, three facts about the card, sample messages for four occasions and a button to send flowers.') },
+            { label: _sdT('Florist: Flower Subscription'), type: 'component', icon: 'bi-calendar-heart', extra: { componentType: 'florist-subscription' },
+              desc: _sdT('Three subscription plans, each with its deliveries on a twelve-week strip, the price per delivery, what it includes and a start button.') }
         ],
         build: function (ctype) {
 

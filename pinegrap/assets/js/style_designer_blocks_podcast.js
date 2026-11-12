@@ -278,9 +278,12 @@ StyleDesigner.registerBlockFamily(function (kit) {
         prefix: 'podcast-',
         group: { title: _sdT('Podcast'), icon: 'bi-mic' },
         items: [
-            { label: _sdT('Podcast: Episode Hero with Chapters'), type: 'component', icon: 'bi-play-circle',  extra: { componentType: 'podcast-episode' } },
-            { label: _sdT('Podcast: Sponsor Placements'),         type: 'component', icon: 'bi-megaphone',    extra: { componentType: 'podcast-sponsor' } },
-            { label: _sdT('Podcast: Transcript'),                 type: 'component', icon: 'bi-chat-quote',   extra: { componentType: 'podcast-transcript' } }
+            { label: _sdT('Podcast: Episode Hero with Chapters'), type: 'component', icon: 'bi-play-circle',  extra: { componentType: 'podcast-episode' },
+              desc: _sdT('An episode cover with a sound wave beside its details, title, two buttons and podcast apps, over its chapters and a card of the guest.') },
+            { label: _sdT('Podcast: Sponsor Placements'),         type: 'component', icon: 'bi-megaphone',    extra: { componentType: 'podcast-sponsor' },
+              desc: _sdT('Three sponsor placements marked on an episode bar and a season, a card for each with where it plays and its price, and an enquiry button.') },
+            { label: _sdT('Podcast: Transcript'),                 type: 'component', icon: 'bi-chat-quote',   extra: { componentType: 'podcast-transcript' },
+              desc: _sdT('A short text, the speakers in their colours and a button for the full text, beside a transcript where each turn has its time and speaker.') }
         ],
         build: function (ctype) {
             if (ctype === 'podcast-episode') return buildEpisode();
