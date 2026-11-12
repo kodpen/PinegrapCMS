@@ -1,6 +1,6 @@
 ---
 name: decisions-made-panel-7
-description: Decisions list, panel part 7 (2026-11-12 on): look A's second pass as the reference; how wide add and edit screens and lists are, lists without a pager; the dialogs and drawers page (#8860)
+description: Decisions list, panel part 7 (2026-11-12 on): look A's second pass and the dialogs page as the reference (#8860); add, edit and list widths, lists without a pager; the Design Canvas's icon (#8903)
 ---
 
 ## Where are the rules and the earlier parts?
@@ -25,3 +25,8 @@ description: Decisions list, panel part 7 (2026-11-12 on): look A's second pass 
 ## Is the dialogs and drawers page the reference? (owner, 2026-11-12, #8860)
 - Yes: the confirm, form and settings dialogs and the drawer as drawn (`plans/panel-design-language-dialogs.md`).
 - Owner (2026-11-12), shown the page in both themes: "tasarımlarını onaylıyorum bu arada plana koyabilirsin".
+
+## Which drawing is the Design Canvas icon? (owner, 2026-11-12, #8903)
+- Drawing B: an artboard with crop marks and a pen curve with its two anchors, the curve in the accent hue. Plan step NM2 (`plans/design-names-menu-steps.md`) draws it into `pg_menu_icon()`.
+- Owner (2026-11-12), shown the sheet of the three candidates: "B". Not chosen: A (an easel), C (a canvas and a brush); the architect had recommended A.
+- The architect's note, not the owner's words: at menu size the crop marks and the anchors stay readable and the icon does not read as the crop tool's; thin the marks before touching the curve.
