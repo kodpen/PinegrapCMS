@@ -1930,6 +1930,7 @@
     "MySQL error {var:1}: {var:2}": "MySQL hatası {var:1}: {var:2}",
     "Myself": "Kendim",
     "Mysql dumb created in backup directory successful. Clearing old files in directory, please wait...": "Yedekleme dizininde oluşturulan MySQL Veritabanı Dökümü başarılı. Dizindeki eski dosyalar temizleniyor, lütfen bekleyin...",
+    "Mysteries": "Polisiyeler",
     "machine translations were marked as reviewed ({var:1}, {var:2} text(s))": "makine çevirileri gözden geçirildi olarak işaretlendi ({var:1}, {var:2} metin)",
     "made a calendar subscription address for their workspace": "Çalışma Alanı için takvim aboneliği adresi oluşturdu",
     "made a new calendar subscription address for their workspace": "Çalışma Alanı için yeni bir takvim aboneliği adresi oluşturdu",
