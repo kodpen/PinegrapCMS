@@ -414,7 +414,7 @@ print
     pg_page_shell(
         array(
             'title'=> lang('Shipping Report'),
-            'extra classes'=>'store',
+            'extra classes'=>'store pg-measure-report',
             'icon'=>'store', 
             'heading'=> lang('Shipping Report'),
             'heading_description' => lang('View the number of Products that need to be shipped or have been shipped on different days.'),

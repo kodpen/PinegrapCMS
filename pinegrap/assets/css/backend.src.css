@@ -25930,3 +25930,23 @@ body.pg-measure-edit .row > .order-2 .card-header.pg-title-section {
   }
 }
 }
+
+/* ==========================================================================
+   Look A: report screens.
+   The family of report screens (the body class pg-measure-report): the
+   order, visitor and shipping reports and the ERP tax report. The content
+   is as wide as a list (at least 1280 px or the window, at most the window,
+   centred) with 16 px between its blocks.
+   ========================================================================== */
+@layer custom {
+
+/* The content box follows the list measure: the report's table may ask for
+   more than 1280 px, the figures and the chart then take the same width. */
+body.pg-measure-report #content {
+  width: fit-content;
+  min-width: min(100%, var(--pg-measure-list-min) + 2rem);
+  max-width: 100%;
+  margin-inline: auto;
+}
+
+}

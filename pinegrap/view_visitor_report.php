@@ -1251,7 +1251,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Visitor Report') . ': ' . h($output_visitor_report_name),
-            'extra classes'=>'visitor',
+            'extra classes'=>'visitor pg-measure-report',
             'icon'=>'visitor', 
             'heading'=> lang('Visitor Report'),
             'heading_description' => lang('View or update this real-time visitor report.'),

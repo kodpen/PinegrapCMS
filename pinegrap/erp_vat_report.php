@@ -341,7 +341,7 @@ $report_view = array(
 echo
 pg_page_shell([
     'title' => $title,
-    'extra classes' => 'erp erp_vat_report',
+    'extra classes' => 'erp erp_vat_report pg-measure-report',
     'icon' => 'erp',
     'heading' => h($title),
     'heading_description' => h(lang(array('string' => 'The tax on the invoices, returns and expenses of a period, by rate, in {var:1}.', 'vars' => $base))),
