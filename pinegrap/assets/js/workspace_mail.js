@@ -27,32 +27,129 @@
 (function () {
     'use strict';
 
-    // The drawer: who it goes to, the answer, Send. A draft fills the
-    // answer; nothing leaves before the member presses Send.
-    function replyForm(message, view, h, draft) {
+    // The drawer: whom the answer goes to, Reply to all, Cc and Bcc, the
+    // answer, its files, Send. The server says first whom it goes to and
+    // whom Reply to all adds (ws_mail_reply_form); the answer then leaves
+    // through the mail queue like a new mail (ws_mail_reply, mail_send.php)
+    // and reads Waiting to be sent or Not sent until it has left. A draft
+    // fills the answer; nothing leaves before the member presses Send. all:
+    // Reply to all is on from the start.
+    function replyForm(message, view, h, draft, all) {
+        h.api('ws_mail_reply_form', { conversation_id: message.mail_reply }).then(function (data) {
+            answerForm(message.mail_reply, data, view, h, draft, all);
+        }).catch(function (error) {
+            h.fail(error);
+        });
+    }
+
+    function answerForm(conversation, data, view, h, draft, all) {
         var t = h.t;
         var el = h.el;
         var node = h.offcanvas('ws-mail-reply', t('mail_reply'));
         var body = h.clear(node.querySelector('.drawer-body'));
         var footer = h.clear(node.querySelector('.drawer-footer'));
+        var others = data.others || [];
+        var files = [];
+        var form = el('form', 'ws-mail-answer');
+        var everyone = null;
 
         node.querySelector('.drawer-title').textContent = t('mail_reply');
         footer.classList.remove('d-none');
+        form.noValidate = true;
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+        });
+        body.appendChild(form);
+        form.appendChild(el('div', 'small fg-secondary mb-3', t('mail_reply_to', data.name ? data.name + ' <' + data.to + '>' : data.to)));
 
-        if (message.sender && message.sender.title) {
-            body.appendChild(el('div', 'small fg-secondary mb-3', t('mail_reply_to', message.sender.title)));
+        function addresses(name, label) {
+            var field = el('input', 'form-control form-control-sm');
+
+            field.type = 'text';
+            field.name = name;
+            field.autocomplete = 'off';
+            field.inputMode = 'email';
+            field.spellcheck = false;
+            field.setAttribute('autocapitalize', 'off');
+
+            return { field: field, row: h.formRow(label, field, t('mail_new_addresses')) };
         }
+
+        var cc = addresses('cc', t('mail_new_cc'));
+        var bcc = addresses('bcc', t('mail_new_bcc'));
+        var copies = el('div', 'ws-mail-new-copies');
+        var showCopies = h.button('btn btn-sm btn-text theme-secondary ws-mail-new-cc-toggle', t('mail_new_cc_bcc'), 'bi-plus-lg');
+
+        function setCopies(open) {
+            copies.hidden = !open;
+            showCopies.hidden = open;
+        }
+
+        // Reply to all: the answered mail's other people as copies, taken
+        // out of Cc again when it is switched off.
+        if (others.length) {
+            var allRow = el('div', 'form-field mb-3');
+
+            everyone = el('input', 'check');
+            everyone.type = 'checkbox';
+            everyone.id = h.nextId('ws-mail-reply-all-');
+
+            var allLabel = el('label', '', t('mail_reply_all'));
+
+            allLabel.htmlFor = everyone.id;
+            allRow.appendChild(everyone);
+            allRow.appendChild(allLabel);
+            form.appendChild(allRow);
+            form.appendChild(el('div', 'small fg-secondary mb-3 text-break', t('mail_reply_all_to', others.join(', '))));
+            everyone.addEventListener('change', function () {
+                var typed = cc.field.value.split(/[\s,;]+/).filter(function (address) {
+                    return address && (others.indexOf(address.toLowerCase()) === -1);
+                });
+
+                cc.field.value = (everyone.checked ? others.concat(typed) : typed).join(', ');
+                setCopies(!!(cc.field.value || bcc.field.value));
+            });
+        }
+
+        form.appendChild(showCopies);
+        copies.appendChild(cc.row);
+        copies.appendChild(bcc.row);
+        form.appendChild(copies);
+        showCopies.addEventListener('click', function () {
+            setCopies(true);
+            cc.field.focus();
+        });
 
         var text = el('textarea', 'form-control');
         text.id = h.nextId('ws-mail-reply-');
+        text.name = 'text';
         text.rows = 10;
         text.maxLength = 50000;
         text.value = draft || '';
 
         var box = el('div', 'ws-mail-reply-box position-relative');
         box.appendChild(text);
-        body.appendChild(h.formRow(t('mail_reply_text'), box, t('mail_reply_hint')));
+        form.appendChild(h.formRow(t('mail_reply_text'), box, t('mail_reply_hint')));
         savedReplies(text, box, view, h);
+
+        // Files, as New e-mail takes them.
+        var picker = el('input', 'form-control form-control-sm');
+        var list = el('ul', 'ws-mail-new-files list-unstyled mb-0');
+
+        picker.type = 'file';
+        picker.multiple = true;
+
+        var fileRow = h.formRow(t('mail_new_files'), picker, t('mail_new_files_hint'));
+
+        fileRow.appendChild(list);
+        form.appendChild(fileRow);
+        picker.addEventListener('change', function () {
+            Array.prototype.forEach.call(picker.files || [], function (file) {
+                files.push(file);
+            });
+            picker.value = '';
+            fileRows(h, list, [files]);
+        });
 
         var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_reply_send'), 'bi-send');
 
@@ -64,10 +161,9 @@
 
             send.disabled = true;
 
-            h.api('ws_mail_reply', { conversation_id: message.mail_reply, text: text.value }).then(function (data) {
+            formPost(h, 'ws_mail_reply', { conversation_id: conversation, cc: cc.field.value, bcc: bcc.field.value, text: text.value }, files).then(function (result) {
                 h.hideOffcanvas(node);
-                // Sent, but the mailbox's sent folder kept no copy.
-                h.toast(data.copy_note || t('mail_reply_sent'), data.copy_note ? 'warning' : 'success');
+                h.toast(result.state === 'failed' ? t('mail_new_failed') : t('mail_new_sent'), result.state === 'failed' ? 'warning' : 'success');
                 view.sync();
             }).catch(function (error) {
                 send.disabled = false;
@@ -76,8 +172,36 @@
         });
 
         footer.appendChild(send);
+        setCopies(false);
+
+        if (all && everyone) {
+            everyone.checked = true;
+            everyone.dispatchEvent(new Event('change'));
+        }
+
         h.showOffcanvas(node);
         text.focus();
+    }
+
+    // The files a form sends, each group's in order, each with a button that
+    // takes it out of its group.
+    function fileRows(h, list, groups) {
+        h.clear(list);
+        groups.forEach(function (group) {
+            group.forEach(function (file, index) {
+                var row = h.el('li', 'd-flex align-items-center gap-2 small mt-2');
+                var drop = h.button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', h.t('mail_new_remove') + ': ' + file.name);
+
+                row.appendChild(h.icon('bi-paperclip'));
+                row.appendChild(h.el('span', 'text-truncate', file.name));
+                drop.addEventListener('click', function () {
+                    group.splice(index, 1);
+                    fileRows(h, list, groups);
+                });
+                row.appendChild(drop);
+                list.appendChild(row);
+            });
+        });
     }
 
     // A saved reply as plain text for an e-mail: its tags by their names
@@ -226,20 +350,24 @@
         });
     }
 
-    // Under a conversation's card.
+    // Under a conversation's card: Reply, Forward, Send again, the status
+    // and holder. Under an answer that could not leave: Send again only.
     function node(message, view, h) {
         var row = h.el('div', 'ws-mail-reply mt-1');
-        var open = h.button('btn btn-sm btn-outline theme-primary py-0', h.t('mail_reply'), 'bi-reply');
 
-        open.addEventListener('click', function (event) {
-            event.stopPropagation();
-            replyForm(message, view, h);
-        });
+        if (message.mail_reply) {
+            var open = h.button('btn btn-sm btn-outline theme-primary py-0', h.t('mail_reply'), 'bi-reply');
 
-        row.appendChild(open);
+            open.addEventListener('click', function (event) {
+                event.stopPropagation();
+                replyForm(message, view, h);
+            });
+
+            row.appendChild(open);
+        }
 
         // Forward as e-mail: the New e-mail form filled with this mail.
-        if (message.mail_forward && h.cfg.mail_forward) {
+        if (message.mail_reply && message.mail_forward && h.cfg.mail_forward) {
             var pass = h.button('btn btn-sm btn-outline theme-secondary py-0 ms-2', h.t('mail_fwd'), 'bi-envelope-arrow-up');
 
             pass.addEventListener('click', function (event) {
@@ -468,6 +596,17 @@
             });
             place.insertBefore(answer, place.firstChild);
 
+            // Reply to all, when the last mail named anybody besides the
+            // customer and the mailbox.
+            if (data.others) {
+                var everyone = h.button('btn btn-sm btn-outline theme-primary', h.t('mail_reply_all'), 'bi-reply-all');
+
+                everyone.addEventListener('click', function () {
+                    replyForm(message, view, h, '', true);
+                });
+                place.insertBefore(everyone, answer.nextSibling);
+            }
+
             if (data.state) {
                 state(place, message, view, h);
             }
@@ -664,12 +803,12 @@
         }
     }
 
-    // The form posted with its files as form parts; read as api() reads an
-    // answer.
-    function newPost(h, fields, files) {
+    // A form posted with its files as form parts (New e-mail, the answer);
+    // read as api() reads an answer.
+    function formPost(h, action, fields, files) {
         var form = new FormData();
 
-        form.append('action', 'ws_mail_new');
+        form.append('action', action);
         form.append('token', h.cfg.token);
         Object.keys(fields).forEach(function (key) {
             form.append(key, fields[key]);
@@ -848,34 +987,9 @@
         fileRow.appendChild(list);
         form.appendChild(fileRow);
 
+        // The forward's carried files first, then the person's own.
         function drawFiles() {
-            h.clear(list);
-            carried.forEach(function (file, index) {
-                var row = el('li', 'd-flex align-items-center gap-2 small mt-2');
-                var drop = h.button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', t('mail_new_remove') + ': ' + file.name);
-
-                row.appendChild(h.icon('bi-paperclip'));
-                row.appendChild(el('span', 'text-truncate', file.name));
-                drop.addEventListener('click', function () {
-                    carried.splice(index, 1);
-                    drawFiles();
-                });
-                row.appendChild(drop);
-                list.appendChild(row);
-            });
-            files.forEach(function (file, index) {
-                var row = el('li', 'd-flex align-items-center gap-2 small mt-2');
-                var drop = h.button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', t('mail_new_remove') + ': ' + file.name);
-
-                row.appendChild(h.icon('bi-paperclip'));
-                row.appendChild(el('span', 'text-truncate', file.name));
-                drop.addEventListener('click', function () {
-                    files.splice(index, 1);
-                    drawFiles();
-                });
-                row.appendChild(drop);
-                list.appendChild(row);
-            });
+            fileRows(h, list, [carried, files]);
         }
 
         picker.addEventListener('change', function () {
@@ -1029,7 +1143,7 @@
                 post.forward_files = carried.map(function (file) { return file.id; }).join(',');
             }
 
-            newPost(h, post, files).then(function (data) {
+            formPost(h, 'ws_mail_new', post, files).then(function (data) {
                 window.clearTimeout(timer);
                 newDraftStore(key, null);
                 send.disabled = false;

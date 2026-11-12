@@ -2457,22 +2457,40 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('message' => $payload[0]));
 
-        // An answer to an e-mail conversation, sent by e-mail (mail_reply.php).
+        // An answer to an e-mail conversation, with copies and files, through
+        // the mail queue like a new mail (mail_send.php, ws_mail_send() with
+        // the conversation); ws_mail_reply_form is what the drawer shows first.
+        case 'ws_mail_reply_form':
         case 'ws_mail_reply':
-            if (!function_exists('ws_mail_reply_send') || !ws_mail_ready()) {
+            if (!function_exists('ws_mail_send') || !ws_mail_send_ready()) {
                 return ws_action_error(lang('The database has not been upgraded yet.'));
             }
 
-            $result = ws_mail_reply_send($viewer, (int) ($request['conversation_id'] ?? 0), (string) ($request['text'] ?? ''));
+            $conversation_id = (int) ($request['conversation_id'] ?? 0);
 
-            if (!$result['ok']) {
-                return ws_action_error(ws_mail_reply_error_text($result['error']) . (($result['detail'] !== '') ? ' ' . $result['detail'] : ''), 'text');
+            if ($action === 'ws_mail_reply_form') {
+                $form = ws_mail_answer_form($viewer, $conversation_id);
+
+                return $form['ok']
+                    ? ws_action_ok(array('to' => $form['to'], 'name' => $form['name'], 'others' => $form['others']))
+                    : ws_action_error(ws_mail_reply_error_text($form['error']));
             }
 
-            return ws_action_ok(array(
-                'message_id' => $result['message_id'],
-                'copy_note'  => ($result['copy'] === 'failed') ? lang('The e-mail was sent, but no copy could be put into the mailbox\'s sent folder.') : '',
-            ));
+            $files = ws_mail_compose_files($_FILES['files'] ?? null);
+
+            if (!$files['ok']) {
+                return ws_action_error($files['error'], 'files');
+            }
+
+            $mail = ws_mail_compose_mail($request, $files['files']);
+            $result = ws_mail_send($viewer, array('conversation_id' => $conversation_id, 'cc' => $mail['cc'], 'bcc' => $mail['bcc'],
+                'text' => $mail['text'], 'files' => $mail['files']));
+
+            if (!$result['ok']) {
+                return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']), in_array($result['error'], array('empty', 'too_long'), true) ? 'text' : '');
+            }
+
+            return ws_action_ok(array('message_id' => $result['message_id'], 'state' => $result['state']));
 
         // Send again: an outgoing mail that could not leave (mail_send.php).
         case 'ws_mail_resend':

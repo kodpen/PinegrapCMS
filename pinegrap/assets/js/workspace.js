@@ -10499,8 +10499,9 @@
                 main.appendChild(window.PGWsAcks.node(message, self, featureHelpers()));
             }
 
-            // A conversation's card answered by e-mail (workspace_mail.js).
-            if (message.mail_reply && window.PGWsMail) {
+            // A conversation's card answered by e-mail, or a mail that could
+            // not leave with its Send again (workspace_mail.js).
+            if ((message.mail_reply || message.mail_resend) && window.PGWsMail) {
                 main.appendChild(window.PGWsMail.node(message, self, featureHelpers()));
             }
 

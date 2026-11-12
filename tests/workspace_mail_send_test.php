@@ -205,6 +205,11 @@ function test_workspace_mail_resend_offer()
 	pg_assert_same(0, ws_mail_resend_offer($failed, false, $member), 'not for a reader who may not post');
 	pg_assert_same(0, ws_mail_resend_offer($failed, true, array('id' => 4, 'member' => false)), 'never outside the team');
 
+	$answer = array_merge($failed, array('message_id' => 50));
+
+	pg_assert_same(9, ws_mail_resend_offer($answer, true, $member, array('id' => 50)), 'on the item\'s own message');
+	pg_assert_same(0, ws_mail_resend_offer($answer, true, $member, array('id' => 51)), 'not on each of its files');
+
 	$source = workspace_mail_send_test_source('includes/workspace/mail_send.php');
 	pg_assert_contains("WHERE id = '\" . (int) \$item['id'] . \"' AND send_state = 'failed' AND outbox_id", $source, 'one press counts: only a failed item is taken');
 	pg_assert_contains("if (mysqli_affected_rows(db::\$con) <= 0) {\n        return \$refuse('not_failed');", $source, 'a second press is refused');
@@ -280,4 +285,34 @@ function test_workspace_mail_send_wiring()
 	foreach (array_keys(ws_mail_send_js_strings()) as $key) {
 		pg_assert_contains("h.t('" . $key . "')", $js, $key . ' is used');
 	}
+}
+
+function test_workspace_mail_send_headers_of_an_answer()
+{
+	pg_assert_same(array('Message-ID' => '<pg.c4.ab@shop.test>'), ws_mail_send_headers(array('rfc_message_id' => 'pg.c4.ab@shop.test', 'in_reply_to' => '', 'reference_ids' => '')),
+		'a new mail answers nothing');
+
+	$item = array('rfc_message_id' => 'pg.c4.cd@shop.test', 'in_reply_to' => 'm2@client.test', 'reference_ids' => 'm1@client.test m2@client.test');
+
+	pg_assert_same(ws_mail_reply_headers(array('rfc_message_id' => 'm2@client.test', 'reference_ids' => 'm1@client.test'), 'pg.c4.cd@shop.test'),
+		ws_mail_send_headers($item), 'an answer keeps the threading it was written with');
+	pg_assert_same('<m1@client.test> <m2@client.test>', ws_mail_send_headers($item)['References'], 'the answered mail once, last');
+}
+
+// The answer goes through ws_mail_send() with its conversation: the
+// conversation's box, channel and customer, the answered mail's threading,
+// the conversation waiting, the queue.
+function test_workspace_mail_send_answer_wiring()
+{
+	$source = workspace_mail_send_test_source('includes/workspace/mail_send.php');
+
+	pg_assert_contains("\$target = ws_mail_reply_target(\$viewer, (int) \$mail['conversation_id']);", $source, 'the channel\'s writers, an open box, a customer');
+	pg_assert_contains("\$mail['to'] = (string) \$conversation['customer_email'];", $source, 'to the customer, whatever the form says');
+	pg_assert_contains("if (\$check['conversation']) {\n        return ws_mail_send_answer(\$viewer, \$check, \$writer, \$now);", $source, 'no new conversation');
+	pg_assert_contains("'\" . e(\$answered ? (string) \$answered['rfc_message_id'] : '') . \"', '\" . e(\$references) . \"',", $source, 'the threading kept on the item');
+	pg_assert_contains("status = 'waiting', closed_at = 0,", $source, 'answered: waiting for the customer');
+	pg_assert_contains("\$state = is_array(\$item) ? ws_mail_send_dispatch(\$item, 0) : 'failed';", $source);
+	pg_assert_contains("'body'               => ws_mail_answer_body(", $source, 'quoted when it leaves');
+	pg_assert_same('box_off', (ws_mail_send_error_text('box_off') === ws_mail_reply_error_text('no_box')) ? 'box_off' : '', 'the conversation\'s mailbox is off');
+	pg_assert_same(ws_mail_reply_error_text('no_customer'), ws_mail_send_error_text('no_customer'));
 }

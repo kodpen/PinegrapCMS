@@ -5332,6 +5332,7 @@
     "Also refuse a request whose country is not known": "Ülkesi bilinmeyen isteği de reddet",
     "Also send e-mail to custom form conditional administrators": "Ayrıca özel form yetkili yöneticilere e-posta gönder",
     "Also send message to the following e-mail address": "Mesajı ayrıca şu e-posta adresine de gönder",
+    "Also to {var:1}": "Şunlara da gider: {var:1}",
     "Also wanted": "Bunlar da isteniyor",
     "Also what each person has not read yet": "Ayrıca herkesin henüz okumadıkları",
     "Alstroemeria": "Alstroemeria",

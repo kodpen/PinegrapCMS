@@ -189,18 +189,27 @@ function ws_mail_pane_item_html($item)
  * @param array $pane   ws_mail_pane()
  * @param array $viewer
  * @return array reply (the conversation id, 0 when the person may not
- *               write), to, channel_id, state, members
+ *               write), to, channel_id, state, members, others (how many
+ *               Reply to all adds, mail_reply.php)
  */
 function ws_mail_pane_tools($pane, $viewer)
 {
     $conversation = $pane['conversation'];
     $members = array();
+    $others = 0;
 
     if ($pane['can_post']) {
         $ids = (array) db_values("SELECT user_id FROM ws_channel_members WHERE channel_id = '" . (int) $pane['channel']['id'] . "' ORDER BY user_id LIMIT 100");
 
         foreach (ws_people($ids) as $person) {
             $members[] = array('id' => (int) $person['id'], 'name' => (string) $person['name']);
+        }
+
+        $box = ws_mail_box((int) $conversation['box_id']);
+
+        if ($box) {
+            $others = count(ws_mail_answer_others(ws_mail_reply_answered((int) $conversation['id']), (string) $conversation['customer_email'],
+                (string) $box['address'], ws_mail_answer_aliases($box)));
         }
     }
 
@@ -210,6 +219,7 @@ function ws_mail_pane_tools($pane, $viewer)
         'channel_id' => (int) $pane['channel']['id'],
         'state'      => $pane['can_post'] ? ws_mail_state_offer(array('conversation' => $conversation), (int) $conversation['id'], (int) $viewer['id']) : null,
         'members'    => $members,
+        'others'     => $others,
     );
 }
 

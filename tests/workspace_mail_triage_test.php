@@ -141,7 +141,7 @@ function test_workspace_mail_triage_takes_no_action()
 	pg_assert_same(1, substr_count($run, 'ws_message_send('), 'one message, the assistant\'s own');
 	pg_assert_contains("'app_id'    => (int) \$app['id']", $run);
 	pg_assert_contains('return false;', $run, 'a failure posts nothing');
-	pg_assert_contains("api('ws_mail_reply'", file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_mail.js'), 'the draft is sent only by the drawer\'s Send');
+	pg_assert_contains("formPost(h, 'ws_mail_reply'", file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_mail.js'), 'the draft is sent only by the drawer\'s Send');
 }
 
 // The suggestion asks through pg_ai_chat(): a direct gateway call left a

@@ -84,6 +84,51 @@ function test_workspace_mail_reply_body()
 	pg_assert_true(strpos($long, '-- ') === false, 'no names, no signature');
 }
 
+function test_workspace_mail_answer_body_takes_the_signature()
+{
+	$answered = array('from_name' => '', 'from_email' => 'can@client.test', 'sent_at' => 0, 'created_at' => mktime(9, 5, 0, 11, 2, 2026),
+		'body_text' => 'Where is my order?');
+	$plain = array('name' => 'Support', 'settings' => '');
+	$signed = array('name' => 'Support', 'settings' => json_encode(array('signature' => "Shop Ltd.\n+90 212 000 00 00")));
+
+	pg_assert_same("On its way.\n\n-- \nAyşe\nSupport", ws_mail_answer_body('On its way.', 'Ayşe', $plain, null), 'the mailbox\'s name without a Signature');
+	pg_assert_same("On its way.\n\n-- \nAyşe\nShop Ltd.\n+90 212 000 00 00\n\n" . ws_mail_reply_quote($answered),
+		ws_mail_answer_body('On its way.', 'Ayşe', $signed, $answered), 'the Signature, then the quote');
+	pg_assert_contains("can@client.test wrote:\n> Where is my order?", ws_mail_reply_quote($answered), 'the address when the sender gave no name');
+	pg_assert_same('', ws_mail_reply_quote(array_merge($answered, array('body_text' => " \n"))), 'nothing to quote');
+	pg_assert_same('', ws_mail_reply_quote(null));
+}
+
+function test_workspace_mail_answer_own_addresses()
+{
+	pg_assert_true(ws_mail_answer_own('Support@Shop.test', 'support@shop.test', array()), 'its address, any case');
+	pg_assert_true(ws_mail_answer_own('support+returns@shop.test', 'support@shop.test', array()), 'a +tag of it');
+	pg_assert_true(ws_mail_answer_own('help@shop.test', 'support@shop.test', array('help@shop.test')), 'an address a route answers to');
+	pg_assert_false(ws_mail_answer_own('supporter@shop.test', 'support@shop.test', array()), 'another local part');
+	pg_assert_false(ws_mail_answer_own('support+x@other.test', 'support@shop.test', array()), 'another domain');
+	pg_assert_false(ws_mail_answer_own('sales@shop.test', 'support@shop.test', array()), 'a colleague');
+}
+
+function test_workspace_mail_answer_others()
+{
+	$answered = array('from_email' => 'can@client.test', 'to_list' => 'support@shop.test, Ece@Client.test', 'cc_list' => 'support+orders@shop.test, ece@client.test, help@shop.test, bad');
+
+	pg_assert_same(array('ece@client.test'), ws_mail_answer_others($answered, 'can@client.test', 'support@shop.test', array('help@shop.test')),
+		'To and Cc without the customer and the mailbox, each once');
+	pg_assert_same(array('can@client.test', 'ece@client.test'), ws_mail_answer_others($answered, 'first@client.test', 'support@shop.test', array('help@shop.test')),
+		'a sender who is not the customer is added too');
+	pg_assert_same(array(), ws_mail_answer_others(null, 'can@client.test', 'support@shop.test', array()), 'nothing answered');
+
+	$many = array();
+
+	for ($i = 1; $i <= 30; $i++) {
+		$many[] = 'p' . $i . '@client.test';
+	}
+
+	pg_assert_same(WS_MAIL_SEND_ADDRESSES - 1, count(ws_mail_answer_others(array('from_email' => 'can@client.test', 'to_list' => implode(', ', $many), 'cc_list' => ''),
+		'can@client.test', 'support@shop.test', array())), 'as many as fit beside the customer');
+}
+
 function test_workspace_mail_reply_route()
 {
 	$box = array('address' => 'support@shop.test', 'reply_via' => 'box',
@@ -158,9 +203,12 @@ function test_workspace_mail_reply_reaches_the_screen()
 
 	pg_assert_contains("'mail_reply'  => (\$mail && !\$deleted && function_exists('ws_mail_reply_offer'))", $messages, 'the payload offers it');
 	pg_assert_contains("case 'ws_mail_reply':", $actions, 'the action');
-	pg_assert_contains('ws_mail_reply_send($viewer,', $actions, 'checked and sent by the server');
+	pg_assert_contains('$result = ws_mail_send($viewer, array(\'conversation_id\' => $conversation_id,', $actions, 'checked and sent by the server, through the queue');
 	pg_assert_contains('window.PGWsMail.node(message, self, featureHelpers())', $screen, 'drawn under the card');
-	pg_assert_contains("h.api('ws_mail_reply', { conversation_id: message.mail_reply, text: text.value })", $script);
+	pg_assert_contains('(message.mail_reply || message.mail_resend) && window.PGWsMail', $screen, 'and under an answer that could not leave');
+	pg_assert_contains("h.api('ws_mail_reply_form', { conversation_id: message.mail_reply })", $script, 'whom it goes to, asked first');
+	pg_assert_contains("formPost(h, 'ws_mail_reply', { conversation_id: conversation, cc: cc.field.value, bcc: bcc.field.value, text: text.value }, files)", $script);
+	pg_assert_contains("'ws_mail_reply_form',", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/actions.php'), 'the panel knows the action');
 	pg_assert_true(in_array('assets/js/workspace_mail.js', pg_js_bundles()['assets/js/workspace.min.js'], true), 'in the bundle');
 
 	foreach (array_keys(ws_mail_js_strings()) as $key) {
