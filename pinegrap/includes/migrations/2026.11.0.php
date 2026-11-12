@@ -178,6 +178,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_mail_send();            // 11.0.185
 	upgrade_2026_11_0_design_color_mode();       // 11.0.186
 	upgrade_2026_11_0_legacy_design_key();       // 11.0.187
+	upgrade_2026_11_0_ws_mail_html();            // 11.0.188
 	upgrade_2026_11_0_ws_agent_seen();           // 11.0.189
 
 }
@@ -6034,5 +6035,40 @@ function upgrade_2026_11_0_ws_agent_seen() {
 	}
 
 	install_note('Workspace: the Agents card and a channel\'s agents show when each agent last called the site with its key; a checklist line can say which application ticked it.');
+
+}
+
+// A mail's HTML and a mailbox kept in no channel (2026.11.0, 11.0.188;
+// includes/fn/mail_html.php, includes/workspace/mail.php).
+// ws_mail_items.body_html holds the HTML part of a mail after the allowlist
+// cleaner, NULL for a mail with no HTML part or one over the 1 MB limit;
+// body_text stays what the search, the card and the answer quote read.
+// ws_channels.kind gains 'mailbox', the room of a mailbox kept in no
+// channel: widened only when the value is missing, as 'guest' (2026.4.5)
+// and 'thread' (2026.4.8) were, so a second run rebuilds nothing. Mail that
+// came in earlier is filled in by the recurring job from its kept .eml.
+function upgrade_2026_11_0_ws_mail_html() {
+
+	if (!install_table_exists('ws_mail_items') || !install_table_exists('ws_channels')) {
+
+		install_skipped('ws_mail_items or ws_channels does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_mail_items', 'body_html', "MEDIUMTEXT NULL");
+
+	$kind = install_column_info('ws_channels', 'kind');
+
+	if (!is_array($kind)) {
+		install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => 'ws_channels.kind')));
+	} elseif (strpos((string) $kind['Type'], "'mailbox'") === false) {
+		install_modify_column('ws_channels', 'kind', "ENUM('public','private','guest','thread','mailbox') NOT NULL DEFAULT 'public'");
+	} else {
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'ws_channels.kind mailbox')));
+	}
+
+	install_note('Workspace mail: the HTML of incoming mail is kept, cleaned, beside its text; mail that came in earlier is filled in from its kept copy in the background.');
 
 }
