@@ -11,9 +11,7 @@ description: Steps CV1-CV8 of plans/agent-canvas-design.md: an SVG taken apart, 
 - CV3 (M) Layer writes. Done in #8834: `workspace/agent-canvas-layer-writes.md`.
 - CV4 (S) Sizes and scenes. `free` once #8834 lands.
   - `size` by name from the New image dialog's presets (`M.BOARD_PRESETS`), `background`. Scenes: add, choose, remove, a transition (`ui/image-editor-scenes.md`); at most 30.
-- CV5 (M) Templates. `free` once #8834 lands.
-  - A person marks a canvas in Files as a template ("Save as template" in the editor; a list on a settings card). The list is a site setting holding file ids, no column. An agent reads the templates (name, size, the named layers and their kinds) and makes a canvas from one: `template` and `fill` (a name to words or to a file).
-  - A name that is missing or of another kind is refused with the list of names.
+- CV5 (M) Templates. Done in #8959: `workspace/agent-canvas-templates.md`.
 - CV6 (M) The server draws where it can. After CV1. Owner: optional, never required.
   - A probe first (`pg_image_draw_can()`): can the host's Imagick read an SVG, through which delegate, and draw text from a font file; shown on System status. The host draws a fixture set (shapes, a gradient, a picture, text in a site font) and the step reports how it compares with the editor's renderer.
   - Where it can, a pending canvas gets its picture from the server at once. A document it cannot draw faithfully (text in a font it has no file for, an effect outside the probe) waits for a browser as today; a browser's picture replaces the server's.

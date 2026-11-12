@@ -489,6 +489,7 @@ function pg_settings_categories()
                 'pgset-ws-ai'                => lang('Pinegrap AI in the channels'),
                 'pgset-ws-mcp'               => lang('MCP servers'),
                 'pgset-ws-bulk'              => lang('Bulk changes by the assistants'),
+                'pgset-ws-canvas-templates'  => lang('Canvas templates'),
             ),
             'keywords' => array(
                 'pgset-ws-claude'            => pg_settings_keywords(lang('workspace, claude, assistant, routine, key, secret, daily summary, connection')),
@@ -496,6 +497,7 @@ function pg_settings_categories()
                 'pgset-ws-ai'                => pg_settings_keywords(lang('workspace, pinegrap ai, assistant, licence, subscription key, key, connection')),
                 'pgset-ws-bulk'              => pg_settings_keywords(lang('workspace, bulk changes, assistant, delete in bulk, claude, pinegrap ai')),
                 'pgset-ws-mcp'               => pg_settings_keywords(lang('workspace, mcp, mcp server, tools')),
+                'pgset-ws-canvas-templates'  => pg_settings_keywords(lang('workspace, canvas, template, design, agent, named layers')),
             ),
             'lists' => array(
                 'ws_agent' => 2,
