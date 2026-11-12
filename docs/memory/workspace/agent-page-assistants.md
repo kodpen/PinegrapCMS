@@ -23,4 +23,4 @@ description: Pinegrap AI and model assistants make, read and edit live pages as 
 - `ws_page_ai_present()`: message id, newest version, libraries, versions (maker without empty fields, UTC dates), `length`, and the HTML from `from` on, 10000 characters a part (`ws_page_ai_read_max()`, inside the 12000-character tool answer), with `next` where the following part starts or null.
 
 ## Tests?
-- `tests/workspace_page_ai_test.php`: libraries and replacements as written, the replacements applied, the read in parts, the names and flat arguments. The tool runs need a database and a model; not run live. Built in LP3.
+- `tests/workspace_page_ai_test.php`: libraries and replacements as written, the replacements applied, the read in parts, the names and flat arguments. The tool runs need a database and a model; not run live. Built in #8852.

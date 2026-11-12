@@ -30,7 +30,7 @@ description: Plan (owner 2026-11-11, #8762): an agent makes a design on the Work
 
 ## What is not in it?
 - Translating the words in pictures in the background (owner 2026-11-11): its own plan after CV6, which gives it the server's text drawing.
-- Live pages: `agent-live-page.md`.
+- Live pages: `workspace/agent-page.md`.
 
 ## Who holds it, where does it start?
 - Coordinators hand the steps out; claim as `[plan:agent-canvas-design] <step> — <topic>`. CV1 starts.

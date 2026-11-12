@@ -1,6 +1,6 @@
 ---
 name: agent-page-card
-description: The card of an agent's live page (LP2b): Open, Full screen, View source and versions, Download, "Edited by" and Undo; runs only when opened, stops when the channel is left
+description: The card of an agent's live page (#8851): Open, Full screen, View source and versions, Download, "Edited by" and Undo; runs only when opened, stops when the channel is left
 ---
 
 ## What does the card show?

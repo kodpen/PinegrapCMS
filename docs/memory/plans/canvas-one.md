@@ -8,7 +8,7 @@ description: Plan (owner 2026-11-12, #8850): the Workspace canvas as one thing w
 - The decisions: `workflow/decisions-made-workspace-18.md` (#8850). The steps: `canvas-one-steps.md`.
 
 ## What is a canvas after this?
-- Architect (2026-11-12, for all that follows). One thing in a channel with up to three parts: a drawing (layers, opened in the Design Canvas; `agent-canvas-design.md`), a live page (HTML an agent wrote, run in the guarded frame; `agent-live-page.md`) and data (workflow tables bound to it). One card, one name, one list of versions, one set of routes; a part that is not there is not shown.
+- Architect (2026-11-12, for all that follows). One thing in a channel with up to three parts: a drawing (layers, opened in the Design Canvas; `agent-canvas-design.md`), a live page (HTML an agent wrote, run in the guarded frame; `workspace/agent-page.md`) and data (workflow tables bound to it). One card, one name, one list of versions, one set of routes; a part that is not there is not shown.
 - What exists stays: a canvas made as a drawing and a page made as a page keep their routes and cards until the step that joins them; nothing made before is lost or converted by hand.
 - Not the Page Design Studio: that tool designs the site's pages and is no part of this.
 

@@ -1,11 +1,17 @@
 ---
 name: agent-page
-description: Live pages an agent makes (LP2a #8815, LP4 #8830): the routes, the mark of a page without a column, versions (20 kept), 409, who may, the site's libraries
+description: Live pages an agent makes (#8815): what one is for and is not, the routes, the mark of a page without a column, versions (20 kept), 409, who may
 ---
 
 ## What is a live page?
-- An HTML document an agent writes (styles and script inside), kept as an `.html` file of the channel, carried by a message of the application; shown only in the guarded frame (`platform/guarded-frame.md`, `live_page.php`). Plan: `plans/agent-live-page.md`; owner decision in `workflow/decisions-made-workspace-16.md`.
-- Code: `includes/workspace/page.php` (storage, versions, the mark), `api_page.php` (routes). Built in #8815.
+- An HTML document an agent writes (styles and script inside), kept as an `.html` file of the channel, carried by a message of the application; shown only in the guarded frame (`platform/guarded-frame.md`, `live_page.php`). Owner decision in `workflow/decisions-made-workspace-16.md` (#8762).
+- What a still picture cannot be: a chart that shows a value on hover, a filter, a small tool, a presentation. A picture stays a canvas (`agent-canvas-svg.md`).
+- A page is treated as hostile whoever made it (the agent may have read hostile words first): the guard holds before it is shown anywhere (`platform/guarded-frame.md`).
+- It runs only once a person opens it and stops when the channel is left, so its script costs no reader who did not ask; team accounts open it, a guest sees it without Open (`agent-page-card.md`).
+- Code: `includes/workspace/page.php` (storage, versions, the mark), `api_page.php` (routes), `page_card.php` (the card), `page_ai.php` (the assistants' tools, `agent-page-assistants.md`). Built in #8815, #8830, #8851, #8852.
+
+## What is not in it?
+- Architect (2026-11-11): a page that reads the site's records or the channel, a page a person writes, a page on the public site: each its own question, asked when wanted.
 
 ## How is a message known to carry a page, with no column?
 - Channels refuse an `.html` upload (`ws_upload_refused_extensions()`; tested in `tests/workspace_agent_page_test.php`), so only the page routes keep one, through `ws_store_file_bytes()` directly.
@@ -24,10 +30,7 @@ description: Live pages an agent makes (LP2a #8815, LP4 #8830): the routes, the 
 - Versions: the first and the newest 19, 20 in all (`ws_page_versions_keep()`, `ws_page_versions_pruned()`). Deleting the file takes them along (`pg_file_versions_delete_file()`, the daily sweep).
 
 ## How does a page use a library?
-- `libraries` (a list of names, at most 5) on create and edit; left out on an edit, the version before's stay. Only names in `ws_page_libraries()` (`chartjs`: Chart.js 4.4.7, `assets/lib/chartjs/`), else 422 on `libraries`. Kept in the version's document; GET answers `libraries`. Built in #8830.
-- `live_page.php` puts the site's own copy in ahead of the page (`ws_page_with_libraries()`): an inline `<script>` right after the doctype. A source holding `</script` or `<!--` is left out. The frame allows no script from any host, so a page never loads one from an address.
-- Another library: its file under `assets/lib/`, a row in `ws_page_libraries()`; `tests/workspace_agent_page_test.php` checks it.
+- A short list the site ships (Chart.js first), named in the call and put in by the site, never an address: `agent-page-libraries.md`.
 
-## What is not built yet?
-- The card is `agent-page-card.md`; the assistants' tools are `agent-page-assistants.md`.
+## What is a known gap?
 - Two edits at the same instant both pass the version check; the second's version row is refused by the unique key and it answers 503 after its bytes were written. Rare; the next read shows the bytes the file holds.

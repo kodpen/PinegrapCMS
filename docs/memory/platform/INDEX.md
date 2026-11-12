@@ -69,7 +69,7 @@
 - get-file-attachment-cache.md: get_file.php sends a submitted-form or comment attachment Cache-Control private in any folder (#7667); a list view whose item view page is gone grants nothing through it (#7668)
 - get-file-byte-ranges.md: Range/206 in get_file.php and the external API from one copy (includes/http_range.php): what is answered 206, 416 or 200, If-Range by Last-Modified, which send paths take no range
 - get-file-user-once.md: get_file.php's initialize_user() returns when the visitor is already read; a private channel's file reached it twice and the PHP warnings broke its picture (#7724)
-- guarded-frame.md: The guarded frame (LP1, #8802): how a stored page or a mail's HTML is shown in the panel: the shell, srcdoc, the two modes and their policies, the two messages, live_page.php, the browser proofs
+- guarded-frame.md: The guarded frame (#8802): how a stored page or a mail's HTML is shown in the panel: the shell, srcdoc, the two modes and their policies, the two messages, live_page.php, the browser proofs [decision: decisions-made-workspace-16.md, decisions-made-workspace-17.md]
 - hostname-in-mail-links.md: HOSTNAME (request Host header) for redirects back to the visitor, HOSTNAME_SETTING for links that leave the request (e-mails, documents); the mails that used the request host [decision: decisions-made-product-39.md]
 - image-accent-colour.md: get_dominant_area_color(), the accent colour the Edit file and order screens take from a picture: palette images and transparent pixels.
 - image-color-profile.md: ICC colour profiles in the image engine: Imagick and GD keep a non-sRGB RGB profile, GD writes it into JPEG/PNG/WebP itself and refuses (color_profile) only what it cannot carry; how a profile is read
