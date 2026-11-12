@@ -2,11 +2,13 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - what Assistants and agents writes: Claude's connection and
- * the bulk delete switch with the pane's Save, an agent from its drawer
+ * Site Settings - what Assistants and agents writes: Claude's and Pinegrap
+ * AI's connections and the bulk delete switch with the pane's Save, an agent
+ * from its drawer
  * (ws_agent_save, value its id, 0 for a new one), then the job of the card
  * button that asked for the save: Claude's (ws_claude_test,
- * ws_claude_key_create, ws_claude_key_reset), an agent's (ws_agent_delete,
+ * ws_claude_key_create, ws_claude_key_reset), Pinegrap AI's (ws_ai_test,
+ * ws_ai_key_create), an agent's (ws_agent_delete,
  * ws_agent_test) or a request row's (ws_agent_request_cancel, _retry,
  * _knock, value the request's id).
  *
@@ -15,7 +17,8 @@
  * defined. The checks and the writes are the ones Workspace Settings uses
  * (ws_claude_settings_save(), ws_claude_settings_post(),
  * ws_bulk_settings_save(), ws_agents_settings_check() and _write(),
- * ws_agents_settings_act(), ws_agent_activity_post()), so a form still open
+ * ws_agents_settings_act(), ws_agent_activity_post(), ws_ai_settings_check()
+ * and _write(), ws_ai_settings_post()), so a form still open
  * there saves the same way.
  * Both cards are an administrator's: for anybody else their fields are drawn
  * disabled and not posted, and a posted one is left alone. Everything is
@@ -81,6 +84,28 @@ if (($ws_agent_id !== null) && is_scalar($ws_agent_id)) {
     }
 }
 
+// Pinegrap AI's connection, checked before anything is written: its
+// application may not be Claude's, as stored or as posted in this save.
+$ws_ai = null;
+
+if ($ws_admin && function_exists('ws_ai_schema_ready') && ws_ai_schema_ready() && isset($_POST['ws_ai_app_id'])) {
+    $ws_ai = ws_ai_settings_input($_POST, 'ws_');
+
+    if (ws_ai_settings_changed($ws_ai, ws_ai_config(true))) {
+        $ws_claude_app = ($ws_claude !== null) ? (int) $ws_claude['app_id'] : (int) ws_claude_config()['app_id'];
+
+        foreach (ws_ai_settings_check($ws_ai, $ws_claude_app) as $ws_field => $ws_sentence) {
+            $liveform->mark_error('ws_ai_' . $ws_field, $ws_sentence);
+        }
+
+        if ($liveform->check_form_errors()) {
+            return;
+        }
+    } else {
+        $ws_ai = null;
+    }
+}
+
 if ($ws_claude !== null) {
     $ws_refused = ws_claude_settings_save($ws_claude);
 
@@ -107,6 +132,18 @@ if ($ws_agent !== null) {
 $ws_warn = function ($sentence) use ($liveform) {
     $liveform->add_warning($sentence);
 };
+
+if ($ws_ai !== null) {
+    ws_ai_settings_write($ws_ai, $liveform, $ws_warn);
+}
+
+// Pinegrap AI's Create key or Try the connection.
+foreach (array('ai_test', 'ai_key_create') as $ws_action) {
+    if (post_value('ws_' . $ws_action) !== null) {
+        ws_ai_settings_post($ws_viewer, $ws_action, $liveform, $user, true);
+        break;
+    }
+}
 
 // An agent's Delete or Try, and a request row's buttons.
 foreach (array('agent_delete', 'agent_test') as $ws_action) {

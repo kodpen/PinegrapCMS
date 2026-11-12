@@ -62,7 +62,7 @@ function test_settings_workspace_assistants_sections_and_anchors()
 	$card = settings_workspace_assistants_test_source('includes/settings/workspace_assistants.php');
 	pg_assert_false(strpos($card, "array('ws-claude'") !== false, 'no link to the old Claude card');
 	pg_assert_false(strpos($card, "array('ws-bulk'") !== false, 'no link to the old Bulk changes card');
-	pg_assert_contains("array('ws-ai'", $card, 'Pinegrap AI is still linked');
+	pg_assert_contains("array('ws-mcp'", $card, 'the MCP servers are still linked');
 
 	$category = array('group' => 'workspace', 'gate' => 'workspace');
 	pg_assert_false(pg_settings_category_open($category, array('manager' => true, 'workspace' => false)), 'a manager without the right');
@@ -184,4 +184,37 @@ function test_settings_workspace_assistants_secret_drawer()
 	pg_assert_contains('id="pgset-ws-claude-secret-done" disabled', $html, 'Close waits for the tick');
 	pg_assert_contains("body.innerHTML = \\'\\';", $html, 'closing takes the secret out');
 	pg_assert_false(strpos($html, 'name=') !== false, 'nothing of it is posted with the form');
+}
+
+function test_settings_workspace_assistants_pinegrap_ai()
+{
+	$source = settings_workspace_assistants_test_source('includes/settings/registry.php');
+	pg_assert_contains("'pgset-ws-ai'                => lang('Pinegrap AI in the channels'),", $source, 'Pinegrap AI is a section');
+	pg_assert_same(array('workspace_assistants', 'pgset-ws-ai'), pg_settings_legacy_anchors()['ws-ai'] ?? null, 'the old anchor');
+	pg_assert_false(strpos(settings_workspace_assistants_test_source('includes/settings/workspace_assistants.php'), "array('ws-ai'") !== false, 'no link to the old card');
+
+	// Both screens' names read alike.
+	pg_assert_same(ws_ai_settings_input(array('ai_enabled' => '1', 'ai_app_id' => '9')), ws_ai_settings_input(array('ws_ai_enabled' => '1', 'ws_ai_app_id' => '9'), 'ws_'), 'both screens');
+	pg_assert_same(array('enabled' => false, 'app_id' => 0), ws_ai_settings_input(array('ws_ai_enabled' => array('1'), 'ws_ai_app_id' => array(3)), 'ws_'), 'lists are no values');
+
+	// A pane Save that changes nothing writes nothing.
+	$config = array('enabled' => true, 'app_id' => 9);
+	pg_assert_false(ws_ai_settings_changed(array('enabled' => true, 'app_id' => 9), $config), 'the same');
+	pg_assert_true(ws_ai_settings_changed(array('enabled' => false, 'app_id' => 9), $config), 'switched off');
+	pg_assert_true(ws_ai_settings_changed(array('enabled' => true, 'app_id' => 0), $config), 'another application');
+
+	$save = settings_workspace_assistants_test_source('includes/settings/workspace_assistants.save.php');
+	pg_assert_contains("\$liveform->mark_error('ws_ai_' . \$ws_field, \$ws_sentence);", $save, 'a refusal marked on its field');
+	pg_assert_contains("(\$ws_claude !== null) ? (int) \$ws_claude['app_id']", $save, 'never Claude\'s application, as posted in the same save');
+	pg_assert_true(strpos($save, 'ws_ai_settings_check($ws_ai,') < strpos($save, '$ws_refused = ws_claude_settings_save('), 'checked before anything is written');
+	pg_assert_contains('ws_ai_settings_post($ws_viewer, $ws_action, $liveform, $user, true);', $save, 'the buttons after the save');
+
+	// The old screen's case checks and writes through the same functions.
+	$post = settings_workspace_assistants_test_function('includes/workspace/ai.php', 'ws_ai_settings_post');
+	pg_assert_contains('ws_ai_settings_check($input, (int) ws_claude_config()[\'app_id\']);', $post, 'the old screen\'s check');
+	pg_assert_contains('ws_ai_settings_write($input, $liveform, $refuse);', $post, 'the old screen\'s write');
+
+	$card = settings_workspace_assistants_test_function('includes/workspace/ai.php', 'ws_ai_settings_card');
+	pg_assert_contains("\$dialog ? '<div class=\"ws-ai-connection\">' : '<form method=\"post\"", $card, 'no form in the dialog');
+	pg_assert_contains("name=\"ws_' . h(\$action) . '\" value=\"1\" form=\"' . h(\$form) . '\"", $card, 'named buttons of the settings form');
 }
