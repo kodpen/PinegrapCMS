@@ -13,7 +13,7 @@ description: Start file for the designer-blocks-* files: what a block family is,
 
 ## Which families are there?
 - Own palette group, by its label: App Studio (`appstudio-`), Architecture, Bakery, Bike Shop, Brewery, Campsite, Car Rental, City Hall, Clinic, Construction, Coworking, Driving School, Ferry, Film Studio (`filmstudio-`), Florist.
-- Own palette group, continued: Gym, Home Services (`homeservices-`), Hotel, Library, Product Launch (`launch-`), Marina, Museum, Music, Pharmacy, Photo, Planetarium, Podcast, Recruitment, School, Ski Resort, Sports Club, Travel, Wedding, Zoo. File `designer-blocks-<prefix>.md`, the prefix without spaces (`drivingschool-`, `skiresort-`, `sportsclub-`, `cityhall-`, `bikeshop-`, `carrental-`).
+- Own palette group, continued: Gym, Home Services (`homeservices-`), Hotel, Library, Product Launch (`launch-`), Marina, Museum, Music, Pharmacy, Photo, Planetarium, Podcast, Recruitment, Restaurant, School, Ski Resort, Sports Club, Travel, Wedding, Zoo. File `designer-blocks-<prefix>.md`, the prefix without spaces (`drivingschool-`, `skiresort-`, `sportsclub-`, `cityhall-`, `bikeshop-`, `carrental-`).
 - General sections in core groups: `hours-seasons`, `locations-spaces`, `locations-floors`, `locations-zones` (Hours & Locations) and `booking-week`, `booking-windows` (Services & Booking): `designer-blocks-general.md`, which also lists the existing block for each shared section (feature split, stats, steps, pricing, team, logos, timeline, venues, hours, booking call).
 - In the core file: Maintenance & Launch, News & Magazine, Creative: `designer-blocks-news-maintenance-creative.md`.
 
