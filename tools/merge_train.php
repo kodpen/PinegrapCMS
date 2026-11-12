@@ -105,10 +105,41 @@ function merge_train_docs_only(array $paths)
 	return true;
 }
 
+// The CI jobs that only write a line to the agent channel. They run with
+// continue-on-error and gate nothing, but a queued one keeps its check run
+// unfinished for as long as GitHub leaves it waiting.
+function merge_train_report_jobs()
+{
+	return array(
+		'report to the agent channel',
+		'report the hand-over to the agent channel',
+	);
+}
+
+// The check runs that decide whether a commit is green: all but the agent
+// channel's report jobs, matched by name. A run without a name counts.
+function merge_train_gating_runs(array $runs)
+{
+	$gating = array();
+
+	foreach ($runs as $run) {
+		if (isset($run['name']) && in_array($run['name'], merge_train_report_jobs(), true)) {
+			continue;
+		}
+
+		$gating[] = $run;
+	}
+
+	return $gating;
+}
+
 // Whether the check runs of a commit, as the check-runs endpoint lists them,
-// all finished without a failure; no run at all is not green.
+// all finished without a failure, the agent channel's report jobs left out
+// whatever their state; no run at all, or only report jobs, is not green.
 function merge_train_checks_green(array $runs)
 {
+	$runs = merge_train_gating_runs($runs);
+
 	if (!$runs) {
 		return false;
 	}
@@ -692,7 +723,9 @@ function merge_train_candidates()
 		}
 
 		$runs = merge_train_gh('GET', 'commits/' . $pr['head']['sha'] . '/check-runs?per_page=100');
-		$runs = isset($runs['check_runs']) ? $runs['check_runs'] : array();
+		// The report jobs are left out of the push time and the eligible
+		// time too: a report finishing an hour late moves neither.
+		$runs = merge_train_gating_runs(isset($runs['check_runs']) ? $runs['check_runs'] : array());
 		$labels = array();
 
 		foreach ($pr['labels'] as $label) {

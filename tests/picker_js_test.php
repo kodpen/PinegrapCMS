@@ -90,6 +90,11 @@ function test_picker_js_sort()
 			modified: names(P.sortItems(items, "modified", "desc", c)),
 			type: names(P.sortItems(items, "type", "asc", c)),
 			best: names(P.sortItems(items, "best", "asc", c)),
+			labels: names(P.sortItems([
+				{text: "A", type: "standard", type_label: "Standart"},
+				{text: "B", type: "custom form", type_label: "Özel Form"},
+				{text: "C", type: "login", type_label: "Giriş Yap"}
+			], "type", "asc", c)),
 			dirs: [P.defaultDir("name"), P.defaultDir("size"), P.defaultDir("modified"), P.defaultDir("type")]
 		};');
 
@@ -103,6 +108,7 @@ function test_picker_js_sort()
 	pg_assert_same('Kupalar', $out['modified'][0]);
 	pg_assert_same(array('Kupalar', 'Zeytin.jpg', 'çanta.png', 'Armut.jpg', 'resim10.jpg', 'resim9.jpg'), $out['best'], 'best keeps the server order after the folders');
 	pg_assert_same('çanta.png', end($out['type']));
+	pg_assert_same(array('C', 'B', 'A'), $out['labels'], 'pages sort by the type label shown, not the inner key');
 	pg_assert_same(array('asc', 'desc', 'desc', 'asc'), $out['dirs']);
 }
 
@@ -253,4 +259,27 @@ function test_picker_js_pages()
 		array('value' => '9', 'text' => 'Sepet', 'type' => '', 'type_group' => 'checkout', 'note' => '', 'extra' => true),
 	), $out['extra'], 'an entry needs a value and a name; the value is kept as text');
 	pg_assert_same(array('tab:a1', '9'), $out['found'], 'folded as the server matches; nothing for an empty text');
+}
+
+// The field's line under a name and its count line match the server's
+// (pg_picker_field_meta()).
+function test_picker_js_field_helpers()
+{
+	$out = picker_js_test_run('return {
+			image: P.fieldMeta({path: [{name: "Files"}, {name: "Logos"}, {name: "2026"}], width: 512, height: 256, size_label: "48 KB"}),
+			root: P.fieldMeta({path: [{name: "Files"}], size_label: "1 MB"}),
+			page: P.fieldMeta({address: "/about", path: [{name: "Pages"}, {name: "Company"}]}),
+			none: P.fieldMeta(null),
+			keys: [P.resultsKey(1, false), P.resultsKey(5, false), P.resultsKey(8, true)]
+		};');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same('Logos / 2026 · 512 × 256 · 48 KB', $out['image'], 'the top folder left out below it');
+	pg_assert_same('Files · 1 MB', $out['root'], 'a file in the top folder names it');
+	pg_assert_same('/about · Company', $out['page']);
+	pg_assert_same('', $out['none']);
+	pg_assert_same(array('1 result · in every folder', '{n} results · in every folder', '{n}+ results · in every folder'), $out['keys']);
 }

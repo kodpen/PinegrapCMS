@@ -1,6 +1,6 @@
 ---
 name: designer-blocks-general
-description: General sections the sector templates share: the existing block that covers each, and the ones added in general family files (hours-seasons, locations-spaces, locations-floors, booking-week)
+description: General sections the sector templates share: the existing block that covers each, and the ones added in general family files (hours-seasons, locations-*, booking-week)
 ---
 
 ## Which block does a template place for a shared section?
@@ -12,7 +12,7 @@ description: General sections the sector templates share: the existing block tha
 - Team grid: `team-grid`, `team-minimal`, `team-profiles`, `team-leadership`.
 - Logo wall: `logos-grid`, `logos-divider`, `logos-marquee-static`, `marquee-logos` (moving).
 - Timeline: `timeline-vertical`, `timeline-alternating`, `timeline-horizontal`.
-- Venue cards: `locations-cards` (branches: address, hours, phone), `hours-location`; spaces to hire: `locations-spaces` (added); a building's floors: `locations-floors` (added with `coworking-1`).
+- Venue cards: `locations-cards` (branches: address, hours, phone), `hours-location`; spaces to hire: `locations-spaces` (added); a building's floors: `locations-floors` (added with `coworking-1`); delivery zones: `locations-delivery` (added with `florist-1`, `designer-blocks-florist.md`).
 - Opening hours: `hours-card` (one week); by season: `hours-seasons` (added).
 - Booking call: `booking-cta`, `booking-split`, `cta-inline`, `cta-simple`.
 - Weekly class timetable: `booking-week` (added with `gym-1`).
@@ -26,6 +26,6 @@ description: General sections the sector templates share: the existing block tha
 - "Area" translates as "Bölge" (a region) in the shared keys, so the fact is named "Floor Area".
 
 ## How is it tested?
-- `tests/designer_blocks_test.php` checks the files like every family file; `tests/designer_blocks_general_test.php` runs the kit and both files under Node: no own group, a section with one `h2` and no skipped level, no fixed colour class, `{var}` filled, no year, one entrance kept by `_sdFxNormalize()`, the table's head cells and scopes, the cards' facts and pills, the rules in the block stylesheet; the floors, their level squares, pills and access words. The Node runner is `tests/helpers/designer_family_run.php`.
+- `tests/designer_blocks_test.php` checks the files like every family file; `tests/designer_blocks_general_test.php` runs the hours and locations files under Node (`tests/helpers/designer_family_run.php`): no own group, one `h2`, no skipped level, no fixed colour class, `{var}` filled, no year, one entrance kept by `_sdFxNormalize()`, then each block's structure and its rules in the block stylesheet.
 
 Related: docs/memory/designer/design-template-own-look.md, docs/memory/designer/designer-palette-tabs-and-blocks.md

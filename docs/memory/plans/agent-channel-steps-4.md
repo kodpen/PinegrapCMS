@@ -17,10 +17,10 @@ description: Steps A13-A16 of plans/agent-channel.md: two applications' lines ar
   - The brakes stay (`ws_agent_brake()`: chain depth, hourly count, never its own words); a braked wake between agents leaves its system line once per chain and hour, not per message. The request and its brief name the asking application. The "Waiting for `@agent`" line shows as under a person's message.
   - Tests: the rules by writer kind, the answer route's wake, the brake's one line. Topics `workspace/agent-doors.md`, `workflow/agent-channel-wake.md` (the app waiter goes).
 
-- A15 (S, tools only) The train's green without the channel report. `free`. Architect 2026-11-11.
+- A15 (S, tools only) The train's green without the channel report. Done #8770. Architect 2026-11-11.
   - The merging session's finding: the CI job "report to the agent channel" (`php-checks.yml`, `continue-on-error`) stayed queued for an hour on two PRs and `tools/merge_train.php --list` did not count them green. The tool leaves that job out of its verdict. Test: a head whose only unfinished run is that job is green. `workflow/merge-train.md` names it.
 
-- A16 (S) Anthropic as a provider of model assistants. `free`. Owner 2026-11-11, #8750 (`workflow/decisions-made-workspace-15.md`).
+- A16 (S) Anthropic as a provider of model assistants. `Done #8772`. Owner 2026-11-11, #8750 (`workflow/decisions-made-workspace-15.md`).
   - `ws_model_providers()` gets `anthropic` (name, fixed address, key, model hints, terms sentence). The loop stays Pinegrap AI's: `ws_model_endpoint()`, `ws_model_headers()`, `ws_model_payload()` make the request fit and the answer is turned back into what `ws_ai_step()` reads, tool calls included.
   - The worker reads Anthropic's API reference first, nothing from memory: address, headers, both shapes, the model names, what the provider does with the words (dated).
   - No schema. Tests: payload and answer both ways, headers, `ws_agent_save_check()`. Topic `workspace/model-assistants.md`. It edits `model_agents.php` beside step SW4 of `settings-workspace-move`: the claim check holds.

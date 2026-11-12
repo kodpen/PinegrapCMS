@@ -1453,6 +1453,8 @@ function pg_picker_texts()
         '{n} chosen', 'A click adds or removes, Shift+click adds a row',
         'Choose a page', 'Pages', 'Page', 'Address', 'Archived', 'In the Recycle Bin', 'All', 'Page types', 'Not saved yet',
         'Pages you choose appear here.', 'Archived pages and pages in the Recycle Bin cannot be chosen.',
+        'Type to search…', '1 result · in every folder', '{n} results · in every folder', '{n}+ results · in every folder',
+        'All results for “{q}” in Browse', 'Browse…',
     ) as $text) {
         $texts[$text] = lang($text);
     }
@@ -1531,4 +1533,215 @@ function pg_picker_script()
 function pg_picker_browse_button($kind, $field_id, $title)
 {
     return '<button type="button" class="btn btn-outline theme-secondary pg-picker-browse" data-pg-picker-browse data-pg-picker-kind="' . h($kind) . '" data-pg-picker-for="' . h($field_id) . '" data-pg-picker-title="' . h($title) . '" aria-label="' . h(lang('Browse…') . ': ' . $title) . '"><span class="bi bi-folder2-open" aria-hidden="true"></span><span class="pg-btn-label">' . lang('Browse…') . '</span></button>';
+}
+
+/**
+ * The icon of a file that has no picture of its own, as the dialog draws
+ * it (fileIcon() in pg_picker.js). Pure.
+ *
+ * @param string $type the file's extension
+ * @return string a Bootstrap Icons class
+ */
+function pg_picker_file_icon($type)
+{
+    $type = strtolower((string) $type);
+    $map = array('pdf' => 'pdf', 'zip' => 'zip', 'rar' => 'zip', 'doc' => 'word', 'docx' => 'word', 'xls' => 'excel', 'xlsx' => 'excel', 'csv' => 'spreadsheet', 'ppt' => 'ppt', 'pptx' => 'ppt', 'txt' => 'text', 'md' => 'text', 'mp3' => 'music', 'wav' => 'music', 'ogg' => 'music', 'mp4' => 'play', 'webm' => 'play', 'mov' => 'play', 'js' => 'code', 'css' => 'code', 'html' => 'code', 'json' => 'code', 'xml' => 'code');
+
+    if (preg_match('/^(jpe?g|png|gif|webp|avif|svg|bmp)$/', $type)) {
+        return 'bi-file-earmark-image';
+    }
+
+    return isset($map[$type]) ? 'bi-file-earmark-' . $map[$type] : 'bi-file-earmark';
+}
+
+/**
+ * The line under a chosen item's name: its folder (the top folder left out
+ * once there is one below it), its picture size and its file size; a
+ * page's address first. Pure.
+ *
+ * @param array $item a resolve, search or list item
+ * @return string
+ */
+function pg_picker_field_meta($item)
+{
+    $parts = array();
+
+    if (isset($item['address'])) {
+        $parts[] = (string) $item['address'];
+    }
+
+    $path = (isset($item['path']) && is_array($item['path'])) ? $item['path'] : array();
+    $names = array();
+
+    foreach ((count($path) > 1) ? array_slice($path, 1) : $path as $crumb) {
+        $names[] = (string) $crumb['name'];
+    }
+
+    $parts[] = implode(' / ', $names);
+
+    if (!empty($item['width']) && !empty($item['height'])) {
+        $parts[] = (int) $item['width'] . ' × ' . (int) $item['height'];
+    }
+
+    $parts[] = (string) ($item['size_label'] ?? '');
+
+    return implode(' · ', array_filter($parts, 'strlen'));
+}
+
+/**
+ * What a field shows for its stored value: the state the resolve request
+ * gives it, the name, the line under it, the picture or an icon, and the
+ * note under the field for a value visitors or the site cannot use. The
+ * stored value stays whatever its state. Pure.
+ *
+ * @param array      $kind  one of pg_picker_kinds()
+ * @param mixed      $value the stored value
+ * @param array|null $item  its pg_picker_resolve_answer() item
+ * @return array state ('empty' or a pg_picker_value_state()), text, meta,
+ *               thumb, icon, note, tone ('', 'warning' or 'danger')
+ */
+function pg_picker_field_view($kind, $value, $item)
+{
+    $view = array('state' => 'empty', 'text' => '', 'meta' => '', 'thumb' => '', 'icon' => '', 'note' => '', 'tone' => '');
+    $values = pg_picker_values(array($value), $kind['value']);
+
+    if (!$values) {
+        return $view;
+    }
+
+    $state = is_array($item) ? (string) ($item['state'] ?? 'missing') : 'missing';
+    $view['state'] = $state;
+
+    if ($state === 'missing') {
+        // A name stays as stored; an id has no name left to tell.
+        $view['text'] = ($kind['value'] === 'id') ? '#' . $values[0] : (string) $values[0];
+        $view['meta'] = lang('Stored value · file not found');
+        $view['icon'] = !empty($kind['pictures']) ? 'bi-image' : 'bi-file-earmark-x';
+        $view['note'] = lang('This file is no longer in Files; choose another.');
+        $view['tone'] = 'warning';
+
+        return $view;
+    }
+
+    if ($state === 'hidden') {
+        $view['text'] = lang('A file in a folder you cannot open');
+        $view['icon'] = 'bi-lock';
+
+        return $view;
+    }
+
+    $view['text'] = (string) ($item['text'] ?? '');
+    $view['meta'] = pg_picker_field_meta($item);
+    $view['thumb'] = (string) ($item['thumb'] ?? '');
+    $view['icon'] = ($kind['source'] === 'pages') ? 'bi-file-earmark-text' : pg_picker_file_icon($item['type'] ?? '');
+
+    if ($state === 'binned') {
+        $view['note'] = lang('This file is in the Recycle Bin; visitors cannot open it. Restore it or choose another.');
+        $view['tone'] = 'danger';
+    } elseif ($state === 'offline') {
+        $view['note'] = lang('Visitors cannot open this file; choose a picture everyone may see.');
+        $view['tone'] = 'warning';
+    }
+
+    return $view;
+}
+
+/**
+ * The field's markup: the posted value in a hidden input, the combobox the
+ * label names (the text input carries the field's id), the chosen value's
+ * picture and line, clear, Browse, the list the search fills and the note.
+ * pg_picker.js adds no markup of its own to the field and listens on the
+ * document, so the field also works where a screen injects it. Pure.
+ *
+ * @param string $kind_name a kind of pg_picker_kinds()
+ * @param string $name      the posted name
+ * @param mixed  $value     the stored value
+ * @param array  $view      pg_picker_field_view()
+ * @param array  $options   id (default the name), title (the dialog's),
+ *                          placeholder, describedby (ids of the help text),
+ *                          invalid (a form's check refused the value: a red
+ *                          box until another is chosen; the form shows the
+ *                          message)
+ * @return string
+ */
+function pg_picker_field_markup($kind_name, $name, $value, $view, $options = array())
+{
+    $id = (string) ($options['id'] ?? $name);
+    $title = (string) ($options['title'] ?? lang('Choose a file'));
+    $placeholder = (string) ($options['placeholder'] ?? lang('Type to search…'));
+    $empty = ($view['state'] === 'empty');
+    $note = ($view['note'] !== '');
+    $described = trim($id . '_meta ' . ($options['describedby'] ?? '') . ($note ? ' ' . $id . '_note' : ''));
+    $invalid = !empty($options['invalid']);
+    $classes = 'pg-pfield' . ($empty ? ' is-empty' : '') . (($view['tone'] !== '') ? ' is-' . $view['tone'] : '') . ($invalid ? ' is-error' : '');
+    $thumb = '';
+
+    if ($view['thumb'] !== '') {
+        $thumb = '<img src="' . h($view['thumb']) . '" alt="" loading="lazy"/>';
+    } elseif ($view['icon'] !== '') {
+        $thumb = '<span class="bi ' . h($view['icon']) . '"></span>';
+    }
+
+    return '<div class="' . $classes . '" data-pg-picker-field data-pg-picker-kind="' . h($kind_name) . '" data-pg-picker-title="' . h($title) . '">'
+        . '<input type="hidden" name="' . h($name) . '" value="' . h($empty ? '' : (string) $value) . '" data-pg-picker-value/>'
+        . '<div class="pg-pfield-row">'
+        . '<div class="pg-pfield-box">'
+        . '<span class="pg-pfield-thumb" aria-hidden="true">' . $thumb . '</span>'
+        . '<span class="pg-pfield-text">'
+        . '<input type="text" id="' . h($id) . '" class="pg-pfield-input" value="' . h($view['text']) . '" placeholder="' . h($placeholder) . '" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="' . h($id) . '_list" aria-describedby="' . h($described) . '"' . ($invalid ? ' aria-invalid="true"' : '') . ' autocomplete="off" spellcheck="false"/>'
+        . '<span class="pg-pfield-meta" id="' . h($id) . '_meta">' . h($view['meta']) . '</span>'
+        . '</span>'
+        . '<button type="button" class="pg-pfield-clear" aria-label="' . h(lang('Clear the choice')) . '" title="' . h(lang('Clear the choice')) . '"><span class="bi bi-x-lg" aria-hidden="true"></span></button>'
+        . '<span class="pg-pfield-caret bi bi-chevron-down" aria-hidden="true"></span>'
+        . '</div>'
+        . '<button type="button" class="btn btn-outline theme-secondary pg-pfield-browse" aria-label="' . h(lang('Browse…') . ': ' . $title) . '" title="' . h(lang('Browse…')) . '"><span class="bi bi-folder2-open" aria-hidden="true"></span><span class="pg-btn-label">' . lang('Browse…') . '</span></button>'
+        . '</div>'
+        . '<div class="pg-pfield-pop" hidden>'
+        . '<div class="pg-pfield-status" role="status" aria-live="polite"></div>'
+        . '<div class="pg-pfield-list" id="' . h($id) . '_list" role="listbox" aria-label="' . h($title) . '"></div>'
+        . '</div>'
+        . ($note ? '<div class="form-text pg-pfield-note" id="' . h($id) . '_note"><span class="bi ' . (($view['tone'] === 'danger') ? 'bi-trash3' : 'bi-exclamation-triangle-fill') . ' me-1" aria-hidden="true"></span>' . h($view['note']) . '</div>' : '')
+        . '</div>';
+}
+
+/**
+ * The picker field (the second face of the picker): a type-to-search
+ * combobox for a kind with Browse beside it, showing the stored value with
+ * its picture, folder and size, or marked when it is missing, offline or
+ * binned. The stored value is posted unchanged until another is chosen.
+ * The screen prints pg_picker_script() once where the field is shown.
+ *
+ * @param string $kind_name a kind of pg_picker_kinds()
+ * @param string $name      the posted name
+ * @param mixed  $value     the stored value (a name or an id, as the kind stores)
+ * @param array  $options   pg_picker_field_markup(); user (id, role) where
+ *                          the request has no USER_ID / USER_ROLE
+ * @return string
+ */
+function pg_picker_field($kind_name, $name, $value, $options = array())
+{
+    $kinds = pg_picker_kinds();
+
+    if (!isset($kinds[$kind_name])) {
+        return '';
+    }
+
+    $kind = $kinds[$kind_name];
+    $item = null;
+    $values = pg_picker_values(array($value), $kind['value']);
+
+    $user = null;
+
+    if (isset($options['user']['id'], $options['user']['role'])) {
+        $user = array('id' => $options['user']['id'], 'role' => $options['user']['role']);
+    } elseif (defined('USER_ID') && defined('USER_ROLE')) {
+        $user = array('id' => USER_ID, 'role' => USER_ROLE);
+    }
+
+    if ($values && $user) {
+        $answer = pg_picker_resolve_answer(array('kind' => $kind_name, 'values' => $values), $user);
+        $item = $answer['items'][0] ?? null;
+    }
+
+    return pg_picker_field_markup($kind_name, $name, $value, pg_picker_field_view($kind, $value, $item), $options);
 }

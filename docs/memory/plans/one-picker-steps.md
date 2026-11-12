@@ -16,7 +16,7 @@ description: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry an
 
 - PK4 (M) Pages in the dialog. Kind `page`: folders, the page type filter, search, archived and binned marks (neither can be chosen, owner 2026-11-10, #8514), and extra entries a caller hands in (the designer's unsaved tabs, `tab:<key>`). Done in #8727 (`ui/picker-pages.md`).
 
-- PK5 (M) The field. `pg_picker_field()`: the combobox with Browse and the chosen value with its picture; the Settings pictures and the short link File fields move to it. This delivers what F3 of the search plan asked for.
+- PK5 (M) The field. `pg_picker_field()`: the combobox with Browse and the chosen value with its picture; the Settings pictures and the short link File fields move to it. This delivers what F3 of the search plan asked for. Done in #8751 (`ui/picker-field.md`).
 
 - PK6 (M) Page fields. `select_page()` and the selects built from `get_page_options()` move to `pg_picker_field('page', …)`; Create Page and Edit Page drop their `<template>` fill; a stored archived or binned page stays, marked.
 

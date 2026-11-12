@@ -2239,7 +2239,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 <div class="visually-hidden" id="explorer_search_status" role="status" aria-live="polite"></div>
 
 <?php echo pg_code_editor_includes(); ?>
-<?php echo get_date_picker_format() . pg_fields_script(); ?>
+<?php echo get_date_picker_format() . pg_fields_script() . pg_picker_script(); ?>
 <script type="text/javascript">
 (function () {
     'use strict';
@@ -10270,17 +10270,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // renaming it: the moment somebody knows what to call a link is the moment
     // they have just said where it points.
 
-    // source: the address of a server search (file_picker_search.php); the
-    // select is then drawn as a searching combobox by pgFields.init().
-    function shortLinkSelectHtml(id, label, list, note, source) {
-
-        var searching = source
-            ? ' data-pg-combobox data-pg-source="' + esc(source) + '" data-pg-min-length="1"'
-            : '';
+    function shortLinkSelectHtml(id, label, list, note) {
 
         var html = '<div class="mb-5">' +
             '<label class="form-label" for="' + id + '">' + esc(label) + '</label>' +
-            '<select class="form-control" id="' + id + '"' + searching + '>' +
+            '<select class="form-control" id="' + id + '">' +
             '<option value="">- ' + esc(L.select_one) + ' -</option>';
 
         (list || []).forEach(function (option) {
@@ -10330,8 +10324,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 break;
 
             case 'file':
-                // Only the link's own file is listed; the rest is searched.
-                html = shortLinkSelectHtml('sl_file', L.file, options.file, '', options.file_source);
+                // The server draws the picker field with the link's own file.
+                html = '<div class="mb-5">' +
+                    '<label class="form-label" for="sl_file">' + esc(L.file) + '</label>' +
+                    (options.file_field || '') +
+                    '</div>';
                 break;
         }
 
@@ -10404,7 +10401,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 break;
 
             case 'url': set('sl_url', item.link_url); break;
-            case 'file': set('sl_file', item.file_id); break;
+
+            // A file link's field comes drawn with its file
+            // (explorer_short_link_options).
         }
 
         set('sl_tracking', item.tracking_code || '');
@@ -10604,7 +10603,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             lists.answers = response.answers || [];
             lists.name_max = parseInt(response.name_max, 10) || 255;
             lists.url_max = parseInt(response.url_max, 10) || 255;
-            lists.file_source = response.file_source || '';
+            lists.file_field = response.file_field || '';
 
             if (!response.kept) { shortLinkOptions = lists; }
 
@@ -10717,7 +10716,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 break;
 
             case 'file':
-                payload.file_id = value('sl_file');
+                var file = document.querySelector('#sl_fields [data-pg-picker-value]');
+                payload.file_id = file ? file.value : '';
                 break;
         }
 

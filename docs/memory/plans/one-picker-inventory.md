@@ -4,7 +4,7 @@ description: What chooses a file, a picture, a page or a folder in the software 
 ---
 
 ## How does a screen choose a file or a picture today?
-- Type-to-search combobox (`file_picker_search.php`, kinds `site_icon`, `public_image`, `file`): the five Settings pictures and the short link File field on its form, in its File Manager wizard and in its list's quick edit cell (`ui/file-picker-search.md`). Nothing is listed before a letter is typed.
+- Type-to-search combobox (`file_picker_search.php`, kinds `site_icon`, `public_image`, `file`): the short link list's quick edit cell (`ui/file-picker-search.md`). Nothing is listed before a letter is typed. The five Settings pictures and the short link File field on its form and in its File Manager wizard are picker fields since PK5 (`ui/picker-field.md`).
 - The editor's image browser `editor_select_image.php` (1,144 lines, a pop-up window: folder filter, search, thumbnails, Unsplash, quick upload through `add_file.php`). Opened by CKEditor's Image dialog (`filebrowserImageBrowseUrl`, `ui/rich-text-editor-files.md`), by `software_image_picker()` in `backend.src.js` (product builder pictures, the contact photo) and by the designer's `sdOpenImagePicker()`.
 - The product builder's own picture strip, `pg_pb_render_image_picker()` (`product_builder.php`).
 - The image editor: Import, From the site (the Sticker part's Files list, `openImportFiles()`), Video from the site, sounds from Files (`ui/image-editor-import.md`).
