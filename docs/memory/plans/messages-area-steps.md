@@ -16,7 +16,7 @@ description: Steps MA0-MA11 of the messages area plan (#8961): census, shell and
 - MA9 Profiles into flows (M2b), in four parts: MA9a (S, no product code) every field of a campaign profile against the boxes (trigger, delay and send time, followed profile, purpose and consent, the e-mail), what no box covers, the rule for the moment each profile switches so nothing is lost or sent twice, a dry-run report.
 - MA9 goes on: MA9b (M) the converter as pure functions with tests; MA9c (M) the update step that converts, with its report in the panel; MA9d (S) the profile screens and import leave, their addresses lead to the flows.
 - MA10 Incoming e-mail, in two parts: MA10a (S, no product code) what the E-mails list, the conversation, New e-mail and the card take from the Workspace shell and its gate (`workspace/mail-list.md`, `workspace/mail-card.md`), whether mail is read and answered where the Workspace is off, what the card keeps besides its link; proposals to the architect.
-- MA10 goes on: MA10b (M) "Incoming e-mail" as the area's first tab with the list and the conversation, the boxes' settings in the settings, the list out of the Workspace's menu, the card's click opening the e-mail in the area.
+- MA10 goes on: MA10b (M) "Incoming e-mail" as the area's first tab with the list and the conversation, the boxes' settings in the settings, the list out of the Workspace's menu, the card's click opening the e-mail in the area, an answer from the area marking the card answered, an HTML body for a written e-mail (`workspace/mail-compose.md`, `workspace/mail-html.md`).
 - MA11 (S) Close-out: the lasting rules into `platform/` and `ui/`, an overview file, this plan deleted.
 
 ## In which order?
