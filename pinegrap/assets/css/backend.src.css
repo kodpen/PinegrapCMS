@@ -11901,6 +11901,11 @@ body.workspace,
   --ws-avatar-lg: 3rem;
   --ws-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 10px 30px -14px rgba(0, 0, 0, .16);
   --ws-shadow-accent: 0 .75rem 1.5rem -.75rem rgba(var(--ws-accent-rgb), .45);
+  /* The channel panes' cards (Decisions, Tasks, Board): a lift lighter than
+     --ws-shadow, and the width of a column the Decisions and Tasks cards
+     flow in (about twice the grids' old 22rem and 20rem). */
+  --ws-shadow-soft: 0 1px 2px rgba(0, 0, 0, .04), 0 4px 14px -8px rgba(0, 0, 0, .14);
+  --ws-flow-col: 34rem;
   /* The graph canvas core's tokens (pgc-) on the Workspace's scale; set
      beside the --ws-* names so the dark values below reach them too. */
   --pgc-accent: var(--ws-accent);
@@ -11919,6 +11924,7 @@ html[data-bs-theme="dark"] [id^="ws-"] {
   --ws-soft: rgba(var(--ws-accent-rgb), .1);
   --ws-shadow: 0 1px 2px rgba(0, 0, 0, .2), 0 10px 30px -14px rgba(0, 0, 0, .5);
   --ws-shadow-accent: 0 .75rem 1.5rem -.75rem rgba(var(--ws-accent-rgb), .35);
+  --ws-shadow-soft: 0 1px 2px rgba(0, 0, 0, .25), 0 4px 14px -8px rgba(0, 0, 0, .5);
   --pgc-ring: #a78bfa;
 }
 /* Compact density, chosen per browser in the overview's header
@@ -13645,9 +13651,8 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   padding: .6rem 0;
   border-bottom: 1px solid var(--pg-border-color);
 }
-/* A decision's or a note's tag in its head line; in the conversation the
-   tag alone marks it, on the Decisions tab its card also has the colour at
-   its edge. */
+/* A decision's or a note's tag in its head line: it alone names the kind,
+   in the conversation and on the Decisions tab. */
 .ws-msg-flag {
   display: inline-flex;
   align-items: center;
@@ -13670,41 +13675,58 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   background: color-mix(in srgb, var(--pg-info) 15%, transparent);
   color: var(--pg-info-fg-emphasis);
 }
-/* On the Decisions tab each one is a card of its own in a grid that fills
-   the pane (one column on a phone): in the conversation they keep the rhythm
-   of the messages around them. A decision keeps its green edge and a note
-   its blue one, on the side reading starts from. */
+/* On the Decisions tab each one is a card of its own. The cards flow in
+   columns that fill the pane, top to bottom and then the next column, so a
+   short card leaves no gap under it; a column is --ws-flow-col wide or up
+   to about twice that, one on a phone. The tag names the kind: no coloured
+   edge (a status update's either). In the conversation they keep the
+   rhythm of the messages around them. */
 .ws-pane-decisions {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
-  align-items: start;
-  gap: .75rem;
+  columns: var(--ws-flow-col);
+  column-gap: 1rem;
 }
 .ws-pane-decisions > :is(.ws-empty, .ws-skeleton) {
-  grid-column: 1 / -1;
+  column-span: all;
 }
 .ws-pane-decisions > .ws-msg {
-  margin: 0;
-  padding: .7rem .9rem;
-  /* The start edge is left to the kind of message (decision, note, status
-     update), which draws it in its colour. */
-  border-block: 1px solid var(--pg-border-color);
-  border-inline-end: 1px solid var(--pg-border-color);
-  border-radius: .875rem;
+  break-inside: avoid;
+  margin: 0 0 1rem;
+  padding: .9rem 1.1rem 1rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: 1rem;
+  background: var(--pg-card-bg);
+  box-shadow: var(--ws-shadow-soft);
+}
+.ws-pane-decisions > .ws-msg:hover {
+  border-color: rgba(var(--ws-accent-rgb), .45);
   background: var(--pg-card-bg);
 }
-/* A card is narrower than the conversation: its name, time, tag and the
-   way back to the conversation wrap rather than run past the edge. */
+@media (prefers-reduced-motion: no-preference) {
+  .ws-pane-decisions > .ws-msg,
+  .ws-task-grid > .ws-list-row,
+  .ws-pane-board .ws-cb-card {
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+}
+/* The head line: the name, time and tag, with Show in conversation at its
+   end, always there (keyboard and touch reach it); it wraps in a narrow
+   card rather than running past the edge. */
 .ws-pane-decisions > .ws-msg .ws-msg-meta {
   flex-wrap: wrap;
+  align-items: center;
   row-gap: .15rem;
+  margin-bottom: .35rem;
 }
-.ws-pane-decisions > .ws-msg-decision,
-.ws-pane-decisions > .ws-msg-note {
-  border-inline-start: 3px solid var(--pg-success);
+.ws-pane-decisions > .ws-msg .ws-msg-meta > .btn {
+  margin-inline-start: auto;
+  padding-block: 0;
+  font-size: .78rem;
 }
-.ws-pane-decisions > .ws-msg-note {
-  border-inline-start-color: var(--pg-info);
+.ws-pane-decisions > .ws-msg .ws-msg-quote {
+  margin-bottom: .45rem;
+}
+.ws-pane-decisions > .ws-msg .ws-msg-body {
+  line-height: 1.55;
 }
 /* ── Workspace: status updates and check-ins (assets/js/workspace_status.js) ── */
 .ws-msg-status {
@@ -16397,28 +16419,30 @@ a.ws-chip:hover {
   color: var(--pg-fg-2);
 }
 /* The channel's Tasks tab (drawTasks()): a quiet toolbar row, then each
-   task a card in a grid that fills the pane, one column on a phone. My tasks
-   and a record's window draw the same .ws-list-row as a list and keep it. */
+   task a card; the cards flow in columns as the decisions do, one on a
+   phone. My tasks and a record's window draw the same .ws-list-row as a
+   list and keep it. */
 .ws-pane-toolbar {
   padding: 0;
   border-bottom: 0;
 }
 .ws-task-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
-  align-items: start;
-  gap: .75rem;
+  columns: var(--ws-flow-col);
+  column-gap: 1rem;
 }
 .ws-task-grid > .ws-empty {
-  grid-column: 1 / -1;
+  column-span: all;
 }
 .ws-task-grid > .ws-list-row {
+  break-inside: avoid;
   gap: .6rem;
   min-width: 0;
-  padding: .7rem .85rem;
+  margin: 0 0 1rem;
+  padding: .8rem 1rem;
   border: 1px solid var(--pg-border-color);
-  border-radius: .875rem;
+  border-radius: 1rem;
   background: var(--pg-card-bg);
+  box-shadow: var(--ws-shadow-soft);
 }
 .ws-task-grid > .ws-list-row:hover {
   border-color: rgba(var(--ws-accent-rgb), .45);
@@ -20517,8 +20541,10 @@ html[data-bs-theme="dark"] .ws-cb-chip.active {
 /* On the channel's Board tab a column is a card like the panes' others; the
    workflow table's board (.ws-wt-board) keeps its own columns. */
 .ws-pane-board .ws-cb-col {
+    flex: 1 1 17rem;
+    max-width: 34rem;
     border: 1px solid var(--pg-border-color);
-    border-radius: .875rem;
+    border-radius: 1rem;
     background: var(--pg-card-bg);
 }
 .ws-pane-board .ws-cb-col.ws-cb-drop {
@@ -20687,6 +20713,25 @@ html[data-bs-theme="dark"] .ws-cb-chip.active {
     margin-bottom: .35rem;
     border-radius: var(--ws-radius-xs);
     object-fit: cover;
+}
+/* The channel's Board: its columns grow with the pane up to twice their
+   width, and a card takes the panes' card manner; the priority stripe
+   stands on the side reading starts from. The workflow table's board keeps
+   the cards above. */
+.ws-pane-board .ws-cb-card {
+    padding: .65rem .8rem .65rem .95rem;
+    border-color: var(--pg-border-color);
+    border-radius: .75rem;
+    background: var(--pg-card-bg);
+    box-shadow: var(--ws-shadow-soft);
+}
+.ws-pane-board .ws-cb-card::before {
+    inset-inline-start: 0;
+    top: .55rem;
+    bottom: .55rem;
+}
+.ws-pane-board .ws-cb-card:hover {
+    border-color: rgba(var(--ws-accent-rgb), .45);
 }
 .ws-cb-decision .ws-cb-kind-icon {
     color: var(--pg-success);
