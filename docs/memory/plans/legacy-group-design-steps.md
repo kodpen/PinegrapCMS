@@ -9,10 +9,7 @@ description: Steps of plans/legacy-group-design.md: LG1 the theme, LG2 {path} ad
 - LG1 (M) The theme of a moved design. Done (#8694): `designer/legacy-design-theme.md`. Its sandbox move found that the bulk run writes no stylesheet or script rows, so every other file of the classic head is missing; no step below names it yet.
 - LG2 (M) `{path}` and `{software_directory}` in addresses, for every design. Done (#8732): `designer/design-asset-path-placeholders.md`.
 - LG3 (S) The `legacy` key and the badge. Done (#8757): `designer/legacy-design-framework.md`.
-- LG4 (M) Sets in the report and the dry run.
-  - A pure function gives a classic style's set key: its ordered external CSS and JS references (after LG2's expansion), `collection`, theme; order counts, inline blocks do not. `pg_ltd_report()` groups by it; the screen lists a set, its styles and page count; `pg_ltd_plan()` takes a set and shows the one design, the frame per style, the asset rows limited to a style's pages, and what blocks.
-  - The PR shows how mobile styles, pages styled by their folder (`page_style = 0`), `style_head` and `additional_body_classes` fall; a style the set cannot hold moves alone as today.
-  - Topic `designer/legacy-set.md`; `legacy-to-designer-report.md` corrected.
+- LG4 (M) Sets in the report and the dry run. Done (#8776): `designer/legacy-set.md`. For LG5: the design takes the set's most common sharing position and layout override, which the dry run shows per style; the set's asset rows come from `pg_ltd_set_assets()`.
 - LG5 (M) The set's run. `pg_ltd_steps()` for a set: the design row once, then per style its regions, frame component and pages (`page_style` to the set's design, tree = root + `shared_ref`), on today's cursor and lock; a resume skips what is written; the kept report names every page moved. Topic `legacy-to-designer-run.md` corrected.
 - LG6 (M) The frame split: page content in the page's tree. Starts from `designer/page-region-into-page-tree.md`; may be cut (LG6a the frame into two components, LG6b the regions into the tree).
 - LG7 (S) "Back to classic" for a moved set or one page, by a designer: `page_style` back to the origin style, the trees kept for a later move.
