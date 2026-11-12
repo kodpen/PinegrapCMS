@@ -5,8 +5,7 @@
  * The screens that had their own DataTables code are off it: the product
  * group form's products table holds form fields, so it is a plain sortable
  * table that keeps every row in the form; the File Manager's injected file
- * table is a plain table; the link picker is a printed list of the table
- * driver.
+ * table is a plain table.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -36,19 +35,4 @@ function test_explorer_file_table_is_plain()
 
 	pg_assert_contains("\$output_table_classes = 'table table-hover text-nowrap';", $src);
 	pg_assert_false(strpos($src, 'datatable-') !== false, 'no DataTables flags');
-}
-
-function test_link_picker_is_a_printed_driver_list()
-{
-	require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
-
-	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/editor_select_page_or_file.php');
-
-	pg_assert_contains("pg_list_table_html(\$list['source'], \$list['page'], lang('Browse Items'))", $src);
-	pg_assert_false((bool) preg_match('/class="chart[ "]/', $src), 'not a table.chart');
-
-	foreach (array('page', 'file', 'short_link') as $type) {
-		pg_assert_contains("\$list_name = 'editor_select_page_or_file_" . $type . "';", $src);
-		pg_assert_true(in_array('editor_select_page_or_file_' . $type, pg_list_table_printed_lists(), true), $type . ' keeps a heading\'s sort');
-	}
 }

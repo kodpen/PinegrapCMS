@@ -9,8 +9,8 @@ module: list_paging
 - Their sort map entry is `pg_list_label_order($expr, $labels)`: `FIELD($expr, 'code', …)` with the codes ordered by label through `pg_geo_label_compare()` (the panel language's `Collator`, else `strcasecmp`). `pg_list_order_by()` adds asc/desc as for any column. Only codes of `[A-Za-z0-9 _-]` (empty too) are written into the query; a code outside the list sorts first.
 - Before this fix the heading link sorted by the stored code, so in Turkish the column read shuffled ("Otomatik Seçim, Onay Kutusu, Bağış, Miktar"), and in English too where code and label differ ("Auto Campaign Sent" = `email_campaign_sent`, "Recorded" = `log`). DataTables' own ordering is off, so the link is the only sort.
 
-## How does the link picker (editor_select_page_or_file.php) sort?
-- In PHP, `pg_list_sort_items($items, $levels, $keys, $numbers, $labels)`: size and time as numbers, page type by its label, other text through `pg_geo_label_compare()`; ties by the first key (URL). It replaced `array_multisort()`, which compared bytes: lowercase names and names starting with Ç/Ö/Ş/Ü came after "Z". The offer editor's product group selects (`_pg_offer_product_groups()`, `edit_offer_f.php`) sort their "Parent › Child" labels the same way, no longer with `strcasecmp`.
+## Where else is `pg_list_sort_items()` used?
+- `pg_list_sort_items($items, $levels, $keys, $numbers, $labels)` sorts in PHP: size and time as numbers, labels by their text, other text through `pg_geo_label_compare()`; ties by the first key. It replaced `array_multisort()`, which compared bytes: lowercase names and names starting with Ç/Ö/Ş/Ü came after "Z". The offer editor's product group selects (`_pg_offer_product_groups()`, `edit_offer_f.php`) sort their "Parent › Child" labels the same way, no longer with `strcasecmp`.
 
 ## Which other lists sorted in PHP use the panel language's order?
 - Edit Product Group and Featured & New Items: `pg_list_sort_by_order_and_name()` (`list_paging`), (int) sort order (an empty box counts as 0), then `pg_geo_label_compare()` on the name. Ties are the normal case, and DataTables' ordering is off, so the server order is what shows.

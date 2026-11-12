@@ -34,7 +34,6 @@ function panel_single_value_params_screens()
 		'edit_form_list_view'        => array('page_id'),
 		'editor_select_image'        => array('CKEditorFuncNum', 'SingleImage', 'file_input_name'),
 		'edit_user'                  => array('username', 'email'),
-		'editor_select_page_or_file' => array('CKEditorFuncNum'),
 		'generate_layout'            => array('page_id'),
 		'get_theme_designer_module'  => array('file_id', 'module_id'),
 		'image_editor_edit'          => array('file_name'),

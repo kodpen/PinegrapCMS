@@ -11,7 +11,8 @@
  * both.
  *
  * Without pgPicker and pgUI (a site page, where the panel's scripts are not
- * loaded) the dialogs keep CKEditor's own Browse Server window.
+ * loaded) the Link dialog has no Browse Server, and the Image dialog keeps
+ * CKEditor's own window (editor_select_image.php).
  * #pg_editor_bridge_config (pg_editor_bridge_script(), includes/fn/editor.php)
  * holds the site's path, the texts, whether short links are offered and the
  * Unsplash key.

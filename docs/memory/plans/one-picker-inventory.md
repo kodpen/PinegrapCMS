@@ -16,7 +16,7 @@ description: What chooses a file, a picture, a page or a folder in the software 
 - `select_page()`: 56 calls in 12 files, 36 of them in `includes/forms/page_form.php` (Create Page and Edit Page: picker fields since #8782, `ui/page-form-page-fields.md`); the rest in the product builder, Settings (commerce, security, privacy), the user screens and Edit Offer.
 - `get_page_options()`: 19 calls in 9 files (short link forms, menu item, calendar event, e-mail campaign profile, panel actions).
 - The visual designer's widget settings: `_swPageOptions()`, 46 calls, a value being a page id or `tab:<key>` for an unsaved tab, the list from `list_all_pages` (`designer/designer-page-pickers.md`).
-- A link in content: the editor's link browser `editor_select_page_or_file.php` (638 lines, a pop-up with Pages, Files and Short links), opened by CKEditor's Link dialog only where the panel's scripts are missing since PK7; the designer's `sdOpenFilePicker()` (8 calls) uses the picker since PK8.
+- A link in content: the old link window `editor_select_page_or_file.php` was deleted in PK8b; CKEditor's Link dialog (PK7) and the designer's `sdOpenFilePicker()` (PK8) use the picker.
 
 ## How is a folder chosen?
 - `select_folder()`: 47 calls in 26 files, a select of the folder tree (`ui/settings-folder-pickers.md`, `filtered-folder-picker-path.md`). No step of this plan: the owner named files and pages. The picker's tree makes a `folder` kind possible later.

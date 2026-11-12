@@ -221,6 +221,9 @@ $file_list = array(
     // The logo of the third-party image editor the software used before its
     // own; nothing shows it since the image editor became pg_image_editor.js.
     'assets/images/icon_image_editor.png',
+    // The rich text editor's old link window; the Link dialog and the
+    // visual designer choose through the picker (pg_editor_bridge_script()).
+    'editor_select_page_or_file.php',
 );
 
 // Everything the software drops in data/temp is a cache or a scratch file that is written
