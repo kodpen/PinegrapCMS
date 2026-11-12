@@ -5545,6 +5545,7 @@
     "An agent edited your canvas in {var:1}": "Bir ajan {var:1} kanalındaki tuvalinizi düzenledi",
     "An agent is asked in its channels; a task is not handed to it.": "Bir ajana kanallarında sorulur; ona görev devredilmez.",
     "An agent is woken by a mention, every message, a prefix or replies to it.": "Bir ajan bir anmayla, her mesajla, bir önekle ya da kendi mesajlarına gelen yanıtlarla uyanır.",
+    "An agent leaves no emoji on its own message.": "Bir ajan kendi mesajına emoji bırakmaz.",
     "An agent visits, measures the rooms, reads the title deed and compares recent sales nearby. You get a price in writing, free of charge.": "Bir danışman gelir, odaları ölçer, tapuyu okur ve yakındaki son satışlarla karşılaştırır. Ücretsiz olarak yazılı bir fiyat alırsınız.",
     "An agent works through an application or runs on a model.": "Bir ajan bir uygulama üzerinden çalışır ya da bir modelde çalışır.",
     "An agreed rate for every class": "Her sınıf için anlaşılmış fiyat",

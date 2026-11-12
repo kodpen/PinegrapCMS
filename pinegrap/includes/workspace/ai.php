@@ -1621,6 +1621,15 @@ function ws_ai_step($row)
         if ($name === 'answer') {
             $said = ws_ai_clean((string) ($call['args']['text'] ?? ''));
 
+            // A model assistant's emoji for the asking message; with no words
+            // and nothing proposed it closes the request alone.
+            $emoji = function_exists('ws_model_answer_emoji') ? ws_model_answer_emoji($row, (string) ($call['args']['emoji'] ?? '')) : '';
+
+            if (($emoji !== '') && ($said === '') && empty(array_filter((array) ($state['proposals'] ?? array())))) {
+                ws_model_close_with_emoji($row, $emoji);
+                return 'done';
+            }
+
             // Tool calls written into the answer's words: made now, and the
             // answer asked for again, without them.
             $inside = array_values(array_filter(ws_ai_text_calls($said), function ($written) {
@@ -1650,7 +1659,13 @@ function ws_ai_step($row)
                 continue;
             }
 
-            return ws_ai_finish_answer($row, $state, $said, $steps, '', $call['id']);
+            $done = ws_ai_finish_answer($row, $state, $said, $steps, '', $call['id']);
+
+            if (($done === 'done') && ($emoji !== '')) {
+                ws_ai_react((int) $row['message_id'], $emoji, true);
+            }
+
+            return $done;
         }
 
         if ($name === 'fail') {
@@ -4016,6 +4031,15 @@ function ws_ai_tools($row)
             'reason' => array('type' => 'string'),
         ), array('reason')),
     );
+
+    // A model assistant asked by a channel message: one fitting emoji for
+    // that message, beside the words or in place of them.
+    if (function_exists('ws_ai_answer_takes_emoji') && ws_ai_answer_takes_emoji($row)) {
+        $tools[0] = $tool('answer', 'Write your answer under the request, or leave only an emoji on the message that asked when it needs no words. Call it once, at the end, after proposing with propose_task and propose_change what the request asks for: tasks and changes written only in the answer cannot be applied.', array(
+            'text'  => array('type' => 'string', 'description' => 'The answer in the language of the request. Markdown; tags such as <@user:12> or <#order:1045>. Empty with an emoji when the message needs no words (a thank-you, an acknowledgement).'),
+            'emoji' => array('type' => 'string', 'description' => 'Optional: one fitting emoji left on the message that asked, beside the text or in place of it: a celebration for good news, a heart for thanks, a thumbs up for "done".'),
+        ), array());
+    }
 
     // A request from the Visual Page Editor: its page, and nothing else.
     if (((int) ($row['page_id'] ?? 0) > 0) && ws_design_ai() && pg_design_ai_is_design_request($row)) {
