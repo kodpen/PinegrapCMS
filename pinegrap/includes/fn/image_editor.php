@@ -729,7 +729,51 @@ function pg_image_editor_open($request, $user)
         'doc'      => $state['doc'],
         'base'     => $state['base'],
         // A canvas file: doc is its document, opened as a blank board.
-        'canvas'   => (bool) $canvas), 200);
+        'canvas'   => (bool) $canvas,
+        // Whether it is one of the site's canvas templates (Save as template).
+        'template' => $canvas ? pg_image_editor_template_is((int) $file['row']['id']) : false), 200);
+}
+
+// Whether a file is one of the site's canvas templates.
+function pg_image_editor_template_is($file_id)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/canvas_templates.php');
+
+    return in_array((int) $file_id, pg_canvas_templates_ids(), true);
+}
+
+/**
+ * Action template: a canvas file marked as a template of the site, or the
+ * mark taken off ("Save as template" in the save menu). Only a person who
+ * may edit the file marks it.
+ *
+ *   { file_id, on } -> { status, template }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_template($request, $user)
+{
+    $file = pg_image_editor_file(isset($request['file_id']) ? $request['file_id'] : 0, $user);
+
+    if ($file['refusal']) {
+        return $file['refusal'];
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/canvas_templates.php');
+
+    $done = pg_canvas_template_mark((int) $file['row']['id'], !empty($request['on']));
+
+    if (!$done['ok']) {
+        return pg_image_editor_refusal($done['error']);
+    }
+
+    $line = $done['template']
+        ? lang(array('string' => 'file ({var:1}) was made a canvas template', 'vars' => (string) $file['row']['name']))
+        : lang(array('string' => 'file ({var:1}) is no longer a canvas template', 'vars' => (string) $file['row']['name']));
+
+    log_activity($line, isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+
+    return array(array('status' => 'success', 'template' => $done['template']), 200);
 }
 
 /**
@@ -2606,6 +2650,10 @@ function pg_image_editor_action_delete_version($request, $user)
 function pg_image_editor_strings_artboard()
 {
     return array(
+        'templateSave'      => lang('Save as template'),
+        'templateRemove'    => lang('Remove from templates'),
+        'templateSaved'     => lang('Saved as a template: agents can make canvases from it.'),
+        'templateRemoved'   => lang('No longer a template.'),
         'preset_square'     => lang('Square post'),
         'preset_portrait'   => lang('Portrait post'),
         'preset_story'      => lang('Story'),
