@@ -4437,7 +4437,7 @@ button.pgie-sndfile:hover {
    the clip's row tall with finger-size grips; the sounds folded into one
    line. The lanes span the whole width, so --pgie-trname is 0. */
 .pgie-phrows {
-  margin: 4px -4px 8px;
+  margin: 4px 0 8px;
 }
 
 .pgie-phrows .pgie-tracks {
@@ -4474,7 +4474,7 @@ button.pgie-sndfile:hover {
 }
 
 .pgie-phrows .pgie-trrow .pgie-trlane {
-  flex: 1 0 100%;
+  flex: 1 0 calc(100% - 20px);
   height: 24px;
 }
 

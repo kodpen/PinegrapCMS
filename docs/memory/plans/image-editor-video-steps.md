@@ -36,7 +36,7 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
 - V9 (S) Save and open again. Done (#8701, `ui/image-editor-video-reopen.md`).
   - The project document (clips, sound, layers) kept in the export's version, as AN4 keeps an animation's; the same-format replace.
 
-- V10 (S) Phone. `free` after V3 and V4.
+- V10 (S) Phone. Done (#8854, `ui/image-editor-phone-rows.md`).
   - One list of rows, touch-sized trim handles, the sound rows folded.
 
 - V11 (S) Access and close-out. The holder.

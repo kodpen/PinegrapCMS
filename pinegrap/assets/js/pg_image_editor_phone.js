@@ -1,8 +1,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Image editor: the Animate tool on a phone once the document holds a
- * video. The sheet holds the play bar, then one list of rows: each name
+ * Image editor: the Animate tool on a phone held upright once the
+ * document holds a video. The sheet holds the play bar, then one list of rows: each name
  * above its lane under one time ruler, the playhead across them all, the
  * clip's row tall with finger-size trim grips, and the sound rows folded
  * into one line ("Sound · 2 rows") that opens them. Split joins Duplicate
@@ -28,8 +28,10 @@
 
     var Editor = X.Editor, M = X.M, t = X.t, el = X.el, icon = X.icon;
 
-    // The tracks' and the sound rows' own query: a phone either way up.
-    var PHONE = '(max-width: 599.98px), (max-height: 499.98px)';
+    // A phone held upright, where the play bar is the sheet's first row
+    // (the motion part's query). Held sideways the stage keeps its height
+    // and the panel's fields do it, as before.
+    var PHONE = '(max-width: 599.98px)';
 
     function onPhone() {
         return !!(window.matchMedia && window.matchMedia(PHONE).matches);
@@ -40,8 +42,8 @@
         return onPhone() && (this.tool === 'motion') && M.phoneRows(this.doc.layers);
     };
 
-    // On a phone the tracks and the sound rows show only in the sheet's
-    // list, and only with a clip; elsewhere as before.
+    // On a phone held upright the tracks and the sound rows show only in
+    // the sheet's list, and only with a clip; elsewhere as before.
     var tracksShown = Editor.prototype.tracksShown;
 
     Editor.prototype.tracksShown = function () {
