@@ -18133,7 +18133,8 @@ html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
   padding: .5rem 0;
   border-bottom: 1px solid var(--pg-border-color);
 }
-/* The MCP servers card carries two buttons beside its heading and up to
+/* The MCP servers card (Workspace Settings, and Site Settings' Assistants
+   and agents) carries two buttons beside its heading and up to
    four beside each server's name; on a phone they wrap under it instead of
    squeezing the name to nothing and pushing the last button off screen. */
 #ws-mcp > .card-header {
@@ -18142,7 +18143,8 @@ html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
 #ws-mcp > .card-body > .ws-dept-row {
   flex-wrap: wrap;
 }
-#ws-mcp > .card-body > .ws-dept-row > .ws-grow {
+#ws-mcp > .card-body > .ws-dept-row > .ws-grow,
+#pgset-ws-mcp .ws-dept-row > .ws-grow {
   flex-basis: 12rem;
 }
 .ws-dept-swatch {

@@ -774,7 +774,7 @@ function ws_mcp_settings_catalogue($self_url, $servers, $form = null)
         }
 
         $tiles .= '
-            <div class="sm:col-6 xl:col-4">
+            <div class="sm:col-6' . (($form === null) ? ' xl:col-4' : '') . '">
                 <div class="border rounded-5 p-3 h-100" id="ws-mcp-catalogue-' . h($key) . '">
                     <div class="d-flex align-items-center gap-3">
                         <i class="bi ' . h($entry['icon']) . ' fs-lg lh-1" aria-hidden="true"></i>
