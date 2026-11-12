@@ -2706,6 +2706,7 @@
     "Short link ({var:1}) was created through the API by the application {var:2} (key {var:3}).": "Kısa bağlantı ({var:1}), {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden oluşturuldu.",
     "Short link ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).": "Kısa bağlantı ({var:1}), {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden silindi.",
     "Short link ({var:1}) was moved to the recycle bin through the API by the application {var:2} (key {var:3}).": "Kısa bağlantı ({var:1}), {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden Geri Dönüşüm Kutusu'na taşındı.",
+    "Short links": "Kısa bağlantılar",
     "Short notes to yourself": "Kendine kısa notlar",
     "Short paragraphs help, and so do lists for steps. A clear heading every few paragraphs lets a visitor jump to the part they need.": "Kısa paragraflar yardımcı olur, adımlar için listeler de. Birkaç paragrafta bir gelen açık bir başlık, ziyaretçinin ihtiyaç duyduğu bölüme atlamasını sağlar.",
     "Short poems for long evenings, from a voice the whole shop has fallen for.": "Uzun akşamlar için kısa şiirler; tüm dükkânın vurulduğu bir sesten.",

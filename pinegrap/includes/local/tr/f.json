@@ -449,6 +449,7 @@
     "Files uploaded through the API are filed in this folder. When no folder is selected, or the selected one has since been deleted, they go to the topmost folder.": "API üzerinden yüklenen dosyalar bu klasöre konur. Klasör seçilmemişse ya da seçilen klasör sonradan silinmişse en üstteki klasöre giderler.",
     "Files you choose appear here.": "Seçtiğiniz dosyalar burada görünür.",
     "Files, deadlines and the diary of two lawyers; experience in a law office is a plus.": "Dosyalar, süreler ve iki avukatın ajandası; hukuk bürosu deneyimi tercih sebebidir.",
+    "File…": "Dosya…",
     "Filipino": "Filipince",
     "Fill": "Doldur",
     "Fill Color": "Dolgu Rengi",

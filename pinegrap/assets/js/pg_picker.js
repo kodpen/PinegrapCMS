@@ -14,7 +14,7 @@
  * A page kind (config page_kinds) lists pages as rows with their address,
  * type and date, a chip per page type group, and pages in an archived folder
  * or in the Recycle Bin marked; neither can be chosen. A caller may hand in
- * entries of its own (extra: [{value, text, type, type_group, note}], under
+ * entries of its own (extra: [{value, text, type, type_group, type_label, note}], under
  * extraLabel), listed beside the folders and found by the search; they are
  * never kept in Recent.
  *
@@ -366,16 +366,21 @@
     }
 
     // The entries a caller hands in beside the pages (the designer's unsaved
-    // tabs, `tab:<key>`): each needs a value and a name; the value is kept as
-    // text, as a field stores it.
+    // tabs, `tab:<key>`; the editor's short links): each needs a value and a
+    // name; the value is kept as text, as a field stores it. A type_label
+    // names a type the page groups do not have.
     function extraItems(list) {
         return (Array.isArray(list) ? list : []).filter(function (entry) {
             return entry && entry.value !== undefined && entry.value !== null && String(entry.value) !== '' && String(entry.text || '') !== '';
         }).map(function (entry) {
-            return {
+            var item = {
                 value: String(entry.value), text: String(entry.text), type: String(entry.type || ''),
                 type_group: String(entry.type_group || 'standard'), note: String(entry.note || ''), extra: true
             };
+            if (entry.type_label) {
+                item.type_label = String(entry.type_label);
+            }
+            return item;
         });
     }
 
