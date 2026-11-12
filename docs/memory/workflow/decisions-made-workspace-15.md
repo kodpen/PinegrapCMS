@@ -15,4 +15,4 @@ description: Decisions list, workspace part 15 (2026-11-11 on): the Workspace se
 - Yes: Anthropic joins the Provider list beside OpenAI, Gemini, Mistral, DeepSeek, OpenRouter, Azure and a custom address.
 - Owner (2026-11-11): "Evet, Claude eklensin (Önerilen)", his vote on the one-choice poll in the agents channel, confirmed in the architect's window ("2 sorunu onayladım"); raised by his words "Sağlayıcı kısımında claude yoktu".
 - Not chosen: "Hayır, gerek yok" (the list stays; a Claude model only through OpenRouter).
-- The architect's, not the owner's words: no schema; a Claude Code session is an application agent and needs no provider, so its form shows no Provider field. Plan step: A16 of `plans/agent-channel-steps-4.md`.
+- The architect's, not the owner's words: no schema; a Claude Code session is an application agent and needs no provider, so its form shows no Provider field. Plan step: A16 of `plans/agent-channel.md`, done in #8772.
