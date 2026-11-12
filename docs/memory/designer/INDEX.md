@@ -324,6 +324,7 @@
 - designer-interactions.md: Interactions of designer nodes: props._fx, data-pg-fx-* attributes, pg_fx.src.js (every effect), head style, fail-safe, twins, tests.
 - designer-layer-names.md: Rules for node customName (layer names) in designer blocks: one name per role, contextual generic names, no embedded numbers, no empty names.
 - designer-lazy-dirty-checks.md: When the designer compares a page with its baseline (the 1.5 s poll, the tab strip, save) and how the answer for a page not open is kept (_pgDirtyMemo) (D4, PR #8091)
+- designer-left-panel-hide.md: The Page Design Studio toolbar's menu button (#sd-left-toggle) that hides the whole left panel and its rail (sd-hide-left, pinegrap_designer_hide_left) and how it sits with docking.
 - designer-live-preview.md: The designer's Preview and live preview: blob page, system widgets drawn by the server from the editor's unsaved trees (preview_widgets), background-render rules, hooks that refresh the preview.
 - designer-meta-tags.md: Design-wide and per-page custom meta tags of the visual designer (style.style_meta_tags, page.page_meta_tags, 11.0.3): storage, precedence over generated tags, who edits them.
 - designer-narrow-screen-bars.md: Designer toolbars below 992px hide labels, never controls: .sd-tabs-add-txt, .sd-vb-txt, flex-wrap on .sd-bp-bar, and how to measure off-screen controls.
