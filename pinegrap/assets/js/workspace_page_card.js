@@ -292,11 +292,17 @@
             var list = h.el('div', 'd-flex flex-column gap-2');
 
             tables.forEach(function (table) {
-                var row = h.el('div', 'd-flex align-items-center gap-2 border rounded px-3 py-2');
+                // The name keeps at least 12rem: on a narrow drawer it takes
+                // its own line and the switch and Remove wrap under it.
+                var row = h.el('div', 'd-flex flex-wrap align-items-center gap-2 border rounded px-3 py-2');
+                var name = h.el('div', 'd-flex align-items-center gap-2');
                 var segment = h.el('div', 'btn-group btn-group-sm ms-auto');
 
-                row.appendChild(h.icon('bi-table'));
-                row.appendChild(h.el('span', 'text-truncate', table.name));
+                name.style.flex = '1 1 12rem';
+                name.style.minWidth = '0';
+                name.appendChild(h.icon('bi-table'));
+                name.appendChild(h.el('span', 'text-truncate', table.name));
+                row.appendChild(name);
 
                 [['read', h.t('page_bind_read')], ['write', h.t('page_bind_write')]].forEach(function (pair) {
                     var on = (table.bound === pair[0]);

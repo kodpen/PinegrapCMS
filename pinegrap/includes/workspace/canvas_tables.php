@@ -315,7 +315,7 @@ function ws_canvas_tables_js_strings()
 {
     return array(
         'page_tables'       => lang('Tables it uses'),
-        'page_table_read'   => lang('reads'),
+        'page_table_read'   => lang('reads only'),
         'page_table_write'  => lang('reads, writes'),
         'page_table_hidden' => lang('A table you do not reach'),
         'page_bind'         => lang('Bind a table'),

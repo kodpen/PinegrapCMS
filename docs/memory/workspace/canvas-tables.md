@@ -14,7 +14,7 @@ description: The tables bound to a canvas (ws_canvas_tables, 11.0.190, #8960): w
 - An agent's binding (`bound_by_kind` `app`, a channel line with Undo) comes with the API (CO7).
 
 ## What does the card show?
-- `file.page.tables` [{id, name, access, reached}] and `can_bind` (`ws_canvas_tables_card()`, from `ws_page_card()` with the viewer). The line "Tables it uses" with a chip per table and what the page does ("reads", "reads, writes"); a table the reader does not reach shows as "A table you do not reach", so the line still counts it.
+- `file.page.tables` [{id, name, access, reached}] and `can_bind` (`ws_canvas_tables_card()`, from `ws_page_card()` with the viewer). The line "Tables it uses" with a chip per table and what the page does ("reads only", "reads, writes"; Turkish "okur", "okur, yazar"); a table the reader does not reach shows as "A table you do not reach", so the line still counts it.
 - "Bind a table" for whoever may write in the channel: a drawer of the tables they may change (`ws_page_tables`), each with Read only / Read and write and Remove (`ws_page_bind`, `ws_page_unbind`); the card is drawn again from the message sent back.
 
 ## What does a page read?

@@ -186,7 +186,8 @@ function ws_page_card_js_strings()
 {
     return array(
         'page_by'          => ws_js_template('Live page by @{var:1}. It is the agent\'s work, not the panel\'s.', 1),
-        'page_open'        => lang('Open'),
+        // The button, a verb: the shared lang('Open') is the state word.
+        'page_open'        => lang('Open page'),
         'page_close'       => lang('Close'),
         'page_full_screen' => lang('Full screen'),
         'page_source'      => lang('View source'),
