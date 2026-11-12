@@ -901,6 +901,18 @@ function pg_notification_module($action)
 	return 'system';
 }
 
+// Whether a bell row asks something of its reader, for the bell's "Asked of
+// me" chip: a Workspace row that mentions them, asks them a question or asks
+// them to approve. Pure.
+function pg_notification_asks($action, $kind = '')
+{
+	if ((string) $action !== 'workspace') {
+		return false;
+	}
+
+	return in_array((string) $kind, array('mention', 'question_asked', 'approval_requested'), true);
+}
+
 // The day heading a bell row stands under: today, yesterday or earlier, read
 // in the site's time zone (the default one when none is given). A time after
 // now counts as today. Pure: now is passed in.

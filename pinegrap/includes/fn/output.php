@@ -2573,20 +2573,25 @@ function output_header($properties = false)
         $output_quick_note = ws_notes_quick_markup($output_workspace_rights, $output_parent_target);
     }
 
-    // The bell is the one inbox: for a member of the team its list shows
-    // everything, the site's notices or what the workspace told them
-    // (backend.src.js; the Workspace list's Inbox opens it on Workspace).
-    $output_bell_filters = '';
-    if ($output_workspace_rights && $output_workspace_rights['member']) {
-        $output_bell_filters = '<div class="pg-bell-filters" role="group" aria-label="' . lang('Filter') . '">';
+    // The bell's filters, for everybody: All, a chip for each module and
+    // "Asked of me" (backend.src.js shows a chip only while the list holds a
+    // row of it), then the search box and the "Unread only" switch. The list
+    // is loaded whole, so the script applies all of them together.
+    $output_bell_filters = '<div class="pg-bell-filters" role="group" aria-label="' . h(lang('Filter')) . '">';
 
-        foreach (array('all' => lang('All'), 'site' => lang('Site'), 'workspace' => lang('Workspace')) as $filter => $label) {
-            $output_bell_filters .= '<button type="button" class="pg-bell-filter no-popover" data-pg-bell-filter="' . $filter . '" aria-pressed="' . (($filter === 'all') ? 'true' : 'false') . '">'
-                . '<span class="pg-bell-filter-name">' . $label . '</span><span class="pg-bell-count" hidden></span></button>';
-        }
-
-        $output_bell_filters .= '</div>';
+    foreach (array('all' => lang('All'), 'shop' => lang('Shop'), 'erp' => lang('Accounting'), 'content' => lang('Content'), 'team' => lang('Team'), 'system' => lang('System'), 'ask' => lang('Asked of me')) as $filter => $label) {
+        $output_bell_filters .= '<button type="button" class="pg-bell-filter no-popover" data-pg-bell-filter="' . $filter . '" aria-pressed="' . (($filter === 'all') ? 'true' : 'false') . '"' . (($filter === 'all') ? '' : ' hidden') . '>'
+            . '<span class="pg-bell-filter-name">' . h($label) . '</span><span class="pg-bell-count" hidden></span></button>';
     }
+
+    $output_bell_filters .= '</div>
+                <div class="pg-bell-tools">
+                    <input type="search" class="form-control form-control-sm pg-bell-search" id="pg_bell_search" placeholder="' . h(lang('Search notifications')) . '" aria-label="' . h(lang('Search notifications')) . '" autocomplete="off">
+                    <div class="pg-bell-unread-only">
+                        <div class="switch"><input type="checkbox" role="switch" id="pg_bell_unread_only" class="pg-bell-unread-switch"></div>
+                        <label for="pg_bell_unread_only">' . h(lang('Unread only')) . '</label>
+                    </div>
+                </div>';
 
     // The bell's drawer at the right edge, full height: the head (the name,
     // "Mark all as read", a menu holding "Delete All Notifications", close),
@@ -2608,6 +2613,7 @@ function output_header($properties = false)
             </div>
             <div class="drawer-body pg-bell-body">
                 ' . $output_bell_filters . '
+                <p class="pg-bell-no-match fg-secondary small text-center m-0 px-5 py-4 d-none" role="status">' . h(lang('No notification matches these filters.')) . '</p>
                 <div class="pg-bell-scroll"></div>
                 <div class="notifications_empty text-center my-3 py-3">' . lang('No Notification') . '<br><span class="bi fs-lg bi-wind"></span></div>
                 <div id="push_row" class="d-none align-items-center justify-content-between gap-3 border-top px-5 py-3">

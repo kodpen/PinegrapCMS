@@ -170,6 +170,7 @@
     "Unread": "Okunmadı",
     "Unread conversations": "Okunmamış konuşmalar",
     "Unread messages by channel, decisions, tasks handed to them, approvals waiting for them. Somebody with no tasks but something missed gets the e-mail too.": "Kanal kanal okunmamış mesajlar, kararlar, kişiye verilen görevler ve onayını bekleyen istekler. Görevi olmayan ama bir şey kaçırmış kişiye de e-posta gider.",
+    "Unread only": "Yalnızca okunmamışlar",
     "Unrecognised value for {var:1}: {var:2}": "{var:1} için tanınmayan değer: {var:2}",
     "Unregistered Member": "Kayıtsız Üye",
     "Unremove": "Kaldırmayı Geri Al",

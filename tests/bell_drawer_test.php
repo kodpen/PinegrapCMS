@@ -102,7 +102,7 @@ function test_bell_drawer_markup()
 	pg_assert_contains("h(lang('Delete All Notifications'))", $drawer, 'Delete All in the head menu');
 
 	$last = -1;
-	foreach (array('pg-bell-head', 'pg-bell-mark-all', 'pg-bell-head-menu', 'pg-bell-delete-all', 'pg-bell-close', '$output_bell_filters', 'pg-bell-scroll', 'notifications_empty', 'id="push_row"', 'id="push_hint"') as $part) {
+	foreach (array('pg-bell-head', 'pg-bell-mark-all', 'pg-bell-head-menu', 'pg-bell-delete-all', 'pg-bell-close', '$output_bell_filters', 'pg-bell-no-match', 'pg-bell-scroll', 'notifications_empty', 'id="push_row"', 'id="push_hint"') as $part) {
 		$pos = strpos($drawer, $part);
 		pg_assert_true(($pos !== false) && ($pos > $last), $part . ' in its place');
 		$last = (int) $pos;
@@ -145,8 +145,8 @@ function test_bell_drawer_open_and_close()
 	pg_assert_contains("pgUI.drawer.isOpen('#notifications')", $poll, 'the poll asks the drawer');
 	pg_assert_false(strpos($js, "pgUI.menu.isOpen('#notification_toggle')") !== false, 'no Menu state is read');
 
-	// Delete All is offered under All with two rows or more.
-	pg_assert_contains("var no_delete = (filter !== 'all') || (rows.length < 2);", $filter);
+	// Delete All is offered under All, unnarrowed, with two rows or more.
+	pg_assert_contains("var no_delete = (filter !== 'all') || pgBellUnreadOnly || (search !== '') || (rows.length < 2);", $filter);
 	pg_assert_contains("\$(document).on('click', '#notifications .pg-bell-delete-all', function () {", $js);
 
 	// A row's menu keeps Escape before the drawer hears it.

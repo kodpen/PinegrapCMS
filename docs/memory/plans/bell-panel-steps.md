@@ -16,10 +16,7 @@ description: Steps of plans/bell-panel.md: BP1 read when opened, BP2 the dashboa
   - A short title: a Workspace row says who and what ("<sender> asked you"), its channel or record goes to line two (`ws_bell_describe()`, `ws_inbox_place()`); a site row keeps its title, its details make line two.
   - Tests: the title and place of a Workspace row as a pure function, the drawer's markup, the open and close rules. Topics `ui/bell-row.md`, `ui/notifications-menu.md`.
   - The owner approves the PR's pictures before it merges (`workflow/architect-asking.md`): wide and phone, light and dark, with rows as in his picture (an agent's question, a mention, an Accounting row).
-- BP3 (M) The filters and the search.
-  - `includes/fn/output.php` prints the chips for everybody: All, the modules, "Asked of me" (each row gets `ask` from its Workspace kind), the "Unread only" switch and the search box. The script shows a module's chip only while the list holds a row of it, counts unread per chip, and applies chip, switch and search together.
-  - The kept choice (`pg-bell-filter`): `workspace` reads as Team, `site` as All; `pgBellOpen('workspace')` opens Team. "Delete All Notifications" stays under All only. An empty result says so in one line.
-  - Tests: the chips' markup and the kept-choice mapping (source checks). Topic `ui/notifications-one-inbox.md` corrected.
+- BP3 (M) The filters and the search. Done: #8805 (`ui/notifications-one-inbox.md`): chips for everybody (All, the modules, "Asked of me"), "Unread only", the search; a kept `workspace` reads as Team, `site` as All.
 - BP4 (S) The in-place actions and the close-out.
   - A row gets `act` only when the reader may run it: Approve for `approval_requested` (`ws_approval_decide`), Try again for a failed `flow_finished` run (`ws_flow_step_mend`, `ws_flow_share_manager()`), a task done for `assigned`, `task_reminder`, `task_overdue` (`ws_task_status`). After success the row is read and redrawn; a refusal shows the bell's toast (`pg_bell_refused()`).
   - Tests: which rows get `act`, and that a reader without the right gets none.
