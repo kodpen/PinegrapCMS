@@ -17614,6 +17614,42 @@ const StyleDesigner = (function () {
                     ]);
                 }
 
+                // Product Bar — a slim bar that stays at the top of the window
+                // under a sticky site header (offset 56 px, a Bootstrap
+                // navbar's height; 0 in the Interactions panel when the header
+                // scrolls away): the product's name, links to the page's own
+                // sections and one call to action. The links show from md up,
+                // so a phone keeps the name and the button on one line. The
+                // dark entry is a dark band (data-bs-theme plus bg-body
+                // text-body), so both follow the palette.
+                if (ctype === 'spotlight-bar' || ctype === 'spotlight-bar-dark') {
+                    var barDark = ctype === 'spotlight-bar-dark';
+                    var barLink = function (text, href) {
+                        return createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Nav Item') }, [
+                            createNode('semantic', { tag: 'a', cssClass: 'nav-link px-2 link-body-emphasis', href: href, target: '', text: text, customName: _sdT('Section Link') })
+                        ]);
+                    };
+                    var bar = createNode('semantic', { tag: 'section', cssClass: 'bg-body text-body border-bottom py-2', customName: barDark ? _sdT('Product Bar (Dark)') : _sdT('Product Bar'),
+                        _attrs: barDark ? [{ name: 'data-bs-theme', value: 'dark' }] : [] }, [
+                        createNode('container', { fluid: false, cssClass: '' }, [
+                            createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center gap-3', customName: _sdT('Bar') }, [
+                                createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('Aurora One'), cssClass: 'fs-5 fw-semibold text-truncate mb-0 me-auto' }),
+                                createNode('semantic', { tag: 'nav', cssClass: 'd-none d-md-block', customName: _sdT('Section Links'),
+                                    _attrs: [{ name: 'aria-label', value: _sdT('Product sections') }] }, [
+                                    createNode('semantic', { tag: 'ul', cssClass: 'nav small', customName: _sdT('Nav List') }, [
+                                        barLink(_sdT('Overview'), '#overview'),
+                                        barLink(_sdT('Features'), '#features'),
+                                        barLink(_sdT('Specifications'), '#specs')
+                                    ])
+                                ]),
+                                createNode('semantic', { tag: 'a', cssClass: 'btn btn-primary btn-sm px-3 flex-shrink-0', href: '#', target: '', text: _sdT('Buy Now'), customName: _sdT('Primary Link') })
+                            ])
+                        ])
+                    ]);
+                    bar.props._fx = { effect: 'sticky', offset: 56 };
+                    return bar;
+                }
+
                 // Variant Picker — choices that switch the picture above them
                 // without script; Variant Picker Options adds, removes and restyles them.
                 if (ctype === 'variant-picker') {
@@ -45700,7 +45736,7 @@ const StyleDesigner = (function () {
                                      'footer-minimal', 'footer-multi-col', 'footer-newsletter',
                                      'carousel', 'modal', 'offcanvas', 'dropdown',
                                      'hero-centered', 'hero-split', 'hero-image-bg', 'spotlight-media',
-                                     'variant-picker',
+                                     'variant-picker', 'spotlight-bar', 'spotlight-bar-dark',
                                      'cta-simple', 'cta-inline', 'cta-gradient',
                                      'features-grid', 'features-alt', 'features-list',
                                      'testimonial-single', 'testimonial-grid', 'testimonial-carousel',
@@ -73781,6 +73817,8 @@ const StyleDesigner = (function () {
             { label: _sdT('Hero: Image Background'),       type: 'component', icon: 'bi-image-alt',    extra: { componentType: 'hero-image-bg' } },
             { label: _sdT('Hero: Full-Screen Media'),      type: 'component', icon: 'bi-fullscreen',   extra: { componentType: 'spotlight-media' } },
             { label: _sdT('Variant Picker'),               type: 'component', icon: 'bi-palette',      extra: { componentType: 'variant-picker' } },
+            { label: _sdT('Product Bar'),                  type: 'component', icon: 'bi-pin-angle',    extra: { componentType: 'spotlight-bar' } },
+            { label: _sdT('Product Bar: Dark'),            type: 'component', icon: 'bi-pin-angle-fill', extra: { componentType: 'spotlight-bar-dark' } },
             { label: _sdT('CTA: Banner'),                type: 'component', icon: 'bi-megaphone',    extra: { componentType: 'cta-simple' } },
             { label: _sdT('CTA: Inline'),                 type: 'component', icon: 'bi-arrow-right-circle', extra: { componentType: 'cta-inline' } },
             { label: _sdT('CTA: Gradient'),               type: 'component', icon: 'bi-gem',          extra: { componentType: 'cta-gradient' } },
@@ -74640,6 +74678,8 @@ const StyleDesigner = (function () {
             'hero-image-bg':                 _sdT('A tall opening section on a background photo, with the headline, text and two buttons over it.'),
             'spotlight-media':               _sdT('An opening section that fills the screen with a photo from edge to edge, the headline and buttons at its foot.'),
             'variant-picker':                _sdT('A picture over two to six choices shown as colour dots or text pills: picking one shows its own picture.'),
+            'spotlight-bar':                 _sdT('A slim bar that stays under the site header while the page scrolls: the product name, links to its sections and one button.'),
+            'spotlight-bar-dark':            _sdT('The Product Bar on a dark band: the product name, links to its sections and one button.'),
             'cta-simple':                    _sdT('A band that asks the visitor to act: a headline, one line of text and two buttons.'),
             'cta-inline':                    _sdT('A slim band with a headline and a short text on one side and a button on the other.'),
             'cta-gradient':                  _sdT('A band in the main colour of the design: a badge, a large offer headline, a short text and two buttons.'),

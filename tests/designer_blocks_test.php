@@ -1389,3 +1389,32 @@ function test_designer_blocks_full_screen_media_hero()
 	$noWrap = _test_blocks_slice('var _noWrapCtypes = [', '];');
 	pg_assert_true(strpos($noWrap, "'" . $ctype . "'") !== false, $ctype . ' is dropped without a container around it');
 }
+
+// Product Bar (light and dark): a sticky bar under a sticky site header with
+// the product's name, section links and one call to action.
+function test_designer_blocks_product_bar()
+{
+	foreach (array('spotlight-bar', 'spotlight-bar-dark') as $ctype) {
+		pg_assert_true(in_array($ctype, _test_blocks_palette_ctypes(), true), 'the palette lists ' . $ctype);
+		pg_assert_same('Marketing', _test_blocks_group_of($ctype), $ctype . ' sits in the Marketing group');
+		pg_assert_true(_test_blocks_builder_has_classes($ctype, array('bg-body', 'text-body', 'border-bottom')), $ctype . ' is a band of the page colour');
+		pg_assert_true(_test_blocks_builder_has_classes($ctype, array('nav', 'small')), $ctype . ' has a list of section links');
+		pg_assert_true(_test_blocks_builder_has_classes($ctype, array('d-none', 'd-md-block')), $ctype . ' hides the links on a phone');
+		pg_assert_true(_test_blocks_builder_has_classes($ctype, array('btn', 'btn-primary')), $ctype . ' has its call to action');
+		$strings = _test_blocks_builder_strings($ctype);
+		pg_assert_true(in_array('#features', $strings, true), $ctype . ' links point at the page\'s sections');
+		pg_assert_true(in_array('aria-label', $strings, true), $ctype . ' names its link list');
+		$noWrap = _test_blocks_slice('var _noWrapCtypes = [', '];');
+		pg_assert_true(strpos($noWrap, "'" . $ctype . "'") !== false, $ctype . ' is dropped without a container around it');
+	}
+	$body = _test_blocks_palette_body();
+	pg_assert_true(strpos($body, "_sdT('Product Bar')") !== false && strpos($body, "_sdT('Product Bar: Dark')") !== false, 'both palette labels are translated');
+	$at = _test_blocks_builder_at('spotlight-bar');
+	$block = $at === false ? null : _test_blocks_block($at);
+	pg_assert_true((bool) $block, 'the Product Bar builder is found');
+	$src = $block ? substr(_test_blocks_js(), $block[0], $block[1] - $block[0]) : '';
+	pg_assert_true(strpos($src, "barDark ? [{ name: 'data-bs-theme', value: 'dark' }] : []") !== false, 'only the dark entry turns the band dark');
+	pg_assert_true((bool) preg_match("/_fx\\s*=\\s*\\{\\s*effect:\\s*'sticky',\\s*offset:\\s*56\\s*\\}/", $src), 'the bar sticks 56 px down, under a sticky navbar');
+	require_once __DIR__ . '/../pinegrap/includes/fn/designer_fx.php';
+	pg_assert_same(array('effect' => 'sticky', 'offset' => 56), pg_fx_normalize(array('effect' => 'sticky', 'offset' => 56)), 'the normalizer keeps the offset');
+}
