@@ -20,8 +20,10 @@
  *     percent, a distance in px below its place) while it is below the
  *     window to its own state once its middle reaches the window's middle,
  *     and stays there; a node that cannot get that far (the page's last
- *     strip) gets there at the page's end. Played with parallax, once per
- *     frame; without the script the node simply shows as it is.
+ *     strip) gets there at the page's end. A rise starts no lower than
+ *     the page's end, so it never makes the page longer. Played with
+ *     parallax, once per frame; without the script the node simply shows
+ *     as it is.
  *   • count: the first number in the node's text shows as zero until the
  *     node is seen, then counts up to the number the markup holds over the
  *     duration, after the delay, keeping its group and decimal separators,
@@ -183,6 +185,15 @@
         return p >= 1 ? 0 : Math.round(o.from * (1 - p) * 10) / 10;
     }
 
+    // The distance a scroll-rise starts from: its own, or one px less than
+    // the `room` the page has left under the node when that is less. A box
+    // moved below everything else counts into the page's height, so a rise
+    // from further down would make the page that much longer and move its
+    // end while the visitor scrolls to it.
+    function riseFrom(from, room) {
+        return Math.max(0, Math.min(from, Math.floor(room) - 1));
+    }
+
     // The opacity and transform of a scroll-linked effect at progress p;
     // '' leaves the node's own value, as every one is at the end.
     function scrollState(o, p) {
@@ -293,7 +304,7 @@
 
     window.pgFx = {
         read: read, shift: shift, transition: transition, parallax: parallax,
-        progress: progress, scrollState: scrollState, number: number, countText: countText,
+        progress: progress, scrollState: scrollState, riseFrom: riseFrom, number: number, countText: countText,
         chapterAt: chapterAt, chapterColours: chapterColours, sceneStep: sceneStep
     };
 
@@ -452,12 +463,20 @@
         });
     }
 
+    // How far the page is scrolled, and its height.
+    function scrolled() {
+        return window.pageYOffset || document.documentElement.scrollTop || 0;
+    }
+
+    function pageHeight() {
+        var root = document.documentElement;
+        return Math.max(root.scrollHeight || 0, document.body ? document.body.scrollHeight : 0);
+    }
+
     // How much further the page scrolls: a box's top at the page's end is
     // its top now less that.
     function scrollLeft(view) {
-        var root = document.documentElement;
-        var height = Math.max(root.scrollHeight || 0, document.body ? document.body.scrollHeight : 0);
-        return Math.max(0, height - view - (window.pageYOffset || root.scrollTop || 0));
+        return Math.max(0, pageHeight() - view - scrolled());
     }
 
     // The layers of a scene, in page order.
@@ -531,10 +550,30 @@
         if (reduced()) return;
         var root = document.documentElement;
         var view = window.innerHeight || root.clientHeight;
-        var down = scrollLeft(view);
+        var at = scrolled();
+        var tall = pageHeight();
+        var rects = floating.map(function (rec) { return rec.el.getBoundingClientRect(); });
+        // A risen node that reaches the page's end may be what makes the
+        // page that tall (the page grew shorter under it, or the window
+        // changed): it is put back and the page measured again, so `tall`
+        // is the page's own height. The one case of a second layout.
+        var low = [];
+        floating.forEach(function (rec, i) {
+            if (rec.o.effect === 'scroll-rise' && rec.y && rects[i].bottom + at > tall - 0.5) low.push(i);
+        });
+        if (low.length) {
+            low.forEach(function (i) {
+                put(floating[i].el, { opacity: '', transform: '' });
+                floating[i].y = 0;
+                floating[i].last = null;
+            });
+            tall = pageHeight();
+            low.forEach(function (i) { rects[i] = floating[i].el.getBoundingClientRect(); });
+        }
+        var down = Math.max(0, tall - view - at);
         var writes = [];
-        floating.forEach(function (rec) {
-            var r = rec.el.getBoundingClientRect();
+        floating.forEach(function (rec, i) {
+            var r = rects[i];
             // A scene is measured wherever it is, so a fast scroll past it
             // leaves it at its last step.
             if (rec.o.scene) {
@@ -553,14 +592,21 @@
             var h = rec.el.offsetHeight || r.height;
             var top = r.top + r.height / 2 - (rec.y || 0) - h / 2;
             var p = progress(top, h, view, top - down);
-            var s = scrollState(rec.o, p);
+            // A rise has the room under the node at most, so the page
+            // keeps its length.
+            var o = rec.o;
+            if (o.effect === 'scroll-rise') {
+                var from = riseFrom(o.from, tall - at - top - h);
+                if (from !== o.from) o = { effect: o.effect, from: from };
+            }
+            var s = scrollState(o, p);
             // A fade ends at the node's own opacity, so it starts from a
             // part of that.
             var own = parseFloat(base(rec.el).opacity);
             if (s.opacity !== '' && !isNaN(own)) s.opacity = String(Math.round(parseFloat(s.opacity) * own * 1000) / 1000);
             if (rec.last === s.opacity + '|' + s.transform) return;
             rec.last = s.opacity + '|' + s.transform;
-            writes.push([rec, rec.o.effect === 'scroll-rise' ? rise(rec.o, p) : 0, s]);
+            writes.push([rec, o.effect === 'scroll-rise' ? rise(o, p) : 0, s]);
         });
         writes.forEach(function (w) {
             if (w[1] === 'scene') {

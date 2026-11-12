@@ -90,6 +90,11 @@ function _test_designer_attrs_cases()
 		'heading interaction' => _test_designer_attrs_content('heading', array('tag' => 'h2', 'text' => 'I', 'id' => 'i1', 'title' => 'T', '_fx' => array('effect' => 'slide-up', 'duration' => 900, 'stagger' => 80), '_attrs' => $a(array('data-pg-fx' => 'typed', 'data-pg-fx-delay' => '5', 'data-k' => 'v')))),
 		'semantic sticky' => _test_designer_attrs_semantic(array('tag' => 'nav', 'cssClass' => 'p-2', '_fx' => array('effect' => 'sticky', 'offset' => 12))),
 		'paragraph unknown interaction' => _test_designer_attrs_content('paragraph', array('text' => 'P', '_fx' => array('effect' => 'spin'), '_attrs' => $a(array('data-pg-fx-delay' => '5')))),
+		// An interaction on a node that has no other attribute of its own.
+		'heading interaction alone' => _test_designer_attrs_content('heading', array('tag' => 'h2', 'text' => 'I', '_fx' => array('effect' => 'scroll-fade'))),
+		'image interaction alone' => _test_designer_attrs_content('image', array('src' => 'https://example.com/a.png', 'alt' => 'A', '_fx' => array('effect' => 'scroll-zoom', 'from' => 60))),
+		'paragraph entrance alone' => _test_designer_attrs_content('paragraph', array('text' => 'P', '_fx' => array('effect' => 'fade', 'trigger' => 'load'))),
+		'paragraph unknown interaction alone' => _test_designer_attrs_content('paragraph', array('text' => 'P', '_fx' => array('effect' => 'spin'))),
 	);
 }
 
@@ -251,6 +256,11 @@ function test_designer_attrs_editor_writes_the_same()
 
 	pg_assert_same('<section id="faq" class="py-5">', $js['semantic search section']);
 	pg_assert_same('<h2 id="q1">', $js['heading search section']);
+	// The interaction is written on a node that has nothing else to write.
+	pg_assert_same('<h2 data-pg-fx="scroll-fade">', $js['heading interaction alone']);
+	pg_assert_same('<img src="https://example.com/a.png" alt="A" data-pg-fx="scroll-zoom" data-pg-fx-from="60">', $js['image interaction alone']);
+	pg_assert_same('<p data-pg-fx="fade" data-pg-fx-trigger="load">', $js['paragraph entrance alone']);
+	pg_assert_same('<p>', $js['paragraph unknown interaction alone']);
 }
 
 // An image in a ratio box: the box takes the node's whole sizing style in

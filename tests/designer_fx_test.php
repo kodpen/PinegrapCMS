@@ -394,6 +394,7 @@ function test_designer_fx_script_reads_the_page()
 		. 'out._chapterAt = [fx.chapterAt([[0, 300], [300, 900], [900, 1500]], 800, false), fx.chapterAt([[-500, 300], [500, 900]], 800, false), fx.chapterAt([[600, 900]], 800, false), fx.chapterAt([[-200, 300], [600, 800]], 800, true), fx.chapterAt([[-200, 300], [810, 900]], 800, true), fx.chapterAt([], 800, false), fx.chapterAt([[400, 900]], 800, false)];'
 		. 'out._chapterColours = [fx.chapterColours("rgb(17, 17, 17)", "rgb(250, 250, 250)", "rgb(33, 37, 41)"), fx.chapterColours("rgba(0, 0, 0, 0)", "rgb(33, 37, 41)", "rgb(33, 37, 41)"), fx.chapterColours("transparent", "", "x"), fx.chapterColours("rgba(10, 20, 30, 0.5)", "red", "blue"), fx.chapterColours("rgba(0,0,0,0.0)", "red", "red")];'
 		. 'out._sceneStep = [fx.sceneStep(0, 2400, 800, 3), fx.sceneStep(-500, 2400, 800, 3), fx.sceneStep(-540, 2400, 800, 3), fx.sceneStep(-1100, 2400, 800, 3), fx.sceneStep(-1600, 2400, 800, 3), fx.sceneStep(-3000, 2400, 800, 3), fx.sceneStep(300, 2400, 800, 3), fx.sceneStep(-100, 600, 800, 3), fx.sceneStep(-900, 2400, 800, 1)];'
+		. 'out._riseFrom = [fx.riseFrom(80, 300), fx.riseFrom(80, 81), fx.riseFrom(80, 40), fx.riseFrom(80, 40.9), fx.riseFrom(80, 1), fx.riseFrom(80, -20), fx.riseFrom(0, 300)];'
 		. 'out._scrollState = [["scroll-zoom", 80, 0], ["scroll-zoom", 80, 0.5], ["scroll-zoom", 150, 0.5], ["scroll-zoom", 60, 1], ["scroll-fade", 0, 0.25], ["scroll-rise", 80, 0.5], ["scroll-rise", 80, 0]].map(function (c) {'
 		. ' return fx.scrollState({ effect: c[0], from: c[1] }, c[2]); });'
 		. 'console.log(JSON.stringify(out));';
@@ -443,6 +444,9 @@ function test_designer_fx_script_reads_the_page()
 		array('background' => 'rgba(10, 20, 30, 0.5)', 'color' => 'red'),
 		array('background' => '', 'color' => ''),
 	), $got['_chapterColours'], 'a chapter\'s own colours, none where it has the page\'s');
+	// A rise's distance: its own, or one less than the px the page has
+	// left under the node when that is less.
+	pg_assert_same(array(80, 80, 39, 39, 0, 0, 0), $got['_riseFrom'], 'the distance a rise starts from');
 	pg_assert_same(array(
 		array('opacity' => '', 'transform' => 'scale(0.8)'),
 		array('opacity' => '', 'transform' => 'scale(0.9)'),
@@ -804,6 +808,64 @@ JS;
 	pg_assert_same(array('', true), $got['calm'], 'reduced motion: the node as it is');
 	pg_assert_same('translate3d(0,40px,0)', $got['frozen'], 'reduced motion: no frame moves a node');
 	pg_assert_same(array('rotate(2deg)', '', '', '0.5'), $got['back'], 'turned on while open: every node back to its own state');
+}
+
+// A rise never makes the page longer. A browser counts a box moved below
+// everything else into the page's height, so the fake page here does too
+// (`scrollHeight` is the page's own 2000 px or the lowest moved box). A
+// node 40 px above the page's end rises from the room it has under it, not
+// from its 80 px, and is whole after one frame at the page's end; a node
+// with room keeps its own distance; when the page grows shorter under a
+// risen node, the node is put back before the page is measured.
+function test_designer_fx_script_rise_keeps_the_page_length()
+{
+	$nodes = <<<'JS'
+var own = 2000;
+var low = box({ 'data-pg-fx': 'scroll-rise' }, 1160, 100);
+var roomy = box({ 'data-pg-fx': 'scroll-rise' }, 900, 100);
+nodes.push(low, roomy);
+window.pageYOffset = 700;
+Object.defineProperty(document.documentElement, 'scrollHeight', { get: function () {
+	var tall = own;
+	nodes.forEach(function (n) { tall = Math.max(tall, Math.ceil(n.getBoundingClientRect().bottom + window.pageYOffset)); });
+	return tall;
+} });
+function scrollTo(y) { nodes.forEach(function (n) { n.rect.top += window.pageYOffset - y; }); window.pageYOffset = y; winOn.scroll(); }
+
+JS;
+	$steps = <<<'JS'
+var out = {};
+out.start = [low.style.transform, roomy.style.transform, document.documentElement.scrollHeight];
+scrollTo(1100);
+out.half = [low.style.transform, document.documentElement.scrollHeight];
+scrollTo(1200);
+out.end = [low.style.transform, low.style.transition, document.documentElement.scrollHeight];
+scrollTo(700);
+out.back = [low.style.transform, roomy.style.transform];
+own = 1975;
+winOn.scroll();
+out.shorter = [low.style.transform, roomy.style.transform, document.documentElement.scrollHeight];
+own = 1960;
+winOn.scroll();
+out.none = [low.style.transform, document.documentElement.scrollHeight];
+console.log(JSON.stringify(out));
+JS;
+	$got = _test_fx_node(_test_fx_fake_dom() . $nodes . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_fx.src.js') . $steps);
+	if ($got === null) {
+		return;
+	}
+
+	// low: its bottom is 40 px above the page's end, so it rises from 39.
+	pg_assert_same(array('translate3d(0,39px,0)', 'translate3d(0,80px,0)', 2000), $got['start'], 'a rise starts no lower than the page\'s end');
+	// 100 px before the end: its top is 40 px into the window of the 140 it
+	// has to the page's end, 0.286 of the way: 39 * 0.714 = 27.8.
+	pg_assert_same(array('translate3d(0,27.8px,0)', 2000), $got['half'], 'on its way the page keeps its length');
+	pg_assert_same(array('', '', 2000), $got['end'], 'whole at the page\'s end, in one frame');
+	pg_assert_same(array('translate3d(0,39px,0)', 'translate3d(0,80px,0)'), $got['back'], 'and back');
+	// The page lost 25 px under the nodes: low has 15 px of room left.
+	pg_assert_same(array('translate3d(0,14px,0)', 'translate3d(0,80px,0)', 1975), $got['shorter'], 'a page grown shorter is measured without the risen node');
+	// The page ends at the node's bottom.
+	pg_assert_same(array('', 1960), $got['none'], 'no room under the node: it stays in its place');
 }
 
 // The count effect on a fake page: a number is set to zero when the script
