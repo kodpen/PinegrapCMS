@@ -781,7 +781,55 @@ function ws_api_message_threads($viewer, $message_ids)
     return $out;
 }
 
-function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null, $checks = null, $forwards = null, $group_cards = null)
+/**
+ * The files of messages that may be a canvas's picture, as the panel's
+ * conversation asks (messages.php): a PNG picture of a message not deleted.
+ * Pure.
+ *
+ * @param array[] $rows ws_messages rows
+ * @return int[]
+ */
+function ws_api_message_canvas_file_ids($rows)
+{
+    $ids = array();
+
+    foreach ((array) $rows as $row) {
+        if (is_array($row) && ((int) ($row['file_id'] ?? 0) > 0) && ((int) ($row['deleted_at'] ?? 0) === 0)
+            && (strtolower((string) pathinfo((string) ($row['file_name'] ?? ''), PATHINFO_EXTENSION)) === 'png')) {
+            $ids[] = (int) $row['file_id'];
+        }
+    }
+
+    return $ids;
+}
+
+/**
+ * file.canvas of a message: the newest version of the canvas its picture
+ * was drawn from, and how that picture stands: pending (the file holds a
+ * blank or the previous picture until a member's browser draws it), server
+ * (the server drew it; a browser that shows it draws it again, so the
+ * picture changes once more) or drawn. Null for a file that is no canvas.
+ * Pure.
+ *
+ * @param array $row      ws_messages row
+ * @param array $canvases ws_canvas_message_states() of the page
+ * @return array|null version, picture (pending, server or drawn)
+ */
+function ws_api_message_canvas($row, $canvases)
+{
+    $state = ws_api_message_canvas_file_ids(array($row)) ? ($canvases[(int) $row['file_id']] ?? null) : null;
+
+    if (!is_array($state) || ((int) ($state['version_no'] ?? 0) <= 0)) {
+        return null;
+    }
+
+    return array(
+        'version' => (int) $state['version_no'],
+        'picture' => !empty($state['pending']) ? 'pending' : (!empty($state['server']) ? 'server' : 'drawn'),
+    );
+}
+
+function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null, $checks = null, $forwards = null, $group_cards = null, $canvases = null)
 {
     // Who ticked its checklist (interact.php).
     if ($checks === null) {
@@ -887,6 +935,10 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
                 'api_url' => ws_api_file_url($row['id']),
                 // A voice message's transcript (voice.php).
                 'voice'   => ((ws_file_kind($row['file_name']) === 'audio') && function_exists('ws_voice_api_present')) ? ws_voice_api_present((int) $row['file_id']) : null,
+                // A canvas's picture: its version, and whether a browser
+                // has still to draw it (canvas.php).
+                'canvas'  => ws_api_message_canvas($row, ($canvases !== null) ? $canvases
+                    : (function_exists('ws_canvas_message_states') ? ws_canvas_message_states(ws_api_message_canvas_file_ids(array($row))) : array())),
             );
         }
     }
@@ -987,7 +1039,13 @@ function ws_api_message_sender_schema()
 
 function ws_api_message_file_schema()
 {
-    return array('name' => 'string', 'kind' => 'string', 'size' => 'integer', 'url' => 'string', 'api_url' => 'string', 'voice' => 'WorkspaceMessageVoice?');
+    return array('name' => 'string', 'kind' => 'string', 'size' => 'integer', 'url' => 'string', 'api_url' => 'string', 'voice' => 'WorkspaceMessageVoice?', 'canvas' => 'WorkspaceMessageCanvas?');
+}
+
+// A canvas's picture inside its message's file (ws_api_message_canvas()).
+function ws_api_message_canvas_schema()
+{
+    return array('version' => 'integer', 'picture' => 'string');
 }
 
 // The transcript of a voice message inside its file (ws_voice_api_present(),
@@ -1398,12 +1456,13 @@ function ws_api_messages_present($viewer, $rows)
     $checks = ws_checks_map($ids);
     $forwards = ws_api_message_forwards_map($viewer, $ids);
     $group_cards = function_exists('ws_note_group_cards_map') ? ws_note_group_cards_map($viewer, $ids) : array();
+    $canvases = function_exists('ws_canvas_message_states') ? ws_canvas_message_states(ws_api_message_canvas_file_ids($rows)) : array();
     $out = array();
 
     // A message the person deleted for themselves stays in the page, marked
     // hidden, so that since_id and before_id still page past it.
     foreach ($rows as $row) {
-        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards, $checks, $forwards, $group_cards);
+        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards, $checks, $forwards, $group_cards, $canvases);
     }
 
     return $out;

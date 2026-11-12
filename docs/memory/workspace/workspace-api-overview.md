@@ -20,6 +20,7 @@ description: The Workspace part of the external API as a whole: who may call whi
 - Rehearsal: every write takes `X-Dry-Run` (the console's "Can be rehearsed"), through the panel's `*_check()` functions: `workspace-api-dry-run.md`.
 - Staying current: `GET /workspace/sync`, the inbox's `changed_since`, hidden messages, assistants carried on after the answer: `workspace-api-sync-inbox.md`.
 - Channels: a channel's customer on create and update (`workspace-api-channel-customer.md`); forwarding messages, the Forward of the panel, and the `forwards` of every message (`workspace-api-forward.md`).
+- A canvas's picture in its message (`file.canvas`, version and pending, server or drawn): `workspace-api-message-canvas.md`.
 - Tasks: due time and e-mail reminder (`workspace-api-task-reminder.md`); task time and My time across tasks, changing an entry (`workspace-api-task-time.md`); which reads hand out tasks only with `tasks:read` (`workspace-api-tasks-scope.md`).
 - Plan board: `GET /workspace/plan`, a row and a day as the board draws them (`workspace-api-plan.md`).
 

@@ -374,7 +374,31 @@ function ws_canvas_message_state($file_id)
             (SELECT COUNT(*) FROM file_versions AS older WHERE older.file_id = file_versions.file_id AND older.version_no < file_versions.version_no) AS earlier
         FROM file_versions WHERE file_id = '" . (int) $file_id . "' ORDER BY version_no DESC LIMIT 1");
 
-    if (!$row || empty($row['has_doc'])) {
+    $state = ws_canvas_version_state($row);
+
+    if ($state === null) {
+        return null;
+    }
+
+    return $state + array(
+        'edited_by' => (((string) $row['source'] === 'agent') && ((int) $row['earlier'] > 0)) ? ws_canvas_by_handle((string) $row['by_part']) : '',
+    );
+}
+
+/**
+ * The newest version of a canvas as the conversation reads it, from its
+ * row: its number, whether its picture waits for a browser (marked
+ * picture: pending) and whether the server drew it (picture: server, a
+ * browser draws it again), both for an agent's version only
+ * (ws_canvas_doc_mark()). Null for a picture whose newest version keeps no
+ * document. Pure.
+ *
+ * @param array|null|false $row version_no, source, has_doc, marked, served
+ * @return array|null version_no, pending, server
+ */
+function ws_canvas_version_state($row)
+{
+    if (!is_array($row) || empty($row['has_doc'])) {
         return null;
     }
 
@@ -384,8 +408,45 @@ function ws_canvas_message_state($file_id)
         'version_no' => (int) $row['version_no'],
         'pending'    => !empty($row['marked']) && $agent,
         'server'     => empty($row['marked']) && !empty($row['served']) && $agent,
-        'edited_by'  => ($agent && ((int) $row['earlier'] > 0)) ? ws_canvas_by_handle((string) $row['by_part']) : '',
     );
+}
+
+/**
+ * ws_canvas_message_state() for many pictures at once, without the agent's
+ * handle: one query for a page of messages.
+ *
+ * @param int[] $file_ids
+ * @return array file_id => version_no, pending, server (pictures with a
+ *               kept document only)
+ */
+function ws_canvas_message_states($file_ids)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) $file_ids), function ($id) {
+        return $id > 0;
+    })));
+    $states = array();
+
+    if (empty($ids) || !pg_file_versions_ready()) {
+        return $states;
+    }
+
+    foreach (array_chunk($ids, 500) as $chunk) {
+        $rows = db_items("SELECT v.file_id, v.version_no, v.source, v.doc_json <> '' AS has_doc, v.doc_json LIKE '%\"picture\":\"pending\"%' AS marked,
+                v.doc_json LIKE '%\"picture\":\"server\"%' AS served
+            FROM file_versions AS v
+            INNER JOIN (SELECT file_id, MAX(version_no) AS newest FROM file_versions WHERE file_id IN (" . implode(',', $chunk) . ") GROUP BY file_id) AS m
+                ON m.file_id = v.file_id AND m.newest = v.version_no");
+
+        foreach ((array) $rows as $row) {
+            $state = ws_canvas_version_state($row);
+
+            if ($state !== null) {
+                $states[(int) $row['file_id']] = $state;
+            }
+        }
+    }
+
+    return $states;
 }
 
 /**
