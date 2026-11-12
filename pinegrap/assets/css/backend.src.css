@@ -25259,11 +25259,16 @@ textarea.pg-input {
   --bs-switch-height: 22px;
   --bs-switch-width: 38px;
   --bs-switch-padding: 2px;
-  --bs-switch-border-width: 0;
+  /* With a unit: Bootstrap subtracts it from a length in calc(), where a
+     bare 0 makes the knob's size invalid and the knob is not drawn. */
+  --bs-switch-border-width: 0px;
   --bs-switch-bg: color-mix(in srgb, var(--pg-fg-3) 40%, transparent);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 .pg-set-card .switch::before {
+  /* White in both states, as the look's own switch: Bootstrap paints the
+     knob in the theme's contrast colour, dark on a checked row. */
+  background-color: #ffffff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 .pg-set-card .switch:has(input:checked) {
@@ -25947,6 +25952,693 @@ body.pg-measure-report #content {
   min-width: min(100%, var(--pg-measure-list-min) + 2rem);
   max-width: 100%;
   margin-inline: auto;
+}
+
+/* The head: the report's name in the Display cut, an amber pill while it is
+   not saved, its actions at the right. The shipping and tax reports have no
+   name: their bar is the tools row. */
+#button_bar.pg-report-head,
+#button_bar.pg-report-tools {
+  gap: 10px;
+  margin: 6px 0 20px;
+}
+#button_bar.pg-report-tools {
+  margin-bottom: 16px;
+}
+.pg-report-head > .pg-toolbar-grow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pg-report-head .pg-title-screen {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-report-head .pg-pill {
+  flex: none;
+}
+
+/* Ready reports and the period: a label in the third text colour beside a
+   segmented control; the range as text with a calendar. */
+.pg-report-strip,
+.pg-report-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.pg-report-tools {
+  margin-bottom: 16px;
+}
+.pg-report-label {
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-3);
+  white-space: nowrap;
+}
+.pg-report-strip .pg-seg,
+.pg-report-tools .pg-seg {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+.pg-report-step {
+  padding: 0 7px;
+}
+.pg-report-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pg-report-range > .bi {
+  color: var(--pg-fg-3);
+}
+.pg-report-tools .form-control,
+.pg-report-frame-head .form-control {
+  --bs-control-min-height: 34px;
+  --bs-control-padding-y: 6px;
+  --bs-control-font-size: var(--pg-text-2);
+  --bs-control-border-radius: 10px;
+  --bs-control-bg: var(--pg-field-bg);
+  --bs-control-border-color: var(--pg-field-line);
+  --bs-control-box-shadow: var(--pg-field-shadow);
+  width: auto;
+  border-radius: 10px;
+}
+/* A field of the tools row with its label beside it. */
+.pg-report-field:not([hidden]) {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The view: the figures, then the chart, 16 px apart. */
+.pg-report-view {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.pg-report-view-figures:empty,
+.pg-report-view-chart:empty {
+  display: none;
+}
+
+/* A card per figure, four in a row (fewer share it): the name beside its
+   tile, the figure with a smaller unit, a note under it. */
+.pg-report-figs {
+  display: grid;
+  grid-template-columns: repeat(var(--pg-report-figs, 4), minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+}
+.pg-report-fig {
+  min-width: 0;
+  padding: 15px 18px 14px;
+}
+.pg-report-fig-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-regular);
+  color: var(--pg-fg-2);
+}
+.pg-report-fig-value {
+  margin: 7px 0 5px;
+  overflow: hidden;
+  font-size: 26px;
+  font-weight: var(--pg-weight-title);
+  line-height: 1.2;
+  letter-spacing: var(--pg-tracking-screen-title);
+  font-variation-settings: var(--pg-opsz-display);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-report-fig-value > small {
+  font-size: 15px;
+  font-weight: var(--pg-weight-strong);
+  letter-spacing: 0;
+  color: var(--pg-fg-2);
+}
+.pg-report-fig-note {
+  margin: 0;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-report-fig-note.is-bad {
+  color: var(--pg-tone-rose);
+}
+@media (max-width: 991.98px) {
+  .pg-report-figs {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  }
+}
+/* A phone: two smaller cards a row, so seven figures are not a column of
+   seven full cards before the chart. */
+@media (max-width: 575.98px) {
+  .pg-report-figs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .pg-report-fig {
+    padding: 12px 14px 11px;
+  }
+  .pg-report-fig-value {
+    margin: 5px 0 3px;
+    font-size: 21px;
+  }
+  .pg-report-fig-value > small {
+    font-size: 13px;
+  }
+}
+
+/* The chart card: a title, the legend, the plot 232 px high. Bars and the
+   line that says no chart fits are 620 px at most. */
+.pg-report-chart {
+  min-width: 0;
+  padding: 16px 20px 10px;
+}
+.pg-report-chart.is-bars,
+.pg-report-chart.is-map {
+  padding-bottom: 14px;
+}
+.pg-report-chart.is-bars,
+.pg-report-nochart {
+  max-width: 620px;
+}
+.pg-report-chart-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-bottom: 8px;
+}
+.pg-report-chart.is-bars .pg-report-chart-head,
+.pg-report-chart.is-map .pg-report-chart-head {
+  margin-bottom: 12px;
+}
+.pg-report-chart-title {
+  margin: 0 auto 0 0;
+  font-size: var(--pg-text-status-title);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.pg-report-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--pg-fg-2);
+}
+.pg-report-legend-mark {
+  display: block;
+  flex: none;
+  width: 18px;
+  height: 0;
+  border-top: 2px solid var(--pg-accent);
+  border-radius: 1px;
+}
+.pg-report-legend-mark.is-compare {
+  border-top-style: dashed;
+  border-top-color: var(--pg-fg-3);
+}
+
+/* The plot: 1 px grid lines, the axes in 11.5 px tabular figures, the line
+   2 px in the accent over an 11 % fill, the previous period dashed. */
+.pg-report-plot {
+  position: relative;
+  height: 232px;
+  border-radius: 8px;
+}
+.pg-report-plot:focus {
+  outline: 0;
+}
+.pg-report-plot:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 4px;
+}
+.pg-report-plot > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.pg-report-plot text {
+  font-size: 11.5px;
+  fill: var(--pg-fg-3);
+  font-variant-numeric: tabular-nums;
+}
+.pg-report-plot-grid {
+  stroke: var(--pg-border-color-translucent);
+  stroke-width: 1;
+}
+.pg-report-plot-area {
+  fill: color-mix(in srgb, var(--pg-accent) 11%, transparent);
+}
+.pg-report-plot-line,
+.pg-report-plot-compare {
+  fill: none;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.pg-report-plot-line {
+  stroke: var(--pg-accent);
+  stroke-width: 2;
+}
+.pg-report-plot-compare {
+  stroke: var(--pg-fg-3);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+.pg-report-plot-cross {
+  stroke: color-mix(in srgb, var(--pg-fg-body) 26%, transparent);
+  stroke-width: 1;
+}
+.pg-report-plot-dot {
+  fill: var(--pg-accent);
+  stroke: var(--pg-surface-2);
+  stroke-width: 2;
+}
+.pg-report-plot-dot.is-compare {
+  fill: var(--pg-fg-3);
+}
+
+/* The point's box: the name, a row per line with its mark, the figure at
+   the right. */
+.pg-report-tip {
+  position: absolute;
+  z-index: 2;
+  min-width: 196px;
+  padding: 10px 12px;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: 12px;
+  background: var(--pg-surface-float);
+  box-shadow: var(--pg-shadow-float);
+  backdrop-filter: blur(14px);
+  font-size: 12.5px;
+  line-height: 1.45;
+  pointer-events: none;
+}
+.pg-report-tip > b {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.pg-report-tip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  color: var(--pg-fg-2);
+  white-space: nowrap;
+}
+.pg-report-tip-row.is-quiet {
+  color: var(--pg-fg-3);
+}
+.pg-report-tip-figure {
+  margin-left: auto;
+  padding-left: 12px;
+  color: var(--pg-fg-body);
+  font-weight: var(--pg-weight-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Bars for a named level: the name, a 10 px track filled in the accent's
+   gradient, the figure and its share at the right; rows 34 px. */
+.pg-report-bars {
+  display: grid;
+  grid-template-columns: minmax(0, 150px) minmax(40px, 1fr) auto;
+  column-gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13.5px;
+}
+.pg-report-bars.has-share {
+  grid-template-columns: minmax(0, 150px) minmax(40px, 1fr) auto minmax(56px, auto);
+}
+.pg-report-bar {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  height: 34px;
+  margin: 0 -10px;
+  padding: 0 10px;
+  border-radius: 9px;
+}
+.pg-report-bar:hover {
+  background: var(--pg-hover);
+}
+.pg-report-bar-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-report-bar-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: var(--pg-quiet);
+}
+.pg-report-bar-track > b {
+  display: block;
+  height: 100%;
+  border-radius: 0 5px 5px 0;
+  background: linear-gradient(90deg, var(--pg-accent-2), var(--pg-accent-1));
+}
+.pg-report-bar-figure,
+.pg-report-bar-share {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pg-report-bar-figure {
+  font-weight: var(--pg-weight-strong);
+}
+.pg-report-bar-share {
+  font-size: 12.5px;
+  color: var(--pg-fg-3);
+}
+
+/* The world map for a country level, in the accent's steps, its rows
+   beside it on a wide screen. */
+.pg-report-map-body {
+  display: grid;
+  gap: 12px 24px;
+}
+@media (min-width: 1200px) {
+  .pg-report-map-body {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
+    align-items: center;
+  }
+}
+.pg-report-view .pg-report-map {
+  --pg-dash-map-hue: var(--pg-accent);
+  --pgd-map-top: var(--pg-accent-2);
+  --pgd-card: var(--pg-surface-1);
+  --pgd-track: var(--pg-quiet);
+  --pgd-fg: var(--pg-fg-body);
+  --pgd-muted: var(--pg-fg-3);
+  margin: 0;
+}
+
+/* The line that says no chart fits this level. */
+.pg-report-nochart {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 14px 18px;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+}
+
+/* The table's frame: a 48 px head (the levels, a note), then the table. */
+.pg-report-frame {
+  min-width: 0;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.pg-report-frame-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-height: 48px;
+  padding: 6px 10px 6px 18px;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.pg-report-frame-title {
+  margin: 0;
+  font-size: var(--pg-text-status-title);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.pg-report-frame-note {
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-3);
+}
+.pg-report-frame-body {
+  overflow-x: auto;
+}
+
+/* The table: rows 40 px, heading row 36 px in 12 px on the card fill; a
+   group of the first level on the card fill, the next ones in the second
+   text colour; the Grand Total 46 px under a stronger line. Numbers are
+   right-aligned by the cells' own text-end. */
+.pg-report-table {
+  width: 100%;
+  margin: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--pg-text-base);
+  font-variant-numeric: tabular-nums;
+}
+.pg-report-table th,
+.pg-report-table td {
+  height: 40px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.pg-report-table > thead th {
+  height: 36px;
+  background: var(--pg-surface-inset);
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
+  color: var(--pg-fg-3);
+}
+.pg-report-table > thead.sticky-top th {
+  background: var(--pg-surface-1);
+}
+.pg-report-table > thead a {
+  color: inherit;
+  text-decoration: none;
+}
+.pg-report-table > thead a:hover {
+  color: var(--pg-fg-body);
+  text-decoration: underline;
+}
+.pg-report-table th[scope="row"] {
+  width: 100%;
+  font-weight: var(--pg-weight-regular);
+  text-align: start;
+}
+.pg-report-table tr.pg-report-l1 > * {
+  font-weight: 600;
+  background: var(--pg-surface-inset);
+}
+.pg-report-table tr.pg-report-l2 > *,
+.pg-report-table tr.pg-report-l3 > *,
+.pg-report-table tr.pg-report-detail > * {
+  color: var(--pg-fg-2);
+}
+.pg-report-table tr.pg-report-l2 > td:first-child,
+.pg-report-table tr.pg-report-l3 > td:nth-child(-n + 2) {
+  width: 26px;
+  min-width: 26px;
+  padding: 0;
+}
+.pg-report-table > tbody > tr:hover > * {
+  background: var(--pg-hover);
+  color: var(--pg-fg-body);
+}
+.pg-report-table tr.pg-report-total > * {
+  height: 46px;
+  border-top: 1px solid color-mix(in srgb, var(--pg-fg-body) 22%, transparent);
+  border-bottom: 0;
+  background: color-mix(in srgb, var(--pg-accent) 6%, transparent);
+  font-weight: var(--pg-weight-title);
+}
+.pg-report-table.pg-report-share > tbody > tr > td:last-child {
+  width: 72px;
+  padding-left: 0;
+  color: var(--pg-fg-3);
+}
+.pg-report-table.pg-report-share > tbody > tr.pg-report-total > td:last-child {
+  color: var(--pg-fg-2);
+  font-weight: var(--pg-weight-strong);
+}
+.pg-report-table > tbody:last-child > tr:last-child > *,
+.pg-report-table > tfoot > tr:last-child > * {
+  border-bottom: 0;
+}
+
+/* The report settings: a 430 px drawer floating off the right edge with
+   the sheet's corners and shadow, sections split by a line instead of
+   cards, 34 px fields, the foot under a line. */
+#report_settings {
+  --pg-drawer-width: 430px;
+  background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2));
+  border-color: var(--pg-border-color-translucent);
+  box-shadow: var(--pg-shadow-sheet);
+}
+@media (min-width: 576px) {
+  #report_settings {
+    --pg-drawer-inset: 12px;
+    --pg-drawer-border-radius: var(--pg-radius-sheet);
+  }
+}
+#report_settings > .drawer-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 12px 8px 20px;
+}
+#report_settings > .drawer-body {
+  gap: 0;
+  padding: 0;
+}
+.pg-report-section {
+  padding: 12px 20px 14px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.pg-report-section:first-child {
+  border-top: 0;
+}
+.pg-report-section-title {
+  margin: 0 0 10px;
+  font-size: var(--pg-text-2);
+  font-weight: 600;
+}
+.pg-report-section-title > em {
+  font-style: normal;
+  font-weight: var(--pg-weight-regular);
+  color: var(--pg-fg-3);
+}
+.pg-report-section .form-field {
+  margin-bottom: 10px;
+}
+.pg-report-section > .form-field:last-child,
+.pg-report-section > .pg-report-level:last-of-type {
+  margin-bottom: 0;
+}
+.pg-report-section .form-field > label {
+  font-size: var(--pg-text-2);
+}
+.pg-report-section-help {
+  margin: 0;
+  padding-left: 18px;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+}
+.pg-report-section-help > li + li {
+  margin-top: 6px;
+}
+#report_settings .form-control {
+  --bs-control-min-height: 34px;
+  --bs-control-padding-y: 6px;
+  --bs-control-font-size: var(--pg-text-2);
+  --bs-control-border-radius: 10px;
+  --bs-control-bg: var(--pg-field-bg);
+  --bs-control-border-color: var(--pg-field-line);
+  --bs-control-box-shadow: var(--pg-field-shadow);
+  border-radius: 10px;
+}
+/* The detail switch: the look's switch, a white knob on the accent. */
+#report_settings .switch {
+  --bs-switch-height: 22px;
+  --bs-switch-width: 38px;
+  --bs-switch-padding: 2px;
+  --bs-switch-border-width: 0px;
+  --bs-switch-bg: color-mix(in srgb, var(--pg-fg-3) 40%, transparent);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+#report_settings .switch::before {
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+#report_settings .switch:has(input:checked) {
+  background-image: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
+}
+
+/* A level: its number, what it summarizes by, how it is ordered. */
+.pg-report-level {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.pg-report-level-n {
+  flex: none;
+  width: 18px;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+  text-align: center;
+}
+.pg-report-level > .form-control {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* The filters the panel script builds as table rows, laid out as two
+   lines a filter: field, operator and delete; value and dynamic value. */
+#report_settings #filter_table,
+#report_settings #filter_table > tbody {
+  display: block;
+  margin: 0;
+}
+#report_settings #filter_table > thead {
+  display: none;
+}
+#report_settings #filter_table > tbody > tr {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 28px;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+#report_settings #filter_table > tbody > tr > td {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+#report_settings #filter_table > tbody > tr > td:nth-child(5) {
+  grid-area: 1 / 3;
+  align-self: center;
+}
+#report_settings #filter_table td:nth-child(5) > .btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--pg-fg-3);
+}
+#report_settings #filter_table td:nth-child(5) > .btn:hover {
+  background: var(--pg-quiet);
+  color: var(--pg-tone-rose);
+}
+#report_settings #filter_table td:nth-child(5) .material-icons {
+  font-size: 18px;
+}
+.pg-report-add {
+  color: var(--pg-accent);
+}
+
+#report_settings > .drawer-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+#report_settings > .drawer-footer > .pg-button-danger {
+  margin-left: auto;
 }
 
 }

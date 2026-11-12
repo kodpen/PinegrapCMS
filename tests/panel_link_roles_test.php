@@ -35,7 +35,7 @@ function test_report_edit_and_add_filter_are_buttons()
 	foreach (array('view_order_report.php', 'view_visitor_report.php') as $file) {
 		$source = panel_link_roles_source($file);
 
-		pg_assert_true(strpos($source, '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" id="report_settings_button"') !== false, $file . ': Report settings is a button');
+		pg_assert_true(strpos($source, '<button type="button" class="pg-button pg-button-quiet" id="report_settings_button"') !== false, $file . ': Report settings is a button');
 	}
 
 	foreach (array('view_order_report.php', 'view_visitor_report.php', 'edit_form_list_view.php') as $file) {

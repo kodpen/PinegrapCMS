@@ -27,7 +27,7 @@ function test_panel_labels_point_at_their_field()
 		array('includes/forms/page_form.php', 'Quiz Pass Percentage', 'custom_form_quiz_pass_percentage'),
 		array('edit_menu_item.php', 'Position', 'sort_order'),
 		array('edit_page.php', 'Promote on Keyword', 'search_keywords'),
-		array('view_shipping_report.php', 'Status', 'status'),
+		array('erp_vat_report.php', 'Document type', 'erp_vat_kind'),
 		array('includes/forms/container_form.php', 'Weight', 'weight'),
 	);
 	foreach ($cases as $case) {

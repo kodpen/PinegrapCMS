@@ -46,7 +46,8 @@ function test_order_report_settings_sit_in_a_drawer()
 
 	$save = strpos($source, 'id="submit_save" name="submit_save"');
 	pg_assert_true($save !== false && $save > $footer && $save < $end, 'Save & Run sits in the drawer footer');
-	pg_assert_contains('data-bs-dismiss="drawer"><span class="material-icons me-3" aria-hidden="true">close</span>', $source, 'Close keeps what was typed');
+	pg_assert_contains('<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">\' . h(lang(\'Close\')) . \'</button>', $source, 'Close keeps what was typed');
+	pg_assert_contains('<button type="button" class="pg-icon-button ms-auto" data-bs-dismiss="drawer" aria-label="\' . h(lang(\'Close\')) . \'"', $source, 'and so does the cross in the head');
 	pg_assert_false(strpos($source, 'Cancel Edit') !== false, 'no Edit / Cancel Edit pair');
 	pg_assert_false(strpos($source, 'id="edit_button"') !== false, 'no Edit button');
 	pg_assert_false(strpos($source, 'edit_form.style.display') !== false, 'the form is never hidden by style');
@@ -69,14 +70,14 @@ function test_order_report_settings_button_and_open_state()
 }
 
 // Figures and chart sit between the date changer and the table, drawn from
-// the server's data with the dashboard's bundle and stylesheet.
+// the server's data; the dashboard's bundle and stylesheet draw the map.
 function test_order_report_view_over_the_table()
 {
 	$source = order_report_screen_layout_source();
 
 	$changer = strpos($source, "' . \$output_date_changer . '\n");
-	$view = strpos($source, '<section class="pg-dash pg-report-view" id="pg_report_view"');
-	$table = strpos($source, '<table class="table table-striped table-hover">');
+	$view = strpos($source, '<section class="pg-report-view" id="pg_report_view"');
+	$table = strpos($source, '<table class="pg-report-table pg-report-share">');
 
 	pg_assert_true($changer !== false && $view !== false && $table !== false && $changer < $view && $view < $table, 'date changer, view, table');
 	pg_assert_contains('<script type="application/json" id="pg_report_view_data">\' . (string) json_encode($report_view, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) . \'</script>', $source, 'data that cannot close its script');

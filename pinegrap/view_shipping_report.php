@@ -90,26 +90,23 @@ while ($date <= $end_date) {
     $date = date('Y-m-d', strtotime('+1 day', strtotime($date)));
 }
 
-// Select option for status pick list and prepare SQL filter
-// so that we only get order items for the selected status.
+// The status choices (links: the screen keeps the status in the session)
+// and the SQL filter, so that we only get order items for that status.
+$output_status_items = '';
 
-$status_any_selected = '';
-$status_unshipped_selected = '';
-$status_shipped_selected = '';
+foreach (array('any' => lang('Any'), 'unshipped' => lang('Unshipped'), 'shipped' => lang('Shipped')) as $status_value => $status_label) {
+    $status_current = (($_SESSION['software']['ecommerce']['view_shipping_report']['status'] ?? '') === $status_value);
+    $output_status_items .= '<a class="pg-seg-item' . ($status_current ? ' is-active" aria-current="true"' : '"') . ' href="view_shipping_report.php?status=' . $status_value . '">' . h($status_label) . '</a>';
+}
+
 $sql_status_filter = "";
 
 switch (($_SESSION['software']['ecommerce']['view_shipping_report']['status'] ?? '')) {
-    case 'any':
-        $status_any_selected = ' selected="selected"';
-        break;
-
     case 'unshipped':
-        $status_unshipped_selected = ' selected="selected"';
         $sql_status_filter = "AND (order_items.quantity > order_items.shipped_quantity)";
         break;
     
     case 'shipped':
-        $status_shipped_selected = ' selected="selected"';
         $sql_status_filter = "AND (order_items.shipped_quantity > 0)";
         break;
 }
@@ -253,7 +250,7 @@ if (count($products) > 0) {
 
     // Loop through the dates in order to get the date headings.
     foreach ($dates as $date) {
-        $output_date_heading_cells .= '<th style="text-align: center">' . $output_orders_heading('view_orders.php?reset=true&amp;status=complete_or_exported&amp;advanced_filters=true' . $output_view_orders_shipping_status . '&amp;date_type=ship_date&amp;start_month=' . date('m', strtotime($date)) . '&amp;start_day=' . date('d', strtotime($date)) . '&amp;start_year=' . date('Y', strtotime($date)) . '&amp;stop_month=' . date('m', strtotime($date)) . '&amp;stop_day=' . date('d', strtotime($date)) . '&amp;stop_year=' . date('Y', strtotime($date)) . '', lang(date('D', strtotime($date))) . '<br />' . date('j', strtotime($date)) . ' ' . lang(date('M', strtotime($date))), 'btn btn-sm btn-link badge rounded-pill fg-primary', 'badge rounded-pill fg-primary') . '</th>';
+        $output_date_heading_cells .= '<th class="text-end">' . $output_orders_heading('view_orders.php?reset=true&amp;status=complete_or_exported&amp;advanced_filters=true' . $output_view_orders_shipping_status . '&amp;date_type=ship_date&amp;start_month=' . date('m', strtotime($date)) . '&amp;start_day=' . date('d', strtotime($date)) . '&amp;start_year=' . date('Y', strtotime($date)) . '&amp;stop_month=' . date('m', strtotime($date)) . '&amp;stop_day=' . date('d', strtotime($date)) . '&amp;stop_year=' . date('Y', strtotime($date)) . '', lang(date('D', strtotime($date))) . '<br />' . date('j', strtotime($date)) . ' ' . lang(date('M', strtotime($date)))) . '</th>';
     }
 
     rsort($products);
@@ -297,7 +294,7 @@ if (count($products) > 0) {
                 $output_date_value = pg_format_number($product[$date], 0);
             }
 
-            $output_date_cells .= '<td style="text-align: center">' . $output_date_value . '</td>';
+            $output_date_cells .= '<td class="text-end">' . $output_date_value . '</td>';
         }
 
         $output_after = '';
@@ -317,10 +314,10 @@ if (count($products) > 0) {
         $output_product_rows .=
             '<tr>
                 <th scope="row" class="chart_label fw-normal">' . ($can_open_commerce ? '<a href="' . h('edit_product.php?id=' . (int) $product['id']) . '">' . $output_description . '</a>' : $output_description) . '</th>
-                <td style="text-align: center">' . $output_before . '</td>
+                <td class="text-end">' . $output_before . '</td>
                 ' . $output_date_cells . '
-                <td style="text-align: center">' . $output_after . '</td>
-                <td style="text-align: center">' . $output_total . '</td>
+                <td class="text-end">' . $output_after . '</td>
+                <td class="text-end">' . $output_total . '</td>
             </tr>';
     }
 
@@ -342,7 +339,7 @@ if (count($products) > 0) {
             $output_total_date_value = pg_format_number($totals[$date], 0);
         }
 
-        $output_total_date_cells .= '<td style="font-weight:bold; text-align: center">' . $output_total_date_value . '</td>';
+        $output_total_date_cells .= '<td class="text-end">' . $output_total_date_value . '</td>';
     }
 
     $output_total_after = '';
@@ -362,37 +359,35 @@ if (count($products) > 0) {
     // A plain report table, not a list: its columns are the period's days,
     // its headings open the orders of a day and its foot is the Grand Total.
     $output_report =
-        '<div class="table-responsive"><table class="shipping_report table table-hover mb-0">
+        '<table class="shipping_report pg-report-table">
             <thead>
                 <tr>
                     <th>' . lang('Product') . '</th>
-                    <th style="text-align: center">' . $output_orders_heading('view_orders.php?reset=true&amp;status=complete_or_exported&amp;advanced_filters=true' . $output_view_orders_shipping_status . '&amp;date_type=ship_date&amp;start_month=01&amp;start_day=01&amp;start_year=2000&amp;stop_month=' . date('m', strtotime('-1 day', strtotime($start_date))) . '&amp;stop_day=' . date('d', strtotime('-1 day', strtotime($start_date))) . '&amp;stop_year=' . date('Y', strtotime('-1 day', strtotime($start_date))) . '', lang('Before')) . '</th>
+                    <th class="text-end">' . $output_orders_heading('view_orders.php?reset=true&amp;status=complete_or_exported&amp;advanced_filters=true' . $output_view_orders_shipping_status . '&amp;date_type=ship_date&amp;start_month=01&amp;start_day=01&amp;start_year=2000&amp;stop_month=' . date('m', strtotime('-1 day', strtotime($start_date))) . '&amp;stop_day=' . date('d', strtotime('-1 day', strtotime($start_date))) . '&amp;stop_year=' . date('Y', strtotime('-1 day', strtotime($start_date))) . '', lang('Before')) . '</th>
                     ' . $output_date_heading_cells . '
-                    <th style="text-align: center">' . $output_orders_heading('view_orders.php?reset=true&amp;status=complete_or_exported&amp;advanced_filters=true' . $output_view_orders_shipping_status . '&amp;date_type=ship_date&amp;start_month=' . date('m', strtotime('+1 day', strtotime($end_date))) . '&amp;start_day=' . date('d', strtotime('+1 day', strtotime($end_date))) . '&amp;start_year=' . date('Y', strtotime('+1 day', strtotime($end_date))) . '&amp;stop_month=12&amp;stop_day=31&amp;stop_year=2030', lang('After')) . '</th>
-                    <th style="text-align: center">' . $output_orders_heading('view_orders.php?reset=true&amp;status=complete_or_exported&amp;advanced_filters=true' . $output_view_orders_shipping_status . '&amp;date_type=ship_date&amp;start_month=01&amp;start_day=01&amp;start_year=2000&amp;stop_month=12&amp;stop_day=31&amp;stop_year=2030', lang('Total')) . '</th>
+                    <th class="text-end">' . $output_orders_heading('view_orders.php?reset=true&amp;status=complete_or_exported&amp;advanced_filters=true' . $output_view_orders_shipping_status . '&amp;date_type=ship_date&amp;start_month=' . date('m', strtotime('+1 day', strtotime($end_date))) . '&amp;start_day=' . date('d', strtotime('+1 day', strtotime($end_date))) . '&amp;start_year=' . date('Y', strtotime('+1 day', strtotime($end_date))) . '&amp;stop_month=12&amp;stop_day=31&amp;stop_year=2030', lang('After')) . '</th>
+                    <th class="text-end">' . $output_orders_heading('view_orders.php?reset=true&amp;status=complete_or_exported&amp;advanced_filters=true' . $output_view_orders_shipping_status . '&amp;date_type=ship_date&amp;start_month=01&amp;start_day=01&amp;start_year=2000&amp;stop_month=12&amp;stop_day=31&amp;stop_year=2030', lang('Total')) . '</th>
                 </tr>
             </thead>
             <tbody>' . $output_product_rows . '</tbody>
             <tfoot>
-                <tr class="fw-bold table-info">
+                <tr class="pg-report-total">
                     <th scope="row">' . lang('Grand Total') . '</th>
-                    <td style="font-weight: bold; text-align: center">' . $output_total_before . '</td>
+                    <td class="text-end">' . $output_total_before . '</td>
                     ' . $output_total_date_cells . '
-                    <td style="font-weight: bold; text-align: center">' . $output_total_after . '</td>
-                    <td style="font-weight: bold; text-align: center">' . $output_grand_total . '</td>
+                    <td class="text-end">' . $output_total_after . '</td>
+                    <td class="text-end">' . $output_grand_total . '</td>
                 </tr>
             </tfoot>
-        </table></div>';
+        </table>';
 
 // Otherwise there is not any data for any products, so output notice.
 } else {
-    $output_report = '<div class="alert theme-info mb-0">' . lang('Sorry, there does not appear to be any shipping info for that date range.  Shipping info will appear for this report once shippable Products are purchased.') . '</div>';
+    $output_report = '<div class="alert theme-info m-5">' . lang('Sorry, there does not appear to be any shipping info for that date range.  Shipping info will appear for this report once shippable Products are purchased.') . '</div>';
 }
 
 // The figures and the chart over the table (includes/fn/report_view.php),
 // read from the Grand Total row and the day columns the table prints.
-require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/layout.php');
-
 $report_view_totals = isset($totals) ? $totals : array();
 $report_view_names = array();
 
@@ -403,11 +398,7 @@ foreach ($dates as $date) {
 $report_view = array(
     'figures' => pg_report_view_shipping_figures($report_view_totals, $dates, count($products)),
     'chart' => pg_report_view_shipping_chart($report_view_totals, $dates, $report_view_names),
-    'maps' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/maps/',
-    'strings' => array(
-        'figures' => lang('Summary'),
-        'legend' => array(lang('Few'), lang('Many')),
-    ),
+    'strings' => pg_report_view_strings(),
 );
 
 print
@@ -418,55 +409,38 @@ print
             'icon'=>'store', 
             'heading'=> lang('Shipping Report'),
             'heading_description' => lang('View the number of Products that need to be shipped or have been shipped on different days.'),
-            'head' => '<link rel="stylesheet" href="' . h(pg_dashboard_v2_style_url()) . '">',
             'cancel'=>false
         )
     ) . '
 <main id="content" class="container-fluid">
     ' . pg_screen_toolbar(array(
         // A related screen, not this one's own action: slot 2.
-        'secondary' => USER_MANAGE_ECOMMERCE ? array('label' => lang('Ship Date Adjustments'), 'url' => 'view_ship_date_adjustments.php', 'icon' => 'bi-wrench-adjustable-circle') : '',
-        'search'    => '<form id="update_status" method="get" class="search_form disable_shortcut d-inline-flex flex-wrap align-items-center gap-2 row-gap-2">
-                <div class="input-group input-group-sm w-auto flex-nowrap">
-                    <label class="input-group-text" title="' . lang('Status') . '" for="status">' . lang('Status') . '</label>
-                    <select id="status" name="status" class="form-control w-auto" onchange="document.getElementById(\'update_status\').submit()">
-                        <option value="any"' . $status_any_selected . '>[' . lang('Any') . ']</option>
-                        <option value="unshipped"' . $status_unshipped_selected . '>' . lang('Unshipped') . '</option>
-                        <option value="shipped"' . $status_shipped_selected . '>' . lang('Shipped') . '</option>
-                    </select>
-                </div>
-                <div class="d-inline-flex align-items-center gap-1" role="group" aria-label="' . h(lang('Period')) . '">
-                    <a class="btn btn-sm btn-text theme-secondary" href="' . h('view_shipping_report.php?start_date=' . $output_previous_start_date . '&end_date=' . $output_previous_end_date) . '" title="' . h(lang('Previous')) . '" aria-label="' . h(lang('Previous')) . '"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
-                    <span class="small fg-secondary text-center">' . $output_date_range . '</span>
-                    <a class="btn btn-sm btn-text theme-secondary" href="' . h('view_shipping_report.php?start_date=' . $output_next_start_date . '&end_date=' . $output_next_end_date) . '" title="' . h(lang('Next')) . '" aria-label="' . h(lang('Next')) . '"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
-                </div>
-            </form>',
-    ), array('class' => 'mb-3')) . '
+        'secondary' => USER_MANAGE_ECOMMERCE ? '<a class="pg-button pg-button-quiet" href="view_ship_date_adjustments.php"><i class="bi bi-wrench-adjustable-circle" aria-hidden="true"></i>' . h(lang('Ship Date Adjustments')) . '</a>' : '',
+        // What the table shows: the status and the period, at the bar's end.
+        'search'    => '<div class="pg-seg" role="group" aria-label="' . h(lang('Status')) . '">' . $output_status_items . '</div>
+            <div class="pg-seg" role="group" aria-label="' . h(lang('Period')) . '">
+                <a class="pg-seg-item pg-report-step" href="' . h('view_shipping_report.php?start_date=' . $output_previous_start_date . '&end_date=' . $output_previous_end_date) . '" title="' . h(lang('Previous')) . '" aria-label="' . h(lang('Previous')) . '"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
+                <a class="pg-seg-item pg-report-step" href="' . h('view_shipping_report.php?start_date=' . $output_next_start_date . '&end_date=' . $output_next_end_date) . '" title="' . h(lang('Next')) . '" aria-label="' . h(lang('Next')) . '"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+            </div>
+            <span class="pg-report-range"><i class="bi bi-calendar3" aria-hidden="true"></i>' . $output_date_range . '</span>',
+    ), array('class' => 'pg-report-tools')) . '
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <style>
-                @layer custom {
-                    .pg-report-view { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; margin-block: 1rem; }
-                    .pg-report-view > div, .pg-report-view .pg-dash-card { width: 100%; min-width: 0; }
-                    .pg-report-view .pg-dash-figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .75rem; }
-                    .pg-report-view .pg-dash-line { display: block; width: 100%; height: 11rem; }
-                    .pg-report-view .pg-report-view-ends { display: flex; justify-content: space-between; gap: 1rem; margin-top: .375rem; font-size: .75rem; color: var(--pgd-muted); }
-                }
-            </style>
-            <section class="pg-dash pg-report-view" id="pg_report_view" aria-label="' . h(lang('Summary')) . '">
+            <section class="pg-report-view" id="pg_report_view" aria-label="' . h(lang('Summary')) . '">
                 <div class="pg-report-view-figures"></div>
                 <div class="pg-report-view-chart"></div>
                 <script type="application/json" id="pg_report_view_data">' . (string) json_encode($report_view, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) . '</script>
             </section>
-            ' . pg_js_bundle_tags('assets/js/pg_dash.min.js') . pg_js_bundle_tags('assets/js/pg_report_view.min.js') . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
+            ' . pg_js_bundle_tags('assets/js/pg_report_view.min.js') . '
+            <section class="pg-card pg-report-frame" aria-labelledby="pg_report_table_title">
+                <div class="pg-report-frame-head"><h3 class="pg-report-frame-title" id="pg_report_table_title">' . h(lang('Products')) . '</h3></div>
+                <div class="pg-report-frame-body">
                     ' . $output_report . '
                 </div>
-            </div>
+            </section>
         </div>
     </div>
 </main>

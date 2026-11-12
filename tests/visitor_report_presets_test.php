@@ -152,5 +152,5 @@ function test_visitor_report_lists_lead_to_the_overview()
 
 	$report = visitor_report_presets_source('view_visitor_report.php');
 	pg_assert_contains("'/visitors.php'", $report, 'report breadcrumb starts at the overview');
-	pg_assert_contains("lang('Visitor Report Filters')", $report, 'filters heading');
+	pg_assert_contains("h(lang('Filters'))", $report, 'filters heading in the settings drawer');
 }

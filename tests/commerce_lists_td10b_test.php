@@ -55,6 +55,6 @@ function test_commerce_lists_td10b_shipping_report_plain()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_shipping_report.php');
 
 	pg_assert_false(strpos($source, '<table class="chart') !== false, 'not a DataTable');
-	pg_assert_contains('<table class="shipping_report table table-hover mb-0">', $source);
+	pg_assert_contains('<table class="shipping_report pg-report-table">', $source);
 	pg_assert_contains('<tfoot>', $source, 'the Grand Total stays the foot');
 }

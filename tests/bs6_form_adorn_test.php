@@ -274,8 +274,8 @@ function test_bs6_form_adorn_order_screens_keep_only_compound_groups()
 
 	// The input-groups left on the panel order screens hold buttons or
 	// selects: the shipped quantity +/- controls, the start and stop
-	// day/year selects, the shipping report status select.
-	$left = array('view_order.php' => 1, 'view_orders.php' => 2, 'view_order_report.php' => 0, 'view_shipping_report.php' => 1);
+	// day/year selects. The shipping report picks its status with links.
+	$left = array('view_order.php' => 1, 'view_orders.php' => 2, 'view_order_report.php' => 0, 'view_shipping_report.php' => 0);
 
 	foreach ($left as $file => $count) {
 		$source = (string) file_get_contents($root . $file);

@@ -113,10 +113,6 @@ if (!$_POST) {
     // so its drawer opens at once; a saved or ready report shows its results.
     $open_settings_at_load = ((isset($_GET['id']) == false) && ($ready_report === null)) || $returned_with_error;
 
-    $output_edit_button = pg_screen_toolbar(array(
-        'primary' => '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" id="report_settings_button" data-bs-toggle="drawer" data-bs-target="#report_settings" aria-controls="report_settings"><i class="bi bi-sliders me-2" aria-hidden="true"></i>' . h(lang('Report settings')) . '</button>',
-    ));
-
     // if the visitor report is being viewed
     if (isset($_GET['id']) == true) {
         // The tab and the breadcrumb name the report as stored, not a name
@@ -528,13 +524,13 @@ if (!$_POST) {
     }
     
     // Close shuts the drawer and keeps what was typed.
-    $output_cancel_button = '<button type="button" class="btn my-1 btn-solid theme-secondary" data-bs-dismiss="drawer"><span class="material-icons me-3" aria-hidden="true">close</span><span class="pg-btn-label">' . h(lang('Close')) . '</span></button>';
+    $output_cancel_button = '<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . h(lang('Close')) . '</button>';
     
     $output_delete_button = '';
     
     // if user is editing an existing visitor report, then prepare to output delete button
     if (isset($_GET['id']) == true) {
-        $output_delete_button = '<button type="submit" name="submit_button" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('visitor report')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_button" value="Delete" formnovalidate class="pg-button pg-button-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('visitor report')))) . '"><i class="bi bi-trash3" aria-hidden="true"></i>' . h(lang('Delete')) . '</button>';
     }
     
     $output_date_changer = '';
@@ -596,16 +592,14 @@ if (!$_POST) {
             }
 
             $preset_current = ($preset_key === $active_preset);
-            $output_presets .= '<a class="btn ' . ($preset_current ? 'btn-solid theme-primary' : 'btn-outline theme-secondary') . '" href="view_visitor_report.php?' . h(http_build_query($preset_query)) . '"' . ($preset_current ? ' aria-current="true"' : '') . '>' . h($preset_labels[$preset_key]) . '</a>';
+            $output_presets .= '<a class="pg-seg-item" href="view_visitor_report.php?' . h(http_build_query($preset_query)) . '"' . ($preset_current ? ' aria-current="true"' : '') . '>' . h($preset_labels[$preset_key]) . '</a>';
         }
 
         $output_date_changer = '
-        <div class="d-flex flex-wrap justify-content-center md:justify-content-end">
-            <div class="btn-group btn-group-sm flex-wrap my-1" role="group" aria-label="' . h(lang('Date Range')) . '">' . $output_presets . '</div>
-        </div>
-        <p class="text-center md:text-end p-0 m-0">
-            <span class="badge fg-body fw-light border-2">' . h($output_date_range) . '</span>
-        </p>';
+        <div class="pg-report-tools">
+            <div class="pg-seg" role="group" aria-label="' . h(lang('Date Range')) . '">' . $output_presets . '</div>
+            <span class="pg-report-range"><i class="bi bi-calendar3" aria-hidden="true"></i>' . $output_date_range . '</span>
+        </div>';
 
     }
 
@@ -1160,6 +1154,10 @@ if (!$_POST) {
         $output_summarize_by_heading = '<td></td>';
     }
 
+    // The table's head names its levels; its note the range and the visitors.
+    $output_table_title = $summarize_by_labels ? implode(' / ', $summarize_by_labels) : lang('Visitors');
+    $output_table_note = (($output_date_changer !== '') ? $output_date_range . ' · ' : '') . h(lang(array('string' => '{var:1} visitor{suffix:1}', 'vars' => pg_format_number($grand_count, 0), 'suffix' => ($grand_count == 1) ? '' : 's')));
+
     $output_report_detail_headers = '';
     $output_report_detail_cells = '';
     
@@ -1182,6 +1180,17 @@ if (!$_POST) {
         $output_visitor_report_name = '[' . lang('new visitor report') . ']';
     }
 
+    // The head: the report's name, an amber pill and Save while it is not
+    // saved, Report settings (the drawer). Save submits the settings form
+    // from outside its drawer.
+    $output_edit_button = pg_screen_toolbar(array(
+        'grow' => '<h2 class="pg-title-screen">' . h($output_visitor_report_name) . '</h2>' . (isset($_GET['id']) ? '' : '<span class="pg-pill pg-tone-amber">' . h(lang('Unsaved')) . '</span>'),
+        'view' => array(
+            '<button type="button" class="pg-button pg-button-quiet" id="report_settings_button" data-bs-toggle="drawer" data-bs-target="#report_settings" aria-controls="report_settings"><i class="bi bi-sliders" aria-hidden="true"></i>' . h(lang('Report settings')) . '</button>',
+            isset($_GET['id']) ? '' : '<button type="submit" form="edit_form" name="submit_save" value="Save &amp; Run" class="pg-button pg-button-fill"><i class="bi bi-bookmark" aria-hidden="true"></i>' . h(lang('Save')) . '</button>',
+        ),
+    ), array('class' => 'pg-report-head'));
+
     // The strip of ready reports over the report: those this screen's
     // summarize-by levels can give, the open one marked.
     $output_ready_strip = '';
@@ -1191,10 +1200,10 @@ if (!$_POST) {
 
     if ($ready_strip) {
         foreach ($ready_strip as $ready_item) {
-            $output_ready_strip .= '<li><a href="' . h($ready_item['url']) . '" class="btn btn-sm rounded-pill text-nowrap ' . ($ready_item['current'] ? 'btn-solid theme-primary" aria-current="page"' : 'btn-outline theme-secondary"') . '>' . h(lang($ready_item['title'])) . '</a></li>';
+            $output_ready_strip .= '<a href="' . h($ready_item['url']) . '" class="pg-seg-item' . ($ready_item['current'] ? ' is-active" aria-current="page"' : '"') . '>' . h(lang($ready_item['title'])) . '</a>';
         }
 
-        $output_ready_strip = '<nav class="pg-ready-strip mb-3" aria-label="' . h(lang('Ready reports')) . '"><ul class="list-unstyled d-flex flex-wrap gap-2 mb-0">' . $output_ready_strip . '</ul></nav>';
+        $output_ready_strip = '<nav class="pg-report-strip" aria-label="' . h(lang('Ready reports')) . '"><span class="pg-report-label" aria-hidden="true">' . h(lang('Ready reports')) . '</span><div class="pg-seg">' . $output_ready_strip . '</div></nav>';
     }
     
     // The dashboard's stylesheet (pg_dashboard_v2_style_url()) draws them.
@@ -1241,10 +1250,8 @@ if (!$_POST) {
         'figures' => pg_report_view_visitor_figures($report_view_grand, $output_order_cells, BASE_CURRENCY_SYMBOL),
         'chart' => ($grand_count > 0) ? pg_report_view_visitor_chart($report_view_kind, $report_view_groups, $report_view_names, $report_view_label, $report_view_codes) : null,
         'maps' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/maps/',
-        'strings' => array(
-            'figures' => lang('Summary'),
-            'legend' => array(lang('Few'), lang('Many')),
-        ),
+        'strings' => pg_report_view_strings(),
+        'no_chart' => ($report_view_kind === 'none') && ($report_view_level !== ''),
     );
 
     print
@@ -1273,59 +1280,49 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'id'=>'last_filter_number', 'name'=>'last_filter_number', 'value'=>'0')) . '
                     ' . $output_hidden_id_field . '
-                    <dialog class="drawer drawer-end" id="report_settings" aria-labelledby="report_settings_title" style="width:min(760px,100%)"' . ($open_settings_at_load ? ' data-pg-open-at-load="1"' : '') . '>
+                    <dialog class="drawer drawer-end" id="report_settings" aria-labelledby="report_settings_title"' . ($open_settings_at_load ? ' data-pg-open-at-load="1"' : '') . '>
                     <div class="drawer-header">
-                        <h2 class="drawer-title h5 mb-0" id="report_settings_title">' . h(lang('Report settings')) . '</h2>
-                        <button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
+                        <h2 class="drawer-title pg-title-section" id="report_settings_title">' . h(lang('Report settings')) . '</h2>
+                        <button type="button" class="pg-icon-button ms-auto" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '" title="' . h(lang('Close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
                     </div>
                     <div class="drawer-body">
-                    <div class="row">
-                        <div class="col-12 order-1">
-                            <div class="card my-4">
-                                <h3 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Visitor Report')) . '</h3>
-                                <div class="card-body pt-0">
-                                    <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
-                                            <div class="form-field">
-                                                <label for="name">' . h(lang('Visitor Report Name')) . '</label>
-                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
-                                            </div>
-                                        </div>
-                                        <div class="col-12 my-3">
-                                            <div class="form-field">
-                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'detail', 'id'=>'detail', 'value'=>'1', 'class'=>'no-bs')) . '</div>
-                                                <label for="detail">' . h(lang('Show Detail (Include Visitor Session Information)')) . '</label>
-                                            </div>
-                                        </div>
-                                    </div>
+                            <section class="pg-report-section">
+                                <h3 class="pg-report-section-title">' . h(lang('Visitor Report')) . '</h3>
+                                <div class="form-field">
+                                    <label for="name">' . h(lang('Visitor Report Name')) . '</label>
+                                    ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                 </div>
-                            </div>
-                            <div class="card my-4">
-                                <h3 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Visitor Report Layout')) . '</h3>
-                                <div class="card-body pt-0">
-                                    <div class="row g-2 align-items-center my-3">
-                                        <label for="summarize_by_1" class="col-12 md:col form-label mb-0">' . lang('Summarize by') . '</label>
-                                        <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_1', 'id'=>'summarize_by_1', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
-                                        <label for="order_by_1" class="col-12 md:col form-label mb-0">' . lang('order by') . '</label>
-                                        <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_1', 'id'=>'order_by_1', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
-                                    </div>
-                                    <div class="row g-2 align-items-center my-3">
-                                        <label for="summarize_by_2" class="col-12 md:col form-label mb-0">' . lang('and then by') . '</label>
-                                        <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_2', 'id'=>'summarize_by_2', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
-                                        <label for="order_by_2" class="col-12 md:col form-label mb-0">' . lang('order by') . '</label>
-                                        <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_2', 'id'=>'order_by_2', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
-                                    </div>
-                                    <div class="row g-2 align-items-center my-3">
-                                        <label for="summarize_by_3" class="col-12 md:col form-label mb-0">' . lang('and finally by') . '</label>
-                                        <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_3', 'id'=>'summarize_by_3', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
-                                        <label for="order_by_3" class="col-12 md:col form-label mb-0">' . lang('order by') . '</label>
-                                        <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_3', 'id'=>'order_by_3', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
-                                    </div>
+                                <div class="form-field">
+                                    <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'detail', 'id'=>'detail', 'value'=>'1', 'class'=>'no-bs')) . '</div>
+                                    <label for="detail">' . h(lang('Show Detail (Include Visitor Session Information)')) . '</label>
                                 </div>
-                            </div>
-                            <div class="card my-4">
-                                <h3 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Visitor Report Filters')) . '</h3>
-                                <div class="card-body pt-0">
+                            </section>
+                            <section class="pg-report-section">
+                                <h3 class="pg-report-section-title">' . h(lang('Summarize by')) . ' <em>· ' . h(lang('up to three levels')) . '</em></h3>
+                                <div class="pg-report-level">
+                                    <span class="pg-report-level-n" aria-hidden="true">1</span>
+                                    <label for="summarize_by_1" class="visually-hidden">' . lang('Summarize by') . '</label>
+                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_1', 'id'=>'summarize_by_1', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '
+                                    <label for="order_by_1" class="visually-hidden">' . lang('order by') . '</label>
+                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_1', 'id'=>'order_by_1', 'class'=>'form-control', 'options'=>$order_by_options)) . '
+                                </div>
+                                <div class="pg-report-level">
+                                    <span class="pg-report-level-n" aria-hidden="true">2</span>
+                                    <label for="summarize_by_2" class="visually-hidden">' . lang('and then by') . '</label>
+                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_2', 'id'=>'summarize_by_2', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '
+                                    <label for="order_by_2" class="visually-hidden">' . lang('order by') . '</label>
+                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_2', 'id'=>'order_by_2', 'class'=>'form-control', 'options'=>$order_by_options)) . '
+                                </div>
+                                <div class="pg-report-level">
+                                    <span class="pg-report-level-n" aria-hidden="true">3</span>
+                                    <label for="summarize_by_3" class="visually-hidden">' . lang('and finally by') . '</label>
+                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_3', 'id'=>'summarize_by_3', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '
+                                    <label for="order_by_3" class="visually-hidden">' . lang('order by') . '</label>
+                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_3', 'id'=>'order_by_3', 'class'=>'form-control', 'options'=>$order_by_options)) . '
+                                </div>
+                            </section>
+                            <section class="pg-report-section">
+                                <h3 class="pg-report-section-title">' . h(lang('Filters')) . '</h3>
                                     <script type="text/javascript" language="JavaScript 1.2">
                                         //We add new language data to translate object
                                         translate["contains"] = "' . lang('contains') . '";
@@ -1350,83 +1347,48 @@ if (!$_POST) {
                                         ' . $output_field_options_for_javascript . '
                                         window.onload = initialize_filters;
                                     </script>
-                                    <div class="my-3">
-                                        <button type="button" onclick="create_filter()" class="btn btn-solid theme-primary"><i class="bi bi-plus-lg me-2" aria-hidden="true"></i>' . h(lang('Add Filter')) . '</button>' . get_date_picker_format() . pg_fields_script() . '
-                                    </div>
-                                    <div class="table-responsive">
-                                        <table id="filter_table" class="chart_no_hover table">
-                                            <thead>
-                                                <tr>
-                                                    <th class="text-nowrap" style="min-width:200px">' . lang('Field') . '</th>
-                                                    <th class="text-nowrap" style="min-width:200px">' . lang('Operator') . '</th>
-                                                    <th class="text-nowrap" style="min-width:200px">' . lang('Value') . '</th>
-                                                    <th class="text-nowrap" style="min-width:200px">' . lang('Dynamic Value') . '</th>
-                                                    <th class="text-nowrap">&nbsp;</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody></tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 order-2">
-                            <div class="card my-4">
-                                <h3 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('How It Works')) . '</h3>
-                                <div class="card-body pt-0">
-                                    <ul class="small ps-5 mb-0">
-                                        <li class="mb-2">' . h(lang('The report groups visits by up to three levels, each sorted on its own.')) . '</li>
-                                        <li class="mb-2">' . h(lang('Only visits in the chosen date range that match every filter are counted.')) . '</li>
-                                        <li class="mb-2">' . h(lang('With detail on, the report also lists each visit with its session information.')) . '</li>
-                                        <li>' . h(lang('Save & Run saves the report and shows its results with the current data.')) . '</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                                    <table id="filter_table" class="chart_no_hover table">
+                                        <thead>
+                                            <tr>
+                                                <th class="text-nowrap">' . lang('Field') . '</th>
+                                                <th class="text-nowrap">' . lang('Operator') . '</th>
+                                                <th class="text-nowrap">' . lang('Value') . '</th>
+                                                <th class="text-nowrap">' . lang('Dynamic Value') . '</th>
+                                                <th class="text-nowrap">&nbsp;</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                    <button type="button" onclick="create_filter()" class="pg-button pg-button-ghost pg-button-sm pg-report-add"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add Filter')) . '</button>' . get_date_picker_format() . pg_fields_script() . '
+                            </section>
+                            <section class="pg-report-section">
+                                <h3 class="pg-report-section-title">' . h(lang('How It Works')) . '</h3>
+                                <ul class="pg-report-section-help">
+                                    <li>' . h(lang('The report groups visits by up to three levels, each sorted on its own.')) . '</li>
+                                    <li>' . h(lang('Only visits in the chosen date range that match every filter are counted.')) . '</li>
+                                    <li>' . h(lang('With detail on, the report also lists each visit with its session information.')) . '</li>
+                                    <li>' . h(lang('Save & Run saves the report and shows its results with the current data.')) . '</li>
+                                </ul>
+                            </section>
                     </div>
                     <div class="drawer-footer">
-                            <nav class="buttons navigation text-center w-100" aria-label="' . h(lang('data edit buttons')) . '">
-                                <div>
-                                    <div class="btn-group flex-wrap justify-content-center">
-                                        <button type="submit" id="submit_save" name="submit_save" value="Save &amp; Run" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . h(lang('Save & Run')) . '</span></button>
-                                        ' . $output_cancel_button . $output_delete_button . '
-                                    </div>
-                                </div>
-                            </nav>
+                        <button type="submit" id="submit_save" name="submit_save" value="Save &amp; Run" class="pg-button pg-button-fill">' . h(lang('Save & Run')) . '</button>
+                        ' . $output_cancel_button . $output_delete_button . '
                     </div>
                     </dialog>
                 </form>
-                <div class="row mb-3 flex-wrap">
-                    <div class="col-12 sm:col-12 md:col-6 xl:col-8 text-center md:text-start"></div> 
-                    <div class="col-12 sm:col-12 md:col-6 xl:col-4 ">
-                        <div class="row justify-content-center md:justify-content-end">
-                            <div class="col-auto">
-                                ' . $output_date_changer . '
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                ' . (($summary_notice !== '') ? '<div class="alert theme-info small d-flex gap-3 align-items-start mt-5 mb-0"><i class="bi bi-info-circle-fill" aria-hidden="true"></i><div>' . h($summary_notice) . '</div></div>' : '') . '
-                <style>
-                    @layer custom {
-                        .pg-report-view { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; margin-block: 1rem; }
-                        .pg-report-view > div, .pg-report-view .pg-dash-card { width: 100%; min-width: 0; }
-                        .pg-report-view .pg-dash-figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .75rem; }
-                        .pg-report-view .pg-dash-line { display: block; width: 100%; height: 11rem; }
-                        .pg-report-view .pg-report-view-ends { display: flex; justify-content: space-between; gap: 1rem; margin-top: .375rem; font-size: .75rem; color: var(--pgd-muted); }
-                        .pg-report-view .pg-dash-map svg { max-height: 24rem; }
-                    }
-                </style>
-                <section class="pg-dash pg-report-view" id="pg_report_view" aria-label="' . h(lang('Summary')) . '">
+                ' . $output_date_changer . '
+                ' . (($summary_notice !== '') ? '<div class="alert theme-info small d-flex gap-3 align-items-start mt-0 mb-5"><i class="bi bi-info-circle-fill" aria-hidden="true"></i><div>' . h($summary_notice) . '</div></div>' : '') . '
+                <section class="pg-report-view" id="pg_report_view" aria-label="' . h(lang('Summary')) . '">
                     <div class="pg-report-view-figures"></div>
                     <div class="pg-report-view-chart"></div>
                     <script type="application/json" id="pg_report_view_data">' . (string) json_encode($report_view, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) . '</script>
                 </section>
                 ' . pg_js_bundle_tags('assets/js/pg_dash.min.js') . pg_js_bundle_tags('assets/js/pg_report_view.min.js') . '
-                <div class="card my-7">
-                    <div class="card-body p-0 position-relative table-responsive">
-                        <table class="table table-striped table-hover">
+                <section class="pg-card pg-report-frame" aria-labelledby="pg_report_table_title">
+                    <div class="pg-report-frame-head"><h3 class="pg-report-frame-title" id="pg_report_table_title">' . h($output_table_title) . '</h3><span class="pg-report-frame-note">' . $output_table_note . '</span></div>
+                    <div class="pg-report-frame-body">
+                        <table class="pg-report-table">
                             <thead>
                                 <tr>
                                     ' . $output_summarize_by_heading . '
@@ -1478,7 +1440,7 @@ if (!$_POST) {
             $average_order_total = ($summarize_by_1_result['count'] > 0) ? $summarize_by_1_result['order_total'] / $summarize_by_1_result['count'] : 0;
             
             print
-                '<tr style="font-weight: bold; color: #008000; cursor: default">
+                '<tr class="pg-report-l1">
                     <th scope="row" class="align-middle text-nowrap" colspan="' . $number_of_summarize_bys . '">' . nl2br(h($summarize_by_1_name)) . '</th>
                     ' . $output_report_detail_cells . '
                     <td class="align-middle text-end">' . pg_format_number($summarize_by_1_result['count'], 0) . '</td>
@@ -1528,7 +1490,7 @@ if (!$_POST) {
                     $average_order_total = ($summarize_by_2_result['count'] > 0) ? $summarize_by_2_result['order_total'] / $summarize_by_2_result['count'] : 0;
                     
                     print
-                        '<tr style="font-weight: bold; color: #719700; cursor: default">
+                        '<tr class="pg-report-l2">
                             <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
                             <th scope="row" class="align-middle text-nowrap" colspan="' . $colspan . '">' . nl2br(h($summarize_by_2_name)) . '</th>
                             ' . $output_report_detail_cells . '
@@ -1577,7 +1539,7 @@ if (!$_POST) {
                             $average_order_total = ($summarize_by_3_result['count'] > 0) ? $summarize_by_3_result['order_total'] / $summarize_by_3_result['count'] : 0;
                             
                             print
-                                '<tr style="font-weight: bold; color: #808080; cursor: default">
+                                '<tr class="pg-report-l3">
                                     <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
                                     <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
                                     <th scope="row" class="align-middle text-nowrap">' . nl2br(h($summarize_by_3_name)) . '</th>
@@ -1613,7 +1575,7 @@ if (!$_POST) {
                                     $output_link_url = 'view_visitor.php?id=' . (int) $visitor['id'] . $query_string_visitor_report_id;
                                     
                                     print
-                                        '<tr style="color: #969696">
+                                        '<tr class="pg-report-detail">
                                             <td colspan="3">&nbsp;</td>
                                             <td class="align-middle"><a href="' . h($output_link_url) . '">' . h($visitor['id']) . '</a></td>
                                             <td class="align-middle text-nowrap">' . get_relative_time(array('timestamp' => $visitor['timestamp'])) . '</td>
@@ -1653,7 +1615,7 @@ if (!$_POST) {
                                 $output_link_url = 'view_visitor.php?id=' . (int) $visitor['id'] . $query_string_visitor_report_id;
                                 
                                 print
-                                    '<tr style="color: #969696">
+                                    '<tr class="pg-report-detail">
                                         <td colspan="2">&nbsp;</td>
                                         <td class="align-middle"><a href="' . h($output_link_url) . '">' . h($visitor['id']) . '</a></td>
                                         <td class="align-middle text-nowrap">' . get_relative_time(array('timestamp' => $visitor['timestamp'])) . '</td>
@@ -1694,7 +1656,7 @@ if (!$_POST) {
                         $output_link_url = 'view_visitor.php?id=' . (int) $visitor['id'] . $query_string_visitor_report_id;
                         
                         print
-                            '<tr style="color: #969696">
+                            '<tr class="pg-report-detail">
                                 <td>&nbsp;</td>
                                 <td class="align-middle"><a href="' . h($output_link_url) . '">' . h($visitor['id']) . '</a></td>
                                 <td class="align-middle text-nowrap">' . get_relative_time(array('timestamp' => $visitor['timestamp'])) . '</td>
@@ -1735,7 +1697,7 @@ if (!$_POST) {
                 $output_link_url = 'view_visitor.php?id=' . (int) $visitor['id'] . $query_string_visitor_report_id;
                 
                 print
-                    '<tr style="color: #969696">
+                    '<tr class="pg-report-detail">
                         <td>&nbsp;</td>
                         <td><a href="' . h($output_link_url) . '">' . h($visitor['id']) . '</a></td>
                         <td class="align-middle text-nowrap">' . get_relative_time(array('timestamp' => $visitor['timestamp'])) . '</td>
@@ -1827,7 +1789,7 @@ if (!$_POST) {
     $grand_average_order_total = ($grand_count > 0) ? $grand_order_total / $grand_count : 0;
     
                     print
-                        '<tr style="font-weight: bold; color: #c49700;  cursor: default">
+                        '<tr class="pg-report-total">
                             <th scope="row" class="align-middle text-nowrap" colspan="' . $number_of_summarize_bys . '">' . lang('Grand Total') . '</th>
                             ' . $output_report_detail_cells . '
                             <td class="align-middle text-end">' . pg_format_number($grand_count, 0) . '</td>
@@ -1849,7 +1811,7 @@ if (!$_POST) {
                 </table>
             </div>
             ' . $output_detail_pager . '
-        </div>
+        </section>
     </div>
 </div>
 </main>

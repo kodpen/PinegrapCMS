@@ -54,5 +54,5 @@ function test_screen_wide_actions_shipping_report_link_is_secondary()
 	pg_assert_contains('pg_screen_toolbar(', $source, 'shipping report draws its bar through the helper');
 	pg_assert_true((bool) preg_match("/'secondary'\\s*=>[^\\n]*view_ship_date_adjustments\\.php/", $source), 'Ship Date Adjustments is a slot 2 link');
 	pg_assert_false(strpos($source, '<nav id="button_bar"') !== false, 'no hand-written bar');
-	pg_assert_contains('id="update_status"', $source, 'the status form keeps its id');
+	pg_assert_contains("href=\"view_shipping_report.php?status=' . \$status_value . '\">", $source, 'the status is a link that keeps the period');
 }

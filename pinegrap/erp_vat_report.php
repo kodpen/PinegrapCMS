@@ -83,16 +83,16 @@ $has_withholding = !empty($report['withholding']) || ($totals['withheld_sales'] 
 $net_withholding = $report['net_withholding'] && ($totals['withheld_sales'] !== 0);
 
 // The statement: calculated, deductible, difference.
-// The label is the row header and keeps the row's weight: a th is bold
-// by default, so a plain row sets fw-normal and a semibold row its own.
+// The label is the row header and keeps the row's weight: each row names
+// its own, as the report table draws a row header at normal weight.
 $statement_line = function ($label, $kurus, $class = '') use ($money) {
-    $weight = (strpos($class, 'fw-bold') !== false) ? '' : ((strpos($class, 'fw-semibold') !== false) ? ' class="fw-semibold"' : ' class="fw-normal"');
+    $weight = (strpos($class, 'fw-bold') !== false) ? ' class="fw-bold"' : ((strpos($class, 'fw-semibold') !== false) ? ' class="fw-semibold"' : ' class="fw-normal"');
 
     return '<tr' . (($class !== '') ? ' class="' . $class . '"' : '') . '><th scope="row"' . $weight . '>' . $label . '</th><td class="text-end">' . $money($kurus) . '</td></tr>';
 };
 
 $output_statement = '
-    <table class="table table-sm align-middle mb-0">
+    <table class="pg-report-table">
         <tbody>
             ' . $statement_line(h($labels['sales']) . ' <span class="small fg-secondary">' . h(lang(array('string' => '{var:1} document(s)', 'vars' => (int) $kinds['sales']['count']))) . '</span>', $kinds['sales']['vat']) . '
             ' . $statement_line(h($labels['sales_return']) . ' <span class="small fg-secondary">' . h(lang(array('string' => '{var:1} document(s)', 'vars' => (int) $kinds['sales_return']['count']))) . '</span>', -$kinds['sales_return']['vat']) . '
@@ -122,7 +122,7 @@ if ($totals['expense_not_deductible'] !== 0) {
     $aside[] = $statement_line(h(lang('Tax on expenses that is not deductible (a cost)')), $totals['expense_not_deductible']);
 }
 $output_aside = empty($aside) ? '' : '
-    <table class="table table-sm align-middle small mt-5 mb-0">
+    <table class="pg-report-table small mt-5">
         <tbody>' . implode('', $aside) . '</tbody>
     </table>';
 
@@ -165,10 +165,10 @@ if ($has_withholding) {
     }
 
     $output_withholding = '
-        <div class="card my-5">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('VAT withholding by code') . '</div>
-            <div class="card-body p-0 table-responsive">
-                <table class="table table-sm table-hover align-middle mb-0">
+        <section class="pg-card pg-report-frame">
+            <div class="pg-report-frame-head"><h3 class="pg-report-frame-title">' . lang('VAT withholding by code') . '</h3></div>
+            <div class="pg-report-frame-body">
+                <table class="pg-report-table">
                     <thead>
                         <tr>
                             <th>' . lang('Document type') . '</th>
@@ -183,7 +183,7 @@ if ($has_withholding) {
                     <tbody>' . $rows . '</tbody>
                 </table>
             </div>
-        </div>';
+        </section>';
 }
 
 // Month by month, when the period has more than one.
@@ -203,7 +203,7 @@ if (count($report['months']) > 1) {
     }
 
     $rows .= '
-            <tr class="fw-bold border-top" data-pg-sort-fixed>
+            <tr class="pg-report-total" data-pg-sort-fixed>
                 <td>' . lang('Total') . '</td>
                 <td class="text-end">' . $money($totals['calculated']) . '</td>
                 ' . ($net_withholding ? '<td class="text-end">' . $money(-$totals['withheld_sales']) . '</td>' : '') . '
@@ -213,10 +213,10 @@ if (count($report['months']) > 1) {
             </tr>';
 
     $output_months = '
-        <div class="card my-5">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('By month') . '</div>
-            <div class="card-body p-0 table-responsive">
-                <table class="table table-sm table-hover align-middle mb-0" data-pg-sort id="erp_vat_months">
+        <section class="pg-card pg-report-frame">
+            <div class="pg-report-frame-head"><h3 class="pg-report-frame-title">' . lang('By month') . '</h3></div>
+            <div class="pg-report-frame-body">
+                <table class="pg-report-table" data-pg-sort id="erp_vat_months">
                     <thead>
                         <tr>
                             <th>' . lang('Month') . '</th>
@@ -230,7 +230,7 @@ if (count($report['months']) > 1) {
                     <tbody>' . $rows . '</tbody>
                 </table>
             </div>
-        </div>';
+        </section>';
 }
 
 // The documents behind the figures.
@@ -311,8 +311,6 @@ $export_url = 'erp_vat_report.php?' . h(http_build_query(array('range' => 'dates
 
 // The figures and the chart over the tables (includes/fn/report_view.php),
 // read from the same totals and months the tables print.
-require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/layout.php');
-
 $report_view_money = function ($kurus) {
     return erp_money_out((int) $kurus);
 };
@@ -331,11 +329,7 @@ $report_view_names = array(
 $report_view = array(
     'figures' => pg_report_view_vat_figures($totals, $has_withholding, $report_view_names, $report_view_money),
     'chart' => pg_report_view_vat_chart($report, $report_view_names, $report_view_money),
-    'maps' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/maps/',
-    'strings' => array(
-        'figures' => lang('Summary'),
-        'legend' => array(lang('Few'), lang('Many')),
-    ),
+    'strings' => pg_report_view_strings(),
 );
 
 echo
@@ -345,7 +339,6 @@ pg_page_shell([
     'icon' => 'erp',
     'heading' => h($title),
     'heading_description' => h(lang(array('string' => 'The tax on the invoices, returns and expenses of a period, by rate, in {var:1}.', 'vars' => $base))),
-    'head' => '<link rel="stylesheet" href="' . h(pg_dashboard_v2_style_url()) . '"><style>@layer custom { .pg-report-view { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; margin-block: 1rem; } .pg-report-view > div, .pg-report-view .pg-dash-card { width: 100%; min-width: 0; } .pg-report-view .pg-dash-figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: .75rem; } .pg-report-view .pg-dash-line { display: block; width: 100%; height: 11rem; } .pg-report-view .pg-report-view-ends { display: flex; justify-content: space-between; gap: 1rem; margin-top: .375rem; font-size: .75rem; color: var(--pgd-muted); } }</style>',
     'cancel' => false,
 ]) . '
 <main id="content" class="container-fluid">
@@ -355,63 +348,57 @@ pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <form method="get" action="erp_vat_report.php" class="card my-7" id="erp_vat_period">
-                <div class="card-body">
-                    <div class="row g-3 align-items-end">
-                    <div class="col-6 md:col-2">
-                        <label class="form-label small fg-secondary mb-1" for="range">' . lang('Period') . '</label>
-                        <select class="form-control form-control-sm" id="range" name="range">' . $range_options . '</select>
-                    </div>
-                    <div class="col-6 md:col-3" data-range="month"' . (($range === 'month') ? '' : ' hidden') . '>
-                        <label class="form-label small fg-secondary mb-1" for="month">' . lang('Month') . '</label>
-                        <select class="form-control form-control-sm" id="month" name="month">' . $output_month_options . '</select>
-                    </div>
-                    <div class="col-6 md:col-3" data-range="quarter"' . (($range === 'quarter') ? '' : ' hidden') . '>
-                        <label class="form-label small fg-secondary mb-1" for="quarter">' . lang('Quarter') . '</label>
-                        <select class="form-control form-control-sm" id="quarter" name="quarter">' . $output_quarter_options . '</select>
-                    </div>
-                    <div class="col-6 md:col-3" data-range="year"' . (($range === 'year') ? '' : ' hidden') . '>
-                        <label class="form-label small fg-secondary mb-1" for="year">' . lang('Year') . '</label>
-                        <select class="form-control form-control-sm" id="year" name="year">' . $output_year_options . '</select>
-                    </div>
-                    <div class="col-6 md:col-2" data-range="dates"' . (($range === 'dates') ? '' : ' hidden') . '>
-                        <label class="form-label small fg-secondary mb-1" for="from">' . lang('Start date') . '</label>
-                        <input type="date" data-pg-date class="form-control form-control-sm" id="from" name="from" min="' . ERP_PROFIT_FIRST_YEAR . '-01-01" max="' . ERP_PROFIT_LAST_YEAR . '-12-31" value="' . h($period['from']) . '" />
-                    </div>
-                    <div class="col-6 md:col-2" data-range="dates"' . (($range === 'dates') ? '' : ' hidden') . '>
-                        <label class="form-label small fg-secondary mb-1" for="to">' . lang('End date') . '</label>
-                        <input type="date" data-pg-date class="form-control form-control-sm" id="to" name="to" min="' . ERP_PROFIT_FIRST_YEAR . '-01-01" max="' . ERP_PROFIT_LAST_YEAR . '-12-31" value="' . h($period['to']) . '" />
-                    </div>
-                    <div class="col-12 md:col-auto">
-                        <button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Show') . '</button>
-                        <a class="btn btn-sm btn-outline theme-secondary" href="' . $export_url . '"><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>' . lang('Excel') . '</a>
-                    </div>
-                    <div class="col-12 small fg-secondary">' . h(prepare_form_data_for_output($period['from'], 'date', false) . ' – ' . prepare_form_data_for_output($period['to'], 'date', false)) . '</div>
-                    </div>
-                </div>
+            <form method="get" action="erp_vat_report.php" class="pg-report-tools" id="erp_vat_period">
+                <span class="pg-report-field">
+                    <label class="pg-report-label" for="range">' . lang('Period') . '</label>
+                    <select class="form-control" id="range" name="range">' . $range_options . '</select>
+                </span>
+                <span class="pg-report-field" data-range="month"' . (($range === 'month') ? '' : ' hidden') . '>
+                    <label class="visually-hidden" for="month">' . lang('Month') . '</label>
+                    <select class="form-control" id="month" name="month">' . $output_month_options . '</select>
+                </span>
+                <span class="pg-report-field" data-range="quarter"' . (($range === 'quarter') ? '' : ' hidden') . '>
+                    <label class="visually-hidden" for="quarter">' . lang('Quarter') . '</label>
+                    <select class="form-control" id="quarter" name="quarter">' . $output_quarter_options . '</select>
+                </span>
+                <span class="pg-report-field" data-range="year"' . (($range === 'year') ? '' : ' hidden') . '>
+                    <label class="visually-hidden" for="year">' . lang('Year') . '</label>
+                    <select class="form-control" id="year" name="year">' . $output_year_options . '</select>
+                </span>
+                <span class="pg-report-field" data-range="dates"' . (($range === 'dates') ? '' : ' hidden') . '>
+                    <label class="pg-report-label" for="from">' . lang('Start date') . '</label>
+                    <input type="date" data-pg-date class="form-control" id="from" name="from" min="' . ERP_PROFIT_FIRST_YEAR . '-01-01" max="' . ERP_PROFIT_LAST_YEAR . '-12-31" value="' . h($period['from']) . '" />
+                </span>
+                <span class="pg-report-field" data-range="dates"' . (($range === 'dates') ? '' : ' hidden') . '>
+                    <label class="pg-report-label" for="to">' . lang('End date') . '</label>
+                    <input type="date" data-pg-date class="form-control" id="to" name="to" min="' . ERP_PROFIT_FIRST_YEAR . '-01-01" max="' . ERP_PROFIT_LAST_YEAR . '-12-31" value="' . h($period['to']) . '" />
+                </span>
+                <button type="submit" class="pg-button pg-button-quiet"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . lang('Show') . '</button>
+                <span class="pg-report-range"><i class="bi bi-calendar3" aria-hidden="true"></i>' . h(prepare_form_data_for_output($period['from'], 'date', false) . ' – ' . prepare_form_data_for_output($period['to'], 'date', false)) . '</span>
+                <a class="pg-button pg-button-quiet ms-auto" href="' . $export_url . '"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>' . lang('Excel') . '</a>
             </form>
 
-            <section class="pg-dash pg-report-view" id="pg_report_view" aria-label="' . h(lang('Summary')) . '">
+            <section class="pg-report-view" id="pg_report_view" aria-label="' . h(lang('Summary')) . '">
                 <div class="pg-report-view-figures"></div>
                 <div class="pg-report-view-chart"></div>
                 <script type="application/json" id="pg_report_view_data">' . (string) json_encode($report_view, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) . '</script>
             </section>
-            ' . pg_js_bundle_tags('assets/js/pg_dash.min.js') . pg_js_bundle_tags('assets/js/pg_report_view.min.js') . '
+            ' . pg_js_bundle_tags('assets/js/pg_report_view.min.js') . '
 
             ' . $output_notes . '
 
-            <div class="row g-5 my-1">
+            <div class="row g-5 mb-7">
                 <div class="col-12 xl:col-5">
-                    <div class="card h-100">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Summary') . '</div>
-                        <div class="card-body">' . $output_statement . $output_aside . '</div>
-                    </div>
+                    <section class="pg-card pg-report-frame h-100 mb-0">
+                        <div class="pg-report-frame-head"><h3 class="pg-report-frame-title">' . lang('Summary') . '</h3></div>
+                        <div class="pg-report-frame-body">' . $output_statement . $output_aside . '</div>
+                    </section>
                 </div>
                 <div class="col-12 xl:col-7">
-                    <div class="card h-100">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('By rate') . '</div>
-                        <div class="card-body p-0 table-responsive">
-                            <table class="table table-sm table-hover align-middle mb-0" id="erp_vat_rates">
+                    <section class="pg-card pg-report-frame h-100 mb-0">
+                        <div class="pg-report-frame-head"><h3 class="pg-report-frame-title">' . lang('By rate') . '</h3></div>
+                        <div class="pg-report-frame-body">
+                            <table class="pg-report-table" id="erp_vat_rates">
                                 <thead>
                                     <tr>
                                         <th>' . lang('Document type') . '</th>
@@ -425,23 +412,21 @@ pg_page_shell([
                                 <tbody>' . $output_rates . '</tbody>
                             </table>
                         </div>
-                    </div>
+                    </section>
                 </div>
             </div>
 
             ' . $output_withholding . '
             ' . $output_months . '
 
-            <div class="card my-5">
-                <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center gap-3">
-                    <span class="text-uppercase h5 fg-primary fw-bold mb-0 me-auto">' . lang('Documents of the period') . '</span>
-                    <span class="d-flex align-items-center gap-2">
-                        <label class="small fg-secondary text-nowrap" for="erp_vat_kind">' . lang('Document type') . '</label>
-                        <select class="form-control form-control-sm w-auto" id="erp_vat_kind">' . $kind_options . '</select>
-                    </span>
+            <section class="pg-card pg-report-frame">
+                <div class="pg-report-frame-head">
+                    <h3 class="pg-report-frame-title">' . lang('Documents of the period') . '</h3>
+                    <label class="pg-report-label ms-auto" for="erp_vat_kind">' . lang('Document type') . '</label>
+                    <select class="form-control" id="erp_vat_kind">' . $kind_options . '</select>
                 </div>
-                <div class="card-body p-0 table-responsive" style="max-height:40rem;scroll-padding-top:2.5rem">
-                    <table class="table table-sm table-hover align-middle mb-0" data-pg-sort id="erp_vat_documents">
+                <div class="pg-report-frame-body table-responsive" style="max-height:40rem;scroll-padding-top:2.5rem">
+                    <table class="pg-report-table" data-pg-sort id="erp_vat_documents">
                         <thead class="sticky-top">
                             <tr>
                                 <th>' . lang('Date') . '</th>
@@ -460,7 +445,7 @@ pg_page_shell([
                     </table>
                 </div>
                 ' . $more_documents . '
-            </div>
+            </section>
 
             <p class="small fg-secondary my-5">' . lang('A summary of the invoices, returns and expenses the ERP keeps, not a tax return: check it with your accountant before you file. Documents count by the date they were issued, expenses by their date; cancelled documents and drafts count for nothing, and the tax on an expense that is not taken back is a cost, left out of the deductible tax.') . '</p>
         </div>

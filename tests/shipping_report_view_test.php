@@ -48,8 +48,9 @@ function test_shipping_report_view_chart()
 	pg_assert_same('line', $chart['kind']);
 	pg_assert_same('Units by ship date', $chart['label']);
 	pg_assert_same(array(2, 0, 1), $chart['values'], 'the day columns, a missing day 0');
-	pg_assert_same('Tue 10 Nov', $chart['first']);
-	pg_assert_same('Thu 12 Nov', $chart['last']);
+	pg_assert_same('Units', $chart['series'], 'the legend names the line');
+	pg_assert_same($names, $chart['names'], 'each point names its day');
+	pg_assert_same(array(pg_format_number(2, 0), pg_format_number(0, 0), pg_format_number(1, 0)), $chart['notes'], 'the figure each tip shows');
 	pg_assert_same('Tue 10 Nov: 2 units', $chart['tips'][0]);
 	pg_assert_same('Thu 12 Nov: 1 unit', $chart['tips'][2]);
 
@@ -58,19 +59,20 @@ function test_shipping_report_view_chart()
 	pg_assert_same(null, pg_report_view_shipping_chart(array(), $dates, $names), 'no data');
 }
 
-// The screen prints the view over its table with the dashboard's drawing;
-// its query, period and lists are untouched.
+// The screen prints the view over its table, without the dashboard's sheet
+// and bundle (no map here); its query, period and lists are untouched.
 function test_shipping_report_screen_draws_the_view()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_shipping_report.php');
 
 	pg_assert_contains("'figures' => pg_report_view_shipping_figures(\$report_view_totals, \$dates, count(\$products)),", $source);
 	pg_assert_contains("'chart' => pg_report_view_shipping_chart(\$report_view_totals, \$dates, \$report_view_names),", $source);
-	pg_assert_contains('<section class="pg-dash pg-report-view" id="pg_report_view"', $source);
+	pg_assert_contains('<section class="pg-report-view" id="pg_report_view"', $source);
 	pg_assert_contains("JSON_HEX_TAG", $source, 'the data cannot close its script');
-	pg_assert_contains("pg_js_bundle_tags('assets/js/pg_dash.min.js') . pg_js_bundle_tags('assets/js/pg_report_view.min.js')", $source);
-	pg_assert_contains("'head' => '<link rel=\"stylesheet\" href=\"' . h(pg_dashboard_v2_style_url()) . '\">',", $source);
-	pg_assert_true(strpos($source, '</section>') < strpos($source, '<div class="card my-7">'), 'the view sits over the table');
+	pg_assert_contains("pg_js_bundle_tags('assets/js/pg_report_view.min.js')", $source);
+	pg_assert_false(strpos($source, 'pg_dash.min.js') !== false, 'not the dashboard bundle');
+	pg_assert_false(strpos($source, 'pg_dashboard_v2_style_url') !== false, 'nor the dashboard sheet');
+	pg_assert_true(strpos($source, 'id="pg_report_view"') < strpos($source, '<section class="pg-card pg-report-frame"'), 'the view sits over the table');
 	pg_assert_contains("AND (orders.status IN ('complete', 'exported'))", $source, 'the same orders');
 	pg_assert_contains('list($start_date, $end_date) = pg_shipping_report_period(', $source, 'the same period rule');
 }
