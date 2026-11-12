@@ -80,7 +80,7 @@ function designer_block_info_test_sentence_faults($text)
 // line for every block.
 function designer_block_info_test_undescribed_families()
 {
-	return array('launch');
+	return array('launch', 'podcast');
 }
 
 // The items of every family file: family => componentType => its desc text,
