@@ -34,7 +34,7 @@ $shell = function () use (&$heading, &$crumb) {
         'extra classes' => 'page',
         'icon' => 'page',
         'heading' => $heading,
-        'heading_description' => lang('Show part of the visitors a variant of this page and count which one reaches the goal more often. The variant is a draft you edit in the Visual Page Editor; search engines and signed-in staff always see the live page.'),
+        'heading_description' => lang('Show part of the visitors a variant of this page and count which one reaches the goal more often. The variant is a draft you edit in the Page Design Studio; search engines and signed-in staff always see the live page.'),
         'help' => 'visual-page-editor#editor',
         'breadcrumb' => array(
             array('label' => lang('Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php'),
@@ -66,7 +66,7 @@ $action = ($is_post && isset($_POST['action']) && is_string($_POST['action'])) ?
 // moves that need the live page (start, publishing a variant) refuse with
 // their own message.
 if (!$live && (!$is_post || ($action === '') || ($action === 'create'))) {
-    $stop(lang('Experiments run on a page of a visual design that is on the site. Drafts and pages in the Recycle Bin have none.'));
+    $stop(lang('Experiments run on a design page that is on the site. Drafts and pages in the Recycle Bin have none.'));
 }
 
 $page_row = $live ? $live : db_item("SELECT page_id, page_name, page_folder FROM page WHERE page_id = '" . (int) $page_id . "' LIMIT 1");
@@ -325,7 +325,7 @@ if (!$has_open) {
                                 <div class="form-field">
                                     <label for="draft_page_id" class="form-label">' . h(lang('Variant B')) . '</label>
                                     ' . $liveform->output_field(array('type' => 'select', 'name' => 'draft_page_id', 'id' => 'draft_page_id', 'options' => $draft_options, 'class' => 'form-control', 'aria-describedby' => 'draft_page_id_help')) . '
-                                    <div id="draft_page_id_help" class="form-text">' . h(lang('A draft of the same design. A new copy is made in Drafts; edit it in the Visual Page Editor before you start.')) . '</div>
+                                    <div id="draft_page_id_help" class="form-text">' . h(lang('A draft of the same design. A new copy is made in Drafts; edit it in the Page Design Studio before you start.')) . '</div>
                                 </div>
                             </div>
                             <div class="col-12 md:col-6">

@@ -331,7 +331,7 @@ $pg_settings_cards[] = '
             $output_page_rebuild_field = '
                             <div class="col-12 ">
                                 <button type="submit" name="submit_rebuild_pages" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Save and rebuild page HTML') . '</button>
-                                <div class="form-text">' . lang('Visual designer pages keep the HTML drawn when they were last saved. This draws every page again from what was saved, so pages published before responsive images, or before a format was switched on or off, get the current picture markup. Their content, modified date and author do not change.') . '</div>
+                                <div class="form-text">' . lang('Page Design Studio pages keep the HTML drawn when they were last saved. This draws every page again from what was saved, so pages published before responsive images, or before a format was switched on or off, get the current picture markup. Their content, modified date and author do not change.') . '</div>
                             </div>';
         }
 
@@ -358,12 +358,12 @@ $pg_settings_cards[] = '
 
         $output_image_upload_cap_field .= '
                             <div class="pg-f-xs">
-                                <label for="image_editor_upload_max_mb" class="form-label">' . lang('Largest Video Or Sound In The Image Editor (MB)') . '</label>
+                                <label for="image_editor_upload_max_mb" class="form-label">' . lang('Largest Video Or Sound In The Design Canvas (MB)') . '</label>
                                 <label class="form-control form-adorn form-adorn-end">
                                     <span class="form-adorn-text" aria-hidden="true">MB</span>
                                     <input type="text" name="image_editor_upload_max_mb" id="image_editor_upload_max_mb" maxlength="5" inputmode="numeric" class="form-ghost text-end" value="' . h(pg_image_editor_upload_max_mb()) . '" />
                                 </label>
-                                <div class="form-text">' . h(lang(array('string' => 'A video or sound uploaded in the image editor, and an animation it saves to Files, may be up to this size; it is sent in parts, so it may be larger than the upload limit of PHP. 0 keeps that limit ({var:1}). At most {var:2} MB.', 'vars' => array($image_editor_php_limit_text, pg_image_editor_upload_max_mb_most())))) . '</div>
+                                <div class="form-text">' . h(lang(array('string' => 'A video or sound uploaded in the Design Canvas, and an animation it saves to Files, may be up to this size; it is sent in parts, so it may be larger than the upload limit of PHP. 0 keeps that limit ({var:1}). At most {var:2} MB.', 'vars' => array($image_editor_php_limit_text, pg_image_editor_upload_max_mb_most())))) . '</div>
                             </div>';
 
         $output_image_settings_card =
@@ -489,7 +489,7 @@ if (function_exists('pg_page_revisions_retention') && array_key_exists('page_rev
                                 <div class="card-body">
                                     <div class="row gy-5">
                                         <div class="col-12">
-                                            <div class="form-text mt-0">' . lang('Every publish of a visual designer page is kept as a revision, which the History panel of the editor compares and loads back; so is every save that changes an item of a collection. A revision is removed only when both limits below let it go; the general job does that once a day.') . '</div>
+                                            <div class="form-text mt-0">' . lang('Every publish of a Page Design Studio page is kept as a revision, which the History panel of the Studio compares and loads back; so is every save that changes an item of a collection. A revision is removed only when both limits below let it go; the general job does that once a day.') . '</div>
                                         </div>
                                         <div class="pg-f-xs">
                                             <label for="page_revisions_keep" class="form-label">' . lang('Revisions Kept per Page or Item') . '</label>

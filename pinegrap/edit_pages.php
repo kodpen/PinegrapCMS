@@ -209,7 +209,7 @@ if (!$_POST) {
 
                 if ($tally['style_skipped'] > 0) {
                     $left_alone[] = lang(array(
-                        'string' => 'The style was left alone on {var:1} of them, because a page the visual editor opens carries its own layout.',
+                        'string' => 'The style was left alone on {var:1} of them, because a page the Page Design Studio opens carries its own layout.',
                         'vars' => $tally['style_skipped']));
                 }
 

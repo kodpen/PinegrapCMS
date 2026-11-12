@@ -250,7 +250,7 @@ if (pg_schema_has('config_text')) {
                                     <input type="hidden" name="a11y_statement_card" value="1"/>
                                     <div class="row gy-5">
                                         <div class="col-12">
-                                            <div class="form-text">' . h(lang('The EU Accessibility Act asks for a statement on the site. Place the Accessibility Statement widget on a page in the visual editor: it shows these texts with the conformance and the known limitations of the nightly accessibility report.')) . ' <a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_accessibility.php?statement=1') . '" target="_blank" rel="noopener">' . h(lang('Print the statement')) . '</a></div>
+                                            <div class="form-text">' . h(lang('The EU Accessibility Act asks for a statement on the site. Place the Accessibility Statement widget on a page in the Page Design Studio: it shows these texts with the conformance and the known limitations of the nightly accessibility report.')) . ' <a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_accessibility.php?statement=1') . '" target="_blank" rel="noopener">' . h(lang('Print the statement')) . '</a></div>
                                         </div>'
         . $a11y_statement_field('organisation', lang('Organisation Name'), lang('Who makes the statement. Empty: the site name.'), 1)
         . $a11y_statement_field('scope', lang('Scope'), lang('What the statement applies to, such as the site address and its online shop. Empty: the site name.'), 2)

@@ -173,7 +173,7 @@ function pg_design_ai_page_problem($page_id)
 function pg_design_ai_page_problem_text($problem)
 {
     if ($problem === 'not_visual') {
-        return lang('This page is not a page of a visual design. Only pages made with the Visual Page Editor can be changed this way.');
+        return lang('This page is not a design page. Only pages made in the Page Design Studio can be changed this way.');
     }
 
     return lang('The page was not found.');
@@ -3486,7 +3486,7 @@ function pg_design_ai_write_page($user, $page, $tree)
     require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
 
     if (!pg_collab_may_edit_page('', $page['page_id'])) {
-        return array('ok' => false, 'error' => lang('Somebody has this page open in the Visual Page Editor. Open the proposal in the editor instead, or try again when they are done.'), 'hash' => '');
+        return array('ok' => false, 'error' => lang('Somebody has this page open in the Page Design Studio. Open the proposal in the Studio instead, or try again when they are done.'), 'hash' => '');
     }
 
     $fields = pg_design_ai_page_fields($page);

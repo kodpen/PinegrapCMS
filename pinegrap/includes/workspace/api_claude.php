@@ -1123,14 +1123,14 @@ function ws_api_claude_answer($params)
     // POST /design/pages/{id}/proposals and this request's id.
     if ($origin === 'editor') {
         if (!empty($params['tasks']) || !empty($params['changes'])) {
-            api_fail_validation(lang('A request from the Visual Page Editor is answered with text only; the page change is proposed with POST /design/pages/{id}/proposals.'), empty($params['tasks']) ? 'changes' : 'tasks');
+            api_fail_validation(lang('A request from the Page Design Studio is answered with text only; the page change is proposed with POST /design/pages/{id}/proposals.'), empty($params['tasks']) ? 'changes' : 'tasks');
         }
 
         api_dry_run_stop('answered', 'workspace_claude_request', array('id' => (int) $row['id'], 'origin' => 'editor'));
 
         pg_design_ai_request_answer($row, ws_tokens_normalise(trim((string) $params['text'])));
 
-        ws_api_log(lang('Claude answered a request from the Visual Page Editor'));
+        ws_api_log(lang('Claude answered a request from the Page Design Studio'));
 
         api_ok(ws_api_claude_request_present($viewer, ws_api_claude_request_or_404($row['id'])));
     }

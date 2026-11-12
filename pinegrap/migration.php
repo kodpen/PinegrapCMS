@@ -111,8 +111,8 @@ if (!$_POST) {
                                         <div class="col-12 my-3">
                                             <div class="form-field">
                                                 <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'id'=>'designs', 'name'=>'designs', 'value'=>'1', 'class'=>'no-bs', 'aria-describedby'=>'designs_hint')) . '</div>
-                                                <label class="" for="designs">' . lang('Visual Designs') . '</label>
-                                                <div class="form-text" id="designs_hint">' . lang('Each visual design comes with its pages, shared components, widgets, forms, look and design files; its pages and styles are then left out of the classic copy. The source must run a current Pinegrap version.') . '</div>
+                                                <label class="" for="designs">' . lang('Designs') . '</label>
+                                                <div class="form-text" id="designs_hint">' . lang('Each design comes with its pages, shared components, widgets, forms, look and design files; its pages and styles are then left out of the classic copy. The source must run a current Pinegrap version.') . '</div>
                                             </div>
                                         </div>
                                     </div>
@@ -348,7 +348,7 @@ if (!$_POST) {
         if (($response['status'] == 'success') && isset($response['designs']) && is_array($response['designs'])) {
             $designs = $response['designs'];
         } else {
-            $liveform->mark_error('designs', lang('Visual Designs could not be retrieved from the source site, so the migration was aborted. An older source site cannot send them; update it first.') . pg_migration_error_suffix($response));
+            $liveform->mark_error('designs', lang('Designs could not be retrieved from the source site, so the migration was aborted. An older source site cannot send them; update it first.') . pg_migration_error_suffix($response));
         }
     }
 
@@ -869,19 +869,19 @@ if (!$_POST) {
 
             if ($entry === null) {
                 $reason = (is_array($design) && isset($design['error']) && is_scalar($design['error'])) ? ' ' . (string)$design['error'] : '';
-                $liveform->add_notice(h(lang(array('string' => 'The visual design "{var:1}" was not migrated.', 'vars' => $source_name)) . $reason));
+                $liveform->add_notice(h(lang(array('string' => 'The design "{var:1}" was not migrated.', 'vars' => $source_name)) . $reason));
                 continue;
             }
 
             $result = pg_migration_import_design($entry, $user);
 
             if (empty($result['ok'])) {
-                $liveform->add_notice(h(lang(array('string' => 'The visual design "{var:1}" was not migrated.', 'vars' => $entry['name'])) . ' ' . $result['error']));
+                $liveform->add_notice(h(lang(array('string' => 'The design "{var:1}" was not migrated.', 'vars' => $entry['name'])) . ' ' . $result['error']));
                 continue;
             }
 
             $design_count++;
-            $line = lang(array('string' => 'The visual design "{var:1}" was migrated as "{var:2}" with {var:3} pages.', 'vars' => array($entry['name'], $result['style_name'], number_format($result['pages']))));
+            $line = lang(array('string' => 'The design "{var:1}" was migrated as "{var:2}" with {var:3} pages.', 'vars' => array($entry['name'], $result['style_name'], number_format($result['pages']))));
 
             if ($result['files']['kept']) {
                 $line .= ' ' . lang(array('string' => 'These design files were not copied because this site already uses their names: {var:1}.', 'vars' => implode(', ', $result['files']['kept'])));
@@ -899,12 +899,12 @@ if (!$_POST) {
                 $message_detail .= ', ';
             }
 
-            $message_detail .= lang(array('string' => '{var:1} Visual Design{suffix:1}', 'vars' => number_format($design_count), 'suffix' => ($design_count > 1) ? 's' : ''));
+            $message_detail .= lang(array('string' => '{var:1} Design{suffix:1}', 'vars' => number_format($design_count), 'suffix' => ($design_count > 1) ? 's' : ''));
         }
     }
 
     if (!$carry_designs && ($left_out_styles > 0 || $left_out_pages > 0)) {
-        $liveform->add_notice(h(lang(array('string' => '{var:1} visual design styles and {var:2} visual design pages were not copied. Tick Visual Designs to carry them.', 'vars' => array(number_format($left_out_styles), number_format($left_out_pages))))));
+        $liveform->add_notice(h(lang(array('string' => '{var:1} design styles and {var:2} design pages were not copied. Tick Designs to carry them.', 'vars' => array(number_format($left_out_styles), number_format($left_out_pages))))));
     }
 
     if ($message_detail !== '') {

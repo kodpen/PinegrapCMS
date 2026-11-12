@@ -2508,7 +2508,7 @@ function ws_ai_deliver($row, $text, $proposals)
         $done = pg_design_ai_deliver($row, $text, $proposals);
 
         if ($done['ok']) {
-            ws_ai_log(lang('Pinegrap AI answered a request from the Visual Page Editor'));
+            ws_ai_log(lang('Pinegrap AI answered a request from the Page Design Studio'));
         }
 
         return $done;

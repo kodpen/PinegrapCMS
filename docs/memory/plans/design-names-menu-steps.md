@@ -11,7 +11,7 @@ description: Steps NM1-NM4 (owner 2026-11-12, #8849): Image Editor named Design 
 ## Which steps are there?
 - S under 400 product lines, M about 1,000; each with its tests.
 
-- NM1 (M) The names. Every `lang()` and `_sdT()` text that names the image editor, the visual page editor or the visual designer, or says Visual Design(s), gets its new wording as a new key with its Turkish (`php tools/tr_add.php`); an old key goes when nothing reads it.
+- NM1 (M) The names. Done (#8894). Every `lang()` and `_sdT()` text that names the image editor, the visual page editor or the visual designer, or says Visual Design(s), gets its new wording as a new key with its Turkish (`php tools/tr_add.php`); an old key goes when nothing reads it.
   - A sentence is rewritten, not patched ("Open in the Page Design Studio"). Third-party names stay ("Pintura Image Editor").
   - `designer/designer-turkish-terms.md` and `editor-turkish-terms.md` name the terms; the test over every `_sdT()` key passes. Cut in two by area (panel, designer) if it passes 1,000 lines.
 

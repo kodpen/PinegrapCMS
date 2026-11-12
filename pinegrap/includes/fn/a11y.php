@@ -1288,7 +1288,7 @@ function pg_a11y_report_html($summary, $rows, $pages, $last_run, $site, $checked
         . '<p>' . h($site) . ' · ' . h(pg_a11y_pages_checked_text(($checked === null) ? $pages : $checked, $pages)) . ' · '
         . h($last_run ? lang(array('string' => 'last full check {var:1}', 'vars' => array(date('Y-m-d H:i', $last_run)))) : lang('no full check has finished yet')) . '</p>'
         . '<p class="muted">' . h(lang('The checks read the published markup of each page against WCAG 2.2. They cover only what can be checked automatically; every criterion still needs a person to review the rest.')) . ' '
-        . h(lang('Contrast and target size are also measured in the visual editor when a page is saved; those findings say so and when.')) . '</p>'
+        . h(lang('Contrast and target size are also measured in the Page Design Studio when a page is saved; those findings say so and when.')) . '</p>'
         . '<h2>' . h(lang('Checklist')) . '</h2><table><tr><th>' . h(lang('Criterion')) . '</th><th>' . h(lang('Level')) . '</th><th>' . h(lang('Automatic check')) . '</th><th>' . h(lang('Result')) . '</th></tr>';
 
     foreach ($by_criterion as $number => $codes) {

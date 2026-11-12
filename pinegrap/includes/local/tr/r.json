@@ -325,7 +325,7 @@
     "Reads a record ({var:1}).": "Bir kaydı okur ({var:1}).",
     "Reads a row of the table “{var:1}”.": "“{var:1}” tablosundan bir satır okur.",
     "Reads bounces": "Geri dönen postaları okur",
-    "Reads every page, visual editor record and linked file into the index the site search answers from.": "Her sayfayı, görsel düzenleyici kaydını ve bağlantılı dosyayı site aramasının yanıt verdiği dizine okur.",
+    "Reads every page, Page Design Studio record and linked file into the index the site search answers from.": "Her sayfayı, Sayfa Tasarım Stüdyosu kaydını ve bağlantılı dosyayı site aramasının yanıt verdiği dizine okur.",
     "Reads every row of the table “{var:1}”, at most {var:2} in its list.": "“{var:1}” tablosunun her satırını okur; listesinde en fazla {var:2} satır olur.",
     "Reads in ten seconds with a beep, with a flexible tip for children.": "On saniyede bip sesiyle ölçer, çocuklar için esnek uçlu.",
     "Reads only": "Yalnızca okur",

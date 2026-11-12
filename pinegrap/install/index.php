@@ -2843,7 +2843,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				<span class="pg-radio"></span>
 				<div class="flex-grow-1">
 					<div class="fw-semibold pg-design-name" id="pg_design_name_standard"><i class="bi bi-box-seam me-1 fg-primary"></i>' . lang('Standard installation') . '</div>
-					<div class="small fg-secondary">' . lang('The starter site is installed with its own classic pages; they are not built with the Visual Page Editor.') . '</div>
+					<div class="small fg-secondary">' . lang('The starter site is installed with its own classic pages; they are not built in the Page Design Studio.') . '</div>
 				</div>
 			</div>';
 
@@ -3359,7 +3359,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 									</div>
 									<div class="card-body">
 										<p class="fg-secondary mb-1">' . lang('How should the site look after the installation?') . '</p>
-										<p class="small fg-secondary d-flex gap-3"><i class="bi bi-magic fg-primary" aria-hidden="true"></i><span>' . lang('Every template is edited in the Visual Page Editor; the look and the colours change with a click, and it fits every screen.') . '</span></p>
+										<p class="small fg-secondary d-flex gap-3"><i class="bi bi-magic fg-primary" aria-hidden="true"></i><span>' . lang('Every template is edited in the Page Design Studio; the look and the colours change with a click, and it fits every screen.') . '</span></p>
 										<div class="alert theme-secondary small d-flex gap-3 d-none" id="pg_design_only_starter">
 											<i class="bi bi-info-circle"></i>
 											<div>' . lang('A design template can be used with a starter site only. A backup or a zip file is restored exactly as it was.') . '</div>
@@ -3413,7 +3413,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 										</div>
 										<div class="alert theme-primary small d-flex gap-3 mt-5 mb-0">
 											<i class="bi bi-info-circle"></i>
-											<div>' . lang('With a design template the pages and page styles of the starter site are not installed. The template\'s pages are published as a new design of the visual editor and its home page becomes the home page of the site. Products, settings and the rest of the starter content are installed as usual.') . '</div>
+											<div>' . lang('With a design template the pages and page styles of the starter site are not installed. The template\'s pages are published as a new design of the Page Design Studio and its home page becomes the home page of the site. Products, settings and the rest of the starter content are installed as usual.') . '</div>
 										</div>
 										<div class="d-flex justify-content-between mt-5">
 											<button type="button" class="btn btn-outline theme-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>

@@ -78,8 +78,8 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
         $component_name = (string) db_value("SELECT name FROM shared_components WHERE id = '" . (int) $component_id . "'");
         $output_component =
             '<div class="alert theme-primary my-7">
-                <p>' . h(lang(array('string' => 'This common region is now the shared component "{var:1}". Its content is edited in the visual designer, by managers and by the users granted the component. The region\'s earlier content is kept and comes back if the component is deleted.', 'vars' => $component_name))) . '</p>
-                <a class="btn btn-sm btn-solid theme-primary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_system_style.php?component=' . (int) $component_id . '&amp;send_to=' . h(urlencode(get_request_uri())) . '"><span class="material-icons me-1">edit</span>' . h(lang('Edit in the visual designer')) . '</a>
+                <p>' . h(lang(array('string' => 'This common region is now the shared component "{var:1}". Its content is edited in the Page Design Studio, by managers and by the users granted the component. The region\'s earlier content is kept and comes back if the component is deleted.', 'vars' => $component_name))) . '</p>
+                <a class="btn btn-sm btn-solid theme-primary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_system_style.php?component=' . (int) $component_id . '&amp;send_to=' . h(urlencode(get_request_uri())) . '"><span class="material-icons me-1">edit</span>' . h(lang('Edit in the Page Design Studio')) . '</a>
             </div>';
     } elseif (($user['role'] <= 1) && pg_shared_component_content_ready()) {
         $output_component =
@@ -87,7 +87,7 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $id . '">
                 <div class="flex-grow-1">
-                    <p>' . h(lang('Make this region a shared component to edit its content in the visual designer. Its tag then draws the component on every page; managers and the users granted this region edit the component, and front-end inline editing of the region ends. Deleting the component brings back the content kept here.')) . '</p>
+                    <p>' . h(lang('Make this region a shared component to edit its content in the Page Design Studio. Its tag then draws the component on every page; managers and the users granted this region edit the component, and front-end inline editing of the region ends. Deleting the component brings back the content kept here.')) . '</p>
                     <button type="submit" name="submit_convert" value="Convert" class="btn btn-sm btn-solid theme-primary" data-confirm-content="' . h(lang('Make this common region a shared component? Every page will draw the component from now on.')) . '"><span class="material-icons me-1">widgets</span>' . h(lang('Make shared component')) . '</button>
                 </div>
             </form>';
@@ -198,7 +198,7 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
             $component_name = (string) db_value("SELECT name FROM shared_components WHERE id = '" . (int) $component_id . "'");
             $liveform->add_error(
                 h(lang(array('string' => 'This common region is the shared component "{var:1}". Delete the component first; its content comes back here, then the region can be deleted.', 'vars' => $component_name)))
-                . ' <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_system_style.php?component=' . (int) $component_id . '">' . h(lang('Edit in the visual designer')) . '</a>');
+                . ' <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_system_style.php?component=' . (int) $component_id . '">' . h(lang('Edit in the Page Design Studio')) . '</a>');
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_common_region.php?id=' . $id);
             exit();
         }

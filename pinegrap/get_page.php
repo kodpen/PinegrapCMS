@@ -3105,7 +3105,7 @@ else
 			$_pg_vp_url .= (strpos($_pg_vp_url, '?') === false ? '?' : '&')
 			            . 'send_to=' . urlencode(get_request_uri());
 			$output_grid_button = '
-			<button type="button" class="toggle_button_off" id="pg_visual_edit" title="' . lang('Edit in the Visual Page Editor') . ' (Ctrl+E | &#8984;+E)" onclick="javascript:window.location.href=\'' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $_pg_vp_url) . '\'"><span class="bi bi-pencil-square"></span></button>
+			<button type="button" class="toggle_button_off" id="pg_visual_edit" title="' . lang('Edit in the Page Design Studio') . ' (Ctrl+E | &#8984;+E)" onclick="javascript:window.location.href=\'' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $_pg_vp_url) . '\'"><span class="bi bi-pencil-square"></span></button>
 			<span class="grid_toggle_button_vh"></span>
 			';
 		}

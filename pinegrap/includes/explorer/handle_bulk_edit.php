@@ -172,7 +172,7 @@ function pg_explorer_handle_pages_bulk_edit($type, $request, $user)
     // for a bug.
     if ($style_skipped > 0) {
         $bulk_pages_message .= ' ' . lang(array(
-            'string' => 'The style was left alone on {var:1} of them, because a page the visual editor opens carries its own layout.',
+            'string' => 'The style was left alone on {var:1} of them, because a page the Page Design Studio opens carries its own layout.',
             'vars' => $style_skipped));
     }
 

@@ -35,7 +35,7 @@ function pg_search_audits_engines()
             'job'          => 'update_search_index',
             'label'        => lang('Search index'),
             'icon'         => 'bi-search',
-            'description'  => lang('Reads every page, visual editor record and linked file into the index the site search answers from.'),
+            'description'  => lang('Reads every page, Page Design Studio record and linked file into the index the site search answers from.'),
             'report'       => '',
             'report_label' => '',
         ),

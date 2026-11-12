@@ -127,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 $optimize_button =
                     '<a class="btn btn-link pg-link-secondary py-0 mb-3" href="optimize.php?id=' . h($id) . get_token_query_string_field() . h('&send_to=' . urlencode(PATH . SOFTWARE_DIRECTORY . '/view_design_files.php')) . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '</a>';
             }
-            $image_buttons = $optimize_button . ' <button type="button" class="btn btn-link pg-link-secondary py-0 mb-3" data-pg-image-edit="' . h($file_name) . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</button>' . pg_image_editor_includes();
+            $image_buttons = $optimize_button . ' <button type="button" class="btn btn-link pg-link-secondary py-0 mb-3" data-pg-image-edit="' . h($file_name) . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang('Edit this image in the Design Canvas') . '</button>' . pg_image_editor_includes();
     }
 
     // Both links would lead to the site's 404 page without the file.

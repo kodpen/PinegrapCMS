@@ -653,7 +653,7 @@ function pg_designer_component_entry($sid, $user, $style_id = 0)
 
     $usage = pg_shared_component_usage(array($sid));
     $style = pg_designer_component_style($style_id, isset($usage[$sid]) ? $usage[$sid] : array(), array_keys(pg_visual_design_style_ids()));
-    if ($style <= 0) return lang('There is no visual design to open the shared component in.');
+    if ($style <= 0) return lang('There is no design to open the shared component in.');
 
     return array('id' => $sid, 'name' => (string)$row['name'], 'style_id' => $style);
 }

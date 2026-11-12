@@ -446,10 +446,10 @@ function pg_designer_screen_render($ctx)
     // check. The shell's strip would sit above ours doing nothing.
     print
         pg_page_shell(array(
-            'title'        => lang('Visual Page Editor'),
+            'title'        => lang('Page Design Studio'),
             'extra classes'=> 'design',
             'icon'         => 'design',
-            'heading'      => lang('Visual Page Editor'),
+            'heading'      => lang('Page Design Studio'),
             'heading_description' => lang('The pages of the design are the tabs; drop blocks from the palette on the left, edit their options on the right.'),
             'hide_menu'    => true,
             // The shared curtain hides itself when the document is ready.
@@ -1549,10 +1549,10 @@ function pg_designer_start_screen($ctx)
 
     print
         pg_page_shell(array(
-            'title'               => lang('Visual Page Editor'),
+            'title'               => lang('Page Design Studio'),
             'extra classes'       => 'design',
             'icon'                => 'design',
-            'heading'             => lang('Visual Page Editor'),
+            'heading'             => lang('Page Design Studio'),
             'heading_description' => lang('A design is a set of pages that share stylesheets, scripts, fonts and a theme.'),
             'head'                => '<link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/css/designer_home.css?v=' . pg_designer_asset_stamp('assets/css/designer_home.css') . '">',
         )) . '
@@ -2331,7 +2331,7 @@ function pg_designer_settings_modal($ctx)
             <h3 class="sd-settings-group-title">' . lang('Advanced') . '</h3>
             ' . $social . '
             ' . pg_designer_setting(lang('Collection'),
-                lang('Only for classic Form List View and Form Item View pages that use this design: they keep two layouts, A and B, and show the one chosen here. The widgets of the visual designer draw their own layout and do not follow it.'),
+                lang('Only for classic Form List View and Form Item View pages that use this design: they keep two layouts, A and B, and show the one chosen here. The widgets of the Page Design Studio draw their own layout and do not follow it.'),
                 $liveform->output_field(array('type'=>'select', 'name'=>'collection', 'id'=>'sd-style-collection', 'options'=>array('A'=>'a', 'B'=>'b'), 'class'=>'form-control form-control-sm')),
                 array('for' => 'sd-style-collection')) . '
         </section>';
@@ -3197,7 +3197,7 @@ function pg_designer_screen_post($ctx)
     $converting = ($mode === 'edit' && $style_id > 0)
         && ((string)db_value("SELECT style_layout FROM style WHERE style_id = '$style_id' LIMIT 1") !== 'visual_designer');
     if ($converting && !$can_write_design) {
-        $fail(array(lang('Only a designer can open a classic style in the visual designer.')));
+        $fail(array(lang('Only a designer can open a classic style in the Page Design Studio.')));
     }
 
     $style_data = array(

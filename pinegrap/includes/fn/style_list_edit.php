@@ -57,7 +57,7 @@ function pg_style_list_columns($edit)
         'collection' => array('heading' => lang('Collection'), 'editable' => 'select'),
         'layout_type' => array('heading' => lang('Layout Type'), 'editable' => 'select'),
         'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
-        'designer' => array('heading' => lang('Open in the visual designer'), 'kind' => 'actions'),
+        'designer' => array('heading' => lang('Open in the Page Design Studio'), 'kind' => 'actions'),
     );
 
     if (!$edit) {
@@ -180,7 +180,7 @@ function pg_style_list_cells(array $style, array $quick_edit, $folders, $pages, 
     // until the design is saved (includes/fn/classic_style_design.php).
     $designer_button = '';
     if ($editable && $designer) {
-        $designer_button = '<a class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Open in the visual designer')) . '" aria-label="' . h(lang('Open in the visual designer')) . '" href="edit_system_style.php?id=' . $id . '&amp;classic=1"><i class="bi bi-magic" aria-hidden="true"></i></a>';
+        $designer_button = '<a class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Open in the Page Design Studio')) . '" aria-label="' . h(lang('Open in the Page Design Studio')) . '" href="edit_system_style.php?id=' . $id . '&amp;classic=1"><i class="bi bi-magic" aria-hidden="true"></i></a>';
     }
 
     $type = in_array((string) $style['type'], array('custom', 'system'), true) ? (string) $style['type'] : 'custom';
