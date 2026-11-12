@@ -5,7 +5,7 @@ description: A test fails when a script source declares one function name twice 
 
 ## What does the check catch?
 - JavaScript lets a later `function name()` in the same scope replace the earlier one for every caller, and `node --check` parses the file. #8719 declared `compose` twice in `workspace_mail.js` (the answer drawer and New e-mail), so Reply by e-mail opened the wrong form; #8748 renamed it.
-- `tests/js_function_names_test.php` (WM10, #PRNUM) scans every `pinegrap/assets/js/*.js` and `pinegrap/*.js` that is not a `.min.js` bundle with `pg_test_js_duplicate_functions()` (`tests/helpers/js_function_names.php`), and the fixture `tests/fixtures/js_function_names/twin.js`. About 190 files take under a second.
+- `tests/js_function_names_test.php` (WM10, #8796) scans every `pinegrap/assets/js/*.js` and `pinegrap/*.js` that is not a `.min.js` bundle with `pg_test_js_duplicate_functions()` (`tests/helpers/js_function_names.php`), and the fixture `tests/fixtures/js_function_names/twin.js`. About 190 files take under a second.
 
 ## What does the scanner read?
 - Not a parser. It steps over comments, strings, template literals with their `${…}`, and regular expressions (a slash after an operator, `(`, `,`, `{`, `;` or a word such as `return`), and keeps one name list per pair of braces.

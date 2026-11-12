@@ -5,7 +5,7 @@ description: The Workspace E-mails list (workspace_mail.php, mail_list.php): whi
 
 ## What does it show?
 - `workspace_mail.php` (behind `ws_screen_gate()`, and `ws_mail_reads_ready()`): the e-mail conversations of every channel the reader may read (`ws_mail_list_channels()`: distinct `ws_mail_conversations.channel_id`, each through `ws_can_read_channel()`), never decided by the box. Newest mail first (`GREATEST(last_in_at, last_out_at)`, then id).
-- Beside the list the reading pane opens a conversation (`workspace/mail-screen-pane.md`). A row's address (`ws_mail_list_page_url()`) is this screen with `conversation=<id>`, its filters and page (`before`) kept, and the server draws that pane, so a row opens the mail with or without the script, never a channel (WM10, #PRNUM; owner 2026-11-11, #8765). Open in channel is the pane's button.
+- Beside the list the reading pane opens a conversation (`workspace/mail-screen-pane.md`). A row's address (`ws_mail_list_page_url()`) is this screen with `conversation=<id>`, its filters and page (`before`) kept, and the server draws that pane, so a row opens the mail with or without the script, never a channel (WM10, #8796; owner 2026-11-11, #8765). Open in channel is the pane's button.
 
 ## Which views and filters?
 - Address words, `ws_mail_list_filters()`: `view` incoming (default; `last_in_at > 0`) | sent (an outgoing item with `send_state` '' or sent) | unsent (an outgoing item queued or failed) | all (the API only); `status` open (default in Incoming, else all) | waiting | closed | all; `holder` all | me | none; `overdue=1`; `box` (a mailbox id); `q`; `before`. Unknown words fall back.
