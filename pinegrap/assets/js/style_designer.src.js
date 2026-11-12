@@ -27495,8 +27495,9 @@ const StyleDesigner = (function () {
     // style attribute (_sdNodeStyle(): font, inline style, the type's own
     // style, sizing, the Attributes panel's style) where the type wrote its
     // own, or after the type's attributes; then the id, the title and
-    // tooltip and the Attributes panel's entries. An entry the type wrote
-    // from its props (a link's href, an image's src) is not written twice.
+    // tooltip, the interaction and the Attributes panel's entries. An entry
+    // the type wrote from its props (a link's href, an image's src) is not
+    // written twice.
     // `P`: the props the markup was written from (the code view's carry
     // {{tokens}} for bound values).
     function addGlobalAttrs(htmlStr, node, P) {
@@ -27512,8 +27513,10 @@ const StyleDesigner = (function () {
         // (_sdApplyNodeAttrs()).
         var boxStyle = '';
         if (ct === 'image' && _sdImgInRatio(p)) { boxStyle = sizing; sizing = ''; }
+        // An interaction counts: a heading or picture often carries nothing
+        // else, and the Preview plays only what the markup holds.
         var hasAttrs = p.id || p.title || p.inlineStyle || p.fontFamily || sizing || boxStyle ||
-            (Array.isArray(list) && list.length) || (p.tooltipEnabled && p.tooltipTitle);
+            (Array.isArray(list) && list.length) || (p.tooltipEnabled && p.tooltipTitle) || _sdFxAttrs(p);
         if (!hasAttrs) return htmlStr;
         var start = ct === 'image' ? htmlStr.indexOf('<img') : htmlStr.indexOf('<');
         if (start === -1) return htmlStr;
