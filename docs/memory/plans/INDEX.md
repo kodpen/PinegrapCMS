@@ -10,6 +10,7 @@
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
+- automation-flows-menu.md: Plan (owner 2026-11-12, #8961): Flows become "Automation flows", a main menu row with a moving icon, and run on a site whose Workspace is off; the in-channel view stays; steps AF0-AF6
 - canvas-one-model.md: CO0 model of plans/canvas-one.md: what one canvas is in the store and the API: the message as its id, the drawing, page and data parts, one list of versions, the routes and the bridge's calls
 - canvas-one-schema.md: CO0 of plans/canvas-one.md: the five schema changes the later CO steps need (parts, bindings, consent, "through" on a row, channel tables), each with its architect issue and the step it blocks
 - canvas-one-screens.md: CO0 drawings of plans/canvas-one.md in look A (plans/canvas-one/): the canvas card, one list of versions, the first-write question, the Data list, the phone
@@ -42,6 +43,8 @@
 - legacy-bootstrap-helper.md: Plan: the helper that turns a Legacy design towards Bootstrap 5.3.8 and a design theme (#8856): a trial design beside it, what it changes, how it is seen and kept, what stays reversible
 - legacy-layouts-bootstrap.md: Plan (owner 2026-11-12, #8942): the page types' custom layouts and built-in templates print Bootstrap 5.3.8 names on a design of that framework; census first, steps LL1-LL6
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
+- messages-area-steps.md: Steps MA0-MA10 of the messages area plan (#8961): census, shell and tabs, the one sends list, campaigns, e-mail bodies as pages, templates, channels, automatic sends, profiles into flows
+- messages-area.md: Plan (owner 2026-11-12, #8961): one messages area in place of My Campaigns: campaigns, automatic sends as flows, templates, one sends list, channels; e-mail bodies as pages; profiles become flows
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - one-picker-inventory.md: What chooses a file, a picture, a page or a folder in the software today (2026-11-10, with call counts): what the one picker takes over, and the record searches that model its later kinds
 - one-picker-steps.md: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry and endpoint, dialog, upload, pages, the field, page fields, editor and designer bridges, remaining screens, close-out; open questions

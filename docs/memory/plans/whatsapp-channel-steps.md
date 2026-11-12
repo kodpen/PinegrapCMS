@@ -21,7 +21,7 @@ description: Steps WA0-WA11 of the WhatsApp channel plan (#8950): facts and stor
 ## In which order?
 - WA0 first; its questions answered before WA2, WA3 and WA4 start. WA1, then WA2, WA3 and WA4 one after the other (they share the module).
 - WA5, WA6 and WA7 after WA3, in any order. WA8 after WA3, WA9 after WA8, WA10 after WA9 and WA5.
-- `flows-quick-setup.md` shows the WhatsApp step once WA7 has landed.
+- `flows-quick-setup.md` shows the WhatsApp step once WA7 has landed. The card, the template list and the queue tab move into the messages area when its shell is there (`messages-area-steps.md`).
 - Claim as `[plan:whatsapp-channel] <step> — <topic>`.
 
 ## What is asked of the owner along the way?

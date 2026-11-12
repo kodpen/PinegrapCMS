@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-20
-description: Decisions list, workspace part 20 (2026-11-12 on): the canvas-one drawings as the reference (#8929); a quick setup for Flows and the flow window rearranged (#8950)
+description: Decisions list, workspace part 20 (2026-11-12 on): canvas-one drawings (#8929); Flows quick setup and the flow window (#8950); flows in the main menu, on without the Workspace (#8961)
 ---
 
 ## Where are the rules and the earlier parts?
@@ -21,3 +21,9 @@ description: Decisions list, workspace part 20 (2026-11-12 on): the canvas-one d
 - Yes, as drawn: the left panel only adds boxes, the right panel is only the chosen box (Settings, Connections, Try), the top bar holds the flow's name, status, views, problems, Run and Publish. Plan `plans/flow-window.md`.
 - Owner (2026-11-12): "akış penceresini de redesign edermisin o panelde sol ve sağ panel alanları karışık görünüyor"; shown the drawing in both themes: "Aa".
 - The architect's, not the owner's words: every function of the window stays and only moves; the boxes keep their size and look.
+
+## Do flows leave the Workspace's menu and switch? (owner, 2026-11-12, #8961)
+- Yes: "Otomasyon akışları" is a row at the top of the main menu, between the Dashboard and the Workspace, and flows run at every site behind the right only, also where the Workspace is off. Plan `plans/automation-flows-menu.md`.
+- Owner (2026-11-12): "önemli her şeyi workspace altına tıktık ama açılmadığında akış ve birçok özellik kapalı kalacak. akışları ana menüye taşıyalım ne dersin? animasyonlu bir ikonu olsun adını da otomasyon akışları olarak güncelleyelim."
+- Asked by letters with the drawing: "Ya" (the row's place as drawn), "M1a" (on everywhere; not chosen: a switch of their own). On the three moving icons: "simge için a iyi olur" (a path with a dot that follows it).
+- "akışlar kanal içinde açılır ekranı yine kanalda kalır modernize edilerek.": the view inside a channel stays.
