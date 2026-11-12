@@ -17,7 +17,7 @@ description: Steps NM1-NM4 (owner 2026-11-12, #8849): Image Editor named Design 
 
 - NM2 (S) The Design Canvas's icon. A two-colour drawing in the main menu's manner (`ui/main-menu-icons.md`, `pg_menu_icon()`), shown wherever the Design Canvas is opened: the File Manager's action, a canvas card in Workspace, the editor's own heading. Drawn first, three candidates on one sheet in `plans/design-names-menu/`; the owner picks, then the code.
 
-- NM3 (M) The menu. Row 21 is titled Page Design Studio; its panel keeps its entries and gets Other, shut until opened, holding the Page Styles row's present entries (Page Styles, Themes and the rest, in their order) and Ads. After NM1.
+- NM3 (M) The menu. Row 21 is titled Page Design Studio; its panel keeps its entries and gets Other, shut until opened, holding the Page Styles row's present entries (Page Styles, Themes and the rest, in their order) and Ads. After NM1. In progress.
   - Rows 17 and 16 are no longer drawn as rows and their slots are retired, never reused; what a pinned 17 or 16 does is settled in the step (`ui/main-menu-categories.md`: operators pin rows by slot).
   - Each entry keeps its own gate (`ui/main-menu-entry-gates.md`): row 21 is drawn for a person who may open any of its entries, Other only when one of its own is there.
   - On those screens row 21 is marked and Other stands open. `tests/menu_category_test.php` follows.
