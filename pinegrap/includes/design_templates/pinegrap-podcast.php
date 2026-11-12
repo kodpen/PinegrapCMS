@@ -59,7 +59,10 @@
  * components, 'catalog' and 'requires'.
  *
  * The version follows the template, not the software: raise it whenever the
- * pages change, so a design records which edition it started from.
+ * pages change, so a design records which edition it started from. 2.0.0
+ * draws the home on the Podcast blocks (the Episode Hero with Chapters),
+ * the sponsorship page on the Sponsor Placements and the listening page on
+ * the Transcript.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -190,7 +193,7 @@ $podcast_css = implode("\n", array(
 
 return array(
     'name'        => lang('Podcast Network'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 141,
     'icon'        => 'bi-mic',
