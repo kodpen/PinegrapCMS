@@ -258,7 +258,10 @@ function ws_page_write($message, $html, $agent, $user_id)
 
     // Every write goes to the file directory, which the general job takes
     // as the file's bytes (pg_file_storage_reconcile_run()).
-    if (($stored === '') || !pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . basename($stored), $html)) {
+    $name = basename($stored);
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
+
+    if (($stored === '') || !pg_file_write_whole($path, $html)) {
         return false;
     }
 
