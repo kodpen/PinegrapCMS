@@ -71,7 +71,7 @@ function pg_guarded_frame_mode($raw)
  */
 function pg_guarded_frame_page_id($raw)
 {
-    if (!is_string($raw) || !preg_match('/^[1-9][0-9]{0,9}$/', $raw)) {
+    if (!is_string($raw) || !preg_match('/^[1-9][0-9]{0,9}\z/', $raw)) {
         return 0;
     }
 
@@ -88,7 +88,7 @@ function pg_guarded_frame_page_id($raw)
  */
 function pg_guarded_frame_is_page_name($name)
 {
-    return is_string($name) && (bool) preg_match('/^[^\/\\\\]+\.html?$/i', $name);
+    return is_string($name) && (bool) preg_match('/^[^\/\\\\]+\.html?\z/i', $name);
 }
 
 /**
@@ -154,7 +154,7 @@ function pg_guarded_frame_headers($mode, $nonce)
         'X-Frame-Options: SAMEORIGIN',
         'Referrer-Policy: no-referrer',
         'Cache-Control: private, no-store',
-        'Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=(), display-capture=(), clipboard-read=(), clipboard-write=(), fullscreen=()',
+        'Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), display-capture=(), clipboard-read=(), clipboard-write=(), fullscreen=()',
         'X-Robots-Tag: noindex, nofollow',
     );
 }
