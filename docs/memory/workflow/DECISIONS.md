@@ -255,6 +255,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-47.md: Are WhatsApp templates designed in the panel, and can a message carry an offer code? (owner, 2026-11-12, #8950)
 - decisions-made-product-47.md: Is the campaigns area made anew as one messages area? (owner, 2026-11-12, #8961)
 - decisions-made-product-47.md: What happens to the e-mail campaign profiles? (owner, 2026-11-12, #8961)
+- decisions-made-product-48.md: Where are the rules and the earlier parts?
+- decisions-made-product-48.md: What does the Legacy to Bootstrap helper do on a design that is not Bootstrap 3? (owner, 2026-11-12, #8967)
 - decisions-made-product-5.md: Which outside-account leftovers start in 2026.11.0? (#3180)
 - decisions-made-product-5.md: Do subscriptions start, and who runs the renewals? (#3183)
 - decisions-made-product-5.md: Does a beta site without a build file get the beta build of its own version? (#3204)
@@ -395,6 +397,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-20.md: Do flows leave the Workspace's menu and switch? (owner, 2026-11-12, #8961)
 - decisions-made-workspace-21.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-21.md: Where does the incoming e-mail sit? (owner, 2026-11-12, #8961)
+- decisions-made-workspace-21.md: Is the canvas card's line of tables and Bind a table approved? (owner, 2026-11-12, #8964)
 - decisions-made-workspace-3.md: Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - decisions-made-workspace-3.md: How does a "For each" box loop over a list? (#3312)
 - decisions-made-workspace-3.md: What may a role-3 member's personal flow hold? (#3345)
