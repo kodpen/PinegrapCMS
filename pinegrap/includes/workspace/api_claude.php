@@ -429,12 +429,35 @@ function ws_api_claude_request_present($viewer, $row)
             'note'   => $wake ? $wake['note'] : '',
             'due_at' => ($wake && ($wake['due'] > 0)) ? api_time($wake['due']) : null,
         ),
-        'requested_by'     => array('user_id' => (int) $row['requested_by'], 'name' => ws_person_name($row['requested_by'])),
+        // An application's message that woke an agent (agent_queue.php):
+        // the application that asked, 0 and '' for a person.
+        'requested_by'     => array('user_id' => (int) $row['requested_by'], 'name' => ws_person_name($row['requested_by'])) + ws_api_claude_request_asker($message),
         'reply_message_id' => ((int) $row['reply_message_id'] > 0) ? (int) $row['reply_message_id'] : null,
         'error'            => (string) $row['error'],
         'created_at'       => api_time($row['created_at']),
         'claimed_at'       => ((int) $row['claimed_at'] > 0) ? api_time($row['claimed_at']) : null,
     );
+}
+
+/**
+ * The application that wrote a request's asking message, as the request's
+ * requested_by names it: app_id 0 and empty names for a person.
+ *
+ * @param array|null $message ws_messages row
+ * @return array app_id, app_handle, app_name
+ */
+function ws_api_claude_request_asker($message)
+{
+    $app_id = function_exists('ws_agent_asker_app') ? ws_agent_asker_app($message) : 0;
+
+    if ($app_id <= 0) {
+        return array('app_id' => 0, 'app_handle' => '', 'app_name' => '');
+    }
+
+    $named = ws_agent_asker_named($app_id, function_exists('ws_agent_tags') ? ws_agent_tags() : array(),
+        (string) db_value("SELECT name FROM api_apps WHERE id = '" . $app_id . "'"));
+
+    return array('app_id' => $app_id, 'app_handle' => $named['handle'], 'app_name' => $named['name']);
 }
 
 // What ws_api_claude_request_present() returns.
@@ -450,7 +473,7 @@ function ws_api_claude_request_schema()
         'task'             => ws_api_claude_task_schema(),
         'summary'          => 'boolean',
         'wake'             => array('kind' => 'string', 'note' => 'string', 'due_at' => 'string?'),
-        'requested_by'     => array('user_id' => 'integer', 'name' => 'string'),
+        'requested_by'     => array('user_id' => 'integer', 'name' => 'string', 'app_id' => 'integer', 'app_handle' => 'string', 'app_name' => 'string'),
         'reply_message_id' => 'integer?',
         'error'            => 'string',
         'created_at'       => 'string',

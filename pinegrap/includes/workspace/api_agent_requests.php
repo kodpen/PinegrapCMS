@@ -347,13 +347,7 @@ function ws_api_agent_request_answer($params)
             api_fail(403, 'forbidden', lang('The answer cannot be posted there any more: the agent is no longer allowed in that channel, or the person who asked can no longer write there.'));
         }
 
-        $text = trim((string) $params['text']);
-        $mention = '<@user:' . (int) $row['requested_by'] . '>';
-        $wake = ws_agent_wake_of($row);
-
-        if (!$wake && (strpos($text, $mention) === false)) {
-            $text = $mention . ' ' . $text;
-        }
+        $text = ws_agent_answer_text(trim((string) $params['text']), (int) $row['requested_by'], ws_agent_wake_of($row) || ws_agent_request_asker_app($row));
 
         $options = array('parent_id' => (int) $row['message_id'], 'app_id' => (int) $agent['app_id']);
         $checked = ws_message_send_check($place['writer'], $place['channel'], $text, $options);
@@ -371,6 +365,13 @@ function ws_api_agent_request_answer($params)
         }
 
         $reply_id = (int) $sent['message_id'];
+
+        // The answer wakes the agents it names, the asking one included, or
+        // the one whose rule wakes it on answers to its messages.
+        if (function_exists('ws_api_assistants_carry_on')) {
+            ws_api_assistants_carry_on(ws_agent_after_app_send($place['writer'], $place['channel'], $reply_id, $text));
+        }
+
         ws_api_log(lang(array('string' => '@{var:1} answered a request in #{var:2}', 'vars' => array((string) $agent['handle'], (string) $place['channel']['name']))));
     } else {
         api_dry_run_stop('answered', 'workspace_agent_request', array('id' => (int) $row['id'], 'no_answer' => true));
@@ -410,7 +411,7 @@ function ws_api_agent_request_fail($params)
 
     // A wake was asked by nobody: there is nobody to tell.
     if ($place && ($reason !== '') && !ws_agent_wake_of($row)) {
-        $sent = ws_message_send($place['writer'], $place['channel'], '<@user:' . (int) $row['requested_by'] . '> ' . $reason, array(
+        $sent = ws_message_send($place['writer'], $place['channel'], ws_agent_answer_text($reason, (int) $row['requested_by'], (bool) ws_agent_request_asker_app($row)), array(
             'parent_id' => (int) $row['message_id'],
             'app_id'    => (int) $agent['app_id'],
         ));

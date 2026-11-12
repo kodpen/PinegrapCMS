@@ -23,7 +23,7 @@ description: The asker's own Claude session over OAuth: @Claude waits 2 min for 
 
 ## How is a connection's message written? (A8a2)
 - Create, forward, file, voice and a Claude answer or fail through a connection write as its owner (`sender_kind = 'user'`, `via_client_id` the oauth_clients id; `ws_api_message_writer()`): the person's rate limit, auto-join and read mark apply.
-- The API message has `via` {client_id, name}, the screen payload `via` (the name). It asks no assistant, as the application's message did not (`ws_api_message_asks_assistants()`).
+- The API message has `via` {client_id, name}, the screen payload `via` (the name). It asks no assistant, as the application's message does not (`ws_api_message_asks_assistants()`); like it, it wakes the registry agents it names or answers ([[agent-words-wake]]).
 - Reactions, notes, tasks, polls and approvals stay the application's.
 - `ws_message_by_person()` (messages.php) reads it as no person's own words: a discussion's follow decision treats it as an application's. Edit and delete in the panel are the person's, as for any message of theirs; the API's own-words routes stay refused to a connection.
 - The `workspace.message.created` webhook carries the person's `sender_id` and `app_id` 0 for it.
