@@ -1,6 +1,6 @@
 ---
 name: guarded-frame
-description: The guarded frame (#8802): how a stored page or a mail's HTML is shown in the panel: the shell, srcdoc, the three modes and their policies, the two messages, live_page.php, the browser proofs
+description: The guarded frame (#8802): how a stored page or a mail's HTML is shown in the panel: the shell, srcdoc, the three modes and their policies, the messages, live_page.php, the browser proofs
 module: guarded_frame
 ---
 
@@ -9,7 +9,7 @@ module: guarded_frame
 
 ## How is it built?
 - The panel frames one answer, the shell (`pg_guarded_frame_shell()`), with the sandbox `pg_guarded_frame_panel_sandbox($mode)` names. The shell holds the document in `<iframe id="pg-frame" srcdoc>` (escaped), sandboxed by `pg_guarded_frame_inner_sandbox($mode)`.
-- Why srcdoc and not a second address: a request from an opaque-origin frame is cross-site, so the Lax session cookie would not ride on it; srcdoc needs no request, and the document inherits the shell's policy.
+- Why srcdoc: a request from an opaque-origin frame is cross-site, so the Lax session cookie would not ride on it; srcdoc needs no request, and the document inherits the shell's policy.
 
 ## What are the modes?
 - `script` (a live page): shell policy `sandbox allow-scripts`, inline script and style only, pictures, fonts and media only as `data:`/`blob:`, every other source `'none'`, `form-action 'none'`, `frame-src 'none'`. Both frames lack `allow-same-origin`: two opaque origins. The site appends `pg_guarded_frame_reporter()` to the page: it posts the page's height.
@@ -17,9 +17,10 @@ module: guarded_frame
 - `mail` (#8861, `workspace/mail-html-preview.md`): `static` with links in a new tab and pictures; only the site's code asks for it (`pg_guarded_frame_kind()`).
 - No mode allows top navigation, forms, downloads or modals, and only `mail` popups; `Permissions-Policy` shuts camera, microphone, geolocation, payment and the like.
 
-## What are the two messages?
+## What are the frame's messages?
 - Panel to shell: `{pg: 'guarded-frame', width, height}`, taken only from `window.parent`; in `script` mode handed to the page as the same object.
 - Shell to panel: `{pg: 'guarded-frame', height}`, a whole number up to `PG_GUARDED_FRAME_MAX_HEIGHT` (100000). The panel takes it only when `event.source` is the shell's frame window: the page can post to `top` too, and those are dropped. The card bounds the height further (LP2).
+- The data bridge (`canvas-data`, script mode only): `workspace/canvas-bridge.md`.
 
 ## Which route answers a stored page?
 - `live_page.php?message=<id>[&mode=static]`: a panel session, the Workspace on, a member who may read the channel (`ws_can_read_channel()`), the message not deleted, its file a live page (`ws_page_is_page()`, `workspace/agent-page.md`) of at most 500 KB (`PG_GUARDED_FRAME_MAX_BYTES`), read with `pg_file_reader_path()`. The id must be plain digits (`pg_guarded_frame_page_id()`).
@@ -28,9 +29,9 @@ module: guarded_frame
 
 ## How is it proven?
 - Unit tests: `tests/guarded_frame_test.php` (headers of each mode, shell markup, id and name refusal).
-- Browser: `node tests/js/guarded_frame_proofs.js` (Playwright, by hand, not in CI). `guarded_frame_server.php` serves the real shell, a stand-in panel and an outside origin that logs every hit.
-- The pages in `guarded_frame_pages/` try cookie, storage, parent, top, a panel action, outside loads of every kind, form, window, download, moving top or itself, a forged height; the mail tries script, event attributes, `javascript:` links, a nested srcdoc and a refresh.
-- A blocked self-navigation shows Chrome's error page in the frame: the page is gone, nothing left the frame.
+- Browser: `node tests/js/guarded_frame_proofs.js` (Playwright, by hand, not in CI). `guarded_frame_server.php` serves the real shell, a stand-in panel and a logging outside origin.
+- Pages in `guarded_frame_pages/` try cookie, storage, parent, top, a panel action, outside loads of every kind, form, window, download, moving top or itself, a forged height; the mail tries script, event attributes, `javascript:` links, a nested srcdoc and a refresh.
+- A blocked self-navigation shows Chrome's error page in the frame; nothing left it.
 
 ## What does it not cover?
 - WebRTC: no CSP directive stops a peer connection, so a page could learn the reader's IP through STUN. It holds no secret of the reader's.

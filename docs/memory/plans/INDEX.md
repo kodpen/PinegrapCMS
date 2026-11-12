@@ -11,7 +11,7 @@
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
 - canvas-one-model.md: CO0 model of plans/canvas-one.md: what one canvas is in the store and the API: the message as its id, the drawing, page and data parts, one list of versions, the routes and the bridge's calls
-- canvas-one-schema.md: CO0 of plans/canvas-one.md: the five schema changes the later CO steps need (parts, bindings, consent, "through" on a row, channel tables), each with its architect issue and the step it blocks
+- canvas-one-schema.md: CO0 of plans/canvas-one.md: the five schema changes the later CO steps need (parts, bindings, consent, "through" on a row, channel tables), their issues and answers
 - canvas-one-screens.md: CO0 drawings of plans/canvas-one.md in look A (plans/canvas-one/): the canvas card, one list of versions, the first-write question, the Data list, the phone
 - canvas-one-steps.md: Steps CO0-CO9 of plans/canvas-one.md: model and screens drawn, the bridge and its proofs, bound tables read, writes with consent, channel tables, measures, Data, one API flow, the phone, close-out
 - canvas-one.md: Plan (owner 2026-11-12, #8850): the Workspace canvas as one thing with a drawing, a live page and data; the guarded bridge to the tables bound to it; tables as Data; steps in canvas-one-steps.md
