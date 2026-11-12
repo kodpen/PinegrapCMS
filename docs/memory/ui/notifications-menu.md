@@ -1,28 +1,32 @@
 ---
 name: notifications-menu
-description: Header notifications panel (#notifications, bell #notification_toggle): one Menu on the bell, Ctrl+Q, events on the toggle (#2578), poll redraws the open list only on a rise; titles wrap, no ellipsis
+description: The bell's drawer #notifications at the right edge: opened by the bell, Ctrl+Q, pgBellOpen(); head, events, focus; only the list scrolls; the poll redraws only on a rise
 ---
 
-## How is the panel opened?
-- The bell `#notification_toggle` (`includes/fn/output.php`) carries `data-bs-toggle="menu"`, `data-bs-display="static"` and `data-bs-target="#notifications"`; the `.menu` box is placed by its own classes (`position-fixed end-0 top-0`).
-- Ctrl+Q (`backend.src.js`, window `keydown`, `case 'q'`) calls `notification_toggle.click()` in a `setTimeout` (Firefox opened its find bar otherwise).
+## What is the bell's panel?
+- `<dialog class="drawer drawer-end pg-bell-drawer" id="notifications">` (`$output_bell_drawer`, `includes/fn/output.php`), full height, `--pg-drawer-width: min(30rem, 100vw)`: 30rem, the whole width on a phone. Owner 2026-11-11, #8754 (`workflow/decisions-made-panel-4.md`); built in #8783 (plan step BP2b).
+- Printed after the header, not inside it: Bootstrap hides a drawer that sits inside a `.navbar` when the window is resized.
+- Head `.pg-bell-head`: the heading "Notifications", "Mark all as read" (shown while a row is unread), a menu holding "Delete All Notifications" (under All with two rows or more), the close button. Then the filter chips, the list `.pg-bell-scroll`, the push line `#push_row`/`#push_hint` at the foot.
+- Only the list scrolls: `.pg-bell-body` `overflow: hidden`, `.pg-bell-scroll` `overflow-y: auto; min-height: 0`. The old 26rem `.menu` box is gone.
 
-## Why not pgUI.menu.toggle('#notifications')?
-- Under v6 that made a second Menu with the `.menu` box as its toggle: it ignored the bell's static display, ran Floating UI and wrote inline position, left, top and margin that nothing cleared, so the panel stayed misplaced (for the bell too) until a reload, and its `aria-expanded` on the box went stale.
+## How is it opened and closed?
+- The bell carries `data-bs-toggle="drawer" data-bs-target="#notifications"`; it has no click handler of its own.
+- Ctrl+Q (window `keydown`, `case 'q'`) calls `pgUI.drawer.toggle('#notifications')` in a `setTimeout` (Firefox opened its find bar otherwise). `pgBellOpen()` shows it, or only applies the filter when it is open.
+- Escape and a click outside close it (Bootstrap's defaults: no `data-bs-backdrop`, no `data-bs-keyboard`). A row's or the head's menu keeps its Escape: `pg_bell_menu_key()` listens on `window`'s capture phase (`bell-row.md`). Closing gives the focus back to the bell.
 
-## Where are the menu events heard?
-- v6 fires `shown/hidden.bs.menu` on the toggle, not on the box: the shown/hidden listeners (`get_notifications()`, `pg_push_refresh()`, the bell's `show` class) sit on `#notification_toggle`, and the refresh checks in the unread poll read `pgUI.menu.isOpen('#notification_toggle')` (`aria-expanded`).
-- One list refresh per open (the shown handler); the bell's click handler refreshes when it closes the panel. `tests/bs6_inline_feedback_test.php` pins both.
+## Where are its events heard?
+- On the drawer (`pgUI.drawer.on('#notifications', …)`): `show` hides the head's actions till the list's counts arrive, adds the bell's `show` class and loads the list once (`get_notifications()`), and `pg_push_refresh()` runs; `hidden` drops the `show` class, scrolls the list to the top, keeps the filter and closes an open row menu.
+- `shown` focuses the close button: a shut Bootstrap 6 drawer is `visibility: hidden` with a transition, so `showModal()` finds nothing to focus and left the focus on the body (#8783).
+- The 20 s poll reads `pgUI.drawer.isOpen('#notifications')`. `tests/bell_drawer_test.php` pins the markup, the opening rules and the scrolling.
 
 ## When does the 20 s unread poll redraw the open list?
-- Only when the unread count rises above `$unreadsCallback`, a top-level count that survives across polls and holds the count the open list shows: every drawing of the list sets it to its unread rows, every poll to the server's count. Opening the bell reads nothing (`bell-read-rule.md`), so it no longer drops to 0 on an open; with a 0 there, every poll while anything was unread would redraw the list.
-- It used to be reset to 0 at the start of every poll, so with anything unread (one 'Mark as unread' is enough, read state is per person) the open list was emptied, showed a spinner, scrolled to the top and lost the focused row every 20 s.
-- The poll calls `get_notifications(true)` (`keep_place`): the old list stays until the new one arrives, then the scroll position and the focus on the same `li[notification-id]` row come back. `tests/panel_timers_test.php` pins it.
+- Only when the unread count rises above `$unreadsCallback`, a top-level count that holds the count the open list shows: every drawing of the list sets it to its unread rows, every poll to the server's count. Opening reads nothing (`bell-read-rule.md`).
+- It used to be reset to 0 every poll, so with anything unread the open list was emptied, scrolled to the top and lost the focused row every 20 s.
+- The poll calls `get_notifications(true)` (`keep_place`): the old list stays until the new one arrives, then the scroll and the focus on the same `li[notification-id]` row come back. `tests/panel_timers_test.php` pins it.
 
 ## Why does a bell title wrap instead of ending in "…"?
-- At the old 350px (26rem since #3817, `notifications-one-inbox.md`) `.notification-title` carried `nowrap` + `ellipsis` in `backend.src.css`; titles of 44–50 characters ("Congratulations! There is a new successful order.") were cut even on desktop, the full text only in a hover `title`.
-- The title is now `.pg-bell-title` of `pg_bell_row()` (`bell-row.md`, #8722) with no `title`; its rule has `white-space: normal` and `overflow-wrap: anywhere`, and the old `nowrap` + `ellipsis` rule is gone. The server sends titles already escaped (`pg_notification_display()`: `h()` on stored text, `lang()` literals), so the script inserts them as they come.
-- Mail queue (`mail_queue.php`): the e-mail and SMS "Last error" cells and the SMS body print the whole text (an error is stored up to 500 characters), no 80-character `truncate()` and no hover `title`; the 28rem limit sits on an inner block (`ui/mail-queue-paging.md`). `tests/mail_queue_full_text_test.php` pins the bell title.
+- Titles of 44–50 characters were cut by `nowrap` + `ellipsis` even on desktop. `.pg-bell-title` (`bell-row.md`) has `white-space: normal` and `overflow-wrap: anywhere`, no hover `title`. The server sends titles escaped (`pg_notification_display()`), so the script inserts them as they come.
+- `tests/mail_queue_full_text_test.php` pins it (the mail queue's full text: `ui/mail-queue-paging.md`).
 
 ## Why does a device push banner decode its title?
-- The service worker shows `item.title` as text (`sw.js` `showNotification()`), but `pg_notification_display()` returns bell titles escaped, so a Workspace mention or custom title with `&` or `Ali'nin` arrived as `&amp;` / `&#039;`. `pg_panel_push_pending()` sends `pg_panel_push_title()` (strip tags, decode, trim, like `pg_notification_body()`); the display escaping stays for the bell. `tests/push_banner_title_test.php` (#3549).
+- The service worker shows `item.title` as text, but bell titles are escaped, so `&` arrived as `&amp;`. `pg_panel_push_pending()` sends `pg_panel_push_title()` (strip tags, decode, trim). The push banner keeps the whole sentence, not the drawer's short title (`bell-row.md`). `tests/push_banner_title_test.php` (#3549).

@@ -1839,11 +1839,19 @@ $(document).ready(function () {
 
     // The bell's drawer (output.php): one list load per opening, started on
     // show so the list is on its way while the drawer slides in. The head's
-    // actions wait for the list, so the first focus is the close button.
+    // actions wait for the list's counts.
     pgUI.drawer.on('#notifications', 'show', function () {
         $('#notifications').find('.pg-bell-mark-all, .pg-bell-head-menu').addClass('d-none');
         $('#notification_toggle').addClass('show');
         get_notifications();
+    });
+    // showModal() finds nothing to focus while the slide-in starts from
+    // visibility: hidden, so the close button takes the focus once it is in.
+    pgUI.drawer.on('#notifications', 'shown', function () {
+        var drawer = document.getElementById('notifications');
+        if (drawer && !drawer.contains(document.activeElement)) {
+            $('#notifications .pg-bell-close').trigger('focus');
+        }
     });
     pgUI.drawer.on('#notifications', 'hidden', function () {
         $('#notification_toggle').removeClass('show');

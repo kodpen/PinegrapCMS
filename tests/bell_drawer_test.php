@@ -133,9 +133,13 @@ function test_bell_drawer_open_and_close()
 	pg_assert_contains("if (pgUI.drawer.isOpen('#notifications')) {\n        pg_bell_filter_apply();", $open, 'an open drawer only takes the filter');
 	pg_assert_false(strpos($js, "\$('#notification_toggle').on('click'") !== false, 'the bell has no click handler of its own');
 
-	// One list load per opening, started on show; the head's actions wait
-	// for the list, so the first focus is the close button.
-	pg_assert_false(strpos($js, "pgUI.drawer.on('#notifications', 'shown'") !== false, 'no second load once it has opened');
+	// One list load per opening, started on show; once it is in, the close
+	// button takes the focus (showModal() finds nothing while it is hidden).
+	$at = strpos($js, "pgUI.drawer.on('#notifications', 'shown'");
+	pg_assert_true($at !== false, 'the shown handler is there');
+	$shown = (string) substr($js, (int) $at, (int) strpos($js, '});', (int) $at) - (int) $at);
+	pg_assert_contains("\$('#notifications .pg-bell-close').trigger('focus');", $shown, 'focus on the close button');
+	pg_assert_false(strpos($shown, 'get_notifications') !== false, 'no second load once it has opened');
 	pg_assert_contains("pgUI.drawer.on('#notifications', 'show', function () {\n        \$('#notifications').find('.pg-bell-mark-all, .pg-bell-head-menu').addClass('d-none');\n        \$('#notification_toggle').addClass('show');\n        get_notifications();", $js);
 	pg_assert_contains("pgUI.drawer.on('#notifications', 'hidden', function () {\n        \$('#notification_toggle').removeClass('show');", $js, 'the bell\'s show class goes when it closes');
 	pg_assert_contains("pgUI.drawer.isOpen('#notifications')", $poll, 'the poll asks the drawer');

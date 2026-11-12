@@ -4674,21 +4674,16 @@ a.link-top-row {
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
+/* Place and time run as one line of text: a long place wraps at its own
+   spaces and the time stays whole after it, its dot included. */
 #notifications .pg-bell-meta {
-  display: flex;
   flex: 1 1 auto;
-  flex-wrap: wrap;
-  align-items: baseline;
-  column-gap: 0.375rem;
-  min-width: 0;
-}
-#notifications .pg-bell-place {
   min-width: 0;
 }
 #notifications .pg-bell-place + .pg-bell-time::before {
   content: "\00b7";
   content: "\00b7" / "";
-  margin-right: 0.375rem;
+  margin: 0 0.375rem;
 }
 #notifications .pg-bell-time {
   white-space: nowrap;

@@ -1,36 +1,38 @@
 ---
 name: bell-row
-description: A bell row drawn as the dashboard's Next up row: module tag, title, second line, one button, the Mark as read dot, the row menu, day headings; module, day and button from pure functions
+description: A bell row in the drawer: tag, dot, title; place, time, button, menu; a two-line excerpt; a Workspace row's short title ("Ada asked you") with its channel as the place
 ---
 
 ## What does a bell row carry?
-- `pg_panel_get_notifications()` (`includes/panel/notifications.php`) adds three fields, each from a pure function in `includes/notifications.php`:
-  - `module` = `pg_notification_module($action)`: shop (`new_order`, `order_return`, `out_stock`, `booking_refused`), erp (every `erp_*`), content (`form_submited`, `new_comment`), team (`workspace`), system (everything else, a custom row too).
-  - `day` = `pg_notification_day($timestamp, $now, $zone)`: `today`, `yesterday` or `earlier` in the site's zone (`init.php` sets it as PHP's default). A time after now is today; yesterday is found from noon, so a clock change does not skip it.
+- `pg_panel_get_notifications()` (`includes/panel/notifications.php`) adds three fields from pure functions in `includes/notifications.php`:
+  - `module` = `pg_notification_module($action)`: shop (`new_order`, `order_return`, `out_stock`, `booking_refused`), erp (`erp_*`), content (`form_submited`, `new_comment`), team (`workspace`), system (the rest, a custom row too).
+  - `day` = `pg_notification_day($timestamp, $now, $zone)`: `today`, `yesterday` or `earlier` in the site's zone; a future time is today; yesterday is found from noon, so a clock change does not skip it.
   - `button` = `pg_notification_button($action, $kind, $join)`: reply (`new_comment`; Workspace `mention`, `thread`, `guest_message`, `question_asked`, `mail_assigned`, `mail_customer`), approve (`approval_requested`, `approval_reminder`), join (`meeting_soon` with a call), show (the rest); '' for a custom row.
-- `pg_notification_fold()` gives a fold's runs their head's `day`, so they never open a heading of their own.
+- `pg_notification_fold()` gives a fold's runs their head's `day`. `title` is the short title when there is one, else the sentence; `place` is a Workspace row's channel.
+
+## What is a Workspace row's short title?
+- `ws_bell_title($kind, $who, $place)` (`includes/workspace/notify.php`), called by `ws_bell_describe()`: "<sender> mentioned you", "<sender> asked you", "<sender> asked you to say you read it", "<sender> wrote" (guest), "<sender> added you to a channel", "<agent> answered you".
+- The channel goes to line two: "#sales", or "A discussion in #sales" (`ws_inbox_place()`); a gone channel gives none. An MCP agent is `@alias`.
+- Another kind, or no sender's name, keeps the sentence and no place; a site row keeps its title; the device push banner keeps the sentence (`notifications-menu.md`). Owner 2026-11-11, #8754.
 
 ## How is the row drawn?
-- `pg_bell_row(row)` (`backend.src.js`): one grid, as `.pg-dash-queue-row`: the tag (`.pg-bell-tag[data-module]`, 3.75rem), the text, then the side.
-- Text: the title (a button that opens the row; plain text on a custom row), one second line `.pg-bell-sub` (the description, else the details with `<br>` as " · ", else the sender, then the time; no gap when there is no text), the fold's "+N more" link.
-- Side: the one button `.pg-bell-act` named by the job (Reply, Show, Join, Approve), the unread dot, the menu button ("More actions", `bi-three-dots`).
-- The dot is a button named "Mark as read" (`pg_bell_read_button()`); a read row keeps an empty place so the columns stay put.
-- The menu (`.pg-bell-menu`) holds "Mark as unread" (read rows only) and Delete. It is a small disclosure of its own, not a nested Bootstrap menu, so it never closes the bell; it opens upwards when the list has no room below.
-- Day headings `li.pg-bell-day` (Today, Yesterday, Earlier) stand before the first row of each day; `pg_bell_filter_apply()` hides one with no shown row.
-- The two full-width lines under each row ("Go to the relevant page", the "Mark as unread" box) are gone.
+- `pg_bell_row(row)` (`backend.src.js`), `li > .pg-bell-card`, with no column of the row's height:
+  - `.pg-bell-line`: the tag `.pg-bell-tag[data-module]` as a small mark, the dot, the title (a button that opens the row; text on a custom row);
+  - `.pg-bell-sub`: `.pg-bell-meta` (the place, "·", the time), then `.pg-bell-side` at the right: the one button `.pg-bell-act` (Reply, Show, Join, Approve) and "More actions";
+  - `p.pg-bell-excerpt`, two lines at most (`line-clamp: 2`); the fold's "+N more".
+- Without a place from the server: the details with `<br>` as " · ", else the sender when there is no excerpt.
+- The dot is a button "Mark as read" (`pg_bell_read_button()`). The menu `.pg-bell-menu` holds "Mark as unread" (read rows) and Delete: a disclosure of its own, not a Bootstrap menu; it opens upwards when there is no room below.
+- Day headings `li.pg-bell-day` (Today, Yesterday, Earlier); `pg_bell_filter_apply()` hides one with no shown row.
 
 ## Which keys work?
-- Tab reaches the title, the button, the dot and the menu button in that order.
-- In the open menu: the arrows, Home and End move; Escape closes it and returns to the menu button; a second Escape closes the bell.
-- Bootstrap takes menu keys on the document's capture phase (a handler on `#notifications` never sees them; Escape closed the whole bell), so `pg_bell_menu_key()` listens on `window`'s capture phase and stops them first.
-- The dot moves the focus to the row's menu button (the dot is gone once read); Delete moves it to the next row's menu button, or the one before.
+- Tab reaches the dot, the title, the button and the menu button. In the open menu the arrows, Home and End move; Escape closes it and returns to its button; a second Escape closes the drawer.
+- Bootstrap takes menu keys on the document's capture phase, so `pg_bell_menu_key()` listens on `window`'s capture phase first.
+- The dot moves the focus to the row's menu button; Delete to the next row's, or the one before, else the drawer's close button.
 
 ## Where do the tag colours come from?
-- `--pg-bell-tag-{shop,erp,content,team,system}-{bg,fg}` in `backend.src.css`, light under `:root`, dark ink under `[data-bs-theme="dark"]`. They copy `.pg-dash-queue-tag[data-module]` of `pg_dash.src.css` (the bell is outside `.pg-dash`); System is the dashboard's neutral fill with `--pg-fg-2`.
-- `tests/bell_row_test.php` holds the hues equal: a dashboard colour change fails it until the bell's token follows.
+- `--pg-bell-tag-{shop,erp,content,team,system}-{bg,fg}` in `backend.src.css` (light `:root`, dark `[data-bs-theme="dark"]`), copies of `.pg-dash-queue-tag[data-module]`; `tests/bell_row_test.php` holds them equal.
 
-## Does the title still wrap?
-- Yes: `.pg-bell-title` has `white-space: normal` and `overflow-wrap: anywhere`, no ellipsis and no hover `title` (`notifications-menu.md`).
-- The second line wraps too: an order's number and total cut to "Order Number: …" in the narrow bell, so `.pg-bell-sub` has `overflow-wrap: anywhere` and only the time stays on one line. At phone width the tag stands over the text, as on the dashboard; nothing scrolls sideways.
+## Does the text wrap?
+- The title wraps (`overflow-wrap: anywhere`, no ellipsis). Place and time run as one line of text: a long place wraps at its spaces, the time stays whole after it. Nothing scrolls sideways on a phone.
 
-Pinned in `tests/bell_row_test.php`. Built in #8722 (plan step BP2).
+Tests: `tests/bell_row_test.php`, `tests/bell_drawer_test.php`. Built in #8722 (BP2), laid out for the drawer in #8783 (BP2b).
