@@ -423,23 +423,53 @@ function ws_mail_message_body($text)
 }
 
 /**
- * Which of a mail's attachments come into the channel. Inline pictures
- * without a name (logos of a signature) are left out silently; a part
- * without a name, a name a channel refuses, one larger than a channel
- * takes, and those past WS_MAIL_ATTACHMENTS_MAX are refused by name.
+ * The extension a picture of a mail is named with when it came without a
+ * name: by its content type, '' for anything but a raster picture.
+ *
+ * @param string $content_type
+ * @return string
+ */
+function ws_mail_picture_extension($content_type)
+{
+    $types = array('image/png' => 'png', 'image/jpeg' => 'jpg', 'image/jpg' => 'jpg', 'image/pjpeg' => 'jpg', 'image/gif' => 'gif', 'image/webp' => 'webp');
+    $type = strtolower(trim((string) $content_type));
+
+    return isset($types[$type]) ? $types[$type] : '';
+}
+
+/**
+ * Which of a mail's attachments come into the channel. A picture the HTML
+ * shows by its Content-ID ($cids) comes in even without a name, named
+ * image-1.png and on by its type; other inline pictures without a name
+ * (logos of a signature) are left out silently; a part without a name, a
+ * name a channel refuses, one larger than a channel takes, and those past
+ * WS_MAIL_ATTACHMENTS_MAX are refused by name.
  *
  * @param array    $attachments pg_mail_parse()'s, with content
  * @param callable $refused     function ($name) => bool, the channel's rule
  * @param int      $max_bytes
+ * @param array    $cids        pg_mail_html_cids() of the mail's cleaned HTML
  * @return array take (the attachments), refused (names)
  */
-function ws_mail_attachments_sort($attachments, $refused, $max_bytes)
+function ws_mail_attachments_sort($attachments, $refused, $max_bytes, $cids = array())
 {
     $take = array();
     $names = array();
+    $shown = array_flip((array) $cids);
+    $pictures = 0;
 
     foreach ((array) $attachments as $attachment) {
         $name = (string) ($attachment['filename'] ?? '');
+
+        if (($name === '') && $shown && function_exists('pg_mail_html_cid')
+            && isset($shown[pg_mail_html_cid((string) ($attachment['content_id'] ?? ''))])) {
+            $extension = ws_mail_picture_extension($attachment['content_type'] ?? '');
+
+            if ($extension !== '') {
+                $name = 'image-' . (++$pictures) . '.' . $extension;
+                $attachment['filename'] = $name;
+            }
+        }
 
         if ($name === '') {
             if (empty($attachment['inline'])) {
@@ -500,6 +530,169 @@ function ws_mail_eml_store($relative, $raw)
     }
 
     return (@file_put_contents($path, (string) $raw) === false) ? '' : $relative;
+}
+
+/**
+ * Whether a mail's HTML is kept: the cleaner is there and the 2026.11.0
+ * step added ws_mail_items.body_html.
+ *
+ * @return bool
+ */
+function ws_mail_html_ready()
+{
+    return function_exists('pg_mail_html_clean') && pg_schema_has('ws_mail_items', 'body_html');
+}
+
+/**
+ * The files a mail that came in before its HTML was kept already brought,
+ * for the pictures its HTML shows: an attachment is matched to its message
+ * by the name it was kept under (ws_upload_inspect(), cut as
+ * ws_store_file_bytes() cuts it). Attachments were kept in the mail's order,
+ * so two of one name take that name's files in turn. A picture without a
+ * name had no file.
+ *
+ * @param array $attachments pg_mail_parse()'s
+ * @param array $cids        pg_mail_html_cids()
+ * @param array $messages    the mail's messages carrying a file: file_id, file_name
+ * @return array Content-ID => file id
+ */
+function ws_mail_html_fill_files($attachments, $cids, $messages)
+{
+    $by_name = array();
+
+    foreach ((array) $messages as $message) {
+        $name = (string) ($message['file_name'] ?? '');
+
+        if (($name !== '') && ((int) ($message['file_id'] ?? 0) > 0)) {
+            $by_name[$name][] = (int) $message['file_id'];
+        }
+    }
+
+    $shown = array_flip((array) $cids);
+    $files = array();
+
+    foreach ((array) $attachments as $attachment) {
+        $name = mb_substr(trim(preg_replace('/[\x00-\x1F\x7F]/', '', pg_basename(str_replace('\\', '/', (string) ($attachment['filename'] ?? ''))))), 0, 200);
+
+        if (($name === '') || empty($by_name[$name])) {
+            continue;
+        }
+
+        $file_id = array_shift($by_name[$name]);
+        $cid = pg_mail_html_cid((string) ($attachment['content_id'] ?? ''));
+
+        if (($cid !== '') && isset($shown[$cid]) && !isset($files[$cid])) {
+            $files[$cid] = $file_id;
+        }
+    }
+
+    return $files;
+}
+
+/**
+ * Fills in the HTML of mail that came in before it was kept, from the
+ * mail's kept .eml, oldest first: $limit mails or about 20 seconds a run.
+ * It walks the mail there was when it first ran, keeps its place in
+ * config_text (ws_mail_html_fill) and is done once past it; mail whose
+ * .eml is gone stays without. Run by workspace_recurring_job.php before the
+ * .eml sweep.
+ *
+ * @param int $limit
+ * @return int how many mails were read
+ */
+function ws_mail_html_fill($limit = 200)
+{
+    if (!ws_mail_html_ready()) {
+        return 0;
+    }
+
+    $state = json_decode(pg_config_text('ws_mail_html_fill'), true);
+
+    if (!is_array($state) || !isset($state['ceiling'], $state['cursor'])) {
+        $state = array('ceiling' => (int) db_value("SELECT MAX(id) FROM ws_mail_items"), 'cursor' => 0, 'done' => false);
+    }
+
+    if (!empty($state['done'])) {
+        return 0;
+    }
+
+    $limit = max(1, (int) $limit);
+    $rows = (array) db_items("SELECT id, raw_path FROM ws_mail_items
+        WHERE id > '" . (int) $state['cursor'] . "' AND id <= '" . (int) $state['ceiling'] . "'
+            AND direction = 'in' AND raw_path <> '' AND body_html IS NULL
+        ORDER BY id
+        LIMIT " . $limit);
+    $deadline = microtime(true) + 20;
+    $read = 0;
+
+    foreach ($rows as $row) {
+        if (microtime(true) > $deadline) {
+            break;
+        }
+
+        $state['cursor'] = (int) $row['id'];
+        $read++;
+        $html = ws_mail_html_from_eml((int) $row['id'], (string) $row['raw_path']);
+
+        if ($html !== '') {
+            db("UPDATE ws_mail_items SET body_html = '" . e($html) . "' WHERE id = '" . (int) $row['id'] . "' AND body_html IS NULL");
+        }
+    }
+
+    $state['done'] = ws_mail_html_fill_done($read, count($rows), $limit);
+    pg_config_text_save('ws_mail_html_fill', json_encode($state));
+
+    return $read;
+}
+
+/**
+ * Whether the fill is past the last mail: every row it found was read and
+ * there were fewer than it asked for.
+ *
+ * @param int $read
+ * @param int $found
+ * @param int $limit
+ * @return bool
+ */
+function ws_mail_html_fill_done($read, $found, $limit)
+{
+    return ((int) $read === (int) $found) && ((int) $found < (int) $limit);
+}
+
+/**
+ * The cleaned HTML of a mail read again from its kept .eml, its pictures
+ * naming the files the mail brought; '' when the file is gone or holds no
+ * HTML.
+ *
+ * @param int    $item_id
+ * @param string $relative ws_mail_items.raw_path
+ * @return string
+ */
+function ws_mail_html_from_eml($item_id, $relative)
+{
+    if ((strpos($relative, 'mail/') !== 0) || (strpos($relative, '..') !== false)) {
+        return '';
+    }
+
+    $raw = @file_get_contents(PG_FUNCTIONS_DIR . '/data/' . $relative);
+
+    if (!is_string($raw) || ($raw === '')) {
+        return '';
+    }
+
+    $parsed = pg_mail_parse($raw);
+    $html = pg_mail_html_clean((string) ($parsed['html'] ?? ''));
+    $cids = pg_mail_html_cids($html);
+
+    if (($html === '') || !$cids) {
+        return $html;
+    }
+
+    $messages = db_items("SELECT file_id, file_name FROM ws_messages
+        WHERE sender_kind = 'mail' AND sender_id = '" . (int) $item_id . "' AND file_id > 0 AND deleted_at = 0
+        ORDER BY id");
+
+    return pg_mail_html_link_files($html, ws_mail_html_fill_files($parsed['attachments'], $cids, (array) $messages));
 }
 
 /**
@@ -694,6 +887,10 @@ function ws_mail_ingest($raw, $box)
     }
 
     $text = ws_mail_text($parsed);
+    // The HTML part, cleaned (fn/mail_html.php), is kept only once the column
+    // is there: before the upgrade a mail comes in as it did.
+    $html_kept = ws_mail_html_ready();
+    $html = $html_kept ? pg_mail_html_clean((string) ($parsed['html'] ?? '')) : '';
     $subject = mb_substr((string) $parsed['subject'], 0, 255);
     $from_name = mb_substr((string) ($parsed['from']['name'] ?? ''), 0, 255);
     $list = function ($addresses) {
@@ -764,9 +961,10 @@ function ws_mail_ingest($raw, $box)
     }
 
     // Each attachment is a message of its own under the card, carrying the
-    // file the way an upload does.
-    $sorted = ws_mail_attachments_sort($parsed['attachments'], 'ws_upload_refused', ws_upload_max_bytes());
+    // file the way an upload does; a picture the HTML shows names its file.
+    $sorted = ws_mail_attachments_sort($parsed['attachments'], 'ws_upload_refused', ws_upload_max_bytes(), $html_kept ? pg_mail_html_cids($html) : array());
     $refused = $sorted['refused'];
+    $files = array();
 
     foreach ($sorted['take'] as $attachment) {
         $inspected = ws_upload_inspect((string) $attachment['filename'], (string) $attachment['content']);
@@ -783,6 +981,14 @@ function ws_mail_ingest($raw, $box)
         if (ws_mail_message_write($channel['id'], $parent_id, $item_id, '', $stored['file_id'], $stored['name'], $now) <= 0) {
             ws_upload_discard($stored['file_id']);
             $refused[] = (string) $attachment['filename'];
+
+            continue;
+        }
+
+        $cid = $html_kept ? pg_mail_html_cid((string) ($attachment['content_id'] ?? '')) : '';
+
+        if (($cid !== '') && !isset($files[$cid])) {
+            $files[$cid] = (int) $stored['file_id'];
         }
     }
 
@@ -791,6 +997,14 @@ function ws_mail_ingest($raw, $box)
     db("UPDATE ws_mail_items SET conversation_id = '" . $conversation_id . "', message_id = '" . (int) $message_id . "',
             raw_path = '" . e($raw_path) . "', refused_files = '" . e(implode("\n", array_slice($refused, 0, 100))) . "'
         WHERE id = '" . $item_id . "'");
+
+    // A statement of its own: up to 1 MB that a failed write leaves out
+    // without taking the mail's own columns with it.
+    $html = $html_kept ? pg_mail_html_link_files($html, $files) : '';
+
+    if ($html !== '') {
+        db("UPDATE ws_mail_items SET body_html = '" . e($html) . "' WHERE id = '" . $item_id . "'");
+    }
 
     // Whoever holds an ongoing conversation hears the customer wrote again.
     if (!$opened && ((int) $conversation['assignee_id'] > 0)) {
