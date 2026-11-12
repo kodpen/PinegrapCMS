@@ -186,10 +186,7 @@ function pg_settings_modal_markup($user)
     data-pgfilled="' . h(lang('A password manager filled in a field nobody was editing, so it has been put back.')) . '">
 
             <aside class="pg-sm-side" id="pg_settings_modal_side">
-                <div class="pg-sm-brand">
-                    <i class="bi bi-gear" aria-hidden="true"></i>
-                    <span>' . h(lang('Site Settings')) . '</span>
-                </div>
+                <div class="pg-sm-brand pg-title-section">' . h(lang('Site Settings')) . '</div>
                 <!--
                     Outside the form: what is typed here is never posted and
                     never makes the pane read as changed. The index behind it
@@ -214,17 +211,17 @@ function pg_settings_modal_markup($user)
 
             <section class="pg-sm-main">
                 <header class="pg-sm-head">
-                    <button type="button" class="pg-sm-burger no-popover" id="pg_settings_modal_menu"
+                    <button type="button" class="pg-sm-burger pg-icon-button no-popover" id="pg_settings_modal_menu"
                         aria-controls="pg_settings_modal_side" aria-expanded="false"
                         aria-label="' . h(lang('Sections')) . '"><i class="bi bi-list" aria-hidden="true"></i></button>
                     <div class="pg-sm-heading">
-                        <h2 class="pg-sm-title" id="pg_settings_modal_title" aria-live="polite">' . h(lang('Site Settings')) . '</h2>
-                        <p class="pg-sm-desc" id="pg_settings_modal_desc">' . h(lang('All site-wide settings and defaults.')) . '</p>
+                        <h2 class="pg-sm-title pg-title-section" id="pg_settings_modal_title" aria-live="polite">' . h(lang('Site Settings')) . '</h2>
+                        <p class="pg-sm-desc pg-text-2" id="pg_settings_modal_desc">' . h(lang('All site-wide settings and defaults.')) . '</p>
                     </div>
-                    <a class="pg-sm-help no-popover' . (($output_help_start === '') ? ' d-none' : '') . '" id="pg_settings_modal_help"
+                    <a class="pg-sm-help pg-icon-button no-popover' . (($output_help_start === '') ? ' d-none' : '') . '" id="pg_settings_modal_help"
                         href="' . h($output_help_start) . '" target="_blank" rel="noopener"
                         title="' . h(lang('Help for this section')) . ' (F1)" aria-label="' . h(lang('Help for this section')) . '"><i class="bi bi-question-circle" aria-hidden="true"></i></a>
-                    <button type="button" class="btn-close no-popover" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
+                    <button type="button" class="pg-icon-button no-popover" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
                 </header>
 
                 <!-- The only sign of life while a pane is on its way. -->
@@ -274,11 +271,11 @@ function pg_settings_modal_markup($user)
                 </form>
 
                 <footer class="pg-sm-foot">
-                    <span class="pg-sm-meta small fg-secondary" id="pg_settings_modal_meta"></span>
+                    <span class="pg-sm-meta pg-text-meta" id="pg_settings_modal_meta"></span>
                     <div class="ms-auto d-flex align-items-center gap-3">
-                        <button type="button" class="btn btn-sm btn-link pg-link-body-emphasis text-decoration-none no-popover" data-bs-dismiss="dialog">' . h(lang('Close')) . '</button>
-                        <button type="button" class="btn btn-solid theme-success btn-sm" id="pg_settings_modal_save" disabled="disabled">
-                            <i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span>
+                        <button type="button" class="pg-button pg-button-ghost no-popover" data-bs-dismiss="dialog">' . h(lang('Close')) . '</button>
+                        <button type="button" class="pg-button pg-button-fill" id="pg_settings_modal_save" disabled="disabled">
+                            <span class="pg-btn-label">' . h(lang('Save')) . '</span>
                         </button>
                     </div>
                 </footer>

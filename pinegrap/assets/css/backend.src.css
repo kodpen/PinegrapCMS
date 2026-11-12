@@ -9227,19 +9227,9 @@ html:has(.mpp-bulk:not(.d-none)) {
   color: var(--pg-fg-body);
 }
 
-/* A notch smaller through the whole screen. Twelve sections of settings is a
-   dense page whatever the layout, and the card titles were h5 -- a heading
-   size, for what is really a label on a group of fields. */
-.pg-settings-body .card-header {
-  padding-bottom: 0.25rem;
-  font-size: 0.75rem !important;
-  letter-spacing: 0.05em;
-}
-.pg-settings-body .card-header .h5,
-.pg-settings-body .card-header span.h5 {
-  font-size: 0.75rem !important;
-  letter-spacing: 0.05em;
-}
+/* A notch smaller through the whole screen: twelve sections of settings is
+   a dense page whatever the layout. The card titles and the descriptions
+   are look A's ("Look A: settings"). */
 .pg-settings-body .form-label {
   margin-bottom: 0.25rem;
   font-size: 0.8125rem;
@@ -9248,9 +9238,6 @@ html:has(.mpp-bulk:not(.d-none)) {
 .pg-settings-body :is(select.form-control),
 .pg-settings-body .form-control {
   font-size: 0.8125rem;
-}
-.pg-settings-body .form-text {
-  font-size: 0.75rem;
 }
 .pg-settings-body h6 {
   font-size: 0.6875rem;
@@ -10213,7 +10200,7 @@ body.pg-side-panel-open .pg-chat-launcher {
 .pg-settings-body {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 16px;
 }
 
 /* Bootstrap's columns answer to the window, not to the box they are in. That
@@ -10304,7 +10291,7 @@ body.pg-side-panel-open .pg-chat-launcher {
     margin-top: 0;
     margin-inline: calc(var(--bs-gutter-x) * .5);
     padding-inline: 0;
-    padding-block: 1rem .85rem;
+    padding-block: 0 var(--pg-set-row-y);
   }
 
   /* One rhythm, not two. Bootstrap spaces the lines of a .row with a gutter:
@@ -10331,10 +10318,10 @@ body.pg-side-panel-open .pg-chat-launcher {
     --bs-gutter-y: 0;
   }
   .pg-set-card .row > * {
-    padding-bottom: .85rem;
+    padding-bottom: var(--pg-set-row-y);
   }
   .pg-set-card .card-body > .row {
-    margin-bottom: -.85rem;
+    margin-bottom: calc(var(--pg-set-row-y) * -1);
   }
 
   /* The rule belongs BETWEEN two decisions, so it is drawn on the second one
@@ -10346,8 +10333,8 @@ body.pg-side-panel-open .pg-chat-launcher {
      only thing in it and a gap under that. */
   .pg-set-card .row > * + [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range),
   .pg-set-card .row > * + [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) {
-    padding-top: .85rem;
-    border-top: var(--pg-border-width) solid var(--pg-border-color-translucent);
+    padding-top: var(--pg-set-row-y);
+    border-top: 1px solid var(--pg-border-color-translucent);
   }
 
   /* A group heading inside a card (a cell that starts with an <h6>) starts a new
@@ -10429,13 +10416,14 @@ body.pg-side-panel-open .pg-chat-launcher {
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > :is(.form-field > label) {
     grid-area: pgname;
     margin-bottom: 0;
-    font-weight: 500;
+    font-size: var(--pg-text-base);
+    font-weight: var(--pg-weight-strong);
   }
 
   .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .form-text,
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > .form-text {
     grid-area: pgnote;
-    margin-top: .1rem;
+    margin-top: 1px;
   }
 
   /* The grid has one note area, so a second description (a warning drawn
@@ -10525,7 +10513,7 @@ body.pg-side-panel-open .pg-chat-launcher {
    so what draws a card is its border, not its colour, and leaving the fill in
    would have laid an opaque sheet over the glass for no gain. */
 .advanced-visuals:not(.toolbar) .pg-settings-modal.pg-sm {
-  background-color: transparent;
+  background: transparent;
 }
 .advanced-visuals:not(.toolbar) .pg-settings-modal .pg-sm-main {
   background-color: var(--pg-bg-body);
@@ -10575,7 +10563,7 @@ body.pg-side-panel-open .pg-chat-launcher {
    only the fields it shut are handed their colour back. */
 .pg-set-card .form-control[data-pgro],
 .pg-set-card textarea[data-pgro] {
-  background-color: var(--pg-bg-body);
+  background-color: var(--pg-field-bg);
   opacity: 1;
 }
 
@@ -10686,14 +10674,18 @@ body.pg-side-panel-open .pg-chat-launcher {
    it .pg-sm-main grows to the height of all its cards, the pane never becomes
    a scroller, and the save bar ends up a thousand pixels below the screen. */
 .pg-settings-modal.dialog {
-  --bs-dialog-width: min(1180px, calc(100vw - 3rem));
+  --bs-dialog-width: min(1040px, calc(100vw - 3rem));
+  --bs-dialog-backdrop-bg: var(--pg-scrim);
+  --bs-dialog-backdrop-blur: 2px;
 }
 .pg-settings-modal.pg-sm {
   flex-direction: row;
   overflow: hidden;
-  height: min(860px, calc(100vh - 3.5rem));
-  border: var(--pg-border-width) solid var(--pg-border-color-translucent);
-  border-radius: var(--pg-radius-xl);
+  height: min(680px, calc(100vh - 3.5rem));
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--pg-radius-sheet);
+  background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2));
+  box-shadow: var(--pg-shadow-sheet);
 }
 
 /* Viewport height on a phone is not a constant: the browser toolbar hides on
@@ -10702,47 +10694,38 @@ body.pg-side-panel-open .pg-chat-launcher {
    Declared after the vh rule, so a browser that does not know dvh keeps it. */
 @supports (height: 100dvh) {
   .pg-settings-modal.pg-sm {
-    height: min(860px, calc(100dvh - 3.5rem));
+    height: min(680px, calc(100dvh - 3.5rem));
   }
 }
 
 /* ── the sidebar ───────────────────────────────────────────────────────── */
+/* The rail: 232 px on the menu's surface, its title, a 32 px search field,
+   group names and 34 px items; the chosen item on the quiet fill with its
+   icon in the accent. */
 .pg-sm-side {
   display: flex;
-  flex: 0 0 15rem;
+  flex: 0 0 232px;
   flex-direction: column;
-  width: 15rem;
+  width: 232px;
   min-height: 0;
-  border-right: var(--pg-border-width) solid var(--pg-border-color-translucent);
-  background: var(--pg-bg-2);
+  padding: 18px 12px 0;
+  border-right: 1px solid var(--pg-border-color-translucent);
+  background: var(--pg-surface-menu);
 }
-.pg-sm-brand {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  padding: 1rem 1rem .5rem;
-  color: var(--pg-fg-2);
-  font-size: .75rem;
-  font-weight: 600;
-  letter-spacing: .05em;
-  text-transform: uppercase;
+.pg-sm-side > .pg-sm-brand {
+  margin: 2px 10px 14px;
 }
 .pg-sm-nav {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: .25rem .5rem 1rem;
+  padding: 0 0 1rem;
   scroll-padding-block: .5rem;
   overscroll-behavior: contain;
   scrollbar-width: thin;
 }
 .pg-sm-group {
-  padding: .85rem .5rem .25rem;
-  color: var(--pg-fg-2);
-  font-size: .6875rem;
-  font-weight: 600;
-  letter-spacing: .05em;
-  text-transform: uppercase;
+  margin: 16px 10px 6px;
 }
 /* Every row looks the same whether it opens a pane or leaves for a page: the
    arrow on the right is what tells them apart. Colour is not used for that --
@@ -10753,24 +10736,24 @@ body.pg-side-panel-open .pg-chat-launcher {
 .pg-sm-link {
   display: flex;
   align-items: center;
-  gap: .5rem;
+  gap: 10px;
   width: 100%;
-  min-height: 2.25rem;
-  padding: .4rem .5rem;
+  min-height: 34px;
+  padding: 6px 10px;
   border: 0;
-  border-radius: var(--pg-radius);
+  border-radius: 9px;
   background: none;
-  color: var(--pg-fg-body);
-  font-size: .8125rem;
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-medium);
   line-height: 1.3;
   text-align: left;
   text-decoration: none;
 }
 .pg-sm-link i:first-child {
   flex: 0 0 1rem;
-  font-size: .875rem;
+  font-size: 15px;
   text-align: center;
-  opacity: .7;
 }
 .pg-sm-link span {
   /* Wraps rather than ending in an ellipsis: at tablet width the list is
@@ -10781,40 +10764,45 @@ body.pg-side-panel-open .pg-chat-launcher {
 }
 .pg-sm-link:hover,
 .pg-sm-link:focus-visible {
-  background: var(--pg-tint-strong);
+  background: var(--pg-hover);
   color: var(--pg-fg-body);
 }
 .pg-sm-link.is-active {
-  background: var(--pg-bg-body);
-  box-shadow: inset 2px 0 0 var(--pg-primary);
-  font-weight: 600;
+  background: var(--pg-quiet);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+  color: var(--pg-fg-body);
 }
 .pg-sm-link.is-active i:first-child {
-  color: var(--pg-primary);
-  opacity: 1;
+  color: var(--pg-accent);
 }
 .pg-sm-out {
   margin-left: auto;
-  color: var(--pg-fg-2);
-  font-size: .65rem;
-  opacity: .7;
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-meta);
 }
 /* The search box over the list, and the hits that take the list's place. */
 .pg-sm-search {
   position: relative;
-  padding: 0 .5rem .25rem;
+  margin-bottom: 6px;
 }
 .pg-sm-search > .bi {
   position: absolute;
   top: 50%;
-  left: 1.1rem;
-  transform: translateY(calc(-50% - .125rem));
-  color: var(--pg-fg-2);
-  font-size: .75rem;
+  left: 10px;
+  transform: translateY(-50%);
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-base);
   pointer-events: none;
 }
 .pg-sm-search .form-control {
-  padding-left: 1.75rem;
+  --bs-control-min-height: 32px;
+  --bs-control-padding-y: 0;
+  --bs-control-font-size: var(--pg-text-2);
+  --bs-control-border-radius: 9px;
+  --bs-control-bg: var(--pg-field-bg);
+  --bs-control-border-color: var(--pg-field-line);
+  --bs-control-box-shadow: var(--pg-field-shadow);
+  padding-left: 32px;
 }
 .pg-sm-nav[hidden] {
   display: none;
@@ -10832,16 +10820,16 @@ body.pg-side-panel-open .pg-chat-launcher {
 }
 .pg-sm-hit-text small {
   overflow: hidden;
-  color: var(--pg-fg-2);
-  font-size: .6875rem;
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-meta);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .pg-sm-hits-empty {
   margin: 0;
-  padding: .75rem .5rem;
+  padding: 12px 10px;
   color: var(--pg-fg-2);
-  font-size: .8125rem;
+  font-size: var(--pg-text-2);
 }
 
 /* ── the pane ──────────────────────────────────────────────────────────── */
@@ -10852,71 +10840,38 @@ body.pg-side-panel-open .pg-chat-launcher {
   min-width: 0;
   min-height: 0;
 }
+/* The pane's head as a dialog's: padding 20 16 0 24, the title and one
+   line under it, the help and close icon buttons at the right. */
 .pg-sm-head {
   display: flex;
   flex: 0 0 auto;
   align-items: flex-start;
-  gap: .75rem;
-  padding: 1rem 1.25rem .75rem;
+  gap: 4px;
+  padding: 20px 16px 0 24px;
 }
 .pg-sm-heading {
   flex: 1 1 auto;
   min-width: 0;
 }
-.pg-sm-title {
-  margin: 0;
-  font-size: 1.15rem;
-  font-weight: 600;
-  line-height: 1.2;
-}
 .pg-sm-desc {
-  margin: .15rem 0 0;
-  color: var(--pg-fg-2);
-  font-size: .8125rem;
+  margin: 3px 0 0;
+}
+.pg-sm-head .pg-icon-button {
+  margin-top: -4px;
 }
 
 /* The button that opens the drawer. Only a phone has it; on anything wider
    the list is already on screen and a button that opens what is open says
    something untrue. */
-.pg-sm-burger {
+.pg-settings-modal .pg-sm-burger {
   display: none;
-  flex: 0 0 auto;
-  padding: .25rem .45rem;
-  border: var(--pg-border-width) solid var(--pg-border-color);
-  border-radius: var(--pg-radius);
-  background: none;
-  color: var(--pg-fg-body);
-  line-height: 1;
 }
-.pg-sm-burger .bi { font-size: 1.1rem; }
-
-/* Help for the category on view. An icon beside the close button, the same
-   height as the title line it sits on, and quiet until the pointer reaches it,
-   like the icon-only controls of the header. */
-.pg-sm-help {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  margin-top: -.3rem;
-  border-radius: 50%;
-  color: var(--pg-fg-2);
-  text-decoration: none;
-}
-.pg-sm-help:hover,
-.pg-sm-help:focus-visible {
-  background: var(--pg-tint-hover);
-  color: var(--pg-fg-body);
-}
-.pg-sm-help .bi { font-size: 1.1rem; line-height: 1; }
 
 .pg-sm-body {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 1rem 1.25rem;
+  padding: 6px 24px 20px;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
@@ -10928,15 +10883,16 @@ body.pg-side-panel-open .pg-chat-launcher {
    programmatic focus and wants no ring. */
 #pg_settings_modal_pane:focus { outline: 0; }
 
+/* The foot under a body that scrolls: a line, padding 14 24, the buttons
+   at the right ("Close" ghost, "Save" filled). */
 .pg-sm-foot {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: .75rem;
-  padding: .65rem 1.25rem;
-  padding-bottom: max(.65rem, env(safe-area-inset-bottom));
-  border-top: var(--pg-border-width) solid var(--pg-border-color-translucent);
-  background: var(--pg-bg-1);
+  gap: 8px;
+  padding: 14px 24px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--pg-border-color-translucent);
 }
 .pg-sm-meta {
   min-width: 0;
@@ -10992,8 +10948,8 @@ body.pg-side-panel-open .pg-chat-launcher {
     flex-basis: 12rem;
     width: 12rem;
   }
-  .pg-sm-brand { padding-top: .75rem; }
-  .pg-sm-head { padding-top: .75rem; }
+  .pg-sm-side { padding-top: 14px; }
+  .pg-sm-head { padding-top: 14px; }
 }
 
 /* ── the drawer, on a phone ────────────────────────────────────────────── */
@@ -11006,6 +10962,8 @@ body.pg-side-panel-open .pg-chat-launcher {
     flex-basis: auto;
     width: min(17rem, 85%);
     border-right: var(--pg-border-width) solid var(--pg-border-color);
+    /* Over the pane, the rail's translucent surface lies on the dialog's. */
+    background: linear-gradient(var(--pg-surface-menu), var(--pg-surface-menu)), var(--pg-surface-1);
     box-shadow: var(--pg-shadow-lg);
     transform: translateX(-100%);
     transition: transform .18s ease-out, visibility 0s linear .18s;
@@ -11031,20 +10989,15 @@ body.pg-side-panel-open .pg-chat-launcher {
     opacity: 1;
     pointer-events: auto;
   }
-  .pg-sm-burger { display: block; }
+  .pg-settings-modal .pg-sm-burger { display: inline-grid; }
   .pg-sm-link { min-height: 2.75rem; }
-  .pg-sm-head,
-  .pg-sm-body { padding-inline: .875rem; }
-  .pg-sm-foot { padding-inline: .875rem; }
-  .pg-sm-title { font-size: 1.05rem; }
+  .pg-sm-head { padding-inline: 14px 8px; }
+  .pg-sm-body,
+  .pg-sm-foot { padding-inline: 14px; }
   /* Two lines of description on a phone is a third of the pane. */
   .pg-sm-desc { display: none; }
   /* The footer keeps only what has to be pressed. */
   .pg-sm-meta { display: none; }
-  .pg-sm-head .btn-close {
-    padding: .5rem;
-    margin: -.25rem -.25rem 0 0;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -25012,6 +24965,10 @@ select.pg-list-table-field option.private {
   --pg-surface-float: light-dark(rgba(255, 255, 255, 0.86), rgba(26, 28, 35, 0.84));
   --pg-hover: light-dark(rgba(15, 23, 42, 0.04), rgba(255, 255, 255, 0.045));
   --pg-quiet: light-dark(rgba(15, 23, 42, 0.055), rgba(255, 255, 255, 0.065));
+  /* The surface of a rail beside a pane (the settings dialog's list), and
+     the scrim a dialog lays over the page. */
+  --pg-surface-menu: light-dark(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.016));
+  --pg-scrim: light-dark(rgba(22, 27, 38, 0.3), rgba(3, 4, 7, 0.6));
   --pg-radius-card: 16px;
   --pg-radius-sheet: 20px;
 
@@ -25054,6 +25011,7 @@ select.pg-list-table-field option.private {
   --pg-tint-select: 7%;
   --pg-shadow-card: 0 1px 0 var(--pg-surface-hi) inset, 0 10px 28px -18px rgba(15, 23, 42, 0.2), 0 1px 2px rgba(15, 23, 42, 0.04);
   --pg-shadow-float: 0 1px 0 var(--pg-surface-hi) inset, 0 18px 44px -14px rgba(15, 23, 42, 0.3), 0 2px 6px rgba(15, 23, 42, 0.06);
+  --pg-shadow-sheet: 0 1px 0 var(--pg-surface-hi) inset, 0 24px 60px -24px rgba(15, 23, 42, 0.22), 0 2px 6px rgba(15, 23, 42, 0.04);
   --pg-thumb-shadow: 0 1px 2px rgba(15, 23, 42, 0.14), 0 0 0 1px rgba(15, 23, 42, 0.05);
 }
 [data-bs-theme="dark"] {
@@ -25063,6 +25021,7 @@ select.pg-list-table-field option.private {
   --pg-tint-select: 10%;
   --pg-shadow-card: 0 1px 0 var(--pg-surface-hi) inset, 0 14px 34px -18px rgba(0, 0, 0, 0.65);
   --pg-shadow-float: 0 1px 0 var(--pg-surface-hi) inset, 0 18px 44px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(0, 0, 0, 0.3);
+  --pg-shadow-sheet: 0 1px 0 var(--pg-surface-hi) inset, 0 30px 80px -20px rgba(0, 0, 0, 0.7);
   --pg-thumb-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
@@ -25110,7 +25069,8 @@ body {
    same card ("Look A: add and edit screens"). */
 .pg-card,
 body.pg-measure-edit .row > .order-1 > .card,
-body.pg-measure-edit .row > .order-2 > .position-sticky > .card {
+body.pg-measure-edit .row > .order-2 > .position-sticky > .card,
+#pg_settings_sections > .pg-set-card > .card {
   background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2));
   border: 1px solid var(--pg-border-color-translucent);
   border-radius: var(--pg-radius-card);
@@ -25124,8 +25084,23 @@ body.pg-measure-edit .row > .order-2 > .position-sticky > .card {
   font-size: var(--pg-text-2);
   color: var(--pg-fg-2);
 }
-/* Inner card (settings rows): a faint tint, an inset line, rows split by a line. */
-.pg-card-inner {
+/* Group name over rows or cards (a rail's groups, the settings dialog's
+   cards): 12 / 550 in the third text colour. */
+.pg-group-label,
+.pg-sm-group,
+.pg-sm .pg-set-card > .card > .card-header.pg-title-section,
+.pg-sm .pg-set-card > .card > .card-header > .pg-title-section {
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
+  line-height: var(--pg-leading);
+  letter-spacing: normal;
+  font-variation-settings: normal;
+  color: var(--pg-fg-3);
+}
+/* Inner card (settings rows): a faint tint, an inset line, rows split by a
+   line. A settings card's body is one. */
+.pg-card-inner,
+.pg-set-card > .card > .card-body {
   border-radius: var(--pg-radius-card);
   background: var(--pg-surface-inset);
   box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent), inset 0 1px 0 var(--pg-surface-hi);
@@ -25142,7 +25117,8 @@ body.pg-measure-edit .row > .order-2 > .position-sticky > .card {
 /* Floating bar (the save bar's surface), also an add or edit screen's
    save bar. */
 .pg-floatbar,
-body.pg-measure-edit .row > .order-3 > nav.buttons.navigation {
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation,
+#pg_settings_page_form > nav.buttons.navigation {
   border-radius: var(--pg-radius-card);
   background: var(--pg-surface-float);
   -webkit-backdrop-filter: blur(16px);
@@ -25212,6 +25188,17 @@ textarea.pg-input {
   border-radius: 9px;
   font-size: var(--pg-text-2);
 }
+/* A settings row's Bootstrap field is the field in a row. */
+.pg-set-card .form-control {
+  --bs-control-min-height: 32px;
+  --bs-control-padding-y: 5px;
+  --bs-control-font-size: var(--pg-text-2);
+  --bs-control-border-radius: 9px;
+  --bs-control-bg: var(--pg-field-bg);
+  --bs-control-border-color: var(--pg-field-line);
+  --bs-control-box-shadow: var(--pg-field-shadow);
+  border-radius: 9px;
+}
 .pg-input:focus,
 .pg-input:focus-within {
   border-color: var(--pg-accent);
@@ -25266,6 +25253,21 @@ textarea.pg-input {
 }
 .pg-switch:checked::after {
   left: 18px;
+}
+/* A settings row's Bootstrap switch is the look's switch. */
+.pg-set-card .switch {
+  --bs-switch-height: 22px;
+  --bs-switch-width: 38px;
+  --bs-switch-padding: 2px;
+  --bs-switch-border-width: 0;
+  --bs-switch-bg: color-mix(in srgb, var(--pg-fg-3) 40%, transparent);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.pg-set-card .switch::before {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.pg-set-card .switch:has(input:checked) {
+  background-image: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
 }
 @media (prefers-reduced-motion: no-preference) {
   .pg-switch::after {
@@ -25858,4 +25860,73 @@ body.pg-measure-edit .row > .order-2 .card-header.pg-title-section {
   }
 }
 
+}
+
+/* ==========================================================================
+   Look A: settings.
+   The settings family, on the page (settings_<key>.php) and in the Site
+   Settings dialog: a card's title stands above its rows, the rows sit in
+   an inner card. On the page each card is a look card with the section
+   title (17 / 650); in the dialog the title is a group name over the inner
+   card, rows 12 px high in padding instead of 13. The dialog's rail, head
+   and foot are in "The settings modal".
+   ========================================================================== */
+@layer custom {
+.pg-set-card {
+  --pg-set-row-y: 13px;
+}
+.pg-sm .pg-set-card {
+  --pg-set-row-y: 12px;
+}
+/* The card is a frame: no fill, line or shadow of its own; the title has
+   no strip, the body is the inner card with the rows' padding. */
+.pg-set-card > .card {
+  --bs-card-cap-padding-x: 0;
+  --bs-card-cap-padding-y: 0;
+  --bs-card-spacer-x: 16px;
+  --bs-card-spacer-y: var(--pg-set-row-y);
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.pg-set-card > .card > .card-header {
+  padding-bottom: 14px;
+}
+.pg-set-card .form-text {
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+}
+/* The page: each card on the look card, 22 px inside it. */
+#pg_settings_sections > .pg-set-card > .card {
+  padding: 22px;
+}
+/* The dialog: the group name 8 px over its inner card, the cards 16 apart,
+   the inner card's corners 14. */
+.pg-sm .pg-set-card > .card > .card-header {
+  padding: 0 2px 8px;
+}
+.pg-sm .pg-set-card > .card > .card-body {
+  border-radius: 14px;
+}
+.pg-sm #pg_settings_modal_pane {
+  padding-top: 16px;
+}
+/* The page's save bar floats as an edit screen's (from 576 px). */
+@media (min-width: 576px) {
+  #pg_settings_page_form > nav.buttons.navigation {
+    justify-content: flex-end;
+    min-height: 56px;
+    margin-top: 16px;
+    padding: 0 12px 0 18px;
+    border: 1px solid var(--pg-border-color-translucent);
+  }
+  #pg_settings_page_form > nav.buttons.navigation > .container {
+    display: flex;
+    justify-content: flex-end;
+    max-width: none;
+    margin: 0;
+    padding-block: 11px;
+  }
+}
 }
