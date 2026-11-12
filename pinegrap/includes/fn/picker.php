@@ -84,6 +84,7 @@ function pg_picker_kinds()
 function pg_picker_page_type_kinds()
 {
     return array(
+        'page_catalog' => array('catalog'),
         'page_catalog_detail' => array('catalog detail'),
         'page_order_receipt' => array('order receipt'),
         'page_shipping_step' => array('shipping address and arrival', 'express order'),
