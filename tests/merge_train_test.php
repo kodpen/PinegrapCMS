@@ -100,6 +100,35 @@ function test_merge_train_checks_green()
 	pg_assert_false(merge_train_checks_green(array()), 'no check has run');
 }
 
+// The agent channel's report jobs are left out of the verdict, whatever
+// their state; the other runs still decide it.
+function test_merge_train_checks_green_report_jobs()
+{
+	$checks = array('name' => 'checks', 'status' => 'completed', 'conclusion' => 'success');
+	$queued = array('name' => 'report to the agent channel', 'status' => 'queued', 'conclusion' => null);
+
+	pg_assert_true(merge_train_checks_green(array($checks, $queued)), 'only the channel report is unfinished');
+	pg_assert_true(merge_train_checks_green(array($checks, array('name' => 'report to the agent channel', 'status' => 'completed', 'conclusion' => 'failure'))), 'a failed channel report');
+	pg_assert_true(merge_train_checks_green(array($checks, array('name' => 'report to the agent channel', 'status' => 'completed', 'conclusion' => 'cancelled'))), 'a cancelled channel report');
+	pg_assert_true(merge_train_checks_green(array($checks, array('name' => 'report the hand-over to the agent channel', 'status' => 'in_progress', 'conclusion' => null))), 'the hand-over report running');
+	pg_assert_false(merge_train_checks_green(array($queued)), 'only the channel report');
+	pg_assert_false(merge_train_checks_green(array($queued, array('name' => 'guards', 'status' => 'in_progress', 'conclusion' => null))), 'another run unfinished');
+	pg_assert_false(merge_train_checks_green(array($queued, array('name' => 'guards', 'status' => 'completed', 'conclusion' => 'failure'))), 'another run failed');
+	pg_assert_false(merge_train_checks_green(array($checks, array('name' => 'Report to the agent channel', 'status' => 'queued', 'conclusion' => null))), 'the name is matched exactly');
+}
+
+function test_merge_train_gating_runs()
+{
+	$runs = merge_train_gating_runs(array(
+		array('name' => 'checks', 'started_at' => '2026-11-11T10:00:00Z', 'completed_at' => '2026-11-11T10:10:00Z'),
+		array('name' => 'report to the agent channel', 'started_at' => '2026-11-11T09:00:00Z', 'completed_at' => '2026-11-11T11:10:00Z'),
+		array('status' => 'completed'),
+	));
+
+	pg_assert_same(2, count($runs));
+	pg_assert_same(strtotime('2026-11-11T10:10:00Z'), merge_train_eligible_since($runs, true), 'a late report does not move the ready time');
+}
+
 // Green and either labelled ready or quiet for an hour since the last push.
 function test_merge_train_eligible()
 {

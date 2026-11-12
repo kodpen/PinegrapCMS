@@ -757,36 +757,29 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     // The site's own icon (includes/fn/site_icon.php): a PNG or SVG of the
     // Files screen, kept in config_text, never an attachment or an ERP
-    // document. The picker prints the stored name only and searches the
-    // rest (kind site_icon, pg_public_image_files_where() on the server); a
-    // stored name that no longer matches a file is kept as its own option,
-    // marked, so saving cannot clear it.
+    // document. The picker field searches them (kind site_icon,
+    // pg_public_image_files_where() on the server); a stored name that no
+    // longer matches a file is shown marked and posted unchanged, so saving
+    // cannot clear it. The screen that shows the field prints the script.
     if (pg_schema_has('config_text')) {
-        $site_icon = pg_site_icon_name();
-        $site_icon_options = pg_file_picker_public_options($site_icon, lang('(not selected)'));
-
         $output_site_icon_picker = '
                                         <div class="pg-f-md">
                                             <label for="site_icon" class="form-label">' . lang('Site Icon') . '</label>
-                                            <div class="pg-picker-field">
-                                                <div class="pg-picker-field-input"><select name="site_icon" id="site_icon" class="form-control"' . pg_file_picker_attributes('site_icon') . '>' . $site_icon_options . '</select></div>
-                                                ' . pg_picker_browse_button('site_icon', 'site_icon', lang('Choose a site icon')) . pg_picker_script() . '
-                                            </div>
-                                            <div class="form-text">' . lang('Shown in browser tabs, in search results and on home screens. Choose a square PNG of at least 512x512 (the smaller sizes are made from it) or an SVG. Leave it empty to keep the design\'s own icon.') . '</div>
+                                            ' . pg_picker_field('site_icon', 'site_icon', pg_site_icon_name(), array('title' => lang('Choose a site icon'), 'describedby' => 'site_icon_help')) . '
+                                            <div class="form-text" id="site_icon_help">' . lang('Shown in browser tabs, in search results and on home screens. Choose a square PNG of at least 512x512 (the smaller sizes are made from it) or an SVG. Leave it empty to keep the design\'s own icon.') . '</div>
                                         </div>';
     }
     $output_structured_data_dependent = '';
 
     if (waf_table_has_column('config', 'og_default_image')) {
-        // The pickers search the site's image files (kind public_image): no
-        // attachment, no ERP document and only folders every visitor may
-        // open, because what is chosen here is shown to everyone
-        // (pg_public_image_files_where() on the server). Only the stored
-        // value is printed; one that no longer matches anything (an old
-        // hand-typed address) is kept as its own option, so opening and
-        // saving this screen cannot silently clear it.
-        $og_image_options = pg_file_picker_public_options($og_default_image, lang('(not selected)'));
-        $logo_image_options = pg_file_picker_public_options($organization_logo, lang('(not selected)'));
+        // The picker fields search the site's image files (kind
+        // public_image): no attachment, no ERP document and only folders
+        // every visitor may open, because what is chosen here is shown to
+        // everyone (pg_public_image_files_where() on the server). A stored
+        // value that no longer matches anything (an old hand-typed address)
+        // is shown marked and posted unchanged, so opening and saving this
+        // screen cannot silently clear it.
+        $picture_title = lang('Choose a picture');
 
         // The icon the panel wears once it is installed on a phone or a desktop.
         // Same list as the share images, because it is the same question - which
@@ -795,15 +788,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         // wants exact squares and manifest_icon.php draws them, fitting the
         // picture whole rather than cropping it.
         if (waf_table_has_column('config', 'app_icon')) {
-
-            $app_icon_options = pg_file_picker_public_options($app_icon, lang('(not selected)'));
-
             $output_app_icon_picker = '
                                         <div id="pgsub-app" class="col-12  mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Installed Application') . '</h6></div>
                                         <div class="pg-f-md">
                                             <label for="app_icon" class="form-label">' . lang('Application Icon') . '</label>
-                                            <select name="app_icon" id="app_icon" class="form-control"' . pg_file_picker_attributes('public_image') . '>' . $app_icon_options . '</select>
-                                            <div class="form-text">' . lang('Shown on the home screen when the panel is installed as an application. The picture is fitted whole onto a square, so nothing is cropped; a square picture of at least 512x512 looks best.') . '</div>
+                                            ' . pg_picker_field('public_image', 'app_icon', $app_icon, array('title' => $picture_title, 'describedby' => 'app_icon_help')) . '
+                                            <div class="form-text" id="app_icon_help">' . lang('Shown on the home screen when the panel is installed as an application. The picture is fitted whole onto a square, so nothing is cropped; a square picture of at least 512x512 looks best.') . '</div>
                                         </div>';
         }
 
@@ -820,8 +810,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $output_share_image_pickers = '
                                         <div class="pg-f-md">
                                             <label for="og_default_image" class="form-label">' . lang('Default Share Image') . '</label>
-                                            <select name="og_default_image" id="og_default_image" class="form-control"' . pg_file_picker_attributes('public_image') . '>' . $og_image_options . '</select>
-                                            <div class="form-text">' . lang('Used as the social share picture for pages that do not have one of their own.') . '</div>' . $og_default_forms_notice . '
+                                            ' . pg_picker_field('public_image', 'og_default_image', $og_default_image, array('title' => $picture_title, 'describedby' => 'og_default_image_help')) . '
+                                            <div class="form-text" id="og_default_image_help">' . lang('Used as the social share picture for pages that do not have one of their own.') . '</div>' . $og_default_forms_notice . '
                                         </div>';
 
         // Drawn on General › Organization and written by its save, under the
@@ -829,8 +819,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $output_organization_logo_picker = '
                     <div class="pg-f-lg">
                         <label for="organization_logo" class="form-label">' . lang('Organization Logo') . '</label>
-                        <select name="organization_logo" id="organization_logo" class="form-control"' . pg_file_picker_attributes('public_image') . '>' . $logo_image_options . '</select>
-                        <div class="form-text">' . lang('Used in the structured data that introduces your organization and as the publisher logo on blog posts.') . '</div>
+                        ' . pg_picker_field('public_image', 'organization_logo', $organization_logo, array('title' => $picture_title, 'describedby' => 'organization_logo_help')) . '
+                        <div class="form-text" id="organization_logo_help">' . lang('Used in the structured data that introduces your organization and as the publisher logo on blog posts.') . '</div>
                     </div>';
 
         // Everything in here exists ONLY as structured data output, so it
