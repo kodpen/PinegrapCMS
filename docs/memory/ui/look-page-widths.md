@@ -10,7 +10,7 @@ description: Look A's page widths (#8892): edit screens centred at 1120 px (760 
 ## How does a screen take them?
 - With a class on `<body>` through `'extra classes'` of `pg_page_shell()`/`output_header()`: `pg-measure-edit` for an add or edit screen, `pg-measure-list` for a list.
 - An edit screen also puts `pg-edit-columns` on the `.row` holding its form column (`order-1`), status column (`order-2`) and save bar (`order-3`).
-- On the look so far: `product_builder.php` (Create Product, Edit Product; not Variant Sets) and `view_products.php`. The others follow with their screen family (DL5).
+- On the look so far: `product_builder.php` (Create Product, Edit Product; not Variant Sets); every root list screen on the list table driver (#8921: `view_*.php` but `view_fields.php`, the `erp_*.php` lists, `mail_queue.php`). The add and edit screens follow with their family (DL5c).
 
 ## How does an add or edit screen sit?
 - `#content` is at most 1120 px plus its 1rem padding, centred. From lg (1024 px) the row is a grid: form column up to 760, status column up to 336, 24 between, the save bar across both. On a narrower window the form column gives way first; below lg they stack in source order as `edit-screen-wide-layout.md` says.
@@ -21,6 +21,7 @@ description: Look A's page widths (#8892): edit screens centred at 1120 px (760 
 - `#content` is `fit-content`: as wide as the list's columns (and the toolbar) need, at least 1280 px plus padding or the window when narrower, at most the window, centred.
 - Only the name column (the driver's first column) takes the slack: its inline width from the column spec is dropped (`width: auto !important`), so the table gives a wider box to it first; the other columns keep their spec widths. When the list is wider than the window, the name column is as wide as its content.
 - The products list with its default columns needs about 2,350 px, so at 1920 and 1366 it still fills the window and scrolls sideways.
+- The toolbar search above a list is 300 px (a phone keeps the toolbar's full-line rule).
 - The vertical scrollbar of the rows' box counts in the width, so a short list's box can be about 15 px over 1312.
 
 Related: docs/memory/ui/look-type-and-recipes.md

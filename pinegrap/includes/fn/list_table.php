@@ -729,7 +729,9 @@ function pg_list_table_row_html(array $row, array $columns)
     $output = '<tr role="row" data-pg-id="' . h($data['id']) . '"' . (($data['class'] !== '') ? ' class="' . h($data['class']) . '"' : '') . '>';
 
     foreach ($data['cells'] as $key => $cell) {
-        $class = trim($cell['class'] . (($columns[$key]['align'] !== 'start') ? ' text-' . $columns[$key]['align'] : ''));
+        // A picture cell is marked, so the look sizes its thumbnail.
+        $class = trim($cell['class'] . (($columns[$key]['align'] !== 'start') ? ' text-' . $columns[$key]['align'] : '')
+            . (($columns[$key]['kind'] === 'image') ? ' pg-list-col-image' : ''));
         $output .= '<td role="cell" data-pg-col="' . h($key) . '"' . (($class !== '') ? ' class="' . h($class) . '"' : '');
 
         foreach ($cell['attrs'] ?? array() as $name => $value) {

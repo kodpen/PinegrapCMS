@@ -81,6 +81,6 @@ function test_list_rows_and_bar_read_the_look_tokens()
 	pg_assert_contains("height: 52px;\n  max-width: var(--pg-list-table-cell-max);\n  padding: 0 14px;", $block, 'a row is 52 px');
 	pg_assert_contains('min-height: 48px;', $block, 'the bar is 48 px');
 	pg_assert_contains('color-mix(in srgb, var(--pg-accent) var(--pg-tint-select), transparent)', $block, 'a selected row takes the accent');
-	pg_assert_contains("width: 32px;\n    height: 32px;", $block, 'a thumbnail is 32 px');
+	pg_assert_contains("width: 32px !important;\n    height: 32px !important;", $block, 'a thumbnail is 32 px');
 	pg_assert_same(0, preg_match('/font-size:\s*[0-9.]+(rem|px)|font-weight:\s*[0-9]+/', $block), 'no size or weight literal in the driver block');
 }

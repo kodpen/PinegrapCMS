@@ -178,7 +178,6 @@ function pg_look_examples_not_done()
             'title' => lang('Drawn in the sheet, not a recipe yet'),
             'items' => array(
                 lang('Figure cards with a trend line (the list page\'s head)'),
-                lang('The list table: header strip, one-line rows, row actions (list screens step)'),
                 lang('The 12-column field grid of an add or edit screen (add and edit screens step)'),
                 lang('The bell row\'s avatar and verb for a person (the server sends one title)'),
             ),

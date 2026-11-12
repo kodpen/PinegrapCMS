@@ -1331,7 +1331,8 @@
             var cell = (data.cells && data.cells[column.key]) || { html: '', class: '' };
             var label = column.heading;
             var td = document.createElement('td');
-            var cls = ((cell.class || '') + ((column.align !== 'start') ? ' text-' + column.align : '')).trim();
+            var cls = ((cell.class || '') + ((column.align !== 'start') ? ' text-' + column.align : '')
+                + ((column.kind === 'image') ? ' pg-list-col-image' : '')).trim();
 
             td.setAttribute('role', 'cell');
             td.setAttribute('data-pg-col', column.key);

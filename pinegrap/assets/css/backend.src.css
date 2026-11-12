@@ -23088,11 +23088,13 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   vertical-align: middle;
 }
 /* A thumbnail is a 32 px square with the icon tile's corners; the details
-   panel and the phone card show the picture whole. */
+   panel and the phone card show the picture whole. The cells print their
+   pictures with an inline 50 px size, hence !important. */
 @media (min-width: 768px) {
-  .pg-list-table-grid > tbody > tr > td.pg-list-col-image img {
-    width: 32px;
-    height: 32px;
+  .pg-list-table-grid > tbody > tr > td.pg-list-col-image :is(img, svg) {
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0;
     object-fit: cover;
     border-radius: 9px;
   }
