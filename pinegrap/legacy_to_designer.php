@@ -54,7 +54,7 @@ $user = validate_user();
 validate_area_access($user, 'designer');
 
 // The dry run of the chosen sets and styles writes nothing. Convert starts
-// the run of the styles a dry run listed alone, then the screen works it.
+// the run of the sets and styles a dry run listed, then the screen works it.
 $chosen = array();
 $chosen_sets = array();
 $plan = null;
@@ -68,9 +68,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (is_string($key) && preg_match('/^[0-9a-f]{16}$/', $key)) $chosen_sets[$key] = true;
     }
     if (!empty($_POST['convert'])) {
-        $run_error = pg_ltd_run_start(array_keys($chosen), $user);
+        $run_error = pg_ltd_run_start(array_keys($chosen), $user, array_keys($chosen_sets));
         if ($run_error === '') {
-            log_activity(lang(array('string' => 'the move of {var:1} styles to the visual designer was started', 'vars' => array(count($chosen)))), $_SESSION['sessionusername']);
+            $started = pg_ltd_state_read();
+            log_activity(lang(array('string' => 'the move of {var:1} styles to the visual designer was started', 'vars' => array(count((array)($started['styles'] ?? array()))))), $_SESSION['sessionusername']);
             header('Location: ' . PATH . SOFTWARE_DIRECTORY . '/legacy_to_designer.php#ltd-run');
             exit;
         }
@@ -327,16 +328,10 @@ if ($plan !== null) {
     $output_convert = '';
     if ($plan && $running === null) {
         $hidden = '';
-        $has_set = false;
         foreach ($plan as $p) {
-            if ($p['kind'] === 'style' && $p['skip'] === '') $hidden .= '<input type="hidden" name="styles[]" value="' . (int)$p['id'] . '">';
-            if ($p['kind'] === 'set') $has_set = true;
-        }
-        // A set's own run is not offered here yet: Convert moves the styles
-        // chosen alone, as before.
-        if ($has_set) {
-            $output_convert = '
-        <div class="card-footer small fg-secondary">' . h(lang('A set is shown as a dry run only: Move to the visual designer moves the styles chosen alone.')) . '</div>';
+            if ($p['skip'] !== '') continue;
+            if ($p['kind'] === 'style') $hidden .= '<input type="hidden" name="styles[]" value="' . (int)$p['id'] . '">';
+            if ($p['kind'] === 'set') $hidden .= '<input type="hidden" name="sets[]" value="' . h($p['key']) . '">';
         }
         if ($hidden !== '') {
             $output_convert .= '

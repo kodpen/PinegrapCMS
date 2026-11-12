@@ -524,12 +524,9 @@ function pg_ltd_plan_facts($s, $converted)
         $frame = pg_classic_style_frame($code, pg_classic_style_region_lookup());
         $facts['frame'] = pg_ltd_frame_targets($frame['frame']);
         $facts['warnings'] = $frame['warnings'];
-        $is_own_file = function ($name) {
-            $file = db_item("SELECT theme FROM files WHERE design = '1' AND name = '" . e($name) . "' LIMIT 1");
-            return is_array($file) && (string)$file['theme'] !== '1';
-        };
-        $facts['_css'] = pg_classic_style_managed_files($frame['css'], $is_own_file, OUTPUT_PATH);
-        $facts['_js'] = pg_classic_style_managed_files($frame['js'], $is_own_file, OUTPUT_PATH);
+        $files = pg_classic_style_frame_assets($frame);
+        $facts['_css'] = $files['css'];
+        $facts['_js'] = $files['js'];
         foreach ($facts['frame']['designer'] as $name) {
             $made = db_value("SELECT sc.id FROM shared_components sc
                               JOIN cregion ON sc.category = CONCAT('cregion:', cregion.cregion_id)

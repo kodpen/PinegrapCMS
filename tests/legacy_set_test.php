@@ -262,5 +262,5 @@ function test_lgs_screen_offers_sets()
 	pg_assert_same(1, preg_match('/name="sets\[\]"[^>]*form="ltd_dry_run"/', $screen), 'a set is ticked for the dry run');
 	pg_assert_contains('pg_ltd_sets($report)', $screen);
 	pg_assert_contains("pg_ltd_plan(array_keys(\$chosen), array_keys(\$chosen_sets))", $screen);
-	pg_assert_contains("\$p['kind'] === 'style' && \$p['skip'] === ''", $screen, 'Convert carries single styles only');
+	pg_assert_contains("if (\$p['kind'] === 'set') \$hidden .= '<input type=\"hidden\" name=\"sets[]\"", $screen, 'Convert carries the sets too');
 }

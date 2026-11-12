@@ -16,6 +16,17 @@
  *   4. frame         the frame's designer regions made components and its
  *                    menu, menu sequence, ad and tag cloud regions widgets
  *
+ * A set of styles (pg_ltd_sets()) moves into one new Legacy design instead,
+ * each of its styles in turn:
+ *
+ *   1. set_design    the design's style row with the set's asset rows, made
+ *                    at the set's first style
+ *   2. regions       as above
+ *   3. set_pages     the frame component, and the style's pages saved to the
+ *                    design (page_style), each placing its own style's frame;
+ *                    the classic style row stays as it is
+ *   4. frame         as above
+ *
  * The cursor is data/temp/legacy_to_designer.json, written after every
  * step; a lost one ends the run (every step skips what an earlier run
  * wrote, so starting again is safe). The report screen's short requests and
@@ -39,44 +50,82 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer_plan.php');
 define('PG_LTD_REPORT_LINES', 2000);
 
 /**
- * The steps of one style, in order.
+ * The steps of one style, in order: a style moving alone, or one of a set.
  *
+ * @param bool $set
  * @return array
  */
-function pg_ltd_steps()
+function pg_ltd_steps($set = false)
 {
-    return array('regions', 'design', 'page_regions', 'frame');
+    return $set ? array('set_design', 'regions', 'set_pages', 'frame') : array('regions', 'design', 'page_regions', 'frame');
 }
 
 /**
- * A new run's cursor.
+ * A new run's cursor. The sets' styles come first, set by set, then the
+ * styles chosen alone; a style is worked once.
  *
  * Pure: no query.
  *
- * @param array $style_ids  chosen styles, in the order to work them
+ * @param array $style_ids  styles chosen alone, in the order to work them
  * @param array $user       the designer starting it (id, username)
  * @param int   $now
- * @return array
+ * @param array $sets       pg_ltd_sets() sets, 'name' the design's (unique)
+ * @return array  'sets' lists each set's key, name, theme_id, collection,
+ *                settings, styles and 'design' (its style id, 0 until made)
  */
-function pg_ltd_state_new($style_ids, $user, $now)
+function pg_ltd_state_new($style_ids, $user, $now, $sets = array())
 {
     $ids = array();
+    $set_rows = array();
+    foreach ((array)$sets as $set) {
+        $members = array();
+        foreach ((array)($set['styles'] ?? array()) as $id) {
+            if ((int)$id > 0 && !in_array((int)$id, $ids, true)) {
+                $ids[] = (int)$id;
+                $members[] = (int)$id;
+            }
+        }
+        if (!$members) continue;
+        $set_rows[] = array('key' => (string)($set['key'] ?? ''), 'name' => (string)($set['name'] ?? ''),
+                            'theme_id' => (int)($set['theme_id'] ?? 0), 'collection' => (string)($set['collection'] ?? ''),
+                            'settings' => (array)($set['settings'] ?? array()), 'styles' => $members, 'design' => 0);
+    }
     foreach ((array)$style_ids as $id) {
         if ((int)$id > 0 && !in_array((int)$id, $ids, true)) $ids[] = (int)$id;
     }
-    return array(
+    $state = array(
         'id'       => gmdate('Ymd-His', (int)$now) . '-' . substr(md5(implode(',', $ids) . '|' . (int)$now), 0, 6),
         'started'  => (int)$now,
         'user_id'  => (int)($user['id'] ?? 0),
         'username' => (string)($user['username'] ?? ''),
         'styles'   => $ids,
+        'sets'     => $set_rows,
         'index'    => 0,
-        'step'     => 'regions',
+        'step'     => '',
         'names'    => array(),
         'counts'   => array('styles' => 0, 'pages' => 0, 'components' => 0, 'widgets' => 0, 'skipped' => 0, 'failed' => 0),
         'lines'    => array(),
         'more'     => 0,
     );
+    $state['step'] = pg_ltd_steps(pg_ltd_state_set($state) >= 0)[0];
+    return $state;
+}
+
+/**
+ * The set the style under the cursor moves with: its place in 'sets', -1
+ * for a style moving alone (and in a cursor written before sets).
+ *
+ * Pure: no query.
+ */
+function pg_ltd_state_set($state)
+{
+    $styles = (array)($state['styles'] ?? array());
+    $index = (int)($state['index'] ?? 0);
+    if (!isset($styles[$index])) return -1;
+    foreach ((array)($state['sets'] ?? array()) as $at => $set) {
+        if (in_array((int)$styles[$index], array_map('intval', (array)($set['styles'] ?? array())), true)) return (int)$at;
+    }
+    return -1;
 }
 
 /**
@@ -88,15 +137,35 @@ function pg_ltd_state_new($style_ids, $user, $now)
  */
 function pg_ltd_state_advance($state, $skip_style = false)
 {
-    $steps = pg_ltd_steps();
+    $steps = pg_ltd_steps(pg_ltd_state_set($state) >= 0);
     $at = array_search((string)$state['step'], $steps, true);
     if ($skip_style || $at === false || $at + 1 >= count($steps)) {
         $state['index'] = (int)$state['index'] + 1;
-        $state['step'] = $steps[0];
+        $state['step'] = pg_ltd_steps(pg_ltd_state_set($state) >= 0)[0];
     } else {
         $state['step'] = $steps[$at + 1];
     }
     return $state;
+}
+
+/**
+ * The cursor after a step, as the step marked it in 'skip': '' the next
+ * step, 'style' the next style, 'set' the first style after the set the
+ * style moves with (a style alone: the next one).
+ *
+ * Pure: no query.
+ */
+function pg_ltd_state_next($state)
+{
+    $skip = (string)($state['skip'] ?? '');
+    unset($state['skip']);
+    $at = ($skip === 'set') ? pg_ltd_state_set($state) : -1;
+    if ($at >= 0) {
+        foreach ((array)$state['styles'] as $i => $id) {
+            if (in_array((int)$id, (array)$state['sets'][$at]['styles'], true)) $state['index'] = max((int)$state['index'], (int)$i);
+        }
+    }
+    return pg_ltd_state_advance($state, $skip !== '');
 }
 
 /**
@@ -237,16 +306,32 @@ function pg_ltd_reports($limit = 10)
 // ── The run ─────────────────────────────────────────────────────────────
 
 /**
- * Starts a run of the chosen styles; refused while one is under way.
+ * Starts a run of the chosen sets and styles; refused while one is under
+ * way. A set is read from the report as the dry run read it; one with no
+ * page left has nothing to move. Its design takes the set's name, made
+ * unique among the styles now.
  *
+ * @param array $style_ids  styles chosen alone
+ * @param array $user
+ * @param array $set_keys   pg_ltd_sets() keys
  * @return string  '' when started, else the reason
  */
-function pg_ltd_run_start($style_ids, $user)
+function pg_ltd_run_start($style_ids, $user, $set_keys = array())
 {
     if ((int)$user['role'] > 1) return lang('Only a designer can open a classic style in the visual designer.');
     if (pg_ltd_state_read() !== null) return lang('A move is already under way.');
-    $state = pg_ltd_state_new($style_ids, $user, time());
-    if (!$state['styles']) return lang('Choose the styles to move first.');
+    $want = array();
+    foreach ((array)$set_keys as $key) {
+        if (is_string($key) && preg_match('/^[0-9a-f]{16}$/', $key)) $want[$key] = true;
+    }
+    $sets = array();
+    foreach (($want ? pg_ltd_sets(pg_ltd_report())['sets'] : array()) as $set) {
+        if (!isset($want[$set['key']]) || (int)$set['pages'] === 0) continue;
+        $set['name'] = get_unique_name(array('name' => $set['name'], 'type' => 'style'));
+        $sets[] = $set;
+    }
+    $state = pg_ltd_state_new($style_ids, $user, time(), $sets);
+    if (!$state['styles']) return $want ? lang('The chosen set has no page left to move.') : lang('Choose the styles to move first.');
     foreach (db_items("SELECT style_id, style_name FROM style WHERE style_id IN (" . implode(',', $state['styles']) . ")") as $r) {
         $state['names'][(string)(int)$r['style_id']] = (string)$r['style_name'];
     }
@@ -331,6 +416,7 @@ function pg_ltd_job_tick($budget)
 function pg_ltd_run_step($state, $user)
 {
     $style_id = pg_ltd_state_progress($state)['style'];
+    $set_at = pg_ltd_state_set($state);
     $row = db_item("SELECT style_id, style_name, style_type, style_layout, style_code, additional_body_classes FROM style WHERE style_id = '$style_id' LIMIT 1");
     if (!is_array($row)) {
         $state = pg_ltd_state_line($state, 'skipped', lang('The style no longer exists.'));
@@ -339,10 +425,15 @@ function pg_ltd_run_step($state, $user)
     $designed = (string)$row['style_layout'] === 'visual_designer';
 
     switch ($state['step']) {
+        case 'set_design':
+            if ((int)$state['sets'][$set_at]['design'] <= 0) $state = pg_ltd_run_set_design($state, $set_at, $user);
+            break;
+
         case 'regions':
             // A style already a design (made before, or by an earlier run)
-            // keeps its regions as they are; its later steps still run.
-            if ($designed) break;
+            // keeps its regions as they are; its later steps still run. In
+            // a set it is refused below: its pages are a design's already.
+            if ($designed && $set_at < 0) break;
             $refusal = pg_classic_style_refusal($row);
             if ($refusal !== '') {
                 $state = pg_ltd_state_line($state, 'skipped', $refusal);
@@ -370,11 +461,15 @@ function pg_ltd_run_step($state, $user)
             $state = pg_ltd_run_page_regions($state, $style_id, $user);
             break;
 
+        case 'set_pages':
+            $state = pg_ltd_run_set_pages($state, $row, $user, $state['sets'][$set_at]);
+            break;
+
         case 'frame':
             $state = pg_ltd_run_frame($state, $row, $user);
             break;
     }
-    return pg_ltd_state_advance($state);
+    return pg_ltd_state_next($state);
 }
 
 /**
@@ -389,7 +484,8 @@ function pg_ltd_run_design($state, $row, $user)
     $open = pg_classic_style_design_open($style_id, $user);
     if ($open['error'] !== '') {
         $state = pg_ltd_state_line($state, 'failed', $open['error']);
-        return pg_ltd_state_advance($state, true);
+        $state['skip'] = 'style';
+        return $state;
     }
     foreach ($open['warnings'] as $w) $state = pg_ltd_state_line($state, 'skipped', (string)$w);
 
@@ -404,8 +500,7 @@ function pg_ltd_run_design($state, $row, $user)
         if ($classes !== '') {
             $page['tree_json'] = pg_designer_tree_encode(pg_ltd_fold_body_classes(json_decode((string)$page['tree_json'], true), $classes));
         }
-        $check = pg_designer_save_page($style_id, $page, $user, true);
-        $saved = $check['ok'] ? pg_designer_save_page($style_id, $page, $user, false) : $check;
+        $saved = pg_ltd_save_page($style_id, $page, $user);
         if ($saved['ok']) {
             $state = pg_ltd_state_line($state, 'made', lang(array('string' => 'The page "{var:1}" now has a tree.', 'vars' => array($page['page_name']))), 'pages');
         } else {
@@ -431,40 +526,72 @@ function pg_ltd_run_design($state, $row, $user)
  */
 function pg_ltd_run_page_regions($state, $style_id, $user)
 {
-    require_once(PG_FUNCTIONS_DIR . '/includes/designer_region_import.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
     foreach (pg_designer_load_pages($style_id, '', true) as $page) {
         $tree = json_decode((string)$page['tree_json'], true);
         if (!is_array($tree)) continue;
-        $found = pg_ltd_page_regions($tree, array());
-        if ($found['own'] === 0) continue;
+        if (pg_ltd_page_regions($tree, array())['own'] === 0) continue;
         if (!pg_collab_may_edit_page('', (int)$page['page_id'])) {
             $state = pg_ltd_state_line($state, 'skipped', lang(array('string' => 'Skipped: "{var:1}" is being edited in the visual designer.', 'vars' => array($page['page_name']))));
             continue;
         }
-        $shared = array();
-        foreach (pg_ltd_shared_ids($tree) as $sid) {
-            $t = json_decode((string)db_value("SELECT tree_json FROM shared_components WHERE id = '" . (int)$sid . "' LIMIT 1"), true);
-            if (is_array($t)) $shared[$sid] = $t;
-        }
-        if (pg_ltd_page_regions($tree, $shared)['shared'] > 0) {
-            $state = pg_ltd_state_line($state, 'skipped', lang(array('string' => '"{var:1}" keeps its page regions: some of them sit in a shared component.', 'vars' => array($page['page_name']))));
-            continue;
-        }
-        $blocks = pg_page_region_blocks((int)$page['page_id'], $found['own']);
-        $spliced = pg_ltd_page_region_splice($tree, $blocks['blocks']);
-        if ($spliced === null) continue;
-        $page['tree_json'] = pg_designer_tree_encode($spliced);
-        $check = pg_designer_save_page($style_id, $page, $user, true);
-        $saved = $check['ok'] ? pg_designer_save_page($style_id, $page, $user, false) : $check;
+        $into = pg_ltd_page_regions_into_tree($page, $tree);
+        if ($into['skipped'] !== '') $state = pg_ltd_state_line($state, 'skipped', $into['skipped']);
+        if ($into['tree'] === null) continue;
+        $page['tree_json'] = pg_designer_tree_encode($into['tree']);
+        $saved = pg_ltd_save_page($style_id, $page, $user);
         if ($saved['ok']) {
             $state = pg_ltd_state_line($state, 'made', lang(array('string' => 'The page regions of "{var:1}" are now part of its tree.', 'vars' => array($page['page_name']))), 'pages');
-            foreach ($blocks['warnings'] as $w) $state = pg_ltd_state_line($state, 'skipped', $page['page_name'] . ': ' . $w);
+            foreach ($into['warnings'] as $w) $state = pg_ltd_state_line($state, 'skipped', $page['page_name'] . ': ' . $w);
         } else {
             $state = pg_ltd_state_line($state, 'failed', $page['page_name'] . ': ' . implode(' ', (array)$saved['errors']));
         }
     }
     return $state;
+}
+
+/**
+ * A page's own page regions moved into its tree (pg_page_region_blocks(),
+ * pg_ltd_page_region_splice()). A tree with none is left as it is, and so
+ * is one whose page regions sit partly in a shared component.
+ *
+ * @param array $page  page_id, page_name
+ * @param array $tree  the page's tree
+ * @return array  'tree' (the new tree, null when nothing moved), 'skipped'
+ *                (a report line, '' for none), 'warnings'
+ */
+function pg_ltd_page_regions_into_tree($page, $tree)
+{
+    $out = array('tree' => null, 'skipped' => '', 'warnings' => array());
+    $found = pg_ltd_page_regions($tree, array());
+    if ($found['own'] === 0) return $out;
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_region_import.php');
+    $shared = array();
+    foreach (pg_ltd_shared_ids($tree) as $sid) {
+        $t = json_decode((string)db_value("SELECT tree_json FROM shared_components WHERE id = '" . (int)$sid . "' LIMIT 1"), true);
+        if (is_array($t)) $shared[$sid] = $t;
+    }
+    if (pg_ltd_page_regions($tree, $shared)['shared'] > 0) {
+        $out['skipped'] = lang(array('string' => '"{var:1}" keeps its page regions: some of them sit in a shared component.', 'vars' => array($page['page_name'])));
+        return $out;
+    }
+    $blocks = pg_page_region_blocks((int)$page['page_id'], $found['own']);
+    $out['tree'] = pg_ltd_page_region_splice($tree, $blocks['blocks']);
+    $out['warnings'] = $blocks['warnings'];
+    return $out;
+}
+
+/**
+ * A page saved as the editor's Save writes it, through
+ * pg_designer_save_page(): checked first, written only when the check
+ * passed. Saved to another design, the page moves there (page_style).
+ *
+ * @return array  pg_designer_save_page()'s answer
+ */
+function pg_ltd_save_page($style_id, $page, $user)
+{
+    $check = pg_designer_save_page($style_id, $page, $user, true);
+    return $check['ok'] ? pg_designer_save_page($style_id, $page, $user, false) : $check;
 }
 
 /**
@@ -543,4 +670,164 @@ function pg_ltd_run_frame($state, $row, $user)
         db("UPDATE shared_components SET tree_json = '" . e($json) . "', updated_at = '" . time() . "' WHERE id = '" . (int)$frame_row['id'] . "' LIMIT 1");
     }
     return $state;
+}
+
+// ── A set ───────────────────────────────────────────────────────────────
+
+/**
+ * The style row of a set's design as save_system_style() takes it: a new
+ * Legacy design under the set's name, its theme file and collection, the
+ * sharing position most of its styles had, the set's asset rows
+ * (pg_ltd_set_assets()) without the style names the dry run shows, and the
+ * fonts. No tree: every page carries its own.
+ *
+ * Pure: no query.
+ *
+ * @param array $set     a cursor set: name, theme_id, collection, settings
+ * @param array $assets  pg_ltd_set_assets()
+ * @param array $fonts   the importer's font entries
+ * @param int   $user_id
+ * @return array
+ */
+function pg_ltd_set_design_row($set, $assets, $fonts, $user_id)
+{
+    $rows = array('css' => array(), 'js' => array());
+    foreach ($rows as $kind => $list) {
+        foreach ((array)($assets[$kind] ?? array()) as $a) {
+            if (!is_array($a)) continue;
+            unset($a['styles']);
+            $rows[$kind][] = $a;
+        }
+    }
+    $flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+    $collection = (string)($set['collection'] ?? '');
+    return array(
+        'style_id'                   => 0,
+        'user_id'                    => (int)$user_id,
+        'name'                       => (string)($set['name'] ?? ''),
+        'framework'                  => 'legacy',
+        'theme_id'                   => (int)($set['theme_id'] ?? 0),
+        'collection'                 => $collection !== '' ? $collection : 'a',
+        'social_networking_position' => (string)($set['settings']['social_networking_position'] ?? ''),
+        'style_custom_css'           => json_encode($rows['css'], $flags),
+        'style_custom_js'            => json_encode($rows['js'], $flags),
+        'style_custom_fonts'         => json_encode(array_values((array)$fonts), $flags),
+    );
+}
+
+/**
+ * What a set's design is written with, read from its styles' code as the
+ * dry run reads it: the asset rows, a row only some styles have kept to
+ * their pages (own and folder), and the fonts. A style the designer refuses
+ * adds nothing.
+ *
+ * @param array $style_ids  the set's styles, in order
+ * @return array  'assets' (pg_ltd_set_assets()), 'fonts'
+ */
+function pg_ltd_set_design_assets($style_ids)
+{
+    $styles = array();
+    $fonts = array();
+    foreach ((array)$style_ids as $id) {
+        $id = (int)$id;
+        $row = db_item("SELECT style_id, style_name, style_type, style_layout, style_code FROM style WHERE style_id = '$id' LIMIT 1");
+        if (pg_classic_style_refusal($row) !== '') continue;
+        $frame = pg_classic_style_frame((string)$row['style_code'], pg_classic_style_region_lookup());
+        $files = pg_classic_style_frame_assets($frame);
+        $pages = array_map('intval', db_values("SELECT page_id FROM page WHERE page_style = '$id'" . pg_designer_not_binned_sql('page_folder')));
+        foreach (pg_classic_style_folder_pages($id) as $p) $pages[] = (int)$p['page_id'];
+        $styles[] = array('id' => $id, 'name' => (string)$row['style_name'], 'pages' => $pages, 'css' => $files['css'], 'js' => $files['js']);
+        foreach ((array)$frame['fonts'] as $f) $fonts[] = $f;
+    }
+    return array('assets' => pg_ltd_set_assets($styles), 'fonts' => pg_di_dedupe_fonts($fonts));
+}
+
+/**
+ * The set's design made, at its first style: the style row with the asset
+ * rows and the layout override most of its styles had. A request that ended
+ * between the row's insert and the cursor's write left the row behind: the
+ * name was free when the run started, so a visual design of that name made
+ * since, with no page yet, is taken. A design that cannot be written skips
+ * the set.
+ */
+function pg_ltd_run_set_design($state, $at, $user)
+{
+    $set = $state['sets'][$at];
+    $id = (int)db_value("SELECT style_id FROM style
+                         WHERE style_name = '" . e($set['name']) . "' AND style_layout = 'visual_designer'
+                           AND style_timestamp >= '" . (int)$state['started'] . "'
+                           AND NOT EXISTS (SELECT 1 FROM page WHERE page.page_style = style.style_id)
+                         ORDER BY style_id DESC LIMIT 1");
+    if ($id <= 0) {
+        $read = pg_ltd_set_design_assets($set['styles']);
+        $id = (int)save_system_style(pg_ltd_set_design_row($set, $read['assets'], $read['fonts'], $user['id']));
+    }
+    if ($id <= 0) {
+        $state = pg_ltd_state_line($state, 'failed', lang(array('string' => 'The design "{var:1}" could not be saved.', 'vars' => array($set['name']))));
+        $state['skip'] = 'set';
+        return $state;
+    }
+    $layout = (string)($set['settings']['layout_type'] ?? '');
+    if ($layout !== '') db("UPDATE style SET layout_type = '" . e($layout) . "' WHERE style_id = '$id' LIMIT 1");
+    $state['sets'][$at]['design'] = $id;
+    return pg_ltd_state_line($state, 'made', lang(array('string' => 'The design "{var:1}" was made for the set.', 'vars' => array($set['name']))));
+}
+
+/**
+ * A style of a set moved to the set's design: its frame component made (or
+ * the one made before), then each of its own pages saved to the design
+ * through pg_ltd_save_page(), which moves its page_style: a page with no
+ * tree gets the tree placing the frame, a page that had one keeps it with
+ * its page regions taken in, a page somebody holds is skipped. Its folder
+ * pages follow (pg_classic_style_convert_folder_pages()). The style's body
+ * classes go on its pages; the classic style row stays as it is.
+ */
+function pg_ltd_run_set_pages($state, $row, $user, $set)
+{
+    $style_id = (int)$row['style_id'];
+    $design_id = (int)$set['design'];
+    if ($design_id <= 0 || (int)db_value("SELECT style_id FROM style WHERE style_id = '$design_id' AND style_layout = 'visual_designer' LIMIT 1") !== $design_id) {
+        $state = pg_ltd_state_line($state, 'failed', lang(array('string' => 'The design "{var:1}" no longer exists.', 'vars' => array($set['name']))));
+        $state['skip'] = 'set';
+        return $state;
+    }
+    $open = pg_classic_style_design_open($style_id, $user);
+    if ($open['error'] !== '') {
+        $state = pg_ltd_state_line($state, 'failed', $open['error']);
+        $state['skip'] = 'style';
+        return $state;
+    }
+    foreach ($open['warnings'] as $w) $state = pg_ltd_state_line($state, 'skipped', (string)$w);
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
+    $classes = trim((string)$row['additional_body_classes']);
+    $moved = function ($state, $name) use ($set) {
+        return pg_ltd_state_line($state, 'made', lang(array('string' => 'The page "{var:1}" moved to the design "{var:2}".', 'vars' => array($name, $set['name']))), 'pages');
+    };
+    foreach ($open['pages'] as $page) {
+        if (!pg_collab_may_edit_page('', (int)$page['page_id'])) {
+            $state = pg_ltd_state_line($state, 'skipped', lang(array('string' => 'Skipped: "{var:1}" is being edited in the visual designer.', 'vars' => array($page['page_name']))));
+            continue;
+        }
+        $tree = json_decode((string)$page['tree_json'], true);
+        $warnings = array();
+        if (empty($page['converted']) && is_array($tree)) {
+            $into = pg_ltd_page_regions_into_tree($page, $tree);
+            if ($into['skipped'] !== '') $state = pg_ltd_state_line($state, 'skipped', $into['skipped']);
+            if ($into['tree'] !== null) $tree = $into['tree'];
+            $warnings = $into['warnings'];
+        }
+        if (is_array($tree)) $page['tree_json'] = pg_designer_tree_encode(pg_ltd_fold_body_classes($tree, $classes));
+        $saved = pg_ltd_save_page($design_id, $page, $user);
+        if (!$saved['ok']) {
+            $state = pg_ltd_state_line($state, 'failed', $page['page_name'] . ': ' . implode(' ', (array)$saved['errors']));
+            continue;
+        }
+        $state = $moved($state, (string)$page['page_name']);
+        foreach ($warnings as $w) $state = pg_ltd_state_line($state, 'skipped', $page['page_name'] . ': ' . $w);
+    }
+    foreach (pg_classic_style_convert_folder_pages($style_id, $user, $classes, $design_id) as $page_id) {
+        $state = $moved($state, (string)db_value("SELECT page_name FROM page WHERE page_id = '" . (int)$page_id . "' LIMIT 1"));
+    }
+    return pg_ltd_state_line($state, 'made', lang(array('string' => 'The style\'s pages now use the design "{var:1}"; the style itself stays as it was.', 'vars' => array($set['name']))), 'styles');
 }
