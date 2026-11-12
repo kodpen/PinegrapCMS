@@ -408,12 +408,13 @@ function pg_classic_style_region_lookup()
  *                (the assets panel lists, JSON), 'warnings', 'folder_pages'
  *                (pg_classic_style_folder_pages()), 'frame_tree' (the
  *                page tree placing the frame, JSON, for the editor's blank
- *                tab when no page names the style as its own)
+ *                tab when no page names the style as its own), 'split'
+ *                (bool: the frame was split around the page content)
  */
 function pg_classic_style_design_open($style_id, $user)
 {
     $style_id = (int)$style_id;
-    $out = array('error' => '', 'pages' => array(), 'css' => '', 'js' => '', 'fonts' => '', 'warnings' => array(), 'folder_pages' => array(), 'frame_tree' => '');
+    $out = array('error' => '', 'pages' => array(), 'css' => '', 'js' => '', 'fonts' => '', 'warnings' => array(), 'folder_pages' => array(), 'frame_tree' => '', 'split' => false);
 
     if ((int)$user['role'] > 1) {
         $out['error'] = lang('Only a designer can open a classic style in the visual designer.');
@@ -459,6 +460,7 @@ function pg_classic_style_design_open($style_id, $user)
     // With no page of its own the editor opens a blank tab: it starts with
     // this tree, so the frame is on the canvas (pg_designer_blank_page()).
     $out['frame_tree'] = $tree_json;
+    $out['split'] = pg_classic_style_frame_split($frame['frame']) !== null;
     return $out;
 }
 

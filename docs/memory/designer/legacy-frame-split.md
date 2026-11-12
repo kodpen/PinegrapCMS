@@ -18,7 +18,7 @@ module: classic_style_design
 - In the page tree the parts' refs are `sd_frame`, `sd_frame_2`, …; the content keeps the frame's `sd_N` ids.
 
 ## Where is it used?
-- `pg_classic_style_frame_page_tree()` makes the parts and the page tree for the editor's open (`?classic=1`, `pg_classic_style_design_open()`, also `frame_tree`) and for folder pages (`pg_classic_style_convert_folder_pages()`). Those pages arrive with page region nodes; "Move page content into the page" (`page-region-into-page-tree.md`) turns them into blocks.
+- `pg_classic_style_frame_page_tree()` makes the parts and the page tree for the editor's open (`?classic=1`, `pg_classic_style_design_open()`, also `frame_tree`) and for folder pages (`pg_classic_style_convert_folder_pages()`). The open's result has `split`; Edit Style's notice then says the code before and after the page content became shared components. Those pages arrive with page region nodes; "Move page content into the page" (`page-region-into-page-tree.md`) turns them into blocks.
 - The bulk move does that itself: `pg_ltd_run_design()` and `set_pages` take each page's page regions in before its save; folder pages get `pg_ltd_run_page_regions()` after their tree is saved. The `frame` step works every part row (`pg_ltd_frame_rows()`).
 - Dry run: facts `frame_split`, `frame_parts`; writes count each part, and a folder page twice; lines "The style's frame is split into N shared components…" and "The page regions go into each page's own tree…".
 

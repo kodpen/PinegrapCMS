@@ -6695,6 +6695,7 @@
     "The style is now a visual design.": "Stil artık görsel bir tasarım.",
     "The style no longer exists.": "Stil artık yok.",
     "The style opened in the visual designer. Its code is now the shared component that frames its pages. Nothing changes on the site until you save; saving makes the style a visual design.": "Stil görsel tasarımcıda açıldı. Kodu artık sayfalarını çerçeveleyen ortak bileşen. Kaydedene kadar sitede hiçbir şey değişmez; kaydetmek stili görsel tasarıma çevirir.",
+    "The style opened in the visual designer. The code before and after the page content is now shared components that frame its pages, and each page holds its own content in its tree. Nothing changes on the site until you save; saving makes the style a visual design.": "Stil görsel tasarımcıda açıldı. Kodunun sayfa içeriğinden önceki ve sonraki kısmı artık sayfalarını çerçeveleyen ortak bileşenler; her sayfa kendi içeriğini kendi ağacında tutar. Kaydedene kadar sitede hiçbir şey değişmez; kaydetmek stili görsel tasarıma çevirir.",
     "The style was created successfully.": "Stil başarıyla oluşturuldu.",
     "The style was deleted successfully.": "Stil başarıyla silindi.",
     "The style was edited successfully.": "Stil başarıyla düzenlendi.",
