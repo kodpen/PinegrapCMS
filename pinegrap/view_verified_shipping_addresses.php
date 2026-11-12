@@ -162,7 +162,7 @@ $output_state_filter = '<form id="state_filter" action="view_verified_shipping_a
 echo
     pg_page_shell([
         'title'=> lang('All Verified Shipping Addresses'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-list',
         'icon'=>'store',
         'heading'=>lang('All Verified Shipping Addresses'),
         'heading_description' => lang('All optional shipping addresses that can be selected on Shipping Address & Arrival Pages.'),

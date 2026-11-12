@@ -335,7 +335,7 @@ if ($subscription_id > 0) {
 echo
     pg_page_shell(array(
         'title'               => $title,
-        'extra classes'       => 'store',
+        'extra classes'       => 'store pg-measure-list',
         'icon'                => 'store',
         'heading'             => $title,
         'heading_description' => lang('Recurring payments the store charges from the customer\'s stored card.'),

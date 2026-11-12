@@ -223,7 +223,7 @@ $audit_view_toolbar = pg_screen_toolbar(array(
 echo
 pg_page_shell(array(
         'title'               => lang('Audit trail'),
-        'extra classes'       => 'setting',
+        'extra classes'       => 'setting pg-measure-list',
         'icon'                => 'setting',
         'heading'             => lang('Audit trail'),
         'heading_description' => lang('Who changed what in the panel, through the API or in a scheduled job, with each changed field before and after. Secrets are kept as changed, never with their value.'),

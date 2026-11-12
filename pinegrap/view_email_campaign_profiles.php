@@ -332,7 +332,7 @@ if (isset($_GET['export'])) {
     pg_page_shell(
         array(
             'title'=> lang('My Campaign Profiles'),
-            'extra classes'=>'campaign',
+            'extra classes'=>'campaign pg-measure-list',
             'icon'=>'campaign', 
             'heading'=> lang('My Campaign Profiles'),
             'heading_description' => lang('Use Campaign Profiles to schedule e-mails automatically for certain actions (e.g. Calendar Event reservation).'),

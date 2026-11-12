@@ -108,7 +108,7 @@ $delete_confirmation = pg_recycle_style_ready()
 print
 pg_page_shell([
         'title'=> lang('All Page Styles'),
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-list',
         'icon'=>'design',
         'heading'=>lang('All Page Styles'),
         'heading_description' => lang('All HTML templates that define the design and content layout for any page.')

@@ -94,7 +94,7 @@ $list = pg_list_table_printed(array(
 echo
 pg_page_shell([
         'title'=> lang('All Menus'),
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-list',
         'icon'=>'design',
         'heading'=>lang('All Menus'),
         'heading_description' => lang('All shared menus that can be added to any page style and managed by any site manager.'),

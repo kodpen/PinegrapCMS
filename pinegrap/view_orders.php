@@ -3249,7 +3249,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     pg_page_shell(
         array(
             'title'=> lang('View Orders'),
-            'extra classes'=>'store',
+            'extra classes'=>'store pg-measure-list',
             'icon'=>'store', 
             'heading'=>lang('View Orders'),
             'heading_description' => lang('View and export website orders.'),

@@ -105,7 +105,7 @@ print
 pg_page_shell(
     array(
         'title'=> lang('Event Locations'),
-        'extra classes'=>'calendar',
+        'extra classes'=>'calendar pg-measure-list',
         'icon'=>'calendar', 
         'heading'=> lang('Event Locations'),
         'heading_description' => lang('All event locations shared by all calendars.'),

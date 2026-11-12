@@ -338,7 +338,7 @@ function test_list_table_html_hidden_cells_texts_and_scroll_box()
 
 	pg_assert_contains('<td role="cell" data-pg-col="notes" class="align-middle" hidden>x</td>', $html, 'a hidden column hides its cells');
 	pg_assert_contains('<div class="pg-list-table-bar is-empty">', $html, 'the bar always shows its tools');
-	pg_assert_contains('class="btn btn-sm btn-text theme-secondary pg-list-table-columns" data-bs-toggle="menu"', $html);
+	pg_assert_contains('class="pg-icon-button pg-icon-button-sm pg-list-table-columns" data-bs-toggle="menu"', $html);
 	pg_assert_contains('<div class="menu pg-menu-end pg-list-table-columns-menu"></div>', $html);
 	pg_assert_contains('pg-list-table-details-switch" aria-pressed="false">', $html);
 	pg_assert_contains('<aside class="pg-list-table-details" aria-label="', $html);
@@ -388,7 +388,7 @@ function test_list_table_html_quick_edit_button_and_fields()
 
 	pg_assert_contains(' data-pg-edit-url="view_items.php"', $html);
 	pg_assert_contains(' data-pg-edit-columns="{&quot;price&quot;:{&quot;type&quot;:&quot;money&quot;,&quot;label&quot;:&quot;Price&quot;}}"', $html);
-	pg_assert_contains('class="btn btn-sm btn-text theme-secondary pg-list-table-quick" aria-pressed="false" aria-keyshortcuts="F2"', $html);
+	pg_assert_contains('class="pg-icon-button pg-icon-button-sm pg-list-table-quick" aria-pressed="false" aria-keyshortcuts="F2"', $html);
 
 	$plain = pg_list_table_html(pg_test_list_table_source(), $page, 'Items');
 

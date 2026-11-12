@@ -164,7 +164,7 @@ if ($uncosted > 0) {
 echo
 pg_page_shell(array(
         'title' => lang('Stock and cost'),
-        'extra classes' => 'erp erp_stock',
+        'extra classes' => 'erp erp_stock pg-measure-list',
         'icon' => 'erp',
         'heading' => lang('Stock and cost'),
         'heading_description' => lang('What each product has cost and what the stock on hand is worth at that cost, in the base currency; with the movements the documents made.'),

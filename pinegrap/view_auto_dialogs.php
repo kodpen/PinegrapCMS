@@ -135,7 +135,7 @@ $list = pg_list_table_printed(array(
 echo pg_page_shell(
     array(
         'title'=> lang('Auto Dialogs'),
-        'extra classes'=>'page',
+        'extra classes'=>'page pg-measure-list',
         'icon'=>'page',
         'heading'=>lang('Auto Dialogs'),
         'heading_description' => lang('Pop-up dialogs shown to visitors'),

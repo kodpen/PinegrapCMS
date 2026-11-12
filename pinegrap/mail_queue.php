@@ -334,7 +334,7 @@ if ($mail_queue_tabs) {
 echo
 pg_page_shell(array(
         'title'               => lang('Mail queue'),
-        'extra classes'       => 'setting',
+        'extra classes'       => 'setting pg-measure-list',
         'icon'                => 'setting',
         'heading'             => lang('Mail queue'),
         'heading_description' => ($mail_queue_tab === 'sms')

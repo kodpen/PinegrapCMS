@@ -185,7 +185,7 @@ $breadcrumb[] = array('label' => $heading);
 echo
     pg_page_shell(array(
         'title'               => $heading,
-        'extra classes'       => 'store',
+        'extra classes'       => 'store pg-measure-list',
         'icon'                => 'store',
         // The heading is printed as markup; a contact's name is escaped here.
         'heading'             => h($heading),

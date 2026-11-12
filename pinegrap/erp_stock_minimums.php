@@ -116,7 +116,7 @@ $output_show_filter = pg_filter_select('show', array(
 echo
 pg_page_shell([
     'title' => lang('Minimum stock'),
-    'extra classes' => 'erp erp_stock',
+    'extra classes' => 'erp erp_stock pg-measure-list',
     'icon' => 'erp',
     'heading' => lang('Minimum stock'),
     'heading_description' => lang('The lowest count each product should have before it is bought again; the ones at or below it are listed on the stock screen and the ERP dashboard.'),

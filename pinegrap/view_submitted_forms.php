@@ -705,7 +705,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
     pg_page_shell(
         array(
             'title'=> lang('Forms'),
-            'extra classes'=>'form',
+            'extra classes'=>'form pg-measure-list',
             'icon'=>'form', 
             'heading'=>lang('Forms'),
             'heading_description' => lang('All submitted form data that I can view, edit, or export.'),

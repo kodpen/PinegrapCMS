@@ -158,7 +158,7 @@ if (($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] 
 print
 pg_page_shell([
         'title'=> lang('All Commissions'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-list',
         'icon'=>'store',
         'heading'=>lang('All Commissions'),
         'heading_description' => lang('View all order commissions.'),
