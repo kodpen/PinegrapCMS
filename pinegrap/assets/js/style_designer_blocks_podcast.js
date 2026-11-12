@@ -177,7 +177,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
                 kit.p(when, 'small fw-semibold text-body-emphasis mb-2'),
                 kit.p(text, 'small text-body-secondary mb-4'),
                 kit.div('d-flex flex-wrap align-items-baseline gap-1', _sdT('Price'), [
-                    kit.h('span', _sdT('From'), 'small text-body-secondary'),
+                    kit.h('span', _sdT('Starting from'), 'small text-body-secondary'),
                     kit.h('span', price, 'fs-4 fw-bold text-body-emphasis'),
                     kit.h('span', per, 'small text-body-secondary')
                 ])

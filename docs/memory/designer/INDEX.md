@@ -252,6 +252,7 @@
 - designer-blocks-pharmacy.md: The Pharmacy block family (pharmacy- prefix): duty panel, reference readings, travel vaccines, medicine schedule; general blocks reused instead; no motion; rule and test
 - designer-blocks-photo.md: The Photo block family (photo- prefix, its own palette group): filmstrip hero, proof contact sheet, behind the shot; the general blocks a photography site places instead; rules and test
 - designer-blocks-planetarium.md: The Planetarium block family (planetarium- prefix, its own palette group): the four blocks, what each draws, the blocks reused instead, its pg-sky-* rules, motion and test
+- designer-blocks-podcast.md: The Podcast block family (podcast- prefix): episode hero with chapters, sponsor placements drawn on an episode and a season, transcript with timed turns; blocks placed instead; tests
 - designer-blocks-school.md: The School block family (school- prefix, own palette group): hero with an age finder, age ladder, school year in terms; general blocks placed instead; rules, test
 - designer-blocks-skiresort.md: The Ski Resort block family (skiresort- prefix, its own palette group): the five blocks, what each draws, its pg-ski-* rules, why the pass cards are not a pricing or compare block, its test
 - designer-blocks-sportsclub.md: The Sports Club block family (sportsclub-): match day, fixtures and results, league table, squad by position; what a club places instead; rules; test
