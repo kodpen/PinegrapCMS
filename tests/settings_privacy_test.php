@@ -48,7 +48,9 @@ function settings_privacy_test_category($key)
 function settings_privacy_test_names($source)
 {
 	preg_match_all('/\bname="([a-z0-9_]+)(?:\[\])?"/', $source, $match);
-	$names = array_values(array_unique($match[1]));
+	// A picker field writes its hidden input's name itself.
+	preg_match_all("/pg_picker_field\('[a-z_]+', '([a-z0-9_]+)'/", $source, $fields);
+	$names = array_values(array_unique(array_merge($match[1], $fields[1])));
 	sort($names);
 
 	return $names;

@@ -967,7 +967,7 @@
         return request({ kind: this.kind, request: 'tree', node_ids: wanted }).then(function (body) {
             if (body.types) {
                 self.typesList = body.types;
-                self.types.textContent = typesLabel(body.types);
+                self.types.textContent = self.pages ? body.types.join(', ') : typesLabel(body.types);
                 self.fileInput.accept = body.types.map(function (type) { return '.' + type; }).join(',');
             }
             (body.nodes || []).forEach(function (node) { self.tree[node.id] = node.rows || []; });
@@ -2130,7 +2130,7 @@
         var asked = values.filter(function (value) { return !own[value]; });
         var first = asked.length
             ? request({ kind: this.kind, request: 'resolve', values: asked }).then(function (body) {
-                return (body.items || []).filter(function (item) { return item.state === 'ok'; });
+                return body.items || [];
             }).catch(function () { return []; })
             : Promise.resolve([]);
 
@@ -2140,7 +2140,7 @@
             values.forEach(function (value) {
                 var found = own[value] || null;
                 for (var i = 0; !found && i < out[0].length; i++) {
-                    if (String(out[0][i].value) === value) {
+                    if (out[0][i].state === 'ok' && String(out[0][i].value) === value) {
                         found = out[0][i];
                     }
                 }
@@ -2157,6 +2157,13 @@
                 }
                 self.renderPick();
                 return item.extra ? self.showExtras() : self.openFolder(item.folder);
+            }
+            // A stored page that cannot be chosen again (archived, or in the
+            // Recycle Bin, told in the folder it came from) opens its folder,
+            // where it is shown marked.
+            var kept = self.pages ? out[0].filter(function (entry) { return (entry.state === 'offline' || entry.state === 'binned') && entry.folder; })[0] : null;
+            if (kept) {
+                return self.openFolder(kept.folder);
             }
             var top = self.tree[0] || [];
             if (!top.length) {
@@ -2360,6 +2367,13 @@
             words.appendChild(highlighted(String(item.text), text));
             words.appendChild(el('span', 'pg-pfield-meta', fieldMeta(item)));
             row.appendChild(words);
+            // An archived or binned page is found, marked, and cannot be
+            // chosen (pickable()), as in the dialog.
+            if (item.mark) {
+                row.classList.add('is-marked');
+                row.setAttribute('aria-disabled', 'true');
+                row.appendChild(el('span', 'pg-picker-mark is-' + item.mark, markLabel(item.mark)));
+            }
             list.appendChild(row);
         });
         var more_row = el('div', 'pg-pfield-option pg-pfield-more');
@@ -2433,6 +2447,10 @@
         if (!item) {
             return null;
         }
+        if (!pickable(item)) {
+            this.host.status.textContent = t('Archived pages and pages in the Recycle Bin cannot be chosen.');
+            return null;
+        }
         if (this.sheet) {
             return this.closeSheet().then(function () {
                 self.set(item);
@@ -2477,7 +2495,7 @@
             // Never submits the form the field sits in.
             event.preventDefault();
             if (open_now && rows) {
-                this.choose(this.active >= 0 ? this.active : 0);
+                this.choose(this.active >= 0 ? this.active : Math.max(0, this.items.findIndex(pickable)));
             }
         } else if (event.key === 'Escape' && !this.sheet && (open_now || this.input.value !== this.text)) {
             // Kept from the settings dialog around the field.

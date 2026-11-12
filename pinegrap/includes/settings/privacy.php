@@ -170,10 +170,7 @@ if ($legal_documents_ready) {
         $legal_kvkk_fields = '
                                     <div class="col-12 md:col-6">
                                         <label class="form-label" for="ecommerce_kvkk_page_id">' . lang('KVKK Notice Page') . '</label>
-                                        <select class="form-control" id="ecommerce_kvkk_page_id" name="ecommerce_kvkk_page_id">
-                                            <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Page')))) . '-</option>
-                                            ' . select_page($ecommerce_kvkk_page_id ?: '') . '
-                                        </select>
+                                        ' . pg_picker_field('page', 'ecommerce_kvkk_page_id', $ecommerce_kvkk_page_id ?: '') . pg_picker_script() . '
                                         <div class="form-text">' . lang('The checkout and the sign-up forms link this page where they explain how personal data is processed.') . '</div>
                                     </div>
                                     <div class="col-12">
