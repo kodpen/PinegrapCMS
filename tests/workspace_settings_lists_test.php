@@ -49,7 +49,11 @@ function test_workspace_settings_lists_allow_list_found()
 
 function test_workspace_settings_lists_every_card_list_allowed()
 {
-	$allowed = workspace_settings_lists_allowed();
+	// A card that moved to Site Settings draws its dialog-only lists
+	// (ws_mail[...]) there; that category's 'lists' entry names them.
+	preg_match_all("/'lists'\s*=>\s*array\((.*?)\)/s", workspace_settings_lists_source('includes/settings/registry.php'), $lists);
+	preg_match_all("/'(ws_[a-z0-9_]*)'\s*=>\s*[1-9]/", implode("\n", $lists[1]), $dialog);
+	$allowed = array_merge(workspace_settings_lists_allowed(), $dialog[1]);
 	$files = array(
 		'workspace_settings.php',
 		'includes/workspace/ai.php',

@@ -313,6 +313,7 @@
 - workspace-holiday-feed-overrides.md: Holiday calendar addresses (ws_ical_events()): a moved occurrence gets its own uid so it never replaces its yearly day; cancelled days are left out
 - workspace-holiday-settings.md: The Working calendar card in Site Settings (Team and working hours) and on Workspace Settings: one request reader and one save, button and field names, drawers, old anchors
 - workspace-keyboard-rows.md: Workspace div rows act as buttons through pressKeys() (Enter and Space), the inbox Join shortcut takes keys, planning board hours print through hoursText()
+- workspace-mail-settings-dialog.md: The Mailboxes card in Site Settings (Channels, mail and voice) and on Workspace Settings: drawers, ws_mail names, the shared check and write, the .eml form of its own, the Connect form
 - workspace-mcp-agent-identity.md: One avatar and icon per MCP server asked by its alias ('mcp:<id>'), drawn the same by every server-side place (ws_mcp_agent_identity()); the catalogue entry found by URL; the name kept '@alias'
 - workspace-mcp-servers-api.md: The site's MCP servers in the Workspace API (api_mcp.php, PR #1800): list with state, add, probe, refresh, tool rules; administrators only, no MCP tool; checks and writes shared with the settings card
 - workspace-mcp-servers-card.md: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-made connectors, adding by address, read-only tools on at first read, the form kept after an error, Pinegrap AI failing [decision: here]

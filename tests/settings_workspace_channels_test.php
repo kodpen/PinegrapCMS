@@ -51,12 +51,15 @@ function test_settings_workspace_channels_sections_and_anchors()
 		pg_assert_same(array('workspace_channels', 'pgset-ws-' . $card), pg_settings_legacy_anchors()['ws-' . $card] ?? null, 'the old #ws-' . $card . ' lands on the card');
 	}
 
-	$cards = settings_workspace_channels_test_source('includes/settings/workspace_channels.php');
-	pg_assert_contains("array('ws-mail'", $cards, 'the mailboxes are still linked');
+	pg_assert_contains("'pgset-ws-mail'            => lang('Mailboxes'),", $entry, 'mailboxes are a section');
+	pg_assert_contains("'ws_mail'   => 3,", $entry, 'a route is ws_mail[id][route_match][]');
+	pg_assert_true(strpos($entry, "'pgset-ws-templates'") < strpos($entry, "'pgset-ws-mail'") && strpos($entry, "'pgset-ws-mail'") < strpos($entry, "'pgset-ws-voice'"), 'the plan\'s order: templates, mailboxes, voice, GitHub');
+	pg_assert_false(strpos($entry, 'pgset-ws-channels-screen') !== false, 'no link card left');
+	pg_assert_same(array('workspace_channels', 'pgset-ws-mail'), pg_settings_legacy_anchors()['ws-mail'] ?? null, 'the old #ws-mail lands on the card');
 
-	foreach (array('ws-templates', 'ws-voice', 'ws-github') as $old) {
-		pg_assert_false(strpos($cards, "array('" . $old . "'") !== false, 'no link to the old ' . $old);
-	}
+	$cards = settings_workspace_channels_test_source('includes/settings/workspace_channels.php');
+	pg_assert_false(strpos($cards, 'ws_settings_screen_links_card(') !== false, 'no card linking the old screen');
+	pg_assert_false(function_exists('ws_settings_screen_links_card'), 'the link card is gone');
 }
 
 function test_settings_workspace_channels_voice_names_read_alike()
@@ -134,4 +137,38 @@ function test_settings_workspace_channels_save_runs_the_buttons_after_the_save()
 
 	$templates = settings_workspace_channels_test_source('includes/workspace/templates.php');
 	pg_assert_contains("name=\"' . (\$present['archived'] ? 'ws_template_restore' : 'ws_template_archive') . '\"", $templates, 'archive and bring back are named buttons');
+}
+
+function test_settings_workspace_channels_mailbox_names()
+{
+	$html = ' <input name="name" required> <select name="channel_id" required> <input name="route_match[]"> <textarea name="auto_reply_text">';
+	$dialog = ws_mail_box_dialog_names($html, 4, 'f');
+
+	pg_assert_contains('name="ws_mail[4][name]" form="f"', $dialog, 'a field by its box');
+	pg_assert_contains('name="ws_mail[4][route_match][]" form="f"', $dialog, 'a route keeps its list');
+	pg_assert_contains('name="ws_mail[4][auto_reply_text]" form="f"', $dialog, 'a text area');
+	pg_assert_false(strpos($dialog, 'required') !== false, 'nothing blocks the pane\'s Save');
+
+	$post = array('ws_mail' => array(4 => array('name' => 'Support', 'route_match' => array('+billing')), 7 => array('name' => 'Other')));
+	pg_assert_same(array('name' => 'Support', 'route_match' => array('+billing'), 'box_id' => 4), ws_mail_settings_dialog_input($post, 4), 'that box\'s fields under the old names');
+	pg_assert_same(array('box_id' => 0), ws_mail_settings_dialog_input(array('ws_mail' => 'x'), 0), 'a hand-made string is no form');
+}
+
+function test_settings_workspace_channels_mailbox_refusals_name_their_field()
+{
+	$refused = ws_mail_box_input(array('name' => '', 'address' => 'a@example.com'));
+	pg_assert_false($refused['ok'], 'no name');
+	pg_assert_same('name', $refused['field'], 'marked on the name');
+
+	$refused = ws_mail_box_input(array('name' => 'Support', 'address' => ''));
+	pg_assert_same('address', $refused['field'], 'marked on the address');
+
+	$save = settings_workspace_channels_test_source('includes/settings/workspace_channels.save.php');
+	pg_assert_true(strpos($save, 'ws_mail_box_save_check(') < strpos($save, 'ws_voice_settings_write('), 'the mailbox is checked before anything is written');
+	pg_assert_true(strpos($save, 'ws_mail_box_save_write(') < strpos($save, "post_value('ws_mail_test')"), 'Test connection runs after the save');
+	pg_assert_contains("\$_FILES['ws_mail_eml_file']", $save, 'the .eml comes with its own form');
+
+	$mail = settings_workspace_channels_test_source('includes/workspace/mail_settings.php');
+	pg_assert_contains("name=\"ws_mail_eml\" value=\"' . (int) \$id . '\"", $mail, 'Bring in is a named button of its own form');
+	pg_assert_contains("ws_mail_eml_form(pg_settings_url('workspace_channels'), \$id, true)", $mail, 'posting to the category\'s page');
 }
