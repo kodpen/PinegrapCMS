@@ -1,6 +1,6 @@
 ---
 name: coordinator
-description: Coordinator session: one per account, keeps its cloud workers on free plan steps, looks at them every 30 minutes, writes no code, merges nothing; questions go to the architect
+description: Coordinator session: one per account, keeps its worker sessions on free plan steps, looks at them every 30 minutes, writes no code, merges nothing; questions go to the architect
 ---
 
 ## Why a coordinator?
@@ -9,8 +9,9 @@ description: Coordinator session: one per account, keeps its cloud workers on fr
 ## What does it do each turn?
 - Reads the state from GitHub, not memory: open PRs and drafts, the queue count (Working mode 8); free steps and issues only when a slot is free, by `php tools/free_work.php` (`coordinator-context.md`).
 - Picks work no open PR holds: one plan or area per worker, never two workers on the same files or the same plan (Claim work, step 1); steps of one plan in parallel when the owner assigned them so or they touch different files.
-- Starts each worker as a cloud session with a short brief: the step or task, the memory folder, "follow CLAUDE.md". The worker claims with its own draft PR and works as every session does, its plan's next steps included (Working mode 2 and 6).
-- Gives every step to a new session: a worker that waits or has ended never gets one more step from it, and a worker does at most three steps in all (`coordinator-worker-steps.md`).
+- Starts each worker as a real session (cloud, or desktop on the owner's machine), never as a Workflow or sub-agent run, with a short brief: the step or task, the memory folder, "follow CLAUDE.md". The worker claims with its own draft PR and works as every session does, its plan's next steps included (Working mode 2 and 6).
+- The brief ends with the lifecycle and never tells the worker to stop after its step, to "stop and report" or to leave the next step: a worker follows its brief over Working mode 6 (`coordinator-worker-brief.md`).
+- Gives each step a new session, never one more step to a waiting or ended worker; three steps per worker in all (`coordinator-worker-steps.md`).
 - Keeps 8 workers working (`coordinator-workers.md`).
 - Design templates are paused (2026-11-09): no template step and no new template; no bug hunt or `bug` issue (`coordinator-no-plans.md`).
 - Keeps a to-do list of its workers' PRs (`coordinator-todo-list.md`).
