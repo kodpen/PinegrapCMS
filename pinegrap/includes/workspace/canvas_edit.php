@@ -173,6 +173,20 @@ function ws_canvas_fit_box($w, $h, $board)
 }
 
 /**
+ * The layers word of an add or svg operation; null when it is neither
+ * split nor one. Pure.
+ *
+ * @param array $op
+ * @return string|null
+ */
+function ws_canvas_edit_split_mode($op)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_split.php');
+
+    return ws_canvas_split_mode($op['layers'] ?? null);
+}
+
+/**
  * Applies an agent's operations to a canvas document, in order; all or
  * none. Pure but for the sanitizer.
  *
@@ -183,6 +197,8 @@ function ws_canvas_fit_box($w, $h, $board)
  *   box      layer; x, y, w, h, rot: move, resize or turn a layer
  *   svg      svg; background optional: the whole canvas anew
  *
+ * add and svg take layers: split for a layer per top-level element
+ * (canvas_split.php), one (the default) for one imported layer.
  * A locked layer is not changed. The result is marked picture: pending.
  *
  * @param array $doc        the newest version's document, decoded as arrays
@@ -210,9 +226,15 @@ function ws_canvas_edit_apply($doc, $operations)
             return $fail('op', $i);
         }
 
+        $mode = in_array($kind, array('svg', 'add'), true) ? ws_canvas_edit_split_mode($op) : 'one';
+
+        if ($mode === null) {
+            return $fail('layers', $i);
+        }
+
         if ($kind === 'svg') {
             $current = (string) ($doc['artboard']['background'] ?? '#ffffff');
-            $made = ws_canvas_from_svg($op['svg'] ?? '', array_key_exists('background', $op) ? $op['background'] : $current);
+            $made = ws_canvas_from_svg($op['svg'] ?? '', array_key_exists('background', $op) ? $op['background'] : $current, $mode === 'split');
 
             if ($made['error'] !== '') {
                 return $fail($made['error'], $i);
@@ -230,6 +252,26 @@ function ws_canvas_edit_apply($doc, $operations)
             }
 
             $clean = pg_svg_sanitize($svg);
+
+            if ($mode === 'split') {
+                // The layers go where the one imported layer would have
+                // gone, as Break apart leaves them.
+                $parts = ($clean === '') ? null : ws_canvas_split_layers($clean, ws_canvas_taken_ids($doc));
+
+                if ($parts === null) {
+                    return $fail('empty', $i);
+                }
+
+                $frame = ws_canvas_box_apply(ws_canvas_fit_box($parts['w'], $parts['h'], (array) ($doc['artboard'] ?? array())) + array('rot' => 0), $op);
+
+                if ($frame === null) {
+                    return $fail('box', $i);
+                }
+
+                $doc = ws_canvas_split_into($doc, $parts, $frame);
+                continue;
+            }
+
             $made = ($clean === '') ? null : ws_canvas_svg_layer($clean, ws_canvas_taken_ids($doc));
 
             if ($made === null) {
@@ -347,6 +389,8 @@ function ws_canvas_edit_error_text($error)
             return lang('A colour is written as #rrggbb.');
         case 'not_svg':
             return lang('Only an svg layer takes new SVG.');
+        case 'layers':
+            return ws_canvas_from_svg_error_text('layers');
         default:
             return ws_canvas_from_svg_error_text($error);
     }
