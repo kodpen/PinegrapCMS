@@ -34,4 +34,4 @@ description: Plan (owner 2026-11-11): the bell as a drawer from the right, its r
 - Looked at in the sandbox (`ui/panel-screenshots.md`): wide and phone, light and dark, before and after, linked in the PR: a unit test cannot reach the panel's layout. BP2b's pictures are approved by the owner before it merges; the look on dev is his, after landing.
 
 ## Who holds it, where does it start?
-- Coordinators hand the steps out; claim as `[plan:bell-panel] <step> — <topic>`. The steps: `bell-panel-steps.md`. BP2b is next.
+- Coordinators hand the steps out; claim as `[plan:bell-panel] <step> — <topic>`. The steps: `bell-panel-steps.md`. BP4 is next.
