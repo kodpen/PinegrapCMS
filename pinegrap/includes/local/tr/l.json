@@ -1668,6 +1668,7 @@
     "locations, offices, jobs near me, remote, hybrid": "konumlar, ofisler, yakınımdaki işler, uzaktan, hibrit",
     "locked": "kilitli",
     "locked a device of user ({var:1})": "({var:1}) kullanıcısının bir cihazı kilitlendi",
+    "locked is true or false.": "locked true ya da false olur.",
     "lodging": "konaklama",
     "log, retention, upload folder, file": "log, retention, upload folder, file, gunluk, günlük, saklama, yukleme klasoru, dosya",
     "login": "giris",
