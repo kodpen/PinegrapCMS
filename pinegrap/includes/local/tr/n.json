@@ -73,6 +73,7 @@
     "Name the record by its id or by one value, such as {{trigger.record_id}}.": "Kaydı numarasıyla ya da {{trigger.record_id}} gibi tek bir değerle belirtin.",
     "Name the row by its id or by one value, such as {{trigger.row_id}}.": "Satırı kimliğiyle ya da {{trigger.row_id}} gibi tek bir değerle belirtin.",
     "Name the song from the first five seconds.": "Şarkıyı ilk beş saniyesinden bilin.",
+    "Name the table by its id.": "Tabloyu numarasıyla belirtin.",
     "Name the treatment in your booking request and we keep the hour for you.": "Bakımı rezervasyon isteğinizde belirtin, saatini sizin için ayıralım.",
     "Name the visitor types (name)": "Ziyaretçinin yazdığı isim (name)",
     "Name the voucher's code in the notes of your booking request. A voucher is valid for a year from the order and may be spent on any package.": "Çekin kodunu rezervasyon talebinizin notlarına yazın. Bir hediye çeki siparişten itibaren bir yıl geçerlidir ve herhangi bir pakette kullanılabilir.",

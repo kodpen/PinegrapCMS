@@ -2164,6 +2164,32 @@ function ws_handle_action($action, $request)
             return ws_action_ok(array('answer' => ws_page_bridge_answer($viewer, ws_message((int) ($request['message_id'] ?? 0)),
                 $request['call'] ?? null, $request['args'] ?? null)));
 
+        // The tables a person may bind to a live page's canvas, and binding
+        // or taking one off (canvas_tables.php); the card is sent back.
+        case 'ws_page_tables':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!ws_canvas_tables_ready() || !ws_canvas_page_reach($viewer, $message)) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            return ws_action_ok(array('tables' => ws_canvas_tables_choices($viewer, $message)));
+
+        case 'ws_page_bind':
+        case 'ws_page_unbind':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+            $result = ($action === 'ws_page_bind')
+                ? ws_canvas_table_bind($viewer, $message, (int) ($request['table_id'] ?? 0), (string) ($request['access'] ?? ''))
+                : ws_canvas_table_unbind($viewer, $message, (int) ($request['table_id'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['text']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
+
+            return ws_action_ok(array('message' => $payload[0]));
+
         // Undo of an agent's edit on a live page (page_card.php).
         case 'ws_page_undo':
             $message = ws_message((int) ($request['message_id'] ?? 0));

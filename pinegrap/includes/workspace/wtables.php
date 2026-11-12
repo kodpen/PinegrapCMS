@@ -1476,6 +1476,11 @@ function ws_wtable_delete_final($table_id)
     if (ws_wtable_bin_ready()) {
         db("DELETE FROM ws_wtable_row_bin WHERE table_id = '" . $id . "'");
     }
+
+    // A canvas that bound the table no longer names it (canvas_tables.php).
+    if (function_exists('ws_canvas_tables_forget_table')) {
+        ws_canvas_tables_forget_table($id);
+    }
 }
 
 /* ---------------------------------------------------------------------------

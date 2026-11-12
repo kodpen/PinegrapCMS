@@ -38,8 +38,8 @@ function test_workspace_page_bridge_request_check()
 
 	$large = '{"a":"' . str_repeat('x', PG_GUARDED_FRAME_BRIDGE_MAX_ARGS) . '"}';
 	pg_assert_same('limit', ws_page_bridge_request('who', $large)['error']['code'], 'arguments over the bound');
-	pg_assert_same('unknown_call', ws_page_bridge_request('rows', '{}')['error']['code'], 'a call not built yet');
-	pg_assert_same(array('who'), ws_page_bridge_calls());
+	pg_assert_same('unknown_call', ws_page_bridge_request('delete', '{}')['error']['code'], 'a call there is not');
+	pg_assert_same(array('who', 'tables', 'rows'), ws_page_bridge_calls());
 }
 
 function test_workspace_page_bridge_answer_refuses_what_is_no_page()

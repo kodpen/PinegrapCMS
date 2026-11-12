@@ -63,12 +63,14 @@ function ws_page_card_state($rows, $may_undo)
  * page, or null for any other file: the card's state, the frame's address
  * and its sandbox (pg_guarded_frame_panel_sandbox()).
  *
- * @param int  $message_id
- * @param int  $file_id
- * @param bool $may_undo
+ * @param int        $message_id
+ * @param int        $file_id
+ * @param bool       $may_undo   may the reader write in the channel
+ * @param array|null $viewer     given: the tables the canvas uses, as the
+ *                               reader sees them (ws_canvas_tables_card())
  * @return array|null
  */
-function ws_page_card($message_id, $file_id, $may_undo)
+function ws_page_card($message_id, $file_id, $may_undo, $viewer = null)
 {
     $state = ws_page_card_state(ws_page_versions($file_id), $may_undo);
 
@@ -78,6 +80,10 @@ function ws_page_card($message_id, $file_id, $may_undo)
 
     $state['frame'] = PATH . 'live_page.php?message=' . (int) $message_id;
     $state['sandbox'] = pg_guarded_frame_panel_sandbox('script');
+
+    if (is_array($viewer) && function_exists('ws_canvas_tables_card')) {
+        $state += ws_canvas_tables_card($viewer, array('id' => (int) $message_id), $may_undo);
+    }
 
     return $state;
 }

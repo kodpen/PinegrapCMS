@@ -258,6 +258,114 @@
         });
     }
 
+    // Bind a table: the tables the person may change, each bound for
+    // reading or for reading and writing, or taken off
+    // (includes/workspace/canvas_tables.php). The card is drawn again from
+    // the message the server sends back.
+    function showBind(message, h, opts) {
+        var drawer = h.offcanvas('ws-page-bind', h.t('page_bind'));
+        var body = drawer.querySelector('.drawer-body');
+
+        drawer.querySelector('.drawer-title').textContent = h.t('page_bind');
+        h.clear(body);
+        body.appendChild(h.el('div', 'spinner-border spinner-border-sm'));
+        h.showOffcanvas(drawer);
+
+        function send(action, params) {
+            params.message_id = message.id;
+            h.api(action, params).then(function (data) {
+                opts.replace(data.message);
+                showBind(data.message, h, opts);
+            }).catch(h.fail);
+        }
+
+        h.api('ws_page_tables', { message_id: message.id }).then(function (data) {
+            h.clear(body);
+
+            var tables = data.tables || [];
+
+            if (!tables.length) {
+                body.appendChild(h.el('p', 'fg-secondary small mb-0', h.t('page_bind_none')));
+                return;
+            }
+
+            var list = h.el('div', 'd-flex flex-column gap-2');
+
+            tables.forEach(function (table) {
+                var row = h.el('div', 'd-flex align-items-center gap-2 border rounded px-3 py-2');
+                var segment = h.el('div', 'btn-group btn-group-sm ms-auto');
+
+                row.appendChild(h.icon('bi-table'));
+                row.appendChild(h.el('span', 'text-truncate', table.name));
+
+                [['read', h.t('page_bind_read')], ['write', h.t('page_bind_write')]].forEach(function (pair) {
+                    var on = (table.bound === pair[0]);
+                    var button = h.button('btn btn-sm ' + (on ? 'btn-solid theme-primary' : 'btn-outline theme-secondary'), pair[1]);
+
+                    button.setAttribute('aria-pressed', on ? 'true' : 'false');
+                    button.addEventListener('click', function () {
+                        if (!on) {
+                            send('ws_page_bind', { table_id: table.id, access: pair[0] });
+                        }
+                    });
+                    segment.appendChild(button);
+                });
+                row.appendChild(segment);
+
+                if (table.bound) {
+                    var remove = h.button('btn btn-sm btn-text theme-secondary', h.t('page_unbind'), 'bi-x-lg');
+
+                    remove.addEventListener('click', function () {
+                        send('ws_page_unbind', { table_id: table.id });
+                    });
+                    row.appendChild(remove);
+                }
+
+                list.appendChild(row);
+            });
+            body.appendChild(list);
+        }).catch(function (error) {
+            h.clear(body);
+            h.fail(error);
+        });
+    }
+
+    // The line of tables the canvas uses: each with what the page may do
+    // with it; a table the reader does not reach shows nameless. Bind a
+    // table for whoever may write in the channel.
+    function tablesLine(message, h, opts) {
+        var page = message.file.page;
+        var tables = page.tables || [];
+
+        if (!tables.length && !page.can_bind) {
+            return null;
+        }
+
+        var line = h.el('div', 'd-flex flex-wrap align-items-center gap-2 mt-2 small');
+
+        line.appendChild(h.el('span', 'fg-secondary', h.t('page_tables')));
+
+        tables.forEach(function (table) {
+            var chip = h.el('span', 'badge badge-subtle theme-secondary d-inline-flex align-items-center gap-1');
+
+            chip.appendChild(h.icon('bi-table'));
+            chip.appendChild(h.el('span', '', table.reached ? table.name : h.t('page_table_hidden')));
+            chip.appendChild(h.el('span', 'fg-secondary', table.access === 'write' ? h.t('page_table_write') : h.t('page_table_read')));
+            line.appendChild(chip);
+        });
+
+        if (page.can_bind) {
+            var bind = h.button('btn btn-sm btn-text theme-secondary py-0', h.t('page_bind'), 'bi-plus-lg');
+
+            bind.addEventListener('click', function () {
+                showBind(message, h, opts);
+            });
+            line.appendChild(bind);
+        }
+
+        return line;
+    }
+
     // The card. opts.replace(message) draws a message the server sent back.
     function card(message, h, opts) {
         var file = message.file;
@@ -302,6 +410,12 @@
             }
 
             root.appendChild(mark);
+        }
+
+        var tables = tablesLine(message, h, opts);
+
+        if (tables) {
+            root.appendChild(tables);
         }
 
         var tools = h.el('div', 'd-flex flex-wrap gap-2 mt-2');
