@@ -211,7 +211,7 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin)
 
         foreach (ws_model_providers() as $provider_id => $provider) {
             $providers[$provider_id] = ws_model_provider_name($provider_id);
-            $hints[] = $providers[$provider_id] . ': ' . (($provider_id === 'azure') ? lang('your deployment name') : $provider['model_hint']);
+            $hints[] = $providers[$provider_id] . ': ' . (!empty($provider['hint_lang']) ? lang($provider['model_hint']) : $provider['model_hint']);
         }
 
         $chosen = $agent ? $agent['provider'] : 'openai';
