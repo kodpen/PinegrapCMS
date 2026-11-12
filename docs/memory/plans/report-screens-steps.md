@@ -19,7 +19,7 @@ description: Steps of plans/report-screens.md: RS1 the Sales map card's See all,
 - RS4 (M) Done: #8764. The visitor report (`view_visitor_report.php`) on the shared view; its query traps and site time stay (`visitors/visitor-report-sql-pitfalls.md`, `visitor-report-site-time.md`, `high-volume-counter-rules.md`).
 - RS5 (S) Done: #8800. The visitor report's ready reports (by source, page, country: those its levels can give) and the visitor cards' links.
 - RS6 (S) Done: #8811. The shipping report (`view_shipping_report.php`) on the shared view; its period bound (`PG_SHIPPING_REPORT_MAX_DAYS`) and its lists stay (`commerce/shipping-report.md`).
-- RS7 (S) Done: #8818. The ERP VAT report (`erp_vat_report.php`) on the shared view; its figures, rates and export stay (`erp/README.md` first).
+- RS7 (S) Done: #8827. The ERP VAT report (`erp_vat_report.php`) on the shared view; its figures, rates and export stay (`erp/README.md` first).
 - RS8 (S) The owner's look and the close-out. The architect asks the owner to look at the four screens on dev; what he asks for becomes steps here. Then the lasting rules stand in the topics above and this plan's two files are deleted.
 
 ## Why this order?

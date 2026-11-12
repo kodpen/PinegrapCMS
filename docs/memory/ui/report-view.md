@@ -5,7 +5,7 @@ module: report_view
 ---
 
 ## What does a report screen draw now?
-- Under its toolbar and date changer: a card of summary figures, a card with the chart, then the report's own table. The settings (name, summarize by, filters, Save & Run) sit in a drawer from the right. Order report #8709, visitor #8764, shipping #8811 (`commerce/shipping-report.md`), ERP tax #8818 (`erp/erp-vat-report.md`; a figure's note and tone, a dashed `compare` line).
+- Under its toolbar and date changer: a card of summary figures, a card with the chart, then the report's own table. The settings (name, summarize by, filters, Save & Run) sit in a drawer from the right. Order report #8709, visitor #8764, shipping #8811 (`commerce/shipping-report.md`), ERP tax #8827 (`erp/erp-vat-report.md`; a figure's note and tone, a dashed `compare` line).
 
 ## Where do the figures come from?
 - `pg_report_view_figures($grand, $charge_columns, $symbol)`: Orders, then the Grand Total row's money columns in the table's order (Subtotal, Discount, Tax, Shipping, the shown charge columns, Total). Read from the same buckets the table prints, so a figure always equals its Grand Total cell; the queries are untouched. Money is `pg_money_text()` text (the symbol decoded, tiles are written with textContent).
