@@ -74596,33 +74596,33 @@ const StyleDesigner = (function () {
             'col':                { v: 'col', h: '<div class="col">', k: 'col column grid layout cell',
                                     d: _sdT('A column inside a row. Its width is set per screen size, in twelfths of the row.') },
             // HTML elements
-            's:section':          { h: '<section>', k: 'section block html5 semantic',
+            's:section':          { v: 'section', h: '<section>', k: 'section block html5 semantic',
                                     d: _sdT('A part of the page about one subject, usually with its own heading: About Us, Services.') },
-            's:article':          { h: '<article>', k: 'article post entry html5 semantic',
+            's:article':          { v: 'article', h: '<article>', k: 'article post entry html5 semantic',
                                     d: _sdT('Content that stands on its own: a blog post, a news item, a comment.') },
-            's:main':             { h: '<main>', k: 'main content html5 semantic',
+            's:main':             { v: 'main', h: '<main>', k: 'main content html5 semantic',
                                     d: _sdT('The main content of the page. Use it once per page.') },
-            's:header':           { h: '<header>', k: 'header top masthead html5 semantic',
+            's:header':           { v: 'header', h: '<header>', k: 'header top masthead html5 semantic',
                                     d: _sdT('The top of a page or a section: logo, title, menu.') },
-            's:footer':           { h: '<footer>', k: 'footer bottom html5 semantic',
+            's:footer':           { v: 'footer', h: '<footer>', k: 'footer bottom html5 semantic',
                                     d: _sdT('The bottom of a page or a section: contact details, copyright, links.') },
-            's:aside':            { h: '<aside>', k: 'aside sidebar html5 semantic',
+            's:aside':            { v: 'aside', h: '<aside>', k: 'aside sidebar html5 semantic',
                                     d: _sdT('Content beside the main content, such as a sidebar.') },
-            's:nav':              { h: '<nav>', k: 'nav navigation menu links html5 semantic',
+            's:nav':              { v: 'nav', h: '<nav>', k: 'nav navigation menu links html5 semantic',
                                     d: _sdT('A group of navigation links, such as a menu.') },
-            's:div':              { h: '<div>', k: 'div box block wrapper group container element',
+            's:div':              { v: 'div', h: '<div>', k: 'div box block wrapper group container element',
                                     d: _sdT('A plain box with no meaning of its own, for grouping and styling elements.') },
-            's:pre':              { h: '<pre><code>', k: 'pre code block snippet preformatted',
+            's:pre':              { v: 'pre', h: '<pre><code>', k: 'pre code block snippet preformatted',
                                     d: _sdT('Text that keeps its spaces and line breaks, with a code element inside: for code samples.') },
-            's:input:text':       { h: '<input type="text">', k: 'input text field textbox control',
+            's:input:text':       { v: 'input-text', h: '<input type="text">', k: 'input text field textbox control',
                                     d: _sdT('A one-line text box on its own, without a label; handy for binding inside a widget.') },
-            's:input:checkbox':   { h: '<input type="checkbox">', k: 'checkbox check tick input control',
+            's:input:checkbox':   { v: 'checkbox', h: '<input type="checkbox">', k: 'checkbox check tick input control',
                                     d: _sdT('A tick box on its own, without a label.') },
-            's:input:radio':      { h: '<input type="radio">', k: 'radio option input control',
+            's:input:radio':      { v: 'radio', h: '<input type="radio">', k: 'radio option input control',
                                     d: _sdT('One option button on its own; buttons with the same name make one choice.') },
-            's:textarea':         { h: '<textarea>', k: 'textarea multiline text control',
+            's:textarea':         { v: 'textarea', h: '<textarea>', k: 'textarea multiline text control',
                                     d: _sdT('A multi-line text box on its own, without a label.') },
-            's:select':           { h: '<select>', k: 'select dropdown option list combobox control',
+            's:select':           { v: 'select', h: '<select>', k: 'select dropdown option list combobox control',
                                     d: _sdT('A drop-down list of choices on its own, without a label.') },
             // Bootstrap components
             'c:navbar':           { v: 'navbar', h: '<nav class="navbar">', k: 'navbar navigation menu header bar',
@@ -74702,39 +74702,39 @@ const StyleDesigner = (function () {
             'c:vstack':           { v: 'vstack', h: '<div class="vstack">', k: 'vstack vertical stack flex column gap',
                                     d: _sdT('Items one under the other with an even gap between them.') },
             // Content
-            't:heading':          { h: '<h1> … <h6>', k: 'heading title headline h1 h2 h3 h4 h5 h6',
+            't:heading':          { v: 'heading', h: '<h1> … <h6>', k: 'heading title headline h1 h2 h3 h4 h5 h6',
                                     d: _sdT('A title, from H1 (the page title, once per page) down to H6.') },
-            't:paragraph':        { h: '<p>', k: 'paragraph text p body copy',
+            't:paragraph':        { v: 'paragraph', h: '<p>', k: 'paragraph text p body copy',
                                     d: _sdT('A block of running text. Links in it are edited in its options.') },
-            't:span':             { h: '<span>', k: 'span inline text word',
+            't:span':             { v: 'span', h: '<span>', k: 'span inline text word',
                                     d: _sdT('A piece of text within a line, for styling a word or a phrase.') },
-            't:image':            { h: '<img>', k: 'image img picture photo graphic',
+            't:image':            { v: 'image', h: '<img>', k: 'image img picture photo graphic',
                                     d: _sdT('A picture from the file manager or from an address.') },
-            's:video':            { h: '<video controls>', k: 'video movie film clip mp4 webm player media',
+            's:video':            { v: 'video', h: '<video controls>', k: 'video movie film clip mp4 webm player media',
                                     d: _sdT('A video from the file manager, with a poster and playback controls. It does not play by itself.') },
-            't:divider':          { h: '<hr>', k: 'divider hr line separator rule',
+            't:divider':          { v: 'divider', h: '<hr>', k: 'divider hr line separator rule',
                                     d: _sdT('A horizontal line.') },
-            't:spacer':           { k: 'spacer gap space margin blank',
+            't:spacer':           { v: 'spacer', k: 'spacer gap space margin blank',
                                     d: _sdT('Empty space of a set height.') },
-            't:custom_html':      { k: 'html code embed raw custom snippet',
+            't:custom_html':      { v: 'custom-html', k: 'html code embed raw custom snippet',
                                     d: _sdT('HTML code of your own, written out as it is.') },
-            't:svg':              { h: '<svg>', k: 'svg vector drawing graphic icon',
+            't:svg':              { v: 'svg', h: '<svg>', k: 'svg vector drawing graphic icon',
                                     d: _sdT('A vector drawing written as SVG code.') },
-            't:custom_php':       { k: 'php code server dynamic custom',
+            't:custom_php':       { v: 'custom-php', k: 'php code server dynamic custom',
                                     d: _sdT('PHP code that runs on the server each time the page is shown.') },
-            't:carousel':         { k: 'carousel slider slideshow gallery images',
+            't:carousel':         { v: 'carousel', k: 'carousel slider slideshow gallery images',
                                     d: _sdT('A slideshow of images.') },
-            't:messages':         { k: 'messages alerts notices errors feedback form',
+            't:messages':         { v: 'messages', k: 'messages alerts notices errors feedback form',
                                     d: _sdT('Where a form shows its messages after it is sent: errors and confirmations.') },
-            't:breadcrumb':       { k: 'breadcrumb path trail navigation',
+            't:breadcrumb':       { v: 'breadcrumb', k: 'breadcrumb path trail navigation',
                                     d: _sdT('The path from the home page to this page, filled in by the site.') },
-            't:variant_attr':     { k: 'variant attribute option size colour color product',
+            't:variant_attr':     { v: 'variant', k: 'variant attribute option size colour color product',
                                     d: _sdT('The choices of a product variant, such as colour or size; repeated for each attribute.') },
-            't:applied_offers':   { k: 'offers discount promotion cart coupon',
+            't:applied_offers':   { v: 'applied-offers', k: 'offers discount promotion cart coupon',
                                     d: _sdT('The offers applied to the cart, for the shopping cart widget.') },
-            't:link':             { h: '<a href="…">', k: 'link a anchor href url hyperlink',
+            't:link':             { v: 'link', h: '<a href="…">', k: 'link a anchor href url hyperlink',
                                     d: _sdT('A clickable link to another page, a file or an address.') },
-            't:icon':             { h: '<i class="bi …">', k: 'icon bi glyph symbol bootstrap icons',
+            't:icon':             { v: 'icon', h: '<i class="bi …">', k: 'icon bi glyph symbol bootstrap icons',
                                     d: _sdT('An icon from the Bootstrap Icons set.') },
             // Form fields (label + control)
             'f:text':             { h: '<input type="text">', k: 'input text field textbox',
@@ -75263,6 +75263,135 @@ const StyleDesigner = (function () {
                 var out = R(0, 0, 200, 110, W);
                 [10, 42, 74].forEach(function (y) { out += R(40.5, y + .5, 119, 25, LG, 0, B) + L(50, y + 11, 60); });
                 return out;
+            },
+            // HTML elements: the element is the dashed blue frame, the page
+            // around it stays grey.
+            'section': function () {
+                return R(0, 0, 200, 110, W) + R(10, 6, 180, 14, G, 3) + R(10.5, 26.5, 179, 57, PL, 4, P, DASH) +
+                    Hd(22, 36, 64) + L(22, 50, 150) + L(22, 58, 132) + L(22, 66, 144) + R(10, 90, 180, 14, G, 3);
+            },
+            'article': function () {
+                return R(0, 0, 200, 110, LG) + R(30.5, 6.5, 139, 97, W, 4, P, DASH) + Hd(40, 15, 84) + L(40, 27, 36, S) +
+                    Pic(40, 38, 50, 34) + L(98, 40, 62) + L(98, 48, 54) + L(98, 56, 60) + L(98, 64, 40) + L(40, 82, 120) + L(40, 90, 96);
+            },
+            'main': function () {
+                return R(0, 0, 200, 110, W) + R(0, 0, 200, 16, G) + R(10, 5, 24, 6, T, 2) + R(10.5, 22.5, 179, 66, W, 4, P, DASH) +
+                    Hd(22, 31, 70) + L(22, 45, 150) + L(22, 53, 136) + R(22, 63, 70, 18, G, 3) + R(98, 63, 80, 18, G, 3) + R(0, 94, 200, 16, G);
+            },
+            'header': function () {
+                return R(0, 0, 200, 110, W) + R(4.5, 4.5, 191, 30, PL, 4, P, DASH) + R(14, 15, 28, 9, P, 2) +
+                    L(100, 17.5, 18, P) + L(124, 17.5, 22, P) + L(152, 17.5, 16, P) + Hd(14, 48, 80, T) +
+                    L(14, 62, 170, G) + L(14, 70, 150, G) + R(14, 82, 82, 22, G, 3) + R(104, 82, 82, 22, G, 3);
+            },
+            'footer': function () {
+                var out = R(0, 0, 200, 110, W) + Hd(14, 8, 80, T) + L(14, 22, 170, G) + L(14, 30, 150, G) +
+                    R(4.5, 44.5, 191, 61, '#212529', 4, P, DASH);
+                [16, 76, 136].forEach(function (x) { out += L(x, 56, 34, W) + L(x, 66, 44, S) + L(x, 74, 38, S) + L(x, 82, 40, S); });
+                return out + R(16, 93, 168, 1, '#495057') + L(16, 97, 50, '#495057');
+            },
+            'aside': function () {
+                return R(0, 0, 200, 110, W) + Hd(10, 12, 70, T) + L(10, 26, 112, G) + L(10, 34, 104, G) + L(10, 42, 112, G) +
+                    R(10, 54, 112, 46, G, 3) + R(132.5, 8.5, 59, 93, PL, 4, P, DASH) + L(141, 18, 30, D) +
+                    L(141, 32, 40, P) + L(141, 42, 34, P) + L(141, 52, 42, P) + L(141, 62, 28, P);
+            },
+            'nav': function () {
+                return R(0, 0, 200, 110, W) + R(14.5, 40.5, 171, 29, PL, 4, P, DASH) + L(28, 53, 26, P) + L(66, 53, 30, P) +
+                    L(108, 53, 22, P) + L(142, 53, 30, P) + R(28, 59, 26, 1.4, P) + L(14, 84, 120, G) + L(14, 92, 90, G);
+            },
+            'div': function () {
+                return R(0, 0, 200, 110, W) + R(30.5, 14.5, 139, 81, 'none', 4, P, DASH) + R(42, 26, 116, 24, G, 3) + R(42, 58, 116, 26, G, 3);
+            },
+            'pre': function () {
+                return R(0, 0, 200, 110, W) + R(20, 14, 160, 82, '#212529', 5) + L(32, 28, 40, '#6ea8fe') + L(76, 28, 60, '#adb5bd') +
+                    L(44, 40, 52, '#ffc107') + L(100, 40, 44, '#75b798') + L(56, 52, 72, '#adb5bd') + L(56, 64, 50, '#75b798') +
+                    L(44, 76, 30, '#ffc107') + L(32, 88, 12, '#6ea8fe');
+            },
+            'input-text': function () {
+                return R(0, 0, 200, 110, W) + R(30.5, 42.5, 139, 25, W, 4, T) + L(40, 53, 60, T) + R(104, 48, 1.4, 14, D);
+            },
+            'checkbox': function () {
+                return R(0, 0, 200, 110, W) + R(62, 30, 18, 18, P, 4) + Pa('M66 39l4 4 7 -8', W, 2) + L(88, 37, 50, D) +
+                    R(62.5, 62.5, 17, 17, W, 4, T) + L(88, 69, 40, D);
+            },
+            'radio': function () {
+                return R(0, 0, 200, 110, W) + C(71, 39, 8.5, W, P, ' stroke-width="1.5"') + C(71, 39, 4, P) + L(88, 37, 50, D) +
+                    C(71, 71, 8.5, W, T, ' stroke-width="1.5"') + L(88, 69, 40, D);
+            },
+            'textarea': function () {
+                return R(0, 0, 200, 110, W) + R(30.5, 16.5, 139, 77, W, 4, T) + L(40, 27, 110, S) + L(40, 36, 96, S) +
+                    L(40, 45, 104, S) + L(40, 54, 60, S) + Pa('M156 89l9 -9M161 89l4 -4', '#adb5bd', 1.2);
+            },
+            'select': function () {
+                return R(0, 0, 200, 110, W) + R(40.5, 10.5, 119, 23, W, 4, T) + L(50, 20, 56, D) + Chev(146, 22) +
+                    R(40.5, 37.5, 119, 62, W, 4, B) + L(50, 46, 60, D) + R(41, 55, 118, 14, P) + L(50, 60, 48, W) + L(50, 76, 70, D) + L(50, 88, 52, D);
+            },
+            // Content
+            'heading': function () {
+                return R(0, 0, 200, 110, W) + Tx(18, 29, 'H1', 10, S) + R(42, 18, 128, 13, D, 3) + Tx(18, 55, 'H2', 10, S) +
+                    R(42, 45, 104, 10, D, 3) + Tx(18, 79, 'H3', 10, S) + Hd(42, 71, 84) + L(42, 90, 120) + L(42, 98, 96);
+            },
+            'paragraph': function () {
+                return R(0, 0, 200, 110, W) + L(24, 28, 152) + L(24, 37, 144) + L(24, 46, 40) + L(68, 46, 34, P) + R(68, 51, 34, 1.2, P) +
+                    L(106, 46, 70) + L(24, 55, 148) + L(24, 64, 150) + L(24, 73, 132) + L(24, 82, 80);
+            },
+            'span': function () {
+                return R(0, 0, 200, 110, W) + L(18, 44, 44) + R(66, 38, 60, 16, PL, 3, P, DASH) + L(72, 44, 48, P) + L(130, 44, 52) +
+                    L(18, 62, 150) + L(18, 71, 110);
+            },
+            'image': function () {
+                return R(0, 0, 200, 110, W) + Pic(30, 10, 140, 90);
+            },
+            'video': function () {
+                return R(0, 0, 200, 110, W) + Pic(30, 8, 140, 80, '#495057', '#343a40') + C(100, 46, 14, W, '', ' fill-opacity=".9"') +
+                    Pa('M96 39v14l11 -7z', '', 0, D) + R(30, 88, 140, 14, '#212529') + Pa('M37 91.5v7l5.5 -3.5z', '', 0, W) +
+                    R(50, 94, 90, 2, '#6c757d', 1) + R(50, 94, 34, 2, W, 1) + R(146, 92, 16, 6, '#6c757d', 2);
+            },
+            'spacer': function () {
+                return R(0, 0, 200, 110, W) + R(30, 8, 140, 22, G, 3) + R(30.5, 36.5, 139, 37, 'none', 3, '#adb5bd', DASH) +
+                    Pa('M100 42v25M100 42l-3 4M100 42l3 4M100 67l-3 -4M100 67l3 -4', S, 1.2) + R(30, 80, 140, 22, G, 3);
+            },
+            'custom-html': function () {
+                return R(0, 0, 200, 110, W) + R(40.5, 20.5, 119, 69, LG, 5, B) + Tx(100, 63, '&lt;/&gt;', 24, P, 'middle');
+            },
+            'svg': function () {
+                return R(0, 0, 200, 110, W) + C(64, 55, 22, PL, P, ' stroke-width="1.5"') +
+                    Pa('M96 78L118 34L140 78Z', '#198754', 1.5, '#d1e7dd') + Pa('M150 74C156 30 176 30 182 74', D, 1.5) +
+                    R(147, 71, 6, 6, W, 0, D) + R(179, 71, 6, 6, W, 0, D) + C(166, 36, 2.5, D);
+            },
+            'custom-php': function () {
+                return R(0, 0, 200, 110, W) + R(30, 18, 140, 74, '#212529', 5) + Tx(42, 40, '&lt;?php', 11, '#a370f7') +
+                    L(54, 52, 64, '#adb5bd') + L(54, 62, 44, '#ffc107') + L(54, 72, 76, '#adb5bd') + Tx(42, 86, '?&gt;', 11, '#a370f7');
+            },
+            'messages': function () {
+                return R(0, 0, 200, 110, W) + R(20.5, 14.5, 159, 34, '#d1e7dd', 5, '#a3cfbb') + Pa('M31 31l4 4 7 -8', '#0f5132', 2) +
+                    L(50, 29, 100, '#0f5132') + R(20.5, 58.5, 159, 34, '#f8d7da', 5, '#f1aeb5') + C(36, 75.5, 6.5, '#842029') +
+                    Pa('M33.5 73l5 5M38.5 73l-5 5', '#f8d7da', 1.4) + L(50, 73, 110, '#842029');
+            },
+            'variant': function () {
+                var out = R(0, 0, 200, 110, W) + L(30, 18, 40, D) + C(38, 38, 8, D) + C(60, 38, 8, '#dc3545') + C(82, 38, 8, P) +
+                    C(38, 38, 11, 'none', P, ' stroke-width="1.5"') + L(30, 62, 30, D);
+                [30, 62, 94, 126].forEach(function (x, i) {
+                    out += R(x + .5, 72.5, 27, 19, i === 1 ? PL : W, 4, i === 1 ? P : T) + L(x + 8, 80, 12, i === 1 ? P : S);
+                });
+                return out;
+            },
+            'applied-offers': function () {
+                function tag(x, y) {
+                    return Pa('M' + x + ' ' + y + 'h12l6 6 -6 6h-12z', '#198754', 1.3, '#d1e7dd') + C(x + 13, y + 6, 1.5, '#198754');
+                }
+                return R(0, 0, 200, 110, W) + R(20.5, 10.5, 159, 89, W, 4, B) + L(32, 22, 80, D) + L(140, 22, 28, D) + R(21, 34, 158, 1, B) +
+                    tag(32, 41) + L(56, 45, 70, '#198754') + L(140, 45, 28, '#198754') + tag(32, 61) + L(56, 65, 56, '#198754') +
+                    L(140, 65, 28, '#198754') + R(21, 80, 158, 1, B) + Hd(32, 86, 40) + Hd(134, 86, 34);
+            },
+            'link': function () {
+                return R(0, 0, 200, 110, W) + L(24, 44, 50) + L(80, 44, 60, P) + R(80, 50, 60, 1.4, P) + L(146, 44, 30) + L(24, 62, 130) +
+                    Pa('M118 54v18l4.5 -4.5 3.5 7 3 -1.5 -3.5 -7h6z', D, 1.1, W);
+            },
+            'icon': function () {
+                return R(0, 0, 200, 110, W) +
+                    Pa('M58 36l5.3 10.8 11.9 1.7 -8.6 8.4 2 11.8 -10.6 -5.6 -10.6 5.6 2 -11.8 -8.6 -8.4 11.9 -1.7z', P, 1.2, P) +
+                    Pa('M100 70c-14 -9 -18 -16 -18 -22a9 9 0 0 1 18 -3a9 9 0 0 1 18 3c0 6 -4 13 -18 22z', '#dc3545', 1.2, '#dc3545') +
+                    C(146, 53, 15, '#198754') + Pa('M139 53l5 5 9 -10', W, 2.2);
             }
         };
         if (!draw[key]) return '';

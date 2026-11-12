@@ -449,6 +449,7 @@
 - palette-block-info.md: Blocks hover card: the one-line description of every ready-made block (core in _sdBlockInfo, family in its item's desc), how a line is written, the test that holds a new block to it
 - palette-block-sketch.md: Visual Page Editor Blocks list hover card: the block drawn from the tree its build returns (_sdBlockSketch), what each node becomes, what is left out, the cache, the test, the known limits
 - palette-component-atomic.md: Palette components explode into a node tree; only btn, badge (atomic) and language_switcher (per request) carry render/toHTML; the two button models, their panel, children in a component button.
+- palette-component-drawings.md: The Components tab's hover card drawings (_sdPalDrawing): which rows have one, the drawing key v in _sdPalInfo(), the drawing style, the test that fails for a row without one
 - palette-component-rules.md: Rules for a new designer palette component: the full guide, no script or stylesheet, render equals toHTML, tree by default, inline style, cssClass vs _attrs, grid, canDrop, accessibility, registration
 - palette-insert-at-selection.md: Where a palette double-click or command palette insert lands: in the selection, else beside it (in a widget too), where the operator may edit, wrapped as a drop; widgets stop at a system widget.
 - palette-lists-keyboard.md: Palette lists from the keyboard: focusable rows Enter/Space insert, header toggle buttons with aria-expanded, named search boxes, reachable bulk box, tip card on focus
