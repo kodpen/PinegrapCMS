@@ -38,5 +38,5 @@ description: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry an
 
 ## Which questions are open?
 - Each is asked as an `architect` issue before the step that needs it.
-- PK7: is the previous editor (TinyMCE 3) bridged to the picker, or does it keep its own lists until it is removed?
-- PK7: do the two retired browser addresses answer with a redirect for one release, or go at once?
+- PK7: is the previous editor (TinyMCE 3) bridged to the picker, or does it keep its own lists until it is removed? Asked in #8835.
+- PK7: do the two retired browser addresses answer with a redirect for one release, or go at once? Asked in #8836 (the designer still opens both until PK8).
