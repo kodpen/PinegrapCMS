@@ -1900,6 +1900,7 @@ function get_system_status_checks()
         'e-Fatura Threshold'       => 'e-Fatura',
         'WebP At Own Address'      => 'WebP',
         'Object Storage'           => 'Storage',
+        'Canvas Drawing'           => 'Canvas',
     );
 
     // The three checks that answer "can someone get in": files that have been
@@ -3143,6 +3144,67 @@ function get_system_status_checks()
                 'Browsers that read WebP get a lighter WebP copy of each JPEG and PNG at its own address; every other reader gets the original.',
                 lang('On'),
                 $webp_href
+            );
+        }
+    }
+
+    // 🎨 Canvas drawing (includes/fn/image_draw.php)
+    //
+    // Reported, not scored: a canvas an agent writes is drawn by a member's
+    // browser wherever the server cannot draw it, so nothing is broken without
+    // it. The probe behind it runs once per PHP / Imagick build and is kept
+    // in data/temp, so this tile does not draw anything on its own. Yellow only
+    // while drawing is paused after a drawing that never finished.
+    if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && is_file(PG_FUNCTIONS_DIR . '/includes/fn/image_draw.php')) {
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_draw.php');
+
+        $draw_can = pg_image_draw_can();
+
+        if (!empty($draw_can['paused'])) {
+            $output .= $makeIcon(
+                'bi-palette-fill',
+                'fg-warning',
+                'Canvas Drawing',
+                'A canvas drawing on this server did not finish, so the server draws no canvas for a day. Members\' browsers draw the canvases agents write until then.',
+                lang('Paused')
+            );
+        } elseif (empty($draw_can['shapes'])) {
+            $output .= $makeIcon(
+                'bi-palette-fill',
+                'fg-secondary',
+                'Canvas Drawing',
+                'This server does not draw canvases itself: Imagick is missing or does not draw the test pictures faithfully. Members\' browsers draw the canvases agents write.',
+                lang('Off')
+            );
+        } else {
+            $draw_detail = array();
+            $draw_parts = array(
+                'Shapes'   => !empty($draw_can['shapes']),
+                'Text'     => !empty($draw_can['text']),
+                'Icons'    => !empty($draw_can['icons']),
+                'Pictures' => !empty($draw_can['pictures']),
+                'SVG'      => !empty($draw_can['svg']),
+            );
+
+            foreach ($draw_parts as $draw_part => $draw_drawn) {
+                $draw_detail[] = array(
+                    'label' => lang($draw_part) . ((($draw_part === 'Pictures') && $draw_drawn) ? ' (' . strtoupper(implode(', ', $draw_can['pictures'])) . ')' : ''),
+                    'state' => $draw_drawn ? 'ok' : 'info',
+                    'when'  => $draw_drawn ? lang('Drawn by the server') : lang('Left to browsers'),
+                );
+            }
+
+            $draw_detail[] = array('label' => $draw_can['engine'], 'state' => 'info', 'when' => '');
+
+            $output .= $makeIcon(
+                'bi-palette-fill',
+                'fg-success',
+                'Canvas Drawing',
+                'This server draws the canvases agents write at once, wherever it draws every part of one faithfully. A member\'s browser then draws each again with the image editor.',
+                lang('On'),
+                '',
+                $draw_detail
             );
         }
     }

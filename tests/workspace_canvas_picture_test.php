@@ -56,3 +56,27 @@ function test_workspace_canvas_read_pending_source()
 	$row2 = array('version_no' => 2, 'source' => 'new', 'user_id' => 1, 'created_at' => 6);
 	pg_assert_same('drawn', ws_canvas_read($doc, array($row, $row2))['picture'], 'a person saved it since');
 }
+
+// The server's picture is a mark of its own: the canvas no longer waits,
+// but a browser that shows it draws it again, and the address changes once
+// it has.
+function test_workspace_canvas_doc_mark_server()
+{
+	$doc = array('v' => 1, 'artboard' => array('width' => 10, 'height' => 10), 'picture' => 'server');
+
+	pg_assert_same('server', ws_canvas_doc_mark($doc, 'agent'), 'agent, drawn by the server');
+	pg_assert_same('server', ws_canvas_doc_mark(json_decode(json_encode($doc)), 'agent'), 'object decode');
+	pg_assert_false(ws_canvas_doc_pending($doc, 'agent'), 'not pending');
+	pg_assert_same('', ws_canvas_doc_mark($doc, 'saved'), 'a person\'s save');
+	pg_assert_same('pending', ws_canvas_doc_mark(array('picture' => 'pending') + $doc, 'agent'), 'pending');
+	pg_assert_same('', ws_canvas_doc_mark(array('picture' => 'other') + $doc, 'agent'), 'an unknown mark');
+	pg_assert_same('', ws_canvas_doc_mark(array('picture' => array('server')) + $doc, 'agent'), 'no string');
+
+	pg_assert_same('/f/a.png?v=2s', ws_canvas_picture_url('/f/a.png', array('version_no' => 2, 'pending' => false, 'server' => true)), 'the server\'s picture');
+	pg_assert_same('/f/a.png?v=2p', ws_canvas_picture_url('/f/a.png', array('version_no' => 2, 'pending' => true, 'server' => false)), 'pending wins');
+	pg_assert_same('/f/a.png?v=2', ws_canvas_picture_url('/f/a.png', array('version_no' => 2, 'pending' => false, 'server' => false)), 'a browser\'s picture');
+
+	$read = ws_canvas_read($doc + array('layers' => array()), array(array('version_no' => 1, 'source' => 'agent', 'user_id' => 1, 'created_at' => 5)));
+
+	pg_assert_same('drawn', $read['picture'], 'the read says drawn');
+}

@@ -302,20 +302,40 @@ function ws_canvas_js_strings()
  */
 function ws_canvas_doc_pending($doc, $source)
 {
+    return ws_canvas_doc_mark($doc, $source) === 'pending';
+}
+
+/**
+ * The mark of an agent's canvas version: pending (its picture is blank
+ * until a browser draws it), server (the server drew it,
+ * includes/workspace/canvas_draw.php; a browser that shows it draws it
+ * again and its picture replaces the server's) or '' (a browser drew it,
+ * or the version is a person's). Pure.
+ *
+ * @param mixed  $doc    decoded as arrays or objects
+ * @param string $source the version row's source
+ * @return string
+ */
+function ws_canvas_doc_mark($doc, $source)
+{
     if (is_object($doc)) {
         $doc = json_decode(json_encode($doc), true);
     }
 
-    return ((string) $source === 'agent') && is_array($doc) && (($doc['picture'] ?? '') === 'pending');
+    $mark = (is_array($doc) && isset($doc['picture'])) ? $doc['picture'] : '';
+
+    return (((string) $source === 'agent') && in_array($mark, array('pending', 'server'), true)) ? $mark : '';
 }
 
 /**
  * The address a canvas's picture is shown under in the conversation: the
  * file's address with its version, so a browser that kept the blank picture
- * (or an older one) asks again once the picture is drawn. Pure.
+ * (or an older one, or the server's) asks again once the picture is drawn.
+ * Pure.
  *
  * @param string     $url     the file's address
- * @param array|null $newest  version_no and pending of the newest version, or null
+ * @param array|null $newest  version_no, pending and server of the newest
+ *                            version, or null
  * @return string
  */
 function ws_canvas_picture_url($url, $newest)
@@ -324,16 +344,19 @@ function ws_canvas_picture_url($url, $newest)
         return (string) $url;
     }
 
-    return $url . ((strpos((string) $url, '?') === false) ? '?' : '&') . 'v=' . (int) $newest['version_no'] . (!empty($newest['pending']) ? 'p' : '');
+    $mark = !empty($newest['pending']) ? 'p' : (!empty($newest['server']) ? 's' : '');
+
+    return $url . ((strpos((string) $url, '?') === false) ? '?' : '&') . 'v=' . (int) $newest['version_no'] . $mark;
 }
 
 /**
  * The newest version of a message's canvas as the conversation needs it:
- * its number and whether its picture waits for a browser. One query; null
- * for a picture with no kept document.
+ * its number, whether its picture waits for a browser (pending) and
+ * whether the server drew it (server: a browser draws it again). One
+ * query; null for a picture with no kept document.
  *
  * @param int $file_id
- * @return array|null version_no, pending
+ * @return array|null version_no, pending, server, edited_by
  */
 function ws_canvas_message_state($file_id)
 {
@@ -346,6 +369,7 @@ function ws_canvas_message_state($file_id)
     // document. Whether an earlier version is there tells an edit from
     // the version the agent made the canvas with.
     $row = db_item("SELECT version_no, source, doc_json <> '' AS has_doc, doc_json LIKE '%\"picture\":\"pending\"%' AS marked,
+            doc_json LIKE '%\"picture\":\"server\"%' AS served,
             IF(source = 'agent', SUBSTRING(doc_json, LOCATE('\"by\":{', doc_json), 300), '') AS by_part,
             (SELECT COUNT(*) FROM file_versions AS older WHERE older.file_id = file_versions.file_id AND older.version_no < file_versions.version_no) AS earlier
         FROM file_versions WHERE file_id = '" . (int) $file_id . "' ORDER BY version_no DESC LIMIT 1");
@@ -359,6 +383,7 @@ function ws_canvas_message_state($file_id)
     return array(
         'version_no' => (int) $row['version_no'],
         'pending'    => !empty($row['marked']) && $agent,
+        'server'     => empty($row['marked']) && !empty($row['served']) && $agent,
         'edited_by'  => ($agent && ((int) $row['earlier'] > 0)) ? ws_canvas_by_handle((string) $row['by_part']) : '',
     );
 }
@@ -481,13 +506,13 @@ function ws_canvas_undo($viewer, $message, $version)
  * The picture a member's browser drew of a pending canvas (action
  * canvas_picture of workspace_file_save.php), taken once: only while the
  * newest version is the one drawn ($version), is an agent's and is still
- * pending, the file still the blank picture of that version, and only from
- * a member who may write in the channel. The PNG must be the artboard's
- * size (ws_canvas_picture()). It is written over the message's file in
- * place (same file, same address) and over the version's copy, and the
- * version's document loses the mark, so the canvas opens with its layers as
- * before and the read says drawn. The first browser wins the conditional
- * UPDATE; any other is answered 409.
+ * pending or drawn by the server, the file still the picture of that
+ * version, and only from a member who may write in the channel. The PNG
+ * must be the artboard's size (ws_canvas_picture()). It is written over the
+ * message's file in place (same file, same address) and over the version's
+ * copy, and the version's document loses the mark, so the canvas opens with
+ * its layers as before and the read says drawn. The first browser wins the
+ * conditional UPDATE; any other is answered 409.
  *
  * @param array  $viewer
  * @param array  $message ws_messages row
@@ -519,7 +544,7 @@ function ws_canvas_picture_take($viewer, $message, $channel, $version, $picture)
     $newest = ($stored !== '') ? pg_file_versions_newest($file_id) : null;
     $doc = $newest ? json_decode((string) $newest['doc_json'], true) : null;
 
-    if (!$newest || ((int) $newest['version_no'] !== (int) $version) || !ws_canvas_doc_pending($doc, $newest['source'])
+    if (!$newest || ((int) $newest['version_no'] !== (int) $version) || (ws_canvas_doc_mark($doc, $newest['source']) === '')
         || !pg_file_versions_matches_file($newest, pg_file_local_copy($file_id))) {
         return $refuse(lang('Invalid request.'), 409);
     }
@@ -538,7 +563,7 @@ function ws_canvas_picture_take($viewer, $message, $channel, $version, $picture)
         return $refuse(lang('Invalid request.'), 422);
     }
 
-    // The claim: only the browser whose UPDATE finds the pending document
+    // The claim: only the browser whose UPDATE finds the marked document
     // writes the picture.
     $claimed = db_q("UPDATE file_versions SET doc_json = ?, doc_hash = ?, size = ? WHERE version_id = ? AND doc_hash = ?", array(
         $json, sha1($json), strlen($png['data']), (int) $newest['version_id'], (string) $newest['doc_hash']));
@@ -548,7 +573,7 @@ function ws_canvas_picture_take($viewer, $message, $channel, $version, $picture)
     }
 
     if (!pg_image_editor_put(pg_file_versions_path($newest), $png['data']) || !pg_image_editor_put($path, $png['data'])) {
-        // Pending again, so another browser may try; the blank picture is
+        // Marked again, so another browser may try; the picture before is
         // put back where it was already written over.
         db_q("UPDATE file_versions SET doc_json = ?, doc_hash = ?, size = ? WHERE version_id = ?", array(
             (string) $newest['doc_json'], (string) $newest['doc_hash'], (int) $newest['size'], (int) $newest['version_id']));

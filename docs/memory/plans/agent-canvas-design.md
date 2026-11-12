@@ -9,7 +9,7 @@ description: Plan (owner 2026-11-11, #8762): an agent makes a design on the Work
 
 ## What is there today?
 - An agent sends one SVG and gets a canvas with one imported `svg` layer (`workspace/agent-canvas-svg.md`). It reads any canvas of its channel and edits it with at most 20 operations: add an SVG, replace, remove, an existing text layer's words, a box, the whole canvas anew (`agent-canvas-edit.md`). The assistants have the same as tools (`agent-canvas-assistants.md`).
-- The picture is drawn by the first browser of a member who may post (`agent-canvas-picture.md`); the server never rasterises SVG.
+- The picture is drawn by the first browser of a member who may post (`agent-canvas-picture.md`); since CV6 the server draws it first where its Imagick can (`platform/image-server-draw.md`).
 - The trial of 2026-11-11 (a chart sent as one SVG) showed the gap: the result is one piece. A person who opens it cannot change a title's words or move one bar without Break apart, and the agent cannot name a part to change it.
 - The editor has what a design needs (`ui/image-editor-overview.md`): text layers with the font catalogue, pictures, shapes, icons, scenes, Present, export.
 

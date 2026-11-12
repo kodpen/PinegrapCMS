@@ -8,9 +8,10 @@
  * with M.svgRoot(), M.svgIdMap(), M.svgRenameValue() and M.svgRenameCss() of
  * pg_image_editor_model.js ported here): an artboard from the root's width,
  * height and view box within the editor's sizes, one imported svg layer
- * covering it. The server never rasterises SVG: the canvas's file starts as
- * a blank picture of the artboard's fill, and the document is marked
- * picture: pending until a member's browser draws it.
+ * covering it. The canvas's file starts as a blank picture of the
+ * artboard's fill and the document is marked picture: pending; the server
+ * draws it at once where it can (canvas_draw.php, marked picture: server),
+ * and a member's browser draws it otherwise, or again over the server's.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
