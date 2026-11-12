@@ -249,3 +249,38 @@ function test_workspace_agent_save_check()
 	pg_assert_true($kept['ok'], $kept['error']);
 	pg_assert_same(array('claude', 'claude', 'push', $claude['door_url'], 'paused'), array($kept['values']['kind'], $kept['values']['handle'], $kept['values']['door_kind'], $kept['values']['door_url'], $kept['values']['status']), 'Claude keeps its kind, handle and door');
 }
+
+function test_workspace_agent_seen_once_a_minute()
+{
+	pg_assert_true(ws_agent_seen_due(0, 1700000000), 'never seen: written');
+	pg_assert_true(!ws_agent_seen_due(1700000000, 1700000059), 'within the minute: not written again');
+	pg_assert_true(ws_agent_seen_due(1700000000, 1700000060), 'a minute later: written');
+	pg_assert_same(0, ws_agent_shape(array('id' => 3))['seen_at'], 'a site before the step reads 0');
+	pg_assert_same(1700000000, ws_agent_shape(array('seen_at' => '1700000000'))['seen_at']);
+}
+
+function test_workspace_agent_seen_words()
+{
+	$now = 1700000000;
+	$poll = array('kind' => 'app', 'door_kind' => 'poll');
+
+	pg_assert_same(array('label' => lang('Not seen yet'), 'not_seen' => true), ws_agent_seen_words($poll + array('seen_at' => 0), $now));
+	pg_assert_same(array('label' => lang('Last seen a moment ago'), 'not_seen' => false), ws_agent_seen_words($poll + array('seen_at' => $now - 20), $now));
+	pg_assert_same(array('label' => lang(array('string' => 'Last seen {var:1} min ago', 'vars' => 2)), 'not_seen' => false), ws_agent_seen_words($poll + array('seen_at' => $now - 150), $now));
+	pg_assert_true(!ws_agent_seen_words($poll + array('seen_at' => $now - 599), $now)['not_seen'], 'under ten minutes');
+	pg_assert_true(ws_agent_seen_words($poll + array('seen_at' => $now - 600), $now)['not_seen'], 'ten minutes: not seen');
+	pg_assert_same(lang(array('string' => 'Last seen {var:1} h ago', 'vars' => 3)), ws_agent_seen_words($poll + array('seen_at' => $now - 3 * 3600 - 5), $now)['label']);
+	pg_assert_same(lang(array('string' => 'Last seen {var:1}', 'vars' => date('d.m.Y H:i', $now - 2 * 86400))), ws_agent_seen_words($poll + array('seen_at' => $now - 2 * 86400), $now)['label'], 'older: the date');
+
+	pg_assert_same(array('label' => '', 'not_seen' => false), ws_agent_seen_words(array('kind' => 'app', 'door_kind' => 'push', 'seen_at' => 0), $now), 'a push agent keeps its knocks');
+	pg_assert_same(array('label' => '', 'not_seen' => false), ws_agent_seen_words(array('kind' => 'model', 'door_kind' => 'poll', 'seen_at' => 0), $now), 'a model agent is run by the site');
+}
+
+function test_workspace_agent_caller_marks_seen()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_agent_requests.php');
+	$caller = substr($source, strpos($source, 'function ws_api_agent_caller('));
+	$caller = substr($caller, 0, strpos($caller, "\n}\n"));
+
+	pg_assert_contains('ws_agent_seen_mark((array) $row);', $caller, 'every call with the agent\'s key marks it seen');
+}

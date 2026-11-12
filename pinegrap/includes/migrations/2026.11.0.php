@@ -178,6 +178,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_mail_send();            // 11.0.185
 	upgrade_2026_11_0_design_color_mode();       // 11.0.186
 	upgrade_2026_11_0_legacy_design_key();       // 11.0.187
+	upgrade_2026_11_0_ws_agent_seen();           // 11.0.189
 
 }
 
@@ -6007,5 +6008,31 @@ function upgrade_2026_11_0_legacy_design_key() {
 				WHERE shared_components.category = CONCAT('classic_style:', style.style_id))");
 
 	install_note('Visual Page Editor: classic styles moved into the editor are marked Legacy on the Visual Designs screen; they look and work as before.');
+
+}
+
+
+// An agent's last seen and an application's tick (11.0.189;
+// includes/workspace/agents.php and the checklist routes).
+// ws_agents.seen_at is the time of the agent's last call with its own key,
+// written at most once a minute, 0 for an agent never seen. ws_checks.app_id
+// is the application that set a checklist tick, 0 when a person did
+// (user_id). Both default to 0, so existing rows read as never seen and
+// ticked by a person.
+function upgrade_2026_11_0_ws_agent_seen() {
+
+	if (install_table_exists('ws_agents')) {
+		install_add_column('ws_agents', 'seen_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	} else {
+		install_skipped('ws_agents does not exist, skipped');
+	}
+
+	if (install_table_exists('ws_checks')) {
+		install_add_column('ws_checks', 'app_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	} else {
+		install_skipped('ws_checks does not exist, skipped');
+	}
+
+	install_note('Workspace: the Agents card and a channel\'s agents show when each agent last called the site with its key; a checklist line can say which application ticked it.');
 
 }
