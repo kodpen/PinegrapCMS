@@ -23,4 +23,4 @@ module: design_themes
 - Minimal and Plain Bootstrap draw alike: their rows differ only by a 5 or 6 px button corner.
 - A new look needs only its `preview` row; a new preview key is drawn once both twins read it.
 
-Added in P2 of [[designer-palette-drawings]] (PR #8731).
+Added in PR #8731.

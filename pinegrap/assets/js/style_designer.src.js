@@ -74737,89 +74737,144 @@ const StyleDesigner = (function () {
             't:icon':             { v: 'icon', h: '<i class="bi …">', k: 'icon bi glyph symbol bootstrap icons',
                                     d: _sdT('An icon from the Bootstrap Icons set.') },
             // Form fields (label + control)
-            'f:text':             { h: '<input type="text">', k: 'input text field textbox',
+            'f:text':             { v: 'f-text', h: '<input type="text">', k: 'input text field textbox',
                                     d: _sdT('A one-line text field with its label.') },
-            'f:email':            { h: '<input type="email">', k: 'email mail input',
+            'f:email':            { v: 'f-email', h: '<input type="email">', k: 'email mail input',
                                     d: _sdT('An email address field with its label; the browser checks the format.') },
-            'f:tel':              { h: '<input type="tel">', k: 'tel phone telephone mobile input',
+            'f:tel':              { v: 'f-tel', h: '<input type="tel">', k: 'tel phone telephone mobile input',
                                     d: _sdT('A phone number field with its label; phones show the number pad.') },
-            'f:number':           { h: '<input type="number">', k: 'number numeric integer input',
+            'f:number':           { v: 'f-number', h: '<input type="number">', k: 'number numeric integer input',
                                     d: _sdT('A field that takes numbers only.') },
-            'f:url':              { h: '<input type="url">', k: 'url link website address input',
+            'f:url':              { v: 'f-url', h: '<input type="url">', k: 'url link website address input',
                                     d: _sdT('A web address field with its label.') },
-            'f:password':         { h: '<input type="password">', k: 'password secret input',
+            'f:password':         { v: 'f-password', h: '<input type="password">', k: 'password secret input',
                                     d: _sdT('A field that hides what is typed into it.') },
-            'f:textarea':         { h: '<textarea>', k: 'textarea multiline message text',
+            'f:textarea':         { v: 'f-textarea', h: '<textarea>', k: 'textarea multiline message text',
                                     d: _sdT('A multi-line text field with its label, for longer messages.') },
-            'f:select':           { h: '<select>', k: 'select dropdown option combobox list',
+            'f:select':           { v: 'f-select', h: '<select>', k: 'select dropdown option combobox list',
                                     d: _sdT('A drop-down list with its label; one choice is picked.') },
-            'f:multi':            { h: '<select multiple>', k: 'select multiple multiselect list',
+            'f:multi':            { v: 'f-multi', h: '<select multiple>', k: 'select multiple multiselect list',
                                     d: _sdT('A list in which several choices can be picked.') },
-            'f:checkbox':         { h: '<input type="checkbox">', k: 'checkbox check tick consent agree',
+            'f:checkbox':         { v: 'f-checkbox', h: '<input type="checkbox">', k: 'checkbox check tick consent agree',
                                     d: _sdT('One tick box with its label, for a yes or no answer.') },
-            'f:checkgroup':       { h: '<fieldset>', k: 'checkbox group checkboxes multiple fieldset',
+            'f:checkgroup':       { v: 'f-checkgroup', h: '<fieldset>', k: 'checkbox group checkboxes multiple fieldset',
                                     d: _sdT('A question with several tick boxes; more than one can be ticked.') },
-            'f:radiogroup':       { h: '<fieldset>', k: 'radio group options choice fieldset',
+            'f:radiogroup':       { v: 'f-radiogroup', h: '<fieldset>', k: 'radio group options choice fieldset',
                                     d: _sdT('A question with option buttons; only one can be picked.') },
-            'f:toggle':           { h: '<div class="form-switch">', k: 'switch toggle checkbox on off',
+            'f:toggle':           { v: 'f-toggle', h: '<div class="form-switch">', k: 'switch toggle checkbox on off',
                                     d: _sdT('An on/off switch with its label.') },
-            'f:date':             { h: '<input type="date">', k: 'date calendar picker input',
+            'f:date':             { v: 'f-date', h: '<input type="date">', k: 'date calendar picker input',
                                     d: _sdT('A date field with a calendar to pick from.') },
-            'f:time':             { h: '<input type="time">', k: 'time clock hour input',
+            'f:time':             { v: 'f-time', h: '<input type="time">', k: 'time clock hour input',
                                     d: _sdT('A time-of-day field.') },
-            'f:datetime':         { h: '<input type="datetime-local">', k: 'datetime date time local input',
+            'f:datetime':         { v: 'f-datetime', h: '<input type="datetime-local">', k: 'datetime date time local input',
                                     d: _sdT('A field for a date and a time together.') },
-            'f:file':             { h: '<input type="file">', k: 'file upload attachment input',
+            'f:file':             { v: 'f-file', h: '<input type="file">', k: 'file upload attachment input',
                                     d: _sdT('A field for uploading a file.') },
-            'f:color':            { h: '<input type="color">', k: 'color colour picker input',
+            'f:color':            { v: 'f-color', h: '<input type="color">', k: 'color colour picker input',
                                     d: _sdT('A field for picking a colour.') },
-            'f:range':            { h: '<input type="range">', k: 'range slider input',
+            'f:range':            { v: 'f-range', h: '<input type="range">', k: 'range slider input',
                                     d: _sdT('A slider for picking a number between two limits.') },
-            'f:hidden':           { h: '<input type="hidden">', k: 'hidden input value',
+            'f:hidden':           { v: 'f-hidden', h: '<input type="hidden">', k: 'hidden input value',
                                     d: _sdT('A field the visitor does not see; it sends a fixed value with the form.') },
-            'f:floating':         { h: '<div class="form-floating">', k: 'floating label input',
+            'f:floating':         { v: 'f-floating', h: '<div class="form-floating">', k: 'floating label input',
                                     d: _sdT('A text field whose label sits inside it and moves up when typing starts.') },
-            'f:label':            { h: '<label>', k: 'label caption field name',
+            'f:label':            { v: 'f-label', h: '<label>', k: 'label caption field name',
                                     d: _sdT('A label on its own, to name a field.') },
-            'f:group':            { k: 'group fieldset wrapper fields',
+            'f:group':            { v: 'f-group', k: 'group fieldset wrapper fields',
                                     d: _sdT('A box that keeps several fields together.') },
-            'f:submit':           { h: '<button type="submit">', k: 'submit button send',
+            'f:submit':           { v: 'f-submit', h: '<button type="submit">', k: 'submit button send',
                                     d: _sdT('The button that sends the form.') },
-            'f:reset':            { h: '<button type="reset">', k: 'reset clear button',
+            'f:reset':            { v: 'f-reset', h: '<button type="reset">', k: 'reset clear button',
                                     d: _sdT('A button that clears what was typed into the form.') },
-            'f:captcha':          { k: 'captcha spam robot verify security',
+            'f:captcha':          { v: 'f-captcha', k: 'captcha spam robot verify security',
                                     d: _sdT('A check that keeps automated spam out of the form.') },
-            'f:form':             { h: '<form>', k: 'form fields submit',
+            'f:form':             { v: 'f-form', h: '<form>', k: 'form fields submit',
                                     d: _sdT('A form: the box that holds the fields and sends them.') },
             // Regions
-            'r:page':             { k: 'page region content area editable',
+            'r:page':             { v: 'r-page', k: 'page region content area editable',
                                     d: _sdT('An editable content area of the page, filled in the content editor.') },
-            'r:system':           { k: 'system region page type catalog cart form',
+            'r:system':           { v: 'r-system', k: 'system region page type catalog cart form',
                                     d: _sdT('Where the page type shows its built-in content: catalog, cart, forms and the like.') },
-            'r:common':           { k: 'common region shared content',
+            'r:common':           { v: 'r-common', k: 'common region shared content',
                                     d: _sdT('A block of content shared by many pages and edited once.') },
-            'r:designer':         { k: 'designer region html block',
+            'r:designer':         { v: 'r-designer', k: 'designer region html block',
                                     d: _sdT('A block of HTML kept by designers and placed on pages.') },
-            'r:dynamic':          { k: 'dynamic region php code',
+            'r:dynamic':          { v: 'r-dynamic', k: 'dynamic region php code',
                                     d: _sdT('A block whose output comes from PHP code on every visit.') },
-            'r:menu':             { k: 'menu region navigation links',
+            'r:menu':             { v: 'nav', k: 'menu region navigation links',
                                     d: _sdT('One of the site menus, as set up under Menus.') },
-            'r:menu_sequence':    { k: 'menu sequence previous next pager',
+            'r:menu_sequence':    { v: 'r-menu-sequence', k: 'menu sequence previous next pager',
                                     d: _sdT('Previous and next links through the pages of a menu.') },
-            'r:login':            { k: 'login sign in account region',
+            'r:login':            { v: 'r-login', k: 'login sign in account region',
                                     d: _sdT('The sign-in area: a link to sign in, or the visitor once signed in.') },
-            'r:ad':               { k: 'ad ads advert banner region',
+            'r:ad':               { v: 'r-ad', k: 'ad ads advert banner region',
                                     d: _sdT('An ad slot filled from the Ads screen.') },
-            'r:cart':             { k: 'cart basket shopping region',
+            'r:cart':             { v: 'r-cart', k: 'cart basket shopping region',
                                     d: _sdT('A link to the shopping cart with the number of items in it.') },
-            'r:tag_cloud':        { k: 'tag cloud tags region',
+            'r:tag_cloud':        { v: 'r-tag-cloud', k: 'tag cloud tags region',
                                     d: _sdT('The tags of the site, sized by how often they are used.') },
-            'r:mobile_switch':    { k: 'mobile switch desktop view region',
+            'r:mobile_switch':    { v: 'r-mobile-switch', k: 'mobile switch desktop view region',
                                     d: _sdT('A link that switches between the mobile and the desktop look of the site.') },
-            'r:pdf':              { k: 'pdf download print region',
+            'r:pdf':              { v: 'r-pdf', k: 'pdf download print region',
                                     d: _sdT('A link that offers the page as a PDF file.') },
-            'r:comments_block':   { k: 'comments block comment form region',
-                                    d: _sdT('The comments of the page and the form for adding one.') }
+            'r:comments_block':   { v: 'r-comments', k: 'comments block comment form region',
+                                    d: _sdT('The comments of the page and the form for adding one.') },
+            // Lists in a record, keyed by their list source
+            'l:form_record.values': { v: 'l-values', k: 'values field list repeat loop record',
+                                    d: _sdT('Repeats its row for each value of a field that holds several, such as the ticked boxes of a check box group.') },
+            'l:form_record.split': { v: 'l-split', k: 'split comma parts field list repeat loop record',
+                                    d: _sdT('Repeats its row for each part of a field text, split at the commas.') },
+            'l:form_record.files': { v: 'l-files', k: 'attachments files uploads list repeat loop record',
+                                    d: _sdT('Repeats its row for each file attached to the record.') },
+            'l:product.images': { v: 'l-images', k: 'product images gallery thumbnails list repeat loop',
+                                    d: _sdT('Repeats its row for each image of the product, such as the thumbnails under the large picture.') },
+            'l:product.attributes': { v: 'l-attributes', k: 'product attributes specifications list repeat loop',
+                                    d: _sdT('Repeats its row for each attribute of the product, with its name and value.') },
+            'l:product.related': { v: 'l-related', k: 'related products bought together cross sell list repeat loop',
+                                    d: _sdT('Repeats its row for each product often bought together with this one.') },
+            'l:product.bundle_items': { v: 'l-bundle', k: 'bundle contents items product list repeat loop',
+                                    d: _sdT('Repeats its row for each product inside the bundle, with how many come in it.') },
+            'l:catalog.crumbs': { v: 'l-crumbs', k: 'breadcrumb crumbs catalog path list repeat loop',
+                                    d: _sdT('Repeats its row for each step of the path from the catalog home to this category or product.') },
+            'l:catalog.active_filters': { v: 'l-filters', k: 'active filters chips catalog attributes list repeat loop',
+                                    d: _sdT('Repeats its row for each attribute filter the visitor has turned on, with a way to remove it.') },
+            'l:calendar.weeks': { v: 'l-weeks', k: 'month grid weeks calendar list repeat loop',
+                                    d: _sdT('Repeats its row for each week of the month shown.') },
+            'l:calendar.weekdays': { v: 'l-weekdays', k: 'weekdays days of the week calendar header list repeat loop',
+                                    d: _sdT('Repeats its row for each day name of the week, the header of the month grid.') },
+            'l:calendar.days': { v: 'l-days', k: 'days calendar grid cells list repeat loop',
+                                    d: _sdT('Repeats its row for each day of the month grid.') },
+            'l:calendar.events': { v: 'l-events', k: 'events day calendar list repeat loop',
+                                    d: _sdT('Repeats its row for each event of one day.') },
+            'l:order.shipments': { v: 'l-shipments', k: 'recipients shipments addresses order list repeat loop',
+                                    d: _sdT('Repeats its row for each recipient of the order, with the address the items go to.') },
+            'l:order.items': { v: 'l-order-items', k: 'order items products lines list repeat loop',
+                                    d: _sdT('Repeats its row for each item of the order, with its quantity and price.') },
+            'l:order.parcels': { v: 'l-parcels', k: 'parcels shipments tracking cargo order list repeat loop',
+                                    d: _sdT('Repeats its row for each parcel sent for the order, with its tracking number.') },
+            'l:order.steps': { v: 'l-steps', k: 'order steps status progress tracking list repeat loop',
+                                    d: _sdT('Repeats its row for each step of the order, from placed to delivered.') },
+            'l:account.orders': { v: 'l-account-orders', k: 'member orders history account list repeat loop',
+                                    d: _sdT('Repeats its row for each order of the signed-in member.') },
+            'l:cart.items': { v: 'l-cart-items', k: 'cart items products basket list repeat loop',
+                                    d: _sdT('Repeats its row for each product in the cart, with its quantity and price.') },
+            'l:checkout.offers': { v: 'l-offers', k: 'applied offers discounts checkout list repeat loop',
+                                    d: _sdT('Repeats its row for each offer applied to the order, with the amount it takes off.') },
+            'l:checkout.suggestions': { v: 'l-suggestions', k: 'suggested offers upsell checkout list repeat loop',
+                                    d: _sdT('Repeats its row for each offer the visitor could still get, such as spending a little more for free shipping.') },
+            'l:checkout.gift_cards': { v: 'l-gift-cards', k: 'gift cards applied checkout list repeat loop',
+                                    d: _sdT('Repeats its row for each gift card applied to the order, with the amount used.') },
+            'l:checkout.recipients': { v: 'l-recipients', k: 'recipients cart checkout ship to list repeat loop',
+                                    d: _sdT('Repeats its row for each recipient in the cart, with the items going to them.') },
+            'l:menu.children': { v: 'l-menu-children', k: 'menu sub items children submenu list repeat loop',
+                                    d: _sdT('Repeats its row for each sub-item of a menu item.') },
+            'l:folder_view.children': { v: 'l-folder', k: 'folder entries pages files list repeat loop',
+                                    d: _sdT('Repeats its row for each page or folder inside the folder.') },
+            'l:security.passkeys': { v: 'l-passkeys', k: 'passkeys security sign in member list repeat loop',
+                                    d: _sdT('Repeats its row for each passkey of the signed-in member, with a way to remove it.') },
+            'l:paging.pages': { v: 'l-pages', k: 'paging pages pagination page links list repeat loop',
+                                    d: _sdT('Repeats its row for each page number of a list spread over several pages.') }
         };
         return _sdPalInfoMap;
     }
@@ -74986,6 +75041,7 @@ const StyleDesigner = (function () {
             case 'content':   return 't:' + (x.contentType || '');
             case 'cf_field':  return 'f:' + (x.cfType || '');
             case 'region':    return 'r:' + (x.regionType || '');
+            case 'loop_area': return 'l:' + (x.listSource || '');
             case 'semantic': {
                 var tag = String(x.tag || '').toLowerCase();
                 if (tag !== 'input') return 's:' + tag;
@@ -75069,6 +75125,32 @@ const StyleDesigner = (function () {
                    'L' + (x + w * .74) + ' ' + (y + h * .62) + 'L' + (x + w) + ' ' + (y + h) + 'Z', '', 0, hill || '#adb5bd');
         }
         var DIM = ' fill-opacity=".42"';
+        // Form fields: a label bar over a control box; the control's inside
+        // comes from the caller.
+        function Fld(y, inner, h) {
+            return L(40, y, 44, D) + R(40.5, y + 6.5, 119, (h || 22) - 1, W, 4, T) + (inner || '');
+        }
+        // A list in a record: its row drawn three times, the first framed as
+        // the repeated template and the others faded.
+        function Rows(y0, step, h, row) {
+            var out = '';
+            [0, 1, 2].forEach(function (i) {
+                var y = y0 + i * step, r = row(y, i);
+                out += i ? '<g opacity=".45">' + r + '</g>' : r + R(14.5, y - 3.5, 171, h, 'none', 3, P, DASH);
+            });
+            return out;
+        }
+        // The same, side by side.
+        function Cols(x0, step, w, y, h, cell, n) {
+            var out = '';
+            for (var i = 0; i < (n || 3); i++) {
+                var x = x0 + i * step, c = cell(x, i);
+                out += i ? '<g opacity=".45">' + c + '</g>' : c + R(x - 3.5, y - 3.5, w, h, 'none', 3, P, DASH);
+            }
+            return out;
+        }
+        function Person(cx, cy, c) { return C(cx, cy - 3, 3.2, c || S) + Pa('M' + (cx - 5.5) + ' ' + (cy + 6) + 'a5.5 5 0 0 1 11 0z', '', 0, c || S); }
+        function Tag(x, y) { return Pa('M' + x + ' ' + y + 'h12l6 6 -6 6h-12z', '#198754', 1.3, '#d1e7dd') + C(x + 13, y + 6, 1.5, '#198754'); }
         var draw = {
             'container': function () {
                 return R(0, 0, 200, 110, LG) + R(30, 0, 140, 110, W) + R(30.5, 6.5, 139, 97, 'none', 3, P, DASH) +
@@ -75392,6 +75474,317 @@ const StyleDesigner = (function () {
                     Pa('M58 36l5.3 10.8 11.9 1.7 -8.6 8.4 2 11.8 -10.6 -5.6 -10.6 5.6 2 -11.8 -8.6 -8.4 11.9 -1.7z', P, 1.2, P) +
                     Pa('M100 70c-14 -9 -18 -16 -18 -22a9 9 0 0 1 18 -3a9 9 0 0 1 18 3c0 6 -4 13 -18 22z', '#dc3545', 1.2, '#dc3545') +
                     C(146, 53, 15, '#198754') + Pa('M139 53l5 5 9 -10', W, 2.2);
+            },
+            // Form fields: a label over its control.
+            'f-text': function () {
+                return R(0, 0, 200, 110, W) + Fld(34, L(48, 49, 56) + R(108, 45, 1.4, 12, D));
+            },
+            'f-email': function () {
+                return R(0, 0, 200, 110, W) + Fld(34, Tx(52, 55, '@', 11, S, 'middle') + L(62, 49, 70));
+            },
+            'f-tel': function () {
+                var out = R(0, 0, 200, 110, W) + Fld(34, L(66, 49, 70));
+                [0, 1, 2].forEach(function (r) { [0, 1, 2].forEach(function (c) { out += C(49 + c * 4, 50 + r * 4 - 4, 1.2, S); }); });
+                return out;
+            },
+            'f-number': function () {
+                return R(0, 0, 200, 110, W) + Fld(34, Tx(48, 55, '42', 10, D) + Chev(150, 48, true) + Chev(150, 54));
+            },
+            'f-url': function () {
+                return R(0, 0, 200, 110, W) + Fld(34, R(47.5, 48.5, 9, 6, 'none', 3, P) + R(53.5, 48.5, 9, 6, 'none', 3, P) + L(68, 49, 70, P));
+            },
+            'f-password': function () {
+                var out = R(0, 0, 200, 110, W) + Fld(34, '');
+                for (var i = 0; i < 6; i++) out += C(50 + i * 9, 51, 2.6, D);
+                return out + Pa('M140 51c4 -5 10 -5 14 0c-4 5 -10 5 -14 0z', S, 1.2) + C(147, 51, 1.8, S);
+            },
+            'f-textarea': function () {
+                return R(0, 0, 200, 110, W) + Fld(16, L(48, 34, 100, S) + L(48, 43, 86, S) + L(48, 52, 94, S) + L(48, 61, 50, S) +
+                    Pa('M146 84l9 -9M151 84l4 -4', '#adb5bd', 1.2), 66);
+            },
+            'f-select': function () {
+                return R(0, 0, 200, 110, W) + Fld(34, L(48, 49, 60, D) + Chev(148, 51));
+            },
+            'f-multi': function () {
+                return R(0, 0, 200, 110, W) + Fld(14, R(41, 26, 118, 14, PL) + L(48, 31, 60, P) + L(48, 45, 50, D) +
+                    R(41, 54, 118, 14, PL) + L(48, 59, 66, P) + L(48, 73, 44, D), 72);
+            },
+            'f-checkbox': function () {
+                return R(0, 0, 200, 110, W) + R(46, 46, 18, 18, P, 4) + Pa('M50 55l4 4 7 -8', W, 2) + L(72, 53, 82, D);
+            },
+            'f-checkgroup': function () {
+                var out = R(0, 0, 200, 110, W) + L(40, 14, 70, D);
+                [30, 54, 78].forEach(function (y, i) {
+                    out += i === 1 ? R(40.5, y + .5, 15, 15, W, 3, T) : R(40, y, 16, 16, P, 3) + Pa('M43.5 ' + (y + 8) + 'l3.5 3.5 6 -7', W, 1.8);
+                    out += L(64, y + 6, 60 + i * 10, D);
+                });
+                return out;
+            },
+            'f-radiogroup': function () {
+                var out = R(0, 0, 200, 110, W) + L(40, 14, 70, D);
+                [38, 62, 86].forEach(function (cy, i) {
+                    out += C(48, cy, 7.5, W, i === 0 ? P : T, ' stroke-width="1.5"') + (i === 0 ? C(48, cy, 3.5, P) : '') + L(64, cy - 2, 60 + i * 10, D);
+                });
+                return out;
+            },
+            'f-toggle': function () {
+                return R(0, 0, 200, 110, W) + R(46, 45, 34, 20, P, 10) + C(70, 55, 7, W) + L(90, 53, 70, D);
+            },
+            'f-date': function () {
+                var out = R(0, 0, 200, 110, W) + Fld(8, L(48, 23, 56, D) + R(141.5, 20.5, 11, 10, 'none', 1.5, S) + R(141.5, 20.5, 11, 3, S)) +
+                    R(90.5, 38.5, 69, 64, W, 4, B);
+                for (var r = 0; r < 4; r++) for (var c = 0; c < 5; c++) {
+                    out += R(97 + c * 12, 46 + r * 13, 8, 8, (r === 1 && c === 2) ? P : G, 2);
+                }
+                return out;
+            },
+            'f-time': function () {
+                return R(0, 0, 200, 110, W) + Fld(34, Tx(48, 55, '09:30', 10, D) + C(147, 51, 6, 'none', S, ' stroke-width="1.2"') +
+                    Pa('M147 47.5V51l2.5 1.5', S, 1.2));
+            },
+            'f-datetime': function () {
+                return R(0, 0, 200, 110, W) + Fld(34, L(48, 49, 34, D) + R(86, 46, 1, 10, T) + Tx(94, 55, '09:30', 10, D) +
+                    R(141.5, 46.5, 11, 10, 'none', 1.5, S) + R(141.5, 46.5, 11, 3, S));
+            },
+            'f-file': function () {
+                return R(0, 0, 200, 110, W) + Fld(34, R(41, 41, 40, 21, G, 3.5) + R(74, 41, 7, 21, G) + R(81, 41, 1, 21, T) + L(49, 53, 24, D) + L(90, 53, 50)) +
+                    Pa('M100 98V82M100 82l-5 5M100 82l5 5', P, 1.5) + R(92, 99, 16, 1.5, P);
+            },
+            'f-color': function () {
+                return R(0, 0, 200, 110, W) + Fld(34, R(46, 44, 30, 14, '#6f42c1', 2) + Tx(84, 54.5, '#6f42c1', 9, S));
+            },
+            'f-range': function () {
+                return R(0, 0, 200, 110, W) + L(40, 36, 44, D) + R(40, 54, 120, 5, G, 2.5) + R(40, 54, 76, 5, P, 2.5) + C(116, 56.5, 8, P) +
+                    Tx(40, 80, '0', 9, S) + Tx(160, 80, '100', 9, S, 'end');
+            },
+            'f-hidden': function () {
+                return R(0, 0, 200, 110, W) + R(40.5, 44.5, 119, 21, LG, 4, '#adb5bd', DASH) + L(50, 53, 60, T) +
+                    Pa('M136 55c4 -5 10 -5 14 0c-4 5 -10 5 -14 0zM136 49l14 12', S, 1.2);
+            },
+            'f-floating': function () {
+                return R(0, 0, 200, 110, W) + R(40.5, 34.5, 119, 39, W, 4, T) + L(50, 43, 40, S) + R(50, 43, 40, 3, S, 1.5) + L(50, 57, 70, D);
+            },
+            'f-label': function () {
+                return R(0, 0, 200, 110, W) + R(36.5, 26.5, 56, 15, PL, 3, P, DASH) + L(42, 32, 44, P) +
+                    '<g opacity=".45">' + R(40.5, 48.5, 119, 21, W, 4, T) + L(48, 57, 56) + '</g>';
+            },
+            'f-group': function () {
+                return R(0, 0, 200, 110, W) + R(26.5, 6.5, 147, 97, 'none', 5, P, DASH) + Fld(16, L(48, 31, 50)) + Fld(58, L(48, 73, 64));
+            },
+            'f-submit': function () {
+                return R(0, 0, 200, 110, W) + '<g opacity=".45">' + Fld(14, L(48, 29, 56)) + '</g>' + R(40, 62, 56, 22, P, 4) + L(52, 71, 32, W);
+            },
+            'f-reset': function () {
+                return R(0, 0, 200, 110, W) + '<g opacity=".45">' + Fld(14, L(48, 29, 56)) + '</g>' + R(40.5, 62.5, 63, 21, W, 4, S) +
+                    Pa('M54 70a4.5 4.5 0 1 1 -1.3 6.5M54 70v3.5h-3.5', S, 1.3) + L(64, 71, 30, S);
+            },
+            'f-captcha': function () {
+                return R(0, 0, 200, 110, W) + R(30.5, 34.5, 139, 41, LG, 4, B) + R(42.5, 46.5, 17, 17, W, 3, '#adb5bd') + L(68, 53, 50, D) +
+                    Pa('M146 47a8 8 0 1 1 -6 2.5M146 47v4h-4', P, 1.6) + Pa('M146 51l-2.5 3', P, 1.3);
+            },
+            'f-form': function () {
+                return R(0, 0, 200, 110, LG) + R(30.5, 4.5, 139, 101, W, 5, B) + L(40, 12, 40, D) + R(40.5, 20.5, 119, 15, W, 3, T) +
+                    L(40, 44, 50, D) + R(40.5, 52.5, 119, 15, W, 3, T) + R(40, 78, 48, 18, P, 4) + L(50, 85, 28, W);
+            },
+            // Regions: where the site fills the page.
+            'r-page': function () {
+                return R(0, 0, 200, 110, LG) + R(0, 0, 200, 16, G) + R(20.5, 24.5, 159, 71, W, 4, P, DASH) + Hd(32, 34, 70) + L(32, 48, 132) +
+                    L(32, 56, 120) + L(32, 64, 128) + L(32, 72, 80) + Pa('M150 88l14 -14 4 4 -14 14h-4z', P, 1.3, PL);
+            },
+            'r-system': function () {
+                var out = R(0, 0, 200, 110, LG) + R(10.5, 6.5, 179, 97, W, 4, P, DASH);
+                [20, 76, 132].forEach(function (x) { out += R(x, 16, 48, 34, G, 3) + L(x, 56, 40, D) + L(x, 64, 24, P) + R(x, 76, 48, 13, P, 3); });
+                return out;
+            },
+            'r-common': function () {
+                function page(x) {
+                    return R(x + .5, 8.5, 75, 93, W, 4, B) + R(x + 6, 15, 64, 16, PL, 3, P) + L(x + 12, 21, 40, P) + L(x + 8, 42, 58) +
+                        L(x + 8, 50, 50) + R(x + 8, 62, 58, 28, G, 3);
+                }
+                return R(0, 0, 200, 110, LG) + page(16) + page(108) + Pa('M88 23h20', P, 1.3) + Pa('M104 20l4 3 -4 3', P, 1.3);
+            },
+            'r-designer': function () {
+                return R(0, 0, 200, 110, LG) + R(30.5, 16.5, 139, 77, W, 4, P, DASH) + Tx(100, 62, '&lt;/&gt;', 22, P, 'middle');
+            },
+            'r-dynamic': function () {
+                return R(0, 0, 200, 110, W) + R(30, 16, 120, 78, '#212529', 5) + L(42, 30, 50, '#a370f7') + L(52, 42, 64, '#adb5bd') +
+                    L(52, 54, 44, '#ffc107') + L(52, 66, 70, '#adb5bd') + L(42, 78, 30, '#a370f7') +
+                    C(164, 55, 15, W, P, ' stroke-width="1.5"') + Pa('M171 50a8 8 0 1 0 1 7M171 50v-5M171 50h-5', P, 1.5);
+            },
+            'r-menu-sequence': function () {
+                return R(0, 0, 200, 110, W) + L(30, 24, 140, G) + L(30, 32, 120, G) + R(24.5, 58.5, 63, 21, W, 4, B) + Tx(36, 73, '‹', 14, P, 'middle') +
+                    L(46, 67, 32, P) + R(112.5, 58.5, 63, 21, W, 4, B) + L(122, 67, 32, P) + Tx(164, 73, '›', 14, P, 'middle');
+            },
+            'r-login': function () {
+                return R(0, 0, 200, 110, W) + R(0, 0, 200, 26, LG) + R(0, 26, 200, 1, B) + R(10, 9, 30, 8, T, 2) +
+                    C(140, 13, 7, PL) + Person(140, 13, P) + L(152, 11, 34, D) + R(116.5, 30.5, 74, 44, W, 4, B) + L(124, 40, 50, D) +
+                    L(124, 50, 44) + R(124, 58, 40, 10, P, 3);
+            },
+            'r-ad': function () {
+                return R(0, 0, 200, 110, W) + L(20, 10, 160, G) + L(20, 18, 120, G) + R(20.5, 30.5, 159, 57, LG, 4, '#adb5bd', DASH) +
+                    Pic(28, 38, 70, 42) + Hd(108, 44, 60) + L(108, 58, 56) + Btn(108, 68, 40, P) + R(160, 33, 16, 9, '#ffc107', 2) +
+                    L(20, 96, 140, G);
+            },
+            'r-cart': function () {
+                return R(0, 0, 200, 110, W) + Pa('M70 38h10l8 30h34l7 -22H84', D, 2.2) + C(92, 76, 4, D) + C(118, 76, 4, D) +
+                    C(128, 36, 10, P) + Tx(128, 40, '3', 11, W, 'middle');
+            },
+            'r-tag-cloud': function () {
+                var out = R(0, 0, 200, 110, W);
+                [[20, 22, 40, 13], [66, 20, 58, 17], [130, 24, 46, 11], [26, 50, 54, 17], [86, 52, 36, 11], [128, 48, 52, 19],
+                 [34, 78, 42, 11], [82, 74, 64, 19], [152, 78, 28, 11]].forEach(function (t) {
+                    out += R(t[0], t[1], t[2], t[3], PL, t[3] / 2) + L(t[0] + 7, t[1] + t[3] / 2 - 2, t[2] - 14, P);
+                });
+                return out;
+            },
+            'r-mobile-switch': function () {
+                return R(0, 0, 200, 110, W) + R(34.5, 22.5, 33, 62, W, 5, D, ' stroke-width="1.5"') + R(46, 78, 10, 2, D, 1) +
+                    L(40, 32, 22) + L(40, 40, 18) + R(40, 48, 22, 18, G, 2) + Pa('M80 48h36M80 48l5 -4M80 48l5 4M116 60H80M116 60l-5 -4M116 60l-5 4', P, 1.5) +
+                    R(128.5, 28.5, 55, 40, W, 3, D, ' stroke-width="1.5"') + R(150, 69, 12, 8, D) + R(144, 77, 24, 3, D, 1) +
+                    L(134, 36, 40) + R(134, 46, 20, 16, G, 2) + R(158, 46, 20, 16, G, 2);
+            },
+            'r-pdf': function () {
+                return R(0, 0, 200, 110, W) + Pa('M70 10h44l16 16v74h-60z', B, 1.2, W) + Pa('M114 10v16h16', B, 1.2) +
+                    R(60, 54, 44, 18, '#dc3545', 3) + Tx(82, 67, 'PDF', 11, W, 'middle') + L(78, 34, 30) + L(78, 82, 44) + L(78, 90, 36) +
+                    Pa('M150 66v20M150 86l-6 -6M150 86l6 -6', P, 1.8) + R(141, 92, 18, 2, P, 1);
+            },
+            'r-comments': function () {
+                function bubble(y, x) {
+                    return C(x + 8, y + 8, 7, G) + Person(x + 8, y + 8) + R(x + 20, y, 120 - x + 20, 22, LG, 5) +
+                        L(x + 28, y + 5, 40, D) + L(x + 28, y + 13, 90 - x + 20);
+                }
+                return R(0, 0, 200, 110, W) + bubble(6, 20) + bubble(34, 40) + R(20.5, 66.5, 159, 23, W, 4, T) + L(28, 76, 70, T) +
+                    R(140, 93, 40, 12, P, 3);
+            },
+            // Lists in a record: the row the list repeats, framed, and its
+            // copies faded.
+            'l-values': function () {
+                return R(0, 0, 200, 110, W) + Rows(22, 28, 20, function (y) { return C(28, y + 6, 3, P) + L(38, y + 4, 90, D); });
+            },
+            'l-split': function () {
+                return R(0, 0, 200, 110, W) + R(20.5, 12.5, 159, 21, W, 4, T) + Tx(28, 27, 'a, b, c', 10, S) + Pa('M100 40v12M100 52l-4 -4M100 52l4 -4', S, 1.2) +
+                    Cols(34, 46, 42, 66, 22, function (x) { return R(x, 66, 35, 15, PL, 7.5) + L(x + 8, 71.5, 19, P); });
+            },
+            'l-files': function () {
+                return R(0, 0, 200, 110, W) + Rows(16, 30, 24, function (y) {
+                    return Pa('M' + 26 + ' ' + (y + 15) + 'l8 -8a3.5 3.5 0 0 0 -5 -5l-9 9a2 2 0 0 0 3 3l7 -7', S, 1.3) +
+                        L(44, y + 4, 80, P) + L(140, y + 4, 30, S);
+                });
+            },
+            'l-images': function () {
+                return R(0, 0, 200, 110, W) + Pic(30, 6, 140, 62) + Cols(34, 34, 33, 78, 30, function (x) { return Pic(x, 78, 26, 22); }, 4);
+            },
+            'l-attributes': function () {
+                return R(0, 0, 200, 110, W) + Rows(18, 28, 22, function (y) { return L(24, y + 5, 50, S) + L(100, y + 5, 64, D) + R(18, y + 19, 164, 1, B); });
+            },
+            'l-related': function () {
+                return R(0, 0, 200, 110, W) + Cols(18, 60, 54, 14, 86, function (x) { return Pic(x, 14, 47, 40) + L(x, 62, 40, D) + L(x, 72, 24, P) + R(x, 82, 47, 11, P, 3); });
+            },
+            'l-bundle': function () {
+                return R(0, 0, 200, 110, W) + Rows(14, 32, 28, function (y) { return Pic(22, y, 26, 20) + L(56, y + 4, 70, D) + Tx(170, y + 13, '×2', 10, S, 'end'); });
+            },
+            'l-crumbs': function () {
+                return R(0, 0, 200, 110, W) + R(10, 40, 180, 30, LG, 5) + Cols(22, 52, 46, 48, 15, function (x) {
+                    return L(x, 52.5, 34, P) + Tx(x + 42, 58, '/', 10, S, 'middle');
+                });
+            },
+            'l-filters': function () {
+                return R(0, 0, 200, 110, W) + Cols(22, 54, 50, 46, 22, function (x) {
+                    return R(x, 46, 43, 15, PL, 7.5) + L(x + 7, 51.5, 20, P) + Pa('M' + (x + 32) + ' 50.5l5 5M' + (x + 37) + ' 50.5l-5 5', P, 1.2);
+                });
+            },
+            'l-weeks': function () {
+                return R(0, 0, 200, 110, W) + Rows(18, 30, 26, function (y) {
+                    var o = '';
+                    for (var c = 0; c < 7; c++) o += R(22 + c * 23, y, 19, 19, G, 2);
+                    return o;
+                });
+            },
+            'l-weekdays': function () {
+                var out = R(0, 0, 200, 110, W);
+                for (var r = 0; r < 3; r++) for (var c = 0; c < 7; c++) out += R(22 + c * 23, 42 + r * 22, 19, 17, G, 2);
+                return out + Cols(22, 23, 26, 20, 16, function (x) { return L(x + 2, 24, 15, D); }, 7);
+            },
+            'l-days': function () {
+                var out = R(0, 0, 200, 110, W);
+                for (var r = 0; r < 4; r++) for (var c = 0; c < 7; c++) {
+                    if (r === 1 && c === 2) continue;
+                    out += R(22 + c * 23, 14 + r * 23, 19, 19, G, 2, '', ' fill-opacity=".6"');
+                }
+                return out + R(68, 37, 19, 19, W, 2, B) + Tx(71, 46, '9', 7, D) + R(64.5, 33.5, 26, 26, 'none', 3, P, DASH);
+            },
+            'l-events': function () {
+                return R(0, 0, 200, 110, W) + R(40.5, 6.5, 119, 97, W, 4, B) + Tx(48, 22, '12', 12, D) +
+                    Rows(32, 22, 20, function (y, i) { return R(48, y, 104, 14, i === 1 ? '#d1e7dd' : PL, 3) + L(54, y + 5, 60, i === 1 ? '#198754' : P); });
+            },
+            'l-shipments': function () {
+                return R(0, 0, 200, 110, W) + Rows(8, 34, 30, function (y) { return C(30, y + 10, 8, G) + Person(30, y + 10) + L(46, y + 3, 60, D) + L(46, y + 12, 110) + L(46, y + 19, 80); });
+            },
+            'l-order-items': function () {
+                return R(0, 0, 200, 110, W) + Rows(12, 32, 28, function (y) { return Pic(22, y, 26, 20) + L(56, y + 4, 64, D) + L(56, y + 13, 30) + Hd(146, y + 7, 30); });
+            },
+            'l-parcels': function () {
+                return R(0, 0, 200, 110, W) + Rows(12, 32, 28, function (y) {
+                    return R(22.5, y + 2.5, 18, 15, '#f1e3c6', 1.5, '#a07f3c') + R(31, y + 3, 1.2, 14, '#a07f3c') + L(50, y + 3, 60, D) + L(50, y + 12, 90, P);
+                });
+            },
+            'l-steps': function () {
+                return R(0, 0, 200, 110, W) + R(40, 43, 120, 2, B) + Cols(32, 45, 30, 32, 44, function (x, i) {
+                    return C(x + 11, 44, 9, i < 2 ? P : W, i < 2 ? '' : T, ' stroke-width="1.5"') + L(x, 60, 22, i < 2 ? D : T);
+                }, 4);
+            },
+            'l-account-orders': function () {
+                return R(0, 0, 200, 110, W) + R(14, 10, 172, 14, LG, 2) + L(20, 15, 24, D) + L(60, 15, 30, D) + L(110, 15, 28, D) + L(156, 15, 24, D) +
+                    Rows(32, 26, 22, function (y, i) {
+                        return Tx(20, y + 9, '#10' + (3 - i), 9, P) + L(60, y + 4, 34) + R(108, y + 1, 36, 10, i ? '#d1e7dd' : '#fff3cd', 5) + L(156, y + 4, 24, D);
+                    });
+            },
+            'l-cart-items': function () {
+                return R(0, 0, 200, 110, W) + Rows(12, 32, 28, function (y) {
+                    return Pic(22, y, 26, 20) + L(56, y + 4, 54, D) + R(118.5, y + 3.5, 28, 13, W, 3, T) + Tx(132.5, y + 13, '1', 8, D, 'middle') + Hd(154, y + 6, 24);
+                });
+            },
+            'l-offers': function () {
+                return R(0, 0, 200, 110, W) + Rows(16, 30, 24, function (y) { return Tag(24, y + 2) + L(50, y + 6, 80, '#198754') + L(146, y + 6, 30, '#198754'); });
+            },
+            'l-suggestions': function () {
+                return R(0, 0, 200, 110, W) + Rows(12, 32, 28, function (y) {
+                    return R(22, y, 20, 20, '#fff3cd', 4) + Pa('M27 ' + (y + 8) + 'h3l7 -4v12l-7 -4h-3z', '#997404', 1.2, '#ffda6a') +
+                        L(50, y + 4, 80, D) + L(50, y + 13, 50) + Btn(144, y + 4, 34, P, true);
+                });
+            },
+            'l-gift-cards': function () {
+                return R(0, 0, 200, 110, W) + Rows(12, 32, 28, function (y) {
+                    return R(22, y, 34, 21, '#d63384', 3) + R(36, y, 3, 21, '#f7d6e6') + R(22, y + 9, 34, 3, '#f7d6e6') +
+                        L(64, y + 4, 60, D) + L(64, y + 13, 40) + Hd(146, y + 7, 30, '#198754');
+                });
+            },
+            'l-recipients': function () {
+                return R(0, 0, 200, 110, W) + Rows(8, 34, 30, function (y) {
+                    return C(30, y + 10, 8, PL) + Person(30, y + 10, P) + L(46, y + 4, 54, D) + R(46, y + 14, 16, 10, G, 2) + L(68, y + 17, 70);
+                });
+            },
+            'l-menu-children': function () {
+                return R(0, 0, 200, 110, W) + L(24, 10, 60, D) + Pa('M30 18v76', B, 1.2) +
+                    Rows(26, 26, 20, function (y) { return Pa('M30 ' + (y + 6) + 'h12', B, 1.2) + L(50, y + 4, 70, P); });
+            },
+            'l-folder': function () {
+                return R(0, 0, 200, 110, W) + Rows(16, 30, 24, function (y, i) {
+                    return (i === 1 ? Pa('M24 ' + y + 'h10l3 3h-13zM24 ' + (y + 3) + 'h22v12h-22z', '#997404', 1, '#ffda6a')
+                                    : Pa('M26 ' + y + 'h12l5 5v12h-17z', S, 1.1, W)) + L(54, y + 6, 80, i === 1 ? D : P) + L(146, y + 6, 30, S);
+                });
+            },
+            'l-passkeys': function () {
+                return R(0, 0, 200, 110, W) + Rows(14, 32, 26, function (y) {
+                    return C(28, y + 9, 5, 'none', D, ' stroke-width="1.6"') + Pa('M33 ' + (y + 9) + 'h12v4M41 ' + (y + 9) + 'v3', D, 1.6) +
+                        L(54, y + 3, 64, D) + L(54, y + 12, 44) + R(150.5, y + 3.5, 26, 13, W, 3, '#dc3545') + L(156, y + 8, 15, '#dc3545');
+                });
+            },
+            'l-pages': function () {
+                return R(0, 0, 200, 110, W) + Cols(38, 26, 32, 43, 31, function (x, i) {
+                    var on = i === 0;
+                    return R(x + .5, 43.5, 24, 24, on ? P : W, 0, on ? P : B) + Tx(x + 12.5, 59, String(i + 1), 10, on ? W : P, 'middle');
+                }, 5);
             }
         };
         if (!draw[key]) return '';
