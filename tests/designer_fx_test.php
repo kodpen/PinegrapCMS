@@ -59,6 +59,8 @@ function _test_fx_cases()
 		'chapter' => array('effect' => 'chapter'),
 		'chapter with a duration' => array('effect' => 'Chapter', 'duration' => '1200', 'trigger' => 'view', 'delay' => 100, 'easing' => 'linear', 'from' => 5, 'repeat' => true),
 		'chapter clamped' => array('effect' => 'chapter', 'duration' => 1),
+		'scene' => array('effect' => 'scene'),
+		'scene drops every field' => array('effect' => 'Scene', 'trigger' => 'view', 'duration' => 900, 'from' => 50, 'speed' => 30),
 	);
 }
 
@@ -144,6 +146,17 @@ function test_designer_fx_chapter()
 	pg_assert_same(' data-pg-fx="chapter" data-pg-fx-duration="1200"', pg_fx_attrs(array('_fx' => array('effect' => 'chapter', 'duration' => 1200, 'delay' => 300))));
 	pg_assert_true(in_array('chapter', pg_fx_effects(), true), 'the effect is known');
 	pg_assert_true(strpos(pg_fx_head_style(), 'chapter') === false, 'the head style hides no chapter');
+}
+
+// The scene effect has no field and writes no trigger: the head style never
+// hides the section, and without the script its layers stand one under the
+// other.
+function test_designer_fx_scene()
+{
+	pg_assert_same(array('effect' => 'scene'), pg_fx_normalize(array('effect' => 'Scene', 'trigger' => 'view', 'duration' => 900, 'from' => 50)), 'no field');
+	pg_assert_same(' data-pg-fx="scene"', pg_fx_attrs(array('_fx' => array('effect' => 'scene', 'speed' => 30))), 'the effect alone');
+	pg_assert_true(in_array('scene', pg_fx_effects(), true), 'the effect is known');
+	pg_assert_true(strpos(pg_fx_head_style(), 'scene') === false, 'the head style hides no scene');
 }
 
 // The first number of a text as its figures show it, and the text at a
@@ -380,6 +393,7 @@ function test_designer_fx_script_reads_the_page()
 		. 'out._progress = [fx.progress(800, 200, 800, -5000), fx.progress(550, 200, 800, -5000), fx.progress(300, 200, 800, -5000), fx.progress(900, 200, 800, -5000), fx.progress(700, 200, 800, 600), fx.progress(900, 100, 800, 850), fx.progress(0, 1600, 800, -5000)];'
 		. 'out._chapterAt = [fx.chapterAt([[0, 300], [300, 900], [900, 1500]], 800, false), fx.chapterAt([[-500, 300], [500, 900]], 800, false), fx.chapterAt([[600, 900]], 800, false), fx.chapterAt([[-200, 300], [600, 800]], 800, true), fx.chapterAt([[-200, 300], [810, 900]], 800, true), fx.chapterAt([], 800, false), fx.chapterAt([[400, 900]], 800, false)];'
 		. 'out._chapterColours = [fx.chapterColours("rgb(17, 17, 17)", "rgb(250, 250, 250)", "rgb(33, 37, 41)"), fx.chapterColours("rgba(0, 0, 0, 0)", "rgb(33, 37, 41)", "rgb(33, 37, 41)"), fx.chapterColours("transparent", "", "x"), fx.chapterColours("rgba(10, 20, 30, 0.5)", "red", "blue"), fx.chapterColours("rgba(0,0,0,0.0)", "red", "red")];'
+		. 'out._sceneStep = [fx.sceneStep(0, 2400, 800, 3), fx.sceneStep(-500, 2400, 800, 3), fx.sceneStep(-540, 2400, 800, 3), fx.sceneStep(-1100, 2400, 800, 3), fx.sceneStep(-1600, 2400, 800, 3), fx.sceneStep(-3000, 2400, 800, 3), fx.sceneStep(300, 2400, 800, 3), fx.sceneStep(-100, 600, 800, 3), fx.sceneStep(-900, 2400, 800, 1)];'
 		. 'out._scrollState = [["scroll-zoom", 80, 0], ["scroll-zoom", 80, 0.5], ["scroll-zoom", 150, 0.5], ["scroll-zoom", 60, 1], ["scroll-fade", 0, 0.25], ["scroll-rise", 80, 0.5], ["scroll-rise", 80, 0]].map(function (c) {'
 		. ' return fx.scrollState({ effect: c[0], from: c[1] }, c[2]); });'
 		. 'console.log(JSON.stringify(out));';
@@ -419,6 +433,9 @@ function test_designer_fx_script_reads_the_page()
 	// The box that holds the window's middle (400 of 800); at the page's
 	// end one whose top is in the lower half too.
 	pg_assert_same(array(1, -1, -1, 1, -1, -1, 0), $got['_chapterAt'], 'the chapter the page wears');
+	// 2400 px for three layers in an 800 px window: 1600 px of scroll, a
+	// third each; before the top and past the end it stays at the edges.
+	pg_assert_same(array(1, 1, 2, 3, 3, 3, 1, 1, 1), $got['_sceneStep'], 'the step a scene has reached');
 	pg_assert_same(array(
 		array('background' => 'rgb(17, 17, 17)', 'color' => 'rgb(250, 250, 250)'),
 		array('background' => '', 'color' => ''),
@@ -504,6 +521,9 @@ function test_designer_fx_panel()
 		. ' count: rows(propsInteractions(c("content", { contentType: "heading", _fx: { effect: "count" } }))),'
 		. ' countHtml: propsInteractions(c("content", { contentType: "paragraph", _fx: { effect: "count", duration: 1500 } })),'
 		. ' chapter: rows(propsInteractions(c("semantic", { _fx: { effect: "chapter" } }))),'
+		. ' scene: rows(propsInteractions(c("semantic", { _fx: { effect: "scene" } }))),'
+		. ' sceneHtml: propsInteractions(c("semantic", { _fx: { effect: "scene" } })),'
+		. ' sceneOffered: propsInteractions(c("semantic", {})).indexOf(\'<option value="scene"\') !== -1,'
 		. ' chapterHtml: propsInteractions(c("container", { _fx: { effect: "chapter", duration: 900 } })),'
 		. ' chapterSet: [_sdFxSet({ effect: "count", duration: 3000 }, "effect", "chapter"), _sdFxSet({ effect: "fade", duration: 900, delay: 100 }, "effect", "chapter"), _sdFxSet({ effect: "chapter" }, "duration", "1500")],'
 		. ' chapterOffered: [c("semantic", {}), c("container", {}), c("row", {}), c("content", { contentType: "heading" }), c("content", { contentType: "image", _fx: { effect: "chapter" } })].map(function (n) {'
@@ -561,6 +581,12 @@ function test_designer_fx_panel()
 	pg_assert_contains('first number in the text', $got['countHtml'], 'a note on what it counts');
 	pg_assert_same(array(true, true, true, false, false, false, true), $got['offered'], 'offered on text, kept where it is set');
 	pg_assert_same(array('Effect', 'Duration'), $got['chapter'], 'a chapter: its duration');
+	pg_assert_same(array('Effect'), $got['scene'], 'a scene: no field');
+	pg_assert_contains('<option value="scene" selected>Pinned scene</option>', $got['sceneHtml'], 'kept in the list where it is set');
+	pg_assert_contains('Set by the Pinned Story block', $got['sceneHtml']);
+	pg_assert_contains('see the layers one under the other', $got['sceneHtml'], 'reduced motion: the layers stacked');
+	pg_assert_false(strpos($got['sceneHtml'], 'data-fx-play') !== false, 'a scene has nothing to play');
+	pg_assert_false($got['sceneOffered'], 'not offered on a section without it');
 	pg_assert_contains('data-fx="duration" min="100" max="5000" step="1" value="900"', $got['chapterHtml']);
 	pg_assert_contains('<option value="chapter" selected>Colour chapter</option>', $got['chapterHtml']);
 	pg_assert_false(strpos($got['chapterHtml'], 'data-fx-play') !== false, 'a chapter has nothing to play');
@@ -1039,4 +1065,70 @@ JS;
 	pg_assert_same(array('rgb(17, 17, 17)', 'none'), $got['reduced'], 'reduced motion: a cut');
 	pg_assert_same(array('', 'rgb(1, 2, 3)', 'opacity 1s'), $got['gone'], 'every chapter gone: the body as it was');
 	pg_assert_same(array('', 'rgb(1, 2, 3)'), $got['editing'], 'the editor\'s canvas keeps its own colours');
+}
+
+// A pinned scene on a fake page 800 px high: the script writes the number
+// of layers, then the step its scroll has reached, and marks that step's
+// layer alone; a scene with one layer is left as it is; under reduced
+// motion turned on the layers stand one under the other again; the editor's
+// canvas never plays a scene.
+function test_designer_fx_script_scene()
+{
+	$nodes = <<<'JS'
+window.pgFxEditing = false;
+El.prototype.setAttribute = function (n, v) { this.attrs[n] = String(v); };
+El.prototype.removeAttribute = function (n) { delete this.attrs[n]; };
+var props = {};
+function scene(top, count) {
+	var s = box({ 'data-pg-fx': 'scene' }, top, 2400), layers = [];
+	for (var i = 0; i < count; i++) layers.push(new El({ 'data-pg-scene-layer': '' }));
+	s.layers = layers;
+	s.querySelectorAll = function (sel) { return sel === '[data-pg-scene-layer]' ? layers : []; };
+	s.style.setProperty = function (k, v) { s.style[k] = v; };
+	return s;
+}
+var story = scene(1000, 3);
+var single = scene(4000, 1);
+nodes.push(story, single);
+
+JS;
+	$steps = <<<'JS'
+var out = {};
+function on(s) { return s.layers.map(function (l) { return l.attrs['data-pg-scene-on'] !== undefined; }); }
+function scrollTo(y) { [story, single].forEach(function (n) { n.rect.top += window.pageYOffset - y; }); window.pageYOffset = y; winOn.scroll(); }
+out.start = [story.style['--pg-scene-steps'], story.attrs['data-pg-scene-step'], on(story)];
+out.single = [single.attrs['data-pg-scene-step'] === undefined, single.style['--pg-scene-steps'] === undefined, on(single)];
+scrollTo(1600);
+out.second = [story.attrs['data-pg-scene-step'], on(story)];
+scrollTo(2300);
+out.third = [story.attrs['data-pg-scene-step'], on(story)];
+scrollTo(9000);
+out.past = story.attrs['data-pg-scene-step'];
+reducedNow = true;
+mmChange();
+out.reduced = [story.attrs['data-pg-scene-step'] === undefined, on(story)];
+scrollTo(1600);
+out.frozen = story.attrs['data-pg-scene-step'] === undefined;
+reducedNow = false;
+window.pgFxEditing = true;
+var edited = scene(0, 3);
+nodes.push(edited);
+window.pgFxBind(document);
+winOn.scroll();
+out.editing = [edited.attrs['data-pg-scene-step'] === undefined, on(edited)];
+console.log(JSON.stringify(out));
+JS;
+	$got = _test_fx_node(_test_fx_fake_dom() . $nodes . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_fx.src.js') . $steps);
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(array('3', '1', array(true, false, false)), $got['start'], 'three layers, the first step before the section is reached');
+	pg_assert_same(array(true, true, array(false)), $got['single'], 'one layer: nothing to play');
+	pg_assert_same(array('2', array(false, true, false)), $got['second'], 'a third of the way: the second layer alone');
+	pg_assert_same(array('3', array(false, false, true)), $got['third']);
+	pg_assert_same('3', $got['past'], 'past the scene: its last step');
+	pg_assert_same(array(true, array(false, false, false)), $got['reduced'], 'reduced motion turned on: the layers one under the other');
+	pg_assert_true($got['frozen'], 'and no frame plays it again');
+	pg_assert_same(array(true, array(false, false, false)), $got['editing'], 'the editor\'s canvas keeps the layers to edit');
 }
