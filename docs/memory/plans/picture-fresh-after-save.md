@@ -9,7 +9,7 @@ description: Plan (owner 2026-11-12, #8882): a picture saved again from the Desi
 - Not known yet: which cache answered the old bytes (the panel's service worker, an edge cache before the site, the answer's own `max-age`: `platform/image-same-address.md`), and whether the canvas wrote over the same file (`ui/image-editor-versions.md`).
 
 ## Which steps are there?
-- PF1 (S) Find it and fix the face. `free`.
+- PF1 (S) Find it and fix the face. In progress.
   - Repeat it on dev first: a GIF as the profile picture, saved again from the canvas; say on #8882 which cache answers the old bytes and whether the save replaced the file. If the canvas wrote a new file beside the old one, stop and report there: then the save's target is the fault.
   - The address a face is printed with carries the file's change stamp (`?v=<change time>`): `ws_avatar_url()` and each place the panel prints a contact's picture by its bare address. A test for the pure part.
   - Memory: a topic in `platform/` for the rule ("a panel picture drawn by a file's bare address carries its change stamp").
