@@ -19,8 +19,12 @@ description: The answer an approval box asks with Approve (#7015, PR #7446): set
 - `ws_step_outputs()` adds `answer` (text), `answer_number` (number, kept as a string with decimals by `ws_step_result_data()`, null when unreadable) and `decided_by` (user id) when `answer` is set; the canvas `boxValues()` adds them the same way.
 - `ws_flow_approval_recheck()` fills them from `ws_approval_answer_values()`: the last decider's note (rule all: the answer that settled it).
 
+## What does the external API say? (#8648, PR #8977)
+- `WorkspaceApproval` carries `answer` (none, text, number) and `answer_label` (the question; null when the box set none), from the pure `ws_api_approval_answer()` (api_resources.php) by the card's rule: only an open request a box waits on asks. Symptom: a team device met the 422 of `POST /workspace/approvals/{id}/decide` only after the person pressed Approve.
+- The approvals list and My day read `ws_approval_answers_asked()` once for their open requests (`ws_api_approval_open_ids()`) and pass it as the presenter's third argument; create and decide read it for their one request. No route reads one request by its id.
+
 ## Tests?
-- `tests/workspace_flow_approval_answer_test.php`.
+- `tests/workspace_flow_approval_answer_test.php`; the API fields: `tests/workspace_api_approval_answer_test.php`.
 
 ## Which templates use it?
 - `goods_received` (by hand: how many arrived, told on approved; rejected told) and `cash_count` (every evening 19:00: the counted amount, Calculate minus a constants box `expected`, the person told when not 0 or when nobody counted), in `flow_templates.php`. A built-in template has no stock table step: a row box needs a table and column only the person knows.
