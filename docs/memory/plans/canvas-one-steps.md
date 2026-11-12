@@ -11,7 +11,7 @@ description: Steps CO0-CO9 of plans/canvas-one.md: model and screens drawn, the 
 
 - CO1 (M) The bridge, with no data. The shell's message door for a page (`platform/guarded-frame.md`): a request with an id, an answer, an error, the bounds; one harmless call (the display name of who is looking). Proven in a browser as the guarded frame was (#8802): the page reaches nothing but through the door, and a hostile page cannot ask in another canvas's name. Done in #8947 (`workspace/canvas-bridge.md`).
 
-- CO2 (M) Bound tables, read. A canvas names its tables; the page reads rows with the `where`, sort and totals of `workspace/workflow-tables-query.md`, in the reader's rights; the card's line of tables. After CO0 and CO1; its schema asked first.
+- CO2 (M) Bound tables, read. A canvas names its tables; the page reads rows with the `where`, sort and totals of `workspace/workflow-tables-query.md`, in the reader's rights; the card's line of tables. Done in #8960 (`workspace/canvas-tables.md`).
 
 - CO3 (M) Writes with consent. Add and change a row through the table's own functions; the first-write question, asked again for a new version; "through <canvas>" in the row's history. After CO2.
 
