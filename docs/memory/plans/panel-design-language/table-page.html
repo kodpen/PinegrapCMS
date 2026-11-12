@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>panel look A: a list screen on the table driver (bar, one-line rows, rows on scroll) on a 1920 px window</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="sheet.css">
+<style>
+.wrap { width: 1280px; }
+.tools { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.tools .in { width: 300px; height: 34px; }
+.fp { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 11px; border-radius: 10px; font-size: 13px; font-weight: 500; color: var(--fg2); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; }
+.fp i { font-size: 11px; color: var(--fg3); }
+.frame { overflow: hidden; }
+.bar { height: 48px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.bar .count { font-weight: 650; color: var(--accent); padding: 0 14px 0 4px; margin-right: 6px; border-right: 1px solid var(--line); white-space: nowrap; line-height: 20px; }
+.bar .lbl { font-size: 13px; color: var(--fg2); margin: 0 8px 0 2px; }
+.bar .div { width: 1px; height: 20px; background: var(--line); margin: 0 6px; }
+table.lt { width: 100%; border-collapse: separate; border-spacing: 0; }
+.lt th { height: 38px; padding: 0 14px; text-align: left; font-size: 12px; font-weight: 550; color: var(--fg3); white-space: nowrap; border-bottom: 1px solid var(--line); background: var(--card); }
+.lt th.sorted { color: var(--fg); }
+.lt th i { font-size: 11px; margin-left: 4px; }
+.lt td { height: 52px; padding: 0 14px; white-space: nowrap; border-bottom: 1px solid var(--line); }
+.lt .r { text-align: right; }
+.lt .ckc { width: 46px; padding-right: 0; }
+.lt .name { width: 100%; }
+.lt tr.sel td { background: color-mix(in srgb, var(--accent) var(--sel), transparent); }
+.lt tr.hov td { background: var(--hover); }
+.nm { display: flex; align-items: center; gap: 12px; }
+.nm b { font-weight: 550; }
+.nm small { font-size: 13px; color: var(--fg3); }
+.pth { flex: none; width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; font-size: 15px; color: rgba(255,255,255,.92); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+.g1 { background: linear-gradient(135deg, #3d7bd9, #5fb6e8); } .g2 { background: linear-gradient(135deg, #59616e, #9aa6b8); } .g3 { background: linear-gradient(135deg, #a9783f, #e0b678); } .g4 { background: linear-gradient(135deg, #2f8f9b, #6fd0c0); }
+.g5 { background: linear-gradient(135deg, #b5524f, #ee9a7e); } .g6 { background: linear-gradient(135deg, #7a5bd0, #b59cf2); } .g7 { background: linear-gradient(135deg, #c9ccd3, #8f96a3); } .g8 { background: linear-gradient(135deg, #3f9b62, #9ad28a); }
+.code { font-size: 13px; color: var(--fg2); font-variant-numeric: tabular-nums; }
+.mut { font-size: 13px; color: var(--fg2); }
+.dt { font-size: 13px; color: var(--fg3); }
+.stk { display: inline-flex; align-items: center; gap: 9px; }
+.stk i { display: block; width: 44px; height: 4px; border-radius: 2px; background: var(--quiet); overflow: hidden; }
+.stk i b { display: block; height: 100%; border-radius: 2px; background: var(--teal); }
+.stk.low span { color: var(--amber); font-weight: 550; } .stk.low i b { background: var(--amber); }
+.stk.out span { color: var(--rose); font-weight: 550; }
+.amt { font-weight: 550; }
+.lt .act { width: 52px; padding: 0 10px 0 0; text-align: right; }
+.lt tr.load td { border-bottom-color: transparent; }
+.lt tr.load .sk { height: 9px; }
+.foot { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 14px; font-size: 13px; color: var(--fg3); border-top: 1px solid var(--line); }
+.spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--quiet); border-top-color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="stage">
+<div class="cap"><b>Tablo sayfası</b>Tablo, sütunlarının istediği kadar geniş: en az 1280 px, ortada. Esneyen tek sütun ad sütunu. Sayfalama yok; kaydırdıkça satır eklenir.</div>
+<div class="screen">
+  <aside class="menu">
+    <div class="logo"><i></i><span class="sk" style="width:92px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:74px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:104px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:62px"></span></div>
+    <span class="sk mh"></span>
+    <div class="mi"><i></i><span class="sk" style="width:88px"></span></div>
+    <div class="mi on"><i></i><span class="sk" style="width:70px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:112px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:80px"></span></div>
+    <span class="sk mh"></span>
+    <div class="mi"><i></i><span class="sk" style="width:96px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:66px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:84px"></span></div>
+  </aside>
+  <div class="main">
+    <div class="top"><span class="sk s"></span><span class="sp"></span><span class="sk c"></span><span class="sk c"></span></div>
+    <div class="content">
+      <div class="wrap">
+        <div class="phead" style="margin-top:0"><h1 class="disp">Ürünler</h1><span class="cnt num">342 ürün</span><span class="sp"></span><button class="btn quiet"><i class="bi bi-upload"></i>İçe aktar</button><button class="btn fill"><i class="bi bi-plus-lg"></i>Yeni ürün</button></div>
+        <div class="tools">
+          <div class="in"><i class="bi bi-search"></i><span class="ph">Ürün adı ya da stok kodu ara</span><kbd class="end">Ctrl K</kbd></div>
+          <span class="seg"><span class="on">Tümü <em>342</em></span><span>Yayında <em>318</em></span><span>Taslak <em>19</em></span><span>Tükendi <em>5</em></span></span>
+          <span class="fp">Kategori <i class="bi bi-chevron-down"></i></span>
+          <span class="fp">Stok <i class="bi bi-chevron-down"></i></span>
+        </div>
+        <section class="pcard frame">
+          <div class="bar">
+            <button class="ib sm" title="Seçimi kaldır"><i class="bi bi-x-lg"></i></button>
+            <span class="count num">2 seçildi</span>
+            <button class="btn ghost sm" style="color:var(--fg)"><i class="bi bi-check2-circle"></i>Yayına al</button>
+            <button class="btn ghost sm" style="color:var(--fg)"><i class="bi bi-folder2"></i>Kategori değiştir</button>
+            <button class="btn ghost sm" style="color:var(--rose)"><i class="bi bi-trash3"></i>Sil</button>
+            <span class="div"></span>
+            <button class="btn ghost sm">Tümünü seç</button>
+            <span class="sp"></span>
+            <button class="ib sm" title="Hızlı düzenle"><i class="bi bi-pencil-square"></i></button>
+            <button class="ib sm" title="Sütunlar"><i class="bi bi-layout-three-columns"></i></button>
+            <span class="div"></span>
+            <span class="lbl">Detaylar</span><span class="sw" style="margin-right:4px"></span>
+          </div>
+          <table class="lt">
+            <thead><tr><th class="ckc"><span class="ck"><i class="bi bi-dash" style="margin:0;font-size:12px;color:var(--fg2)"></i></span></th><th>Ürün</th><th>Stok kodu</th><th>Kategori</th><th class="r">Stok</th><th class="r">Fiyat</th><th>Durum</th><th class="sorted">Güncelleme<i class="bi bi-arrow-down"></i></th><th class="act"></th></tr></thead>
+            <tbody>
+              <tr><td class="ckc"><span class="ck"></span></td><td class="name"><div class="nm"><span class="pth g1"><i class="bi bi-cup-hot"></i></span><b>Mavi seramik kupa</b><small>330 ml · 3 seçenek</small></div></td><td class="code">KP-MAVI-330</td><td class="mut">Kupalar</td><td class="r"><span class="stk"><span class="num">128</span><i><b style="width:82%"></b></i></span></td><td class="r amt num">249,90 ₺</td><td><span class="st t-teal">Yayında</span></td><td class="dt">Bugün 16:20</td><td class="act"><button class="ib sm dim"><i class="bi bi-pencil"></i></button></td></tr>
+              <tr class="sel"><td class="ckc"><span class="ck on"><i class="bi bi-check"></i></span></td><td class="name"><div class="nm"><span class="pth g2"><i class="bi bi-cup-straw"></i></span><b>Çelik termos bardak</b><small>450 ml</small></div></td><td class="code">TR-CLK-450</td><td class="mut">Termoslar</td><td class="r"><span class="stk low"><span class="num">4</span><i><b style="width:9%"></b></i></span></td><td class="r amt num">389,00 ₺</td><td><span class="st t-teal">Yayında</span></td><td class="dt">Bugün 11:05</td><td class="act"><button class="ib sm dim"><i class="bi bi-pencil"></i></button></td></tr>
+              <tr><td class="ckc"><span class="ck"></span></td><td class="name"><div class="nm"><span class="pth g3"><i class="bi bi-grid"></i></span><b>Bambu altlık seti</b><small>4'lü</small></div></td><td class="code">BA-SET-04</td><td class="mut">Aksesuar</td><td class="r"><span class="stk"><span class="num">62</span><i><b style="width:48%"></b></i></span></td><td class="r amt num">119,90 ₺</td><td><span class="st t-teal">Yayında</span></td><td class="dt">Dün 18:42</td><td class="act"><button class="ib sm dim"><i class="bi bi-pencil"></i></button></td></tr>
+              <tr class="sel"><td class="ckc"><span class="ck on"><i class="bi bi-check"></i></span></td><td class="name"><div class="nm"><span class="pth g4"><i class="bi bi-droplet"></i></span><b>Cam demlik</b><small>800 ml</small></div></td><td class="code">CD-800</td><td class="mut">Demlikler</td><td class="r"><span class="stk out"><span class="num">0</span><i><b style="width:0"></b></i></span></td><td class="r amt num">529,00 ₺</td><td><span class="st t-rose">Tükendi</span></td><td class="dt">Dün 14:10</td><td class="act"><button class="ib sm dim"><i class="bi bi-pencil"></i></button></td></tr>
+              <tr class="hov"><td class="ckc"><span class="ck"></span></td><td class="name"><div class="nm"><span class="pth g5"><i class="bi bi-cup"></i></span><b>Emaye kamp kupası</b><small>2 renk</small></div></td><td class="code">EM-KMP-02</td><td class="mut">Kupalar</td><td class="r"><span class="stk"><span class="num">37</span><i><b style="width:30%"></b></i></span></td><td class="r amt num">189,90 ₺</td><td><span class="st t-teal">Yayında</span></td><td class="dt">10 Kas</td><td class="act"><button class="ib sm on"><i class="bi bi-pencil"></i></button></td></tr>
+              <tr><td class="ckc"><span class="ck"></span></td><td class="name"><div class="nm"><span class="pth g6"><i class="bi bi-gift"></i></span><b>Hediye kutusu</b><small>büyük boy</small></div></td><td class="code">HK-BYK</td><td class="mut">Aksesuar</td><td class="r"><span class="stk"><span class="num">215</span><i><b style="width:100%"></b></i></span></td><td class="r amt num">59,90 ₺</td><td><span class="st t-teal">Yayında</span></td><td class="dt">10 Kas</td><td class="act"><button class="ib sm dim"><i class="bi bi-pencil"></i></button></td></tr>
+              <tr><td class="ckc"><span class="ck"></span></td><td class="name"><div class="nm"><span class="pth g7"><i class="bi bi-cup-hot"></i></span><b>Porselen espresso fincanı</b><small>6'lı</small></div></td><td class="code">PF-ESP-06</td><td class="mut">Fincanlar</td><td class="r"><span class="stk"><span class="num">18</span><i><b style="width:16%"></b></i></span></td><td class="r amt num">749,00 ₺</td><td><span class="st">Taslak</span></td><td class="dt">9 Kas</td><td class="act"><button class="ib sm dim"><i class="bi bi-pencil"></i></button></td></tr>
+              <tr><td class="ckc"><span class="ck"></span></td><td class="name"><div class="nm"><span class="pth g1"><i class="bi bi-brush"></i></span><b>Kişiye özel baskılı kupa</b><small>sipariş üzerine</small></div></td><td class="code">KO-BSK</td><td class="mut">Kupalar</td><td class="r"><span class="mut">—</span></td><td class="r amt num">299,90 ₺</td><td><span class="st t-teal">Yayında</span></td><td class="dt">8 Kas</td><td class="act"><button class="ib sm dim"><i class="bi bi-pencil"></i></button></td></tr>
+              <tr><td class="ckc"><span class="ck"></span></td><td class="name"><div class="nm"><span class="pth g3"><i class="bi bi-three-dots"></i></span><b>Çay kaşığı seti</b><small>12'li</small></div></td><td class="code">CK-SET-12</td><td class="mut">Aksesuar</td><td class="r"><span class="stk low"><span class="num">9</span><i><b style="width:12%"></b></i></span></td><td class="r amt num">139,90 ₺</td><td><span class="st t-teal">Yayında</span></td><td class="dt">7 Kas</td><td class="act"><button class="ib sm dim"><i class="bi bi-pencil"></i></button></td></tr>
+              <tr><td class="ckc"><span class="ck"></span></td><td class="name"><div class="nm"><span class="pth g8"><i class="bi bi-circle"></i></span><b>Seramik kase</b><small>orta boy</small></div></td><td class="code">SK-ORT</td><td class="mut">Kaseler</td><td class="r"><span class="stk"><span class="num">74</span><i><b style="width:56%"></b></i></span></td><td class="r amt num">169,90 ₺</td><td><span class="st t-teal">Yayında</span></td><td class="dt">5 Kas</td><td class="act"><button class="ib sm dim"><i class="bi bi-pencil"></i></button></td></tr>
+              <tr><td class="ckc"><span class="ck"></span></td><td class="name"><div class="nm"><span class="pth g5"><i class="bi bi-cup-hot"></i></span><b>Kırmızı seramik kupa</b><small>330 ml</small></div></td><td class="code">KP-KRMZ-330</td><td class="mut">Kupalar</td><td class="r"><span class="stk"><span class="num">91</span><i><b style="width:66%"></b></i></span></td><td class="r amt num">249,90 ₺</td><td><span class="st t-teal">Yayında</span></td><td class="dt">4 Kas</td><td class="act"><button class="ib sm dim"><i class="bi bi-pencil"></i></button></td></tr>
+              <tr class="load" style="opacity:.75"><td class="ckc"></td><td class="name"><div class="nm"><span class="sk" style="width:32px;height:32px;border-radius:9px"></span><span class="sk" style="width:210px"></span></div></td><td><span class="sk" style="width:84px"></span></td><td><span class="sk" style="width:64px"></span></td><td class="r"><span class="sk" style="width:60px;margin-left:auto"></span></td><td class="r"><span class="sk" style="width:66px;margin-left:auto"></span></td><td><span class="sk" style="width:70px"></span></td><td><span class="sk" style="width:58px"></span></td><td></td></tr>
+              <tr class="load" style="opacity:.4"><td class="ckc"></td><td class="name"><div class="nm"><span class="sk" style="width:32px;height:32px;border-radius:9px"></span><span class="sk" style="width:160px"></span></div></td><td><span class="sk" style="width:70px"></span></td><td><span class="sk" style="width:76px"></span></td><td class="r"><span class="sk" style="width:60px;margin-left:auto"></span></td><td class="r"><span class="sk" style="width:58px;margin-left:auto"></span></td><td><span class="sk" style="width:70px"></span></td><td><span class="sk" style="width:48px"></span></td><td></td></tr>
+            </tbody>
+          </table>
+          <div class="foot"><span class="spin"></span><span>Yükleniyor… 342 üründen 40'ı gösteriliyor</span><span class="sp"></span><button class="btn quiet sm">Daha fazla göster</button></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="ruler"><span style="width:250px">menü 250</span><span style="flex:1">boş</span><span class="on" style="width:1276px">tablo en az 1280 · sütunlar çoğalınca ekrana kadar genişler</span><span style="flex:1">boş</span></div>
+</div>
+</body>
+</html>

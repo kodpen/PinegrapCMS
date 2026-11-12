@@ -49,6 +49,14 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-5.md: What does the Visitor map card draw without city names? (owner, 2026-11-11, #8672)
 - decisions-made-panel-5.md: Which report screens are renewed, and how do they look? (owner, 2026-11-11, #8673)
 - decisions-made-panel-5.md: Are there ready reports on a report screen? (owner, 2026-11-11, #8673)
+- decisions-made-panel-6.md: Where are the rules and the earlier parts?
+- decisions-made-panel-6.md: Does the panel get a design language, and from which look? (owner, 2026-11-12, #8842)
+- decisions-made-panel-6.md: What are the image editor and the visual page editor called? (owner, 2026-11-12, #8849)
+- decisions-made-panel-6.md: Where do the legacy designer's entries and Ads sit in the main menu? (owner, 2026-11-12, #8849)
+- decisions-made-panel-7.md: Where are the rules and the earlier parts?
+- decisions-made-panel-7.md: Is the second pass of look A the reference? (owner, 2026-11-12, #8860)
+- decisions-made-panel-7.md: How wide is an add or edit screen? (owner, 2026-11-12, #8860)
+- decisions-made-panel-7.md: How wide is a list, and how does it page? (owner, 2026-11-12, #8860)
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?
 - decisions-made-panel.md: Which date-and-time picker does the software use? (#2693, 2026-10-28)
@@ -346,6 +354,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-17.md: Where does a mail open from the E-mails list, and how is it drawn? (owner, 2026-11-11, #8765)
 - decisions-made-workspace-17.md: How are pictures from outside shown in a mail? (owner, 2026-11-11, #8765)
 - decisions-made-workspace-17.md: May a mailbox be kept in no channel? (owner, 2026-11-11, #8765)
+- decisions-made-workspace-18.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-18.md: Does the channel sound play in a hidden tab? (owner, 2026-11-12, #8798)
+- decisions-made-workspace-18.md: Is the canvas one thing? (owner, 2026-11-12, #8850)
+- decisions-made-workspace-18.md: May a live page reach data? (owner, 2026-11-12, #8850)
+- decisions-made-workspace-18.md: In which order is it built? (owner, 2026-11-12, #8850)
 - decisions-made-workspace-2.md: What may the channel menu hold?
 - decisions-made-workspace-2.md: Where are records created inside a chat?
 - decisions-made-workspace-2.md: Does the customer channel's "New sales quote" stay in the menu?

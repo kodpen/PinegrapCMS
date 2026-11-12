@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>panel look A: the bell drawer</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<style>
+.th-dark {
+  --page: #07080a; --bg: #101114; --raised: #181a1e; --hover: rgba(255,255,255,.05); --line: rgba(255,255,255,.07);
+  --fg: #eceef0; --fg2: #a3a8af; --fg3: #6c727a; --accent: #6aa5ff; --on-accent: #0b1220;
+  --blue: #6aa5ff; --violet: #b19cff; --amber: #f2b84b; --teal: #3fd0a8; --rose: #f58aa0; --gray: #9aa0a8;
+  --tint: 16%; --shadow: 0 24px 60px rgba(0,0,0,.55);
+}
+.th-light {
+  --page: #eef0f3; --bg: #ffffff; --raised: #ffffff; --hover: rgba(15,23,42,.045); --line: rgba(15,23,42,.09);
+  --fg: #14171a; --fg2: #59616a; --fg3: #8a929b; --accent: #2f6fed; --on-accent: #ffffff;
+  --blue: #2f6fed; --violet: #7150e6; --amber: #b7791f; --teal: #0e9a74; --rose: #d43d6b; --gray: #6b7280;
+  --tint: 11%; --shadow: 0 24px 60px rgba(15,23,42,.14);
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 400 14px/1.45 Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; font-feature-settings: "cv11", "ss01"; }
+.stage { display: flex; width: max-content; }
+.col { width: 430px; }
+.cap { margin: 0 2px 14px; }
+.cap b { font-size: 17px; font-weight: 650; letter-spacing: -.01em; }
+.cap span { display: block; color: var(--fg2); font-size: 13px; margin-top: 2px; }
+.panel { height: 900px; background: var(--bg); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden; }
+.scroll { flex: 1; overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.ib { width: 32px; height: 32px; border-radius: 8px; color: var(--fg2); display: inline-grid; place-items: center; font-size: 16px; }
+.ib.on { background: var(--hover); color: var(--fg); }
+.tile { --c: var(--gray); flex: none; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) var(--tint), transparent); }
+.t-blue { --c: var(--blue); } .t-violet { --c: var(--violet); } .t-amber { --c: var(--amber); } .t-teal { --c: var(--teal); } .t-rose { --c: var(--rose); } .t-gray { --c: var(--gray); }
+.av { border-radius: 50%; font-weight: 600; letter-spacing: .01em; color: #fff; background: linear-gradient(135deg, #8b6cf6, #5b8def); }
+.dot { display: block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+.num { font-variant-numeric: tabular-nums; }
+.foot { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-top: 1px solid var(--line); color: var(--fg2); font-size: 13px; }
+.foot i { font-size: 15px; }
+.sw { margin-left: auto; width: 34px; height: 20px; border-radius: 10px; background: color-mix(in srgb, var(--fg3) 45%, transparent); position: relative; }
+.sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+.clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.one { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* A: quiet list */
+.a .head { display: flex; align-items: center; gap: 2px; padding: 16px 12px 10px 20px; }
+.a .head h2 { margin: 0 auto 0 0; font-size: 16px; font-weight: 650; letter-spacing: -.01em; }
+.a .chips { display: flex; gap: 6px; padding: 2px 20px 12px; }
+.a .chip { height: 28px; padding: 0 11px; border-radius: 14px; font-size: 13px; font-weight: 500; color: var(--fg2); display: inline-flex; align-items: center; gap: 6px; }
+.a .chip.on { background: color-mix(in srgb, var(--fg) 10%, transparent); color: var(--fg); }
+.a .chip em { font-style: normal; color: var(--fg3); font-size: 12px; }
+.a .chip.end { margin-left: auto; border: 1px solid var(--line); }
+.a .day { padding: 12px 20px 6px; font-size: 12px; font-weight: 550; color: var(--fg3); }
+.a .row { display: flex; gap: 11px; margin: 0 8px; padding: 10px 12px; border-radius: 12px; }
+.a .row.hov { background: var(--hover); }
+.a .tile { width: 28px; height: 28px; border-radius: 8px; font-size: 14px; margin-top: 2px; }
+.a .av { font-size: 10.5px; }
+.a .main { flex: 1; min-width: 0; }
+.a .l1 { display: flex; align-items: baseline; gap: 10px; }
+.a .title { flex: 1; min-width: 0; font-weight: 550; font-size: 14px; }
+.a .title span { font-weight: 400; color: var(--fg2); }
+.a .time { font-size: 12px; color: var(--fg3); flex: none; }
+.a .text { color: var(--fg2); font-size: 13px; margin-top: 1px; }
+.a .text b { color: var(--fg); font-weight: 550; }
+.a .l3 { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.a .btn { height: 28px; padding: 0 12px; border-radius: 8px; font-size: 13px; font-weight: 550; background: color-mix(in srgb, var(--fg) 8%, transparent); }
+.a .btn.pri { background: var(--accent); color: var(--on-accent); }
+.a .place { font-size: 12px; color: var(--fg3); }
+.a .side { width: 8px; padding-top: 6px; flex: none; }
+.a .read .title { font-weight: 450; color: var(--fg2); }
+.a .read .tile { filter: saturate(.55); opacity: .8; }
+
+
+.col { width: auto; padding: 30px 34px 36px; background: var(--page); color: var(--fg); }
+.panel { width: 430px; height: 956px; }
+.a .fold div { white-space: nowrap; }
+.a .count { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 9px; font-size: 11px; font-weight: 600; line-height: 17px; vertical-align: 1px; color: var(--fg2); background: color-mix(in srgb, var(--fg) 9%, transparent); }
+.a .fold { margin: 8px 0 2px; border-left: 2px solid var(--line); padding-left: 10px; }
+.a .fold div { display: flex; gap: 8px; padding: 3px 0; font-size: 13px; color: var(--fg2); }
+.a .fold div b { color: var(--fg); font-weight: 550; }
+.a .fold div span:last-child { margin-left: auto; color: var(--fg); }
+.a .link { font-size: 12.5px; font-weight: 500; color: var(--fg2); display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; }
+.a .quick { display: flex; gap: 2px; flex: none; margin: -5px -6px -5px 0; }
+.a .quick .ib { width: 26px; height: 26px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="stage" id="stage"></div>
+<script>
+var N = [
+  { day: 'Bugün', tone: 'blue', icon: 'robot', who: 'Stok ajanı', verb: 'size sordu', place: '#satis', t: '16 dk', text: 'Depoda 3 ürün kritik seviyenin altına düştü: KAH-250, KUP-12 ve FLT-02. Tedarikçiye bu hafta sipariş açalım mı?', act: 'Yanıtla', pri: 1, un: 1 },
+  { day: 'Bugün', av: 'AD', who: 'Ayşe Demir', verb: 'sizi andı', place: '#satis', t: '41 dk', text: 'Yarınki teklif toplantısı için güncel fiyat listesini paylaşabilir misin? Müşteri özellikle toptan indirim oranlarını ve teslim sürelerini soruyor.', act: 'Yanıtla', un: 1, hov: 1 },
+  { day: 'Bugün', tone: 'amber', icon: 'exclamation-triangle', who: 'Vadesi geçen alacaklar', t: '3 sa', value: '18.450,00 ₺', text: '3 alacak hatırlatma eşiğini geçti, biri bir aydır açık.', act: 'Göster', un: 1 },
+  { day: 'Dün', tone: 'teal', icon: 'bag', who: 'Yeni sipariş', count: 2, t: 'Dün', value: '2.404,50 ₺', text: 'son sipariş 16:20', un: 1,
+    fold: [['#SP-1044', 'Mehmet Kaya · 3 ürün', '2.015,50 ₺'], ['#SP-1043', 'Elif Şahin · 1 ürün', '389,00 ₺']], less: 'Gizle' },
+  { day: 'Dün', tone: 'rose', icon: 'ui-checks', who: 'Form gönderildi', count: 3, t: 'Dün', text: 'İletişim formu (2), Teklif formu', un: 1, more: '3 gönderimi göster' },
+  { day: 'Dün', tone: 'amber', icon: 'box-seam', who: 'Stok tükendi', t: 'Dün', text: 'Seramik Kupa (Mavi) son satışla tükendi.', un: 0 },
+  { day: 'Daha önce', tone: 'gray', icon: 'arrow-repeat', who: 'Güncelleme hazır', t: '9 Kas', text: 'Pinegrap 2026.11.0 kurulabilir.', un: 0 }
+];
+function tile(n) { return n.av ? '<span class="tile av">' + n.av + '</span>' : '<span class="tile t-' + n.tone + '"><i class="bi bi-' + n.icon + '"></i></span>'; }
+function panel() {
+  var out = '<div class="head"><h2>Bildirimler</h2><button class="ib" title="Tümünü okundu say"><i class="bi bi-check2-all"></i></button><button class="ib"><i class="bi bi-three-dots"></i></button><button class="ib"><i class="bi bi-x-lg"></i></button></div>'
+    + '<div class="chips"><span class="chip on">Tümü <em>8</em></span><span class="chip">Site <em>6</em></span><span class="chip">Çalışma Alanı <em>2</em></span><span class="chip end"><i class="bi bi-funnel"></i>Okunmamış</span></div><div class="scroll">', day = '';
+  N.forEach(function (n) {
+    if (n.day !== day) { day = n.day; out += '<div class="day">' + day + '</div>'; }
+    out += '<div class="row' + (n.un ? '' : ' read') + (n.hov ? ' hov' : '') + '">' + tile(n) + '<div class="main">'
+      + '<div class="l1"><div class="title one">' + n.who + (n.verb ? ' <span>' + n.verb + '</span>' : '') + (n.count ? '<span class="count">' + n.count + '</span>' : '') + '</div>'
+      + (n.hov ? '<span class="quick"><button class="ib on" title="Okundu say"><i class="bi bi-check2"></i></button><button class="ib" title="Diğer işlemler"><i class="bi bi-three-dots"></i></button></span>' : '<span class="time">' + n.t + '</span>') + '</div>'
+      + '<div class="text clamp2">' + (n.value ? '<b class="num">' + n.value + '</b> · ' : '') + n.text + '</div>'
+      + (n.fold ? '<div class="fold">' + n.fold.map(function (f) { return '<div><b>' + f[0] + '</b><span>' + f[1] + '</span><span class="num">' + f[2] + '</span></div>'; }).join('') + '</div><button class="link">' + n.less + ' <i class="bi bi-chevron-up"></i></button>' : '')
+      + (n.more ? '<button class="link">' + n.more + ' <i class="bi bi-chevron-down"></i></button>' : '')
+      + (n.act ? '<div class="l3"><button class="btn' + (n.pri ? ' pri' : '') + '">' + n.act + '</button>' + (n.place ? '<span class="place">' + n.place + '</span>' : '') + '</div>' : '')
+      + '</div><div class="side">' + (n.un ? '<span class="dot"></span>' : '') + '</div></div>';
+  });
+  return out + '</div><div class="foot"><i class="bi bi-bell"></i>Bu cihazda bildirimler<span class="sw"></span></div>';
+}
+document.getElementById('stage').innerHTML = ['dark', 'light'].map(function (t) {
+  return '<div class="col th-' + t + '" id="col-' + t + '"><section class="panel a">' + panel() + '</section></div>';
+}).join('');
+</script>
+</body>
+</html>
