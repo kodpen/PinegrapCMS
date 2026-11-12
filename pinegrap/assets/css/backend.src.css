@@ -15862,7 +15862,12 @@ a.ws-chip:hover {
   align-items: start;
 }
 .ws-mail-reading .ws-mail-columns {
-  grid-template-columns: minmax(18rem, 2fr) minmax(0, 3fr);
+  grid-template-columns: minmax(16rem, 1fr) minmax(0, 2fr);
+}
+/* With the pane open a row keeps who, subject, first words and time; of
+   its last line only a mail that did not leave stays said. */
+.ws-mail-reading .ws-mail-row-meta > :not(.badge) {
+  display: none;
 }
 .ws-mail-rows {
   display: flex;
@@ -15981,6 +15986,34 @@ a.ws-chip:hover {
 .ws-mail-text {
   margin-top: .5rem;
   overflow-wrap: anywhere;
+}
+/* A mail's HTML in its guarded frame (mail_pane.php
+   ws_mail_pane_body_html()): white in both themes, as mail is written for
+   white; its height follows the mail once the frame reports it
+   (workspace_mail.js). */
+.ws-mail-body {
+  margin-top: .5rem;
+}
+.ws-mail-body-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem .5rem;
+  margin-bottom: .35rem;
+}
+.ws-mail-frame {
+  display: block;
+  width: 100%;
+  height: 12rem;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius-sm);
+  background: #fff;
+  color-scheme: light;
+}
+.ws-mail-frame[hidden],
+.ws-mail-body .ws-mail-text[hidden],
+.ws-mail-pictures[hidden] {
+  display: none;
 }
 /* New e-mail (workspace_mail.js newForm()): the Signature as the mail
    carries it, its lines kept; the chosen files under the picker. */

@@ -3,7 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the Kodpen API client base (includes/fn/vendor_api.php): the
- * switch line the hosting platform reads and the refusal while it is off,
+ * switch line the hosting platform reads, in its on form, the refusals that
+ * come before any call (no address, no site name to bind a licence to),
  * the base address and its test override, the headers, timeouts and caps of
  * a call, the application/problem+json reader against the licence vectors,
  * and the canonical site name against the vendor's site_host.json vectors
@@ -21,19 +22,20 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/vendor_api.php');
 
-// The switch stays off until the release that turns it on, and its line keeps
-// the one form the hosting platform reads the file for: the on form appears
-// nowhere in the file, comments included.
-function test_vendor_api_switch_is_off_on_its_own_line()
+// The switch is on, and its line keeps the one form the hosting platform
+// reads the file for: the platform's pattern matches it once, the on form
+// appears on that line only (comments included) and the off form nowhere.
+function test_vendor_api_switch_is_on_on_its_own_line()
 {
-	pg_assert_same(false, PG_VENDOR_API_V1, 'the switch is off');
+	pg_assert_same(true, PG_VENDOR_API_V1, 'the switch is on');
 
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/vendor_api.php');
 
 	pg_assert_same(1, preg_match_all("/^[ \\t]*define\\('PG_VENDOR_API_V1', (true|false)\\);[ \\t]*\\r?$/m", $source, $lines), 'one switch line');
-	pg_assert_same('false', isset($lines[1][0]) ? $lines[1][0] : null, 'in its off form');
-	pg_assert_same(0, preg_match("/^[ \\t]*define\\('PG_VENDOR_API_V1', true\\);[ \\t]*\\r?$/m", $source), 'the platform reads it as off');
-	pg_assert_same(false, strpos($source, "'PG_VENDOR_API_V1', true"), 'the on form nowhere in the file');
+	pg_assert_same('true', isset($lines[1][0]) ? $lines[1][0] : null, 'in its on form');
+	pg_assert_same(1, preg_match_all("/^[ \\t]*define\\('PG_VENDOR_API_V1', true\\);[ \\t]*\\r?$/m", $source), 'the platform reads it as on, once');
+	pg_assert_same(1, substr_count($source, "'PG_VENDOR_API_V1', true"), 'the on form only on its line');
+	pg_assert_same(false, strpos($source, "'PG_VENDOR_API_V1', false"), 'the off form nowhere in the file');
 	pg_assert_same(1, substr_count($source, "define('PG_VENDOR_API_V1'"), 'defined once');
 }
 
@@ -305,17 +307,39 @@ function test_vendor_api_problem_reader_edges()
 	pg_assert_same('', pg_vendor_api_media_type(null));
 }
 
-// While the switch is off nothing is called: the refusal comes before cURL,
-// so it has no cURL error number (the address would fail at once anyway:
-// plain http is not a protocol pg_curl_run() speaks).
-function test_vendor_api_switch_off_calls_nothing()
+// Without an address nothing is called: a PG_VENDOR_API_URL that is not
+// taken leaves no base, and the refusal comes before cURL, so it has no cURL
+// error number.
+function test_vendor_api_no_address_calls_nothing()
 {
+	$url = pg_vendor_api_base_from('http://192.0.2.1/v1');
+	pg_assert_same('', $url, 'a plain http override is no base');
+
+	$answer = pg_vendor_api_request('POST', $url, array('body' => '{}'));
+
+	pg_assert_false($answer['ok']);
+	pg_assert_same(0, $answer['status']);
+	pg_assert_same(0, $answer['errno'], 'refused before cURL');
+	pg_assert_contains('no Kodpen API address', $answer['error']);
+	pg_assert_same('', $answer['content_type']);
+}
+
+// A call that binds the licence to the site name is not made without one:
+// refused before cURL as well (the address would fail at once anyway: plain
+// http is not a protocol pg_curl_run() speaks). The test fails instead of
+// skipping when an earlier test file has defined HOSTNAME_SETTING.
+function test_vendor_api_no_site_name_calls_nothing()
+{
+	if (!pg_assert_false(defined('HOSTNAME_SETTING'), 'runs before any test file defines HOSTNAME_SETTING')) {
+		return;
+	}
+
 	$answer = pg_vendor_api_request('POST', 'http://192.0.2.1/v1/licenses/verify', array('body' => '{}', 'site_required' => true));
 
 	pg_assert_false($answer['ok']);
 	pg_assert_same(0, $answer['status']);
 	pg_assert_same(0, $answer['errno'], 'refused before cURL');
-	pg_assert_contains('switched off', $answer['error']);
+	pg_assert_contains('site name cannot be sent', $answer['error']);
 	pg_assert_same('', $answer['content_type']);
 }
 

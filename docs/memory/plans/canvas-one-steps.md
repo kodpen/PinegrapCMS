@@ -8,7 +8,7 @@ description: Steps CO0-CO9 of plans/canvas-one.md: model and screens drawn, the 
 
 - CO0 (S, no product code) The model and the screens. What one canvas is in the store and the API (names, parts, versions), and its screens drawn in look A, on a phone too: the card with its parts, the line of tables it uses, the first-write question, the Data list; in `plans/canvas-one/`. The owner approves the drawings. It names every schema change the later steps need, each asked on its own issue. Free now.
 
-- CO1 (M) The bridge, with no data. The shell's message door for a page (`platform/guarded-frame.md`): a request with an id, an answer, an error, the bounds; one harmless call (the display name of who is looking). Proven in a browser as LP1 was: the page reaches nothing but through the door, and a hostile page cannot ask in another canvas's name. Free now (LP1 and LP2a are done).
+- CO1 (M) The bridge, with no data. The shell's message door for a page (`platform/guarded-frame.md`): a request with an id, an answer, an error, the bounds; one harmless call (the display name of who is looking). Proven in a browser as the guarded frame was (#8802): the page reaches nothing but through the door, and a hostile page cannot ask in another canvas's name. Free now (the guarded frame #8802 and the page routes #8815 are done).
 
 - CO2 (M) Bound tables, read. A canvas names its tables; the page reads rows with the `where`, sort and totals of `workspace/workflow-tables-query.md`, in the reader's rights; the card's line of tables. After CO0 and CO1; its schema asked first.
 
