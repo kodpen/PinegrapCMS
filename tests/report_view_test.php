@@ -173,3 +173,72 @@ function test_report_view_time_groups_take_the_finest_date_level()
 	pg_assert_same(array(), $groups);
 	pg_assert_same('', $level);
 }
+
+function pg_test_report_view_visitor_group($name, $count)
+{
+	return array('name' => $name, 'visitors' => array(), 'count' => $count, 'page_views' => $count * 3, 'custom_form_submitted' => 0,
+		'order_created' => 0, 'order_retrieved' => 0, 'order_checked_out' => 0, 'order_completed' => 0, 'order_total' => 0);
+}
+
+// The visitor report's figures are its Grand Total row's cells: the counts,
+// the percentages over visitors and the order money.
+function test_report_view_visitor_figures_follow_the_grand_total_row()
+{
+	$grand = array('count' => 3, 'page_views' => 1234, 'custom_form_submitted' => 1, 'order_completed' => 2, 'order_total' => 100001);
+	$percent = function ($value) {
+		return lang(array('string' => '{var:1}%', 'vars' => pg_format_number($value, 2)));
+	};
+
+	$figures = pg_report_view_visitor_figures($grand, true, '$');
+
+	pg_assert_same(array(lang('Visitors'), lang('Page Views'), lang('Custom Form Submitted') . ' %', lang('Order Completed') . ' %', lang('Order Total'), lang('Average Order Amount')), array_column($figures, 'label'));
+	pg_assert_same(pg_format_number(3, 0), $figures[0]['text']);
+	pg_assert_same(pg_format_number(1234, 0), $figures[1]['text']);
+	pg_assert_same($percent(1 / 3 * 100), $figures[2]['text'], 'as the cell: submitted over visitors');
+	pg_assert_same($percent(2 / 3 * 100), $figures[3]['text']);
+	pg_assert_same(pg_format_money(1000.01, '$'), $figures[4]['text'], 'from minor units');
+	pg_assert_same(pg_format_money(100001 / 3 / 100, '$'), $figures[5]['text'], 'rounded, never cut');
+	pg_assert_same(pg_format_money(333.34, '$'), $figures[5]['text']);
+
+	$plain = pg_report_view_visitor_figures($grand, false, '$');
+	pg_assert_same(array(lang('Visitors'), lang('Page Views'), lang('Custom Form Submitted') . ' %'), array_column($plain, 'label'), 'no order figure without e-commerce');
+
+	$empty = pg_report_view_visitor_figures(array(), true, '$');
+	pg_assert_same($percent(0), $empty[2]['text'], 'no visitor is 0%');
+	pg_assert_same(pg_format_money(0, '$'), $empty[5]['text']);
+}
+
+// The visitor chart counts visitors: no money, the same kinds of chart.
+function test_report_view_visitor_chart_counts_visitors()
+{
+	$groups = array(0 => pg_test_report_view_visitor_group('09', 2), 1 => pg_test_report_view_visitor_group('10', 1));
+	$names = array(0 => 'September', 1 => 'October');
+
+	$line = pg_report_view_visitor_chart('line', $groups, $names, 'Month');
+
+	pg_assert_same(array(2, 1), $line['values']);
+	pg_assert_same(lang(array('string' => 'Visitors by {var:1}', 'vars' => 'Month')), $line['label']);
+	pg_assert_same('September: ' . lang(array('string' => '{var:1} visitor{suffix:1}', 'vars' => pg_format_number(2, 0), 'suffix' => 's')), $line['tips'][0]);
+	pg_assert_false(strpos(implode(' ', $line['tips']), '$') !== false, 'no money');
+
+	$bars = array();
+	$bar_names = array();
+	for ($i = 1; $i <= 12; $i++) {
+		$bars[$i] = pg_test_report_view_visitor_group('s' . $i, $i);
+		$bar_names[$i] = 'Source ' . $i;
+	}
+	$chart = pg_report_view_visitor_chart('bars', $bars, $bar_names, 'Referring Host');
+	pg_assert_same(PG_REPORT_VIEW_ROWS, count($chart['rows']));
+	pg_assert_same(array('text' => 'Source 12', 'value' => 12, 'note' => pg_format_number(12, 0)), $chart['rows'][0]);
+
+	$countries = array(0 => pg_test_report_view_visitor_group('TR', 4), 1 => pg_test_report_view_visitor_group('Turkey', 1), 2 => pg_test_report_view_visitor_group('US', 2));
+	$map = pg_report_view_visitor_chart('map', $countries, array(0 => 'TR', 1 => 'Turkey', 2 => 'US'), 'Country', array(0 => 'TR', 1 => 'TR', 2 => 'US'));
+	pg_assert_same(array('TR', 'US'), array_column($map['places'], 'id'));
+	pg_assert_contains(lang(array('string' => '{var:1} visitor{suffix:1}', 'vars' => pg_format_number(5, 0), 'suffix' => 's')), $map['places'][0]['text'], 'two spellings summed');
+	$shades = (array) $map['shades'];
+	pg_assert_true($shades['TR'] > $shades['US']);
+
+	pg_assert_same(null, pg_report_view_visitor_chart('none', $groups, $names, 'x'));
+	pg_assert_same(null, pg_report_view_visitor_chart('bars', array(), array(), 'x'));
+	pg_assert_same('map', pg_report_view_chart_kind('country'), 'the visitor report country');
+}

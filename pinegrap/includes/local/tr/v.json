@@ -465,6 +465,7 @@
     "Visitors": "Ziyaretçiler",
     "Visitors a year": "Yıllık ziyaretçi",
     "Visitors and privacy": "Ziyaretçiler ve Gizlilik",
+    "Visitors by {var:1}": "{var:1} bazında ziyaretçi",
     "Visitors can switch between monthly and weekly; the upcoming view is fixed.": "Ziyaretçi aylık ile haftalık arasında geçebilir; yaklaşan görünümü sabittir.",
     "Visitors cannot open the pages; administrators can.": "Ziyaretçiler sayfaları açamaz; yöneticiler açabilir.",
     "Visitors city by city on a map": "Haritada şehir şehir ziyaretçiler",

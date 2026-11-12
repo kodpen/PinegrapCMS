@@ -4,8 +4,7 @@ description: Links turned into buttons (report Edit, Add Filter, Unlock Sign-in)
 ---
 
 ## Which links became buttons, and why?
-- A link with `href="#"` or `href="javascript:void(0)"` is read as a link and ignores Space. The order and visitor report screens' Edit (`#edit_button`), the Add Filter of both report screens and of `edit_form_list_view.php` are `<button type="button">`.
-- Report Edit hides its own `#button_bar`, so it moves focus to the first visible field of `#edit_form`; Cancel Edit hides the form with focus inside it, so it focuses `#edit_button` first. Without that, focus stayed on a hidden element.
+- A link with `href="#"` or `href="javascript:void(0)"` is read as a link and ignores Space. The order and visitor report screens' Report settings (`#report_settings_button`, a drawer: `report-settings-drawer.md`), the Add Filter of both report screens and of `edit_form_list_view.php` are `<button type="button">`.
 - Edit User's Unlock Sign-in is `<button type="submit" form="unlock_sign_in_form">`; the form carries that id. It submitted from an `onclick` before.
 - Edit Contact's "Create an User" has a real `href` (built raw, printed through `h()`); it was `href="#!"` with `window.location`, so open-in-new-tab and copy-link gave `#!`.
 

@@ -8,7 +8,7 @@ description: Report and panel controls on Bootstrap 6: period changers, named ar
 - They cannot call `pg_period_nav()`: their links carry the report's `&id=`. The visitor report's next-month link dropped the id before (#2716). The shipping report's pair uses `start_date` / `end_date` and is a `role="group"` named Period with `btn-text` chevrons around the range.
 
 ## How are the layout selects named?
-- The Summarize by / order by rows (order and visitor reports, `edit_form_list_view.php`; on the order report inside its settings drawer, `report-view.md`) are plain `.row`s of `<label for>` + select; liveform prints a select's id only when `output_field()` gets `'id'`. They sat in an `.input-group-text row` with the texts in divs: six unnamed comboboxes per screen.
+- The Summarize by / order by rows (order and visitor reports, `edit_form_list_view.php`; inside each report's settings drawer, `report-view.md`) are plain `.row`s of `<label for>` + select; liveform prints a select's id only when `output_field()` gets `'id'`. They sat in an `.input-group-text row` with the texts in divs: six unnamed comboboxes per screen.
 
 ## How is the Grand Total percentage printed?
 - Through the `'{var:1}%'` template like every other percent cell, never a literal `100.00%` (`report-table-rows.md`).
