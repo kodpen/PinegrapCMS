@@ -4551,7 +4551,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     $output_submit_form_block = '' . '
                                                         <div class="col-12 my-1">
                                                             <label class="form-label" for="submit_form_custom_form_page_id">' . lang('Custom Form') . '</label>
-                                                            <select class="form-control collapse-if-selected" id="submit_form_custom_form_page_id" name="submit_form_custom_form_page_id" onchange="product_submit_form_update_custom_form_fields()" data-bs-target="#submit_form_custom_form_page_row"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Form')) )) . '-</option>' .  select_page($v('submit_form_custom_form_page_id'), 'custom form') . '</select>
+                                                            ' . pg_picker_field('page_custom_form', 'submit_form_custom_form_page_id', $v('submit_form_custom_form_page_id'), array('value_attributes' => array('class' => 'collapse-if-selected', 'data-bs-target' => '#submit_form_custom_form_page_row', 'onchange' => 'product_submit_form_update_custom_form_fields()'))) . '
                                                             <script>product_submit_form_update_custom_form_fields();</script>
                                                             <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="submit_form_custom_form_page_row">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>

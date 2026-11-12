@@ -60,9 +60,10 @@ function test_campaign_profile_edit_keeps_its_stored_pages()
 {
 	$form = page_options_keep_test_source('includes/forms/email_campaign_profile_form.php');
 	$edit = page_options_keep_test_source('edit_email_campaign_profile.php');
-	pg_assert_contains("get_page_options('', 'any form', 'edit', false, \$keep_pages['custom_form_page_id'] ?? 0)", $form, 'the custom form picker keeps the given page');
-	pg_assert_contains("get_page_options('', '', 'view', true, \$keep_pages['page_id'] ?? 0)", $form, 'the body page picker keeps the given page');
-	pg_assert_contains("'custom_form_page_id' => (\$email_campaign_profile['action'] == 'custom_form_submitted') ? (int) \$email_campaign_profile['action_item_id'] : 0", $edit, 'the stored custom form is kept');
-	pg_assert_contains("'page_id' => (int) \$email_campaign_profile['page_id']", $edit, 'the stored body page is kept');
+	// The page fields show the stored page however it is and post it unchanged.
+	pg_assert_contains("pg_picker_field('page_form', 'custom_form_page_id', \$liveform->get_field_value('custom_form_page_id')", $form, 'the custom form field holds the stored page');
+	pg_assert_contains("pg_picker_field('page_view', 'page_id', \$liveform->get_field_value('page_id')", $form, 'the body page field holds the stored page');
+	pg_assert_false(strpos($form, 'get_page_options(') !== false, 'no list of every page');
+	pg_assert_contains("'email_campaign_profile_id' => (\$email_campaign_profile['action'] == 'email_campaign_sent')", $edit, 'the stored follow-up profile is still kept');
 	pg_assert_contains('pg_email_campaign_profile_form_cards($liveform, $user)', page_options_keep_test_source('add_email_campaign_profile.php'), 'add keeps nothing');
 }

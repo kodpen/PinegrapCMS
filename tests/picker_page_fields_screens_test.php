@@ -75,7 +75,8 @@ function test_page_selects_became_page_fields()
 	}
 
 	pg_assert_contains("' . pg_picker_script() . '\n</main>", $builder, 'product builder prints the picker script once');
-	pg_assert_same(1, substr_count($builder, 'select_page($v('), 'product builder: only the custom form select is left');
+	pg_assert_false(strpos($builder, 'select_page($v(') !== false, 'product builder: no page select is left');
+	pg_assert_contains("pg_picker_field('page_custom_form', 'submit_form_custom_form_page_id', \$v('submit_form_custom_form_page_id'), array('value_attributes' => array('class' => 'collapse-if-selected', 'data-bs-target' => '#submit_form_custom_form_page_row', 'onchange' => 'product_submit_form_update_custom_form_fields()')))", $builder, 'product builder: the custom form field opens its fields and reads them on a pick');
 
 	$offer = picker_page_fields_screens_test_source('includes/templates/edit_offer.php');
 
@@ -102,4 +103,31 @@ function test_page_selects_became_page_fields()
 	pg_assert_contains("page_id: shortLinkEditing ? 0 : seedPage", $window, 'File Manager: a page opened from its panel is sent');
 	pg_assert_contains('lists.page_fields = response.page_fields || {};', $window, 'File Manager: the page fields come from the server');
 	pg_assert_contains("if (catalogPick.value !== '') { window.pgPicker.clear(detailPick); }", $window, 'File Manager: one catalog field empties the other');
+}
+
+function test_picker_view_and_form_page_kinds()
+{
+	$kinds = pg_picker_kinds();
+
+	pg_assert_same('view', $kinds['page_view']['access'], 'the body page kind lists by view access');
+	pg_assert_same('edit', $kinds['page']['access'], 'the page kind lists by edit access');
+	pg_assert_true($kinds['page_form']['forms'], 'the form kind lists form pages');
+	pg_assert_same(array('custom form'), $kinds['page_custom_form']['types'], 'the product builder\'s custom form kind');
+	pg_assert_same(null, pg_picker_granted_folders(array('id' => 1, 'role' => 2), $kinds['page_view']), 'a manager may use every folder');
+
+	$where = pg_picker_pages_where($kinds['page_form'], array(), null, null, "page.page_type = 'custom form'");
+
+	pg_assert_contains("(page.page_type = 'custom form')", $where, 'a forms kind takes its condition');
+	pg_assert_contains('(page.page_id IN (-1))', pg_picker_pages_where($kinds['page_form'], array(), null), 'a forms kind without its condition lists nothing');
+	pg_assert_false(strpos(pg_picker_pages_where($kinds['page'], array(), null, null, 'x'), '(x)') !== false, 'any other kind ignores it');
+}
+
+function test_campaign_and_custom_form_fields_drive_their_sections()
+{
+	$js = picker_page_fields_screens_test_source('assets/js/backend.src.js');
+
+	pg_assert_contains('$(document).on("change", "select.collapse-if-selected, input.collapse-if-selected", function () {', $js, 'a picker value opens its section on a pick');
+	pg_assert_contains("\$scope.find('select.collapse-if-selected, input.collapse-if-selected')", $js, 'and on load');
+	pg_assert_contains("\$('input[name=\"submit_form_custom_form_page_id\"]').val()", $js, 'the product builder reads the picked form');
+	pg_assert_false(strpos(picker_page_fields_screens_test_source('edit_email_campaign_profile.php'), "'page_id' => (int) \$email_campaign_profile['page_id']") !== false, 'no keep argument for the body page');
 }

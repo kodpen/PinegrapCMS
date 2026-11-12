@@ -26,7 +26,7 @@ function test_picker_kinds()
 {
 	$kinds = pg_picker_kinds();
 
-	pg_assert_same(array_merge(array('file', 'image', 'public_image', 'site_icon', 'page'), array_keys(pg_picker_page_type_kinds())), array_keys($kinds));
+	pg_assert_same(array_merge(array('file', 'image', 'public_image', 'site_icon', 'page', 'page_view', 'page_form'), array_keys(pg_picker_page_type_kinds())), array_keys($kinds));
 
 	foreach ($kinds as $name => $kind) {
 		foreach (array('source', 'types', 'public', 'design', 'archived', 'value', 'role', 'tree', 'pictures', 'upload') as $field) {

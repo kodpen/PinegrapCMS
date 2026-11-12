@@ -238,9 +238,9 @@ function test_email_campaign_profile_body_preview_by_page_id()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/email_campaign_profile_form.php');
 
 	pg_assert_false(strpos($source, 'firstChild.nodeValue') !== false, 'the preview address is not built from the option label');
-	pg_assert_contains('data-page-urls="', $source, 'the preview frame carries the address of each page by id');
-	pg_assert_contains("f.src = u ? u : \\'about:blank\\';", $source, 'the placeholder blanks the preview instead of loading a missing address');
-	pg_assert_contains('encode_url_path($page_row[\'page_name\'])', $source, 'the address is encoded as the server-side source is');
+	pg_assert_contains('data-base="\' . h(OUTPUT_PATH) . \'"', $source, 'the preview frame carries the site address');
+	pg_assert_contains("f.src = (this.value !== '') ? f.getAttribute('data-base') + encodeURIComponent(document.getElementById('page_id').value) + '?edit=no&email=true' : 'about:blank';", $source, 'a pick loads the chosen page by the name the field shows; clearing blanks the preview');
+	pg_assert_contains("'value_attributes' => array('class' => 'collapse-if-selected', 'data-bs-target' => '#body_preview_row', 'onchange' => \$page_preview_change)", $source, 'the field opens the preview as the select did');
 }
 
 function test_email_campaign_profile_screens_use_shared_form()
@@ -404,7 +404,7 @@ function test_email_campaign_profile_form_picker_lists_every_form()
 	pg_assert_contains("if (\$page_type === 'any form') {\n        return pg_form_page_sql('page');", $content, 'every form is the Forms screen set');
 
 	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/email_campaign_profile_form.php');
-	pg_assert_contains("get_page_options('', 'any form', 'edit', false,", $form, 'picker asks for every form, bin left out');
+	pg_assert_contains("pg_picker_field('page_form', 'custom_form_page_id', \$liveform->get_field_value('custom_form_page_id')", $form, 'the field asks for every form (kind page_form, pg_form_page_sql()), bin left out');
 }
 
 // The list, the CSV and the edit screen name a binned or gone page; sending
