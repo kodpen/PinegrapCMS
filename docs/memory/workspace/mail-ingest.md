@@ -1,6 +1,6 @@
 ---
 name: mail-ingest
-description: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loop gate, DMARC from the box's server, threading, card and answers, attachments, .eml for 30 days
+description: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loop gate, DMARC from the box's server, threading, card and answers, attachments and cid pictures, .eml for 30 days
 ---
 
 ## What does ws_mail_ingest($raw, $box) do?
@@ -25,10 +25,11 @@ description: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loo
 - Channel: the conversation's, else routed (`mail-routing.md`); missing or archived: `refused` / `no_channel`.
 - New conversation: a top-level message, `sender_kind 'mail'`, `sender_id` the item, kind `message`; its id goes into `ws_mail_conversations.message_id` (the card). An answer: a message with `parent_id` = the card (the card touched), or a new card when the old one was deleted. A new mail sets the conversation `open` again (`closed_at` 0).
 - Message body: the text (plain body, else HTML as text by `ws_mail_html_text()`), `<@user:1>`-style tags taken out of their brackets so they name and notify nobody, cut to `WS_MESSAGE_MAX` with `…`. The whole text (up to 1 MB) is `ws_mail_items.body_text`. Written by `ws_mail_message_write()`, not `ws_message_send()`: no mentions, webhooks or assistants. Drawn by `ws_mail_card_html()` (`mail-card.md`).
-- No Workspace event or bell yet: the "E-mail received" event and the assignee's notice come with G5.
+- The "E-mail received" event and the holder's notice: `mail-notices-and-event.md`.
 
 ## What happens to attachments?
-- `ws_mail_attachments_sort()`: a nameless inline part is dropped silently; a nameless part, a name `ws_upload_refused()` refuses, one over `ws_upload_max_bytes()`, and those past `WS_MAIL_ATTACHMENTS_MAX` (20) go to `refused_files` (names, one per line). The rest pass `ws_upload_inspect()` and are kept by `ws_store_file_bytes()` (split out of `ws_store_upload_bytes()` in `files.php`, owner the box's `created_by`), each as an answer to the card carrying the file.
+- `ws_mail_attachments_sort()`: a nameless inline part is dropped silently, unless the HTML shows it by `cid:` (`mail-html.md`: `body_html`).
+- A nameless part, a name `ws_upload_refused()` refuses, one over `ws_upload_max_bytes()`, and those past `WS_MAIL_ATTACHMENTS_MAX` (20) go to `refused_files` (names, one per line). The rest pass `ws_upload_inspect()` and `ws_store_file_bytes()` (`files.php`, owner the box's `created_by`), each an answer to the card with the file.
 
 ## Where is the .eml kept and for how long?
 - `data/mail/<box>/<YYYYmm>/<hash>.eml` (`raw_path` relative to `data/`; `data/` is closed to the web server, `data/mail/.htaccess` too). Write failure leaves `raw_path` empty; the mail still comes in.
