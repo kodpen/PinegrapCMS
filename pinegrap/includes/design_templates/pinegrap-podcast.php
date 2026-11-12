@@ -61,8 +61,10 @@
  * The version follows the template, not the software: raise it whenever the
  * pages change, so a design records which edition it started from. 2.0.0
  * draws the home on the Podcast blocks (the Episode Hero with Chapters),
- * the sponsorship page on the Sponsor Placements and the listening page on
- * the Transcript.
+ * the sponsorship page on the Sponsor Placements, the listening page on
+ * the Transcript and an episode's cover over the hero's sound wave; the
+ * hosts, the figures and the sponsorship steps are general blocks (Team:
+ * Profiles, Stats: Counter, Steps: Numbered).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -253,10 +255,11 @@ return array(
         'email_footer'   => array('name' => lang('Podcast E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its ppd- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the rules of the Podcast blocks its pages are
+    // drawn on (the Episode Hero, the Sponsor Placements and the Transcript)
+    // and its ppd- rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $podcast_css),
+        'css'   => pg_design_template_user_styles(array('podcast-episode', 'podcast-sponsor', 'podcast-transcript'), $podcast_css),
         'fonts' => json_encode($podcast_fonts),
     ),
 );

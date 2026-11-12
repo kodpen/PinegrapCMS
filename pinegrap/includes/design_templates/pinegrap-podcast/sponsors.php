@@ -104,14 +104,122 @@ $pd_request_comments = function ($subject) {
         'email_page' => '{{tab:email_reply}}', 'email_subject' => $subject, 'notify_email' => '{{site_email}}');
 };
 
+// ── The blocks ──────────────────────────────────────────────────────────
+// The sponsorship page's packages are the Podcast: Sponsor Placements block
+// and its steps the Steps: Numbered block, drawn with the network's data:
+// the same structure, classes and interactions, so the rules the template
+// ships in User Styles style them as they style a dropped block.
+
+// Where a sponsor's mention plays: the heading fades in, the drawing of one
+// episode and of a season slides in (screen readers skip it: the cards say
+// the same), then a card per package rises in turn, numbered as on the
+// drawing, with where it plays, what it includes, the price it starts from
+// and the way to ask about it (the enquiry opens with the package chosen).
+// The drawing marks the packages in their order: the opening, the middle,
+// the season.
+$sp_placements = function () use ($el, $heading, $para, $link, $span, $container, $row, $col, $fx, $attr, $searchable, $check_list,
+    $packages, $money, $query) {
+    $no = function ($n) use ($span) {
+        return $span((string)$n, 'pg-podcast-no', lang('Number'));
+    };
+    $mark = function ($n, $text, $class = '') use ($el, $span, $no) {
+        return $el('div', trim('pg-podcast-at ' . $class), $text, array($no($n), $span($text, '', lang('Text'))));
+    };
+    $at = array_column(array_values($packages), 'at');
+    $cards = array();
+    foreach (array_values($packages) as $i => $p) {
+        $cards[] = $el('li', 'col-md-4', $p['title'], array(
+            $el('div', 'h-100 p-4 rounded-4 border bg-body d-flex flex-column', lang('Card'), array(
+                $el('div', 'd-flex align-items-center gap-2 mb-3', lang('Title'), array(
+                    $no($i + 1),
+                    $heading('h3', $p['title'], 'ppd-display h5 fw-bold mb-0'),
+                )),
+                $para($p['when'], 'small fw-semibold text-body-emphasis mb-2'),
+                $para($p['text'], 'small text-body-secondary mb-3'),
+                $check_list($p['perks'], 'list-unstyled small mb-4'),
+                $el('div', 'd-flex flex-wrap align-items-baseline gap-1 mt-auto mb-3', lang('Price'), array(
+                    $span(lang('Starting from'), 'small text-body-secondary', lang('Label')),
+                    $span($money($p['price']), 'ppd-price fs-4 fw-bold text-body-emphasis', lang('Value')),
+                    $span($p['per'], 'small text-body-secondary', lang('Label')),
+                )),
+                $link(lang('Ask About It'), '{{page:sponsor_enquiry}}?' . $query(array('package' => $p['title'])), 'btn border link-body-emphasis align-self-start'),
+            )),
+        ));
+    }
+    $head = $fx($row(array(
+        $col(array(
+            $para(lang('Packages'), 'ppd-eyebrow small text-uppercase fw-semibold text-primary-emphasis mb-2'),
+            $heading('h2', lang('Where your mention plays'), 'ppd-display display-6 fw-bold mb-0'),
+        ), '', '6'),
+        $col(array(
+            $para(lang('Every mention is read by the host, in their own words, at one of three places. Listeners hear it the way they hear the rest of the episode.'), 'lead text-body-secondary mb-0'),
+        ), '', '6'),
+    ), '3', '', 'align-items-end mb-5'), array('effect' => 'fade', 'trigger' => 'view', 'duration' => 800));
+    $track = $fx($el('div', 'pg-podcast-track mb-5', lang('Placements Drawing'), array(
+        $para(lang('One episode'), 'small fw-semibold text-body-emphasis mb-2'),
+        $el('div', 'pg-podcast-bar', lang('Episode')),
+        $mark(1, $at[0]),
+        $mark(2, $at[1], 'pg-podcast-at-mid'),
+        $para(lang('A season'), 'small fw-semibold text-body-emphasis mt-4 mb-2'),
+        $el('div', 'pg-podcast-season', lang('A season')),
+        $mark(3, $at[2]),
+    ), array('_attrs' => array($attr('aria-hidden', 'true')))), array('effect' => 'slide-right', 'trigger' => 'view', 'duration' => 900, 'delay' => 150, 'distance' => 60));
+    $list = $fx($el('ol', 'row g-4 list-unstyled mb-4', lang('Placements'), $cards),
+        array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 600, 'delay' => 300, 'stagger' => 120));
+    return $el('section', 'py-5 border-top overflow-hidden', lang('Podcast (Sponsor Placements)'), array(
+        $container(array(
+            $head,
+            $track,
+            $list,
+            $para(lang('Prices are where a package starts; the proposal names the podcast, the episodes and the final price.'), 'small text-body-secondary mb-4'),
+            $el('div', 'd-flex flex-wrap align-items-center gap-3', lang('Call to Action'), array(
+                $link(lang('Send a Sponsorship Enquiry'), '{{page:sponsor_enquiry}}', 'btn btn-primary btn-lg px-4'),
+                $para(lang('Nothing is booked until you agree to the proposal.'), 'small text-body-secondary mb-0'),
+            )),
+        )),
+    ), $searchable('pd-sponsor-packages', lang('prices, rates, advertising, host-read ads, mid-roll, pre-roll')));
+};
+
+// How a sponsorship comes together, the Steps: Numbered block: a card per
+// step with its number and icon; the heading fades in and the cards rise
+// in turn.
+$sp_steps = function () use ($el, $heading, $para, $span, $icon, $container, $row, $col, $fx, $rise, $fade_in, $searchable) {
+    $steps = array(
+        array('bi-envelope-paper', lang('You send an enquiry'), lang('The package, the podcast that fits and what you would like listeners to hear.')),
+        array('bi-file-earmark-text', lang('We send a proposal'), lang('Within three working days: the episodes, the dates, the words and the price, under your enquiry.')),
+        array('bi-mic', lang('The host reads it'), lang('In their own words, with your link in the episode notes and a report of listens afterwards.')),
+    );
+    $cards = array();
+    foreach ($steps as $n => $s) {
+        $cards[] = $col(array(
+            $el('div', 'h-100 p-4 rounded-4 border bg-body', lang('Step Card'), array(
+                $el('div', 'd-flex align-items-center gap-3 mb-3', lang('Step Head'), array(
+                    $span((string)($n + 1), 'badge rounded-pill text-bg-primary fs-6 px-3 py-2', lang('Step Number')),
+                    $icon($s[0], 'text-primary fs-4'),
+                )),
+                $heading('h3', $s[1], 'h6 fw-bold mb-2'),
+                $para($s[2], 'small text-body-secondary mb-0'),
+            )),
+        ), '4');
+    }
+    return $el('section', 'py-5 bg-body-tertiary', lang('Steps (Numbered)'), array(
+        $container(array(
+            $fx($el('div', 'text-center mb-5', lang('Section Header'), array(
+                $heading('h2', lang('From a first message to the episode'), 'ppd-display fw-bold mb-2'),
+                $para(lang('A sponsorship takes a few days to agree and nothing is booked until you say yes.'), 'lead text-body-secondary mb-0'),
+            )), $fade_in),
+            $rise($row($cards, '4'), 120),
+        )),
+    ), $searchable('pd-sponsor-steps', lang('how to sponsor, proposal, booking an ad')));
+};
+
 // ── Pages ───────────────────────────────────────────────────────────────
 
-// The sponsorship page: who listens, the packages, how it works and what
-// past sponsors say, then the way to an enquiry.
+// The sponsorship page: who listens, where a mention plays and the
+// packages, how it works and what past sponsors say, then the way to an
+// enquiry.
 $sp_figures = array();
 foreach (array_keys($audience) as $sp_n) $sp_figures[] = $figure_tile($sp_n);
-$sp_package_cards = array();
-foreach (array_keys($packages) as $sp_key) $sp_package_cards[] = $package_card($sp_key);
 $sp_quote_cards = array();
 foreach (array_keys($sponsor_quotes) as $sp_n) $sp_quote_cards[] = $sponsor_quote_card($sp_n);
 
@@ -130,7 +238,7 @@ $sponsor_pages[] = array(
         )),
         $el('section', 'py-5', lang('Who Listens'), array(
             $container(array(
-                $row(array(
+                $rise($row(array(
                     $col(array(
                         $para(lang('Who listens'), 'ppd-eyebrow text-uppercase fw-semibold text-primary mb-2'),
                         $heading('h2', lang('An audience that chose to listen'), 'ppd-display display-6 mb-3'),
@@ -144,52 +252,29 @@ $sponsor_pages[] = array(
                     $col(array(
                         $el('div', 'p-4 p-lg-5 rounded-4 bg-body-tertiary', lang('Figures'), array($row($sp_figures, '4'))),
                     ), '', '7'),
-                ), '4', '', 'g-lg-5 align-items-center'),
+                ), '4', '', 'g-lg-5 align-items-center'), 150),
             )),
         ), $searchable('pd-sponsor-audience', lang('listeners, audience, reach, downloads, demographics'))),
-        $el('section', 'py-5 border-top', lang('Packages'), array(
-            $container(array(
-                $section_header(lang('Packages'), lang('Ways to sponsor')),
-                $row($sp_package_cards, '4'),
-                $para(lang('Prices are where a package starts; the proposal names the podcast, the episodes and the final price.'), 'small text-body-secondary mt-4 mb-0'),
-            )),
-        ), $searchable('pd-sponsor-packages', lang('prices, rates, advertising, host-read ads, mid-roll, pre-roll'))),
-        $el('section', 'py-5 bg-body-tertiary', lang('How It Works'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('How it works'), 'ppd-eyebrow text-uppercase fw-semibold text-body-emphasis mb-2'),
-                        $heading('h2', lang('From a first message to the episode'), 'ppd-display h3 mb-3'),
-                        $para(lang('A sponsorship takes a few days to agree and nothing is booked until you say yes.'), 'text-body-secondary mb-0'),
-                    ), '', '4'),
-                    $col(array(
-                        $el('ol', 'list-unstyled mb-0', lang('Steps'), array(
-                            $step(1, lang('You send an enquiry'), lang('The package, the podcast that fits and what you would like listeners to hear.')),
-                            $step(2, lang('We send a proposal'), lang('Within three working days: the episodes, the dates, the words and the price, under your enquiry.')),
-                            $step(3, lang('The host reads it'), lang('In their own words, with your link in the episode notes and a report of listens afterwards.')),
-                        )),
-                    ), '', '8'),
-                ), '4', '', 'g-lg-5'),
-            )),
-        ), $searchable('pd-sponsor-steps', lang('how to sponsor, proposal, booking an ad'))),
+        $sp_placements(),
+        $sp_steps(),
         $el('section', 'py-5', lang('Past Sponsors'), array(
             $container(array(
-                $section_header(lang('In their words'), lang('What past sponsors say')),
-                $row($sp_quote_cards, '4'),
+                $fx($section_header(lang('In their words'), lang('What past sponsors say')), $fade_in),
+                $rise($row($sp_quote_cards, '4'), 150),
             )),
         )),
         $el('section', 'py-5 border-top', lang('Call to Action'), array(
             $container(array(
-                $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3', lang('Text'), array(
+                $fx($el('div', 'd-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3', lang('Text'), array(
                     $el('div', '', lang('Text'), array(
                         $heading('h2', lang('Tell us about your brand'), 'ppd-display h3 mb-1'),
                         $para(lang('Send an enquiry and we answer with a proposal, or write to our sponsorship team.'), 'text-body-secondary mb-0'),
                     )),
                     $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
                         $link(lang('Send a Sponsorship Enquiry'), '{{page:sponsor_enquiry}}', 'btn btn-primary rounded-pill px-4'),
-                        $link($network['sponsorship'], 'mailto:' . $network['sponsorship'], 'btn btn-outline-primary rounded-pill px-4'),
+                        $link($network['sponsorship'], 'mailto:' . $network['sponsorship'], 'btn border rounded-pill px-4 link-body-emphasis'),
                     )),
-                )),
+                )), $fade_in),
             )),
         )),
     )),
