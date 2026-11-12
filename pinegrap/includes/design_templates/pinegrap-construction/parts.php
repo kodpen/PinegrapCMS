@@ -951,7 +951,7 @@ $team_card = function ($n) use ($el, $heading, $para, $image, $col, $attr, $port
     $t = $team[$n];
     return $col(array(
         $el('article', 'card h-100 border-0 shadow-sm rounded-3 text-center p-4', lang('Team Member'), array(
-            $image($portrait($t['name'], 240), $t['name'], 'rounded-circle mx-auto mb-3', array('_attrs' => array($attr('width', '120'), $attr('height', '120'), $attr('loading', 'lazy')))),
+            $image($portrait($t['name'], 240), $t['name'], 'rounded-circle mx-auto mb-3', array('width' => '120', 'height' => '120', '_attrs' => array($attr('loading', 'lazy')))),
             $heading('h3', $t['name'], 'pcn-display h5 mb-1'),
             $para($t['role'], 'small fw-semibold text-primary mb-2'),
             $para($t['bio'], 'small text-body-secondary mb-0'),
@@ -967,7 +967,7 @@ $testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $
             $stars(),
             $el('blockquote', 'mb-4', lang('Quote'), array($para($t['quote'], 'pcn-quote mb-0'))),
             $el('figcaption', 'd-flex align-items-center gap-3 mt-auto', lang('Client'), array(
-                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('_attrs' => array($attr('width', '48'), $attr('height', '48'), $attr('loading', 'lazy')))),
+                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('width' => '48', 'height' => '48', '_attrs' => array($attr('loading', 'lazy')))),
                 $el('div', '', lang('Name and Role'), array(
                     $span($t['name'], 'd-block fw-semibold', lang('Name')),
                     $span($t['role'], 'd-block small text-body-secondary', lang('Role')),

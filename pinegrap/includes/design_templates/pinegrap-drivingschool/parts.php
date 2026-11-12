@@ -1119,7 +1119,7 @@ $instructor_card = function ($n) use ($el, $heading, $para, $image, $col, $attr,
     foreach ($t['licences'] as $key) $plates[] = $plate($licences[$key]['code'], 'small', array('_attrs' => array($attr('title', $licences[$key]['title']))));
     return $col(array(
         $el('article', 'card h-100 border-0 shadow-sm rounded-3 text-center p-4', lang('Instructor'), array(
-            $image($portrait($t['name'], 240), $t['name'], 'rounded-circle mx-auto mb-3', array('_attrs' => array($attr('width', '120'), $attr('height', '120'), $attr('loading', 'lazy')))),
+            $image($portrait($t['name'], 240), $t['name'], 'rounded-circle mx-auto mb-3', array('width' => '120', 'height' => '120', '_attrs' => array($attr('loading', 'lazy')))),
             $heading('h3', $t['name'], 'pdr-display h5 mb-1'),
             $para($t['role'], 'small fw-semibold text-primary mb-2'),
             $el('div', 'd-flex justify-content-center gap-2 mb-2', lang('Licence Classes'), $plates),

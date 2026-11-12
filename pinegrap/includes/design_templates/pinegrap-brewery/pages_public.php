@@ -118,7 +118,7 @@ $team = array(
 $team_card = function ($m) use ($el, $heading, $para, $image, $col, $attr, $portrait) {
     return $col(array(
         $el('article', 'text-center', lang('Team Member'), array(
-            $image($portrait($m['name'], 320), $m['name'], 'rounded-circle mb-3', array('_attrs' => array($attr('width', '160'), $attr('height', '160'), $attr('loading', 'lazy')))),
+            $image($portrait($m['name'], 320), $m['name'], 'rounded-circle mb-3', array('width' => '160', 'height' => '160', '_attrs' => array($attr('loading', 'lazy')))),
             $heading('h3', $m['name'], 'pbw-display h5 mb-1'),
             $para($m['role'], 'small fw-semibold text-primary mb-2'),
             $para($m['bio'], 'small text-body-secondary mb-0'),

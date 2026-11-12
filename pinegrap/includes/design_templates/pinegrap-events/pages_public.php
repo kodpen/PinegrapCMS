@@ -27,7 +27,7 @@ $speaker_card = function ($key) use ($speakers, $el, $col, $image, $heading, $pa
     return $col(array(
         $el('a', 'card h-100 border-0 text-center bg-transparent text-decoration-none link-body-emphasis pev-lift', $s['name'], array(
             $el('div', 'card-body p-3', lang('Card Body'), array(
-                $image($portrait($s['name'], 320), $s['name'], 'rounded-circle object-fit-cover mb-3', array('width' => '144', 'height' => '144', '_attrs' => array($attr('loading', 'lazy')))),
+                $image($portrait($s['name'], 320), $s['name'], 'img-fluid rounded-circle object-fit-cover mb-3', array('width' => '144', 'height' => '144', '_attrs' => array($attr('loading', 'lazy')))),
                 $heading('h3', $s['name'], 'h6 fw-bold mb-1'),
                 $para($s['role'], 'small text-body-secondary mb-0'),
                 $para($s['company'], 'small fw-semibold text-primary mb-0'),

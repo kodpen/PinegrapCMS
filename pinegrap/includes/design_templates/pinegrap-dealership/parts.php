@@ -600,7 +600,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $hours, $b
                     $contact_line('bi-geo-alt', $span($dealer['address'], '', lang('Text')), lang('Address')),
                     $contact_line('bi-telephone', $link($dealer['phone'], 'tel:' . preg_replace('/[^0-9+]/', '', $dealer['phone']), $plain), lang('Phone')),
                     $contact_line('bi-envelope', $link($dealer['email'], 'mailto:' . $dealer['email'], $plain . ' text-break'), lang('Email')),
-                    $hours('row small mt-3 mb-0'),
+                    $hours('row gx-2 small mt-3 mb-0'),
                 )),
             )),
             $el('div', 'd-flex flex-column flex-md-row justify-content-between align-items-center gap-3 border-top mt-4 pt-4', lang('Footer Bottom'), array(
@@ -729,7 +729,7 @@ $testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $
             $stars(),
             $el('blockquote', 'mb-4', lang('Quote'), array($para($t['quote'], 'mb-0'))),
             $el('figcaption', 'd-flex align-items-center gap-3 mt-auto', lang('Customer'), array(
-                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('_attrs' => array($attr('width', '48'), $attr('height', '48'), $attr('loading', 'lazy')))),
+                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('width' => '48', 'height' => '48', '_attrs' => array($attr('loading', 'lazy')))),
                 $el('div', '', lang('Name and Role'), array(
                     $span($t['name'], 'd-block fw-semibold', lang('Name')),
                     $span($t['role'], 'd-block small text-body-secondary', lang('Role')),

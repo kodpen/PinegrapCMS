@@ -1023,7 +1023,7 @@ $testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $
             $icon('bi-quote', 'fs-2 text-primary lh-1 mb-2'),
             $el('blockquote', 'mb-4', lang('Quote'), array($para($t['quote'], 'pcp-quote mb-0'))),
             $el('figcaption', 'd-flex align-items-center gap-3 mt-auto', lang('Guest Details'), array(
-                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('_attrs' => array($attr('width', '48'), $attr('height', '48'), $attr('loading', 'lazy')))),
+                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('width' => '48', 'height' => '48', '_attrs' => array($attr('loading', 'lazy')))),
                 $el('div', '', lang('Name and Role'), array(
                     $span($t['name'], 'd-block fw-semibold', lang('Name')),
                     $span($t['role'], 'd-block small text-body-secondary', lang('Role')),

@@ -997,7 +997,7 @@ $council_card = function ($n) use ($el, $heading, $para, $image, $col, $attr, $p
     $m = $council[$n];
     return $col(array(
         $el('article', 'card h-100 border-0 shadow-sm rounded-3 text-center p-4', lang('Council Member'), array(
-            $image($portrait($m['name'], 240), $m['name'], 'rounded-circle mx-auto mb-3', array('_attrs' => array($attr('width', '112'), $attr('height', '112'), $attr('loading', 'lazy')))),
+            $image($portrait($m['name'], 240), $m['name'], 'rounded-circle mx-auto mb-3', array('width' => '112', 'height' => '112', '_attrs' => array($attr('loading', 'lazy')))),
             $heading('h3', $m['name'], 'pcy-display h6 mb-1'),
             $para($m['role'], 'small fw-semibold text-primary mb-1'),
             $para($committees[$m['committee']]['title'], 'small text-body-secondary mb-0'),
