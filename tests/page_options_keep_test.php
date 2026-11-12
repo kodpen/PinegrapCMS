@@ -49,10 +49,11 @@ function test_menu_item_edit_keeps_its_stored_page()
 {
 	$form = page_options_keep_test_source('includes/forms/menu_item_form.php');
 	$edit = page_options_keep_test_source('edit_menu_item.php');
-	pg_assert_contains("get_page_options('', '', 'edit', true, (int) \$form['keep_page_id'])", $form, 'the picker keeps the given page');
-	pg_assert_contains("\$stored_link_page_id = (int) \$row['link_page_id'];", $edit, 'the keep id is the stored link, not the post');
-	pg_assert_contains("'keep_page_id' => \$stored_link_page_id", $edit, 'edit passes the stored page');
-	pg_assert_false(strpos(page_options_keep_test_source('add_menu_item.php'), 'keep_page_id') !== false, 'add keeps nothing');
+	// The page field shows the stored page however it is and posts it unchanged.
+	pg_assert_contains("pg_picker_field('page', 'link_page_id', \$liveform->get_field_value('link_page_id'))", $form, 'the page field holds the stored page');
+	pg_assert_false(strpos($form, 'get_page_options(') !== false, 'no list of every page');
+	pg_assert_contains("\$liveform->assign_field_value('link_page_id', \$row['link_page_id']);", $edit, 'edit fills it from the stored link');
+	pg_assert_contains('window.pgPicker.clear(document.getElementById(\\\'link_page_id\\\'))', $form, 'a typed URL empties the page');
 }
 
 function test_campaign_profile_edit_keeps_its_stored_pages()

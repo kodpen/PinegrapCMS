@@ -254,7 +254,7 @@ if (!defined('PG_INIT_LOADED')) {
                                         </div>
                                         <div class="col-12 sm:col-6 xl:col-4">
                                             <label class="form-label" for="pg-if-upsell-page"><?=lang('Button page')?></label>
-                                            <select class="form-control form-control-sm" id="pg-if-upsell-page" data-on="upsell-page"><option value="">– <?=lang(array('string' => 'Select {var:1}', 'vars' => array(lang('page'))))?> –</option><?=$editor['pages_html']?></select>
+                                            <?=pg_picker_field('page', 'upsell_page_id', $editor['state']['offer']['upsell']['page_id'], array('id' => 'pg-if-upsell-page', 'value_attributes' => array('data-on' => 'upsell-page'))) . pg_picker_script()?>
                                         </div>
                                     </div>
                                 </div>

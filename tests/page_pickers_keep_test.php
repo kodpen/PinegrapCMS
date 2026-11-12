@@ -53,9 +53,10 @@ function test_calendar_event_next_page_keeps_the_stored_page()
 	$form = page_pickers_keep_test_source('includes/forms/calendar_event_form.php');
 	$edit = page_pickers_keep_test_source('edit_calendar_event.php');
 
-	pg_assert_contains("get_page_options('', '', 'edit', true, \$keep_next_page_id)", $form, 'the Next Page picker keeps the given page');
-	pg_assert_contains("\$stored_next_page_id = (int) db_value(\"SELECT next_page_id FROM calendar_events WHERE id = '\" . \$id . \"'\");", $edit, 'the keep id is the stored next page, not the post');
-	pg_assert_contains('pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_event_locations, $id, $stored_next_page_id)', $edit, 'edit passes the stored page');
+	// The page field shows the stored page however it is and posts it unchanged.
+	pg_assert_contains("pg_picker_field('page', 'next_page_id', \$liveform->get_field_value('next_page_id'))", $form, 'the Next Page field holds the stored page');
+	pg_assert_contains("\$liveform->assign_field_value('next_page_id', \$row['next_page_id']);", $edit, 'edit fills it from the stored event');
+	pg_assert_contains('pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_event_locations, $id)', $edit, 'edit passes its id');
 	pg_assert_contains("pg_calendar_event_form_cards(\$liveform, \$user, \$choices['calendars'], \$choices['calendar_event_locations'])", page_pickers_keep_test_source('add_calendar_event.php'), 'add keeps nothing');
 }
 

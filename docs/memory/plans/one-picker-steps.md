@@ -20,7 +20,9 @@ description: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry an
 
 - PK6 (M) Page fields, first part. Typed page kinds and the field's page wording; Create Page and Edit Page move to `pg_picker_field()` and drop their `<template>` fill (the designer's page type pane keeps its selects until PK8); Settings (Commerce, Privacy, Security) and the User Start Page; a stored archived or binned page stays, marked, and Browse opens on its folder. Done in #8782 (`ui/page-form-page-fields.md`).
 
-- PK6b (M) Page fields, second part. The rest of `select_page()` and `get_page_options()`: the product builder, Edit Offer, the short link form and the File Manager short link window, the menu item, the calendar event and the e-mail campaign profile; it decides whether the list screens' quick edit (short links, users) keeps its own lists.
+- PK6b (M) Page fields, second part. The rest of `select_page()` and `get_page_options()`: the product builder, Edit Offer, the short link form and the File Manager short link window, the menu item, the calendar event; whether quick edit keeps its own lists. Done in #8803 (`ui/picker-page-fields-screens.md`).
+
+- PK6c (S) The e-mail campaign profile's Body Page (by view access) and the form page selects (`any form`, the product builder's custom form).
 
 - PK7 (M) The editor bridge. CKEditor's Link and Image dialogs open the picker (pages, files, short links, pictures; Unsplash kept as a source); `editor_select_image.php` and `editor_select_page_or_file.php` are retired.
 

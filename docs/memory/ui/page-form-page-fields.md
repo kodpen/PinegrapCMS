@@ -28,4 +28,4 @@ module: forms
 ## Which other screens use the page field?
 - Edit Page: the two comment e-mail pages. Settings: Commerce (reward program e-mail page, Reorder/Retrieve Order Next Page), Privacy (KVKK Notice Page), Security (membership expiration warning page). Add User, Edit User, Import Users: User Start Page.
 - A cleared start page posts `''`, written as `(int)` 0 by `user_write.php` and `import_users.php`, as the old "[None]" option was.
-- The rest of `select_page()` and `get_page_options()` is PK6b (product builder, Edit Offer, short links, menu item, calendar event, e-mail campaign profile).
+- The other screens: `picker-page-fields-screens.md`.

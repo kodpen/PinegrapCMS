@@ -1734,7 +1734,9 @@ function pg_picker_field_view($kind, $value, $item)
  *                          placeholder, describedby (ids of the help text),
  *                          invalid (a form's check refused the value: a red
  *                          box until another is chosen; the form shows the
- *                          message)
+ *                          message), value_attributes (name => value,
+ *                          more attributes of the posted hidden input, such
+ *                          as a screen script's data-on hook)
  * @return string
  */
 function pg_picker_field_markup($kind_name, $name, $value, $view, $options = array())
@@ -1748,6 +1750,13 @@ function pg_picker_field_markup($kind_name, $name, $value, $view, $options = arr
     $invalid = !empty($options['invalid']);
     $classes = 'pg-pfield' . ($empty ? ' is-empty' : '') . (($view['tone'] !== '') ? ' is-' . $view['tone'] : '') . ($invalid ? ' is-error' : '');
     $thumb = '';
+    $value_attributes = '';
+
+    foreach ((array) ($options['value_attributes'] ?? array()) as $attribute => $attribute_value) {
+        if (preg_match('/^[a-z][a-z0-9-]*$/', (string) $attribute)) {
+            $value_attributes .= ' ' . $attribute . '="' . h((string) $attribute_value) . '"';
+        }
+    }
 
     if ($view['thumb'] !== '') {
         $thumb = '<img src="' . h($view['thumb']) . '" alt="" loading="lazy"/>';
@@ -1756,7 +1765,7 @@ function pg_picker_field_markup($kind_name, $name, $value, $view, $options = arr
     }
 
     return '<div class="' . $classes . '" data-pg-picker-field data-pg-picker-kind="' . h($kind_name) . '" data-pg-picker-title="' . h($title) . '">'
-        . '<input type="hidden" name="' . h($name) . '" value="' . h($empty ? '' : (string) $value) . '" data-pg-picker-value/>'
+        . '<input type="hidden" name="' . h($name) . '" value="' . h($empty ? '' : (string) $value) . '"' . $value_attributes . ' data-pg-picker-value/>'
         . '<div class="pg-pfield-row">'
         . '<div class="pg-pfield-box">'
         . '<span class="pg-pfield-thumb" aria-hidden="true">' . $thumb . '</span>'

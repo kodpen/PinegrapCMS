@@ -238,6 +238,42 @@ function pg_short_link_by_id($user, $id, $recycled = false)
     return (pg_short_link_visible($user) == true) ? $rows[0] : null;
 }
 
+// Which page field of the short link window holds the page a link points
+// at, as the classic form fills them (pg_short_link_form_values()): a page
+// link's Page; a product group link's Catalog Page when the page is a
+// catalog, else its Catalog Detail Page; a product link's Catalog Detail
+// Page. The row stores one page id and not the field it came from. Pure.
+//
+// @param string $destination_type short_links.destination_type
+// @param mixed  $page_id          short_links.page_id, 0 for none
+// @param string $page_type        that page's page_type, '' when unknown
+// @return array page, catalog_page, catalog_detail_page => page id or 0
+function pg_short_link_page_slots($destination_type, $page_id, $page_type)
+{
+    $slots = array('page' => 0, 'catalog_page' => 0, 'catalog_detail_page' => 0);
+    $page_id = is_scalar($page_id) ? (int) $page_id : 0;
+
+    if ($page_id <= 0) {
+        return $slots;
+    }
+
+    switch ((string) $destination_type) {
+        case 'page':
+            $slots['page'] = $page_id;
+            break;
+
+        case 'product_group':
+            $slots[((string) $page_type === 'catalog') ? 'catalog_page' : 'catalog_detail_page'] = $page_id;
+            break;
+
+        case 'product':
+            $slots['catalog_detail_page'] = $page_id;
+            break;
+    }
+
+    return $slots;
+}
+
 // Where the link lands, written the way a person would read it.
 function pg_short_link_destination($row)
 {
