@@ -270,6 +270,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-14.md: Which tables and columns were approved?
 - decisions-made-schema-15.md: Where are the rules and the earlier parts?
 - decisions-made-schema-15.md: Which tables and columns were approved?
+- decisions-made-schema-16.md: Where are the rules and the earlier parts?
+- decisions-made-schema-16.md: Which tables and columns were approved?
 - decisions-made-schema-2.md: Where are the rules and the earlier steps?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-28?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-29 and later?
@@ -340,6 +342,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-16.md: Is a chart or a design made by a tool of its own, or by the canvas? (owner, 2026-11-11, #8762)
 - decisions-made-workspace-16.md: What does the canvas plan hold beside layers? (owner, 2026-11-11, #8762)
 - decisions-made-workspace-16.md: Does an agent make a live page too? (owner, 2026-11-11, #8762)
+- decisions-made-workspace-17.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-17.md: Where does a mail open from the E-mails list, and how is it drawn? (owner, 2026-11-11, #8765)
+- decisions-made-workspace-17.md: How are pictures from outside shown in a mail? (owner, 2026-11-11, #8765)
+- decisions-made-workspace-17.md: May a mailbox be kept in no channel? (owner, 2026-11-11, #8765)
 - decisions-made-workspace-2.md: What may the channel menu hold?
 - decisions-made-workspace-2.md: Where are records created inside a chat?
 - decisions-made-workspace-2.md: Does the customer channel's "New sales quote" stay in the menu?
