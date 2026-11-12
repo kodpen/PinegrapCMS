@@ -88,6 +88,7 @@ function get_help_url($properties = array())
         'settings_workspace_assistants' => 'workspace#workspace-settings',
         'settings_workspace_channels'   => 'workspace#workspace-settings',
         'system_tools'        => 'site-settings#system-tools',
+        'design_examples'     => 'site-settings#system-tools',
         'smtp_settings'       => 'site-settings#smtp-settings',
         'mail_queue'          => 'site-settings#mail-queue',
         'software_repair'     => 'site-settings#repair-software',

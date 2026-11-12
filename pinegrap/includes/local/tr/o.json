@@ -1918,6 +1918,7 @@
     "Order not retrieved": "Sipariş geri çağrılmadı",
     "Order note (textarea)": "Sipariş notu (textarea)",
     "Order notes (when there are any)": "Sipariş notları (varsa)",
+    "Order notices go to this address.": "Sipariş bildirimleri bu adrese gider.",
     "Order number": "Sipariş numarası",
     "Order number (empty before the order is placed)": "Sipariş numarası (sipariş verilmeden önce boş)",
     "Order number (empty when not from an order)": "Sipariş numarası (siparişten değilse boş)",
