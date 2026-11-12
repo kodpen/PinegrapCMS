@@ -192,10 +192,15 @@ function pg_lbs_by_hand_names()
  * One element's class list converted.
  *
  * @param string $class  the class attribute's value
+ * @param array  $rules  for markup no Legacy theme styles (a page type's
+ *                       layout): 'theme_names' => false leaves the names of
+ *                       pg_lbs_theme_names() alone, 'keep' (names) leaves
+ *                       each as written and counts it as kept, 'beside'
+ *                       (names) writes each after its 5.3.8 names
  * @return array  'class' (string), 'converted', 'kept', 'by_hand'
  *                (name => count each)
  */
-function pg_lbs_classes($class)
+function pg_lbs_classes($class, $rules = array())
 {
     $out = array('class' => '', 'converted' => array(), 'kept' => array(), 'by_hand' => array());
     $tokens = preg_split('/\s+/', trim((string)$class), -1, PREG_SPLIT_NO_EMPTY);
@@ -210,12 +215,16 @@ function pg_lbs_classes($class)
     $count = function (&$list, $name) {
         $list[$name] = (isset($list[$name]) ? $list[$name] : 0) + 1;
     };
+    $keep = array_flip((array)($rules['keep'] ?? array()));
+    $beside = array_flip((array)($rules['beside'] ?? array()));
+    // Without a Legacy theme its names are 5.3.8's own utilities.
+    $own = (($rules['theme_names'] ?? true) === false) ? array_flip(pg_lbs_theme_names()) : array();
 
     // The visibility classes of the element become one display set, placed
     // where the first of them stood.
     $visibility = array();
     foreach ($tokens as $t) {
-        if (pg_lbs_is_visibility($t)) $visibility[] = $t;
+        if (!isset($keep[$t]) && pg_lbs_is_visibility($t)) $visibility[] = $t;
     }
     $display = $visibility ? pg_lbs_visibility($visibility) : array();
 
@@ -223,6 +232,15 @@ function pg_lbs_classes($class)
     $result = array();
     $placed = false;
     foreach ($tokens as $t) {
+        if (isset($keep[$t])) {
+            $count($out['kept'], $t);
+            $result[] = $t;
+            continue;
+        }
+        if (isset($own[$t])) {
+            $result[] = $t;
+            continue;
+        }
         if (pg_lbs_is_visibility($t)) {
             if (!$placed) {
                 foreach ($display as $d) $result[] = $d;
@@ -241,11 +259,17 @@ function pg_lbs_classes($class)
             $result[] = 'bi-' . $icons[$t];
             $icon_twin = true;
             $count($out['converted'], $t);
+            if (isset($beside[$t])) $result[] = $t;
             continue;
         }
         if (isset($map[$t])) {
-            foreach (preg_split('/\s+/', $map[$t], -1, PREG_SPLIT_NO_EMPTY) as $r) $result[] = $r;
-            $count($out['converted'], $t);
+            $to = preg_split('/\s+/', $map[$t], -1, PREG_SPLIT_NO_EMPTY);
+            // A name kept beside its 5.3.8 names is not converted twice.
+            if (!isset($beside[$t]) || array_diff($to, $tokens)) {
+                foreach ($to as $r) $result[] = $r;
+                $count($out['converted'], $t);
+            }
+            if (isset($beside[$t])) $result[] = $t;
             continue;
         }
         if (preg_match('/^col-(xs|sm|md|lg)-(push|pull)-\d+$/', $t) || isset($by_hand[$t])) {
@@ -263,7 +287,7 @@ function pg_lbs_classes($class)
         foreach ($tokens as $t) {
             if ((strpos($t, 'glyphicon-') === 0 || strpos($t, 'ti-') === 0) && !isset($icons[$t])) $twinless = true;
         }
-        if (!$twinless && isset($have['glyphicon'])) {
+        if (!$twinless && isset($have['glyphicon']) && !isset($keep['glyphicon']) && !isset($beside['glyphicon'])) {
             $result = array_values(array_diff($result, array('glyphicon')));
             $count($out['converted'], 'glyphicon');
         }
