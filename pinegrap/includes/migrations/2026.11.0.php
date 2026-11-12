@@ -180,6 +180,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_legacy_design_key();       // 11.0.187
 	upgrade_2026_11_0_ws_mail_html();            // 11.0.188
 	upgrade_2026_11_0_ws_agent_seen();           // 11.0.189
+	upgrade_2026_11_0_ws_canvas_tables();        // 11.0.190
 
 }
 
@@ -6070,5 +6071,30 @@ function upgrade_2026_11_0_ws_mail_html() {
 	}
 
 	install_note('Workspace mail: the HTML of incoming mail is kept, cleaned, beside its text; mail that came in earlier is filled in from its kept copy in the background.');
+
+}
+
+// The tables bound to a canvas (2026.11.0, 11.0.190;
+// includes/workspace/canvas_tables.php). A live page reaches a workflow table
+// only through its shell and only when its canvas names the table here, read
+// or write, with who bound it. The canvas is the message that carries the
+// page. No foreign keys: the table's final delete and the canvas's delete
+// remove their rows; at most 20 a canvas, checked in PHP.
+function upgrade_2026_11_0_ws_canvas_tables() {
+
+	install_create_table('ws_canvas_tables', "CREATE TABLE ws_canvas_tables (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		message_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		table_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		access        VARCHAR(8) NOT NULL DEFAULT 'read',
+		bound_by_kind VARCHAR(8) NOT NULL DEFAULT 'user',
+		bound_by_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_canvas_table (message_id, table_id),
+		KEY idx_table (table_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a canvas can name the tables its live page reads or writes; the page reaches no other table.');
 
 }
