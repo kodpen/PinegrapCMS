@@ -4,7 +4,7 @@ description: The Podcast block family (podcast- prefix): episode hero with chapt
 ---
 
 ## Where does it live?
-- `assets/js/style_designer_blocks_podcast.js`, one `StyleDesigner.registerBlockFamily()` call ([[designer-block-family-files]]); prefix `podcast-`, palette group "Podcast" (`bi-mic`). Built in step `podcast-1` for the Podcast template ([[design-template-podcast]]); `podcast-2` places it on the pages.
+- `assets/js/style_designer_blocks_podcast.js`, one `StyleDesigner.registerBlockFamily()` call ([[designer-block-family-files]]); prefix `podcast-`, palette group "Podcast" (`bi-mic`). Built in step `podcast-1` (PR #8785) for the Podcast template ([[design-template-podcast]]); `podcast-2` places it on the pages.
 
 ## Which blocks does it hold?
 - `podcast-episode` (Podcast: Episode Hero with Chapters): a square cover over a sound wave (`pg-podcast-cover`, `pg-podcast-wave`, `aria-hidden`), show, season and episode, the length as `<time datetime="PT58M">`, the episode's `h1`, Listen Now / Episode Notes, four app icon links with an `aria-label`.
