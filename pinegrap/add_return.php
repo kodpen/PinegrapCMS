@@ -156,8 +156,8 @@ if ($order_id <= 0) {
     <div class="row g-7">
         <div class="col-12 lg:col-8 2xl:col-9 order-1">
             <div class="card mb-7">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Order')) . '</span>
+                <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                    <span>' . h(lang('Order')) . '</span>
                 </div>
                 <div class="card-body">
                     <form method="get" action="add_return.php" class="row g-5 align-items-end">
@@ -351,8 +351,8 @@ if ($order_id <= 0) {
         <div class="row g-7">
             <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 <div class="card mb-7">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Items to Return')) . '</span>
+                    <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                        <span>' . h(lang('Items to Return')) . '</span>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
@@ -372,8 +372,8 @@ if ($order_id <= 0) {
                     </div>
                 </div>
                 <div class="card mb-7">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Reason for the return')) . '</span>
+                    <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                        <span>' . h(lang('Reason for the return')) . '</span>
                     </div>
                     <div class="card-body">
                         <div class="mb-5">
@@ -392,7 +392,7 @@ if ($order_id <= 0) {
             <div class="col-12 lg:col-4 2xl:col-3 order-2">
                 <div class="position-sticky" style="top:3.3rem;">
                     <div class="card mb-7">
-                        <div class="card-header text-uppercase h6 fg-primary fw-bold mb-0">' . h(lang('Order')) . '</div>
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Order')) . '</h2>
                         <div class="card-body small">
                             <div class="row">
                                 <span class="col fg-secondary">' . h(lang('Order Number')) . ':</span>
@@ -413,7 +413,7 @@ if ($order_id <= 0) {
                         </div>
                     </div>
                     <div class="card mb-7">
-                        <div class="card-header text-uppercase h6 fg-primary fw-bold mb-0">' . h(lang('Delivery')) . '</div>
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Delivery')) . '</h2>
                         <div class="card-body small">
                             <div class="fw-semibold mb-3">' . h($delivery['label']) . '</div>
                             ' . (($output_parcels !== '') ? '<ul class="ps-5 mb-3">' . $output_parcels . '</ul>' : '') . '

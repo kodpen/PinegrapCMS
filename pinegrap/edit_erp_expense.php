@@ -568,7 +568,7 @@ if ($can_change && ($status === 'paid') && !$can_cash) {
 } elseif ($can_change) {
     $output_cancel = '
         <div class="card mb-7 border-subtle-danger">
-            <div class="card-header bg-reset border-0 text-uppercase h6 fg-danger fw-bold">' . lang('Cancel the expense') . '</div>
+            <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Cancel the expense') . '</h2>
             <div class="card-body">
                 <p class="small fg-secondary">' . (($status === 'paid')
                     ? lang('The expense stays on the list, struck through; its money goes back into the till with a movement dated today.')

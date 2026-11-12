@@ -35,7 +35,7 @@ function erp_till_form_cards($liveform, $currency_locked = false, $with_status =
 
     return '
     <div class="card my-7">
-        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+        <h2 class="card-header bg-reset border-0 pg-title-section">
             ' . lang('Till or Bank Account') . '
         </h2>
         <div class="card-body">
@@ -117,7 +117,7 @@ function erp_till_form_status_card($liveform)
 {
     return '
     <div class="card my-7">
-        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+        <h2 class="card-header bg-reset border-0 pg-title-section">
             ' . lang('Status') . '
         </h2>
         <div class="card-body pt-0">

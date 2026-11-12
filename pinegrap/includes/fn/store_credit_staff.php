@@ -389,8 +389,8 @@ function pg_credit_staff_panel_html($user_id, $send_to, $now)
 
     return '
                 <div class="card mb-5" id="store_credit">
-                    <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Store Credit')) . '</span>
+                    <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                        <span>' . h(lang('Store Credit')) . '</span>
                         <span class="small fg-secondary">' . h(lang('Balance')) . ': <strong>' . $money(pg_credit_balance($user_id, $now)) . '</strong></span>
                     </div>
                     <div class="card-body">

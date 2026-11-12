@@ -239,24 +239,20 @@ if (!$_POST) {
                         ' . $output_workspace_button . '
                     </nav>
         </div>
+    </div>
 
+    <form name="form" id="erp_account_form" action="' . $self_action . '" method="post">
+        ' . get_token_field() . '
+        ' . $liveform->field(array('type' => 'hidden', 'name' => 'id')) . '
+        ' . ($readonly
+            // The read-only accountant reads the card: every field, the
+            // contact search and Unlink disabled, no Save. The fieldset holds
+            // the whole row, so the cards stay straight in their columns.
+            ? '<fieldset disabled>'
+            : '') . '
+    <div class="row">
         <div class="col-12 lg:col-8 2xl:col-9 order-1">
-            <form name="form" id="erp_account_form" action="' . $self_action . '" method="post">
-                ' . get_token_field() . '
-                ' . $liveform->field(array('type' => 'hidden', 'name' => 'id')) . '
-                ' . ($readonly
-                    // The read-only accountant reads the card: every field,
-                    // the contact search and Unlink disabled, no Save.
-                    ? '<fieldset disabled>' . erp_account_form_cards($liveform, false, $has_movements, $linked_contact, $account) . '</fieldset>'
-                    : erp_account_form_cards($liveform, false, $has_movements, $linked_contact, $account) . '
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
-                        </div>
-                    </div>
-                </nav>') . '
-            </form>
+                ' . erp_account_form_cards($liveform, false, $has_movements, $linked_contact, $account) . '
         </div>
 
         <div class="col-12 lg:col-4 2xl:col-3 order-2">
@@ -275,9 +271,23 @@ if (!$_POST) {
                 </div>
             </div>
         </div>
+        ' . ($readonly ? '' : '
+        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                <div class="container">
+                    <div class="btn-group flex-wrap justify-content-center">
+                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
+                    </div>
+                </div>
+            </nav>
+        </div>') . '
+    </div>
+        ' . ($readonly ? '</fieldset>' : '') . '
+    </form>
 
-        <div class="col-12 order-3">
-            <div class="card my-7">
+    <div class="row">
+        <div class="col-12">
+            <div class="card pg-card my-7">
                 <div class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Statement') . '
                 </div>

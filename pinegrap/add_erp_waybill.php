@@ -151,20 +151,14 @@ if (!$_POST) {
                 which goods. The form wraps both columns, so the Notes box
                 beside it is posted with the rest.
             -->
-            <div class="col-12 lg:col-8 2xl:col-9 order-1">
+            <div class="col-12 lg:col-8 2xl:col-9 order-1" ' . erp_waybill_form_editor_attributes() . '>
                 ' . erp_waybill_form_cards($liveform, array(
                     'lines' => erp_waybill_form_lines($liveform, $given_lines),
                     'order' => $order,
                     'invoice' => $invoice,
                     'aside' => false,
+                    'wrap' => false,
                 )) . '
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><i class="bi bi-truck me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Issue the Delivery Note') . '</span></button>
-                        </div>
-                    </div>
-                </nav>
             </div>
 
             <!--
@@ -179,6 +173,16 @@ if (!$_POST) {
                         'invoice' => $invoice,
                     )) . '
                 </div>
+            </div>
+
+            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                    <div class="container">
+                        <div class="btn-group flex-wrap justify-content-center">
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><i class="bi bi-truck me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Issue the Delivery Note') . '</span></button>
+                        </div>
+                    </div>
+                </nav>
             </div>
         </div>
     </form>

@@ -557,8 +557,8 @@ if (function_exists('erp_stock_ready') && erp_stock_ready() && ((string) $invoic
 
     $output_stock = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
-                    <span class="text-uppercase">' . lang('Stock') . '</span>
+                <div class="card-header bg-reset border-0 pg-title-section d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <span>' . lang('Stock') . '</span>
                     <a class="btn btn-sm btn-outline theme-secondary m-1" href="erp_stock.php"><i class="bi bi-boxes me-3" aria-hidden="true"></i>' . lang('Stock and cost') . '</a>
                 </div>' . (($stock_rows !== '') ? '
                 <div class="card-body p-0 table-responsive">
@@ -1208,8 +1208,8 @@ if (((string) $invoice['direction'] === 'sales')
 
     $output_edoc = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
-                    <span class="text-uppercase">' . lang('e-Document') . $edoc_test_badge . '</span>
+                <div class="card-header bg-reset border-0 pg-title-section d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <span>' . lang('e-Document') . $edoc_test_badge . '</span>
                     <span>' . $output_edoc_buttons . '</span>
                 </div>
                 <div class="card-body">
@@ -1273,8 +1273,8 @@ if (((string) $invoice['direction'] === 'sales')
 
     $output_edoc = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
-                    <span class="text-uppercase">' . lang('Incoming e-invoice') . '</span>
+                <div class="card-header bg-reset border-0 pg-title-section d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <span>' . lang('Incoming e-invoice') . '</span>
                     ' . (($inbox_id > 0)
                         ? '<span>
                         <a class="btn btn-sm btn-outline theme-secondary m-1" href="erp_inbox_document.php?id=' . $inbox_id . '"><i class="bi bi-inbox me-3" aria-hidden="true"></i>' . lang('The e-invoice') . '</a>
@@ -1586,11 +1586,11 @@ pg_page_shell([
             </form>'
                 : '') . '
 
-            <form name="notes_form" action="' . $self_action . '" method="post">
+            <!-- The form is the card, so the card stands straight in the column. -->
+            <form name="notes_form" action="' . $self_action . '" method="post" class="card my-7">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $invoice_id . '" />
                 <input type="hidden" name="erp_action" value="notes" />
-                <div class="card my-7">
                     <div class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Notes') . '
                     </div>
@@ -1609,12 +1609,11 @@ pg_page_shell([
                             </div>') . '
                         </div>
                     </div>
-                </div>
             </form>
 
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
-                    <span class="text-uppercase">' . lang('Settlement') . '</span>
+                <div class="card-header bg-reset border-0 pg-title-section d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <span>' . lang('Settlement') . '</span>
                     ' . (($can_record_receipt && $open_amount > 0 && (string) $invoice['status'] !== 'cancelled')
                         ? '<a class="btn btn-sm btn-solid theme-primary" href="add_erp_receipt.php?direction=' . (((string) $invoice['direction'] === 'sales') ? 'collection' : 'payment') . '&amp;invoice_id=' . $invoice_id . '"><i class="bi bi-cash-coin me-3" aria-hidden="true"></i>' . h(erp_record_receipt_label((string) $invoice['direction'])) . '</a>'
                         : '') . '
@@ -1647,33 +1646,10 @@ pg_page_shell([
             ' . ($returned_in_full
                 ? '<p class="small fg-secondary text-center mb-3"><i class="bi bi-check2-circle me-2" aria-hidden="true"></i>' . lang('Returned in full') . '</p>'
                 : '') . '
-            ' . (($can_return || $can_cancel || ($cancel_locked !== ''))
-                ? '<form name="form" action="' . $self_action . '" method="post" class="disable_shortcut">
-                ' . get_token_field() . '
-                <input type="hidden" name="id" value="' . $invoice_id . '" />
-                <input type="hidden" name="erp_action" value="cancel" />
-                <nav class="buttons navigation text-center position-sticky ' . (($cancel_note !== '') ? 'mb-3' : 'mb-7') . '" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <div class="btn-group flex-wrap justify-content-center">
-                            ' . ($can_return
-                                ? '<a class="btn my-1 btn-outline theme-warning" href="add_erp_return.php?invoice_id=' . $invoice_id . '"><i class="bi bi-arrow-return-left me-3" aria-hidden="true"></i>' . lang('Return an Invoice') . '</a>'
-                                : '') . '
-                            ' . ($can_cancel
-                                ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-outline theme-danger" data-confirm-content="' . h($cancel_confirm) . '"' . (($cancel_note !== '') ? ' aria-describedby="erp_cancel_note"' : '') . '><i class="bi bi-x-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . (!empty($provider_cancellable['manual']) ? lang('Cancelled there: cancel it here too') : lang('Cancel the Document')) . '</span></button>'
-                                : '') . '
-                            ' . (($cancel_locked !== '')
-                                ? '<button type="button" class="btn my-1 btn-outline theme-danger" disabled aria-describedby="erp_cancel_note"><i class="bi bi-x-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Cancel the Document') . '</span></button>'
-                                : '') . '
-                        </div>
-                    </div>
-                </nav>
-                ' . (($cancel_note !== '') ? '<p class="small fg-secondary text-center mx-auto mb-7" style="max-width:40rem" id="erp_cancel_note">' . h($cancel_note) . '</p>' : '') . '
-            </form>'
-                : '') . '
 
             <div class="row">
                 <div class="col-12 lg:col-5 ms-auto">
-                    <div class="card my-7">
+                    <div class="card pg-card my-7">
                         <div class="card-body">
                             <div class="d-flex justify-content-between py-1">
                                 <span>' . lang('Subtotal') . '</span><b>' . $money((int) $invoice['subtotal']) . '</b>
@@ -1785,6 +1761,32 @@ pg_page_shell([
                 </div>
             </div>
         </div>
+
+        ' . (($can_return || $can_cancel || ($cancel_locked !== ''))
+            // The form is the save bar's column, so the bar stands straight
+            // in it as on every edit screen.
+            ? '<form name="form" action="' . $self_action . '" method="post" class="disable_shortcut col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+            ' . get_token_field() . '
+            <input type="hidden" name="id" value="' . $invoice_id . '" />
+            <input type="hidden" name="erp_action" value="cancel" />
+            <nav class="buttons navigation text-center ' . (($cancel_note !== '') ? 'mb-3' : 'mb-7') . '" aria-label="' . h(lang('data edit buttons')) . '">
+                <div class="container">
+                    <div class="btn-group flex-wrap justify-content-center">
+                        ' . ($can_return
+                            ? '<a class="btn my-1 btn-outline theme-warning" href="add_erp_return.php?invoice_id=' . $invoice_id . '"><i class="bi bi-arrow-return-left me-3" aria-hidden="true"></i>' . lang('Return an Invoice') . '</a>'
+                            : '') . '
+                        ' . ($can_cancel
+                            ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-outline theme-danger" data-confirm-content="' . h($cancel_confirm) . '"' . (($cancel_note !== '') ? ' aria-describedby="erp_cancel_note"' : '') . '><i class="bi bi-x-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . (!empty($provider_cancellable['manual']) ? lang('Cancelled there: cancel it here too') : lang('Cancel the Document')) . '</span></button>'
+                            : '') . '
+                        ' . (($cancel_locked !== '')
+                            ? '<button type="button" class="btn my-1 btn-outline theme-danger" disabled aria-describedby="erp_cancel_note"><i class="bi bi-x-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Cancel the Document') . '</span></button>'
+                            : '') . '
+                    </div>
+                </div>
+            </nav>
+            ' . (($cancel_note !== '') ? '<p class="small fg-secondary text-center mx-auto mb-7" style="max-width:40rem" id="erp_cancel_note">' . h($cancel_note) . '</p>' : '') . '
+        </form>'
+            : '') . '
     </div>
 </main>
 <script>
