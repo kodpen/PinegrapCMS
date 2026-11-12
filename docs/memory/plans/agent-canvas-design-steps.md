@@ -6,7 +6,7 @@ description: Steps CV1-CV8 of plans/agent-canvas-design.md: an SVG taken apart, 
 ## Which steps are there?
 - S under 400 product lines, M about 1,000; each with its tests and its topic in `workspace/`. `free` once the steps it names have landed.
 
-- CV1 (M) One SVG taken apart. `free`.
+- CV1 (M) One SVG taken apart. Claimed.
   - `POST channels/{id}/canvases` and the edit's `add` and `svg` take `layers: "split"`: a layer per top-level element, each placed by the root's matrix times its own, ids kept unique, as Break apart does (`ui/image-editor-import.md`, `svgLayers()`, `M.svgPlace()`). Without the word: one layer.
   - The server's port is one module; it reads the fixtures the model's tests read (an SVG and the layers it gives). A group stays one layer; styles and gradients go with the layers that use them.
   - The answer and `GET messages/{id}/canvas` list each layer's id, kind, box and name. Topic `workspace/agent-canvas-layers.md`.
