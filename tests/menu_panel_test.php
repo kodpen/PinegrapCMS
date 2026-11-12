@@ -172,11 +172,11 @@ function test_menu_site_settings_row_is_retired()
 
 function test_menu_translations_has_a_way_for_managers()
 {
-	// translations.php admits managers; row 21 is built for role < 2 only.
+	// translations.php admits managers; row 21 holds it for role < 2 only.
 	$menu = pg_test_function_source('output_menu');
 
 	pg_assert_contains("if ((int) \$user['role'] === 2) {\n            \$menu_items[2]['data-bs-content'] .= '<a href=\\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php\\''", $menu, 'in the Pages panel for a manager');
-	pg_assert_contains("case 'translations.php':\n            // A manager reaches it from the Pages panel; row 21 is built for\n            // role < 2 only.\n            \$active_menu = (\$user['role'] < 2) ? 21 : 2;", $menu, 'the row that lists it is marked');
+	pg_assert_contains("case 'translations.php':\n            // A manager reaches it from the Pages panel; row 21 holds it for\n            // role < 2 only.\n            \$active_menu = (\$user['role'] < 2) ? 21 : 2;", $menu, 'the row that lists it is marked');
 }
 
 function test_menu_tools_icon_is_two_coloured_and_moves()

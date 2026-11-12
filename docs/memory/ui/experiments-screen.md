@@ -5,7 +5,7 @@ module: experiments_results
 ---
 
 ## Where is it?
-- `experiments.php` (root, `validate_area_access('designer')`): the Visual Page Editor row (21) of the main menu after Translations, the panel search chip `Experiments` under the `design` gate, and "All experiments" in the toolbar of a page's sheet (`page_experiments.php`), whose experiment names link to `experiments.php?id=<n>`. Active row 21 for both screens.
+- `experiments.php` (root, `validate_area_access('designer')`): the Page Design Studio row (21) of the main menu after Translations, the panel search chip `Experiments` under the `design` gate, and "All experiments" in the toolbar of a page's sheet (`page_experiments.php`), whose experiment names link to `experiments.php?id=<n>`. Active row 21 for both screens.
 - The list skips experiments of pages in a folder the user may not edit (`check_edit_access()`); a detail of one refuses with Access denied.
 
 ## What does one experiment show?
