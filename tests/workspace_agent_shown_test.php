@@ -53,6 +53,47 @@ function test_workspace_agent_request_label()
 	pg_assert_same('bi-x-circle', ws_agent_request_label('cancelled', '@mimar', '', 0, $now)['icon']);
 }
 
+// A request closed without text keeps the eye and says so; the tick and
+// "answered" only with a reply.
+function test_workspace_agent_request_label_no_answer()
+{
+	$now = 1700000000;
+	$seen = ws_agent_request_label('answered', '@mimar', '', 0, $now, false);
+
+	pg_assert_same('bi-eye', $seen['icon']);
+	pg_assert_contains('@mimar', $seen['label']);
+	pg_assert_true($seen['label'] !== ws_agent_request_label('answered', '@mimar', '', 0, $now)['label'], 'not "answered"');
+	pg_assert_same('bi-check2-circle', ws_agent_request_label('answered', '@mimar', '', 0, $now, true)['icon']);
+	pg_assert_same('bi-robot', ws_agent_request_label('running', '@mimar', '', 0, $now, false)['icon'], 'only a closed request reads as seen');
+}
+
+function test_workspace_agent_request_replied()
+{
+	pg_assert_true(ws_agent_request_replied(array('reply_message_id' => 12)));
+	pg_assert_true(ws_agent_request_replied(array('reply_message_id' => 0, 'note_reply' => 'Done.')), 'an answer written in a note');
+	pg_assert_false(ws_agent_request_replied(array('reply_message_id' => 0, 'note_reply' => '')));
+	pg_assert_false(ws_agent_request_replied(array('reply_message_id' => '0')));
+	pg_assert_true(ws_agent_request_no_answer(array('status' => 'answered', 'reply_message_id' => 0)));
+	pg_assert_false(ws_agent_request_no_answer(array('status' => 'answered', 'reply_message_id' => 5)));
+	pg_assert_false(ws_agent_request_no_answer(array('status' => 'running', 'reply_message_id' => 0)), 'still open');
+}
+
+// The route closing a request without text leaves the eye and adds no tick.
+function test_workspace_agent_answer_route_keeps_eye()
+{
+	$reflection = new ReflectionFunction('ws_api_agent_request_answer');
+	$source = implode('', array_slice(file($reflection->getFileName()), $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+	$tick = strpos($source, "'✅', true");
+
+	pg_assert_true($tick !== false);
+	pg_assert_true(strpos(substr($source, 0, $tick), 'if ($reply_id > 0)') !== false, 'the tick only with a reply');
+	pg_assert_contains('ws_agent_request_label((string) $row[\'status\'], $handle, (string) $row[\'error\'], $next_try, time(), ws_agent_request_replied($row))', (function () {
+		$r = new ReflectionFunction('ws_agent_request_state');
+
+		return implode('', array_slice(file($r->getFileName()), $r->getStartLine() - 1, $r->getEndLine() - $r->getStartLine() + 1));
+	})());
+}
+
 function test_workspace_agent_picker_entries()
 {
 	$entries = ws_agent_picker_entries(array(

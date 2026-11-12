@@ -139,9 +139,10 @@ function ws_agent_tags()
  * @param string $error     the request's error
  * @param int    $next_try  when a failed door or model is tried again (0: not held)
  * @param int    $now
+ * @param bool   $replied   an answered request left a reply; false: closed without text
  * @return array label, icon
  */
-function ws_agent_request_label($status, $handle, $error, $next_try, $now)
+function ws_agent_request_label($status, $handle, $error, $next_try, $now, $replied = true)
 {
     switch ((string) $status) {
         case 'queued':
@@ -154,13 +155,40 @@ function ws_agent_request_label($status, $handle, $error, $next_try, $now)
             return array('label' => lang(array('string' => '{var:1} is working on it', 'vars' => $handle)), 'icon' => 'bi-robot');
 
         case 'answered':
-            return array('label' => lang(array('string' => '{var:1} answered', 'vars' => $handle)), 'icon' => 'bi-check2-circle');
+            // Closed with no_answer: the agent saw it and wrote nothing.
+            return $replied
+                ? array('label' => lang(array('string' => '{var:1} answered', 'vars' => $handle)), 'icon' => 'bi-check2-circle')
+                : array('label' => lang(array('string' => '{var:1} saw it · no answer needed', 'vars' => $handle)), 'icon' => 'bi-eye');
 
         case 'cancelled':
             return array('label' => trim(lang('Cancelled') . ': ' . (string) $error, ': '), 'icon' => 'bi-x-circle');
     }
 
     return array('label' => trim(lang(array('string' => '{var:1} could not do it', 'vars' => $handle)) . ': ' . (string) $error, ': '), 'icon' => 'bi-exclamation-circle');
+}
+
+/**
+ * Whether a request left a reply: a message, or an answer written in a note.
+ * Pure.
+ *
+ * @param array $row ws_ai_requests: reply_message_id, note_reply when read
+ * @return bool
+ */
+function ws_agent_request_replied($row)
+{
+    return ((int) ($row['reply_message_id'] ?? 0) > 0) || (trim((string) ($row['note_reply'] ?? '')) !== '');
+}
+
+/**
+ * Whether a request was closed without text (no_answer): answered, no
+ * reply. No column of its own. Pure.
+ *
+ * @param array $row ws_ai_requests: status, reply_message_id, note_reply when read
+ * @return bool
+ */
+function ws_agent_request_no_answer($row)
+{
+    return ((string) ($row['status'] ?? '') === 'answered') && !ws_agent_request_replied($row);
 }
 
 /**
@@ -186,7 +214,7 @@ function ws_agent_request_state($row)
         $next_try = (int) $agent['door_last_knock'] + ws_model_hold_seconds((int) $agent['door_failures']);
     }
 
-    $said = ws_agent_request_label((string) $row['status'], $handle, (string) $row['error'], $next_try, time());
+    $said = ws_agent_request_label((string) $row['status'], $handle, (string) $row['error'], $next_try, time(), ws_agent_request_replied($row));
 
     return array(
         'id'          => (int) $row['id'],

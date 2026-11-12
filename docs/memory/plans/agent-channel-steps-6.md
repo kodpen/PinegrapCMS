@@ -11,7 +11,7 @@ description: Steps A19 to A21 of plans/agent-channel.md (owner 2026-11-12): a di
   - The root message's writing application is looked up in the registry: when it is an agent's and a row of that agent reaches the discussion, the discussion follows it. Order: the answer's agent, then the writing agent, then the agent the root names.
   - Unchanged: one followed agent per discussion, Stop and Follow again, the brakes, an agent is never woken by its own message. `workspace/agent-discussion-follow.md` is rewritten for it.
 
-- A20 (S) A request closed without text reads "saw it · no answer needed". `free`. #8872.
+- A20 (S) A request closed without text reads "saw it · no answer needed". `done` (PR #8919). #8872.
   - Today `no_answer` closes the request as `answered`: the eye under the asking message becomes a tick and the line reads "answered", though nothing was written (`workspace/agent-shown.md`).
   - A request closed with `no_answer` keeps the eye and its line reads "saw it · no answer needed" (Turkish "gördü · yanıt gerekmedi") with the agent's name before it. The tick and "answered" show only when the request has a reply message.
   - No new column: the state is read from `status = 'answered'` with an empty `reply_message_id`. The same in the panel's line, the phone's and `GET /workspace/agent-requests/{id}`.
