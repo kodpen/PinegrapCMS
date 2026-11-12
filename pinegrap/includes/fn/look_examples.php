@@ -33,7 +33,7 @@ function pg_look_examples($prefix = 'light')
 
     $sections[] = array(
         'id'      => 'type',
-        'title'   => lang('Type'),
+        'title'   => lang('Type and text'),
         'classes' => array('.pg-title-screen', '.pg-title-section', '.pg-title-status', '.pg-text-2', '.pg-text-meta', '.pg-tabular'),
         'html'    => '<div class="pg-look-stack">'
             . '<div class="pg-title-screen">' . h(lang('Screen title')) . ' <span class="pg-text-meta">24 / 650</span></div>'

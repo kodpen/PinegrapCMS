@@ -16,7 +16,7 @@ description: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860)
 
 - DL1b (M) The page widths (#8860) as `panel-design-language-sheet.md` sets them: the measures as tokens, an add or edit screen's centred content, the list frame's width rule. First screens `product_builder.php` and the products list, approved from a real panel's screenshots at 1920 and 1366 px. Rewrites the width lines of `ui/admin-screen-toolbar.md`, `ui/edit-screen-wide-layout.md`, `ui/list-table-layout.md`. Done in #8892 (`ui/look-page-widths.md`).
 
-- DL2 (M) The Design examples screen: a panel page for the Designer role and above that shows every recipe live in both themes, with its class names and what is not done. A step copies from it; the owner looks at it.
+- DL2 (M) The Design examples screen: a panel page for the Designer role and above that shows every recipe live in both themes, with its class names and what is not done. A step copies from it; the owner looks at it. Done in #8907 (`ui/look-design-examples.md`).
 
 - DL3 (M) The bell's drawer in look A: rows from the recipes, the fold drawn as gathered rows with the count beside the title, titles that say what happened and with what (`ui/bell-row.md` rewritten). Approved from a real panel's screenshots: dark, light, phone width. Done in #8897.
 
