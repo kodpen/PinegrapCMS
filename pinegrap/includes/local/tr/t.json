@@ -5228,6 +5228,7 @@
     "The page cache setting was not saved, because the config.php file could not be written. The other settings were saved.": "config.php dosyası yazılamadığı için sayfa önbelleği ayarı kaydedilmedi. Diğer ayarlar kaydedildi.",
     "The page cannot be viewed as a PDF, because the PDF feature is not enabled for this website.": "Bu web sitesi için PDF özelliği etkinleştirilmediği için sayfa PDF olarak görüntülenemiyor.",
     "The page changed meanwhile; try again.": "Bu arada sayfa değişti; yeniden deneyin.",
+    "The page changed since: its newest version is {var:1}. Read it again.": "Sayfa o zamandan beri değişti: en yeni sürümü {var:1}. Yeniden okuyun.",
     "The page comments will appear here": "Sayfa yorumları burada görünecek",
     "The page could not be deleted.": "Sayfa silinemedi.",
     "The page could not be drawn.": "Sayfa çizilemedi.",

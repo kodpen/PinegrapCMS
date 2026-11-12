@@ -13,13 +13,13 @@ description: Steps LP1-LP5 (LP2 as LP2a and LP2b) of plans/agent-live-page.md: t
   - Unit tests: the headers of each mode, the shell's markup, the refusal of anything but a stored page's id. Topic `platform/guarded-frame.md`.
   - No agent route and nothing visible yet.
 - LP2 was cut in two (each about 1,000 lines): the routes first, the card after them.
-- LP2a (M) The agent's routes. `free`. The shell and its messages: `platform/guarded-frame.md`.
+- LP2a (M) The agent's routes. Done in #8815 (`workspace/agent-page.md`). The shell and its messages: `platform/guarded-frame.md`.
   - `POST /workspace/channels/{id}/pages` (name, html, the line that goes with it), `GET /workspace/messages/{id}/page` (the source), `PATCH` (a new version, 409 when stale), the MCP tools from the rows; who may and the limits as the plan says. Libraries are LP4's.
   - How a message marks a page, without a schema change: channels refuse `.html` uploads (`ws_upload_refused_extensions()`), so a page is an `.html` file whose versions (`file_versions`, format `html`) the route wrote; `live_page.php` shows only those.
   - Topic `workspace/agent-page.md`.
-- LP2b (M) The card. After LP2a. Name, maker, Open (the frame in the card, `pg_guarded_frame_panel_sandbox()`), Full screen, View source, Download, versions, "Edited by" and Undo. It runs only when opened and stops when the channel is left. Topic `workspace/agent-page-card.md`.
-- LP3 (S) The assistants' tools. After LP2a. Claude, Pinegrap AI and model assistants make, read and edit a page as they do a canvas (`workspace/agent-canvas-assistants.md`).
-- LP4 (S) The site's libraries. After LP2a. The list (Chart.js first), how a call names one, how the site puts its own copy into the document; a test that no address reaches a page.
+- LP2b (M) The card. `free` once #8815 has landed. Name, maker, Open (the frame in the card, `pg_guarded_frame_panel_sandbox()`), Full screen, View source, Download, versions, "Edited by" and Undo. It runs only when opened and stops when the channel is left. Topic `workspace/agent-page-card.md`.
+- LP3 (S) The assistants' tools. `free` once #8815 has landed. Claude, Pinegrap AI and model assistants make, read and edit a page as they do a canvas (`workspace/agent-canvas-assistants.md`).
+- LP4 (S) The site's libraries. `free` once #8815 has landed. The list (Chart.js first), how a call names one, how the site puts its own copy into the document; a test that no address reaches a page.
 - LP5 (S) Close-out. The lasting rules into the topic files, the API's description, the PR body names the `[NEW]` changelog line, both plan files deleted.
 
 ## Which questions are open?

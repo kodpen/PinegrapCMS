@@ -292,13 +292,16 @@ function ws_api_canvas_present($message, $made = null)
  * checked that), else an application with a row in the channel's agents.
  * A person's own device draws in the panel's editor, not here.
  *
- * @param array $channel
+ * The live page routes (api_page.php) ask the same, in their own words.
+ *
+ * @param array       $channel
+ * @param string|null $refused the refusal's words; the canvas's when null
  * @return array id, kind, handle (the document's by)
  */
-function ws_api_canvas_agent($channel)
+function ws_api_canvas_agent($channel, $refused = null)
 {
     $device = function_exists('api_current_device') ? api_current_device() : null;
-    $refused = lang('A canvas is drawn here only by an agent of the channel.');
+    $refused = ($refused !== null) ? $refused : lang('A canvas is drawn here only by an agent of the channel.');
 
     if (ws_api_device_writes_as_person($device)) {
         api_fail(403, 'forbidden', $refused);
