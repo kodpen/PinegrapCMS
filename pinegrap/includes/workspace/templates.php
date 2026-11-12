@@ -1387,13 +1387,18 @@ function ws_templates_js_strings()
 
 /**
  * The Channel templates card of the workspace settings: the built-in ones to
- * copy, the site's own to change or archive.
+ * copy, the site's own to change or archive. In Site Settings (Channels,
+ * mail and voice, with $form) Archive and Bring it back are named submit
+ * buttons of the settings form (ws_template_archive, ws_template_restore,
+ * value the template's id) that run after the pane's save; Edit, Copy and New
+ * template open the template screen as before.
  *
- * @param string $self_url
- * @param array  $viewer
+ * @param string      $self_url
+ * @param array       $viewer
+ * @param string|null $form the Site Settings form's id, null on Workspace Settings
  * @return string
  */
-function ws_templates_settings_card($self_url, $viewer)
+function ws_templates_settings_card($self_url, $viewer, $form = null)
 {
     if (!ws_can_write_templates($viewer)) {
         return '';
@@ -1410,13 +1415,20 @@ function ws_templates_settings_card($self_url, $viewer)
         if ($present['builtin']) {
             $actions .= '<a class="btn btn-sm btn-text theme-secondary" href="' . h($edit_url . '?copy=' . rawurlencode($present['id'])) . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</a>';
         } else {
-            $actions .= '<a class="btn btn-sm btn-text theme-secondary" href="' . h($edit_url . '?id=' . (int) $present['id']) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</a>'
-                . '<form method="post" action="' . h($self_url) . '" class="d-inline">' . get_token_field()
+            $label = $present['archived'] ? lang('Bring it back') : lang('Move to the archive');
+            $icon_name = $present['archived'] ? 'bi-arrow-counterclockwise' : 'bi-archive';
+            $actions .= '<a class="btn btn-sm btn-text theme-secondary" href="' . h($edit_url . '?id=' . (int) $present['id']) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</a>';
+
+            if ($form !== null) {
+                $actions .= '<button type="submit" name="' . ($present['archived'] ? 'ws_template_restore' : 'ws_template_archive') . '" value="' . (int) $present['id'] . '" form="' . h($form) . '" class="btn btn-sm btn-text theme-secondary" title="' . h($label) . '" aria-label="' . h($label) . '"><i class="bi ' . $icon_name . '" aria-hidden="true"></i></button>';
+            } else {
+                $actions .= '<form method="post" action="' . h($self_url) . '" class="d-inline">' . get_token_field()
                 . '<input type="hidden" name="ws_action" value="template_archive">'
                 . '<input type="hidden" name="template_id" value="' . (int) $present['id'] . '">'
                 . '<input type="hidden" name="archive" value="' . ($present['archived'] ? 0 : 1) . '">'
                 . '<button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . h($present['archived'] ? lang('Bring it back') : lang('Move to the archive')) . '" aria-label="' . h($present['archived'] ? lang('Bring it back') : lang('Move to the archive')) . '"><i class="bi ' . ($present['archived'] ? 'bi-arrow-counterclockwise' : 'bi-archive') . '" aria-hidden="true"></i></button>'
                 . '</form>';
+            }
         }
 
         $rows .= '
@@ -1436,6 +1448,25 @@ function ws_templates_settings_card($self_url, $viewer)
             </div>';
     }
 
+    $intro = '<p class="small fg-secondary">' . h(lang('A template sets a channel up with its tasks, notes, summary and pinned message: when a channel is made from it, or later from the channel\'s menu.')) . '</p>';
+    $new = '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="' . h($edit_url) . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New template')) . '</a>';
+
+    if ($form !== null) {
+        return '
+    <div id="pgset-ws-templates" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center gap-3">
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0 ws-grow">' . h(lang('Channel templates')) . '</span>
+                ' . $new . '
+            </div>
+            <div class="card-body">
+                ' . $intro . '
+                ' . $rows . '
+            </div>
+        </div>
+    </div>';
+    }
+
     return '
             <div class="card mt-7" id="ws-templates">
                 <div class="card-header d-flex align-items-center gap-3">
@@ -1450,18 +1481,27 @@ function ws_templates_settings_card($self_url, $viewer)
 }
 
 /**
- * The settings screen's form for the template card (archive, bring back).
+ * The template card's archive and bring back, on either screen.
  *
- * @param array   $viewer
- * @param object  $liveform
+ * @param array         $viewer
+ * @param object        $liveform
+ * @param int|null      $id       the template (null: what Workspace Settings posted)
+ * @param bool|null     $archive  true to archive, false to bring back
+ * @param callable|null $refuse   takes a refusal (null: the liveform's error)
  */
-function ws_templates_settings_post($viewer, $liveform)
+function ws_templates_settings_post($viewer, $liveform, $id = null, $archive = null, $refuse = null)
 {
-    $archive = !empty($_POST['archive']);
-    $result = ws_template_archive($viewer, (int) ($_POST['template_id'] ?? 0), $archive);
+    $archive = ($archive === null) ? !empty($_POST['archive']) : (bool) $archive;
+    $id = ($id === null) ? (int) ($_POST['template_id'] ?? 0) : (int) $id;
+    $result = ws_template_archive($viewer, $id, $archive);
 
     if (!$result['ok']) {
-        $liveform->add_error($result['error']);
+        if (is_callable($refuse)) {
+            $refuse($result['error']);
+        } else {
+            $liveform->add_error($result['error']);
+        }
+
         return;
     }
 

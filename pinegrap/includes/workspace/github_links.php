@@ -585,25 +585,37 @@ function ws_github_webhook_receive()
 }
 
 /**
- * The card's Save and Remove (ws_action github_link_save, github_link_remove).
+ * The card's Save and Remove (ws_action github_link_save, github_link_remove
+ * on Workspace Settings; in Site Settings the named buttons
+ * ws_github_link_save and ws_github_link_remove, value the link's id, with
+ * the drawer's fields ws_github[...]).
  *
- * @param array    $viewer
- * @param string   $action
- * @param liveform $liveform
+ * @param array         $viewer
+ * @param string        $action
+ * @param liveform      $liveform
+ * @param array|null    $input  link_id, github_connection_id,
+ *                              github_channel_id, github_repository,
+ *                              github_events, github_labels (null: what
+ *                              was posted)
+ * @param callable|null $refuse takes a refusal (null: the liveform's error)
  */
-function ws_github_links_settings_post($viewer, $action, $liveform)
+function ws_github_links_settings_post($viewer, $action, $liveform, $input = null, $refuse = null)
 {
+    $post = is_array($input) ? $input : $_POST;
     $username = $_SESSION['sessionusername'] ?? '';
+    $refuse = is_callable($refuse) ? $refuse : function ($sentence) use ($liveform) {
+        $liveform->add_error($sentence);
+    };
 
     if ($action === 'github_link_remove') {
-        $link = ws_github_link((int) ($_POST['link_id'] ?? 0));
+        $link = ws_github_link(is_scalar($post['link_id'] ?? 0) ? (int) ($post['link_id'] ?? 0) : 0);
         $channel = $link ? ws_channel($link['channel_id']) : null;
 
         // A link to a channel the person cannot post in (a private channel
         // they are not in) is not theirs to remove; one whose channel is
         // gone is anyone's who may link.
         if (!$link || !ws_github_links_can_manage($viewer) || (is_array($channel) && !ws_can_post_channel($viewer, $channel))) {
-            $liveform->add_error(lang('That link could not be found.'));
+            $refuse(lang('That link could not be found.'));
             return;
         }
 
@@ -614,15 +626,15 @@ function ws_github_links_settings_post($viewer, $action, $liveform)
     }
 
     $saved = ws_github_link_save($viewer, array(
-        'connection_id' => $_POST['github_connection_id'] ?? 0,
-        'channel_id'    => $_POST['github_channel_id'] ?? 0,
-        'repository'    => is_string($_POST['github_repository'] ?? null) ? $_POST['github_repository'] : '',
-        'events'        => is_array($_POST['github_events'] ?? null) ? $_POST['github_events'] : array(),
-        'labels'        => is_string($_POST['github_labels'] ?? null) ? $_POST['github_labels'] : '',
+        'connection_id' => is_scalar($post['github_connection_id'] ?? 0) ? ($post['github_connection_id'] ?? 0) : 0,
+        'channel_id'    => is_scalar($post['github_channel_id'] ?? 0) ? ($post['github_channel_id'] ?? 0) : 0,
+        'repository'    => is_string($post['github_repository'] ?? null) ? $post['github_repository'] : '',
+        'events'        => is_array($post['github_events'] ?? null) ? $post['github_events'] : array(),
+        'labels'        => is_string($post['github_labels'] ?? null) ? $post['github_labels'] : '',
     ), $username);
 
     if (!$saved['ok']) {
-        $liveform->add_error($saved['error']);
+        $refuse($saved['error']);
         return;
     }
 
@@ -630,27 +642,151 @@ function ws_github_links_settings_post($viewer, $action, $liveform)
 }
 
 /**
- * The "GitHub repositories" card of the Workspace settings.
+ * The drawer's fields of Site Settings under the names Workspace Settings
+ * posts (github_repository, ...). Pure.
  *
- * @param string $self_url
- * @param array  $viewer
+ * @param array $post $_POST
+ * @return array
+ */
+function ws_github_links_settings_dialog_input($post)
+{
+    $fields = (isset($post['ws_github']) && is_array($post['ws_github'])) ? $post['ws_github'] : array();
+    $input = array();
+
+    foreach (array('connection_id', 'channel_id', 'repository', 'events', 'labels') as $field) {
+        if (array_key_exists($field, $fields)) {
+            $input['github_' . $field] = $fields[$field];
+        }
+    }
+
+    return $input;
+}
+
+/**
+ * The channels a person may link a repository to, by id.
+ *
+ * @param array $viewer
+ * @return array id => name
+ */
+function ws_github_links_settings_channels($viewer)
+{
+    $names = array();
+
+    foreach (ws_github_link_channels($viewer) as $channel) {
+        $names[(int) $channel['id']] = (string) $channel['name'];
+    }
+
+    return $names;
+}
+
+/**
+ * "Link a repository": the account, the repository, the channel, the events
+ * and the labels; without a GitHub account, where to connect one. In Site
+ * Settings ($form) it has no form of its own: its fields are ws_github[...]
+ * joined to the settings form, its button ws_github_link_save, and nothing
+ * is required (the save checks it).
+ *
+ * @param string      $self_url
+ * @param array       $names ws_github_links_settings_channels()
+ * @param string|null $form  the Site Settings form's id
  * @return string
  */
-function ws_github_links_settings_card($self_url, $viewer)
+function ws_github_links_settings_form($self_url, $names, $form = null)
+{
+    $accounts = ws_github_link_accounts();
+    $connections_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php';
+
+    if (empty($accounts)) {
+        return '<p class="small mb-0">' . h(lang('Connect a GitHub account under Settings › Connections first.')) . ' <a href="' . h($connections_url) . '">' . h(lang('Connections')) . '</a></p>';
+    }
+
+    $name = function ($field, $list = false) use ($form) {
+        return ($form === null)
+            ? 'name="github_' . $field . ($list ? '[]' : '') . '"'
+            : 'name="ws_github[' . $field . ']' . ($list ? '[]' : '') . '" form="' . h($form) . '"';
+    };
+    $account_options = '';
+
+    foreach ($accounts as $account) {
+        $account_options .= '<option value="' . (int) $account['id'] . '">' . h($account['label']) . '</option>';
+    }
+
+    $channel_options = '';
+
+    foreach ($names as $id => $channel_name) {
+        $channel_options .= '<option value="' . (int) $id . '">#' . h($channel_name) . '</option>';
+    }
+
+    $boxes = '';
+
+    foreach (pg_github_link_events() as $key => $event) {
+        $boxes .= '
+                <div class="form-field">
+                    <input class="check" type="checkbox" ' . $name('events', true) . ' value="' . h($key) . '" id="ws_github_event_' . h($key) . '" checked>
+                    <label for="ws_github_event_' . h($key) . '">' . h($event['label']) . '</label>
+                </div>';
+    }
+
+    $fields = '
+                    <div class="mb-4">
+                        <label class="form-label" for="ws_github_connection_id">' . h(lang('GitHub account')) . '</label>
+                        <select class="form-control form-control-sm" ' . $name('connection_id') . ' id="ws_github_connection_id">' . $account_options . '</select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label" for="ws_github_repository">' . h(lang('Repository')) . '</label>
+                        <input class="form-control form-control-sm" type="text" ' . $name('repository') . ' id="ws_github_repository" placeholder="owner/name" maxlength="150"' . (($form === null) ? ' required' : '') . '>
+                        <div class="form-text">' . h(lang('A private repository is typed as owner/name; the account only manages its webhooks and never reads its code.')) . '</div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label" for="ws_github_channel_id">' . h(lang('Channel')) . '</label>
+                        <select class="form-control form-control-sm" ' . $name('channel_id') . ' id="ws_github_channel_id">' . $channel_options . '</select>
+                    </div>
+                    <div class="mb-4">
+                        <div class="form-label">' . h(lang('Events')) . '</div>
+                        ' . $boxes . '
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label" for="ws_github_labels">' . h(lang('Labels to follow')) . '</label>
+                        <input class="form-control form-control-sm" type="text" ' . $name('labels') . ' id="ws_github_labels" value="ready" maxlength="400">
+                        <div class="form-text">' . h(lang('Comma separated. A label put on a pull request writes a line that starts with it, such as [ready].')) . '</div>
+                    </div>';
+    $button = '<i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . h(lang('Link'));
+
+    if ($form !== null) {
+        return $fields . '
+                    <button type="submit" name="ws_github_link_save" value="1" form="' . h($form) . '" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . $button . '</button>';
+    }
+
+    return '
+                <form method="post" action="' . h($self_url) . '" class="mt-3">
+                    ' . get_token_field() . '
+                    <input type="hidden" name="ws_action" value="github_link_save">
+                    ' . $fields . '
+                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . $button . '</button>
+                </form>';
+}
+
+/**
+ * The "GitHub repositories" card of the Workspace settings. In Site Settings
+ * (Channels, mail and voice, with $form) Remove is a named submit button of
+ * the settings form (ws_github_link_remove, value the link's id) and Link a
+ * repository opens the drawer ws_settings_github_link_drawer() draws.
+ *
+ * @param string      $self_url
+ * @param array       $viewer
+ * @param string|null $form the Site Settings form's id
+ * @return string
+ */
+function ws_github_links_settings_card($self_url, $viewer, $form = null)
 {
     if (!ws_github_links_ready() || !ws_github_links_can_manage($viewer)) {
         return '';
     }
 
-    $channels = ws_github_link_channels($viewer);
-    $names = array();
-
-    foreach ($channels as $channel) {
-        $names[(int) $channel['id']] = (string) $channel['name'];
-    }
-
+    $names = ws_github_links_settings_channels($viewer);
     $catalogue = pg_github_link_events();
     $list = '';
+    $ask = 'return confirm(' . h(json_encode(lang('Remove this link and delete its webhook from the repository?'))) . ')';
 
     foreach (ws_github_links() as $link) {
         $channel = ws_channel($link['channel_id']);
@@ -666,18 +802,28 @@ function ws_github_links_settings_card($self_url, $viewer)
             $events[] = ($event === 'label') ? lang('Labels') . ': ' . implode(', ', $link['labels']) : $catalogue[$event]['label'];
         }
 
-        $list .= '
-            <form method="post" action="' . h($self_url) . '" class="d-flex align-items-start gap-3 border-bottom py-3" id="ws-github-link-' . $link['id'] . '">
-                ' . get_token_field() . '
-                <input type="hidden" name="ws_action" value="github_link_remove">
-                <input type="hidden" name="link_id" value="' . $link['id'] . '">
+        $line = '
                 <div class="ws-grow">
                     <div><i class="bi bi-github me-1" aria-hidden="true"></i><span class="fw-semibold">' . h($link['repository']) . '</span>
                         <span class="fg-secondary">→ #' . h(is_array($channel) ? (string) $channel['name'] : lang('deleted channel')) . '</span></div>
                     <div class="small fg-secondary">' . h(implode(' · ', $events)) . '</div>
                     ' . (($link['last_error'] !== '') ? '<div class="small fg-danger">' . h(date('d.m.Y H:i', $link['last_error_at'])) . ': ' . h($link['last_error']) . '</div>' : '') . '
-                </div>
-                <button type="submit" class="btn btn-sm btn-outline theme-danger rounded-pill" onclick="return confirm(' . h(json_encode(lang('Remove this link and delete its webhook from the repository?'))) . ')">' . h(lang('Remove')) . '</button>
+                </div>';
+
+        if ($form !== null) {
+            $list .= '
+            <div class="d-flex align-items-start gap-3 border-bottom py-3">' . $line . '
+                <button type="submit" name="ws_github_link_remove" value="' . (int) $link['id'] . '" form="' . h($form) . '" class="btn btn-sm btn-outline theme-danger rounded-pill" onclick="' . $ask . '">' . h(lang('Remove')) . '</button>
+            </div>';
+            continue;
+        }
+
+        $list .= '
+            <form method="post" action="' . h($self_url) . '" class="d-flex align-items-start gap-3 border-bottom py-3" id="ws-github-link-' . $link['id'] . '">
+                ' . get_token_field() . '
+                <input type="hidden" name="ws_action" value="github_link_remove">
+                <input type="hidden" name="link_id" value="' . $link['id'] . '">' . $line . '
+                <button type="submit" class="btn btn-sm btn-outline theme-danger rounded-pill" onclick="' . $ask . '">' . h(lang('Remove')) . '</button>
             </form>';
     }
 
@@ -687,74 +833,49 @@ function ws_github_links_settings_card($self_url, $viewer)
         $list = '<p class="small fg-secondary mb-0">' . h(lang('No repository is linked yet.')) . '</p>';
     }
 
-    $accounts = ws_github_link_accounts();
-    $connections_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php';
+    $intro = '<p class="small fg-secondary">' . h(lang('A linked repository writes its CI results, pull requests and labels into a channel. The site adds the webhook itself; nothing is set up in the repository.')) . '</p>';
 
-    if (empty($accounts)) {
-        $form = '<p class="small mt-5 mb-0">' . h(lang('Connect a GitHub account under Settings › Connections first.')) . ' <a href="' . h($connections_url) . '">' . h(lang('Connections')) . '</a></p>';
-    } else {
-        $account_options = '';
-
-        foreach ($accounts as $account) {
-            $account_options .= '<option value="' . (int) $account['id'] . '">' . h($account['label']) . '</option>';
-        }
-
-        $channel_options = '';
-
-        foreach ($names as $id => $name) {
-            $channel_options .= '<option value="' . (int) $id . '">#' . h($name) . '</option>';
-        }
-
-        $boxes = '';
-
-        foreach ($catalogue as $key => $event) {
-            $boxes .= '
-                <div class="form-field">
-                    <input class="check" type="checkbox" name="github_events[]" value="' . h($key) . '" id="ws_github_event_' . h($key) . '" checked>
-                    <label for="ws_github_event_' . h($key) . '">' . h($event['label']) . '</label>
-                </div>';
-        }
-
-        $form = '
-            <details class="mt-5"' . ($none ? ' open' : '') . '>
-                <summary class="small fw-semibold">' . h(lang('Link a repository')) . '</summary>
-                <form method="post" action="' . h($self_url) . '" class="mt-3">
-                    ' . get_token_field() . '
-                    <input type="hidden" name="ws_action" value="github_link_save">
-                    <div class="mb-4">
-                        <label class="form-label" for="ws_github_connection_id">' . h(lang('GitHub account')) . '</label>
-                        <select class="form-control form-control-sm" name="github_connection_id" id="ws_github_connection_id">' . $account_options . '</select>
-                    </div>
-                    <div class="mb-4">
-                        <label class="form-label" for="ws_github_repository">' . h(lang('Repository')) . '</label>
-                        <input class="form-control form-control-sm" type="text" name="github_repository" id="ws_github_repository" placeholder="owner/name" maxlength="150" required>
-                        <div class="form-text">' . h(lang('A private repository is typed as owner/name; the account only manages its webhooks and never reads its code.')) . '</div>
-                    </div>
-                    <div class="mb-4">
-                        <label class="form-label" for="ws_github_channel_id">' . h(lang('Channel')) . '</label>
-                        <select class="form-control form-control-sm" name="github_channel_id" id="ws_github_channel_id">' . $channel_options . '</select>
-                    </div>
-                    <div class="mb-4">
-                        <div class="form-label">' . h(lang('Events')) . '</div>
-                        ' . $boxes . '
-                    </div>
-                    <div class="mb-4">
-                        <label class="form-label" for="ws_github_labels">' . h(lang('Labels to follow')) . '</label>
-                        <input class="form-control form-control-sm" type="text" name="github_labels" id="ws_github_labels" value="ready" maxlength="400">
-                        <div class="form-text">' . h(lang('Comma separated. A label put on a pull request writes a line that starts with it, such as [ready].')) . '</div>
-                    </div>
-                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . h(lang('Link')) . '</button>
-                </form>
-            </details>';
+    if ($form !== null) {
+        return '
+    <div id="pgset-ws-github" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center gap-3">
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0 ws-grow">' . h(lang('GitHub repositories')) . '</span>
+                <button type="button" class="btn btn-sm btn-outline theme-primary rounded-pill" data-bs-toggle="drawer" data-bs-target="#pgset-ws-github-link" aria-controls="pgset-ws-github-link"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . h(lang('Link a repository')) . '</button>
+            </div>
+            <div class="card-body">
+                ' . $intro . '
+                ' . $list . '
+            </div>
+        </div>
+    </div>';
     }
 
     return '
         <div class="card mt-7" id="ws-github">
             <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-github me-1" aria-hidden="true"></i>' . h(lang('GitHub repositories')) . '</h2></div>
             <div class="card-body">
-                <p class="small fg-secondary">' . h(lang('A linked repository writes its CI results, pull requests and labels into a channel. The site adds the webhook itself; nothing is set up in the repository.')) . '</p>
+                ' . $intro . '
                 ' . $list . '
-                ' . $form . '
+                <details class="mt-5"' . ($none ? ' open' : '') . '>
+                    <summary class="small fw-semibold">' . h(lang('Link a repository')) . '</summary>
+                    ' . ws_github_links_settings_form($self_url, $names) . '
+                </details>
             </div>
         </div>';
+}
+
+/**
+ * The Site Settings drawer of the GitHub repositories card: Link a
+ * repository.
+ *
+ * @param array  $viewer
+ * @param string $form      the settings form's id
+ * @param bool   $in_dialog pg_settings_drawer()'s
+ * @return string HTML
+ */
+function ws_settings_github_link_drawer($viewer, $form, $in_dialog)
+{
+    return pg_settings_drawer('pgset-ws-github-link', h(lang('Link a repository')),
+        ws_github_links_settings_form('', ws_github_links_settings_channels($viewer), $form), $in_dialog);
 }
