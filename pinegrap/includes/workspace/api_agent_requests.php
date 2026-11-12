@@ -73,11 +73,12 @@ function ws_agent_request_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Answer a request',
-            'description' => 'Writes text under the message that asked, as the application, with the person who asked mentioned, and swaps the eye for a tick. no_answer true closes the request without writing anything (it takes no text). Other things the agent does (a task, a poll, a proposal) go through their own routes. 403 when the channel no longer lets the agent answer or the person who asked can no longer write there; 409 closed when the request is closed.' . $only,
+            'description' => 'Writes text under the message that asked, as the application, with the person who asked mentioned, and swaps the eye for a tick. no_answer true closes the request without writing anything (it takes no text). emoji leaves one emoji on the message that asked, with text or with no_answer. Other things the agent does (a task, a poll, a proposal) go through their own routes. 403 when the channel no longer lets the agent answer or the person who asked can no longer write there; 409 closed when the request is closed.' . $only,
             'params'      => array(
                 $id,
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3900, 'description' => 'The answer; required unless no_answer is true.'),
                 array('name' => 'no_answer', 'in' => 'body', 'type' => 'bool', 'description' => 'Close the request without writing anything: it needs no answer.'),
+                array('name' => 'emoji', 'in' => 'body', 'type' => 'string', 'max_length' => 32, 'description' => 'One fitting emoji left on the message that asked, as the application: beside text, or with no_answer in place of it. Never on the agent\'s own message; a wake asked by no message takes none.'),
             ),
         ),
         array(
@@ -333,6 +334,24 @@ function ws_api_agent_request_answer($params)
         api_fail_validation($refused['error'], $refused['field']);
     }
 
+    // The emoji is checked first, so a dry run meets the same refusals.
+    $emoji = trim((string) ($params['emoji'] ?? ''));
+    $asking = null;
+
+    if ($emoji !== '') {
+        $asking = ((int) $row['message_id'] > 0) ? ws_message((int) $row['message_id']) : null;
+        $problem = ws_agent_emoji_problem($emoji, $asking, (int) $agent['app_id']);
+
+        if ($problem === '') {
+            $checked = ws_reaction_check($viewer, $asking, $emoji, (int) $agent['app_id'], true);
+            $problem = $checked['ok'] ? '' : (string) $checked['error'];
+        }
+
+        if ($problem !== '') {
+            api_fail_validation($problem, 'emoji');
+        }
+    }
+
     $now = time();
     $reply_id = 0;
 
@@ -390,6 +409,11 @@ function ws_api_agent_request_answer($params)
         ws_agent_react((int) $agent['app_id'], (int) $row['message_id'], '✅', true);
     } else {
         ws_agent_react((int) $agent['app_id'], (int) $row['message_id'], '👀', true);
+    }
+
+    // The agent's own emoji, beside the automatic eye or tick.
+    if ($asking) {
+        ws_reaction_set($viewer, $asking, $emoji, (int) $agent['app_id'], true);
     }
 
     // A flow's agent box waiting on this request goes on (flow_agent_box.php).

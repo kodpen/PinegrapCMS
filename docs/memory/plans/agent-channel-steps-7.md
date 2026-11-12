@@ -4,7 +4,7 @@ description: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a cha
 ---
 
 ## Which step is there?
-- M is about 1,000 product lines; the step has its tests and its memory topic in `workspace/`. The earlier steps: `agent-channel-steps-6.md`. The decision: `workflow/decisions-made-workspace-19.md`.
+- M is about 1,000 product lines; the step has its tests and its memory topic in `workspace/`. The earlier steps A19 to A21 are done (#8911, #8919, #8932). The decision: `workflow/decisions-made-workspace-19.md`.
 
 - A22 (M) Agents among a channel's members, last seen for people and agents. `free`. #8880. Look: the drawer and the channel head of `plans/panel-design-language/dialogs.html` (`panel-design-language-dialogs.md`).
   - Today the info panel's "Members" lists Claude and Pinegrap AI, then the people with the online dot (`workspace/workspace-channel-panels.md`); a registry agent shows only in "Agents in this channel" of Channel settings.

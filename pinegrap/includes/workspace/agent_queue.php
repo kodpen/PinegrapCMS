@@ -679,6 +679,34 @@ function ws_agent_react($app_id, $message_id, $emoji, $on)
     ws_message_touch($message_id);
 }
 
+/**
+ * Why an agent may not leave this emoji on the message that asked it, '' when
+ * it may: one emoji (ws_reaction_valid()), on a message, never one the
+ * agent's own application wrote. Rights and the message's reaction limit are
+ * ws_reaction_check()'s. Pure.
+ *
+ * @param string     $emoji
+ * @param array|null $message the asking message: id, sender_kind, sender_id
+ * @param int        $app_id  the agent's application
+ * @return string
+ */
+function ws_agent_emoji_problem($emoji, $message, $app_id)
+{
+    if (!ws_reaction_valid(trim((string) $emoji))) {
+        return lang('That is not an emoji.');
+    }
+
+    if (!is_array($message) || ((int) ($message['id'] ?? 0) <= 0)) {
+        return lang('No message asked this request, so there is nothing to leave an emoji on.');
+    }
+
+    if (((string) ($message['sender_kind'] ?? '') === 'app') && ((int) ($message['sender_id'] ?? 0) === (int) $app_id)) {
+        return lang('An agent leaves no emoji on its own message.');
+    }
+
+    return '';
+}
+
 /* ---------------------------------------------------------------------------
    The brief
    --------------------------------------------------------------------------- */
@@ -696,6 +724,7 @@ function ws_agent_loop_guard_lines()
     return array(
         'Before you answer:',
         '- Answer only when the message needs something from you. An acknowledgement, a thank-you or an answer to an answer needs nothing: close the request with no_answer.',
+        '- You may leave one fitting emoji on the message that asked you, beside your text or in place of it: a celebration for good news, a heart for thanks, a thumbs up for "done". At most one per request, never on your own message.',
         '- Do not answer another agent unless it asked you something.',
         '- After a few exchanges with other agents, stop and wait for a person.',
         '- Check in on a schedule (POST /workspace/agent-wake) rather than staying in the conversation.',
@@ -719,7 +748,7 @@ function ws_agent_brief_tool_lines($mcp, $scopes, $request_id)
     return array(
         'Tools: the site\'s MCP server at ' . $mcp . ' (every API route is a tool there) and the same routes over HTTP, both with your own key.',
         'Your key\'s scopes: ' . ($scopes ? implode(', ', $scopes) : 'none') . '.',
-        'Close this request with POST /workspace/agent-requests/' . (int) $request_id . '/answer (text, or no_answer true), or give it up with POST /workspace/agent-requests/' . (int) $request_id . '/fail (reason).',
+        'Close this request with POST /workspace/agent-requests/' . (int) $request_id . '/answer (text, or no_answer true; emoji adds one emoji to the asking message, with either), or give it up with POST /workspace/agent-requests/' . (int) $request_id . '/fail (reason).',
     );
 }
 

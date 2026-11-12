@@ -15,7 +15,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 
 ## Clusters
 
-- `agent-channel-*`: 6 files; start at `agent-channel.md`.
 - `image-editor-*`: 6 files.
 - `storefront-api-*`: 9 files.
 
