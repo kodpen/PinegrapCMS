@@ -1,6 +1,6 @@
 ---
 name: decisions-made-panel-7
-description: Decisions list, panel part 7 (2026-11-12 on): look A's second pass and the dialogs page as the reference (#8860); add, edit and list widths, lists without a pager; the Design Canvas's icon (#8903)
+description: Decisions list, panel part 7 (2026-11-12 on): look A's second pass and dialogs page as reference (#8860); add, edit, list widths, no pager; Design Canvas icon (#8903); dashboard keeps its look (#8938)
 ---
 
 ## Where are the rules and the earlier parts?
@@ -30,3 +30,8 @@ description: Decisions list, panel part 7 (2026-11-12 on): look A's second pass 
 - Drawing B: an artboard with crop marks and a pen curve with its two anchors, the curve in the accent hue. Plan step NM2 (`plans/design-names-menu-steps.md`) draws it into `pg_menu_icon()`.
 - Owner (2026-11-12), shown the sheet of the three candidates: "B". Not chosen: A (an easel), C (a canvas and a brush); the architect had recommended A.
 - The architect's note, not the owner's words: at menu size the crop marks and the anchors stay readable and the icon does not read as the crop tool's; thin the marks before touching the curve.
+
+## Does the dashboard move to look A? (owner, 2026-11-12, #8938)
+- Not for now: the dashboard keeps its own drawn look (`ui/dashboard-v2-drawn-look.md`, `ui/dashboard-v2-looks.md`). No step of the design language re-dresses it; DL5a is not given.
+- Owner (2026-11-12), shown the dashboard's cards drawn in look A and asked among three: "pano ekranı şimdilik kalsın istiyorum." Not chosen now: look A as the default with the personal card styles kept; the dashboard wholly in look A.
+- The architect's reading: the question returns only when the owner raises it; nobody proposes the re-dressing before.
