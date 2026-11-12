@@ -10,8 +10,6 @@
 - agent-channel-steps-6.md: Steps A19 to A21 of plans/agent-channel.md (owner 2026-11-12): a discussion follows the agent that wrote its root message, a request closed without text reads "saw it", an agent leaves a fitting emoji
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
-- agent-live-page-steps.md: Steps LP1-LP5 (LP2 as LP2a and LP2b) of plans/agent-live-page.md: the guarded frame and its proofs in a browser, the agent's routes and the card, the assistants' tools, the site's libraries, close-out
-- agent-live-page.md: Plan (owner 2026-11-11, #8762): an agent makes a live page (HTML, CSS, script) shown in a Workspace channel in a guarded frame: the guard, the card, versions, limits; steps LP1-LP5
 - canvas-one-steps.md: Steps CO0-CO9 of plans/canvas-one.md: model and screens drawn, the bridge and its proofs, bound tables read, writes with consent, channel tables, measures, Data, one API flow, the phone, close-out
 - canvas-one.md: Plan (owner 2026-11-12, #8850): the Workspace canvas as one thing with a drawing, a live page and data; the guarded bridge to the tables bound to it; tables as Data; steps in canvas-one-steps.md
 - design-names-menu-steps.md: Steps NM1-NM4 (owner 2026-11-12, #8849): Image Editor named Design Canvas with its own icon, Visual Page Editor named Page Design Studio, Designs, the legacy designer's menu and Ads under Other

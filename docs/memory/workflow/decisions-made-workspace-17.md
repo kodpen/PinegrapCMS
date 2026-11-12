@@ -10,7 +10,7 @@ description: Decisions list, workspace part 17 (2026-11-11): a mail opens as a p
 - In a preview on the E-mails screen, drawn with the mail's HTML; a click never leads into a channel.
 - Owner (2026-11-11), in the architect's window with a picture of the list: "epostalar bir listede çıksın istemiştim yapılmış ancak ben html vs. içerikleri ile çizen bir önizlemeyi açsın istemiştim, tıklayınca bir kanala gitsin değil."
 - It replaces the scope line of `workspace/mail-decisions.md` that left HTML rendering out, and the plan's "HTML later" for reading.
-- The architect's, not the owner's words: the preview is the reading pane beside the list; the HTML is cleaned when the mail comes in and drawn in a frame that runs no script and sends no form (`plans/agent-live-page.md`, the guard's mode without script).
+- The architect's, not the owner's words: the preview is the reading pane beside the list; the HTML is cleaned when the mail comes in and drawn in a frame that runs no script and sends no form (`platform/guarded-frame.md`, the mode without script).
 
 ## How are pictures from outside shown in a mail? (owner, 2026-11-11, #8765)
 - Not loaded until the reader presses "Show pictures"; the choice is remembered for the sender.

@@ -1,11 +1,11 @@
 ---
 name: guarded-frame
-description: The guarded frame (LP1, #8802): how a stored page or a mail's HTML is shown in the panel: the shell, srcdoc, the three modes and their policies, the two messages, live_page.php, the browser proofs
+description: The guarded frame (#8802): how a stored page or a mail's HTML is shown in the panel: the shell, srcdoc, the three modes and their policies, the two messages, live_page.php, the browser proofs
 module: guarded_frame
 ---
 
 ## What is it for?
-- Showing a document the panel did not write (an agent's live page, `plans/agent-live-page.md`; a mail's HTML) inside the panel without letting it reach the panel, its cookies or the outside. `includes/fn/guarded_frame.php`; built in #8802.
+- Showing a document the panel did not write (an agent's live page, `workspace/agent-page.md`; a mail's HTML) inside the panel without letting it reach the panel, its cookies or the outside. `includes/fn/guarded_frame.php`; built in #8802.
 
 ## How is it built?
 - The panel frames one answer, the shell (`pg_guarded_frame_shell()`), with the sandbox `pg_guarded_frame_panel_sandbox($mode)` names. The shell holds the document in `<iframe id="pg-frame" srcdoc>` (escaped), sandboxed by `pg_guarded_frame_inner_sandbox($mode)`.

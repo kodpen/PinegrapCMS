@@ -16,7 +16,7 @@ description: Steps WM10-WM14 of plans/workspace-mail-screen.md (owner 2026-11-11
   - The step: `ws_mail_items.body_html` and the kind value `mailbox`, rerun twice on a dev DB; the PR body names the `[SCHEME]` item.
   - `ws_mail_ingest()` keeps the HTML part, cleaned by an allowlist of its own (`includes/fn/mail_html.php`: text, tables, inline styles; no script, form, frame, event attribute or style sheet from outside; an outside address in `src` set aside so nothing loads by itself), 1 MB at most, else none. A picture the HTML names by `cid:` is kept as the mail's file even without a name.
   - Mail whose `.eml` is still kept is filled in by the recurring job, 200 a run. Tests: what the cleaner keeps and drops, the `cid:` pictures, the fill. Topic `workspace/mail-html.md`.
-- WM12 (M) Done #8861. The preview draws the HTML. After WM11 and the guarded frame (LP1 of `agent-live-page-steps.md`; if this step comes first it builds the module with the mode without script and that mode's proofs).
+- WM12 (M) Done #8861. The preview draws the HTML. After WM11 and the guarded frame (built in #8802, `platform/guarded-frame.md`).
   - The pane shows a mail's HTML in the frame, its height following the mail; plain text when there is none, and a switch to it. Links open in a new tab. Pictures from outside wait for "Show pictures", remembered for the sender per reader in the browser (`workflow/decisions-made-workspace-17.md`).
   - With the pane open the list's rows narrow to who, subject, first words and time. Looked at in the sandbox, wide and phone, light and dark, with a newsletter, a plain mail and a mail with pictures; the PR links the pictures.
 - WM13 (M) A mailbox kept in no channel. After WM11.

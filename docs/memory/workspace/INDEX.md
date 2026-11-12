@@ -21,8 +21,9 @@
 - agent-key-trial.md: The agent's own side tried live on dev (2026-11-10) with an application agent's key: the request list, the brief of a mention and of a wake, claim, answer, no_answer, fail, agent-wake
 - agent-last-seen.md: An agent's last seen: ws_agents.seen_at set by every call with an app agent's own key, once a minute at most, and the words on the Agents card and in "Agents in this channel" (#8828) [decision: decisions-made-workspace-16.md]
 - agent-page-assistants.md: Pinegrap AI and model assistants make, read and edit live pages as ws_ai_step() tools (page_ai.php): make_live_page, read_live_page, edit_live_page by replacements; Claude via MCP
-- agent-page-card.md: The card of an agent's live page (LP2b): Open, Full screen, View source and versions, Download, "Edited by" and Undo; runs only when opened, stops when the channel is left
-- agent-page.md: Live pages an agent makes (LP2a #8815, LP4 #8830): the routes, the mark of a page without a column, versions (20 kept), 409, who may, the site's libraries
+- agent-page-card.md: The card of an agent's live page (#8851): Open, Full screen, View source and versions, Download, "Edited by" and Undo; runs only when opened, stops when the channel is left
+- agent-page-libraries.md: The site's libraries a live page names (Chart.js first, #8830): the list, how a call names one, how live_page.php puts the site's own copy in, never an address
+- agent-page.md: Live pages an agent makes (#8815): what one is for and is not, the routes, the mark of a page without a column, versions (20 kept), 409, who may [decision: decisions-made-workspace-16.md]
 - agent-questions.md: How an agent asks the people with a poll or an approval; a one-answer question as a one-choice poll closed once the vote is read; why the outcome is written in the agent's name [decision: decisions-made-workspace-12.md]
 - agent-registry.md: The agent registry (ws_agents) and the channel-agent row (ws_channel_agents): fields, Claude's routine as the first push agent, where the membership rules are, the depth and hourly brakes [decision: decisions-made-workspace-7.md, decisions-made-workspace-8.md]
 - agent-risk-tiers.md: Agent risk tiers (agent_tiers.php, A7): the tier of a change, when an application agent's proposal is applied at once, the undo journal in ws_ai_changes (step 11.0.174), who may undo and when
