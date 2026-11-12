@@ -74,7 +74,7 @@ function test_page_selects_became_page_fields()
 		pg_assert_contains("pg_picker_field('page', '" . $name . "', \$v('" . $name . "'))", $builder, 'product builder: ' . $name);
 	}
 
-	pg_assert_contains("' . pg_picker_script() . '\n</main>", $builder, 'product builder prints the picker script once');
+	pg_assert_contains("' . pg_editor_bridge_script() . '\n</main>", $builder, 'product builder prints the picker script once, with the bridge');
 	pg_assert_false(strpos($builder, 'select_page($v(') !== false, 'product builder: no page select is left');
 	pg_assert_contains("pg_picker_field('page_custom_form', 'submit_form_custom_form_page_id', \$v('submit_form_custom_form_page_id'), array('value_attributes' => array('class' => 'collapse-if-selected', 'data-bs-target' => '#submit_form_custom_form_page_row', 'onchange' => 'product_submit_form_update_custom_form_fields()')))", $builder, 'product builder: the custom form field opens its fields and reads them on a pick');
 

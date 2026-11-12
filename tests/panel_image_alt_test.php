@@ -34,14 +34,6 @@ function panel_image_alt_missing($source)
 	return $missing;
 }
 
-function test_image_picker_tile_does_not_repeat_its_name()
-{
-	$source = panel_image_alt_source('editor_select_image.php');
-
-	pg_assert_false(strpos($source, 'alt="\' . h($images[$key][\'name\'])') !== false, 'tile alt repeats the caption');
-	pg_assert_contains('class="lazy" alt=""', $source, 'tile image alt is empty');
-}
-
 function test_contacts_list_photo()
 {
 	$source = panel_image_alt_source('includes/fn/contact_list.php');

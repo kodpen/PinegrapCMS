@@ -35,10 +35,9 @@ description: Button recipes, menu colour rule, shared toolbar CSS classes, card 
 ## How does the toolbar behave on narrow screens?
 - Below 768 px `.pg-toolbar-grow` and `.pg-toolbar-search` take a full line each (`flex: 1 1 100%`) at their markup position, with no `order`, so Tab follows the rows as drawn (WCAG 2.4.3). An empty grow (a spacer) is hidden there (`:empty`), else it would split the bar.
 - `order` drew them lower but Tab reached them first; removed in #3513 (`tests/toolbar_narrow_order_test.php`).
-- `editor_select_image.php` opens as a 390 px tab on a phone: `#esi_toolbar` wraps, the filter pill a full row.
 - A card header's right-hand button cluster (`ms-auto d-flex`) carries `flex-wrap justify-content-end`: `.btn` is nowrap, and four of them pushed `marketplace_settings.php` sideways.
 
 ## Which screens keep their own phone toolbar rules?
-- `editor_select_image.php` (`#esi_toolbar`) and the prototype viewer bar (`includes/fn/prototype.php`, `.pg-proto-bar`) skip the shared classes; their filter pill / page navigation also take a full line with no `order` (PR #3483, `tests/toolbar_local_order_test.php`).
+- The prototype viewer bar (`includes/fn/prototype.php`, `.pg-proto-bar`) skips the shared classes; its page navigation also takes a full line with no `order` (PR #3483, `tests/toolbar_local_order_test.php`).
 
 Related: docs/memory/ui/admin-screen-toolbar.md

@@ -60,7 +60,7 @@ function test_screen_help_visible_no_heading_popover()
 
 function test_screen_help_visible_navbar_titles()
 {
-	foreach (array('send_email_campaign.php', 'editor_select_image.php') as $path) {
+	foreach (array('send_email_campaign.php') as $path) {
 		pg_assert_true(!preg_match('/<span[^>]*class="navbar-text[^"]*"[^>]*data-bs-content/s', screen_help_visible_source($path)), $path . ': navbar title keeps a hover-only popover');
 	}
 }
@@ -75,7 +75,6 @@ function test_screen_help_visible_instructions_printed()
 		'edit_custom_style.php' => "'heading_description' => lang('Update this HTML template that is applied to all associated pages.')",
 		'add_submitted_form.php' => "'heading_description' => lang('Manually create a submitted form for this custom form.",
 		'preview_form.php' => "lang('The form layout will look like this when displayed within a page.')",
-		'editor_select_image.php' => "lang('Select the image that you want to embed in your content. Hover over or focus an image to see more info.')",
 	);
 
 	foreach ($visible as $path => $needle) {
@@ -94,16 +93,3 @@ function test_screen_help_visible_instructions_printed()
 	}
 }
 
-function test_screen_help_visible_image_tile_details_on_focus()
-{
-	$source = screen_help_visible_source('editor_select_image.php');
-
-	pg_assert_true((bool) preg_match_all('/class="esi-tile[^"]*"/', $source, $matches), 'no image tile found');
-
-	foreach ($matches[0] as $class) {
-		pg_assert_contains('no-popover', $class, 'image tile left to the hover-only title binder');
-	}
-
-	pg_assert_contains('trigger: "hover focus"', $source);
-	pg_assert_contains('tabindex="0"', $source, 'the missing-file tile takes focus');
-}

@@ -5,11 +5,11 @@ description: What chooses a file, a picture, a page or a folder in the software 
 
 ## How does a screen choose a file or a picture today?
 - Type-to-search combobox (`file_picker_search.php`, kinds `site_icon`, `public_image`, `file`): the short link list's quick edit cell (`ui/file-picker-search.md`). Nothing is listed before a letter is typed. The five Settings pictures and the short link File field on its form and in its File Manager wizard are picker fields since PK5 (`ui/picker-field.md`).
-- The editor's image browser `editor_select_image.php` (1,144 lines, a pop-up window: folder filter, search, thumbnails, Unsplash, quick upload through `add_file.php`). Opened by CKEditor's Image dialog only where the panel's scripts are missing since PK7 (`ui/picker-editor-bridge.md`), and by `software_image_picker()` in `backend.src.js` (product builder pictures, the contact photo); the designer's `sdOpenImagePicker()` uses the picker since PK8.
+- The editor's image browser `editor_select_image.php` was deleted in PK9: the product builder's pictures, the contact photo and CKEditor's Image dialog open the picker (`ui/picker-remaining-screens.md`).
 - The product builder's own picture strip, `pg_pb_render_image_picker()` (`product_builder.php`).
 - The image editor: Import, From the site (the Sticker part's Files list, `openImportFiles()`), Video from the site, sounds from Files (`ui/image-editor-import.md`).
 - The Workspace's "from the files" picker (`ws_library_file()`, `includes/workspace/library.php`).
-- The theme designer's `select_files_for_theme_designer()` (`get_theme_designer_module.php`).
+- The theme designer's background file is a picker field since PK9.
 - The previous editor (TinyMCE 3): `get_file_list.php`, `get_image_list.php`, `get_media_list.php`, `get_page_list.php` and `get_folder_list.php` under `assets/lib/tiny_mce_3_5_10/`.
 
 ## How does a screen choose a page today?

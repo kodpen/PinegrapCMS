@@ -11,8 +11,7 @@
  * both.
  *
  * Without pgPicker and pgUI (a site page, where the panel's scripts are not
- * loaded) the Link dialog has no Browse Server, and the Image dialog keeps
- * CKEditor's own window (editor_select_image.php).
+ * loaded) neither the Link dialog nor the Image dialog has Browse Server.
  * #pg_editor_bridge_config (pg_editor_bridge_script(), includes/fn/editor.php)
  * holds the site's path, the texts, whether short links are offered and the
  * Unsplash key.
@@ -20,7 +19,9 @@
  * pgEditorPicker hands the same pickers to another editor (the visual
  * designer's link and picture fields): link() asks for a page or short link
  * or a file, image() for a picture of the site or from Unsplash, each a
- * promise of the address or null.
+ * promise of the address or null; pictures() hands a screen that keeps
+ * files (software_image_picker() in backend.src.js) the picked files'
+ * names and ids.
  *
  * pgCkeditorPicker.pure holds the helpers without the DOM
  * (tests/editor_bridge_js_test.php runs them in Node). Served in
@@ -88,7 +89,22 @@
         return null;
     }
 
-    var pure = { encodePath: encodePath, pickAddress: pickAddress, nameFromAddress: nameFromAddress, findElement: findElement };
+    // The picker's answer (one item, a list with multiple, or null) as the
+    // files a screen keeps: [{name, id}], items without a name left out;
+    // null when none is left.
+    function pictureItems(picked) {
+        var list = Array.isArray(picked) ? picked : (picked ? [picked] : []);
+        var out = [];
+        list.forEach(function (item) {
+            var name = item ? (item.text || item.value) : '';
+            if (name !== undefined && name !== null && String(name) !== '') {
+                out.push({ name: String(name), id: parseInt(item.id, 10) || 0 });
+            }
+        });
+        return out.length ? out : null;
+    }
+
+    var pure = { encodePath: encodePath, pickAddress: pickAddress, nameFromAddress: nameFromAddress, findElement: findElement, pictureItems: pictureItems };
 
     var doc = root.document;
 
@@ -251,6 +267,31 @@
         });
     }
 
+    // Pictures for a screen that keeps files rather than addresses (the
+    // product builder's pictures, a contact's photo): opts {multiple} ->
+    // Promise of [{name, id}] in the order picked, an Unsplash photo as
+    // [{url}], or null when nothing was chosen.
+    function pickPictures(opts) {
+        var multiple = !!(opts && opts.multiple);
+        var site = function () {
+            return root.pgPicker.open({ kind: 'image', title: t('Choose a picture'), multiple: multiple }).then(function (picked) {
+                return pure.pictureItems(picked);
+            });
+        };
+        if (!conf().unsplash || !root.pgUnsplash) {
+            return site();
+        }
+        return chooseSource(t('Choose a picture'), [
+            { key: 'site', label: t('From the site'), icon: 'bi-images' },
+            { key: 'unsplash', label: 'Unsplash', icon: 'bi-image' }
+        ]).then(function (key) {
+            if (key === 'site') {
+                return site();
+            }
+            return key === 'unsplash' ? pickUnsplash().then(function (url) { return url ? [{ url: String(url) }] : null; }) : null;
+        });
+    }
+
     // ── CKEditor ──────────────────────────────────────────────────────────
 
     // A page, a file and a short link are all addresses of the site: the
@@ -341,6 +382,6 @@
     // promise of an address or null; usable() says whether they can open.
     root.pgEditorPicker = {
         usable: usable, link: pickLink, page: pickPage, file: pickFile,
-        image: pickImage, picture: pickPicture
+        image: pickImage, picture: pickPicture, pictures: pickPictures
     };
 })(typeof window !== 'undefined' ? window : this);

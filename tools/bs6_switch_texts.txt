@@ -479,13 +479,6 @@ not read.
                     $("input:is(.check, .radio)").on("click", function() {
 >>>
 
-@@ editor_select_image.php
-<<<
-.esi-filters .form-select
-===
-.esi-filters select.form-control
->>>
-
 @@ includes/fn/prototype.php
 <<<
 .pg-proto-nav .form-select

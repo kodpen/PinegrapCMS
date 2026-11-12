@@ -42,27 +42,6 @@ function test_panel_tab_rows_api_drawer_hidden_tab_is_disabled()
 	pg_assert_contains('document.getElementById("d_hooks_label").disabled = keyless;', $source, 'events disabled');
 }
 
-function test_panel_tab_rows_image_picker_tabs()
-{
-	$source = panel_tab_rows_source('editor_select_image.php');
-
-	pg_assert_contains('aria-selected="true" aria-controls="esi_tab_files"', $source, 'files tab');
-	pg_assert_contains('aria-selected="false" aria-controls="esi_tab_unsplash" tabindex="-1"', $source, 'unsplash tab');
-	pg_assert_contains("' role=\"tabpanel\" aria-labelledby=\"esi_tab_files_btn\"'", $source, 'files pane');
-	pg_assert_contains('id="esi_tab_unsplash" role="tabpanel" aria-labelledby="esi_tab_unsplash_btn"', $source, 'unsplash pane');
-	pg_assert_contains("b.setAttribute(\\'aria-selected\\', on ? \\'true\\' : \\'false\\');", $source, 'switch keeps aria-selected');
-	pg_assert_contains("b.setAttribute(\\'tabindex\\', on ? \\'0\\' : \\'-1\\');", $source, 'switch keeps roving tabindex');
-	pg_assert_contains("e.key === \\'ArrowRight\\'", $source, 'arrow keys');
-	pg_assert_contains("e.key === \\'End\\'", $source, 'end key');
-}
-
-function test_panel_tab_rows_image_picker_sort_menu_current()
-{
-	$source = panel_tab_rows_source('editor_select_image.php');
-
-	pg_assert_contains("((\$sort_key == \$current_sort) ? ' active\" aria-current=\"page' : '')", $source, 'sort menu');
-}
-
 function test_panel_tab_rows_spreadsheet_sheet_tabs()
 {
 	$source = panel_tab_rows_source('assets/js/pg_office_view.js');

@@ -224,6 +224,9 @@ $file_list = array(
     // The rich text editor's old link window; the Link dialog and the
     // visual designer choose through the picker (pg_editor_bridge_script()).
     'editor_select_page_or_file.php',
+    // The rich text editor's old image window; the Image dialog, the product
+    // builder's pictures and a contact's photo choose through the picker.
+    'editor_select_image.php',
 );
 
 // Everything the software drops in data/temp is a cache or a scratch file that is written

@@ -157,7 +157,7 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Search...' => lang('Search...'),
         'Load More' => lang('Load More'),
         'No Search Result' => lang('No Search Result'),
-        'Please allow pop-up windows for this site.' => lang('Please allow pop-up windows for this site.'),
+        'The picker is not loaded on this screen.' => lang('The picker is not loaded on this screen.'),
         'No text yet. Aim for {var:1} to {var:2} characters.' => lang('No text yet. Aim for {var:1} to {var:2} characters.'),
         '{var:1} characters, too short. Aim for {var:2} to {var:3}.' => lang('{var:1} characters, too short. Aim for {var:2} to {var:3}.'),
         '{var:1} characters, good length. Aim for {var:2} to {var:3}.' => lang('{var:1} characters, good length. Aim for {var:2} to {var:3}.'),
@@ -4621,7 +4621,6 @@ function output_menu($properties = false)
         case 'add_file.php':
         case 'create_file.php':
         case 'edit_file.php':
-        case 'editor_select_image.php':
             $active_menu = 1;
             break;
         case 'view_pages.php':

@@ -57,7 +57,7 @@ function test_capital_i_search_screens_use_the_helpers()
 {
 	$dir = PG_FUNCTIONS_DIR . '/';
 
-	foreach (array('editor_select_image.php', 'find_and_replace.php') as $file) {
+	foreach (array('find_and_replace.php') as $file) {
 		$source = (string) file_get_contents($dir . $file);
 		// Find & Replace lowercases through pg_search_like_term(), which
 		// also lets a capital I fetch a dotless ı row.

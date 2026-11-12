@@ -643,55 +643,19 @@ if (!$_POST) {
     }
 
 
-    if(($_POST['uploadreturn'] ?? '') == 'true'){
-
-        if (($_POST['fallback'] ?? '') == 'true') {
-
-            $url_parameters = '';
-            if(!empty($_POST['CKEditorFuncNum'])){
-                $url_parameters = 'CKEditorFuncNum=' . h(urlencode($_POST['CKEditorFuncNum']));
-            }
-            
-            if(!empty($_POST['SingleImage'])){
-                if($url_parameters != ''){
-                    $url_parameters .= '&';
-                }
-                $url_parameters .= 'SingleImage=' . h(urlencode($_POST['SingleImage']));
-            }
-            
-            if(!empty($_POST['file_input_name'])){
-                if($url_parameters != ''){
-                    $url_parameters .= '&';
-                }
-                $url_parameters .= 'file_input_name=' . h(urlencode($_POST['file_input_name']));
-            }
-            
-            if(!empty($_POST['send_to'])){
-                if($url_parameters != ''){
-                    $url_parameters .= '&';
-                }
-                $url_parameters .= 'send_to=' . h(urlencode($_POST['send_to']));
-            }
-            
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/editor_select_image.php?return=true&' . $url_parameters);
-        }
-
-    }else{
-        // If visitor has an old browser and did not use drag-and-drop,
-        // then forward visitor to next scren.  Drag-and-drop uses AJAX post
-        // to this script, so we don't need to forward visitor anywhere in that case.
-        if (($_POST['fallback'] ?? '') == 'true') {
-            // If there is a send to value then send user back to that screen
-            if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {
-                header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')));
-            
-            // else send user to the default view
-            } else {
-                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files');
-            }
+    // If visitor has an old browser and did not use drag-and-drop,
+    // then forward visitor to next scren.  Drag-and-drop uses AJAX post
+    // to this script, so we don't need to forward visitor anywhere in that case.
+    if (($_POST['fallback'] ?? '') == 'true') {
+        // If there is a send to value then send user back to that screen
+        if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {
+            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_REQUEST['send_to'] ?? '')));
+        
+        // else send user to the default view
+        } else {
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files');
         }
     }
-
 
 }
 ?>

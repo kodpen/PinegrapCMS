@@ -9,7 +9,7 @@ module: image
 
 ## Which address does a list ask for?
 - `pg_image_panel_thumb_url($url)` (`includes/image_engine.php`, pure; JS twin `thumbUrl()` in `view_folders.php`): JPEG/PNG get `w=320&f=webp`, WebP `w=320`; GIF (may move), SVG and anything else, or an address with `w=`/`f=` already, stay as they are. A `#fragment` stays last.
-- Used by: File Manager and Catalog Manager tiles and list (files, product and group pictures; ERP pictures keep their own address), the product table cell (`pg_product_image_cell()` in `includes/fn/ecommerce.php`), `editor_select_image.php`, the picker (`pg_picker_file_details()`). Quick Look, the preview pane and the lightbox keep the original.
+- Used by: File Manager and Catalog Manager tiles and list (files, product and group pictures; ERP pictures keep their own address), the product table cell (`pg_product_image_cell()` in `includes/fn/ecommerce.php`), the picker (`pg_picker_file_details()`). Quick Look, the preview pane and the lightbox keep the original.
 - A refused or busy derivative sends the original, so a tile never breaks for it.
 
 ## Why does the page markup not use 320?

@@ -6,7 +6,7 @@ module: text_search
 
 ## Why does a search term go through pg_search_lower()?
 - `mb_strtolower('İ')` is "i" + U+0307 on PHP 7.3+. MySQL LIKE compares one character at a time and the mark matches no stored letter, so "İstanbul" or "İade" found nothing.
-- `pg_search_lower()` (`includes/fn/text_search.php`) lowercases and drops U+0307. Used where the term meets `LOWER(column) LIKE`: Themes (`view_themes.php`), Comments (`view_comments.php`), the image picker (`editor_select_image.php`), Find & Replace's WHERE (`find_and_replace.php`).
+- `pg_search_lower()` (`includes/fn/text_search.php`) lowercases and drops U+0307. Used where the term meets `LOWER(column) LIKE`: Themes (`view_themes.php`), Comments (`view_comments.php`), Find & Replace's WHERE (`find_and_replace.php`).
 - The server-paged lists bind the raw term (`pg_list_like_pattern()`) and never had the bug. `includes/fn/submitted_form_list.php` had the same bug and was left to its own PR.
 
 ## How does Find & Replace match in case-insensitive mode?

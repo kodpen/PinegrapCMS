@@ -51,10 +51,3 @@ function test_title_popover_view_fields_information_title_is_text()
 	pg_assert_true(strpos($source, 'h(strip_tags(') === false, 'no strip_tags() title left');
 }
 
-function test_title_popover_image_picker_details_escaped()
-{
-	$source = file_get_contents(PG_FUNCTIONS_DIR . '/editor_select_image.php');
-
-	pg_assert_same(2, substr_count($source, "data-bs-content=\"' . h(\$output_details) . '\""), 'both tiles escape the details for the attribute');
-	pg_assert_same(0, substr_count($source, "data-bs-content=\"' . \$output_details . '\""), 'no raw details attribute left');
-}
