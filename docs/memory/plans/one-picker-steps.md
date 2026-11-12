@@ -30,7 +30,9 @@ description: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry an
 
 - PK8b (S) The link window `editor_select_page_or_file.php` and `filebrowserBrowseUrl` deleted, no redirect, listed in Cleanup (#8836). Done in #8896. `editor_select_image.php` goes in PK9: `software_image_picker()` and `add_file.php` still open it.
 
-- PK9 (M) The remaining screens. The product builder's pictures, the contact photo, the image editor's From the site lists, the theme designer's file list, and the Workspace's "from the files" picker with its chat attachment refusal kept (`platform/file-copy-chat-attachments.md`).
+- PK9 (M) Product builder pictures, contact photo (`software_image_picker()`), theme designer file list; `editor_select_image.php` deleted. In progress.
+
+- PK9b (M) The image editor's From the site lists (after V10, #8854) and the Workspace's "from the files" picker with its chat attachment refusal kept (`platform/file-copy-chat-attachments.md`).
 
 - PK10 (S) Close-out. Helpers nothing calls are removed, `ui/picker-overview.md` is current, the PR body names the `[NEW]` changelog line, the four plan files and `plans/one-picker/` are deleted.
 
