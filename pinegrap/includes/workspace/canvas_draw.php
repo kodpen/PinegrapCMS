@@ -123,15 +123,19 @@ function ws_canvas_draw_now($message)
             return false;
         }
 
-        // Written in the file directory, as a browser's picture is.
-        if (!pg_image_editor_put(pg_file_versions_path($newest), $png) || !pg_image_editor_put(FILE_DIRECTORY_PATH . '/' . basename((string) $file['name']), $png)) {
+        // Written in the file directory, as a browser's picture is: the
+        // general job takes it as the file's bytes when the file was moved
+        // to the object store.
+        $path = FILE_DIRECTORY_PATH . '/' . basename((string) $file['name']);
+
+        if (!pg_image_editor_put(pg_file_versions_path($newest), $png) || !pg_image_editor_put($path, $png)) {
             db_q("UPDATE file_versions SET doc_json = ?, doc_hash = ?, size = ? WHERE version_id = ?", array(
                 (string) $newest['doc_json'], (string) $newest['doc_hash'], (int) $newest['size'], (int) $newest['version_id']));
 
             // The version's picture back where it was already written over.
             if (is_string($before) && ($before !== '')) {
                 pg_image_editor_put(pg_file_versions_path($newest), $before);
-                pg_image_editor_put(FILE_DIRECTORY_PATH . '/' . basename((string) $file['name']), $before);
+                pg_image_editor_put($path, $before);
             }
 
             return false;
