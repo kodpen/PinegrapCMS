@@ -4,6 +4,7 @@
  *
  * Tests for the agent channel tools (tools/ws_client.php, tools/ws_post.php,
  * tools/ws_wait.php, tools/ws_poll.php): options, settings and their refusals,
+ * the request queue waiter (which row wakes, the printed line, the interval),
  * the Basic header, the ETag read, the message rule, the post body, and
  * tools/ws_poll.php's ask body and close id. No network.
  *
@@ -206,4 +207,74 @@ function test_ws_channel_tools_idempotency_header()
 	pg_assert_same(64, strlen(ws_client_idempotency_headers(array('idempotency-key' => str_repeat('a', 80)))[0]) - strlen('Idempotency-Key: '));
 	pg_assert_same(array(), ws_client_idempotency_headers(array()));
 	pg_assert_same(array(), ws_client_idempotency_headers(array('idempotency-key' => true)));
+}
+
+function test_ws_channel_tools_requests_plan_and_settings()
+{
+	$plan = ws_wait_plan(array('requests' => true));
+	pg_assert_true($plan['requests']);
+	pg_assert_same(15, $plan['interval'], 'the queue is asked every 15 s by default');
+	pg_assert_same(5, ws_wait_plan(array('requests' => true, 'interval' => '2'))['interval'], 'at least five seconds');
+	pg_assert_same(30, ws_wait_plan(array('requests' => true, 'interval' => '30'))['interval']);
+	pg_assert_same('', $plan['error']);
+
+	// The text mode keeps its own default and floor.
+	pg_assert_false(ws_wait_plan(array())['requests']);
+	pg_assert_same(5, ws_wait_plan(array())['interval']);
+	pg_assert_same(2, ws_wait_plan(array('interval' => '2'))['interval']);
+
+	pg_assert_true(ws_wait_plan(array('requests' => true, 'prefix' => '[ci]'))['error'] !== '', 'no text rule');
+	pg_assert_true(ws_wait_plan(array('requests' => true, 'changed' => '4'))['error'] !== '', 'no --changed');
+	pg_assert_true(ws_wait_plan(array('requests' => true, 'after-id' => '4'))['error'] !== '', 'no --after-id');
+	pg_assert_true(ws_wait_plan(array('requests' => 'yes'))['error'] !== '', 'a flag');
+
+	// No channel is needed to read the queue; the text mode still needs one.
+	$env = array('PG_WS_SITE' => 'https://example.com/integration.php', 'PG_WS_KEY' => 'k', 'PG_WS_SECRET' => 's');
+	pg_assert_same(array(), ws_client_settings(array(), $env, false)['missing']);
+	pg_assert_same(array('PG_WS_CHANNEL'), ws_client_settings(array(), $env)['missing']);
+	pg_assert_same(array('PG_WS_KEY'), ws_client_settings(array(), array('PG_WS_KEY' => '') + $env, false)['missing']);
+}
+
+function test_ws_channel_tools_requests_pick_queued_only()
+{
+	$list = array('data' => array(
+		array('id' => 3, 'status' => 'sent'),
+		array('id' => 4, 'status' => 'running'),
+		array('id' => 9, 'status' => 'queued'),
+		array('id' => 7, 'status' => 'queued'),
+	), 'page' => array());
+
+	pg_assert_same(7, ws_wait_request_pick($list)['id'], 'the oldest queued request');
+	pg_assert_same(null, ws_wait_request_pick(array('data' => array(array('id' => 3, 'status' => 'sent'), array('id' => 4, 'status' => 'running')))), 'one handed out wakes nobody');
+	pg_assert_same(null, ws_wait_request_pick(array('data' => array())));
+	pg_assert_same(null, ws_wait_request_pick('not a list'));
+	pg_assert_same(null, ws_wait_request_pick(array('data' => array('x', array('status' => 'queued')))), 'a row without an id');
+}
+
+function test_ws_channel_tools_requests_line()
+{
+	$row = array(
+		'id' => 7,
+		'status' => 'queued',
+		'channel' => array('id' => 12, 'name' => 'ajanlar', 'kind' => 'public'),
+		'message' => array('id' => 340, 'text' => str_repeat('ş', 600), 'body' => '<@app:3> ' . str_repeat('ş', 600)),
+		'wake' => array('kind' => '', 'note' => '', 'due_at' => null),
+		'requested_by' => array('user_id' => 1, 'name' => 'Erdal'),
+		'created_at' => '2026-11-11T22:00:00Z',
+	);
+	$line = ws_wait_request_line($row);
+
+	pg_assert_same(array('request_id', 'message_id', 'channel_id', 'channel', 'wake', 'wake_kind', 'requested_by', 'text'), array_keys($line));
+	pg_assert_same(array(7, 340, 12, 'ajanlar', false, ''), array($line['request_id'], $line['message_id'], $line['channel_id'], $line['channel'], $line['wake'], $line['wake_kind']));
+	pg_assert_same(array('user_id' => 1, 'name' => 'Erdal'), $line['requested_by']);
+	pg_assert_same(str_repeat('ş', 500), $line['text'], '500 characters, none cut in half');
+
+	// A scheduled wake with no message: its note is the words.
+	$wake = ws_wait_request_line(array('id' => 8, 'status' => 'queued', 'message' => null, 'channel' => array('id' => 12, 'name' => 'ajanlar'),
+		'wake' => array('kind' => 'scheduled', 'note' => 'Daily check', 'due_at' => '2026-11-12T06:00:00Z'), 'requested_by' => array('user_id' => null, 'name' => '')));
+
+	pg_assert_same(array(0, true, 'scheduled', 'Daily check', null), array($wake['message_id'], $wake['wake'], $wake['wake_kind'], $wake['text'], $wake['requested_by']['user_id']));
+
+	// Nothing of the key leaves the line: it holds only the row's fields.
+	pg_assert_false(strpos(json_encode($line), 'Authorization') !== false);
 }

@@ -63,7 +63,7 @@ $pg_settings_cards[] = '
                     <div class="pg-f-md">
                         <label for="setting_email_address" class="form-label">' . lang('Support E-mail Address') . '</label>
                         <input type="text" name="email_address" id="setting_email_address" autocomplete="off" class="form-control" value="' . h($email_address) . '" inputmode="email"/>
-                    </div>' . $output_organization_logo_picker . (($output_organization_logo_picker !== '') ? pg_fields_script() : '') . '
+                    </div>' . $output_organization_logo_picker . (($output_organization_logo_picker !== '') ? pg_picker_script() : '') . '
                     <div class="pg-f-md">
                         ' . ((pg_erp_store_country() === 'TR')
                             ? '<label class="form-label" for="erp_seller_vkn">' . lang('Seller VKN / TCKN') . '</label>

@@ -100,10 +100,11 @@ foreach (array(
         continue;
     }
 
-    // The picture pickers search the server (data-pg-source); the first card
-    // that holds one brings the field script (printed once per request).
+    // The picture fields search the server (pg_picker_field()); the first
+    // card that holds one brings the picker script (printed once per
+    // request).
     if ($seo_card_id !== 'pgset-structured') {
-        $seo_card[1] .= pg_fields_script();
+        $seo_card[1] .= pg_picker_script();
     }
 
     $pg_settings_cards[] = '

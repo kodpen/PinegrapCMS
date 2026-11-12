@@ -106,11 +106,10 @@ function pg_explorer_handle_short_link_options($type, $request, $user)
             'catalog_page' => pg_short_link_options_list(get_page_options('', 'catalog', 'edit', false, $short_link_keep_page)),
             'catalog_detail_page' => pg_short_link_options_list(get_page_options('', 'catalog detail', 'edit', false, $short_link_keep_page)),
             'product_group' => pg_short_link_options_list(get_product_group_options(0, 0, 0, 0, array(), TRUE, 'array', TRUE, TRUE, FALSE, $short_link_keep_group)),
-            'product' => pg_short_link_options_list(get_product_options(true, $short_link_keep_product)),
-            // Only the link's own file, marked when binned; the field
-            // searches the rest (file_picker_search.php, kind file).
-            'file' => pg_short_link_options_list(pg_file_picker_id_options($short_link_keep_file))),
-        'file_source' => pg_file_picker_source('file'),
+            'product' => pg_short_link_options_list(get_product_options(true, $short_link_keep_product))),
+        // The File field drawn with the link's own file (marked when
+        // binned); it searches and browses the rest (picker.php, kind file).
+        'file_field' => pg_picker_field('file', 'file_id', $short_link_keep_file, array('id' => 'sl_file', 'title' => lang('Choose a file'), 'user' => $user)),
         // The lists hold a binned entry kept for this one link, or this
         // link's file, so the screen does not keep them for the next window.
         'kept' => (($short_link_keep_product > 0) && pg_catalog_product_binned($short_link_keep_product))

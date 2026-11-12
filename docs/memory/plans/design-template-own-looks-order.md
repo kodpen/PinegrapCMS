@@ -36,7 +36,7 @@ description: Order of the polishing round after Launch: every shipped template's
 
 - Filmstudio: `-1` #8689, `-2` #8739 done.
 
-- Florist: `-1`, `-2` open.
+- Florist: `-1` #8763 done; `-2` open.
 
 - Homeservices: `-1`, `-2` open.
 

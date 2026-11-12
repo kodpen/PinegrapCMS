@@ -35,7 +35,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 function test_workspace_model_providers_complete()
 {
 	$providers = ws_model_providers();
-	pg_assert_same(array('openai', 'gemini', 'mistral', 'deepseek', 'openrouter', 'azure', 'custom'), array_keys($providers));
+	pg_assert_same(array('openai', 'anthropic', 'gemini', 'mistral', 'deepseek', 'openrouter', 'azure', 'custom'), array_keys($providers));
 
 	foreach ($providers as $id => $provider) {
 		pg_assert_true(strlen($id) <= 32, 'fits ws_agents.provider');
@@ -47,6 +47,188 @@ function test_workspace_model_providers_complete()
 	pg_assert_true(!$providers['custom']['key'], 'a local server may have no key');
 	pg_assert_true($providers['custom']['http'] && !$providers['azure']['http'], 'only a custom address may be plain http');
 	pg_assert_same('', ws_model_provider_terms('nope'));
+
+	$anthropic = $providers['anthropic'];
+
+	foreach (array('name', 'base', 'key', 'header', 'http', 'tokens', 'model_hint', 'terms', 'terms_url') as $field) {
+		pg_assert_true(array_key_exists($field, $anthropic), 'anthropic has ' . $field);
+	}
+
+	pg_assert_same('https://api.anthropic.com/v1', $anthropic['base']);
+	pg_assert_true($anthropic['key'] && !$anthropic['http'], 'Anthropic needs a key and https');
+	pg_assert_same('anthropic', ws_model_api('anthropic'));
+	pg_assert_same('chat', ws_model_api('openai'));
+	pg_assert_same('chat', ws_model_api('nope'));
+	pg_assert_true(lang($anthropic['model_hint']) !== '', 'the hint is a sentence to translate');
+	pg_assert_true(strpos($anthropic['terms_url'], 'https://') === 0);
+}
+
+function test_workspace_model_anthropic_endpoint_and_headers()
+{
+	pg_assert_same('https://api.anthropic.com/v1/messages', ws_model_endpoint('anthropic', ''));
+	pg_assert_same('https://api.anthropic.com/v1/messages', ws_model_endpoint('anthropic', 'https://evil.example/v1'), 'the fixed base wins');
+	pg_assert_same('https://api.anthropic.com/v1/models', ws_model_endpoint('anthropic', '', '/models'));
+
+	$headers = ws_model_headers('anthropic', ' sk-ant ');
+	pg_assert_true(in_array('x-api-key: sk-ant', $headers, true));
+	pg_assert_true(in_array('anthropic-version: ' . WS_MODEL_ANTHROPIC_VERSION, $headers, true));
+	pg_assert_true(in_array('Content-Type: application/json', $headers, true));
+
+	foreach ($headers as $header) {
+		pg_assert_true(stripos($header, 'Authorization') === false, 'no bearer for Anthropic');
+	}
+
+	pg_assert_same(array('Accept: application/json', 'Content-Type: application/json', 'Authorization: Bearer sk-1'), ws_model_headers('openai', 'sk-1'), 'the others are unchanged');
+}
+
+// A loop's body as ws_ai_step() writes it after one round of two tool calls.
+function workspace_model_agents_test_loop_body()
+{
+	return array(
+		'model'       => 'gpt-oss',
+		'messages'    => array(
+			array('role' => 'system', 'content' => 'You are helpful.'),
+			array('role' => 'user', 'content' => 'Find order 5.'),
+			array('role' => 'assistant', 'content' => 'Looking.', 'tool_calls' => array(
+				array('id' => 'call_1', 'type' => 'function', 'function' => array('name' => 'read_record', 'arguments' => '{"kind":"order","id":5}')),
+				array('id' => 'call.2', 'type' => 'function', 'function' => array('name' => 'list_records', 'arguments' => '{}')),
+			)),
+			array('role' => 'tool', 'tool_call_id' => 'call_1', 'content' => 'Order 5: paid'),
+			array('role' => 'tool', 'tool_call_id' => 'call.2', 'content' => ''),
+		),
+		'tools'       => array(
+			array('type' => 'function', 'function' => array('name' => 'read_record', 'description' => 'Reads a record.', 'parameters' => array('type' => 'object', 'properties' => array('id' => array('type' => 'integer'))))),
+			array('type' => 'function', 'function' => array('name' => 'list_records', 'parameters' => array())),
+		),
+		'tool_choice' => 'required',
+		'temperature' => 0.2,
+		'reasoning_effort' => 'low',
+		'max_tokens'  => 3000,
+		'stream'      => false,
+	);
+}
+
+function test_workspace_model_anthropic_request()
+{
+	$body = workspace_model_agents_test_loop_body();
+	$out = ws_model_payload('anthropic', 'model-a', $body);
+
+	pg_assert_same(array('model', 'max_tokens', 'messages', 'system', 'tools', 'tool_choice'), array_keys($out), 'no temperature, stream or reasoning_effort');
+	pg_assert_same('model-a', $out['model']);
+	pg_assert_same(3000, $out['max_tokens']);
+	pg_assert_same('You are helpful.', $out['system']);
+	pg_assert_same(array('type' => 'auto'), $out['tool_choice'], 'required is asked as auto: the newest models refuse any');
+
+	pg_assert_same(array('name' => 'read_record', 'input_schema' => array('type' => 'object', 'properties' => array('id' => array('type' => 'integer'))), 'description' => 'Reads a record.'), $out['tools'][0]);
+	pg_assert_same('{"name":"list_records","input_schema":{"type":"object"}}', json_encode($out['tools'][1]), 'an empty schema is an object');
+
+	pg_assert_same(array('user', 'assistant', 'user'), array_column($out['messages'], 'role'));
+	pg_assert_same(array(array('type' => 'text', 'text' => 'Find order 5.')), $out['messages'][0]['content']);
+
+	$assistant = $out['messages'][1]['content'];
+	pg_assert_same(array('type' => 'text', 'text' => 'Looking.'), $assistant[0]);
+	pg_assert_same('{"type":"tool_use","id":"call_1","name":"read_record","input":{"kind":"order","id":5}}', json_encode($assistant[1]));
+	pg_assert_same('{"type":"tool_use","id":"call_2","name":"list_records","input":{}}', json_encode($assistant[2]), 'an id Anthropic refuses is cleaned; {} stays an object');
+
+	pg_assert_same(array(
+		array('type' => 'tool_result', 'tool_use_id' => 'call_1', 'content' => 'Order 5: paid'),
+		array('type' => 'tool_result', 'tool_use_id' => 'call_2', 'content' => '(empty)'),
+	), $out['messages'][2]['content'], 'two tool answers in one user message');
+
+	$body['tool_choice'] = 'auto';
+	unset($body['max_tokens']);
+	$out = ws_model_payload('anthropic', 'model-a', $body);
+	pg_assert_same(array('type' => 'auto'), $out['tool_choice']);
+	pg_assert_same(WS_MODEL_ANTHROPIC_MAX_TOKENS, $out['max_tokens'], 'the API requires a limit');
+
+	$bad = ws_model_anthropic_input('{"kind": ');
+	pg_assert_same('{"raw_arguments":"{\\"kind\\":"}', json_encode($bad), 'broken JSON is kept as words');
+	pg_assert_same('{}', json_encode(ws_model_anthropic_input('[]')));
+}
+
+function test_workspace_model_anthropic_request_final()
+{
+	// ws_ai_final(): no tools, a user message after the tool answers.
+	$body = workspace_model_agents_test_loop_body();
+	unset($body['tools'], $body['tool_choice']);
+	$body['messages'][] = array('role' => 'user', 'content' => 'Write your final answer now.');
+	$out = ws_model_payload('anthropic', 'model-a', $body);
+
+	pg_assert_true(!isset($out['tools']) && !isset($out['tool_choice']));
+	pg_assert_same(array('user', 'assistant', 'user'), array_column($out['messages'], 'role'), 'roles alternate');
+
+	foreach ($out['messages'] as $message) {
+		foreach ($message['content'] as $block) {
+			pg_assert_same('text', $block['type'], 'no tool blocks without tool definitions');
+		}
+	}
+
+	pg_assert_contains('read_record {"kind":"order","id":5}', $out['messages'][1]['content'][1]['text']);
+	pg_assert_contains('Order 5: paid', $out['messages'][2]['content'][0]['text']);
+	pg_assert_same('Write your final answer now.', end($out['messages'][2]['content'])['text']);
+
+	// The card's Try: one user line.
+	$try = ws_model_payload('anthropic', 'model-a', array('messages' => array(array('role' => 'user', 'content' => 'Reply with the single word: OK')), 'max_tokens' => 200, 'stream' => false));
+	pg_assert_same(array('model' => 'model-a', 'max_tokens' => 200, 'messages' => array(array('role' => 'user', 'content' => array(array('type' => 'text', 'text' => 'Reply with the single word: OK'))))), $try);
+
+	// A history that starts with the assistant gets a user line first.
+	$odd = ws_model_payload('anthropic', 'model-a', array('messages' => array(array('role' => 'assistant', 'content' => 'Hi'))));
+	pg_assert_same('user', $odd['messages'][0]['role']);
+}
+
+function test_workspace_model_anthropic_answer()
+{
+	$answer = ws_model_anthropic_answer(array(
+		'id' => 'msg_1', 'type' => 'message', 'role' => 'assistant', 'model' => 'model-a',
+		'content' => array(
+			array('type' => 'thinking', 'thinking' => '', 'signature' => 'x'),
+			array('type' => 'text', 'text' => 'Reading it.'),
+			array('type' => 'tool_use', 'id' => 'toolu_1', 'name' => 'read_record', 'input' => array('kind' => 'order', 'id' => 5)),
+			array('type' => 'tool_use', 'id' => 'toolu_2', 'name' => 'list_records', 'input' => array()),
+		),
+		'stop_reason' => 'tool_use',
+		'usage' => array('input_tokens' => 120, 'output_tokens' => 30),
+	));
+
+	$message = $answer['choices'][0]['message'];
+	pg_assert_same('assistant', $message['role']);
+	pg_assert_same('Reading it.', $message['content']);
+	pg_assert_same(array(
+		array('id' => 'toolu_1', 'type' => 'function', 'function' => array('name' => 'read_record', 'arguments' => '{"kind":"order","id":5}')),
+		array('id' => 'toolu_2', 'type' => 'function', 'function' => array('name' => 'list_records', 'arguments' => '{}')),
+	), $message['tool_calls']);
+	pg_assert_same('tool_calls', $answer['choices'][0]['finish_reason']);
+	pg_assert_same(array('input_tokens' => 120, 'output_tokens' => 30), $answer['usage']);
+
+	$text = ws_model_anthropic_answer(array('content' => array(array('type' => 'text', 'text' => 'OK')), 'stop_reason' => 'end_turn'));
+	pg_assert_same(array('role' => 'assistant', 'content' => 'OK'), $text['choices'][0]['message'], 'no tool_calls when none was made');
+	pg_assert_same('stop', $text['choices'][0]['finish_reason']);
+
+	// The answer read back into the next request comes out as it went in.
+	$again = ws_model_payload('anthropic', 'model-a', array('messages' => array(
+		array('role' => 'user', 'content' => 'Go'),
+		array('role' => 'assistant', 'content' => $message['content'], 'tool_calls' => $message['tool_calls']),
+		array('role' => 'tool', 'tool_call_id' => 'toolu_1', 'content' => 'a'),
+		array('role' => 'tool', 'tool_call_id' => 'toolu_2', 'content' => 'b'),
+	), 'tools' => workspace_model_agents_test_loop_body()['tools']));
+	pg_assert_same('{"type":"tool_use","id":"toolu_1","name":"read_record","input":{"kind":"order","id":5}}', json_encode($again['messages'][1]['content'][1]));
+	pg_assert_same('{"type":"tool_use","id":"toolu_2","name":"list_records","input":{}}', json_encode($again['messages'][1]['content'][2]));
+
+	// An error body stays where ws_model_http_error() reads it.
+	$error = array('type' => 'error', 'error' => array('type' => 'authentication_error', 'message' => 'invalid x-api-key'));
+	pg_assert_same($error, ws_model_anthropic_answer($error));
+	pg_assert_same(null, ws_model_anthropic_answer(null));
+	pg_assert_contains('invalid x-api-key', ws_model_http_error(array('name' => 'Claude'), array('http' => 401, 'json' => $error, 'errno' => 0, 'error' => '')));
+}
+
+function test_workspace_model_payload_others_unchanged()
+{
+	$body = workspace_model_agents_test_loop_body();
+	$expected = $body;
+	$expected['model'] = 'm';
+	unset($expected['reasoning_effort']);
+
+	pg_assert_same($expected, ws_model_payload('mistral', 'm', $body), 'a chat API keeps the body');
 }
 
 function test_workspace_model_endpoint()

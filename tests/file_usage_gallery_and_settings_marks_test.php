@@ -109,12 +109,10 @@ function test_settings_pickers_use_the_mark()
 {
 	$prep = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/prep.php');
 
-	foreach (array('$site_icon', '$og_default_image', '$organization_logo', '$app_icon') as $value) {
-		// Through the public picture pickers' own mark, which falls back to
-		// pg_stored_file_option() (includes/fn/files.php); the pickers print
-		// the stored value alone and search the rest.
-		pg_assert_contains('pg_file_picker_public_options(' . $value . ', ', $prep, $value);
+	foreach (array("'site_icon', 'site_icon', pg_site_icon_name()", "'public_image', 'og_default_image', \$og_default_image", "'public_image', 'organization_logo', \$organization_logo", "'public_image', 'app_icon', \$app_icon") as $call) {
+		// Picker fields: the stored value is posted unchanged and shown
+		// marked when it is missing, offline or binned
+		// (pg_picker_field_view()).
+		pg_assert_contains('pg_picker_field(' . $call, $prep, $call);
 	}
-
-	pg_assert_contains('pg_public_image_stored_option($value)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/file_picker_search.php'), 'the shared mark');
 }
