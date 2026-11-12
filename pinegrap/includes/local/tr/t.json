@@ -6461,6 +6461,7 @@
     "The site has no catalog detail page to show the product on.": "Sitede ürünü gösterecek bir katalog ayrıntı sayfası yok.",
     "The site has no encryption key, so a flow cannot have a web address.": "Sitenin şifreleme anahtarı yok; bu yüzden akışın web adresi olamaz.",
     "The site has no encryption key, so the webhook's secret cannot be kept.": "Sitenin şifreleme anahtarı yok, bu yüzden webhook'un gizli anahtarı saklanamıyor.",
+    "The site has no library named {var:1}. It has: {var:2}.": "Sitede {var:1} adında bir kütüphane yok. Olanlar: {var:2}.",
     "The site has no product detail page, so the products have no address.": "Sitenin ürün detay sayfası yok, bu yüzden ürünlerin adresi yok.",
     "The site has no visual design to place the page in.": "Sitede sayfanın yerleştirileceği bir görsel tasarım yok.",
     "The site has one active language, so the switcher is not shown on the site until a language is added.": "Sitede tek etkin dil var; bir dil eklenene kadar dil seçici sitede görünmez.",
