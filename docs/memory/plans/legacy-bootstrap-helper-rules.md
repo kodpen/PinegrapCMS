@@ -23,8 +23,8 @@ description: Legacy to Bootstrap helper after LB1 (#8942): the owner's answers, 
 - The Legacy design's own files are never touched.
 
 ## What does the helper do on a design that is not Bootstrap?
-- Until LB1b's pictures were shown to the owner: it runs only where the design's census finds Bootstrap 3 (its sheet row or its names). On any other design the card says that the design does not use Bootstrap 3 and offers nothing.
-- LB1b: a hand trial as LB1's on a Legacy design whose theme loads Materialize, a sandbox fixture, nothing added to the product. Pictures side by side, wide and phone; the names both frameworks own (`row`, `col`, `container`, `btn`, `card`) and what each sheet does to the other's. Then the architect asks the owner what the helper does on such a design.
+- Nothing (owner, 2026-11-12, #8967, after LB1b's pictures: `designer/legacy-materialize-trial.md`): the card says that the design does not use Bootstrap 3 and offers no report and no trial design. Record: `workflow/decisions-made-product-48.md`.
+- The helper finds Bootstrap 3 by the design's classic framework sheet row (`bootstrap.css`, `bootstrap.min.css`), never by class names: Materialize shares `row`, `container`, `btn`, `badge`, `active` and `right` with it (architect). LB3 builds the card's line with this rule.
 
 ## Why are the custom layouts not in this plan?
 - `data/layouts/<id>.php` and `includes/templates/` serve the classic styles and every Legacy design too, and the helper never changes what a Legacy design uses. Their move is `legacy-layouts-bootstrap.md`.
