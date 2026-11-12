@@ -476,7 +476,7 @@
 - phone-width-rows.md: Phone-width fixes: v6 .input-group and .btn do not wrap (rate tiers, documents card, sign-in rows, product group default option), Login Region fields, inner clusters wrap, marketplace grid
 - picker-dialog.md: The picker dialog pgPicker.open() (assets/js/pg_picker.js, PK2): what it shows, how a pick is handed back, the keyboard, the phone sheet, the Browse button, what picker.php added for it
 - picker-field.md: The picker field pg_picker_field() (PK5): combobox with the chosen value and its picture, search list, Browse, clear, phone sheet, marks; which screens use it and who prints the script
-- picker-page-fields-screens.md: Page picker fields outside the page form (#8803): product builder, Edit Offer, short links, menu item, calendar Next Page; what stays a select or a list and why
+- picker-page-fields-screens.md: Page picker fields outside the page form (#8803): product builder, Edit Offer, short links, menu item, calendar, e-mail campaign profile; why quick edit keeps its lists
 - picker-pages.md: Pages in the picker dialog (kind page, PK4): rows with address and type, the page type chips, archived and binned marks that cannot be chosen, a caller's own entries (extra) [decision: here]
 - picker-registry.md: The picker's registry pg_picker_kinds() and endpoint picker.php (list, search, tree, resolve, upload): kinds, request checks, paging, access rule, value states
 - picker-upload.md: The picker dialog's Upload (picker.php request upload), its Recently used list kept in the browser, and several picks (multiple): rules, keys, where each is checked

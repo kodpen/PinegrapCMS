@@ -1903,7 +1903,9 @@ $(document).ready(function () {
     pgSyncCollapseSwitchers(document);
     pgBindRanges(document);
 
-    $(document).on("change", "select.collapse-if-selected", function () {
+    // A picker field's hidden value (data-pg-picker-value) opens and closes
+    // its section as a select does.
+    $(document).on("change", "select.collapse-if-selected, input.collapse-if-selected", function () {
         var target = $(this).attr("data-bs-target");
         var open = ($(this).val() != '');
         // toggle: false, or a new instance would toggle on creation.
@@ -5186,7 +5188,8 @@ function check_iframe_access(iframe) {
 }
 
 function product_submit_form_update_custom_form_fields() {
-    var custom_form_page_id = $('#submit_form_custom_form_page_id').val();
+    // The Custom Form is a page picker field: its value is the hidden input.
+    var custom_form_page_id = $('input[name="submit_form_custom_form_page_id"]').val();
 
     submit_form_custom_form_fields = [];
 
@@ -11123,7 +11126,7 @@ function pgSyncCollapseSwitchers(scope) {
         }
     });
 
-    $scope.find('select.collapse-if-selected').each(function () {
+    $scope.find('select.collapse-if-selected, input.collapse-if-selected').each(function () {
 
         var target = $(this).attr('data-bs-target');
         var hide = ($(this).val() === '');

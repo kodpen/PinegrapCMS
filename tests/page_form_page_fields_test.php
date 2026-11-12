@@ -62,10 +62,10 @@ function test_page_form_page_fields_binned_pages_of_the_kind_types()
 
 	// A typed kind listed a binned page of any type in search and in its
 	// origin folder.
-	pg_assert_contains('function pg_picker_binned_page_rows($user, $folder = null, $query = \'\', $types = array())', $source);
+	pg_assert_contains('function pg_picker_binned_page_rows($user, $folder = null, $query = \'\', $types = array(), $kind = null)', $source);
 	pg_assert_contains("AND (page.page_type IN ('\" . implode(\"', '\", array_map('e', \$types)) . \"'))", $source);
-	pg_assert_contains('pg_picker_binned_page_rows($user, null, $query, pg_picker_kind_types($kind))', $source, 'search');
-	pg_assert_contains('pg_picker_binned_page_rows($user, $request[\'folder\'], \'\', pg_picker_kind_types($kind))', $source, 'a folder\'s first page');
+	pg_assert_contains('pg_picker_binned_page_rows($user, null, $query, pg_picker_kind_types($kind), $kind)', $source, 'search');
+	pg_assert_contains('pg_picker_binned_page_rows($user, $request[\'folder\'], \'\', pg_picker_kind_types($kind), $kind)', $source, 'a folder\'s first page');
 }
 
 function test_page_form_page_fields_width()
