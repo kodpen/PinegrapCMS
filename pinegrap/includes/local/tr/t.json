@@ -251,6 +251,7 @@
     "Task {var:1} was not finished within {var:2} hours, and no arrow leaves the box on timeout; it stays open.": "{var:1} görevi {var:2} saat içinde bitmedi ve kutudan zaman aşımında çıkan bir ok yok; görev açık kalıyor.",
     "Task {var:1} was not finished within {var:2} hours; it stays open.": "{var:1} görevi {var:2} saat içinde bitmedi; görev açık kalıyor.",
     "Task {var}": "Görev {var}",
+    "Task: {var:1}": "Görev: {var:1}",
     "Tasks": "Görevler",
     "Tasks Claude proposes": "Claude'un önerdiği görevler",
     "Tasks Pinegrap AI proposes": "Pinegrap AI'ın önerdiği görevler",

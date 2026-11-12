@@ -146,7 +146,7 @@
 - workspace-channel-catchup.md: Over a channel's conversation (C2, C3 of workspace-channel-screen.md): the catch-up line in place of the greeting card, the pinned line, one row on a phone [decision: here]
 - workspace-channel-composer.md: The channel's writing box in one row (C5 of workspace-channel-screen.md): no hint line, marks behind Aa; a phone's one row with the tools switch, the keyboard rules [decision: here]
 - workspace-channel-decisions-tab.md: The channel's Decisions tab draws each decision as a card of its own with a gap between them, not stacked like the conversation's messages [decision: here]
-- workspace-channel-export.md: A channel's conversation as a Markdown file or a print page (workspace_channel_export.php, channel_export.php): range, what it holds, the 5,000 limit, audit line, the channel-menu drawer [decision: decisions-made-workspace-10.md]
+- workspace-channel-export.md: A channel's conversation as a Markdown file or a print page (workspace_channel_export.php): range, what it holds (polls, approvals, tasks, files), the 5,000 limit, audit line, the drawer [decision: decisions-made-workspace-10.md]
 - workspace-channel-files-tab.md: A channel's Files tab (drawFiles() in workspace.js): the groups it draws (images, videos, voice messages and audio, documents) and the one-line file row
 - workspace-channel-greeting-task-counts.md: How a channel's greeting counts its open tasks (ws_channel_task_counts()): a 0000-00-00 due date is no due date, as on the dashboard and Today
 - workspace-channel-group-events.md: Webhook events about Workspace channel groups themselves (workspace.channel_group.created/updated/access_changed/deleted): payload, who hears them, what stays quiet
