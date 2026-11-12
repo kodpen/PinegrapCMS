@@ -7,6 +7,7 @@ description: What email() gained for Workspace mail (G3a #2846, #8646): cc and b
 - `cc`: an address or a list, as `bcc` (#8646), in the failure log too.
 - `headers`: only Message-ID, In-Reply-To, References, each `<id@host>` tokens (`pg_mail_thread_headers()`; anything else dropped).
 - `smtp`: host, port, user, `secret` sealed with `pg_connect_seal()` (a queued row never holds the password); before the connected account and the site SMTP; 15 s timeout; an unreadable secret is a permanent failure.
+- Port 465 is implicit TLS (SMTPS), any other port STARTTLS when offered. "certificate verify failed" on 587 while the box reads mail fine: the provider's submission port shows another certificate (Natro's mail.kurumsaleposta.com: an expired `*.natrohost.com`, 2026-11-12); 465 has the right one. Changing only the port in the box form keeps the password.
 
 ## What is the site's mark?
 - Every mail carries `X-Pinegrap-Mail: <pg_mail_site_mark()>`, 16 hex of an HMAC with the site's key. The loop gate (`ws_mail_loop_reason()`) refuses only this site's mark, so another Pinegrap site's mail (a shop to its supplier's support box) comes in.
