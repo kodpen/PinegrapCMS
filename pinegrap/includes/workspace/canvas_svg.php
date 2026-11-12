@@ -455,9 +455,11 @@ function ws_canvas_svg_background($value)
  * @param mixed $svg
  * @param mixed $background #rrggbb, transparent, or empty for white
  * @param bool  $split
+ * @param callable|null $resolve with split: a picture's href => the file it
+ *                               names (ws_canvas_split_file()) or null
  * @return array error ('' or too_large, empty, background, not_kept), doc (object or null)
  */
-function ws_canvas_from_svg($svg, $background = '', $split = false)
+function ws_canvas_from_svg($svg, $background = '', $split = false, $resolve = null)
 {
     $fail = function ($error) {
         return array('error' => $error, 'doc' => null);
@@ -477,13 +479,12 @@ function ws_canvas_from_svg($svg, $background = '', $split = false)
         return $fail('too_large');
     }
 
-    $clean = pg_svg_sanitize($svg);
-
     if ($split) {
         require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_split.php');
-        $parts = ($clean === '') ? null : ws_canvas_split_layers($clean);
+        $parts = ws_canvas_split_svg($svg, array(), $resolve);
         $made = $parts ? array('w' => $parts['w'], 'h' => $parts['h']) : null;
     } else {
+        $clean = pg_svg_sanitize($svg);
         $made = ($clean === '') ? null : ws_canvas_svg_layer($clean);
     }
 
