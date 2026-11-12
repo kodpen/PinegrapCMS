@@ -145,6 +145,17 @@ function ws_channel_detail($viewer, $channel)
     $brief['owner_name'] = ws_person_name($channel['owner_user_id']);
     $brief['can_post'] = ws_can_post_channel($viewer, $channel);
     $brief['can_manage'] = ws_can_manage_channel($viewer, $channel);
+
+    // The channel's agents beside its people (channel_agents_panel.php),
+    // and a person's last seen, which only a manager reads.
+    $brief['agents'] = ws_channel_member_agents($channel, time());
+    $seen = ws_channel_member_seen($brief['can_manage'], $member_ids, time());
+
+    foreach ($brief['members'] as $index => $member) {
+        if (isset($seen[(int) $member['id']])) {
+            $brief['members'][$index]['seen'] = $seen[(int) $member['id']];
+        }
+    }
     $brief['can_change_kind'] = ws_can_change_channel_kind($viewer, $channel);
     $brief['can_clear'] = ws_can_clear_channel($viewer, $channel);
     $brief['can_pin'] = ws_can_pin($viewer, $channel);
