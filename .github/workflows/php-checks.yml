@@ -83,6 +83,10 @@ jobs:
         if: ${{ hashFiles('tools/check_bs6.php') != '' }}
         run: php tools/check_bs6.php --strict
 
+      - name: Panel CSS outside the look's recipes only falls (tools/check_look.php)
+        if: ${{ hashFiles('tools/check_look.php') != '' }}
+        run: php tools/check_look.php
+
       # tools/static_analysis.sh fetches the pinned analysers into the
       # runner's temporary folder; PHPStan's errors become annotations on the
       # pull request's diff.

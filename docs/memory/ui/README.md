@@ -26,6 +26,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - A button's label span is `<span class="pg-btn-label">`, never `btn-text`; a flyout menu inside a menu is `.pg-submenu`, never `.submenu`: Bootstrap 6 owns `.btn-text`, `.submenu` and `.menu` (`bootstrap-6.md`).
 - Mark a chips, select2, date or time field with its `data-pg-*` hook and print `pg_fields_script()`; read and write it through `pgChips`/`pgCombobox`/`pgDatePicker`/`pgDateTimeField`, never call tagin, select2 or the jQuery UI pickers from a panel screen (`pg-field-wrappers.md`).
 - Never style every child of a `:has()` element (`X:has(…) > *`, `> :not(…)`, `X:has(…) *`): Chromium then restyles the whole document on each DOM insertion; put the `:has()` on the subject (`css-has-whole-document-restyle.md`, `tests/css_has_restyle_test.php`).
+- Build a panel screen from look A's recipes and `--pg-*` tokens; a screen's own class only places things. A part no recipe draws is drawn first and asked on an `architect` issue; `tools/check_look.php` lets sizes, weights and colours outside the recipes only fall (`look-check.md`, `look-type-and-recipes.md`).
 <!-- key-rules:end -->
 
 ## Clusters

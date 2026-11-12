@@ -20,7 +20,7 @@ description: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860)
 
 - DL3 (M) The bell's drawer in look A: rows from the recipes, the fold drawn as gathered rows with the count beside the title, titles that say what happened and with what (`ui/bell-row.md` rewritten). Approved from a real panel's screenshots: dark, light, phone width. Done in #8897.
 
-- DL4 (S) The check and the rule. `tools/check_look.php` in CI counts panel rules outside the recipes (a font size or weight off the scale, a colour outside the tokens) and lets the count only fall. Key rule in `ui/README.md`: a panel screen is built from the recipes; a new recipe is drawn first and asked on an `architect` issue.
+- DL4 (S) The check and the rule. `tools/check_look.php` in CI counts panel rules outside the recipes (a font size or weight off the scale, a colour outside the tokens) and lets the count only fall. Key rule in `ui/README.md`: a panel screen is built from the recipes; a new recipe is drawn first and asked on an `architect` issue. Done in #8905 (`ui/look-check.md`).
 
 - DL5a to DL5f (M each) The screen families, one step each, in this order: dashboard cards and rows; list screens (toolbar, table, row actions); add and edit screens (cards, field widths, the save bar); settings (section cards, the modal); report screens; Workspace (channel, lists). Each waits for its family's part of the sheet; lists and add screens have theirs.
 
