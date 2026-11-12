@@ -1,6 +1,6 @@
 ---
 name: agent-page
-description: Live pages an agent makes (LP2a, #8815): POST channels/{id}/pages, GET and PATCH messages/{id}/page, the mark of a page without a column, versions in file_versions (format html, 20 kept), 409, who may
+description: Live pages an agent makes (LP2a #8815, LP4 #8830): the routes, the mark of a page without a column, versions (20 kept), 409, who may, the site's libraries
 ---
 
 ## What is a live page?
@@ -23,6 +23,11 @@ description: Live pages an agent makes (LP2a, #8815): POST channels/{id}/pages, 
 - HTML: not empty, UTF-8, at most 500 KB (`PG_GUARDED_FRAME_MAX_BYTES`, the frame's own limit), else 422 on `html`.
 - Versions: the first and the newest 19, 20 in all (`ws_page_versions_keep()`, `ws_page_versions_pruned()`). Deleting the file takes them along (`pg_file_versions_delete_file()`, the daily sweep).
 
+## How does a page use a library?
+- `libraries` (a list of names, at most 5) on create and edit; left out on an edit, the version before's stay. Only names in `ws_page_libraries()` (`chartjs`: Chart.js 4.4.7, `assets/lib/chartjs/`), else 422 on `libraries`. Kept in the version's document; GET answers `libraries`. Built in #8830.
+- `live_page.php` puts the site's own copy in ahead of the page (`ws_page_with_libraries()`): an inline `<script>` right after the doctype. A source holding `</script` or `<!--` is left out. The frame allows no script from any host, so a page never loads one from an address.
+- Another library: its file under `assets/lib/`, a row in `ws_page_libraries()`; `tests/workspace_agent_page_test.php` checks it.
+
 ## What is not built yet?
-- The card (Open, Full screen, View source, Download, versions, "Edited by", Undo): LP2b. Libraries (Chart.js): LP4. The assistants' tools: LP3.
+- The card (Open, Full screen, View source, Download, versions, "Edited by", Undo): LP2b. The assistants' tools: LP3.
 - Two edits at the same instant both pass the version check; the second's version row is refused by the unique key and it answers 503 after its bytes were written. Rare; the next read shows the bytes the file holds.

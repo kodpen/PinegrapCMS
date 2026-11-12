@@ -73,4 +73,7 @@ if (!is_string($html) || (strlen($html) > PG_GUARDED_FRAME_MAX_BYTES)) {
     live_page_refuse();
 }
 
+// The site's own copy of each library the page names goes in ahead of it.
+$html = ws_page_with_libraries($html, ws_page_libraries_of((int) $message['file_id']));
+
 pg_guarded_frame_send($html, pg_guarded_frame_mode($_GET['mode'] ?? null), lang('Live page'));

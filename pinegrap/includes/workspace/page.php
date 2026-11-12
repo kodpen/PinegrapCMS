@@ -101,16 +101,17 @@ function ws_page_html_error_text($error)
 /**
  * The document a version row keeps: who made it. Pure.
  *
- * @param array $agent id, kind, handle
+ * @param array    $agent     id, kind, handle
+ * @param string[] $libraries the site's libraries it names
  * @return string JSON
  */
-function ws_page_version_doc($agent)
+function ws_page_version_doc($agent, $libraries = array())
 {
     return json_encode(array('page' => 1, 'by' => array(
         'id'     => (int) ($agent['id'] ?? 0),
         'kind'   => (string) ($agent['kind'] ?? ''),
         'handle' => (string) ($agent['handle'] ?? ''),
-    )), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    ), 'libraries' => array_values($libraries)), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 }
 
 /**
@@ -189,13 +190,14 @@ function ws_page_is_page($file_id)
 /**
  * Keeps the page's bytes as its next version.
  *
- * @param int    $file_id
- * @param string $html
- * @param array  $agent   id, kind, handle
- * @param int    $user_id the application's owner
+ * @param int      $file_id
+ * @param string   $html
+ * @param array    $agent     id, kind, handle
+ * @param int      $user_id   the application's owner
+ * @param string[] $libraries the site's libraries it names
  * @return array|null the row, or null when it could not be written
  */
-function ws_page_version_add($file_id, $html, $agent, $user_id)
+function ws_page_version_add($file_id, $html, $agent, $user_id, $libraries = array())
 {
     $dir = pg_file_versions_dir();
 
@@ -211,7 +213,7 @@ function ws_page_version_add($file_id, $html, $agent, $user_id)
         return null;
     }
 
-    $doc = ws_page_version_doc($agent);
+    $doc = ws_page_version_doc($agent, $libraries);
     $saved = db_q("INSERT INTO file_versions (file_id, version_no, doc_json, doc_hash, stored_name, format, width, height, size, redacted, user_id, source, created_at)
         VALUES (?, ?, ?, ?, ?, 'html', 0, 0, ?, 0, ?, 'agent', UNIX_TIMESTAMP())", array(
         (int) $file_id, $version_no, $doc, sha1($html), $name, strlen($html), (int) $user_id));
@@ -245,13 +247,14 @@ function ws_page_versions_prune($file_id)
 /**
  * Writes a new version of a page into its file and keeps it.
  *
- * @param array  $message ws_messages row of the page
- * @param string $html    checked by ws_page_html_error()
- * @param array  $agent
- * @param int    $user_id
+ * @param array    $message   ws_messages row of the page
+ * @param string   $html      checked by ws_page_html_error()
+ * @param array    $agent
+ * @param int      $user_id
+ * @param string[] $libraries the site's libraries it names
  * @return bool
  */
-function ws_page_write($message, $html, $agent, $user_id)
+function ws_page_write($message, $html, $agent, $user_id, $libraries = array())
 {
     $file_id = (int) $message['file_id'];
     $stored = (string) db_value("SELECT name FROM files WHERE id = '" . $file_id . "'");
@@ -271,7 +274,7 @@ function ws_page_write($message, $html, $agent, $user_id)
         pg_file_cache_forget($file_id);
     }
 
-    if (!ws_page_version_add($file_id, $html, $agent, $user_id)) {
+    if (!ws_page_version_add($file_id, $html, $agent, $user_id, $libraries)) {
         return false;
     }
 
@@ -311,4 +314,139 @@ function ws_page_versions_read($rows, $time = null)
     }
 
     return $read;
+}
+
+/**
+ * The libraries a page may name, by the name a call gives: each a copy the
+ * site ships, put into the page by the site (ws_page_with_libraries()); a
+ * page never loads one from an address. Pure.
+ *
+ * @return array[] name => path (under the software directory), title
+ */
+function ws_page_libraries()
+{
+    return array(
+        'chartjs' => array('path' => 'assets/lib/chartjs/chart.umd.min.js', 'title' => 'Chart.js 4.4.7'),
+    );
+}
+
+/**
+ * The libraries a call names, checked: known names only, each once, in the
+ * order given. Pure.
+ *
+ * @param mixed $names
+ * @return array names, error ('' or the unknown name)
+ */
+function ws_page_libraries_check($names)
+{
+    if (($names === null) || ($names === '')) {
+        return array('names' => array(), 'error' => '');
+    }
+
+    if (!is_array($names)) {
+        return array('names' => array(), 'error' => '?');
+    }
+
+    $known = ws_page_libraries();
+    $picked = array();
+
+    foreach ($names as $name) {
+        $name = is_string($name) ? strtolower(trim($name)) : '';
+
+        if (!isset($known[$name])) {
+            return array('names' => array(), 'error' => ($name !== '') ? $name : '?');
+        }
+
+        if (!in_array($name, $picked, true)) {
+            $picked[] = $name;
+        }
+    }
+
+    return array('names' => $picked, 'error' => '');
+}
+
+/**
+ * The libraries a version's document names. Pure.
+ *
+ * @param mixed $doc_json
+ * @return string[]
+ */
+function ws_page_version_libraries($doc_json)
+{
+    $doc = json_decode((string) $doc_json, true);
+    $checked = ws_page_libraries_check((is_array($doc) && isset($doc['libraries'])) ? $doc['libraries'] : null);
+
+    return $checked['names'];
+}
+
+/**
+ * The page with the libraries' scripts put in ahead of it: right after its
+ * doctype when it has one (a script before <html> lands in the head and the
+ * page keeps its standards mode), else first. A source holding "</script"
+ * or "<!--" would end or swallow its element, so it is left out. Pure.
+ *
+ * @param string   $html
+ * @param string[] $sources the libraries' code
+ * @return string
+ */
+function ws_page_inline_scripts($html, $sources)
+{
+    $scripts = '';
+
+    foreach ($sources as $source) {
+        if (!is_string($source) || ($source === '') || (stripos($source, '</script') !== false) || (strpos($source, '<!--') !== false)) {
+            continue;
+        }
+
+        $scripts .= '<script>' . $source . "</script>\n";
+    }
+
+    if ($scripts === '') {
+        return (string) $html;
+    }
+
+    if (preg_match('/^\s*<!DOCTYPE[^>]*>/i', (string) $html, $match)) {
+        return $match[0] . "\n" . $scripts . substr((string) $html, strlen($match[0]));
+    }
+
+    return $scripts . $html;
+}
+
+/**
+ * The page as the frame shows it: with the site's own copy of each library
+ * it names.
+ *
+ * @param string   $html
+ * @param string[] $names checked by ws_page_libraries_check()
+ * @return string
+ */
+function ws_page_with_libraries($html, $names)
+{
+    $known = ws_page_libraries();
+    $sources = array();
+
+    foreach ($names as $name) {
+        if (isset($known[$name])) {
+            $code = @file_get_contents(PG_FUNCTIONS_DIR . '/' . $known[$name]['path']);
+
+            if (is_string($code)) {
+                $sources[] = $code;
+            }
+        }
+    }
+
+    return ws_page_inline_scripts($html, $sources);
+}
+
+/**
+ * The libraries the newest version of a page names.
+ *
+ * @param int $file_id
+ * @return string[]
+ */
+function ws_page_libraries_of($file_id)
+{
+    $rows = ws_page_versions($file_id);
+
+    return $rows ? ws_page_version_libraries(end($rows)['doc_json']) : array();
 }
