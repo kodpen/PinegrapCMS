@@ -122,10 +122,11 @@ $launch_camera = function ($first = false) use ($el, $heading, $para, $link, $sp
     array('effect' => 'parallax', 'speed' => 20));
 };
 
-// Launch: Colours — a radio swatch for each finish over the phone; the
-// checked one shows its picture with no script. The dots take the finish
-// from the template's plx-swatch-<key> classes. $captions adds each
-// finish's sentence under its picture (the features page).
+// The colour band, drawn as the Variant Picker block (variant-picker): a
+// radio dot for each finish under the phone; the checked one shows its
+// picture with no script. The dots take the finish from the template's
+// plx-swatch-<key> classes. $captions adds each finish's sentence under its
+// picture (the features page).
 $launch_colours = function ($title, $lead, $captions = false, $more = array()) use ($el, $heading, $para, $image, $span, $container, $attr, $colours, $models, $featured_model, $render) {
     $shots = array();
     $picks = array($el('legend', 'visually-hidden', lang('Legend'), array(), array('text' => lang('Colour'))));
@@ -136,24 +137,24 @@ $launch_colours = function ($title, $lead, $captions = false, $more = array()) u
             sprintf(lang('The %1$s in %2$s'), $models[$featured_model]['name'], $c['name']), 'img-fluid w-100 rounded-4 object-fit-cover');
         $shot = array($picture);
         if ($captions) $shot[] = $el('figcaption', 'mt-3 text-body-secondary', lang('Caption'), array(), array('text' => $c['text']));
-        $shots[] = $el('figure', 'mb-0 pg-launch-shot pg-launch-shot-' . $n, $c['name'], $shot);
+        $shots[] = $el('figure', 'mb-0 pg-variant-shot pg-variant-shot-' . $n, $c['name'], $shot);
         $input = array($attr('type', 'radio'), $attr('name', 'lx-colour'), $attr('id', 'lx-colour-' . $key), $attr('autocomplete', 'off'));
         if ($n === 1) $input[] = $attr('checked', 'checked');
-        $picks[] = $el('div', 'pg-launch-swatch', $c['name'], array(
-            $el('input', 'btn-check pg-launch-pick-' . $n, lang('Swatch Choice'), array(), array('_attrs' => $input)),
-            $el('label', 'd-flex flex-column align-items-center gap-2', lang('Swatch Label'), array(
-                $el('span', 'pg-launch-dot plx-swatch-' . $key, lang('Swatch'), array(), array('_attrs' => array($attr('aria-hidden', 'true')))),
+        $picks[] = $el('div', 'pg-variant-choice', $c['name'], array(
+            $el('input', 'btn-check pg-variant-pick pg-variant-pick-' . $n, lang('Swatch Choice'), array(), array('_attrs' => $input)),
+            $el('label', 'pg-variant-label', lang('Swatch Label'), array(
+                $el('span', 'pg-variant-dot plx-swatch-' . $key, lang('Swatch'), array(), array('_attrs' => array($attr('aria-hidden', 'true')))),
                 $span($c['name'], 'small fw-semibold', lang('Name')),
             ), array('_attrs' => array($attr('for', 'lx-colour-' . $key)))),
         ));
     }
-    return $el('section', 'py-5 pg-launch-colours text-center', lang('Colours'), array(
+    return $el('section', 'py-5 text-center pg-variant pg-variant-dots', lang('Colours'), array(
         $container(array(
             $para(lang('Colours'), 'plx-eyebrow text-uppercase fw-semibold text-primary mb-2'),
             $heading('h2', $title, 'display-6 fw-semibold mb-2'),
             $para($lead, 'lead text-body-secondary mb-4'),
-            $el('div', 'pg-launch-stage mx-auto mb-4 col-12 col-md-8 col-lg-6', lang('Picture Stage'), $shots),
-            $el('fieldset', 'd-flex justify-content-center flex-wrap gap-4 border-0 p-0 m-0', lang('Swatches'), $picks),
+            $el('div', 'mx-auto mb-4 col-12 col-md-8 col-lg-6', lang('Picture Stage'), $shots),
+            $el('fieldset', 'd-flex justify-content-center flex-wrap gap-3 border-0 p-0 m-0', lang('Swatches'), $picks),
         )),
     ), $more);
 };

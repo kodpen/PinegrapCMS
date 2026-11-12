@@ -268,6 +268,15 @@ function test_launch_assembly_home_and_features_on_launch_blocks()
 			pg_assert_same(4, count($radios), $p['key'] . ': a radio per finish');
 			pg_assert_same(1, $checked, $p['key'] . ': one finish is checked');
 			pg_assert_same(array(), array_values(array_diff($radios, $labels)), $p['key'] . ': every finish has its label');
+			// The colour band is the Variant Picker block: radio n shows
+			// picture n, and the template's swatch class colours each dot.
+			preg_match_all('/(?<![\w-])pg-variant-pick-(\d)(?![\w-])/', $classes, $picks);
+			preg_match_all('/(?<![\w-])pg-variant-shot-(\d)(?![\w-])/', $classes, $shots);
+			pg_assert_same(array('1', '2', '3', '4'), $picks[1], $p['key'] . ': a numbered Variant Picker radio per finish');
+			pg_assert_same(array('1', '2', '3', '4'), $shots[1], $p['key'] . ': a numbered Variant Picker picture per finish');
+			pg_assert_true((bool)preg_match('/(?<![\w-])pg-variant pg-variant-dots(?![\w-])/', $classes), $p['key'] . ': the picker shows colour dots');
+			pg_assert_same(4, preg_match_all('/(?<![\w-])pg-variant-dot plx-swatch-[a-z]+(?![\w-])/', $classes), $p['key'] . ': each dot takes its finish from the template');
+			pg_assert_false((bool)preg_match('/pg-launch-(colours|shot|pick|swatch|dot|stage)/', $json), $p['key'] . ': nothing of the old colour block');
 		}
 		if ($p['key'] === 'home') {
 			foreach (array('slide-up/load', 'scale/load', 'parallax', 'slide-up/view') as $e) pg_assert_true(in_array($e, $effects, true), "home moves: $e");

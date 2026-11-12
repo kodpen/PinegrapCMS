@@ -1008,6 +1008,7 @@
     "Remove image": "Görseli kaldır",
     "Remove keyframe": "Anahtar kareyi kaldır",
     "Remove language": "Dili kaldır",
+    "Remove last choice": "Son seçeneği kaldır",
     "Remove last slide": "Son slaytı kaldır",
     "Remove line": "Satırı kaldır",
     "Remove link (CSRF token included)": "Kaldır linki (CSRF token dahil)",

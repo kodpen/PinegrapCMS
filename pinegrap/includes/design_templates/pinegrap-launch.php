@@ -228,7 +228,7 @@ return array(
     // public pages place, and its plx- rules, in one User Styles
     // entry; and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array('launch-hero', 'launch-showcase', 'launch-camera', 'launch-colours', 'launch-specs', 'launch-box'), $launch_css),
+        'css'   => pg_design_template_user_styles(array('launch-hero', 'launch-showcase', 'launch-camera', 'variant-picker', 'launch-specs', 'launch-box'), $launch_css),
         'fonts' => json_encode($launch_fonts),
     ),
 );

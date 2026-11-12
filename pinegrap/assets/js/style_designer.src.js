@@ -17614,6 +17614,12 @@ const StyleDesigner = (function () {
                     ]);
                 }
 
+                // Variant Picker — choices that switch the picture above them
+                // without script; Variant Picker Options adds, removes and restyles them.
+                if (ctype === 'variant-picker') {
+                    return _sdVariantPicker();
+                }
+
                 // CTA: Simple — centered banner on subtle bg, h2 + lead + 2 CTAs
                 if (ctype === 'cta-simple') {
                     return createNode('semantic', { tag: 'section', cssClass: 'py-5 bg-body-tertiary', customName: _sdT('CTA (Banner)') }, [
@@ -44928,6 +44934,7 @@ const StyleDesigner = (function () {
         var isDropdownTrigger = _bsToggleAttr === 'dropdown';
         // Navbar root (nav.navbar — composite exploded navbar; shows dedicated Navbar Options)
         var isNavbarRoot = tag === 'nav' && clsList.indexOf('navbar') !== -1;
+        var isVariantPicker = clsList.indexOf('pg-variant') !== -1;
         // Carousel root (has 'carousel' class, not carousel-inner/item/indicators/control)
         var isCarousel   = clsList.indexOf('carousel') !== -1
             && clsList.indexOf('carousel-inner')       === -1
@@ -45071,6 +45078,7 @@ const StyleDesigner = (function () {
                (isCard ? propsCardOptions(n) : '') +
                (isCardGroup ? propsCardGroupOptions(n) : '') +
                (isCarousel ? propsCarouselOptions(n) : '') +
+               (isVariantPicker ? propsVariantOptions(n) : '') +
                (isAlertRoot ? propsAlertOptions(n) : '') +
                (isPopoverTrigger ? propsPopoverOptions(n) : '') +
                (isTable ? propsTableOptions(n) : '') +
@@ -45692,6 +45700,7 @@ const StyleDesigner = (function () {
                                      'footer-minimal', 'footer-multi-col', 'footer-newsletter',
                                      'carousel', 'modal', 'offcanvas', 'dropdown',
                                      'hero-centered', 'hero-split', 'hero-image-bg', 'spotlight-media',
+                                     'variant-picker',
                                      'cta-simple', 'cta-inline', 'cta-gradient',
                                      'features-grid', 'features-alt', 'features-list',
                                      'testimonial-single', 'testimonial-grid', 'testimonial-carousel',
@@ -47096,6 +47105,29 @@ const StyleDesigner = (function () {
             if (node.children) node.children.forEach(walk);
         })(scope);
         return ids;
+    }
+
+    /**
+     * The Variant Picker section of a selected Variant Picker block (class
+     * pg-variant): its look (colour dots or text pills) and its number of
+     * choices, two to six (_sdVariantAddChoice() / _sdVariantRemoveChoice()).
+     */
+    function propsVariantOptions(n) {
+        var count = _sdVariantParts(n).choices.length;
+        var look = _sdVariantLook(n);
+        var lookBtn = function (value, text) {
+            return '<button type="button" class="btn btn-outline theme-secondary' + (look === value ? ' active' : '') + '" data-vp-action="look" data-vp-look="' + value + '" data-vp-node-id="' + n._id + '" aria-pressed="' + (look === value ? 'true' : 'false') + '">' + esc(text) + '</button>';
+        };
+        var h = '';
+        h += row(_sdT('Look'),
+            '<div class="btn-group btn-group-sm w-100">' + lookBtn('dots', _sdT('Colour dots')) + lookBtn('pills', _sdT('Text pills')) + '</div>');
+        h += row(_sdT('Choices'),
+            '<div class="btn-group btn-group-sm w-100">' +
+            '<button type="button" class="btn btn-outline theme-secondary" data-vp-action="remove" data-vp-node-id="' + n._id + '" title="' + esc(_sdT('Remove last choice')) + '" aria-label="' + esc(_sdT('Remove last choice')) + '"' + (count <= _SD_VARIANT_MIN ? ' disabled' : '') + '><i class="bi bi-dash-lg"></i></button>' +
+            '<span class="btn btn-outline theme-secondary disabled" style="cursor:default">' + count + '</span>' +
+            '<button type="button" class="btn btn-outline theme-secondary" data-vp-action="add" data-vp-node-id="' + n._id + '" title="' + esc(_sdT('Add choice')) + '" aria-label="' + esc(_sdT('Add choice')) + '"' + (count < 1 || count >= _SD_VARIANT_MAX ? ' disabled' : '') + '><i class="bi bi-plus-lg"></i></button>' +
+            '</div>');
+        return sect('bi-palette', _sdT('Variant Picker'), h);
     }
 
     /**
@@ -50479,6 +50511,24 @@ const StyleDesigner = (function () {
             if (el.tagName === 'INPUT') {
                 el.addEventListener('input', function () { el.dispatchEvent(new Event('change')); });
             }
+        });
+
+        // Variant Picker: look, add or remove a choice. The undo snapshot is
+        // taken only when the helper changes the tree.
+        document.querySelectorAll('#sd-properties [data-vp-action]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var hit = _findNodeAnywhereById(this.getAttribute('data-vp-node-id') || '');
+                if (!hit) return;
+                var action = this.getAttribute('data-vp-action');
+                var before = function () { saveState(); };
+                var done = action === 'add' ? _sdVariantAddChoice(hit.node, before)
+                    : action === 'remove' ? _sdVariantRemoveChoice(hit.node, before)
+                    : action === 'look' ? _sdVariantSetLook(hit.node, this.getAttribute('data-vp-look'), before)
+                    : false;
+                if (!done) return;
+                if (hit.sid) _sharedDirty[hit.sid] = true;
+                render();
+            });
         });
 
         // Carousel: add/remove slide
@@ -73726,7 +73776,8 @@ const StyleDesigner = (function () {
             { label: _sdT('Hero: Split'),                 type: 'component', icon: 'bi-layout-split', extra: { componentType: 'hero-split' } },
             { label: _sdT('Hero: Image Background'),       type: 'component', icon: 'bi-image-alt',    extra: { componentType: 'hero-image-bg' } },
             { label: _sdT('Hero: Full-Screen Media'),      type: 'component', icon: 'bi-fullscreen',   extra: { componentType: 'spotlight-media' } },
-            { label: _sdT('CTA: Banner'),                 type: 'component', icon: 'bi-megaphone',    extra: { componentType: 'cta-simple' } },
+            { label: _sdT('Variant Picker'),               type: 'component', icon: 'bi-palette',      extra: { componentType: 'variant-picker' } },
+            { label: _sdT('CTA: Banner'),                type: 'component', icon: 'bi-megaphone',    extra: { componentType: 'cta-simple' } },
             { label: _sdT('CTA: Inline'),                 type: 'component', icon: 'bi-arrow-right-circle', extra: { componentType: 'cta-inline' } },
             { label: _sdT('CTA: Gradient'),               type: 'component', icon: 'bi-gem',          extra: { componentType: 'cta-gradient' } },
             { label: _sdT('Features: Grid'),              type: 'component', icon: 'bi-grid-3x3-gap',          extra: { componentType: 'features-grid' } },
@@ -73857,7 +73908,7 @@ const StyleDesigner = (function () {
     function _sdBlockPaletteGroups() {
         var groups = [
             { title: _sdT('Page Header'),      icon: 'bi-window-sidebar',     match: ['navbar-', 'hero-', 'breadcrumbs-'] },
-            { title: _sdT('Marketing'),        icon: 'bi-megaphone',          match: ['cta-', 'features-', 'stats-', 'pricing-', 'compare-', 'logos-', 'spotlight-'] },
+            { title: _sdT('Marketing'),        icon: 'bi-megaphone',          match: ['cta-', 'features-', 'stats-', 'pricing-', 'compare-', 'logos-', 'spotlight-', 'variant-'] },
             { title: _sdT('Creative'),         icon: 'bi-magic',              match: ['bento-', 'marquee-', 'showcase-', 'quote-', 'gallery-', 'scroller-'] },
             { title: _sdT('Social Proof'),     icon: 'bi-patch-check',        match: ['testimonial-', 'team-'] },
             { title: _sdT('Services & Booking'), icon: 'bi-calendar-check',   match: ['services-', 'steps-', 'booking-'] },
@@ -73891,6 +73942,193 @@ const StyleDesigner = (function () {
         var out = groups.filter(function (g) { return g.items.length; });
         if (other.items.length) out.push(other);
         return out;
+    }
+
+    // ── Variant Picker ──────────────────────────────────────────────────
+    // A general block (Marketing): two to six radio choices under a stage of
+    // pictures, one picture per choice. The pg-variant rule shows the checked
+    // choice's picture, so it works with no script, in the canvas too. The
+    // section's look class draws the choices as colour dots over their names
+    // (pg-variant-dots) or as text pills (pg-variant-pills). Choice n is the
+    // radio pg-variant-pick-n with the picture pg-variant-shot-n; Variant
+    // Picker Options adds, removes and restyles them through these helpers.
+    var _SD_VARIANT_MIN = 2;
+    var _SD_VARIANT_MAX = 6;
+
+    /* @pg-site-output */
+    function _sdVariantPicker() {
+        var kit = _sdBlockKit();
+        var name = kit.uid('vp');
+        var samples = [
+            [_sdT('Graphite'), 'variant-graphite', '#2b2f36'],
+            [_sdT('Sand'), 'variant-sand', '#e8e4dc'],
+            [_sdT('Mist Blue'), 'variant-blue', '#7d8fa6'],
+            [_sdT('Rose'), 'variant-rose', '#c9a7b4']
+        ];
+        var shots = [], choices = [];
+        samples.forEach(function (s, i) {
+            var n = i + 1, label = s[0];
+            shots.push(kit.img(s[1], 900, 900, _sdT('Shown in {var}', label), 'img-fluid w-100 rounded-4 object-fit-cover pg-variant-shot pg-variant-shot-' + n));
+            var attrs = [{ name: 'type', value: 'radio' }, { name: 'name', value: name }, { name: 'id', value: name + '-' + n }, { name: 'autocomplete', value: 'off' }];
+            if (n === 1) attrs.push({ name: 'checked', value: 'checked' });
+            choices.push(kit.div('pg-variant-choice', _sdT('Choice {var}', n), [
+                kit.tag('input', 'btn-check pg-variant-pick pg-variant-pick-' + n, _sdT('Radio'), [], attrs),
+                kit.tag('label', 'pg-variant-label', _sdT('Label'), [
+                    // The dot's colour sits in the style attribute, the Background control's store.
+                    kit.tag('span', 'pg-variant-dot', _sdT('Swatch Dot'), [], [{ name: 'aria-hidden', value: 'true' }, { name: 'style', value: 'background-color: ' + s[2] + ';' }]),
+                    kit.h('span', label, 'small fw-semibold')
+                ], [{ name: 'for', value: name + '-' + n }])
+            ]));
+        });
+        return kit.section('py-5 text-center pg-variant pg-variant-dots', _sdT('Variant Picker'), [
+            kit.h('h2', _sdT('Pick your finish'), 'display-6 fw-bold mb-2'),
+            kit.p(_sdT('Four colours, one design: choose the one that suits you.'), 'lead text-body-secondary mb-4'),
+            kit.div('mx-auto mb-4 col-12 col-md-8 col-lg-6', _sdT('Picture Stage'), shots),
+            kit.tag('fieldset', 'd-flex justify-content-center flex-wrap gap-3 border-0 p-0 m-0', _sdT('Choices'), [
+                kit.tag('legend', 'visually-hidden', _sdT('Legend'), [ kit.h('span', _sdT('Colour')) ])
+            ].concat(choices))
+        ]);
+    }
+
+    function _sdVariantHas(node, cls) {
+        return !!(node && node.props && (' ' + (node.props.cssClass || '') + ' ').indexOf(' ' + cls + ' ') !== -1);
+    }
+
+    function _sdVariantAttr(node, name) {
+        var attrs = (node && node.props && node.props._attrs) || [];
+        for (var i = 0; i < attrs.length; i++) if (attrs[i] && attrs[i].name === name) return attrs[i];
+        return null;
+    }
+
+    // The picker's choices and pictures, each with the node that holds it, in
+    // tree order. The search stops at a choice or a picture, and at another
+    // picker nested inside this one.
+    function _sdVariantParts(root) {
+        var parts = { choices: [], shots: [] };
+        (function walk(node) {
+            (node && node.children || []).forEach(function (c) {
+                if (_sdVariantHas(c, 'pg-variant-choice')) parts.choices.push({ node: c, parent: node });
+                else if (_sdVariantHas(c, 'pg-variant-shot')) parts.shots.push({ node: c, parent: node });
+                else if (!_sdVariantHas(c, 'pg-variant')) walk(c);
+            });
+        })(root);
+        return parts;
+    }
+
+    // 'pills' or 'dots' (also for a section with neither class).
+    function _sdVariantLook(root) {
+        return _sdVariantHas(root, 'pg-variant-pills') ? 'pills' : 'dots';
+    }
+
+    // The first node of the subtree (itself included) for which test is true, or null.
+    function _sdVariantFind(node, test) {
+        if (!node) return null;
+        if (test(node)) return node;
+        for (var i = 0; node.children && i < node.children.length; i++) {
+            var hit = _sdVariantFind(node.children[i], test);
+            if (hit) return hit;
+        }
+        return null;
+    }
+
+    function _sdVariantRadio(choice) {
+        return _sdVariantFind(choice, function (n) { return _sdVariantHas(n, 'pg-variant-pick') || String(n.props && n.props.tag || '') === 'input'; });
+    }
+
+    // cssClass with every class that starts with prefix and ends in digits
+    // replaced by prefix + n.
+    function _sdVariantRenumber(cls, prefix, n) {
+        var re = new RegExp('^' + prefix.replace(/-/g, '\\-') + '\\d+$');
+        return String(cls || '').split(/\s+/).filter(Boolean).map(function (c) { return re.test(c) ? prefix + n : c; }).join(' ');
+    }
+
+    // Adds choice n+1 after the last: a copy of the last choice and of the
+    // last picture, unchecked, renumbered, its id and name taken from n+1.
+    // before() runs just before the tree changes (the undo snapshot).
+    // False when the picker has no choice to copy or already holds six.
+    /* @pg-site-output */
+    function _sdVariantAddChoice(root, before) {
+        var parts = _sdVariantParts(root);
+        var count = parts.choices.length;
+        if (count < 1 || count >= _SD_VARIANT_MAX) return false;
+        if (before) before();
+        var n = count + 1;
+        var last = parts.choices[count - 1];
+        var choice = cloneTree(last.node);
+        (function fresh(node) { node._id = gid(); (node.children || []).forEach(fresh); })(choice);
+        choice.props.customName = _sdT('Choice {var}', n);
+        if (choice.props._label) choice.props._label = _sdT('Choice {var}', n);
+        var radio = _sdVariantRadio(choice);
+        var group = '', id = '';
+        if (radio) {
+            radio.props.cssClass = _sdVariantRenumber(radio.props.cssClass, 'pg-variant-pick-', n);
+            group = (_sdVariantAttr(radio, 'name') || {}).value || '';
+            id = (group || 'vp') + '-' + n;
+            radio.props.id = id;
+            radio.props._attrs = (radio.props._attrs || []).filter(function (a) { return a.name !== 'checked' && a.name !== 'id'; });
+        }
+        var label = _sdVariantFind(choice, function (node) { return String(node.props && node.props.tag || '') === 'label'; });
+        if (label && id) {
+            label.props._attrs = (label.props._attrs || []).filter(function (a) { return a.name !== 'for'; });
+            label.props._attrs.push({ name: 'for', value: id });
+        }
+        // The name: a heading node (the block) or a span with text (a template).
+        var holder = label || choice;
+        var text = _sdVariantFind(holder, function (node) { return node !== holder && !!node.props && typeof node.props.text === 'string'; });
+        if (text) text.props.text = _sdT('Choice {var}', n);
+        last.parent.children.splice(last.parent.children.indexOf(last.node) + 1, 0, choice);
+
+        var lastShot = parts.shots[parts.shots.length - 1];
+        if (lastShot) {
+            var shot = cloneTree(lastShot.node);
+            (function fresh(node) { node._id = gid(); (node.children || []).forEach(fresh); })(shot);
+            shot.props.cssClass = _sdVariantRenumber(shot.props.cssClass, 'pg-variant-shot-', n);
+            delete shot.props.id;
+            if (shot.props._label) shot.props._label = _sdT('Choice {var}', n);
+            // The picture itself, or the first one inside a figure.
+            var pic = _sdVariantFind(shot, function (node) { return !!node.props && typeof node.props.alt === 'string'; });
+            if (pic) pic.props.alt = _sdT('Shown in {var}', _sdT('Choice {var}', n));
+            lastShot.parent.children.splice(lastShot.parent.children.indexOf(lastShot.node) + 1, 0, shot);
+        }
+        return true;
+    }
+
+    // Removes the last choice and its picture (pg-variant-shot-n, else the
+    // last picture); when the removed choice was checked, the first is.
+    // False at two choices.
+    function _sdVariantRemoveChoice(root, before) {
+        var parts = _sdVariantParts(root);
+        var count = parts.choices.length;
+        if (count <= _SD_VARIANT_MIN) return false;
+        if (before) before();
+        var last = parts.choices[count - 1];
+        var radio = _sdVariantRadio(last.node);
+        var wasChecked = !!_sdVariantAttr(radio, 'checked');
+        last.parent.children.splice(last.parent.children.indexOf(last.node), 1);
+        var shot = null;
+        parts.shots.forEach(function (s) { if (_sdVariantHas(s.node, 'pg-variant-shot-' + count)) shot = s; });
+        // Without its own picture the last one goes only while the pictures
+        // outnumber the choices that stay.
+        if (!shot && parts.shots.length >= count) shot = parts.shots[parts.shots.length - 1];
+        if (shot) shot.parent.children.splice(shot.parent.children.indexOf(shot.node), 1);
+        var first = wasChecked ? _sdVariantRadio(parts.choices[0].node) : null;
+        if (first && !_sdVariantAttr(first, 'checked')) {
+            first.props._attrs = (first.props._attrs || []).concat([{ name: 'checked', value: 'checked' }]);
+        }
+        return true;
+    }
+
+    // Puts the look class 'dots' or 'pills' on the section. False for any
+    // other look, or when the section already has it.
+    /* @pg-site-output */
+    function _sdVariantSetLook(root, look, before) {
+        if ((look !== 'dots' && look !== 'pills') || !root || !root.props) return false;
+        if (_sdVariantLook(root) === look && _sdVariantHas(root, 'pg-variant-' + look)) return false;
+        if (before) before();
+        root.props.cssClass = String(root.props.cssClass || '').split(/\s+/).filter(function (c) {
+            return c && c !== 'pg-variant-dots' && c !== 'pg-variant-pills';
+        }).concat(['pg-variant-' + look]).join(' ');
+        return true;
     }
 
     // ── Block stylesheet ────────────────────────────────────────────────
@@ -74006,6 +74244,34 @@ const StyleDesigner = (function () {
         // which a transform skips.
         'pg-flip-rtl':     '[dir="rtl"] .pg-flip-rtl { display: inline-block; transform: scaleX(-1); }',
 
+        // Variant Picker: the checked choice's picture shows (the others are
+        // display:none, so a screen reader meets only that one) and fades in;
+        // :has() and descendant selectors only, so the canvas matches too.
+        // Without :has() the first picture stays. pg-variant-dots draws a
+        // colour dot over each name (its colour is the dot's inline
+        // background-color, the Background control's store), pg-variant-pills
+        // a rounded pill, the checked one in the text colour. The labels and
+        // dots carry no display utility: these rules set their display. The
+        // dot's default colour has one class only, so a design's own colour
+        // class written after it (Product Launch's plx-swatch-<key>) wins.
+        'pg-variant':      '.pg-variant .pg-variant-shot { display: none; animation: pg-variant-in .4s ease; }\n' +
+                           '.pg-variant:has(.pg-variant-pick-1:checked) .pg-variant-shot-1, .pg-variant:has(.pg-variant-pick-2:checked) .pg-variant-shot-2, ' +
+                           '.pg-variant:has(.pg-variant-pick-3:checked) .pg-variant-shot-3, .pg-variant:has(.pg-variant-pick-4:checked) .pg-variant-shot-4, ' +
+                           '.pg-variant:has(.pg-variant-pick-5:checked) .pg-variant-shot-5, .pg-variant:has(.pg-variant-pick-6:checked) .pg-variant-shot-6 { display: block; }\n' +
+                           '@supports not selector(:has(a)) { .pg-variant .pg-variant-shot-1 { display: block; } }\n' +
+                           '@keyframes pg-variant-in { from { opacity: 0; } }\n' +
+                           '.pg-variant .pg-variant-label { display: inline-flex; align-items: center; gap: .5rem; cursor: pointer; }\n' +
+                           '.pg-variant-dots .pg-variant-label { flex-direction: column; }\n' +
+                           '.pg-variant-dot { background-color: var(--bs-secondary-bg); }\n' +
+                           '.pg-variant .pg-variant-dot { display: inline-block; width: 2.25rem; height: 2.25rem; border: 2px solid var(--bs-border-color); border-radius: 50%; }\n' +
+                           '.pg-variant .pg-variant-choice:has(.pg-variant-pick:checked) .pg-variant-dot { outline: 2px solid currentColor; outline-offset: 3px; }\n' +
+                           '.pg-variant .pg-variant-choice:has(.pg-variant-pick:focus-visible) .pg-variant-dot { outline: 2px dashed currentColor; outline-offset: 3px; }\n' +
+                           '.pg-variant-pills .pg-variant-dot { display: none; }\n' +
+                           '.pg-variant-pills .pg-variant-label { padding: .5rem 1.25rem; border: 1px solid var(--bs-border-color); border-radius: 50rem; }\n' +
+                           '.pg-variant-pills .pg-variant-choice:has(.pg-variant-pick:checked) .pg-variant-label { color: var(--bs-body-bg); background-color: var(--bs-emphasis-color); border-color: var(--bs-emphasis-color); }\n' +
+                           '.pg-variant-pills .pg-variant-choice:has(.pg-variant-pick:focus-visible) .pg-variant-label { outline: 2px dashed var(--bs-emphasis-color); outline-offset: 3px; }\n' +
+                           '@media (prefers-reduced-motion: reduce) { .pg-variant .pg-variant-shot { animation: none; } }',
+
         'pg-brand-center': '@media (min-width: 992px) { .pg-brand-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; z-index: 1; } }'
     };
     // ctype -> the rules that block needs. Kept next to the rules so adding a
@@ -74013,6 +74279,7 @@ const StyleDesigner = (function () {
     var _SD_BLOCK_CSS_NEEDS = {
         'hero-image-bg':        ['pg-hero-tall', 'pg-shade-bottom'],
         'spotlight-media':      ['pg-screen', 'pg-bleed', 'pg-shade-bottom', 'pg-shade-tint', 'pg-display-xxl'],
+        'variant-picker':       ['pg-variant'],
         'testimonial-carousel': ['pg-carousel-ink'],
         'image-carousel':       ['pg-shade-bottom', 'pg-carousel-photo'],
         'image-grid':           ['pg-ratio-1x1'],
@@ -74364,6 +74631,7 @@ const StyleDesigner = (function () {
             'hero-split':                    _sdT('An opening section in two halves: a headline, a text and two buttons beside a picture.'),
             'hero-image-bg':                 _sdT('A tall opening section on a background photo, with the headline, text and two buttons over it.'),
             'spotlight-media':               _sdT('An opening section that fills the screen with a photo from edge to edge, the headline and buttons at its foot.'),
+            'variant-picker':                _sdT('A picture over two to six choices shown as colour dots or text pills: picking one shows its own picture.'),
             'cta-simple':                    _sdT('A band that asks the visitor to act: a headline, one line of text and two buttons.'),
             'cta-inline':                    _sdT('A slim band with a headline and a short text on one side and a button on the other.'),
             'cta-gradient':                  _sdT('A band in the main colour of the design: a badge, a large offer headline, a short text and two buttons.'),
