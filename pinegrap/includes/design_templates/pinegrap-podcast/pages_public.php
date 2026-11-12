@@ -40,9 +40,10 @@ $framed = function ($src, $alt, $ratio = '4x3', $lazy = true) use ($el, $image, 
 
 // A band of text beside a picture; $flip puts the picture first from lg up.
 // The band is a search section under its anchor $id, with the topics a
-// visitor may search for that it does not say itself.
+// visitor may search for that it does not say itself. The words and the
+// picture rise in turn on view.
 $story_band = function ($id, $eyebrow, $title, $texts, $picture, $alt, $flip = false, $more = array(), $topics = '', $class = 'py-5')
-    use ($el, $heading, $para, $container, $row, $col, $framed, $searchable) {
+    use ($el, $heading, $para, $container, $row, $col, $rise, $framed, $searchable) {
     $words = array(
         $para($eyebrow, 'ppd-eyebrow text-uppercase fw-semibold text-primary mb-2'),
         $heading('h2', $title, 'ppd-display display-6 mb-3'),
@@ -53,10 +54,10 @@ $story_band = function ($id, $eyebrow, $title, $texts, $picture, $alt, $flip = f
     }
     return $el('section', $class, $title, array(
         $container(array(
-            $row(array(
+            $rise($row(array(
                 $col(array_merge($words, $more), '', '6', '', '12', $flip ? 'order-lg-last' : ''),
                 $col(array($framed($picture, $alt)), '', '6'),
-            ), '4', '', 'g-lg-5 align-items-center'),
+            ), '4', '', 'g-lg-5 align-items-center'), 150),
         )),
     ), $searchable($id, $topics));
 };
@@ -153,7 +154,9 @@ $episode_hero = function () use ($el, $heading, $para, $link, $image, $span, $ic
     $fact = function ($icon_name, $node) use ($el, $icon) {
         return $el('div', 'd-inline-flex align-items-center gap-2', lang('Detail'), array($icon($icon_name, 'text-primary-emphasis'), $node));
     };
-    $app_links = array($para(lang('Also in your podcast app'), 'small text-body-secondary mb-0 me-1'));
+    // The icons keep together, so on a phone they wrap under the line as one
+    // row instead of leaving the last one alone.
+    $app_links = array();
     foreach ($apps as $a) {
         $app_links[] = $el('a', 'btn border link-body-emphasis d-inline-flex align-items-center justify-content-center px-2', $a['name'],
             array($icon($a['icon'])), array('href' => '#', '_attrs' => array($attr('aria-label', sprintf(lang('Listen on %s'), $a['name'])))));
@@ -178,7 +181,10 @@ $episode_hero = function () use ($el, $heading, $para, $link, $image, $span, $ic
             $link(lang('Listen Now'), '{{page:episodes}}', 'btn btn-primary btn-lg px-4'),
             $link(lang('All Podcasts'), '{{page:podcasts}}', 'btn btn-lg border px-4 link-body-emphasis'),
         )),
-        $el('div', 'd-flex flex-wrap align-items-center gap-2 mt-4', lang('Podcast Apps'), $app_links),
+        $el('div', 'd-flex flex-wrap align-items-center gap-2 mt-4', lang('Podcast Apps'), array(
+            $para(lang('Also in your podcast app'), 'small text-body-secondary mb-0 me-1'),
+            $el('div', 'd-flex gap-2', lang('Apps'), $app_links),
+        )),
     )), array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 700, 'delay' => 150));
 
     $chapters = array();
@@ -195,7 +201,7 @@ $episode_hero = function () use ($el, $heading, $para, $link, $image, $span, $ic
                 $heading('h2', lang('Our guest'), 'ppd-display h5 fw-bold mb-3'),
                 $el('div', 'd-flex align-items-center gap-3 mb-3', lang('Name'), array(
                     $image($portrait($g['name'], 96), $g['name'], 'rounded-circle object-fit-cover flex-shrink-0',
-                        array('_attrs' => array($attr('width', '96'), $attr('height', '96'), $attr('loading', 'lazy')))),
+                        array('width' => '96', 'height' => '96', '_attrs' => array($attr('loading', 'lazy')))),
                     $el('div', '', lang('Name'), array(
                         $para($g['name'], 'fw-semibold mb-0'),
                         $para($g['role'], 'small text-body-secondary mb-0'),
@@ -285,8 +291,8 @@ $host_profiles = function () use ($el, $heading, $para, $link, $image, $span, $c
         $cards[] = $col(array(
             $el('article', 'card h-100 border-0 shadow-sm', lang('Profile Card'), array(
                 $el('div', 'card-body d-flex flex-column flex-sm-row gap-4 p-4', lang('Profile Body'), array(
-                    $image($portrait($h['name'], 240), $h['name'], 'rounded-4 object-fit-cover flex-shrink-0',
-                        array('_attrs' => array($attr('width', '112'), $attr('height', '112'), $attr('loading', 'lazy')))),
+                    $image($portrait($h['name'], 240), $h['name'], 'rounded-4 object-fit-cover flex-shrink-0 align-self-start',
+                        array('width' => '112', 'height' => '112', '_attrs' => array($attr('loading', 'lazy')))),
                     $el('div', 'flex-grow-1', lang('Profile Copy'), array(
                         $heading('h3', $h['name'], 'ppd-display h5 fw-bold mb-1'),
                         $para($h['role'], 'text-primary-emphasis fw-semibold small mb-2'),

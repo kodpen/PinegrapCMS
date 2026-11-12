@@ -42,7 +42,7 @@ description: Order of the polishing round after Launch: every shipped template's
 
 - Library: `-1` #8794 done; `-2` open.
 
-- Podcast: `-1` #8785 done; `-2` open.
+- Podcast: `-1` #8785, `-2` #8845 done.
 
 - Recruitment: `-1`, `-2` open.
 

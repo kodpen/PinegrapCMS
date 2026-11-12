@@ -568,7 +568,9 @@ $account_bar_tree = function () use ($el, $widget, $shared, $lang_switcher) {
 // supporter. The links to the current page are marked active on the server
 // (smart active state), so one header serves every page. The support page
 // stands without the shop (it links the contact page then), so the header
-// stands on a site without the shop.
+// stands on a site without the shop. The menu opens out from 1200 px: six
+// links and the button need about 1,100 px, more than the 960 px container
+// between 992 and 1199 px, so there they stay behind the toggler.
 $header = function () use ($el, $link, $icon, $span, $attr) {
     $items = array();
     foreach (array(
@@ -582,7 +584,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link($n[1], '{{page:' . $n[0] . '}}', 'nav-link text-nowrap')));
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
-        $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
+        $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $icon('bi-mic', 'fs-4 text-primary'),
@@ -599,8 +601,8 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
                     $attr('aria-label', lang('Toggle navigation')),
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
-                    $el('ul', 'navbar-nav ms-lg-auto me-lg-3 column-gap-lg-2 py-3 py-lg-0', lang('Nav Menu'), $items, array('smartActive' => true)),
-                    $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center gap-2 pb-2 pb-lg-0', lang('Header Actions'), array(
+                    $el('ul', 'navbar-nav ms-xl-auto me-xl-3 column-gap-xl-2 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
+                    $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
                         $el('a', 'btn btn-primary rounded-pill d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
                             $icon('bi-heart'),
                             $span(lang('Support Us'), '', lang('Link Text')),
@@ -776,7 +778,7 @@ $episode_row = function ($sample_key = 'kitchen-12') use ($el, $span, $para, $li
     return $el('article', 'd-flex flex-column flex-md-row gap-3 gap-md-4 py-4 border-bottom', lang('Episode Row'), array(
         $el('span', 'pg-field-value d-block flex-shrink-0 ppd-thumb rounded-3 overflow-hidden bg-body-tertiary', lang('Picture Frame'), array(
             $image($photo('cover-' . $e['podcast'], 240, 240), $podcasts[$e['podcast']]['title'], 'w-100 h-100 object-fit-cover',
-                array_merge($pd_podcast_ref(array('src' => 'cover', 'alt' => 'title')), array('_attrs' => array($attr('loading', 'lazy'), $attr('width', '120'), $attr('height', '120'))))),
+                array_merge($pd_podcast_ref(array('src' => 'cover', 'alt' => 'title')), array('width' => '120', 'height' => '120', '_attrs' => array($attr('loading', 'lazy'))))),
         )),
         $el('div', 'flex-grow-1', lang('Episode Details'), array(
             $el('p', 'd-flex flex-wrap gap-2 small text-body-secondary mb-1', lang('Episode Facts'), array(
@@ -866,7 +868,7 @@ $host_card = function ($key) use ($el, $heading, $para, $image, $col, $attr, $po
     $h = $hosts[$key];
     return $col(array(
         $el('article', 'text-center', lang('Host Card'), array(
-            $image($portrait($h['name'], 320), $h['name'], 'rounded-circle mb-3', array('_attrs' => array($attr('width', '160'), $attr('height', '160'), $attr('loading', 'lazy')))),
+            $image($portrait($h['name'], 320), $h['name'], 'rounded-circle mb-3', array('width' => '160', 'height' => '160', '_attrs' => array($attr('loading', 'lazy')))),
             $heading('h3', $h['name'], 'ppd-display h5 mb-1'),
             $para($h['role'], 'small fw-semibold text-primary mb-2'),
             $para($h['bio'], 'small text-body-secondary mb-0'),
