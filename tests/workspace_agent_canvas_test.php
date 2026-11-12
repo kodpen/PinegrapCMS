@@ -209,7 +209,7 @@ function test_workspace_agent_canvas_read()
 	pg_assert_same('svg', $read['layers'][0]['type'], 'the drawing first');
 	pg_assert_same($doc['layers'][0]['markup'], $read['layers'][0]['markup'], 'its markup');
 	pg_assert_same(null, $read['layers'][0]['text'], 'no text on an svg layer');
-	pg_assert_same(array('l1', 'text', null, 5.5, 7, 100, 20, 15, true, 'Hello', '#ff0000', null), array_values($read['layers'][1]), 'a text layer');
+	pg_assert_same(array('l1', 'text', null, null, 5.5, 7, 100, 20, 15, true, 'Hello', '#ff0000', null), array_values($read['layers'][1]), 'a text layer');
 	pg_assert_same(array(null, null, null), array($read['layers'][2]['text'], $read['layers'][2]['color'], $read['layers'][2]['markup']), 'a shape has no text or markup');
 	pg_assert_same(array('version' => 1, 'source' => 'agent', 'user_id' => 4, 'agent_id' => 7, 'agent' => 'drawer', 'created_at' => 100), $read['versions'][0], 'an agent\'s version');
 	pg_assert_same(array(9, null, null), array($read['versions'][1]['user_id'], $read['versions'][1]['agent_id'], $read['versions'][1]['agent']), 'a person\'s save carries the agent\'s by along, and is still theirs');

@@ -24,3 +24,4 @@ description: Previous/next buttons of the scroller-cards block: the row marker, 
 ## What guards it?
 - `tests/designer_blocks_test.php`: the builder writes the buttons, marker, `aria-controls` = row id, no hint text; its only one-way icons are the two chevrons with `pg-flip-rtl`; the script reads the hooks; the canvas and preview load it.
 - `tests/designer_scroller_test.php`: marker detection, injection once before the last `</body>`, escaping, preview expression = server expression.
+- Wide slides option: [[designer-scroller-wide-slides]].

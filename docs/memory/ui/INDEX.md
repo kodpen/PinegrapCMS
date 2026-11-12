@@ -27,7 +27,8 @@
 - back-arrow-no-copies.md: The way back to a parent or list screen is only the back arrow and the breadcrumb; which back-to-list copies were removed and where the screens now go back [decision: decisions-made-product-14.md]
 - back-arrow-targets.md: The back arrow of a panel screen (pg_page_shell 'cancel') goes where its Save goes, send_to first; the screens fixed for it and the ones that keep another target
 - barcode-scanner-detection.md: Barcode stock screens and Create Order: the scanner listener ignores fields, dialogs and blank codes; Last Scans rows built as text; the stock screens' wide layout
-- bell-read-rule.md: When a bell row is read: not on opening the bell; its button, title or Mark as read dot reads it, a fold head its runs; Mark all as read reads only rows the caller sees [decision: here]
+- bell-actions.md: A bell row's in-place action (BP4): Approve, Try again, Mark as done, offered only when the reader may run it (ws_bell_act()); after success the row is read and the list redrawn [decision: decisions-made-panel-4.md]
+- bell-read-rule.md: When a bell row is read: not on opening the bell; its button, title or Mark as read dot reads it, a fold head its runs; Mark all as read reads only rows the caller sees [decision: decisions-made-panel-4.md]
 - bell-refusals.md: What the bell panel shows when loading, marking read or unread or Delete All Notifications is refused or fails (no endless spinner, refused rows put back)
 - bell-row.md: A bell row in the drawer: tag, dot, title; place, time, button, menu; a two-line excerpt; a Workspace row's short title ("Ada asked you") with its channel as the place [decision: decisions-made-panel-4.md]
 - booking-agenda.md: Booking agenda (view_bookings.php, edit_booking.php, #6231): views, who sees what, staff-made bookings, status moves, cancel reason, audit, search
@@ -394,7 +395,7 @@
 - notice-button-names.md: A notice, hint or dialog names the control it means by its label, never "OK", "the button", a colour or a direction
 - notification-links.md: Bell, banner and System Status link only to screens the reader may use: Repair Software for role 0 off hosting; form submissions for the folder's editors
 - notifications-menu.md: The bell's drawer #notifications at the right edge: opened by the bell, Ctrl+Q, pgBellOpen(); head, events, focus; only the list scrolls; the poll redraws only on a rise [decision: decisions-made-panel-4.md]
-- notifications-one-inbox.md: The bell as the one inbox (#3817): module chips, Asked of me, Unread only, the search (BP3), the kept choice, a flow's runs folded, pgBellOpen() for the old inbox address, the Workspace count [decision: decisions-made-workspace-5.md, decisions-made-workspace-6.md]
+- notifications-one-inbox.md: The bell as the one inbox (#3817): module chips, Asked of me, Unread only, the search (BP3), the kept choice, a flow's runs folded, pgBellOpen() for the old inbox address, the Workspace count [decision: decisions-made-panel-4.md, decisions-made-workspace-5.md, decisions-made-workspace-6.md]
 - offer-code-key-codes.md: A saved offer's code change moves its key codes to the new code (unless another offer keeps the old one); the editor warns while the code changes; All Key Codes names an orphan
 - offer-editor.md: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON save, auto names, copy shared rows, two-sided type registry, write order, currency entity.
 - offers-list-chips.md: Offers list (view_offers.php) Flow chips and status filter chips: gift only when free, both usage limits, optional chips drawn hidden and shown by recount(), the offer-only 'Shipping {var:1}' key

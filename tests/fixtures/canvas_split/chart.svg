@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="600" height="400" viewBox="0 0 300 200" fill="#334455">
+  <title>Sales</title>
+  <defs>
+    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4f8cff"/><stop offset="1" stop-color="#1f3c88"/></linearGradient>
+  </defs>
+  <style>.axis{stroke:#999999}</style>
+  <rect id="background" x="0" y="0" width="300" height="200" fill="#f7f7f7"/>
+  <line class="axis" x1="30" y1="170" x2="280" y2="170"/>
+  <rect id="bar-1" x="50" y="90" width="40" height="80" fill="url(#bar)"/>
+  <rect id="bar-2" x="110" y="60" width="40" height="110" fill="url(#bar)" transform="rotate(10 130 115)"/>
+  <circle id="dot" cx="200" cy="80" r="12"/>
+  <ellipse cx="250" cy="120" rx="20" ry="8" transform="translate(5 -5) scale(1.5)"/>
+  <polygon points="220,170 240,140 260,170"/>
+  <path id="trend" d="M40 150 C 80 120, 120 140, 160 100 S 230 60, 270 40" fill="none" stroke="#ff6600"/>
+  <path id="pie" d="M150 30 L150 10 A20 20 0 0 1 168 38 Z"/>
+  <g id="legend" transform="translate(20 20)"><rect width="10" height="10"/><rect x="40" y="2" width="30" height="6" transform="scale(1 2)"/></g>
+  <use href="#dot" x="-60" y="40"/>
+  <rect id="skewed" x="10" y="10" width="20" height="20" transform="skewX(20)"/>
+</svg>

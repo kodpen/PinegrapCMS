@@ -33,4 +33,4 @@ description: Decisions list, panel part 4: the bell (owner 2026-11-11): a right 
 - Refused: as before, everything read on opening the bell. That earlier rule was never a recorded decision.
 
 ## Where is it built?
-- `plans/bell-panel.md` and `bell-panel-steps.md`; the technical calls (a row's module, the tag hues, the order of the steps) are the architect's, written there.
+- `ui/bell-row.md`, `bell-actions.md`, `notifications-menu.md`, `notifications-one-inbox.md`, `bell-read-rule.md`.
