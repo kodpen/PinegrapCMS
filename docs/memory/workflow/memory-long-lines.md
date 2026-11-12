@@ -4,7 +4,7 @@ description: The memory index tool refuses a memory line over 500 characters tha
 ---
 
 ## What does the tool refuse?
-- `tools/memory_index.php` (every run, `--check` included) refuses a line over 500 characters (`MAX_LINE_CHARS`; characters, not bytes) that the branch adds or rewrites in a file under `docs/memory/`. The error names the file, the line number, the length and the line's start (#8734, step MR1 of `plans/memory-rule-checks.md`).
+- `tools/memory_index.php` (every run, `--check` included) refuses a line over 500 characters (`MAX_LINE_CHARS`; characters, not bytes) that the branch adds or rewrites in a file under `docs/memory/`. The error names the file, the line number, the length and the line's start (#8734); the cluster check beside it: [[memory-cluster-check]].
 - The rule itself and why (the search tool hides a longer line): [[memory-writing]].
 - A folder README counts only its hand-written key rules block (`memory_index_readme_long_lines()`); the generated indexes are not read.
 
