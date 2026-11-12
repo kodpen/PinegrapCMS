@@ -805,7 +805,7 @@ if (!$_POST) {
     // its SEO score, read beside the form in the status column.
     $output_summary_card =
         '<div class="card mb-7">
-            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex align-items-center gap-3">
+            <h2 class="card-header bg-reset border-0 pg-title-section d-flex align-items-center gap-3">
                 ' . lang('Summary') . '<span class="ms-auto" data-pg-seo-badge="page:' . (int) $page_id . '">' . pg_seo_render_badge($seo_row) . '</span>
             </h2>
             <div class="card-body">
@@ -820,7 +820,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Edit Page'),
-            'extra classes'=>'page',
+            'extra classes'=>'page pg-measure-edit',
             'icon'=>'page',
             'heading'=>lang('Edit Page'),
             'heading_description' => lang('View and update the page, move it to another folder, or change its built-in features.'),
@@ -857,7 +857,7 @@ if (!$_POST) {
                             <div class="row">
                                 <div class="col-12">
                                     <div class="card my-7">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        <div class="card-header bg-reset border-0 pg-title-section">
                                         ' . lang('Main Informations') . '
                                         </div>
                                         <div class="card-body">
@@ -878,7 +878,7 @@ if (!$_POST) {
                                 </div>
                                 <div class="col-12">
                                     <div class="card my-7">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        <div class="card-header bg-reset border-0 pg-title-section">
                                             ' . lang('Content Options') . '
                                         </div>
                                         <div class="card-body">
@@ -906,7 +906,7 @@ if (!$_POST) {
                                 ' . $output_page_type_properties . '
                                 <div class="col-12">
                                     <div class="card my-7">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        <div class="card-header bg-reset border-0 pg-title-section">
                                             ' . lang('Search Engine Optimization') . '
                                         </div>
                                         <div class="card-body">
@@ -939,7 +939,7 @@ if (!$_POST) {
                                 </div>
                                 <div class="col-12">
                                     <div class="card my-7">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        <div class="card-header bg-reset border-0 pg-title-section">
                                             ' . lang('Site Search') . '
                                         </div>
                                         <div class="card-body">
@@ -964,7 +964,7 @@ if (!$_POST) {
                                 </div>
                                 <div class="col-12">
                                     <div class="card my-7">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        <div class="card-header bg-reset border-0 pg-title-section">
                                             ' . lang('Comments Feature') . '
                                         </div>
                                         <div class="card-body">

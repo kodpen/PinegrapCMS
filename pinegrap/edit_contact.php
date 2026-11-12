@@ -276,7 +276,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Edit Contact') . ' : ' . h(pg_contact_heading_name($row)),
-            'extra classes'=>'contact',
+            'extra classes'=>'contact pg-measure-edit',
             'icon'=>'contact', 
             'heading'=>lang('Edit Contact'),
             'heading_description' => lang('View or update this contact\'s information, subscriber status, member status, affiliate status, or contact groups.'),
@@ -294,7 +294,7 @@ if (!$_POST) {
                     ' . pg_contact_form_layout(
                         pg_contact_form_name_card($row, false) . '
                             <div class="card mb-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Contact\'s Subscriber Information') . '
                                 </h2>
                                 <div class="card-body">
@@ -318,7 +318,7 @@ if (!$_POST) {
                             ' . pg_contact_form_detail_cards($row, false, $output_parasut, pg_contact_form_group_cells($contact_groups, pg_contact_form_group_states($id, $contact_groups))),
                         pg_contact_form_picture_card(false, $image) . '
                                 <div class="card mb-7">
-                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <h2 class="card-header bg-reset border-0 pg-title-section">
                                         ' . lang('Connected Account of this Contact') . '
                                     </h2>
                                     <div class="card-body">

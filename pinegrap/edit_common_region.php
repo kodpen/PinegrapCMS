@@ -109,7 +109,7 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
     $output .= 
     pg_page_shell([
         'title'=> lang('Edit Common Region'),
-        'extra classes'=>'page',
+        'extra classes'=>'page pg-measure-edit',
         'icon'=>'page',
         'heading'=>lang('Edit Common Region'),
         'heading_description' => lang('Update this common region of shared content. (A rename will require its tag to be updated in any page styles.)'),

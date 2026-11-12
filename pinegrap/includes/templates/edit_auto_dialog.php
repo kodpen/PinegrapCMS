@@ -43,7 +43,7 @@ if (!defined('PG_INIT_LOADED')) {
                 <div class="row">
                     <div class="col-12 lg:col-8 2xl:col-9 order-1">
                         <div class="card mb-7">
-                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
                                 <?=lang('Dialog Options')?>
                             </h2>
                             <div class="card-body pt-0">
@@ -83,7 +83,7 @@ if (!defined('PG_INIT_LOADED')) {
                             </div>
                         </div>
                         <div class="card mb-7">
-                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
                                 <?=lang('Display')?>
                             </h2>
                             <div class="card-body pt-0">
@@ -161,7 +161,7 @@ if (!defined('PG_INIT_LOADED')) {
                         <div class="position-sticky" style="top:3.3rem;">
                             <?php if ($screen == 'edit'): ?>
                                 <div class="card mb-7">
-                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <h2 class="card-header bg-reset border-0 pg-title-section">
                                         <?=lang('Status')?>
                                     </h2>
                                     <div class="card-body pt-0">
@@ -178,7 +178,7 @@ if (!defined('PG_INIT_LOADED')) {
                                 </div>
                             <?php endif ?>
                             <div class="card mb-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     <?=lang('Summary')?>
                                 </h2>
                                 <div class="card-body pt-0">

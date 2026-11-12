@@ -78,7 +78,7 @@ if (!$_POST) {
     echo
         pg_page_shell([
             'title'=> lang('Edit Container'),
-            'extra classes'=>'products',
+            'extra classes'=>'products pg-measure-edit',
             'icon'=>'store',
             'heading'=>lang('Edit Container'),
             'heading_description' => lang('Edit a shipping container (e.g. box) that products are packaged in.'),

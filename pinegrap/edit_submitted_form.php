@@ -436,7 +436,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Edit Submitted Form'),
-            'extra classes'=>'form',
+            'extra classes'=>'form pg-measure-edit',
             'icon'=>'form',
             'heading'=>lang('Edit Submitted Form'),
             'heading_description' => lang('View or update this submitted form. Office use only fields are also visible.'),

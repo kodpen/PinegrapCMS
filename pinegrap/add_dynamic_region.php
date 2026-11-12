@@ -31,7 +31,7 @@ if (!isset($_POST['name'])) {
     $output =
     pg_page_shell([
         'title'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Dynamic Region'))),
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-edit',
         'icon'=>'design',
         'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('Dynamic Region'))),
         'heading_description' => lang('Create a new dynamic region that contains PHP code and can be added to any page style.'),

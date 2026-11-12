@@ -75,7 +75,7 @@ if (!$_POST) {
     print 
     pg_page_shell([
         'title'=> lang('Edit Login Region'),
-        'extra classes'=>'page',
+        'extra classes'=>'page pg-measure-edit',
         'icon'=>'page',
         'heading'=>lang('Edit Login Region'),
         'heading_description' => lang('Update the messages displayed in the login region before and after users log in.'),

@@ -35,7 +35,7 @@ if (!$_POST) {
     print
         pg_page_shell([
             'title'=> lang('Create Verified Shipping Address'),
-            'extra classes'=>'products',
+            'extra classes'=>'products pg-measure-edit',
             'icon'=>'store',
             'heading'=>lang('Create Verified Shipping Address'),
             'heading_description' => lang('Create a new verified shipping address and assign it to any existing state.'),

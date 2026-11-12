@@ -29,7 +29,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title'=> lang('Create Product Attribute'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-edit',
         'icon'=>'store',
         'heading'=>lang('Create Product Attribute'),
         'heading_description' => lang('Create a new product attribute.'),

@@ -124,7 +124,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title' => lang('Return an Invoice'),
-        'extra classes' => 'erp erp_invoices',
+        'extra classes' => 'erp erp_invoices pg-measure-edit',
         'icon' => 'erp',
         'heading' => lang('Return an Invoice'),
         'heading_description' => lang('Give back what came back. The original is left as it was issued; this is a document of its own.'),
@@ -150,7 +150,7 @@ if (!$_POST) {
                 <div class="row">
                 <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 <div class="card my-7">
-                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <h2 class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Return an Invoice') . '
                     </h2>
                     <div class="card-body">
@@ -168,7 +168,7 @@ if (!$_POST) {
                 </div>
 
                 <div class="card my-7">
-                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <h2 class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Lines') . '
                     </h2>
                     <div class="card-body p-0 position-relative table-responsive">
@@ -197,7 +197,7 @@ if (!$_POST) {
                 <div class="col-12 lg:col-4 2xl:col-3 order-2">
                     <div class="position-sticky" style="top:3.3rem;">
                         <div class="card my-7">
-                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Summary') . '</h2>
+                            <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Summary') . '</h2>
                             <div class="card-body pt-0">
                                 <dl class="row mb-0">
                                     <dt class="sm:col-5 fg-secondary fw-normal">' . lang('Invoice') . '</dt><dd class="sm:col-7"><a href="' . h($invoice_url) . '">' . h($invoice['full_number']) . '</a></dd>

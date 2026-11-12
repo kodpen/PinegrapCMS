@@ -330,7 +330,7 @@ if (!isset($_POST['name'])) {
         $edit_file_button_value = 'Edit ' . strtoupper($file_extension);
         $output_file_content_row = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <div class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('File Content') . '
                 </div>
                 <div class="card-body">
@@ -357,7 +357,7 @@ if (!isset($_POST['name'])) {
         $svg_h = (is_numeric($image_height) && $image_height > 0) ? (int)$image_height : 0;
         $output_convert_rows = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <div class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Convert') . '
                 </div>
                 <div class="card-body">
@@ -457,7 +457,7 @@ if (!isset($_POST['name'])) {
             if($file['type'] !== 'webp'){
                 $output_convert_rows = '
                     <div class="card my-7">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                        <div class="card-header bg-reset border-0 pg-title-section">
                             ' . lang('Convert') . '
                         </div>
                         <div class="card-body">
@@ -616,7 +616,7 @@ if (!isset($_POST['name'])) {
     pg_page_shell(
         array(
             'title'=> lang('Edit File'),
-            'extra classes'=>'file',
+            'extra classes'=>'file pg-measure-edit',
             'icon'=>'file', 
             'heading'=>lang('Edit File'),
             'heading_description' => lang('Rename file, move it to another folder, or change its description.'),
@@ -651,7 +651,7 @@ if (!isset($_POST['name'])) {
                     ' . pg_design_file_form_layout(
                         '
                             <div class="card my-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Main Informations') . '
                                 </h2>
                                 <div class="card-body">

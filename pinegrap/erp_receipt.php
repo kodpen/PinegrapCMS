@@ -181,7 +181,7 @@ $title = $is_collection ? lang('Receipt') : lang('Payment');
 // The receipt itself.
 $output_header = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div class="card-header bg-reset border-0 pg-title-section d-flex flex-wrap justify-content-between align-items-center gap-3">
                     <span>' . h($title) . ' #' . $cash_id . '</span>
                     ' . ($is_cancelled
                         ? '<span class="badge theme-secondary"><i class="bi bi-x-circle me-1"></i>' . lang('Cancelled') . '</span>'
@@ -254,7 +254,7 @@ if ($output_allocation_rows === '') {
 
 $output_allocations = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div class="card-header bg-reset border-0 pg-title-section d-flex flex-wrap justify-content-between align-items-center gap-3">
                     <span>' . lang('Allocations') . '</span>
                     <span class="small fw-normal fg-secondary">' . lang('Unallocated') . ': <span class="fw-bold ' . (($unallocated > 0 && !$no_allocation) ? 'fg-warning' : '') . '" id="unallocated_amount">' . $money($no_allocation ? 0 : $unallocated) . '</span></span>
                 </div>
@@ -312,7 +312,7 @@ if (!$readonly && !$no_allocation && ($unallocated > 0)) {
                 <input type="hidden" name="id" value="' . $cash_id . '" />
                 <input type="hidden" name="erp_action" value="allocate" />
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <div class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Allocate to open invoices') . '
                     </div>
                     <div class="card-body">
@@ -425,7 +425,7 @@ if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
 echo
 pg_page_shell([
     'title' => $title,
-    'extra classes' => 'erp erp_cash',
+    'extra classes' => 'erp erp_cash pg-measure-edit',
     'icon' => 'erp',
     'heading' => $title . ' #' . $cash_id,
     'heading_description' => lang('The movement, the invoices it closed, and the corrections it allows.'),

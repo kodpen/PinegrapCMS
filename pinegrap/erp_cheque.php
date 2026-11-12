@@ -96,7 +96,7 @@ $step_form = function ($step, $title, $button, $class, $fields, $note) use ($che
             ' . get_token_field() . '
             <input type="hidden" name="id" value="' . $cheque_id . '" />
             <input type="hidden" name="step" value="' . $step . '" />
-            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . $title . '</h2>
+            <h2 class="card-header bg-reset border-0 pg-title-section">' . $title . '</h2>
             <div class="card-body pt-0">
                 ' . (($note !== '') ? '<p class="fg-secondary mb-4">' . $note . '</p>' : '') . '
                 <div class="row g-3 align-items-start">
@@ -186,7 +186,7 @@ if (($output_steps === '') && !$readonly) {
 echo
 pg_page_shell([
     'title' => ($name !== '') ? h($name) : lang('Cheques and notes'),
-    'extra classes' => 'erp erp_cash',
+    'extra classes' => 'erp erp_cash pg-measure-edit',
     'icon' => 'erp',
     'heading' => h($name) . ' <span class="badge theme-' . h($state[1]) . ' ms-1 align-middle fs-md">' . h($state[0]) . '</span>',
     'heading_description' => (string) $cheque['account_title'] . ' · ' . erp_money_out_currency((int) $cheque['amount'], (string) $cheque['currency']) . ' · ' . lang(array('string' => 'due {var:1}', 'vars' => prepare_form_data_for_output((string) $cheque['due_date'], 'date', false))),
@@ -214,7 +214,7 @@ pg_page_shell([
             ' . $output_steps . '
 
             ' . (($movements !== '') ? '<div class="card my-7">
-                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Movements') . '</h2>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Movements') . '</h2>
                 <div class="card-body p-0 table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr class="fg-secondary"><th class="fw-normal">' . lang('Date') . '</th><th class="fw-normal">' . lang('Description') . '</th><th class="fw-normal">' . lang('Till') . '</th><th class="fw-normal text-end">' . lang('Amount') . '</th></tr></thead><tbody>' . $movements . '</tbody></table></div>
             </div>' : '') . '
         </div>

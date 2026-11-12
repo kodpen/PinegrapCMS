@@ -121,7 +121,7 @@ if (!$_POST) {
     }
     $output_summary = '
                                 <div class="card mb-7">
-                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <h2 class="card-header bg-reset border-0 pg-title-section">
                                         ' . lang('Summary') . '
                                     </h2>
                                     <div class="card-body pt-0">
@@ -137,7 +137,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title'=> lang('Edit Featured & New Items'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-edit',
         'icon'=>'store',
         'heading'=>lang('Edit Featured & New Items'),
         'heading_description' => lang('Update the featured and new product groups and products that should appear on catalog pages.'),
@@ -155,7 +155,7 @@ if (!$_POST) {
                     <div class="row">
                         <div class="col-12 lg:col-8 2xl:col-9 order-1">
                             <div class="card mb-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Items') . '
                                 </h2>
                                 <div class="card-body p-0 position-relative">

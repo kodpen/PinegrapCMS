@@ -142,7 +142,7 @@ if (!$_POST) {
     print
     pg_page_shell([
         'title'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Ad Region'))),
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-edit',
         'icon'=>'design',
         'heading'=>lang(array('string'=>'Edit {var:1}','vars'=>lang('Ad Region'))),
         'heading_description' => lang('Update this ad region which displays rotating ad content. (A rename will require its tag to be updated in any page styles.)'),

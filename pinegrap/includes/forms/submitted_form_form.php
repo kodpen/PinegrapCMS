@@ -1042,7 +1042,7 @@ function pg_submitted_form_status_card($title, $body)
 {
     return '
                                 <div class="card mb-7">
-                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <h2 class="card-header bg-reset border-0 pg-title-section">
                                         ' . h($title) . '
                                     </h2>
                                     <div class="card-body pt-0">' . $body . '
@@ -1061,7 +1061,7 @@ function pg_submitted_form_data_card($fields, $notice = '')
 {
     return '
                             <div class="card mb-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Form Data') . '
                                 </h2>
                                 <div class="card-body pt-0">' . $notice . '

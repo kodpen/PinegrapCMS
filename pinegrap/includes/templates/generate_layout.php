@@ -21,7 +21,7 @@ if (!defined('PG_INIT_LOADED')) {
     <div class="row">
         <div class="col-12 lg:col-8 2xl:col-9 order-1">
             <div class="card my-7">
-                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold"><?=h(lang('Layout'))?></h2>
+                <h2 class="card-header bg-reset border-0 pg-title-section"><?=h(lang('Layout'))?></h2>
                 <div class="card-body pt-0">
                     <p class="form-text mt-0"><?=h(lang('Copy & paste the code below into your custom layout.'))?></p>
                     <?=$form->field(array(
@@ -41,7 +41,7 @@ if (!defined('PG_INIT_LOADED')) {
             <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
             <div class="position-sticky" style="top:3.3rem;">
                 <div class="card my-7">
-                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold"><?=h(lang('Summary'))?></h2>
+                    <h2 class="card-header bg-reset border-0 pg-title-section"><?=h(lang('Summary'))?></h2>
                     <div class="card-body pt-0">
                         <dl class="mb-0">
                             <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
