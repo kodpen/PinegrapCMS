@@ -1,6 +1,6 @@
 ---
 name: whatsapp-cloud-api-facts
-description: Meta's WhatsApp Cloud API as read on 2026-11-12: Graph version, the ids and the permanent token, sending a template, the 24-hour window, template parts and limits, categories, prices, media, sending limits
+description: Meta's WhatsApp Cloud API on 2026-11-12: Graph version, ids and permanent token, sending a template, the 24-hour window, template limits, categories, prices, media
 ---
 
 ## Which API and version?

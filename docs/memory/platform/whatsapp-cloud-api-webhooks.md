@@ -1,6 +1,6 @@
 ---
 name: whatsapp-cloud-api-webhooks
-description: Meta's WhatsApp webhooks and error codes as read on 2026-11-12: the verify call, X-Hub-Signature-256, retries, fields, delivery and template states, usernames and BSUIDs, which error codes may be tried again
+description: Meta's WhatsApp webhooks and error codes on 2026-11-12: verify call, X-Hub-Signature-256, retries, fields, delivery and template states, BSUIDs, which codes may be retried
 ---
 
 ## How is the address verified?

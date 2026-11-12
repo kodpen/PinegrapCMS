@@ -1,6 +1,6 @@
 ---
 name: whatsapp-channel-storage
-description: WA0's answers for the WhatsApp channel plan (2026-11-12): queue, templates and customer messages in three tables of their own, SMS marketing consent as the gate, per-recipient keys as single-use key codes, the account in connect_apps
+description: WA0's answers (2026-11-12): queue, templates and customer messages in their own tables, SMS marketing consent as the gate, per-recipient keys as single-use key codes
 ---
 
 ## Who settled these, and can they change?
