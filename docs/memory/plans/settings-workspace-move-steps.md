@@ -13,7 +13,7 @@ description: Steps of plans/settings-workspace-move.md: SD1-SD2 the drawer insid
 - SW2 (M) Team and working hours, the rest, cut in two. Done (#8721, #8741):
   - SW2a Departments (add, edit, archive), Team members, Who is in the team. Done (#8721): `ui/settings-drawer-card-form.md`, `workspace/workspace-settings-card-saves.md`.
   - SW2b (S) Holidays and calendar feeds. Done (#8741): `workspace/workspace-holiday-settings.md`; the category's link card went with it.
-- SW3 (M) Claude (`ws_claude_settings_card()`: settings, test, key create and reset, its dialogs into the drawer) and Bulk changes.
+- SW3 (M) Claude (`ws_claude_settings_card()`: settings, test, key create and reset, its dialogs into the drawer) and Bulk changes. Done (#8801): `workspace/workspace-assistant-settings.md`.
 - SW4 (M) Agents (save, delete, test; the request rows' cancel, retry, knock) and Pinegrap AI (settings, test, key).
 - SW5 (M) MCP servers (`ws_mcp_settings_card()`: eleven actions, the catalogue, a person's own connections, the links of `workspace_mcp.php`).
 - SW6 (M) Channels, mail and voice: Channel templates (archive, the links of `workspace_template.php`), Mailboxes (save, test, the .eml upload in the drawer), Voice transcripts, GitHub links.

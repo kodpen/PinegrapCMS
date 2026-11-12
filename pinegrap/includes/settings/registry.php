@@ -484,10 +484,14 @@ function pg_settings_categories()
             'icon'  => 'bi-robot',
             'description' => lang('Claude, the agents, Pinegrap AI, the MCP servers and bulk changes.'),
             'sections' => array(
+                'pgset-ws-claude'            => lang('Claude in the channels'),
+                'pgset-ws-bulk'              => lang('Bulk changes by the assistants'),
                 'pgset-ws-assistants-screen' => lang('On the Workspace Settings screen'),
             ),
             'keywords' => array(
-                'pgset-ws-assistants-screen' => pg_settings_keywords(lang('workspace, claude, agent, agents, assistant, pinegrap ai, mcp, mcp server, bulk changes')),
+                'pgset-ws-claude'            => pg_settings_keywords(lang('workspace, claude, assistant, routine, key, secret, daily summary, connection')),
+                'pgset-ws-bulk'              => pg_settings_keywords(lang('workspace, bulk changes, assistant, delete in bulk, claude, pinegrap ai')),
+                'pgset-ws-assistants-screen' => pg_settings_keywords(lang('workspace, agent, agents, assistant, pinegrap ai, mcp, mcp server')),
             ),
         ),
 
@@ -917,6 +921,9 @@ function pg_settings_legacy_anchors()
         'ws-people'        => array('workspace_team', 'pgset-ws-people'),
         'ws-defaults'      => array('workspace_team', 'pgset-ws-defaults'),
         'ws-calendar'      => array('workspace_team', 'pgset-ws-calendar'),
+        // Workspace Settings cards moved into Assistants and agents.
+        'ws-claude'        => array('workspace_assistants', 'pgset-ws-claude'),
+        'ws-bulk'          => array('workspace_assistants', 'pgset-ws-bulk'),
     );
 }
 

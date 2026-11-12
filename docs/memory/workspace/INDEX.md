@@ -110,6 +110,7 @@
 - workspace-assistant-discussions.md: An assistant asked in a discussion: what it reads about it (Claude's context thread, PR #1121; Pinegrap AI's first message), where it may be asked, following [decision: decisions-made-workspace-12.md]
 - workspace-assistant-keys.md: Create on the Claude and Pinegrap AI cards, Claude's "Reset secret": the row made, scopes, config link, who sees it, one-time window, a key never given a secret [decision: here]
 - workspace-assistant-reach.md: Claude and Pinegrap AI read and answer a discussion or allowed private channel their app owner is not in through the person who asked (PR #1085)
+- workspace-assistant-settings.md: Claude in the channels and Bulk changes in Site Settings (Assistants and agents) and on Workspace Settings: field and button names, the shared saves, an unchanged pane Save, the secret drawer
 - workspace-attachment-uploads.md: How the Workspace screen sends channel and note attachments: a form part over XMLHttpRequest with a progress card and Cancel (#3745), the shared server check, base64 still taken, limits [decision: decisions-made-product-10.md]
 - workspace-booking-record.md: Booking as a Workspace record kind (tag <#booking:N>, the agenda's row rule, tag-only, bookings:read) and the four booking.* events of scheduled actions, checked against the creator's agenda
 - workspace-bookings.md: Confirmed bookings on a staff member's Workspace calendar (#6305, #6302): one reader, Work Calendar and Today, sync item ws-booking-<id>, refused move [decision: decisions-made-product-25.md]

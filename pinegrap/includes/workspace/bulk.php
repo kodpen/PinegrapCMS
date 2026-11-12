@@ -1422,44 +1422,76 @@ function ws_bulk_settings_post($viewer, $liveform)
         return;
     }
 
-    $allowed = !empty($_POST['bulk_delete']);
+    ws_bulk_settings_save(!empty($_POST['bulk_delete']));
+    $liveform->add_notice(lang('The settings were saved.'));
+}
 
+/**
+ * Stores whether the assistants may propose deleting in bulk, with its Site
+ * Log line. Both screens call it after their own checks (the database
+ * upgraded, an administrator asking).
+ *
+ * @param bool $allowed
+ */
+function ws_bulk_settings_save($allowed)
+{
     db("UPDATE config SET ws_ai_bulk_delete = '" . ($allowed ? 1 : 0) . "'");
 
     log_activity($allowed
         ? lang('the assistants of the workspace may now propose deleting records in bulk')
         : lang('the assistants of the workspace may no longer propose deleting records in bulk'), (string) ($_SESSION['sessionusername'] ?? ''));
-
-    $liveform->add_notice(lang('The settings were saved.'));
 }
 
 /**
  * The card on the settings screen: the assistants' bulk changes.
  *
- * @param string $self_url
- * @param array  $viewer
+ * In the Site Settings dialog ($form given) it has no form of its own: the
+ * switch is ws_bulk_delete, saved with the pane's Save, beside a hidden
+ * ws_bulk_card that says the card was posted (an unticked box is not).
+ *
+ * @param string      $self_url
+ * @param array       $viewer
+ * @param string|null $form the Site Settings form's id; null on Workspace Settings
  * @return string
  */
-function ws_bulk_settings_card($self_url, $viewer)
+function ws_bulk_settings_card($self_url, $viewer, $form = null)
 {
     if (!ws_bulk_ready()) {
         return '';
     }
 
     $admin = ((int) $viewer['role'] === 0);
+    $dialog = ($form !== null);
+
+    $body = '
+                    <p class="small fg-secondary">' . h(lang('Asked to change many records at once - every product\'s price, the missing meta descriptions of the pages - Pinegrap AI and Claude propose one bulk change. It shows how many records it reaches; the person who asked applies it with their own rights, record by record.')) . '</p>
+                    <div class="form-field mb-5">
+                        <div class="switch"><input class="" type="checkbox" name="' . ($dialog ? 'ws_bulk_delete' : 'bulk_delete') . '" value="1" id="ws_bulk_delete"' . (ws_bulk_delete_allowed() ? ' checked' : '') . ($admin ? '' : ' disabled') . '></div>
+                        <label class="" for="ws_bulk_delete">' . h(lang('The assistants may propose deleting records in bulk')) . '</label>
+                        <div class="form-text">' . h(lang('Off, a request such as "delete every file" is refused. Records with a Recycle Bin go there; the others are deleted for good.')) . '</div>
+                    </div>';
+
+    if ($dialog) {
+        return '
+    <div id="pgset-ws-bulk" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . h(lang('Bulk changes by the assistants')) . '
+            </div>
+            <div class="card-body">
+                ' . ($admin ? '<input type="hidden" name="ws_bulk_card" value="1">' : '') . $body . '
+                    ' . ($admin ? '' : '<div class="form-text">' . h(lang('Only an administrator can change this.')) . '</div>') . '
+            </div>
+        </div>
+    </div>';
+    }
 
     return '
             <form method="post" action="' . h($self_url) . '#ws-bulk" class="card mb-7" id="ws-bulk">
                 ' . get_token_field() . '
                 <input type="hidden" name="ws_action" value="bulk">
                 <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-collection me-1" aria-hidden="true"></i>' . h(lang('Bulk changes by the assistants')) . '</h2></div>
-                <div class="card-body">
-                    <p class="small fg-secondary">' . h(lang('Asked to change many records at once - every product\'s price, the missing meta descriptions of the pages - Pinegrap AI and Claude propose one bulk change. It shows how many records it reaches; the person who asked applies it with their own rights, record by record.')) . '</p>
-                    <div class="form-field mb-5">
-                        <div class="switch"><input class="" type="checkbox" name="bulk_delete" value="1" id="ws_bulk_delete"' . (ws_bulk_delete_allowed() ? ' checked' : '') . ($admin ? '' : ' disabled') . '></div>
-                        <label class="" for="ws_bulk_delete">' . h(lang('The assistants may propose deleting records in bulk')) . '</label>
-                        <div class="form-text">' . h(lang('Off, a request such as "delete every file" is refused. Records with a Recycle Bin go there; the others are deleted for good.')) . '</div>
-                    </div>
+                <div class="card-body">' . $body . '
                     ' . ($admin ? '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '<div class="form-text">' . h(lang('Only an administrator can change this.')) . '</div>') . '
                 </div>
             </form>';
