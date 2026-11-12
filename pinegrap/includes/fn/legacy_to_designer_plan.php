@@ -402,9 +402,11 @@ function pg_ltd_set_assets($styles)
  * What a run would write for a set: one Legacy design (its own style row,
  * with the set's asset rows), then per style what pg_ltd_plan_style() lists
  * (its frame component, its pages, components and widgets) but no flip of
- * the style itself: the classic style stays as it is, its pages take the
- * design as their style. A style the designer refuses is skipped with its
- * reason; a set none of whose styles can move is skipped as 'empty'.
+ * the classic style stays as it is, its pages take the
+ * design as their style. A common or designer region several styles place
+ * becomes one shared component, listed (and counted) under the first of
+ * them. A style the designer refuses is skipped with its reason; a set none
+ * of whose styles can move is skipped as 'empty'.
  *
  * Pure: no query.
  *
@@ -422,7 +424,9 @@ function pg_ltd_set_assets($styles)
  *                pages that move), 'body_classes', 'style_head',
  *                'mobile_pages', 'mobile', 'changes' (list of
  *                array('setting', 'from', 'to'): what its pages would show
- *                differently)), 'skip' ('' or 'empty'), 'writes'
+ *                differently), 'writes' (its own, the design not counted)),
+ *                'mobile_pages' (pages of its moving styles that have a
+ *                mobile style), 'skip' ('' or 'empty'), 'writes'
  */
 function pg_ltd_plan_set($facts)
 {
@@ -431,10 +435,27 @@ function pg_ltd_plan_set($facts)
                  'theme' => (string)($f['theme'] ?? ''), 'collection' => (string)($f['collection'] ?? ''),
                  'settings' => (array)($f['settings'] ?? array()), 'social_on' => !empty($f['social_on']),
                  'assets' => isset($f['assets']) && is_array($f['assets']) ? $f['assets'] : array('css' => array(), 'js' => array()),
-                 'styles' => array(), 'skip' => '', 'writes' => 0);
+                 'styles' => array(), 'mobile_pages' => 0, 'skip' => '', 'writes' => 0);
     $moving = 0;
+    $made_common = array();
+    $made_designer = array();
     foreach ((array)($f['styles'] ?? array()) as $s) {
-        $plan = pg_ltd_plan_style((array)($s['facts'] ?? array()));
+        // A region an earlier style of the set makes a component is there
+        // already when the run reaches this one.
+        $sf = (array)($s['facts'] ?? array());
+        $common = array();
+        foreach ((array)($sf['common'] ?? array()) as $name) {
+            if (!isset($made_common[(string)$name])) $common[] = (string)$name;
+        }
+        $sf['common'] = $common;
+        $sf['designer_made'] = array_merge(array_map('strval', (array)($sf['designer_made'] ?? array())), array_map('strval', array_keys($made_designer)));
+        $plan = pg_ltd_plan_style($sf);
+        if ($plan['skip'] === '') {
+            foreach ($plan['components'] as $c) {
+                if ($c['kind'] === 'common') $made_common[$c['name']] = true;
+                else $made_designer[$c['name']] = true;
+            }
+        }
         $folder = 0;
         foreach ($plan['pages'] as $p) {
             if (($p['source'] ?? '') === 'folder' && ($p['action'] === 'tree' || $p['action'] === 'regions')) ++$folder;
@@ -452,12 +473,14 @@ function pg_ltd_plan_set($facts)
             $plan,
             array('folder_pages' => $folder, 'body_classes' => trim((string)($s['body_classes'] ?? '')),
                   'style_head' => !empty($s['style_head']), 'mobile_pages' => (int)($s['mobile_pages'] ?? 0),
-                  'mobile' => (int)($s['mobile'] ?? 0), 'changes' => $changes));
+                  'mobile' => (int)($s['mobile'] ?? 0), 'changes' => $changes,
+                  // pg_ltd_plan_style() counts the style's flip; here the
+                  // design is one row of its own, counted once below.
+                  'writes' => $plan['skip'] === '' ? $plan['writes'] - 1 : 0));
         if ($plan['skip'] !== '') continue;
         ++$moving;
-        // pg_ltd_plan_style() counts the style's flip; here the design is
-        // one row of its own, counted once below.
         $out['writes'] += $plan['writes'] - 1;
+        $out['mobile_pages'] += (int)($s['mobile_pages'] ?? 0);
     }
     if ($moving === 0) {
         $out['skip'] = 'empty';
@@ -672,9 +695,6 @@ function pg_ltd_plan_items($p, $in_set = false)
         if ($p['style_head']) {
             $items .= $line(lang('Its Head code was not printed on its classic pages and is not carried into the design.'), 'fg-secondary');
         }
-        if ($p['mobile_pages'] > 0) {
-            $items .= $line(lang(array('string' => '{var:1} of its pages have a mobile style: on a phone they are still drawn with that style, not with the design.', 'vars' => array($p['mobile_pages']))), 'fg-warning');
-        }
         if ($p['mobile'] > 0) {
             $items .= $line(lang('A folder or page uses it as its mobile style: the classic style stays and keeps serving phones.'), 'fg-secondary');
         }
@@ -763,6 +783,9 @@ function pg_ltd_plan_set_html($p)
         if ((string)($p['settings']['layout_type'] ?? '') !== '') {
             $items .= $line(lang(array('string' => 'Layout type override: {var:1}', 'vars' => array(pg_ltd_setting_label('layout_type', (string)$p['settings']['layout_type'])))));
         }
+        if ($p['mobile_pages'] > 0) {
+            $items .= $line(lang(array('string' => '{var:1} of these pages have a mobile style: on a phone they are still drawn with that style, not with the design.', 'vars' => array(pg_format_number($p['mobile_pages'], 0)))), 'fg-warning');
+        }
     }
     $styles = '';
     foreach ($p['styles'] as $s) {
@@ -770,10 +793,16 @@ function pg_ltd_plan_set_html($p)
         foreach ($kept as $a) {
             if (in_array($s['name'], (array)($a['styles'] ?? array()), true)) $only[] = (string)$a['name'];
         }
+        // A style with something to look at opens by itself.
+        $look = $s['skip'] !== '' || $s['changes'] || $s['warnings'];
+        foreach ($s['pages'] as $page) {
+            if ($page['action'] === 'held') $look = true;
+        }
         $styles .= '
-            <h4 class="small fw-semibold mt-3 mb-1">' . h($s['name']) . '</h4>
-            <ul class="small mb-0 ps-12">' . pg_ltd_plan_items($s, true)
-            . ($only && $s['skip'] === '' ? $line(lang(array('string' => 'Only on its pages: {var:1}', 'vars' => array(implode(', ', $only))))) : '') . '</ul>';
+            <details class="mt-2"' . ($look ? ' open' : '') . '><summary><h4 class="d-inline small fw-semibold mb-0">' . h($s['name']) . '</h4>'
+            . ($s['skip'] === '' ? ' <span class="small fg-secondary">' . h(lang(array('string' => '{var:1} writes', 'vars' => array(pg_format_number($s['writes'], 0))))) . '</span>' : '') . '</summary>
+            <ul class="small mb-0 mt-1 ps-12">' . pg_ltd_plan_items($s, true)
+            . ($only && $s['skip'] === '' ? $line(lang(array('string' => 'Only on its pages: {var:1}', 'vars' => array(implode(', ', $only))))) : '') . '</ul></details>';
     }
     return '
         <div class="mb-5">

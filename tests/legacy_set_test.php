@@ -189,7 +189,9 @@ function test_lgs_plan_set_one_design_frames_per_style_and_writes()
 	pg_assert_same('blog dark', $p['styles'][1]['body_classes']);
 	pg_assert_same(true, $p['styles'][1]['style_head']);
 	pg_assert_same(2, $p['styles'][1]['mobile_pages']);
+	pg_assert_same(2, $p['mobile_pages'], 'pages with a mobile style counted once for the set');
 	pg_assert_same(1, $p['styles'][1]['mobile']);
+	pg_assert_same(4, $p['styles'][1]['writes'], 'its own writes, the design not counted');
 	pg_assert_same(array(), $p['styles'][0]['changes'], 'nothing differs from the design');
 	pg_assert_same(array(array('setting' => 'social_networking_position', 'from' => 'disabled', 'to' => 'bottom_left'),
 		array('setting' => 'layout_type', 'from' => 'custom', 'to' => '')), $p['styles'][1]['changes'], 'what its pages would show differently');
@@ -203,6 +205,24 @@ function test_lgs_plan_set_one_design_frames_per_style_and_writes()
 	$none = pg_ltd_plan_set(array('key' => 'k', 'name' => 'n', 'theme' => '', 'collection' => 'a', 'styles' => array($refused), 'assets' => array('css' => array(), 'js' => array())));
 	pg_assert_same('empty', $none['skip'], 'no style of the set can move');
 	pg_assert_same(0, $none['writes']);
+}
+
+function test_lgs_plan_set_regions_made_once()
+{
+	$a = _lgs_plan_style(1, 'about');
+	$a['facts']['common'] = array('Top');
+	$a['facts']['frame']['designer'] = array('Header', 'Footer');
+	$b = _lgs_plan_style(2, 'blog');
+	$b['facts']['common'] = array('Top', 'Side');
+	$b['facts']['frame']['designer'] = array('Header');
+	$p = pg_ltd_plan_set(array('key' => 'k', 'name' => 'n', 'theme' => '', 'collection' => 'a', 'social_on' => false,
+		'settings' => array('social_networking_position' => 'bottom_left', 'layout_type' => ''), 'styles' => array($a, $b),
+		'assets' => array('css' => array(), 'js' => array())));
+	$got = array();
+	foreach ($p['styles'][1]['components'] as $c) $got[] = $c['kind'] . ':' . $c['name'] . ':' . ($c['exists'] ? 'there' : 'made');
+	pg_assert_same(array('common:Side:made', 'designer:Header:there'), $got, 'a region the first style made is there for the second');
+	// The design; about: Top, Header, Footer, its frame, its page; blog: Side, its frame, its page.
+	pg_assert_same(1 + 5 + 3, $p['writes']);
 }
 
 function test_lgs_plan_html_of_a_set()
@@ -230,6 +250,8 @@ function test_lgs_plan_html_of_a_set()
 	pg_assert_same(2, substr_count($html, '<h4'), 'one heading per style');
 	pg_assert_contains(lang('Top Right'), $html, 'the sharing position it had');
 	pg_assert_contains(lang('Bottom Left'), $html, 'and the one the design holds');
+	pg_assert_same(1, preg_match('~<details class="mt-2" open><summary><h4[^>]*>blog &lt;b&gt;</h4>~', $html), 'a style whose pages change opens by itself');
+	pg_assert_same(1, preg_match('~<details class="mt-2"><summary><h4[^>]*>about</h4>~', $html), 'one with nothing to look at stays folded');
 }
 
 function test_lgs_screen_offers_sets()
