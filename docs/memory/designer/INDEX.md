@@ -129,8 +129,9 @@
 - design-template-dealership.md: Car Dealership template (pinegrap-dealership): vehicles as a collection with filters, test drive, trade-in and finance requests followed from the account, pdl- look, tests.
 - design-template-drivingschool-pages.md: Driving School home and sector pages on its block family since 1.1.0: the block behind each section, entrances, what was dropped
 - design-template-drivingschool.md: Driving School template (pinegrap-drivingschool): licence classes, courses and pass stories as collections, enrolment and lesson requests, online lessons, no shop, pdr- look, tests.
+- design-template-events-pages.md: Events template 2.0.0: home and programme on the Conference blocks: the builders, each page's composition, motion, what left, the test
 - design-template-events-words.md: Events template wording: "Events" is Etkinlikler (1.0.3, #4810), bilet, oturum dizisi, own keys for registration pages (1.0.1, #4825), ticket breadcrumb Biletler (1.0.4), heading order (1.0.2, #4824).
-- design-template-events.md: Events and Conferences template (pinegrap-events): its parts folder, events and registrations as form records, tickets as shop products, what is not built, the pev- look, tests.
+- design-template-events.md: Events and Conferences template (pinegrap-events): its parts folder, events and registrations as form records, tickets as shop products, what is not built, the pev- classes, tests.
 - design-template-ferry-pages.md: Ferry template 2.0.0: home, routes, route pages, timetables and fares on the Ferry blocks: the builders, each page's composition, motion, what left, the test
 - design-template-ferry.md: Ferry template (pinegrap-ferry, 2.0.0): routes with a page each, ports, timetables and fares as words, Travel Notices collection, booking requests, group enquiries, no shop, pfy- look, tests.
 - design-template-filmstudio-pages.md: Film Studio template 2.0.0: home, services and project page on the Film Studio blocks, motion elsewhere, names in their own case; builders, pages, limits, test

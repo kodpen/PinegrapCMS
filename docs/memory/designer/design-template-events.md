@@ -1,6 +1,6 @@
 ---
 name: design-template-events
-description: Events and Conferences template (pinegrap-events): its parts folder, events and registrations as form records, tickets as shop products, what is not built, the pev- look, tests.
+description: Events and Conferences template (pinegrap-events): its parts folder, events and registrations as form records, tickets as shop products, what is not built, the pev- classes, tests.
 ---
 
 ## What does it ship?
@@ -8,10 +8,10 @@ description: Events and Conferences template (pinegrap-events): its parts folder
 - Shared: account_bar, notice, header, footer, staff_bar, register_band, email_header/footer. Order 65, icon `bi-calendar2-event`, look `modern-soft`, palette `aurora`, generic gallery drawing. Contact group `newsletter` (Events Newsletter). Built in #4595, #4612, #4633, #4645, #4686 and the assembly PR.
 
 ## Why a main file plus a folder?
-- `pg_design_templates()` offers every `includes/design_templates/*.php`; the subfolder is not read as a template. `pinegrap-events.php` includes `parts.php` (builders, the conference's data, shared parts), `mail.php`, then `pages_public.php`, `events.php`, `tickets.php`, `standard.php`, `account.php` in one scope. A change to a page goes in its part; the main file holds the order, the search map, the look and the template keys.
+- `pg_design_templates()` offers every `includes/design_templates/*.php`; the subfolder is not read as a template. `pinegrap-events.php` includes `parts.php` (builders, the conference's data, shared parts), `mail.php`, then `pages_public.php`, `events.php`, `tickets.php`, `standard.php`, `account.php` in one scope. A page's change goes in its part; the main file holds the order, search map, look and template keys.
 
 ## How do events and registration work?
-- Events are records of the Events form (the Café's way): samples dated by `$event_on()` when the template opens, listed from today on, each on `event_view`; no fixed date anywhere, and the conference names no year (its programme is by day).
+- Events are records of the Events form (the Café's way): samples dated by `$event_on()` when the template opens, listed from today on, each on `event_view`; no fixed date anywhere; the conference names no year (its programme is by day).
 - A registration is a Registrations form record: the event comes from the Register button's address (`_cf.url_param`), auto-registration gives a visitor an account, the status is office-use-only (Registered, Confirmed, Waitlisted, Cancelled, Attended), messages are the Comments widget on `registration_view`.
 
 ## How do tickets work without the shop?
@@ -24,7 +24,7 @@ description: Events and Conferences template (pinegrap-events): its parts folder
 - Session collections, seat limits and QR check-in: new product behaviour.
 
 ## Why pev- and not pe-?
-- Bootstrap owns `pe-*` (padding-end; `pe-0` is used in the parts). The template's classes are `pev-brand` (header name), `pev-eyebrow` (section header line), `pev-hero` (home's first section), `pev-lift` (speaker and event cards), with two fonts (Space Grotesk, Inter) in `assets`.
+- Bootstrap owns `pe-*` (padding-end; `pe-0` is used in the parts). The template's classes are `pev-brand` (header name), `pev-eyebrow` (section header line), `pev-lift` (speaker and event cards), with two fonts (Space Grotesk, Inter) in `assets`. Home and programme (2.0.0): [[design-template-events-pages]].
 
 ## Where are its Turkish words described?
 - [[design-template-events-words]].

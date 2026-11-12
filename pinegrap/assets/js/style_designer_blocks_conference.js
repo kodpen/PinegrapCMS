@@ -193,7 +193,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
                 kit.row(_sdT('Hero Row'), [
                     kit.col(_sdT('Hero Text'), [words], '7'),
                     kit.col(_sdT('Attendee Badge'), [badge], '5')
-                ], 'g-5 align-items-center'),
+                ], 'g-lg-5 align-items-center'),
                 kit.div('border-top mt-5 pt-4', _sdT('Figures'), [
                     kit.row(_sdT('Figures Row'), [
                         figure(_sdT('2 days'), _sdT('of talks and workshops')),

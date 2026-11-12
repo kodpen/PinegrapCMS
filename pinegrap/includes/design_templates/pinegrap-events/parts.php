@@ -503,17 +503,6 @@ $track_badge = function ($key) use ($span, $tracks) {
     return $span($t['title'], 'badge rounded-pill bg-' . $t['color'] . '-subtle text-' . $t['color'] . '-emphasis', lang('Track'));
 };
 
-// A numbered step of a short how-to.
-$step = function ($n, $title, $text) use ($el, $heading, $para, $span) {
-    return $el('li', 'd-flex gap-3 mb-4', lang('Step'), array(
-        $span((string)$n, 'badge rounded-pill text-bg-primary fs-6 align-self-start', lang('Step Number')),
-        $el('div', '', lang('Text'), array(
-            $heading('h3', $title, 'h6 fw-bold mb-1'),
-            $para($text, 'text-body-secondary mb-0'),
-        )),
-    ));
-};
-
 // A check list: a tick and the words on each line.
 $check_list = function ($items, $class = 'list-unstyled mb-0') use ($el, $icon, $span) {
     $children = array();

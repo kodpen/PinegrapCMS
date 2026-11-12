@@ -20,22 +20,6 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 $public_pages = array();
 
-// A speaker as a small card: the portrait, the name, the role and company,
-// linked to the speaker's profile on the speakers page.
-$speaker_card = function ($key) use ($speakers, $el, $col, $image, $heading, $para, $portrait, $attr) {
-    $s = $speakers[$key];
-    return $col(array(
-        $el('a', 'card h-100 border-0 text-center bg-transparent text-decoration-none link-body-emphasis pev-lift', $s['name'], array(
-            $el('div', 'card-body p-3', lang('Card Body'), array(
-                $image($portrait($s['name'], 320), $s['name'], 'img-fluid rounded-circle object-fit-cover mb-3', array('width' => '144', 'height' => '144', '_attrs' => array($attr('loading', 'lazy')))),
-                $heading('h3', $s['name'], 'h6 fw-bold mb-1'),
-                $para($s['role'], 'small text-body-secondary mb-0'),
-                $para($s['company'], 'small fw-semibold text-primary mb-0'),
-            )),
-        ), array('href' => '{{page:speakers}}#speaker-' . $key)),
-    ), '4', '3', '', '6');
-};
-
 // The figures of the conference, in a row of four.
 $figure_row = function ($class = '') use ($figures, $el, $row, $col, $span) {
     $cols = array();
@@ -80,24 +64,244 @@ $sponsor_row = function ($tier) use ($sponsors, $el, $row, $col, $image, $logo, 
     ));
 };
 
-// The featured speakers: the two keynotes and two from the tracks.
-$featured_speakers = array();
-foreach (array('elif', 'zeynep', 'marcus', 'daniel') as $key) $featured_speakers[] = $speaker_card($key);
+// ── The Conference blocks ───────────────────────────────────────────────
+// The home and the programme are built on the visual designer's Conference
+// blocks (assets/js/style_designer_blocks_conference.js): the same structure
+// and classes with the conference's own data; their rules ship in the
+// template's User Styles. Motion comes from the interactions on the nodes
+// (pg_fx; nothing moves under reduced motion): $fx gives a node one effect.
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+// Section headings fade in; a list's or a row's children rise one by one.
+$fade_in = function ($node) use ($fx) {
+    return $fx($node, array('effect' => 'fade', 'trigger' => 'view', 'duration' => 700));
+};
+$rise = function ($node, $stagger = 90) use ($fx) {
+    return $fx($node, array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 600, 'stagger' => $stagger));
+};
+// An icon and a short text side by side, as one line of details.
+$detail = function ($icon_name, $text, $class = '') use ($el, $icon, $span) {
+    return $el('span', trim('d-inline-flex align-items-center gap-1 ' . $class), $text, array(
+        $icon($icon_name),
+        $span($text, '', lang('Text')),
+    ));
+};
+// A second button: the body's text colour and a border, readable on any
+// band, with its own focus ring (pg-conference-second).
+$second_button = function ($text, $href, $size = '') use ($link) {
+    return $link($text, $href, trim('btn ' . $size . ' border px-4 link-body-emphasis pg-conference-second'));
+};
+// A track's pill: its icon and its name on the track's soft colour, so the
+// colour never names the track alone.
+$track_pill = function ($key, $tag = 'span') use ($el, $icon, $span, $tracks) {
+    $t = $tracks[$key];
+    return $el($tag, 'badge rounded-pill bg-' . $t['color'] . '-subtle text-' . $t['color'] . '-emphasis text-wrap fw-semibold d-inline-flex align-items-center gap-1 px-3 py-2', $t['title'], array(
+        $icon($t['icon']),
+        $span($t['title'], '', lang('Text')),
+    ));
+};
 
-// A track as a card of the home page, linked to its section of the about
-// page.
-$track_cards = array();
-foreach ($tracks as $key => $t) {
-    $track_cards[] = $col(array(
-        $el('a', 'card h-100 border-0 bg-body-tertiary rounded-4 text-decoration-none link-body-emphasis', $t['title'], array(
-            $el('div', 'card-body p-4', lang('Card Body'), array(
-                $icon_tile($t['icon'], 'mb-3'),
-                $heading('h3', $t['title'], 'h5 fw-bold mb-2'),
-                $para($t['text'], 'small text-body-secondary mb-0'),
+// The opening hero: where and when, the line, the way to register and the
+// passes, the figures counting up, and an attendee's badge hanging on its
+// lanyard from the band's top edge.
+$conference_hero = function () use ($el, $heading, $para, $link, $span, $icon, $container, $row, $col, $attr, $fx, $detail, $second_button, $figures, $venue, $passes) {
+    $figure_cols = array();
+    foreach ($figures as $f) {
+        $figure_cols[] = $col(array(
+            $fx($para($f['value'], 'pg-conference-figure display-6 fw-bold text-body-emphasis mb-1'), array('effect' => 'count', 'duration' => 1600, 'delay' => 300)),
+            $para($f['label'], 'small text-body-secondary mb-0'),
+        ), '3', '', '', '6');
+    }
+    $words = $fx($el('div', '', lang('Hero Text'), array(
+        $el('p', 'd-flex flex-wrap align-items-center column-gap-3 row-gap-1 small fw-semibold text-body-secondary mb-4', lang('Event Line'), array(
+            $detail('bi-calendar2-week', lang('Two days in autumn'), 'gap-2'),
+            $detail('bi-geo-alt', $venue['name'], 'gap-2'),
+        )),
+        $heading('h1', lang('The conference for people who build products'), 'pg-display-xl fw-bold mb-4'),
+        $para(lang('Keynotes, four tracks and hands-on workshops by the people behind products you use every day. Meet them, and the 1,200 others who come to learn.'), 'lead text-body-secondary mb-4'),
+        $el('div', 'd-flex flex-wrap gap-2 mb-3', lang('Buttons'), array(
+            $link(lang('Register'), '{{page:registration}}', 'btn btn-primary btn-lg px-4'),
+            $second_button(lang('See the programme'), '{{page:programme}}', 'btn-lg'),
+        )),
+        $el('a', 'd-inline-flex align-items-center gap-2 small fw-semibold link-body-emphasis link-underline-opacity-25', lang('Passes'), array(
+            $icon('bi-ticket-perforated'),
+            $span(sprintf(lang('Passes from %s'), $passes['day']['price']), '', lang('Text')),
+        ), array('href' => '{{page:tickets}}')),
+    )), array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 800));
+    $chip = function ($text) use ($el, $span) {
+        return $el('li', 'badge rounded-pill border text-body-emphasis fw-semibold text-wrap', $text, array($span($text, '', lang('Text'))));
+    };
+    $badge = $fx($el('div', 'pg-conference-lanyard', lang('Lanyard'), array(
+        $el('div', 'pg-conference-badge bg-body text-body rounded-4 shadow-lg', lang('Attendee Badge'), array(
+            $el('div', 'text-bg-primary d-flex align-items-center justify-content-between gap-3 rounded-top-4 px-4 pt-4 pb-3', lang('Header'), array(
+                $el('p', 'd-flex align-items-center gap-2 fw-bold mb-0', lang('Brand'), array(
+                    $icon('bi-calendar2-event'),
+                    $span('{{site_name}}', '', lang('Name')),
+                )),
+                $para(lang('2 days'), 'small fw-semibold mb-0'),
             )),
-        ), array('href' => '{{page:about}}#track-' . $key)),
-    ), '6', '3');
-}
+            $el('div', 'px-4 pt-4 pb-3', lang('Details'), array(
+                $heading('h2', $passes['full']['title'], 'h6 text-uppercase fw-bold text-body-secondary mb-3'),
+                $para(lang('Jane Cooper'), 'fs-2 fw-bold lh-sm text-body-emphasis mb-1'),
+                $para('Vertex', 'fs-5 fw-semibold text-body-emphasis mb-0'),
+                $para(lang('Design Director'), 'small text-body-secondary mb-4'),
+                $el('ul', 'list-unstyled d-flex flex-wrap gap-2 mb-0', lang('Included'), array(
+                    $chip(lang('Day 1')),
+                    $chip(lang('Day 2')),
+                    $chip(lang('The evening reception')),
+                )),
+            )),
+            $el('div', 'd-flex align-items-end justify-content-between gap-3 border-top px-4 py-3', lang('Footer'), array(
+                $el('div', 'pg-conference-code', lang('Barcode'), array(), array('_attrs' => array($attr('aria-hidden', 'true')))),
+                $para('0427', 'small font-monospace text-body-secondary mb-0'),
+            )),
+        ), array('_attrs' => array($attr('data-bs-theme', 'light')))),
+    )), array('effect' => 'slide-down', 'trigger' => 'load', 'duration' => 1000, 'delay' => 250, 'distance' => 120));
+    return $el('section', 'pg-conference-hero py-5 bg-body text-body overflow-hidden', lang('Hero'), array(
+        $container(array(
+            $row(array(
+                $col(array($words), '', '7'),
+                $col(array($badge), '', '5'),
+            ), '4', '', 'g-lg-5 align-items-center'),
+            $el('div', 'border-top mt-5 pt-4', lang('Figures'), array($row($figure_cols, '4'))),
+        ), 'pt-lg-4'),
+    ), array('_attrs' => array($attr('data-bs-theme', 'dark'))));
+};
+
+// A day of the programme as the Day Agenda's time slots: the sessions at
+// one time together; a keynote across the width; a break, the welcome or
+// the evening as a quiet line; the others side by side, each with its
+// track, speaker, kind and room. On the programme ($anchors) each slot
+// keeps the id the speakers page links to, and a talk with a speaker is a
+// search section.
+$agenda_slots = function ($day_key, $anchors) use ($programme, $speakers, $session_kinds, $el, $heading, $para, $link, $span, $image, $portrait, $row, $col, $attr, $detail, $track_pill, $searchable) {
+    $groups = array();
+    foreach ($programme[$day_key]['sessions'] as $s) {
+        $last = count($groups) - 1;
+        if ($last >= 0 && $groups[$last][0]['time'] === $s['time']) $groups[$last][] = $s;
+        else $groups[] = array($s);
+    }
+    $id_of = function ($s) use ($anchors, $speakers, $searchable) {
+        if (!$anchors) return array();
+        return $s['speaker'] !== '' ? $searchable('session-' . $s['key'], $speakers[$s['speaker']]['name']) : array('id' => 'session-' . $s['key']);
+    };
+    $speaker_link = function ($key, $class) use ($speakers, $link) {
+        return $link($speakers[$key]['name'], '{{page:speakers}}#speaker-' . $key, $class);
+    };
+    $slots = array();
+    foreach ($groups as $g) {
+        $s = $g[0];
+        $time = $el('time', 'pg-conference-time', lang('Time'), array(), array('text' => $s['time'], '_attrs' => array($attr('datetime', $s['time']))));
+        $kind = $session_kinds[$s['kind']];
+        if (count($g) === 1 && $s['kind'] === 'keynote') {
+            $who = array();
+            if ($s['speaker'] !== '') {
+                $p = $speakers[$s['speaker']];
+                $who[] = $image($portrait($p['name'], 160), $p['name'], 'pg-conference-face rounded-circle object-fit-cover', array('width' => '56', 'height' => '56', '_attrs' => array($attr('loading', 'lazy'))));
+                $who[] = $el('div', 'flex-grow-1', lang('Text'), array(
+                    $el('p', 'mb-0', lang('Speaker'), array($speaker_link($s['speaker'], 'fw-semibold link-body-emphasis'))),
+                    $para($p['role'] . ', ' . $p['company'], 'small text-body-secondary mb-0'),
+                ));
+            }
+            $who[] = $detail('bi-door-open', $s['room'], 'small text-body-secondary');
+            $slots[] = $el('li', 'pg-conference-slot', $s['title'], array(
+                $time,
+                $el('div', 'pg-conference-keynote rounded-4 border bg-body p-4 p-lg-5', $kind['label'], array(
+                    $el('p', 'd-flex align-items-center gap-2 small text-uppercase fw-semibold text-body-secondary mb-2', lang('Kind'), array(
+                        $el('i', 'bi ' . $kind['icon'] . ' text-primary-emphasis', lang('Icon'), array(), array('_attrs' => array($attr('aria-hidden', 'true')))),
+                        $span($kind['label'], '', lang('Text')),
+                    )),
+                    $heading('h3', $s['title'], 'h3 fw-bold mb-4'),
+                    $el('div', 'd-flex flex-wrap align-items-center gap-3', lang('Speaker'), $who),
+                )),
+            ), $id_of($s));
+        } elseif (count($g) === 1 && $s['track'] === '' && $s['speaker'] === '') {
+            $slots[] = $el('li', 'pg-conference-slot pg-conference-break', $s['title'], array(
+                $time,
+                $el('p', 'd-flex flex-wrap align-items-center column-gap-3 row-gap-1 text-body-secondary mb-0', lang('Break'), array(
+                    $detail($kind['icon'], $s['title'], 'gap-2 fw-semibold text-body-emphasis'),
+                    $detail('bi-door-open', $s['room'], 'small'),
+                )),
+            ), $id_of($s));
+        } else {
+            $cols = array();
+            $md = count($g) > 2 ? '4' : (count($g) === 2 ? '6' : '');
+            foreach ($g as $t) {
+                $k = $session_kinds[$t['kind']];
+                $body = array();
+                if ($t['track'] !== '') $body[] = $track_pill($t['track']);
+                $body[] = $heading('h3', $t['title'], 'h6 fw-bold mt-3 mb-2');
+                if ($t['speaker'] !== '') $body[] = $el('p', 'small mb-2', lang('Speaker'), array($speaker_link($t['speaker'], 'fw-semibold link-body-emphasis')));
+                $body[] = $el('p', 'd-flex flex-wrap column-gap-3 row-gap-1 small text-body-secondary mb-0', lang('Session Details'), array(
+                    $detail($k['icon'], $k['label']),
+                    $detail('bi-door-open', $t['room']),
+                ));
+                $cols[] = $col(array(
+                    $el('div', 'h-100 rounded-3 border bg-body p-3', $t['title'], $body, $id_of($t)),
+                ), $md);
+            }
+            $slots[] = $el('li', 'pg-conference-slot', lang('Parallel Sessions'), array(
+                $time,
+                $row($cols, '3'),
+            ));
+        }
+    }
+    return $slots;
+};
+
+// The speaker line-up: the keynotes in giant type, then each track's
+// speakers, every name a link to the profile.
+$conference_lineup = function () use ($programme, $speakers, $tracks, $el, $heading, $para, $link, $container, $row, $col, $fade_in, $rise, $second_button) {
+    $keynote = array();
+    foreach ($programme as $day) {
+        foreach ($day['sessions'] as $s) if ($s['kind'] === 'keynote' && $s['speaker'] !== '') $keynote[$s['speaker']] = true;
+    }
+    $group = function ($title, $keys, $giant) use ($speakers, $el, $heading, $link) {
+        $items = array();
+        foreach (array_values($keys) as $i => $key) {
+            $items[] = $el('li', $i < count($keys) - 1 ? 'pg-conference-slash' : '', $speakers[$key]['name'], array(
+                $link($speakers[$key]['name'], '{{page:speakers}}#speaker-' . $key, 'link-body-emphasis link-underline-opacity-0 link-underline-opacity-100-hover link-offset-2'),
+            ));
+        }
+        return $el('div', 'pg-conference-group', $title, array(
+            $heading('h3', $title, 'h6 text-uppercase fw-semibold text-body-secondary mb-0'),
+            $el('ul', 'pg-conference-names' . ($giant ? ' pg-conference-keynotes' : ''), lang('Names'), $items),
+        ));
+    };
+    $groups = array($group(lang('Keynotes'), array_keys($keynote), true));
+    foreach ($tracks as $tkey => $t) {
+        $keys = array();
+        foreach ($speakers as $key => $s) if ($s['track'] === $tkey && !isset($keynote[$key])) $keys[] = $key;
+        if ($keys) $groups[] = $group($t['title'], $keys, false);
+    }
+    return $el('section', 'py-5 overflow-hidden', lang('Speakers'), array(
+        $container(array(
+            $fade_in($row(array(
+                $col(array(
+                    $para(lang('On stage'), 'small text-uppercase fw-semibold text-body-secondary mb-2'),
+                    $heading('h2', lang('The line-up'), 'display-5 fw-bold mb-3'),
+                    $para(lang('Two keynotes open the mornings; the people behind the products you use fill the four tracks.'), 'lead text-body-secondary mb-0'),
+                ), '', '8'),
+            ), '4', '', 'mb-4')),
+            $rise($el('div', 'pg-conference-lineup', lang('Line-up'), $groups), 120),
+            $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-3 border-top pt-4', lang('Footer'), array(
+                $para(lang('And more than thirty others, in talks, workshops and the lightning round.'), 'text-body-secondary mb-0'),
+                $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
+                    $link(lang('All speakers'), '{{page:speakers}}', 'btn btn-primary px-4'),
+                    $second_button(lang('Propose a talk'), '{{page:speakers}}#call-for-speakers'),
+                )),
+            )),
+        )),
+    ));
+};
+
+// The home: the opening hero, the first day at a glance, the line-up, then
+// the events between two conferences, the attendees' words, the sponsors
+// and the news. Section headings fade in and rows rise as they are seen.
+$legend = array();
+foreach ($tracks as $key => $t) $legend[] = $track_pill($key, 'li');
 
 $public_pages[] = array(
     'key'              => 'home',
@@ -106,104 +310,58 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('Two days of talks and workshops for people who build products, and meetups all year. See the programme and register.'),
     'tree'             => $page(array(
-        // The conference: what, where, the way to register and a picture of
-        // the main hall.
-        $el('section', 'py-5 overflow-hidden pev-hero', lang('Hero'), array(
+        $conference_hero(),
+
+        // The first day at a glance: its sessions by time and track.
+        $el('section', 'py-5 bg-body-tertiary', lang('Programme'), array(
             $container(array(
-                $row(array(
+                $fade_in($row(array(
                     $col(array(
-                        $el('p', 'd-flex flex-wrap align-items-center gap-2 small fw-semibold text-primary mb-3', lang('Event Line'), array(
-                            $icon('bi-calendar2-week'),
-                            $span(lang('Two days in autumn'), '', lang('Text')),
-                            $span('·', 'text-body-secondary', lang('Separator')),
-                            $icon('bi-geo-alt'),
-                            $span($venue['name'], '', lang('Text')),
-                        )),
-                        $heading('h1', lang('The conference for people who build products'), 'display-4 fw-bold mb-3'),
-                        $para(lang('Keynotes, four tracks and hands-on workshops by the people behind products you use every day. Meet them, and the 1,200 others who come to learn.'), 'lead text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('Register'), '{{page:registration}}', 'btn btn-primary btn-lg px-4'),
-                            $link(lang('See the programme'), '{{page:programme}}', 'btn btn-outline-secondary btn-lg px-4'),
-                        )),
-                    ), '', '6'),
+                        $para($programme['day-1']['title'], 'small text-uppercase fw-semibold text-body-secondary mb-2'),
+                        $heading('h2', $programme['day-1']['theme'], 'display-5 fw-bold mb-3'),
+                        $para(lang('Two days, four tracks and a keynote to open each morning. Choose your sessions on the day; every talk is recorded.'), 'lead text-body-secondary mb-0'),
+                    ), '', '7'),
                     $col(array(
-                        $el('div', 'ratio ratio-4x3 rounded-4 overflow-hidden shadow-sm', lang('Picture Frame'), array(
-                            $image($photo('hero', 1200, 900), lang('A full main hall listening to a keynote on a large stage'), 'object-fit-cover'),
+                        $el('ul', 'list-unstyled d-flex flex-wrap gap-2 justify-content-lg-end mb-3', lang('Tracks'), $legend),
+                        $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
+                            $link(lang('Register'), '{{page:registration}}', 'btn btn-primary px-4'),
+                            $second_button(lang('See the programme'), '{{page:programme}}'),
                         )),
-                    ), '', '6'),
-                ), '4', '', 'g-lg-5 align-items-center'),
+                    ), '', '5'),
+                ), '4', '', 'align-items-end mb-5')),
+                $rise($el('ol', 'pg-conference-agenda', lang('Sessions'), $agenda_slots('day-1', false))),
             )),
         )),
 
-        // The conference in figures.
-        $el('section', 'py-4 border-top border-bottom bg-body-tertiary', lang('Figures'), array(
-            $container(array($figure_row())),
-        )),
-
-        // The tracks.
-        $el('section', 'py-5', lang('Tracks'), array(
-            $container(array(
-                $section_header(lang('Four tracks'), lang('Pick your path through the day'), lang('About the tracks'), '{{page:about}}#tracks'),
-                $row($track_cards, '4'),
-            )),
-        )),
-
-        // The featured speakers.
-        $el('section', 'py-5 bg-body-tertiary', lang('Speakers'), array(
-            $container(array(
-                $section_header(lang('On stage'), lang('Featured speakers'), lang('All speakers'), '{{page:speakers}}'),
-                $row($featured_speakers, '4'),
-            )),
-        )),
+        $conference_lineup(),
 
         // The coming events: meetups, workshops and webinars between two
         // conferences (records of the Events form, from today on).
-        $el('section', 'py-5', lang('Coming Events'), array(
+        $el('section', 'py-5 bg-body-tertiary', lang('Coming Events'), array(
             $container(array(
-                $section_header(lang('All year round'), lang('Coming events'), lang('All events'), '{{page:events}}'),
+                $fade_in($section_header(lang('All year round'), lang('Coming events'), lang('All events'), '{{page:events}}')),
                 $widget('home_events'),
-            )),
-        )),
-
-        // How registering works.
-        $el('section', 'py-5 border-top', lang('How It Works'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('Registering'), 'small text-uppercase fw-semibold text-primary mb-1'),
-                        $heading('h2', lang('Registered in three steps'), 'h3 fw-bold mb-3'),
-                        $para(lang('No account needed to begin: the form opens one for you, so you can follow your registration and write to us afterwards.'), 'text-body-secondary mb-4'),
-                        $link(lang('Register'), '{{page:registration}}', 'btn btn-primary px-4'),
-                    ), '', '5'),
-                    $col(array(
-                        $el('ol', 'list-unstyled mb-0', lang('List'), array(
-                            $step(1, lang('Choose the event and your pass'), lang('The conference or one of the events, a pass, and anything we should know.')),
-                            $step(2, lang('We confirm by e-mail'), lang('Your confirmation comes with the details of the day, usually within a working day.')),
-                            $step(3, lang('Come and enjoy'), lang('Bring the confirmation on your phone. Need to change something? Write under your registration.')),
-                        )),
-                    ), '', '7'),
-                ), '4', '', 'g-lg-5 align-items-center'),
             )),
         )),
 
         // What attendees say: three sample cards, and the reviews from
         // Google beside them once the place is set.
-        $el('section', 'py-5 bg-body-tertiary', lang('Testimonials'), array(
+        $el('section', 'py-5', lang('Testimonials'), array(
             $container(array(
-                $section_header(lang('Our attendees'), lang('What attendees say')),
-                $row(array(
+                $fade_in($section_header(lang('Our attendees'), lang('What attendees say'))),
+                $rise($row(array(
                     $testimonial(lang('“The best two days of the year for our team. We came back with a list of things to try on Monday.”'), lang('Ece T.'), lang('Product Manager')),
                     $testimonial(lang('“Talks that go deeper than the slides, and speakers who stay for the questions in the corridor.”'), lang('Mert A.'), lang('Software Engineer')),
                     $testimonial(lang('“I came for the workshops and left with three people I now call when I am stuck.”'), lang('Laura S.'), lang('Design Lead')),
-                ), '4'),
+                ), '4')),
                 $widget('google_reviews'),
             )),
         )),
 
         // The sponsors.
-        $el('section', 'py-5', lang('Sponsors'), array(
+        $el('section', 'py-5 border-top', lang('Sponsors'), array(
             $container(array(
-                $section_header(lang('Made possible by'), lang('Our sponsors'), lang('Become a sponsor'), '{{page:contact}}'),
+                $fade_in($section_header(lang('Made possible by'), lang('Our sponsors'), lang('Become a sponsor'), '{{page:contact}}')),
                 $sponsor_row('headline'),
                 $sponsor_row('gold'),
             )),
@@ -212,7 +370,7 @@ $public_pages[] = array(
         // The newest news.
         $el('section', 'py-5 border-top', lang('From the Blog'), array(
             $container(array(
-                $section_header(lang('News'), lang('Latest news'), lang('All news'), '{{page:blog}}'),
+                $fade_in($section_header(lang('News'), lang('Latest news'), lang('All news'), '{{page:blog}}')),
                 $widget('home_posts'),
             )),
         )),
@@ -222,35 +380,10 @@ $public_pages[] = array(
 );
 
 // ── Programme ───────────────────────────────────────────────────────────
-// A tab for each day; each day a list of its sessions by time, every
-// session with its kind, track, speaker and room. Each day is a search
-// section, and so is each talk with a speaker.
-$session_row = function ($s) use ($el, $span, $heading, $para, $link, $icon, $track_badge, $session_kinds, $speakers, $searchable) {
-    $k = $session_kinds[$s['kind']];
-    $is_break = in_array($s['kind'], array('break', 'social'), true);
-    $meta = array(
-        $el('span', 'd-inline-flex align-items-center gap-1', lang('Kind'), array($icon($k['icon']), $span($k['label'], '', lang('Text')))),
-        $el('span', 'd-inline-flex align-items-center gap-1', lang('Room'), array($icon('bi-door-open'), $span($s['room'], '', lang('Text')))),
-    );
-    if ($s['track'] !== '') array_unshift($meta, $track_badge($s['track']));
-    $body = array(
-        $heading('h3', $s['title'], 'h6 fw-bold mb-1'),
-        $el('div', 'd-flex flex-wrap align-items-center gap-3 small text-body-secondary', lang('Session Details'), $meta),
-    );
-    if ($s['speaker'] !== '') {
-        $p = $speakers[$s['speaker']];
-        $body[] = $el('p', 'small mt-2 mb-0', lang('Speaker'), array(
-            $link($p['name'], '{{page:speakers}}#speaker-' . $s['speaker'], 'fw-semibold link-body-emphasis'),
-            $span(' · ' . $p['role'] . ', ' . $p['company'], 'text-body-secondary', lang('Text')),
-        ));
-    }
-    $extra = $s['speaker'] !== '' ? $searchable('session-' . $s['key'], $speakers[$s['speaker']]['name']) : array('id' => 'session-' . $s['key']);
-    return $el('li', 'list-group-item d-flex gap-3 gap-md-4 px-0 py-3 bg-transparent' . ($is_break ? ' text-body-secondary' : ''), $s['title'], array(
-        $span($s['time'], 'fw-bold text-nowrap' . ($is_break ? '' : ' text-primary'), lang('Time')),
-        $el('div', 'flex-grow-1', lang('Session'), $body),
-    ), $extra);
-};
-
+// A tab for each day; each day its time slots as on the home (the Day
+// Agenda), every session with its kind, track, speaker and room. Each day
+// is a search section, and so is each talk with a speaker; every slot keeps
+// the id the speakers page links to.
 $day_tabs = array();
 $day_panes = array();
 $first = true;
@@ -269,19 +402,14 @@ foreach ($programme as $key => $day) {
             ),
         )),
     ), array('_attrs' => array($attr('role', 'presentation'))));
-    $rows = array();
-    foreach ($day['sessions'] as $s) $rows[] = $session_row($s);
     $day_panes[] = $el('div', 'tab-pane fade' . ($first ? ' show active' : ''), $day['title'], array(
-        $heading('h2', $day['theme'], 'small text-uppercase fw-semibold text-primary mb-2'),
-        $el('ul', 'list-group list-group-flush', lang('Sessions'), $rows),
+        $heading('h2', $day['theme'], 'h3 fw-bold mb-3'),
+        $rise($el('ol', 'pg-conference-agenda', lang('Sessions'), $agenda_slots($key, true))),
     ), array_merge($searchable($key, $day['theme']), array('_attrs' => array(
         $attr('role', 'tabpanel'), $attr('aria-labelledby', $key . '-tab'), $attr('tabindex', '0'),
     ))));
     $first = false;
 }
-
-$legend = array();
-foreach ($tracks as $key => $t) $legend[] = $track_badge($key);
 
 $public_pages[] = array(
     'key'              => 'programme',
@@ -293,16 +421,11 @@ $public_pages[] = array(
         $page_header(lang('Programme'), lang('Two days, four tracks and a keynote to open each morning. Choose your sessions on the day; every talk is recorded.')),
         $el('section', 'py-5', lang('Programme'), array(
             $container(array(
-                $row(array(
-                    $col(array(
-                        $el('ul', 'nav nav-pills gap-2 mb-3', lang('Days'), $day_tabs, array('id' => 'ev-days', '_attrs' => array($attr('role', 'tablist')))),
-                        $el('div', 'd-flex flex-wrap align-items-center gap-2 small mb-4', lang('Tracks'), array_merge(
-                            array($span(lang('Tracks:'), 'text-body-secondary me-1', lang('Label'))),
-                            $legend
-                        )),
-                        $el('div', 'tab-content', lang('Day Panes'), $day_panes),
-                    ), '', '9'),
-                ), '', 'center'),
+                $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-3 mb-4', lang('Days and Tracks'), array(
+                    $el('ul', 'nav nav-pills gap-2', lang('Days'), $day_tabs, array('id' => 'ev-days', '_attrs' => array($attr('role', 'tablist')))),
+                    $el('ul', 'list-unstyled d-flex flex-wrap gap-2 mb-0', lang('Tracks'), $legend),
+                )),
+                $el('div', 'tab-content', lang('Day Panes'), $day_panes),
             )),
         )),
         $shared('register_band'),
