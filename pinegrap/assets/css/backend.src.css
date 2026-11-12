@@ -4498,8 +4498,9 @@ a.link-top-row {
   font-weight: normal !important;
 }
 
-/* The filters over the list (output.php, backend.src.js): All, the site's
-   notices, what the workspace told the person, each with its unread count. */
+/* The filters over the list (output.php, backend.src.js): All, a chip for
+   each module that has a row and "Asked of me", each with its unread count;
+   then the search box and the "Unread only" switch. */
 /* One row however narrow the phone: it scrolls sideways before it wraps. */
 #notifications .pg-bell-filters {
   display: flex;
@@ -4525,6 +4526,9 @@ a.link-top-row {
   line-height: 1.2;
   white-space: nowrap;
   transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+#notifications .pg-bell-filter[hidden] {
+  display: none;
 }
 #notifications .pg-bell-filter:hover {
   background: var(--pg-tint);
@@ -4555,8 +4559,34 @@ a.link-top-row {
   background: color-mix(in srgb, var(--pg-on-accent) 16%, transparent);
   color: inherit;
 }
-/* A row of another filter, and a flow's older runs while its newest is
-   closed. */
+/* The search box takes the room the switch leaves. */
+#notifications .pg-bell-tools {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+#notifications .pg-bell-search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+#notifications .pg-bell-unread-only {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--pg-fg-2);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+#notifications .pg-bell-unread-only label {
+  margin: 0;
+  cursor: pointer;
+}
+/* A row the chips, the switch or the search leave out, and a flow's older
+   runs while its newest is closed. */
 #notifications .software_notification:is(.pg-bell-off, .pg-bell-shut) {
   display: none;
 }

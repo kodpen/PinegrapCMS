@@ -175,8 +175,7 @@ function pg_panel_get_notifications($request, $action)
             'url' => $display['url'],
             'action' => $display['action'],
             'time' => get_relative_time(array('timestamp' => $notification['timestamp'])),
-            // The bell's filters: what the workspace told this person, and
-            // the rest of the site.
+            // What the workspace told this person, or the rest of the site.
             'group' => ((($notification['action'] ?? '') === 'workspace') ? 'workspace' : 'site'),
             'glyph' => $display['glyph'],
             'join' => $display['join'],
@@ -185,7 +184,9 @@ function pg_panel_get_notifications($request, $action)
             // day heading it stands under and the one button's job.
             'module' => pg_notification_module($notification['action'] ?? ''),
             'day' => pg_notification_day((int) $notification['timestamp'], $now),
-            'button' => pg_notification_button($display['action'], $display['kind'], $display['join'])
+            'button' => pg_notification_button($display['action'], $display['kind'], $display['join']),
+            // The "Asked of me" chip: a mention, a question or an approval.
+            'ask' => (pg_notification_asks($display['action'], $display['kind']) ? 1 : 0)
         );
 
         array_push($array, $item);
