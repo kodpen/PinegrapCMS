@@ -143,14 +143,41 @@ if (!pg_settings_may_open($pane, $user, $reader)) {
 
 if (!$_POST) {
 
+    // A page left open across an update runs the panel script it loaded, and
+    // the cards drawn now may need the one served now: their buttons would
+    // then do nothing. The dialog sends the stamp its page was drawn with
+    // (pg_settings_pane_url()); a different one gets a line with a Reload
+    // button instead of the cards. Whatever a tool left in the form (its
+    // notices and warnings) stays there for the reloaded page's first pane.
+    $category = pg_settings_category($pane);
+
+    if (pg_js_stamp_stale(isset($_GET['v']) ? $_GET['v'] : '', pg_js_bundle_stamp('assets/js/backend.min.js'))) {
+        pg_settings_pane_respond(array(
+            'status'      => 'success',
+            'pane'        => $pane,
+            'title'       => $category['label'],
+            'description' => $category['description'],
+            'icon'        => $category['icon'],
+            'sections'    => array(),
+            'html'        => '
+<div class="alert theme-warning align-items-center flex-wrap" role="alert">
+    <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+    <span class="flex-grow-1">' . h(lang('The panel was updated after this page was opened.')) . '</span>
+    <button type="button" class="btn btn-solid theme-warning btn-sm" onclick="window.location.reload()">' . h(lang('Reload')) . '</button>
+</div>',
+            'modals'      => '',
+            'scripts'     => '',
+            'meta'        => '',
+            'token'       => (isset($_SESSION['software']['token']) ? $_SESSION['software']['token'] : ''),
+        ));
+    }
+
     try {
         $fragment = pg_settings_fragment($pane, $user, $liveform);
 
     } catch (Throwable $error) {
         pg_settings_pane_respond(array('status' => 'error', 'message' => pg_settings_pane_complaint($error)), 500);
     }
-
-    $category = pg_settings_category($pane);
 
     // What a tool left in this form on its way here. cloudflare.php and
     // software_update.php finish on a screen of their own and send the
