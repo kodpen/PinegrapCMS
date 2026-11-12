@@ -1456,7 +1456,7 @@ function ws_templates_settings_card($self_url, $viewer, $form = null)
     <div id="pgset-ws-templates" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center gap-3">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0 ws-grow">' . h(lang('Channel templates')) . '</span>
+                <span class="pg-title-section ws-grow">' . h(lang('Channel templates')) . '</span>
                 ' . $new . '
             </div>
             <div class="card-body">

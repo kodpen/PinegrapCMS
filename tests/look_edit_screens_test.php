@@ -74,6 +74,6 @@ function test_edit_screen_block_sizes_columns_cards_and_save_bar()
 	pg_assert_contains("body.pg-measure-edit .row > .order-2.lg\\:col-4 {\n    flex: 336 1 0%;", $block, 'the status column takes 336 parts');
 	pg_assert_contains('font-size: var(--pg-text-status-title);', $block, 'a status card title is the status title');
 	pg_assert_contains('min-height: 56px;', $block, 'the save bar is 56 px');
-	pg_assert_contains("body.pg-measure-edit .row > .order-1 > .card,\nbody.pg-measure-edit .row > .order-2 > .position-sticky > .card {\n  background: linear-gradient", $css, 'the cards are the look card');
-	pg_assert_contains("body.pg-measure-edit .row > .order-3 > nav.buttons.navigation {\n  border-radius: var(--pg-radius-card);", $css, 'the save bar is the floating bar');
+	pg_assert_contains("body.pg-measure-edit .row > .order-1 > .card,\nbody.pg-measure-edit .row > .order-2 > .position-sticky > .card,\n#pg_settings_sections > .pg-set-card > .card {\n  background: linear-gradient", $css, 'the cards are the look card');
+	pg_assert_contains("body.pg-measure-edit .row > .order-3 > nav.buttons.navigation,\n#pg_settings_page_form > nav.buttons.navigation {\n  border-radius: var(--pg-radius-card);", $css, 'the save bar is the floating bar');
 }

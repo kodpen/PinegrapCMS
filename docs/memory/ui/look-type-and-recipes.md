@@ -23,7 +23,7 @@ description: Look A's typeface (self-hosted Inter 4.1), the type scale and tone 
 
 ## Which class draws which part?
 - Type: `.pg-title-screen`, `.pg-title-section`, `.pg-title-status`, `.pg-text-2`, `.pg-text-meta`, `.pg-tabular`.
-- Card `.pg-card` (`.pg-card-sheet` 20 px corners), `.pg-card-sub`; inner card `.pg-card-inner` with `.pg-card-inner-row`; floating bar `.pg-floatbar`.
+- Card `.pg-card` (`.pg-card-sheet` 20 px), `.pg-card-sub`, `.pg-group-label`; inner card `.pg-card-inner` + `.pg-card-inner-row`; floating bar `.pg-floatbar`.
 - Field: `.pg-field-label` (+ `.pg-field-label-note`), `.pg-input` on an input, select or textarea, or on a wrapper holding a bare input and `.pg-input-end`; `.pg-input-sm` in a row; error `.is-invalid` or `aria-invalid="true"`, message `.pg-field-help.pg-field-error`. `.pg-switch`, `.pg-checkbox` on a native checkbox.
 - Buttons: `.pg-button` + `-fill` (one per view), `-quiet`, `-ghost`, `-danger`, `-sm`; `.pg-icon-button` (+ `-sm`, `.is-active` or `aria-pressed`).
 - Segmented control `.pg-seg` > `.pg-seg-item` (chosen: `.is-active`, `aria-pressed`, `aria-selected`, `aria-current`), `.pg-seg-count`.

@@ -1163,7 +1163,7 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
     <div id="pgset-ws-mail" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center gap-3">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0 ws-grow">' . h(lang('Mailboxes')) . '</span>
+                <span class="pg-title-section ws-grow">' . h(lang('Mailboxes')) . '</span>
                 <button type="button" class="btn btn-sm btn-outline theme-primary rounded-pill" data-bs-toggle="drawer" data-bs-target="#pgset-ws-mail-0" aria-controls="pgset-ws-mail-0"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add a mailbox')) . '</button>
             </div>
             <div class="card-body">
