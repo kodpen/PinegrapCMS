@@ -57,6 +57,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-7.md: Is the second pass of look A the reference? (owner, 2026-11-12, #8860)
 - decisions-made-panel-7.md: How wide is an add or edit screen? (owner, 2026-11-12, #8860)
 - decisions-made-panel-7.md: How wide is a list, and how does it page? (owner, 2026-11-12, #8860)
+- decisions-made-panel-7.md: Is the dialogs and drawers page the reference? (owner, 2026-11-12, #8860)
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?
 - decisions-made-panel.md: Which date-and-time picker does the software use? (#2693, 2026-10-28)
@@ -241,6 +242,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-45.md: Where are the rules and the earlier parts?
 - decisions-made-product-45.md: Does the Kodpen API client go on before its release keys exist? (owner, 2026-11-11, #8755)
 - decisions-made-product-45.md: Does the api2 server stay open? (owner, 2026-11-11, #8755)
+- decisions-made-product-46.md: Where are the rules and the earlier parts?
+- decisions-made-product-46.md: Does a picture saved again from the Design Canvas show at once? (owner, 2026-11-12, #8882)
 - decisions-made-product-5.md: Which outside-account leftovers start in 2026.11.0? (#3180)
 - decisions-made-product-5.md: Do subscriptions start, and who runs the renewals? (#3183)
 - decisions-made-product-5.md: Does a beta site without a build file get the beta build of its own version? (#3204)
@@ -366,6 +369,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-19.md: Whom does a discussion under an agent's own message follow? (owner, 2026-11-12, #8871)
 - decisions-made-workspace-19.md: What does the line read when an agent closes a request without text? (owner, 2026-11-12, #8872)
 - decisions-made-workspace-19.md: May an agent leave an emoji on a message? (owner, 2026-11-12, #8873)
+- decisions-made-workspace-19.md: Who is listed as a channel's member, and who sees a last seen? (owner, 2026-11-12, #8880)
 - decisions-made-workspace-2.md: What may the channel menu hold?
 - decisions-made-workspace-2.md: Where are records created inside a chat?
 - decisions-made-workspace-2.md: Does the customer channel's "New sales quote" stay in the menu?
