@@ -177,6 +177,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_agent_sessions();       // 11.0.184
 	upgrade_2026_11_0_ws_mail_send();            // 11.0.185
 	upgrade_2026_11_0_design_color_mode();       // 11.0.186
+	upgrade_2026_11_0_legacy_design_key();       // 11.0.187
 
 }
 
@@ -5983,5 +5984,28 @@ function upgrade_2026_11_0_design_color_mode() {
 	install_add_column('style', 'style_color_mode', "VARCHAR(8) NOT NULL DEFAULT ''");
 
 	install_note('Visual Page Editor: a design can be light, dark or follow the visitor\'s system, chosen under Settings, Theme; existing designs are unchanged.');
+
+}
+
+// The legacy design key (2026.11.0, 11.0.187; includes/fn/designer.php,
+// pg_design_frameworks()). A classic style moved into the Visual Page Editor
+// was given the framework key 'custom'; from this version the move writes
+// 'legacy', which loads no framework files either and marks the design as a
+// moved classic style (the Legacy badge on the Visual Designs screen, the
+// activated theme on its pages). This step gives the key to the styles moved
+// before it: a custom visual design that still has the shared component
+// made from it (category classic_style:<style_id>). A design made custom in
+// the editor has no such component and stays custom. Re-runnable: a marked
+// row is no longer custom. A copy of a moved style made before this step
+// has no component of its own id and stays custom.
+function upgrade_2026_11_0_legacy_design_key() {
+
+	db("UPDATE style SET style_framework = 'legacy'
+		WHERE style_framework = 'custom'
+			AND style_layout = 'visual_designer'
+			AND EXISTS (SELECT 1 FROM shared_components
+				WHERE shared_components.category = CONCAT('classic_style:', style.style_id))");
+
+	install_note('Visual Page Editor: classic styles moved into the editor are marked Legacy on the Visual Designs screen; they look and work as before.');
 
 }

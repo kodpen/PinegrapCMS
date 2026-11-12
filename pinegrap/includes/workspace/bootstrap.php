@@ -164,6 +164,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_settings.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_reply.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_send.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_compose.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_forward.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_route.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_status.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_triage.php');

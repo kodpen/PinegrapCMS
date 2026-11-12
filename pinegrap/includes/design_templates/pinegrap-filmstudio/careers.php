@@ -324,7 +324,7 @@ $career_widgets = array(
                         $edit_button(),
                     )),
                     $span($departments[$job_sample['department']], 'pfm-eyebrow small text-uppercase fw-semibold text-primary', lang('Department'), $bind('department')),
-                    $heading('h1', $job_sample['title'], 'pfm-display display-6 mt-1 mb-3', $bind('title')),
+                    $heading('h1', $job_sample['title'], 'display-6 mt-1 mb-3', $bind('title')),
                     $el('ul', 'list-unstyled d-flex flex-wrap gap-3 fw-semibold mb-3', lang('Job Facts'), array(
                         $el('li', 'd-inline-flex align-items-center gap-1', lang('Job Type'), array(
                             $icon('bi-briefcase', 'text-primary'),

@@ -135,5 +135,6 @@ function test_designer_blocks_filmstudio_rules_reach_the_stylesheet()
 		pg_assert_true((bool) preg_match('/var\\(--bs-[a-z-]+\\)/', $css), 'a rule colours with a theme variable: ' . $name);
 	}
 	pg_assert_true(strpos($part['rules']['pg-filmstudio-scope'], 'prefers-reduced-motion') !== false, 'the play mark stops growing under reduced motion');
+	pg_assert_true((bool) preg_match('/\.pg-filmstudio-play:focus-visible \{[^}]*box-shadow: 0 0 0 \.25rem var\(--bs-body-bg\), 0 0 0 \.5rem var\(--bs-primary\)/', $part['rules']['pg-filmstudio-scope']), 'keyboard focus draws a ring the halo does not hide');
 	pg_assert_true(strpos($part['rules']['pg-filmstudio-scope'], '--bs-aspect-ratio: 41.84%') !== false, 'the still is at the cinema\'s 2.39:1');
 }

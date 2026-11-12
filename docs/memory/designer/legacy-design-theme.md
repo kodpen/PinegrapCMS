@@ -11,7 +11,7 @@ module: legacy_design_theme
 - Symptom it fixed: a moved style with no theme of its own (every style of the starting sites) lost the activated theme and its pages opened unstyled.
 
 ## How is a moved design recognised?
-- Until the `legacy` framework key exists: framework `custom` and a shared component of category `classic_style:<style_id>` (`pg_legacy_design_from_classic()`).
+- By the `legacy` flag of its framework key alone (`pg_legacy_design_from_classic()`, LG3): the move writes `legacy`, the 11.0.187 step gave it to the styles moved before. `custom` designs load no classic theme. Why no component check: `legacy-design-framework.md`.
 
 ## Where is it?
 - `includes/fn/legacy_design_theme.php`: `pg_legacy_design_theme()` (pure: own, classic, device, the two activated themes, rows, output path, page), `pg_legacy_design_rows_link()` (pure), `pg_legacy_design_classic_theme()` (reads the rows above), `pg_legacy_design_theme_js()` for the editor. `pg_classic_style_component_category()` and `pg_classic_style_site_file_name()` moved here from `classic_style_design`, so a page render does not load the importer.

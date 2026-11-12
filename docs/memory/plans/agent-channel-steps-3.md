@@ -13,7 +13,7 @@ description: Steps A10 and A11 of plans/agent-channel.md: an agent waits while t
   - Save: the agent reads the new words. Cancel or the two minutes: the words of before. An agent already answering stops and reads again (an app agent's `answer` 409 once the message was edited after its claim, the request queued again). An answer already given is not asked again.
   - Every channel kind and agent kind. A new column is asked first (Fixed rules 5). Tests: when a request is held, what a save does in each status. Topic `workspace/agent-edit-hold.md`; `agent-doors.md` corrected.
 
-- A11 (S) The brief stays bounded. `free`. Architect 2026-11-11, on the owner's words (`workflow/agent-channel-reads.md`).
+- A11 (S) The brief stays bounded. Done #8756. Architect 2026-11-11, on the owner's words (`workflow/agent-channel-reads.md`).
   - "Decisions in this channel" lists the newest 10 (today up to 40, `ws_memory_brief()`), then one line with how many more there are. The brief's line on reading more names `limit` and asks for only as many messages as the request needs; the route's default (50) and most (100) stay.
   - Tests: the bound and the count line. Topic `workspace/channel-memory.md` corrected.
 

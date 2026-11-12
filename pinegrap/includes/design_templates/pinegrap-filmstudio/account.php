@@ -395,7 +395,7 @@ $account_widgets = array(
                     $col(array(
                         $el('div', 'p-4 rounded-3 bg-primary-subtle mb-3', lang('Account Card'), array(
                             $para(lang('Welcome back'), 'small text-body-secondary mb-1'),
-                            $heading('h1', lang('Jane Cooper'), 'pfm-display h4 mb-1', $bind('__display_name')),
+                            $heading('h1', lang('Jane Cooper'), 'h4 mb-1', $bind('__display_name')),
                             $para(lang('jane.cooper@example.com'), 'small text-body-secondary mb-3', $bind('email_address')),
                             $link(lang('Log out'), '#', 'btn btn-sm btn-outline-secondary', array(), array('_bindings' => array('href' => '__logout_url'))),
                         )),
@@ -625,7 +625,7 @@ $account_widgets = array(
                         $optional_image('photo', 'full_name', 'rounded-circle object-fit-cover', 'flex-shrink-0',
                             $portrait(lang('Deniz Arslan'), 128), lang('Photo')),
                         $el('div', 'min-w-0', lang('Details'), array(
-                            $heading('h2', lang('Deniz Arslan'), 'pfm-display h6 mb-0', $bind('full_name')),
+                            $heading('h2', lang('Deniz Arslan'), 'h6 mb-0', $bind('full_name')),
                             $para(lang('Producer'), 'small text-primary fw-semibold mb-2', $bind('job_title')),
                             $el('p', 'pg-hide-if-empty small mb-1', lang('Department'), array(
                                 $icon('bi-diagram-3', 'text-primary me-1'),

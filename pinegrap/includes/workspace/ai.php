@@ -3679,7 +3679,7 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
 {
     $claude = ($agent === 'claude');
     $allowed = $claude ? 'ws_claude_channel_allowed' : 'ws_ai_loop_channel_allowed';
-    $more = $claude ? 'GET /workspace/channels/{id}/context reads them' : 'read_channel reads them';
+    $more = $claude ? 'GET /workspace/channels/{id}/context?limit=<n> reads them; ask for only as many messages as the request needs' : 'read_channel reads them';
     $message = null;
     $parts = array();
 

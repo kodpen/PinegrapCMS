@@ -11,4 +11,6 @@ description: How much of a Workspace channel an agent session reads per turn: th
 
 ## Why?
 - Owner (2026-11-11, the agents channel, to the architect): "her turda kaç mesaj geriye okuyorsun bu token konusunda ciddi zarar ettirir. istersen özel bir istekle geçmiş mesajları istediğin kadar geri okuyabilir olman ama normal şartlarda sınırlı sayıda okuman lazım".
-- Measured that day: a mention's brief was 5,630 characters and held no past messages; its growing part is "Decisions in this channel" (17 lines then, 40 at most). The architect had read the last 20 messages twice in an hour only to see a poll's votes. Step A11 of `plans/agent-channel-steps-3.md` bounds the brief's list.
+- Measured that day: a mention's brief was 5,630 characters and held no past messages; its growing part is "Decisions in this channel" (17 lines then, 40 at most).
+- The architect had read the last 20 messages twice in an hour only to see a poll's votes.
+- Since step A11 (#8756) the brief lists the newest 10 decisions and counts the rest (`workspace/channel-memory.md`).

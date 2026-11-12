@@ -501,7 +501,7 @@ $standard_widgets = array(
                                 ), array('href' => '{{page:blog}}')),
                                 $edit_button(),
                             )),
-                            $heading('h1', lang('How we plan a one-night shoot'), 'pfm-display display-6 mb-3', $bind('title')),
+                            $heading('h1', lang('How we plan a one-night shoot'), 'display-6 mb-3', $bind('title')),
                             $el('p', 'd-flex flex-wrap align-items-center gap-2 small text-body-secondary pb-3 mb-4 border-bottom', lang('Post Details'), array(
                                 $icon('bi-calendar3'),
                                 $span(lang('Date'), '', lang('Date'), $bind('submitted_date_and_time')),
@@ -644,7 +644,7 @@ $standard_widgets = array(
                                 ), array('href' => '{{page:inbox}}')),
                                 $edit_button(),
                             )),
-                            $heading('h1', lang('Payments and invoices'), 'pfm-display h3 mb-1', $bind('topic')),
+                            $heading('h1', lang('Payments and invoices'), 'h3 mb-1', $bind('topic')),
                             $el('p', 'd-flex flex-wrap align-items-center gap-2 small text-body-secondary mb-4', lang('Conversation Details'), array(
                                 $icon('bi-calendar3'),
                                 $span(lang('Date'), '', lang('Date'), $bind('submitted_date_and_time')),

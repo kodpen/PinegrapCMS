@@ -173,6 +173,12 @@ function ws_mail_pane_item_html($item)
             . ((trim((string) $bounce['body_text']) !== '') ? ' ' . h((string) $bounce['body_text']) : '') . '</div>';
     }
 
+    // Forward as e-mail (mail_forward.php, ws_mail_forward_pane()).
+    if (!empty($item['forward'])) {
+        $html .= '<div class="ws-mail-item-tools mt-2"><button type="button" class="btn btn-sm btn-text theme-secondary px-0" data-ws-mail-forward="' . (int) $item['id'] . '">'
+            . '<i class="bi bi-envelope-arrow-up me-1" aria-hidden="true"></i>' . h(lang('Forward')) . '</button></div>';
+    }
+
     return $html . '</article>';
 }
 

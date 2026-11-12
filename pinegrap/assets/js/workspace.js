@@ -6689,6 +6689,18 @@
             forward.addEventListener('click', function () { self.forwardForm(self.selectedMessages()); });
             bar.appendChild(forward);
 
+            // Forward as e-mail: the New e-mail form filled with them (workspace_mail.js).
+            if (CFG.mail_forward && window.PGWsMail) {
+                var mail = button('btn btn-sm btn-outline theme-secondary rounded-pill', t('mail_fwd'), 'bi-envelope-arrow-up');
+                mail.disabled = none;
+                mail.addEventListener('click', function () {
+                    var ids = self.selectedMessages().map(function (message) { return message.id; });
+
+                    window.PGWsMail.forward(featureHelpers(), { kind: 'messages', ids: ids }, { sent: function () { self.endSelect(); self.sync(); } });
+                });
+                bar.appendChild(mail);
+            }
+
             var copy = button('btn btn-sm btn-outline theme-secondary rounded-pill', t('sel_copy'), 'bi-copy');
             copy.disabled = none;
             copy.addEventListener('click', function () { self.copySelected(); });
@@ -10715,6 +10727,16 @@
             if (CFG.forwards && !message.deleted && (message.sender_kind === 'user' || message.sender_kind === 'app' || message.sender_kind === 'guest')
                 && ['message', 'note', 'decision'].indexOf(message.kind) !== -1) {
                 items.push({ icon: 'bi-check2-all', label: t('sel_start'), action: function () { self.startSelect(message); } });
+            }
+
+            // Forward as e-mail: a mail's own text forwards that mail, a
+            // message written by someone forwards that message.
+            if (CFG.mail_forward && window.PGWsMail && !message.deleted && (message.mail_forward
+                || ((message.sender_kind === 'user' || message.sender_kind === 'app' || message.sender_kind === 'guest') && ['message', 'note', 'decision'].indexOf(message.kind) !== -1))) {
+                items.push({ icon: 'bi-envelope-arrow-up', label: t('mail_fwd'), action: function () {
+                    window.PGWsMail.forward(featureHelpers(), message.mail_forward ? { kind: 'mail', ids: [message.mail_forward] } : { kind: 'messages', ids: [message.id] },
+                        { sent: function () { self.sync(); } });
+                } });
             }
 
             items.push('-');

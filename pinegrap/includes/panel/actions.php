@@ -364,7 +364,7 @@ function pg_panel_actions()
         'ws_channel_customer', 'ws_channel_customer_history',
         'ws_channel_customer_followup',
         'ws_mail_reply', 'ws_mail_resend', 'ws_mail_conversation', 'ws_mail_rows', 'ws_mail_pane', 'ws_mail_read_all',
-        'ws_mail_compose', 'ws_mail_new',
+        'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward',
     ) as $ws_action) {
         $actions[$ws_action] = array('file' => 'workspace.php', 'handler' => 'pg_panel_ws', 'exempt' => true, 'token' => true, 'write' => true);
     }
