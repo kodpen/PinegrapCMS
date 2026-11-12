@@ -20,7 +20,7 @@ description: An agent's SVG taken apart into a layer per element on the server (
 
 ## How is a box measured without a browser?
 - The editor measures with `getBBox()`; `ws_canvas_split_bbox()` works it out from the geometry (fill, no stroke, own transform not applied): rect, image, circle, ellipse, line, points, a path exactly (curves to their turning points, arcs to their extremes, flags written together), a group through its children's transforms, a `use` as the element it names plus x, y; `display:none` draws nothing.
-- Text is an estimate: half its size a letter, a sans serif's ascent 0.905 and descent 0.212 of the size, moved by `text-anchor`, a `tspan` with its own x or y a run of its own. The browser's box differs by some pixels; CV2 makes texts text layers.
+- Text is an estimate: half its size a letter, a sans serif's ascent 0.905 and descent 0.212 of the size, moved by `text-anchor`, a `tspan` with its own x or y a run of its own. The browser's box differs by some pixels; it matters only for a text that stays an svg layer (`agent-canvas-split-parts.md`).
 
 ## How do the two sides stay together?
 - `tests/fixtures/canvas_split/chart.svg` and `chart.json`: the boxes the editor's `svgLayers()` measured in Chromium for the sanitized file. `tests/workspace_agent_canvas_split_test.php` checks the PHP split against them and runs the model under Node (`M.svgTransform()`, `M.svgPlace()`, `M.svgMatrix()`, `M.svgOwnBox()`, the fixture's places) against the ports.

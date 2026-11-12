@@ -162,7 +162,7 @@ function ws_canvas_ai_tools($tool)
             'background' => array('type' => 'string', 'description' => 'The artboard\'s colour as #rrggbb, or transparent; white when left out.'),
             'text'       => array('type' => 'string', 'description' => 'Words beside the canvas, optional.'),
             'name'       => array('type' => 'string', 'description' => 'The canvas\'s name, optional.'),
-            'layers'     => array('type' => 'string', 'enum' => array('split', 'one'), 'description' => 'split: a layer per top-level element, each named by its id, so one part can be changed later; one (the default): the drawing as one layer.'),
+            'layers'     => array('type' => 'string', 'enum' => array('split', 'one'), 'description' => 'split: a layer per top-level element, each named by its id, so one part can be changed later; a text becomes a text layer, a picture of a file of this channel (its address as the message gives it) a picture layer; one (the default): the drawing as one layer.'),
         ), array('svg')),
         $tool('read_canvas', 'Read a canvas of this channel, an assistant\'s or a person\'s: its artboard, its newest version and its layers (id, kind, box, name, a text layer\'s text, an svg layer\'s markup). Read it before edit_canvas.', array(
             'message_id' => array('type' => 'integer', 'description' => 'The message the canvas is in.'),
@@ -251,7 +251,7 @@ function ws_canvas_ai_tool_run($row, &$state, $name, $args, $asker)
 
     if ($name === 'draw_canvas') {
         $mode = ws_canvas_split_mode($args['layers'] ?? null);
-        $made = ($mode === null) ? array('error' => 'layers') : ws_canvas_from_svg((string) ($args['svg'] ?? ''), (string) ($args['background'] ?? ''), $mode === 'split');
+        $made = ($mode === null) ? array('error' => 'layers') : ws_canvas_from_svg((string) ($args['svg'] ?? ''), (string) ($args['background'] ?? ''), $mode === 'split', ws_canvas_split_resolver((int) $channel['id'], false));
 
         if ($made['error'] !== '') {
             return array('error' => ws_canvas_from_svg_error_text($made['error']));
@@ -307,7 +307,7 @@ function ws_canvas_ai_tool_run($row, &$state, $name, $args, $asker)
         return array('error' => 'Write operations as a JSON list of objects, each with its op.');
     }
 
-    $edited = ws_canvas_edit_apply($target['doc'], $operations);
+    $edited = ws_canvas_edit_apply($target['doc'], $operations, ws_canvas_split_resolver((int) $target['message']['channel_id'], false));
 
     if ($edited['error'] !== '') {
         return array('error' => (($edited['index'] >= 0) ? 'Operation ' . $edited['index'] . ': ' : '') . ws_canvas_edit_error_text($edited['error']));

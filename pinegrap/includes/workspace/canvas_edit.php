@@ -203,9 +203,11 @@ function ws_canvas_edit_split_mode($op)
  *
  * @param array $doc        the newest version's document, decoded as arrays
  * @param mixed $operations list of operation objects, decoded as arrays
+ * @param callable|null $resolve with layers split: a picture's href => the
+ *                               file it names (ws_canvas_split_file())
  * @return array error ('' or the refusal), index (of the refused operation, -1), doc (array)
  */
-function ws_canvas_edit_apply($doc, $operations)
+function ws_canvas_edit_apply($doc, $operations, $resolve = null)
 {
     $fail = function ($error, $index = -1) {
         return array('error' => $error, 'index' => $index, 'doc' => null);
@@ -234,7 +236,7 @@ function ws_canvas_edit_apply($doc, $operations)
 
         if ($kind === 'svg') {
             $current = (string) ($doc['artboard']['background'] ?? '#ffffff');
-            $made = ws_canvas_from_svg($op['svg'] ?? '', array_key_exists('background', $op) ? $op['background'] : $current, $mode === 'split');
+            $made = ws_canvas_from_svg($op['svg'] ?? '', array_key_exists('background', $op) ? $op['background'] : $current, $mode === 'split', $resolve);
 
             if ($made['error'] !== '') {
                 return $fail($made['error'], $i);
@@ -251,12 +253,10 @@ function ws_canvas_edit_apply($doc, $operations)
                 return $fail(is_string($svg) ? 'too_large' : 'empty', $i);
             }
 
-            $clean = pg_svg_sanitize($svg);
-
             if ($mode === 'split') {
                 // The layers go where the one imported layer would have
                 // gone, as Break apart leaves them.
-                $parts = ($clean === '') ? null : ws_canvas_split_layers($clean, ws_canvas_taken_ids($doc));
+                $parts = ws_canvas_split_svg($svg, ws_canvas_taken_ids($doc), $resolve);
 
                 if ($parts === null) {
                     return $fail('empty', $i);
@@ -271,6 +271,8 @@ function ws_canvas_edit_apply($doc, $operations)
                 $doc = ws_canvas_split_into($doc, $parts, $frame);
                 continue;
             }
+
+            $clean = pg_svg_sanitize($svg);
 
             $made = ($clean === '') ? null : ws_canvas_svg_layer($clean, ws_canvas_taken_ids($doc));
 

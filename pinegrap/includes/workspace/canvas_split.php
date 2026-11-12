@@ -24,6 +24,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_edit.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_split_parts.php');
 
 /**
  * How an SVG becomes layers: split (a layer per top-level element) or one
@@ -737,14 +738,26 @@ function ws_canvas_split_round($n)
  * element that is no drawing locked as kept. A layer whose element had an
  * id is named by it.
  *
- * @param string   $svg   sanitized (pg_svg_sanitize())
- * @param string[] $taken ids the document already holds
+ * A text a text layer can hold becomes one; a picture marked by
+ * ws_canvas_split_mark_pictures() becomes a picture layer of its file
+ * (canvas_split_parts.php).
+ *
+ * @param string     $svg   sanitized (pg_svg_sanitize())
+ * @param string[]   $taken ids the document already holds
+ * @param array|null $parts fonts (lower case family => family; the
+ *                          editor's catalogue when left out), files and
+ *                          token from ws_canvas_split_mark_pictures()
  * @return array|null w, h, id (the root's renamed id), defs (one <defs> or
  *                    ''), layers (without ids); null when it does not parse
  *                    or draws nothing
  */
-function ws_canvas_split_layers($svg, $taken = array())
+function ws_canvas_split_layers($svg, $taken = array(), $parts = null)
 {
+    $parts = is_array($parts) ? $parts : array();
+    $catalog = $parts['fonts'] ?? (ws_canvas_split_google_fonts() + ws_canvas_split_site_fonts());
+    $files = $parts['files'] ?? array();
+    $token = (string) ($parts['token'] ?? '');
+
     $source = new DOMDocument();
     $errors = libxml_use_internal_errors(true);
     $loaded = $source->loadXML((string) $svg, LIBXML_NONET | LIBXML_COMPACT);
@@ -841,6 +854,24 @@ function ws_canvas_split_layers($svg, $taken = array())
         // with style rules.
         $label = preg_replace('/^i[0-9]+-(?:pgsvg-[0-9a-f]{10}-)?/', '', $child->getAttribute('id'));
         $own = ws_canvas_split_transform($child->getAttribute('transform'));
+        $m = ws_canvas_svg_mul($size['m'], $own);
+        $part = null;
+
+        if ($name === 'text') {
+            $part = ws_canvas_split_text_layer($child, $m, $catalog);
+        } elseif (($name === 'image') && ($token !== '') && preg_match('/pgfile-' . preg_quote($token, '/') . '-([0-9]+)$/', $child->getAttribute('href'), $mark) && isset($files[(int) $mark[1]])) {
+            $part = ws_canvas_split_picture_layer($child, $m, $files[(int) $mark[1]]);
+        }
+
+        if ($part) {
+            if ($label !== '') {
+                $part['name'] = $label;
+            }
+
+            $layers[] = $part;
+            continue;
+        }
+
         $b = ws_canvas_split_bbox($child, $by_id);
         $node = $out->importNode($child, true);
 
@@ -915,6 +946,28 @@ function ws_canvas_split_layers($svg, $taken = array())
 }
 
 /**
+ * An agent's SVG as it is taken apart: its pictures of the site's files
+ * marked (with a resolver), sanitized, split. Null when nothing is left to
+ * draw.
+ *
+ * @param string        $svg     as the agent sent it
+ * @param string[]      $taken   ids the document already holds
+ * @param callable|null $resolve href => file (ws_canvas_split_file()) or null
+ * @return array|null ws_canvas_split_layers()
+ */
+function ws_canvas_split_svg($svg, $taken = array(), $resolve = null)
+{
+    $marked = $resolve ? ws_canvas_split_mark_pictures($svg, $resolve) : array('svg' => $svg, 'files' => array(), 'token' => '');
+    $clean = pg_svg_sanitize($marked['svg']);
+
+    if ($clean === '') {
+        return null;
+    }
+
+    return ws_canvas_split_layers($clean, $taken, array('files' => $marked['files'], 'token' => $marked['token'], 'fonts' => ws_canvas_split_google_fonts() + ws_canvas_split_site_fonts()));
+}
+
+/**
  * A document with an SVG's split layers put on top, placed as Break apart
  * places them: through the matrix of the frame the import would have had
  * (its box on the artboard), each layer's own matrix after it; one that
@@ -933,9 +986,37 @@ function ws_canvas_split_into($doc, $split, $frame)
     $place = ws_canvas_split_layer_matrix($frame);
 
     foreach ($split['layers'] as $s) {
+        $layer = array('id' => ws_canvas_new_layer_id($doc)) + $s;
+
+        // A text or picture layer goes through the frame by its box; a text's
+        // letters scale with its height.
+        if ($s['type'] !== 'svg') {
+            $vb = array('x' => 0, 'y' => 0, 'w' => $s['w'], 'h' => $s['h']);
+            $m = ws_canvas_svg_mul($place, ws_canvas_split_layer_matrix($s + array('vb' => $vb)));
+            $box = ws_canvas_split_place($vb, $m);
+
+            if (!$box || !empty($box['mirror'])) {
+                $centre = ws_canvas_split_apply($m, $s['w'] / 2, $s['h'] / 2);
+                $k = sqrt(abs($place[0] * $place[3] - $place[1] * $place[2]));
+                $box = array('x' => $centre[0] - $s['w'] * $k / 2, 'y' => $centre[1] - $s['h'] * $k / 2, 'w' => $s['w'] * $k, 'h' => $s['h'] * $k, 'rot' => fmod(($s['rot'] ?? 0) + ($frame['rot'] ?? 0), 360));
+            }
+
+            unset($box['mirror']);
+
+            if ($s['type'] === 'text') {
+                $layer['size'] = ws_canvas_split_round(floor($s['size'] * $box['h'] / max(1e-9, $s['h']) * 100 + 0.5) / 100);
+            }
+
+            foreach ($box as $key => $value) {
+                $layer[$key] = ws_canvas_split_round($value);
+            }
+
+            $doc['layers'][] = $layer;
+            continue;
+        }
+
         $own = ws_canvas_split_layer_matrix($s);
         $box = ws_canvas_split_place($s['vb'], ws_canvas_svg_mul($place, $own));
-        $layer = array('id' => ws_canvas_new_layer_id($doc)) + $s;
 
         unset($layer['mirror']);
 
