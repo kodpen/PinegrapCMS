@@ -15900,47 +15900,17 @@ const StyleDesigner = (function () {
                 e.stopPropagation();
                 // Ensure the node is selected first
                 if (selectedNode !== node) { selectedNode = node; renderTree(); renderProperties(); }
-                // Call software_image_picker and pass a callback (simulate window interaction)
-                if (typeof window.software_image_picker === 'function') {
-                    // Pinegrap expects #software_image_picker_container to exist to return the Image
-                    var container = document.getElementById('software_image_picker_container');
-                    if (!container) {
-                        container = document.createElement('div');
-                        container.id = 'software_image_picker_container';
-                        container.className = 'd-none'; // Hidden from view
-                        document.body.appendChild(container);
-                    }
-                    container.innerHTML = '';
-                    
-                    // Listen for when Pinegrap pushes the item into the container
-                    var observer = new MutationObserver(function(mutations) {
-                        var input = container.querySelector('input[name="selected_images[]"]');
-                        if (input && input.value) {
-                            observer.disconnect();
-                            var newSrc = input.value;
-                            if (!newSrc.startsWith('http') && !newSrc.startsWith('/')) {
-                                newSrc = '/' + newSrc; // Ensure valid relative path
-                            }
-                            saveState();
-                            node.props.src = newSrc;
-                            renderProperties();
-                            renderTree();
-                            renderCanvas();
-                            container.innerHTML = '';
-                        }
-                    });
-                    
-                    observer.observe(container, { childList: true, subtree: true });
-
-                    try {
-                        window.software_image_picker({ SingleImage: true, initialize: true });
-                    } catch(err) {
-                        console.error("software_image_picker error:", err);
-                        observer.disconnect();
-                    }
-                } else {
-                    alert(_sdT('Image selector is not available.'));
-                }
+                // The picture picker (pgEditorPicker), written as the
+                // properties panel's address field writes it.
+                if (!_sdPickerReady()) return;
+                window.pgEditorPicker.image(node.props.src || '').then(function (newSrc) {
+                    if (!newSrc) return;
+                    saveState();
+                    node.props.src = newSrc;
+                    renderProperties();
+                    renderTree();
+                    renderCanvas();
+                });
             });
             // Only set designer hint if user hasn't defined their own tooltip/title (avoid clobbering).
             if (!(node.props.tooltipEnabled && node.props.tooltipTitle) && !node.props.title) {
@@ -31526,6 +31496,7 @@ const StyleDesigner = (function () {
         var run = function () {
             queued = false;
             _sdNamePropsPanel(panel);
+            _swPageBrowseDecorate(panel);
         };
         if (typeof MutationObserver === 'function') {
             new MutationObserver(function () {
@@ -58696,12 +58667,58 @@ const StyleDesigner = (function () {
         );
     }
 
+    // Browse under every page select of the panel (_swPageOptions(), its
+    // first option marked data-sw-page-none): the page picker, with the
+    // design's unsaved tabs among its own entries (`tab:<key>`). A pick the
+    // select does not list is added to it, then chosen, with the change the
+    // panel listens to.
+    function _swPageBrowseDecorate(panel) {
+        if (!window.pgPicker || !window.pgUI || !panel) return;
+        panel.querySelectorAll('option[data-sw-page-none]').forEach(function (none) {
+            var sel = none.closest('select');
+            if (!sel || sel.multiple || sel._swBrowse) return;
+            sel._swBrowse = true;
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-link btn-sm p-0 mt-1 d-inline-flex align-items-center gap-1 sd-sw-page-browse';
+            btn.innerHTML = '<span class="bi bi-folder2-open" aria-hidden="true"></span><span class="pg-btn-label">' + esc(_sdT('Browse…')) + '</span>';
+            btn.addEventListener('click', function () { _swPageBrowse(sel, none.value); });
+            sel.insertAdjacentElement('afterend', btn);
+        });
+    }
+
+    function _swPageBrowse(sel, noneValue) {
+        var extra = [];
+        ((typeof _pages !== 'undefined' && _pages) ? _pages : []).forEach(function (p) {
+            if (p.page_id > 0) return;
+            extra.push({ value: _swPageRef(p), text: p.page_name || _sdT('New Page'), note: _sdT('unsaved') });
+        });
+        var cur = String(sel.value || '');
+        var value = (cur !== '' && cur !== String(noneValue) && (/^\d+$/.test(cur) || /^tab:/.test(cur))) ? cur : undefined;
+        window.pgPicker.open({ kind: 'page', value: value, extra: extra, extraLabel: _sdT('Not saved yet') }).then(function (item) {
+            if (!item || !sel.isConnected) return;
+            var val = String(item.value);
+            var has = Array.prototype.some.call(sel.options, function (opt) { return opt.value === val; });
+            if (!has) {
+                var opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = item.text || ('#' + val);
+                sel.appendChild(opt);
+            }
+            sel.value = val;
+            sel.dispatchEvent(new Event('input',  { bubbles: true }));
+            sel.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    }
+
     function _swPageOptions(cur, serverPages, o) {
         o = o || {};
         cur = (cur == null) ? '' : String(cur);
         var noneVal = (o.noneValue != null) ? String(o.noneValue) : '0';
         var isNone  = (cur === '' || cur === '0' || cur === noneVal);
-        var html = '<option value="' + esc(noneVal) + '"' + (isNone ? ' selected' : '') + '>' + esc(o.none || _sdT('— Not selected —')) + '</option>';
+        // data-sw-page-none marks the select as a page picker, which gets
+        // Browse beside it (_swPageBrowseDecorate()).
+        var html = '<option value="' + esc(noneVal) + '"' + (isNone ? ' selected' : '') + ' data-sw-page-none>' + esc(o.none || _sdT('— Not selected —')) + '</option>';
         var listed = {};
         var mine = '';
         // o.otherTabs: the design's tabs without the widget yet, under that
@@ -78042,50 +78059,33 @@ const StyleDesigner = (function () {
     }
 
     // ========================= PUBLIC =========================
-    // ── File/page picker integration ──
-    // editor_select_page_or_file.php: works through the CKEditor integration.
-    // On selection it calls window.opener.CKEDITOR.tools.callFunction(funcNum, url).
-    // Without touching the PHP, we install a fake CKEDITOR object on this window
-    // to capture the URL.
-    var _sdPickerFuncNum = 0;
-    // kind ('page' | 'file') opens the picker on that tab; without it the
-    // picker keeps the tab it showed last.
+    // ── Link, file and picture fields: the picker (pgEditorPicker) ──
+    // pg_editor_bridge_script() prints it on the designer's screen; a pick
+    // is the address written into the field, with the input and change
+    // events its handlers listen to.
+    function _sdWritePick(inp, url) {
+        if (!url || !inp) return;
+        inp.value = url;
+        inp.dispatchEvent(new Event('input',  { bubbles: true }));
+        inp.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function _sdPickerReady() {
+        if (window.pgEditorPicker && window.pgEditorPicker.usable()) return true;
+        sdToast(_sdT('The picker is not loaded on this screen.'), 'error', 4000);
+        return false;
+    }
+
+    // kind 'page' (a page or a short link) or 'file' opens that picker; a
+    // link field without one asks which (pgEditorPicker.link()).
     window.sdOpenFilePicker = function (fieldId, propName, kind) {
         var inp = document.getElementById(fieldId);
-        if (!inp) return;
-
-        // Unique funcNum per call — keeps several open pickers from mixing up
-        var funcNum = String(++_sdPickerFuncNum);
-
-        // Install a fake CKEDITOR object on the opener (this window)
-        if (!window.CKEDITOR) window.CKEDITOR = {};
-        if (!window.CKEDITOR.tools) window.CKEDITOR.tools = {};
-        var _prevCallFunction = window.CKEDITOR.tools.callFunction;
-        window.CKEDITOR.tools.callFunction = function (num, url) {
-            if (String(num) === funcNum) {
-                // Our own picker selection — write it to the input and fire the events
-                inp.value = url || '';
-                inp.dispatchEvent(new Event('input',  { bubbles: true }));
-                inp.dispatchEvent(new Event('change', { bubbles: true }));
-                // Restore the original if there was one
-                window.CKEDITOR.tools.callFunction = _prevCallFunction || function(){};
-            } else if (typeof _prevCallFunction === 'function') {
-                _prevCallFunction(num, url);
-            }
-        };
-
-        window.open(
-            'editor_select_page_or_file.php?CKEditorFuncNum=' + funcNum +
-                (kind === 'page' || kind === 'file' ? '&type=' + kind : ''),
-            'sdPicker_' + funcNum,
-            'width=820,height=640,resizable=1,scrollbars=1'
-        );
+        if (!inp || !_sdPickerReady()) return;
+        var picker = window.pgEditorPicker;
+        var pick = (kind === 'page') ? picker.page(inp.value) : ((kind === 'file') ? picker.file() : picker.link(inp.value));
+        pick.then(function (url) { _sdWritePick(inp, url); });
     };
 
-    // ── Image picker (editor_select_image.php) — Unsplash + quick upload + library ──
-    // Uses Pinegrap's `software_image_picker` window, intercepting the callback to capture
-    // the chosen image and write it to the target input. Falls back to the generic file
-    // picker if the host page hasn't loaded the image picker script.
     /**
      * Edit the image an URL field points at.
      *
@@ -78348,36 +78348,11 @@ const StyleDesigner = (function () {
         _sdApplyImageStamps();
     }
 
+    // A picture of the site, or from Unsplash when the site has a key.
     window.sdOpenImagePicker = function (fieldId) {
         var inp = document.getElementById(fieldId);
-        if (!inp) return;
-        if (typeof window.software_image_picker !== 'function') {
-            // No image picker available — fall back to the file picker
-            return window.sdOpenFilePicker(fieldId, 'image');
-        }
-        var _orig = window.software_image_picker;
-        window.software_image_picker = function (props) {
-            if (props && props.return) {
-                window.software_image_picker = _orig;
-                var imgPath = decodeURIComponent(props.image_name || '');
-                if (!imgPath) return;
-                // Preserve absolute URLs (Unsplash) as-is; otherwise prefix with OUTPUT_PATH
-                var finalUrl = /^https?:\/\//.test(imgPath)
-                    ? imgPath
-                    : ((typeof OUTPUT_PATH !== 'undefined' ? OUTPUT_PATH : '/') + imgPath);
-                inp.value = finalUrl;
-                inp.dispatchEvent(new Event('input',  { bubbles: true }));
-                inp.dispatchEvent(new Event('change', { bubbles: true }));
-                return;
-            }
-            _orig.call(window, props);
-        };
-        try {
-            window.software_image_picker({ initialize: true, SingleImage: true });
-        } catch (err) {
-            window.software_image_picker = _orig;
-            console.error('sdOpenImagePicker:', err);
-        }
+        if (!inp || !_sdPickerReady()) return;
+        window.pgEditorPicker.image(inp.value).then(function (url) { _sdWritePick(inp, url); });
     };
 
     // ── Paint instrumentation ───────────────────────────────────────────

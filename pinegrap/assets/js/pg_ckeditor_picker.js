@@ -12,9 +12,14 @@
  *
  * Without pgPicker and pgUI (a site page, where the panel's scripts are not
  * loaded) the dialogs keep CKEditor's own Browse Server window.
- * #pg_editor_bridge_config (pg_ckeditor_picker_script(), includes/fn/editor.php)
+ * #pg_editor_bridge_config (pg_editor_bridge_script(), includes/fn/editor.php)
  * holds the site's path, the texts, whether short links are offered and the
  * Unsplash key.
+ *
+ * pgEditorPicker hands the same pickers to another editor (the visual
+ * designer's link and picture fields): link() asks for a page or short link
+ * or a file, image() for a picture of the site or from Unsplash, each a
+ * promise of the address or null.
  *
  * pgCkeditorPicker.pure holds the helpers without the DOM
  * (tests/editor_bridge_js_test.php runs them in Node). Served in
@@ -145,47 +150,136 @@
         element.focus();
     }
 
-    function browseLink(dialog) {
-        var current = nameFromAddress(dialog.getValueOf('info', 'url'), conf().path);
-        loadShortLinks().then(function (links) {
+    // ── The pickers by what they hand back: an address ─────────────────────
+
+    // A page or a short link; the dialog opens on the name in `current`.
+    function pickPage(current) {
+        var name = nameFromAddress(current, conf().path);
+        return loadShortLinks().then(function (links) {
             return root.pgPicker.open({
-                kind: 'page', title: t('Choose a page'), query: current,
+                kind: 'page', title: t('Choose a page'), query: name,
                 extra: links, extraLabel: t('Short links')
             });
-        }).then(function (item) {
-            if (!item) {
-                return;
-            }
-            // A page, a file and a short link are all addresses of the site:
-            // the link type is URL and the protocol is the site's own.
-            if (dialog.getContentElement('info', 'linkType')) {
-                dialog.setValueOf('info', 'linkType', 'url');
-            }
-            writeUrl(dialog, 'info', 'url', pickAddress(item, conf().path));
+        }).then(function (item) { return pickAddress(item, conf().path) || null; });
+    }
+
+    function pickFile() {
+        return root.pgPicker.open({ kind: 'file', title: t('Choose a file') }).then(function (item) {
+            return pickAddress(item, conf().path) || null;
         });
+    }
+
+    function pickPicture(current) {
+        var name = nameFromAddress(current, conf().path);
+        return root.pgPicker.open({ kind: 'image', title: t('Choose a picture'), value: name || undefined }).then(function (item) {
+            return pickAddress(item, conf().path) || null;
+        });
+    }
+
+    function pickUnsplash() {
+        return root.pgUnsplash.open({ key: conf().unsplash, texts: conf().texts });
+    }
+
+    // A small dialog asking where to choose from: choices [{key, label,
+    // icon}] -> Promise of the key or null, once it has closed.
+    function chooseSource(title, choices) {
+        return new Promise(function (resolve) {
+            var picked = null;
+            var parts = root.pgUI.dialog.build({ size: 'sm', title: title, closeLabel: t('Close'), className: 'pg-source-choice' });
+            var list = doc.createElement('div');
+            list.className = 'd-grid gap-3';
+            choices.forEach(function (choice) {
+                var button = doc.createElement('button');
+                button.type = 'button';
+                button.className = 'btn btn-outline theme-secondary text-start';
+                var icon = doc.createElement('span');
+                icon.className = 'bi ' + choice.icon + ' me-3';
+                icon.setAttribute('aria-hidden', 'true');
+                var label = doc.createElement('span');
+                label.className = 'pg-btn-label';
+                label.textContent = choice.label;
+                button.appendChild(icon);
+                button.appendChild(label);
+                button.addEventListener('click', function () {
+                    picked = choice.key;
+                    root.pgUI.dialog.hide(parts.root);
+                });
+                list.appendChild(button);
+            });
+            parts.body.appendChild(list);
+            var cancel = doc.createElement('button');
+            cancel.type = 'button';
+            cancel.className = 'btn btn-outline theme-secondary';
+            cancel.textContent = t('Cancel');
+            cancel.addEventListener('click', function () { root.pgUI.dialog.hide(parts.root); });
+            parts.footer.appendChild(cancel);
+            doc.body.appendChild(parts.root);
+            root.pgUI.on(parts.root, 'dialog', 'hidden', function () {
+                parts.root.remove();
+                resolve(picked);
+            }, { once: true });
+            root.pgUI.dialog.show(parts.root).then(function () {
+                var first = list.querySelector('button');
+                if (first) {
+                    first.focus();
+                }
+            });
+        });
+    }
+
+    // A link: a page or a short link, or a file, asked first.
+    function pickLink(current) {
+        return chooseSource(t('Choose a link'), [
+            { key: 'page', label: t('A page or a short link'), icon: 'bi-file-earmark-text' },
+            { key: 'file', label: t('A file'), icon: 'bi-paperclip' }
+        ]).then(function (key) {
+            return key === 'page' ? pickPage(current) : (key === 'file' ? pickFile() : null);
+        });
+    }
+
+    // A picture: from the site, or from Unsplash when the site has a key.
+    function pickImage(current) {
+        if (!conf().unsplash || !root.pgUnsplash) {
+            return pickPicture(current);
+        }
+        return chooseSource(t('Choose a picture'), [
+            { key: 'site', label: t('From the site'), icon: 'bi-images' },
+            { key: 'unsplash', label: 'Unsplash', icon: 'bi-image' }
+        ]).then(function (key) {
+            return key === 'site' ? pickPicture(current) : (key === 'unsplash' ? pickUnsplash() : null);
+        });
+    }
+
+    // ── CKEditor ──────────────────────────────────────────────────────────
+
+    // A page, a file and a short link are all addresses of the site: the
+    // link type is URL and the protocol is the site's own.
+    function writeLink(dialog, url) {
+        if (!url) {
+            return;
+        }
+        if (dialog.getContentElement('info', 'linkType')) {
+            dialog.setValueOf('info', 'linkType', 'url');
+        }
+        writeUrl(dialog, 'info', 'url', url);
+    }
+
+    function browseLink(dialog) {
+        pickPage(dialog.getValueOf('info', 'url')).then(function (url) { writeLink(dialog, url); });
     }
 
     function browseFile(dialog) {
-        root.pgPicker.open({ kind: 'file', title: t('Choose a file') }).then(function (item) {
-            if (!item) {
-                return;
-            }
-            if (dialog.getContentElement('info', 'linkType')) {
-                dialog.setValueOf('info', 'linkType', 'url');
-            }
-            writeUrl(dialog, 'info', 'url', pickAddress(item, conf().path));
-        });
+        pickFile().then(function (url) { writeLink(dialog, url); });
     }
 
     function browseImage(dialog) {
-        var current = nameFromAddress(dialog.getValueOf('info', 'txtUrl'), conf().path);
-        root.pgPicker.open({ kind: 'image', title: t('Choose a picture'), value: current || undefined }).then(function (item) {
-            writeUrl(dialog, 'info', 'txtUrl', pickAddress(item, conf().path));
+        pickPicture(dialog.getValueOf('info', 'txtUrl')).then(function (url) {
+            writeUrl(dialog, 'info', 'txtUrl', url);
         });
     }
 
     function browseUnsplash(dialog) {
-        root.pgUnsplash.open({ key: conf().unsplash, texts: conf().texts }).then(function (url) {
+        pickUnsplash().then(function (url) {
             writeUrl(dialog, 'info', 'txtUrl', url);
         });
     }
@@ -241,4 +335,11 @@
     }
 
     root.pgCkeditorPicker = { pure: pure };
+
+    // The same pickers for another editor (the visual designer): each a
+    // promise of an address or null; usable() says whether they can open.
+    root.pgEditorPicker = {
+        usable: usable, link: pickLink, page: pickPage, file: pickFile,
+        image: pickImage, picture: pickPicture
+    };
 })(typeof window !== 'undefined' ? window : this);

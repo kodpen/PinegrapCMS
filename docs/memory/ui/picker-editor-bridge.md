@@ -11,16 +11,16 @@ module: editor, picker
 - The previous editor (TinyMCE 3) keeps its own lists (#8835).
 
 ## Where is it?
-- `assets/js/pg_ckeditor_picker.js` (window.pgCkeditorPicker) and `assets/js/pg_unsplash.js` (window.pgUnsplash), one bundle `assets/js/pg_editor_bridge.min.js`.
+- `assets/js/pg_ckeditor_picker.js` (window.pgCkeditorPicker, and window.pgEditorPicker for the designer) and `assets/js/pg_unsplash.js` (window.pgUnsplash), one bundle `assets/js/pg_editor_bridge.min.js`.
 - It hooks `CKEDITOR.on('dialogDefinition', …, priority 20)`, after the filebrowser plugin (10), and takes over the `browse` button's click; a second button is spliced into the list that holds it.
-- `pg_ckeditor_picker_script()` (`includes/fn/editor.php`) prints `pg_picker_script()`, the `#pg_editor_bridge_config` JSON (endpoint, path, texts, `short_links`, `unsplash`) and the bundle, once, from `get_wysiwyg_editor_code()` behind the same gate as Browse and Upload (role 1–2, or role 3 with a folder to edit).
+- `pg_editor_bridge_script()` (`includes/fn/editor.php`) prints `pg_picker_script()`, the `#pg_editor_bridge_config` JSON (endpoint, path, texts, `short_links`, `unsplash`) and the bundle, once, from `get_wysiwyg_editor_code()` behind the same gate as Browse and Upload (role 1–2, or role 3 with a folder to edit).
 
 ## Who gets short links and where do they come from?
 - `picker.php?kind=page&request=short_links` answers `pg_picker_short_link_entries()`: every named short link not in the Recycle Bin, first 2,000 by name, as entries `{value: name, text, type_label: "Short link", note: "→ destination"}`. A user (role 3) gets none, as the old link window gave them none: short links are a manager area.
 - The destination text is `pg_picker_short_link_destination()` (page, group, product with `?t=` tracking code; an address as given).
 
 ## What happens without the panel's scripts?
-- Where `pgPicker` or `pgUI` is missing (a site page with a rich text field), the bridge does nothing and Browse Server opens the old windows `editor_select_page_or_file.php` and `editor_select_image.php`. They stay for the designer until PK8 (#8836); when PK8 deletes them, the `filebrowserBrowseUrl` and `filebrowserImageBrowseUrl` settings in `_pg_wysiwyg_file_properties()` go with them.
+- Where `pgPicker` or `pgUI` is missing (a site page with a rich text field), the bridge does nothing and Browse Server opens the old windows `editor_select_page_or_file.php` and `editor_select_image.php`. The designer no longer opens them (PK8, `picker-designer-bridge.md`). When PK8b deletes the link window and PK9 the image window (`software_image_picker()` still opens it), the `filebrowserBrowseUrl` and `filebrowserImageBrowseUrl` settings in `_pg_wysiwyg_file_properties()` go with them.
 
 ## What could not be checked?
 - Nothing was opened in a browser: the dialogs' layout and the focus between CKEditor's dialog and the picker's `<dialog>` were not seen. The picker's Escape is taken on `window` in the capture phase, so it never reaches CKEditor's dialog.

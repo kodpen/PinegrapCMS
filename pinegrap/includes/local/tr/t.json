@@ -5548,6 +5548,7 @@
     "The pick list asks for a quantity (not only donations)": "Seçim listesi adet ister (yalnızca bağış değil)",
     "The picker asked for a token this site does not give.": "Seçici, bu sitenin vermediği bir erişim anahtarı istedi.",
     "The picker could not be loaded. Check the connection and try again.": "Seçici yüklenemedi. Bağlantıyı kontrol edip tekrar deneyin.",
+    "The picker is not loaded on this screen.": "Seçici bu ekranda yüklü değil.",
     "The pickup window has already passed.": "Kurye saat aralığı geçmiş.",
     "The picnic area looks over the giraffes and has shade all afternoon.": "Piknik alanı zürafalara bakar ve öğleden sonra boyunca gölgelidir.",
     "The picture a record page shows when it is shared. It is used only when it is an image every visitor may open.": "Bir kayıt sayfası paylaşıldığında gösterilen görsel. Yalnızca her ziyaretçinin açabildiği bir görselse kullanılır.",

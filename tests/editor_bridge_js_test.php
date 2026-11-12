@@ -147,14 +147,39 @@ function test_editor_bridge_unsplash()
 function test_editor_bridge_wired()
 {
 	$src = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/editor.php');
-	pg_assert_true(strpos($src, '$output_picker_bridge = $files_allowed ? pg_ckeditor_picker_script() : \'\';') !== false, 'behind the files gate');
+	pg_assert_true(strpos($src, '$output_picker_bridge = $files_allowed ? pg_editor_bridge_script() : \'\';') !== false, 'behind the files gate');
 	pg_assert_true(strpos($src, "pg_js_bundle_tags('assets/js/pg_editor_bridge.min.js')") !== false, 'the bundle');
 	pg_assert_true(strpos($src, 'return pg_picker_script()') !== false, 'with the picker');
 
 	$bundles = pg_js_bundles();
 	pg_assert_same(array('assets/js/pg_unsplash.js', 'assets/js/pg_ckeditor_picker.js'), $bundles['assets/js/pg_editor_bridge.min.js']);
 
-	foreach (pg_ckeditor_picker_texts() as $english => $text) {
+	foreach (pg_editor_bridge_texts() as $english => $text) {
 		pg_assert_true(is_string($text) && $text !== '', $english);
 	}
+}
+
+// The visual designer chooses through the same bridge: the screen prints it,
+// the link and picture fields call pgEditorPicker, no window and no fake
+// CKEDITOR is left; widget page selects get Browse; the page type pane draws
+// picker fields.
+function test_editor_bridge_designer_wired()
+{
+	$screen = file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+	pg_assert_true(strpos($screen, 'pg_editor_bridge_script()') !== false, 'the designer prints the bridge');
+
+	$designer = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_same(false, strpos($designer, 'editor_select_page_or_file.php'), 'no link window');
+	pg_assert_same(false, strpos($designer, 'CKEDITOR.tools'), 'no fake CKEDITOR');
+	pg_assert_same(false, strpos($designer, 'software_image_picker'), 'no image window');
+	pg_assert_true(strpos($designer, 'window.pgEditorPicker.image(') !== false, 'pictures through the bridge');
+	pg_assert_true(strpos($designer, "picker.link(inp.value)") !== false, 'links through the bridge');
+	pg_assert_true(strpos($designer, ' data-sw-page-none>') !== false, 'page selects are marked');
+	pg_assert_true(strpos($designer, '_swPageBrowseDecorate(panel);') !== false, 'Browse is added as the panel is drawn');
+
+	$pane = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/page_type_pane.php');
+	pg_assert_true(strpos($pane, '$properties, $user, $page_id, true);') !== false, 'the page type pane draws picker fields');
+
+	$bridge = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_ckeditor_picker.js');
+	pg_assert_true(strpos($bridge, 'root.pgEditorPicker = {') !== false, 'the bridge offers its pickers');
 }
