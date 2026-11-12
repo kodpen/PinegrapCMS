@@ -29,5 +29,5 @@ description: Live pages an agent makes (LP2a #8815, LP4 #8830): the routes, the 
 - Another library: its file under `assets/lib/`, a row in `ws_page_libraries()`; `tests/workspace_agent_page_test.php` checks it.
 
 ## What is not built yet?
-- The card (Open, Full screen, View source, Download, versions, "Edited by", Undo): LP2b. The assistants' tools: LP3.
+- The assistants' tools: LP3. The card is `agent-page-card.md`.
 - Two edits at the same instant both pass the version check; the second's version row is refused by the unique key and it answers 503 after its bytes were written. Rare; the next read shows the bytes the file holds.

@@ -8706,6 +8706,11 @@
 
             self.stop();
 
+            // A live page runs only while its channel is open.
+            if (window.PGWsPageCard) {
+                window.PGWsPageCard.stopAll();
+            }
+
             if (window.PGWsVoice) {
                 window.PGWsVoice.speakStop();
             }
@@ -11193,6 +11198,14 @@
             var self = this;
             var file = message.file;
             var kind = file.kind || (file.image ? 'image' : 'file');
+
+            // An agent's live page: its card, which runs it only when opened
+            // (assets/js/workspace_page_card.js).
+            if (file.page && window.PGWsPageCard) {
+                return window.PGWsPageCard.card(message, featureHelpers(), {
+                    replace: function (changed) { self.replaceMessage(changed); }
+                });
+            }
 
             if (kind === 'image') {
                 var link = el('a', 'ws-image-link');
