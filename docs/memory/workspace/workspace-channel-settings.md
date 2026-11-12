@@ -5,7 +5,7 @@ description: Channel templates, voice transcripts and GitHub links in Site Setti
 
 ## Where are the three cards?
 - PR #8865 (SW6a of `plans/settings-workspace-move.md`): in Channels, mail and voice, sections `pgset-ws-templates`, `pgset-ws-voice`, `pgset-ws-github`; cards in `includes/settings/workspace_channels.php`, writes in `workspace_channels.save.php`. The old cards (`#ws-templates`, `#ws-voice`, `#ws-github`) keep working on `workspace_settings.php` until SW7.
-- `pg_settings_legacy_anchors()` maps the three anchors to the new cards. The category's link card keeps the mailboxes (SW6b).
+- `pg_settings_legacy_anchors()` maps the three anchors to the new cards. The mailboxes followed in SW6b ([[workspace-mail-settings-dialog]]).
 
 ## How do the templates move?
 - `ws_templates_settings_card($self_url, $viewer, $form)`: Edit, Copy and New template still open `workspace_template.php`; Archive and Bring it back are named submit buttons `ws_template_archive` / `ws_template_restore` (value the template's id), run after the pane's save by `ws_templates_settings_post($viewer, $liveform, $id, $archive, $refuse)`, a refusal a warning.
