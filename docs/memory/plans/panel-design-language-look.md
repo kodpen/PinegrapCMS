@@ -34,7 +34,7 @@ description: Look A's numbers (second pass) for the panel's design language: typ
 - A tone names the module: team blue, shop teal, content rose, accounting and warnings amber, reports violet, system gray. A new module gets its tone in DL1's list, never a colour of its own in a screen.
 
 ## What is a row, and how are rows gathered?
-- The bell's row (`bell-drawer.html`, first pass): tile, a title on one line with the time at its right, at most two lines of text, a button only when the row asks for something, the unread dot at the right; a read row is dimmed; hover shows the quick actions.
+- The bell's row (`bell-drawer.html`): tile, a title on one line with the time at its right, at most two lines of text, a button only when the row asks for something, the unread dot at the right; a read row is dimmed; hover shows the quick actions.
 - Rows of one kind: one row with the kind as its title and the count beside it; "Show N …" opens the single lines, "Hide" closes them.
 
 ## What does a title say?

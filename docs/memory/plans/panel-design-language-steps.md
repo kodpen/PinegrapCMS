@@ -18,7 +18,7 @@ description: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860)
 
 - DL2 (M) The Design examples screen: a panel page for the Designer role and above that shows every recipe live in both themes, with its class names and what is not done. A step copies from it; the owner looks at it.
 
-- DL3 (M) The bell's drawer in look A: rows from the recipes, the fold drawn as gathered rows with the count beside the title, titles that say what happened and with what (`ui/bell-row.md` rewritten). Waits for the drawer's second-pass drawing (DL0). Approved from a real panel's screenshots: dark, light, phone width.
+- DL3 (M) The bell's drawer in look A: rows from the recipes, the fold drawn as gathered rows with the count beside the title, titles that say what happened and with what (`ui/bell-row.md` rewritten). Approved from a real panel's screenshots: dark, light, phone width.
 
 - DL4 (S) The check and the rule. `tools/check_look.php` in CI counts panel rules outside the recipes (a font size or weight off the scale, a colour outside the tokens) and lets the count only fall. Key rule in `ui/README.md`: a panel screen is built from the recipes; a new recipe is drawn first and asked on an `architect` issue.
 

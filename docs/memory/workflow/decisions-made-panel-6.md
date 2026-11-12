@@ -13,7 +13,7 @@ description: Decisions list, panel part 6 (2026-11-12 on): the panel's design la
 - Not chosen: B, one card per notification; C, one-line inbox rows with the actions on hover.
 - The architect's reading, not the owner's words: 28 px tiles; the look as drawn (Inter, titles at medium weight, no title in a status colour, at most one filled button in a view).
 - Who draws: the architect with the owner; a step copies the reference and does not design. Owner (2026-11-12): "Panel tasarım dilini senle geliştirsek daha iyi olurdu", "opus 5.5 ne görürse onu yapıyor".
-- Reference: `plans/panel-design-language/bell-drawer.jpg`; the numbers in `plans/panel-design-language-look.md`; the steps in `plans/panel-design-language-steps.md`.
+- Reference: `plans/panel-design-language/bell-drawer-dark.jpg` and `-light.jpg` (redrawn in the second pass, #8860); the numbers in `plans/panel-design-language-look.md`; the steps in `plans/panel-design-language-steps.md`.
 
 ## What are the image editor and the visual page editor called? (owner, 2026-11-12, #8849)
 - The Image Editor ("Görsel Düzenleyici") is Design Canvas ("Tasarım Tuvali") and gets an icon of its own. The Visual Page Editor, in texts the visual designer, is Page Design Studio ("Sayfa Tasarım Stüdyosu"). Designs are Designs ("Tasarımlar"), not Visual Designs.

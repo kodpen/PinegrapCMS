@@ -7,11 +7,13 @@ description: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace chann
 - One channel from which the owner runs the coordinators and agents: a message wakes an agent, it works and answers there, or a schedule set in the channel wakes it. GitHub stays the record of work; the channel is the conversation and the wake source (owner, 2026-11-07).
 
 ## What is built, and where is it described?
-- Registry, membership, the agent card and the brakes: `workspace/agent-registry.md`; requests, wake rules and doors: `workspace/agent-doors.md`; scheduled wakes and the brief: `workspace/agent-wakes.md`; how an agent shows: `workspace/agent-shown.md`; memory and decision marks: `workspace/channel-memory.md`; asking people: `workspace/agent-questions.md`; model assistants: `workspace/model-assistants.md`; risk tiers: `workspace/agent-risk-tiers.md`; flows: `workspace/agent-flows.md`; the canvas: `workspace/agent-canvas-svg.md`.
-- Agents use the site's MCP server, the API's routes under their scopes, no second catalogue (`api/api-mcp-server.md`). The decisions behind it: `workflow/decisions-made-workspace-7.md` to `-10.md`.
+- Registry, membership, the agent card and the brakes: `workspace/agent-registry.md`; requests, wake rules and doors: `workspace/agent-doors.md`; scheduled wakes and the brief: `workspace/agent-wakes.md`; how an agent shows: `workspace/agent-shown.md`.
+- Memory and decision marks: `workspace/channel-memory.md`; asking people: `workspace/agent-questions.md`; model assistants: `workspace/model-assistants.md`; risk tiers: `workspace/agent-risk-tiers.md`; flows: `workspace/agent-flows.md`; the canvas: `workspace/agent-canvas-svg.md`.
+- Agents use the site's MCP server, the API's routes under their scopes, no second catalogue (`api/api-mcp-server.md`). The decisions behind it: `workflow/decisions-made-workspace-7.md` to `-10.md`, `-19.md`.
 
 ## What is left?
 - `agent-channel-steps-3.md`: A10 the wait during an edit (#8723); A11 (#8756) and A12 (#8767) are done.
+- `agent-channel-steps-6.md` (owner 2026-11-12): A19 a discussion follows the agent that wrote its root message, A20 the line of a request closed without text, A21 a fitting emoji.
 - A8, the Claude Code channel plugin, waits for its repository, which the owner opens (`agent-channel-steps-2.md`). The rest of A8 is built.
 
 - The coordinators move their check-in chains to the channel: a coordinator is a member like any agent (`@koordinator-a`, an `app` agent with an application of its own, door push or poll: the registry keeps one `claude` row, and scheduled wakes serve `app` agents only), the owner directs it from the channel, and its wake comes from the site's cron, which is always on, while a session's own chain breaks on restart.
