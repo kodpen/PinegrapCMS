@@ -2098,7 +2098,7 @@ function _render_system_widget_login_region($tree_json, $widget_id, $cfg = array
         $row = db_item(
             "SELECT user.user_username, user.user_email, user.user_badge, user.user_badge_label,
                     contacts.first_name, contacts.last_name, contacts.image,
-                    contacts.file_id AS image_file_id, files.name AS image_file_name
+                    contacts.file_id AS image_file_id, files.name AS image_file_name, files.timestamp AS image_file_timestamp
              FROM user
              LEFT JOIN contacts ON contacts.id = user.user_contact
              LEFT JOIN files ON files.id = contacts.file_id
@@ -2114,7 +2114,7 @@ function _render_system_widget_login_region($tree_json, $widget_id, $cfg = array
         // way the panel draws people (includes/fn/contacts.php).
         $avatar = '';
         if (!empty($row['image_file_id']) && (string)$row['image_file_name'] !== '') {
-            $avatar = $output . $row['image_file_name'];
+            $avatar = pg_file_stamped_address($output, $row['image_file_name'], $row['image_file_timestamp'] ?? 0);
         } elseif (!empty($row['image'])) {
             $image  = (string)$row['image'];
             $avatar = preg_match('#^(https?:)?/#i', $image) ? $image : $output . $image;

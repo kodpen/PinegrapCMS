@@ -3042,7 +3042,8 @@ function pg_account_menu($user, $options = array())
                 contacts.image AS contact_image,
                 contacts.first_name AS contact_first_name,
                 contacts.last_name AS contact_last_name,
-                files.name AS file_name
+                files.name AS file_name,
+                files.timestamp AS file_timestamp
             FROM user
             LEFT JOIN contacts ON contacts.id = user.user_contact
             LEFT JOIN files ON files.id = contacts.file_id
@@ -3057,7 +3058,7 @@ function pg_account_menu($user, $options = array())
     $picture = '';
 
     if (!empty($person['contact_file_id']) && !empty($person['file_name'])) {
-        $picture = PATH . $person['file_name'];
+        $picture = pg_file_stamped_address(PATH, $person['file_name'], $person['file_timestamp'] ?? 0);
     } elseif (!empty($person['contact_image'])) {
         $picture = (string) $person['contact_image'];
     }
