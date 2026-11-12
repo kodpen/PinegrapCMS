@@ -38,7 +38,7 @@ description: Order of the polishing round after Launch: every shipped template's
 
 - Florist: `-1` #8763 done; `-2` open.
 
-- Homeservices: `-1`, `-2` open.
+- Homeservices: `-1` #8773 done; `-2` open.
 
 - Library: `-1`, `-2` open.
 

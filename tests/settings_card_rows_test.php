@@ -101,3 +101,24 @@ function test_settings_long_messages_are_full_width()
 	$languages = (string) file_get_contents($root . 'languages.php');
 	pg_assert_same(1, preg_match('/<div class="col-12">\s*<label for="translation_style_note"/', $languages), 'the AI style note box is full width');
 }
+
+function test_settings_card_gap_holds_whatever_stands_between()
+{
+	// A card's inline script or a hidden Connect form stands between two cards
+	// (Cron Jobs ends in one), so a gap set on the second card of a pair
+	// (`.pg-set-card + .pg-set-card`) missed Backups. The cards' container sets
+	// the gap; an element that draws nothing takes no part in it.
+	$css = settings_card_rows_css();
+	pg_assert_true(strpos($css, '.pg-set-card + .pg-set-card') === false, 'the gap is not set on a pair of neighbouring cards');
+
+	$block = settings_card_rows_block($css, '.pg-settings-body {');
+	pg_assert_true(strpos($block, 'display: flex') !== false, 'the cards container is a flex box');
+	pg_assert_true(strpos($block, 'flex-direction: column') !== false, 'the cards stand one under the other');
+	pg_assert_true(strpos($block, 'gap: 1.5rem') !== false, 'the container keeps the gap between cards');
+
+	$root = dirname(__DIR__) . '/pinegrap/includes/settings/';
+	$page = (string) file_get_contents($root . 'screen.php');
+	pg_assert_same(1, preg_match('/<div class="[^"]*\bpg-settings-body\b[^"]*" id="pg_settings_sections">/', $page), 'the page path holds its cards in the container');
+	$dialog = (string) file_get_contents($root . 'modal.php');
+	pg_assert_same(1, preg_match('/<div id="pg_settings_modal_pane" class="[^"]*\bpg-settings-body\b[^"]*"/', $dialog), 'the dialog holds its cards in the container');
+}

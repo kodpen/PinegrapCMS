@@ -8,7 +8,7 @@ description: Plan (owner 2026-11-11, #8677): what the owner found on the setting
 - The move of the Workspace settings and the drawer's other dialogs are `plans/settings-workspace-move.md`; these two are apart from its order.
 
 ## Which steps are there?
-- SG1 (S) The gap between cards.
+- SG1 (S, done #8768) The gap between cards: the cards' container (`.pg-settings-body`) is a flex column with the gap ([[settings-card-chrome]]).
   - Owner (a picture of Backups on "Updates and maintenance"): "birde ayarlarda bazı kartlar bu şekilde bir üsttekine yapışıyor. profesyonel durmuyor".
   - Today the gap rule (`.pg-set-card + .pg-set-card`, `backend.src.css`) fails when another element stands between two cards.
   - Find what stands between and make the gap hold whatever does (a gap on the cards' container); checked in every category, on the dialog and on the page path. `php tools/build_css.php`.

@@ -233,6 +233,10 @@ function test_workspace_agent_save_check()
 	pg_assert_same('model', ws_agent_save_check(array('model' => '') + $model, null, array(), array(), array())['field']);
 	pg_assert_same('provider', ws_agent_save_check(array('provider' => 'nobody') + $model, null, array(), array(), array())['field'], 'only a provider of ws_model_providers()');
 
+	$anthropic = ws_agent_save_check(array('provider' => 'anthropic', 'model' => 'model-a') + $model, null, array(), array(), array());
+	pg_assert_true($anthropic['ok'], $anthropic['error']);
+	pg_assert_same(array('anthropic', 'poll', ''), array($anthropic['values']['provider'], $anthropic['values']['door_kind'], $anthropic['values']['door_url']), 'Anthropic is a provider with a fixed address');
+
 	$azure = ws_agent_save_check(array('provider' => 'azure', 'door_url' => 'https://res.openai.azure.com/openai/v1') + $model, null, array(), array(), array());
 	pg_assert_true($azure['ok'], $azure['error']);
 	pg_assert_same('https://res.openai.azure.com/openai/v1', $azure['values']['door_url'], 'Azure keeps the address given');
