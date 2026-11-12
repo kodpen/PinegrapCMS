@@ -25060,8 +25060,12 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Card: two near surfaces top to bottom, a line, a light inner top edge. */
-.pg-card {
+/* Card: two near surfaces top to bottom, a line, a light inner top edge.
+   An add or edit screen's cards in its form and status columns are the
+   same card ("Look A: add and edit screens"). */
+.pg-card,
+body.pg-measure-edit .row > .order-1 > .card,
+body.pg-measure-edit .row > .order-2 > .position-sticky > .card {
   background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2));
   border: 1px solid var(--pg-border-color-translucent);
   border-radius: var(--pg-radius-card);
@@ -25090,8 +25094,10 @@ body {
 .pg-card-inner-row + .pg-card-inner-row {
   border-top: 1px solid var(--pg-border-color-translucent);
 }
-/* Floating bar (the save bar's surface). */
-.pg-floatbar {
+/* Floating bar (the save bar's surface), also an add or edit screen's
+   save bar. */
+.pg-floatbar,
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation {
   border-radius: var(--pg-radius-card);
   background: var(--pg-surface-float);
   -webkit-backdrop-filter: blur(16px);
@@ -25719,6 +25725,92 @@ body.pg-measure-list .pg-list-table-grid > thead > tr > th:first-child {
    whole line as every toolbar search does. */
 body.pg-measure-list .pg-toolbar-search {
   width: 300px;
+}
+
+}
+
+/* ==========================================================================
+   Look A: add and edit screens.
+   The family of add and edit screens (the body class pg-measure-edit): the
+   form column 760 and the status column 336 out of the shared column
+   classes, cards with the look's card and titles, and the save bar floating
+   at the window's bottom, as wide as the content, its buttons at the right.
+   ========================================================================== */
+@layer custom {
+
+/* Every add or edit screen prints its columns with the same classes
+   (lg:col-8 2xl:col-9 order-1, lg:col-4 2xl:col-3 order-2). From lg they
+   share the row in the measures' ratio, 760 to 336, so at the full measure
+   the form column is 760 px and the status column 336 px; the save bar's
+   col-12 wraps under both. */
+@media (min-width: 1024px) {
+  body.pg-measure-edit .row > .order-1.lg\:col-8 {
+    flex: 760 1 0%;
+    width: auto;
+    max-width: none;
+  }
+  body.pg-measure-edit .row > .order-2.lg\:col-4 {
+    flex: 336 1 0%;
+    width: auto;
+    max-width: none;
+  }
+}
+
+/* Cards: 16 px apart, the title as the look's section title (17 / 650),
+   the status column's as its status title (15 / 650). */
+body.pg-measure-edit .row > .order-1 > .card,
+body.pg-measure-edit .row > .order-2 > .position-sticky > .card {
+  --bs-card-spacer-y: 20px;
+  --bs-card-spacer-x: 22px;
+  --bs-card-cap-padding-y: 20px;
+  --bs-card-cap-padding-x: 22px;
+  --bs-card-cap-bg: transparent;
+  margin-bottom: 16px;
+}
+body.pg-measure-edit .row > .order-2 > .position-sticky > .card {
+  --bs-card-spacer-y: 16px;
+  --bs-card-spacer-x: 18px;
+  --bs-card-cap-padding-y: 16px;
+  --bs-card-cap-padding-x: 18px;
+}
+body.pg-measure-edit .row > .order-1 > .card > .card-header.pg-title-section {
+  padding-bottom: 12px;
+}
+body.pg-measure-edit .row > .order-2 .card-header.pg-title-section {
+  padding-bottom: 10px;
+  font-size: var(--pg-text-status-title);
+}
+
+/* The save bar: from 576 px a floating bar 56 px high, as wide as the
+   content, its buttons at the right in the look's size; a phone keeps the
+   shared two-per-row bar. The shared bar rounds its buttons into pills with
+   !important, hence the same here. */
+@media (min-width: 576px) {
+  body.pg-measure-edit .row > .order-3 > nav.buttons.navigation {
+    justify-content: flex-end;
+    min-height: 56px;
+    margin-bottom: 16px !important;
+    padding: 0 12px 0 18px;
+    border: 1px solid var(--pg-border-color-translucent);
+  }
+  body.pg-measure-edit .row > .order-3 > nav.buttons.navigation > .container {
+    justify-content: flex-end;
+    max-width: none;
+    margin: 0;
+    padding-block: 11px;
+  }
+  body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn {
+    --bs-btn-min-height: 34px;
+    --bs-btn-padding-y: 0;
+    --bs-btn-padding-x: 14px;
+    --bs-btn-font-size: var(--pg-text-2);
+    --bs-btn-font-weight: var(--pg-weight-strong);
+    border-radius: 10px !important;
+  }
+  body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn .bi,
+  body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn .material-icons {
+    font-size: var(--pg-text-base);
+  }
 }
 
 }

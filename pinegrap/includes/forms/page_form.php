@@ -2729,7 +2729,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
     // A card for the screen's status column, which holds the stickiness.
     $output_page_type_selector = 
         '<div class="card mb-7">
-                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <h2 class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Page Type') . '
                 </h2>
                 <div class="card-body">
@@ -2746,7 +2746,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         '<a name="interactive_page_feature"></a>
         <div class="col-12 collapse" id="options_row">
             <div class="card my-7">
-                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <h2 class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('System Options') . '
                 </h2>
                 <div class="card-body">

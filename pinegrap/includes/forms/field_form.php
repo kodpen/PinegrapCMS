@@ -1200,7 +1200,7 @@ function pg_field_form_cards($liveform, $field, $context)
     return '
                         <div class="col-12 lg:col-8 2xl:col-9 order-1">
                             <div class="card mb-7">
-                                <label for="type" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <label for="type" class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Field Type') . '
                                 </label>
                                 <div class="card-body pt-0">
@@ -1218,7 +1218,7 @@ function pg_field_form_cards($liveform, $field, $context)
                             </div>
                             <div class="collapse" id="options_field_row">
                                 <div class="card mb-7">
-                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Field Settings') . '
                                     </h2>
                                     <div class="card-body pt-0">
@@ -1314,7 +1314,7 @@ function pg_field_form_cards($liveform, $field, $context)
                                     </div>
                                 </div>
                                 <div class="card mb-7 collapse" id="information_row">
-                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold" id="information_heading">
+                                    <h2 class="card-header bg-reset border-0 pg-title-section" id="information_heading">
                                     ' . lang('Information') . '
                                     </h2>
                                     <div class="card-body p-0">
@@ -1326,7 +1326,7 @@ function pg_field_form_cards($liveform, $field, $context)
                                     </div>
                                 </div>
                                 <div class="card mb-7 collapse" id="choices_row">
-                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Value Options') . '
                                     </h2>
                                     <div class="card-body">
@@ -1347,7 +1347,7 @@ function pg_field_form_cards($liveform, $field, $context)
                             <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
                             <div class="position-sticky" style="top:3.3rem;">
                                 <div class="card mb-7">
-                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <h2 class="card-header bg-reset border-0 pg-title-section">
                                         ' . lang('Summary') . '
                                     </h2>
                                     <div class="card-body pt-0">

@@ -73,7 +73,7 @@ if (!$_POST) {
     print
         pg_page_shell([
             'title'=> lang('Edit Verified Shipping Address'),
-            'extra classes'=>'products',
+            'extra classes'=>'products pg-measure-edit',
             'icon'=>'store',
             'heading'=>lang('Edit Verified Shipping Address'),
             'heading_description' => lang('Update this verified shipping address and assign it to any existing state.'),

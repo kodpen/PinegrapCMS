@@ -265,7 +265,7 @@ if ($designer_form) {
     echo
     pg_page_shell([
         'title' => $output_form_designer_content_heading,
-        'extra classes' => 'design',
+        'extra classes' => 'design pg-measure-edit',
         'icon' => 'design',
         'heading' => $output_form_designer_content_heading,
         'heading_description' => lang('The fields of this form are edited in the Page Design Studio.'),
@@ -363,7 +363,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title'=> $output_form_designer_content_heading,
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-edit',
         'icon'=>'design',
         'heading'=>$output_form_designer_content_heading,
         'heading_description' => $output_form_designer_content_subheading,

@@ -110,7 +110,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Upload Design Files'),
-            'extra classes'=>'designer',
+            'extra classes'=>'designer pg-measure-edit',
             'icon'=>'design', 
             'heading'=> lang('Upload Design Files'),
             'heading_description' => lang('Drop design files below, update the settings (if necessary), and then click Upload.'),
@@ -285,7 +285,7 @@ if (!$_POST) {
                     ' . pg_design_file_form_layout(
                         '
                             <div class="card my-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Files To Upload') . '
                                 </h2>
                                 <div class="card-body">

@@ -211,7 +211,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     pg_page_shell(
         array(
             'title'=> h($file_name) . ' | ' . lang('Edit Design File'),
-            'extra classes'=>'designer',
+            'extra classes'=>'designer pg-measure-edit',
             'icon'=>'design', 
             'heading'=> lang('Edit Design File'),
             'heading_description' => lang('Rename, move, delete, or download this design file. (A rename/delete will require any links to this file to be updated. This file will not be viewable to site visitors if placed in a folder that is not public.)'),
@@ -239,7 +239,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                     ' . pg_design_file_form_layout(
                         '
                             <div class="card my-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Main Informations') . '
                                 </h2>
                                 <div class="card-body">

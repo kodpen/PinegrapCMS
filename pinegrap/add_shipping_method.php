@@ -27,7 +27,7 @@ if (!$_POST) {
     $output =
     pg_page_shell([
         'title'=> lang('Create Shipping Method'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-edit',
         'icon'=>'store',
         'heading'=>lang('Create Shipping Method'),
         'heading_description' => lang('Create a new shipping method that will be made available during checkout based on the products and destination address.'),

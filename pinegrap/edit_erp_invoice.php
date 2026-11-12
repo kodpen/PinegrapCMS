@@ -885,7 +885,7 @@ if (($reminder['phase'] !== 'off') || ($reminder['notified_at'] > 0) || ($remind
 
     $output_reminders = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <div class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Overdue reminders') . '
                 </div>
                 <div class="card-body">
@@ -1379,7 +1379,7 @@ if (($mail_invoice !== null) && ((string) $invoice['direction'] === 'sales') && 
 
     $output_mail = '
             <div class="card my-7" id="erp-mail">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <div class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('E-mail to the customer') . '
                 </div>
                 <div class="card-body">
@@ -1465,7 +1465,7 @@ if (function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_read
     if ($recur_body !== '') {
         $output_recurring = '
             <div class="card my-7" id="erp-recurring">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Repeating invoice') . '</div>
+                <div class="card-header bg-reset border-0 pg-title-section">' . lang('Repeating invoice') . '</div>
                 <div class="card-body">' . $recur_body . '</div>
             </div>';
     }
@@ -1517,7 +1517,7 @@ $output_toolbar = pg_screen_toolbar(array(
 echo
 pg_page_shell([
         'title' => $is_return ? lang('Return') : lang('Invoice'),
-        'extra classes' => 'erp erp_invoices',
+        'extra classes' => 'erp erp_invoices pg-measure-edit',
         'icon' => 'erp',
         'heading' => h($invoice['full_number']),
         'heading_description' => lang('The document as it was issued, and the lines it was built from.'),
@@ -1548,7 +1548,7 @@ pg_page_shell([
             ' . $output_reminders . '
 
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <div class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Lines') . '
                 </div>
                 <div class="card-body p-0 position-relative table-responsive">
@@ -1591,7 +1591,7 @@ pg_page_shell([
                 <input type="hidden" name="id" value="' . $invoice_id . '" />
                 <input type="hidden" name="erp_action" value="notes" />
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <div class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Notes') . '
                     </div>
                     <div class="card-body">
@@ -1722,7 +1722,7 @@ pg_page_shell([
         <div class="col-12 lg:col-4 2xl:col-3 order-2">
             <div class="position-sticky" style="top:3.3rem;">
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <div class="card-header bg-reset border-0 pg-title-section">
                         ' . ($is_return ? lang('Return') : lang('Invoice')) . '
                     </div>
                     <div class="card-body">

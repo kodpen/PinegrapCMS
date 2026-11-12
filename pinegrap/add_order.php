@@ -363,7 +363,7 @@ echo
     pg_page_shell(
         array(
             'title'         => lang('Add Local Order'),
-            'extra classes' => 'product',
+            'extra classes' => 'product pg-measure-edit',
             'icon'          => 'store',
             'heading'       => lang('Add Local Order'),
             'heading_description' => lang('Scan a barcode or search for a product; complete the sale in one step.'),

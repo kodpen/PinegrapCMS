@@ -126,7 +126,7 @@ function pg_gift_card_form_card($liveform, $mode, $options)
     // 13 holds 42.949.672,95, the column top (PG_GIFT_CARD_AMOUNT_MAX).
     return '
                             <div class="card mb-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Gift Card Options') . '
                                 </h2>
                                 <div class="card-body">' . $output_code . '

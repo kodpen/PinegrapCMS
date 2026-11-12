@@ -334,7 +334,7 @@ if (!$_POST) {
     if ($tracking_code or $http_referer or $referral_source_code or $utm_source) {
         $source .=
             '<div class="card mt-5">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <div class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Source') . '
                 </div>
                 <div class="card-body">';
@@ -637,7 +637,7 @@ if (!$_POST) {
         $output_payment_information =
             '
                 <div class="card mt-5">
-                   <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                   <div class="card-header bg-reset border-0 pg-title-section">
                            ' . lang('Payment Information') . '
                        </div>
                        <div class="card-body">
@@ -746,7 +746,7 @@ if (!$_POST) {
         
         $output_affiliate =
             '<div class="card mt-5">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <div class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Affiliate Information') . '
                 </div>
                 <div class="card-body">
@@ -770,7 +770,7 @@ if (!$_POST) {
     if ($output_custom_billing_form != '') {
         $output_custom_billing_information =
             '<div class="card mt-5">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <div class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Custom Billing Information') . '
                 </div>
                 <div class="card-body">
@@ -1303,7 +1303,7 @@ if (!$_POST) {
                 // tracking numbers.
                 $output_shipping_details .=
                     '<div class="card mt-5">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            <div class="card-header bg-reset border-0 pg-title-section">
                                 ' . lang('Shipping Information') . '
                                 <div class="print_packing_slip float-end pg-print-none">
                                     <button type="button" class="btn btn-sm btn-text theme-secondary position-relative" title="' . lang('Print Packing Slip') . '" aria-label="' . h(lang('Print Packing Slip')) . '" onclick="window.open(\'print_packing_slip.php?ship_to_id=' . $ship_tos[$key]['ship_to_id'] . '\', \'\', \'width=750, height=600, resizable=1, scrollbars=1\'); return false;"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print') . '</button>
@@ -2024,7 +2024,7 @@ if (!$_POST) {
         
         $output_applied_gift_cards =
             '<div class="card mt-5">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <div class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Applied Gift Cards') . '
                     </div>
                     <div class="card-body">
@@ -2623,7 +2623,7 @@ if (!$_POST) {
         array(
             // An incomplete order has no number yet: its tab names the order id.
             'title'=> (((string) $order_number !== '') ? '#' . $order_number : lang('Incomplete') . ' #' . (int) $id) . ' - ' . lang('Order'),
-            'extra classes'=>'store view_order',
+            'extra classes'=>'store view_order pg-measure-edit',
             'icon'=>'store',
             'heading'=>lang('View Order'),
             'heading_description' => lang('View the details of this order and update shipping information.'),
@@ -2665,7 +2665,7 @@ if (!$_POST) {
                             <div class="row g-7">
                                 <div class="col-12 md:col-6 lg:col-12 xl:col-6">
                                     <div class="card">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        <div class="card-header bg-reset border-0 pg-title-section">
                                             ' . lang('Billing Information') . '
                                         </div>
                                         <div class="card-body">
@@ -2745,7 +2745,7 @@ if (!$_POST) {
                                     </div>
                                     ' . $output_custom_billing_information . '
                                     <div class="card mt-5">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex">
+                                        <div class="card-header bg-reset border-0 pg-title-section d-flex">
                                             ' . lang('Customer Information') . ' <span class="ms-auto">' . $output_contact_image . '</span>
                                         </div>
                                         <div class="card-body">
@@ -2779,7 +2779,7 @@ if (!$_POST) {
                         <div class="col-12 lg:col-4 2xl:col-3 order-2">
                             <div class="position-sticky" style="top:3.3rem;">
                                 <div class="card">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <div class="card-header bg-reset border-0 pg-title-section">
                                         ' . lang('Order Information') . '
                                     </div>
                                     <div class="card-body">

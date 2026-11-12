@@ -157,7 +157,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Create User'),
-            'extra classes'=>'users',
+            'extra classes'=>'users pg-measure-edit',
             'icon'=>'account',
             'heading'=>lang('Create User'),
             'heading_description' => lang('Create a user account, give it a role and rights, and optionally e-mail the person a link to set a password.'),

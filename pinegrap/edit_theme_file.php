@@ -155,7 +155,7 @@ if (!$_POST) {
         print
             pg_page_shell([
                 'title'=> lang('Edit Theme'),
-                'extra classes'=>'design',
+                'extra classes'=>'design pg-measure-edit',
                 'icon'=>'design',
                 'heading'=>lang('Edit Theme'),
                 'cancel'=>array('enable'=>'true','url'=>'view_themes.php'),
@@ -180,7 +180,7 @@ if (!$_POST) {
                     ' . pg_design_file_form_layout(
                         '
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Main Informations') . '
                                 </div>
                                 <div class="card-body">
@@ -198,7 +198,7 @@ if (!$_POST) {
                             </div>',
                         pg_design_file_form_summary_card($output_file_missing, $summary_rows) . '
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Activate Theme to Make it Live') . '
                                 </div>
                                 <div class="card-body">

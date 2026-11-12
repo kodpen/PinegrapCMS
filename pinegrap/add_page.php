@@ -152,7 +152,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Create Page'),
-            'extra classes'=>'page',
+            'extra classes'=>'page pg-measure-edit',
             'icon'=>'page',
             'heading'=>lang('Create Page'),
             'heading_description' => lang('Create a new page, place it in a folder, and add any built-in features.'),
@@ -183,7 +183,7 @@ if (!$_POST) {
                             <div class="row">
                                 <div class="col-12">
                                     <div class="card my-7">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        <div class="card-header bg-reset border-0 pg-title-section">
                                         ' . lang('Main Informations') . '
                                         </div>
                                         <div class="card-body">
@@ -202,7 +202,7 @@ if (!$_POST) {
                                 </div>
                                 <div class="col-12">
                                     <div class="card my-7">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        <div class="card-header bg-reset border-0 pg-title-section">
                                             ' . lang('Content Options') . '
                                         </div>
                                         <div class="card-body">
@@ -230,7 +230,7 @@ if (!$_POST) {
                                 ' . $page_type_fields['properties'] . '
                                 <div class="col-12">
                                     <div class="card my-7">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        <div class="card-header bg-reset border-0 pg-title-section">
                                             ' . lang('Search Engine Optimization') . '
                                         </div>
                                         <div class="card-body">

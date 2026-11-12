@@ -67,7 +67,7 @@ if (!$_POST) {
 
     echo pg_page_shell([
         'title'=> lang('Edit Key Code'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-edit',
         'icon'=>'store',
         'heading'=>lang('Edit Key Code'),
         'cancel'=>array('enable'=>'true','url'=>'view_key_codes.php'),

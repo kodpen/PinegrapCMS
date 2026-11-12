@@ -32,7 +32,7 @@ if (!isset($_POST['name'])) {
     $output .= 
     pg_page_shell([
         'title'=> lang('Create Common Region'),
-        'extra classes'=>'page',
+        'extra classes'=>'page pg-measure-edit',
         'icon'=>'page',
         'heading'=>lang('Create Common Region'),
         'heading_description' => lang('Create a common region of shared content that can be added to any page style and updated during page editing by any site manager.'),
