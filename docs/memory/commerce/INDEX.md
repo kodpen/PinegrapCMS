@@ -296,7 +296,7 @@
 - shipping-label-checkout-rate.md: Checkout live rate of a method linked to a label service (R3): get_shipping_realtime_rate() branch, parcel, cache rows, stale fallback, purge, currency, no price = not offered [decision: decisions-made-product-39.md]
 - shipping-method-label-link.md: A shipping method linked to a carrier label service (11.0.177, #8403): label_driver and label_service, the Carrier Service picker, the carrier it sets, API fields, Create Label [decision: decisions-made-schema-13.md]
 - shipping-panel-terms.md: The Turkish words the shipping screens use for fees, handling and transit days, cut-offs and adjustment direction, and which shared keys carry them (#5556, #5557, #5567)
-- shipping-report.md: Shipping report (view_shipping_report.php): which orders it counts, how its period is read and kept, the longest period
+- shipping-report.md: Shipping report (view_shipping_report.php): which orders it counts, how its period is read and kept, the longest period, the figures and line over its table
 - shipping-today.md: How shipping works today (checked 2026-10-20): tracking tables and write paths, the four meanings of "shipped", estimated dates, known gaps and reusable Turkish validation helpers [decision: decisions-made-product-12.md, decisions-made-product-7.md]
 - short-link-binned-destination.md: A short link whose page or file is in the Recycle Bin (list, CSV, redirect), and a name held by a short link in the bin (the form's message)
 - short-link-recycle-bin.md: How short links treat a product, product group, page or file in the Recycle Bin (lists, save checks on every entry point), where a deleted short link goes, and posted lists on the short link screens.

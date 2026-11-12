@@ -1820,6 +1820,7 @@
     "{var:1} undated": "{var:1} tarihsiz",
     "{var:1} undelivered": "{var:1} iletilemedi",
     "{var:1} units of {var:2} were moved.": "{var:2} ürününden {var:1} adet taşındı.",
+    "{var:1} unit{suffix:1}": "{var:1} adet",
     "{var:1} unsubscribed with one click.": "{var:1} tek tıkla abonelikten çıktı.",
     "{var:1} untouched for {var:2}+ days": "{var:1} görev {var:2}+ gündür dokunulmamış",
     "{var:1} unused offer rule/action record(s) were deleted": "{var:1} kullanılmayan teklif kuralı/hareketi kaydı silindi",
