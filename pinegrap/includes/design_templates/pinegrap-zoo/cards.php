@@ -88,8 +88,8 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link($n[1], '{{page:' . $n[0] . '}}', 'nav-link text-nowrap')));
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
-        $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
-            $el('div', 'container', lang('Navbar Container'), array(
+        $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
+            $el('div', 'container flex-xl-wrap', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $el('span', 'd-inline-flex align-items-center justify-content-center rounded-circle text-bg-success p-2 lh-1', lang('Logo Mark'), array(
                         $icon('bi-tree', 'fs-5'),
@@ -107,9 +107,9 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
                     $attr('aria-label', lang('Toggle navigation')),
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
-                    $el('ul', 'navbar-nav ms-lg-auto me-lg-3 column-gap-lg-1 py-3 py-lg-0', lang('Nav Menu'), $items, array('smartActive' => true)),
-                    $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center gap-2 pb-2 pb-lg-0', lang('Header Actions'), array(
-                        $el('a', 'btn btn-success rounded-pill d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
+                    $el('ul', 'navbar-nav pzo-nav ms-xl-auto me-xl-2 me-xxl-3 column-gap-xxl-1 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
+                    $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
+                        $el('a', 'btn btn-success rounded-pill d-inline-flex align-items-center justify-content-center gap-2 px-4 px-xl-3 px-xxl-4 text-nowrap', lang('Call to Action'), array(
                             $icon('bi-backpack'),
                             $span(lang('School and Group Visits'), '', lang('Link Text')),
                         ), array('href' => '{{page:visit_request}}')),
@@ -452,7 +452,7 @@ $person_card = function ($n) use ($el, $heading, $para, $image, $col, $attr, $po
     $t = $people[$n];
     return $col(array(
         $el('article', 'd-flex gap-3 h-100 p-3 rounded-4 bg-body-tertiary', lang('Staff Member'), array(
-            $image($portrait($t['name'], 192), $t['name'], 'rounded-circle flex-shrink-0', array('_attrs' => array($attr('width', '96'), $attr('height', '96'), $attr('loading', 'lazy')))),
+            $image($portrait($t['name'], 192), $t['name'], 'rounded-circle flex-shrink-0', array('width' => '96', 'height' => '96', '_attrs' => array($attr('loading', 'lazy')))),
             $el('div', '', lang('Text'), array(
                 $heading('h3', $t['name'], 'pzo-display h5 mb-1'),
                 $para($t['role'], 'small fw-semibold text-success-emphasis mb-2'),

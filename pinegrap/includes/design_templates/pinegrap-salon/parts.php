@@ -260,7 +260,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
         $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
-            $el('div', 'container', lang('Navbar Container'), array(
+            $el('div', 'container flex-xl-wrap', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2 fw-semibold', lang('Brand'), array(
                     $el('span', 'd-inline-flex p-2 rounded-circle bg-primary-subtle text-primary-emphasis lh-1', lang('Icon Box'), array($icon('bi-flower2', 'fs-5'))),
                     $span('{{site_name}}', 'psl-brand fs-4', lang('Name')),

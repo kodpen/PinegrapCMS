@@ -585,7 +585,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
         $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
-            $el('div', 'container', lang('Navbar Container'), array(
+            $el('div', 'container flex-xl-wrap', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $icon('bi-mic', 'fs-4 text-primary'),
                     $span('{{site_name}}', 'ppd-brand fs-4', lang('Name')),
@@ -601,9 +601,9 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
                     $attr('aria-label', lang('Toggle navigation')),
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
-                    $el('ul', 'navbar-nav ms-xl-auto me-xl-3 column-gap-xl-2 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
+                    $el('ul', 'navbar-nav ppd-nav ms-xl-auto me-xl-2 me-xxl-3 column-gap-xxl-2 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
                     $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
-                        $el('a', 'btn btn-primary rounded-pill d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
+                        $el('a', 'btn btn-primary rounded-pill d-inline-flex align-items-center justify-content-center gap-2 px-4 px-xl-3 px-xxl-4 text-nowrap', lang('Call to Action'), array(
                             $icon('bi-heart'),
                             $span(lang('Support Us'), '', lang('Link Text')),
                         ), array('href' => '{{page:support}}')),

@@ -165,6 +165,9 @@ $social_css = implode("\n", array(
     '.psc-tile:hover img,.psc-tile:focus-within img{transform:scale(1.04)}',
     '.psc-tile-info{background:linear-gradient(to top,rgba(var(--bs-black-rgb),.65),transparent);opacity:0;transition:opacity .2s ease}',
     '.psc-tile:hover .psc-tile-info,.psc-tile:focus-within .psc-tile-info{opacity:1}',
+    // A touch screen has no pointer to rest on a tile: there the count
+    // stays in view.
+    '@media (hover:none){.psc-tile-info{opacity:1}}',
     '.psc-tile-info,.psc-tile-info .text-body-secondary{color:var(--bs-white)!important}',
     // The join band: a soft light of the palette's colour from a corner.
     '@supports (background-color:color-mix(in srgb,red 8%,blue)){.psc-band{background-image:radial-gradient(ellipse 60% 90% at 100% 0%,color-mix(in srgb,var(--bs-secondary) 14%,transparent) 0%,transparent 70%)}}',
@@ -172,6 +175,20 @@ $social_css = implode("\n", array(
     '.psc-lift{transition:transform .2s ease,box-shadow .2s ease}',
     '.psc-lift:hover,.psc-lift:focus-visible,.psc-lift:focus-within{transform:translateY(-3px);box-shadow:var(--bs-box-shadow)}',
     '@media (prefers-reduced-motion:reduce){.psc-lift,.psc-tile img{transition:none}.psc-tile-info{transition:none}.psc-lift:hover,.psc-lift:focus-visible,.psc-lift:focus-within{transform:none}.psc-tile:hover img,.psc-tile:focus-within img{transform:none}}',
+    // Dark theme, grey sections (the account bar, page headers, grey bands):
+    // the palette's primary and second colours are made readable on the
+    // page background and fall to about 4:1 on this lighter grey. Links,
+    // eyebrows and outline buttons there take the primary's emphasis tint,
+    // lightened a fifth towards the text colour where the browser mixes
+    // colours (some palettes' tint is as dark as the primary itself), and
+    // the second colour gives way to the body's second text colour.
+    '[data-bs-theme=dark] .bg-body-tertiary :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}',
+    '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-primary{--bs-btn-color:var(--bs-primary-text-emphasis)}',
+    '@supports (color:color-mix(in srgb,red 50%,blue)){'
+        . '[data-bs-theme=dark] .bg-body-tertiary :is(.text-primary,.link-primary){color:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))!important}'
+        . '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-primary{--bs-btn-color:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))}}',
+    '[data-bs-theme=dark] .bg-body-tertiary .link-secondary{color:var(--bs-secondary-color)!important}',
+    '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-color)}',
 ));
 
 return array(

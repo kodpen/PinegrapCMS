@@ -325,15 +325,15 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         array('rent', lang('Homes to Rent')),
         array('neighbourhoods', lang('Neighbourhoods')),
         array('services', lang('Services')),
-        array('agents', lang('Our Agents')),
-        array('blog', lang('Market News')),
+        array('agents', lang('Agents')),
+        array('blog', lang('News')),
         array('contact', lang('Contact us')),
     ) as $n) {
         $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link($n[1], '{{page:' . $n[0] . '}}', 'nav-link text-nowrap')));
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
         $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
-            $el('div', 'container', lang('Navbar Container'), array(
+            $el('div', 'container flex-xl-wrap', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2 fw-semibold', lang('Brand'), array(
                     $el('span', 'd-inline-flex p-2 rounded-3 text-bg-primary lh-1', lang('Icon Box'), array($icon('bi-house-door', 'fs-5'))),
                     $span('{{site_name}}', 'pre-brand fs-4', lang('Name')),
@@ -349,9 +349,9 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
                     $attr('aria-label', lang('Toggle navigation')),
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
-                    $el('ul', 'navbar-nav mx-xl-auto column-gap-xl-1 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
+                    $el('ul', 'navbar-nav pre-nav mx-xl-auto column-gap-xxl-1 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
                     $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 gap-xl-3 pb-2 pb-xl-0', lang('Header Actions'), array(
-                        $el('a', 'btn btn-primary d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
+                        $el('a', 'btn btn-primary d-inline-flex align-items-center justify-content-center gap-2 px-4 px-xl-3 px-xxl-4 text-nowrap', lang('Call to Action'), array(
                             $icon('bi-house-check'),
                             $span(lang('Free Valuation'), '', lang('Link Text')),
                         ), array('href' => '{{page:valuation}}')),

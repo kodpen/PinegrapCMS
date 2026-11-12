@@ -682,15 +682,15 @@ $header = function () use ($el, $link, $icon, $span, $attr, $crest) {
         array('fixtures', lang('Fixtures')),
         array('results', lang('Match Results')),
         array('academy', lang('Youth Academy')),
-        array('blog', lang('Club News')),
-        array('events', lang('Club Events')),
+        array('blog', lang('News')),
+        array('events', lang('Events')),
         array('sponsors', lang('Sponsors')),
     ) as $n) {
         $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link($n[1], '{{page:' . $n[0] . '}}', 'nav-link text-nowrap')));
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
-        $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
-            $el('div', 'container', lang('Navbar Container'), array(
+        $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
+            $el('div', 'container flex-xl-wrap', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $crest(),
                     $span('{{site_name}}', 'psp-brand fs-4', lang('Name')),
@@ -706,9 +706,9 @@ $header = function () use ($el, $link, $icon, $span, $attr, $crest) {
                     $attr('aria-label', lang('Toggle navigation')),
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
-                    $el('ul', 'navbar-nav ms-lg-auto me-lg-3 column-gap-lg-2 py-3 py-lg-0', lang('Nav Menu'), $items, array('smartActive' => true)),
-                    $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center gap-2 pb-2 pb-lg-0', lang('Header Actions'), array(
-                        $el('a', 'btn btn-primary d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
+                    $el('ul', 'navbar-nav psp-nav ms-xl-auto me-xl-2 me-xxl-3 column-gap-xxl-2 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
+                    $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
+                        $el('a', 'btn btn-primary d-inline-flex align-items-center justify-content-center gap-2 px-4 px-xl-3 px-xxl-4 text-nowrap', lang('Call to Action'), array(
                             $icon('bi-person-plus'),
                             $span(lang('Join a Team'), '', lang('Link Text')),
                         ), array('href' => '{{page:trial}}')),
@@ -923,7 +923,7 @@ $sponsor_tile = function ($key) use ($el, $para, $span, $image, $col, $attr, $po
     $s = $sponsors[$key];
     return $col(array(
         $el('article', 'card h-100 border-0 shadow-sm text-center p-4', lang('Sponsor'), array(
-            $image($portrait($s['name'], 160), $s['name'], 'rounded-circle mx-auto mb-3', array('_attrs' => array($attr('width', '80'), $attr('height', '80'), $attr('loading', 'lazy')))),
+            $image($portrait($s['name'], 160), $s['name'], 'rounded-circle mx-auto mb-3', array('width' => '80', 'height' => '80', '_attrs' => array($attr('loading', 'lazy')))),
             $span($sponsor_tiers[$s['tier']], 'psp-eyebrow small text-uppercase fw-semibold text-primary mb-1', lang('Tier')),
             $el('h3', 'h6 fw-bold mb-2', lang('Sponsor Name'), array(), array('text' => $s['name'])),
             $para($s['text'], 'small text-body-secondary mb-0'),
@@ -982,7 +982,7 @@ $testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $
             $stars(),
             $el('blockquote', 'mb-4', lang('Quote'), array($para($t['quote'], 'mb-0'))),
             $el('figcaption', 'd-flex align-items-center gap-3 mt-auto', lang('Person'), array(
-                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('_attrs' => array($attr('width', '48'), $attr('height', '48'), $attr('loading', 'lazy')))),
+                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('width' => '48', 'height' => '48', '_attrs' => array($attr('loading', 'lazy')))),
                 $el('div', '', lang('Name and Role'), array(
                     $span($t['name'], 'd-block fw-semibold', lang('Name')),
                     $span($t['role'], 'd-block small text-body-secondary', lang('Role')),

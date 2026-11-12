@@ -202,6 +202,15 @@ $podcast_css = implode("\n", array(
     '[data-bs-theme=dark] .bg-body-tertiary .link-secondary{color:var(--bs-secondary-color)!important}',
     '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-primary{--bs-btn-color:var(--bs-primary-text-emphasis)}',
     '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-color)}',
+    // Some palettes' emphasis tint is as dark as the primary itself (Cobalt
+    // gives 4.12:1): where the browser mixes colours it is lightened a fifth
+    // towards the text colour.
+    '@supports (color:color-mix(in srgb,red 50%,blue)){'
+        . '[data-bs-theme=dark] .bg-body-tertiary :is(.text-primary,.link-primary){color:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))!important}'
+        . '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-primary{--bs-btn-color:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))}}',
+    // From 1200 to 1400 px the header's links and buttons share one row with
+    // the name: the links are set a size smaller and closer together.
+    '@media (min-width:1200px) and (max-width:1399.98px){.ppd-nav{--bs-nav-link-font-size:.875rem;--bs-navbar-nav-link-padding-x:.375rem}}',
 ));
 
 return array(

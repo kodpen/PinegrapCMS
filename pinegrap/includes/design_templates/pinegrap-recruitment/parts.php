@@ -565,8 +565,8 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link($n[1], '{{page:' . $n[0] . '}}', 'nav-link text-nowrap')));
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
-        $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
-            $el('div', 'container', lang('Navbar Container'), array(
+        $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
+            $el('div', 'container flex-xl-wrap', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $icon('bi-person-workspace', 'fs-4 text-primary'),
                     $span('{{site_name}}', 'prc-brand fs-4', lang('Name')),
@@ -582,10 +582,10 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
                     $attr('aria-label', lang('Toggle navigation')),
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
-                    $el('ul', 'navbar-nav ms-lg-auto me-lg-3 column-gap-lg-2 py-3 py-lg-0', lang('Nav Menu'), $items, array('smartActive' => true)),
-                    $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center gap-2 pb-2 pb-lg-0', lang('Header Actions'), array(
-                        $link(lang('Hire Staff'), '{{page:hire}}', 'btn btn-outline-primary px-4 text-nowrap'),
-                        $el('a', 'btn btn-primary d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
+                    $el('ul', 'navbar-nav prc-nav ms-xl-auto me-xl-2 me-xxl-3 column-gap-xxl-2 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
+                    $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
+                        $link(lang('Hire Staff'), '{{page:hire}}', 'btn btn-outline-primary d-xl-none px-4 text-nowrap'),
+                        $el('a', 'btn btn-primary d-inline-flex align-items-center justify-content-center gap-2 px-4 px-xl-3 px-xxl-4 text-nowrap', lang('Call to Action'), array(
                             $icon('bi-file-earmark-person'),
                             $span(lang('Send Your CV'), '', lang('Link Text')),
                         ), array('href' => '{{page:apply}}')),
@@ -818,7 +818,7 @@ $consultant_card = function ($n, $md = '6', $lg = '4') use ($el, $heading, $para
     $c = $consultants[$n];
     return $col(array(
         $el('article', 'card h-100 border-0 shadow-sm rounded-4 text-center p-4', lang('Consultant'), array(
-            $image($portrait($c['name'], 240), $c['name'], 'rounded-circle mx-auto mb-3', array('_attrs' => array($attr('width', '120'), $attr('height', '120'), $attr('loading', 'lazy')))),
+            $image($portrait($c['name'], 240), $c['name'], 'rounded-circle mx-auto mb-3', array('width' => '120', 'height' => '120', '_attrs' => array($attr('loading', 'lazy')))),
             $heading('h3', $c['name'], 'prc-display h5 mb-1'),
             $para($c['role'], 'small fw-semibold text-primary mb-2'),
             $para($c['bio'], 'small text-body-secondary mb-3'),
@@ -840,7 +840,7 @@ $testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $
             )),
             $el('blockquote', 'mb-4', lang('Quote'), array($para($t['quote'], 'prc-quote mb-0'))),
             $el('figcaption', 'd-flex align-items-center gap-3 mt-auto', lang('Person'), array(
-                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('_attrs' => array($attr('width', '48'), $attr('height', '48'), $attr('loading', 'lazy')))),
+                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('width' => '48', 'height' => '48', '_attrs' => array($attr('loading', 'lazy')))),
                 $el('div', '', lang('Name and Role'), array(
                     $span($t['name'], 'd-block fw-semibold', lang('Name')),
                     $span($t['role'], 'd-block small text-body-secondary', lang('Role')),
