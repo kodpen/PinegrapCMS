@@ -223,6 +223,8 @@ function ws_api_agent_caller()
         api_fail(403, 'forbidden', lang('Only an active application agent, with its own key, may use this endpoint.'));
     }
 
+    ws_agent_seen_mark((array) $row);
+
     return (array) $row;
 }
 

@@ -79,6 +79,16 @@
                 head.appendChild(el('span', 'badge theme-warning', t('cha_paused')));
             }
 
+            // When a poll agent last called with its key; marked once it has
+            // not been seen for ten minutes.
+            if (agent.not_seen) {
+                head.appendChild(el('span', 'badge badge-subtle theme-warning', t('cha_not_seen')));
+            }
+
+            if (agent.seen) {
+                head.appendChild(el('span', 'small fg-secondary', agent.seen));
+            }
+
             return head;
         }
 

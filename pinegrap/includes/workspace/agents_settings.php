@@ -478,11 +478,15 @@ function ws_agents_settings_line_html($agent)
     $door = ($agent['door_kind'] === 'push') ? lang('Push door') : lang('Poll door');
     $knock = ($agent['door_last_knock'] > 0) ? lang(array('string' => 'last {var:1}', 'vars' => date('d.m.Y H:i', $agent['door_last_knock']))) : '';
     $schedule = ($agent['wake_every'] > 0) ? ' · ' . h(lang(array('string' => 'every {var:1} min', 'vars' => $agent['wake_every']))) : '';
+    $seen = ws_agent_seen_words($agent, time());
+    $seen_html = ($seen['label'] !== '') ? ' · ' . h($seen['label']) : '';
+    $not_seen = $seen['not_seen'] ? '<span class="badge badge-subtle theme-warning">' . h(lang('Not seen')) . '</span>' : '';
 
     return '
                     <span class="fw-semibold">@' . h($agent['handle']) . '</span>
                     <span class="ws-grow">' . h($agent['name']) . '</span>
-                    <span class="small fg-secondary">' . h($door) . (($knock !== '') ? ', ' . h($knock) : '') . $schedule . '</span>
+                    <span class="small fg-secondary">' . h($door) . (($knock !== '') ? ', ' . h($knock) : '') . $schedule . $seen_html . '</span>
+                    ' . $not_seen . '
                     <span class="badge badge-subtle ' . (($agent['status'] === 'active') ? 'theme-success' : 'theme-secondary') . '">' . h($status[$agent['status']] ?? $agent['status']) . '</span>';
 }
 

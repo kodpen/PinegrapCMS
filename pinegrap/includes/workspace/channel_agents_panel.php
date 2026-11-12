@@ -31,13 +31,17 @@ function ws_channel_agents_actions()
 }
 
 /**
- * A channel-agent row as the settings draw it. Pure.
+ * A channel-agent row as the settings draw it, with the agent's last seen
+ * (ws_agent_seen_words()). Pure but for lang() and the clock.
  *
- * @param array $row ws_channel_agent_shape()
+ * @param array    $row ws_channel_agent_shape()
+ * @param int|null $now
  * @return array
  */
-function ws_channel_agent_panel_row($row)
+function ws_channel_agent_panel_row($row, $now = null)
 {
+    $seen = ws_agent_seen_words($row['agent'], ($now === null) ? time() : (int) $now);
+
     return array(
         'agent_id'    => (int) $row['agent']['id'],
         'kind'        => (string) $row['agent']['kind'],
@@ -48,6 +52,8 @@ function ws_channel_agent_panel_row($row)
         'wake_prefix' => (string) $row['wake_prefix'],
         'tier'        => (int) $row['tier'],
         'loop_guard'  => (bool) $row['loop_guard'],
+        'seen'        => $seen['label'],
+        'not_seen'    => $seen['not_seen'],
     );
 }
 
@@ -104,7 +110,9 @@ function ws_channel_agents_panel_state($viewer, $channel)
 
     return array(
         'ready'    => true,
-        'agents'   => array_map('ws_channel_agent_panel_row', $rows),
+        'agents'   => array_map(function ($row) {
+            return ws_channel_agent_panel_row($row);
+        }, $rows),
         'addable'  => ws_channel_agents_addable(ws_agents_list(), $in),
         'can_edit' => (ws_channel_agent_add_problem($viewer, $channel) === ''),
         'can_tier' => ws_can_manage_channel($viewer, $channel),
@@ -209,6 +217,7 @@ function ws_channel_agents_js_strings()
 {
     return array(
         'cha_title'       => lang('Agents in this channel'),
+        'cha_not_seen'    => lang('Not seen'),
         'cha_help'        => lang('An agent added here is woken in this channel by the rule you choose. Adding it changes only when it wakes, never what it may read.'),
         'cha_empty'       => lang('No agent in this channel yet.'),
         'cha_add'         => lang('Add an agent'),
