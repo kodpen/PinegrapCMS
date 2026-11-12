@@ -336,6 +336,7 @@
 - workspace-note-groups-screen.md: Note groups on the My Notes screen — workspace_note_groups.js (folders, New group, group menu, Move to group, drag and drop, search, closed folders in the browser) and its hooks in startNotes()
 - workspace-note-groups-shared-screen.md: Shared note groups on the screen (G6) — workspace_note_group_shares.js (Share dialog, Shared with me folders, channel group card, ?group=N) and the list fields shared_groups / shared_group
 - workspace-note-groups.md: Workspace note groups and the notes lock — tables of step 11.0.119, readiness probes ws_note_groups_ready() / ws_note_lock_ready()
+- workspace-note-lock-changes.md: A notes lock change moves the note's updated_at (ws_note_lock_moved(), #8647) so updated_since carries it; the API notes search finds a locked note by its title only
 - workspace-note-lock-gate.md: Notes lock gate: ws_note_behind_lock(), code note_locked on the screen's note actions, list and presenter while closed, locking notes and groups, shares refused
 - workspace-note-lock-readers.md: Notes lock beyond the notes screen: API and MCP (locked, 423 note_locked), assistants, get_file.php, export, blocks, record history, table import; the readers guard test
 - workspace-note-lock-screen.md: Notes lock on My Notes (workspace_note_lock.js): toolbar Lock and dialogs, Lock/Unlock in menus, list marks, the lock pane and e-mailed code, the time-out, note_locked answers

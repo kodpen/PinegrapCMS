@@ -303,6 +303,12 @@ function ws_note_group_delete($viewer, $group)
 
     $id = (int) $group['id'];
 
+    // The notes a locked group kept behind the person's lock come out from
+    // behind it with the group gone (note_lock.php).
+    $freed = (!empty($group['locked']) && function_exists('ws_note_lock_group_follows'))
+        ? ws_note_lock_group_follows((int) $viewer['id'], $id)
+        : array();
+
     // Its shares are taken back first, so their notes leave the people and
     // channels the group brought them to (note_group_shares.php).
     if (function_exists('ws_note_group_shares_forget')) {
@@ -311,6 +317,10 @@ function ws_note_group_delete($viewer, $group)
 
     db("DELETE FROM ws_note_places WHERE group_id = '" . $id . "'");
     db("DELETE FROM ws_note_groups WHERE id = '" . $id . "'");
+
+    if (!empty($freed)) {
+        ws_note_lock_moved($freed);
+    }
 
     return array('ok' => true, 'error' => '');
 }
@@ -384,12 +394,20 @@ function ws_note_place($viewer, $note, $group_id, $position = -1)
     $me = (int) $viewer['id'];
     $note_id = (int) $note['id'];
     $from = (int) db_value("SELECT group_id FROM ws_note_places WHERE user_id = '" . $me . "' AND note_id = '" . $note_id . "'");
+    // Behind the person's notes lock before the move: a move into a locked
+    // group or out of one is a change of the note (note_lock.php).
+    $lock = function_exists('ws_note_lock_place_moved');
+    $behind = $lock && ws_note_behind_lock($me, $note);
 
     if (!$check['group']) {
         db("DELETE FROM ws_note_places WHERE user_id = '" . $me . "' AND note_id = '" . $note_id . "'");
 
         if (function_exists('ws_note_group_shares_after_place')) {
             ws_note_group_shares_after_place($viewer, $note, $from, 0);
+        }
+
+        if ($lock) {
+            ws_note_lock_place_moved($me, $note, $behind);
         }
 
         return array('ok' => true, 'error' => '', 'field' => '', 'group_id' => 0);
@@ -420,6 +438,10 @@ function ws_note_place($viewer, $note, $group_id, $position = -1)
 
     if (($placed_by <= 0) && function_exists('ws_note_group_shares_after_place')) {
         ws_note_group_shares_after_place($viewer, $note, $from, $group_id);
+    }
+
+    if ($lock) {
+        ws_note_lock_place_moved($me, $note, $behind);
     }
 
     return array('ok' => true, 'error' => '', 'field' => '', 'group_id' => $group_id);
