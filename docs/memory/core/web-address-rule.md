@@ -14,7 +14,7 @@ module: core
 
 ## Where are they used?
 - Auto dialogs: the screens and the external API save through `pg_auto_dialog_url_problem()`; `get_page_content.php` passes the preview and the enabled rows through `pg_auto_dialogs_for_page()` (`includes/fn/auto_dialogs.php`); `software.open_dialog()` returns false before building the iframe for any other scheme.
-- Symptom before (#9013): the auto dialog URL took `javascript:…`, and the iframe ran it in the site's origin on every page the dialog opened on.
+- Symptom before (issue #9013, fixed in PR #9050): the auto dialog URL took `javascript:…`, and the iframe ran it in the site's origin on every page the dialog opened on.
 
 ## Tests?
 - `tests/web_address_test.php` (both rules, the short link sharing them, both script twins), `tests/auto_dialog_form_test.php` (the field, the page guard, the API).
