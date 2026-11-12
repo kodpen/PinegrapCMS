@@ -60,20 +60,62 @@ function pg_ltc_origin_style($tree, $frame_styles)
 }
 
 /**
- * The page_style of a page going back: 0 when its folder gives it that
- * style anyway, as for a page that took it from its folder before the move,
- * else the style.
+ * The page_style of a page going back: the style for a page that had it as
+ * its own; for one that took it from its folder (or whose run kept no
+ * record), 0 while its folder still gives that style, else the style.
  *
  * Pure: no query.
  *
  * @param int   $origin
+ * @param bool  $own            the page had the style as its own page_style
  * @param int   $folder_id
  * @param array $folder_styles  pg_classic_style_folder_styles()
  * @return int
  */
-function pg_ltc_target_style($origin, $folder_id, $folder_styles)
+function pg_ltc_target_style($origin, $own, $folder_id, $folder_styles)
 {
+    if ($own) return (int)$origin;
     return ((int)($folder_styles[(int)$folder_id] ?? 0) === (int)$origin) ? 0 : (int)$origin;
+}
+
+/**
+ * The pages the kept runs moved (pg_ltd_state_origin()), a later run's
+ * record over an earlier one's: page id => array(style id, from folder).
+ *
+ * Pure: no query.
+ *
+ * @param array $runs  kept run states, oldest first
+ * @return array
+ */
+function pg_ltc_origins_merge($runs)
+{
+    $out = array();
+    foreach ((array)$runs as $run) {
+        foreach ((array)($run['origins'] ?? array()) as $page_id => $o) {
+            if ((int)$page_id > 0 && is_array($o) && (int)($o[0] ?? 0) > 0) {
+                $out[(int)$page_id] = array((int)$o[0], !empty($o[1]));
+            }
+        }
+    }
+    return $out;
+}
+
+/**
+ * The moved pages of every kept run (pg_ltd_report_keep()).
+ *
+ * @return array  pg_ltc_origins_merge()
+ */
+function pg_ltc_run_origins()
+{
+    $files = glob(pg_ltd_reports_dir() . '/*.json');
+    if (!$files) return array();
+    sort($files);
+    $runs = array();
+    foreach ($files as $file) {
+        $run = json_decode((string)@file_get_contents($file), true);
+        if (is_array($run) && !empty($run['origins'])) $runs[] = $run;
+    }
+    return pg_ltc_origins_merge($runs);
 }
 
 /**
@@ -116,8 +158,10 @@ function pg_ltc_refusal_text($code)
 
 /**
  * The Legacy designs holding pages that came from other classic styles (a
- * set's design), by name, each with its pages. A design moved alone is
- * left out: its pages came from the design's own style.
+ * set's design), by name, each with its pages. A page's style is the one
+ * its run kept (pg_ltc_run_origins()), else the one whose frame its tree
+ * places (runs kept before the record). A design moved alone is left out:
+ * its pages came from the design's own style.
  *
  * @param int $only  one design's id, 0 for all
  * @return array  list of: id, name, pages (list of: page_id, page_name,
@@ -139,11 +183,13 @@ function pg_ltc_designs($only = 0)
         $style = pg_ltc_category_style($r['category']);
         if ($style > 0) $frame_styles[(int)$r['id']] = $style;
     }
-    if (!$frame_styles) return array();
+    $recorded = pg_ltc_run_origins();
+    $origin_ids = array_unique(array_merge(array_values($frame_styles), array_column($recorded, 0)));
+    if (!$origin_ids) return array();
 
     $styles = array();
     $rows = db_items("SELECT style_id, style_name, style_layout FROM style
-                      WHERE style_id IN (" . implode(',', array_unique(array_values($frame_styles))) . ")");
+                      WHERE style_id IN (" . implode(',', array_map('intval', $origin_ids)) . ")");
     foreach ((is_array($rows) ? $rows : array()) as $r) {
         $styles[(int)$r['style_id']] = array('name' => (string)$r['style_name'], 'classic' => ((string)$r['style_layout'] !== 'visual_designer'));
     }
@@ -160,18 +206,25 @@ function pg_ltc_designs($only = 0)
         $pages = array();
         $from_others = false;
         foreach ((is_array($rows) ? $rows : array()) as $r) {
-            $tree = json_decode((string)$r['page_tree_json'], true);
-            $origin = is_array($tree) ? pg_ltc_origin_style($tree, $frame_styles) : 0;
+            $pid = (int)$r['page_id'];
+            $own = false;
+            if (isset($recorded[$pid])) {
+                list($origin, $from_folder) = $recorded[$pid];
+                $own = !$from_folder;
+            } else {
+                $tree = json_decode((string)$r['page_tree_json'], true);
+                $origin = is_array($tree) ? pg_ltc_origin_style($tree, $frame_styles) : 0;
+            }
             if ($origin === $id) $origin = 0;
             if ($origin > 0) $from_others = true;
             $pages[] = array(
-                'page_id' => (int)$r['page_id'],
+                'page_id' => $pid,
                 'page_name' => (string)$r['page_name'],
                 'origin' => $origin,
                 'origin_name' => isset($styles[$origin]) ? $styles[$origin]['name'] : '',
                 'origin_classic' => !empty($styles[$origin]['classic']),
-                'target' => pg_ltc_target_style($origin, (int)$r['page_folder'], $folder_styles),
-                'held' => !pg_collab_may_edit_page('', (int)$r['page_id']),
+                'target' => pg_ltc_target_style($origin, $own, (int)$r['page_folder'], $folder_styles),
+                'held' => !pg_collab_may_edit_page('', $pid),
             );
         }
         if (!$from_others) continue;
