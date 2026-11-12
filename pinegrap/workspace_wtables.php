@@ -741,11 +741,13 @@ if (!$table) {
        ----------------------------------------------------------------------- */
 
     // Tables that belong to a channel become a scope of their own when the
-    // store keeps them.
+    // store keeps them; $channels holds each such table's channel as the
+    // store resolved it (table id => id, name, kind).
     $with_channels = false;
+    $channels = array();
     $scope = ws_wtable_list_scope($_GET['scope'] ?? '', $with_channels);
     $reached = ws_wtables_reached($viewer, 'all');
-    $counts = ws_wtable_list_counts($reached);
+    $counts = ws_wtable_list_counts($reached, $channels);
 
     // The person's own deleted tables, each restored whole until the bin
     // lets it go; they are a view of the list, beside the tables.
@@ -774,7 +776,7 @@ if (!$table) {
     } else {
         $list_name = WS_WTABLE_LIST;
         $list_columns = ws_wtable_list_columns();
-        $tables = ws_wtable_list_pick($reached, $scope);
+        $tables = ws_wtable_list_pick($reached, $scope, $channels);
 
         // A heading's sort is kept as on every printed list; the store
         // gives the tables the latest changed first, which is the default.
@@ -798,7 +800,7 @@ if (!$table) {
                 'url'      => $self_url,
                 'counts'   => ws_wtable_list_column_counts(array_column($tables, 'id')),
                 'people'   => empty($tables) ? array() : ws_people(array_column($tables, 'user_id')),
-                'channels' => array(),
+                'channels' => $channels,
                 'confirms' => $confirms,
             )),
         ));

@@ -76,9 +76,14 @@ function test_ws_wtable_list_scope_of_a_table()
 	pg_assert_same('shared', ws_wtable_list_scope_of(array('access' => 'edit')));
 	pg_assert_same('shared', ws_wtable_list_scope_of(array('access' => 'view')));
 	pg_assert_same('shared', ws_wtable_list_scope_of(array()), 'a row without an access is never the person\'s own');
-	pg_assert_same('mine', ws_wtable_list_scope_of(array('access' => 'owner', 'channel_id' => '0')), 'no channel is a person\'s table');
-	pg_assert_same('channels', ws_wtable_list_scope_of(array('access' => 'owner', 'channel_id' => '5')), 'a channel\'s table is the channel\'s, whoever looks');
-	pg_assert_same('channels', ws_wtable_list_scope_of(array('access' => 'view', 'channel_id' => 5)));
+
+	$channels = array(5 => array('id' => 9, 'name' => 'ops', 'kind' => 'public'));
+
+	pg_assert_same('channels', ws_wtable_list_scope_of(array('id' => '5', 'access' => 'owner', 'channel_id' => '9'), $channels), 'a channel\'s table is the channel\'s, whoever looks');
+	pg_assert_same('channels', ws_wtable_list_scope_of(array('id' => 5, 'access' => 'view'), $channels));
+	pg_assert_same('mine', ws_wtable_list_scope_of(array('id' => '6', 'access' => 'owner', 'channel_id' => '0'), $channels), 'no channel is a person\'s table');
+	pg_assert_same('mine', ws_wtable_list_scope_of(array('id' => '7', 'access' => 'owner', 'channel_id' => '12'), $channels), 'a channel_id the store found no channel for leaves the table its maker\'s');
+	pg_assert_same('shared', ws_wtable_list_scope_of(array('id' => '5', 'access' => 'edit', 'channel_id' => '9')), 'without the resolved channels nothing is a channel\'s');
 }
 
 function test_ws_wtable_list_counts_and_pick()
@@ -91,7 +96,10 @@ function test_ws_wtable_list_counts_and_pick()
 		ws_wtable_list_test_table(array('id' => '5', 'access' => 'edit', 'channel_id' => '9')),
 	);
 
-	pg_assert_same(array('all' => 5, 'mine' => 2, 'channels' => 1, 'shared' => 2), ws_wtable_list_counts($tables));
+	$channels = array(5 => array('id' => 9, 'name' => 'ops', 'kind' => 'public'));
+
+	pg_assert_same(array('all' => 5, 'mine' => 2, 'channels' => 1, 'shared' => 2), ws_wtable_list_counts($tables, $channels));
+	pg_assert_same(array('all' => 5, 'mine' => 2, 'channels' => 0, 'shared' => 3), ws_wtable_list_counts($tables), 'an unresolved channel table counts by its access');
 	pg_assert_same(array('all' => 0, 'mine' => 0, 'channels' => 0, 'shared' => 0), ws_wtable_list_counts(array()));
 
 	$ids = function (array $picked) {
@@ -102,8 +110,9 @@ function test_ws_wtable_list_counts_and_pick()
 
 	pg_assert_same(array('1', '2', '3', '4', '5'), $ids(ws_wtable_list_pick($tables, 'all')), 'every table, in the order given');
 	pg_assert_same(array('1', '4'), $ids(ws_wtable_list_pick($tables, 'mine')));
-	pg_assert_same(array('2', '3'), $ids(ws_wtable_list_pick($tables, 'shared')));
-	pg_assert_same(array('5'), $ids(ws_wtable_list_pick($tables, 'channels')));
+	pg_assert_same(array('2', '3'), $ids(ws_wtable_list_pick($tables, 'shared', $channels)));
+	pg_assert_same(array('5'), $ids(ws_wtable_list_pick($tables, 'channels', $channels)));
+	pg_assert_same(array(), ws_wtable_list_pick($tables, 'channels'), 'no resolved channels, no channel tables');
 	pg_assert_same(array(0, 1), array_keys(ws_wtable_list_pick(array(3 => $tables[0], 8 => $tables[3]), 'mine')), 'the picked tables are a list again');
 }
 
@@ -264,6 +273,9 @@ function test_ws_wtable_list_screen_is_wired()
 	pg_assert_contains("\$title = lang('Data');", $screen, 'the place is named Data');
 	pg_assert_contains('ws_wtable_list_count_text($counts[\'all\'])', $screen, 'the count stands under the name');
 	pg_assert_contains("ws_wtables_reached(\$viewer, 'all')", $screen, 'the store decides what the person reaches');
+	pg_assert_contains('ws_wtable_list_counts($reached, $channels)', $screen, 'the counts see the resolved channels');
+	pg_assert_contains('ws_wtable_list_pick($reached, $scope, $channels)', $screen, 'so does the scope');
+	pg_assert_contains("'channels' => \$channels,", $screen, 'and the Where column');
 	pg_assert_contains('pg_list_table_printed(', $screen, 'the list is printed whole');
 	pg_assert_contains('pg_list_table_html($list[\'source\'], $list[\'page\'], lang(\'Data\'))', $screen, 'the list is named for readers');
 	pg_assert_contains("pg_js_bundle_tags('assets/js/pg_list_table.min.js')", $screen, 'the list\'s script is served');

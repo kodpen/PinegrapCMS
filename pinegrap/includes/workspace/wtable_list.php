@@ -74,13 +74,19 @@ function ws_wtable_list_scope($value, $channels = false)
  * do with it), the person's own, or somebody else's that reaches them
  * through a share.
  *
- * @param array $table a ws_wtables_reached() row (access; channel_id when
- *                     the store keeps one)
+ * A table is a channel's only when the store found its channel: a
+ * channel_id that names no channel any more leaves the table its maker's,
+ * so the screen hands over the channels it resolved rather than the column.
+ *
+ * @param array $table    a ws_wtables_reached() row: id, access
+ * @param array $channels table id => the channel the table belongs to, as
+ *                        the store resolved it; empty while the store keeps
+ *                        no channel tables
  * @return string channels | mine | shared
  */
-function ws_wtable_list_scope_of($table)
+function ws_wtable_list_scope_of($table, array $channels = array())
 {
-    if ((int) ($table['channel_id'] ?? 0) > 0) {
+    if (isset($channels[(int) ($table['id'] ?? 0)])) {
         return 'channels';
     }
 
@@ -90,15 +96,16 @@ function ws_wtable_list_scope_of($table)
 /**
  * How many tables each scope holds.
  *
- * @param array $tables ws_wtables_reached($viewer, 'all')
+ * @param array $tables   ws_wtables_reached($viewer, 'all')
+ * @param array $channels as ws_wtable_list_scope_of() takes it
  * @return array all, mine, channels, shared => count
  */
-function ws_wtable_list_counts(array $tables)
+function ws_wtable_list_counts(array $tables, array $channels = array())
 {
     $counts = array('all' => count($tables), 'mine' => 0, 'channels' => 0, 'shared' => 0);
 
     foreach ($tables as $table) {
-        $counts[ws_wtable_list_scope_of($table)]++;
+        $counts[ws_wtable_list_scope_of($table, $channels)]++;
     }
 
     return $counts;
@@ -107,18 +114,19 @@ function ws_wtable_list_counts(array $tables)
 /**
  * The tables of one scope, in the order they were given.
  *
- * @param array  $tables ws_wtables_reached($viewer, 'all')
- * @param string $scope  ws_wtable_list_scope()
+ * @param array  $tables   ws_wtables_reached($viewer, 'all')
+ * @param string $scope    ws_wtable_list_scope()
+ * @param array  $channels as ws_wtable_list_scope_of() takes it
  * @return array
  */
-function ws_wtable_list_pick(array $tables, $scope)
+function ws_wtable_list_pick(array $tables, $scope, array $channels = array())
 {
     if ($scope === 'all') {
         return array_values($tables);
     }
 
-    return array_values(array_filter($tables, function ($table) use ($scope) {
-        return ws_wtable_list_scope_of($table) === $scope;
+    return array_values(array_filter($tables, function ($table) use ($scope, $channels) {
+        return ws_wtable_list_scope_of($table, $channels) === $scope;
     }));
 }
 
