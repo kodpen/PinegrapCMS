@@ -5,9 +5,10 @@
  * Site Settings - Assistants and agents: Claude in the channels (its
  * connection, its key, the connection test, the latest requests and the
  * setup steps), the Workspace agents (each edited in a drawer with its
- * waiting and failed requests), the assistants' bulk changes, and a card
- * linking the cards still kept on the Workspace Settings screen (Pinegrap AI
- * and the MCP servers). They move here one at a time; each that
+ * waiting and failed requests), Pinegrap AI in the channels (its switch,
+ * application, key and connection test), the assistants' bulk changes, and
+ * a card linking the MCP servers, still kept on the Workspace Settings
+ * screen. They move here one at a time; each that
  * moves takes its link out of that card.
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
@@ -79,6 +80,13 @@ if ($ws_card !== '') {
     }
 }
 
+// ── Pinegrap AI in the channels ──
+$ws_card = function_exists('ws_ai_settings_card') ? ws_ai_settings_card('', $ws_viewer, $ws_form) : '';
+
+if ($ws_card !== '') {
+    $pg_settings_cards[] = $ws_card;
+}
+
 // ── Bulk changes by the assistants ──
 $ws_card = ws_bulk_settings_card('', $ws_viewer, $ws_form);
 
@@ -87,6 +95,5 @@ if ($ws_card !== '') {
 }
 
 $pg_settings_cards[] = ws_settings_screen_links_card('pgset-ws-assistants-screen', array(
-    array('ws-ai', 'bi-cpu', lang('Pinegrap AI in the channels')),
     array('ws-mcp', 'bi-plug', lang('MCP servers')),
 ));

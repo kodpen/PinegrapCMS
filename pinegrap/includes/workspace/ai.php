@@ -4689,63 +4689,137 @@ function ws_ai_license_label()
  * @param string   $action ai | ai_test | ai_key_create
  * @param liveform $liveform
  * @param array    $user   validate_user(): whose rights cap a key made here
+ * @param bool     $after_save the Site Settings dialog ran a button after its
+ *                 pane was saved: a refusal is a warning then (the connection
+ *                 itself is saved by its save module, never through here)
  */
-function ws_ai_settings_post($viewer, $action, $liveform, $user)
+function ws_ai_settings_post($viewer, $action, $liveform, $user, $after_save = false)
 {
+    $refuse = function ($sentence) use ($liveform, $after_save) {
+        if ($after_save) {
+            $liveform->add_warning($sentence);
+        } else {
+            $liveform->add_error($sentence);
+        }
+    };
+
     if (!ws_ai_schema_ready()) {
-        $liveform->add_error(lang('The database has not been upgraded yet.'));
+        $refuse(lang('The database has not been upgraded yet.'));
         return;
     }
 
     if ((int) $viewer['role'] !== 0) {
-        $liveform->add_error(lang('Only an administrator can connect Pinegrap AI.'));
+        $refuse(lang('Only an administrator can connect Pinegrap AI.'));
         return;
     }
 
     $username = (string) ($_SESSION['sessionusername'] ?? '');
 
     if ($action === 'ai_test') {
-        ws_ai_settings_test($liveform);
+        ws_ai_settings_test($liveform, $refuse);
         return;
     }
 
     if ($action === 'ai_key_create') {
-        ws_ai_key_post($liveform, $user, $username);
+        ws_ai_key_post($liveform, $user, $username, $refuse);
         return;
     }
 
-    $enabled = !empty($_POST['ai_enabled']);
-    $app_id = (int) ($_POST['ai_app_id'] ?? 0);
+    $input = ws_ai_settings_input($_POST);
+    $refused = ws_ai_settings_check($input, (int) ws_claude_config()['app_id']);
 
-    if (($app_id > 0) && !ws_ai_app($app_id)) {
-        $liveform->add_error(lang('That application could not be found.'));
+    foreach ($refused as $sentence) {
+        $liveform->add_error($sentence);
+    }
+
+    if ($refused) {
         return;
     }
 
-    if (($app_id > 0) && ($app_id === (int) ws_claude_config()['app_id'])) {
-        $liveform->add_error(lang('Pinegrap AI needs an application of its own: the one chosen is Claude\'s.'));
-        return;
+    ws_ai_settings_write($input, $liveform, $refuse);
+}
+
+/**
+ * The card's fields, read from a request: Workspace Settings posts ai_*,
+ * the Site Settings dialog ws_ai_* (names unique in its pane).
+ *
+ * @param array  $source $_POST
+ * @param string $prefix '' on Workspace Settings, 'ws_' in the dialog
+ * @return array enabled, app_id
+ */
+function ws_ai_settings_input($source, $prefix = '')
+{
+    $enabled = $source[$prefix . 'ai_enabled'] ?? null;
+    $app_id = $source[$prefix . 'ai_app_id'] ?? null;
+
+    return array(
+        'enabled' => is_scalar($enabled) && ((string) $enabled !== '') && ((string) $enabled !== '0'),
+        'app_id'  => is_scalar($app_id) ? (int) $app_id : 0,
+    );
+}
+
+/**
+ * Does the posted connection differ from the stored one? The dialog posts
+ * the card with every Save of its pane; one that changes nothing must not
+ * write, as a write clears the last error and the wait.
+ *
+ * @param array $input  ws_ai_settings_input()
+ * @param array $config ws_ai_config()
+ * @return bool
+ */
+function ws_ai_settings_changed($input, $config)
+{
+    return ($input['enabled'] !== (bool) $config['enabled']) || ($input['app_id'] !== (int) $config['app_id']);
+}
+
+/**
+ * Checks the card's application: one that exists, and not Claude's.
+ *
+ * @param array $input         ws_ai_settings_input()
+ * @param int   $claude_app_id the application Claude works through
+ * @return array field (app_id) => sentence; empty when it may be stored
+ */
+function ws_ai_settings_check($input, $claude_app_id)
+{
+    if (($input['app_id'] > 0) && !ws_ai_app($input['app_id'])) {
+        return array('app_id' => lang('That application could not be found.'));
     }
 
-    $sets = array(
-        "ws_ai_enabled = '" . ($enabled ? 1 : 0) . "'",
-        "ws_ai_app_id = '" . $app_id . "'",
+    if (($input['app_id'] > 0) && ($input['app_id'] === (int) $claude_app_id)) {
+        return array('app_id' => lang('Pinegrap AI needs an application of its own: the one chosen is Claude\'s.'));
+    }
+
+    return array();
+}
+
+/**
+ * Stores the switch and the application ws_ai_settings_check() passed, with
+ * its Site Log line, then asks the licence gateway again when a key is
+ * entered: an invalid or expired licence is said through $refuse.
+ *
+ * @param array    $input ws_ai_settings_input()
+ * @param liveform $liveform
+ * @param callable $refuse takes a sentence
+ */
+function ws_ai_settings_write($input, $liveform, $refuse)
+{
+    db("UPDATE config SET " . implode(', ', array(
+        "ws_ai_enabled = '" . ($input['enabled'] ? 1 : 0) . "'",
+        "ws_ai_app_id = '" . (int) $input['app_id'] . "'",
         "ws_ai_error = ''",
         "ws_ai_hold_until = 0",
-    );
-
-    db("UPDATE config SET " . implode(', ', $sets));
+    )));
 
     ws_ai_config(true);
 
-    log_activity(lang('the Pinegrap AI connection of the workspace was changed'), $username);
+    log_activity(lang('the Pinegrap AI connection of the workspace was changed'), (string) ($_SESSION['sessionusername'] ?? ''));
     $liveform->add_notice(lang('The Pinegrap AI settings were saved.'));
 
     if (ws_ai_config()['license_set']) {
         $state = ws_ai_license_check(true);
 
         if (($state === 'invalid') || ($state === 'expired')) {
-            $liveform->add_error(ws_ai_license_sentence($state));
+            $refuse(ws_ai_license_sentence($state));
         }
     }
 }
@@ -4771,15 +4845,22 @@ function ws_ai_settings_post($viewer, $action, $liveform, $user)
  * @param liveform $liveform
  * @param array    $user     validate_user()
  * @param string   $username
+ * @param callable|null $refuse takes a refusal's sentence; an error by default
  */
-function ws_ai_key_post($liveform, $user, $username)
+function ws_ai_key_post($liveform, $user, $username, $refuse = null)
 {
+    if ($refuse === null) {
+        $refuse = function ($sentence) use ($liveform) {
+            $liveform->add_error($sentence);
+        };
+    }
+
     require_once PG_FUNCTIONS_DIR . '/includes/api/keys.php';
 
     ws_ai_config(true);
 
     if (ws_ai_app()) {
-        $liveform->add_error(lang('Pinegrap AI already has a key.'));
+        $refuse(lang('Pinegrap AI already has a key.'));
         return;
     }
 
@@ -4787,14 +4868,14 @@ function ws_ai_key_post($liveform, $user, $username)
     $scopes = ws_assistant_key_scopes($user);
 
     if (empty($scopes)) {
-        $liveform->add_error(lang('Pinegrap AI\'s key needs writing in the Workspace and the Tasks, which your account cannot hand on.'));
+        $refuse(lang('Pinegrap AI\'s key needs writing in the Workspace and the Tasks, which your account cannot hand on.'));
         return;
     }
 
     $made = api_app_create(lang('Pinegrap AI'), lang('Made in Workspace settings for Pinegrap AI in the channels. It has no secret and cannot sign in.'), $scopes, (int) $user['id'], false, $username);
 
     if (!$made) {
-        $liveform->add_error(lang('Pinegrap AI\'s key could not be made.'));
+        $refuse(lang('Pinegrap AI\'s key could not be made.'));
         return;
     }
 
@@ -4808,12 +4889,19 @@ function ws_ai_key_post($liveform, $user, $username)
 /**
  * Tries the connection: the licence, the models, and one short answer.
  *
- * @param liveform $liveform
+ * @param liveform      $liveform
+ * @param callable|null $refuse takes a refusal's sentence; an error by default
  */
-function ws_ai_settings_test($liveform)
+function ws_ai_settings_test($liveform, $refuse = null)
 {
+    if ($refuse === null) {
+        $refuse = function ($sentence) use ($liveform) {
+            $liveform->add_error($sentence);
+        };
+    }
+
     if (!ws_ai_config(true)['license_set']) {
-        $liveform->add_error(lang('The subscription key under Site Settings › General › Software is not entered.'));
+        $refuse(lang('The subscription key under Site Settings › General › Software is not entered.'));
         return;
     }
 
@@ -4824,7 +4912,7 @@ function ws_ai_settings_test($liveform)
     $state = ws_ai_license_check(true);
 
     if (($state === 'invalid') || ($state === 'expired')) {
-        $liveform->add_error(ws_ai_license_sentence($state));
+        $refuse(ws_ai_license_sentence($state));
         return;
     }
 
@@ -4833,7 +4921,7 @@ function ws_ai_settings_test($liveform)
     if (!$models['ok']) {
         $error = ws_ai_http_error($models['response']);
         db("UPDATE config SET ws_ai_error = '" . e(mb_substr($error, 0, 250)) . "'");
-        $liveform->add_error(h($error));
+        $refuse(h($error));
         return;
     }
 
@@ -4853,14 +4941,14 @@ function ws_ai_settings_test($liveform)
 
     if ($verdict !== '') {
         ws_ai_license_store($verdict, 0);
-        $liveform->add_error(ws_ai_license_sentence($verdict));
+        $refuse(ws_ai_license_sentence($verdict));
         return;
     }
 
     if (($response['http'] !== 200) || !isset($response['json']['choices'][0]['message'])) {
         $error = ws_ai_http_error($response);
         db("UPDATE config SET ws_ai_error = '" . e(mb_substr($error, 0, 250)) . "'");
-        $liveform->add_error(h($error));
+        $refuse(h($error));
         return;
     }
 
@@ -4883,11 +4971,18 @@ function ws_ai_settings_test($liveform)
  * application": outside it, a Save would post no application and unlink the
  * key.
  *
- * @param string $self_url
- * @param array  $viewer
+ * In the Site Settings dialog ($form: the settings form's id) the card has no
+ * form of its own: the switch and the application (ws_ai_enabled,
+ * ws_ai_app_id) are saved with the pane's Save, and Create and the test are
+ * named submit buttons of the settings form (ws_ai_key_create, ws_ai_test),
+ * run after the save (includes/settings/workspace_assistants.save.php).
+ *
+ * @param string      $self_url
+ * @param array       $viewer
+ * @param string|null $form the Site Settings form's id; null on Workspace Settings
  * @return string
  */
-function ws_ai_settings_card($self_url, $viewer)
+function ws_ai_settings_card($self_url, $viewer, $form = null)
 {
     if (!ws_ai_schema_ready()) {
         return '';
@@ -4900,6 +4995,24 @@ function ws_ai_settings_card($self_url, $viewer)
     $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
     $disabled = $admin ? '' : ' disabled';
     $claude_app = (int) ws_claude_config()['app_id'];
+    $dialog = ($form !== null);
+    $field_name = function ($field) use ($dialog) {
+        return ($dialog ? 'ws_' : '') . 'ai_' . $field;
+    };
+
+    // A card button: a form of its own on Workspace Settings, a named submit
+    // button of the settings form in the dialog.
+    $button = function ($action, $class, $inner, $after, $wrap) use ($self_url, $form) {
+        if ($form !== null) {
+            return '<div class="' . h($wrap) . '"><button type="submit" name="ws_' . h($action) . '" value="1" form="' . h($form) . '" class="' . h($class) . '">' . $inner . '</button>' . $after . '</div>';
+        }
+
+        return '<form method="post" action="' . h($self_url) . '#ws-ai" class="' . h($wrap) . '">
+                                ' . get_token_field() . '
+                                <input type="hidden" name="ws_action" value="' . h($action) . '">
+                                <button type="submit" class="' . h($class) . '">' . $inner . '</button>' . $after . '
+                            </form>';
+    };
 
     $options = '<option value="0">' . h(lang('Choose an application')) . '</option>';
 
@@ -5011,12 +5124,8 @@ function ws_ai_settings_card($self_url, $viewer)
         require_once PG_FUNCTIONS_DIR . '/includes/api/scopes.php';
 
         $key_block = '
-                        <form method="post" action="' . h($self_url) . '#ws-ai" class="ws-claude-key mb-7">
-                            ' . get_token_field() . '
-                            <input type="hidden" name="ws_action" value="ai_key_create">
-                            <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Create Pinegrap AI\'s key')) . '</button>
-                            <div class="form-text">' . h(lang(array('string' => 'The key reads every kind of record except {var:1} and writes only in the Workspace and the Tasks. It has no secret and cannot sign in anywhere: Pinegrap AI runs inside this site.', 'vars' => implode(', ', api_assistant_scopes_left_out())))) . '</div>
-                        </form>';
+                        ' . $button('ai_key_create', 'btn btn-sm btn-solid theme-primary rounded-pill px-5', '<i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Create Pinegrap AI\'s key')), '
+                            <div class="form-text">' . h(lang(array('string' => 'The key reads every kind of record except {var:1} and writes only in the Workspace and the Tasks. It has no secret and cannot sign in anywhere: Pinegrap AI runs inside this site.', 'vars' => implode(', ', api_assistant_scopes_left_out())))) . '</div>', 'ws-claude-key mb-7');
     } elseif ($admin) {
         require_once PG_FUNCTIONS_DIR . '/includes/api/keys.php';
 
@@ -5033,21 +5142,31 @@ function ws_ai_settings_card($self_url, $viewer)
                         </div>';
     }
 
-    return '
+    $head = $dialog
+        ? '
+    <div id="pgset-ws-ai" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0 ws-grow">' . h(lang('Pinegrap AI in the channels')) . '</span>
+                ' . $state . '
+            </div>'
+        : '
         <div class="card mt-7" id="ws-ai">
             <div class="card-header d-flex align-items-center gap-3">
                 <h2 class="h6 mb-0 ws-grow"><i class="bi bi-cpu me-1" aria-hidden="true"></i>' . h(lang('Pinegrap AI in the channels')) . '</h2>
                 ' . $state . '
-            </div>
+            </div>';
+
+    return $head . '
             <div class="card-body">
                 <div class="row g-7">
                     <div class="lg:col-7">
                         ' . $key_block . '
-                        <form method="post" action="' . h($self_url) . '#ws-ai">
+                        ' . ($dialog ? '<div class="ws-ai-connection">' : '<form method="post" action="' . h($self_url) . '#ws-ai">
                             ' . get_token_field() . '
-                            <input type="hidden" name="ws_action" value="ai">
+                            <input type="hidden" name="ws_action" value="ai">') . '
                             <div class="form-field mb-5">
-                                <div class="switch"><input class="" type="checkbox" name="ai_enabled" value="1" id="ws_ai_enabled"' . ($config['enabled'] ? ' checked' : '') . $disabled . '></div>
+                                <div class="switch"><input class="" type="checkbox" name="' . $field_name('enabled') . '" value="1" id="ws_ai_enabled"' . ($config['enabled'] ? ' checked' : '') . $disabled . '></div>
                                 <label class="" for="ws_ai_enabled">' . h(lang('Pinegrap AI can be asked in the channels with @ai')) . '</label>
                                 <div class="form-text">' . h(lang('The model at ai.pinegrap.com answers, with the site\'s subscription key. What is written in a channel where it is asked is sent there. Public channels are open to it, private ones only when their manager allows it.')) . '</div>
                             </div>
@@ -5055,7 +5174,7 @@ function ws_ai_settings_card($self_url, $viewer)
                                 <summary class="small fw-semibold">' . h(lang('Use another application')) . '</summary>
                                 <div class="mt-3">
                                     <label class="form-label" for="ws_ai_app_id">' . h(lang('The application Pinegrap AI writes through')) . '</label>
-                                    <select class="form-control form-control-sm" name="ai_app_id" id="ws_ai_app_id"' . $disabled . '>' . $options . '</select>
+                                    <select class="form-control form-control-sm" name="' . $field_name('app_id') . '" id="ws_ai_app_id"' . $disabled . '>' . $options . '</select>
                                     <ul class="list-unstyled small mt-3 mb-0 ws-claude-scopes">' . $scope_rows . '</ul>
                                     <div class="form-text">' . h(empty($readable)
                                         ? lang('It reads no records: Pinegrap AI sees the channels and the tasks only.')
@@ -5066,8 +5185,8 @@ function ws_ai_settings_card($self_url, $viewer)
                                 <div class="form-label mb-1">' . h(lang('Licence')) . '</div>
                                 <div class="form-text mt-0">' . h(lang('Pinegrap AI is part of Pinegrap Premium and works with the subscription key of the site; it has no key of its own.')) . ' <a href="' . h($base . pg_settings_link('general', 'pgset-software')) . '">' . h(lang('Site Settings › General › Software')) . '</a></div>
                             </div>
-                            ' . ($admin ? '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '<div class="form-text">' . h(lang('Only an administrator can connect Pinegrap AI.')) . '</div>') . '
-                        </form>
+                            ' . ($admin ? ($dialog ? '' : '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>') : '<div class="form-text">' . h(lang('Only an administrator can connect Pinegrap AI.')) . '</div>') . '
+                        ' . ($dialog ? '</div>' : '</form>') . '
                         <details class="mt-7 ws-claude-guide"' . (empty($missing) ? '' : ' open') . '>
                             <summary class="fw-semibold">' . h(lang('How to connect it')) . '</summary>
                             <ol class="ws-claude-steps mt-5">' . $guide . '</ol>
@@ -5081,13 +5200,8 @@ function ws_ai_settings_card($self_url, $viewer)
                             ' . (!empty($missing) ? '<div class="small fw-semibold mb-1">' . h(lang('Still missing')) . '</div><ul class="small mb-5">' . $status_list . '</ul>' : '') . '
                             ' . (($config['error'] !== '') ? '<div class="alert theme-danger small py-3">' . h($config['error']) . '</div>' : '') . '
                             ' . (($config['hold_until'] > time()) ? '<div class="alert theme-warning small py-3">' . h(lang(array('string' => 'Requests wait until {var:1}.', 'vars' => date('d.m.Y H:i', $config['hold_until'])))) . '</div>' : '') . '
-                            ' . ($admin && $config['license_set'] ? '
-                            <form method="post" action="' . h($self_url) . '#ws-ai" class="mb-5">
-                                ' . get_token_field() . '
-                                <input type="hidden" name="ws_action" value="ai_test">
-                                <button type="submit" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Try the connection')) . '</button>
-                                <div class="form-text">' . h(lang('Checks the licence and asks the model for a one-word answer; it may take up to a minute.')) . '</div>
-                            </form>' : '') . '
+                            ' . ($admin && $config['license_set'] ? $button('ai_test', 'btn btn-sm btn-outline theme-secondary', '<i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Try the connection')), '
+                                <div class="form-text">' . h(lang('Checks the licence and asks the model for a one-word answer; it may take up to a minute.')) . '</div>', 'mb-5') : '') . '
                             ' . (ws_ai_tokens_ready() ? '<div class="small fg-secondary mb-5">' . h(ws_ai_tokens_line(ws_ai_read_tokens())) . '</div>' : '') . '
                             <div class="small fw-semibold mb-1">' . h(lang('The latest requests')) . '</div>
                             <ul class="list-unstyled ws-claude-recent">' . $recent . '</ul>
@@ -5095,7 +5209,8 @@ function ws_ai_settings_card($self_url, $viewer)
                     </div>
                 </div>
             </div>
-        </div>';
+        </div>' . ($dialog ? '
+    </div>' : '');
 }
 
 // The model assistants, answered with this file's loop.

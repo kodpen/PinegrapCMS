@@ -5,6 +5,7 @@
 - agent-activity.md: The Agents card's activity per app and model agent: counts of 7 and 30 days, next wake, door failures, waiting and failed requests with Cancel, Ask again, Knock now; token counts [decision: decisions-made-schema-14.md, decisions-made-workspace-10.md]
 - agent-canvas-assistants.md: Pinegrap AI and model assistants draw, read and edit Workspace canvases as ws_ai_step() tools (canvas_ai.php): when offered, who the version names, what the model reads
 - agent-canvas-edit.md: An agent edits any canvas of its channel in place (POST|PATCH messages/{id}/canvas): operations, 409 when stale, the agent version, the inbox line, the "Edited by @handle" mark and Undo
+- agent-canvas-layer-writes.md: An agent writes a canvas's layers one by one (canvas_layer_write.php): add a text, picture, shape or icon, style, order, name, lock, a layer by its name, GET workspace/canvas/fonts
 - agent-canvas-layers.md: An agent's SVG taken apart into a layer per element on the server (layers "split", canvas_split.php): placement, names, definitions, the bounding boxes, the browser fixture both sides read
 - agent-canvas-picture.md: How an agent's pending canvas gets its picture: the channel's browser draws it with the image editor's renderer and posts it once (action canvas_picture), the take's checks, the versioned address
 - agent-canvas-split-parts.md: Layers "split": a text as a text layer, a site file's picture as a picture layer (canvas_split_parts.php): what converts, fonts, placement, which files
@@ -19,7 +20,7 @@
 - agent-key-trial-memory.md: Channel memory written live on dev (2026-11-11) with an application agent's key: create, read, list, update and delete by POST, dry runs, refusals, the entry's line in the brief [decision: here]
 - agent-key-trial.md: The agent's own side tried live on dev (2026-11-10) with an application agent's key: the request list, the brief of a mention and of a wake, claim, answer, no_answer, fail, agent-wake
 - agent-last-seen.md: An agent's last seen: ws_agents.seen_at set by every call with an app agent's own key, once a minute at most, and the words on the Agents card and in "Agents in this channel" (#8828) [decision: decisions-made-workspace-16.md]
-- agent-page.md: Live pages an agent makes (LP2a, #8815): POST channels/{id}/pages, GET and PATCH messages/{id}/page, the mark of a page without a column, versions in file_versions (format html, 20 kept), 409, who may
+- agent-page.md: Live pages an agent makes (LP2a #8815, LP4 #8830): the routes, the mark of a page without a column, versions (20 kept), 409, who may, the site's libraries
 - agent-questions.md: How an agent asks the people with a poll or an approval; a one-answer question as a one-choice poll closed once the vote is read; why the outcome is written in the agent's name [decision: decisions-made-workspace-12.md]
 - agent-registry.md: The agent registry (ws_agents) and the channel-agent row (ws_channel_agents): fields, Claude's routine as the first push agent, where the membership rules are, the depth and hourly brakes [decision: decisions-made-workspace-7.md, decisions-made-workspace-8.md]
 - agent-risk-tiers.md: Agent risk tiers (agent_tiers.php, A7): the tier of a change, when an application agent's proposal is applied at once, the undo journal in ws_ai_changes (step 11.0.174), who may undo and when
@@ -42,8 +43,9 @@
 - mail-email-fields.md: What email() gained for Workspace mail (G3a #2846, #8646): cc and bcc, the threading headers it lets through, a box's own SMTP server, and the site's mark every mail carries for the loop gate
 - mail-fetch.md: Reading Workspace mailboxes over IMAP (ws_mail_fetch(), inline in job.php): what is searched, the UID position, held mail, limits, after-fetch, what the box records, the System status tile
 - mail-forward.md: Forward as e-mail in the Workspace (WM6): the buttons, the filled New e-mail form, what a forward quotes and carries, the line under a forwarded mail, the checks when it is sent
+- mail-html.md: A mail's HTML is kept (WM11, PR #8821): ws_mail_items.body_html, the allowlist cleaner, cid pictures kept as files, the fill of earlier mail from its .eml [decision: decisions-made-workspace-17.md]
 - mail-imap-client.md: The socket IMAP client pg_imap_*() (includes/fn/imap_client.php, G2a of incoming e-mail): why no imap extension, TLS and address check, sign-in, commands, error codes, limits, tests
-- mail-ingest.md: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loop gate, DMARC from the box's server, threading, card and answers, attachments, .eml for 30 days
+- mail-ingest.md: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loop gate, DMARC from the box's server, threading, card and answers, attachments and cid pictures, .eml for 30 days
 - mail-list.md: The Workspace E-mails list (workspace_mail.php, mail_list.php): which conversations, the views Incoming, Sent and Not sent, the filters, mailbox, search, Load more, the row, the menu entry [decision: decisions-made-workspace-17.md]
 - mail-microsoft.md: A Workspace mailbox on Microsoft 365 or Outlook.com (G4): purpose mail_read, IMAP sign-in with XOAUTH2 through a connected account, answers through Graph, the box form's account, what stays unverified
 - mail-notices-and-event.md: Who hears of a Workspace e-mail conversation (inbox kinds mail_assigned, mail_customer) and the workspace.mail.received event for scheduled actions and flows (G5b)
@@ -116,7 +118,7 @@
 - workspace-assistant-discussions.md: An assistant asked in a discussion: what it reads about it (Claude's context thread, PR #1121; Pinegrap AI's first message), where it may be asked, following [decision: decisions-made-workspace-12.md]
 - workspace-assistant-keys.md: Create on the Claude and Pinegrap AI cards, Claude's "Reset secret": the row made, scopes, config link, who sees it, one-time window, a key never given a secret [decision: here]
 - workspace-assistant-reach.md: Claude and Pinegrap AI read and answer a discussion or allowed private channel their app owner is not in through the person who asked (PR #1085)
-- workspace-assistant-settings.md: Claude in the channels and Bulk changes in Site Settings (Assistants and agents) and on Workspace Settings: field and button names, the shared saves, an unchanged pane Save, the secret drawer
+- workspace-assistant-settings.md: Claude, Pinegrap AI and Bulk changes in Site Settings (Assistants and agents) and on Workspace Settings: names, shared saves, an unchanged pane Save, the secret drawer
 - workspace-attachment-uploads.md: How the Workspace screen sends channel and note attachments: a form part over XMLHttpRequest with a progress card and Cancel (#3745), the shared server check, base64 still taken, limits [decision: decisions-made-product-10.md]
 - workspace-booking-record.md: Booking as a Workspace record kind (tag <#booking:N>, the agenda's row rule, tag-only, bookings:read) and the four booking.* events of scheduled actions, checked against the creator's agenda
 - workspace-bookings.md: Confirmed bookings on a staff member's Workspace calendar (#6305, #6302): one reader, Work Calendar and Today, sync item ws-booking-<id>, refused move [decision: decisions-made-product-25.md]

@@ -54,7 +54,10 @@ function test_workspace_agent_page_version_names_its_agent()
 {
 	$doc = ws_page_version_doc(array('id' => 7, 'kind' => 'app', 'handle' => 'chartbot'));
 
-	pg_assert_same(array('page' => 1, 'by' => array('id' => 7, 'kind' => 'app', 'handle' => 'chartbot')), json_decode($doc, true));
+	pg_assert_same(array('page' => 1, 'by' => array('id' => 7, 'kind' => 'app', 'handle' => 'chartbot'), 'libraries' => array()), json_decode($doc, true));
+	pg_assert_same(array('chartjs'), ws_page_version_libraries(ws_page_version_doc(array('handle' => 'x'), array('chartjs'))));
+	pg_assert_same(array(), ws_page_version_libraries('{"libraries":["chartjs","jquery"]}'), 'a name the site does not have reads as none');
+	pg_assert_same(array(), ws_page_version_libraries(''));
 	pg_assert_same(array('id' => 7, 'kind' => 'app', 'handle' => 'chartbot'), ws_page_version_by($doc));
 	pg_assert_same(null, ws_page_version_by(''));
 	pg_assert_same(null, ws_page_version_by('{"by":{"handle":""}}'));
@@ -112,6 +115,7 @@ function test_workspace_agent_page_routes()
 	$declared = ws_api_page_returns();
 	$present = array('message_id' => 1, 'file_id' => 2, 'name' => '', 'html' => '', 'size' => 0, 'version' => 2, 'versions' => $read);
 
+	$present = array_slice($present, 0, 6, true) + array('libraries' => array()) + array_slice($present, 6, null, true);
 	pg_assert_same(array_keys($declared), array_keys($present), 'the page\'s fields declared');
 	pg_assert_same(array_keys($declared['versions'][0]), array_keys($read[0]), 'a version\'s fields declared');
 	pg_assert_true(in_array('workspace.channels.pages.create', array_column(ws_api_routes(), 'id'), true), 'merged into the workspace routes');
@@ -123,4 +127,58 @@ function test_workspace_agent_page_html_is_never_an_upload()
 	foreach (array('page.html', 'page.htm', 'Page.HTML') as $name) {
 		pg_assert_true(ws_upload_refused($name), $name);
 	}
+}
+
+function test_workspace_agent_page_libraries_are_the_sites_own()
+{
+	foreach (ws_page_libraries() as $name => $library) {
+		pg_assert_true((bool) preg_match('/^[a-z0-9]+$/', $name), $name);
+		pg_assert_same(0, strpos($library['path'], 'assets/lib/'), $name . ' is a copy the site ships');
+		pg_assert_false(strpos($library['path'], '://') !== false, $name . ' is no address');
+		pg_assert_true(is_file(PG_FUNCTIONS_DIR . '/' . $library['path']), $name . ' is there');
+
+		$code = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $library['path']);
+
+		pg_assert_false(stripos($code, '</script') !== false, $name . ' cannot end its element');
+		pg_assert_false(strpos($code, '<!--') !== false, $name . ' cannot open a comment');
+	}
+
+	pg_assert_true(isset(ws_page_libraries()['chartjs']), 'Chart.js first');
+}
+
+function test_workspace_agent_page_libraries_check()
+{
+	pg_assert_same(array('names' => array(), 'error' => ''), ws_page_libraries_check(null));
+	pg_assert_same(array('names' => array(), 'error' => ''), ws_page_libraries_check(array()));
+	pg_assert_same(array('names' => array('chartjs'), 'error' => ''), ws_page_libraries_check(array('chartjs', ' ChartJS ')), 'once, by its name');
+	pg_assert_same('jquery', ws_page_libraries_check(array('chartjs', 'jquery'))['error']);
+	pg_assert_same('https://cdn.example/chart.js', ws_page_libraries_check(array('https://cdn.example/chart.js'))['error'], 'an address is no name');
+	pg_assert_same('?', ws_page_libraries_check('chartjs')['error'], 'a list, not a word');
+	pg_assert_same('?', ws_page_libraries_check(array(array('chartjs')))['error'], 'a list inside is refused');
+	pg_assert_same('?', ws_page_libraries_check(array(''))['error'], 'an empty name is refused');
+}
+
+function test_workspace_agent_page_libraries_go_in_ahead_of_the_page()
+{
+	pg_assert_same("<!DOCTYPE html>\n<script>A</script>\n<html><p>x</p></html>", ws_page_inline_scripts('<!DOCTYPE html><html><p>x</p></html>', array('A')), 'after the doctype');
+	pg_assert_same("<script>A</script>\n<script>B</script>\n<p>x</p>", ws_page_inline_scripts('<p>x</p>', array('A', 'B')), 'first without one');
+	pg_assert_same('<p>x</p>', ws_page_inline_scripts('<p>x</p>', array()), 'none named: the page as it is');
+	pg_assert_same('<p>x</p>', ws_page_inline_scripts('<p>x</p>', array('a="</SCRIPT><img src=x>"', 'b<!--', '')), 'a source that would break out is left out');
+}
+
+// The site puts its own copy in: nothing in the page the frame shows names
+// an address to load a library from.
+function test_workspace_agent_page_no_address_reaches_a_page()
+{
+	$page = '<!DOCTYPE html><html><body><canvas id="c"></canvas><script>new Chart(document.getElementById("c"), {type: "bar"});</script></body></html>';
+	$shown = ws_page_with_libraries($page, array('chartjs'));
+
+	pg_assert_contains('Chart.js v4.4.7', $shown, 'the copy is inside the document');
+	pg_assert_same(2, substr_count(strtolower($shown), '<script'), 'the library\'s element and the page\'s own');
+	pg_assert_false((bool) preg_match('/<(script|link|img|iframe)[^>]*\s(src|href)\s*=/i', $shown), 'no element loads from an address');
+	pg_assert_same(0, strpos($shown, '<!DOCTYPE html>'), 'the page keeps its doctype first');
+
+	$policy = pg_guarded_frame_policy('script', '');
+	pg_assert_contains("script-src 'unsafe-inline';", $policy, 'and the frame would refuse one');
+	pg_assert_false((bool) preg_match('/script-src[^;]*(https?:|\*|\'self\')/', $policy), 'no host may serve a script');
 }
