@@ -78,7 +78,7 @@ function test_workspace_sensory_texts_name_real_labels()
 	// The labels the texts name are the controls' own labels.
 	pg_assert_contains("'tour_start' => lang('Tour of the workspace')", workspace_sensory_texts_test_source('includes/workspace/tour.php'), 'tour button label');
 	pg_assert_contains("'new_channel'            => lang('New channel')", workspace_sensory_texts_test_source('includes/workspace/screen.php'), 'new channel label');
-	pg_assert_contains("title=\"' . h(lang('Ask the server for its tools again')) . '\"", workspace_sensory_texts_test_source('includes/workspace/mcp.php'), 'refresh button label');
+	pg_assert_contains("'mcp_refresh', \$id, 'btn btn-sm btn-text theme-secondary', '<i class=\"bi bi-arrow-clockwise\" aria-hidden=\"true\"></i>', lang('Ask the server for its tools again'))", workspace_sensory_texts_test_source('includes/workspace/mcp.php'), 'refresh button label');
 	pg_assert_contains("'tpl_drag'            => lang('Drag to change the order')", workspace_sensory_texts_test_source('includes/workspace/templates.php'), 'grip label');
 	$feed = workspace_sensory_texts_test_source('workspace_calendar_feed.php');
 	pg_assert_contains("h(lang('Add to Google Calendar'))", $feed, 'Google button label');

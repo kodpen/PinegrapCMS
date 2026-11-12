@@ -487,18 +487,19 @@ function pg_settings_categories()
                 'pgset-ws-claude'            => lang('Claude in the channels'),
                 'pgset-ws-agents'            => lang('Workspace agents'),
                 'pgset-ws-ai'                => lang('Pinegrap AI in the channels'),
+                'pgset-ws-mcp'               => lang('MCP servers'),
                 'pgset-ws-bulk'              => lang('Bulk changes by the assistants'),
-                'pgset-ws-assistants-screen' => lang('On the Workspace Settings screen'),
             ),
             'keywords' => array(
                 'pgset-ws-claude'            => pg_settings_keywords(lang('workspace, claude, assistant, routine, key, secret, daily summary, connection')),
                 'pgset-ws-agents'            => pg_settings_keywords(lang('workspace, agent, agents, handle, push door, poll door, model, provider, token limit')),
                 'pgset-ws-ai'                => pg_settings_keywords(lang('workspace, pinegrap ai, assistant, licence, subscription key, key, connection')),
                 'pgset-ws-bulk'              => pg_settings_keywords(lang('workspace, bulk changes, assistant, delete in bulk, claude, pinegrap ai')),
-                'pgset-ws-assistants-screen' => pg_settings_keywords(lang('workspace, mcp, mcp server, tools')),
+                'pgset-ws-mcp'               => pg_settings_keywords(lang('workspace, mcp, mcp server, tools')),
             ),
             'lists' => array(
                 'ws_agent' => 2,
+                'ws_mcp'   => 3,
             ),
         ),
 
@@ -868,6 +869,28 @@ function pg_settings_url($key)
 
 
 /**
+ * An address a save module hands over for the browser to go to once the
+ * save is done: a service's sign-in started by a card button (the MCP
+ * servers' Connect). The dialog's endpoint answers it as its reload address,
+ * the page path redirects to it instead of back to the screen. Called with
+ * an address to set it, without one to read it.
+ *
+ * @param string|null $url
+ * @return string '' when none was handed over
+ */
+function pg_settings_go($url = null)
+{
+    static $go = '';
+
+    if ($url !== null) {
+        $go = (string) $url;
+    }
+
+    return $go;
+}
+
+
+/**
  * Where a link written before the split should land.
  *
  * A #hash never reaches the server, so an old settings.php#pgset-waf cannot be
@@ -933,6 +956,7 @@ function pg_settings_legacy_anchors()
         'ws-bulk'          => array('workspace_assistants', 'pgset-ws-bulk'),
         'ws-agents'        => array('workspace_assistants', 'pgset-ws-agents'),
         'ws-ai'            => array('workspace_assistants', 'pgset-ws-ai'),
+        'ws-mcp'           => array('workspace_assistants', 'pgset-ws-mcp'),
     );
 }
 

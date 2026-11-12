@@ -9,8 +9,9 @@
  * button that asked for the save: Claude's (ws_claude_test,
  * ws_claude_key_create, ws_claude_key_reset), Pinegrap AI's (ws_ai_test,
  * ws_ai_key_create), an agent's (ws_agent_delete,
- * ws_agent_test) or a request row's (ws_agent_request_cancel, _retry,
- * _knock, value the request's id).
+ * ws_agent_test), a request row's (ws_agent_request_cancel, _retry,
+ * _knock, value the request's id) or the MCP servers card's (ws_mcp_save,
+ * ws_mcp_tools, ws_mcp_refresh, ... read by ws_mcp_settings_pressed()).
  *
  * Runs in the scope of includes/settings/screen.php or of
  * pg_settings_apply(), after the token check and after post_value() is
@@ -18,7 +19,7 @@
  * (ws_claude_settings_save(), ws_claude_settings_post(),
  * ws_bulk_settings_save(), ws_agents_settings_check() and _write(),
  * ws_agents_settings_act(), ws_agent_activity_post(), ws_ai_settings_check()
- * and _write(), ws_ai_settings_post()), so a form still open
+ * and _write(), ws_ai_settings_post(), ws_mcp_settings_post()), so a form still open
  * there saves the same way.
  * Both cards are an administrator's: for anybody else their fields are drawn
  * disabled and not posted, and a posted one is left alone. Everything is
@@ -168,5 +169,30 @@ foreach (array('claude_test', 'claude_key_create', 'claude_key_reset') as $ws_ac
     if (post_value('ws_' . $ws_action) !== null) {
         ws_claude_settings_post($ws_viewer, $ws_action, $liveform, $user, true);
         break;
+    }
+}
+
+// An MCP servers card button: a server's Save, its tools' Save or the warned
+// declare, Ask again, Turn off or on, Remove, the site's or the reader's own
+// sign-in, a ready-made connector's Add, Check the address or the short form
+// after it. The rest of the pane is saved by now, so a refusal is a warning;
+// what a refused form or the check kept goes to the pane drawn next, and a
+// sign-in is handed to the dialog or the page as the address to go to.
+$ws_mcp_pressed = ws_mcp_ready() ? ws_mcp_settings_pressed($_POST) : null;
+
+if ($ws_mcp_pressed !== null) {
+    $ws_mcp_relay = new ws_mcp_settings_relay($liveform);
+
+    ws_mcp_settings_place(array('return' => pg_settings_url('workspace_assistants'), 'anchor' => '#pgset-ws-mcp', 'hold' => true));
+    ws_mcp_settings_post($ws_viewer, $ws_mcp_pressed['action'], $ws_mcp_relay, $ws_mcp_pressed['input']);
+
+    if ($ws_mcp_relay->kept) {
+        $_SESSION['software']['ws_mcp_kept'] = $ws_mcp_relay->kept;
+    }
+
+    $ws_mcp_go = (string) ws_mcp_settings_place()['go'];
+
+    if ($ws_mcp_go !== '') {
+        pg_settings_go($ws_mcp_go);
     }
 }
