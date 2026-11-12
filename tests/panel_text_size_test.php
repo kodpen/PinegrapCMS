@@ -164,7 +164,7 @@ function test_panel_text_size_calendar_card_bell_and_sales_map_in_rem()
 	}
 
 	// A bell row's title keeps the recipe's type (pg_bell_row(), look A).
-	pg_assert_contains('font: inherit;', panel_text_size_test_rule($css, '#notifications .pg-bell-title'));
+	pg_assert_contains('font-size: inherit;', panel_text_size_test_rule($css, '#notifications .pg-bell-title'));
 	// The bell's drawer: 30rem, the whole width on a phone.
 	pg_assert_contains('--pg-drawer-width: min(30rem, 100vw);', panel_text_size_test_rule($css, '#notifications.pg-bell-drawer'));
 }

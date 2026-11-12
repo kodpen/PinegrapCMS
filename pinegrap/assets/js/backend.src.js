@@ -4050,9 +4050,9 @@ function pg_bell_row(row, draw) {
     }
 
     // A button only when the row asks for something: an answer, an approval,
-    // a meeting to join, an action in place, or a warning to look at. Every
-    // other row opens from its title.
-    if ((act !== '') || (job === 'reply') || (job === 'approve') || (job === 'join') || ((job === 'show') && ((row.type === 'warning') || (row.type === 'error')))) {
+    // a meeting to join, an action in place, or an unread warning to look
+    // at. Every other row opens from its title.
+    if ((act !== '') || (job === 'reply') || (job === 'approve') || (job === 'join') || ((job === 'show') && unread && ((row.type === 'warning') || (row.type === 'error')))) {
         var look = 'pg-button pg-button-sm pg-button-quiet';
 
         if (draw && draw.fill && ask && unread) {
@@ -4090,7 +4090,8 @@ function pg_bell_row(row, draw) {
 
 // A row's quick actions, shown in the time's place on hover or focus: the
 // unread row's "Mark as read" (pg_bell_read_button()) and "More actions",
-// whose menu holds "Mark as unread" (read rows) and Delete.
+// whose menu holds "Mark as read" (unread rows; a phone has no hover and
+// shows only the menu button), "Mark as unread" (read rows) and Delete.
 function pg_bell_quick(id, unread, title_id) {
     var menu_id = 'pg_bell_menu_' + id;
 
@@ -4099,6 +4100,7 @@ function pg_bell_quick(id, unread, title_id) {
         + '<span class="pg-bell-menu-wrap">'
         + '<button type="button" class="pg-icon-button pg-icon-button-sm pg-bell-menu-toggle no-popover" aria-expanded="false" aria-controls="' + menu_id + '" aria-label="' + h(lang('More actions')) + '" aria-describedby="' + title_id + '"><span class="bi bi-three-dots" aria-hidden="true"></span></button>'
         + '<span class="pg-bell-menu" id="' + menu_id + '" hidden>'
+        + '<button type="button" class="pg-bell-menu-item pg-bell-read-item" data-pg-bell-read-item="' + id + '"' + (unread ? '' : ' hidden') + '><span class="bi bi-check2" aria-hidden="true"></span>' + h(lang('Mark as read')) + '</button>'
         + '<button type="button" class="pg-bell-menu-item pg-bell-unread" data-pg-bell-unread="' + id + '"' + (unread ? ' hidden' : '') + '><span class="bi bi-envelope" aria-hidden="true"></span>' + h(lang('Mark as unread')) + '</button>'
         + '<button type="button" class="pg-bell-menu-item pg-bell-delete" data-pg-bell-delete="' + id + '"><span class="bi bi-trash" aria-hidden="true"></span>' + h(lang('Delete')) + '</button>'
         + '</span>'
@@ -4341,6 +4343,7 @@ function pg_bell_row_state($row, unread) {
         $(this).replaceWith(pg_bell_read_button($(this).attr('data-pg-bell-read'), unread));
     });
     $row.find('.pg-bell-unread').prop('hidden', unread);
+    $row.find('.pg-bell-read-item').prop('hidden', !unread);
 }
 
 // Opens a row: an unread row is read first and open() runs once the server
@@ -4624,6 +4627,14 @@ $(document).on('click', function (event) {
     });
 
     pg_bell_menu_close($open, false);
+});
+
+// "Mark as read" in a row's menu, as the quick check does.
+$(document).on('click', '#notifications .pg-bell-read-item', function () {
+    var $wrap = $(this).closest('.pg-bell-menu-wrap');
+
+    pg_bell_menu_close($wrap, true);
+    edit_notification(parseInt($(this).attr('data-pg-bell-read-item'), 10) || 0, 'mark_read');
 });
 
 $(document).on('click', '#notifications .pg-bell-unread', function () {

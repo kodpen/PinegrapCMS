@@ -227,7 +227,7 @@ function test_bell_row_script_draws_the_row()
 
 	// A button only when the row asks; one filled button in the view.
 	pg_assert_contains("(job === 'reply') || (job === 'approve') || (job === 'join')", $row, 'an answer, an approval, a call');
-	pg_assert_contains("((job === 'show') && ((row.type === 'warning') || (row.type === 'error')))", $row, 'Show only for a warning');
+	pg_assert_contains("((job === 'show') && unread && ((row.type === 'warning') || (row.type === 'error')))", $row, 'Show only for an unread warning');
 	pg_assert_contains('draw.fill = false;', $row, 'one filled button');
 	pg_assert_contains('pg-button pg-button-sm pg-button-quiet', $row, 'the others quiet');
 	pg_assert_contains("var draw = { fill: true };", $get, 'one per drawing');
@@ -251,6 +251,8 @@ function test_bell_row_script_draws_the_row()
 	pg_assert_contains('<button type="button" class="pg-icon-button pg-icon-button-sm pg-bell-read', $dot, 'and is a button');
 	pg_assert_contains("aria-label=\"' + h(lang('More actions'))", $quick, 'the menu button is named');
 	pg_assert_contains("lang('Mark as unread')", $quick, 'the menu: Mark as unread');
+	pg_assert_contains("pg-bell-read-item", $quick, 'the menu: Mark as read, for a phone without hover');
+	pg_assert_contains("edit_notification(parseInt(\$(this).attr('data-pg-bell-read-item'), 10) || 0, 'mark_read')", bell_row_source('assets/js/backend.src.js'), 'which reads the row');
 	pg_assert_contains("lang('Delete')", $quick, 'the menu: Delete');
 	pg_assert_false(strpos($row, 'Go to the relevant page') !== false, 'the full-width link line is gone');
 

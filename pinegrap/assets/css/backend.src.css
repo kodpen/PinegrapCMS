@@ -4592,14 +4592,17 @@ a.link-top-row {
 #notifications .pg-bell-card.pg-list-row {
   margin: 0 8px;
 }
-/* The title is a button that opens the row; it keeps the recipe's type. */
+/* The title is a button that opens the row; it keeps the recipe's type
+   (the weight comes from .pg-list-row-title). */
 #notifications .pg-bell-title {
   display: block;
   padding: 0;
   border: 0;
   background: none;
   color: inherit;
-  font: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
   text-align: start;
 }
 #notifications .pg-list-row.is-read .pg-bell-title {
@@ -4633,11 +4636,15 @@ a.link-top-row {
 #notifications .pg-bell-row.viewed .pg-bell-dot {
   visibility: hidden;
 }
-/* Without hover (a phone) the quick actions stay in sight beside the time,
-   or the row's menu could not be reached. */
+/* Without hover (a phone) the menu button stays in sight beside the time,
+   or the row's menu could not be reached; "Mark as read" is in that menu,
+   so the title keeps its room. */
 @media (hover: none) {
   #notifications .pg-bell-quick {
     display: flex;
+  }
+  #notifications .pg-bell-quick > .pg-bell-read {
+    display: none;
   }
   #notifications .pg-list-row .pg-bell-quick ~ .pg-bell-time {
     display: inline;

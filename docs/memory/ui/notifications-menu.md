@@ -24,9 +24,9 @@ description: The bell's drawer #notifications at the right edge: opened by the b
 - It used to be reset to 0 every poll, so with anything unread the open list was emptied, scrolled to the top and lost the focused row every 20 s.
 - The poll calls `get_notifications(true)` (`keep_place`): the old list stays until the new one arrives, then the scroll and the focus on the same `li[notification-id]` row come back. `tests/panel_timers_test.php` pins it.
 
-## Why does a bell title wrap instead of ending in "…"?
-- Titles of 44–50 characters were cut by `nowrap` + `ellipsis` even on desktop. `.pg-bell-title` (`bell-row.md`) has `white-space: normal` and `overflow-wrap: anywhere`, no hover `title`. The server sends titles escaped (`pg_notification_display()`), so the script inserts them as they come.
-- `tests/mail_queue_full_text_test.php` pins it (the mail queue's full text: `ui/mail-queue-paging.md`).
+## Why is a bell title one line?
+- Look A (DL3, #8897): the title is short ("New order #1044", `bell-row.md`) and stands on one line with the time at its right, ending in an ellipsis when it does not fit; the text under it carries the rest in two lines. Before, long sentences as titles wrapped (#3549 era), since `nowrap` cut 44–50 character sentences.
+- The server sends titles escaped (`pg_notification_display()`), so the script inserts them as they come. `tests/mail_queue_full_text_test.php` pins it.
 
 ## Why does a device push banner decode its title?
 - The service worker shows `item.title` as text, but bell titles are escaped, so `&` arrived as `&amp;`. `pg_panel_push_pending()` sends `pg_panel_push_title()` (strip tags, decode, trim). The push banner keeps the whole sentence, not the drawer's short title (`bell-row.md`). `tests/push_banner_title_test.php` (#3549).
