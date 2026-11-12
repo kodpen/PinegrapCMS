@@ -12,7 +12,7 @@ description: Steps DL1-DL6 of the panel's design language (look A, #8842): typef
 
 - DL0 (no product code) The reference sheet, made by the architect with the owner in the architect's window, piece by piece from drawings the owner reacts to. Owner (2026-11-12): "Panel tasarım dilini senle geliştirsek daha iyi olurdu", "opus 5.5 ne görürse onu yapıyor". It lives in `plans/panel-design-language/`: each recipe in both themes and at phone width, the source beside the picture. `bell-drawer.html` is its first part.
 
-- DL1 (M) Type and the recipes. Inter (variable, OFL, self-hosted under `assets/fonts/`, the system fonts behind it) as the panel's typeface; the type scale and weights as `--pg-*` tokens; the recipes as classes in `backend.src.css`: row, icon tile and avatar, tones, button levels, chip, count, day label, unread dot, gathered rows. No screen changes in this step but by the typeface. Waits for the sheet's basics page (`plans/panel-design-language/basics.html`, DL0): it carries the numbers this step turns into tokens and classes.
+- DL1 (M) Type and the recipes. Inter (variable, OFL, self-hosted under `assets/fonts/`, the system fonts behind it) as the panel's typeface; the type scale and weights as `--pg-*` tokens; the recipes as classes in `backend.src.css`: row, icon tile and avatar, tones, button levels, chip, count, day label, unread dot, gathered rows. No screen changes in this step but by the typeface. Waits for the sheet's basics page (DL0), which carries its numbers.
 
 - DL2 (M) The Design examples screen: a panel page for the Designer role and above that shows every recipe live in both themes, with its class names and what is not done. A step copies from it; the owner looks at it.
 
