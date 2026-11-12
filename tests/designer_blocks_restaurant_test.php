@@ -61,10 +61,14 @@ function test_designer_blocks_restaurant_blocks_draw_sound_trees()
 		pg_assert_true(count($b['fx']) >= 1, $ctype . ' has an entrance');
 		pg_assert_same(array(), array_values(array_diff($b['fx'], array('ok'))), $ctype . '\'s interactions survive the normalizer');
 		// Small text in the theme's colour is under 4.5:1 on a tinted
-		// surface or a dark band; the blocks write its darker shade, and
-		// their second buttons take the body's colour.
+		// surface or a dark band (Burgundy's darker shade is 4.47:1 on a
+		// dark page): the eyebrows take the body's second colour, the
+		// second buttons the body's colour.
 		pg_assert_same(array(), array_values(array_intersect(array('text-primary', 'link-primary', 'btn-outline-primary', 'btn-outline-secondary'), $b['classes'])), $ctype . ' writes no light primary text or outline button');
+		pg_assert_true(in_array('text-body-secondary', $b['classes'], true), $ctype . '\'s eyebrow is in the body\'s second colour');
 		pg_assert_true(in_array('btn-primary', $b['classes'], true) && in_array('link-body-emphasis', $b['classes'], true), $ctype . ' has a primary and a second button');
+		// A button without a colour variant has no focus ring of its own.
+		pg_assert_true(in_array('pg-restaurant-second', $b['classes'], true), $ctype . ': the second button shows the keyboard focus');
 	}
 
 	$hero = $got['blocks']['restaurant-hero'];
@@ -124,6 +128,9 @@ function test_designer_blocks_restaurant_markup_from_the_file()
 	pg_assert_true(strpos($js, "return kit.time(time, time, '', _sdT('Time'))") === false && strpos($js, "kit.time(time, time, '', _sdT('Time')),") !== false, 'each moment starts with a time');
 	pg_assert_true(strpos($js, "kit.p(_sdT('Every seat faces the fire.'), 'small text-body-secondary text-center mt-3 mb-0')\n        ], [{ name: 'aria-hidden', value: 'true' }])") !== false, 'the counter drawing is hidden: the words beside it say the same');
 	pg_assert_true(strpos($js, "{ effect: 'parallax', speed: 12 }") !== false, 'the pictures beside the menu card drift');
+	// Text in the theme's colour stays on icons, which need 3:1: no paragraph
+	// or time is written in it.
+	pg_assert_same(0, preg_match('/kit\.(p|time)\([^;\n]*text-primary-emphasis/', $js), 'no paragraph or time in the theme colour');
 	// A picture column is half a phone's width and a quarter from lg up; a
 	// col node's own xs would otherwise be 12.
 	pg_assert_true(strpos($js, "kit.createNode('col', { xs: '6', sm: '', md: '', lg: '3',") !== false, 'the pictures sit side by side on a phone');
@@ -134,10 +141,10 @@ function test_designer_blocks_restaurant_markup_from_the_file()
 function test_designer_blocks_restaurant_rules_reach_the_stylesheet()
 {
 	$part = _pg_designer_block_css_parse(pg_test_designer_family_file('restaurant'));
-	pg_assert_same(array('pg-restaurant-plate', 'pg-restaurant-slip', 'pg-restaurant-menu', 'pg-restaurant-counter', 'pg-restaurant-evening'), array_keys($part['rules']), 'the family\'s rules');
-	pg_assert_same(array('pg-display-xl', 'pg-restaurant-plate', 'pg-restaurant-slip'), $part['needs']['restaurant-hero'], 'the hero needs the giant type, the plate and the slip');
-	pg_assert_same(array('pg-restaurant-menu'), $part['needs']['restaurant-tasting'], 'the menu card needs its frame');
-	pg_assert_same(array('pg-restaurant-counter', 'pg-restaurant-evening'), $part['needs']['restaurant-counter'], 'the counter needs its drawing and the evening');
+	pg_assert_same(array('pg-restaurant-plate', 'pg-restaurant-slip', 'pg-restaurant-menu', 'pg-restaurant-counter', 'pg-restaurant-evening', 'pg-restaurant-second'), array_keys($part['rules']), 'the family\'s rules');
+	pg_assert_same(array('pg-display-xl', 'pg-restaurant-plate', 'pg-restaurant-slip', 'pg-restaurant-second'), $part['needs']['restaurant-hero'], 'the hero needs the giant type, the plate, the slip and the second button ring');
+	pg_assert_same(array('pg-restaurant-menu', 'pg-restaurant-second'), $part['needs']['restaurant-tasting'], 'the menu card needs its frame and the second button ring');
+	pg_assert_same(array('pg-restaurant-counter', 'pg-restaurant-evening', 'pg-restaurant-second'), $part['needs']['restaurant-counter'], 'the counter needs its drawing, the evening and the second button ring');
 	$source = _pg_designer_block_css_source();
 	pg_assert_true(isset($source['rules']['pg-restaurant-counter']), 'the block stylesheet holds the family\'s rules');
 	pg_assert_true(isset($source['rules']['pg-display-xl']), 'the giant type is a core rule the hero takes');
@@ -151,11 +158,17 @@ function test_designer_blocks_restaurant_rules_reach_the_stylesheet()
 	}
 	// The plate runs past its column only from lg up, where the band clips
 	// it; below lg it fits the column.
-	pg_assert_true(strpos($part['rules']['pg-restaurant-plate'], '.pg-restaurant-plate { width: min(100%, 30rem);') !== false
-		&& strpos($part['rules']['pg-restaurant-plate'], '@media (min-width: 992px) { .pg-restaurant-plate { width: 115%;') !== false, 'the plate fits a phone and runs past the column from lg up');
+	pg_assert_true(strpos($part['rules']['pg-restaurant-plate'], '.pg-restaurant-plate { width: min(100%, 30rem); aspect-ratio: 1 / 1;') !== false
+		&& strpos($part['rules']['pg-restaurant-plate'], '@media (min-width: 992px) { .pg-restaurant-plate { width: 115%;') !== false, 'the plate fits a phone, stays round without its photo and runs past the column from lg up');
 	// The kitchen's warm wash mixes the theme's colour only where the
 	// browser can; an older one shows the plain surface.
 	pg_assert_true(strpos($part['rules']['pg-restaurant-counter'], '@supports (background: color-mix(in srgb, red 50%, blue))') !== false, 'the warm wash is behind @supports');
+	// The evening's times are in the body's strongest colour, under a rule in
+	// the theme's colour.
+	pg_assert_true(strpos($part['rules']['pg-restaurant-evening'], '.pg-restaurant-evening time { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--bs-emphasis-color); }') !== false
+		&& strpos($part['rules']['pg-restaurant-evening'], 'border-top: 2px solid var(--bs-primary);') !== false, 'the times are readable on a dark page');
+	// The second button's focus ring takes the body's strongest colour.
+	pg_assert_same('.pg-restaurant-second { --bs-btn-focus-shadow-rgb: var(--bs-emphasis-color-rgb); }', $part['rules']['pg-restaurant-second'], 'the second button has a focus ring colour');
 	// Six seats fit a 320 px phone: their size and gap follow the window.
 	pg_assert_true(strpos($part['rules']['pg-restaurant-counter'], 'width: clamp(2rem, 9vw, 3.25rem)') !== false && strpos($part['rules']['pg-restaurant-counter'], 'gap: clamp(.5rem, 3vw, 1.75rem)') !== false, 'the seats follow the window');
 }

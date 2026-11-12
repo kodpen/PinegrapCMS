@@ -34,8 +34,9 @@ StyleDesigner.registerBlockFamily(function (kit) {
         // The dish on its plate: a round photo inside a rim of the palette's
         // second surface, a hairline edge and the large shadow. From lg up
         // the plate is wider than its column and runs past the band's right
-        // edge, which the band clips.
-        'pg-restaurant-plate':   '.pg-restaurant-plate { width: min(100%, 30rem); margin-inline: auto; padding: clamp(.75rem, 2.5vw, 1.5rem); border-radius: 50%; ' +
+        // edge, which the band clips. The plate keeps its round shape while
+        // the photo is still loading or missing.
+        'pg-restaurant-plate':   '.pg-restaurant-plate { width: min(100%, 30rem); aspect-ratio: 1 / 1; margin-inline: auto; padding: clamp(.75rem, 2.5vw, 1.5rem); border-radius: 50%; ' +
                                  'background-color: var(--bs-secondary-bg); box-shadow: 0 0 0 1px var(--bs-border-color), var(--bs-box-shadow-lg); } ' +
                                  '.pg-restaurant-plate img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 50%; } ' +
                                  '@media (min-width: 992px) { .pg-restaurant-plate { width: 115%; margin-inline: 0; } }',
@@ -65,17 +66,24 @@ StyleDesigner.registerBlockFamily(function (kit) {
                                  'border: 2px solid var(--bs-primary); border-radius: 50%; font-weight: 700; font-variant-numeric: tabular-nums; ' +
                                  'color: var(--bs-emphasis-color); background-color: var(--bs-body-bg); }',
         // The evening at the counter: each moment's time in a narrow column
-        // beside what happens, on hairlines.
-        'pg-restaurant-evening': '.pg-restaurant-evening { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--bs-border-color); } ' +
+        // beside what happens, on hairlines under a rule in the theme's
+        // colour. The times are in the body's strongest colour: a dark
+        // palette's primary, as Burgundy's, is under 4.5:1 for small text on
+        // a dark page.
+        'pg-restaurant-evening': '.pg-restaurant-evening { margin: 0; padding: 0; list-style: none; border-top: 2px solid var(--bs-primary); } ' +
                                  '.pg-restaurant-evening li { display: grid; grid-template-columns: 3.5rem minmax(0, 1fr); gap: 1rem; align-items: baseline; padding: .75rem 0; ' +
                                  'border-bottom: 1px solid var(--bs-border-color); } ' +
-                                 '.pg-restaurant-evening time { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--bs-primary-text-emphasis); }'
+                                 '.pg-restaurant-evening time { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--bs-emphasis-color); }',
+        // The secondary button's focus ring, in the body's strongest colour:
+        // a button without a colour variant has no ring colour of its own,
+        // so the keyboard focus would not show.
+        'pg-restaurant-second':  '.pg-restaurant-second { --bs-btn-focus-shadow-rgb: var(--bs-emphasis-color-rgb); }'
     };
 
     var _SD_BLOCK_CSS_NEEDS = {
-        'restaurant-hero':    ['pg-display-xl', 'pg-restaurant-plate', 'pg-restaurant-slip'],
-        'restaurant-tasting': ['pg-restaurant-menu'],
-        'restaurant-counter': ['pg-restaurant-counter', 'pg-restaurant-evening']
+        'restaurant-hero':    ['pg-display-xl', 'pg-restaurant-plate', 'pg-restaurant-slip', 'pg-restaurant-second'],
+        'restaurant-tasting': ['pg-restaurant-menu', 'pg-restaurant-second'],
+        'restaurant-counter': ['pg-restaurant-counter', 'pg-restaurant-evening', 'pg-restaurant-second']
     };
 
     // An interaction the operator can change or remove in the Interactions
@@ -87,15 +95,18 @@ StyleDesigner.registerBlockFamily(function (kit) {
     // A dark band: the palette's dark colours apply inside it.
     var dark = [{ name: 'data-bs-theme', value: 'dark' }];
 
-    // The small spaced line above a title. Small text in the theme's colour
-    // takes its darker shade, readable on every surface.
+    // The small spaced line above a title, in the body's second colour:
+    // small text in the theme's colour, even its darker shade, is 4.47:1 on a
+    // dark page with the template's Burgundy palette. The icons beside the
+    // slip's lines keep the theme's colour, as a graphic needs 3:1.
     var eyebrow = function (text, cls) {
-        return kit.p(text, 'small text-uppercase fw-semibold text-primary-emphasis ' + (cls || 'mb-2'));
+        return kit.p(text, 'small text-uppercase fw-semibold text-body-secondary ' + (cls || 'mb-2'));
     };
     // A secondary button: the body's text colour and a border, readable in
-    // both modes (an outline button in the theme's colour is not).
+    // both modes (an outline button in the theme's colour is not), with its
+    // own focus ring (pg-restaurant-second).
     var second = function (text, name, size) {
-        return kit.link(text, '#', 'btn ' + (size ? size + ' ' : '') + 'border px-4 link-body-emphasis', name);
+        return kit.link(text, '#', 'btn ' + (size ? size + ' ' : '') + 'border px-4 link-body-emphasis pg-restaurant-second', name);
     };
     // A column that takes half a phone's width and a quarter from lg up.
     var quarter = function (name, kids, cls) {
@@ -160,7 +171,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
                 kit.row(_sdT('Hero Row'), [
                     kit.col(_sdT('Hero Text'), [words], '6'),
                     kit.col(_sdT('Signature Dish'), [dish], '6')
-                ], 'g-5 align-items-center')
+                ], 'g-lg-5 align-items-center')
             ])
         ], dark);
     };
@@ -278,7 +289,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
             kit.row(_sdT('Row'), [
                 kit.col(_sdT('Text'), [words], '5'),
                 kit.col(_sdT('Drawing'), [drawing], '7')
-            ], 'g-5 align-items-center')
+            ], 'g-lg-5 align-items-center')
         ]);
     };
 
