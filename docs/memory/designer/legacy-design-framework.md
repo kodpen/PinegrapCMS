@@ -26,7 +26,7 @@ description: The legacy framework key of a classic style moved into the editor (
 - Before LG3 the move wrote `custom`; LG1 recognised a moved design by `custom` plus that component. The move itself is 2026.11.0 work (2026.4.10 has no `?classic=1`), so the step matters for sites that ran development, such as dev.pinegrap.com.
 
 ## Why does recognition read the flag alone?
-- No query per page render, and a copy keeps the look of its source. The group design of `plans/legacy-group-design.md` (LG5) is a new style row holding the frames of several origin styles, none named after its own id, so a component check would miss it.
+- No query per page render, and a copy keeps the look of its source. The set's design (LG5, `legacy-set-run.md`) is a new style row holding the frames of several origin styles, none named after its own id, so a component check would miss it.
 
 ## Where is the badge?
 - The Visual Designs screen (`view_system_styles.php`): `pg_designer_list_designs()` sets `framework_legacy` per row; `pg_designer_home_design_card()` prints `<span class="badge theme-secondary sdh-legacy">Legacy</span>` inside `h3.sdh-name`, after the name link, on the tile and the featured card. The featured card also lists "Framework: Legacy".

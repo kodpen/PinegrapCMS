@@ -457,6 +457,10 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
                 // checks it again).
                 'canvas_edit'    => function_exists('ws_canvas_edit_mark') ? ws_canvas_edit_mark($canvas, (string) $row['sender_kind'],
                     !empty($payload['can_edit']) && $can_post) : null,
+                // An agent's live page (page_card.php): its card instead of
+                // the file line; null for any other file.
+                'page'     => (($extension === 'html') && function_exists('ws_page_card'))
+                    ? ws_page_card($id, (int) $row['file_id'], $can_post) : null,
                 'image'    => ($kind === 'image'),
                 'kind'     => $kind,
                 'ext'      => $extension,

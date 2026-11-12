@@ -87,13 +87,46 @@ if ($ws_card !== '') {
     $pg_settings_cards[] = $ws_card;
 }
 
+
+// ── MCP servers ──
+// What a refused server form or an address check kept, handed over through
+// the session by the save before this draw (ws_mcp_settings_relay), read once
+// and never by the dialog's search index.
+$ws_mcp_kept = array();
+
+if (!isset($_GET['search']) && isset($_SESSION['software']['ws_mcp_kept'])) {
+    $ws_mcp_kept = is_array($_SESSION['software']['ws_mcp_kept']) ? $_SESSION['software']['ws_mcp_kept'] : array();
+    unset($_SESSION['software']['ws_mcp_kept']);
+}
+
+$ws_mcp_relay = new ws_mcp_settings_relay(null, $ws_mcp_kept);
+
+// Back on the page from a service's sign-in (connect.php): its message, and
+// the tools read when an administrator connected the site.
+if (empty($pg_settings_in_dialog) && isset($_GET['mcp_connected']) && !isset($_GET['search'])) {
+    ws_mcp_settings_returned($ws_viewer, $liveform);
+}
+
+$ws_card = ws_mcp_settings_card('', $ws_viewer, $ws_mcp_relay, $ws_form);
+
+if ($ws_card !== '') {
+    $pg_settings_cards[] = $ws_card;
+
+    $ws_mcp_servers = ws_mcp_servers();
+    $ws_mcp_kept = ws_mcp_settings_kept(((int) $ws_viewer['role'] === 0) ? $ws_mcp_relay : null);
+
+    foreach ($ws_mcp_servers as $ws_mcp_server) {
+        $pg_settings_modals[] = ws_settings_mcp_drawer($ws_mcp_server, $ws_viewer, $ws_mcp_kept, $ws_mcp_servers, $ws_form, !empty($pg_settings_in_dialog));
+    }
+
+    if ((int) $ws_viewer['role'] === 0) {
+        $pg_settings_modals[] = ws_settings_mcp_drawer(null, $ws_viewer, $ws_mcp_kept, $ws_mcp_servers, $ws_form, !empty($pg_settings_in_dialog));
+    }
+}
+
 // ── Bulk changes by the assistants ──
 $ws_card = ws_bulk_settings_card('', $ws_viewer, $ws_form);
 
 if ($ws_card !== '') {
     $pg_settings_cards[] = $ws_card;
 }
-
-$pg_settings_cards[] = ws_settings_screen_links_card('pgset-ws-assistants-screen', array(
-    array('ws-mcp', 'bi-plug', lang('MCP servers')),
-));

@@ -5,6 +5,7 @@
 - agent-activity.md: The Agents card's activity per app and model agent: counts of 7 and 30 days, next wake, door failures, waiting and failed requests with Cancel, Ask again, Knock now; token counts [decision: decisions-made-schema-14.md, decisions-made-workspace-10.md]
 - agent-canvas-assistants.md: Pinegrap AI and model assistants draw, read and edit Workspace canvases as ws_ai_step() tools (canvas_ai.php): when offered, who the version names, what the model reads
 - agent-canvas-edit.md: An agent edits any canvas of its channel in place (POST|PATCH messages/{id}/canvas): operations, 409 when stale, the agent version, the inbox line, the "Edited by @handle" mark and Undo
+- agent-canvas-layer-writes.md: An agent writes a canvas's layers one by one (canvas_layer_write.php): add a text, picture, shape or icon, style, order, name, lock, a layer by its name, GET workspace/canvas/fonts
 - agent-canvas-layers.md: An agent's SVG taken apart into a layer per element on the server (layers "split", canvas_split.php): placement, names, definitions, the bounding boxes, the browser fixture both sides read
 - agent-canvas-picture.md: How an agent's pending canvas gets its picture: the channel's browser draws it with the image editor's renderer and posts it once (action canvas_picture), the take's checks, the versioned address
 - agent-canvas-split-parts.md: Layers "split": a text as a text layer, a site file's picture as a picture layer (canvas_split_parts.php): what converts, fonts, placement, which files
@@ -20,6 +21,7 @@
 - agent-key-trial.md: The agent's own side tried live on dev (2026-11-10) with an application agent's key: the request list, the brief of a mention and of a wake, claim, answer, no_answer, fail, agent-wake
 - agent-last-seen.md: An agent's last seen: ws_agents.seen_at set by every call with an app agent's own key, once a minute at most, and the words on the Agents card and in "Agents in this channel" (#8828) [decision: decisions-made-workspace-16.md]
 - agent-page-assistants.md: Pinegrap AI and model assistants make, read and edit live pages as ws_ai_step() tools (page_ai.php): make_live_page, read_live_page, edit_live_page by replacements; Claude via MCP
+- agent-page-card.md: The card of an agent's live page (LP2b): Open, Full screen, View source and versions, Download, "Edited by" and Undo; runs only when opened, stops when the channel is left
 - agent-page.md: Live pages an agent makes (LP2a #8815, LP4 #8830): the routes, the mark of a page without a column, versions (20 kept), 409, who may, the site's libraries
 - agent-questions.md: How an agent asks the people with a poll or an approval; a one-answer question as a one-choice poll closed once the vote is read; why the outcome is written in the agent's name [decision: decisions-made-workspace-12.md]
 - agent-registry.md: The agent registry (ws_agents) and the channel-agent row (ws_channel_agents): fields, Claude's routine as the first push agent, where the membership rules are, the depth and hourly brakes [decision: decisions-made-workspace-7.md, decisions-made-workspace-8.md]
@@ -43,8 +45,9 @@
 - mail-email-fields.md: What email() gained for Workspace mail (G3a #2846, #8646): cc and bcc, the threading headers it lets through, a box's own SMTP server, and the site's mark every mail carries for the loop gate
 - mail-fetch.md: Reading Workspace mailboxes over IMAP (ws_mail_fetch(), inline in job.php): what is searched, the UID position, held mail, limits, after-fetch, what the box records, the System status tile
 - mail-forward.md: Forward as e-mail in the Workspace (WM6): the buttons, the filled New e-mail form, what a forward quotes and carries, the line under a forwarded mail, the checks when it is sent
+- mail-html.md: A mail's HTML is kept (WM11, PR #8821): ws_mail_items.body_html, the allowlist cleaner, cid pictures kept as files, the fill of earlier mail from its .eml [decision: decisions-made-workspace-17.md]
 - mail-imap-client.md: The socket IMAP client pg_imap_*() (includes/fn/imap_client.php, G2a of incoming e-mail): why no imap extension, TLS and address check, sign-in, commands, error codes, limits, tests
-- mail-ingest.md: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loop gate, DMARC from the box's server, threading, card and answers, attachments, .eml for 30 days
+- mail-ingest.md: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loop gate, DMARC from the box's server, threading, card and answers, attachments and cid pictures, .eml for 30 days
 - mail-list.md: The Workspace E-mails list (workspace_mail.php, mail_list.php): which conversations, the views Incoming, Sent and Not sent, the filters, mailbox, search, Load more, the row, the menu entry [decision: decisions-made-workspace-17.md]
 - mail-microsoft.md: A Workspace mailbox on Microsoft 365 or Outlook.com (G4): purpose mail_read, IMAP sign-in with XOAUTH2 through a connected account, answers through Graph, the box form's account, what stays unverified
 - mail-notices-and-event.md: Who hears of a Workspace e-mail conversation (inbox kinds mail_assigned, mail_customer) and the workspace.mail.received event for scheduled actions and flows (G5b)
@@ -310,6 +313,7 @@
 - workspace-mcp-agent-identity.md: One avatar and icon per MCP server asked by its alias ('mcp:<id>'), drawn the same by every server-side place (ws_mcp_agent_identity()); the catalogue entry found by URL; the name kept '@alias'
 - workspace-mcp-servers-api.md: The site's MCP servers in the Workspace API (api_mcp.php, PR #1800): list with state, add, probe, refresh, tool rules; administrators only, no MCP tool; checks and writes shared with the settings card
 - workspace-mcp-servers-card.md: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-made connectors, adding by address, read-only tools on at first read, the form kept after an error, Pinegrap AI failing [decision: here]
+- workspace-mcp-settings-dialog.md: The MCP servers card in Site Settings (Assistants and agents) and on Workspace Settings: drawers, ws_mcp field and button names, the relay, the sign-in handed over as pg_settings_go()
 - workspace-mention-picker.md: The @ and # lists of Workspace writing boxes (drawPicker()): which boxes use them, where a list opens (pickerPlace() at the caret, fitPicker() over the composer), the kind chips
 - workspace-menu-list.md: The Workspace list in the main menu (#2545, layout #3794, #3817, #6281): workspace_side.js draws ws_side_payload() on every panel page: order, who sees what, inline data vs ws_side, hooks, pill, tour [decision: decisions-made-workspace-5.md, decisions-made-workspace-6.md]
 - workspace-menu-tools.md: Tools tiles and More in the Workspace list (#3817, #6281): places (My Tasks first), short names, colours, a lone More taking its row, the More rows, ws-side-open, the tour opening hidden places [decision: decisions-made-workspace-6.md]

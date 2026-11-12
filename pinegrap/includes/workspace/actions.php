@@ -397,7 +397,7 @@ function ws_handle_action($action, $request)
     if (function_exists('ws_message_in_past') && ws_eras_ready()) {
         $touched = null;
 
-        if (in_array($action, array('ws_edit', 'ws_canvas_undo', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request'), true)
+        if (in_array($action, array('ws_edit', 'ws_canvas_undo', 'ws_page_undo', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request'), true)
             || (($action === 'ws_delete') && ((string) ($request['scope'] ?? '') !== 'me'))) {
             $touched = ws_message((int) ($request['message_id'] ?? 0));
         } elseif (in_array($action, array('ws_poll_edit', 'ws_poll_vote', 'ws_poll_close'), true)) {
@@ -2135,6 +2135,37 @@ function ws_handle_action($action, $request)
             }
 
             $result = ws_canvas_undo($viewer, $message, (int) ($request['version'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
+
+            return ws_action_ok(array('message' => $payload[0]));
+
+        // A live page's source, one version of it (page_card.php).
+        case 'ws_page_source':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!$message || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            $result = ws_page_source($message, (int) ($request['version'] ?? 0));
+
+            return $result['ok'] ? ws_action_ok(array('html' => $result['html'], 'version' => $result['version'], 'versions' => $result['versions']))
+                : ws_action_error($result['error']);
+
+        // Undo of an agent's edit on a live page (page_card.php).
+        case 'ws_page_undo':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!$message) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            $result = ws_page_undo($viewer, $message, (int) ($request['version'] ?? 0));
 
             if (!$result['ok']) {
                 return ws_action_error($result['error']);

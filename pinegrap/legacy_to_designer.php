@@ -20,6 +20,7 @@
 include('init.php');
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer_run.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_classic.php');
 
 // The run's short requests (ajax=1) are read by the screen's script as JSON:
 // an ended session, a missing right or a stale token is answered in that
@@ -59,8 +60,31 @@ $chosen = array();
 $chosen_sets = array();
 $plan = null;
 $run_error = '';
+$liveform = new liveform('legacy_to_designer');
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     validate_token_field();
+    // Back to classic: a set's design, or one page of it, returns to the
+    // classic styles its pages came from. Not while a move runs.
+    if (!empty($_POST['back'])) {
+        $back_page = (int)($_POST['page'] ?? 0);
+        if (pg_ltd_state_read() !== null) {
+            $liveform->add_error(h(lang('A move is running: send pages back when it has ended.')));
+        } else {
+            $back = pg_ltc_back((int)($_POST['design'] ?? 0), ($back_page > 0) ? array($back_page) : null, $user);
+            if ($back['moved']) {
+                $liveform->add_notice(h(lang(array('string' => '{var:1} pages went back to their classic styles: {var:2}',
+                    'vars' => array(count($back['moved']), implode(', ', $back['moved']))))));
+            }
+            foreach ($back['skipped'] as $line) {
+                $liveform->add_warning(h($line));
+            }
+            if (!$back['moved'] && !$back['skipped']) {
+                $liveform->add_error(h(lang('No page went back.')));
+            }
+        }
+        header('Location: ' . PATH . SOFTWARE_DIRECTORY . '/legacy_to_designer.php#ltd-back-result');
+        exit;
+    }
     foreach ((array)($_POST['styles'] ?? array()) as $id) {
         if ((int)$id > 0) $chosen[(int)$id] = true;
     }
@@ -410,6 +434,59 @@ if ($output_runs !== '') {
     </div>';
 }
 
+// Back to classic: each set's design with its pages, the whole design or one
+// page sent back to the classic style it came from. No button while a move
+// runs.
+$output_back = '';
+foreach (pg_ltc_designs() as $d) {
+    $rows = '';
+    $ready = 0;
+    foreach ($d['pages'] as $p) {
+        if ($p['refusal'] === '') {
+            $ready++;
+            $action = '<form method="post" action="legacy_to_designer.php" class="d-inline">' . get_token_field()
+                . '<input type="hidden" name="back" value="1"><input type="hidden" name="design" value="' . (int)$d['id'] . '">'
+                . '<input type="hidden" name="page" value="' . (int)$p['page_id'] . '">'
+                . '<button type="submit" class="btn btn-sm btn-outline theme-secondary rounded-pill px-4"'
+                . ' aria-label="' . h(lang(array('string' => 'Send {var:1} back to {var:2}', 'vars' => array($p['page_name'], $p['origin_name'])))) . '"'
+                . ($running !== null ? ' disabled' : '') . '>' . h(lang('Send back')) . '</button></form>';
+        } else {
+            $action = '<span class="small fg-secondary">' . h(pg_ltc_refusal_text($p['refusal'])) . '</span>';
+        }
+        // Below md the classic style goes under the page name, so the button
+        // column stays in view without scrolling the table.
+        $rows .= '<tr><td>' . h($p['page_name'])
+            . '<div class="small fg-secondary md:d-none">' . h($p['origin_name']) . '</div></td>'
+            . '<td class="d-none md:d-table-cell">' . h($p['origin_name']) . '</td>'
+            . '<td class="text-end">' . $action . '</td></tr>';
+    }
+    $all = '';
+    if ($ready > 0) {
+        $all = '<form method="post" action="legacy_to_designer.php" class="mb-3">' . get_token_field()
+            . '<input type="hidden" name="back" value="1"><input type="hidden" name="design" value="' . (int)$d['id'] . '">'
+            . '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"' . ($running !== null ? ' disabled' : '') . '>'
+            . '<i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i>'
+            . h(lang(array('string' => 'Send {var:1} pages back', 'vars' => array($ready)))) . '</button></form>';
+    }
+    $output_back .= '
+        <div class="mb-7">
+            <h3 class="h6">' . h($d['name']) . '</h3>
+            ' . $all . '
+            <details><summary>' . h(lang(array('string' => '{var:1} pages', 'vars' => array(count($d['pages']))))) . '</summary>
+                <div class="table-responsive"><table class="table table-sm align-middle mb-0 mt-3">
+                    <thead><tr><th scope="col">' . h(lang('Page')) . '</th><th scope="col" class="d-none md:d-table-cell">' . h(lang('Classic style')) . '</th><th scope="col" class="text-end">' . h(lang('Back to classic')) . '</th></tr></thead>
+                    <tbody>' . $rows . '</tbody></table></div></details>
+        </div>';
+}
+if ($output_back !== '') {
+    $output_back = '
+    <div class="card my-7" id="ltd-back">
+        <div class="card-header"><h2 class="h5 mb-0">' . h(lang('Back to classic')) . '</h2>
+            <div class="small fg-secondary">' . h(lang('A set\'s design sends its pages back to the classic styles they came from. Each page\'s design is kept in its History; the design stays for a later move.')) . '</div></div>
+        <div class="card-body">' . $output_back . '</div>
+    </div>';
+}
+
 // Dry run is the toolbar's primary action; it submits this hidden form, which
 // carries the token and the ticked styles (their checkboxes name it in form=).
 // Neither is drawn while a move runs.
@@ -444,7 +521,10 @@ pg_page_shell([
             <div class="small fg-secondary">' . h(lang(array('string' => 'Sets: {var:1}. Styles that load the same stylesheets and scripts in the same order, with the same theme file and collection, form a set and move as one Legacy design.', 'vars' => array(count($sets['sets']))))) . '</div></div>
         <div class="card-body p-0 table-responsive">' . $output_table . '</div>
     </div>
-    ' . $output_classic . $output_runs . '
+    <div id="ltd-back-result">' . $liveform->output_errors() . $liveform->output_notices() . $liveform->get_warnings() . '</div>
+    ' . $output_back . $output_classic . $output_runs . '
 </main>
 ' .
 output_footer();
+
+$liveform->remove_form('legacy_to_designer');

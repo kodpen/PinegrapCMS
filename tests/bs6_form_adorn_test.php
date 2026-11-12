@@ -181,8 +181,8 @@ function test_bs6_form_adorn_keeps_the_input_attributes()
 	$catalogue = (string) file_get_contents($root . 'includes/workspace/mcp_catalogue.php');
 
 	pg_assert_contains("'class' => 'form-ghost text-end', 'maxlength'=>'13', 'inputmode'=>'decimal', 'required'=>'required') + pg_money_mask_attributes()", $gift);
-	pg_assert_contains('pattern="[A-Za-z][A-Za-z0-9_\-]{1,31}" required autocomplete="off"\' . $disabled . \'>', $mcp);
-	pg_assert_contains('pattern="[A-Za-z][A-Za-z0-9_\-]{1,31}" required autocomplete="off">', $catalogue);
+	pg_assert_contains('pattern="[A-Za-z][A-Za-z0-9_\-]{1,31}"\' . $required . \' autocomplete="off"\' . $disabled . \'>', $mcp);
+	pg_assert_contains('pattern="[A-Za-z][A-Za-z0-9_\-]{1,31}"\' . $required . \' autocomplete="off">', $catalogue);
 }
 
 function test_bs6_form_adorn_toolbar_search_keeps_its_toolbar_class()
