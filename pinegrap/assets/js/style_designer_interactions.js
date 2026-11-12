@@ -5,7 +5,7 @@
  * panel's Interactions section (the effect, its trigger and timing, the
  * sticky offset, the parallax speed, the start of a scroll-linked effect,
  * the duration and delay of a count, the duration of a chapter's colour
- * change), the fields that write a node's
+ * change, a note on a pinned scene), the fields that write a node's
  * props._fx and the "Play on the canvas" button. Not needed to open a
  * page: the core draws the section with an empty body and runs this file
  * the first time an open section is shown (_sdPartLoad(),
@@ -88,6 +88,9 @@ StyleDesigner.definePart('interactions', function (K) {
         // also mutes it and adds its pause button; kept in the list here
         // on the video that has it.
         if (fx.effect === 'autoplay') effects.push(['autoplay', _sdT('Play by itself')]);
+        // A pinned scene needs the layers the Pinned Story block draws; kept
+        // in the list on the section that has it.
+        if (fx.effect === 'scene') effects.push(['scene', _sdT('Pinned scene')]);
         var h = row(_sdT('Effect'), select('effect', effects));
         if (fx.trigger) {
             var entrance = fx.trigger === 'load' || fx.trigger === 'view';
@@ -135,6 +138,11 @@ StyleDesigner.definePart('interactions', function (K) {
             h += row('', '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-fx-play>' +
                 '<span class="bi bi-play-fill"></span> ' + esc(_sdT('Play on the canvas')) + '</button>');
         }
+        if (fx.effect === 'scene') {
+            h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
+                esc(_sdT('Shows its layers one at a time while the page scrolls through it, in a stage that stays on the screen. Set by the Pinned Story block; on the canvas the layers stand one under the other.')) +
+                '</div></div>';
+        }
         if (fx.effect === 'autoplay') {
             h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
                 esc(_sdT('Turned on and off in the Video panel, with its pause button.')) +
@@ -144,7 +152,9 @@ StyleDesigner.definePart('interactions', function (K) {
             h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
                 esc(fx.effect === 'chapter'
                     ? _sdT('Plays on the published page and in Preview. Visitors who ask for less motion see the colours change at once.')
-                    : _sdT('Plays on the published page and in Preview. Visitors who ask for less motion see the element without it.')) +
+                    : fx.effect === 'scene'
+                        ? _sdT('Plays on the published page and in Preview. Visitors who ask for less motion see the layers one under the other.')
+                        : _sdT('Plays on the published page and in Preview. Visitors who ask for less motion see the element without it.')) +
                 '</div></div>';
         }
         return h;

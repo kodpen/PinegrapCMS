@@ -6,7 +6,7 @@ description: Steps B7 to B12 of the designer bold pages plan: pinned scene, look
 ## Which steps come later?
 - How the steps are cut and B1 to B6: [[designer-bold-pages-steps]].
 
-- B7 (L, waits for B2): pinned scene with steps. A general block "Pinned Story" (group "Scroll Scenes"): a tall section with a sticky stage; a `scene` effect makes the script write the step number on the section from the scroll progress, and CSS shows that step's layer.
+- B7 (L, done #8877): pinned scene with steps. A general block "Pinned Story" (group "Scroll Scenes"): a tall section with a sticky stage; a `scene` effect makes the script write the step number on the section from the scroll progress, and CSS shows that step's layer.
 - B7: no script or reduced motion: the layers stand one under the other. Files as B2 plus the block; tests B2's and the block on the canvas.
 
 - B8 (M, done #8692): new looks and palettes. Looks `display` (very light large display type, tight tracking, large corners, soft depth) and `precision` (flat, square, thin weights, wide spacing); palettes for product pages (near-black, silver, electric blue) written by `php tools/build_theme_palettes.php`.
