@@ -2,12 +2,13 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The report screens' shared view (the order and visitor reports): from a report's result (its first
- * summarize-by level, the groups of that level, the grand total) the
- * summary figures and the chart the screen draws with the dashboard's
- * drawing (assets/js/pg_dash.js, assets/js/pg_report_view.js). The table
- * under them stays the screen's own. Every function here is pure: the
- * figures are the ones the table prints, read from the same buckets.
+ * The report screens' shared view (the order, visitor and shipping
+ * reports): from a report's result (its first summarize-by level, the
+ * groups of that level, the grand total) the summary figures and the
+ * chart the screen draws with the dashboard's drawing
+ * (assets/js/pg_dash.js, assets/js/pg_report_view.js). The table under
+ * them stays the screen's own. Every function here is pure: the figures
+ * are the ones the table prints, read from the same buckets.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -194,6 +195,82 @@ function pg_report_view_visitor_figures($grand, $ecommerce, $symbol)
     }
 
     return $figures;
+}
+
+/**
+ * The shipping report's summary figures, from its Grand Total row: the
+ * products listed, then the units before the period, in it (the sum of its
+ * days), after it and in all. Units are those of the status chosen (to
+ * ship, shipped or either). Pure.
+ *
+ * @param array $totals   the screen's totals: 'before', each date, 'after',
+ *                        'total'
+ * @param array $dates    the period's dates (Y-m-d), in order
+ * @param int   $products the number of product rows
+ * @return array of label, text
+ */
+function pg_report_view_shipping_figures($totals, $dates, $products)
+{
+    $period = 0;
+
+    foreach ($dates as $date) {
+        $period += (int) ($totals[$date] ?? 0);
+    }
+
+    return array(
+        array('label' => lang('Products'), 'text' => pg_format_number((int) $products, 0)),
+        array('label' => lang('Before'), 'text' => pg_format_number((int) ($totals['before'] ?? 0), 0)),
+        array('label' => lang('In this period'), 'text' => pg_format_number($period, 0)),
+        array('label' => lang('After'), 'text' => pg_format_number((int) ($totals['after'] ?? 0), 0)),
+        array('label' => lang('Total'), 'text' => pg_format_number((int) ($totals['total'] ?? 0), 0)),
+    );
+}
+
+/**
+ * The shipping report's chart: a line of units over the period's ship
+ * dates, one point a day, as the table's day columns count them. None for
+ * a period of one day (a line of one point) or with no unit in it. Pure.
+ *
+ * @param array $totals the screen's totals, keyed by date among others
+ * @param array $dates  the period's dates (Y-m-d), in order
+ * @param array $names  each date's name as the table heads it, same keys
+ *                      as $dates
+ * @return array|null
+ */
+function pg_report_view_shipping_chart($totals, $dates, $names)
+{
+    if (count($dates) < 2) {
+        return null;
+    }
+
+    $groups = array();
+    $sum = 0;
+
+    foreach (array_values($dates) as $i => $date) {
+        $groups[$i] = array('count' => (int) ($totals[$date] ?? 0));
+        $sum += $groups[$i]['count'];
+    }
+
+    if ($sum <= 0) {
+        return null;
+    }
+
+    return pg_report_view_chart_by('line', $groups, array_values($names), lang('Units by ship date'), array(
+        'raw' => function ($group) {
+            return (int) ($group['count'] ?? 0);
+        },
+        'value' => function ($raw) {
+            return (int) $raw;
+        },
+        'note' => function ($raw) {
+            return pg_format_number($raw, 0);
+        },
+        'tip' => function ($name, $group) {
+            $count = (int) ($group['count'] ?? 0);
+
+            return $name . ': ' . lang(array('string' => '{var:1} unit{suffix:1}', 'vars' => pg_format_number($count, 0), 'suffix' => ($count == 1) ? '' : 's'));
+        },
+    ));
 }
 
 /**
