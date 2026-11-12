@@ -14,6 +14,7 @@ Extra CSS either does not exist or is defined in the design's Styles panel. Inli
 - The same test makes a rule that names another key's class (`.pg-gym-photo > .pg-gym-pass`) stand for that key: list the named key first in `_SD_BLOCK_CSS_NEEDS`, or its own rule is never added, in a drop or a template (`pg_designer_block_css()`). The Gym hero lost its pass rule so until #8655.
 - Descendant selectors only: the canvas wraps every node in `.sd-wrap`, so `>`, `+`, `~` between two tree nodes never match there.
 - Bootstrap utilities are `!important`: an element whose property a rule changes (display, overflow) carries no utility for that property.
+- A custom property a rule sets (`--bs-border-style`) is inherited: a `.border` nested inside takes it too, so set it back there (`.pg-zone-z3 .pg-zone-ring`, #8763).
 - Colours in a rule are `var(--bs-…)`, `var(--pg-…)` or `currentColor`; motion stops under `prefers-reduced-motion`. Shared entries: `pg-marquee`, `pg-shade-bottom`, `pg-shade-tint`, `pg-pulse-still`, `pg-bleed`, `pg-screen`, `pg-display-xl` / `-xxl` ([[designer-block-full-bleed-giant-type]]) (`designer-block-motion.md`, `designer-block-theme-colours.md`).
 
 ## What is the one exception?

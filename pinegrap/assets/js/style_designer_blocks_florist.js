@@ -9,7 +9,7 @@
  * what the card is and sample words for four occasions; and the flower
  * subscription, three plans whose twelve weeks are drawn as a strip with a
  * flower on each week a bouquet comes. Where and when the flowers are
- * delivered is a general block (Locations: Delivery Zones); bouquets,
+ * delivered is a general block (Locations: Zones); bouquets,
  * sizes, seasons and the wedding work are placed with general blocks.
  * Motion comes from the nodes' interactions (props._fx, played by
  * pg_fx.src.js, which honours reduced motion).
