@@ -380,7 +380,8 @@
 - workspace-screen-companion-scripts.md: Why the Flows canvas and the channel Board tab wait for their own bundle (workspace_flow.js, workspace_board_channel.js) instead of racing ws_bootstrap; the "script did not load" fallback (#2516)
 - workspace-screen-frame.md: Every Workspace screen but the channel one is padded by .ws-shell-main (no screen list), where sticky columns stop, how the MCP servers card wraps on a phone
 - workspace-screen-messages.md: Server-drawn Workspace screens show liveform errors, warnings and notices as corner toasts through ws_screen_messages(), never the panel's Notice/Warning/Error boxes (#6799)
-- workspace-settings-card-saves.md: Workspace Settings card saves: list allow-list, refused form refilled with its error, rank rule for team rows, hours and holiday checks, mailbox fields
+- workspace-settings-card-saves.md: Workspace settings card saves: list fields, a refused save, rank rule for team rows, hours and holiday checks, mailbox fields
+- workspace-settings-overview.md: Start file for the Workspace settings: the three categories of the Site Settings dialog, who opens them, the rules every card keeps, the old workspace_settings.php address, which file holds what [decision: decisions-made-workspace-13.md, decisions-made-workspace-15.md]
 - workspace-settings-row-names.md: Workspace Settings rows name their person or department, hours boxes use the panel's decimal separator, the Claude guide's copy fields are named (#2918); no two active departments of one name
 - workspace-status-ai-draft.md: The Pinegrap AI draft of a channel's status update (ws_status_ai, status.php): what the model reads, why it asks through pg_ai_chat() and not ws_ai_http()
 - workspace-tag-card.md: A Workspace message that is one record tag and nothing else drawn as a card per reader (ws_tag_card_html(), PR #2150): which bodies, what the card shows, rights, where it is drawn, what stays text

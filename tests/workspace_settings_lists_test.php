@@ -29,22 +29,18 @@ function workspace_settings_lists_source($path)
  */
 function workspace_settings_lists_allowed()
 {
-	$source = workspace_settings_lists_source('workspace_settings.php');
-
-	if (!preg_match('/\$ws_settings_lists = pg_request_unexpected_lists\(\$_POST, array\((.*?)\)\);/s', $source, $match)) {
-		return array();
-	}
-
-	preg_match_all("/'([a-z_]+)'\s*=>\s*\d/", $match[1], $names);
-
-	return $names[1];
+	// The forms the old Workspace Settings screen drew are still kept in the
+	// card functions (their $form === null branch) and draw these names;
+	// nothing posts them now, as workspace_settings.php refuses a POST.
+	return array('workdays', 'members', 'leads', 'primary', 'people', 'mcp_tool', 'route_match', 'route_channel', 'github_events');
 }
 
-function test_workspace_settings_lists_allow_list_found()
+function test_workspace_settings_lists_old_screen_posts_nothing()
 {
-	$allowed = workspace_settings_lists_allowed();
+	$source = workspace_settings_lists_source('workspace_settings.php');
 
-	pg_assert_true(in_array('people', $allowed, true), 'allow-list not found in workspace_settings.php');
+	pg_assert_false(strpos($source, '$_POST') !== false, 'the old address reads no form');
+	pg_assert_contains("output_error(h(lang('The Workspace settings are in the Site Settings now. Nothing was saved.'))", $source, 'a POST is refused');
 }
 
 function test_workspace_settings_lists_every_card_list_allowed()
@@ -55,7 +51,6 @@ function test_workspace_settings_lists_every_card_list_allowed()
 	preg_match_all("/'(ws_[a-z0-9_]*)'\s*=>\s*[1-9]/", implode("\n", $lists[1]), $dialog);
 	$allowed = array_merge(workspace_settings_lists_allowed(), $dialog[1]);
 	$files = array(
-		'workspace_settings.php',
 		'includes/workspace/ai.php',
 		'includes/workspace/bulk.php',
 		'includes/workspace/claude.php',

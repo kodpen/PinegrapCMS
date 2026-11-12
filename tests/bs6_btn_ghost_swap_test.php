@@ -41,7 +41,6 @@ function test_bs6_btn_ghost_swap_workspace_and_erp()
 		'assets/js/workspace_recurrence.js',
 		'assets/js/workspace_acks.js',
 		'assets/js/designer_ai.js',
-		'workspace_settings.php',
 		'workspace_mcp.php',
 		'includes/workspace/workdays.php',
 		'includes/workspace/templates.php',

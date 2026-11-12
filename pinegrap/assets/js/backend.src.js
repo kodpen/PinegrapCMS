@@ -13356,10 +13356,10 @@ window.pgCodeEditorReady = function (markup, done) {
             }
         }
 
-        // A settings screen, the hub, or the single screen they replace. Both
-        // spellings of an old fragment: the map carries pgset- cards and
-        // pgsub- sub-sections alike.
-        hit = href.match(/(?:^|\/)settings(?:2|_([a-z_]+))?\.php(?:\?[^#]*)?(?:#(pg(?:set|sub)-[a-z0-9_-]+))?$/i);
+        // A settings screen, the hub, or the single screen they replace. Every
+        // spelling of an old fragment: the map carries pgset- cards, pgsub-
+        // sub-sections and the old Workspace Settings screen's ws- cards.
+        hit = href.match(/(?:^|\/)settings(?:2|_([a-z_]+))?\.php(?:\?[^#]*)?(?:#((?:pg(?:set|sub)|ws)-[a-z0-9_-]+))?$/i);
 
         if (!hit) {
             return null;

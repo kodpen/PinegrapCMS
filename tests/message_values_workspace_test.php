@@ -42,7 +42,6 @@ function test_message_values_workspace_are_escaped()
 		array('workspace_mcp.php', '$liveform->add_error(h($run[\'error\']));', 1),
 		array('workspace_mcp.php', '$liveform->add_notice(h($flash[\'text\']));', 1),
 		array('workspace_mcp.php', '$liveform->add_notice(lang(array(\'string\' => \'The answer was posted in {var:1}.\', \'vars\' => \'#\' . h($channel[\'name\']))));', 1),
-		array('workspace_settings.php', '$liveform->add_notice(lang(array(\'string\' => \'The department was saved: {var:1}.\', \'vars\' => h($checked[\'name\']))));', 1),
 		array('includes/settings/workspace_team.save.php', '$liveform->add_notice(lang(array(\'string\' => \'The department was saved: {var:1}.\', \'vars\' => h($ws_department[\'name\']))));', 1),
 		array('includes/workspace/team_settings.php', ': lang(array(\'string\' => \'The department is back: {var:1}.\', \'vars\' => h($department[\'name\']))));', 1),
 		array('includes/workspace/team_settings.php', '? lang(array(\'string\' => \'The department was archived: {var:1}. Its tasks keep it; new ones cannot choose it.\', \'vars\' => h($department[\'name\'])))', 1),

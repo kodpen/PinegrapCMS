@@ -274,7 +274,7 @@ function ws_claude_setup_hint()
         $before = false;
     }
 
-    $parts[] = lang($before ? 'Then Claude is connected on this card, which explains every step:' : 'An administrator connects it on this card, which explains every step:') . ' ' . $link(lang('Workspace Settings › Claude in the channels'), $base . 'workspace_settings.php#ws-claude');
+    $parts[] = lang($before ? 'Then Claude is connected on this card, which explains every step:' : 'An administrator connects it on this card, which explains every step:') . ' ' . $link(lang('Workspace Settings › Claude in the channels'), $base . pg_settings_workspace_link('ws-claude'));
 
     if (!ws_claude_url_valid($config['routine_url']) || !$config['token_set']) {
         $parts[] = lang('The routine it asks for is made on claude.ai:') . ' ' . $link('claude.ai/code/routines', 'https://claude.ai/code/routines');
@@ -2296,7 +2296,7 @@ function ws_claude_js_strings()
 }
 
 /* ---------------------------------------------------------------------------
-   The settings card (workspace_settings.php)
+   The settings card (Site Settings, Workspace)
    --------------------------------------------------------------------------- */
 
 /**

@@ -4,7 +4,7 @@ description: The MCP servers card in Site Settings (Assistants and agents) and o
 ---
 
 ## Where is the MCP servers card?
-- PR #8844 (SW5 of `plans/settings-workspace-move.md`): in Assistants and agents, section `pgset-ws-mcp`, after Pinegrap AI and before Bulk changes. The category's "On the Workspace Settings screen" link card is gone with it. The old card (`#ws-mcp`) keeps working on `workspace_settings.php` until SW7.
+- PR #8844 (SW5 of the Workspace settings move, [[workspace-settings-overview]]): in Assistants and agents, section `pgset-ws-mcp`, after Pinegrap AI and before Bulk changes. The category's "On the Workspace Settings screen" link card is gone with it. The old screen's address redirects here (PR #8931).
 - `pg_settings_legacy_anchors()` maps `ws-mcp` to the card. "My MCP connections" still links `workspace_mcp.php`.
 
 ## What opens in a drawer?
@@ -22,6 +22,6 @@ description: The MCP servers card in Site Settings (Assistants and agents) and o
 ## How does a sign-in leave the dialog?
 - The dialog answers in JSON, so nothing may send a Location header. `ws_mcp_settings_place()` holds the sign-in address (`ws_mcp_settings_go()`) and sets the address the service comes back to (`settings_workspace_assistants.php?mcp_connected=<id>#pgset-ws-mcp`); the save module hands it to `pg_settings_go()`.
 - `pg_settings_go()` (`includes/settings/registry.php`): `settings_pane.php` answers it as `reload`, which the dialog follows; the page path redirects to it. The page path calls `ws_mcp_settings_returned()` when `mcp_connected` comes back.
-- The old screen keeps redirecting at once and coming back to `workspace_settings.php#ws-mcp-<id>`.
+- With no place set, a sign-in comes back to the same card (`ws_mcp_settings_place()` defaults to `settings_workspace_assistants.php`, `#pgset-ws-mcp`, PR #8931).
 
 Tests: `tests/settings_workspace_mcp_test.php`.

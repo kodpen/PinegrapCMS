@@ -1469,7 +1469,7 @@ function ws_mcp_refresh_check($server, $user_id = 0)
  */
 function ws_mcp_settings_place($change = array())
 {
-    static $place = array('return' => 'workspace_settings.php', 'anchor' => '', 'hold' => false, 'go' => '');
+    static $place = array('return' => 'settings_workspace_assistants.php', 'anchor' => '#pgset-ws-mcp', 'hold' => false, 'go' => '');
 
     foreach ((array) $change as $key => $value) {
         if (array_key_exists($key, $place)) {

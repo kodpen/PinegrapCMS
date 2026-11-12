@@ -1334,7 +1334,7 @@ function ws_templates_js_config($viewer)
         'ready'        => ws_templates_ready(),
         'manage'       => ws_can_write_templates($viewer),
         'edit_url'     => $base . 'workspace_template.php',
-        'settings_url' => $base . 'workspace_settings.php#ws-templates',
+        'settings_url' => $base . pg_settings_workspace_link('ws-templates'),
     );
 }
 

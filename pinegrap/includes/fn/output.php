@@ -1076,6 +1076,75 @@ function pg_settings_link($pane = '', $section = '')
 }
 
 /**
+ * The address of a Workspace settings card in the Site Settings dialog. An
+ * old Workspace Settings anchor (ws-mail, ws-mcp-4) or a card's own
+ * (pgset-ws-mail) names the category holding that card; without one, or for
+ * an anchor no card answers, the first Workspace category the reader may
+ * open. The three share one gate, so a link drawn without a reader names
+ * the first of them. Read from pg_settings_legacy_anchors(), which lists
+ * every Workspace card, so no database is asked without a reader.
+ *
+ * @param string     $anchor an anchor, with or without its '#'
+ * @param array|null $user   the row validate_user() returned
+ * @return string '' when the reader may open no Workspace category
+ */
+function pg_settings_workspace_link($anchor = '', $user = null)
+{
+    if (!defined('PG_SETTINGS_MENU')) {
+        define('PG_SETTINGS_MENU', true);
+    }
+
+    include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+    $anchor = ltrim((string) $anchor, '#');
+    $moved = array();
+    $cards = array();
+
+    foreach (pg_settings_legacy_anchors() as $old => $target) {
+
+        if (strpos($old, 'ws-') !== 0) {
+            continue;
+        }
+
+        if (!isset($cards[$target[0]])) {
+
+            if (is_array($user) && !pg_settings_may_open($target[0], $user)) {
+                continue;
+            }
+
+            $cards[$target[0]] = array();
+        }
+
+        $moved[$old] = $target;
+        $cards[$target[0]][$target[1]] = true;
+    }
+
+    if (!$cards) {
+        return '';
+    }
+
+    // ws-mcp-4 is the MCP card's server 4: the longest moved anchor it
+    // starts with names the card.
+    for ($old = $anchor; strpos($old, '-') !== false; $old = (string) substr($old, 0, (int) strrpos($old, '-'))) {
+
+        if (isset($moved[$old])) {
+            return pg_settings_link($moved[$old][0], $moved[$old][1]);
+        }
+    }
+
+    foreach ($cards as $key => $sections) {
+
+        if (isset($sections[$anchor])) {
+            return pg_settings_link($key, $anchor);
+        }
+    }
+
+    reset($cards);
+
+    return pg_settings_link((string) key($cards));
+}
+
+/**
  * A list filter as a select in the screen's toolbar: a GET form of its own
  * that submits when the choice changes (a button under <noscript>). It sits
  * in #button_bar as a direct child; the bar's CSS lays the form out on its

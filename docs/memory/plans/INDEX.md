@@ -48,8 +48,6 @@
 - report-screens-steps.md: Steps of plans/report-screens.md: RS1 the Sales map card's See all, RS2 the shared view on the order report, RS3 its ready reports, RS4-RS5 the visitor report, RS6 shipping, RS7 ERP VAT, RS8 close-out
 - report-screens.md: Plan (owner 2026-11-11, #8673): the order, visitor, shipping and ERP VAT report screens drawn as the dashboard: figures, a chart, the table, settings in a drawer, ready reports; steps RS1-RS8
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
-- settings-workspace-move-steps.md: Steps of plans/settings-workspace-move.md: SD1-SD2 the drawer inside the Site Settings dialog, SW1 the Workspace heading and its gate, SW2-SW6 the cards by category, SW7 the button and the old screen
-- settings-workspace-move.md: Plan (owner 2026-11-11): the Workspace settings move into the Site Settings dialog, a fifth heading with three categories, one card at a time; a card's dialog becomes a drawer in it; steps SD1-SW7
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19; design note first, code after 2026.11.0 ships, #3798): public storefront API (cart, checkout, customer auth), base for OpenAI ACP and Google UCP bindings
 - storefront-api-callers.md: Storefront API design note: who calls it (application key + optional cart or customer token), the storefront:* scopes, rate buckets, Idempotency-Key and dry-run rules shared by every route

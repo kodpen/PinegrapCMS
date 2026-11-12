@@ -124,7 +124,7 @@ function ws_nav_groups($viewer, $flags = null)
     }
 
     if (!empty($viewer['settings'])) {
-        $groups['head'][] = array('key' => 'settings', 'label' => lang('Workspace Settings'), 'icon' => 'bi-sliders', 'url' => $base . 'workspace_settings.php');
+        $groups['head'][] = array('key' => 'settings', 'label' => lang('Workspace Settings'), 'icon' => 'bi-sliders', 'url' => $base . pg_settings_workspace_link());
     }
 
     return $groups;
@@ -166,6 +166,9 @@ function ws_side_screen($script)
         'workspace_mcp.php'           => 'mcp',
         'workspace_mail.php'          => 'mail',
         'workspace_settings.php'      => 'settings',
+        'settings_workspace_team.php'       => 'settings',
+        'settings_workspace_assistants.php' => 'settings',
+        'settings_workspace_channels.php'   => 'settings',
         // A template is written from the settings (templates.php).
         'workspace_template.php'      => 'settings',
     );

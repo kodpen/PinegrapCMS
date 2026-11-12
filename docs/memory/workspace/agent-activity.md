@@ -4,7 +4,7 @@ description: The Agents card's activity per app and model agent: counts of 7 and
 ---
 
 ## Where is it?
-- `includes/workspace/agent_activity.php` (loaded from ai.php), drawn by `ws_agent_activity_block()` inside each agent's row of `ws_agents_settings_card()`; the buttons post `agent_request_cancel`, `agent_request_retry`, `agent_request_knock` to `workspace_settings.php` (`ws_agent_activity_post()`), or in the Site Settings drawer `ws_agent_request_*` = the request's id, run after the pane's save ([[workspace-agent-settings]]). Tests: `tests/workspace_agent_activity_test.php`.
+- `includes/workspace/agent_activity.php` (loaded from ai.php), drawn by `ws_agent_activity_block()` inside each agent's row of `ws_agents_settings_card()`; in the Site Settings drawer the buttons post `ws_agent_request_*` = the request's id, run after the pane's save ([[workspace-agent-settings]]). Tests: `tests/workspace_agent_activity_test.php`.
 
 ## How are an agent's requests found?
 - By every value its rows may carry (`ws_agent_activity_keys()`): an app agent's `agent:<id>` and the older `app:<id>`, a model agent's `model:<id>`; `ws_agent_activity_agent_id()` reads either back. No other writer puts `app:<n>` in `ws_ai_requests` (an application's proposal key lives in the proposals), so the old shape is safe to match. Claude's row shows no block.

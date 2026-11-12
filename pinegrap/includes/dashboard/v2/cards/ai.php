@@ -535,7 +535,7 @@ function pg_dashboard_v2_ai_offline($settings, $manager)
     $buttons = array();
 
     if ($settings) {
-        $buttons[] = array('label' => lang('Connect Claude'), 'url' => 'workspace_settings.php#ws-claude', 'main' => true);
+        $buttons[] = array('label' => lang('Connect Claude'), 'url' => pg_settings_workspace_link('ws-claude'), 'main' => true);
     }
 
     if ($manager) {
