@@ -72,7 +72,7 @@ $pg_settings_cards[] = '
                                                             <div class="form-field">
                                                                 <input class="radio" type="radio" name="waf_mode" id="waf_mode_monitor" value="monitor"' . $waf_mode_monitor_checked . '/>
                                                                 <label class="" for="waf_mode_monitor"><strong>' . lang('Monitor') . '</strong> &mdash; ' . lang('record only, block nothing new') . '</label>
-                                                                <div class="form-text">' . lang('Start here. The log fills with what blocking would have stopped, so you can confirm on your own traffic that nothing legitimate is caught before you switch it on.') . ' <strong>' . lang('The IP lists below are the exception: an address you banned stays banned in Monitor mode. Only turning the firewall off releases it.') . '</strong></div>
+                                                                <div class="form-text">' . lang('Start here. The log fills with what blocking would have stopped, so you can confirm on your own traffic that nothing legitimate is caught before you switch it on.') . ' <strong>' . lang('The IP lists below are the exception: an address you banned by hand stays banned in Monitor mode, and only turning the firewall off releases it. Automatic bans are not enforced until you switch back to Block.') . '</strong></div>
                                                             </div>
                                                             <div class="form-field">
                                                                 <input class="radio" type="radio" name="waf_mode" id="waf_mode_block" value="block"' . $waf_mode_block_checked . '/>
@@ -173,7 +173,7 @@ $pg_settings_cards[] = '
                                                             <div class="form-field">
                                                                 <div class="switch"><input value="1"' . $waf_auto_ban_checked . ' class="collapse-switcher" type="checkbox" id="waf_auto_ban" name="waf_auto_ban" data-bs-target="#waf_auto_ban_row"/></div>
                                                                 <label class="" for="waf_auto_ban">' . lang('Automatic Temporary Bans') . '</label>
-                                                                <div class="form-text">' . lang('Repeat offenders are banned for a while instead of being blocked one request at a time. Bans always expire, and are never placed in Monitor mode.') . '</div>
+                                                                <div class="form-text">' . lang('Repeat offenders are banned for a while instead of being blocked one request at a time. Bans always expire. In Monitor mode none are placed, and those already placed are not enforced until you switch back to Block.') . '</div>
                                                             </div>
                                                             <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="waf_auto_ban_row">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>

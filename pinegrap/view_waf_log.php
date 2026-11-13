@@ -414,7 +414,7 @@ if ($mode === 'off') {
 } elseif ($mode === 'monitor') {
     $mode_banner = '<div class="alert theme-info d-flex align-items-center">'
         . '<i class="bi bi-eye me-3"></i>'
-        . '<span>' . lang('Monitor mode: these requests were recorded but allowed through, except addresses on the ban list, which are refused in every mode. Review the rest, and when nothing legitimate appears here, switch the firewall to Block.') . $verdict . '</span>'
+        . '<span>' . lang('Monitor mode: these requests were recorded but allowed through, except addresses you banned by hand, which are refused in every mode. Review the rest, and when nothing legitimate appears here, switch the firewall to Block.') . $verdict . '</span>'
         . '</div>';
 } else {
     $mode_banner = '<div class="alert theme-' . ($suspect_count > 0 ? 'warning' : 'success') . ' d-flex align-items-center">'
