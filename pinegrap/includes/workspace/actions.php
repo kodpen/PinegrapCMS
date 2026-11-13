@@ -2286,9 +2286,23 @@ function ws_handle_action($action, $request)
         // One call of a live page through its bridge (page_bridge.php): the
         // card names the canvas, the page never does. A refused call is an
         // answer for the page, not an error of the panel.
+        // The first-write question (canvas_consents.php) goes to the card
+        // as ask, never to the page.
         case 'ws_page_call':
-            return ws_action_ok(array('answer' => ws_page_bridge_answer($viewer, ws_message((int) ($request['message_id'] ?? 0)),
-                $request['call'] ?? null, $request['args'] ?? null)));
+            $answer = ws_page_bridge_answer($viewer, ws_message((int) ($request['message_id'] ?? 0)),
+                $request['call'] ?? null, $request['args'] ?? null);
+            $ask = $answer['ask'] ?? null;
+            unset($answer['ask']);
+
+            return ws_action_ok(array('answer' => $answer, 'ask' => $ask));
+
+        // The reader's answer to a page's first write, for the page version
+        // the question named.
+        case 'ws_page_consent':
+            $result = ws_canvas_consent_answer($viewer, ws_message((int) ($request['message_id'] ?? 0)),
+                (string) ($request['answer'] ?? ''), (int) ($request['version'] ?? 0));
+
+            return $result['ok'] ? ws_action_ok(array()) : ws_action_error($result['text']);
 
         // The tables a person may bind to a live page's canvas, and binding
         // or taking one off (canvas_tables.php); the card is sent back.

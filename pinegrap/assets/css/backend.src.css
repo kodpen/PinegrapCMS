@@ -21622,7 +21622,7 @@ html.ws-flow-layer-on body {
 }
 .wsf-app {
   display: grid;
-  grid-template-columns: 15rem minmax(0, 1fr) 19rem;
+  grid-template-columns: 264px minmax(0, 1fr) 19rem;
   gap: var(--ws-space-3);
   height: calc(100vh - 14rem);
   min-height: 26rem;
@@ -22098,14 +22098,17 @@ html[data-bs-theme="dark"] .wsf-group-values { --wsf-kind: #e58fd0; }
   background: var(--pg-bg-body);
   box-shadow: var(--ws-shadow);
 }
-/* The palette, the editor's left column (drawPalette()): a search field,
-   then the boxes to add in their groups, each heading in its group's
-   colour. Without it (a flow read-only, no flow open) the canvas takes its
-   width. */
+/* The left panel, "Add a box" (drawPalette()): a head with the fold
+   button, the search, the numbered sections in a scroll of their own, the
+   hint at the foot. Folded, a 48 px rail (drawPaletteRail()): a "+" and the
+   section numbers. Without it (a flow read-only, no flow open) the canvas
+   takes its width. */
 .wsf-palette {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--ws-space-2);
+  padding: 0;
+  overflow: visible;
 }
 .wsf-app.wsf-no-palette {
   grid-template-columns: minmax(0, 1fr) 19rem;
@@ -22113,86 +22116,184 @@ html[data-bs-theme="dark"] .wsf-group-values { --wsf-kind: #e58fd0; }
 .wsf-app.wsf-no-palette .wsf-palette {
   display: none;
 }
-/* The search field keeps its height. The groups under it are taller than
-   the column, so the column shrinks its items, and Bootstrap 6 draws the
-   field as a flex box whose smallest height is its padding: it was squeezed
-   to a thin line. */
-.wsf-palette-search {
-  flex-shrink: 0;
+.wsf-palette-panel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
 }
-/* The palette's sections in the order a flow is built (drawPaletteGroups()):
-   a numbered heading, the box that starts this flow (first section), a hint,
-   then its boxes; a line between two sections. */
+.wsf-palette-rail {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+}
+.wsf-app.wsf-palette-folded {
+  grid-template-columns: 48px minmax(0, 1fr) 19rem;
+}
+.wsf-app.wsf-palette-folded .wsf-palette-rail {
+  display: flex;
+}
+.wsf-app.wsf-palette-folded .wsf-palette-panel {
+  display: none;
+}
+.wsf-palette-top {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 6px 16px;
+}
+.wsf-palette-title {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: var(--pg-text-base);
+  font-weight: var(--pg-weight-strong);
+}
+/* The search field keeps its height while the sections under it scroll;
+   inside its margins, not the look's full width. */
+.wsf-palette .wsf-palette-search {
+  flex-shrink: 0;
+  width: auto;
+  margin: 0 12px 10px;
+}
+.wsf-palette-groups {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-bottom: 8px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+/* A section: its number and heading (the hint is its tooltip), then its
+   rows or its folding groups. */
 .wsf-palette-stage {
   display: flex;
   flex-direction: column;
-  padding-top: var(--ws-space-2);
 }
 .wsf-palette-stage + .wsf-palette-stage {
-  margin-top: var(--ws-space-2);
-  border-top: 1px solid var(--pg-border-color-translucent);
+  margin-top: 10px;
 }
 .wsf-palette-stage-head {
   display: flex;
   align-items: center;
-  gap: .5rem;
-  margin: 0;
-  font-size: .9rem;
-  font-weight: 700;
-  color: var(--pg-fg-body);
-}
-.wsf-palette-stage-num {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 1.4rem;
-  height: 1.4rem;
-  border-radius: 50%;
-  font-size: .75rem;
-  color: var(--ws-accent);
-  background: color-mix(in srgb, var(--ws-accent) 16%, transparent);
-}
-.wsf-palette-stage-now {
-  margin: .35rem 0 0;
-  font-size: .8rem;
-  font-weight: 600;
-  color: var(--ws-accent);
-}
-.wsf-palette-stage-hint {
-  margin: .25rem 0 0;
-  font-size: .75rem;
-  line-height: 1.35;
+  gap: 8px;
+  margin: 6px 16px;
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
   color: var(--pg-fg-2);
 }
-.wsf-palette-group {
+.wsf-palette-stage-num {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: var(--pg-text-count);
+  color: var(--pg-accent);
+  background: color-mix(in srgb, var(--pg-accent) 16%, transparent);
+}
+/* The box that starts this flow as one row, "Change" at its end; the other
+   start kinds under it while Change is open. */
+.wsf-palette-current {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin: 0 12px 4px;
+  padding: 6px 6px 6px 10px;
+  border-radius: 11px;
+  font-size: var(--pg-text-2);
+  background: var(--pg-surface-1);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.wsf-palette-change {
+  margin-left: auto;
+}
+.wsf-palette-swaps,
+.wsf-palette-group,
+.wsf-palette-rows {
   display: flex;
   flex-direction: column;
-  margin-top: var(--ws-space-2);
 }
+.wsf-palette-swaps {
+  margin-bottom: 4px;
+}
+/* A group of steps that folds: its heading a button, its count while
+   folded. */
 .wsf-palette-head {
-  margin: 0 0 var(--ws-space-1);
-  padding-left: .5rem;
-  border-left: 3px solid var(--wsf-kind);
-  font-size: .72rem;
-  font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  color: var(--wsf-kind);
-}
-/* A long box name wraps inside the column. Bootstrap 6 keeps a button's
-   text on one line, which pushed the longer names past the column's edge
-   and gave the palette a sideways scroll bar. */
-.wsf-palette-item {
-  --bs-btn-white-space: normal;
-  justify-content: flex-start;
-  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  margin: 2px 12px 0;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
   text-align: left;
-  overflow-wrap: anywhere;
+}
+.wsf-palette-head:hover {
+  background: var(--pg-hover);
+  color: var(--pg-fg-2);
+}
+.wsf-palette-chevron {
+  font-size: .8em;
+}
+.wsf-palette-count {
+  margin-left: auto;
+  font-weight: var(--pg-weight-regular);
+}
+/* A box: one 32 px row, its tile in its group's tone and its name on one
+   line (the whole name is the row's tooltip). */
+.wsf-palette-item {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  min-width: 0;
+  margin: 0 12px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--pg-fg-body);
+  font-size: var(--pg-text-2);
+  text-align: left;
   cursor: grab;
 }
-.wsf-palette-item .ws-flow-icon {
-  color: var(--wsf-kind);
+.wsf-palette-item:hover,
+.wsf-palette-item:focus-visible {
+  background: var(--pg-hover);
+}
+.wsf-palette-item:focus-visible,
+.wsf-palette-head:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: -2px;
+}
+.wsf-palette-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wsf-palette-tile {
+  --pg-tone: var(--wsf-kind, var(--pg-tone-gray));
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+}
+.wsf-palette-tip {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+  color: var(--pg-fg-3);
 }
 .wsf-zoom {
   right: var(--ws-space-3);
@@ -22286,8 +22387,7 @@ html[data-bs-theme="dark"] .wsf-group-values { --wsf-kind: #e58fd0; }
   align-self: flex-start;
 }
 .wsf-palette-template {
-  margin-bottom: var(--ws-space-1);
-  border-bottom: 1px solid var(--pg-border-color-translucent);
+  margin-bottom: 4px;
   cursor: pointer;
 }
 /* A template placed on the canvas (workspace_flow.js, arrive()): each box
@@ -22955,8 +23055,28 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   background: linear-gradient(var(--wsf-run-bg, transparent), var(--wsf-run-bg, transparent)), var(--pg-bg-body);
 }
 @media (max-width: 1279.98px) {
-  .wsf-app { grid-template-columns: 12rem minmax(0, 1fr) 16rem; }
+  .wsf-app,
+  .wsf-app.wsf-palette-folded { grid-template-columns: 48px minmax(0, 1fr) 16rem; }
   .wsf-app.wsf-no-palette { grid-template-columns: minmax(0, 1fr) 16rem; }
+}
+/* A narrow window: the left panel is its rail at rest; opened, it lies over
+   the canvas's left edge (foldPalette()). */
+@media (min-width: 768px) and (max-width: 1279.98px) {
+  .wsf-app .wsf-palette-rail { display: flex; }
+  .wsf-app:not(.wsf-palette-over) .wsf-palette-panel { display: none; }
+  .wsf-app.wsf-palette-over .wsf-palette-panel {
+    display: flex;
+    position: absolute;
+    z-index: 5;
+    top: -1px;
+    bottom: -1px;
+    left: -1px;
+    width: 264px;
+    border: 1px solid var(--pg-border-color-translucent);
+    border-radius: var(--ws-radius);
+    background: var(--pg-bg-body);
+    box-shadow: var(--pg-shadow-float);
+  }
 }
 @media (max-width: 767.98px) {
   .wsf-app {
@@ -23437,7 +23557,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 .pg-list-table-details {
   display: flex;
   flex-direction: column;
-  flex: 0 0 20rem;
+  flex: 0 0 var(--pg-measure-details);
   min-height: 0;
   border-inline-start: 1px solid var(--pg-list-table-line);
   background: var(--pg-list-table-bg);
@@ -25838,7 +25958,8 @@ textarea.pg-input {
    Look A: page widths.
    An add or edit screen's content is centred and at most 1120 px (form
    column 760, status column 336, 24 between); a list is as wide as its
-   columns need, at least 1280 px or the window, at most the window. A screen
+   columns need, at least 1700 px or the window, at most the window, and an
+   open details panel adds its width to that. A screen
    takes them with a class on <body> ('extra classes'): pg-measure-edit, with
    pg-edit-columns on the row holding the form, status and save bar columns;
    pg-measure-list.
@@ -25850,7 +25971,9 @@ textarea.pg-input {
   --pg-measure-form: 760px;
   --pg-measure-status: 336px;
   --pg-measure-gap: 24px;
-  --pg-measure-list-min: 1280px;
+  --pg-measure-list-min: 1700px;
+  /* A list's details panel beside its rows (from 1024 px). */
+  --pg-measure-details: 20rem;
   /* The section rail beside a page from 1280 px: its width and the gap. */
   --pg-measure-rail: calc(13rem + 1.5rem);
 }
@@ -25892,12 +26015,23 @@ body.pg-measure-edit #content {
 
 /* A list: the content box is as wide as the list's columns need, at least
    the list measure (or the window when it is narrower), at most the window,
-   centred; the toolbar above takes the same width. */
+   centred; the toolbar above takes the same width. While search words or a
+   filter are set, the driver holds the width the box had before them in
+   --pg-list-held (pg_list_table.js holdWidth()). */
 body.pg-measure-list #content {
   width: fit-content;
-  min-width: min(100%, var(--pg-measure-list-min) + 2rem);
+  min-width: min(100%, max(var(--pg-list-held, 0px), var(--pg-measure-list-min) + 2rem));
   max-width: 100%;
   margin-inline: auto;
+}
+/* An open details panel beside the rows adds its width to the least width,
+   up to the whole window: the table keeps the width it has with the panel
+   closed and gives way only when the window has no room left. Below
+   1024 px the panel is a sheet over the list and takes no width. */
+@media (min-width: 1024px) {
+  body.pg-measure-list #content:has(.pg-list-table-details:not([hidden])) {
+    min-width: min(100%, max(var(--pg-list-held, 0px), var(--pg-measure-list-min) + 2rem) + var(--pg-measure-details));
+  }
 }
 /* Only the name column takes the slack: the table gives a wider box to its
    columns without a width first, so the name's own width (the driver's

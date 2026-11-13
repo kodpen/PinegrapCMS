@@ -5,7 +5,8 @@
  * The picker's registry and the answers of its endpoint (picker.php). A kind
  * names what is chosen (files of some types, pictures, pages), who may choose
  * it and what a pick stores; the browser names a kind and never a condition.
- * The requests are list (one folder's items), search (a folded name match
+ * The requests are list (one folder's items, or without a folder every
+ * item: picker_all.php), search (a folded name match
  * across the folders the user may use), tree (the folder tree's branches) and
  * resolve (the stored values a field already holds, with their state).
  *
@@ -22,6 +23,8 @@
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
+
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/picker_all.php');
 
 /**
  * The kinds a picker may ask for, by name.
@@ -224,8 +227,15 @@ function pg_picker_whole($value)
  * bounds. Pure.
  *
  * @param array $input $_GET
+ * A list without a folder is the list of everything (all): sorted by
+ * sort and order (pg_picker_all_sort()) and paged by cursor, whose keys are
+ * in after (null on the first page); a cursor this sort did not make is a
+ * request error.
+ *
+ * @param array $input $_GET
  * @return array error ('' or 'kind', 'request'), kind, request, q, folder,
- *               page, per_page, values (resolve), node_ids (tree)
+ *               page, per_page, values (resolve), node_ids (tree), all,
+ *               sort, order, after
  */
 function pg_picker_request($input)
 {
@@ -243,6 +253,10 @@ function pg_picker_request($input)
         'per_page' => $bounds['default'],
         'values' => array(),
         'node_ids' => array(),
+        'all' => false,
+        'sort' => 'modified',
+        'order' => 'desc',
+        'after' => null,
     );
 
     if (!isset($kinds[$request['kind']])) {
@@ -282,6 +296,23 @@ function pg_picker_request($input)
     }
 
     $request['node_ids'] = $nodes;
+
+    // A list that names no folder is the list of everything; a folder of 0
+    // stays the top, which holds no items.
+    $request['all'] = ($request['request'] === 'list') && (!isset($input['folder']) || ($input['folder'] === ''));
+
+    $source = $kinds[$request['kind']]['source'];
+    $sort = pg_picker_all_sort($source, $input['sort'] ?? null, $input['order'] ?? null);
+    $request['sort'] = $sort['sort'];
+    $request['order'] = $sort['order'];
+
+    if ($request['all'] && isset($input['cursor']) && ($input['cursor'] !== '')) {
+        $request['after'] = pg_picker_cursor_decode($input['cursor'], $sort['sort'], $sort['order'], pg_picker_all_columns($source, $sort['sort']));
+
+        if ($request['after'] === null) {
+            $request['error'] = 'request';
+        }
+    }
 
     return $request;
 }
@@ -933,6 +964,28 @@ function pg_picker_folder_counts($kind_name, $user)
         return $counts[$kind_name];
     }
 
+    require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+    $counts[$kind_name] = pg_picker_subtree_counts(pg_picker_direct_counts($kind_name, $user), pg_explorer_folder_map());
+
+    return $counts[$kind_name];
+}
+
+/**
+ * How many of a kind's items the user may use each folder holds directly,
+ * read once per request.
+ *
+ * @param string $kind_name
+ * @param array  $user
+ * @return int[] folder id => count
+ */
+function pg_picker_direct_counts($kind_name, $user)
+{
+    static $counts = array();
+
+    if (isset($counts[$kind_name])) {
+        return $counts[$kind_name];
+    }
+
     $kinds = pg_picker_kinds();
     $kind = $kinds[$kind_name];
     $column = ($kind['source'] === 'pages') ? 'page.page_folder' : 'folder';
@@ -945,10 +998,9 @@ function pg_picker_folder_counts($kind_name, $user)
         $direct[(int) $row['folder_id']] = (int) $row['items'];
     }
 
-    require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
-    $counts[$kind_name] = pg_picker_subtree_counts($direct, pg_explorer_folder_map());
+    $counts[$kind_name] = $direct;
 
-    return $counts[$kind_name];
+    return $direct;
 }
 
 /**
@@ -1512,7 +1564,7 @@ function pg_picker_answer($request, $user)
 
     switch ($request['request']) {
         case 'list':
-            $answer += pg_picker_list_answer($request, $user);
+            $answer += $request['all'] ? pg_picker_all_answer($request, $user) : pg_picker_list_answer($request, $user);
             break;
 
         case 'search':
@@ -1529,6 +1581,9 @@ function pg_picker_answer($request, $user)
             }
 
             $answer += $kinds[$request['kind']]['tree'] ? pg_picker_tree_answer($request, $user) : array('nodes' => array());
+
+            // The All row's count: every item of the kind the user may use.
+            $answer['total'] = pg_picker_total(pg_picker_direct_counts($request['kind'], $user));
             break;
 
         case 'resolve':

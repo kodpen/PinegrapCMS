@@ -13,7 +13,7 @@ description: Steps CO0-CO9 of plans/canvas-one.md: model and screens drawn, the 
 
 - CO2 (M) Bound tables, read. A canvas names its tables; the page reads rows with the `where`, sort and totals of `workspace/workflow-tables-query.md`, in the reader's rights; the card's line of tables. Done in #8960 (`workspace/canvas-tables.md`).
 
-- CO3 (M) Writes with consent. Add and change a row through the table's own functions; the first-write question, asked again for a new version; "through <canvas>" in the row's history. After CO2.
+- CO3 (M) Writes with consent. Add and change a row through the table's own functions; the first-write question, asked again for a new version; "through <canvas>" in the row's history. Done in #9180 (`workspace/canvas-consents.md`).
 
 - CO4 (M) Tables of a channel. A table that belongs to a channel or a canvas, not to one person: the members read and write by the channel's rights; what becomes of it when the canvas is deleted. After CO0; its schema asked first. Done in #9038 (`workspace/workflow-table-channel.md`: a table of the tables cluster, not a canvas part).
 

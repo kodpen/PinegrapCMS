@@ -1287,12 +1287,16 @@ if (!$table) {
                 . '</div>';
         }
 
+        // A row a live page wrote last names its canvas (canvas_consents.php).
+        $via_label = $edit ? ws_canvas_via_label($viewer, (int) ($edit['via_message_id'] ?? 0)) : '';
+
         $row_form = '
             <div class="card mb-5' . ($edit ? ' border-primary' : '') . '" id="ws-wt-row-form">
                 <div class="card-header"><h2 class="h6 mb-0"><i class="bi ' . ($edit ? 'bi-pencil' : 'bi-plus-lg') . ' me-1" aria-hidden="true"></i>'
                     . h($edit ? lang(array('string' => 'Row {var:1}', 'vars' => ws_wtable_row_label($edit))) : lang('New row')) . '</h2></div>
                 <div class="card-body">
                     ' . (($edit_id > 0) && !$edit ? '<div class="alert theme-warning small py-3">' . h(lang('That row could not be found: it may have been deleted.')) . '</div>' : '') . '
+                    ' . ($via_label !== '' ? '<p class="small fg-secondary mb-3"><i class="bi bi-window-stack me-1" aria-hidden="true"></i>' . h($via_label) . '</p>' : '') . '
                     <form method="post" action="' . h($self_url) . '" class="disable_shortcut">
                         ' . get_token_field() . '
                         <input type="hidden" name="wt_action" value="row_save">

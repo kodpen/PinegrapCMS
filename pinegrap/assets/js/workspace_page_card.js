@@ -13,7 +13,9 @@
  * and takes nothing from it but its height and the data bridge's requests,
  * and only from the frame's own window (includes/fn/guarded_frame.php); a
  * request is answered by the site for this card's canvas (ws_page_call,
- * includes/workspace/page_bridge.php). The line naming the agent sits
+ * includes/workspace/page_bridge.php). Before a page's first write in the
+ * reader's name the card asks them (ws_page_consent,
+ * includes/workspace/canvas_consents.php). The line naming the agent sits
  * outside the frame, so nothing in the page can cover it, in full screen
  * too.
  *
@@ -90,16 +92,134 @@
             }
         };
 
-        entry.h.api('ws_page_call', {
-            message_id: entry.message.id,
-            call: String(data.call || ''),
-            args: JSON.stringify((data.args && (typeof data.args === 'object')) ? data.args : {})
-        }).then(function (result) {
-            var reply = (result && result.answer) || {};
+        function ask() {
+            entry.h.api('ws_page_call', {
+                message_id: entry.message.id,
+                call: String(data.call || ''),
+                args: JSON.stringify((data.args && (typeof data.args === 'object')) ? data.args : {})
+            }).then(function (result) {
+                var reply = (result && result.answer) || {};
+                var question = result && result.ask;
 
-            answer(reply.ok ? { ok: true, data: reply.data } : { ok: false, error: reply.error || { code: 'failed', text: '' } });
-        }).catch(function (error) {
-            answer({ ok: false, error: { code: 'failed', text: String((error && error.message) || error || '') } });
+                // A write waiting for the reader's answer: the panel asks,
+                // never the page; Allow sends the same request again.
+                if (question && (question.state === 'ask') && entry.onAsk) {
+                    entry.onAsk(question).then(function (allowed) {
+                        if (allowed) {
+                            ask();
+                        } else {
+                            answer({ ok: false, error: reply.error });
+                        }
+                    });
+                    return;
+                }
+
+                if (question && (question.state === 'no') && entry.onRefused) {
+                    entry.onRefused(question);
+                }
+
+                answer(reply.ok ? { ok: true, data: reply.data } : { ok: false, error: reply.error || { code: 'failed', text: '' } });
+            }).catch(function (error) {
+                answer({ ok: false, error: { code: 'failed', text: String((error && error.message) || error || '') } });
+            });
+        }
+
+        ask();
+    }
+
+    // The first-write question, drawn by the panel over the page: the
+    // tables with what the page does to each, Don't allow and Allow. The
+    // answer is kept for this page version (ws_page_consent); the promise
+    // gives whether the page may write now. One question at a time a card:
+    // writes asked meanwhile wait for the same answer.
+    function consentDialog(message, h, question) {
+        var dialog = document.createElement('dialog');
+        var narrow = window.matchMedia && window.matchMedia('(max-width: 575.98px)').matches;
+        var name = question.name || message.file.name.replace(/\.html$/i, '');
+
+        dialog.className = 'ws-page-consent border rounded-3 p-4 bg-body fg-body';
+        dialog.setAttribute('aria-labelledby', 'ws-page-consent-' + message.id);
+        // On a phone a sheet from the bottom, both buttons full width.
+        dialog.style.maxWidth = narrow ? '100vw' : '28rem';
+        dialog.style.width = narrow ? '100vw' : 'calc(100vw - 2rem)';
+
+        if (narrow) {
+            dialog.style.margin = 'auto 0 0';
+            dialog.style.borderBottomLeftRadius = '0';
+            dialog.style.borderBottomRightRadius = '0';
+        }
+
+        var title = h.el('h2', 'h6 mb-3', h.t('page_consent_title', name));
+
+        title.id = 'ws-page-consent-' + message.id;
+        dialog.appendChild(title);
+
+        var list = h.el('div', 'd-flex flex-column gap-2 mb-3');
+
+        (question.tables || []).forEach(function (table) {
+            var writes = (table.access === 'write');
+            var row = h.el('div', 'd-flex align-items-center gap-2 border rounded px-3 py-2');
+            var text = h.el('div', 'flex-grow-1');
+
+            text.style.minWidth = '0';
+            row.appendChild(h.icon('bi-table'));
+            text.appendChild(h.el('div', 'text-truncate', table.name));
+            text.appendChild(h.el('div', 'small fg-secondary', writes ? h.t('page_consent_write') : h.t('page_consent_read')));
+            row.appendChild(text);
+            row.appendChild(h.el('span', 'badge rounded-pill ' + (writes ? 'badge-subtle theme-warning' : 'badge-subtle theme-secondary'),
+                writes ? h.t('page_consent_writes') : h.t('page_consent_reads')));
+            list.appendChild(row);
+        });
+        dialog.appendChild(list);
+        dialog.appendChild(h.el('p', 'small fg-secondary mb-4', h.t('page_consent_hint', name)));
+
+        var buttons = h.el('div', 'd-flex gap-2 ' + (narrow ? '' : 'justify-content-end'));
+        var deny = h.button('btn btn-sm btn-text theme-secondary' + (narrow ? ' flex-fill' : ''), h.t('page_consent_deny'));
+        var allow = h.button('btn btn-sm btn-solid theme-primary' + (narrow ? ' flex-fill' : ''), h.t('page_consent_allow'));
+
+        buttons.appendChild(deny);
+        buttons.appendChild(allow);
+        dialog.appendChild(buttons);
+        document.body.appendChild(dialog);
+
+        return new Promise(function (resolve) {
+            var done = false;
+
+            function finish(yes) {
+                if (done) {
+                    return;
+                }
+
+                done = true;
+                allow.disabled = true;
+                deny.disabled = true;
+                h.api('ws_page_consent', { message_id: message.id, answer: yes ? 'yes' : 'no', version: question.version }).then(function () {
+                    resolve(yes);
+                }).catch(function (error) {
+                    h.fail(error);
+                    resolve(false);
+                }).then(function () {
+                    if (dialog.open) {
+                        dialog.close();
+                    }
+
+                    dialog.remove();
+                });
+            }
+
+            allow.addEventListener('click', function () { finish(true); });
+            deny.addEventListener('click', function () { finish(false); });
+            // Escape is no answer: nothing is kept and the write is refused.
+            dialog.addEventListener('cancel', function (event) {
+                event.preventDefault();
+                finish(false);
+            });
+
+            if (dialog.showModal) {
+                dialog.showModal();
+            } else {
+                dialog.setAttribute('open', '');
+            }
         });
     }
 
@@ -177,8 +297,10 @@
         Object.keys(open).forEach(close);
     }
 
-    // onStop: the shell stopped the page at a bound.
-    function startFrame(message, box, h, onStop) {
+    // onStop: the shell stopped the page at a bound. hooks.onAsk(question)
+    // asks the first-write question (a promise of whether it was allowed);
+    // hooks.onRefused(question) shows that the reader said no.
+    function startFrame(message, box, h, onStop, hooks) {
         var page = message.file.page;
         var frame = h.el('iframe', 'd-block w-100 border-0');
 
@@ -188,7 +310,8 @@
         frame.style.height = MIN_HEIGHT + 'px';
         frame.src = page.frame;
 
-        var entry = { frame: frame, box: box, message: message, h: h, onStop: onStop };
+        var entry = { frame: frame, box: box, message: message, h: h, onStop: onStop,
+            onAsk: hooks && hooks.onAsk, onRefused: hooks && hooks.onRefused };
 
         frame.addEventListener('load', function () { sendSize(entry); });
         open[message.id] = entry;
@@ -461,10 +584,49 @@
             stopped.hidden = false;
         }
 
+        // The reader said no to the page's writes: an amber band, with
+        // Change to answer again.
+        var refused = h.el('div', 'alert theme-warning small d-flex flex-wrap align-items-center gap-2 py-2 px-3 mt-2 mb-0');
+        var refusedQuestion = null;
+        var asking = null;
+
+        refused.hidden = true;
+        refused.appendChild(h.icon('bi-shield-exclamation'));
+        refused.appendChild(h.el('span', '', h.t('page_consent_refused')));
+
+        var change = h.button('btn btn-sm btn-text theme-secondary py-0 ms-auto', h.t('page_consent_change'));
+
+        refused.appendChild(change);
+
+        function onAsk(question) {
+            if (!asking) {
+                asking = consentDialog(message, h, question).then(function (yes) {
+                    asking = null;
+                    refusedQuestion = question;
+                    refused.hidden = yes;
+
+                    return yes;
+                });
+            }
+
+            return asking;
+        }
+
+        function onRefused(question) {
+            refusedQuestion = question;
+            refused.hidden = false;
+        }
+
+        change.addEventListener('click', function () {
+            if (refusedQuestion) {
+                onAsk(refusedQuestion);
+            }
+        });
+
         function start() {
             stopped.hidden = true;
             close(message.id);
-            startFrame(message, box, h, onStop);
+            startFrame(message, box, h, onStop, { onAsk: onAsk, onRefused: onRefused });
             setOpen(true);
         }
 
@@ -504,6 +666,7 @@
         tools.appendChild(download);
         root.appendChild(tools);
         root.appendChild(stopped);
+        root.appendChild(refused);
         root.appendChild(box);
 
         // Drawn again while it was open (an edit, Undo): open again, with

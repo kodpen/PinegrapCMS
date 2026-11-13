@@ -26,9 +26,9 @@ description: Flow window plan, FW0 part 3: the keyboard path through the bar, th
 - Nothing scrolls sideways at 375 px (the harness's phone scenarios).
 
 ## What is open for the architect?
-- F6 between the four areas; "Change" on the start row swapping the start box in place (`flow-window-map.md`).
+- F6 between the four areas. "Change" swapping the start box in place and the narrow window's rail were built as proposed in FW2 (#9178).
 - The narrow window (rail, 300 px right panel) and the phone (List rows opening in place, bottom sheets, one "Add a box" button), as drawn in `flow-window-narrow.html`.
 - Two places where FW1 follows the panel's rules over the drawing: the back arrow stays in the breadcrumb strip; a draft's pill is gray (look A), not amber.
 
 ## Which step builds what?
-- FW2: the left panel, the rail, the "Add a box" sheet. FW3: the right panel, its tabs and keys, the bottom sheet, F6. FW4: no box chosen. FW5: the canvas marks and the close-out.
+- FW2 (#9178): the left panel, the rail. FW3: the right panel, its tabs and keys, the bottom sheet and the "Add a box" sheet, F6. FW4: no box chosen. FW5: the canvas marks and the close-out.
