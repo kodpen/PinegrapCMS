@@ -14979,6 +14979,23 @@ a.ws-person-link:hover .avatar {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+/* An agent among them: its square face, its name with the badge and under
+   it what it did with the message. */
+.ws-seen-agent {
+  align-items: flex-start;
+}
+.ws-seen-agent-text {
+  min-width: 0;
+  line-height: 1.3;
+}
+.ws-seen-agent-name .ws-info-badge {
+  margin-left: .4rem;
+  vertical-align: .1em;
+}
+/* The agents the message did not wake, named apart. */
+.ws-seen-quiet {
+  overflow-wrap: anywhere;
+}
 /* Changed after it was sent. */
 .ws-msg-edited {
   display: inline-block;
