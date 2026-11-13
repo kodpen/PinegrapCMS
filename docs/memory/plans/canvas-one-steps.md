@@ -21,7 +21,7 @@ description: Steps CO0-CO9 of plans/canvas-one.md: model and screens drawn, the 
 
 - CO6 (M) Data as the name and place. Workflow tables are called Data in the menu and on the screens; a canvas shows its tables under Data; addresses, API names and MCP tools keep their names. Done in #8978 (`workspace/workflow-tables-data-list.md`); the canvases that use a table moved to CO6b, since CO2 had not landed.
 
-- CO6b (S) The canvases that use a table: a column of the Data list and a line under an opened table's title, read from `ws_canvas_tables`. After CO2 and CO6.
+- CO6b (S) The canvases that use a table: a column of the Data list and a line under an opened table's title, read from `ws_canvas_tables`. Done in #9192 (`workspace/workflow-tables-data-list.md`).
 
 - CO7 (M) One flow over the API and MCP. Make a canvas with a page, bind a table, read and write, list versions: the routes and the tools, described in `api/`; the assistants' tools follow (`workspace/agent-canvas-assistants.md`). After CO3.
 

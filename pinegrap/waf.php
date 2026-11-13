@@ -1397,7 +1397,10 @@ function waf_good_bots()
         'sogou'                => array('name' => 'Sogou',            'verify' => array()),
         'exabot'               => array('name' => 'Exabot',           'verify' => array()),
         'seznambot'            => array('name' => 'SeznamBot',        'verify' => array('.seznam.cz')),
-        'naver'                => array('name' => 'Naver',            'verify' => array()),
+        // Naver's crawler is Yeti; a bare 'naver' matched the Naver app's
+        // own browser, "NAVER(inapp; ...)", a person reading a link.
+        'yeti/'                => array('name' => 'Naver',            'verify' => array()),
+        'naverbot'             => array('name' => 'Naver',            'verify' => array()),
         'qwantbot'             => array('name' => 'Qwant',            'verify' => array()),
 
         // Social preview fetchers. Blocking these silently breaks every link
@@ -1411,7 +1414,10 @@ function waf_good_bots()
         'telegrambot'          => array('name' => 'TelegramBot','verify' => array()),
         'slackbot'             => array('name' => 'Slackbot',   'verify' => array()),
         'discordbot'           => array('name' => 'Discordbot', 'verify' => array()),
-        'pinterest'            => array('name' => 'Pinterest',  'verify' => array()),
+        // The crawler and the link preview fetcher; the Pinterest app's own
+        // browser ends in "[Pinterest/iOS]" or "[Pinterest/Android]".
+        'pinterestbot'         => array('name' => 'Pinterest',  'verify' => array()),
+        'pinterest/0.'         => array('name' => 'Pinterest',  'verify' => array()),
         'redditbot'            => array('name' => 'Redditbot',  'verify' => array()),
         'embedly'              => array('name' => 'Embedly',    'verify' => array()),
 
@@ -1436,7 +1442,9 @@ function waf_good_bots()
         'pingdom'              => array('name' => 'Pingdom',      'verify' => array()),
         'statuscake'           => array('name' => 'StatusCake',   'verify' => array()),
         'site24x7'             => array('name' => 'Site24x7',     'verify' => array()),
-        'betteruptime'         => array('name' => 'Better Uptime','verify' => array()),
+        // "Better Uptime Bot Mozilla/5.0 ..."; without this entry the
+        // residual "bot" signal classed it as a bad bot.
+        'better uptime bot'    => array('name' => 'Better Uptime','verify' => array()),
         'newrelicpinger'       => array('name' => 'New Relic',    'verify' => array()),
         'gtmetrix'             => array('name' => 'GTmetrix',     'verify' => array()),
         'chrome-lighthouse'    => array('name' => 'Lighthouse',   'verify' => array()),
@@ -1640,6 +1648,10 @@ function waf_ai_fixed_ranges($token)
 /**
  * Aggressive commercial crawlers and AI scrapers. Not attackers - they are
  * simply expensive, and most storefront operators want them gone.
+ *
+ * Crawler tokens only, never a company's name: 'bytedance' matched TikTok's
+ * in-app browser ("BytedanceWebview/..."), so every visitor who opened a
+ * shared link inside TikTok was refused; ByteDance's crawler is Bytespider.
  */
 function waf_bad_bots()
 {
@@ -1651,7 +1663,7 @@ function waf_bad_bots()
         'domaincrawler', 'netestate', 'trendictionbot', 'ltx71',
         'gptbot', 'ccbot', 'claudebot', 'anthropic-ai', 'claude-web',
         'perplexitybot', 'youbot', 'imagesiftbot', 'omgili', 'diffbot',
-        'amazonbot', 'meta-externalagent', 'bytedance', 'timpibot',
+        'amazonbot', 'meta-externalagent', 'timpibot',
     );
 }
 
