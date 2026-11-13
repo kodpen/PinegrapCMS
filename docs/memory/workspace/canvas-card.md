@@ -12,6 +12,8 @@ description: The joined card of a canvas with a drawing and a page (CO7c, #9274)
 - Leaving the Page tab stops the page (`close()`); the tab is remembered per message while the conversation redraws the card.
 - A drawing part still pending is drawn by the member's browser through `workspace_file_save.php?message=<id>&part=drawing` (`ws_file_edit_target()` takes the part).
 
+- Owner (2026-11-13, #9274): approved from sandbox screenshots as built, with the part chips at the right of the name row and no Show on a drawing version.
+
 ## What does the Versions drawer do?
 - One list over both parts, newest first (`ws_canvas_card_versions()`, pure): "Page · version 7" or "Drawing · version 2", the maker (@handle, or Put back for a restore), the time, Now on each part's newest; a segmented All / Page / Drawing with counts.
 - Show on a page version opens View source at that version. Put back this version (for whoever may write in the channel, not on the newest) is `ws_canvas_restore` {message_id, part, version} → `ws_canvas_part_restore()`: a new version with source `restore`, every version kept; a drawing version still pending is refused.
@@ -21,4 +23,4 @@ description: The joined card of a canvas with a drawing and a page (CO7c, #9274)
 - The page part, through `ws_canvas_part_message($message, 'page')`: `live_page.php` (the frame), `ws_page_source`, `ws_page_undo`, the bridge, bindings and the first-write question (`workspace/canvas-parts.md`).
 
 ## How was it checked?
-- `tests/workspace_canvas_card_test.php` (the list, the texts, the hooks). In a sandbox panel (#9274) both two-part canvases drew in dark and light, wide and phone: the drawing's picture drawn by the browser through the part, the page frame run, the drawer listed, and a page version put back. The owner approves the screen from those screenshots.
+- `tests/workspace_canvas_card_test.php` (the list, the texts, the hooks). In a sandbox panel (#9274) both two-part canvases drew in dark and light, wide and phone: the drawing's picture drawn by the browser through the part, the page frame run, the drawer listed, and a page version put back. Times in the drawer and View source follow the panel's language and the site's zone (`CFG.locale`, `CFG.timezone`).
