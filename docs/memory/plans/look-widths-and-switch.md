@@ -24,7 +24,7 @@ description: Plan (owner 2026-11-13, #9070): lists at least 1700 px with the det
   - First a proposal of how the cards use a form column of up to 1300 px (two cards abreast, or fields side by side) on Edit Product, Edit Page and the longest Site Settings card: the architect shows it to the owner before the rule reaches every screen.
 - LW3 (S) The switch. Done #9197 (`ui/look-switch.md`).
 - LW4 (S, no product code) The screens at another width. Done #9211: `ui/look-screen-widths.md` names each screen and its step.
-- LW5 (M) Lists and views off the table driver take `pg-measure-list` (list: `ui/look-screen-widths.md`); a table that is not a list table keeps its own frame. Pictures of each.
+- LW5 (M) Lists and views off the table driver take `pg-measure-list` (list: `ui/look-screen-widths.md`); a table that is not a list table keeps its own frame. Pictures of each. Done #9230.
 - LW6 (M) Settings, tool and import pages (the list there) take `pg-measure-edit`, a form in a single card at the form column; `clean_up` drops its own `.container`. After LW2, at its numbers.
 - LW7 (S) The ERP reports and the Search Console and audit screens (the list there) take `pg-measure-report`.
 - Close-out: `ui/look-page-widths.md`, `ui/look-settings-screens.md` and the sheet's list and edit pages (`plans/panel-design-language-sheet.md`) are brought to the new numbers; this plan is deleted.
