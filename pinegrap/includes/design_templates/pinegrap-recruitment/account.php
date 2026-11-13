@@ -368,12 +368,12 @@ $account_widgets = array(
             'staff_page_id'      => '{{tab:staff}}',
         ),
         'tree'   => $widget_root(array(
-            $el('div', 'd-flex align-items-center gap-2', lang('Signed Out'), array(
+            $el('div', 'd-flex align-items-center gap-1 gap-sm-2', lang('Signed Out'), array(
                 $link(lang('Log In'), '#', 'btn btn-sm btn-link link-body-emphasis text-decoration-none text-nowrap', array(), array('_bindings' => array('href' => '__login_url'))),
                 $link(lang('Sign Up'), '#', 'btn btn-sm btn-outline-primary text-nowrap', array(), array('_bindings' => array('href' => '__register_url'))),
             ), $show_when('is_signed_out')),
             $el('div', 'dropdown', lang('Signed In'), array(
-                $el('button', 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none dropdown-toggle', lang('Account Button'), array(
+                $el('button', 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none text-nowrap dropdown-toggle', lang('Account Button'), array(
                     $image($portrait(lang('Jane Cooper'), 64), lang('Jane Cooper'), 'rounded-circle object-fit-cover',
                         array('width' => '24', 'height' => '24', '_bindings' => array('src' => '__user_avatar_url', 'alt' => '__user_name'))),
                     $span(lang('Jane'), 'fw-semibold', lang('First Name'), $bind('__user_first_name')),

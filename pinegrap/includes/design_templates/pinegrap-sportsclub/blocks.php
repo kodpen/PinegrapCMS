@@ -164,7 +164,7 @@ $sc_table = function () use ($el, $span, $container, $attr, $searchable, $sectio
             $section_header($competitions['league'], lang('League table'), lang('All results'), '{{page:results}}'),
             $el('div', 'card border-0 shadow-sm', lang('Table Card'), array(
                 $el('div', 'card-body p-0 p-md-3', lang('Card Body'), array(
-                    $el('div', 'table-responsive', lang('Table Wrap'), array($table), array('_attrs' => array(
+                    $el('div', 'table-responsive position-relative', lang('Table Wrap'), array($table), array('_attrs' => array(
                         $attr('role', 'region'), $attr('aria-label', $caption), $attr('tabindex', '0'),
                     ))),
                 )),

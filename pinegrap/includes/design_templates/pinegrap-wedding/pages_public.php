@@ -404,7 +404,7 @@ $public_pages[] = array(
         $el('section', 'py-5 bg-body-tertiary', lang('Package Prices'), array(
             $container(array(
                 $section_header(lang('At a glance'), lang('Compare the packages')),
-                $el('div', 'table-responsive', lang('Table'), array(
+                $el('div', 'table-responsive position-relative', lang('Table'), array(
                     $el('table', 'table align-middle mb-0', lang('Price Table'), array(
                         $el('thead', '', lang('Table Head'), array(
                             $el('tr', '', lang('Row'), array(
@@ -515,9 +515,12 @@ $public_pages[] = array(
                     $para(lang('A wedding is a year of small decisions. Our timeline shows what to do and when, from choosing the date to handing everything over in the last week.'), 'lead text-body-secondary mb-0'),
                 )),
                 $rise($el('ol', 'list-unstyled row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4', lang('Timeline'), $stage_items), 100),
+                // Beside the note the button keeps its one line (flex-shrink-0);
+                // stacked on a phone its label may wrap rather than run past
+                // the 320 px screen.
                 $el('div', 'd-flex flex-column flex-sm-row align-items-sm-center justify-content-center gap-3 text-center', lang('Checklist Foot'), array(
                     $para(lang('With full or partial planning, your planner keeps this list with you and reminds you of each step in time.'), 'small text-body-secondary mb-0'),
-                    $link(lang('See the planning services'), '{{page:services}}', 'btn btn-outline-primary rounded-pill px-4 text-nowrap'),
+                    $link(lang('See the planning services'), '{{page:services}}', 'btn btn-outline-primary rounded-pill px-4 flex-shrink-0'),
                 )),
             )),
         ), $searchable('wd-timeline', lang('checklist, when to book, schedule, to do, months before, planner, reminder'))),

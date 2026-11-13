@@ -8,7 +8,9 @@
  * instead of running off the page, an image's size is in the props the page
  * writes (not in its attributes, which the page drops), the grey
  * sections give their primary and second coloured text a readable tint in
- * the dark theme, and so does the primary's soft tint in both themes.
+ * the dark theme, and so does the primary's soft tint in both themes; the
+ * account bar's links wrap as a whole on a phone with their labels kept on
+ * one line, and a table's scroll wrapper holds its visually hidden labels.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -223,5 +225,64 @@ function test_design_template_fit_pz_soft_tint()
 		) as $rule) {
 			pg_assert_contains($rule, $css, "$id: $rule");
 		}
+	}
+}
+
+// The account bar's row (language switcher, login region, cart) did not
+// wrap: on a phone, with more than one site language, the store's Log In and
+// Sign Up broke onto two lines each and the other templates' Sign Up ran
+// past the page. The row wraps as a whole now and no label breaks.
+function test_design_template_fit_pz_account_bar_wraps()
+{
+	foreach (array_merge(_test_tpl_fitpz_ids(), array('pinegrap-store')) as $id) {
+		$tpl = _test_tpl_fitpz_template($id);
+		$row = null;
+		$switcher = null;
+		_test_tpl_fitpz_walk(isset($tpl['shared']['account_bar']['tree']) ? $tpl['shared']['account_bar']['tree'] : null, function ($node) use (&$row, &$switcher) {
+			foreach ($node['children'] as $child) {
+				if (isset($child['props']['componentType']) && $child['props']['componentType'] === 'language_switcher') {
+					$row = $node;
+					$switcher = $child;
+				}
+			}
+		});
+		pg_assert_true($row !== null, "$id: the account bar holds the language switcher");
+		if ($row === null) continue;
+		foreach (array('flex-wrap', 'justify-content-end', 'row-gap-1', 'ms-auto') as $c) {
+			pg_assert_contains($c, _test_tpl_fitpz_classes($row), "$id: account links $c");
+		}
+		pg_assert_contains('text-nowrap', _test_tpl_fitpz_classes($switcher), "$id: the switcher's label stays on one line");
+
+		$links = array();
+		_test_tpl_fitpz_walk(isset($tpl['widgets']['login_region']['tree']) ? $tpl['widgets']['login_region']['tree'] : null, function ($node) use (&$links) {
+			$href = isset($node['props']['_bindings']['href']) ? $node['props']['_bindings']['href'] : '';
+			if ($href === '__login_url' || $href === '__register_url') $links[$href] = $node;
+		});
+		pg_assert_same(array('__login_url', '__register_url'), array_keys($links), "$id: Log In and Sign Up in the login region");
+		foreach ($links as $href => $node) {
+			pg_assert_contains('text-nowrap', _test_tpl_fitpz_classes($node), "$id: $href stays on one line");
+		}
+	}
+}
+
+// A visually hidden label is absolutely positioned: in a table wider than
+// the phone, inside a static .table-responsive, it was placed against the
+// card or the page and widened it (the travel price table made the deals
+// page 616 px wide at 390 px). The wrapper is position-relative.
+function test_design_template_fit_pz_table_wrapper_holds_hidden_labels()
+{
+	foreach (array_merge(_test_tpl_fitpz_ids(), array('pinegrap-store')) as $id) {
+		$tpl = _test_tpl_fitpz_template($id);
+		$loose = array();
+		_test_tpl_fitpz_walk(array($tpl['pages'], $tpl['shared'], isset($tpl['widgets']) ? $tpl['widgets'] : array()), function ($node) use (&$loose) {
+			$classes = _test_tpl_fitpz_classes($node);
+			if (!in_array('table-responsive', $classes, true) || in_array('position-relative', $classes, true)) return;
+			$hidden = false;
+			_test_tpl_fitpz_walk($node['children'], function ($child) use (&$hidden) {
+				if (in_array('visually-hidden', _test_tpl_fitpz_classes($child), true)) $hidden = true;
+			});
+			if ($hidden) $loose[] = isset($node['props']['customName']) ? $node['props']['customName'] : '?';
+		});
+		pg_assert_same(array(), $loose, "$id: a table wrapper with hidden labels is position-relative");
 	}
 }

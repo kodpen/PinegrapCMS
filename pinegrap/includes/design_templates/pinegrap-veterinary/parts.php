@@ -491,8 +491,8 @@ $account_bar_tree = function () use ($el, $widget, $shared, $lang_switcher) {
     return $el('div', 'border-bottom small bg-body-tertiary', lang('Account Bar'), array(
         $el('div', 'container d-flex flex-wrap align-items-center justify-content-between gap-2 py-1', lang('Account Area'), array(
             $el('div', '', lang('Announcement Area'), array($shared('notice'))),
-            $el('div', 'd-flex align-items-center gap-2 ms-auto', lang('Account Links'), array(
-                $lang_switcher(), $widget('login_region'), $widget('cart_link'),
+            $el('div', 'd-flex flex-wrap align-items-center justify-content-end column-gap-1 column-gap-sm-2 row-gap-1 ms-auto', lang('Account Links'), array(
+                $lang_switcher('text-nowrap'), $widget('login_region'), $widget('cart_link'),
             )),
         )),
     ));
@@ -574,7 +574,9 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $species, 
     foreach ($opening_hours as $h) {
         $hours[] = $el('span', 'd-block', lang('Opening Hours'), array(
             $span($h['days'] . ': ', '', lang('Days')),
-            $span($h['hours'], 'pvt-price', lang('Hours')),
+            // The footer column is half the width on a phone: a long line
+            // ("Emergencies only") wraps there instead of running past it.
+            $span($h['hours'], 'pvt-price text-wrap', lang('Hours')),
         ));
     }
 

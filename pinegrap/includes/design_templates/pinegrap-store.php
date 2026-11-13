@@ -189,13 +189,15 @@ $announcement = function () use ($el, $icon, $span) {
 // The bar above the header: the announcement on the left, the language
 // switcher, the cart link and the login region on the right. A shared
 // component like the header under it: the two system widgets and the
-// announcement are placed inside it.
+// announcement are placed inside it. On a phone the links sit closer
+// together; where they still do not fit, the login region moves under them
+// as a whole instead of breaking its two-word labels.
 $account_bar = function () use ($el, $widget, $shared, $lang_switcher) {
     return $el('div', 'bg-body-tertiary border-bottom small', lang('Account Bar'), array(
         $el('div', 'container d-flex flex-wrap align-items-center justify-content-between gap-2 py-1', lang('Account Area'), array(
             $el('div', 'd-none d-md-block', lang('Announcement Area'), array($shared('announcement'))),
-            $el('div', 'd-flex align-items-center gap-2 ms-auto', lang('Account Links'), array(
-                $lang_switcher(), $widget('cart_link'), $widget('login_region'),
+            $el('div', 'd-flex flex-wrap align-items-center justify-content-end column-gap-1 column-gap-sm-2 row-gap-1 ms-auto', lang('Account Links'), array(
+                $lang_switcher('text-nowrap'), $widget('cart_link'), $widget('login_region'),
             )),
         )),
     ));
@@ -343,7 +345,8 @@ $footer = function () use ($el, $para, $link, $icon, $heading, $categories, $cat
                         $icon('bi-envelope', 'text-primary'),
                         $link('hello@example.com', 'mailto:hello@example.com', 'link-body-emphasis text-decoration-none text-break'),
                     )),
-                    $el('p', 'small d-flex align-items-center gap-2 mb-0', lang('Phone'), array(
+                    // The number never breaks; in a 320 px column it moves under its icon.
+                    $el('p', 'small d-flex flex-wrap align-items-center column-gap-2 mb-0', lang('Phone'), array(
                         $icon('bi-telephone', 'text-primary'),
                         $link('+90 555 000 00 00', 'tel:+905550000000', 'link-body-emphasis text-decoration-none text-nowrap'),
                     )),
@@ -1844,12 +1847,12 @@ $widgets = array(
             'staff_page_id'      => '{{tab:staff}}',
         ),
         'tree'   => $widget_root(array(
-            $el('div', 'd-flex align-items-center gap-2', lang('Signed Out'), array(
-                $link(lang('Log In'), '#', 'btn btn-sm btn-link text-decoration-none', array(), array('_bindings' => array('href' => '__login_url'))),
-                $link(lang('Sign Up'), '#', 'btn btn-sm btn-primary', array(), array('_bindings' => array('href' => '__register_url'))),
+            $el('div', 'd-flex align-items-center gap-1 gap-sm-2', lang('Signed Out'), array(
+                $link(lang('Log In'), '#', 'btn btn-sm btn-link text-decoration-none text-nowrap', array(), array('_bindings' => array('href' => '__login_url'))),
+                $link(lang('Sign Up'), '#', 'btn btn-sm btn-primary text-nowrap', array(), array('_bindings' => array('href' => '__register_url'))),
             ), $show_when('is_signed_out')),
             $el('div', 'dropdown', lang('Signed In'), array(
-                $el('button', 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none dropdown-toggle', lang('Account Button'), array(
+                $el('button', 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none text-nowrap dropdown-toggle', lang('Account Button'), array(
                     $image('https://placehold.co/64x64/e11d48/ffffff?text=JC', lang('Jane Cooper'), 'rounded-circle object-fit-cover',
                         array('width' => '28', 'height' => '28', '_bindings' => array('src' => '__user_avatar_url', 'alt' => '__user_name'))),
                     $span(lang('Jane'), 'fw-semibold', lang('First Name'), $bind('__user_first_name')),

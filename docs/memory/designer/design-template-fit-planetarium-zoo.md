@@ -20,7 +20,7 @@ description: Templates Planetarium to Zoo: header menu opens at 1200 px, smaller
 ## What else was fixed?
 - Restaurant footer: the opening hours (`prt-price`, `white-space:nowrap`) ran past their column at 1,000 to 1,060 px; that span takes `text-wrap`.
 - Social: the tile counts (`psc-tile-info`) show on hover only; under `@media (hover:none)` they stay in view.
-- Colours on grey and soft-tint sections: [[design-template-contrast-planetarium-zoo]].
+- Colours on grey and soft-tint sections: [[design-template-contrast-planetarium-zoo]]. Phones (account bar row, table wrappers, footers): [[design-template-phone-fit-planetarium-zoo]].
 
 ## What is still open?
 - Heading skips h1 to h3 on list pages (card titles right under the page title).
@@ -29,4 +29,4 @@ description: Templates Planetarium to Zoo: header menu opens at 1200 px, smaller
 
 ## What tests it?
 - `tests/design_template_fit_planetarium_zoo_test.php`: header `navbar-expand-xl` with no `-lg-` class, container `flex-xl-wrap` (social not), the menu class rule, no image size in `_attrs` (store too), and the colour rules.
-- Measured in headless Chromium on the sandbox: every preview page at 320 to 1,440 px, Turkish and English, light and dark.
+- Measured in headless Chromium on the sandbox: every preview page at 320 to 1,440 px, Turkish and English, light and dark; phone widths against the set viewport, not innerWidth ([[design-template-phone-fit-planetarium-zoo]]).
