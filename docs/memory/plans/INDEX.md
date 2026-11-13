@@ -9,6 +9,7 @@
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
+- agent-profile.md: Plan: an agent's role chosen from a fixed list on its form, and the model and plan usage an application agent reports with its own key; steps AP1-AP3 (owner 2026-11-13, #9260)
 - automation-flows-menu-census.md: Census of the automation-flows-menu plan (AF0): where flows asked the Workspace switch, what the Flows screen takes from its shell, the API, the entries, who holds the right
 - automation-flows-menu-steps-2.md: Steps AF3b, AF3c, AF4b, AF4c of the automation-flows-menu plan, decided after the census (AF0): more boxes that need the Workspace, the API routes, the dashboard entries, the bell
 - automation-flows-menu.md: Plan (owner 2026-11-12, #8961): Flows become "Automation flows", a main menu row with a moving icon, and run on a site whose Workspace is off; the in-channel view stays; steps AF0-AF6
