@@ -64,6 +64,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-8.md: Is the report screen page the reference for the report screens? (owner, 2026-11-12, #8955)
 - decisions-made-panel-8.md: Is a settings switch without a thumb approved? (owner, 2026-11-12, #9070)
 - decisions-made-panel-8.md: Where is the Design Canvas icon drawn in one colour? (owner, 2026-11-13, #9250)
+- decisions-made-panel-8.md: How do cards use the form column of an add or edit screen? (owner, 2026-11-13, #9271)
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?
 - decisions-made-panel.md: Which date-and-time picker does the software use? (#2693, 2026-10-28)
@@ -313,6 +314,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-16.md: Which tables and columns were approved?
 - decisions-made-schema-17.md: Where are the rules and the earlier parts?
 - decisions-made-schema-17.md: Which tables and columns were approved?
+- decisions-made-schema-18.md: Where are the rules and the earlier parts?
+- decisions-made-schema-18.md: Which tables and columns were approved?
 - decisions-made-schema-2.md: Where are the rules and the earlier steps?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-28?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-29 and later?
@@ -417,6 +420,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-22.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-22.md: Is incoming e-mail read and answered where the Workspace is off? (owner, 2026-11-13, #9203)
 - decisions-made-workspace-22.md: Who approves the flow window's narrow window and phone drawing? (owner, 2026-11-13, #9209)
+- decisions-made-workspace-22.md: Is an agent's role a field, and who says its model and usage? (owner, 2026-11-13, #9260)
+- decisions-made-workspace-23.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-23.md: Is an e-mail to a domain that does not exist sent without a word? (owner, 2026-11-13, #9267)
+- decisions-made-workspace-23.md: Who can be answered by SMS from a channel? (owner, 2026-11-13, #9286)
+- decisions-made-workspace-23.md: What does a stop word received by SMS or WhatsApp do? (owner, 2026-11-13, #9286)
 - decisions-made-workspace-3.md: Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - decisions-made-workspace-3.md: How does a "For each" box loop over a list? (#3312)
 - decisions-made-workspace-3.md: What may a role-3 member's personal flow hold? (#3345)
