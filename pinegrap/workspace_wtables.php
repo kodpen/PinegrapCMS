@@ -842,9 +842,10 @@ if (!$table) {
     // The scopes as a segmented control with their counts, and the tables
     // beside the deleted ones; each segment is an address.
     $scope_items = array();
+    $segment_icons = ws_wtable_list_segment_icons();
 
     foreach (ws_wtable_list_scopes($with_channels) as $key => $label) {
-        $scope_items[] = array('label' => $label, 'url' => $self_url . (($key === 'all') ? '' : '?scope=' . $key), 'count' => $counts[$key], 'current' => ($key === $scope));
+        $scope_items[] = array('label' => $label, 'url' => $self_url . (($key === 'all') ? '' : '?scope=' . $key), 'count' => $counts[$key], 'current' => ($key === $scope), 'icon' => $segment_icons[$key] ?? 'bi-grid');
     }
 
     $scopes = $deleted_view ? '' : ws_wtable_list_segments(lang('Show'), $scope_items);
@@ -852,8 +853,8 @@ if (!$table) {
 
     if (ws_wtable_bin_ready()) {
         $views = ws_wtable_list_segments(lang('View'), array(
-            array('label' => lang('Tables'), 'url' => $self_url, 'current' => !$deleted_view),
-            array('label' => lang('Deleted tables'), 'url' => $self_url . '?view=deleted', 'current' => $deleted_view) + (empty($binned) ? array() : array('count' => count($binned))),
+            array('label' => lang('Tables'), 'url' => $self_url, 'current' => !$deleted_view, 'icon' => $segment_icons['tables']),
+            array('label' => lang('Deleted tables'), 'url' => $self_url . '?view=deleted', 'current' => $deleted_view, 'icon' => $segment_icons['deleted']) + (empty($binned) ? array() : array('count' => count($binned))),
         ));
     }
 

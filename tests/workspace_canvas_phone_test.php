@@ -26,6 +26,8 @@ function test_workspace_canvas_phone_card()
 	pg_assert_true(strpos($js, "fullButton.dataset.pageFull = '1'") !== false && strpos($js, "stage.querySelector('[data-page-full]')") !== false, 'the foot presses the page card\'s own Full screen');
 	pg_assert_true(strpos($js, "if (opts.bare && !fullButton.hidden)") !== false, 'the phone classes only where the button shows: a display class beats hidden');
 	pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.min.js'), 'data-page-full') !== false, 'the bundle is built');
+	pg_assert_true(strpos($js, "h.el('div', 'pg-seg pg-seg-icons mt-2')") !== false && strpos($js, "h.el('div', 'pg-seg pg-seg-icons mb-3')") !== false, 'the Drawing / Page switch and the Versions filter are icon segments');
+	pg_assert_true(strpos($js, 'btn-group') === false, 'no button group left on the card');
 }
 
 function test_workspace_canvas_phone_data_list()
@@ -35,6 +37,8 @@ function test_workspace_canvas_phone_data_list()
 
 	pg_assert_true(strpos($screen, 'class="pg-button pg-button-fill ws-wt-fab sm:d-none"') !== false, 'New table floats on a phone');
 	pg_assert_true(strpos($screen, 'class="pg-button pg-button-fill d-none sm:d-inline-flex" data-bs-toggle="dialog" data-bs-target="#ws_wt_new"') !== false, 'the toolbar\'s New table from 576 px');
+
+	pg_assert_true(strpos($css, '.pg-seg-icons .pg-seg-item:not(.is-active, [aria-pressed="true"], [aria-current]) .pg-seg-label {') !== false, 'below 576 px only the chosen segment keeps its label');
 
 	preg_match('/\.ws-wt-fab \{([^}]*)\}/', $css, $rule);
 	pg_assert_true(!empty($rule), 'the placing rule is there');

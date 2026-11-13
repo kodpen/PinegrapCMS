@@ -26439,6 +26439,24 @@ textarea.pg-input {
   font-size: var(--pg-text-meta);
   color: var(--pg-fg-3);
 }
+/* A control of icon segments (.pg-seg-icons): each segment has its icon
+   and a .pg-seg-label; below 576 px only the chosen one shows its label,
+   the others their icon, the label kept for screen readers. */
+.pg-seg-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+@media (max-width: 575.98px) {
+  .pg-seg-icons .pg-seg-item:not(.is-active, [aria-pressed="true"], [aria-current]) .pg-seg-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
 
 /* Tones: a class sets --pg-tone, the pill and the tile read it. */
 .pg-tone-blue { --pg-tone: var(--pg-tone-blue); }

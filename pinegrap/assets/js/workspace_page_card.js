@@ -429,7 +429,7 @@
                 // its own line and the switch and Remove wrap under it.
                 var row = h.el('div', 'd-flex flex-wrap align-items-center gap-2 border rounded px-3 py-2');
                 var name = h.el('div', 'd-flex align-items-center gap-2');
-                var segment = h.el('div', 'btn-group btn-group-sm ms-auto');
+                var segment = h.el('div', 'pg-seg ms-auto');
 
                 name.style.flex = '1 1 12rem';
                 name.style.minWidth = '0';
@@ -439,8 +439,9 @@
 
                 [['read', h.t('page_bind_read')], ['write', h.t('page_bind_write')]].forEach(function (pair) {
                     var on = (table.bound === pair[0]);
-                    var button = h.button('btn btn-sm ' + (on ? 'btn-solid theme-primary' : 'btn-outline theme-secondary'), pair[1]);
+                    var button = h.el('button', 'pg-seg-item' + (on ? ' is-active' : ''), pair[1]);
 
+                    button.type = 'button';
                     button.setAttribute('aria-pressed', on ? 'true' : 'false');
                     button.addEventListener('click', function () {
                         if (!on) {
@@ -731,13 +732,20 @@
             counts[row.part] = (counts[row.part] || 0) + 1;
         });
 
-        var segment = h.el('div', 'btn-group btn-group-sm mb-3');
+        // Look A's segmented control of icon segments, each with its count.
+        var segment = h.el('div', 'pg-seg pg-seg-icons mb-3');
 
         segment.setAttribute('role', 'group');
-        [['all', h.t('canvas_all')], ['page', h.t('canvas_part_page')], ['drawing', h.t('canvas_part_drawing')]].forEach(function (pair) {
+        [['all', h.t('canvas_all'), 'bi-collection'], ['page', h.t('canvas_part_page'), 'bi-window'], ['drawing', h.t('canvas_part_drawing'), 'bi-vector-pen']].forEach(function (pair) {
             var on = (pair[0] === filter);
-            var choice = h.button('btn btn-sm ' + (on ? 'btn-solid theme-primary' : 'btn-outline theme-secondary'), pair[1] + ' ' + counts[pair[0]]);
+            var choice = h.el('button', 'pg-seg-item' + (on ? ' is-active' : ''));
+            var label = h.el('span', 'pg-seg-label', pair[1]);
 
+            label.appendChild(h.el('em', 'pg-seg-count', String(counts[pair[0]] || 0)));
+            choice.type = 'button';
+            choice.title = pair[1];
+            choice.appendChild(h.icon(pair[2]));
+            choice.appendChild(label);
             choice.setAttribute('aria-pressed', on ? 'true' : 'false');
             choice.addEventListener('click', function () {
                 showVersions(message, pageMessage, h, opts, pair[0]);
@@ -862,7 +870,9 @@
         maker.appendChild(h.el('span', '', h.t('page_by', page.by || '?')));
         root.appendChild(maker);
 
-        var segment = h.el('div', 'btn-group btn-group-sm mt-2');
+        // Look A's segmented control of icon segments: below 576 px only the
+        // chosen part keeps its label (.pg-seg-icons).
+        var segment = h.el('div', 'pg-seg pg-seg-icons mt-2');
         var stage = h.el('div', 'mt-2');
         var tab = tabs[message.id] || (open[message.id] ? 'page' : 'drawing');
 
@@ -881,7 +891,7 @@
             Array.prototype.forEach.call(segment.children, function (choice) {
                 var on = (choice.dataset.tab === which);
 
-                choice.className = 'btn btn-sm ' + (on ? 'btn-solid theme-primary' : 'btn-outline theme-secondary');
+                choice.className = 'pg-seg-item' + (on ? ' is-active' : '');
                 choice.setAttribute('aria-pressed', on ? 'true' : 'false');
             });
 
@@ -919,8 +929,13 @@
         }
 
         [['drawing', 'bi-vector-pen'], ['page', 'bi-window']].forEach(function (pair) {
-            var choice = h.button('btn btn-sm', partLabel(h, pair[0]), pair[1]);
+            var choice = h.el('button', 'pg-seg-item');
+            var label = partLabel(h, pair[0]);
 
+            choice.type = 'button';
+            choice.title = label;
+            choice.appendChild(h.icon(pair[1]));
+            choice.appendChild(h.el('span', 'pg-seg-label', label));
             choice.dataset.tab = pair[0];
             choice.addEventListener('click', function () {
                 if (tab !== pair[0]) {
