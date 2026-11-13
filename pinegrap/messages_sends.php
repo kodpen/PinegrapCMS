@@ -8,7 +8,7 @@
  * state and period filters, Run now, and each row's Retry and Delete under
  * its own queue's rules. The queue rows are for role <= 2 (they hold
  * password resets and receipts); a role 3 campaign maker sees their own
- * campaigns. Until the list opens the tab leads to today's screens.
+ * campaigns.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -23,30 +23,6 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_sends.php');
 
 $user = validate_user();
 validate_email_access($user);
-
-// Until the list opens (pg_messages_sends_list_open()), the tab leads to
-// the screens that hold the sends today.
-if (!pg_messages_sends_list_open()) {
-    $rows = array();
-
-    if ($user['role'] < 3) {
-        $rows[] = array('title' => lang('E-mail queue'), 'text' => lang('Every e-mail waiting, sent or failed, with retry.'), 'url' => 'mail_queue.php', 'icon' => 'bi-envelope', 'tone' => 'blue');
-
-        if (pg_sms_queue_shown()) {
-            $rows[] = array('title' => lang('SMS queue'), 'text' => lang('Every text message waiting, sent or failed, with retry.'), 'url' => 'mail_queue.php?tab=sms', 'icon' => 'bi-chat-text', 'tone' => 'amber');
-        }
-    }
-
-    $rows[] = array('title' => lang('Finished campaigns'), 'text' => lang('Completed and cancelled e-mail and SMS campaigns.'), 'url' => 'view_email_campaigns.php?state=finished', 'icon' => 'bi-send-check', 'tone' => 'violet');
-
-    echo pg_messages_tab_page(
-        'sends',
-        $user,
-        lang('Every message the site sends, with its state.'),
-        pg_messages_place_rows(lang('Where the sends are listed'), $rows)
-    );
-    exit;
-}
 
 include_once('liveform.class.php');
 $liveform = new liveform('messages_sends');
@@ -86,7 +62,11 @@ if ($_POST) {
 
         $sends_outcome = pg_messages_sends_action($user, $sends_action);
 
+        // E-mail is worked by the general job or mail_job.php, text
+        // messages by the general job only.
         if ($sends_outcome === 'queued') {
+            $liveform->add_notice(lang('The message will be sent on the next run of the general job or mail_job.php.'));
+        } elseif ($sends_outcome === 'queued_sms') {
             $liveform->add_notice(lang('The message will be sent on the next run of the general job.'));
         } elseif ($sends_outcome === 'sent') {
             $liveform->add_notice(lang('The message was sent.'));
@@ -144,6 +124,7 @@ $sends_toolbar = pg_filter_select('period', pg_messages_sends_periods(), $sends_
     . pg_filter_select('state', array('' => lang('All states')) + pg_mail_queue_list_status_labels(pg_messages_sends_states()), $sends_filters['state'], array('keep' => $sends_keep, 'label' => lang('State')));
 
 $sends_state_line = '';
+$sends_transport_warning = '';
 
 if ($sends_manager) {
     $sends_toolbar = '
@@ -159,7 +140,23 @@ if ($sends_manager) {
     $sends_runs = pg_cron_last_runs();
     $sends_run = (is_array($sends_runs) && isset($sends_runs['mail_job'])) ? (int) $sends_runs['mail_job'] : 0;
 
-    $sends_state_line = '<p class="small mt-3 mb-0">' . $sends_state_line . ' · ' . lang('Last run of the mail queue') . ': '
+    // The newest message the queue tried: while it failed because PHP mail()
+    // cannot send, nothing goes out until an SMTP server is set up.
+    if (pg_mail_queue_ready() && pg_mail_transport_warning_shown(db_item(
+        "SELECT status, last_error
+        FROM mail_outbox
+        WHERE (status = 'sent') OR (attempts > 0)
+        ORDER BY id DESC
+        LIMIT 1"))) {
+        $sends_transport_warning = '
+            <div class="alert theme-warning d-flex flex-wrap align-items-center gap-3 mt-5" role="alert">
+                <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                <span>' . h(pg_mail_transport_failure_sentence()) . '</span>
+                <a class="btn btn-sm btn-solid theme-warning ms-auto" href="' . h(PATH . SOFTWARE_DIRECTORY . '/smtp_settings.php') . '">' . h(lang('Open SMTP Settings')) . '</a>
+            </div>';
+    }
+
+    $sends_state_line = $sends_transport_warning . '<p class="small mt-3 mb-0">' . $sends_state_line . ' · ' . lang('Last run of the mail queue') . ': '
         . (($sends_run > 0) ? prepare_form_data_for_output(date('Y-m-d H:i:s', $sends_run), 'date and time') : lang('Never')) . '</p>';
 }
 

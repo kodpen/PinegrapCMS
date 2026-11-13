@@ -8,5 +8,5 @@ description: CS0 census, orders part two: what the cart, express order checkout,
 - The control slots (offer code form, Update and Checkout, applied offers, quick add, quantity stepper, saved cart link, consent sentence, field options) draw the page's markup instead of a ‹label›.
 
 ## What is left?
-- `__item_image`, `__paypal_image_url`, `__iyzico_image_url` are grey `[token]` boxes (pictures: CF4 of `plans/designer-canvas-faults.md`).
+- `__item_image`, `__paypal_image_url`, `__iyzico_image_url` draw the sample photo (`canvas-loop-as-published.md`, #9233).
 - The cart's product form controls (`form_field` value bindings) draw empty inputs, and the cart line's own HTML previews (recipient heading, recurring heading, calendar event, out-of-stock note) show on every line whatever the line's flags say.

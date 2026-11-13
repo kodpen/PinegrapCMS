@@ -77,6 +77,31 @@ function pg_flows_runs_open()
 }
 
 /**
+ * May this person open the Flows screen: flows run on the site and they are
+ * a member of the team (ws_rights(), which never asks the Workspace switch);
+ * a role-3 user needs the Workspace right (USER_MANAGE_WORKSPACE). The main
+ * menu's row and the dashboard's flow entries ask it. Loads only the
+ * Workspace's access file.
+ *
+ * @param array $user validate_user()
+ * @return bool
+ */
+function pg_flows_user_may($user)
+{
+    if (!is_array($user) || !pg_flows_enabled()) {
+        return false;
+    }
+
+    if (((int) ($user['role'] ?? 3) >= 3) && !(defined('USER_MANAGE_WORKSPACE') && USER_MANAGE_WORKSPACE)) {
+        return false;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/access.php');
+
+    return ws_ready() && !empty(ws_rights($user)['member']);
+}
+
+/**
  * The main menu's Automation flows row for the person signed in: null when
  * it is not drawn, else the number of flows running now that they reach.
  *
@@ -97,17 +122,7 @@ function pg_flows_runs_open()
  */
 function pg_flows_menu_row($user)
 {
-    if (!is_array($user) || !pg_flows_enabled()) {
-        return null;
-    }
-
-    if (((int) ($user['role'] ?? 3) >= 3) && !(defined('USER_MANAGE_WORKSPACE') && USER_MANAGE_WORKSPACE)) {
-        return null;
-    }
-
-    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/access.php');
-
-    if (!ws_ready() || empty(ws_rights($user)['member'])) {
+    if (!pg_flows_user_may($user)) {
         return null;
     }
 

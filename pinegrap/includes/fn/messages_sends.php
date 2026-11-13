@@ -7,7 +7,9 @@
  * its source is one UNION ALL of a SELECT per branch (the e-mail queue, the
  * SMS queue, manual e-mail campaigns, SMS campaigns, automatic e-mail
  * campaigns as single messages), each holding the period on its own indexed
- * time, so a batch sorts only the period's rows. A row id is the branch
+ * time, and the list table driver reads them as branches (each batch
+ * bounded, ordered and cut inside every branch, counted per branch), so a
+ * batch reads only the head of each branch's index range. A row id is the branch
  * row's id * 8 + the branch number, whole and unique across branches, so
  * the keyset and the selection resolver work as they are.
  *
@@ -25,21 +27,6 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_queue_list.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
-
-/**
- * Whether the Sends tab shows the list. Not yet: with 500,000 rows per
- * queue in the period a batch read over the whole union takes seconds, so
- * the list opens once the list table driver puts the keyset bound and the
- * batch's limit into each branch and counts per branch. Until then the tab
- * leads to the mail queue and the campaign history, and the old addresses
- * stay where they are.
- *
- * @return bool
- */
-function pg_messages_sends_list_open()
-{
-    return false;
-}
 
 /**
  * The branches of the list by number. 3 is kept for the WhatsApp queue;
@@ -236,7 +223,8 @@ function pg_messages_sends_queue_door($get)
  * filters and the user's rights in its own WHERE, or null when the filters
  * or the rights leave it out. Every value is a bound placeholder.
  *
- * Columns, the same in every branch: sid, at, channel, row_kind, recipient,
+ * Columns, the same in every branch: rid (the row's own id, which orders a
+ * branch as sid does but on its index), sid, at, channel, row_kind, recipient,
  * what, source, state, done, total, error, attempts, next_at, owner,
  * expires.
  *
@@ -278,7 +266,7 @@ function pg_messages_sends_branch_sql($branch, array $filters, array $user, $now
         case 'mail':
             $state = "(CASE mail_outbox.status WHEN 'suppressed' THEN 'blocked' ELSE mail_outbox.status END)";
             $source = 'mail_outbox.mail_type';
-            $select = "mail_outbox.id * 8 + $number AS sid, mail_outbox.created_at AS at, 'email' AS channel, 'message' AS row_kind,
+            $select = "mail_outbox.id AS rid, mail_outbox.id * 8 + $number AS sid, mail_outbox.created_at AS at, 'email' AS channel, 'message' AS row_kind,
                 mail_outbox.recipient AS recipient, mail_outbox.subject AS what, mail_outbox.mail_type AS source, $state AS state,
                 0 AS done, 0 AS total, mail_outbox.last_error AS error, mail_outbox.attempts AS attempts,
                 (CASE WHEN mail_outbox.status = 'sent' THEN mail_outbox.sent_at ELSE mail_outbox.send_after END) AS next_at, 0 AS owner, 0 AS expires
@@ -290,7 +278,7 @@ function pg_messages_sends_branch_sql($branch, array $filters, array $user, $now
         case 'sms':
             $state = 'sms_outbox.status';
             $source = 'sms_outbox.kind';
-            $select = "sms_outbox.id * 8 + $number AS sid, sms_outbox.created_at AS at, 'sms' AS channel, 'message' AS row_kind,
+            $select = "sms_outbox.id AS rid, sms_outbox.id * 8 + $number AS sid, sms_outbox.created_at AS at, 'sms' AS channel, 'message' AS row_kind,
                 sms_outbox.recipient AS recipient, sms_outbox.body AS what, sms_outbox.kind AS source, sms_outbox.status AS state,
                 0 AS done, 0 AS total, sms_outbox.last_error AS error, sms_outbox.attempts AS attempts,
                 (CASE WHEN sms_outbox.status = 'sent' THEN sms_outbox.sent_at ELSE sms_outbox.send_after END) AS next_at, 0 AS owner, sms_outbox.expires_at AS expires
@@ -303,7 +291,7 @@ function pg_messages_sends_branch_sql($branch, array $filters, array $user, $now
             $state = "(CASE WHEN c.status = 'ready' AND c.start_time > ? THEN 'scheduled' WHEN c.status = 'ready' THEN 'sending'
                 WHEN c.status = 'complete' THEN 'completed' ELSE c.status END)";
             $source = "'campaign'";
-            $select = "c.id * 8 + $number AS sid, c.created_timestamp AS at, 'email' AS channel, 'campaign' AS row_kind,
+            $select = "c.id AS rid, c.id * 8 + $number AS sid, c.created_timestamp AS at, 'email' AS channel, 'campaign' AS row_kind,
                 '' AS recipient, c.subject AS what, 'campaign' AS source, $state AS state,
                 (SELECT COUNT(*) FROM email_recipients r WHERE r.email_campaign_id = c.id AND r.complete = 1 AND r.failed = 0) AS done,
                 (SELECT COUNT(*) FROM email_recipients r WHERE r.email_campaign_id = c.id) AS total,
@@ -320,7 +308,7 @@ function pg_messages_sends_branch_sql($branch, array $filters, array $user, $now
             $state = "(CASE WHEN r.failed = 1 THEN 'failed' WHEN r.complete = 1 THEN 'sent' WHEN c.status = 'paused' THEN 'paused'
                 WHEN c.status = 'cancelled' THEN 'cancelled' ELSE 'queued' END)";
             $source = "'profile'";
-            $select = "c.id * 8 + $number AS sid, c.created_timestamp AS at, 'email' AS channel, 'message' AS row_kind,
+            $select = "c.id AS rid, c.id * 8 + $number AS sid, c.created_timestamp AS at, 'email' AS channel, 'message' AS row_kind,
                 r.email_address AS recipient, c.subject AS what, 'profile' AS source, $state AS state,
                 0 AS done, 0 AS total, r.last_error AS error, r.attempts AS attempts, r.next_attempt_at AS next_at, c.created_user_id AS owner, 0 AS expires
                 FROM email_campaigns c
@@ -334,7 +322,7 @@ function pg_messages_sends_branch_sql($branch, array $filters, array $user, $now
             $state = "(CASE WHEN s.status = 'ready' AND s.start_at > ? THEN 'scheduled' WHEN s.status = 'ready' THEN 'sending'
                 WHEN s.status = 'queued' THEN 'completed' ELSE s.status END)";
             $source = "'campaign'";
-            $select = "s.id * 8 + $number AS sid, (CASE WHEN s.start_at > 0 THEN s.start_at ELSE s.created_at END) AS at, 'sms' AS channel,
+            $select = "s.id AS rid, s.id * 8 + $number AS sid, (CASE WHEN s.start_at > 0 THEN s.start_at ELSE s.created_at END) AS at, 'sms' AS channel,
                 'campaign' AS row_kind, '' AS recipient, s.name AS what, 'campaign' AS source, $state AS state,
                 s.queued_count AS done, s.queued_count + s.refused_count AS total, '' AS error, 0 AS attempts, 0 AS next_at, s.created_by AS owner, 0 AS expires
                 FROM sms_campaigns s";
@@ -417,12 +405,14 @@ function pg_messages_sends_ready_branches()
  * @param array $user
  * @param int   $now
  * @param array $branches the branch keys this site can read
- * @return array array('sql' => '(…) AS sends', 'params')
+ * @return array array('sql' => '(…) AS sends', 'params', 'branches' => each
+ *               branch's array('sql', 'params') for the driver)
  */
 function pg_messages_sends_from(array $filters, array $user, $now, array $branches)
 {
     $parts = array();
     $params = array();
+    $read = array();
 
     foreach ($branches as $branch) {
         $sql = pg_messages_sends_branch_sql($branch, $filters, $user, $now);
@@ -430,15 +420,18 @@ function pg_messages_sends_from(array $filters, array $user, $now, array $branch
         if ($sql !== null) {
             $parts[] = '(' . $sql['sql'] . ')';
             $params = array_merge($params, $sql['params']);
+            $read[] = $sql;
         }
     }
 
     if (!$parts) {
-        $parts[] = "(SELECT 0 AS sid, 0 AS at, '' AS channel, '' AS row_kind, '' AS recipient, '' AS what, '' AS source, '' AS state,
+        $read[] = array('sql' => "SELECT 0 AS rid, 0 AS sid, 0 AS at, '' AS channel, '' AS row_kind, '' AS recipient, '' AS what, '' AS source, '' AS state,
+            0 AS done, 0 AS total, '' AS error, 0 AS attempts, 0 AS next_at, 0 AS owner, 0 AS expires FROM DUAL WHERE 1 = 0", 'params' => array());
+        $parts[] = "(SELECT 0 AS rid, 0 AS sid, 0 AS at, '' AS channel, '' AS row_kind, '' AS recipient, '' AS what, '' AS source, '' AS state,
             0 AS done, 0 AS total, '' AS error, 0 AS attempts, 0 AS next_at, 0 AS owner, 0 AS expires FROM DUAL WHERE 1 = 0)";
     }
 
-    return array('sql' => '(' . implode(' UNION ALL ', $parts) . ') AS sends', 'params' => $params);
+    return array('sql' => '(' . implode(' UNION ALL ', $parts) . ') AS sends', 'params' => $params, 'branches' => $read);
 }
 
 /**
@@ -584,6 +577,12 @@ function pg_messages_sends_row(array $record, $now)
             $result = ((int) $record['next_at'] > (int) $now) ? pg_mail_queue_list_time($record['next_at']) : h(lang('On the next run'));
         }
 
+        // Given up at once: what is wrong is in the message itself, so the
+        // queue does not try it again by itself (Retry stays).
+        if (($branch === 'mail') && pg_mail_failed_permanently($record['state'], $record['attempts'])) {
+            $result .= ' <span class="badge theme-inverse" title="' . h(lang('The queue does not try it again by itself: sent again before its cause is fixed, it would fail the same way.')) . '">' . h(lang('Permanent')) . '</span>';
+        }
+
         if ((int) $record['attempts'] > 0) {
             $result .= ' <span class="small fg-secondary">' . h(lang(array('string' => '{var:1} attempts', 'vars' => (int) $record['attempts']))) . '</span>';
         }
@@ -624,15 +623,14 @@ function pg_messages_sends_row(array $record, $now)
 
 /**
  * Whether the user may read the list: the tab's gate
- * (validate_email_access()'s rule) once the list is open.
+ * (validate_email_access()'s rule).
  *
  * @param mixed $user
  * @return bool
  */
 function pg_messages_sends_list_gate($user)
 {
-    return pg_messages_sends_list_open()
-        && is_array($user) && isset($user['role'], $user['id']) && is_numeric($user['role'])
+    return is_array($user) && isset($user['role'], $user['id']) && is_numeric($user['role'])
         && pg_messages_gate_allows('email', $user['role'], !empty($user['manage_emails']));
 }
 
@@ -661,8 +659,8 @@ function pg_messages_sends_list_source($user, $params, $now = null)
     return pg_list_table_source(array(
         'list' => 'messages_sends',
         'columns' => $columns,
-        'from' => $from['sql'],
-        'params' => $from['params'],
+        'branches' => $from['branches'],
+        'branch_id' => 'rid',
         'id' => 'sid',
         'id_order' => 'desc',
         'select' => 'sid, at, channel, row_kind, recipient, what, source, state, done, total, error, attempts, next_at, expires',
@@ -738,7 +736,8 @@ function pg_messages_sends_tiles(array $user, $now)
  *
  * @param array  $user
  * @param string $action 'retry:<sid>' or 'delete:<sid>'
- * @return string the outcome: '', 'queued', 'sent', 'unsent', 'deleted'
+ * @return string the outcome: '', 'queued' (an e-mail), 'queued_sms',
+ *                'sent', 'unsent', 'deleted'
  */
 function pg_messages_sends_action(array $user, $action)
 {
@@ -764,7 +763,7 @@ function pg_messages_sends_action(array $user, $action)
         }
 
         if ($parts['branch'] === 'sms') {
-            return pg_sms_queue_retry($parts['id']) ? 'queued' : '';
+            return pg_sms_queue_retry($parts['id']) ? 'queued_sms' : '';
         }
 
         return '';

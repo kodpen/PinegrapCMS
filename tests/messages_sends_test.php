@@ -145,10 +145,21 @@ function test_mail_source_kind()
 	pg_assert_same('system', pg_mail_source_kind(array()), 'nothing named is system');
 }
 
-function test_messages_sends_list_waits_for_the_branch_bound()
+function test_messages_sends_source_reads_branches()
 {
-	pg_assert_same(false, pg_messages_sends_list_open(), 'the list opens with the driver step that bounds each branch');
-	pg_assert_same(null, pg_messages_sends_list_source(array('id' => 1, 'role' => 0), array()), 'no source while it is closed');
+	$source = pg_messages_sends_list_source(array('id' => 1, 'role' => 1), array('filters' => array('channel' => 'sms')), 1700000000);
+	pg_assert_true(is_array($source), 'a manager opens the list');
+	pg_assert_same('rid', $source['branch_id'], 'a branch is ordered on its own id');
+	pg_assert_true(count($source['branches']) >= 1, 'the SMS branches are read');
+
+	foreach ($source['branches'] as $branch) {
+		pg_assert_same(0, strpos($branch['sql'], 'SELECT '), 'each branch is one SELECT');
+		pg_assert_true(strpos($branch['sql'], ' AS rid, ') !== false, 'each branch names its rid');
+		pg_assert_true(messages_sends_test_bound($branch), 'each branch binds its values');
+	}
+
+	pg_assert_same(array('filters' => pg_messages_sends_filters(array('channel' => 'sms'))), $source['params_out'], 'the filters go back with every batch');
+	pg_assert_same(null, pg_messages_sends_list_source(array('id' => 77, 'role' => 3), array()), 'no Campaign Manager right, no list');
 }
 
 function test_mail_queue_kinds_name_every_source_kind()

@@ -23,7 +23,7 @@ module: legacy_bootstrap_trial
 - A tooltip or popover call on `$('<quoted selector>')`/`jQuery(...)`, no option or a plain object, becomes `getOrCreateInstance()` per element found; `pg_lbs_data_names()` become `data-bs-*` (whole names). Other plugin calls stay, listed as warnings. Starting `scripts.js`: one line changes.
 
 ## What is the compatibility sheet?
-- The Bootstrap 3 names the page types' layouts print (form-group, text-right, help-block, img-responsive, btn-default, checkbox, input-group-addon/-btn, visible-xs-inline below sm as the converter, glyphicon drawn with the Bootstrap Icons twin's code point). A software file: rules leave as `legacy-layouts-bootstrap.md` converts the layouts.
+- A software file for what the layout pass leaves as it was: a bare `checkbox` and the glyphicons inside a theme widget, drawn with the Bootstrap Icons twin's code point. The rules for the names the pass renames left it ([[legacy-layouts-left]]).
 
 ## Where is a trial recorded?
 - `data/legacy_to_bootstrap/trials.json`: Legacy id => trial, map (part => copy), files (ids), made, user. `pg_lbs_trial_of()` drops one whose row is gone (deleted or binned in Designs).

@@ -31,7 +31,7 @@ description: CB0 list, content nodes the server draws (Messages, Breadcrumb, Var
 ## Carousel (content)?
 - Site: inside a catalog detail widget, the product's pictures with thumbnails and a lightbox, filled by the server.
 - Change today: thumbs position and size, autoplay, interval, controls, indicators, lightbox.
-- Opening: settings only; the picture list depends on the product. A true sample on the canvas (CF4 of `plans/designer-canvas-faults.md` takes the product picture).
+- Opening: settings only; the picture list depends on the product. Its bound pictures draw the sample photo (`canvas-loop-as-published.md`, #9233).
 
 ## Custom HTML, SVG, Custom PHP?
 - The user's own code, edited in a code box; Custom PHP draws "Custom PHP — runs at render time" on the canvas.

@@ -1,6 +1,6 @@
 ---
 name: messages-area-sends
-description: Communication › Sends (MA2, #9252): the UNION ALL list of five branches, row ids, filters, buttons, e-mail sources, the measured batch times, why it waits
+description: Communication › Sends (MA2 #9252, MA2b #9275): the list of five branches, row ids, filters, buttons, e-mail sources, measured batch times, what the old queue screen left to it
 module: messages_sends
 ---
 
@@ -17,9 +17,14 @@ module: messages_sends
 - A queueing caller puts `source` in the `email()` properties (`order:<id>`, `form:<id>`, `account`, `comment`, `flow:<id>`); `pg_mail_source_kind()` copies its kind into `mail_type`, else `type` as before. The SMTP connection still follows `type`. Order, form, password reset and comment mails carry it.
 - The flow E-mail box queues with `flow:<flow id>` (`ws_scheduled_mail()`'s `$source`): the box reads sent once the mail is queued, as any queued `email()` call. No outcome hook yet.
 
-## Why is the list not shown yet?
-- Measured on MariaDB 10.11 with 500,000 rows per queue in 7 days (#9252): first batch (count + 100 rows) 5.5 s, next batch 2.8 s; 24 hours 1.3 s; the union's COUNT alone 3.2 s. With the keyset bound and `LIMIT 101` inside each branch the rows take 12 ms.
-- Over 300 ms, so by the architect's rule (`plans/messages-area-decided.md`) the tab opens only after the driver change: `pg_messages_sends_list_open()` answers false, the tab keeps its place rows, `mail_queue.php` stays the queue screen and automatic campaigns stay in the Campaigns list. Step MA2b turns it on.
+## How fast is it, and why?
+- MA2 (#9252) read the union whole: 5.5 s per first batch with 500,000 rows per queue in 7 days (MariaDB 10.11). Over the architect's 300 ms (`plans/messages-area-decided.md`), so MA2b (#9275) moved the work into the branches: the source gives `branches` and `branch_id` (`rid`, the row's own id), and the driver bounds, orders, limits and counts inside each one (`ui/list-table-driver.md`).
+- Same data after MA2b: first batch 132 ms (count 1,000,000 included), next batch 14 ms; 24 hours 24 ms; any channel, state or source under 250 ms.
+- Still slow at that volume: search 3.2 s (a LIKE scans every row; the old queue screen took 1.3 s on 500,000) and a heading sort other than Date or Channel about 2 s (a branch sorts its whole period). Not changed: a question for the architect if a site meets it.
+- Since MA2b the tab shows the list, `mail_queue.php` is a door (`?tab=sms` becomes `channel=sms`), and the Campaigns tab lists manual campaigns only.
+
+## What did the old queue screen keep on the way?
+- The PHP mail() warning with Open SMTP Settings, the Permanent badge, Run now (both queues, 10 messages and 20 seconds each), the e-mail queue's active line and last run. An e-mail Retry names the general job or mail_job.php, a text's the general job only.
 
 Test: `tests/messages_sends_test.php`.
 
