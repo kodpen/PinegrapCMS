@@ -212,8 +212,8 @@ $account_bar = function () use ($el, $widget, $shared, $container, $row, $col, $
             $row(array(
                 $col(array($shared('announcement')), '', '', '', '12', 'col-md'),
                 $col(array(
-                    $el('div', 'd-flex align-items-center justify-content-center gap-3', lang('Account Links'), array(
-                        $lang_switcher(), $widget('cart_link'), $widget('login_region'),
+                    $el('div', 'd-flex flex-wrap align-items-center justify-content-center column-gap-2 column-gap-sm-3 row-gap-1', lang('Account Links'), array(
+                        $lang_switcher('text-nowrap'), $widget('cart_link'), $widget('login_region'),
                     )),
                 ), 'auto'),
             ), '2', '', 'align-items-center'),
@@ -2049,12 +2049,12 @@ $widgets = array(
             'staff_page_id'      => '{{tab:staff}}',
         ),
         'tree'   => $widget_root(array(
-            $el('div', 'd-flex align-items-center gap-3', lang('Signed Out'), array(
+            $el('div', 'd-flex align-items-center gap-2 gap-sm-3', lang('Signed Out'), array(
                 $link(lang('Log In'), '#', 'text-nowrap link-body-emphasis text-decoration-none', array(), array('_bindings' => array('href' => '__login_url'))),
                 $link(lang('Sign Up'), '#', 'text-nowrap link-body-emphasis link-offset-2', array(), array('_bindings' => array('href' => '__register_url'))),
             ), $show_when('is_signed_out')),
             $el('div', 'dropdown', lang('Signed In'), array(
-                $el('button', 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none dropdown-toggle', lang('Account Button'), array(
+                $el('button', 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none text-nowrap dropdown-toggle', lang('Account Button'), array(
                     $icon('bi-person-circle', ''),
                     $span(lang('Jane'), '', lang('First Name'), $bind('__user_first_name')),
                 ), array('_attrs' => array(

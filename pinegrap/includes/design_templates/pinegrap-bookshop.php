@@ -255,8 +255,8 @@ $account_bar = function () use ($el, $widget, $shared, $lang_switcher) {
     return $el('div', 'border-bottom small bg-primary-subtle', lang('Account Bar'), array(
         $el('div', 'container d-flex flex-wrap align-items-center justify-content-between gap-2 py-1', lang('Account Area'), array(
             $el('div', 'd-none d-md-block', lang('Announcement Area'), array($shared('notice'))),
-            $el('div', 'd-flex align-items-center gap-2 ms-auto', lang('Account Links'), array(
-                $lang_switcher(), $widget('cart_link'), $widget('login_region'),
+            $el('div', 'd-flex flex-wrap align-items-center justify-content-end column-gap-1 column-gap-sm-2 row-gap-1 ms-auto', lang('Account Links'), array(
+                $lang_switcher('text-nowrap'), $widget('cart_link'), $widget('login_region'),
             )),
         )),
     ));
@@ -2179,12 +2179,12 @@ $widgets = array(
             'staff_page_id'      => '{{tab:staff}}',
         ),
         'tree'   => $widget_root(array(
-            $el('div', 'd-flex align-items-center gap-2', lang('Signed Out'), array(
+            $el('div', 'd-flex align-items-center gap-1 gap-sm-2', lang('Signed Out'), array(
                 $link(lang('Log In'), '#', 'btn btn-sm btn-link link-body-emphasis text-decoration-none text-nowrap', array(), array('_bindings' => array('href' => '__login_url'))),
                 $link(lang('Sign Up'), '#', 'btn btn-sm btn-outline-primary text-nowrap', array(), array('_bindings' => array('href' => '__register_url'))),
             ), $show_when('is_signed_out')),
             $el('div', 'dropdown', lang('Signed In'), array(
-                $el('button', 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none dropdown-toggle', lang('Account Button'), array(
+                $el('button', 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none text-nowrap dropdown-toggle', lang('Account Button'), array(
                     $image('https://placehold.co/64x64/3f6212/ffffff?text=JC', lang('Jane Cooper'), 'rounded-circle object-fit-cover',
                         array('width' => '24', 'height' => '24', '_bindings' => array('src' => '__user_avatar_url', 'alt' => '__user_name'))),
                     $span(lang('Jane'), 'fw-semibold', lang('First Name'), $bind('__user_first_name')),
