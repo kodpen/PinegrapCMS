@@ -1,6 +1,6 @@
 ---
 name: designer-canvas-toolbar-in-cards
-description: A selected element's toolbar in a ratio box, a clipping card or a see-through wrapper of a card (#9217, #9246): the ratio rule skips chrome, room counts inside the clip, the selection's toolbar always shows
+description: The selected element's toolbar in a card (#9217, #9246): the ratio rule skips chrome, room counts inside the clip, it shows in see-through wrappers
 ---
 
 ## Why was a card cover's toolbar a filled block over the picture?
