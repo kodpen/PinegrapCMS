@@ -25,7 +25,7 @@ description: Plan (owner 2026-11-12, #8950): the flow window rearranged: the lef
 - FW2 (M) The left panel. Done #9178 (`workspace/workspace-flows-palette.md`).
 - FW3 (M) The right panel's head and tabs; the foot line; the phone's sheet. Done #9196 (`workspace/workspace-flows-side-panel.md`).
 - FW4 (S) The right panel with no box chosen; the phone's "Add a box" page. Done #9228 (`workspace/workspace-flows-empty-panel.md`).
-- FW5 (S) Outcome names on arrows and the warning mark, where the canvas does not draw them yet; close-out: the lasting rules into `workspace/`, this plan deleted.
+- FW5 (S) Outcome names on arrows and the warning mark, where the canvas does not draw them yet (in progress); close-out: the lasting rules into `workspace/`, this plan deleted.
 
 ## When does it start?
 - FW0 may start now; FW1 to FW5 one after the other (one script, `workspace_flow.js`, and its bundle). The harness of `workspace/workspace-flows-canvas-harness.md` gives the before and after pictures. Claim as `[plan:flow-window] <step> — <topic>`.
