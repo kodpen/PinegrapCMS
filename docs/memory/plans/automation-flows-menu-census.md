@@ -17,11 +17,11 @@ description: Census of the automation-flows-menu plan (AF0): where flows asked t
 - Owner: the view of a flow inside a channel stays there. So the flow layer over a channel (`flowLayer()`), the draft card's read-only embed (`PGWsFlow.embed`, `ws_flow_embed_config`, `ws_flow_draft_view`), Add › Start a flow in the composer and Claude's flow drafts keep the Workspace's gate.
 
 ## What is the API's part?
-- 26 flow routes (`/workspace/flows…`, `/workspace/flow-runs…`, `flow-kinds`, `flow-templates`) under `workspace:read` (11) and `workspace:write` (15), their schemas, and the run events `workspace.flow.run.finished/failed/cancelled/waiting`, all merged only while `WORKSPACE_ENABLED`. No step of the plan names them yet (`automation-flows-menu-proposals.md`).
+- 26 flow routes (`/workspace/flows…`, `/workspace/flow-runs…`, `flow-kinds`, `flow-templates`) under `workspace:read` (11) and `workspace:write` (15), their schemas, and the run events `workspace.flow.run.finished/failed/cancelled/waiting`, all merged only while `WORKSPACE_ENABLED`. Step AF3c merges them with the Workspace off (`automation-flows-menu-steps-2.md`).
 
 ## Who holds the right on a site without the Workspace?
 - `ws_rights()` never asks the switch: roles 0-2 are members unless their Workspace profile excludes them, and build, share and publish (`ws_can_schedule()`); a role-3 user with `user.manage_workspace` builds their own flows (`ws_flow_member()`). Unchanged by this plan.
 - With the Workspace off the user screens draw no Workspace rights row, so a role-3 right can be neither given nor taken there; one given earlier stays. Left as it is (the plan keeps who may make flows).
 
 ## Which boxes and starts need the Workspace?
-- On the list now: `workspace/automation-flows-workspace-boxes.md`; more found by the census: `automation-flows-menu-proposals.md`.
+- On the list now: `workspace/automation-flows-workspace-boxes.md`; more found by the census: step AF3b of `automation-flows-menu-steps-2.md`.

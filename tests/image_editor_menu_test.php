@@ -94,6 +94,7 @@ function test_image_editor_menu_for_picture_area_and_canvas()
 	$r = image_editor_menu_node(
 		'console.log(JSON.stringify({'
 		. ' picture: names({ at: "stage", layers: 0, picture: true, clip: true }),'
+		. ' pictureLayer: names({ at: "stage", layers: 0, picture: true, clip: true, can: { pictureLayer: true } }),'
 		. ' area: names({ at: "stage", area: true, can: all }),'
 		. ' empty: names({ at: "stage", count: 0, clip: false, imports: true, site: true, canvas: true }),'
 		. ' bare: names({ at: "stage", count: 2, clip: true, imports: true }),'
@@ -108,6 +109,7 @@ function test_image_editor_menu_for_picture_area_and_canvas()
 
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'runs');
 	pg_assert_same(array('lockPicture', 'removePicture', '|', 'paste'), $r['picture'], 'the picture');
+	pg_assert_same(array('lockPicture', 'pictureLayer', 'removePicture', '|', 'paste'), $r['pictureLayer'], 'the picture, Convert to a layer offered');
 	pg_assert_same(array('erase', 'keep', 'copy', 'adjust', 'redact', 'invert', 'deselect'), $r['area'], 'an area');
 	pg_assert_same(array('-paste', '-selectAll', '|', 'import[importComputer,importSite]', 'canvasSize', 'fit'), $r['empty'], 'the empty canvas');
 	pg_assert_same(array('paste', 'selectAll', '|', 'importFile', 'fit'), $r['bare'], 'no site files, no Canvas tool');
@@ -164,7 +166,7 @@ function test_image_editor_menu_part()
 	$names = array('cut', 'copyLayers', 'paste', 'duplicate', 'remove', 'order', 'front', 'forward', 'backward', 'back', 'align',
 		'alignLeft', 'alignCenter', 'alignRight', 'alignTop', 'alignMiddle', 'alignBottom', 'distX', 'distY', 'lock', 'unlock',
 		'hide', 'show', 'combine', 'unite', 'minusFront', 'intersect', 'exclude', 'divide', 'outlines', 'expandWarp', 'breakApart',
-		'lockPicture', 'removePicture', 'erase', 'keep', 'copy', 'adjust', 'redact', 'invert', 'deselect', 'selectAll', 'import',
+		'lockPicture', 'pictureLayer', 'removePicture', 'erase', 'keep', 'copy', 'adjust', 'redact', 'invert', 'deselect', 'selectAll', 'import',
 		'importComputer', 'importSite', 'importFile', 'canvasSize', 'fit', 'sceneDuplicate', 'sceneDelete', 'sceneEarlier', 'sceneLater');
 	$strings = pg_image_editor_strings();
 

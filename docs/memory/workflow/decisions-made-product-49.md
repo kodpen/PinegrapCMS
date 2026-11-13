@@ -14,3 +14,7 @@ description: Decisions list, product part 49 (2026-11-13 on): a customer's Whats
 ## Are the image editor's rows on a phone approved? (owner, 2026-11-13, #8863)
 - Approved, no change asked (#8854, step V10 of `plans/image-editor-video-steps.md`; the screen is `ui/image-editor-phone-rows.md`): on an upright phone the Animate tool of a document with a video shows one list of rows after the play bar, the video row taller with finger-size trim handles, the sound rows folded into one line, and Split in the selection bar.
 - The approval reached the issue through the merging session first. Asked in the architect's window whether it is his, the owner (2026-11-13): "Evet, ben onayladım".
+
+## Can a layer go under the photo in the image editor? (owner, 2026-11-08, #9198)
+- Through Convert to a layer: the photo becomes a picture layer at the bottom of a canvas, its crop, colour, erased and adjusted areas and redaction in its pixels, the photo tools no longer on it; one undo brings the photo back. Details: `ui/image-editor-picture-to-layer.md`.
+- Owner (2026-11-08), reporting "eklediğim görsel arkaplanın en altına gönderilemiyor. arkaplan bir görsel objesi gibi davranmıyor", chose "Arka planı katmana dönüştür" over keeping the photo in the layer order with its tools (a larger rework of the stage, the save, animation and SVG export).

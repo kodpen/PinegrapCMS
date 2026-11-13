@@ -987,6 +987,80 @@
         this.syncKind();
     };
 
+    // A picture converted to a layer is kept at most this long a side, as a
+    // cut-out is (a data: URL in the document until a save keeps it).
+    var LAYER_SIDE = 4096;
+
+    // Whether the background can become a layer: the server draws the
+    // picture (action base), so it needs the editor's API and the file.
+    Editor.prototype.pictureLayerOn = function () {
+        return this.ready && !!this.doc.source && !this.doc.artboard && !this.cropping() && !!this.fetchBase && !!X.config().api && !!this.opts.fileId;
+    };
+
+    // The picture the server drew as a data: URL at most LAYER_SIDE a side:
+    // a JPEG when nothing in it is see-through, else a PNG.
+    function layerPicture(img) {
+        var k = Math.min(1, LAYER_SIDE / Math.max(img.naturalWidth, img.naturalHeight, 1)), canvas = document.createElement('canvas'), g, data, i;
+
+        canvas.width = Math.max(1, Math.round(img.naturalWidth * k));
+        canvas.height = Math.max(1, Math.round(img.naturalHeight * k));
+        g = canvas.getContext('2d');
+        g.drawImage(img, 0, 0, canvas.width, canvas.height);
+        data = g.getImageData(0, 0, canvas.width, canvas.height).data;
+
+        for (i = 3; i < data.length; i += 4) {
+            if (data[i] < 255) {
+                return { url: canvas.toDataURL('image/png'), ext: 'png' };
+            }
+        }
+
+        return { url: canvas.toDataURL('image/jpeg', 0.92), ext: 'jpg' };
+    }
+
+    // Convert to a layer, as other editors convert a background layer: the
+    // picture as the server draws it (a PNG, so erased areas stay clear)
+    // becomes a picture layer at the bottom of a canvas of the photo's size
+    // (M.pictureLayer()), the canvas keeping its fill, so layers can go
+    // under it. Its crop, colour, erased and adjusted areas and redaction
+    // are in its pixels: the picture's own tools no longer apply. One undo
+    // step back to the photo; an edit made while the server drew it leaves
+    // the photo as it is. The layer's file is named after the photo and
+    // Background ("cover-background.png"): a copy of the photo saved as a
+    // canvas takes the photo's own name beside it.
+    Editor.prototype.pictureToLayer = function () {
+        var self = this, before = M.clone(this.doc);
+        var stem = String(this.opts.fileName || this.nameEl.textContent || '').replace(/\.[a-z0-9]{2,5}$/i, '');
+
+        stem = (stem ? stem + '-' : '') + t('boardBackground');
+
+        if (!this.pictureLayerOn() || this.pictureLayering) {
+            return;
+        }
+
+        this.pictureLayering = true;
+        this.fetchBase(true, t('pictureLayerError')).then(function (img) {
+            var pic = layerPicture(img), next;
+
+            self.pictureLayering = false;
+
+            if (!M.sameDocument(self.doc, before)) {
+                return;
+            }
+
+            next = M.pictureLayer(self.doc, pic.url, stem + '.' + pic.ext);
+            self.board.pic = false;
+            self.tool = 'select';
+            self.sel = [next.layers[0].id];
+            self.replaceDoc(next);
+            self.syncKind();
+        }).then(null, function (err) {
+            // The server's refusal says why; anything else (no network, a
+            // picture that cannot be read back) gets the general sentence.
+            self.pictureLayering = false;
+            self.showMessage((err && (err.name === 'Error') && err.message) || t('pictureLayerError'), true);
+        });
+    };
+
     // The rail, the picture and the frame's fill follow the document's kind
     // after a deletion of the picture and its undo or redo.
     Editor.prototype.syncKind = function () {
@@ -1172,8 +1246,9 @@
         return true;
     });
 
-    // The picture's row at the foot of the layers list: Background, its
-    // lock; a press selects it when it is unlocked.
+    // The picture's row at the foot of the layers list: Background, Convert
+    // to a layer (locked or not), its lock; a press selects it when it is
+    // unlocked.
     var layerList = Editor.prototype.layerList;
 
     Editor.prototype.layerList = function (body) {
@@ -1201,12 +1276,14 @@
                 self.tool = 'select';
                 self.selectPicture(true);
             } }, [X.icon('image'), el('span', { text: t('boardBackground') })]),
+            this.pictureLayerOn() ? button('pgie-ibtn sm', t('pictureLayer'), 'layers', function () { self.pictureToLayer(); }) : null,
             button('pgie-ibtn sm', free ? t('lock') : t('unlock'), free ? 'unlock' : 'lock', function () { self.lockPicture(free); })
         ]));
     };
 
-    // Select's panel: the selected picture's lock and delete; with nothing
-    // selected on a photo the list, the picture's row included.
+    // Select's panel: the selected picture's lock, Convert to a layer and
+    // delete; with nothing selected on a photo the list, the picture's row
+    // included.
     var picturePanel = Editor.panels.select;
 
     Editor.panels.select = function (body) {
@@ -1218,6 +1295,7 @@
                 el('div', { class: 'pgie-picname' }, [X.icon('image'), el('span', { text: this.nameEl.textContent || t('pictureTitle') })]),
                 el('div', { class: 'pgie-btnrow' }, [
                     button('pgie-ibtn', t('lock'), 'lock', function () { self.lockPicture(true); }),
+                    this.pictureLayerOn() ? button('pgie-ibtn', t('pictureLayer'), 'layers', function () { self.pictureToLayer(); }) : null,
                     button('pgie-ibtn', t('pictureDelete'), 'trash', function () { self.deletePicture(); })
                 ])
             ]));

@@ -79,7 +79,8 @@ function test_image_editor_actions_for_layers()
 	pg_assert_same(array('duplicate', 'remove'), $r['withPicture'], 'layers before the picture and an area');
 }
 
-// The picture: Lock and Delete. An area with Select area: the area part's
+// The picture: Lock, Convert to a layer (where the editor can have the
+// server draw the picture) and Delete. An area with Select area: the area part's
 // commands in the panel's order, those the editor has, then Redact (off
 // without the redaction part), Invert and Deselect.
 function test_image_editor_actions_for_picture_and_area()
@@ -87,6 +88,7 @@ function test_image_editor_actions_for_picture_and_area()
 	$r = image_editor_actions_node(
 		'console.log(JSON.stringify({'
 		. ' picture: names({ layers: 0, free: 0, picture: true, sheet: true }),'
+		. ' pictureLayer: names({ layers: 0, free: 0, picture: true, sheet: false, can: { pictureLayer: true } }),'
 		. ' area: names({ layers: 0, picture: false, area: true, sheet: true, can: all }),'
 		. ' areaOpen: names({ area: true, sheet: false, can: { redact: true } }),'
 		. ' noRedact: names({ area: true, sheet: false, can: {} })'
@@ -100,6 +102,7 @@ function test_image_editor_actions_for_picture_and_area()
 
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'runs');
 	pg_assert_same(array('options', 'lockPicture', 'removePicture'), $r['picture'], 'the picture');
+	pg_assert_same(array('lockPicture', 'pictureLayer', 'removePicture'), $r['pictureLayer'], 'Convert to a layer where the editor can draw the picture');
 	pg_assert_same(array('options', 'erase', 'keep', 'copy', 'cutToLayer', 'adjust', 'redact', 'invert', 'deselect'), $r['area'], 'every area command');
 	pg_assert_same(array('redact', 'invert', 'deselect'), $r['areaOpen'], 'only the commands the editor has');
 	pg_assert_same(array('-redact', 'invert', 'deselect'), $r['noRedact'], 'Redact off without the redaction part');

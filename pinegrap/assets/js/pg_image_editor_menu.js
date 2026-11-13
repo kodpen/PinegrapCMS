@@ -71,6 +71,7 @@
         expandWarp: ['ctxExpandWarp', function () { this.expandWarp(this.selected()[0]); }],
         breakApart: ['svgBreakApart', function () { this.svgBreakApart(this.sel[0]); }],
         lockPicture: ['lock', function () { this.lockPicture(true); }],
+        pictureLayer: ['pictureLayer', function () { this.pictureToLayer(); }],
         removePicture: ['delete', function () { this.deletePicture(); }, true],
         erase: ['areaErase', function () { this.areaErase(); }, true],
         cutToLayer: ['areaCut', function () { this.areaCut(); }],

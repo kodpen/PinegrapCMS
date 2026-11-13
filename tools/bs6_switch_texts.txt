@@ -528,11 +528,13 @@ it with --bs-form-switch-bg; v6 reads only --bs-switch-indicator-bg). The .dange
 ===
 /* v6's .switch::before reads only --bs-switch-indicator-bg: a checked thumb
    takes the dark on-accent ink against the light blue track, and the blue
-   focus knob is kept for unchecked switches, where the track is not blue. */
-.switch:has(input:checked) {
+   focus knob is kept for unchecked switches, where the track is not blue.
+   A look switch (a settings card's, the report drawer's) has its own white
+   thumb on the accent gradient, so neither reaches it. */
+.switch:not(:where(.pg-set-card *, #report_settings *)):has(input:checked) {
   --bs-switch-indicator-bg: var(--pg-on-accent);
 }
-.switch:focus-within:not(:has(input:checked)) {
+.switch:not(:where(.pg-set-card *, #report_settings *)):focus-within:not(:has(input:checked)) {
   --bs-switch-indicator-bg: var(--pg-primary);
 }
 

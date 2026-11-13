@@ -16,7 +16,7 @@ description: Bootstrap 6 shell rules: v5 toggle buttons (input.btn-check + label
 
 ## Why was a checked switch's thumb hard to see?
 - v6's `.switch::before` reads only `--bs-switch-indicator-bg` (or `--bs-theme-contrast`); the panel set a dead v5 `--bs-switch-checked-indicator-bg` and a blue knob on `:focus-within`. A checked switch had a white thumb on the light blue track (2.2:1); checked and focused, a blue thumb on the blue track vanished.
-- `backend.src.css`: `.switch:has(input:checked)` sets the indicator to `var(--pg-on-accent)`; the blue focus knob (`var(--pg-primary)`) is limited to `.switch:focus-within:not(:has(input:checked))` (#2585). Computed in Chromium: checked thumb rgb(26,28,30), focused checked too. `tests/bs6_switch_thumb_test.php`.
+- `backend.src.css`: a checked `.switch` sets the indicator to `var(--pg-on-accent)`; the blue focus knob (`var(--pg-primary)`) only while unchecked (#2585). Neither reaches a look switch (`look-switch.md`, #9197). Computed in Chromium: checked thumb rgb(26,28,30), focused checked too. `tests/bs6_switch_thumb_test.php`.
 
 ## Why did a disabled ghost button get a frame?
 - With a theme class (`.btn-text.theme-secondary`) v6 leaves the disabled border colour unset, so it falls back to the text colour: the disabled "Previous" arrow of a settings page was framed, the enabled "Next" was not. Shell rule `.btn-text:is(:disabled, .disabled) { border-color: transparent; }` (#5028); the older local copies in `.pg-sale` and `.ws-rich-tools` are now redundant.

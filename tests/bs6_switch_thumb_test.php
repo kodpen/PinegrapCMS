@@ -22,8 +22,8 @@ function test_bs6_switch_thumb_reads_on_accent_when_checked()
 {
 	$css = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/css/backend.src.css');
 
-	pg_assert_contains(".switch:has(input:checked) {\n  --bs-switch-indicator-bg: var(--pg-on-accent);\n}", $css, 'checked thumb');
-	pg_assert_contains(".switch:focus-within:not(:has(input:checked)) {\n  --bs-switch-indicator-bg: var(--pg-primary);\n}", $css, 'focus knob only while unchecked');
+	pg_assert_contains(".switch:not(:where(.pg-set-card *, #report_settings *)):has(input:checked) {\n  --bs-switch-indicator-bg: var(--pg-on-accent);\n}", $css, 'checked thumb, never a look switch');
+	pg_assert_contains(".switch:not(:where(.pg-set-card *, #report_settings *)):focus-within:not(:has(input:checked)) {\n  --bs-switch-indicator-bg: var(--pg-primary);\n}", $css, 'focus knob only while unchecked, never a look switch');
 	pg_assert_same(false, strpos($css, '--bs-switch-checked-indicator-bg'), 'no dead v5 variable');
 	pg_assert_same(false, strpos($css, ".switch:focus-within {\n"), 'no focus knob on a checked switch');
 }
