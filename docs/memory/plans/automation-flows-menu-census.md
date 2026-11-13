@@ -5,7 +5,7 @@ description: Census of the automation-flows-menu plan (AF0): where flows asked t
 
 ## Where did a flow's path ask the Workspace switch?
 - Server, gated now by `pg_flows_enabled()` (AF1, `workspace/automation-flows-gate.md`): `job.php`'s scheduled block, `workspace_recurring_job.php` (the run, the 30-day sweep), `pg_event_record()`. `flow_start.php` never asked it; `ws_event()`, the runner and the step code do not.
-- Still on the switch: `ws_screen_gate()` (`workspace_flows.php`), `ws_handle_action()` (every panel action), `api_modules()` (the whole `includes/workspace/api.php`), the dashboard gate `flows` (role < 3 and the `workspace` gate: the Flows card, the "Flow runs (today)" figure, the Start flow shortcut), the menu rows in `includes/fn/output.php`, `pg_user_permission_ws_available()` on the user screens.
+- Opened by AF2 (`workspace/automation-flows-screen.md`): `ws_screen_gate()` for `workspace_flows.php` and the Flows screen's actions in `ws_handle_action()`. Still on the switch: `api_modules()` (the whole `includes/workspace/api.php`), the dashboard gate `flows` (role < 3 and the `workspace` gate: the Flows card, the "Flow runs (today)" figure, the Start flow shortcut), the menu rows in `includes/fn/output.php`, `pg_user_permission_ws_available()` on the user screens.
 
 ## What does the Flows screen take from the Workspace shell? (AF2)
 - `workspace_flows.php`: `ws_screen_gate()`, the `ws-shell` markup, `ws_screen_assets($viewer, 'flows')`: the `ws-config` JSON (`ws_screen_config()`: team, rail, addresses), `pg_fields`, the AI rewrite when `ws_screen_ai_rewrite()`, `pg_voice_text`, `workspace.min.js`, `workspace_palette.min.js`, then `pg_graph_canvas.min.js` and `workspace_flow.min.js`, which `workspace.js` starts once the team is known.

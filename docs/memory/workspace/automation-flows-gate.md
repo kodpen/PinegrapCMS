@@ -14,7 +14,8 @@ module: automation_flows
 - `workspace_recurring_job.php`: `ws_scheduled_run()` and `ws_flow_runs_sweep()` (30-day cleanup) on the same condition; everything else in it keeps `ws_enabled()`.
 - `pg_event_record()` (site events, `includes/fn/events.php`): records when the Workspace is on or the gate holds.
 - `flow_start.php` (`ws_flow_web_receive()`): 503 `not_ready` without the gate. It never asked the Workspace switch.
-- Still behind the Workspace: the Flows screens and panel actions (AF2), the menu row (AF4), the API routes and run events and the dashboard's flow entries (no step yet; proposals in `plans/automation-flows-menu-census.md`).
+- The Flows screen and its panel actions (`ws_screen_gate($user, true)`, `ws_action_switch_allows()`): `automation-flows-screen.md`.
+- Still behind the Workspace: the menu row (AF4), the API routes and run events and the dashboard's flow entries (no step yet; proposals in `plans/automation-flows-menu-proposals.md`).
 
 ## Which site events are kept with the Workspace off?
 - Only those an event rule of an active flow anchor names (`flow_id > 0`): every event is treated as an on-demand one (`pg_event_workspace_kept()`, pure; `pg_event_workspace_waiting_rules($event, true)`, one read per event per request). With the Workspace on nothing changed: all but `inventory.changed` are kept, for the watching channels.

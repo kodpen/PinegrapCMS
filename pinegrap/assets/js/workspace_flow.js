@@ -1268,13 +1268,14 @@
     }
 
     // Whether a flow shows under a chip and a search: its name, its start
-    // sentence or its home channel holds every word searched for.
+    // sentence or its home channel holds every word searched for. With the
+    // Workspace off (FL.workspace) the home is not shown, so not searched.
     function listMatches(flow, chip, query) {
         if (chip === 'draft' ? (flow.status !== 'draft') : (chip && (flow.start !== chip))) {
             return false;
         }
 
-        var text = K.foldText([flow.name, flow.start_text, flow.channel_name].join(' '));
+        var text = K.foldText([flow.name, flow.start_text, (FL.workspace !== false) ? flow.channel_name : ''].join(' '));
 
         return K.foldText(query).split(/\s+/).every(function (word) {
             return !word || (text.indexOf(word) !== -1);
@@ -1318,7 +1319,8 @@
         var head = el('tr');
 
         table.appendChild(el('caption', 'visually-hidden', t('fl_nav')));
-        ['fl_col_flow', 'fl_col_start', 'fl_col_state', 'fl_flag_last', 'fl_col_channel'].forEach(function (key) {
+        // The home channel is the Workspace's: no column with it off.
+        ['fl_col_flow', 'fl_col_start', 'fl_col_state', 'fl_flag_last'].concat((FL.workspace !== false) ? ['fl_col_channel'] : []).forEach(function (key) {
             var cell = el('th', '', t(key));
 
             cell.setAttribute('scope', 'col');
@@ -1456,12 +1458,18 @@
             last.appendChild(el('span', 'fg-secondary', t('fl_list_never')));
         }
 
-        [[startCell, 'fl_col_start'], [stateCell, 'fl_col_state'], [last, 'fl_flag_last'], [channel, 'fl_col_channel']].forEach(function (cell) {
-            cell[0].setAttribute('data-label', t(cell[1]));
-        });
+        var cells = [[startCell, 'fl_col_start'], [stateCell, 'fl_col_state'], [last, 'fl_flag_last']];
 
-        [name, startCell, stateCell, last, channel].forEach(function (cell) {
-            row.appendChild(cell);
+        // The home channel's cell only while the Workspace is on, as the
+        // table's head has its column.
+        if (FL.workspace !== false) {
+            cells.push([channel, 'fl_col_channel']);
+        }
+
+        row.appendChild(name);
+        cells.forEach(function (cell) {
+            cell[0].setAttribute('data-label', t(cell[1]));
+            row.appendChild(cell[0]);
         });
 
         row.addEventListener('click', function (event) {
@@ -3270,7 +3278,7 @@
         box.classList.add('wsf-run-' + (STEP_STATES[status] ? status : 'none'));
         head.appendChild(runBadge(STEP_STATES, status));
 
-        if (step && (step.status === 'waiting') && step.task_id) {
+        if (step && (step.status === 'waiting') && taskShown(step)) {
             K.clear(meta);
             meta.appendChild(taskLink(step, node, 'wsf-run-task', 'run-task-' + node.id));
         } else if (result) {
@@ -4351,9 +4359,11 @@
 
     // May the person add a box of this kind? A role-3 member builds their
     // own flows from the kinds the server lists (ws_flow_member_kinds());
-    // staff from every kind.
+    // staff from every kind. With the Workspace off (FL.workspace) nobody
+    // adds a box that needs it (ws_flow_kinds_workspace()).
     function memberKind(kind) {
-        return !FL.member_kinds || (FL.member_kinds.indexOf(kind) !== -1);
+        return (!FL.member_kinds || (FL.member_kinds.indexOf(kind) !== -1))
+            && ((FL.workspace !== false) || ((FL.workspace_kinds || []).indexOf(kind) === -1));
     }
 
     // A role-3 member's own flow: no home channel, no shares (the server
@@ -6047,8 +6057,13 @@
     }
 
     // The flow's home channel; a role-3 member's own flow has none, said in
-    // its place.
+    // its place. With the Workspace off there are no channels to choose
+    // from: no field, and a home chosen earlier stays as it is.
     function homeField(box) {
+        if (FL.workspace === false) {
+            return;
+        }
+
         if (memberOwn()) {
             box.appendChild(field(t('fl_home'), el('p', 'small fg-secondary mb-0', t('fl_member_no_home'))));
             return;
@@ -10671,9 +10686,14 @@
             body.appendChild(el('p', 'small fg-secondary', t('fl_share_none')));
         }
 
+        // A share in a channel only while the Workspace is on; one made
+        // earlier is still listed and may be taken back.
         if (manage) {
             body.appendChild(sharePeople(shares, data.owner_id));
-            body.appendChild(shareChannel(shares));
+
+            if (FL.workspace !== false) {
+                body.appendChild(shareChannel(shares));
+            }
         }
 
         if (focus) {
@@ -11017,6 +11037,12 @@
             control.disabled = false;
             K.fail(error);
         });
+    }
+
+    // Whether a box's task is linked: it opened one, and the Workspace,
+    // whose screens show tasks, is on.
+    function taskShown(step) {
+        return !!step.task_id && (FL.workspace !== false);
     }
 
     // The task a box opened: a link to it on the tasks screen, which opens
@@ -11531,7 +11557,7 @@
             wrap.appendChild(reads);
         }
 
-        if (step && step.task_id) {
+        if (step && taskShown(step)) {
             wrap.appendChild(taskLink(step, node, 'btn btn-sm btn-outline theme-secondary', 'step-task'));
         }
 
@@ -11723,7 +11749,7 @@
             box.appendChild(fixes);
         }
 
-        if (step && (step.status === 'waiting') && step.task_id) {
+        if (step && (step.status === 'waiting') && taskShown(step)) {
             box.appendChild(taskLink(step, node, 'btn btn-sm btn-outline theme-secondary', 'run-otask-' + node.id));
         }
 

@@ -2475,7 +2475,7 @@ function workspace_flows_parity_table()
 			array(array('ws_event_depth in ws_flow_run_keep_failed'), 3, 'depth through a failed run: the failure is kept at the failed run\'s depth, so flows starting on one another\'s failures stop at the chain limit'),
 		),
 		'starts' => array(
-			array(array('ws_scheduled_run() in includes/workspace/actions.php ws_handle_action case \'ws_tick\''), 3, 'driver: an open screen\'s ws_tick runs what is due, anchors too'),
+			array(array('ws_scheduled_run() in includes/workspace/actions.php ws_handle_action case \'ws_tick\'', 'ws_scheduled_run() in includes/workspace/actions.php ws_handle_action case \'ws_tick\' #2'), 3, 'driver: an open screen\'s ws_tick runs what is due, anchors too; with the Workspace off (the Flows screen alone) the anchors of flows only'),
 			array(array('ws_scheduled_run() in job.php'), 3, 'driver: the general job, when ws_scheduled_due() says one is due; it carries the flows\' runs on with a job\'s time (WS_FLOW_BUDGET_JOB)'),
 			array(array('ws_scheduled_run(20) in workspace_recurring_job.php'), 3, 'driver: the Workspace job, 20 a run, the flows\' runs with a job\'s time (WS_FLOW_BUDGET_JOB)'),
 			array(array('ws_scheduled_due() in includes/workspace/actions.php ws_handle_action case \'ws_sync\'', 'ws_scheduled_due() in job.php'), 3, 'driver: ws_sync tells the screen one is due (scheduled_due); the general job asks first'),

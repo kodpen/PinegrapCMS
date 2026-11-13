@@ -720,12 +720,18 @@ function ws_flow_quick_fill($viewer, $scheduled = null, $lists = null)
     }
 
     $member = (ws_flow_builder_kind($viewer) === 'member');
+    $kinds = $member ? ws_flow_member_kinds() : null;
+
+    // With the Workspace off the boxes and starts that need it are left out.
+    if (!ws_enabled()) {
+        $kinds = array_values(array_diff(($kinds === null) ? array_keys(ws_flow_kinds()) : $kinds, ws_flow_kinds_workspace()));
+    }
 
     return array(
         'me'     => (int) $viewer['id'],
         'events' => $events,
         'starts' => $starts,
-        'kinds'  => $member ? ws_flow_member_kinds() : null,
+        'kinds'  => $kinds,
     );
 }
 
