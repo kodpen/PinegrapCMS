@@ -157,7 +157,7 @@ switch ($_REQUEST['action']) {
             FROM ship_tos
             LEFT JOIN orders ON ship_tos.order_id = orders.id
             WHERE
-                (orders.status != 'incomplete')
+                " . pg_order_to_ship_sql() . "
                 AND (orders.last_modified_timestamp > '$start_timestamp')");
 
         print
@@ -197,7 +197,7 @@ switch ($_REQUEST['action']) {
             FROM orders
             LEFT JOIN contacts ON orders.contact_id = contacts.id
             WHERE
-                (orders.status != 'incomplete')
+                " . pg_order_to_ship_sql() . "
                 AND (orders.last_modified_timestamp > '$start_timestamp')
             ORDER BY orders.order_number ASC");
 
@@ -403,6 +403,14 @@ switch ($_REQUEST['action']) {
                 // If the status of this order is complete, then update the status to be exported.
                 if ($order['status'] == 'complete') {
                     db(pg_order_export_mark_sql($order['id']));
+
+                    // The order list's exports write the same line for the
+                    // same move, only when the UPDATE changed the order.
+                    if (mysqli_affected_rows(db::$con) > 0) {
+                        if (function_exists('pg_audit')) {
+                            pg_audit('update', 'order', (int) $order['id'], array('status' => 'complete'), array('status' => 'exported'), pg_audit_label_of('orders', $order));
+                        }
+                    }
                 }
             }
         }

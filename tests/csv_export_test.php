@@ -215,3 +215,49 @@ function test_csv_export_gift_cards_guard_shopper_typed_text()
 	pg_assert_true(strpos($source, "'\"' . sprintf('%01.2lf', \$gift_card['balance'] / 100) . '\",'") !== false, 'the balance cell is unchanged');
 	pg_assert_true(strpos($source, "'\"' . pg_csv_export_time(\$gift_card['created_timestamp']) . '\",'") !== false, 'the created date cell is unchanged');
 }
+
+// Every other text cell of both orders exports goes through the formula
+// guard too: the salutation, country, address type, card and payment
+// columns, product names and notes, and tracking numbers. The checkout posts
+// some of them from a pick list, but a post can carry any text, and old
+// orders keep what was stored. Quotes are doubled once: product custom
+// fields went through escape_csv() after the shared loop had doubled them.
+function test_csv_export_orders_guard_every_text_cell()
+{
+	$source = file_get_contents(dirname(__DIR__) . '/pinegrap/view_orders.php');
+
+	$cells = array(
+		"\$order['billing_salutation']" => 2, "\$order['billing_country']" => 2, "\$order['payment_method']" => 2,
+		"\$order['card_type']" => 2, "\$order['expiration_month']" => 2, "\$order['expiration_year']" => 2,
+		'$card_verification_number' => 2, "\$order['transaction_id']" => 2, "\$order['authorization_code']" => 2,
+		"\$order['reference_code']" => 2, '$ip_address' => 2,
+		"\$row['salutation']" => 1, "\$row['country']" => 1, "\$row['address_type']" => 1,
+		"\$row['arrival_date_code']" => 1, "\$row['shipping_method_code']" => 1,
+		"\$ship_to['salutation']" => 1, "\$ship_to['country']" => 1, "\$ship_to['address_type']" => 1,
+		"\$ship_to['arrival_date_code']" => 1, "\$ship_to['shipping_method_code']" => 1,
+		"\$row['product_name']" => 1, "\$order_item['product_name']" => 2, "\$order_item['short_description']" => 2,
+		'$recurring_payment_period' => 3,
+	);
+
+	foreach ($cells as $cell => $count) {
+		pg_assert_same($count, substr_count($source, "'\"' . pg_csv_formula_guard(" . $cell . ") . '\",'"), $cell . ' is guarded in every orders export');
+		pg_assert_same(0, substr_count($source, "'\"' . " . $cell . " . '\",'"), $cell . ' is not written unguarded');
+	}
+
+	pg_assert_same(2, substr_count($source, "\$currency_code = '\"' . pg_csv_formula_guard(\$order['currency_code']) . '\",';"), 'the currency code');
+	pg_assert_same(1, substr_count($source, "'\"' . pg_csv_formula_guard(\$row['notes']) . '\"' . \"\\n\";"), 'item notes, multiple files');
+	pg_assert_same(2, substr_count($source, "'\"' . pg_csv_formula_guard(\$order_item['notes']) . '\"' . \"\\n\";"), 'item notes, single file');
+
+	foreach (array('1', '2', '3', '4') as $n) {
+		pg_assert_same(0, substr_count($source, "escape_csv(\$row['custom_field_" . $n . "'])"), 'custom product field ' . $n . ' is not doubled twice');
+		pg_assert_same(0, substr_count($source, "escape_csv(\$order_item['custom_field_" . $n . "'])"), 'custom product field ' . $n . ' is not doubled twice');
+		pg_assert_same(3, substr_count($source, "pg_csv_formula_guard(\$row['custom_field_" . $n . "'])") + substr_count($source, "pg_csv_formula_guard(\$order_item['custom_field_" . $n . "'])"), 'custom product field ' . $n . ' is guarded');
+	}
+
+	pg_assert_true(strpos($source, "'\"' . csv_cell(\$shipping_tracking_number['number']) . '\"' . \"\\n\";") !== false, 'tracking numbers file');
+	pg_assert_true(strpos($source, "'\"' . csv_cell(\$shipping_tracking_number_list) . '\",'") !== false, 'tracking numbers of a recipient');
+	pg_assert_true(strpos($source, "str_replace('\"', '\"\"', \$shipping_tracking_number['number'])") === false, 'no bare quote doubling of a tracking number');
+	pg_assert_true(strpos($source, "str_replace('\"', '\"\"', \$form_data_item['name'])") === false, 'form headings guarded');
+	pg_assert_true(strpos($source, "str_replace('\"', '\"\"', \$custom_field_name)") === false, 'shipping form headings guarded');
+	pg_assert_true(strpos($source, "str_replace('\"', '\"\"', \$custom_billing_field_name)") === false, 'billing form headings guarded');
+}

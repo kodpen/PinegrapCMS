@@ -10,7 +10,8 @@
  * apart from a charged total: it is what the cart holds, not money taken.
  * The filter totals and the chart keep adding orders.total only.
  *
- * Also the tax of one order line for the orders CSV exports.
+ * Also the tax of one order line for the orders CSV exports, and the
+ * discount of each line of the Paraşüt export.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -226,6 +227,45 @@ function pg_order_parasut_tax_rate($raw)
     }
 
     return $rate;
+}
+
+/**
+ * The İNDİRİM TUTARI (discount, column Q) of each product line of an order in
+ * the Paraşüt export: the order discount (orders.discount) spread over the
+ * lines by their value (unit price x quantity) with pg_tax_spread(), so the
+ * shares add up to the discount and the remainder goes by largest remainder.
+ * A line of no value or below zero takes none, and no line takes more than
+ * its value: Paraşüt refuses a line below zero. The gift card is a means of
+ * payment, not a discount, and is not passed in.
+ *
+ * @param int   $discount    orders.discount, minor units
+ * @param array $line_totals key => the line's value in minor units
+ * @return array key => the line's discount in minor units
+ */
+function pg_order_parasut_line_discounts($discount, $line_totals)
+{
+    $shares = array();
+    $weights = array();
+
+    foreach ((array) $line_totals as $key => $total) {
+        $shares[$key] = 0;
+
+        if ((int) $total > 0) {
+            $weights[$key] = (int) $total;
+        }
+    }
+
+    $discount = min((int) $discount, array_sum($weights));
+
+    if (($discount <= 0) || empty($weights)) {
+        return $shares;
+    }
+
+    foreach (pg_tax_spread($discount, $weights) as $key => $share) {
+        $shares[$key] = $share;
+    }
+
+    return $shares;
 }
 
 /**

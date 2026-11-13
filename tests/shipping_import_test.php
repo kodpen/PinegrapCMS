@@ -233,3 +233,77 @@ function test_shipping_import_notify_switch_kept()
 	pg_assert_true(strpos($src, 'id="notify" value="1" class="" checked>') === false, 'switch is not always on');
 	pg_assert_contains('$notify_checked', $src);
 }
+
+// The rows pg_shipping_import_read_file() reads from $bytes saved as a file,
+// the way the screen hands over the upload.
+function shipping_import_test_file_rows($bytes)
+{
+	$path = tempnam(sys_get_temp_dir(), 'pgship');
+	file_put_contents($path, $bytes);
+	$read = pg_shipping_import_read_file($path, 100);
+	unlink($path);
+
+	return $read;
+}
+
+// Excel's "CSV UTF-8" with every cell quoted: the byte order mark is stepped
+// over before the first cell is read, so the quoted heading is the header and
+// not a refused row (#9137).
+function test_shipping_import_read_bom_and_quoted_headings()
+{
+	$bytes = "\xEF\xBB\xBF\"order_number\",\"number\",\"carrier\"\r\n\"1217\",\"PGTESTORD0010\",\"\"\r\n";
+
+	foreach (array('file' => shipping_import_test_file_rows($bytes), 'stream' => pg_shipping_import_read(shipping_import_test_stream($bytes), 100)) as $how => $read) {
+		pg_assert_same(1, count($read['rows']), $how . ': the header is not a row');
+		pg_assert_same(array('line' => 2, 'order_number' => '1217', 'number' => 'PGTESTORD0010', 'carrier' => ''), $read['rows'][0], $how);
+	}
+}
+
+// A file whose line breaks are a lone CR (classic Mac, some carrier and till
+// exports) reads one row per line instead of one row in all (#9137).
+function test_shipping_import_read_cr_only_file()
+{
+	$read = shipping_import_test_file_rows("order_number,number,carrier\r1217,PGTESTORD0011,\r1218,PGTESTORD0012,aras\r");
+
+	pg_assert_false($read['more']);
+	pg_assert_same(2, count($read['rows']));
+	pg_assert_same(array('line' => 2, 'order_number' => '1217', 'number' => 'PGTESTORD0011', 'carrier' => ''), $read['rows'][0]);
+	pg_assert_same(array('line' => 3, 'order_number' => '1218', 'number' => 'PGTESTORD0012', 'carrier' => 'aras'), $read['rows'][1]);
+}
+
+// A file that cannot be opened reads as no file at all.
+function test_shipping_import_read_file_missing()
+{
+	pg_assert_same(null, @pg_shipping_import_read_file(sys_get_temp_dir() . '/pg-no-such-file-' . mt_rand() . '.csv', 100));
+}
+
+// Separators inside quoted headings are not counted: a semicolon file whose
+// headings hold commas is still a semicolon file.
+function test_shipping_import_delimiter_leaves_quoted_headings_out()
+{
+	pg_assert_same(';', pg_shipping_import_delimiter('"Sipariş, no";"Takip, no";"Kargo, firma"'));
+
+	$read = pg_shipping_import_read(shipping_import_test_stream("\"Sipariş, no\";\"Takip, no\";\"Kargo, firma\"\n1203;PGTEST3;aras\n"), 100);
+
+	pg_assert_same('1203', $read['rows'][1]['order_number'], 'read with the semicolon');
+}
+
+// A quoted cell may hold a line break: the next row is named by the file line
+// it starts on.
+function test_shipping_import_read_counts_lines_inside_quotes()
+{
+	$read = pg_shipping_import_read(shipping_import_test_stream("1203,PGTEST3,\"aras\nkargo\"\n1204,PGTEST4,\n"), 100);
+
+	pg_assert_same(1, $read['rows'][0]['line']);
+	pg_assert_same(3, $read['rows'][1]['line']);
+}
+
+// The orders export guards a tracking number that starts like a formula; read
+// back, the cell is the number as it was.
+function test_shipping_import_read_takes_the_export_guard_off()
+{
+	$read = pg_shipping_import_read(shipping_import_test_stream("1203,'-PG12345,\n1204,'quoted,\n"), 100);
+
+	pg_assert_same('-PG12345', $read['rows'][0]['number']);
+	pg_assert_same("'quoted", $read['rows'][1]['number'], 'an apostrophe before plain text stays');
+}

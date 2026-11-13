@@ -15,7 +15,7 @@ description: Which save paths write audit_log rows, how they read the row before
 - Settings: `includes/settings/screen.php`, `fragment.php` (label: `audit-trail-settings-name.md`), `smtp_settings.php`. API keys: `api_settings.php` (apps, devices, OAuth clients).
 - Products: `add_product.php`, `edit_product.php`, `edit_products.php`, API `products.php`, `pg_pb_bin_variant_set()`, the file manager's catalog (name, bin, restore, on/off, bulk and quick edit), `barcode_increase_inventory.php` / `barcode_decrease_inventory.php`, `find_and_replace.php`.
 - Pages: `add_page.php`, `edit_page.php`, `edit_pages.php`, API `pages.php`, file manager (rename, move, bin, restore, bulk edit), `mass_edit.php` (grid and Find & Replace card: one line per changed page).
-- Orders: `edit_orders.php`, `view_order.php` (cancel, refund, marked paid, marked refunded, restore), API `orders.php`, `view_orders.php` exports (`complete` → `exported` from the row the export read; one line per order the UPDATE changed).
+- Orders: `edit_orders.php`, `view_order.php` (cancel, refund, marked paid or refunded, restore), API `orders.php`, the list's Status cell (`pg_order_quick_update()`), the exports in `view_orders.php` and `shipworks.php` (`complete` → `exported`, one line per order the UPDATE changed).
 - Files: `add_file.php`, `edit_file.php`, `edit_files.php`, API `files.php`, file manager (create, upload, paste, folder copy, zip create and extract, rename, move, bin, restore, delete, WebP, save, rotate, bulk edit, design flag); `create_file.php`, `*_design_file.php`, `*_theme_file.php` (system theme: after its size UPDATE; deactivated theme: own line), `edit_javascript.php`, `edit_theme_css.php`, `editor_edit_file.php`.
 - Users: `pg_user_create()`, `pg_user_update()`, `pg_user_delete()` (`core/user-write.md`); `edit_user.php`'s contact link.
 - Contacts: `core/audit-trail-contacts.md`.
@@ -32,4 +32,4 @@ description: Which save paths write audit_log rows, how they read the row before
 ## Personal data?
 - A deleted order or user keeps its row in `before_json` (card fields masked) till erasure.
 
-Related: docs/memory/core/audit-trail-stored-values.md, docs/memory/core/audit-trail-workspace.md, docs/memory/core/consent-log-and-audit-trail.md
+Related: docs/memory/core/consent-log-and-audit-trail.md (stored values and the Workspace are linked above)

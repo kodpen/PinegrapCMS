@@ -43,6 +43,9 @@ if (!$_POST) {
 
     $liveform->add_fields_to_session();
 
+    // The salutation is one of the pick list's values or none.
+    pg_liveform_salutation_values($liveform, array('salutation'));
+
     // A designed page (the address_book widget) names itself in return_to
     // and lists the controls it drew in pg_controls: only those are required
     // and written. Its own switch says whether the address type is asked.

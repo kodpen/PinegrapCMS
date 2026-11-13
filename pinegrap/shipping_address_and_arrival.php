@@ -90,6 +90,7 @@ $liveform->add_fields_to_session();
 // are checked by submit_custom_form()).
 pg_liveform_single_values($liveform, array('salutation', 'first_name', 'last_name', 'company', 'address_1', 'address_2', 'city', 'district', 'state', 'zip_code', 'country', 'address_type', 'phone_number', 'arrival_date', 'shipping_same_as_billing'));
 pg_liveform_single_values($liveform, array('custom_arrival_date_' . $liveform->get_field_value('arrival_date')));
+pg_liveform_salutation_values($liveform, array('salutation'));
 
 $liveform->validate_required_field('first_name', 'First Name is required.');
 $liveform->validate_required_field('last_name', 'Last Name is required.');
