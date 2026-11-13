@@ -14,6 +14,7 @@ description: A sub-resource fetch (image, style, script, font, media) of a prote
 - Not changed: which files are refused. A submitted-form file whose record no view shows stays refused (plan question Q1).
 
 ## What does the firewall do with one?
-- `waf_sensitive_request_counts($method, $script, $dest, $accept)` (pure) decides what `waf_is_sensitive_request()` answers, for the sensitive limit and the in-flight cap alike: every POST counts, every GET of a sensitive script counts, except a sub-resource fetch of a sign-in screen (`waf_sign_in_screens()`: `index.php`, `registration_entrance.php`, `membership_entrance.php`). A GET of those draws a form and does nothing else, what the form sends is a POST, and the global limit still applies, so an attacker claiming `Sec-Fetch-Dest: image` gains nothing; a reset link or a cart action fetched as an image still counts.
+- `waf_sensitive_request_counts($method, $script, $dest, $accept)` (pure) decides what `waf_is_sensitive_request()` answers, for the sensitive limit and the in-flight cap alike: every POST counts but a beacon (`waf-beacon-bucket.md`), every GET of a sensitive script counts, except a sub-resource fetch of a sign-in screen (`waf_sign_in_screens()`: `index.php`, `registration_entrance.php`, `membership_entrance.php`).
+- A GET of those draws a form and does nothing else, what the form sends is a POST, and the global limit still applies, so an attacker claiming `Sec-Fetch-Dest: image` gains nothing; a reset link or a cart action fetched as an image still counts.
 
 Related: docs/memory/waf/waf-inflight-request-cap.md
