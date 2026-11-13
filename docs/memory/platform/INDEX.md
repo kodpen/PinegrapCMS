@@ -79,6 +79,7 @@
 - image-editor-recycle-bin.md: The image editor's server refuses the Recycle Bin: a binned file is not opened, replaced or copied, and a new picture is not written into the bin folder (#4297)
 - image-editor-save.md: The image editor's save: image_editor_api.php open and save, the document check, the engine's edit option (turn, flip, straighten, crop, size, overlay, shape), replace, copy and new
 - image-files-left-alone.md: Images the engine refuses to process: animated (PR #1234), unreadable Exif orientation (PR #1242), ICC profile GD cannot carry (PR #1267, #1345); how each is told and handled
+- image-optimize-messages.md: What Optimize and Resize say when they leave a picture alone, per reason (pg_optimize_failure_message()); a .jpg that is no picture is unreadable, not a download
 - image-panel-thumbnails.md: Panel lists draw pictures from their 320 px WebP derivative (pg_image_panel_thumb_url(), thumbUrl()): which lists and files, 320 kept out of page srcset, warm-up pass, jpeg:size
 - image-processing-engine.md: Single image engine pg_process_image_file(): optimize vs resize jobs and the nine invariants (size guard, atomic write, EXIF, CMYK, GIF, memory, pixels, GIF transparency).
 - image-same-address-switches.md: WebP at a picture's own address: bits 4 and 8 of config.image_derivative_formats, the two Image Optimization switches, clamp, new-install default, System Status line (#5350, #6144, #6667) [decision: decisions-made-product-21.md]

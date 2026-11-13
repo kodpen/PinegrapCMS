@@ -53,6 +53,15 @@ function pg_recycle_parked_original($name, $item_id)
     return (string) substr($name, strlen($prefix));
 }
 
+// The refusal for a copy, rename or save of a row that sits in the bin,
+// naming it as the operator knows it: its own name, not the parked one.
+function pg_recycle_binned_message($name, $item_id)
+{
+    $original = pg_recycle_parked_original($name, $item_id);
+
+    return lang(array('string' => '{var:1} is in the Recycle Bin. Restore it first.', 'vars' => ($original !== '') ? $original : (string) $name));
+}
+
 // A page in the bin is not the home page any more.
 //
 // The site root is served by any page carrying page_home = 'yes', picked at

@@ -298,6 +298,7 @@ $explorer_lang = array(
     'saved_named' => lang('The {var:1} has been saved.'),
     'file_not_on_disk' => lang('The file is recorded here but is not on the disk.'),
     'file_too_large_to_edit' => lang('This file is larger than {var:1}, so its text is not shown here.'),
+    'file_not_utf8' => lang('The text of this file is not saved as UTF-8, so it is not shown here and saving leaves it as it is. Its name, folder and description can still be changed.'),
     'file_read_only' => lang('Shown for reference only. This file cannot be edited here.'),
     'syntax_error' => lang('Syntax error'),
     'save_copy_as' => lang('Save a copy as {var:1}'),
@@ -329,6 +330,7 @@ $explorer_lang = array(
     'clipboard_empty' => lang('The clipboard is empty.'),
     'clipboard_cut' => lang('{var:1} item(s) are ready to be moved.'),
     'clipboard_copy' => lang('{var:1} item(s) are ready to be copied.'),
+    'bin_restore_first' => lang('Restore items from the Recycle Bin before you copy, cut or rename them.'),
     'cannot_paste_here' => lang('You do not have access to modify this folder.'),
     'uploading' => lang('Uploading'),
     'clear' => lang('Clear'),
@@ -346,6 +348,7 @@ $explorer_lang = array(
     'upload_blocked_named' => lang('Not uploaded, files of that type are not allowed: {var:1}'),
     'leave_during_job' => lang('A job is still running on this screen. If you leave now it stops where it is.'),
     'upload_too_large' => lang('The file is too large. The maximum allowed size is {var:1}.'),
+    'upload_read_failed' => lang('The browser could not read the file, so it was not sent.'),
     'upload_done' => lang('{var:1} file(s) were uploaded.'),
     'extracted_renamed' => lang('Extracted under a new name: {var:1}. A file name is its address, so a taken name gets a number and letters an address cannot carry are replaced.'),
     'uploaded_renamed' => lang('Uploaded under a new name: {var:1}. A file name is its address, so a taken name gets a number and letters an address cannot carry are replaced.'),
@@ -2513,7 +2516,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // The container is a polite live region, so a notice added to it is
         // read; a failure is an alert, read at once.
         if (ok === false) { element.setAttribute('role', 'alert'); }
-        element.innerHTML = '<div class="d-flex"><div class="toast-body flex-grow-1"></div>' +
+        // A Bootstrap 6 toast is a flex column, so the row is as wide as its
+        // longest word unless it is told to fill the toast: a file name of a
+        // hundred letters with no break would push the text and the close
+        // button out of the 350 px box on both sides. The row fills the
+        // toast and the text breaks inside a word that cannot fit.
+        element.innerHTML = '<div class="d-flex w-100"><div class="toast-body flex-grow-1 min-w-0 text-break"></div>' +
             (action ? '<button type="button" class="btn btn-sm btn-subtle theme-secondary my-auto me-1 text-nowrap" data-role="toast-action"></button>' : '') +
             '<button type="button" class="btn-close ms-2 me-3 my-auto flex-shrink-0" data-bs-dismiss="toast" aria-label="' + L.close + '"></button></div>';
         if (options.html) {
@@ -4709,6 +4717,26 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         return String(text || '').toLocaleLowerCase('tr').replace(/\u0131/g, 'i');
     }
 
+    // How the searches read a text: foldText(), then every accented Latin
+    // letter as its base letter, one character for one, as the file picker
+    // and the server's fold_keyword_for_matching() read names. A stored file
+    // name is ASCII (prepare_file_name() writes Türkçe as Turkce), so a word
+    // typed with ü, ç, ş, ğ or ö never found one. A letter that would become
+    // two (æ, œ, ß) stays as it is. The bulk-rename find keeps foldText()
+    // alone: there an "s" must not replace the "ş" of a folder name.
+    var SEARCH_FOLD_EXTRA = { '\u00f8': 'o', '\u0111': 'd', '\u0127': 'h', '\u0142': 'l', '\u0167': 't' };
+    var searchFoldLetters = {};
+
+    function searchFold(text) {
+        return foldText(text).replace(/[\u00e0-\u024f\u1e00-\u1eff]/g, function (letter) {
+            if (searchFoldLetters[letter] === undefined) {
+                var base = SEARCH_FOLD_EXTRA[letter] || (letter.normalize ? letter.normalize('NFD').charAt(0) : letter);
+                searchFoldLetters[letter] = /^[a-z]$/.test(base) ? base : letter;
+            }
+            return searchFoldLetters[letter];
+        });
+    }
+
     // Text sort keys follow the panel language's order (Ç after C, not after
     // Z) and read digits as numbers, as the panel table sorter does. Null
     // where the browser has no Intl, and sortItems() compares code units.
@@ -4924,7 +4952,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     }
 
     function visibleItems() {
-        var filter = foldText(state.filter);
+        var filter = searchFold(state.filter);
         var narrowing = activeFilters();
 
         function match(item) {
@@ -4936,9 +4964,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // The ERP folders are searched on the server, over fields a
             // document's name does not carry; what came back already matched.
             if ((!filter) || insideErp()) { return true; }
-            return foldText(item.name).indexOf(filter) !== -1
-                || foldText(item.description).indexOf(filter) !== -1
-                || foldText(item.short_description).indexOf(filter) !== -1;
+            return searchFold(item.name).indexOf(filter) !== -1
+                || searchFold(item.description).indexOf(filter) !== -1
+                || searchFold(item.short_description).indexOf(filter) !== -1;
         }
 
         return sortItems(state.items.folders.filter(match))
@@ -6719,9 +6747,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     // Typing letters jumps to the row that starts with them.
     //
-    // The comparison folds through foldText(): İ, I, ı and i are one letter,
-    // so "İs" finds "is" and "img" typed with the i key finds IMG_0001.JPG,
-    // where an ASCII fold would send someone past every name they aimed at.
+    // The comparison folds through searchFold(): İ, I, ı and i are one
+    // letter, so "İs" finds "is" and "img" typed with the i key finds
+    // IMG_0001.JPG, and "ç" finds the c of a stored file name.
     var typeAheadBuffer = '';
     var typeAheadAt = 0;
 
@@ -6732,7 +6760,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         typeAheadBuffer = ((now - typeAheadAt) > 900) ? character : (typeAheadBuffer + character);
         typeAheadAt = now;
 
-        var needle = foldText(typeAheadBuffer);
+        var needle = searchFold(typeAheadBuffer);
         var count = state.ordered.length;
 
         if (count === 0) { return; }
@@ -6741,7 +6769,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // stays put while the word is still being typed.
         var repeated = (typeAheadBuffer.length > 1) && (typeAheadBuffer.split('').every(function (each) { return each === typeAheadBuffer.charAt(0); }));
 
-        if (repeated) { needle = foldText(typeAheadBuffer.charAt(0)); }
+        if (repeated) { needle = searchFold(typeAheadBuffer.charAt(0)); }
 
         var start = (state.cursor >= 0) ? state.cursor : -1;
 
@@ -6758,7 +6786,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             for (var step = 1; step <= count; step++) {
 
                 var index = (scanFrom + step + count * 2) % count;
-                var name = foldText(state.ordered[index].name);
+                var name = searchFold(state.ordered[index].name);
 
                 if (test(name)) { return index; }
             }
@@ -6848,8 +6876,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (item.kind === 'page') { window.open(item.url, '_blank'); return; }
 
         // A file opens in the file window, on this screen; one you may only
-        // look at opens as itself.
-        if (item.can_edit) {
+        // look at, or one in the bin (whose window would rename or rewrite
+        // it), opens as itself, as the bin's Open in new tab does.
+        if (item.can_edit && !insideBin()) {
             openFileEditor(item);
         } else {
             window.open(item.url, '_blank');
@@ -8637,6 +8666,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function itemRenamable(item) {
         if (insideCatalog()) { return (!insideCatalogBin()) && ((item.kind === 'group') || (item.kind === 'product')); }
 
+        // A binned row is parked under a name nobody types so it holds no
+        // address; renaming it there would hand it a live one.
+        if (insideBin()) { return false; }
+
         if (item.kind === 'file') { return !!item.can_edit; }
         if (item.kind === 'folder') { return !!item.can_edit; }
         return canWriteCurrent();
@@ -9537,14 +9570,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (!transferState) { return; }
 
         var container = document.getElementById('transfer_targets');
-        var filter = foldText((document.getElementById('transfer_filter').value || '').trim());
+        var filter = searchFold((document.getElementById('transfer_filter').value || '').trim());
         var here = insideCatalog() ? (state.groupId || 0) : state.folderId;
         var html = '';
         var shown = 0;
 
         transferState.targets.forEach(function (target) {
 
-            if (filter && (foldText(target.name).indexOf(filter) === -1)) { return; }
+            if (filter && (searchFold(target.name).indexOf(filter) === -1)) { return; }
 
             var blocked = !!transferState.blocked[target.id];
             var indent = 'padding-left:' + (0.75 + (Math.min(target.depth, 8) * 0.9)) + 'rem;';
@@ -9710,11 +9743,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (!wsSendState) { return; }
 
         var container = document.getElementById('ws_send_channels');
-        var filter = foldText((document.getElementById('ws_send_filter').value || '').trim());
+        var filter = searchFold((document.getElementById('ws_send_filter').value || '').trim());
         var html = '';
 
         wsSendState.channels.forEach(function (channel) {
-            if (filter && (foldText(channel.name).indexOf(filter) === -1)) { return; }
+            if (filter && (searchFold(channel.name).indexOf(filter) === -1)) { return; }
 
             var tint = /^#[0-9a-f]{3,8}$/i.test(channel.hex || '') ? (' style="color:' + channel.hex + '"') : '';
             var iconName = /^bi-[a-z0-9-]+$/.test(channel.icon || '') ? channel.icon : 'bi-hash';
@@ -9839,6 +9872,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function clipboardSet(mode) {
 
         if (insideCatalogBin() || insideErp()) { return; }
+
+        // The bin's menu offers Restore and Delete permanently, not Copy or
+        // Cut, and the keys follow it: a binned row carries its parked
+        // "pgbin_<id>_" name, which a copy or a cut would put on the site.
+        if (insideBin()) { toast(L.bin_restore_first, false); return; }
 
         var items = selectedItems();
 
@@ -11172,6 +11210,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     function beginRename(item) {
         if (item && item.erp) { return; }
+        if (item && insideBin() && !insideCatalog()) { toast(L.bin_restore_first, false); return; }
         if (item && item.short_link) { beginShortLinkRename(item); return; }
         if (item && item.backup) { beginBackupRename(item); return; }
 
@@ -12339,6 +12378,16 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         });
     }
 
+    // Whether FileReader gave a data URL that can be sent. A file whose data
+    // URL would be longer than the browser's longest string (about 383 MB of
+    // file in Chrome) is read as an empty result with no error; sent anyway,
+    // its request carries no data and the server can only answer "Invalid
+    // request.", naming no file. The window's limit already stops such a
+    // file (pg_explorer_upload_max_bytes()); this is the net under it.
+    function uploadReadUsable(result) {
+        return (typeof result === 'string') && (result.indexOf('base64,') !== -1);
+    }
+
     // Upload a walked drop into the backup directory, one file at a time so
     // a large folder does not have to be held in memory all at once.
     function uploadToBackups(entries) {
@@ -12373,6 +12422,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var reader = new FileReader();
 
             reader.onload = function () {
+                if (!uploadReadUsable(reader.result)) {
+                    failed++;
+                    toast(entry.file.name + ': ' + L.upload_read_failed, false);
+                    next();
+                    return;
+                }
+
                 api({
                     type: 'explorer_backup_upload',
                     path: state.backupPath || '',
@@ -12390,7 +12446,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 });
             };
 
-            reader.onerror = function () { failed++; next(); };
+            reader.onerror = function () { failed++; toast(entry.file.name + ': ' + L.upload_read_failed, false); next(); };
             reader.readAsDataURL(entry.file);
         }
 
@@ -12544,6 +12600,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 var reader = new FileReader();
 
                 reader.onload = function () {
+                    if (!uploadReadUsable(reader.result)) {
+                        toast(file.name + ': ' + L.upload_read_failed, false);
+                        next();
+                        return;
+                    }
+
                     api({
                         type: 'explorer_upload',
                         target_folder_id: folderId,
@@ -12576,7 +12638,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     });
                 };
 
-                reader.onerror = function () { toast(file.name + ': ' + L.request_failed, false); next(); };
+                reader.onerror = function () { toast(file.name + ': ' + L.upload_read_failed, false); next(); };
                 reader.readAsDataURL(file);
             });
         }
@@ -15198,6 +15260,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 note.textContent = L.file_not_on_disk;
             } else if (file.content_too_large) {
                 note.textContent = fmt(L.file_too_large_to_edit, [file.editor_max_label]);
+            } else if (file.content_not_utf8) {
+                note.textContent = L.file_not_utf8;
             } else if ((typeof PgCodeEditor === 'undefined') || !PgCodeEditor.isLoaded()) {
                 // The editor did not arrive; the text is still there to read
                 // and change in the plain box.
@@ -15352,8 +15416,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         };
 
         // Text goes back only when the editor was allowed to change it; a
-        // window on a picture, or on a file too large to show, sends none.
-        if (file.editable && file.on_disk && !file.content_too_large) {
+        // window on a picture, on a file too large to show or on text that
+        // is not UTF-8 (shown as nothing) sends none.
+        if (file.editable && file.on_disk && !file.content_too_large && !file.content_not_utf8) {
             payload.content = fileEdit.editor ? fileEdit.editor.getValue() : document.getElementById('file_edit_code').value;
         }
 

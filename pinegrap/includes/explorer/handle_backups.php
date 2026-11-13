@@ -254,6 +254,7 @@ function pg_explorer_handle_backups_list($type, $request, $user)
     $crumbs = pg_explorer_backup_breadcrumb($relative);
 
     $upload_limits = pg_upload_limits();
+    $upload_max_bytes = pg_explorer_upload_max_bytes($upload_limits['json_max']);
 
     respond(array(
         'status' => 'success',
@@ -268,7 +269,7 @@ function pg_explorer_handle_backups_list($type, $request, $user)
             'role' => (int) $user['role'],
             'is_manager' => ($user['role'] <= 2),
             'is_designer' => ($user['role'] <= 1),
-            'upload_max_bytes' => $upload_limits['json_max'],
+            'upload_max_bytes' => $upload_max_bytes,
             'show_product_images' => (bool) ECOMMERCE_SHOW_PRODUCT_IMAGES,
             // So the upload window can refuse a file while it can still
             // be taken out of the list, rather than after it was sent.
@@ -277,7 +278,7 @@ function pg_explorer_handle_backups_list($type, $request, $user)
             'backup_blocked_names' => pg_explorer_blocked_upload_names(),
             'backup_blocked_extensions' => pg_explorer_blocked_upload_extensions(),
             'backup_allowed_names' => pg_explorer_backup_upload_allowed_names(),
-            'upload_max_label' => convert_bytes_to_string($upload_limits['json_max'], 'floor')),
+            'upload_max_label' => convert_bytes_to_string($upload_max_bytes, 'floor')),
         'total_label' => convert_bytes_to_string(folderSize($root), 2)));
 }
 

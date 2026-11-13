@@ -63,7 +63,7 @@ function test_size_label_panel_call_sites()
 		'view_folder_and_files_f.php' => "convert_bytes_to_string(\$file['size'], 'auto')",
 		'includes/explorer/handle_upload.php' => "convert_bytes_to_string(\$upload_limits['json_max'], 'floor')",
 		'includes/explorer/handle_list.php' => "convert_bytes_to_string(\$upload_max_bytes, 'floor')",
-		'includes/explorer/handle_backups.php' => "convert_bytes_to_string(\$upload_limits['json_max'], 'floor')",
+		'includes/explorer/handle_backups.php' => "convert_bytes_to_string(\$upload_max_bytes, 'floor')",
 		'includes/explorer/erp.php' => "convert_bytes_to_string(\$size, 'auto')",
 		'includes/fn/files.php' => "convert_bytes_to_string(\$image_report['bytes_after'], 'auto')",
 		'includes/fn/design_file_list_edit.php' => "convert_bytes_to_string(\$file['size'], 'auto')",

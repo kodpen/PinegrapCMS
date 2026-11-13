@@ -3045,6 +3045,32 @@ function pg_json_encode_answer($value)
     return is_string($json) ? $json : null;
 }
 
+// The JSON text of a panel answer (api.php's respond()): what encode_json()
+// writes when it can. Where json_encode() returns false, echo would send an
+// empty 200 body a screen cannot read, so it shows nothing at all. A byte
+// that is not UTF-8 (a file's text in Windows-1254, a damaged row) becomes
+// U+FFFD through pg_json_encode_answer(), as in the external API, and an
+// answer JSON cannot hold at all (INF, NAN, too deep) becomes an error the
+// screen shows.
+function pg_panel_answer_json($response)
+{
+    $json = encode_json($response);
+
+    if (is_string($json)) {
+        return $json;
+    }
+
+    $json = pg_json_encode_answer($response);
+
+    if ($json !== null) {
+        return $json;
+    }
+
+    return (string) encode_json(array(
+        'status' => 'error',
+        'message' => lang('The request failed. Please try again.')));
+}
+
 // The value with U+FFFD in place of every byte that is not UTF-8, in array
 // keys and object property names as well as strings, as
 // JSON_INVALID_UTF8_SUBSTITUTE writes them (ENT_SUBSTITUTE replaces the same

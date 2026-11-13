@@ -226,7 +226,7 @@ function pg_explorer_handle_list_all_files($type, $request, $user, $folders_that
 
     // The upload travels inside a json request, so the form settings do not apply to it.
     $upload_limits = pg_upload_limits();
-    $upload_max_bytes = $upload_limits['json_max'];
+    $upload_max_bytes = pg_explorer_upload_max_bytes($upload_limits['json_max']);
 
     respond(array(
         'status' => 'success',
@@ -407,7 +407,7 @@ function pg_explorer_handle_list($type, $request, $user, $folders_that_user_has_
     // The upload travels inside a json request, so the form settings do not apply to it.
     $upload_limits = pg_upload_limits();
 
-    $upload_max_bytes = $upload_limits['json_max'];
+    $upload_max_bytes = pg_explorer_upload_max_bytes($upload_limits['json_max']);
 
     // Recycle bin summary for the toolbar, plus restore metadata for
     // the items of this listing when the listing IS the bin.

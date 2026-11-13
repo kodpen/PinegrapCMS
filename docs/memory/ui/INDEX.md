@@ -176,6 +176,7 @@
 - erp-link-rights.md: ERP order, receipt, contact and user links and the Record a Receipt/Payment buttons show only when the target screen admits the clerk; plain text otherwise
 - experiments-screen.md: The Experiments results screen (experiments.php, PX5 #6255): list, per-variant figures, lift, the z-test as a sentence, the daily-rate SVG, buttons posted to the sheet
 - explorer-access-drawers.md: File Manager access drawers (folder and commerce) list only rights holders, add users by search, save changed rows, None deletes the row; end date layout, inherit note
+- explorer-bin-keys.md: File Manager Recycle Bin: Ctrl+C, Ctrl+X, F2 and Enter do what the bin's menu offers; the server refuses to copy, rename or save a binned row; a drag out of the bin gives the row its name back
 - explorer-bin-records-and-names.md: File Manager bin count skips gone items, page deletes clear the record, Edit File deletes to the bin, status bar kinds; paste, Duplicate, rename, upload and save toasts name the name a file took
 - explorer-bin-toast.md: File and Catalog Manager Delete toasts count what the server moved to the bin and show its refusal reasons
 - explorer-breadcrumb-narrow.md: Why the File and Catalog Manager's location bar scrolls to its end after every draw and on resize, and fades on its left edge.
@@ -184,10 +185,11 @@
 - explorer-copy-page-right.md: File Manager folder copy and page paste skip pages a role-3 user without 'Create pages' may not copy, and stay JSON
 - explorer-details-rows.md: File Manager details panel rows for pages, files, archived pages, bin items and backups (folder link, address, exact time and editor, impact, bin rows, backup location) and the Pages view columns
 - explorer-drawer-names.md: File and Catalog Manager drawer rows drawn by script name themselves: access selects per user, commerce switch groups, shipping-zone lists, bulk description, backup upload path, file window code field
+- explorer-file-window-encoding.md: File Manager Edit File window on a text file that is not UTF-8 (Windows-1254): opens with no text and a note, saves no text; panel answers never go out as an empty JSON body (pg_panel_answer_json())
 - explorer-grid-tiles.md: Explorer grid tiles (view_folders.php, catalog and files): the tile size scale, picture vs glyph, the missing-picture plate sized from --pg-tile-icon, the narrow pill it fixed (PR #2200)
 - explorer-keyboard.md: File manager (view_folders.php) from the keyboard: shortcuts leave focused controls alone, crumbs with href, Quick Look focus and Tab trap, the context menu from ContextMenu/Shift+F10 (#2783)
 - explorer-list-headings.md: File manager list view (view_folders.php): headings sort from a button and carry aria-sort; column edges resize by keyboard, any pointer, double-click fit and a menu reset
-- explorer-locale-order.md: File and Catalog Manager (view_folders.php) sort text keys with the panel language's Intl.Collator and match with foldText() (İ/I/ı/i alike); the Shared view's groups sort by pg_geo_label_compare()
+- explorer-locale-order.md: File and Catalog Manager sort with the panel language's Intl.Collator; searches use searchFold() (İ/I/ı/i alike, ü as u), bulk-rename find foldText(); Shared groups by label
 - explorer-menu-tree.md: The File Manager's and the Catalog Manager's tree in their main menu panels: moved in on the explorer's own screen, links elsewhere (explorer_side.js, the explorer_side action), gates, per-area keys [decision: decisions-made-files.md, decisions-made-panel.md, decisions-made-workspace-6.md]
 - explorer-narrow-screens.md: File Manager below 1024 px and in a crowded toolbar: the details sheet, no keyboard hint on touch, breadcrumb folding under "...", the Files view's one-row toolbar
 - explorer-page-type-name.md: The File Manager writes a page's type in the panel language ("Page · Custom Form"), from the payload's type_name, and sorts the Type column by it
@@ -195,8 +197,10 @@
 - explorer-search-state.md: File manager (view_folders.php) search and filters: status bar count, the hidden status region and live notices, selection strip, preview pane; the hover bubble's check after a delete (#2053)
 - explorer-selection-bar-menu.md: The file manager's selection bar "More actions" menu is placed by Floating UI (fixed strategy), not displayed statically: why, and the rule for a menu in a clipped or bottom bar
 - explorer-short-link-open-noopener.md: The File Manager opens a short link (open, Visit) with window.open(url, '_blank', 'noopener'), because its address redirects off the site
+- explorer-toast-long-names.md: File Manager notices (toast()) wrap a long file name inside the 350 px box with the close and Undo buttons in it; why the Bootstrap 6 toast's flex column pushed them out
 - explorer-tour-texts.md: File and Catalog Manager tour steps name the control they ring by its printed label; the toolbar More button is named; keys stay .4 on rewording
 - explorer-tree-keyboard.md: The File and Catalog Manager tree on the explorer's own screen (in the main menu panel) from the keyboard: focusable link rows with aria-current, arrows with aria-expanded, Enter/Space
+- explorer-upload-browser-ceiling.md: File Manager upload window limit capped at what a browser can send as one data URL (about 383 MB, pg_explorer_upload_max_bytes()); a file FileReader reads as nothing is named and not sent
 - fediverse-settings.md: Settings › Fediverse: account card and handle check, Look me up, what is published, followers and blocks, delivery log with Try again, the rel=alternate link
 - field-caption-links.md: Captions tied to their fields on the code-field screens, Generate Layout, Create File and the order tracking numbers; why chips need a label, not an aria-label
 - field-form-checks.md: What the form field screens refuse on save (type, number boxes, blank choices) and which pages the form view and field screens open for
