@@ -290,7 +290,7 @@ $explorer_lang = array(
     'optimize_image' => lang('Optimize this image'),
     'image_editor' => lang('Design Canvas'),
     // The Design Canvas's icon (SVG) before its name in the menu and the tools.
-    'image_editor_icon' => pg_design_canvas_icon(),
+    'image_editor_icon' => pg_design_canvas_icon_one_colour(),
     'image_export' => lang('Export settings…'),
     'new_image' => lang('New image'),
     'new_image_name' => lang('New image'),

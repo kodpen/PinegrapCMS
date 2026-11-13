@@ -1924,7 +1924,8 @@ html[data-bs-theme="dark"] #menu .pg-mi {
 #menu .pg-mi-styles .pg-mi-c4 { color: var(--pg-mi-violet); }
 
 /* The Design Canvas's icon outside the main menu (pg_design_canvas_icon()):
-   the File Manager's action, Workspace's New canvas. body .design-color sets
+   the editor's top bar; its size also serves the one-colour form below.
+   body .design-color sets
    the outline; the tint and the pen curve take the menu's shades. */
 .pg-dc-icon {
   --pg-dc-accent: #0284c7;
@@ -1954,6 +1955,18 @@ html[data-bs-theme="dark"] .pg-dc-icon .pg-mi-2 {
 .pg-dc-icon .pg-mi-at {
   fill: currentColor;
   fill-opacity: var(--pg-dc-accent-opacity);
+}
+/* The one-colour form (pg_design_canvas_icon_one_colour()), among one-colour
+   icons: no design colour, no tint, no second hue; every line takes the
+   text colour around it, as the Bootstrap icons beside it do. Four classes
+   outweigh the dark theme's tint rule above. */
+.pg-mi.pg-dc-icon.pg-dc-mono,
+.pg-mi.pg-dc-icon.pg-dc-mono .pg-mi-a {
+  color: inherit;
+}
+.pg-mi.pg-dc-icon.pg-dc-mono .pg-mi-2,
+.pg-mi.pg-dc-icon.pg-dc-mono .pg-mi-at {
+  fill: none;
 }
 #menu .pg-mi-design_canvas { --pg-mi-a: var(--pg-mi-sky); }
 
