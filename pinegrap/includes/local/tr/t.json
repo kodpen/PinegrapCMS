@@ -7671,6 +7671,7 @@
     "Theme file: {var:1}": "Tema dosyası: {var:1}",
     "Theme files": "Tema dosyaları",
     "Theme name:": "Tema adı:",
+    "Theme parts made designer parts: {var:1} photo backgrounds, {var:2} sliders, {var:3} lightbox links. Left with their scripts: {var:4} photo backgrounds, {var:5} sliders, {var:6} lightboxes.": "Tasarımcı parçasına dönüşen tema parçaları: {var:1} fotoğraflı arka plan, {var:2} kaydırıcı, {var:3} lightbox bağlantısı. Betikleriyle kalanlar: {var:4} fotoğraflı arka plan, {var:5} kaydırıcı, {var:6} lightbox.",
     "Theme: Dropdown": "Tema: Açılır",
     "Theme: Switch": "Tema: Değiştirici",
     "Theme: Toggle": "Tema: Anahtar",

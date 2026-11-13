@@ -125,6 +125,7 @@ description: Generated from the module field of the memory files: each includes/
 - `legacy_bootstrap_move`: [[legacy-bootstrap-move]]
 - `legacy_bootstrap_report`: [[legacy-bootstrap-card]]
 - `legacy_bootstrap_trial`: [[legacy-bootstrap-trial-design]]
+- `legacy_bootstrap_twins`: [[legacy-bootstrap-twins]]
 - `legacy_design_theme`: [[legacy-design-theme]]
 - `legacy_to_classic`: [[legacy-to-classic]]
 - `legacy_to_designer`: [[legacy-set]], [[legacy-to-designer-report]]
