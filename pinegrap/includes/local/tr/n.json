@@ -36,6 +36,7 @@
     "Name contains non-ASCII characters and may not be reachable": "Ad ASCII dışı karakter içeriyor, adresinden ulaşılamayabilir",
     "Name contains spaces, underscores or is very long": "Ad boşluk veya alt çizgi içeriyor ya da çok uzun",
     "Name each order line once.": "Her sipariş satırını bir kez yazın.",
+    "Name each usage window once, from the list.": "Her kullanım penceresini listeden ve bir kez adlandırın.",
     "Name filter": "Ad filtresi",
     "Name for your custom application": "Özel uygulamanızın adı",
     "Name is URL-friendly": "Ad URL dostu",

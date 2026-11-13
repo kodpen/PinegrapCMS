@@ -139,7 +139,101 @@ function ws_agent_request_api_routes()
                 array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => WS_AGENT_WAKE_NOTE_MAX),
             ),
         ),
+        array(
+            'id'          => 'workspace.agent_report.set',
+            'method'      => 'POST',
+            'path'        => '/workspace/agent-report',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_agent_report_set',
+            'mcp'         => false,
+            'dry_run'     => true,
+            'returns'     => ws_api_agent_report_schema(),
+            'summary'     => 'Report the calling agent\'s model and plan usage',
+            'description' => 'The agent tells the site the model it runs on and its plan\'s usage as it reads it; the Agents card shows the last report with its age. The site cannot check either value. A report needs model or windows; anything outside the rules refuses the whole report with 422. It replaces the previous report: only the last one is kept. An agent that cannot read its usage leaves windows out.' . $only,
+            'params'      => array(
+                array('name' => 'model', 'in' => 'body', 'type' => 'string', 'max_length' => WS_AGENT_REPORT_MODEL_MAX, 'description' => 'The model the agent runs on, as it names it; at most 80 characters.'),
+                array('name' => 'windows', 'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'percent' => 'integer', 'resets_at' => 'string'), 'max_items' => WS_AGENT_REPORT_WINDOWS_MAX,
+                    'description' => 'Up to four usage windows, each exactly {name, percent, resets_at}: name one of ' . implode(', ', array_keys(ws_agent_report_window_list())) . ', each once; percent a whole number 0-100 used; resets_at when the window starts again (ISO-8601 or a unix timestamp).'),
+            ),
+        ),
     );
+}
+
+// What the report route returns.
+function ws_api_agent_report_schema()
+{
+    return array(
+        'handle'      => 'string',
+        'model'       => 'string',
+        'windows'     => array(array('name' => 'string', 'percent' => 'integer', 'resets_at' => 'string?')),
+        'reported_at' => 'string?',
+    );
+}
+
+/**
+ * A report as the route gives it. Pure but for api_time().
+ *
+ * @param string $handle
+ * @param array  $values ws_agent_report_check() values
+ * @param int    $at     the report's time, 0 for one not written (a dry run)
+ * @return array
+ */
+function ws_api_agent_report_present($handle, $values, $at)
+{
+    return array(
+        'handle'      => (string) $handle,
+        'model'       => (string) $values['model'],
+        'windows'     => array_map(function ($window) {
+            return array('name' => $window['name'], 'percent' => (int) $window['percent'], 'resets_at' => api_time($window['resets_at']));
+        }, (array) $values['windows']),
+        'reported_at' => ((int) $at > 0) ? api_time($at) : null,
+    );
+}
+
+/**
+ * The windows of a request with each reset time read as unix seconds; a
+ * time that does not read stays as given, so the check refuses it. Pure but
+ * for api_time_parse().
+ *
+ * @param mixed $windows
+ * @return mixed
+ */
+function ws_api_agent_report_times($windows)
+{
+    if (!is_array($windows)) {
+        return $windows;
+    }
+
+    foreach ($windows as $index => $window) {
+        if (is_array($window) && isset($window['resets_at']) && is_string($window['resets_at'])) {
+            $parsed = api_time_parse($window['resets_at']);
+            $windows[$index]['resets_at'] = ($parsed === null) ? $window['resets_at'] : (int) $parsed;
+        }
+    }
+
+    return $windows;
+}
+
+function ws_api_agent_report_set($params)
+{
+    $agent = ws_api_agent_caller();
+
+    if (!ws_agent_report_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    $check = ws_agent_report_check($params['model'] ?? null, ws_api_agent_report_times($params['windows'] ?? null));
+
+    if (!$check['ok']) {
+        api_fail_validation($check['error'], $check['field']);
+    }
+
+    api_dry_run_stop('reported', 'workspace_agent_report', ws_api_agent_report_present($agent['handle'], $check['values'], 0));
+
+    $now = time();
+    ws_agent_report_save((int) $agent['id'], $check['values'], $now);
+
+    api_ok(ws_api_agent_report_present($agent['handle'], $check['values'], $now));
 }
 
 // What the wake routes return.
