@@ -61,6 +61,15 @@ function test_lbs_theme_read_colour_sheet()
 	pg_assert_same('#47b475', pg_lbs_theme_read(array('a { color: #ccc } .btn-primary { background-color: #47b475 }'))['primary'], 'a grey link colour is passed over');
 }
 
+function test_lbs_theme_imports()
+{
+	// theme_modern.css: the colour sheets listed in a comment, one chosen below it.
+	$css = "/*\nTo customize theme color, move one of the @import lines below\n@import 'FoundryGreen.css';\n@import 'Blue.css';\n*/\n@import 'FoundryGreen.css';\n"
+		. "@import url('//fonts.googleapis.com/css?family=Lato');\n@import url(Extra.css);\n@import \"../x.css\";\nbody { font-family: \"Open Sans\"; }";
+	pg_assert_same(array('FoundryGreen.css', 'Extra.css'), pg_lbs_theme_imports($css), 'only plain site file names, never a commented one');
+	pg_assert_same(array(), pg_lbs_theme_imports('body { color: red }'));
+}
+
 function test_lbs_theme_font_and_look()
 {
 	pg_assert_same('"Lato", Arial, sans-serif', pg_lbs_theme_font('"Lato",Arial ,  sans-serif !important'));

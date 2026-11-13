@@ -7,7 +7,7 @@ description: The LB1 hand trial (#8940): a Legacy page with Bootstrap 5.3.8 in p
 - Page "home-1" of the english_default "home-1 set" Legacy design, sandbox, Playwright at 1280×800 and 390×844 (phone), deviceScaleFactor 1, full page. Nothing was saved: the browser swapped the files and the markup per request.
 - Trial column: `bootstrap.css` answered by 5.3.8's `bootstrap.min.css`, `bootstrap.min.js` by its bundle, Bootstrap Icons added; the page's classes renamed by the plan's map (27 renames on the page: grid, offsets, push/pull to `order-*`, visibility to `d-*`, floats, text sides, `btn-default`, `img-responsive`, `form-group`, `sr-only`, `in`), `data-toggle` to `data-bs-toggle`.
 - The sandbox reaches no CDN, so both columns got jQuery 3.7.0 and jQuery UI from `assets/lib/Jquery/` and flexslider 2.7.2 (npm) for 2.3.0.
-- Pictures, Legacy left and trial right: `plans/legacy-bootstrap/lb1-home-1-wide.png` (half size) and `lb1-home-1-phone.png`.
+- Pictures, Legacy left and trial right: `legacy-bootstrap/lb1-home-1-wide.png` (half size) and `lb1-home-1-phone.png`.
 
 ## What broke first?
 - `scripts.js` line `$('[data-toggle="tooltip"]').tooltip();` throws under 5.3.8 ("tooltip is not a function"): the jQuery bridge is not there when the theme's ready handler runs, and every theme script after it stops: sliders show all slides stacked, the icon tabs show every pane.

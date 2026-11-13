@@ -208,6 +208,27 @@ function pg_lbs_theme_read($sheets)
 }
 
 /**
+ * The site files a stylesheet imports (`@import 'FoundryGreen.css';`, the
+ * classic theme's way to choose its colour sheet), comments left out: plain
+ * file names of stylesheets only, in their order.
+ *
+ * Pure: no query.
+ *
+ * @return array  file names
+ */
+function pg_lbs_theme_imports($css)
+{
+    $css = preg_replace('#/\*.*?\*/#s', '', (string)$css);
+    $out = array();
+    if (preg_match_all('/@import\s+(?:url\(\s*)?(["\']?)([^"\'()\s;]+)\1\s*\)?/i', $css, $m)) {
+        foreach ($m[2] as $name) {
+            if (preg_match('/^[A-Za-z0-9_.-]+\.css$/', $name) && !in_array($name, $out, true)) $out[] = $name;
+        }
+    }
+    return $out;
+}
+
+/**
  * A font-family list fit for a look's token: the names and generic families
  * only, an icon font refused. '' for none.
  *
@@ -258,7 +279,7 @@ function pg_lbs_theme_look_css($name, $body, $heading)
  * The stylesheets a trial design's theme is read from, the Theme file
  * first: the trial's Theme file (its own copy), else the Legacy design's
  * (its theme_id, else the activated theme it loads), then the trial's site
- * stylesheets in their order.
+ * stylesheets in their order; a sheet's imported site files right before it.
  *
  * @param int   $legacy_id
  * @param array $record  pg_lbs_trial_of()
@@ -292,10 +313,20 @@ function pg_lbs_theme_sheets($legacy_id, $record)
         $file = pg_lbs_site_file($row, (string)OUTPUT_PATH);
         if ($file !== '' && !in_array($file, $names, true)) $names[] = $file;
     }
+    // A sheet's imported colour sheet comes before it: its !important rules
+    // are what a visitor sees.
     $read = array();
+    $seen = array();
     foreach ($names as $file) {
         $text = pg_lbs_read_site_file($file);
-        if ($text !== null) $read[] = $text;
+        if ($text === null) continue;
+        foreach (pg_lbs_theme_imports($text) as $import) {
+            if (isset($seen[$import])) continue;
+            $seen[$import] = true;
+            $imported = pg_lbs_read_site_file($import);
+            if ($imported !== null) $read[] = $imported;
+        }
+        $read[] = $text;
     }
     return array_merge($read, $sheets);
 }
