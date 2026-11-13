@@ -1111,7 +1111,17 @@ function ws_flow_templates_for($viewer, $scheduled = null)
         'events'   => array_keys((array) ($scheduled['events']['list'] ?? array())),
     ));
 
-    return function_exists('ws_flow_templates_saved') ? array_merge($templates, ws_flow_templates_saved($viewer)) : $templates;
+    $templates = function_exists('ws_flow_templates_saved') ? array_merge($templates, ws_flow_templates_saved($viewer)) : $templates;
+
+    // With the Workspace off a template holding a box that needs it is not
+    // offered (ws_flow_graph_needs_workspace()).
+    if (!ws_enabled()) {
+        $templates = array_values(array_filter($templates, function ($template) {
+            return !ws_flow_graph_needs_workspace($template['graph'] ?? array());
+        }));
+    }
+
+    return $templates;
 }
 
 /**
