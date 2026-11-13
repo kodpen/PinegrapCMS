@@ -379,6 +379,16 @@ function test_consent_answer_valid_is_strict()
 	}
 }
 
+// A line break after the value is no value the script writes: without the
+// D modifier "$" also matched before a final "\n" and the answer was taken.
+function test_consent_answer_valid_refuses_a_trailing_line_break()
+{
+	foreach (array("1\n", "1.a1\n", "1.a1.m0\n") as $raw) {
+		pg_assert_false(pg_consent_answer_valid($raw), var_export($raw, true));
+		pg_assert_same(null, pg_consent_answer_changes('', $raw), var_export($raw, true));
+	}
+}
+
 // One row per category whose answer differs from the cookie before it.
 function test_consent_answer_changes_lists_what_changed()
 {
