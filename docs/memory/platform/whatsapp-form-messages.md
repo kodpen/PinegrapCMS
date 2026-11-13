@@ -1,6 +1,6 @@
 ---
 name: whatsapp-form-messages
-description: A custom form's WhatsApp message to its sender (WA6, #9374): the form's section, the number field, a template and a field per variable, connect_apps whatsapp_forms, sent with the form's e-mails, off by default
+description: A custom form's WhatsApp message to its sender (WA6, #9374): number field, template, a field per variable, connect_apps whatsapp_forms, sent with the e-mails, off by default
 module: whatsapp_forms
 ---
 
