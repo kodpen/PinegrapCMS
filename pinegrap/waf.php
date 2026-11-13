@@ -54,6 +54,12 @@ if (!defined('WAF_AP_INBOX_RATE_LIMIT')) {
     define('WAF_AP_INBOX_RATE_LIMIT', 300);
 }
 
+// Requests a single address may send to the site's own beacon scripts in a
+// minute; see waf_handle_rate_beacon().
+if (!defined('WAF_BEACON_RATE_LIMIT')) {
+    define('WAF_BEACON_RATE_LIMIT', 240);
+}
+
 // Firewall log aggregation bucket, in seconds. Identical events inside one
 // bucket become a single row with a hit counter rather than N rows. Five
 // minutes keeps enough resolution to read an attack's shape while collapsing
@@ -2327,6 +2333,12 @@ function waf_fetch_is_subresource($method, $dest, $accept)
  */
 function waf_sensitive_request_counts($method, $script, $dest, $accept)
 {
+    // The site's own beacons are counted on a bucket of their own
+    // (waf_handle_rate_beacon()).
+    if (in_array($script, waf_beacon_scripts(), true)) {
+        return false;
+    }
+
     if (strtoupper((string) $method) === 'POST') {
         return true;
     }
@@ -2342,6 +2354,50 @@ function waf_sensitive_request_counts($method, $script, $dest, $accept)
     }
 
     return true;
+}
+
+/**
+ * The scripts a site page posts to without the visitor asking for anything:
+ * page_view.php (the view of a page served from the page cache, the page
+ * speed figures, site search and experiment clicks) and consent_answer.php
+ * (the cookie notice's answer, sent as a beacon).
+ *
+ * Every page sends one or two of these, so on the sensitive allowance (30 a
+ * minute) and the cap on open requests a shared address spent both by
+ * reading pages, and was then refused the sign-in it came for. They answer
+ * with nothing worth guessing at: page_view.php counts only what the site
+ * signed, consent_answer.php has its own hourly write limit. They are held
+ * to waf_handle_rate_beacon() instead; the global limit still counts them.
+ *
+ * @return string[] script file names, as waf_script_name() gives them
+ */
+function waf_beacon_scripts()
+{
+    return array('page_view.php', 'consent_answer.php');
+}
+
+/**
+ * What the beacon bucket does with a request, given the count this request
+ * brought the subject's minute to.
+ *
+ * 'pass' within the limit (and when the counter is unavailable: fail open),
+ * 'log' for the first request over it, 'drop' for the rest of the minute: one
+ * log row a minute per address, however many beacons a page keeps sending.
+ *
+ * @param int $hits  the window's count including this request, 0 when unknown
+ * @param int $limit requests allowed in the window, 0 for no limit
+ * @return string pass, log or drop
+ */
+function waf_beacon_bucket_answer($hits, $limit)
+{
+    $hits = (int) $hits;
+    $limit = (int) $limit;
+
+    if ($limit <= 0 || $hits <= $limit) {
+        return 'pass';
+    }
+
+    return ($hits === $limit + 1) ? 'log' : 'drop';
 }
 
 function waf_is_sensitive_request()
@@ -5054,6 +5110,11 @@ function waf_run($stage = 'init')
                 waf_handle_rate_api($ip, $blocking);
             }
 
+            if ($stage === 'init' && empty($done['rate_beacon'])) {
+                $done['rate_beacon'] = true;
+                waf_handle_rate_beacon($ip, $blocking);
+            }
+
             if ($stage === 'init' && empty($done['rate_ap_inbox'])) {
                 $done['rate_ap_inbox'] = true;
                 waf_handle_rate_ap_inbox($ip, $blocking);
@@ -5954,6 +6015,59 @@ function waf_handle_rate_api($ip, $blocking)
     if ($blocking) {
         waf_deny(429, waf_reference());
     }
+}
+
+/**
+ * The allowance for the site's own beacons (waf_beacon_scripts()).
+ *
+ * They left the sensitive allowance because every page sends them; this
+ * keeps a loop posting to them bounded. Over the limit the request gets what
+ * the script itself answers a beacon, an empty 204, without running it: the
+ * page's script never reads the answer, so a visitor behind a busy shared
+ * address loses a view count, never a page. No offence and no line in
+ * data/firewall.log - nothing was refused that a person sees, and a fail2ban
+ * filter reading DENY lines would ban the readers this bucket spares - and
+ * one waf_log row a minute (waf_beacon_bucket_answer()). Monitor mode logs
+ * the same row as would-rate and runs the script.
+ */
+function waf_handle_rate_beacon($ip, $blocking)
+{
+    if (!in_array(waf_script_name(), waf_beacon_scripts(), true)) {
+        return;
+    }
+
+    if (waf_bot_rate_exempt(waf_bot_verified())) {
+        return;
+    }
+
+    // Counting requests against an unresolved or a shared address would
+    // count the whole internet as one visitor. See waf_ip_is_counted().
+    if (!waf_ip_is_counted($ip)) {
+        return;
+    }
+
+    $limit = WAF_BEACON_RATE_LIMIT;
+    $answer = waf_beacon_bucket_answer(waf_rate_record(waf_ip_subject($ip), 'beacon', 60), $limit);
+
+    if ($answer === 'pass') {
+        return;
+    }
+
+    if ($answer === 'log') {
+        waf_log_event($blocking ? 'rate' : 'would-rate', 'rate-beacon', 'rate', 3, waf_script_name(), $limit . '/min');
+    }
+
+    // The same promise waf_deny() keeps: Monitor mode stops nothing.
+    if (!$blocking || waf_mode() !== 'block') {
+        return;
+    }
+
+    if (!headers_sent()) {
+        http_response_code(204);
+        header('Cache-Control: no-store');
+    }
+
+    exit();
 }
 
 /**

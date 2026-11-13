@@ -10,6 +10,7 @@
 - waf-ban-ladder.md: waf_auto_ban() escalation ladder: hit_count is the number of bans, 60-240-960-3840-10080 min, cap waf_auto_ban_max_minutes, a rate ban stays at the base, expired rows kept for ladder memory. [decision: decisions-made-waf.md]
 - waf-ban-notice.md: The operator's e-mail per automatic ban (queued by waf.php in data/temp/, sent after waf_run init), one notice per rule burst, ban rows linked to the filtered firewall log (#2167)
 - waf-ban-shield-mirror.md: The ban shield mirror data/temp/ban_shield.txt: line types B/P/A/L, the ban's end on B lines, who writes it, staleness asymmetry, allow-list lines, the shield's page, shield_pending.log and drain.
+- waf-beacon-bucket.md: Beacons (page_view.php, consent_answer.php) skip the sensitive allowance and open-request cap; own bucket of 240/min, excess gets an empty 204, no offence [decision: decisions-made-waf-2.md]
 - waf-bot-policy-credential-endpoints.md: Which endpoints skip the WAF bot policy because they admit a caller by its credential (integration, mcp, oauth, workspace_ical, feed, marketplace_webhook), why, where the return sits, why not api.php.
 - waf-bot-rate-exemption.md: Only a crawler waf_bot_verified() proved skips the global, sensitive, api.php and in-flight limits (waf_bot_rate_exempt()); IS_BOT buys no rate relief (#2731). [decision: here]
 - waf-bug-fixes-2026-11.md: waf_run() judges a request without a Host header, rate buckets outlive the sign-in lockout, crawlers confirmed over IPv6, scan cap per source.
