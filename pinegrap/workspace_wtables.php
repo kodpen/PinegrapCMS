@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     validate_token_field();
 
-    pg_request_single_values(array('wt_action', 'wt_table', 'wt_column', 'wt_row', 'wt_share', 'wt_bin', 'revision', 'name', 'description', 'type', 'target', 'level', 'value', 'note', 'starter', 'samples'));
+    pg_request_single_values(array('wt_action', 'wt_table', 'wt_column', 'wt_row', 'wt_share', 'wt_bin', 'revision', 'name', 'description', 'type', 'target', 'level', 'channel', 'value', 'note', 'starter', 'samples'));
 
     $action = (string) ($_POST['wt_action'] ?? '');
     $table = ws_wtable((int) ($_POST['wt_table'] ?? 0));
@@ -284,6 +284,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = ws_wtable_share_remove($viewer, $table, (int) ($_POST['wt_share'] ?? 0));
             $result['ok'] ? $liveform->add_notice(h(lang('The share was taken back.'))) : $refused($result);
             $back .= '#ws-wt-shares';
+            break;
+
+        case 'table_home':
+            // The table moved into a channel, to another one, or out of its
+            // channel to the person's own tables (wtable_channel.php).
+            $result = ws_wtable_home_set($viewer, $table, $field('channel'));
+
+            if (!$result['ok']) {
+                $liveform->add_error(h(ws_wtable_home_refusal_text($result, !ws_wtable_home_is_own($field('channel')))));
+            } elseif ($result['changed']) {
+                $liveform->add_notice(h(($result['channel_id'] > 0)
+                    ? lang(array('string' => 'The table now belongs to the channel {var:1}.', 'vars' => (string) (ws_wtable_home_channel($result['channel_id'])['name'] ?? '')))
+                    : lang('The table is now your own.')));
+            }
+
+            $back .= '#ws-wt-home';
             break;
 
         case 'import_read':
@@ -742,11 +758,21 @@ if (!$table) {
 
     // Tables that belong to a channel become a scope of their own when the
     // store keeps them; $channels holds each such table's channel as the
-    // store resolved it (table id => id, name, kind).
-    $with_channels = false;
+    // store resolved it (table id => id, name, kind). A channel_id naming no
+    // public or private channel resolves to none: the table stays its maker's.
+    $with_channels = ws_wtable_home_ready();
     $channels = array();
     $scope = ws_wtable_list_scope($_GET['scope'] ?? '', $with_channels);
     $reached = ws_wtables_reached($viewer, 'all');
+
+    foreach ($with_channels ? $reached : array() as $reached_table) {
+        $reached_home = ws_wtable_home($reached_table);
+
+        if ($reached_home !== null) {
+            $channels[(int) $reached_table['id']] = array('id' => (int) $reached_home['id'], 'name' => (string) $reached_home['name'], 'kind' => (string) $reached_home['kind']);
+        }
+    }
+
     $counts = ws_wtable_list_counts($reached, $channels);
 
     // The person's own deleted tables, each restored whole until the bin
@@ -912,6 +938,8 @@ if (!$table) {
     $table_url = $self_url . '?id=' . $id;
     $can_write = ws_wtable_may($table['access'], 'write');
     $can_manage = ws_wtable_may($table['access'], 'manage');
+    // The channel the table belongs to, null for a person's own.
+    $home = ws_wtable_home($table);
     $columns = ws_wtable_columns($id);
     $after = (is_string($_GET['after'] ?? null) && ((int) $_GET['after'] > 0)) ? (int) $_GET['after'] : 0;
     $team = ws_team_members();
@@ -1611,7 +1639,8 @@ if (!$table) {
         $targets = '<option value="">' . h(lang('Choose…')) . '</option><optgroup label="' . h(lang('Colleagues')) . '">';
 
         foreach ($team as $person) {
-            if ((int) $person['id'] !== (int) $table['user_id']) {
+            // Nobody owns a channel's table: its maker may be shared with.
+            if (($home !== null) || ((int) $person['id'] !== (int) $table['user_id'])) {
                 $targets .= '<option value="user:' . (int) $person['id'] . '">' . h($person['name']) . '</option>';
             }
         }
@@ -1619,7 +1648,7 @@ if (!$table) {
         $targets .= '</optgroup><optgroup label="' . h(lang('Channels')) . '">';
 
         foreach (ws_channels_for($viewer) as $channel) {
-            if (in_array((string) $channel['kind'], array('public', 'private'), true) && empty($channel['archived'])) {
+            if (in_array((string) $channel['kind'], array('public', 'private'), true) && empty($channel['archived']) && (($home === null) || ((int) $channel['id'] !== (int) $home['id']))) {
                 $targets .= '<option value="channel:' . (int) $channel['id'] . '">#' . h($channel['name']) . '</option>';
             }
         }
@@ -1649,7 +1678,7 @@ if (!$table) {
             <div class="card mb-5" id="ws-wt-shares">
                 <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-share me-1" aria-hidden="true"></i>' . h(lang('Shared with')) . '</h2></div>
                 <div class="card-body">
-                    ' . (($share_lines !== '') ? $share_lines : '<p class="small fg-secondary mb-0">' . h(lang('Nobody else reaches this table.')) . '</p>') . '
+                    ' . (($share_lines !== '') ? $share_lines : '<p class="small fg-secondary mb-0">' . h(($home !== null) ? lang('Nobody outside the channel reaches this table.') : lang('Nobody else reaches this table.')) . '</p>') . '
                     ' . $share_form . '
                 </div>
             </div>';
@@ -1685,9 +1714,12 @@ if (!$table) {
             </div>';
     }
 
+    $home_card = ws_wtable_home_card($viewer, $table, $self_url);
     $owner_note = '';
 
-    if (!$can_manage) {
+    if ($home !== null) {
+        $owner_note = ws_wtable_home_note($home, (string) $table['access']);
+    } elseif (!$can_manage) {
         $owner = ws_people(array((int) $table['user_id']));
         $owner_note = '<p class="small fg-secondary mb-5"><i class="bi bi-person me-1" aria-hidden="true"></i>'
             . h(lang(array('string' => '{var:1}\'s table · {var:2}', 'vars' => array($owner[(int) $table['user_id']]['name'] ?? '', $access_labels[$table['access']] ?? '')))) . '</p>';
@@ -1810,7 +1842,7 @@ if (!$table) {
                 ' . $row_form . '
             </div>
             <div class="col-12 xl:col-4">
-                ' . $columns_card . $import_rows_card . $details_card . $shares_card . $bin_card . '
+                ' . $columns_card . $import_rows_card . $details_card . $shares_card . $home_card . $bin_card . '
             </div>
         </div>';
 

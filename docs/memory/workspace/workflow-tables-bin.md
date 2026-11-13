@@ -10,11 +10,11 @@ description: The bin of workflow tables (11.0.178, #8412): a deleted row goes to
 - The rollback of a half-made table (`ws_wtable_import_create()`, `ws_wtable_starter_create()`) calls `ws_wtable_delete_final()`, a real delete that also empties the table's bin.
 
 ## Who sees a binned table?
-- Nobody. `ws_wtable()`, `ws_wtables_own()`, `ws_wtable_create_check()` (the 500 limit) and `ws_wtables_reached()` add `ws_wtable_live_sql()`; every screen, flow box and API call goes through `ws_wtable()`. Only `ws_wtable_binned()` / `ws_wtables_binned()` (owner's list, with `expires_at`) read them.
+- Nobody. `ws_wtable()`, `ws_wtables_own()`, `ws_wtable_home_count()` (the 500 limit) and `ws_wtables_reached()` add `ws_wtable_live_sql()`; every screen, flow box and API call goes through `ws_wtable()`. Only `ws_wtable_binned()` / `ws_wtables_binned()` (owner's, and channel managers', with `expires_at`) read them.
 
 ## How does a restore behave?
 - Row (`ws_wtable_row_restore()`, write access): a full table refuses (`too_many_rows`). The bin entry is deleted first (claim), so two requests never both restore; the row comes back at the end with its id, cells, `revision + 1` and its `ws_refs`. An id taken meanwhile (an old database hands a deleted last id out again after a restart) gives a new id and `id_changed` true; the screen says its links were not restored. A failed write puts the entry back.
-- Table (`ws_wtable_restore()`, owner only): refused at the table limit; it comes back whole.
+- Table (`ws_wtable_restore()`, owner only; a channel's table its managers): refused at the table limit; it comes back whole.
 - A binned row is deleted for good by whoever may edit the table (`ws_wtable_bin_row_delete()`).
 
 ## What do events say?

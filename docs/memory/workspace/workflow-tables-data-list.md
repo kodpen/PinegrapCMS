@@ -16,7 +16,7 @@ description: The Data list (CO6, #8978): workflow tables named Data in the panel
 - `?view=deleted` prints `workspace_wtables_deleted` (no kept sort) inside `#ws-wt-deleted` with Restore per row; a delete from a row lands there (`table_delete` goes back to `?view=deleted` when the bin is ready). The bin's rules: `workflow-tables-bin-screens.md`.
 
 ## What waits for other steps?
-- Channels: `ws_wtable_list_scopes(true)` adds the Channels segment. A table is a channel's only when the screen's `$channels` (table id => channel row as the store resolved it) holds it, never by `channel_id` alone: a `channel_id` naming no channel leaves the table its maker's. Switched on with CO4 (`ws_wtable_home_ready()` for `$with_channels`, `ws_wtable_home($table)` per table), whichever of the two lands second.
+- Channels: `ws_wtable_list_scopes(true)` adds the Channels segment. A table is a channel's only when the screen's `$channels` (table id => channel row as the store resolved it) holds it, never by `channel_id` alone: a `channel_id` naming no channel leaves the table its maker's. On since #9038: `$with_channels` is `ws_wtable_home_ready()` and `$channels` holds `ws_wtable_home($table)` of each reached table that has one (`workflow-table-channel.md`).
 - The canvases that use a table (a column and a line under an opened table's title) need CO2's `ws_canvas_tables` (#8960); a follow-up step after CO2 adds them.
 
 ## Where are the tests?

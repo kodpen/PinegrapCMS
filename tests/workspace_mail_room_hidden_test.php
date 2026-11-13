@@ -101,7 +101,12 @@ function workspace_mail_room_hidden_test_readers()
 		'includes/workspace/timeline.php::ws_timeline_hidden'              => array('kinds'),
 		'includes/workspace/watch.php::ws_events_channels'                 => array('kinds'),
 		'includes/workspace/watch.php::ws_watch_channels'                  => array('kinds'),
-		'includes/workspace/wtable_shares.php::ws_wtable_event_channels'   => array('kinds'),
+		// The public channel a table belongs to, then the public ones it is
+		// shared in.
+		'includes/workspace/wtable_shares.php::ws_wtable_event_channels'   => array('kinds', 'kinds'),
+		// A table whose channel_id names no public or private channel stays
+		// its maker's: the room is no home for a table.
+		'includes/workspace/wtables.php::ws_wtable_own_sql'                => array('kinds'),
 	);
 }
 

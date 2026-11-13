@@ -9,8 +9,8 @@ description: Workflow table shares (wtable_shares.php, T1c, #2820): owner-only, 
 - At most 200 shares a table (`WS_WTABLE_MAX_SHARES`); a level change of an existing share passes the limit.
 
 ## Who may share, and with whom?
-- The owner only (`ws_wtable_may(…, 'manage')`): not reached → `not_found` 404, view/edit → `forbidden` 403. An administrator gets nothing, as for a note (#2424).
-- A person: a team member other than the owner (`target_is_owner`, `target_not_member`), at view or edit. A channel: public or private, read by the owner (`channel_unreadable`), at view only (`channel_level`). Input errors `target_type_invalid`, `target_id_invalid`, `level_invalid` (422 with field). The pure rule is `ws_wtable_share_set_refusal()`.
+- Whoever manages it (`ws_wtable_may(…, 'manage')`): the owner, or a channel's table's managers (`workflow-table-channel.md`). Not reached → `not_found` 404, view/edit → `forbidden` 403. An administrator gets nothing, as for a note (#2424).
+- A person: a team member other than the owner (`target_is_owner`; a channel's table may be shared with its maker), `target_not_member`, at view or edit. A channel: public or private, read by the owner (`channel_unreadable`), at view only (`channel_level`). Input errors `target_type_invalid`, `target_id_invalid`, `level_invalid` (422 with field). The pure rule is `ws_wtable_share_set_refusal()`.
 - Whoever reaches the table sees the list; a channel they do not read is left out, shown nameless to the owner. A person who left the team `gives` ''.
 
 ## Who is told?
@@ -20,4 +20,4 @@ description: Workflow table shares (wtable_shares.php, T1c, #2820): owner-only, 
 - Those are keyed by a channel's lines; a table share writes no channel line, and `ws_inbox` has no column naming a table (adding one is a schema change). So a removed share leaves its bell line, as a removed flow share does: it names the table and opens nothing.
 
 ## What happens to flows when the table's owner is gone?
-- A flow's row start box (`workspace-flows-row-box.md`) asks `ws_wtable_flow_check($owner_rights, $table_id, 'view')`, its table boxes (`workspace-flows-table-boxes.md`) at `'edit'` → `ws_wtable_flow_gate()`: owner gone → `paused` (no run starts; a table box waits and goes on when the owner is back); not reached far enough → `refused` (the box fails). The shares stay and give nothing meanwhile.
+- A flow's row start box (`workspace-flows-row-box.md`) asks `ws_wtable_flow_check($owner_rights, $table_id, 'view')`, its table boxes (`workspace-flows-table-boxes.md`) at `'edit'` → `ws_wtable_flow_gate()`: owner gone (`ws_wtable_present()`; a channel's table never) → `paused` (no run starts; a table box waits and goes on when the owner is back); not reached far enough → `refused` (the box fails). The shares stay and give nothing meanwhile.

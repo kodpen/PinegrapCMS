@@ -61,6 +61,7 @@ function test_ws_api_wtables_routes()
 		'workspace.tables.create'             => array('POST', '/workspace/tables', 'workspace:write'),
 		'workspace.tables.import'             => array('POST', '/workspace/tables/import', 'workspace:write'),
 		'workspace.tables.update'             => array('POST', '/workspace/tables/{id}', 'workspace:write'),
+		'workspace.tables.home'               => array('POST', '/workspace/tables/{id}/home', 'workspace:write'),
 		'workspace.tables.delete'             => array('DELETE', '/workspace/tables/{id}', 'workspace:write'),
 		'workspace.tables.delete_post'        => array('POST', '/workspace/tables/{id}/delete', 'workspace:write'),
 		'workspace.tables.deleted'            => array('GET', '/workspace/deleted-tables', 'workspace:read'),
@@ -124,13 +125,13 @@ function test_ws_api_wtables_rows_list_takes_a_query()
 
 // Reading and writing tables, columns and rows are tools, as notes are, and
 // so is restoring a deleted row; deleting a table or a column takes it from
-// everybody, the bin of tables is its owner's, and sharing is the person's
-// own: those are no tools.
+// everybody, the bin of tables is its owner's, and sharing a table or moving
+// it into a channel or out of it is the person's own: those are no tools.
 function test_ws_api_wtables_mcp_tools()
 {
 	$routes = ws_api_wtables_test_routes();
 	$no_tools = array(
-		'workspace.tables.delete', 'workspace.tables.delete_post', 'workspace.tables.deleted', 'workspace.tables.restore',
+		'workspace.tables.home', 'workspace.tables.delete', 'workspace.tables.delete_post', 'workspace.tables.deleted', 'workspace.tables.restore',
 		'workspace.table_columns.delete', 'workspace.table_columns.delete_post',
 		'workspace.table_shares.set', 'workspace.table_shares.delete', 'workspace.table_shares.delete_post',
 	);
@@ -153,6 +154,7 @@ function test_ws_api_wtables_writes_check_before_the_rehearsal()
 		'ws_api_wtables_create'        => array('ws_wtable_create_check(', 'ws_wtable_create('),
 		'ws_api_wtables_import'        => array('ws_wtable_import_check(', 'ws_wtable_import_rows('),
 		'ws_api_wtables_update'        => array('ws_wtable_update_check(', 'ws_wtable_update('),
+		'ws_api_wtables_home'          => array('ws_wtable_home_set_check(', 'ws_wtable_home_set('),
 		'ws_api_wtables_delete'        => array('ws_wtable_delete_check(', 'ws_wtable_delete('),
 		'ws_api_wtable_columns_create' => array('ws_wtable_column_create_check(', 'ws_wtable_column_create('),
 		'ws_api_wtable_columns_update' => array('ws_wtable_column_update_check(', 'ws_wtable_column_update('),

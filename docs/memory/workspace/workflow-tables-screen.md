@@ -15,7 +15,8 @@ description: The workflow tables screen workspace_wtables.php (T1e, #2966): serv
 
 ## How are columns and shares edited?
 - Column options from the form (`ws_wtable_screen_options_from_form()`): decimals, currency, date time, link kinds (comma list), formula expression; status choices one label a line, a label kept keeps its key and colour (`ws_wtable_screen_status_choices()`), so cells keep their choice; with the line count unchanged a label changed on its line is a rename and keeps the key; a new label never takes a key a current choice or a row holds (`ws_wtable_column_held_values()`), or rows got a status nobody gave them. The type is chosen once (`type_fixed`).
-- Shares card: everybody reaching the table sees the list; the owner shares with a team member (view/edit) or a public/private channel they read (view), and takes a share back. The `wtable_shared` bell line opens `workspace_wtables.php?scope=shared` (the inbox row names no table).
+- "Belongs to" card: the table's channel and the move (`workflow-table-channel.md`).
+- Shares card: everybody reaching the table sees the list; whoever manages it shares with a team member (view/edit) or a public/private channel they read (view), and takes a share back. The `wtable_shared` bell line opens `workspace_wtables.php?scope=shared` (the inbox row names no table).
 
 ## Where is the board view?
 - `?view=board`: the rows as cards by a status column (`workflow-table-board.md`).
