@@ -519,8 +519,7 @@ function pg_lbs_move_page($state, $page_id, $record, $user)
     $unmapped = array();
     if (is_array($tree)) {
         $unmapped = pg_lbs_move_unmapped_parts($tree, $record['map']);
-        $converted = pg_lbs_tree($tree);
-        $json = pg_designer_tree_encode(pg_lbs_trial_refs($converted['tree'], $record['map']));
+        $json = pg_designer_tree_encode(pg_lbs_trial_convert_tree($tree, $record['map'])['tree']);
     }
     $kept = array('legacy' => $legacy, 'trial' => (int)$state['trial'], 'tree' => $old, 'moved' => time(), 'run' => (string)$state['id']);
     if (!pg_lbs_move_kept_write((int)$page_id, $kept)) {

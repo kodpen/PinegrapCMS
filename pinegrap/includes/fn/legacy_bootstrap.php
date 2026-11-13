@@ -494,10 +494,13 @@ function pg_lbs_tree($tree)
  * A class the map drops, and the visibility, push/pull and icon classes, are
  * left in the selector and counted as kept.
  *
- * @param string $css
+ * @param string        $css
+ * @param callable|null $selectors  run on each rule's renamed selector list
+ *                                  (pg_lbs_twin_selectors() for a trial's
+ *                                  copies); null for none
  * @return array  'css', 'converted', 'kept'
  */
-function pg_lbs_css($css)
+function pg_lbs_css($css, $selectors = null)
 {
     $css = (string)$css;
     $map = pg_lbs_class_map();
@@ -555,7 +558,7 @@ function pg_lbs_css($css)
                     $out .= $prelude;
                 } else {
                     $stack[] = 'skip';
-                    $out .= $rename($prelude);
+                    $out .= ($selectors !== null) ? (string)call_user_func($selectors, $rename($prelude)) : $rename($prelude);
                 }
             } else {
                 $stack[] = 'skip';
