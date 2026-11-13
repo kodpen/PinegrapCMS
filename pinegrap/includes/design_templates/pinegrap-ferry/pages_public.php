@@ -173,7 +173,7 @@ $departure_board = function () use ($el, $heading, $para, $link, $span, $icon, $
                     $span(lang('Check-in closes 15 minutes before departure'), 'small fw-semibold', lang('Text')),
                 )),
             )),
-            $el('div', 'table-responsive rounded-4 border p-2 p-md-3 mb-4', lang('Table Wrap'), array($table),
+            $el('div', 'table-responsive position-relative rounded-4 border p-2 p-md-3 mb-4', lang('Table Wrap'), array($table),
                 array('_attrs' => array($attr('role', 'region'), $attr('aria-label', lang('Next sailings')), $attr('tabindex', '0')))),
             $el('div', 'd-flex flex-wrap align-items-center gap-3', lang('Board Foot'), array(
                 $para(lang('A delay or a cancellation is also posted on the travel notices page.'), 'small text-body-secondary mb-0 me-auto'),
@@ -208,7 +208,7 @@ $crossing_strip = function ($header, $id, $topics, $class = 'py-5') use ($el, $h
                     $end($r['from'], false),
                     $el('div', 'flex-grow-1 text-center', lang('Wake'), array(
                         $span($r['duration'], 'd-block small fw-semibold mb-1', lang('Crossing Time')),
-                        $el('div', 'position-relative pg-ferry-wake', lang('Wake Line'), array(
+                        $el('div', 'position-relative my-3 pg-ferry-wake', lang('Wake Line'), array(
                             $icon('bi-arrow-right-circle-fill', 'position-absolute top-50 start-50 translate-middle bg-body text-primary fs-5'),
                         )),
                         $span($r['distance'], 'd-block small text-body-secondary mt-1', lang('Distance')),

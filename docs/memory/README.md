@@ -25,6 +25,6 @@ Read the README.md of the folder the task needs and follow its key rules; find t
 
 - _get_file_kopyalar.md: Function copies inside get_file.php: which have an original, how they diverged, which stay as copies (check_copies.php)
 - _isbasi_api_notlari.md: Logo İşbaşı API notes (environments, endpoints, unverified points); read before any İşbaşı driver work
-- _ozellik_adaylari.md: Feature gap research of 2026-10-19 behind the approved plans: competitor tables (global builders, Turkish SaaS, headless CMS), 2025-26 regulation facts, sources (research, not decisions)
+- _ozellik_adaylari.md: Feature gap research of 2026-10-19 behind the approved plans: competitor tables (Pinegrap column as of 2026-11-13), 2025-26 regulation facts, sources (research, not decisions)
 - component-development-guide.md: Mandatory reading before writing a Style Designer palette component: node model, canvas, serialization, checklist
 - erp_malimusavir_sorulacaklar.md: Questions for the accountant about ERP behaviour; answers fill each item

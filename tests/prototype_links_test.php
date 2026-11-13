@@ -515,7 +515,7 @@ function test_prototype_links_secure_mode_redirect_keeps_the_token()
 
 	// Both of Secure Mode's redirects send the visitor on to it.
 	$init = (string) file_get_contents(PG_FUNCTIONS_DIR . '/init.php');
-	pg_assert_same(2, substr_count($init, "HOSTNAME_SETTING . (defined('PG_SECURE_MODE_REDIRECT_URL') ? PG_SECURE_MODE_REDIRECT_URL : REQUEST_URL)"));
+	pg_assert_same(2, substr_count($init, "HOSTNAME_SETTING . pg_uri_ascii(defined('PG_SECURE_MODE_REDIRECT_URL') ? PG_SECURE_MODE_REDIRECT_URL : REQUEST_URL)"));
 	pg_assert_false(strpos($init, 'HOSTNAME_SETTING . REQUEST_URL') !== false, 'no redirect from the written-out address');
 }
 

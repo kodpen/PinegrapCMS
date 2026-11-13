@@ -1,6 +1,6 @@
 ---
 name: design-template-homeservices-fit
-description: Home Services 2.0.0 browser fixes: the header opens out at 1200 px, the price tables' scroll boxes are positioned, dark tertiary bands take the emphasis tint; why and the numbers
+description: Home Services 2.0.0 browser fixes: the header opens out at 1200 px, the price tables' scroll boxes are positioned, dark tertiary bands mix their text colour lighter; why and the numbers
 ---
 
 ## Why does the header open out at 1200 px?
@@ -14,7 +14,7 @@ description: Home Services 2.0.0 browser fixes: the header opens out at 1200 px,
 ## Why do dark tertiary bands change the text colour?
 - A palette's dark text colour (`--pg-primary-fg`, used by `text-primary`, `link-primary` and `btn-outline-primary`) is made for the page background; on `bg-body-tertiary` (#2b3035) Steel's #7f93a4 gives 4.2:1 (4.85:1 on the page).
 - Small text there failed: the account bar's emergency number and the login region's sign-up button, the page headers' Home link (`link-secondary`, 4.3:1), the eyebrows of the grey sections.
-- The template's User Styles: under `[data-bs-theme=dark] .bg-body-tertiary`, `text-primary` and `link-primary` take `--bs-primary-text-emphasis`, `link-secondary` `--bs-secondary-text-emphasis`, `btn-outline-primary` its colour from `--bs-primary-text-emphasis` (Steel: 4.8:1 and 5.2:1). Light was measured with no failure and is unchanged.
+- The template's User Styles mix the colour 10% darker (light) or 15% lighter (dark) on the band, like the other ferry to photo templates: [[design-template-page-fit]]. The first fix, `--bs-primary-text-emphasis`, gave 3.85:1 with Midnight and was replaced.
 - Measured by setting `data-bs-theme` on the page with transitions off: a hidden browser pane does not run transitions, so a colour read right after the switch is still the old one.
 
 ## How is it tested?

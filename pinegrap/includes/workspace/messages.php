@@ -444,14 +444,15 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
 
             // A canvas's picture: shown under its version's address, and
             // drawn here by a member who may write while an agent's version
-            // waits for it (assets/js/workspace_canvas_picture.js).
+            // waits for it, or has only the server's picture
+            // (assets/js/workspace_canvas_picture.js).
             $canvas = (($kind === 'image') && ($extension === 'png') && function_exists('ws_canvas_message_state')) ? ws_canvas_message_state((int) $row['file_id']) : null;
 
             $payload['file'] = array(
                 'name'     => (string) $row['file_name'],
                 'url'      => ws_canvas_picture_url(PATH . encode_url_path($stored), $canvas),
                 // The version a browser draws and posts (canvas_picture), 0 for none.
-                'canvas_pending' => ($canvas && $canvas['pending'] && $can_post) ? $canvas['version_no'] : 0,
+                'canvas_pending' => ($canvas && ($canvas['pending'] || $canvas['server']) && $can_post) ? $canvas['version_no'] : 0,
                 // A person's canvas an agent edited: "Edited by @handle", and
                 // Undo for whoever may edit the message (ws_canvas_undo()
                 // checks it again).
@@ -460,7 +461,7 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
                 // An agent's live page (page_card.php): its card instead of
                 // the file line; null for any other file.
                 'page'     => (($extension === 'html') && function_exists('ws_page_card'))
-                    ? ws_page_card($id, (int) $row['file_id'], $can_post) : null,
+                    ? ws_page_card($id, (int) $row['file_id'], $can_post, $viewer) : null,
                 'image'    => ($kind === 'image'),
                 'kind'     => $kind,
                 'ext'      => $extension,

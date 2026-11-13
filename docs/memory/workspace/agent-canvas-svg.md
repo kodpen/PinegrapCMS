@@ -15,8 +15,8 @@ description: Agents draw Workspace canvases from SVG (POST channels/{id}/canvase
 - Refused (422 on `svg` or `background`): over 1 MB, nothing left to draw after the sanitizer (definitions only count as nothing), a picture as a `data:` URL (not storable, `pg_file_versions_doc_storable()`), a fill that is no colour.
 
 ## What does the message carry?
-- A PNG file of the artboard's size in its fill, `ws_canvas_blank_png()`: a hand-built one-colour palette PNG (1 bit a pixel), so an 8000 x 8000 board is a few kB and needs no GD memory. The server never rasterises SVG.
-- The document is kept as the file's newest `file_versions` row with source `agent` (`pg_image_editor_canvas_keep()`), user the application's owner, and carries `picture: "pending"` and `by: {id, kind, handle}` (the agent). A browser draws the picture later (plan step C2); until then the read says `picture: pending`.
+- A PNG file of the artboard's size in its fill, `ws_canvas_blank_png()`: a hand-built one-colour palette PNG (1 bit a pixel), so an 8000 x 8000 board is a few kB and needs no GD memory.
+- The document is kept as the file's newest `file_versions` row with source `agent` (`pg_image_editor_canvas_keep()`), user the application's owner, and carries `picture: "pending"` and `by: {id, kind, handle}` (the agent). The server or a browser draws it (`agent-canvas-picture.md`); until then the read says `picture: pending`.
 - `by` is read only on versions whose source is `agent`: the editor opens the whole document and a person's save carries `by` along, but that version is theirs (`saved`/`new`).
 
 ## Who may make one?

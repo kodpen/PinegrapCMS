@@ -6,8 +6,9 @@
  * the model assistants, as tools of ws_ai_step() (ai.php). The same
  * document, version and picture rules as the API routes of api_canvas.php:
  * the SVG is built into the image editor's document (canvas_svg.php), the
- * message carries a blank picture a member's browser draws later, and an
- * edit is a new version made by the assistant (canvas_edit.php).
+ * server draws its picture at once where it can (canvas_draw.php) and a
+ * member's browser draws it otherwise, and an edit is a new version made by
+ * the assistant (canvas_edit.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -23,6 +24,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_svg.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_edit.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_split.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_draw.php');
 
 /**
  * The names of the canvas tools.
@@ -281,10 +283,12 @@ function ws_canvas_ai_tool_run($row, &$state, $name, $args, $asker)
             return array('error' => 'The canvas was posted, but its layers could not be kept.');
         }
 
+        ws_canvas_draw_now($message);
+
         $state['canvas_done'] = 1;
 
         return array('ok' => true, 'message_id' => (int) $message['id'], 'version' => 1,
-            'note' => 'The canvas is posted under the request; members\' browsers draw its picture. Do not draw it again.');
+            'note' => 'The canvas is posted under the request; the server or members\' browsers draw its picture. Do not draw it again.');
     }
 
     $target = ws_canvas_ai_target($channel, (int) ($args['message_id'] ?? 0));
@@ -327,6 +331,7 @@ function ws_canvas_ai_tool_run($row, &$state, $name, $args, $asker)
     }
 
     pg_file_versions_prune((int) $message['file_id']);
+    ws_canvas_draw_now($message);
 
     // A person's canvas: its author hears that an assistant changed it.
     if (($message['sender_kind'] === 'user') && ((int) $message['sender_id'] !== (int) $writer['id'])) {

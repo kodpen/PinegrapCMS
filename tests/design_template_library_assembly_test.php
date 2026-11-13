@@ -295,14 +295,18 @@ function test_library_assembly_pages_on_library_blocks()
 	pg_assert_true(version_compare($tpl['version'], '2.0.0', '>='), 'version 2.0.0');
 	$styles = json_decode($tpl['assets']['css'], true);
 	$css = $styles[0]['content'];
-	// Small coloured text on the dark tertiary bands and the hero's tinted
-	// corner: Forest's text colour gives 4.1:1 there, the emphasis tint 4.7:1.
-	pg_assert_contains('[data-bs-theme=dark] :is(.bg-body-tertiary,.plb-hero) :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}', $css, 'primary text on a dark band');
-	pg_assert_contains('[data-bs-theme=dark] :is(.bg-body-tertiary,.plb-hero) .btn-outline-primary{--bs-btn-color:var(--bs-primary-text-emphasis)}', $css, 'outline buttons on a dark band');
-	pg_assert_contains('[data-bs-theme=dark] .bg-body-tertiary .link-secondary{color:var(--bs-secondary-color)!important}', $css, 'secondary links on a dark band');
-	pg_assert_contains('[data-bs-theme=dark] .bg-body-tertiary .btn-outline-secondary{--bs-btn-color:var(--bs-body-color)}', $css, 'secondary buttons on a dark band');
-	// A long site name shrinks in the header instead of widening the page.
-	pg_assert_contains('.navbar-brand{min-width:0}', $css, 'the brand may shrink');
+	// Small coloured text on the tertiary bands and the hero's tinted corner
+	// is mixed darker in the light theme and lighter in the dark one: Forest's
+	// dark text colour gives 4.1:1 there, the mix 5.1:1.
+	pg_assert_contains('{.bg-body-tertiary,.plb-hero{--plb-band-primary:color-mix(in srgb,var(--pg-primary-fg,var(--bs-primary)) 90%,black);', $css, 'darker on a light band');
+	pg_assert_contains('{[data-bs-theme=dark] .bg-body-tertiary,[data-bs-theme=dark] .plb-hero{--plb-band-primary:color-mix(in srgb,var(--pg-primary-fg,var(--bs-primary)) 85%,white);', $css, 'lighter on a dark band');
+	pg_assert_contains(':is(.bg-body-tertiary,.plb-hero) :is(.text-primary,.link-primary:not(:hover,:focus)){color:var(--plb-band-primary,var(--pg-primary-fg,var(--bs-primary)))!important}', $css, 'primary text on a band');
+	pg_assert_contains(':is(.bg-body-tertiary,.plb-hero) .btn-outline-primary{--bs-btn-color:var(--plb-band-primary,var(--pg-primary-fg,var(--bs-primary)))}', $css, 'outline buttons on a band');
+	pg_assert_contains(':is(.bg-body-tertiary,.plb-hero) :is(.text-secondary,.link-secondary:not(:hover,:focus)){color:var(--plb-band-secondary,var(--pg-secondary-fg,var(--bs-secondary)))!important}', $css, 'secondary links on a band');
+	pg_assert_contains(':is(.bg-body-tertiary,.plb-hero) .btn-outline-secondary{--bs-btn-color:var(--plb-band-secondary,var(--pg-secondary-fg,var(--bs-secondary)))}', $css, 'secondary buttons on a band');
+	// A long site name shrinks in the header instead of widening the page,
+	// and leaves room for the menu button on a phone.
+	pg_assert_contains('.navbar-brand{min-width:0;max-width:calc(100% - 5rem)}', $css, 'the brand may shrink');
 	include PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-library/parts.php';
 	pg_assert_contains('plb-brand fs-4 text-truncate', json_encode($header()), 'the name ends with an ellipsis');
 	$trees = array();

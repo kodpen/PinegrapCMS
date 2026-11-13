@@ -1,11 +1,13 @@
 ---
 name: _ozellik_adaylari
-description: Feature gap research of 2026-10-19 behind the approved plans: competitor tables (global builders, Turkish SaaS, headless CMS), 2025-26 regulation facts, sources (research, not decisions)
+description: Feature gap research of 2026-10-19 behind the approved plans: competitor tables (Pinegrap column as of 2026-11-13), 2025-26 regulation facts, sources (research, not decisions)
 ---
 
 # Feature candidates — research note (2026-10-19)
 
 **Status:** research, not decisions. The roadmap decided from it on 2026-10-19 has been carried out: its standing rule is in `docs/memory/workflow/decisions-made-product-39.md`, each feature in its memory topic files, the plans still open in `docs/memory/plans/`. This note keeps the evidence those plans rest on so it is not searched for twice. Everything below was read on 2026-10-19 from the pages listed under Sources; competitor cells show what the vendor's own page states (✓ stated, ◐ partial or via add-on, — not stated on the pages read).
+
+**Pinegrap column (2026-11-13):** the last column of sections 2 and 3 is no longer the scan of 2026-10-19; it was read again from memory and the route declarations of `development` @ 4573e57. Owner (2026-11-13): open plans count as finished in it. A cell marked † rests on a plan in `docs/memory/plans/` that is still open, named in the cell; every other cell is in the code. The competitor columns stay as read on 2026-10-19.
 
 ## 1. Method
 
@@ -13,55 +15,55 @@ Four code scans of `development` @ fd9de20 (commerce; content and designer; plat
 
 ## 2. Global site builders × Pinegrap
 
-| Capability | Webflow | Framer | Wix Studio | WordPress 7 | Shopify | Pinegrap (today) |
+| Capability | Webflow | Framer | Wix Studio | WordPress 7 | Shopify | Pinegrap (2026-11-13) |
 |---|---|---|---|---|---|---|
 | Reusable components | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ shared components |
 | Design variables / tokens | ✓ | ◐ | ◐ | ✓ | ◐ | ◐ looks and palettes as CSS variables |
-| Interaction / animation builder | ✓ GSAP | ✓ | ✓ | — | ◐ | — |
-| Collections + dynamic pages | ✓ | ✓ 100K items | ✓ | ✓ | ◐ | ◐ forms as collections, no relations |
-| Version history / restore | ✓ | ✓ snapshots | ✓ | ✓ visual revisions | ◐ | — browser-local snapshots only |
-| Scheduled publishing | ◐ | ◐ | — | ✓ | ✓ Rollouts | — |
-| Staging / test site | ✓ | ✓ | ✓ traffic % | — | ✓ | — (no working copy, owner decision) |
-| Real-time co-editing | ✓ | ✓ | ✓ | ◐ | — | — lock + view mode |
+| Interaction / animation builder | ✓ GSAP | ✓ | ✓ | — | ◐ | ✓ Interactions in the designer (count up, colour chapter, scroll scenes) |
+| Collections + dynamic pages | ✓ | ✓ 100K items | ✓ | ✓ | ◐ | ✓ collection forms: field kinds, references, slug pages, item history |
+| Version history / restore | ✓ | ✓ snapshots | ✓ | ✓ visual revisions | ◐ | ✓ page revisions (compare, restore), collection item history |
+| Scheduled publishing | ◐ | ◐ | — | ✓ | ✓ Rollouts | ✓ publish and unpublish times per page |
+| Staging / test site | ✓ | ✓ | ✓ traffic % | — | ✓ | — (no working copy, owner decision); page drafts, experiment variants |
+| Real-time co-editing | ✓ | ✓ | ✓ | ◐ | — | — lock + view mode; notes reach the other editor live |
 | Figma import | ✓ | ✓ | ✓ | — | — | — |
-| AI page/section generation | ✓ | ✓ agent | ✓ | ◐ | ✓ | ✓ proposal engine |
-| Agent / MCP access | ✓ | ✓ | ✓ WebMCP | ✓ Abilities API | ✓ Sidekick | ✓ OAuth 2.1 + ~296 tools |
+| AI page/section generation | ✓ | ✓ agent | ✓ | ◐ | ✓ | ✓ proposal engine, designer Assistant |
+| Agent / MCP access | ✓ | ✓ | ✓ WebMCP | ✓ Abilities API | ✓ Sidekick | ✓ OAuth 2.1 + ~465 tools |
 | Localization (hreflang) | ✓ | ✓ | ✓ | — | ✓ Markets | ✓ (no translated slugs) |
-| Accessibility checker | ✓ contrast | ◐ | ✓ | — | — | ◐ 13 rules, no contrast |
-| Image CDN / WebP-AVIF / srcset | ✓ | ✓ | ◐ | ◐ | — | — manual WebP, no srcset |
-| Form logic / multi-step / payments | ◐ | ◐ | ✓ | — | ◐ | ◐ logic only in legacy forms |
+| Accessibility checker | ✓ contrast | ◐ | ✓ | — | — | ✓ designer audit with contrast (1.4.3) and target size (2.5.8) |
+| Image CDN / WebP-AVIF / srcset | ✓ | ✓ | ◐ | ◐ | — | ◐ srcset/sizes, AVIF/WebP `<picture>`; no image CDN |
+| Form logic / multi-step / payments | ◐ | ◐ | ✓ | — | ◐ | ✓ Shown-when rules, steps with progress, payment step |
 | Memberships / paywall | — (sunset Jan 2026) | — | ◐ | ✓ | — | ✓ |
-| Redirect manager (301, CSV) | ✓ | ◐ | ✓ 500 bulk | — | — | ◐ short links only, no 404 log |
-| AI visibility / AEO analytics | ✓ | ◐ | ✓ | — | — | — |
-| Built-in analytics | ✓ click maps | ✓ funnels, CWV | ✓ | — | ✓ | ✓ visitor reports |
-| A/B testing / personalization | ✓ Optimize | ✓ 5 variants | ◐ | — | ✓ | — |
-| App / plugin marketplace | ✓ 420 | ✓ | ✓ 500+ | ✓ | ✓ | — no add-on system |
+| Redirect manager (301, CSV) | ✓ | ◐ | ✓ 500 bulk | — | — | ✓ 301 short links, CSV import and export, 404 log with Create redirect |
+| AI visibility / AEO analytics | ✓ | ◐ | ✓ | — | — | ✓ AI Visibility view, `llms.txt`, Content-Signal |
+| Built-in analytics | ✓ click maps | ✓ funnels, CWV | ✓ | — | ✓ | ✓ visitor reports, page speed (Web Vitals) |
+| A/B testing / personalization | ✓ Optimize | ✓ 5 variants | ◐ | — | ✓ | ✓ page experiments (variants, goals, z-test); no personalization |
+| App / plugin marketplace | ✓ 420 | ✓ | ✓ 500+ | ✓ | ✓ | ◐† add-on packages with manifest and hooks (`addon-hook-system`); no marketplace |
 
 Notable 2025–26 moves: Webflow made real-time collaboration default (Feb 2026) and exposes Analyze/Optimize/AEO data over MCP (Oct 2026); Framer added a List field, Skills and staging with deploy/revert; Wix Studio shipped Test Sites with traffic percentages and WebMCP (Oct 2026); Squarespace added block animations (Apr 2026) and an AI Visibility dashboard (Jul 2026); WordPress 6.9 added Notes and the Abilities API, 7.0 (May 2026) the AI Client/Connectors, visual revisions and per-device block visibility; Elementor 4.0 (Mar 2026) added Variables, Classes, Components; Shopify shipped Agentic Storefronts, Rollouts (scheduled/gradual theme publishing) and Canvas (Oct 2026).
 
 ## 3. Turkish e-commerce SaaS × Pinegrap
 
-| Expectation | ikas | IdeaSoft | Ticimax | T-Soft | Pinegrap (today) |
+| Expectation | ikas | IdeaSoft | Ticimax | T-Soft | Pinegrap (2026-11-13) |
 |---|---|---|---|---|---|
-| Marketplace sync (Trendyol, Hepsiburada, n11, Amazon TR…) | ✓ 19 TR + 7 intl | ✓ 8+ (returns, Q&A, invoice link) | ✓ ~30 | ✓ 19 + 14 | ◐ n11 only |
-| Carrier integrations + labels | ✓ 10 | ✓ 5 | ✓ 26 | ✓ 24 | — tracking links only |
-| Contracted cargo without carrier contract | ✓ ikas Kargo | ✓ Kargonomi | ✓ | ✓ Cargong | — |
-| Local payments (bank vPOS, iyzico, PayTR, Sipay, Param…) | ✓ own vPOS | ✓ all banks | ✓ 15 banks, ~40 PSPs | ✓ 22 banks | ◐ iyzico (3DS, installments) |
+| Marketplace sync (Trendyol, Hepsiburada, n11, Amazon TR…) | ✓ 19 TR + 7 intl | ✓ 8+ (returns, Q&A, invoice link) | ✓ ~30 | ✓ 19 + 14 | ◐ n11, Trendyol (listings, orders, returns, questions), Google Merchant Center; Hepsiburada† (`marketplace-trendyol-hepsiburada`) |
+| Carrier integrations + labels | ✓ 10 | ✓ 5 | ✓ 26 | ✓ 24 | ✓ 6 label drivers: Aras; Geliver, Basit Kargo, Kargonomi; Shippo, Sendcloud (bulk labels, pickups, returns, customs) |
+| Contracted cargo without carrier contract | ✓ ikas Kargo | ✓ Kargonomi | ✓ | ✓ Cargong | ✓ through Geliver, Basit Kargo and Kargonomi |
+| Local payments (bank vPOS, iyzico, PayTR, Sipay, Param…) | ✓ own vPOS | ✓ all banks | ✓ 15 banks, ~40 PSPs | ✓ 22 banks | ◐ iyzico, PayTR (3DS, installments), Stripe, PayPal; no bank vPOS |
 | BNPL / shopping credit | — | — | — | ✓ | — |
-| SMS provider (Netgsm) + order/OTP SMS | ✓ | ✓ | ✓ | ✓ | — |
-| İYS consent sync | ◐ via Netgsm | ✓ app | ✓ two-way API | — | — |
-| WhatsApp (cart reminder, order) | ✓ | ◐ | ✓ | ✓ | — share button (Meta planned) |
-| e-Fatura/e-Arşiv auto issue, several integrators | ✓ 4 | ✓ 6 | ✓ | ✓ | ◐ İşbaşı test; Paraşüt empty; manual step |
-| Auto pre-information + distance contract, KVKK texts | ✓ | ✓ placeholders, stored on order | — | — | — terms link only |
-| Reviews (verified buyer, reminder, reply) | ✓ | — | ◐ | ✓ | ◐ starred page comments |
-| Wishlist / back in stock | ◐ | — | ✓ | — | — |
-| Bundles | ✓ | ✓ | ✓ | ✓ | — |
-| Spendable loyalty points | ✓ | — | — | ✓ | ◐ earn only |
-| Google Merchant / Meta feeds | ✓ XML | ✓ | ✓ + OpenAI Ads | ◐ | ◐ `?rss=true` Google fields |
-| Campaign engine, basket discounts, abandoned cart | ✓ e-mail+SMS+WhatsApp | ✓ | ✓ 400+ templates | ✓ | ✓ rules; e-mail only |
-| B2B / dealer (account, credit limit, quotes) | ✓ | ◐ | ✓ | ✓ | ✓ ERP |
-| Mobile app | ✓ | ◐ | ✓ | ✓ | — (shelved) |
-| AI headline 2026 | ✓ image generation, analytics | ✓ Admin MCP Server | ✓ video, model shots | ✓ Nova Action | ✓ MCP + assistants |
+| SMS provider (Netgsm) + order/OTP SMS | ✓ | ✓ | ✓ | ✓ | ✓ Netgsm, İleti Merkezi, Twilio; order, shipping, COD and member codes, marketing |
+| İYS consent sync | ◐ via Netgsm | ✓ app | ✓ two-way API | — | ✓ direct İYS API, two-way, e-mail and SMS |
+| WhatsApp (cart reminder, order) | ✓ | ◐ | ✓ | ✓ | ✓† own Meta app: orders, forms, flows, templates designed in the panel (`whatsapp-channel`; the connection is built) |
+| e-Fatura/e-Arşiv auto issue, several integrators | ✓ 4 | ✓ 6 | ✓ | ✓ | ✓† Logo İşbaşı, Paraşüt, automatic issue (`erp-edocument-leftovers`; today test and demo keys, sent by hand) |
+| Auto pre-information + distance contract, KVKK texts | ✓ | ✓ placeholders, stored on order | — | — | ✓ templates, copy stored on the order, receipt attachments |
+| Reviews (verified buyer, reminder, reply) | ✓ | — | ◐ | ✓ | ✓ verified buyers only, request e-mail, seller reply |
+| Wishlist / back in stock | ◐ | — | ✓ | — | ✓ both; back in stock by e-mail or SMS |
+| Bundles | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Spendable loyalty points | ✓ | — | — | ✓ | ✓ points convert to store credit |
+| Google Merchant / Meta feeds | ✓ XML | ✓ | ✓ + OpenAI Ads | ◐ | ◐ Google feed and Merchant API push, OpenAI feed; no Meta catalog feed |
+| Campaign engine, basket discounts, abandoned cart | ✓ e-mail+SMS+WhatsApp | ✓ | ✓ 400+ templates | ✓ | ✓ rules; e-mail and SMS campaigns; WhatsApp and automatic sends as flows† (`messages-area`) |
+| B2B / dealer (account, credit limit, quotes) | ✓ | ◐ | ✓ | ✓ | ✓ ERP; cart quotes |
+| Mobile app | ✓ | ◐ | ✓ | ✓ | ◐† team app on the device API (closed source, outside this repository; `mobile-api-shelved`); no shopper app |
+| AI headline 2026 | ✓ image generation, analytics | ✓ Admin MCP Server | ✓ video, model shots | ✓ Nova Action | ✓ MCP (~465 tools), assistants, Workspace flows; agent channel†, visitor assistant†, storefront API for ACP/UCP† (`agent-channel`, `visitor-ai-assistant`, `storefront-api-agentic-commerce`) |
 
 Trendyol retired V1 order endpoints on 15 Oct 2026 (HTTP 426 brownouts); V2 has webhooks, a cursor stream and rate limits tied to listing limits. Shopify Payments is not available in Türkiye (41-country list), so local PSPs decide.
 

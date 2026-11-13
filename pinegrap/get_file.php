@@ -100,7 +100,7 @@ if (!empty($_SERVER['HTTP_HOST'])) {
             initialize_url_constants();
             // Temporary redirect - a 301 would be cached by the browser and would keep
             // looping even after the server side has been fixed.
-            header('Location: https://' . HOSTNAME_SETTING . get_request_uri(), true, 302);
+            header('Location: https://' . HOSTNAME_SETTING . pg_uri_ascii(get_request_uri()), true, 302);
             exit();
         }
 
@@ -113,7 +113,7 @@ if (!empty($_SERVER['HTTP_HOST'])) {
         && ($secure_request === true)
         && ($secure_mode === 'false')
     ) {
-        header('Location: http://' . HOSTNAME_SETTING . get_request_uri(), true, 302);
+        header('Location: http://' . HOSTNAME_SETTING . pg_uri_ascii(get_request_uri()), true, 302);
         exit();
     }
 
