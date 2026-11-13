@@ -436,7 +436,8 @@ var fields = el('TR', {}, [
 ]);
 out.fields = clean(T.searchText(fields));
 out.cells = clean(T.searchText(el('TR', {}, [el('TD', {}, [txt('(kaydedildi)')]), el('TD', {}, [txt('11 gün önce')])])));
-out.held = T.heldWidth(2050.4);
+out.held = T.heldWidth(2050.4, 0);
+out.heldOpen = T.heldWidth(2050.4, 320);
 console.log(JSON.stringify(out));
 JS
 	);
@@ -450,5 +451,6 @@ JS
 	pg_assert_same('Kaldırıldı: Toplantı', $result['hiddenWord'], 'visually hidden words are text');
 	pg_assert_same('pg-test-alt typeless Taslaklar satır', $result['fields'], 'field values and the chosen option only');
 	pg_assert_same('(kaydedildi) 11 gün önce', $result['cells'], 'two cells are two words');
-	pg_assert_same('min(100%, max(2051px, var(--pg-measure-list-min, 1280px) + 2rem))', $result['held'], 'the box keeps its width, never more than the window');
+	pg_assert_same('2051px', $result['held'], 'the box keeps its width');
+	pg_assert_same('1731px', $result['heldOpen'], 'an open details panel is not part of the kept width');
 }
