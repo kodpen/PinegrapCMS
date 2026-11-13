@@ -31,4 +31,4 @@ description: Plan (architect 2026-11-13, #9241): a push door on a routine's fire
 - The architect repeats the trial on dev: the door of `@prmerge` kept its address and token. Expected: a 2xx, `door_failures` 0, and the session saying the routine's turn woke it. The result goes into `workspace/agent-door-knock-trial.md` and this plan is deleted.
 
 ## Which steps are there?
-- RK1 (S) The routine's form, as written above. Claim as `[plan:agent-knock-routine-form] RK1 — The routine's form`.
+- RK1 (S) The routine's form: done, #9273. Left: the live check above.
