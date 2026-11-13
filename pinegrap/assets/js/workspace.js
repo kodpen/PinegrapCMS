@@ -10396,7 +10396,18 @@
                 var line = el('div', 'ws-msg-system');
                 line.setAttribute('data-ws-message', message.id);
                 setHtml(line, message.html);
+
+                // An application's binding of a table to a canvas: the line
+                // in the reader's words, with Undo or who undid it.
+                if (message.canvas_binding) {
+                    line.textContent = message.canvas_binding.text;
+                }
+
                 line.appendChild(el('span', 'ms-3', message.time));
+
+                if (message.canvas_binding) {
+                    line.appendChild(self.canvasBindingUndo(message));
+                }
 
                 // A flow run started from the composer: its flag, following
                 // the run.
@@ -13178,6 +13189,36 @@
                 control.disabled = false;
                 fail(error);
             });
+        },
+
+        // Undo on an application's binding line (ws_canvas_binding_undo):
+        // the binding goes back as it was and the line is drawn again.
+        canvasBindingUndo: function (message) {
+            var self = this;
+            var card = message.canvas_binding;
+
+            if (card.undone_by) {
+                return el('span', 'ms-2', t('page_bind_undone_by', card.undone_by));
+            }
+
+            if (!card.can_undo) {
+                return document.createTextNode('');
+            }
+
+            var undo = el('button', 'btn btn-sm btn-text theme-secondary py-0 ms-2', t('page_bind_undo'));
+
+            undo.type = 'button';
+            undo.addEventListener('click', function () {
+                undo.disabled = true;
+                api('ws_canvas_binding_undo', { message_id: message.id }).then(function (data) {
+                    self.replaceMessage(data.message);
+                }).catch(function (error) {
+                    undo.disabled = false;
+                    fail(error);
+                });
+            });
+
+            return undo;
         },
 
         // The card under a run's line: the run's flag (workspace_flow_flag.js),
