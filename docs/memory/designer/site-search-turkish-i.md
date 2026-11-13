@@ -1,6 +1,6 @@
 ---
 name: site-search-turkish-i
-description: Advanced site search finds "kahvaltı" for KAHVALTI and kahvalti: each word with i, I, ı or İ is searched in its i/ı readings (#4352); the simple LIKE search does not fold yet
+description: Advanced site search finds "kahvaltı" for KAHVALTI and kahvalti: each word with i, I, ı or İ is searched in its i/ı readings (#4352); the simple LIKE search in the source language does not fold yet
 module: site_search
 ---
 
@@ -13,7 +13,7 @@ module: site_search
 - Query time only: no schema, no folded copy in the index, no reindex. Applied on every site (a reading with ı finds nothing in English text, so it only widens), unlike the panel lists' Turkish-only fold (#3742).
 
 ## What is not covered?
-The simple search (`SEARCH_TYPE` not advanced, the LIKE path of `_pg_sw_search_collect()`) and its PHP hit counting still compare as typed; ı and i differ there.
+In the source language, the simple search (`SEARCH_TYPE` not advanced, the LIKE path of `_pg_sw_search_collect()`) and its PHP hit counting still compare as typed; ı and i differ there. On a page served in another language, the translated texts are compared word by word with ı and i as one letter, in both searches (`site-search-translated.md`).
 
 ## Tests?
 `tests/site_search_query_test.php` (`turkish_i_variants*`). Not run against MySQL in CI.

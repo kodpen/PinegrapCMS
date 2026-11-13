@@ -1,6 +1,6 @@
 ---
 name: automation-flows-api
-description: Automation flows in the external API and MCP with the Workspace off (AF3c): the flows module of api_modules(), what it merges, the scopes and their ceiling, how it is tested
+description: Automation flows in the external API and MCP with the Workspace off (#9257): the flows module of api_modules(), what it merges, the scopes and their ceiling, how it is tested
 module: automation_flows
 ---
 
