@@ -380,3 +380,27 @@ JS
 	pg_assert_same(array('title' => 'name', 'pictures' => array('pic'), 'fields' => array('price', 'seo'), 'actions' => array('actions')), $result['full'], 'in the user\'s order, the empty note left out');
 	pg_assert_same(array('title' => 'name', 'pictures' => array(), 'fields' => array(), 'actions' => array()), $result['bare'], 'the name always leads');
 }
+
+// The details panel follows the kept switch on a wide window. Below 1024 px
+// it is a sheet over the list: a switch a desktop left on does not open it,
+// the switch pressed on the page does once a row is picked (#9031).
+function test_list_table_js_details_open()
+{
+	$result = list_table_js_test_node(<<<'JS'
+var T = window.PGListTable;
+var out = [];
+out.push(T.detailsOpen(true, false, false, false));
+out.push(T.detailsOpen(false, false, true, true));
+out.push(T.detailsOpen(true, true, false, true));
+out.push(T.detailsOpen(true, true, true, false));
+out.push(T.detailsOpen(false, true, true, true));
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, false, false, false, true), $result, 'wide: kept switch; narrow: switch pressed on the page and a picked row');
+}

@@ -60,7 +60,7 @@ if (!defined('PG_INIT_LOADED')) {
 					></select>
 				<span
 					class="browse_toggle input-group-btn"
-					title="Remove Browse"
+					title="<?=h(lang('Remove Browse'))?>"
 					<?php if (!$browse_expanded): ?>
 					style="display: none"
 					<?php endif ?>
@@ -81,7 +81,7 @@ if (!defined('PG_INIT_LOADED')) {
 				<?php if ($search_advanced): ?>
 				<span
 					class="advanced_toggle input-group-btn"
-					title="<?php if ($search_advanced_expanded): ?>Remove<?php else: ?>Add<?php endif ?> Advanced Search"
+					title="<?=h($search_advanced_expanded ? lang('Remove Advanced Search') : lang('Add Advanced Search'))?>"
 					>
 				<button
 					type="button"
@@ -125,7 +125,7 @@ if (!defined('PG_INIT_LOADED')) {
 					type="submit"
 					name="<?=$page_id?>_simple_clear"
 					class="btn btn-default btn-secondary"
-					title="Clear"
+					title="<?=h(lang('Clear'))?>"
 					>
 				<span class="glyphicon glyphicon-remove"></span>
 				</button>
@@ -194,15 +194,13 @@ if (!defined('PG_INIT_LOADED')) {
 	?>
 <p>
 	<strong>
-	You may
 	<?php if ($browse and $search): ?>
-	browse or search
+	<?=h(lang('You may browse or search above to find results.'))?>
 	<?php elseif ($browse): ?>
-	browse
+	<?=h(lang('You may browse above to find results.'))?>
 	<?php else: ?>
-	search
+	<?=h(lang('You may search above to find results.'))?>
 	<?php endif ?>
-	above to find results.
 	</strong>
 </p>
 <?php
@@ -211,7 +209,7 @@ if (!defined('PG_INIT_LOADED')) {
 	elseif ($number_of_forms == 0):
 	
 	?>
-<p><strong>There are no results.</strong></p>
+<p><strong><?=h(lang('There are no results.'))?></strong></p>
 <?php
 	// Otherwise, there are forms to show, so output them.
 	
@@ -226,8 +224,7 @@ if (!defined('PG_INIT_LOADED')) {
 	?>
 <p>
 	<strong>
-	Found <?=pg_format_number($total_number_of_forms, 0)?>
-	result<?php if ($total_number_of_forms > 1): ?>s<?php endif ?>.
+	<?=h(lang(array('string' => 'Found {var:1} result{suffix:1}.', 'vars' => array(pg_format_number($total_number_of_forms, 0)), 'suffix' => ($total_number_of_forms > 1) ? 's' : '')))?>
 	</strong>
 </p>
 <?php endif ?>
@@ -253,15 +250,12 @@ if (!defined('PG_INIT_LOADED')) {
 			
 			?>
 		<li>
-			<a href="<?=h($previous_page_url)?>">&laquo; Previous</a>
+			<a href="<?=h($previous_page_url)?>">&laquo; <?=h(lang('Previous'))?></a>
 		</li>
 		<?php endif ?>
 		<li>
 			&nbsp;
-			Page
-			<?=pg_format_number($page_number, 0)?>
-			of
-			<?=pg_format_number($number_of_pages, 0)?>
+			<?=h(lang(array('string' => 'Page {var:1} of {var:2}', 'vars' => array(pg_format_number($page_number, 0), pg_format_number($number_of_pages, 0)))))?>
 			&nbsp;
 		</li>
 		<?php
@@ -271,7 +265,7 @@ if (!defined('PG_INIT_LOADED')) {
 			
 			?>
 		<li>
-			<a href="<?=h($next_page_url)?>">Next &raquo;</a>
+			<a href="<?=h($next_page_url)?>"><?=h(lang('Next'))?> &raquo;</a>
 		</li>
 		<?php endif ?>
 	</ul>
