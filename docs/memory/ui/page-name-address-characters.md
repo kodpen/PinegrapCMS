@@ -15,6 +15,6 @@ description: Which characters a page name saved on Add Page, Edit Page, Mass Edi
 ## What is kept?
 - `#` (`%23` reaches the router whole) and `/` outside catalog and catalog detail pages.
 - A page saved earlier with `?`, `%` or `+` keeps its name until it is saved on Edit Page, which then renames it to the `_` form.
-- The API's design resource refuses `? # % \ < > "` and control characters with a message instead (`api_design_page_name_in()`); the Visual Page Editor's own save (`pg_designer_save_page()`) does not clean the name yet (#9003).
+- The API's design resource refuses `? # % \ < > "` and control characters with a message instead (`api_design_page_name_in()`); the Visual Page Editor's own save (`pg_designer_save_page()`) refuses `?`, `%`, `+` and control characters in a name given now (`designer/designer-page-names.md`, #9106).
 
 Tests: `tests/page_form_save_test.php`, `tests/mass_edit_page_name_test.php`.
