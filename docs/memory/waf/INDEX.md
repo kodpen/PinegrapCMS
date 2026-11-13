@@ -26,7 +26,7 @@
 - waf-inflight-request-cap.md: waf_inflight_* concurrent request cap on sensitive scripts: limit, 429 rule concurrent (no offence), file slots under data/temp, 120 s dead slot, fail-open, monitor mode. [decision: here]
 - waf-ip-subject-ipv6-64.md: waf_ip_subject(): counters key on the address for IPv4 and on the /64 for IPv6; why IPv4 /24 is not aggregated; no /64 ban over an allowed address.
 - waf-ipv6-ban-column-width.md: IP columns must be VARCHAR(45) (IPv6); how a VARCHAR(15) ip_address silently truncated and defeated bans; atomic waf_auto_ban ODKU (2026.2.7).
-- waf-kill-switch-and-monitor-mode.md: waf_enabled=0 stops everything (absolute kill switch), monitor mode guarantee in waf_deny(), and the IP ban list applying in every mode (2026.3.1).
+- waf-kill-switch-and-monitor-mode.md: waf_enabled=0 stops everything (absolute kill switch), monitor mode guarantee in waf_deny(), and the IP ban list applying in every mode (2026.3.1). [decision: decisions-made-waf-2.md]
 - waf-log-aggregation-and-cap.md: How waf_log aggregates by sha1 key + 5 min bucket, why the query string is excluded, waf_enforce_log_cap, use SUM(hit_count) (2026.2.6).
 - waf-login-captcha.md: pg_login_captcha_* login question: when it appears, counter-driven decision, field name/id rule for password managers, wrong answer is not an offence, an expired question is not a failure.
 - waf-login-throttle.md: Sign-in throttle (pg_login_throttle_* in includes/fn/auth.php): address and account counters in waf_rate, lockout bucket, own switch, which endpoints must count, the 429 answer and its log lines. [decision: decisions-made-waf.md]

@@ -337,6 +337,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-seo.md: Where do these come from?
 - decisions-made-seo.md: What was decided?
 - decisions-made-seo.md: Which columns do these add?
+- decisions-made-waf-2.md: Where are the rules and the earlier part?
+- decisions-made-waf-2.md: How do the firewall fixes reach sites on 2026.4.10? (owner, 2026-11-13, #9125)
+- decisions-made-waf-2.md: Does Monitor mode enforce automatic bans? (owner, 2026-11-13, #9125)
 - decisions-made-waf.md: Which firewall counting rules are decided?
 - decisions-made-waf.md: Does the global limit's signed-in exemption stay as it is?
 - decisions-made-waf.md: Is there a release action for the sign-in throttle's address lock?

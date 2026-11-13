@@ -27,6 +27,7 @@
 - designer-closed-blocks.md: Plan (owner 2026-11-13, #9076): the components the designer canvas still draws as one closed block are listed, then opened into editable element trees; steps CB0-CB2
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
+- firewall-false-positives.md: Plan (owner 2026-11-13, #9125): the firewall refuses honest people (page beacons on the sign-in allowance, prose taken for attacks, in-app browsers as bots, unlisted proxy); steps FP1-FP7
 - flow-window-map-2.md: Flow window plan, FW0 part 2: each control of today's side panel and canvas with its place in the drawing (right panel head, Settings, Connections, Try, foot; no box chosen; arrows and threads)
 - flow-window-map.md: Flow window plan, FW0 part 1: each control of today's bar and palette with its place in the drawing (the bar done in FW1); the decisions taken for the left panel
 - flow-window-paths.md: Flow window plan, FW0 part 3: the keyboard path through the bar, the left panel, the canvas and the right panel; how the panels behave on a narrow window and a phone (drawn in flow-window-narrow.html)
