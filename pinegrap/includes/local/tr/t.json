@@ -4887,6 +4887,7 @@
     "The model at ai.pinegrap.com answers, with the site's licence key. What is written in a channel where it is asked is sent there. Public channels are open to it, private ones only when their manager allows it.": "Yanıtı, sitenin lisans anahtarıyla ai.pinegrap.com'daki model verir. Çağrıldığı kanalda yazılanlar oraya gönderilir. Genel kanallar ona açıktır, özel kanallar yalnız yöneticileri izin verirse.",
     "The model at ai.pinegrap.com answers, with the site's subscription key. What is written in a channel where it is asked is sent there. Public channels are open to it, private ones only when their manager allows it.": "Yanıtları ai.pinegrap.com'daki model, sitenin abonelik anahtarıyla verir. Sorulduğu kanalda yazılanlar oraya gönderilir. Herkese açık kanallar ona açıktır; özel kanallar yalnızca yöneticisi izin verirse.",
     "The model does not officially read every language (Turkish, for one): look its translations over before approving them.": "Model her dili resmî olarak okumuyor (Türkçe de bunlardan biri): çevirilerini onaylamadan önce gözden geçirin.",
+    "The model is a name of up to 80 characters.": "Model, en çok 80 karakterlik bir addır.",
     "The model name may hold letters, digits and . _ : / - only.": "Model adında yalnızca harf, rakam ve . _ : / - bulunabilir.",
     "The model the credit goes towards; you can still change your mind.": "Takas kredisinin kullanılacağı model; fikrinizi sonra da değiştirebilirsiniz.",
     "The model's state is shown at this browser address:": "Modelin durumu şu tarayıcı adresinde görünür:",

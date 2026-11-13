@@ -241,7 +241,7 @@ function test_workspace_agent_request_routes()
 	}
 
 	pg_assert_same(array('workspace.agent_requests.list', 'workspace.agent_requests.claim', 'workspace.agent_requests.answer', 'workspace.agent_requests.fail',
-		'workspace.agent_requests.brief', 'workspace.agent_wake.get', 'workspace.agent_wake.set'), array_keys($ids));
+		'workspace.agent_requests.brief', 'workspace.agent_wake.get', 'workspace.agent_wake.set', 'workspace.agent_report.set'), array_keys($ids));
 
 	$routes = array_column(ws_api_routes(), 'id');
 	pg_assert_true(in_array('workspace.agent_requests.answer', $routes, true), 'merged into the module routes');
