@@ -5,11 +5,19 @@
  * Writes one message into a Workspace channel through a site's external API
  * with an application key (POST /workspace/channels/{id}/messages). An agent
  * or a CI step uses it to say "[ci] …" or "[ready] …" in an agent channel.
+ * With --file it posts one file with the text as its message
+ * (POST /workspace/channels/{id}/files, the file as the form part "file"),
+ * so a screenshot reaches the channel itself rather than as a link.
  *
  * Usage:  php tools/ws_post.php [--channel=ID] [--kind=message|note|decision]
  *                               [--parent=ID] [--idempotency-key=K]
  *                               [--skip-missing] "text"
- *         The text may also come on stdin ("-" or no text argument).
+ *         php tools/ws_post.php --file=PATH [--channel=ID] [--parent=ID]
+ *                               [--idempotency-key=K] [--skip-missing] ["text"]
+ *         The text may also come on stdin ("-", or no text argument without
+ *         --file). A file goes alone with its text: one file a call, and a
+ *         set of screenshots is one message each, answered under the first
+ *         with --parent. A refusal (size, kind) prints the API's message.
  * Exit:   0 written (or skipped with --skip-missing while settings are
  *         missing); 1 the site refused; 2 usage or missing settings; 3 no
  *         answer twice, so the message may or may not be written: stderr
@@ -72,6 +80,18 @@ function ws_post_body($text, $options)
 		$body['kind'] = $kind;
 	}
 
+	return ws_post_parent($body, $options);
+}
+
+/**
+ * Adds --parent to a body as parent_id, or refuses it.
+ *
+ * @param array<string,string|int> $body
+ * @param array<string,string|bool> $options
+ * @return array{body: array<string,string|int>|null, error: string}
+ */
+function ws_post_parent($body, $options)
+{
 	if (isset($options['parent'])) {
 		if (!is_string($options['parent']) || !ctype_digit($options['parent']) || (int) $options['parent'] < 1) {
 			return array('body' => null, 'error' => '--parent must be a message id');
@@ -81,6 +101,41 @@ function ws_post_body($text, $options)
 	}
 
 	return array('body' => $body, 'error' => '');
+}
+
+/**
+ * The form fields of a file post (text, parent_id) and the file's path, or
+ * an error line. The text may be empty; the site checks the file's size and
+ * kind and answers a refusal with its own message.
+ *
+ * @param string $text
+ * @param array<string,string|bool> $options with file set
+ * @return array{body: array<string,string|int>|null, file: string, error: string}
+ */
+function ws_post_file_body($text, $options)
+{
+	$path = isset($options['file']) && is_string($options['file']) ? $options['file'] : '';
+	$text = trim((string) $text);
+
+	if ($path === '') {
+		return array('body' => null, 'file' => '', 'error' => '--file must name a file');
+	}
+
+	if (!is_file($path) || !is_readable($path)) {
+		return array('body' => null, 'file' => '', 'error' => 'cannot read the file ' . $path);
+	}
+
+	if (isset($options['kind']) && $options['kind'] !== 'message') {
+		return array('body' => null, 'file' => '', 'error' => '--kind cannot go with --file');
+	}
+
+	if (function_exists('mb_strlen') ? mb_strlen($text, 'UTF-8') > 4000 : strlen($text) > 4000) {
+		return array('body' => null, 'file' => '', 'error' => 'the text is longer than 4000 characters');
+	}
+
+	$built = ws_post_parent($text !== '' ? array('text' => $text) : array(), $options);
+
+	return array('body' => $built['body'], 'file' => $built['body'] === null ? '' : $path, 'error' => $built['error']);
 }
 
 /**
@@ -187,13 +242,14 @@ function ws_post_main($argv)
 		return WS_CLIENT_EXIT_USAGE;
 	}
 
-	$text = $rest ? implode(' ', $rest) : '-';
+	$file = isset($options['file']);
+	$text = $rest ? implode(' ', $rest) : ($file ? '' : '-');
 
 	if ($text === '-') {
 		$text = (string) stream_get_contents(STDIN);
 	}
 
-	$built = ws_post_body($text, $options);
+	$built = $file ? ws_post_file_body($text, $options) : ws_post_body($text, $options);
 
 	if ($built['body'] === null) {
 		fwrite(STDERR, 'ws_post: ' . $built['error'] . "\n");
@@ -207,10 +263,22 @@ function ws_post_main($argv)
 	}
 
 	$key = substr($headers[0], strlen('Idempotency-Key: '));
-	$url = $settings['site'] . '/workspace/channels/' . $settings['channel'] . '/messages';
+	$url = $settings['site'] . '/workspace/channels/' . $settings['channel'] . ($file ? '/files' : '/messages');
 	$body = $built['body'];
-	$sent = ws_post_send(function () use ($url, $settings, $body, $headers) {
-		return ws_client_request('POST', $url, $settings, $body, $headers);
+
+	if ($file && !class_exists('CURLFile')) {
+		fwrite(STDERR, "ws_post: the PHP curl extension is missing\n");
+		return WS_CLIENT_EXIT_HTTP;
+	}
+
+	if ($file) {
+		$path = $built['file'];
+		$mime = function_exists('mime_content_type') ? (string) @mime_content_type($path) : '';
+		$body['file'] = new CURLFile($path, $mime !== '' ? $mime : 'application/octet-stream', basename($path));
+	}
+
+	$sent = ws_post_send(function () use ($url, $settings, $body, $headers, $file) {
+		return ws_client_request('POST', $url, $settings, $body, $headers, $file);
 	}, function ($seconds) {
 		sleep($seconds);
 	});
