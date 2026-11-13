@@ -311,12 +311,15 @@ function ws_canvas_read($doc, $versions)
  * The canvas of a message as the API gives it, or null when its picture is
  * no canvas (or was changed outside the editor since).
  *
- * @param array       $message ws_messages row
- * @param object|null $made    the document just written, answered with no
- *                             versions when it could not be kept
+ * @param array       $message   ws_messages row
+ * @param object|null $made      the document just written, answered with no
+ *                               versions when it could not be kept
+ * @param bool        $raw_times keeps a version's created_at as the moment
+ *                               it is kept as, for a caller that formats
+ *                               the times itself (api_canvases.php)
  * @return array|null
  */
-function ws_api_canvas_present($message, $made = null)
+function ws_api_canvas_present($message, $made = null, $raw_times = false)
 {
     $file_id = (int) $message['file_id'];
     $doc = ($file_id > 0) ? ws_canvas_open_doc($file_id) : null;
@@ -342,8 +345,10 @@ function ws_api_canvas_present($message, $made = null)
     $read = ws_canvas_read(json_decode(json_encode($doc), true), $versions);
     $stored = (string) db_value("SELECT name FROM files WHERE id = '" . $file_id . "'");
 
-    foreach ($read['versions'] as $i => $version) {
-        $read['versions'][$i]['created_at'] = api_time($version['created_at']);
+    if (!$raw_times) {
+        foreach ($read['versions'] as $i => $version) {
+            $read['versions'][$i]['created_at'] = api_time($version['created_at']);
+        }
     }
 
     return array(

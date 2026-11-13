@@ -61,7 +61,7 @@ function ws_canvases_api_routes()
             'dry_run'     => true,
             'returns'     => ws_api_canvas_one_returns(),
             'summary'     => 'Bind a workflow table to a canvas',
-            'description' => 'Lets the canvas\'s live page read a workflow table, or read and write it: the page asks the panel, which answers for the bound tables and no other, with the rights of the person looking at it - never with the owner\'s. Binding a table already bound changes its access. Only where the owner of the application may write in the canvas\'s channel and may change the table, for a read binding too, so a table nobody may change is not put under a page others run (403 forbidden); a table that is not there or out of the owner\'s reach is 404 not_found.' . $bound . ' One more answers 409 too_many_tables. The answer is the canvas as GET /workspace/canvases/{id} gives it.',
+            'description' => 'Lets the canvas\'s live page read a workflow table, or read and write it: the page asks the panel, which answers for the bound tables and no other, with the rights of the person looking at it - never with the owner\'s. Binding a table already bound changes its access. Only where the owner of the application may write in the canvas\'s channel and may change the table, for a read binding too, so a table nobody may change is not put under a page others run (403 forbidden); a table that is not there or out of the owner\'s reach is 404 not_found.' . $bound . ' One more answers 409 too_many_tables, and a canvas with no live page 409 part_missing, since a drawing reads no table. The answer is the canvas as GET /workspace/canvases/{id} gives it.',
             'params'      => array(
                 $id,
                 array('name' => 'table_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The workflow table (GET /workspace/tables).'),
@@ -104,7 +104,7 @@ function ws_canvases_api_routes()
         array(
             'id'           => 'workspace.canvases.page.put',
             'method'       => 'POST',
-            'also_accepts' => array('PATCH', 'PUT'),
+            'also_accepts' => array('PATCH'),
             'path'         => '/workspace/canvases/{id}/page',
             'scope'        => 'workspace:write',
             'handler'      => 'ws_api_canvases_page_put',
@@ -118,7 +118,7 @@ function ws_canvases_api_routes()
         array(
             'id'           => 'workspace.canvases.drawing.put',
             'method'       => 'POST',
-            'also_accepts' => array('PATCH', 'PUT'),
+            'also_accepts' => array('PATCH'),
             'path'         => '/workspace/canvases/{id}/drawing',
             'scope'        => 'workspace:write',
             'handler'      => 'ws_api_canvases_drawing_put',
@@ -307,10 +307,14 @@ function ws_api_canvas_one_tables($viewer, $message_id)
  */
 function ws_api_canvas_one_present($viewer, $message)
 {
-    $drawing = ws_api_canvas_present($message);
-    $page = ws_api_page_present($message);
+    // The times of both parts are formatted once, after the merge.
+    $drawing = ws_api_canvas_present($message, null, true);
+    $rows = ws_page_versions((int) $message['file_id']);
+    $page = $rows ? ws_page_versions_read($rows) : array();
+    $newest = $rows ? end($rows) : null;
+    $last = $page ? end($page) : null;
 
-    if (($drawing === null) && ($page === null)) {
+    if (($drawing === null) && !$page) {
         return null;
     }
 
@@ -320,8 +324,8 @@ function ws_api_canvas_one_present($viewer, $message)
         $versions['drawing'] = $drawing['versions'];
     }
 
-    if ($page !== null) {
-        $versions['page'] = ws_page_versions_read(ws_page_versions((int) $message['file_id']));
+    if ($page) {
+        $versions['page'] = $page;
     }
 
     $merged = ws_canvas_versions_merge($versions);
@@ -341,10 +345,12 @@ function ws_api_canvas_one_present($viewer, $message)
                 'layers'   => count($drawing['layers']),
                 'version'  => $drawing['version'],
             ),
-            'page'    => ($page === null) ? null : array(
-                'size'      => $page['size'],
-                'version'   => $page['version'],
-                'libraries' => $page['libraries'],
+            // The page part is read from its versions: the bytes of the
+            // document itself are fetched by the page's own address.
+            'page'    => ($last === null) ? null : array(
+                'size'      => (int) $last['size'],
+                'version'   => (int) $last['version'],
+                'libraries' => ws_page_version_libraries($newest['doc_json']),
             ),
             'data'    => ws_api_canvas_one_tables($viewer, (int) $message['id']),
         ),
@@ -424,7 +430,7 @@ function ws_api_canvases_tables_bind($params)
         'access'    => $access,
     ));
 
-    $result = ws_canvas_table_bind($viewer, $message, $table_id, $access, ws_api_canvas_table_binder());
+    $result = ws_canvas_table_bind($viewer, $message, $table_id, $access, ws_api_canvas_table_binder(ws_api_writer_app_id()));
 
     if (!$result['ok']) {
         ws_api_canvas_table_fail($result['error']);
@@ -478,6 +484,10 @@ function ws_api_canvas_table_fail($code)
 {
     $text = ws_canvas_table_refusal_text($code);
 
+    if ($code === 'not_page') {
+        api_fail(409, 'part_missing', lang('This canvas has no live page: make one with POST /workspace/channels/{id}/pages.'));
+    }
+
     if ($code === 'not_found') {
         api_fail_not_found(lang('Workflow table'));
     }
@@ -495,15 +505,14 @@ function ws_api_canvas_table_fail($code)
 
 /**
  * Who a binding written now is kept under: the application, or the person
- * when they write from their own device.
+ * themselves when they write from their own device. Pure.
  *
+ * @param int $app_id ws_api_writer_app_id(): 0 when the person writes
  * @return array kind (app|user), id
  */
-function ws_api_canvas_table_binder()
+function ws_api_canvas_table_binder($app_id)
 {
-    $app_id = ws_api_writer_app_id();
-
-    return ($app_id > 0) ? array('kind' => 'app', 'id' => $app_id) : array('kind' => 'user', 'id' => 0);
+    return ((int) $app_id > 0) ? array('kind' => 'app', 'id' => (int) $app_id) : array('kind' => 'user', 'id' => 0);
 }
 
 function ws_api_canvases_page_put($params)

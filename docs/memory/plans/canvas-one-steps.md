@@ -6,12 +6,12 @@ description: Steps CO0-CO9 of plans/canvas-one.md: model and screens drawn, the 
 ## Which steps are there?
 - Owner (2026-11-12, #8850): DL1 and DL2 of the design language (`panel-design-language-steps.md`) and the bridge first; tables as Data and the phone on top. S under 400 product lines, M about 1,000; each with its tests and its topic file `workspace/canvas-<part>.md`.
 
-- CO0 (S, no product code) The model and the screens. What one canvas is in the store and the API (names, parts, versions), and its screens drawn in look A, on a phone too: the card with its parts, the line of tables it uses, the first-write question, the Data list; in `plans/canvas-one/`. The owner approves the drawings. It names every schema change the later steps need, each asked on its own issue. Done in #8922.
+- CO0 (S, no product code) The model and the screens. What one canvas is in the store and the API (names, parts, versions), and its screens drawn in look A, on a phone too: the card with its parts, the line of tables it uses, the first-write question, the Data list; in `plans/canvas-one/`. The owner approves the drawings. It names the schema changes the later steps need. Done in #8922.
   - Its files: `canvas-one-model.md`, `canvas-one-schema.md` (S1-S5, #8923-#8927), `canvas-one-screens.md`.
 
-- CO1 (M) The bridge, with no data. The shell's message door for a page (`platform/guarded-frame.md`): a request with an id, an answer, an error, the bounds; one harmless call (the display name of who is looking). Proven in a browser as the guarded frame was (#8802): the page reaches nothing but through the door, and a hostile page cannot ask in another canvas's name. Done in #8947 (`workspace/canvas-bridge.md`).
+- CO1 (M) The bridge, with no data. The shell's message door for a page (`platform/guarded-frame.md`): a request with an id, an answer, an error, the bounds; one harmless call (the display name of who is looking). Proven in a browser as the guarded frame was (#8802). Done in #8947 (`workspace/canvas-bridge.md`).
 
-- CO2 (M) Bound tables, read. A canvas names its tables; the page reads rows with the `where`, sort and totals of `workspace/workflow-tables-query.md`, in the reader's rights; the card's line of tables. Done in #8960 (`workspace/canvas-tables.md`).
+- CO2 (M) Bound tables, read. A canvas names its tables; the page reads rows in the reader's rights (`workspace/workflow-tables-query.md`); the card's line of tables. Done in #8960 (`workspace/canvas-tables.md`).
 
 - CO3 (M) Writes with consent. Add and change a row through the table's own functions; the first-write question, asked again for a new version; "through <canvas>" in the row's history. Done in #9180 (`workspace/canvas-consents.md`).
 
@@ -19,11 +19,13 @@ description: Steps CO0-CO9 of plans/canvas-one.md: model and screens drawn, the 
 
 - CO5 (S) Measures. Rows and time of a page's read on a table of 5000 rows with formulas and lookups; the bounds set from it. Done in #9207 (`workspace/canvas-measures.md`): no limit moved, nothing asked.
 
-- CO6 (M) Data as the name and place. Workflow tables are called Data in the menu and on the screens; a canvas shows its tables under Data; addresses, API names and MCP tools keep their names. Done in #8978 (`workspace/workflow-tables-data-list.md`); the canvases that use a table moved to CO6b, since CO2 had not landed.
+- CO6 (M) Data as the name and place. Workflow tables are called Data in the menu and on the screens; a canvas shows its tables under Data; addresses, API names and MCP tools keep their names. Done in #8978 (`workspace/workflow-tables-data-list.md`).
 
 - CO6b (S) The canvases that use a table: a column of the Data list and a line under an opened table's title, read from `ws_canvas_tables`. Done in #9192 (`workspace/workflow-tables-data-list.md`).
 
-- CO7 (M) One flow over the API and MCP. Make a canvas with a page, bind a table, read and write, list versions: the routes and the tools, described in `api/`; the assistants' tools follow (`workspace/agent-canvas-assistants.md`). After CO3.
+- CO7 (M) One flow over the API and MCP. Make a canvas with a page, bind a table, read and write, list versions: the routes and the tools. After CO3. Done in #9231 (`api/workspace-canvas-api.md`), with the five tools of `canvas-one-model.md`.
+
+- CO7b (S) What CO7 left: a part added beside the first (S1's `ws_canvas_parts`, answered, not built; until then 409 `part_missing`) and an agent's binding as a channel line with Undo.
 
 - CO8 (M) The phone. The table screen and the canvas's screens on the recipes of look A (the design language's Workspace family, DL5e): rows as cards, the editor from the bottom. After DL1 and CO6.
 
