@@ -82,4 +82,8 @@ function test_design_canvas_icon_one_colour_takes_its_neighbours_colour()
 	pg_assert_contains(".pg-mi.pg-dc-icon.pg-dc-mono,\n.pg-mi.pg-dc-icon.pg-dc-mono .pg-mi-a {\n  color: inherit;", $css, 'outline and pen curve take the text colour around it');
 	pg_assert_contains(".pg-mi.pg-dc-icon.pg-dc-mono .pg-mi-2,\n.pg-mi.pg-dc-icon.pg-dc-mono .pg-mi-at {\n  fill: none;", $css, 'no tint');
 	pg_assert_contains('.pg-dc-mono', file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.min.css'), 'the served stylesheet has it');
+	pg_assert_contains(".ws-ctx .ws-ctx-item .bi,\n.ws-ctx .ws-ctx-item .pg-dc-mono {", $css, 'the Workspace menu gives it its icons\' box');
+
+	$folders = file_get_contents(PG_FUNCTIONS_DIR . '/view_folders.php');
+	pg_assert_contains('#explorer_menu .menu-item .bi, #explorer_menu .menu-item .pg-dc-mono {', $folders, 'the File Manager menu gives it its icons\' box');
 }

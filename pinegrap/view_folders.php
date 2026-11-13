@@ -1380,7 +1380,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
    they reach shows the focus, the list draws no ring. */
 #explorer_menu:focus { outline: none; }
 #explorer_menu .menu-item { cursor: pointer; border-radius: .45rem; padding: .32rem .7rem; }
-#explorer_menu .menu-item .bi { width: 1.35rem; display: inline-block; }
+#explorer_menu .menu-item .bi, #explorer_menu .menu-item .pg-dc-mono { width: 1.35rem; display: inline-block; }
 #explorer_menu { padding: .35rem; }
 /* The upload window's drop area. Dashed rather than solid so it reads as a
    place to put something rather than a box that already holds something. */

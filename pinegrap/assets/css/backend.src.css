@@ -1958,8 +1958,9 @@ html[data-bs-theme="dark"] .pg-dc-icon .pg-mi-2 {
 }
 /* The one-colour form (pg_design_canvas_icon_one_colour()), among one-colour
    icons: no design colour, no tint, no second hue; every line takes the
-   text colour around it, as the Bootstrap icons beside it do. Four classes
-   outweigh the dark theme's tint rule above. */
+   text colour around it, as the Bootstrap icons beside it do. A menu that
+   gives its .bi icons a box gives this one the same (.ws-ctx-item, the File
+   Manager's #explorer_menu). Four classes outweigh the dark tint rule above. */
 .pg-mi.pg-dc-icon.pg-dc-mono,
 .pg-mi.pg-dc-icon.pg-dc-mono .pg-mi-a {
   color: inherit;
@@ -17782,7 +17783,8 @@ a.ws-chip:hover {
 .ws-ctx .ws-ctx-item:focus {
   background: rgba(var(--ws-accent-rgb, 94, 53, 177), .12);
 }
-.ws-ctx .ws-ctx-item .bi {
+.ws-ctx .ws-ctx-item .bi,
+.ws-ctx .ws-ctx-item .pg-dc-mono {
   width: 1.1rem;
   opacity: .8;
 }
