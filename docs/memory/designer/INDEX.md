@@ -214,6 +214,7 @@
 - design-templates-newsroom.md: News Portal and Magazine templates as one effort: the owner's decisions (2026-10-22), the platform steps built for them, the follow-ups still open (search, feeds, caching).
 - design-templates-rows.md: Rows a template or import makes on opening: origin markers, pagehide discard, 12-hour reuse read in one pass, page names freed on the first save, testing Publish inside them.
 - design-templates-standard-pages.md: What every design template carries: account, inbox, staff and blog pages under fixed keys, sample records, the support-center search sections, e-mail pages, settings keys checked against the renderer.
+- design-theme-dark-lines.md: A palette colour too dark for the dark surfaces draws its outline-button border, focus halo and range thumb lifted to 3:1, and the readable text shade is made for bg-body-tertiary in dark mode (#9057)
 - design-theme-look-and-palette.md: A visual design's look and colour palette (style.style_look / style_palette, 2026.4.5): values, the stylesheets and their load order on site, canvas and preview, tokens for new component styles. [decision: decisions-made-product-44.md]
 - design-theme-look-drawing.md: The small drawing of a look (pg_design_look_drawing() and its twin _sdLookDrawing()): what it draws from the preview row, where it shows, the twin test
 - design-theme-pale-colours.md: A palette colour too pale for a white page (Silver, Electric Blue's second colour): outline button border, focus ring, tick, radio dot and switch knob drawn in its readable shade
@@ -226,6 +227,7 @@
 - designer-audit-form-action.md: Designer audit hint form_no_action: a form outside every system widget with no action is sent nowhere; what counts as wired, why it is a hint and not a ban, and the test.
 - designer-audit-targets-entry.md: Designer audit's target size (WCAG 2.5.8, 24px with the spacing exception) and redundant entry (3.3.7) hints: measured on the canvas, exemptions
 - designer-audit-tree-rules.md: Designer audit's tree rules for empty links/buttons, image alt, form submit and empty headings: what counts as a name, an alt decision, a submit and a heading, and the test
+- designer-autosave.md: Visual Page Editor autosave: one browser entry per design and page, kept until the server has it, swept on start, oldest removed for room, one notice when a write fails.
 - designer-block-family-files.md: Block families in their own files (style_designer_blocks_<family>.js): the registration call, the kit, how the palette, drop, block rules and PHP readers take them, the checks (B0)
 - designer-block-forms.md: How a ready-made designer block writes a form that can be sent and read aloud: a label for every field, a real submit button, POST unless search, and what the audit and the block test check.
 - designer-block-full-bleed-giant-type.md: Block rules pg-display-xl / pg-display-xxl (giant type), pg-bleed (edge to edge), pg-screen (one screen tall), pg-shade-tint, and the Hero: Full-Screen Media block (spotlight-media) in Marketing
@@ -371,6 +373,7 @@
 - designer-tab-groups.md: Page tab order and named coloured groups in the designer (style.style_tab_layout, 2026.4.8): shape, own endpoint apart from Save, twin normalisers, colours, folding per browser, new tabs, drag.
 - designer-theme-light-selector-upgrade.md: Upgrade step 11.0.32 splits the Themes panel's old combined light block in designs, page copies, templates and old theme files with a PHP twin of the editor's split.
 - designer-theme-panel-light-selector.md: Which blocks the designer's Themes panel writes light and dark variables into, why colours and fonts/radii use different light selectors, and how old designs are split.
+- designer-theme-panel-value-check.md: What the Themes panel's text boxes write: one CSS value only (no ; { } < > comment, backslash or open bracket or quote), a colour row also a colour by CSS.supports; a refused box stays marked.
 - designer-theme-part.md: The Themes tab of the designer's assets panel as the part 'theme' (D5 part 5): what moved, what the core keeps, the host the part works through
 - designer-turkish-terms-2.md: More Turkish designer words, continued from designer-turkish-terms: Parola (never Şifre) in the account widgets, their Bind Data labels and the account e-mails; tests/designer_password_word_test.php
 - designer-turkish-terms.md: Turkish terms for designer layer names, palette labels and panel rows; how a shared language key with a misfit Turkish is fixed (in place or a narrower key); tests/designer_turkish_terms_test.php
@@ -411,6 +414,7 @@
 - layout-form-converter-editor.md: W22b "Convert to design elements" on a custom form page's system region: the button, the layout_code convert action, the widget placed after the region, toasts, rows the sync keeps
 - layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing [decision: here]
 - layout-widget-offer.md: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, the panel buttons that place it and remove the region, why no 301
+- legacy-bootstrap-card.md: The "Towards Bootstrap 5" card (LB3): Legacy designs, Bootstrap 3 found by the framework sheet row, a design's report (names, sheets, scripts, files left out), nothing written [decision: decisions-made-product-48.md]
 - legacy-bootstrap-census.md: Census of the starting sites' Legacy designs for the Bootstrap 5.3.8 helper (LB1, #8940): sets, Bootstrap 3 and theme classes, scripts, theme parts, map coverage and gaps
 - legacy-bootstrap-map.md: The Bootstrap 3 to 5.3.8 map and converter of a Legacy design (LB2, #8949): pg_lbs_* functions, the map's rules beyond renames, what a tree, a sheet and the report do, what is left for a designer [decision: decisions-made-product-46.md]
 - legacy-bootstrap-trial.md: The LB1 hand trial (#8940): a Legacy page with Bootstrap 5.3.8 in place of the classic sheet, how it was made, what broke, how near it came; pictures beside the plan
@@ -514,6 +518,7 @@
 - shipping-address-verified-box.md: Verified shipping addresses help box of the Shipping Address widget (#3177): has_verified_addresses, the verified_addresses section, the fill script by name
 - shipping-address-widget.md: The Shipping Address and Arrival widget (first step of the classic multi-step checkout): handler, page row, recipient gate, controls by name, state switch, arrival date rows, what is left out.
 - shipping-method-widget.md: The Shipping Method widget (second step of the classic multi-step checkout): handler, next page, methods from get_shipping_methods(), the chosen method, items section, what is left out.
+- shop-starters-narrow-widths.md: Shop starters at tablet width: catalog card buttons wrap, Add to Cart no longer sticks out (#9089); the cart link count badge sits inside the bag button (#9101)
 - signature-field-evidence.md: Signature form field (form_fields.type 'signature'): legal status, seal vs document hash, and the immutable capture and storage rules.
 - signature-receipt-and-output.md: Signature evidence receipt, the ^^field^^ token output, the h() ampersand pitfall, and why 'signature' was added to the form_fields.type enum.
 - signature-timestamp-rfc3161.md: RFC 3161 timestamping of signatures: what is stamped, storage, network call policy, config columns, settings-test pitfall, auth list, hand-written ASN.1.

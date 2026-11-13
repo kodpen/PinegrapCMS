@@ -12,6 +12,6 @@ description: ERP bank statement matching: which till movements a line matches, c
 - Only `erp_bank_statement_kinds()` (`includes/erp/bank_import.php`): bank, card terminal, credit card; the upload list (`erp_bank_statements.php`) and `erp_bank_statement_upload()` both ask `erp_bank_statement_kinds_sql()`. Before (#5586) a cash drawer or a cheque portfolio could take a statement, and its lines matched and were recorded on that till.
 
 ## Why does the scroll box hold a combobox's select?
-- `.pg-combobox-native` is `position: absolute`; in a `.table-responsive` that is not positioned, its containing block is outside the scroll box, so the overflow does not clip it and the page grows sideways on a phone (#5585, the Record form at 375 px). `.table-responsive:has(.pg-combobox-native)` is `position: relative` in backend.src.css, for every panel table.
+- `.pg-combobox-native` is `position: absolute`; in a `.table-responsive` that is not positioned, its containing block is outside the scroll box, so the overflow does not clip it and the page grew sideways on a phone (#5585, the Record form at 375 px). Every `.table-responsive` is `position: relative` in backend.src.css since #9079 (`ui/scrolling-table-hidden-text.md`).
 
 Tests: `tests/erp_bank_statement_bugs_test.php`.

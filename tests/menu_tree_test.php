@@ -155,3 +155,17 @@ function test_menu_items_screen_reads_the_menu_once()
 	pg_assert_true(strpos($source, 'pg_menu_tree_flatten(') !== false, 'the screen flattens one read');
 	pg_assert_false(strpos($source, 'SELECT COUNT(*) FROM menu_items WHERE parent_id') !== false, 'no child count per item');
 }
+
+// On a phone the list fits the screen: the date columns step aside below md,
+// the link breaks inside its cell, and what is left scrolls inside the card
+// instead of the whole page (#8994).
+function test_menu_items_screen_fits_a_phone()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_menu_items.php');
+
+	pg_assert_contains('<div class="card-body p-0 position-relative table-responsive">', $source, 'the table scrolls inside its card');
+	pg_assert_contains('<th scope="col" class="d-none md:d-table-cell">\' . lang(\'Created\') . \'</th>', $source, 'Created header hidden below md');
+	pg_assert_contains('<th scope="col" class="d-none md:d-table-cell">\' . lang(\'Last Modified\') . \'</th>', $source, 'Last Modified header hidden below md');
+	pg_assert_same(4, substr_count($source, 'd-none md:d-table-cell'), 'both date headers and both date cells');
+	pg_assert_contains('<td class="align-middle text-break">\' . h($link_to_value) . \'</td>', $source, 'a long address breaks inside its cell');
+}

@@ -11,6 +11,7 @@ Two places describe `<body>` (custom controls in Body Settings, and the Attribut
 | `style` | `fontFamily` -> `inlineStyle` -> `_attrs` `style` |
 | `id` | root `id`, if empty `_attrs` `id` |
 
+- No class comes from the design's name: the server writes none, so the HTML panel and Preview, which made one (`pg-test_kanvas_av_` from "pg-test kanvas avı"), showed a `<body>` the site never sends (#9001). `_sdBodyAttrParts(tree, additionalBodyClasses)` takes no name.
 - `id` is the exception: one tag cannot hold two ids, one must be authoritative. For the rest there is no reason to drop. **A field that does not publish what it stores is worse than a field that is rejected.**
 
 ## Which three places stay in lockstep?

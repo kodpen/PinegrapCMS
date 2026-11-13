@@ -444,6 +444,7 @@
     "Files cannot be uploaded here.": "Buraya dosya yüklenemez.",
     "Files copied to backup directory. Copying layouts, please wait...": "Dosyalar yedekleme dizinine kopyalandı. Düzenler kopyalanıyor, lütfen bekleyin...",
     "Files in this folder are not public. Upload into a public folder.": "Bu klasördeki dosyalar herkese açık değil. Herkese açık bir klasöre yükleyin.",
+    "Files left out": "Dışarıda kalan dosyalar",
     "Files of a type that cannot be uploaded here are left out.": "Buraya yüklenemeyen türdeki dosyalar dışarıda bırakılır.",
     "Files overwriting...": "Dosyaların üzerine yazılıyor...",
     "Files stay on the disk.": "Dosyalar diskte kalır.",

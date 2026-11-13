@@ -1171,8 +1171,11 @@ function pg_dashboard_brief($user, $changelog_sections, $view = array())
         // No offer on this one: the widget it is about is further down this very
         // screen, and pointing somebody somewhere they already are is not help.
         // The new dashboard's System Status card has no deep check, so it is not
-        // said there.
-        $greeting_features[] = h(lang('You can start a deep database check from the system status widget whenever you like.'));
+        // said there. welcome.php shows that widget below the User role only
+        // ('show' => ($user['role'] < 3)), so a User is not told about it.
+        if ($user['role'] < 3) {
+            $greeting_features[] = h(lang('You can start a deep database check from the system status widget whenever you like.'));
+        }
     } elseif (!empty($view['edit'])) {
         // No offer either: Edit dashboard is a button on this very screen, and a
         // locked layout has none.
@@ -1962,10 +1965,11 @@ function pg_dashboard_brief_part($hour)
 /**
  * The tips the second half can be, escaped: how to work the panel, each
  * offered only where it is true. The old dashboard's widgets move by their
- * grip and take their theme from Site Settings > Appearance (a card drawn for
- * designers and administrators only); the new dashboard is arranged and
- * styled by each person in Edit dashboard, which a locked layout does not
- * offer. A tip about the workspace goes only to someone in its team. Pure.
+ * grip and take their theme from Site Settings > Appearance, and both the
+ * grip and that card are drawn for designers and administrators only; the
+ * new dashboard is arranged and styled by each person in Edit dashboard,
+ * which a locked layout does not offer. A tip about the workspace goes only
+ * to someone in its team. Pure.
  *
  * @param int   $role      the reader's role
  * @param bool  $workspace the reader is in the workspace team
@@ -1980,9 +1984,10 @@ function pg_dashboard_brief_tips($role, $workspace, $view)
     );
 
     if (($view['dashboard'] ?? '') !== 'v2') {
-        $tips[] = lang('Did you know the widgets can be dragged by the grip at the right of their headers?');
-
+        // welcome.php draws the widgets' grip for designers and administrators
+        // only ($widget_movable), the same readers the theme card is for.
         if ((int) $role < 2) {
+            $tips[] = lang('Did you know the widgets can be dragged by the grip at the right of their headers?');
             $tips[] = lang('You will find the widget theme settings in Site Settings, under Appearance.');
         }
     } elseif (!empty($view['edit'])) {

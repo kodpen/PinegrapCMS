@@ -41,3 +41,13 @@ function test_command_palette_load_more_failure_recovers()
 	pg_assert_contains("if (offset > 0 && !(resp && resp.status === 'success')) {\n                        loadMoreFailed();\n                        return;", $js, 'a non-success answer at offset > 0 reaches the failure path');
 	pg_assert_contains("if (offset > 0) { loadMoreFailed(); } else {", $js, 'a network failure at offset > 0 reaches the failure path');
 }
+
+// The box keeps its last query when it closes; on reopening the query is
+// selected, so the first key typed starts a new search instead of being
+// added to the end of the old one (#8996).
+function test_command_palette_reopens_with_the_last_query_selected()
+{
+	$js = list_page_state_script();
+
+	pg_assert_contains("pgUI.dialog.on(\$modal, 'shown', function () {\n            \$input.focus();\n            \$input.trigger('select');", $js, 'the last query is selected when the box opens');
+}

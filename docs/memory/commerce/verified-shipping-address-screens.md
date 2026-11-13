@@ -1,6 +1,6 @@
 ---
 name: verified-shipping-address-screens
-description: Verified shipping address screens: state labels via pg_geo_state_option_labels(), country sort by shown name, required state picker, narrow filter, one Turkish name (#5721-#5723)
+description: Verified shipping address screens: state labels via pg_geo_state_option_labels(), country sort by shown name, required state picker, state filter fit to the bar (#9080), Turkish name
 ---
 
 ## How are the state options labelled and ordered?
@@ -13,8 +13,9 @@ description: Verified shipping address screens: state labels via pg_geo_state_op
 ## Why is the state picker `required`?
 - The server refuses an empty state (`validate_required_field('state_id', …)`); the select carries `required` so the panel's marker script adds the `*` and the browser stops an empty choice before posting (#5722). The İl/Eyalet label swap only rewrites the label's first text node, so the marker stays.
 
-## Why `max-w-100` on the list's state filter?
-- `w-auto` widens the select to its longest option ("Amerika Birleşik Devletleri: …"); at 375 px it ran 14 px past the card (#5723). `max-w-100` keeps it inside the wrapping flex form; the browser clips the option text.
+## Why is the list's state filter a `pg-toolbar-filter` form?
+- `w-auto` widens the select to its longest option ("Amerika Birleşik Devletleri: Virgin Islands (US) (0)"). In the toolbar's `d-inline-flex` form a flex item keeps that width as its automatic minimum, so `max-w-100` did nothing and the select ran 38 px off a 390 px screen (#9080; first #5723, fixed in #5813 inside a wrapping form the list's later look dropped).
+- The form, written by hand for its visible "State" label, now carries `pg-toolbar-filter` (`ui/toolbar-phone-fit.md`): the select shrinks to the bar and cuts its text with an ellipsis; the label is `text-nowrap`, so "Eyalet/İl" stays on one line. A desktop bar is unchanged.
 
 ## What is the screen group called in Turkish?
 - "Doğrulanmış Teslimat Adres(ler)i" everywhere: "All Verified Shipping Addresses" was the only key saying "Gönderi".

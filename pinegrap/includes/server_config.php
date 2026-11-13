@@ -407,6 +407,36 @@ function pg_server_config_blocks($server = '')
                 'snippet' =>
 '        <urlCompression doStaticCompression="true" doDynamicCompression="false" />',
             ),
+
+            // IIS's defaults are errorMode="DetailedLocalOnly" and
+            // existingResponse="Auto". Auto replaces the body of any error
+            // answer whose handler did not set the SetStatus flag, and the
+            // FastCGI handler PHP runs under never sets it: a visitor from
+            // another computer gets IIS's bare "404 - File or directory not
+            // found." instead of the site's 404 page, the firewall's 403 and
+            // 429 pages, the maintenance and database pages, the panel's
+            // error screens and the API's JSON errors. A request IIS counts
+            // as local, which is every request that arrives through a reverse
+            // proxy or tunnel on the same machine, gets the detailed page
+            // instead, with the physical path, the handler and the logon
+            // method on it, for everything IIS refuses before PHP runs (a "+"
+            // in a path, a hidden segment, a denied extension).
+            //
+            // PassThrough keeps whatever PHP answered; Custom gives the
+            // requests that never reach PHP the server's generic page, never
+            // the detailed one. Neither attribute is locked at the server
+            // level by default. Any <httpErrors> the operator already has
+            // counts as present: a second one is a 500.19 for the whole site.
+            array(
+                'key'    => 'errors',
+                'label'  => 'Software error pages',
+                'why'    => 'IIS replaces the error pages PHP sends with its own: a visitor sees a bare server page instead of the site\'s 404 page, an API client gets HTML instead of JSON, and a request IIS counts as local sees the detailed page with the server\'s folder path.',
+                'level'  => 'recommended',
+                'detect' => '/<httpErrors\b/i',
+                'anchor' => 'web-server',
+                'snippet' =>
+'        <httpErrors errorMode="Custom" existingResponse="PassThrough" />',
+            ),
         );
     }
 
@@ -688,6 +718,7 @@ add_header X-Content-Type-Options "nosniff" always;
 ' . str_replace('        </staticContent>', $blocks['cache'] . "\n        </staticContent>", $blocks['charset']) . '
 ' . $blocks['headers'] . '
 ' . $blocks['compression'] . '
+' . $blocks['errors'] . '
         <rewrite>
             <rules>
 ' . $blocks['data'] . '

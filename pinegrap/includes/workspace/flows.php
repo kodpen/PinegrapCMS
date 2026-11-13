@@ -177,6 +177,70 @@ function ws_flow_kinds_not_offered()
 }
 
 /**
+ * The kinds of box that need the Workspace whatever their settings: flows
+ * run at every site (pg_flows_enabled()), but these act in its channels and
+ * its tasks, so on a site whose Workspace is off they do not run. The one
+ * list of them, with ws_flow_node_needs_workspace() for the boxes whose
+ * settings decide. Pure.
+ *
+ * @return string[]
+ */
+function ws_flow_kinds_workspace()
+{
+    return array(
+        // The starts heard only in a channel.
+        'join', 'mention',
+        // A message in a channel: posted, a check-in asked there, an
+        // approval request written there.
+        'post', 'checkin', 'approval',
+        // A customer brought into a channel.
+        'lead',
+        // The task boxes.
+        'task', 'task_open', 'task_digest',
+        // An agent of a channel.
+        'agent',
+    );
+}
+
+/**
+ * Does this box need the Workspace? Its kind (ws_flow_kinds_workspace()),
+ * or a summary of counts posted into a channel: one sent only by e-mail
+ * does not. Pure.
+ *
+ * @param array $node a box of the graph (kind, config)
+ * @return bool
+ */
+function ws_flow_node_needs_workspace($node)
+{
+    $kind = (string) ($node['kind'] ?? '');
+    $config = is_array($node['config'] ?? null) ? $node['config'] : array();
+
+    if (in_array($kind, ws_flow_kinds_workspace(), true)) {
+        return true;
+    }
+
+    return ($kind === 'report') && ((int) ($config['channel_id'] ?? 0) > 0);
+}
+
+/**
+ * Why a box of a run does not run, '' when it may: one that needs the
+ * Workspace (ws_flow_node_needs_workspace()) on a site whose Workspace is
+ * off. Pure.
+ *
+ * @param bool  $workspace_on ws_enabled()
+ * @param array $node
+ * @return string
+ */
+function ws_flow_workspace_box_refusal($workspace_on, $node)
+{
+    if ($workspace_on || !ws_flow_node_needs_workspace($node)) {
+        return '';
+    }
+
+    return lang('This box needs the Workspace, which is switched off on this site, so it did not run.');
+}
+
+/**
  * The outcomes an arrow may leave this box on: its kind's
  * (ws_flow_arrow_outcomes()), but for a Pinegrap AI box, whose settings say
  * which (a classifying box's named outcomes, flow_ai_box.php). Pure.

@@ -64,6 +64,7 @@ function pg_explorer_handle_file_get($type, $request, $user)
     $payload['editor_language'] = pg_explorer_editor_language($extension);
     $payload['content'] = null;
     $payload['content_too_large'] = false;
+    $payload['content_not_utf8'] = false;
     $payload['on_disk'] = is_file($path);
     // An MP4 or WebM the image editor saved opens again as its project
     // (pg_image_editor_animation_open()); any other video has nothing to edit.
@@ -75,7 +76,17 @@ function pg_explorer_handle_file_get($type, $request, $user)
         if (filesize($path) > pg_explorer_editor_max_bytes()) {
             $payload['content_too_large'] = true;
         } else {
-            $payload['content'] = (string) @file_get_contents($path);
+            $content = (string) @file_get_contents($path);
+
+            // Text in another encoding (Windows-1254 from an older Notepad)
+            // cannot travel in JSON, and the window would save whatever it
+            // was shown back over the file: it gets no text and a note,
+            // and the name, folder and description stay open to change.
+            if (pg_explorer_text_is_utf8($content)) {
+                $payload['content'] = $content;
+            } else {
+                $payload['content_not_utf8'] = true;
+            }
         }
     }
 
@@ -83,6 +94,13 @@ function pg_explorer_handle_file_get($type, $request, $user)
     $payload['webp_copy'] = pg_explorer_file_webp_copy($file, $extension, $path);
 
     respond(array('status' => 'success', 'request' => $type, 'file' => $payload));
+}
+
+// Whether a text file's bytes are UTF-8 (a byte order mark included), the
+// one encoding the file window can show and write back unchanged.
+function pg_explorer_text_is_utf8($content)
+{
+    return mb_check_encoding((string) $content, 'UTF-8');
 }
 
 // The WebP copy a browser that asks for WebP is sent at the picture's own
@@ -125,6 +143,12 @@ function pg_explorer_handle_file_save($type, $request, $user)
     if (pg_explorer_file_editable_by($file, $user) == false) {
         log_activity(lang('access denied to modify files because user does not have access to file'), $_SESSION['sessionusername']);
         respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    // A binned file waits under a name nobody types; a save would give it
+    // a live name or new bytes while it sits in the bin.
+    if (pg_recycle_is_inside((int) $file['folder'])) {
+        respond(array('status' => 'error', 'message' => pg_recycle_binned_message($file['name'], $file_id)));
     }
 
     $requested_name = trim(isset($request['name']) ? (string) $request['name'] : $file['name']);

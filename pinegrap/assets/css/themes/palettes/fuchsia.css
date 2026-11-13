@@ -12,6 +12,8 @@
     --pg-primary-hover: #8a1895;
     --pg-primary-hover-rgb: 130, 22, 140;
     --pg-primary-active: #82168c;
+    --pg-primary-line: #a21caf;
+    --pg-primary-line-rgb: 162, 28, 175;
     --bs-link-color: #a21caf;
     --bs-link-color-rgb: 162, 28, 175;
     --bs-link-hover-color: #82168c;
@@ -29,25 +31,31 @@
     --pg-secondary-hover: #2a276e;
     --pg-secondary-hover-rgb: 39, 37, 103;
     --pg-secondary-active: #272567;
+    --pg-secondary-line: #312e81;
+    --pg-secondary-line-rgb: 49, 46, 129;
 }
 
 [data-bs-theme=dark] {
     --bs-primary-text-emphasis: #c777cf;
     --bs-primary-bg-subtle: #200623;
     --bs-primary-border-subtle: #611169;
-    --pg-primary-fg: #c470cd;
-    --pg-primary-fg-rgb: 196, 112, 205;
-    --pg-primary-hover-rgb: 208, 141, 215;
-    --bs-link-color: #c470cd;
-    --bs-link-color-rgb: 196, 112, 205;
-    --bs-link-hover-color: #d08dd7;
-    --bs-link-hover-color-rgb: 208, 141, 215;
+    --pg-primary-fg: #cb80d2;
+    --pg-primary-fg-rgb: 203, 128, 210;
+    --pg-primary-hover-rgb: 213, 153, 219;
+    --pg-primary-line: #b955c3;
+    --pg-primary-line-rgb: 185, 85, 195;
+    --bs-link-color: #cb80d2;
+    --bs-link-color-rgb: 203, 128, 210;
+    --bs-link-hover-color: #d599db;
+    --bs-link-hover-color-rgb: 213, 153, 219;
     --bs-focus-ring-color: rgba(181, 73, 191, 0.3);
     --pg-primary-focus-border: #be60c7;
     --bs-secondary-text-emphasis: #8382b3;
     --bs-secondary-bg-subtle: #0a091a;
     --bs-secondary-border-subtle: #1d1c4d;
-    --pg-secondary-fg: #8c8ab8;
-    --pg-secondary-fg-rgb: 140, 138, 184;
-    --pg-secondary-hover-rgb: 163, 161, 199;
+    --pg-secondary-fg: #9a99c1;
+    --pg-secondary-fg-rgb: 154, 153, 193;
+    --pg-secondary-hover-rgb: 174, 173, 206;
+    --pg-secondary-line: #7977ad;
+    --pg-secondary-line-rgb: 121, 119, 173;
 }
