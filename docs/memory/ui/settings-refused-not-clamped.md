@@ -8,7 +8,7 @@ description: Site Settings boxes a save refuses instead of clamping or blanking:
 - The save marks the field with "{var:1} must be a whole number from {var:2} to {var:3}." (the box's own label) and returns before any write: the firewall limits in `firewall.save.php` (before the country block, which writes first), the sign-in throttle's attempts, minutes and lockout in `security.save.php`, Tracking Code Duration 1-365 (`privacy.save.php`), the merchant transit days 0-60 with max not below min (`seo.save.php`).
 - Only a posted field is checked (`array_key_exists`), so a card not drawn on an older schema never blocks the save. The `pg_parse_whole_number()` clamps stay after the check (`tests/settings_whole_numbers_test.php` reads them).
 - Why: an emptied box read as 0 was clamped to the strictest bound and the dialog said "saved": one wrong password locked an account, ten requests a minute for every visitor, a ban after one offence, 0 tracking days (an expired cookie, no attribution).
-- Boxes where 0 means "off" (form submission limits, Ask a Question After) still read blank as 0.
+- Boxes where 0 means "off" are refused the same way, so only a typed 0 switches them off: Form Submission Limits 0-10000 (Per visitor address, Per e-mail address, Per e-mail domain) and Ask a Question After 0-100 (`security.save.php`). Before #9084 a blank box, or one a password manager filled with a user name, was read as 0 and the limit went off without a word.
 
 ## What else does a settings save refuse rather than change?
 - Membership expiration warning switched on: a page and 1-999 days are required (`security.save.php`); 0 or negative days warned members already expired, no page sent nothing.

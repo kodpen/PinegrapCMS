@@ -55,6 +55,25 @@ function test_erp_profit_period_keeps_years_in_bounds()
 	pg_assert_same(array('2026-11-01', '2026-11-30', ''), array($period['from'], $period['to'], $period['error']), 'nothing sent is this month, silently');
 }
 
+// Two dates given the other way round are swapped and then capped at two
+// years like any other pair, with the same notice.
+function test_erp_profit_period_caps_reversed_dates_at_two_years()
+{
+	$today = '2026-11-02';
+	$capped = lang('The report covers at most two years at a time; the end date was brought forward.');
+
+	$forward = erp_profit_period(array('range' => 'dates', 'from' => '2020-01-01', 'to' => '2030-12-31'), $today);
+	$reversed = erp_profit_period(array('range' => 'dates', 'from' => '2030-12-31', 'to' => '2020-01-01'), $today);
+	pg_assert_same(array('2020-01-01', '2021-12-31', 'dates', $capped), array($forward['from'], $forward['to'], $forward['range'], $forward['error']), 'a long pair is capped');
+	pg_assert_same($forward, $reversed, 'the same pair reversed is capped the same way');
+
+	$period = erp_profit_period(array('range' => 'dates', 'from' => '2100-12-31', 'to' => '1970-01-01'), $today);
+	pg_assert_same(array('1970-01-01', '1971-12-31', $capped), array($period['from'], $period['to'], $period['error']), 'the widest reversed pair is capped too');
+
+	$period = erp_profit_period(array('range' => 'dates', 'from' => '2026-02-01', 'to' => '2026-01-05'), $today);
+	pg_assert_same(array('2026-01-05', '2026-02-01', ''), array($period['from'], $period['to'], $period['error']), 'a short reversed pair is only swapped, silently');
+}
+
 function test_erp_profit_months_counts_without_string_compare()
 {
 	pg_assert_same(array('2026-11', '2026-12', '2027-01'), erp_profit_months('2026-11-15', '2027-01-03'), 'across a year end');

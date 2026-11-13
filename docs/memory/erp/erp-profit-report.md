@@ -5,6 +5,7 @@ description: ERP profit and loss (includes/erp/profit.php): what counts as reven
 
 ## Where is the profit and loss built?
 - `includes/erp/profit.php`, `erp_profit_report($from, $to, $options)`; screen `erp_profit.php` (`?export=xlsx` writes `erp_profit_workbook()`), the month card of `erp_dashboard.php`, and the API (`api_reports.php`, `orders` parameter). Period at most two years, years 1970-2100 only (`erp_profit_period()`, `ERP_PROFIT_FIRST_YEAR`/`LAST_YEAR`); outside them this month with "Please enter a valid date.". The VAT report uses the same period.
+- Two dates given the other way round are swapped, then capped at two years with the same notice; before #9078 a reversed pair skipped the cap (1970-2100 in one report).
 - A management view, not the accountant's books: base currency, without VAT. It is not an official income statement (no depreciation, no accruals).
 
 ## What counts?
