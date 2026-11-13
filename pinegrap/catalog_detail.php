@@ -140,9 +140,12 @@ if (
     }
 }
 
-// If a quantity was entered, then remove commas.
-if ($liveform->get_field_value('quantity') != '') {
-    $liveform->assign_field_value('quantity', str_replace(',', '', $liveform->get_field_value('quantity')));
+// A quantity read with the site's separators (pg_cart_posted_quantity()):
+// "1.250" on a site that writes 4.999,00 is 1250, and "2,5" stays as typed,
+// so the checks below refuse it.
+$posted_quantity = pg_cart_posted_quantity($liveform->get_field_value('quantity'));
+if ($posted_quantity !== null) {
+    $liveform->assign_field_value('quantity', (string) $posted_quantity);
 }
 
 // if product is a donation

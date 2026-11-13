@@ -337,6 +337,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-seo.md: Where do these come from?
 - decisions-made-seo.md: What was decided?
 - decisions-made-seo.md: Which columns do these add?
+- decisions-made-waf-2.md: Where are the rules and the earlier part?
+- decisions-made-waf-2.md: How do the firewall fixes reach sites on 2026.4.10? (owner, 2026-11-13, #9125)
+- decisions-made-waf-2.md: Does Monitor mode enforce automatic bans? (owner, 2026-11-13, #9125)
 - decisions-made-waf.md: Which firewall counting rules are decided?
 - decisions-made-waf.md: Does the global limit's signed-in exemption stay as it is?
 - decisions-made-waf.md: Is there a release action for the sign-in throttle's address lock?
@@ -644,6 +647,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/agent-questions.md: How an agent asks the people with a poll or an approval; a one-answer question as a one-choice poll closed once the vote is read; why the outcome is written in the agent's name
 - workspace/agent-shown.md: How a registry agent shows (A4b2): the line under its waking message ("saw it · no answer needed", #8919), its tag and @ picker entry, kept off tasks, its own edits, two applications' lines kept apart
 - workspace/agent-words-wake.md: An application's API message and an agent's answer wake the agents they name or answer: only a mention or a reply counts, the asking application named, the braked line once an hour
+- workspace/automation-flows-gate.md: The one gate of automation flows, pg_flows_enabled() (AF1): flows run with the Workspace off; what the general job, the site events and the scheduled run do then, and what waits for the Workspace
 - workspace/channel-agent-rights.md: Who adds, changes or removes a channel's agents ("Agents in this channel" in Channel settings, workspace.channels.agents.*): who may post; the tier and a private channel's new agent only its manager
 - workspace/channel-members-agents.md: A channel's agents among its members (#8936): agents as squares in the head's faces, People here and Agents here in Channel info, last seen; a person's time only for a manager
 - workspace/channel-memory.md: A channel's memory (ws_channel_memory) and the decision mark by a person or an agent (ws_messages.marked_by_kind): rows, routes, the index in the brief, the Memory tab

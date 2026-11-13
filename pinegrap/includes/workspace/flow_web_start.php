@@ -468,7 +468,8 @@ function ws_flow_web_receive()
         ws_flow_web_answer(429, array('ok' => false, 'error' => 'rate_limited'));
     }
 
-    if (!ws_flows_ready() || !pg_schema_has('config_text')) {
+    // Flows' own gate, the Workspace on or off (pg_flows_enabled()).
+    if (!pg_flows_enabled() || !ws_flows_ready() || !pg_schema_has('config_text')) {
         ws_flow_web_answer(503, array('ok' => false, 'error' => 'not_ready'));
     }
 

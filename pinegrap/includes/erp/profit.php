@@ -94,8 +94,11 @@ function erp_profit_period($input, $today = null)
             if (!$valid($from) || !$valid($to)) {
                 return $refused;
             }
+            // Dates given the other way round are swapped, then capped like
+            // any other pair: returning the swapped pair here would skip the
+            // two-year limit below.
             if ($from > $to) {
-                return array('from' => $to, 'to' => $from, 'range' => 'dates', 'error' => '');
+                list($from, $to) = array($to, $from);
             }
             // Two years at most: the report reads every line of the period.
             if ($to > date('Y-m-d', strtotime($from . ' +2 year -1 day'))) {

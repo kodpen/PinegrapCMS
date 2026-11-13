@@ -270,6 +270,37 @@ StyleDesigner.definePart('theme', function (K) {
             applyAssetsToIframe();
         }
 
+        // Whether a value typed into a variable row may be written: one CSS
+        // value. The panel puts it into a declaration and, for a theme
+        // colour, into some twenty cascade rules, so a ";", "{" or "}" would
+        // end them and start rules of its own, and a comment, a "<", a
+        // backslash or a bracket or quote left open would make the rest of
+        // the stylesheet part of the value. A colour row also asks
+        // `supports(value)` (CSS.supports('color', ...) in the browser). ''
+        // may always be written: it removes the variable.
+        function _sdThemeValueOk(value, supports) {
+            var v = String(value == null ? '' : value).trim();
+            if (v === '') return true;
+            if (/[;{}<>\\\u0000-\u001f\u007f]/.test(v) || v.indexOf('/*') !== -1 || v.indexOf('*/') !== -1) return false;
+            var open = [], quote = '';
+            for (var i = 0; i < v.length; i++) {
+                var c = v.charAt(i);
+                if (quote) { if (c === quote) quote = ''; continue; }
+                if (c === '"' || c === "'") { quote = c; continue; }
+                if (c === '(') open.push(')');
+                else if (c === '[') open.push(']');
+                else if ((c === ')' || c === ']') && open.pop() !== c) return false;
+            }
+            if (quote || open.length) return false;
+            return (typeof supports === 'function') ? !!supports(v) : true;
+        }
+
+        // The browser's own answer to "is this a colour?"; every value passes
+        // where it cannot be asked.
+        function _sdThemeIsColour(v) {
+            try { return (window.CSS && typeof window.CSS.supports === 'function') ? window.CSS.supports('color', v) : true; } catch (e) { return true; }
+        }
+
         // Look up a var's metadata (for `theme: true` checks etc.).
         function _findThemeVarMeta(name) {
             for (var i = 0; i < THEME_VAR_GROUPS.length; i++) {
@@ -503,15 +534,32 @@ StyleDesigner.definePart('theme', function (K) {
                     renderThemePanel();
                 });
             });
-            // Free text → mirror to color picker if hex, write on change.
+            // Free text → mirror to color picker if hex, write on change. A
+            // value that is not one CSS value (or not a colour, on a colour
+            // row) is not written: the box keeps what was typed, marked, and
+            // the stored value stays.
             host.querySelectorAll('.sd-theme-row-text').forEach(function (inp) {
+                inp.addEventListener('input', function () {
+                    this.classList.remove('is-invalid');
+                    this.removeAttribute('aria-invalid');
+                });
                 inp.addEventListener('change', function () {
                     var row = this.closest('.sd-theme-row');
+                    var v   = this.value.trim();
+                    var meta = _findThemeVarMeta(this.dataset.var);
+                    var colour = !!meta && (meta.kind === 'color' || meta.kind === 'colorRgba');
+                    if (!_sdThemeValueOk(v, colour ? _sdThemeIsColour : null)) {
+                        this.classList.add('is-invalid');
+                        this.setAttribute('aria-invalid', 'true');
+                        sdToast(esc(colour ? _sdT('Not written: "{var}" is not a colour.', v)
+                                           : _sdT('Not written: "{var}" is not a single CSS value.', v)), 'warning', 5000);
+                        return;
+                    }
                     var cp  = row.querySelector('.sd-theme-row-color');
-                    if (cp && /^#[0-9a-fA-F]{6}$/.test(this.value)) cp.value = this.value;
+                    if (cp && /^#[0-9a-fA-F]{6}$/.test(v)) cp.value = v;
                     var sw  = row.querySelector('.sd-theme-row-swatch');
-                    if (sw) sw.style.background = this.value || '';
-                    _writeThemeVar(H.mode(), this.dataset.var, this.value.trim());
+                    if (sw) sw.style.background = v;
+                    _writeThemeVar(H.mode(), this.dataset.var, v);
                     renderThemePanel();
                 });
             });
@@ -540,10 +588,13 @@ StyleDesigner.definePart('theme', function (K) {
             H = host;
             renderThemePanel();
         },
-        // Writes one variable of `mode` (an empty value removes it).
+        // Writes one variable of `mode` (an empty value removes it). A value
+        // that is not one CSS value is not written: false.
         write: function (host, mode, name, value) {
             H = host;
+            if (!_sdThemeValueOk(value, null)) return false;
             _writeThemeVar(mode, name, value);
+            return true;
         }
     };
 });

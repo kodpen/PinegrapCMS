@@ -9,7 +9,10 @@
  * designers and administrators, as the conversion itself. The chosen styles'
  * dry run (includes/fn/legacy_to_designer_plan.php) lists what a bulk move
  * would write for each; Convert starts that move (legacy_to_designer_run.php),
- * worked by this screen's short requests and the general job.
+ * worked by this screen's short requests and the general job. Back to
+ * classic sends a set's pages back; Towards Bootstrap 5 reports what a
+ * Legacy design's move to Bootstrap 5.3.8 would convert
+ * (includes/fn/legacy_bootstrap_report.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -21,6 +24,7 @@ include('init.php');
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer_run.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_classic.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_report.php');
 
 // The run's short requests (ajax=1) are read by the screen's script as JSON:
 // an ended session, a missing right or a stale token is answered in that
@@ -487,6 +491,12 @@ if ($output_back !== '') {
     </div>';
 }
 
+// Towards Bootstrap 5: each Legacy design, and the report of the one asked
+// for (?bootstrap=<id>), read and converted in memory only.
+$bootstrap_open = (int)($_GET['bootstrap'] ?? 0);
+$bootstrap_designs = pg_lbs_designs();
+$output_bootstrap = pg_lbs_card_html($bootstrap_designs, $bootstrap_open, $bootstrap_open > 0 ? pg_lbs_design_report($bootstrap_open, $bootstrap_designs) : null);
+
 // Dry run is the toolbar's primary action; it submits this hidden form, which
 // carries the token and the ticked styles (their checkboxes name it in form=).
 // Neither is drawn while a move runs.
@@ -522,7 +532,7 @@ pg_page_shell([
         <div class="card-body p-0 table-responsive">' . $output_table . '</div>
     </div>
     <div id="ltd-back-result">' . $liveform->output_errors() . $liveform->output_notices() . $liveform->get_warnings() . '</div>
-    ' . $output_back . $output_classic . $output_runs . '
+    ' . $output_back . $output_bootstrap . $output_classic . $output_runs . '
 </main>
 ' .
 output_footer();

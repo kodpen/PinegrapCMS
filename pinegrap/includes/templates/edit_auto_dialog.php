@@ -87,6 +87,14 @@ if (!defined('PG_INIT_LOADED')) {
                                 <?=lang('Display')?>
                             </h2>
                             <div class="card-body pt-0">
+                                <?php
+                                // The four number boxes take no input mask: the integer mask
+                                // dropped a typed "." or "-" before the save saw it, so 1.5
+                                // hours was stored as 15 and -5 seconds as 5. The save reads
+                                // thousands groups and refuses a sign, a decimal part or
+                                // letters with its message (pg_auto_dialog_form_whole_number());
+                                // maxlength leaves room for the separators (9.999, 2.147.483).
+                                ?>
                                 <div class="row">
                                         <div class="col-12 sm:col-6 2xl:col-3 my-3">
                                             <label for="width" class="form-label"><?=lang('Width')?></label>
@@ -96,10 +104,8 @@ if (!defined('PG_INIT_LOADED')) {
                                                     'id' => 'width',
                                                     'name' => 'width',
                                                     'class' => 'form-control text-end',
-                                                    'maxlength'=>'4',
-                                                    'inputmode'=>'numeric',
-                                                    'data-inputmask-alias'=>'integer',
-                                                    'data-inputmask-allowminus'=>'false'))?>
+                                                    'maxlength'=>'5',
+                                                    'inputmode'=>'numeric'))?>
                                                 <label for="width" class="input-group-text"><?=lang('pixels')?></label>
                                             </div>
                                             <div class="form-text text-end"><?=lang('leave blank for auto')?></div>
@@ -112,10 +118,8 @@ if (!defined('PG_INIT_LOADED')) {
                                                     'id' => 'height',
                                                     'name' => 'height',
                                                     'class' => 'form-control text-end',
-                                                    'maxlength'=>'4',
-                                                    'inputmode'=>'numeric',
-                                                    'data-inputmask-alias'=>'integer',
-                                                    'data-inputmask-allowminus'=>'false'))?>
+                                                    'maxlength'=>'5',
+                                                    'inputmode'=>'numeric'))?>
                                                 <label for="height" class="input-group-text"><?=lang('pixels')?></label>
                                             </div>
                                             <div class="form-text text-end"><?=lang('leave blank for auto')?></div>
@@ -128,10 +132,8 @@ if (!defined('PG_INIT_LOADED')) {
                                                     'id' => 'delay',
                                                     'name' => 'delay',
                                                     'class' => 'form-control text-end',
-                                                    'maxlength'=>'7',
-                                                    'inputmode'=>'numeric',
-                                                    'data-inputmask-alias'=>'integer',
-                                                    'data-inputmask-allowminus'=>'false'))?>
+                                                    'maxlength'=>'9',
+                                                    'inputmode'=>'numeric'))?>
                                                 <label for="delay" class="input-group-text"><?=lang('seconds')?></label>
                                             </div>
                                             <div class="form-text text-end"><?=lang('leave blank for instant')?></div>
@@ -144,10 +146,8 @@ if (!defined('PG_INIT_LOADED')) {
                                                     'id' => 'frequency',
                                                     'name' => 'frequency',
                                                     'class' => 'form-control text-end',
-                                                    'maxlength'=>'6',
-                                                    'inputmode'=>'numeric',
-                                                    'data-inputmask-alias'=>'integer',
-                                                    'data-inputmask-allowminus'=>'false'))?>
+                                                    'maxlength'=>'7',
+                                                    'inputmode'=>'numeric'))?>
                                                 <label for="frequency" class="input-group-text"><?=lang('hour(s)')?></label>
                                             </div>
                                             <div class="form-text text-end"><?=lang('leave blank for one-time')?></div>

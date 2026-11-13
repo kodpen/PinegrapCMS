@@ -2385,8 +2385,13 @@ $(document).ready(function () {
             e.preventDefault();
         });
 
+        // The box keeps the last query and its results when it closes, so
+        // reopening repeats a search at once. The query comes back selected:
+        // the first key typed replaces it instead of being added to its end,
+        // which searched for the old and the new words run together.
         pgUI.dialog.on($modal, 'shown', function () {
             $input.focus();
+            $input.trigger('select');
             // Pre-fetch actions silently to cache them — nothing rendered until user types
             prefetchActions();
         });
@@ -11400,6 +11405,8 @@ var pgSettingsModal = (function () {
     var heldSet = null;         // and the membership question, asked often
     var gesture = 0;            // when a person last did something in here
     var gestureControl = null;  // and which control they did it to
+    var gestureKey = false;     // and whether it was a key rather than a press
+    var focusControl = null;    // the control a person moved the focus to
     var touched = false;        // and whether that ever changed anything
     var warned = false;         // a fill has been reported on this pane
     var reviewing = 0;
@@ -11810,38 +11817,70 @@ var pgSettingsModal = (function () {
         // writes into a field raises no event -- without this the generated key
         // would leave Save disabled, and the next review would put it back as
         // though nobody had asked for it.
+        //
+        // Only a trusted event is a person. A password manager can focus a
+        // field and then dispatch a keydown of its own before it writes the
+        // saved user name; a script's event carries isTrusted false, and
+        // counting it handed the fill the operator's ownership.
         document.addEventListener('pointerdown', function (event) {
+            if (!event.isTrusted) {
+                return;
+            }
             unlatch(event.target);
             gesture = Date.now();
             gestureControl = controlOf(event.target);
+            gestureKey = false;
             review();
         }, true);
 
         document.addEventListener('keydown', function (event) {
+            if (!event.isTrusted) {
+                return;
+            }
             unlatch(event.target);
             gesture = Date.now();
             gestureControl = controlOf(event.target);
+            gestureKey = true;
             review();
         }, true);
 
         // Reaching a field with the keyboard is reaching for it too, and the
         // release has to happen before the plugins that bind on focus -- the
         // input masks and the time picker -- get a look at it.
+        //
+        // But a focus is no gesture by itself: element.focus() from a script
+        // raises a trusted focusin all the same. The focus is a person's when
+        // a trusted key or press came just before it -- Tab moves it on from
+        // the field the key landed in; a press lands on the field, on its
+        // label, or on a widget of no form control that opens one (a tag
+        // field, a select2 box). A focus nobody led leaves the field shut and
+        // unclaimed, so sweep() puts back what is written into it.
         document.addEventListener('focusin', function (event) {
-            unlatch(event.target);
+            var control = controlOf(event.target);
+            var led = ((Date.now() - gesture) < 1200)
+                && (gestureKey || !gestureControl || (gestureControl === control));
+
+            if (led) {
+                unlatch(event.target);
+            }
+            focusControl = led ? control : null;
 
             // Leaving a control ends the operator's claim on it. The claim
             // exists so that a field being worked in is not overruled while
             // its dropdown is open; once they are somewhere else, that field
             // is as unattended as any other and goes back under guard.
-            if (controlOf(event.target) !== gestureControl) {
+            if (control !== gestureControl) {
                 gestureControl = null;
             }
         }, true);
 
-        $(el).on('paste drop', function () {
+        $(el).on('paste drop', function (event) {
+            if (!event.originalEvent || !event.originalEvent.isTrusted) {
+                return;
+            }
             gesture = Date.now();
             gestureControl = controlOf(document.activeElement);
+            gestureKey = false;
             review();
         });
 
@@ -12439,8 +12478,11 @@ var pgSettingsModal = (function () {
             // control they are working in is theirs however long they take:
             // the one the last gesture landed on, or the one that has focus.
             // A fill into some other field, which is the whole point of this
-            // machinery, still has nobody's hand on it.
-            if (mine || (control === gestureControl) || (control === document.activeElement)) {
+            // machinery, still has nobody's hand on it. The focus counts only
+            // when a person moved it there: a password manager focuses the
+            // field it is about to fill.
+            if (mine || (control === gestureControl)
+                || ((control === document.activeElement) && (control === focusControl))) {
                 held[i][1] = valueOf(control);
                 touched = true;
                 continue;
@@ -13035,6 +13077,13 @@ window.pgCodeEditorReady = function (markup, done) {
         baseline = snapshot();
         hold();
         setDirty(false);
+
+        // The press that asked for this pane was made on another one: a fill
+        // landing a moment after the paint must not borrow it.
+        gesture = 0;
+        gestureControl = null;
+        gestureKey = false;
+        focusControl = null;
 
         $(el).find('.pg-sm-link[data-pane]').each(function () {
             this.classList.toggle('is-active', this.getAttribute('data-pane') === key);
@@ -14260,23 +14309,30 @@ $(document).on('submit', 'form', function (event) {
             return;
         }
 
+        // Only the cells this editor opens: those of a table carrying
+        // data-pg-edit-url (open() below). The list table driver's cells carry
+        // data-pg-edit too, for its own quick edit mode (pg_list_table_edit.js),
+        // and a click there selects the row: the pencil promised an editor
+        // that never opened, and in the mode it stood after the block-level
+        // field on a line of its own, so the field sat at the top of a taller
+        // row while the text cells stayed centred.
         var style = document.createElement('style');
         style.id = 'pg_list_edit_style';
-        style.textContent = 'td[data-pg-edit]{cursor:pointer}'
-            + 'td[data-pg-edit]:focus-visible{outline:2px solid var(--pg-primary-ink);outline-offset:-2px}'
-            + 'td[data-pg-edit]:not([data-pg-editing]):not([data-pg-edit-busy])::after{content:"\\f4cb";font-family:bootstrap-icons;'
+        style.textContent = 'table[data-pg-edit-url] td[data-pg-edit]{cursor:pointer}'
+            + 'table[data-pg-edit-url] td[data-pg-edit]:focus-visible{outline:2px solid var(--pg-primary-ink);outline-offset:-2px}'
+            + 'table[data-pg-edit-url] td[data-pg-edit]:not([data-pg-editing]):not([data-pg-edit-busy])::after{content:"\\f4cb";font-family:bootstrap-icons;'
             + 'font-style:normal;font-weight:400;font-size:.75rem;line-height:1;margin-inline-start:.35em;vertical-align:.05em;'
             + 'color:var(--pg-fg-2);opacity:0}'
-            + 'td[data-pg-edit]:hover::after,td[data-pg-edit]:focus::after{opacity:.9}'
-            + '@media (hover:none){td[data-pg-edit]:not([data-pg-editing])::after{opacity:.55}}'
-            + 'td[data-pg-editing]{cursor:auto}'
-            + 'td[data-pg-editing] .form-control,td[data-pg-editing] select.form-control{min-width:7rem}'
-            + 'td.pg-edit-saved{animation:pgEditSaved 1.2s ease-out}'
-            + 'td.pg-edit-failed{animation:pgEditFailed 1.6s ease-out}'
+            + 'table[data-pg-edit-url] td[data-pg-edit]:hover::after,table[data-pg-edit-url] td[data-pg-edit]:focus::after{opacity:.9}'
+            + '@media (hover:none){table[data-pg-edit-url] td[data-pg-edit]:not([data-pg-editing])::after{opacity:.55}}'
+            + 'table[data-pg-edit-url] td[data-pg-editing]{cursor:auto}'
+            + 'table[data-pg-edit-url] td[data-pg-editing] .form-control,table[data-pg-edit-url] td[data-pg-editing] select.form-control{min-width:7rem}'
+            + 'table[data-pg-edit-url] td.pg-edit-saved{animation:pgEditSaved 1.2s ease-out}'
+            + 'table[data-pg-edit-url] td.pg-edit-failed{animation:pgEditFailed 1.6s ease-out}'
             + '@keyframes pgEditSaved{from{background-color:color-mix(in srgb, var(--pg-success) 30%, transparent)}to{background-color:transparent}}'
             + '@keyframes pgEditFailed{from{background-color:color-mix(in srgb, var(--pg-danger) 30%, transparent)}to{background-color:transparent}}'
-            + '@media (prefers-reduced-motion:reduce){td.pg-edit-saved,td.pg-edit-failed{animation:none}}'
-            + '@media print{td[data-pg-edit]::after{display:none}}';
+            + '@media (prefers-reduced-motion:reduce){table[data-pg-edit-url] td.pg-edit-saved,table[data-pg-edit-url] td.pg-edit-failed{animation:none}}'
+            + '@media print{table[data-pg-edit-url] td[data-pg-edit]::after{display:none}}';
         document.head.appendChild(style);
     }
 

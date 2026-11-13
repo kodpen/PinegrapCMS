@@ -52,7 +52,7 @@
 - button-busy-state.md: Buttons never change their label or lock for a fixed time while a request runs; the window-level guard against double submits and double clicks (3 s); how an Ajax button disables itself.
 - calendar-event-duplicate.md: A duplicated calendar event starts unpublished, named "… (copy)", with its calendars, cancelled repeats and locations copied; the location check asks on its first save [decision: decisions-made-product-20.md]
 - calendar-event-edit-screen.md: Edit calendar event screen (edit_calendar_event.php): which recurring instance it edits (recurrence_number) and how a missing or array value is read
-- calendar-event-exception-endpoint.md: update_calendar_event_exception.php (Remove / Unremove a repeating event's instance): parameter check, instance range, no second row
+- calendar-event-exception-endpoint.md: update_calendar_event_exception.php (Remove / Unremove a repeating event's instance): parameter check, instance range, no second row; the panel month box that holds the hidden "Removed:" label
 - calendar-event-form-checks.md: Calendar event form checks: whole numbers, repeat types, text lengths, the all day switch keeping times, the location check time window, the time suffix ids, the reservations row
 - calendar-event-location-shared-form.md: The calendar event location create and edit screens share includes/forms/calendar_event_location_form.php: what it holds, what stays in the screens
 - calendar-event-shared-form.md: add_calendar_event.php and edit_calendar_event.php draw and check the event form through includes/forms/calendar_event_form.php; what differs between the two calls
@@ -73,7 +73,7 @@
 - code-editor-escape-in-dialogs.md: Escape inside a code editor that sits in a dialog: an Escape the editor used (completion list, search panel, full window) stops at the editor; only a free one closes the dialog
 - code-field-keyboard-exit.md: Leaving a code field from the keyboard: Tab indents, Ctrl+M (Mac Shift+Alt+M) switches Tab to moving focus, the hint line under an editable field and its aria-describedby
 - combobox-native-size.md: Why the posted select behind a pg_fields.js combobox is pinned to 1px with !important, and the inline width:100% it overrides (#5558)
-- command-palette-chips.md: Which Ctrl+K search chips a viewer gets (the main-menu entry's gate), how typed text matches their keys, Enter and fast typing in the box
+- command-palette-chips.md: Which Ctrl+K search chips a viewer gets (the main-menu entry's gate), how typed text matches their keys, Enter, fast typing and reopening the box
 - command-palette-ranking.md: Panel search box (Ctrl+K) results: the relevance score, Turkish I folding, a fixed per-type cap read best first and the full tie-break that keep Load More pages disjoint
 - command-palette.md: Panel search box (Ctrl+K): where the chips come from, how text is matched, why every key must be a string (the "503" crash), chips that open a dialog
 - comment-moderation-recycle-bin.md: Comments on pages in the Recycle Bin: left out of the moderation queue, its count, the greeting and the Workspace counter; marked without a link on the Comments list and edit screens
@@ -176,6 +176,7 @@
 - erp-link-rights.md: ERP order, receipt, contact and user links and the Record a Receipt/Payment buttons show only when the target screen admits the clerk; plain text otherwise
 - experiments-screen.md: The Experiments results screen (experiments.php, PX5 #6255): list, per-variant figures, lift, the z-test as a sentence, the daily-rate SVG, buttons posted to the sheet
 - explorer-access-drawers.md: File Manager access drawers (folder and commerce) list only rights holders, add users by search, save changed rows, None deletes the row; end date layout, inherit note
+- explorer-bin-keys.md: File Manager Recycle Bin: Ctrl+C, Ctrl+X, F2 and Enter do what the bin's menu offers; the server refuses to copy, rename or save a binned row; a drag out of the bin gives the row its name back
 - explorer-bin-records-and-names.md: File Manager bin count skips gone items, page deletes clear the record, Edit File deletes to the bin, status bar kinds; paste, Duplicate, rename, upload and save toasts name the name a file took
 - explorer-bin-toast.md: File and Catalog Manager Delete toasts count what the server moved to the bin and show its refusal reasons
 - explorer-breadcrumb-narrow.md: Why the File and Catalog Manager's location bar scrolls to its end after every draw and on resize, and fades on its left edge.
@@ -184,10 +185,11 @@
 - explorer-copy-page-right.md: File Manager folder copy and page paste skip pages a role-3 user without 'Create pages' may not copy, and stay JSON
 - explorer-details-rows.md: File Manager details panel rows for pages, files, archived pages, bin items and backups (folder link, address, exact time and editor, impact, bin rows, backup location) and the Pages view columns
 - explorer-drawer-names.md: File and Catalog Manager drawer rows drawn by script name themselves: access selects per user, commerce switch groups, shipping-zone lists, bulk description, backup upload path, file window code field
-- explorer-grid-tiles.md: Explorer grid tiles (view_folders.php, catalog and files): the tile size scale, picture vs glyph, the missing-picture plate sized from --pg-tile-icon, the narrow pill it fixed (PR #2200)
+- explorer-file-window-encoding.md: File Manager Edit File window on a text file that is not UTF-8 (Windows-1254): opens with no text and a note, saves no text; panel answers never go out as an empty JSON body (pg_panel_answer_json())
+- explorer-grid-tiles.md: Explorer grid tiles (view_folders.php, catalog and files): the tile size scale, picture vs glyph, the missing-picture plate (PR #2200), the SEO ring's top right corner
 - explorer-keyboard.md: File manager (view_folders.php) from the keyboard: shortcuts leave focused controls alone, crumbs with href, Quick Look focus and Tab trap, the context menu from ContextMenu/Shift+F10 (#2783)
 - explorer-list-headings.md: File manager list view (view_folders.php): headings sort from a button and carry aria-sort; column edges resize by keyboard, any pointer, double-click fit and a menu reset
-- explorer-locale-order.md: File and Catalog Manager (view_folders.php) sort text keys with the panel language's Intl.Collator and match with foldText() (İ/I/ı/i alike); the Shared view's groups sort by pg_geo_label_compare()
+- explorer-locale-order.md: File and Catalog Manager sort with the panel language's Intl.Collator; searches use searchFold() (İ/I/ı/i alike, ü as u), bulk-rename find foldText(); Shared groups by label
 - explorer-menu-tree.md: The File Manager's and the Catalog Manager's tree in their main menu panels: moved in on the explorer's own screen, links elsewhere (explorer_side.js, the explorer_side action), gates, per-area keys [decision: decisions-made-files.md, decisions-made-panel.md, decisions-made-workspace-6.md]
 - explorer-narrow-screens.md: File Manager below 1024 px and in a crowded toolbar: the details sheet, no keyboard hint on touch, breadcrumb folding under "...", the Files view's one-row toolbar
 - explorer-page-type-name.md: The File Manager writes a page's type in the panel language ("Page · Custom Form"), from the payload's type_name, and sorts the Type column by it
@@ -195,8 +197,10 @@
 - explorer-search-state.md: File manager (view_folders.php) search and filters: status bar count, the hidden status region and live notices, selection strip, preview pane; the hover bubble's check after a delete (#2053)
 - explorer-selection-bar-menu.md: The file manager's selection bar "More actions" menu is placed by Floating UI (fixed strategy), not displayed statically: why, and the rule for a menu in a clipped or bottom bar
 - explorer-short-link-open-noopener.md: The File Manager opens a short link (open, Visit) with window.open(url, '_blank', 'noopener'), because its address redirects off the site
+- explorer-toast-long-names.md: File Manager notices (toast()) wrap a long file name inside the 350 px box with the close and Undo buttons in it; why the Bootstrap 6 toast's flex column pushed them out
 - explorer-tour-texts.md: File and Catalog Manager tour steps name the control they ring by its printed label; the toolbar More button is named; keys stay .4 on rewording
 - explorer-tree-keyboard.md: The File and Catalog Manager tree on the explorer's own screen (in the main menu panel) from the keyboard: focusable link rows with aria-current, arrows with aria-expanded, Enter/Space
+- explorer-upload-browser-ceiling.md: File Manager upload window limit capped at what a browser can send as one data URL (about 383 MB, pg_explorer_upload_max_bytes()); a file FileReader reads as nothing is named and not sent
 - fediverse-settings.md: Settings › Fediverse: account card and handle check, Look me up, what is published, followers and blocks, delivery log with Try again, the rel=alternate link
 - field-caption-links.md: Captions tied to their fields on the code-field screens, Generate Layout, Create File and the order tracking numbers; why chips need a label, not an aria-label
 - field-form-checks.md: What the form field screens refuse on save (type, number boxes, blank choices) and which pages the form view and field screens open for
@@ -235,6 +239,7 @@
 - graph-canvas-core-module.md: The graph canvas core (pg_graph_canvas.js, window.PGGraphCanvas, includes/fn/graph_canvas.php): what it owns, its adapter, its texts, its pgc- CSS and tokens, its first user the Flows canvas [decision: here]
 - graph-canvas-core-sizes-ports.md: Graph canvas core slice 4 for the Prototype view: size per box, lower zoom, named ports, spread arrow ends, other targets, stable arrow ids, partial redraw, thumbnails
 - greeting-counts.md: Counts in the dashboard greeting, the Workspace channel greeting and the Ecommerce card: a key for one, nominative vs accusative link phrases, counts inside one key
+- grid-column-min-width.md: CSS pitfall - a .row column taken off Bootstrap's width (width auto, max-width none) needs min-width 0, or a value that does not wrap widens the whole page past the window
 - guided-tour.md: The guided tour engine (assets/js/pg_tour.js, pg_tour.css): who uses it, how steps are counted, Back at the start, how a step is read out, where focus goes at the end, the bubble's size
 - icon-ligature-button-names.md: Buttons whose content is a Material Icons ligature (north, south, delete, living) are named by that word; how the product attribute and product group screens name them (#2893)
 - image-editor-access.md: The image editor's access part: tool letters, the keyboard help sheet with its per-tool groups, shortcut names on the controls, Tab kept inside, reduced motion
@@ -318,7 +323,7 @@
 - list-period-navigator-and-clock.md: List screens: the month arrows step from the last shown month, the range heading follows the date order (list_period.php), pickers and times follow the 24-hour setting (#2039, #2040, #2058)
 - list-period-order.md: List date ranges: default a month ago to today on every request (pg_list_period_state(), PR #4463), reversed range swapped; Site Log presets in calendar days
 - list-period-week.md: Week's first day (Monday in Turkish, Sunday otherwise) for the list screens' period navigator (#2039) and the get_calendar() grids (#3328)
-- list-quick-edit-keyboard.md: List quick edit keys (backend.src.js cells, the list table driver): Enter, Escape, Tab to the next row, the textarea and multiselect types, focus past the last row
+- list-quick-edit-keyboard.md: List quick edit keys (backend.src.js cells, the list table driver): Enter, Escape, Tab to the next row, textarea and multiselect, focus past the last row, the old editor's style scope
 - list-row-names.md: Orders, products, submitted forms, pages and files lists: row box names, SEO links, No Image, folder access by icon and word, names and descriptions that wrap instead of a cut
 - list-stale-filter.md: All Ads, Verified Shipping Addresses and Submitted Forms reset a remembered filter whose ad region, state or custom form is gone to '[All]' (pg_list_filter_known())
 - list-status-words.md: A word beside a list row's green or red state (pg_list_status_word()): product groups, key codes, arrival dates, gift cards, ERP expenses
@@ -366,6 +371,7 @@
 - list-table-quick-edit.md: Quick edit mode of the list table driver (assets/js/pg_list_table_edit.js): the source's edit key, F2, save on leave, refused values, undo, apply to the selected rows
 - list-table-region-lists.md: Regions, ads and form fields on the list table driver (TD9c): printed whole, list names, quick edit fields and checks, what stays on the edit screen; menu items stay a plain table
 - list-table-rollout.md: How the panel lists moved from DataTables to the list table driver (TD1-TD14, done with #8253): the driver, the rules that still hold, where each batch is noted, what the removal took out [decision: decisions-made-product-22.md]
+- list-table-search-text.md: What the list table driver's browser search reads in a row (searchText()): icon marks as their label, never their ligature word; fields as their value, choice lists as their choice
 - list-table-settings-lists.md: Countries, states, zones, tax zones, currencies, referral sources, contact groups, calendars, event locations and auto dialogs on the list table driver (TD11): printed whole in browser mode
 - list-table-shipping-lists.md: Arrival dates, ship date adjustments, verified shipping addresses, order reports and duplicate products on the list table driver (TD10b); the shipping report as a plain report table
 - list-table-variant-sets.md: The Variant Sets list (product_builder.php's pg_pb_variant_sets_screen()) on the list table driver, printed whole: columns, cells, bulk buttons, sort key, filters
@@ -378,7 +384,7 @@
 - look-check.md: tools/check_look.php (#8905): panel CSS outside look A's recipes (sizes or weights off the scale, colour literals) may only fall against its baseline; what it skips, --update
 - look-design-examples.md: The Design examples screen (design_examples.php, DL2 #8907): every look A recipe live in a light and a dark pane, the classes under each, what is not a recipe yet; where a step copies markup from
 - look-edit-screens.md: Add and edit screens in look A (DL5c, #8934): the edit width on every add/edit screen, columns 760 and 336 from the shared classes, look cards and titles, the floating save bar; what is not done yet
-- look-page-widths.md: Look A's page widths (#8892): edit screens centred at 1120 px (760 + 24 + 336), lists as wide as their columns (1280 px to the window); tokens, body classes, rail, name column [decision: decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
+- look-page-widths.md: Look A's page widths (#8892): edit screens centred at 1120 px (760 + 24 + 336), lists as wide as their columns (1280 px to the window), held while searching; tokens, body classes, rail, name column [decision: decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
 - look-settings-screens.md: Settings screens in look A (DL5d, #8952): dialog size, rail, head and foot; cards as a title over an inner card of rows, page and dialog; 32 px fields, switch; what is not done
 - look-type-and-recipes.md: Look A's typeface (self-hosted Inter 4.1), the type scale and tone tokens, and the recipe classes in backend.src.css (#8879): which class draws which part, the block's place, the unlayered body family
 - mail-queue-paging.md: The mail queue screen's e-mail and SMS lists on the list table driver, the row confirm, the wrapping long-text cells, Retry while the queue is inactive, and the screen's wording
@@ -521,6 +527,7 @@
 - screen-focus-rings.md: Focus rings drawn by a screen's own styles use the 2px --pg-primary-ink outline, inset inside clipping boxes; which screens were moved and which still wait
 - script-built-field-names.md: Dialogs and fields drawn by script after load name themselves: unique title ids, label for, aria-label from the screen's label map, Escape kept (#3029)
 - scroll-regions-keyboard.md: Text-only boxes that scroll on their own are named keyboard regions: Audit Trail JSON values, Workspace MCP answer, API documentation tables and Try it answer, Write with AI draft
+- scrolling-table-hidden-text.md: Every panel .table-responsive is position: relative, so a .visually-hidden heading or label and a combobox's posted select stay inside the scroll box instead of widening the page on a phone (#9079)
 - select-commit-on-pick.md: Selects that save, ask or move focus on change (Translations engine, AI tone, list quick edit, Edit Comment Publish) wait for a keyboard pick; the AI panel gives focus back after a request
 - send-once-screens.md: The panel screens that send once for longer than the window guard's 3 s (stock scans, refunds, exports, imports, SVG copies, ERP e-mails), and the symptom each one fixed.
 - seo-default-share-image-warning.md: The SEO card's Default Share Image warning names each form once, told apart, without binned forms, five names then a count
@@ -623,6 +630,6 @@
 - visitors-speed-section.md: Page Speed section of the Visitors overview (speed.php, #6475): period, device and order filters, p75 tiles, slowest pages, trend, old-screen redirect, perf card tile
 - voice-text-keyboard.md: Convert to text under a voice message from the keyboard (pg_voice_text.js): where focus goes while it works, after success and after a failure; the progress meter's name
 - waf-log-paging.md: The firewall log's events (view_waf_log.php) on the list table driver, sorted and searched on the server; period, category and search filters stay in the address and drive the summary
-- whole-number-input-mask.md: Panel boxes of whole-number columns take Inputmask's integer alias, never decimal, so a Turkish 1.000 is a thousand
+- whole-number-input-mask.md: Panel boxes of whole-number columns take Inputmask's integer alias, never decimal, so a Turkish 1.000 is a thousand; the auto dialog boxes take none
 - workspace-avatar-faces.md: A face from avatar() in the Workspace scripts keeps Bootstrap's .avatar (classList.add, never className =) and is sized by --bs-avatar-size; why a check-in answer's photo once covered the channel
 - zone-shared-form.md: add_zone.php and edit_zone.php draw the shipping zone form and read its rates through includes/forms/zone_form.php; what each screen keeps

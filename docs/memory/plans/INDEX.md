@@ -10,6 +10,8 @@
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
+- automation-flows-menu-census.md: Census of the automation-flows-menu plan (AF0): where flows asked the Workspace switch, what the Flows screen takes from its shell, the API, the entries, who holds the right
+- automation-flows-menu-proposals.md: Open questions for the architect from the automation-flows-menu census (AF0): more boxes needing the Workspace, the API routes and dashboard entries with no step, the refusal's step
 - automation-flows-menu.md: Plan (owner 2026-11-12, #8961): Flows become "Automation flows", a main menu row with a moving icon, and run on a site whose Workspace is off; the in-channel view stays; steps AF0-AF6
 - canvas-one-model.md: CO0 model of plans/canvas-one.md: what one canvas is in the store and the API: the message as its id, the drawing, page and data parts, one list of versions, the routes and the bridge's calls
 - canvas-one-schema.md: CO0 of plans/canvas-one.md: the five schema changes the later CO steps need (parts, bindings, consent, "through" on a row, channel tables), their issues and answers
@@ -27,6 +29,7 @@
 - designer-closed-blocks.md: Plan (owner 2026-11-13, #9076): the components the designer canvas still draws as one closed block are listed, then opened into editable element trees; steps CB0-CB2
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
+- firewall-false-positives.md: Plan (owner 2026-11-13, #9125): the firewall refuses honest people (page beacons on the sign-in allowance, prose taken for attacks, in-app browsers as bots, unlisted proxy); steps FP1-FP7
 - flow-window-map-2.md: Flow window plan, FW0 part 2: each control of today's side panel and canvas with its place in the drawing (right panel head, Settings, Connections, Try, foot; no box chosen; arrows and threads)
 - flow-window-map.md: Flow window plan, FW0 part 1: each control of today's bar and palette with its place in the drawing (the bar done in FW1); the decisions taken for the left panel
 - flow-window-paths.md: Flow window plan, FW0 part 3: the keyboard path through the bar, the left panel, the canvas and the right panel; how the panels behave on a narrow window and a phone (drawn in flow-window-narrow.html)

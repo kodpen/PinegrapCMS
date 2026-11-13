@@ -98,6 +98,29 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // The boxes where 0 switches a check off are refused the same way: a
+    // blank box, or one holding letters (a password manager's saved user
+    // name), was read as 0 and quietly turned the limit off.
+    $zero_off_boxes = array();
+
+    if (function_exists('waf_table_has_column') && waf_table_has_column('config', 'login_throttle_captcha_after')) {
+        $zero_off_boxes += array(
+            'login_throttle_captcha_after' => array(lang('Ask a Question After'), 0, 100),
+        );
+    }
+    if (function_exists('pg_schema_has') && pg_schema_has('config', 'form_limit_ip_hour')) {
+        $zero_off_boxes += array(
+            'form_limit_ip_hour'       => array(lang('Per visitor address'), 0, 10000),
+            'form_limit_recipient_day' => array(lang('Per e-mail address'), 0, 10000),
+            'form_limit_domain_hour'   => array(lang('Per e-mail domain'), 0, 10000),
+        );
+    }
+    foreach ($zero_off_boxes as $zero_off_field => $zero_off_rule) {
+        if (array_key_exists($zero_off_field, $_POST) && (pg_whole_number_in_range(post_value($zero_off_field), $zero_off_rule[1], $zero_off_rule[2]) === null)) {
+            $liveform->mark_error($zero_off_field, lang(array('string' => '{var:1} must be a whole number from {var:2} to {var:3}.', 'vars' => $zero_off_rule)));
+        }
+    }
+
     // The membership expiration warning is sent from a page, some days
     // before the end: switched on, it needs both, or the job sends nothing
     // (no page) or warns members whose membership has already ended (a
