@@ -16,7 +16,6 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
-require_once PG_FUNCTIONS_DIR . '/includes/fn/list_table.php';
 require_once PG_FUNCTIONS_DIR . '/includes/fn/sms_messages.php';
 require_once PG_FUNCTIONS_DIR . '/includes/fn/messages_templates.php';
 
@@ -36,24 +35,35 @@ function test_messages_templates_rows_follow_the_card()
 		'order_received' => array('on' => true, 'text' => ''),
 		'stock_back' => array('on' => false, 'text' => 'Our own <b> text'),
 	);
+	$kinds = array('order' => 'Order', 'stock' => 'Back in stock');
 
-	$rows = pg_messages_template_sms_rows(messages_templates_test_definitions(), $settings, false, false, 'settings.php?x=1&y=2');
-	pg_assert_same(2, count($rows), 'the ERP and booking events stay out while those are off');
-	pg_assert_same(array(1, 4), array_column($rows, 'id'), 'ids keep the event\'s place');
+	$rows = pg_messages_template_sms_rows(messages_templates_test_definitions(), $settings, false, false, $kinds);
+	pg_assert_same(array('order_received', 'stock_back'), array_column($rows, 'event'), 'the ERP and booking events stay out while those are off');
+	pg_assert_same(array(true, false), array_column($rows, 'on'), 'each event\'s switch');
+	pg_assert_same(array(false, true), array_column($rows, 'own'), 'an empty text is the built-in one');
+	pg_assert_same('Built <in> ^^order_number^^', $rows[0]['text'], 'the built-in text');
+	pg_assert_same('Our own <b> text', $rows[1]['text'], 'the saved text');
+	pg_assert_same('Back in stock', $rows[1]['kind'], 'the kind shown by its label');
 
-	$received = $rows[0]['cells'];
-	pg_assert_contains('Built &lt;in&gt; ^^order_number^^', $received['text']['html'], 'an empty text is the built-in one, escaped');
-	pg_assert_contains(lang('Built-in'), $received['text']['html'], 'and is marked so');
-	pg_assert_contains('theme-success', $received['state']['html'], 'a switched-on event reads On');
-	pg_assert_contains('href="settings.php?x=1&amp;y=2"', $received['name']['html'], 'the name leads to the card');
-	pg_assert_contains('^^store^^ ^^order_number^^', $received['fields']['html'], 'its fields');
+	pg_assert_same(4, count(pg_messages_template_sms_rows(messages_templates_test_definitions(), array(), true, true, $kinds)), 'every event once ERP and bookings are on');
+}
 
-	$back = $rows[1]['cells'];
-	pg_assert_contains('Our own &lt;b&gt; text', $back['text']['html'], 'a saved text is shown, escaped');
-	pg_assert_false(strpos($back['text']['html'], lang('Built-in')) !== false, 'an own text is not marked built-in');
-	pg_assert_contains('theme-secondary', $back['state']['html'], 'an event never switched on reads Off');
+function test_messages_templates_card_markup()
+{
+	$rows = pg_messages_template_sms_rows(messages_templates_test_definitions(), array('stock_back' => array('on' => true, 'text' => 'Our own <b> text')), false, false, array());
+	$html = pg_messages_template_sms_card($rows, 'settings.php?x=1&y=2');
 
-	pg_assert_same(4, count(pg_messages_template_sms_rows(messages_templates_test_definitions(), array(), true, true, 'x')), 'every event once ERP and bookings are on');
+	pg_assert_contains('<section class="pg-card pg-messages-card">', $html, 'a look A card');
+	pg_assert_contains('<h2 class="pg-title-section">', $html, 'its section title');
+	pg_assert_contains('href="settings.php?x=1&amp;y=2"', $html, 'rows and the button lead to the card, escaped');
+	pg_assert_contains('Built &lt;in&gt; ^^order_number^^', $html, 'a built-in text, escaped');
+	pg_assert_contains('Our own &lt;b&gt; text', $html, 'a saved text, escaped');
+	pg_assert_same(1, substr_count($html, '<b>' . h(lang('Built-in')) . '</b>'), 'only the built-in text is marked');
+	pg_assert_same(1, substr_count($html, 'pg-pill pg-tone-teal'), 'one event on');
+	pg_assert_same(1, substr_count($html, 'pg-pill pg-tone-gray'), 'one event off');
+
+	pg_assert_contains('pgset-whatsapp', pg_messages_template_coming_card('settings.php#pgset-whatsapp'), 'WhatsApp leads to its card for a manager');
+	pg_assert_false(strpos(pg_messages_template_coming_card(''), 'href=') !== false, 'and nowhere for a campaign maker');
 }
 
 function test_messages_templates_every_card_event_has_a_kind_label()
