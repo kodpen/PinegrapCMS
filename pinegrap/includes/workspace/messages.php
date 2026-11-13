@@ -2018,18 +2018,20 @@ function ws_message_hide($viewer, $message)
  * yet. Read is what the channel keeps for each member: the newest message
  * that was on their screen (ws_channel_members.last_read_id). The one who
  * wrote it is left out; in a public channel only its members are counted,
- * a reader passing through leaves no mark.
+ * a reader passing through leaves no mark. The channel's agents come
+ * apart: seen, woken but not taken yet, and not woken.
  *
  * @param array $viewer
  * @param array $message
- * @return array ok, error, seen, unseen (people)
+ * @return array ok, error, seen, unseen (people), agents_seen, agents_waiting, agents_quiet
  */
 function ws_message_seen_by($viewer, $message)
 {
     $channel = ws_channel($message['channel_id']);
 
     if (!$channel || !ws_can_read_channel($viewer, $channel) || ((int) $message['deleted_at'] > 0)) {
-        return array('ok' => false, 'error' => lang('That message could not be found.'), 'seen' => array(), 'unseen' => array());
+        return array('ok' => false, 'error' => lang('That message could not be found.'), 'seen' => array(), 'unseen' => array(),
+            'agents_seen' => array(), 'agents_waiting' => array(), 'agents_quiet' => array());
     }
 
     $sender = ($message['sender_kind'] === 'user') ? (int) $message['sender_id'] : 0;
@@ -2053,7 +2055,12 @@ function ws_message_seen_by($viewer, $message)
         }
     }
 
-    return array('ok' => true, 'error' => '', 'seen' => $seen, 'unseen' => $unseen);
+    // The channel's agents beside them, counted from what the message made
+    // them do (message_seen_agents.php).
+    $agents = ws_message_seen_agents($channel, $message);
+
+    return array('ok' => true, 'error' => '', 'seen' => $seen, 'unseen' => $unseen,
+        'agents_seen' => $agents['seen'], 'agents_waiting' => $agents['waiting'], 'agents_quiet' => $agents['quiet']);
 }
 
 /**
