@@ -418,6 +418,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-22.md: Is incoming e-mail read and answered where the Workspace is off? (owner, 2026-11-13, #9203)
 - decisions-made-workspace-22.md: Who approves the flow window's narrow window and phone drawing? (owner, 2026-11-13, #9209)
 - decisions-made-workspace-22.md: Is an agent's role a field, and who says its model and usage? (owner, 2026-11-13, #9260)
+- decisions-made-workspace-23.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-23.md: Is an e-mail to a domain that does not exist sent without a word? (owner, 2026-11-13, #9267)
 - decisions-made-workspace-3.md: Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - decisions-made-workspace-3.md: How does a "For each" box loop over a list? (#3312)
 - decisions-made-workspace-3.md: What may a role-3 member's personal flow hold? (#3345)
