@@ -264,6 +264,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-48.md: Which consent lets a marketing WhatsApp template go? (owner, 2026-11-13, #9087)
 - decisions-made-product-49.md: Where are the rules and the earlier parts?
 - decisions-made-product-49.md: Do a customer's WhatsApp message and SMS land in a channel, and are they answered there? (owner, 2026-11-13, #9151)
+- decisions-made-product-49.md: Are the image editor's rows on a phone approved? (owner, 2026-11-13, #8863)
 - decisions-made-product-5.md: Which outside-account leftovers start in 2026.11.0? (#3180)
 - decisions-made-product-5.md: Do subscriptions start, and who runs the renewals? (#3183)
 - decisions-made-product-5.md: Does a beta site without a build file get the beta build of its own version? (#3204)
@@ -408,6 +409,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-21.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-21.md: Where does the incoming e-mail sit? (owner, 2026-11-12, #8961)
 - decisions-made-workspace-21.md: Is the canvas card's line of tables and Bind a table approved? (owner, 2026-11-12, #8964)
+- decisions-made-workspace-21.md: What does the line under a message show when the message woke more than one agent? (owner, 2026-11-13, #9188)
 - decisions-made-workspace-3.md: Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - decisions-made-workspace-3.md: How does a "For each" box loop over a list? (#3312)
 - decisions-made-workspace-3.md: What may a role-3 member's personal flow hold? (#3345)

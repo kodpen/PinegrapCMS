@@ -281,7 +281,7 @@
 - image-editor-outline.md: The image editor's text to outlines: the model's own OpenType reader, where the font file comes from (action font, data/fonts), the path it makes, what is refused
 - image-editor-overview.md: Pinegrap's own image editor as a whole: what it is, the owner decisions that bind it, who does what (browser or server), the document in rotated space, and which topic file holds each part [decision: decisions-made-product-14.md, decisions-made-product-24.md, decisions-made-product-27.md]
 - image-editor-parts.md: The image editor in parts: core, model, one file per tool; the hooks a tool hangs on the editor (panels, pointers, layer types), its model section, labels, API actions, styles and tests
-- image-editor-phone-rows.md: The Animate tool on a phone with a video (V10): the rows in the sheet under the play bar, names above lanes, tall clip row with finger-size grips, folded sounds, Split in the selection bar
+- image-editor-phone-rows.md: The Animate tool on a phone with a video (V10): the rows in the sheet under the play bar, names above lanes, tall clip row with finger-size grips, folded sounds, Split in the selection bar [decision: decisions-made-product-49.md]
 - image-editor-picture-layer.md: A photo's picture as the bottom layer (E30, #6470): doc.canvas.picture, unlocking, move, resize and delete like a layer, the extend step's pw and ph [decision: decisions-made-product-24.md]
 - image-editor-present.md: Present (AN8): a canvas's scenes full screen, keys, swipes, transitions, reduced motion; PDF in Save animation, a JPEG page per scene from M.pdfFile()
 - image-editor-puppet.md: The image editor's free deformation (puppet): pins on a path, shape or outlined text, rigid moving least squares, kept as l.puppet, drawn after the warp; Expand bakes it
@@ -504,6 +504,7 @@
 - pg-fields-speech.md: Screen readers and panel combobox/chip fields (pg_fields.js v6): toggle name and value, listbox options, no-match line, hidden select out of Tab, focused chip deleted, named remove buttons
 - pg-ui-adapter.md: pgUI (assets/js/pg_ui.js), the panel's one door to Bootstrap's JavaScript on 5.3 and 6: kinds, promises, both event names, dialog markup, overlay host, readiness, the Bootstrap 6 bridge
 - phone-width-rows.md: Phone-width fixes: v6 .input-group and .btn do not wrap (rate tiers, documents card, sign-in rows, product group default option), Login Region fields, inner clusters wrap, marketplace grid
+- picker-all-list-server.md: picker.php list without a folder (PA1, #9186): every item of a kind sorted by modified, name, size or type, paged by a keyset cursor, items with path; the tree's total; measured times on 50,000 files
 - picker-designer-bridge.md: The visual designer's bridge to the picker (PK8): link, file and picture fields through pgEditorPicker, the source choice, Browse under widget page selects, the page type pane's picker fields
 - picker-dialog.md: The picker dialog pgPicker.open() (assets/js/pg_picker.js, PK2): what it shows, how a pick is handed back, the keyboard, the phone sheet, the Browse button, what picker.php added for it
 - picker-editor-bridge.md: The rich text editor's bridge to the picker (PK7): CKEditor's Link dialog Page… and File…, short links in the page dialog, the Image dialog's Picture… and Unsplash…, the fallback without pgUI
