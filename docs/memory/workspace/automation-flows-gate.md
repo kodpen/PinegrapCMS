@@ -1,6 +1,6 @@
 ---
 name: automation-flows-gate
-description: The one gate of automation flows, pg_flows_enabled() (AF1): flows run with the Workspace off; what the general job, the site events and the scheduled run do then, and what waits for the Workspace
+description: The one gate of automation flows, pg_flows_enabled() (#9109): flows run with the Workspace off; what the general job, the site events and the scheduled run do then, and what waits for the Workspace
 module: automation_flows
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: automation-flows-bell
-description: The panel's bell with the Workspace off (AF4c): it shows the inbox lines flows write (a run of one's flow ended or failed, Let people know) and no other Workspace line; Let people know runs again
+description: The panel's bell with the Workspace off (#9288): it shows the inbox lines flows write (a run of one's flow ended or failed, Let people know) and no other Workspace line; Let people know runs again
 ---
 
 ## Which Workspace lines does the bell show with the Workspace off?
@@ -17,7 +17,7 @@ description: The panel's bell with the Workspace off (AF4c): it shows the inbox 
 - Device banners (`pg_push_queue_still_relevant()`, `ws_push_pending()`) still ask the Workspace switch: with it off a flow's line rings the bell but wakes no phone.
 
 ## Why?
-- Architect (2026-11-13, `plans/automation-flows-menu-steps-2.md`): a box that acts where nobody can look is not offered; Let people know is the one a shop without the Workspace needs (an order came), so it came back with the bell. `notify` left `ws_flow_kinds_workspace()` (`automation-flows-workspace-boxes.md`).
+- Architect (2026-11-13, `automation-flows-decisions.md`): a box that acts where nobody can look is not offered; Let people know is the one a shop without the Workspace needs (an order came), so it came back with the bell. `notify` left `ws_flow_kinds_workspace()` (`automation-flows-workspace-boxes.md`).
 
 ## Which test guards it?
 - `tests/automation_flows_bell_test.php`: the kinds, the ladder without flow tables, the wiring, notify off the list; `tests/automation_flows_gate_test.php` lists notify among the kinds that run.
