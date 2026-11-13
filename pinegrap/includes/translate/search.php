@@ -506,3 +506,72 @@ function pg_tr_search_record_items(array $record_ids, $fence, $live)
 
     return $out;
 }
+
+/**
+ * The form field a form_records use belongs to, from its field name
+ * (r<record>:<field>, a rich text's parts with a suffix); 0 for other field
+ * names. Pure.
+ *
+ * @param string $field translation_uses.field
+ * @return int form_fields.id
+ */
+function pg_tr_search_record_field_id($field)
+{
+    return preg_match('~^r\d+:(\d+)~', (string) $field, $m) ? (int) $m[1] : 0;
+}
+
+/**
+ * The records a list's own search box finds among translated record texts:
+ * only the texts of the fields the box searches are read, and a record is
+ * found when every word is in them taken together. Pure.
+ *
+ * @param array $rows      array(field, text)
+ * @param int[] $field_ids the fields the box searches
+ * @param array $words     pg_tr_search_words()
+ * @return int[] forms.id, best first
+ */
+function pg_tr_search_list_record_ids(array $rows, array $field_ids, array $words)
+{
+    $fields = array_flip(array_map('intval', $field_ids));
+    $kept = array();
+
+    foreach ($rows as $row) {
+        if (isset($fields[pg_tr_search_record_field_id($row['field'])])) {
+            $kept[] = $row;
+        }
+    }
+
+    return array_map('intval', pg_tr_search_rank(pg_tr_search_record_texts($kept), $words));
+}
+
+/**
+ * A list's own search box on a page served in another language: the records
+ * of a form whose translated texts, in the fields the box searches, hold
+ * every typed word.
+ *
+ * @param int    $form_page_id custom form page
+ * @param int[]  $field_ids    the fields the box searches
+ * @param string $query
+ * @return int[] forms.id
+ */
+function pg_tr_search_list_records_find($form_page_id, array $field_ids, $query)
+{
+    $language = pg_tr_language();
+    $words = pg_tr_search_words($query);
+    $form_page_id = (int) $form_page_id;
+
+    if (($language === '') || !$words || ($form_page_id <= 0) || !$field_ids) {
+        return array();
+    }
+
+    $rows = db_items("SELECT u.field, t.text
+                      FROM translations t
+                      INNER JOIN translation_uses u ON u.string_id = t.string_id
+                      WHERE t.language = '" . e($language) . "'
+                        AND u.owner_type = 'form_records'
+                        AND u.owner_id = '$form_page_id'
+                        AND " . pg_tr_search_like_sql('t.text', $words) . "
+                      LIMIT 2000");
+
+    return pg_tr_search_list_record_ids((array) $rows, $field_ids, $words);
+}
