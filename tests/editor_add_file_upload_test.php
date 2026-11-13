@@ -64,10 +64,14 @@ function test_editor_add_file_row_and_success_follow_a_successful_copy()
 	// The refusal answer ends the script, so nothing after a failed copy runs.
 	$helper = strpos($src, 'function editor_add_file_refuse(');
 	pg_assert_true($helper !== false, 'no refusal helper');
-	pg_assert_contains('exit();', substr($src, (int) $helper, 500), 'refusal does not stop the script');
+	pg_assert_contains("editor_add_file_answer('', \$message);", substr($src, (int) $helper, 300), 'refusal not answered');
+
+	$answer = strpos($src, 'function editor_add_file_answer(');
+	pg_assert_true($answer !== false, 'no answer helper');
+	pg_assert_contains('exit();', substr($src, (int) $answer, 600), 'the answer does not stop the script');
 
 	$insert  = strpos($src, 'INSERT INTO files');
-	$success = strpos($src, 'escape_javascript(OUTPUT_PATH . encode_url_path($file_name))');
+	$success = strpos($src, "editor_add_file_answer(OUTPUT_PATH . encode_url_path(\$file_name), '');");
 	pg_assert_true($insert !== false && $insert > $copy, 'files row written before the copy is checked');
 	pg_assert_true($success !== false && $success > $copy, 'success answered before the copy is checked');
 }
@@ -77,6 +81,7 @@ function test_editor_add_file_refusal_messages_are_escaped_for_javascript()
 	$src = editor_add_file_upload_source();
 
 	pg_assert_contains('function editor_add_file_refuse($message)', $src, 'no shared refusal answer');
+	pg_assert_contains("editor_add_file_answer('', \$message);", $src, 'refusal not answered through the shared answer');
 	pg_assert_contains('escape_javascript($message)', $src, 'refusal message not escaped for JavaScript');
 	pg_assert_contains('log_activity($message', $src, 'refusal not logged');
 }

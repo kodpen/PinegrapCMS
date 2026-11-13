@@ -278,6 +278,10 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
             <script>
                 var software_editor_version = "' . $page_editor_version . '";
                 CKEDITOR.config.language = "' . lang(array('info' => '')) . '";
+                // The stamp CKEditor puts on the files it loads (its
+                // language file, skin and dialogs), so a corrected
+                // language file is fetched again.
+                CKEDITOR.timestamp = "' . pg_ckeditor_timestamp() . '";
                 // A property of CKEDITOR itself, read when the page is ready:
                 // without it every contenteditable element, such as a code
                 // editor .cm-content, became an inline editor that asked
@@ -584,6 +588,26 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
 }
 
 /**
+ * The stamp CKEditor adds to the address of each file it loads after
+ * ckeditor.js (the language file, the skin, plugin dialogs): the newest
+ * modification time of the two language files, in base 36, or the bundle's
+ * own stamp when neither can be read. The bundle's stamp never changes, so
+ * a browser kept a corrected lang/tr.js from its cache.
+ *
+ * @return string
+ */
+function pg_ckeditor_timestamp()
+{
+    $newest = 0;
+
+    foreach (array('en', 'tr') as $language) {
+        $newest = max($newest, (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/lib/ckeditor_4_20/lang/' . $language . '.js'));
+    }
+
+    return ($newest > 0) ? strtoupper(base_convert((string) $newest, 10, 36)) : 'M8SC';
+}
+
+/**
  * The CKEditor settings that let the editor browse and upload files, for
  * get_wysiwyg_editor_code(): empty when $allowed is false (a visitor, or a
  * user with no folder to edit), so the Link and Image dialogs show no Upload
@@ -604,6 +628,53 @@ function _pg_wysiwyg_file_properties($allowed, $base, $token, $folder_id)
     return 'filebrowserUploadMethod: "form",
                 filebrowserUploadUrl: "' . $upload . '",
                 filebrowserImageUploadUrl: "' . $upload . '",';
+}
+
+/**
+ * Whether an upload from the editor's Upload tab carries the session's form
+ * token. CKEditor posts the file to the address
+ * _pg_wysiwyg_file_properties() builds, which holds the token in its query
+ * string, so the body has none; a token field in the body is read too.
+ * Compared in constant time. Pure.
+ *
+ * @param mixed $session_token the session's token
+ * @param mixed $post          $_POST
+ * @param mixed $get           $_GET
+ * @return bool
+ */
+function pg_editor_upload_token_ok($session_token, $post, $get)
+{
+    if (!is_string($session_token) || ($session_token === '')) {
+        return false;
+    }
+
+    foreach (array($post, $get) as $request) {
+        if (is_array($request) && isset($request['token']) && is_string($request['token']) && hash_equals($session_token, $request['token'])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * The folder an upload from the editor's Upload tab asks for: the folder_id
+ * of the query string, which _pg_wysiwyg_file_properties() adds only on a
+ * screen with a folder (a page's regions), as a positive whole number; 0
+ * when it is left out or is not one. Pure.
+ *
+ * @param mixed $get $_GET
+ * @return int
+ */
+function pg_editor_upload_folder_request($get)
+{
+    if (!is_array($get) || !isset($get['folder_id']) || !is_scalar($get['folder_id'])) {
+        return 0;
+    }
+
+    $folder_id = trim((string) $get['folder_id']);
+
+    return (preg_match('/^[1-9][0-9]{0,9}$/', $folder_id) === 1) ? (int) $folder_id : 0;
 }
 
 /**
@@ -986,17 +1057,35 @@ function pg_code_editor_json($value)
 // create function that replaces the actual path in the content from a rich-text editor with the {path} placeholder,
 // so that the actual path is not stored in the database. $path is the site path
 // the addresses start with: PATH unless a caller names it (the unit tests run
-// without PATH).
+// without PATH). An address where another slash follows the path is left as
+// it is: on a site at the web root that is a protocol-relative address on
+// another host (the Media Embed button's src="//www.youtube.com/embed/…"),
+// which {path} would turn into a path on this site wherever {path} is filled
+// with more than "/" (the external API, a site moved into a folder).
 function prepare_rich_text_editor_content_for_input($content, $path = null)
 {
     if ($path === null) {
         $path = PATH;
     }
 
-    $content = str_replace('href="' . $path, 'href="{path}', $content);
-    $content = str_replace('src="' . $path, 'src="{path}', $content);
-    $content = str_replace('value="' . $path, 'value="{path}', $content);
-    return $content;
+    // A list is folded item by item and anything else read as text, as
+    // str_replace() read them before.
+    if (is_array($content)) {
+        foreach ($content as $key => $item) {
+            $content[$key] = prepare_rich_text_editor_content_for_input($item, $path);
+        }
+
+        return $content;
+    }
+
+    $content = is_scalar($content) ? (string) $content : '';
+    $path = (string) $path;
+
+    if (($content === '') || ($path === '')) {
+        return $content;
+    }
+
+    return preg_replace('~(href|src|value)="' . preg_quote($path, '~') . '(?!/)~', '$1="{path}', $content);
 }
 
 // What pg_sanitize_rich_text() keeps, as data: the sanitiser reads its lists
