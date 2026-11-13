@@ -5840,11 +5840,9 @@ html[data-bs-theme="dark"] .cke_bottom {
   background-image: unset !important;
 }
 
-html[data-bs-theme="dark"] .cke_dialog_title {
-  background: #1f1f1f !important;
-  color: white !important;
-}
-
+/* The editor's dialogs and drop-down lists (Link, Format, Styles) keep the
+   light skin as one surface: the lists open in an iframe that does not load
+   this file, so a dark title bar alone left a white body under a black bar. */
 html[data-bs-theme="dark"] .cke_chrome {
   border: 1px solid #282828 !important;
 }
