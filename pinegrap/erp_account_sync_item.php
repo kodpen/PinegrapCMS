@@ -511,7 +511,7 @@ $heading = ($row !== null) ? (((string) $row['title'] !== '') ? (string) $row['t
 echo
 pg_page_shell([
         'title' => lang('Account sync'),
-        'extra classes' => 'erp erp_accounts',
+        'extra classes' => 'erp erp_accounts pg-measure-edit',
         'icon' => 'erp',
         'heading' => h($heading),
         'heading_description' => h(lang(array('string' => 'The ERP account beside its card at {var:1}.', 'vars' => $provider_label))),

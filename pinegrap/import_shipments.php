@@ -62,7 +62,7 @@ print
     pg_page_shell(
         array(
             'title'               => lang('Import Tracking Numbers'),
-            'extra classes'       => 'store',
+            'extra classes'       => 'store pg-measure-edit',
             'icon'                => 'store',
             'heading'             => lang('Import Tracking Numbers'),
             'heading_description' => lang('Add tracking numbers to orders from a CSV file.'),

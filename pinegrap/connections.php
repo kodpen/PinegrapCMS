@@ -483,6 +483,7 @@ $liveform->remove_form();
 // application, so there is no one form for a shared bar to submit.
 echo pg_page_shell(array(
 	'title'               => lang('Connected accounts'),
+	'extra classes'       => 'pg-measure-edit',
 	'icon'                => 'settings',
 	'heading'             => lang('Connected accounts'),
 	'heading_description' => lang('Outside accounts this site works with, such as Google or Microsoft. Each provider knows the site by an application you register there; features ask the connected account for what they need.'),

@@ -1914,7 +1914,7 @@ $mp_invalid = $mp_refused ? $liveform->field_error_texts() : array();
 
 echo pg_page_shell(array(
 	'title'                => lang('Marketplaces'),
-	'extra classes'        => 'mp-screen',
+	'extra classes'        => 'mp-screen pg-measure-edit',
 	'icon'                 => 'shop',
 	'heading'              => lang('Marketplaces'),
 	'heading_description'  => lang('Keep the products you sell elsewhere in step with the ones you keep here.'),

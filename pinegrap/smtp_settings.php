@@ -429,7 +429,7 @@ if (!$_POST) {
 
     print pg_page_shell([
         'title'=> lang('SMTP Settings'),
-        'extra classes'=>'setting',
+        'extra classes'=>'setting pg-measure-edit',
         'icon'=>'setting',
         'heading'=>lang('SMTP Settings'),
         'heading_description' => lang('Update the Smtp settings for the Software Mail Function.')

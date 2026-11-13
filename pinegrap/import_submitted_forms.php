@@ -51,7 +51,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Import Submitted Forms'),
-            'extra classes'=>'form',
+            'extra classes'=>'form pg-measure-edit',
             'icon'=>'form', 
             'heading'=>lang('Import Submitted Forms'),
             'heading_description' => lang('Upload submitted form data for any existing custom form.'),
