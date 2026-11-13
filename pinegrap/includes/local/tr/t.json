@@ -8257,6 +8257,8 @@
     "This cannot be undone!": "Bu işlem geri alınamaz!",
     "This cannot be undone.": "Bu işlem geri alınamaz.",
     "This canvas does not use that table.": "Bu tuval o tabloyu kullanmıyor.",
+    "This canvas has no drawing: draw one with POST /workspace/channels/{id}/canvases.": "Bu tuvalin çizimi yok: POST /workspace/channels/{id}/canvases ile bir çizim yapın.",
+    "This canvas has no live page: make one with POST /workspace/channels/{id}/pages.": "Bu tuvalin canlı sayfası yok: POST /workspace/channels/{id}/pages ile bir sayfa oluşturun.",
     "This canvas only reads that table.": "Bu tuval o tabloyu yalnızca okur.",
     "This car could not be found. It may have been sold or taken out of stock.": "Bu araç bulunamadı. Satılmış veya stoktan çıkarılmış olabilir.",
     "This car could not be found. It may have left the fleet.": "Bu araç bulunamadı. Filodan çıkarılmış olabilir.",

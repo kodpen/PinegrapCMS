@@ -167,44 +167,66 @@ function ws_canvas_page_reach($viewer, $message)
 }
 
 /**
+ * Why this person may not bind this table to this canvas, '' when they
+ * may. The panel's action and the API route both ask it, the API before
+ * its dry run stops.
+ *
+ * @param array      $viewer
+ * @param array|null $message
+ * @param int        $table_id
+ * @param string     $access read | write
+ * @return string '' or not_page, access_invalid, not_found, forbidden, too_many
+ */
+function ws_canvas_table_bind_check($viewer, $message, $table_id, $access)
+{
+    $reach = ws_canvas_tables_ready() ? ws_canvas_page_reach($viewer, $message) : null;
+
+    if (!$reach) {
+        return 'not_page';
+    }
+
+    $table = ws_wtable_for($viewer, (int) $table_id, 'view');
+
+    return ws_canvas_table_bind_refusal(array(
+        'access'      => (string) $access,
+        'table'       => (bool) $table,
+        'may_post'    => $reach['may_post'],
+        'table_write' => $table && ws_wtable_may($table['access'], 'write'),
+        'bound'       => (bool) ws_canvas_table_binding((int) $message['id'], (int) $table_id),
+        'count'       => count(ws_canvas_tables((int) $message['id'])),
+    ));
+}
+
+/**
  * Binds a table to a canvas, or changes the access of a binding.
  *
  * @param array      $viewer
  * @param array|null $message
  * @param int        $table_id
  * @param string     $access read | write
+ * @param array|null $by     kind (app|user) and id of the binder; the
+ *                           person themselves when null (the panel)
  * @return array ok, error (code), text
  */
-function ws_canvas_table_bind($viewer, $message, $table_id, $access)
+function ws_canvas_table_bind($viewer, $message, $table_id, $access, $by = null)
 {
-    $reach = ws_canvas_tables_ready() ? ws_canvas_page_reach($viewer, $message) : null;
-
-    if (!$reach) {
-        return array('ok' => false, 'error' => 'not_page', 'text' => ws_canvas_table_refusal_text('not_page'));
-    }
-
-    $table = ws_wtable_for($viewer, (int) $table_id, 'view');
-    $bound = ws_canvas_table_binding((int) $message['id'], (int) $table_id);
-    $code = ws_canvas_table_bind_refusal(array(
-        'access'      => (string) $access,
-        'table'       => (bool) $table,
-        'may_post'    => $reach['may_post'],
-        'table_write' => $table && ws_wtable_may($table['access'], 'write'),
-        'bound'       => (bool) $bound,
-        'count'       => count(ws_canvas_tables((int) $message['id'])),
-    ));
+    $code = ws_canvas_table_bind_check($viewer, $message, $table_id, $access);
 
     if ($code !== '') {
         return array('ok' => false, 'error' => $code, 'text' => ws_canvas_table_refusal_text($code));
     }
 
+    $bound = ws_canvas_table_binding((int) $message['id'], (int) $table_id);
+    $kind = (is_array($by) && ((string) ($by['kind'] ?? '') === 'app')) ? 'app' : 'user';
+    $by_id = ($kind === 'app') ? (int) ($by['id'] ?? 0) : (int) $viewer['id'];
+
     if ($bound) {
-        db("UPDATE ws_canvas_tables SET access = '" . escape($access) . "', bound_by_kind = 'user', bound_by_id = '" . (int) $viewer['id'] . "'
+        db("UPDATE ws_canvas_tables SET access = '" . escape($access) . "', bound_by_kind = '" . escape($kind) . "', bound_by_id = '" . $by_id . "'
             WHERE message_id = '" . (int) $message['id'] . "' AND table_id = '" . (int) $table_id . "'");
     } else {
         // INSERT IGNORE: two presses at once write one row (the unique key).
         db("INSERT IGNORE INTO ws_canvas_tables (message_id, table_id, access, bound_by_kind, bound_by_id, created_at)
-            VALUES ('" . (int) $message['id'] . "', '" . (int) $table_id . "', '" . escape($access) . "', 'user', '" . (int) $viewer['id'] . "', UNIX_TIMESTAMP())");
+            VALUES ('" . (int) $message['id'] . "', '" . (int) $table_id . "', '" . escape($access) . "', '" . escape($kind) . "', '" . $by_id . "', UNIX_TIMESTAMP())");
     }
 
     return array('ok' => true, 'error' => '', 'text' => '');
@@ -218,20 +240,39 @@ function ws_canvas_table_bind($viewer, $message, $table_id, $access)
  * @param array      $viewer
  * @param array|null $message
  * @param int        $table_id
- * @return array ok, error, text
+ * @return string '' or not_page, forbidden
  */
-function ws_canvas_table_unbind($viewer, $message, $table_id)
+function ws_canvas_table_unbind_check($viewer, $message, $table_id)
 {
     $reach = ws_canvas_tables_ready() ? ws_canvas_page_reach($viewer, $message) : null;
 
     if (!$reach) {
-        return array('ok' => false, 'error' => 'not_page', 'text' => ws_canvas_table_refusal_text('not_page'));
+        return 'not_page';
     }
 
     $table = ws_wtable_for($viewer, (int) $table_id, 'view');
 
     if (!$reach['may_post'] || ($table && !ws_wtable_may($table['access'], 'write'))) {
-        return array('ok' => false, 'error' => 'forbidden', 'text' => ws_canvas_table_refusal_text('forbidden'));
+        return 'forbidden';
+    }
+
+    return '';
+}
+
+/**
+ * Takes a table off a canvas; the check above says who may.
+ *
+ * @param array      $viewer
+ * @param array|null $message
+ * @param int        $table_id
+ * @return array ok, error, text
+ */
+function ws_canvas_table_unbind($viewer, $message, $table_id)
+{
+    $code = ws_canvas_table_unbind_check($viewer, $message, $table_id);
+
+    if ($code !== '') {
+        return array('ok' => false, 'error' => $code, 'text' => ws_canvas_table_refusal_text($code));
     }
 
     db("DELETE FROM ws_canvas_tables WHERE message_id = '" . (int) $message['id'] . "' AND table_id = '" . (int) $table_id . "'");

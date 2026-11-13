@@ -311,12 +311,15 @@ function ws_canvas_read($doc, $versions)
  * The canvas of a message as the API gives it, or null when its picture is
  * no canvas (or was changed outside the editor since).
  *
- * @param array       $message ws_messages row
- * @param object|null $made    the document just written, answered with no
- *                             versions when it could not be kept
+ * @param array       $message   ws_messages row
+ * @param object|null $made      the document just written, answered with no
+ *                               versions when it could not be kept
+ * @param bool        $raw_times keeps a version's created_at as the moment
+ *                               it is kept as, for a caller that formats
+ *                               the times itself (api_canvases.php)
  * @return array|null
  */
-function ws_api_canvas_present($message, $made = null)
+function ws_api_canvas_present($message, $made = null, $raw_times = false)
 {
     $file_id = (int) $message['file_id'];
     $doc = ($file_id > 0) ? ws_canvas_open_doc($file_id) : null;
@@ -342,8 +345,10 @@ function ws_api_canvas_present($message, $made = null)
     $read = ws_canvas_read(json_decode(json_encode($doc), true), $versions);
     $stored = (string) db_value("SELECT name FROM files WHERE id = '" . $file_id . "'");
 
-    foreach ($read['versions'] as $i => $version) {
-        $read['versions'][$i]['created_at'] = api_time($version['created_at']);
+    if (!$raw_times) {
+        foreach ($read['versions'] as $i => $version) {
+            $read['versions'][$i]['created_at'] = api_time($version['created_at']);
+        }
     }
 
     return array(
@@ -642,6 +647,65 @@ function ws_api_canvas_edit($params)
     ws_message_touch((int) $message['id']);
 
     api_ok(ws_api_canvas_present($message));
+}
+
+/**
+ * Draws the canvas of a message anew from SVG, as the agent of its
+ * channel: the version the call was made against is checked, then the
+ * document is kept as the next version and its picture drawn. The
+ * canvas's own address writes through here (api_canvases.php); the caller
+ * has checked that the person may post in the channel. Never returns on a
+ * refusal.
+ *
+ * @param array $viewer
+ * @param array $message ws_messages row carrying the drawing
+ * @param array $channel
+ * @param array $params  version, svg, background, layers
+ */
+function ws_api_canvas_new_version($viewer, $message, $channel, $params)
+{
+    $agent = ws_api_canvas_agent($channel);
+    $newest = pg_file_versions_newest((int) $message['file_id']);
+    $version = $newest ? (int) $newest['version_no'] : 0;
+
+    if ((int) $params['version'] !== $version) {
+        api_fail(409, 'conflict', lang(array('string' => 'The canvas changed since: its newest version is {var:1}. Read it again.', 'vars' => $version)));
+    }
+
+    $public = api_has_scope(api_current_scopes(), 'files:read');
+    $mode = ws_canvas_split_mode($params['layers'] ?? null);
+    $made = ($mode === null) ? array('error' => 'layers') : ws_canvas_from_svg($params['svg'] ?? '', (string) ($params['background'] ?? ''), $mode === 'split', ws_canvas_split_resolver((int) $channel['id'], $public));
+
+    if ($made['error'] !== '') {
+        api_fail_validation(ws_canvas_from_svg_error_text($made['error']), in_array($made['error'], array('background', 'layers'), true) ? $made['error'] : 'svg');
+    }
+
+    $doc = $made['doc'];
+    $doc->by = (object) $agent;
+
+    if (ws_canvas_doc_json($doc) === '') {
+        api_fail_validation(ws_canvas_from_svg_error_text('not_kept'), 'svg');
+    }
+
+    api_dry_run_stop('updated', 'workspace_canvas', array(
+        'message_id' => (int) $message['id'],
+        'version'    => $version + 1,
+        'layers'     => count($doc->layers),
+    ));
+
+    if (!pg_image_editor_canvas_keep((int) $message['file_id'], $doc, (int) $viewer['id'], 'agent')) {
+        api_fail(503, 'service_unavailable', lang('The file could not be saved.'));
+    }
+
+    pg_file_versions_prune((int) $message['file_id']);
+    ws_canvas_draw_now($message);
+
+    // A person's canvas: its author hears that an agent changed it.
+    if (($message['sender_kind'] === 'user') && ((int) $message['sender_id'] !== (int) $viewer['id'])) {
+        ws_notify((int) $message['sender_id'], 'canvas_edited', array('channel_id' => (int) $message['channel_id'], 'message_id' => (int) $message['id'], 'actor_id' => 0));
+    }
+
+    ws_message_touch((int) $message['id']);
 }
 
 function ws_api_canvas_save($params)
